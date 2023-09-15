@@ -41,10 +41,10 @@ header p {
     margin-left: 20px;
     overflow: hidden; /* Ensures content outside the box is hidden */
     flex-shrink: 0;   /* Prevents the image from shrinking */
-    max-width: 150px; /* Ensures the image doesn't grow too large */
 }
 
 .profile-picture img {
+    display: block;      /* Ensures the image is a block-level element */
     width: 100%;       /* Ensures the image takes the full width of its container */
     height: 100%;      /* Ensures the image takes the full height of its container */
     object-fit: cover; /* Ensures the image covers the entire container without being stretched or squashed */

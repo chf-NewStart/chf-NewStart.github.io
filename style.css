@@ -35,8 +35,8 @@ header p {
 }
 
 .profile-picture {
-    width: 150px;
-    height: 150px;
+    width: 200px;
+    height: 200px;
     border-radius: 50%;
     margin-left: 20px;
     overflow: hidden; /* Ensures content outside the box is hidden */

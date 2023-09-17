@@ -1,0 +1,7 @@
+| Emphasis Combination | Job Title | Job Description | Estimated Salary (USD) |
+|----------------------|-----------|-----------------|------------------------|
+| Analytics & IPS | Data Privacy Analyst | - Collaborate with IT and business units to ensure data privacy regulations and policies are adhered to. <br> - Analyze and interpret data to identify potential privacy risks and breaches. <br> - Monitor and audit data processing activities. | $70,000 - $120,000 |
+| Analytics & ELITE | Data-Driven Business Analyst | - Analyze business operations and strategies using data. <br> - Collaborate with leadership to implement data-driven business decisions. <br> - Provide insights to optimize business processes. | $65,000 - $110,000 |
+| Analytics & Systems Control | Systems Data Analyst | - Analyze and optimize system operations using data. <br> - Collaborate with IT to implement data-driven system controls. <br> - Monitor system performance and provide insights. | $75,000 - $125,000 |
+| Analytics & Sustainable Energy | Energy Data Analyst | - Analyze energy consumption and production data. <br> - Provide insights to optimize energy usage. <br> - Collaborate with sustainable energy teams to implement data-driven solutions. | $70,000 - $115,000 |
+| Analytics & Photonics | Photonics Data Analyst | - Analyze data related to light-based communication systems. <br> - Collaborate with photonics engineers to optimize systems using data. <br> - Monitor and provide insights on photonics systems performance. | $80,000 - $130,000 |

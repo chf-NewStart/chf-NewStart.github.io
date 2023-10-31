@@ -69,6 +69,7 @@ header p {
 }
 
 .side-links a i.fas {
+    margin-left: 20px;
     font-size: 24px;  /* Adjust this value as per your needs */
     margin-right: 10px;  /* Optional: adds spacing between the icon and the text */
 }

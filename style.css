@@ -99,24 +99,28 @@ section {
     border-radius: 5px;
 }
 
-
-#education {
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 5px;
-}
+/* #education {
+    /* Existing styles... }*/
 
 .education-entry {
+    display: flex;
+    align-items: center;
     margin-bottom: 20px;
 }
 
-.education-entry h3 {
-    color: #333;
-    margin-bottom: 10px;
+.school-logo {
+    width: 50px; /* Adjust this value for desired width */
+    height: auto; /* Maintain the aspect ratio */
+    margin-right: 15px; /* Space between the logo and the text */
 }
 
-.education-entry p {
+.education-entry h3, .education-entry p {
     margin: 5px 0;
+}
+
+.education-dates {
+    font-style: italic;
+    color: #666;
 }
 
 

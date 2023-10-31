@@ -68,6 +68,12 @@ header p {
     gap: 10px;
 }
 
+.side-links a i.fas {
+    font-size: 24px;  /* Adjust this value as per your needs */
+    margin-right: 10px;  /* Optional: adds spacing between the icon and the text */
+}
+
+
 .side-links a {
     /* your existing styles */
     width: 40px; /* Adjust to fit the icon size */
@@ -83,12 +89,35 @@ header p {
     display: inline;
 }
 
+
+
 section {
     padding: 20px;
     margin: 20px;
     background-color: white;
     border-radius: 5px;
 }
+
+
+#education {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+.education-entry {
+    margin-bottom: 20px;
+}
+
+.education-entry h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.education-entry p {
+    margin: 5px 0;
+}
+
 
 footer {
     background-color: #333;

@@ -39,7 +39,8 @@ header p {
 .profile-picture {
     width: 200px;
     height: 200px;
-    border-radius: 50%;
+    /*border-radius: 50%;*/
+    margin-left: 20px;
     margin-left: 20px;
     overflow: hidden; /* Ensures content outside the box is hidden */
     flex-shrink: 0;   /* Prevents the image from shrinking */

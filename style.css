@@ -2,13 +2,22 @@
 @media (max-width: 768px) {
     /*for uses to view from non laptop device*/
     .profile-container {
-        flex-direction: column;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 20px;
+        gap: 20px; /* Adds spacing between the image and the text */
     }
     
-    .profile-picture, #about-me {
-        margin: 0 auto;
-        width: 80%;
+    .profile-picture {
+        width: 200px;
+        height: 200px;
+        overflow: hidden;
+        flex-shrink: 0;
+        border-radius: 50%; /* Makes the image circular */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Adds a subtle shadow */
     }
+    
     
     .side-links {
         position: static;

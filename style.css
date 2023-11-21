@@ -73,17 +73,14 @@ header p {
     align-items: center;
     justify-content: center;
     margin-top: 20px;
-    margin-left: 20px;    
+
 }
 
 .profile-picture {
     width: 200px;
     height: 200px;
     /*border-radius: 50%;*/
-    margin-left: 20px;
-    margin-left: 20px;
-    overflow: hidden; /* Ensures content outside the box is hidden */
-    flex-shrink: 0;   /* Prevents the image from shrinking */
+    margin-right: 20px; /* Make sure there is space between the image and the text */
 }
 
 .profile-picture img {
@@ -100,8 +97,22 @@ header p {
     max-width: calc(100% - 170px); /* Ensures it doesn't extend beyond the profile picture */
 }
 
+/* Ensure that the direct children of both sections align properly */
+#about-me > *, .education-entry > * {
+    margin: 0; /* Reset margins */
+}
+
 #about-me h2, #education h2, #experience h2{
     color: #2b395e; /* New color for titles */
+    margin-bottom: 20px; /* Adjust as needed */
+
+}
+
+#about-me, .education-entry {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 800px; /* Adjust if necessary to make sure both sections have the same width */
+    padding: 20px; /* Ensure padding is consistent */
 }
 
 .side-links {
@@ -179,6 +190,9 @@ section {
     align-items: center; /* Aligns the logo with the text vertically */
     margin-bottom: 20px; /* Space between each education entry */
     gap: 10px; /* Space between the logo and the education details */
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* Aligns content to the start of the flex container */
 }
 
 .school-logo {

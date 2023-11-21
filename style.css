@@ -220,6 +220,29 @@ section {
     color: #666;
     margin-top: 0.25em; /* Small space above to separate from the university name */
 }
+#projects {
+    padding: 20px;
+    margin: 20px;
+    background-color: #f0f0f0; /* Adjust the color to fit your design */
+    border-radius: 5px;
+}
+
+.project-entry {
+    margin-bottom: 20px;
+}
+
+.project-entry h3 {
+    color: #2b395e; /* Adjust the color to fit your design */
+}
+
+.project-entry img,
+.project-entry video {
+    max-width: 100%; /* Ensures that the media fits within the container */
+    height: auto; /* Maintains aspect ratio */
+    display: block; /* Ensures it is a block-level element */
+    margin: 0 auto; /* Centers the media if it's not full-width */
+}
+
 
 footer {
     background-color: #333;

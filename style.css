@@ -89,31 +89,31 @@ header p {
     height: 100%;      /* Ensures the image takes the full height of its container */
     object-fit: cover; /* Ensures the image covers the entire container without being stretched or squashed */
 }
-
+/* 
 #about-me {
     flex: 1;
     min-width: 250px; /* Minimum width to ensure readability */
     padding-right: 20px;
     max-width: calc(100% - 170px); /* Ensures it doesn't extend beyond the profile picture */
-}
+} */
 
 /* Ensure that the direct children of both sections align properly */
-#about-me > *, .education-entry > * {
+/* #about-me > *, .education-entry > * {
     margin: 0; /* Reset margins */
-}
+} */
 
 #about-me h2, #education h2, #experience h2{
     color: #2b395e; /* New color for titles */
     margin-bottom: 20px; /* Adjust as needed */
 
 }
-
+/*
 #about-me, .education-entry {
     margin-left: auto;
     margin-right: auto;
     max-width: 800px; /* Adjust if necessary to make sure both sections have the same width */
-    padding: 20px; /* Ensure padding is consistent */
-}
+    /* padding:20px; */
+/* } */
 
 .side-links {
     position: fixed;
@@ -185,16 +185,16 @@ section {
 }
 
 
-.education-entry {
+.education-entry, #about-me, .experience-entry {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: flex-start;
-    margin-bottom: 20px; /* Space between each education entry */
-    gap: 10px; /* Space between the logo and the education details */
-    max-width: 800px; /* Match this to the 'Experience' section */
+    margin-bottom: 20px;
+    gap: 10px;
+    max-width: 800px;
     margin-left: auto;
     margin-right: auto;
-    padding: 20px; /* Ensure padding is consistent */
+    padding: 20px;
 }
 
 .school-logo {

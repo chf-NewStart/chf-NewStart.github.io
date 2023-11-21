@@ -1,95 +1,39 @@
-
-@media (max-width: 768px) {
-    /*for uses to view from non laptop device*/
-    .education-entry {
-        flex-direction: column; /* Stack logo above the text on small screens */
-        align-items: flex-start; /* Align items to the start of the container */
-    }
-
-    .school-logo {
-        margin-bottom: 10px; /* Space between logo and text on small screens */
-    }
-    
-    .profile-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-top: 20px;
-        gap: 20px; 
-        /* Adds spacing between the image and the text */
-        /* padding-left: 20px;
-        padding-right: 20px; */
-    }
-    
-    .profile-picture {
-        width: 200px;
-        height: 200px;
-        overflow: hidden;
-        flex-shrink: 0;
-        border-radius: 50%; /* Makes the image circular */
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Adds a subtle shadow */
-    }
-    
-    
-    .side-links {
-        position: static;
-        flex-direction: row;
-        justify-content: center;
-        gap: 20px;
-    }
-}
-
-
+/* Base styles */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
     color: #41548a;
-    background-color: #c0c2ac; /* Updated background color */
+    background-color: #c0c2ac;
 }
 
-header {
+header, section {
     background-color: #c0c2ac;
-    color: #41548a;
     text-align: center;
     padding: 1em 0;
+    margin-bottom: 20px;
+    border-radius: 5px;
 }
 
-header h1 {
-    margin: 0;
-    font-family: 'Brush Script MT', cursive;
-    background-color: #c0c2ac;
-    text-align: center;
-    padding: 10px 0;
-    margin: 0;
-
+/* Section specific styles */
+#about-me, #education, #experience {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 20px;
 }
 
-header p {
-    margin-top: 5px;
-}
-.profile-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 20px;
-
-}
-
-.profile-picture {
+/* Profile image styling */
+.profile-picture img {
     width: 200px;
     height: 200px;
-    /*border-radius: 50%;*/
-    margin-right: 100px; /* Make sure there is space between the image and the text */
+    object-fit: cover;
+    border-radius: 50%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-right: 20px;
 }
 
-.profile-picture img {
-    display: block;      /* Ensures the image is a block-level element */
-    width: 100%;       /* Ensures the image takes the full width of its container */
-    height: 100%;      /* Ensures the image takes the full height of its container */
-    object-fit: cover; /* Ensures the image covers the entire container without being stretched or squashed */
-}
-
+/* Navigation links styling */
 .side-links {
     position: fixed;
     top: 3%;
@@ -100,150 +44,19 @@ header p {
     color: #b2b9cf;
 }
 
-.side-links a i.fas {
-    margin-left: 20px;
-    font-size: 24px;  /* Adjust this value as per your needs */
-    margin-right: 10px;  /* Optional: adds spacing between the icon and the text */
-}
-
-
 .side-links a {
-    /* your existing styles */
-    width: 40px; /* Adjust to fit the icon size */
-    /* other styles... */
+    width: 40px;
 }
 
-/* Additional styles for hiding and showing text */
-.side-links a span {
-    display: none;
-}
-
-.side-links a:hover span {
-    display: inline;
-}
-
-
-
-section {
-    padding: 20px;
-    margin: 20px;
-    background-color: #c0c2ac;
-    border-radius: 5px;
-}
-
-
-
-#about-me, .education-entry {
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 800px; /* This should be the same for both to align them */
-}
-
-
-#about-me, #education {
-    padding: 20px;
-    margin: 20px;
-    background-color: #f0f0f0; /* Your chosen color */
-    border-radius: 5px;
-}
-
-#about-me h3, #education h3 {
-    color: #2b395e; /* Your chosen color */
-}
-
-#about-me ul, #education ul {
-    list-style: none; /* Removes default list styling */
-    padding: 0; /* Resets padding */
-}
-
-#about-me li, #education li {
-    margin-bottom: 10px; /* Space between list items */
-}
-
-#about-me img, #education img {
-    max-width: 100%; /* Makes images responsive */
-    height: auto; /* Keeps aspect ratio intact */
-    display: block; /* Ensures it's a block-level element */
-    margin-bottom: 20px; /* Space below the image */
-}
-
-/* Remove individual left and right margins from these elements */
-.profile-picture, .education-details {
-    margin-left: 0;
-    margin-right: 100px;
-}
-
-
-/* #education {
-    /* Existing styles... }*/
-
-
-.study-level {
-    font-size: 1em; /* Adjust the size as needed */
-    font-weight: bold; /* Makes it stand out */
-    margin-bottom: 0.5em; /* Spacing between this and the university name */
-}
-
-.education-details {
-    display: flex;
-    flex-direction: column; /* Stack the text vertically */
-}
-
-
-.education-entry, #about-me, .experience-entry {
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
-    margin-bottom: 20px;
-    gap: 10px;
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 20px;
-}
-
-.school-logo {
-    width: 50px; /* Adjust this value for desired width */
-    height: auto; /* Maintain the aspect ratio */
-    margin-right: 15px; /* Space between the logo and the text */
-    padding: 5px; /* Add padding around the logo */
-}
-
-.education-dates {
-    font-style: italic;
-    color: #666;
-    margin-top: 0.25em; /* Small space above to separate from the university name */
-}
-
-.experience-dates {
-    font-style: italic;
-    color: #666;
-    margin-top: 0.25em; /* Small space above to separate from the university name */
-}
-#projects {
-    padding: 20px;
-    margin: 20px;
-    background-color: #f0f0f0; /* Adjust the color to fit your design */
-    border-radius: 5px;
-}
-
-.project-entry {
-    margin-bottom: 20px;
-}
-
-.project-entry h3 {
-    color: #2b395e; /* Adjust the color to fit your design */
-}
-
-.project-entry img,
-.project-entry video {
+/* Project section */
+#projects .project-entry img {
     max-width: 100%; /* Ensures that the media fits within the container */
     height: auto; /* Maintains aspect ratio */
     display: block; /* Ensures it is a block-level element */
     margin: 0 auto; /* Centers the media if it's not full-width */
 }
 
-
+/* Footer styling */
 footer {
     background-color: #333;
     color: white;
@@ -254,11 +67,21 @@ footer {
     width: 100%;
 }
 
-footer a {
-    color: #50b3a2;
-    text-decoration: none;
-}
+/* Media queries */
+@media (max-width: 768px) {
+    .education-entry, .profile-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 
-footer a:hover {
-    text-decoration: underline;
+    .profile-picture, .school-logo {
+        width: 100px; /* Adjust based on your design preference */
+        height: auto;
+    }
+
+    .side-links {
+        position: static;
+        flex-direction: row;
+        justify-content: center;
+    }
 }

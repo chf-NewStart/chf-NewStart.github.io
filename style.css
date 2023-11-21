@@ -33,6 +33,7 @@ body {
     margin: 0;
     padding: 0;
     color: #b28ed1;
+    background-color: #f0f4f8; /* Updated background color */
 }
 
 header {
@@ -85,6 +86,10 @@ header p {
     min-width: 250px; /* Minimum width to ensure readability */
     padding-right: 20px;
     max-width: calc(100% - 170px); /* Ensures it doesn't extend beyond the profile picture */
+}
+
+#about-me h2, #education h2, #experience h2{
+    color: #003366; /* New color for titles */
 }
 
 .side-links {

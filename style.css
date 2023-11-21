@@ -7,7 +7,17 @@ body {
     background-color: #c0c2ac;
 }
 
-header, section {
+section {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 20px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+header {
     background-color: #c0c2ac;
     text-align: center;
     padding: 1em 0;
@@ -17,10 +27,7 @@ header, section {
 
 /* Section specific styles */
 #about-me, #education, #experience {
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 20px;
+    text-align: left;
 }
 
 /* Profile image styling */
@@ -55,6 +62,24 @@ header, section {
     display: block; /* Ensures it is a block-level element */
     margin: 0 auto; /* Centers the media if it's not full-width */
 }
+/* Flexbox layout for the profile container to align the image and text side by side */
+.profile-container {
+    display: flex;
+    align-items: flex-start; /* Aligns items to the start of the container */
+    justify-content: flex-start; /* Aligns content to the start */
+    gap: 20px; /* Space between items */
+}
+
+/* Styles for the profile picture */
+.profile-picture {
+    width: 200px; /* Fixed width for profile picture */
+    height: 200px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 20px; /* Space between the image and the text */
+}
+
+
 
 /* Footer styling */
 footer {
@@ -66,22 +91,28 @@ footer {
     bottom: 0;
     width: 100%;
 }
+/* Styles for logos in Education */
+.school-logo {
+    width: 50px;
+    height: auto;
+    margin-right: 15px;
+}
+
 
 /* Media queries */
 @media (max-width: 768px) {
-    .education-entry, .profile-container {
+    .profile-container, .education-entry, .experience-entry {
         flex-direction: column;
         align-items: flex-start;
     }
 
-    .profile-picture, .school-logo {
-        width: 100px; /* Adjust based on your design preference */
+    .profile-picture {
+        margin-bottom: 20px; /* Space below the image on small screens */
+        width: 100%; /* Full width on small screens */
         height: auto;
     }
 
-    .side-links {
-        position: static;
-        flex-direction: row;
-        justify-content: center;
+    .school-logo {
+        width: 30px; /* Smaller size on mobile */
     }
 }

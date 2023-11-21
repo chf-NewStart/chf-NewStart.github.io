@@ -80,7 +80,7 @@ header p {
     width: 200px;
     height: 200px;
     /*border-radius: 50%;*/
-    margin-right: 10px; /* Make sure there is space between the image and the text */
+    margin-right: 100px; /* Make sure there is space between the image and the text */
 }
 
 .profile-picture img {
@@ -101,7 +101,7 @@ header p {
 /* Ensure that the direct children of both sections align properly */
 /* #about-me > *, .education-entry > * {
     margin: 0; /* Reset margins */
-} */
+/* } */
 
 #about-me h2, #education h2, #experience h2{
     color: #2b395e; /* New color for titles */

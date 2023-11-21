@@ -89,13 +89,14 @@ header p {
     height: 100%;      /* Ensures the image takes the full height of its container */
     object-fit: cover; /* Ensures the image covers the entire container without being stretched or squashed */
 }
-/* 
-#about-me {
-    flex: 1;
-    min-width: 250px; /* Minimum width to ensure readability */
-    padding-right: 20px;
-    max-width: calc(100% - 170px); /* Ensures it doesn't extend beyond the profile picture */
-} */
+
+/* #about-me { */
+    /* flex: 1; */
+    /* min-width: 250px; /* Minimum width to ensure readability */
+    /* padding-right: 20px; */
+    /* max-width: calc(100% - 170px); Ensures it doesn't extend beyond the profile picture */ */
+/* }  */
+
 
 /* Ensure that the direct children of both sections align properly */
 /* #about-me > *, .education-entry > * {

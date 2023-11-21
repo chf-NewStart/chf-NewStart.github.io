@@ -90,32 +90,6 @@ header p {
     object-fit: cover; /* Ensures the image covers the entire container without being stretched or squashed */
 }
 
-/* #about-me { */
-    /* flex: 1; */
-    /* min-width: 250px; /* Minimum width to ensure readability */
-    /* padding-right: 20px; */
-    /* max-width: calc(100% - 170px); Ensures it doesn't extend beyond the profile picture */ */
-/* }  */
-
-
-/* Ensure that the direct children of both sections align properly */
-/* #about-me > *, .education-entry > * {
-    margin: 0; /* Reset margins */
-/* } */
-
-#about-me h2, #education h2, #experience h2{
-    color: #2b395e; /* New color for titles */
-    margin-bottom: 20px; /* Adjust as needed */
-
-}
-/*
-#about-me, .education-entry {
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 800px; /* Adjust if necessary to make sure both sections have the same width */
-    /* padding:20px; */
-/* } */
-
 .side-links {
     position: fixed;
     top: 3%;
@@ -157,10 +131,40 @@ section {
     border-radius: 5px;
 }
 
+
+
 #about-me, .education-entry {
     margin-left: auto;
     margin-right: auto;
     max-width: 800px; /* This should be the same for both to align them */
+}
+
+
+#about-me, #education {
+    padding: 20px;
+    margin: 20px;
+    background-color: #f0f0f0; /* Your chosen color */
+    border-radius: 5px;
+}
+
+#about-me h3, #education h3 {
+    color: #2b395e; /* Your chosen color */
+}
+
+#about-me ul, #education ul {
+    list-style: none; /* Removes default list styling */
+    padding: 0; /* Resets padding */
+}
+
+#about-me li, #education li {
+    margin-bottom: 10px; /* Space between list items */
+}
+
+#about-me img, #education img {
+    max-width: 100%; /* Makes images responsive */
+    height: auto; /* Keeps aspect ratio intact */
+    display: block; /* Ensures it's a block-level element */
+    margin-bottom: 20px; /* Space below the image */
 }
 
 /* Remove individual left and right margins from these elements */

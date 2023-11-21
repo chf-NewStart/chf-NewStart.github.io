@@ -7,40 +7,46 @@ body {
     background-color: #c0c2ac;
 }
 
-section {
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 20px;
-    background-color: #f0f0f0;
-    border-radius: 5px;
-    margin-bottom: 20px;
-}
-
+/* Header styles */
 header {
     background-color: #c0c2ac;
     text-align: center;
     padding: 1em 0;
-    margin-bottom: 20px;
+}
+
+/* Section base styles */
+section {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #f0f0f0;
     border-radius: 5px;
 }
 
-/* Section specific styles */
-#about-me, #education, #experience {
+/* Align text to the left for these sections */
+#about-me, #education, #experience, #projects {
     text-align: left;
 }
 
 /* Profile image styling */
-.profile-picture img {
+.profile-picture {
     width: 200px;
     height: 200px;
-    object-fit: cover;
     border-radius: 50%;
+    overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     margin-right: 20px;
 }
 
-/* Navigation links styling */
+/* Profile container styling */
+.profile-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 20px;
+}
+
+/* Side navigation links styling */
 .side-links {
     position: fixed;
     top: 3%;
@@ -55,31 +61,20 @@ header {
     width: 40px;
 }
 
-/* Project section */
-#projects .project-entry img {
-    max-width: 100%; /* Ensures that the media fits within the container */
-    height: auto; /* Maintains aspect ratio */
-    display: block; /* Ensures it is a block-level element */
-    margin: 0 auto; /* Centers the media if it's not full-width */
-}
-/* Flexbox layout for the profile container to align the image and text side by side */
-.profile-container {
-    display: flex;
-    align-items: flex-start; /* Aligns items to the start of the container */
-    justify-content: flex-start; /* Aligns content to the start */
-    gap: 20px; /* Space between items */
+/* Project images styling */
+.project-entry img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto 20px;
 }
 
-/* Styles for the profile picture */
-.profile-picture {
-    width: 200px; /* Fixed width for profile picture */
-    height: 200px;
-    border-radius: 50%;
-    overflow: hidden;
-    margin-right: 20px; /* Space between the image and the text */
+/* School logo styling */
+.school-logo {
+    width: 50px;
+    height: auto;
+    margin-right: 15px;
 }
-
-
 
 /* Footer styling */
 footer {
@@ -91,15 +86,8 @@ footer {
     bottom: 0;
     width: 100%;
 }
-/* Styles for logos in Education */
-.school-logo {
-    width: 50px;
-    height: auto;
-    margin-right: 15px;
-}
 
-
-/* Media queries */
+/* Media queries for responsiveness */
 @media (max-width: 768px) {
     .profile-container, .education-entry, .experience-entry {
         flex-direction: column;
@@ -107,8 +95,8 @@ footer {
     }
 
     .profile-picture {
-        margin-bottom: 20px; /* Space below the image on small screens */
-        width: 100%; /* Full width on small screens */
+        margin-bottom: 20px;
+        width: 100%;
         height: auto;
     }
 

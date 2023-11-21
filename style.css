@@ -210,6 +210,11 @@ section {
     margin-top: 0.25em; /* Small space above to separate from the university name */
 }
 
+.experience-dates {
+    font-style: italic;
+    color: #666;
+    margin-top: 0.25em; /* Small space above to separate from the university name */
+}
 
 footer {
     background-color: #333;

@@ -108,6 +108,7 @@ header p {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    color: #b2b9cf;
 }
 
 .side-links a i.fas {

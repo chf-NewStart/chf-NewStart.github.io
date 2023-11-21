@@ -1,6 +1,15 @@
 
 @media (max-width: 768px) {
     /*for uses to view from non laptop device*/
+    .education-entry {
+        flex-direction: column; /* Stack logo above the text on small screens */
+        align-items: flex-start; /* Align items to the start of the container */
+    }
+
+    .school-logo {
+        margin-bottom: 10px; /* Space between logo and text on small screens */
+    }
+    
     .profile-container {
         display: flex;
         align-items: center;
@@ -135,25 +144,37 @@ section {
 /* #education {
     /* Existing styles... }*/
 
+
+.study-level {
+    font-size: 1em; /* Adjust the size as needed */
+    font-weight: bold; /* Makes it stand out */
+    margin-bottom: 0.5em; /* Spacing between this and the university name */
+}
+
+.education-details {
+    display: flex;
+    flex-direction: column; /* Stack the text vertically */
+}
+
+
 .education-entry {
     display: flex;
-    align-items: center;
-    margin-bottom: 20px;
+    align-items: center; /* Aligns the logo with the text vertically */
+    margin-bottom: 20px; /* Space between each education entry */
+    gap: 10px; /* Space between the logo and the education details */
 }
 
 .school-logo {
     width: 50px; /* Adjust this value for desired width */
     height: auto; /* Maintain the aspect ratio */
     margin-right: 15px; /* Space between the logo and the text */
-}
-
-.education-entry h3, .education-entry p {
-    margin: 5px 0;
+    padding: 5px; /* Add padding around the logo */
 }
 
 .education-dates {
     font-style: italic;
     color: #666;
+    margin-top: 0.25em; /* Small space above to separate from the university name */
 }
 
 

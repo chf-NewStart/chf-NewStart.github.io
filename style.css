@@ -187,12 +187,14 @@ section {
 
 .education-entry {
     display: flex;
-    align-items: center; /* Aligns the logo with the text vertically */
+    align-items: center;
+    justify-content: flex-start;
     margin-bottom: 20px; /* Space between each education entry */
     gap: 10px; /* Space between the logo and the education details */
-    display: flex;
-    align-items: center;
-    justify-content: flex-start; /* Aligns content to the start of the flex container */
+    max-width: 800px; /* Match this to the 'Experience' section */
+    margin-left: auto;
+    margin-right: auto;
+    padding: 20px; /* Ensure padding is consistent */
 }
 
 .school-logo {

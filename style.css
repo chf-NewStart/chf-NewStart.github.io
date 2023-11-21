@@ -80,7 +80,7 @@ header p {
     width: 200px;
     height: 200px;
     /*border-radius: 50%;*/
-    margin-right: 20px; /* Make sure there is space between the image and the text */
+    margin-right: 10px; /* Make sure there is space between the image and the text */
 }
 
 .profile-picture img {

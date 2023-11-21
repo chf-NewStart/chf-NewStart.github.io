@@ -49,8 +49,8 @@ body {
 }
 
 header {
-    background-color: #50b3a2;
-    color: white;
+    background-color: #c0c2ac;
+    color: #41548a;
     text-align: center;
     padding: 1em 0;
 }
@@ -58,7 +58,7 @@ header {
 header h1 {
     margin: 0;
     font-family: 'Brush Script MT', cursive;
-    background-color: Tomato;
+    background-color: #c0c2ac;
     text-align: center;
     padding: 10px 0;
     margin: 0;

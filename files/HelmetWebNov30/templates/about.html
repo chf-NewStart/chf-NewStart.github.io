@@ -1,14 +1,11 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
-<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-<title>Google Maps - gmplot</title>
-<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD8HpKyCbLR5IHcdG_NtjbBcCoapwAN9ME&callback=console.debug&libraries=maps,marker&v=beta"></script>
-<script type="text/javascript">
-   
-</script>
-<style>
-    body {
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route</title>
+    <style>
+        body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
@@ -63,9 +60,9 @@
         main {
             animation: fadeIn 1s ease-in-out;
         }
-</style>
+    </style>
 </head>
-<body style="margin:0px; padding:0px;" onload="initialize()">
+<body>
     <header>
         <h1>Video</h1>
     </header>
@@ -73,14 +70,21 @@
         <ul>
             <li><a href="helmet.html">Home</a></li>
             <li><a href="route.html">Route</a></li>
+            <li><a href="{{ url_for('convert_video') }}">Video</a></li>
             <li><a href="collision.html">Collision Detection</a></li>
             <li><a href="story.html">Our Story</a></li>
-            <li><a href="about.html">About Us</a></li>
         </ul>
     </nav>
     <main>
-    <div id="map_canvas" style="width: 95%; height: 69%; margin: auto;" />
+        <!-- Content will go here -->
     </main>
+
+    <script>
+    document.getElementById('video-link').addEventListener('click', function() {
+        window.location.href = "{{ url_for('convert_video') }}";
+    });
+    </script>
+
     <footer>
         <p>&copy; 2023 Helmet World. All rights reserved.</p>
     </footer>

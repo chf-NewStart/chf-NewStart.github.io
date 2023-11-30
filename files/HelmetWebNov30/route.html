@@ -1,0 +1,88 @@
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+<title>Google Maps - gmplot</title>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD8HpKyCbLR5IHcdG_NtjbBcCoapwAN9ME&callback=console.debug&libraries=maps,marker&v=beta"></script>
+<script type="text/javascript">
+   
+</script>
+<style>
+    body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #e7e7e7;
+        }
+
+        header {
+            background-color: #3d2d9e;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        nav ul {
+            list-style-type: none;
+            padding: 0;
+            text-align: center;
+        }
+
+        nav ul li {
+            display: inline;
+            margin-right: 20px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #3d2d9e;
+        }
+
+        main {
+            padding: 15px;
+        }
+
+        footer {
+            position: fixed; /* Fixed position */
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #3d2d9e;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        /* Fade in animation */
+        @keyframes fadeIn {
+        from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Apply the animation to your main content */
+        main {
+            animation: fadeIn 1s ease-in-out;
+        }
+</style>
+</head>
+<body style="margin:0px; padding:0px;" onload="initialize()">
+    <header>
+        <h1>Video</h1>
+    </header>
+    <nav>
+        <ul>
+            <li><a href="helmet.html">Home</a></li>
+            <li><a href="route.html">Route</a></li>
+            <li><a href="collision.html">Collision Detection</a></li>
+            <li><a href="story.html">Our Story</a></li>
+            <li><a href="about.html">About Us</a></li>
+        </ul>
+    </nav>
+    <main>
+    <div id="map_canvas" style="width: 95%; height: 69%; margin: auto;" />
+    </main>
+    <footer>
+        <p>&copy; 2023 Helmet World. All rights reserved.</p>
+    </footer>
+</body>
+</html>

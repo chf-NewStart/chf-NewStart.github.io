@@ -65,7 +65,7 @@
 
         .left-side {
             width: 50%;
-            background: url('8 modified.png') no-repeat center center;
+            background: url('/static/8 modified.png') no-repeat center center;
             background-size: cover;
             border-top-right-radius: 150px;  /* Creates a rounded border on the top-left edge */
             border-bottom-right-radius: 150px; /* Creates a rounded border on the bottom-left edge */
@@ -80,7 +80,7 @@
             align-items: stretch; /* Align children to stretch full width */
             justify-content: space-between; /* Space between header, content, and footer */
             text-align: center;
-            background: url('9.png') no-repeat center center;
+            background: url('/static/9.png') no-repeat center center;
             background-color: #ececec;
             background-size: cover;
             /* border-top-right-radius: 150px;  Creates a rounded border on the top-right edge */
@@ -191,7 +191,7 @@
         <div class="logo">Smart Helmet</div>
         <ul class="header-nav">
             <li><a href="route.html">Route</a></li>
-            <li><a href="video.html">Video</a></li>
+            <li><a href="{{ url_for('convert_video') }}">Video</a></li>
             <li><a href="collision.html">Collision</a></li>
             <li><a href="story.html">Our Story</a></li>
             <li><a href="about.html">About Us</a></li>
@@ -211,12 +211,14 @@
                             <span class="tooltip">Routes: Memory on Specific Date</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a href="video.html">
+                    <li class="nav-item" id="video-link">
+                        <a href="{{ url_for('convert_video') }}">
                             <span class="arrow">&#10140;</span>Video
                             <span class="tooltip">Videos: What You See on That Day</span>
                         </a>
                     </li>
+
+
                     <li class="nav-item">
                         <a href="collision.html">
                             <span class="arrow">&#10140;</span>Collision detection
@@ -242,5 +244,11 @@
             <p>&copy; 2023 Smart Helmet. All rights reserved.</p>
         </div>
     </div>
+
+    <script>
+    document.getElementById('video-link').addEventListener('click', function() {
+        window.location.href = "{{ url_for('convert_video') }}";
+    });
+    </script>
 </body>
 </html>

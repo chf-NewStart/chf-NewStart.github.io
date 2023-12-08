@@ -53,10 +53,17 @@
         var selected_value = parseInt('{{selectedvalue}}');
         var selectElement = document.getElementById('select_data');
         var uniqueDates = Array.from(new Set(dates));
+        console.log("uniqueDates: ", uniqueDates)
+        
         for (var i = 0; i < uniqueDates.length; i++) {
             var option = document.createElement('option');
+            
+            var date_change = String(uniqueDates[i]).split('');
+            date_change = date_change[0]+date_change[1]+'/'+date_change[2]+date_change[3]+'/'+date_change[4]+date_change[5];
+
             option.value = uniqueDates[i];
-            option.textContent = uniqueDates[i];
+            option.textContent = date_change;
+            
             if (uniqueDates[i] === selected_value) {
                 option.selected = true;
                 console.log(selected_value)

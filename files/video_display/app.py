@@ -69,6 +69,7 @@ def helmet():
 
 @app.route('/get_new_data')
 def get_new_data():
+    print("hi")
     client = pygsheets.authorize(service_file = "googlesheetgps.json")
     sh = client.open('Havenmet')
     wks = sh.sheet1
@@ -103,6 +104,7 @@ def route():
 
 
     date_list = wks.get_col(8, include_tailing_empty=False)[1:]
+    print("hihihih: ", date_list)
     late_date = date_list[-1]
     selected_value = request.args.get('selected', default=late_date)
     indexs = [i for i, element in enumerate(date_list) if element == selected_value]
@@ -112,9 +114,12 @@ def route():
 
     latitude_list = wks.get_col(2, include_tailing_empty=False)[1:]
     longitude_list = wks.get_col(3, include_tailing_empty=False)[1:]
+    print("longitude_list 1 : ", longitude_list)
 
     latitude_list = [float(latitude_list[i]) for i in indexs]
     longitude_list = [float(longitude_list[i]) for i in indexs]
+    print("longitude_list 2 : ", longitude_list)
+
 
     return render_template('route.html', selectedvalue = selected_value, dates = date_list, latitudes = latitude_list, longitudes = longitude_list)
 

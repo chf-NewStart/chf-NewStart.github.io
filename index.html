@@ -29,9 +29,13 @@
             overflow: hidden;
             padding: 20px;
         }
-        h1, h2, h3 {
+        h1, h2 {
             color: #ffffff;
         }
+        h3 {
+            color: #1db954;
+        }
+
         a {
             color: #1db954;
             text-decoration: none;
@@ -97,6 +101,18 @@
         section {
             margin: 30px 0;
         }
+        .tabcontent img {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            border: 1px solid #dcdcdc;
+            border-radius: 5px;
+        }
+        .tabcontent iframe {
+            display: block;
+            margin: 20px auto;
+        }
+
 
 
 
@@ -220,11 +236,25 @@
             </div>
 
             <div id="PythonProjects" class="tabcontent">
-                <p><strong>Matrix Calculator:</strong> Solves n-variable systems of equations using Python.</p>
+                <h3>Matrix Calculator:</h3> 
+                <p>Solves n-variable systems of equations using Python.</p>
             </div>
             <div id="RoboticsProjects" class="tabcontent" style="display:none;">
-                <p><strong>Autonomous Robot:</strong> Designed and programmed a LEGO Mindstorms robot, securing 3rd place.</p>
+                <h3>Autonomous Robotics Project</h3>
+                <p>Designed and programmed a LEGO Mindstorms robot, showcasing retrieval and tracking capabilities. Achieved 3rd place in the competition!</p>
+                
+                <!-- Image -->
+                <img src="win.jpg" alt="Robotics Competition" style="width:100%; max-width:600px; margin-top:10px; border:1px solid #dcdcdc; border-radius:5px;">
+            
+                <!-- Embedded YouTube Video -->
+                <div style="margin-top:15px;">
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/3dYSAhPe7kY" 
+                            title="Robotics Project Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen>
+                    </iframe>
+                </div>
             </div>
+            
         </section>
         
         <section id = "education" class="education">

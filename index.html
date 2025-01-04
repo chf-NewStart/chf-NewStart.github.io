@@ -3,10 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Personal Page</title>
+    <title>Houfu Chen | Personal Page</title>
+    <style>
+        body {
+            font-family: Consolas, monospace;
+            background-color: #1e1e1e;
+            color: #dcdcdc;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        header {
+            background-color: #007acc;
+            color: #ffffff;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #ffffff;
+        }
+        a {
+            color: #1db954;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .skills, .projects, .contact {
+            margin: 20px 0;
+        }
+        footer {
+            text-align: center;
+            padding: 10px;
+            margin-top: 20px;
+            background: #333333;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to My Personal Page</h1>
-    <p>This is hosted on GitHub Pages!</p>
+    <header>
+        <h1>Houfu Chen</h1>
+        <p>Data Enthusiast | Tech Professional | ECE MEng Student</p>
+    </header>
+    <div class="container">
+        <section class="about">
+            <h2>About Me</h2>
+            <p>I am a data enthusiast with a passion for solving problems using technology. Currently pursuing my MEng in Electrical and Computer Engineering at UofT, I aim to drive data-driven strategies in today's competitive landscape.</p>
+        </section>
+        <section class="skills">
+            <h2>Technical Skills</h2>
+            <ul>
+                <li>Programming: Python, C++, JavaScript, TypeScript, Java, C#</li>
+                <li>Tools: Selenium, Azure (Data Factory, Databricks), LTspice</li>
+                <li>Frameworks: React, Redux, Node.js, WebDriverIO</li>
+                <li>Data Analysis: SQL, Pandas, NumPy</li>
+            </ul>
+        </section>
+        <section class="experience">
+            <h2>Work Experience</h2>
+            <p><strong>QA-Developer | Manulife</strong></p>
+            <p>Improved code health, identified cross-browser issues, and conducted demos.</p>
+            <p><strong>Network Performance Optimization | Ford Motor</strong></p>
+            <p>Optimized TCU throughput and fixed SSH and Selenium issues.</p>
+        </section>
+        <section class="projects">
+            <h2>Key Projects</h2>
+            <ul>
+                <li><strong>Matrix Calculator:</strong> Solves n-variable systems of equations using Python.</li>
+                <li><strong>Autonomous Robot:</strong> Designed and programmed a LEGO Mindstorms robot, securing 3rd place.</li>
+            </ul>
+        </section>
+        <section class="education">
+            <h2>Education</h2>
+            <p><strong>University of Toronto</strong> - MEng in Electrical and Computer Engineering</p>
+            <p><strong>University of Waterloo</strong> - BASc in Nanotechnology Engineering</p>
+        </section>
+        <section class="contact">
+            <h2>Contact</h2>
+            <p>Email: <a href="mailto:houfu.chen@mail.utoronto.ca">houfu.chen@mail.utoronto.ca</a></p>
+            <p>GitHub: <a href="https://github.com/houfu0702" target="_blank">github.com/houfu0702</a></p>
+            <p>LinkedIn: <a href="https://linkedin.com/in/houfu-chen" target="_blank">linkedin.com/in/houfu-chen</a></p>
+        </section>
+    </div>
+    <footer>
+        <p>&copy; 2025 Houfu Chen</p>
+    </footer>
 </body>
 </html>

@@ -48,19 +48,57 @@
             margin-top: 20px;
             background: #333333;
         }
+        nav a {
+            color: #1db954;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+        nav a:hover {
+            color: #ffffff;
+        }
+        .tablink {
+            background-color: #333333;
+            color: #dcdcdc;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .tablink:hover {
+            background-color: #007acc;
+        }
+        .tabcontent {
+            display: none;
+            padding: 10px;
+            background-color: #1e1e1e;
+            margin-top: 10px;
+        }
+
+
     </style>
 </head>
 <body>
     <header>
         <h1>Houfu Chen</h1>
         <p>Data Enthusiast | Tech Professional | ECE MEng Student</p>
+        <nav>
+            <a href="#about">About Me</a> | 
+            <a href="#skills">Skills</a> | 
+            <a href="#experience">Experience</a> | 
+            <a href="#projects">Projects</a> | 
+            <a href="#education">Education</a> | 
+            <a href="#contact">Contact</a>
+        </nav>
     </header>
+    
     <div class="container">
-        <section class="about">
+        <section id = "about" class="about">
             <h2>About Me</h2>
             <p>I am a data enthusiast with a passion for solving problems using technology. Currently pursuing my MEng in Electrical and Computer Engineering at UofT, I aim to drive data-driven strategies in today's competitive landscape.</p>
         </section>
-        <section class="skills">
+        <section id = "skills" class="skills">
             <h2>Technical Skills</h2>
             <ul>
                 <li>Programming: Python, C++, JavaScript, TypeScript, Java, C#</li>
@@ -69,26 +107,34 @@
                 <li>Data Analysis: SQL, Pandas, NumPy</li>
             </ul>
         </section>
-        <section class="experience">
+        <section id = "experience" class="experience">
             <h2>Work Experience</h2>
             <p><strong>QA-Developer | Manulife</strong></p>
             <p>Improved code health, identified cross-browser issues, and conducted demos.</p>
             <p><strong>Network Performance Optimization | Ford Motor</strong></p>
             <p>Optimized TCU throughput and fixed SSH and Selenium issues.</p>
         </section>
-        <section class="projects">
+
+        <section id="projects" class="projects">
             <h2>Key Projects</h2>
-            <ul>
-                <li><strong>Matrix Calculator:</strong> Solves n-variable systems of equations using Python.</li>
-                <li><strong>Autonomous Robot:</strong> Designed and programmed a LEGO Mindstorms robot, securing 3rd place.</li>
-            </ul>
+            <div class="tabs">
+                <button class="tablink" onclick="openTab(event, 'PythonProjects')">Python</button>
+                <button class="tablink" onclick="openTab(event, 'RoboticsProjects')">Robotics</button>
+            </div>
+            <div id="PythonProjects" class="tabcontent">
+                <p><strong>Matrix Calculator:</strong> Solves n-variable systems of equations using Python.</p>
+            </div>
+            <div id="RoboticsProjects" class="tabcontent" style="display:none;">
+                <p><strong>Autonomous Robot:</strong> Designed and programmed a LEGO Mindstorms robot, securing 3rd place.</p>
+            </div>
         </section>
-        <section class="education">
+        
+        <section id = "education" class="education">
             <h2>Education</h2>
             <p><strong>University of Toronto</strong> - MEng in Electrical and Computer Engineering</p>
             <p><strong>University of Waterloo</strong> - BASc in Nanotechnology Engineering</p>
         </section>
-        <section class="contact">
+        <section id = "contact" class="contact">
             <h2>Contact</h2>
             <p>Email: <a href="mailto:houfu.chen@mail.utoronto.ca">houfu.chen@mail.utoronto.ca</a></p>
             <p>GitHub: <a href="https://github.com/houfu0702" target="_blank">github.com/houfu0702</a></p>
@@ -100,5 +146,21 @@
     <footer>
         <p>&copy; 2025 Houfu Chen</p>
     </footer>
+
+    <script>
+        function openTab(event, tabName) {
+            const tabcontent = document.getElementsByClassName('tabcontent');
+            for (let i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = 'none';
+            }
+            const tablinks = document.getElementsByClassName('tablink');
+            for (let i = 0; i < tablinks.length; i++) {
+                tablinks[i].style.backgroundColor = '';
+            }
+            document.getElementById(tabName).style.display = 'block';
+            event.currentTarget.style.backgroundColor = '#007acc';
+        }
+    </script>
+    
 </body>
 </html>

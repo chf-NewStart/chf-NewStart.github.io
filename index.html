@@ -112,21 +112,45 @@
             display: block;
             margin: 20px auto;
         }
-        .snapshots {
+        /* .snapshots {
             display: flex;
             justify-content: space-between;
             flex-wrap: wrap;
             margin-top: 10px;
-            gap: 10px; /* Spacing between images */
-        }
-        .snapshots img {
-            flex: 1 1 calc(20% - 10px); /* Each image takes 20% of the row, adjusts for gap */
-            max-width: 20%; /* Prevent overflow */
-            height: auto; /* Maintain aspect ratio */
+            gap: 10px; 
+        } */
+        /* .snapshots img {
+            flex: 1 1 calc(20% - 10px); 
+            max-width: 20%; 
+            height: auto; 
             border: 1px solid #dcdcdc;
             border-radius: 5px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        } */
+
+        .snapshots img {
+            max-width: 320px; /* Standard width for all images */
+            height: 150px; /* Fixed height for uniformity */
+            object-fit: contain; /* Ensures the image scales while maintaining aspect ratio */
+            border-radius: 8px; /* Smooth rounded corners */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Adds soft shadow */
+            transition: transform 0.3s, box-shadow 0.3s; /* Adds hover animation */
         }
+
+        .snapshots img:hover {
+            transform: scale(1.3); /* Enlarges slightly on hover */
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2); /* Enhances shadow */
+        }
+
+        .snapshots {
+            display: grid; /* Replaces flex with grid for a cleaner arrangement */
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Responsive grid */
+            gap: 20px; /* Adjusts spacing between images */
+            margin: 20px 0; /* Adds margin above and below the grid */
+            justify-content: center; /* Centers images horizontally */
+        }
+
+
 
 
 
@@ -235,20 +259,28 @@
             <div id="Route" class="tabcontent">
                 <h3><a href="https://medium.com/@houfuchen0702/building-smart-evacuation-maps-integrating-dijkstra-aco-inspired-routing-and-llm-decision-making-8885dfbec49e" target="_blank">Building Smart Evacuation Maps</a></h3>
                 <p>Integrated LLMs with Dijkstra's algorithm and Ant Colony Optimization (ACO)-inspired routing to design an intelligent evacuation system. 
-                   <a href="https://github.com/houfu0702/evacuation-maps" target="_blank">GitHub Repository</a></p>
+                   <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/git_Density_based%5BD%5D_large_scale_Dij%5BD%5D_Ant%5BD%5D_LLM%5BD%5D_ROUTE.ipynb" target="_blank">GitHub Repository</a></p>
         
             </div>
         
             <div id="Food" class="tabcontent" style="display:none;">
                 <h3><a href="https://medium.com/@houfuchen0702/llm-yelp-google-map-powered-food-recommendation-system-91c10269f21d" target="_blank">Food Recommendation System</a></h3>
                 <p>Developed a food recommendation engine using LLMs, Yelp API, and Google Maps for personalized suggestions. 
-                   <a href="https://github.com/houfu0702/food-recommendation" target="_blank">GitHub Repository</a></p>
+                   <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/foodRaccoon.ipynb" target="_blank">GitHub Repository</a></p>
+                <!-- Snapshots -->
+                <div class="snapshots">
+                    <img src="food/f1.png" alt="food1">
+                    <img src="food/f1.5.png" alt="food2">
+                    <img src="food/f2.png" alt="food3">
+                    <img src="food/f4.png" alt="food4">
+                </div>
             </div>
+
         
             <div id="Money" class="tabcontent" style="display:none;">
                 <h3><a href="https://medium.com/@houfuchen0702/how-i-tracked-analyzed-my-spending-earning-by-llm-with-diy-flexibility-6fe4b2b8c966" target="_blank">LLM-Powered Financial Tracker</a></h3>
                 <p>Built a tool to analyze personal finances using LLMs for flexible categorization and insights into spending patterns. 
-                   <a href="https://github.com/houfu0702/financial-tracker" target="_blank">GitHub Repository</a></p>
+                   <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/AIAnalysisOnSpending%26Earning.ipynb" target="_blank">GitHub Repository</a></p>
             </div>
 
 

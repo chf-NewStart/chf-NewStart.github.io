@@ -112,6 +112,22 @@
             display: block;
             margin: 20px auto;
         }
+        .snapshots {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            gap: 10px; /* Spacing between images */
+        }
+        .snapshots img {
+            flex: 1 1 calc(20% - 10px); /* Each image takes 20% of the row, adjusts for gap */
+            max-width: 20%; /* Prevent overflow */
+            height: auto; /* Maintain aspect ratio */
+            border: 1px solid #dcdcdc;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
 
 
 
@@ -243,9 +259,13 @@
                 <h3>Autonomous Robotics Project</h3>
                 <p>Designed and programmed a LEGO Mindstorms robot, showcasing retrieval and tracking capabilities. Achieved 3rd place in the competition!</p>
                 
-                <!-- Image -->
-                <img src="win.jpg" alt="Robotics Competition" style="width:100%; max-width:600px; margin-top:10px; border:1px solid #dcdcdc; border-radius:5px;">
-            
+                <!-- Snapshots -->
+                <div class="snapshots">
+                    <img src="motion2.png" alt="Motion Snapshot 2">
+                    <img src="motion3.png" alt="Motion Snapshot 3">
+                    <img src="motion4.png" alt="Motion Snapshot 4">
+                    <img src="motion5.png" alt="Motion Snapshot 5">
+                </div>
                 <!-- Embedded YouTube Video -->
                 <div style="margin-top:15px;">
                     <iframe width="560" height="315" src="https://www.youtube.com/embed/3dYSAhPe7kY" 

@@ -62,8 +62,8 @@
         nav a:hover {
             color: #ffffff;
         }
-        .tablink {
-            font-family: Consolas, monospace;  /*Set font family to Consolas */
+        /* .tablink {
+            font-family: Consolas, monospace;  
             background-color: #333333;
             color: #dcdcdc;
             border: none;
@@ -84,7 +84,36 @@
             background-color: #1e1e1e;
             margin-top: 10px;
 
-        } */
+        }  */
+        .tablink {
+            cursor: pointer;
+            background-color: #333333;
+            color: #ffffff;
+            border: 1px solid #444444;
+            padding: 10px 15px;
+            margin: 5px 0;
+            display: block; /* Stacks buttons vertically */
+            text-align: left;
+            transition: background-color 0.3s ease, transform 0.2s;
+        }
+
+        .tablink:hover {
+            background-color: #007acc;
+            color:#1db954;
+            transform: scale(1.02); /* Slight hover effect */
+        }
+
+        .tablink span {
+            font-size: 0.9em;
+            color: #888888;
+            margin-left: 5px;
+        }
+
+        .tablink:focus {
+            outline: 2px solid #1db954;
+            outline-offset: 2px;
+        }
+
 
         .experience div {
             margin-bottom: 20px;
@@ -164,7 +193,7 @@
         }
         .experience-item h4 {
             color: #007acc; /* Highlight company name */
-            font-size: 18px;
+            font-size: 1.2rem;
             font-weight: bold;
             margin-bottom: 5px;
         }
@@ -412,12 +441,12 @@
         
 
         <section id="projects" class="projects">
-            <h2>Fun Projects</h2>
+            <h2>Personal Projects</h2>
             <div class="tabs">
-                <button class="tablink" onclick="openTab(event, 'Route')" aria-selected="true">LLM Empowered Evac System</button>
-                <button class="tablink" onclick="openTab(event, 'Food')" aria-selected="true">What should I eat tonight...?</button>
-                <button class="tablink" onclick="openTab(event, 'Money')" aria-selected="true">Where did my $$$ Go...?</button>
-                <button class="tablink" onclick="openTab(event, 'RoboticsProjects')" aria-selected="true">Robotics</button>
+                <button class="tablink" onclick="openTab(event, 'Route')" aria-selected="true">LLM Empowered Evac System <span>- ACO, LLM, System</span></button>
+                <button class="tablink" onclick="openTab(event, 'Food')" aria-selected="true">What should I eat tonight...? <span>- API, LLM </span> </button>
+                <button class="tablink" onclick="openTab(event, 'Money')" aria-selected="true">Where did my $$$ Go...? <span>- Analysis, Financial, LLM </span> </button>
+                <button class="tablink" onclick="openTab(event, 'RoboticsProjects')" aria-selected="true">Robotics <span>- LEGO MINDSTORMS, Design, Graphical Programming</span> </button>
                 <button class="tablink" onclick="openTab(event, 'PythonProjects')" aria-selected="true">Math</button>
             </div>
             <div id="Route" class="tabcontent">

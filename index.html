@@ -88,20 +88,24 @@
         .tablink {
             cursor: pointer;
             background-color: #333333;
-            color: #ffffff;
+            color: #dcdcdc;
             border: 1px solid #444444;
-            padding: 10px 15px;
-            margin: 5px 0;
-            display: block; /* Stacks buttons vertically */
-            text-align: left;
-            transition: background-color 0.3s ease, transform 0.2s;
+            padding: 10px;
+            margin: 5px;
+            font-family: Consolas, monospace;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            text-align: left; 
+
         }
 
         .tablink:hover {
-            background-color: #007acc;
-            color:#1db954;
-            transform: scale(1.02); /* Slight hover effect */
+            background-color: #1e1e1e; /* Slightly darker */
+            color: #1db954; /* Subtle pop of green */
         }
+        .tablink[aria-selected="true"] {
+            border: 2px solid #1db954;
+        }
+
 
         .tablink span {
             font-size: 0.9em;
@@ -113,6 +117,8 @@
             outline: 2px solid #1db954;
             outline-offset: 2px;
         }
+
+
 
 
         .experience div {
@@ -236,6 +242,26 @@
             margin: 20px 0;
         }
 
+        .tabs {
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping for small screens */
+            gap: 10px; /* Space between buttons */
+            margin-top: 10px;
+        }
+
+
+        .tabs + .tabcontent {
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .tabs {
+                flex-direction: column; /* Stack buttons vertically on small screens */
+                gap: 5px;
+            }
+        }
+
+
+
 
 
 
@@ -335,9 +361,9 @@
         </section> -->
         <section id="Experiences">
             <h2>Key Experiences</h2>
-            <button class="tablink" id="tech-tab" onclick="openTab(event, 'TechIndustry')">CAN Tech Industry</button>
-            <button class="tablink" id="teaching-tab" onclick="openTab(event, 'TeachingExperience')">Teaching Experience</button>
-            <button class="tablink" id="research-tab" onclick="openTab(event, 'ResearchExperience')">Research Experience</button>
+            <button class="tablink" id="tech-tab" onclick="openTab(event, 'TechIndustry')"  aria-selected="true">CAN Tech Industry</button>
+            <button class="tablink" id="teaching-tab" onclick="openTab(event, 'TeachingExperience')"  aria-selected="true">Teaching Experience</button>
+            <button class="tablink" id="research-tab" onclick="openTab(event, 'ResearchExperience')"  aria-selected="true">Research Experience</button>
         
         
             <div id="TechIndustry" class="tabcontent" style="display:none;">
@@ -446,6 +472,10 @@
 
         <section id="projects" class="projects">
             <h2>Personal Projects</h2>
+            <div style="padding: 10px; border-left: 3px solid #444444; margin-bottom: 10px;">
+                <span style="color: #1db954; font-weight: bold;">→ Select a Project:</span>
+            </div>
+            
             <div class="tabs">
                 <button class="tablink" onclick="openTab(event, 'Route')" aria-selected="true">LLM Empowered Evac System <span>- ACO, LLM, System</span></button>
                 <button class="tablink" onclick="openTab(event, 'Food')" aria-selected="true">What should I eat tonight...? <span>- API, LLM </span> </button>
@@ -453,6 +483,8 @@
                 <button class="tablink" onclick="openTab(event, 'RoboticsProjects')" aria-selected="true">Robotics <span>- LEGO MINDSTORMS, Design, Graphical Programming</span> </button>
                 <button class="tablink" onclick="openTab(event, 'PythonProjects')" aria-selected="true">Math</button>
             </div>
+
+            
             <div id="Route" class="tabcontent">
                 <h3>Building Smart Evacuation Maps</h3>
                 <p>Integrated LLMs with Dijkstra's algorithm and Ant Colony Optimization (ACO)-inspired routing to design an intelligent evacuation system.                 </p>
@@ -552,7 +584,7 @@
             <p>Email: <a href="mailto:houfu.chen@mail.utoronto.ca">houfu.chen@mail.utoronto.ca</a></p>
             <p>GitHub: <a href="https://github.com/chf-NewStart" target="_blank">github.com/chf-NewStart</a></p>
             <p>LinkedIn: <a href="https://www.linkedin.com/in/houfuchen/" target="_blank">/houfuchen/</a></p>
-            <p>Resume: <a href="resume 1.pdf" target="_blank">Download My Resume</a></p>
+            <p>Resume: <a href="Houfu Resume Jan5.pdf" target="_blank">Download My Resume</a></p>
         </section>
         
     </div>

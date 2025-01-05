@@ -63,7 +63,7 @@
             color: #ffffff;
         }
         .tablink {
-            font-family: Consolas, monospace; /* Set font family to Consolas */
+            font-family: Consolas, monospace;  /*Set font family to Consolas */
             background-color: #333333;
             color: #dcdcdc;
             border: none;
@@ -84,7 +84,8 @@
             background-color: #1e1e1e;
             margin-top: 10px;
 
-        }
+        } */
+
         .experience div {
             margin-bottom: 20px;
             border-bottom: 1px solid #dcdcdc;
@@ -161,6 +162,45 @@
             filter: brightness(0.8) contrast(0.9); /* Darken and reduce contrast for non-hovered images */
             transition: filter 0.3s; /* Smooth transition for background darkening */
         }
+        .experience-item h4 {
+            color: #007acc; /* Highlight company name */
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .experience-item span {
+            color: #dcdcdc;
+            font-weight: normal;
+        }
+
+        .experience-item em {
+            font-style: italic;
+            color: #1db954; /* Light gray for technologies/tools */
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .experience-item p {
+            margin: 0 0 10px; /* Space between text and lists */
+        }
+
+        .experience-item ul {
+            margin: 0;
+            padding-left: 20px; /* Indent bullets */
+            list-style-type: disc;
+        }
+
+        .experience-item ul li {
+            margin-bottom: 5px; /* Space between list items */
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #ccc; /* Subtle divider */
+            margin: 20px 0;
+        }
+
 
 
 
@@ -200,7 +240,7 @@
                 <li>Data Analysis: SQL, Pandas, NumPy</li>
             </ul>
         </section>
-        <section id="experience" class="experience">
+        <!-- <section id="experience" class="experience">
             <h2>Work Experience</h2>
         
             <div>
@@ -257,7 +297,105 @@
                     <li>Collaborated with a team to document and present experimental findings.</li>
                 </ul>
             </div>
+        </section> -->
+        <section id="Experiences">
+            <h2>Key Experiences</h2>
+            <button class="tablink" id="tech-tab" onclick="openTab(event, 'WorkExperience')">CAN Tech Industry</button>
+            <button class="tablink" id="academic-tab" onclick="openTab(event, 'AcademicExperience')">Academic Experience</button>
+            <button class="tablink" id="volunteer-tab" onclick="openTab(event, 'VolunteerExperience')">Volunteer Work</button>
+        
+        
+            <div id="WorkExperience" class="tabcontent" style="display:none;">
+                <h3>Work Experience</h3>
+                <div class="experience-item">
+                    <h4>CarPlay Network Performance Optimization <span>@ [Ford Motor]</span></h4>
+                    <p><em>Python, Slash testing, DET</em></p>
+                    <p><strong>May 2022 – August 2022</strong></p>
+                    <ul>
+                        <li>Fixed issues from the Transmission Control Unit (TCU) daily performance testing.</li>
+                        <li>Designed ways to optimize and test the TCU throughput in different scenarios.</li>
+                        <li>Resolved 40+ SSH exception issues by updating Ubuntu and iPerf versions, changing the WLAN commands.</li>
+                        <li>Documented procedures for running performance tests, troubleshooting SSH and Selenium exceptions for future testers.</li>
+                    </ul>
+                </div>
+                <hr>
+                <div class="experience-item">
+                    <h4>QA-Developer <span>@ [Manulife, Online Banking Squad]</span></h4>
+                    <p><em>JavaScript, React, WebDriver IO</em></p>
+                    <p><strong>January 2020 – April 2020</strong></p>
+                    <ul>
+                        <li>Developed and fixed components in web pages using modern (ES6) JavaScript, HTML, and MUX components.</li>
+                        <li>Wrote BDDs for cross-browser (4 browsers) testing and resolved 9 IE-specific defects.</li>
+                        <li>Improved code health by addressing 40+ SonarQube issues and achieving 98%+ test coverage.</li>
+                        <li>Delivered a product demo to 50+ stakeholders, including developers, business analysts, and product owners.</li>
+                    </ul>
+                </div>
+                <hr>
+                <div class="experience-item">
+                    <h4>QA Automation Specialist <span>@ [Teranet CMS, Recovery Division]</span></h4>
+                    <p><em>C#, Selenium</em></p>
+                    <p><strong>September 2020 – December 2020</strong></p>
+                    <ul>
+                        <li>Wrote regression tests with C# under the Selenium framework.</li>
+                        <li>Optimized test execution times, enhancing overall technical health.</li>
+                    </ul>
+                </div>
+                <hr>
+                <div class="experience-item">
+                    <h4>QA-Developer <span>@ [Imagine Communications Corp]</span></h4>
+                    <p><em>TypeScript, MySQL</em></p>
+                    <p><strong>January 2021 – April 2021</strong></p>
+                    <ul>
+                        <li>Developed autonomous testing scripts for UI interaction (e.g., clicks, keystrokes).</li>
+                        <li>Monitored daily server status through automated scripts and UI testing.</li>
+                    </ul>
+                </div>
+            </div>
+            
+        
+            <div id="AcademicExperience" class="tabcontent" style="display:none;">
+                <h3>Academic Experience</h3>
+                <ul>
+                    <li><strong>University of Waterloo</strong>: NanoEngineering (2017-2022)
+                        <ul>
+                            <li>Achieved Dean’s List recognition (2021).</li>
+                            <li>Published a paper on material sciences.</li>
+                        </ul>
+                    </li>
+                    <li><strong>University of Toronto</strong>: M.Eng. in ECE (2023-2024)
+                        <ul>
+                            <li>Teaching Assistant for APS1070 (Machine Learning).</li>
+                            <li>Developed emergency evacuation route planning using LLMs.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        
+            <div id="VolunteerExperience" class="tabcontent" style="display:none;">
+                <h3>Volunteer Work</h3>
+                <ul>
+                    <li><strong>Community Coding Camp</strong>: Mentor (Summer 2021)
+                        <ul>
+                            <li>Taught Python programming to high school students.</li>
+                            <li>Designed exercises to enhance problem-solving skills.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Food Bank</strong>: Volunteer (2022)
+                        <ul>
+                            <li>Distributed meals to underprivileged families.</li>
+                            <li>Organized donation drives to support the local community.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
         </section>
+        
+
+        
+        
+        
+
+        
         
 
         <section id="projects" class="projects">
@@ -367,21 +505,85 @@
 
     <script>
         function openTab(event, tabName) {
-            const tabcontent = document.getElementsByClassName('tabcontent');
+            // Get the parent container of the clicked button
+            const parentSection = event.currentTarget.closest('section');
+            if (!parentSection) return;
+    
+            // Hide all tabcontent elements within the parent section
+            const tabcontent = parentSection.getElementsByClassName('tabcontent');
             for (let i = 0; i < tabcontent.length; i++) {
                 tabcontent[i].style.display = 'none';
             }
-            const tablinks = document.getElementsByClassName('tablink');
+    
+            // Reset button background colors within the parent section
+            const tablinks = parentSection.getElementsByClassName('tablink');
             for (let i = 0; i < tablinks.length; i++) {
                 tablinks[i].style.backgroundColor = '';
             }
-            document.getElementById(tabName).style.display = 'block';
-            event.currentTarget.style.backgroundColor = '#007acc';
+    
+            // Show the selected tabcontent
+            const targetTab = document.getElementById(tabName);
+            if (targetTab) {
+                targetTab.style.display = 'block';
+            }
+    
+            // Highlight the clicked button
+            if (event && event.currentTarget) {
+                event.currentTarget.style.backgroundColor = '#007acc';
+            }
         }
-        document.getElementById('Route').style.display = 'block';
-        document.querySelector('button[onclick="openTab(event, \'Route\')"]').style.backgroundColor = '#007acc'; // Highlight Robotics tab my most interesting one heihei
+    
+        // Default tab for Projects (Route)
+        const defaultProjectTab = document.getElementById('Route');
+        if (defaultProjectTab) {
+            defaultProjectTab.style.display = 'block';
+            const projectButton = document.querySelector('button[onclick="openTab(event, \'Route\')"]');
+            if (projectButton) {
+                projectButton.style.backgroundColor = '#007acc';
+            }
+        }
+    
+        // Default tab for Experiences (WorkExperience)
+        const defaultExperienceTab = document.getElementById('WorkExperience');
+        if (defaultExperienceTab) {
+            defaultExperienceTab.style.display = 'block';
+            const experienceButton = document.querySelector('button[onclick="openTab(event, \'WorkExperience\')"]');
+            if (experienceButton) {
+                experienceButton.style.backgroundColor = '#007acc';
+            }
+        }
+        document.addEventListener("DOMContentLoaded", function () {
+            // Update tab counts dynamically
+            function updateTabCounts() {
+                // Array of tabs and their corresponding sections
+                const tabs = [
+                    { tabId: "tech-tab", sectionId: "WorkExperience" },
+                    { tabId: "academic-tab", sectionId: "AcademicExperience" },
+                    { tabId: "volunteer-tab", sectionId: "VolunteerExperience" },
+                ];
 
+                // Loop through tabs and update counts
+                tabs.forEach(({ tabId, sectionId }) => {
+                    const tab = document.getElementById(tabId);
+                    const section = document.getElementById(sectionId);
+                    if (tab && section) {
+                        // Count the number of .experience-item in the section
+                        const count = section.getElementsByClassName("experience-item").length;
+                        // Update the tab text with the count
+                        tab.textContent = `${tab.textContent.split(" (")[0]} (${count})`;
+                    }
+                });
+            }
+
+        // Call the function to update counts on page load
+            updateTabCounts();
+        });
     </script>
+    
+    
+    
+    
+    
     
 </body>
 </html>

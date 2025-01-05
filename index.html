@@ -300,13 +300,13 @@
         </section> -->
         <section id="Experiences">
             <h2>Key Experiences</h2>
-            <button class="tablink" id="tech-tab" onclick="openTab(event, 'WorkExperience')">CAN Tech Industry</button>
-            <button class="tablink" id="academic-tab" onclick="openTab(event, 'AcademicExperience')">Academic Experience</button>
-            <button class="tablink" id="volunteer-tab" onclick="openTab(event, 'VolunteerExperience')">Volunteer Work</button>
+            <button class="tablink" id="tech-tab" onclick="openTab(event, 'TechIndustry')">CAN Tech Industry</button>
+            <button class="tablink" id="teaching-tab" onclick="openTab(event, 'TeachingExperience')">Teaching Experience</button>
+            <button class="tablink" id="research-tab" onclick="openTab(event, 'ResearchExperience')">Research Experience</button>
         
         
-            <div id="WorkExperience" class="tabcontent" style="display:none;">
-                <h3>Work Experience</h3>
+            <div id="TechIndustry" class="tabcontent" style="display:none;">
+                <h3>CAN Tech Industry</h3>
                 <div class="experience-item">
                     <h4>CarPlay Network Performance Optimization <span>@ [Ford Motor]</span></h4>
                     <p><em>Python, Slash testing, DET</em></p>
@@ -353,40 +353,53 @@
             </div>
             
         
-            <div id="AcademicExperience" class="tabcontent" style="display:none;">
-                <h3>Academic Experience</h3>
-                <ul>
-                    <li><strong>University of Waterloo</strong>: NanoEngineering (2017-2022)
-                        <ul>
-                            <li>Achieved Dean’s List recognition (2021).</li>
-                            <li>Published a paper on material sciences.</li>
-                        </ul>
-                    </li>
-                    <li><strong>University of Toronto</strong>: M.Eng. in ECE (2023-2024)
-                        <ul>
-                            <li>Teaching Assistant for APS1070 (Machine Learning).</li>
-                            <li>Developed emergency evacuation route planning using LLMs.</li>
-                        </ul>
-                    </li>
-                </ul>
+            <div id="TeachingExperience" class="tabcontent" style="display:none;">
+                <h3>Teaching Experience</h3>
+            
+                <div class="experience-item">
+                    <h4>APS1070 (Foundations of Data Analytics and ML) <span>@ [UofT]</span></h4>
+                    <p><em>Winter 2024, Summer 2024, Fall 2024, Winter 2025</em></p>
+                    <ul>
+                        <li>Marking, Tutorials, Piazza Monitoring, Invigilation</li>
+                    </ul>
+                </div>
+                <hr>
+            
+                <div class="experience-item">
+                    <h4>CSC108 (Introduction to Computer Programming) <span>@ [UofT]</span></h4>
+                    <p><em>Winter 2024, Fall 2024</em></p>
+                    <ul>
+                        <li>Marking, Office Hours, Classroom Help, Invigilation</li>
+                    </ul>
+                </div>
+                <hr>
+            
+                <div class="experience-item">
+                    <h4>MIE370 (Introduction to ML) <span>@ [UofT]</span></h4>
+                    <p><em>Summer 2024, Fall 2024</em></p>
+                    <ul>
+                        <li>Creating Projects, Tutorials, Exam Questions</li>
+                        <li>Marking, Office Hours, Invigilation</li>
+                    </ul>
+                </div>
             </div>
+            
         
-            <div id="VolunteerExperience" class="tabcontent" style="display:none;">
-                <h3>Volunteer Work</h3>
-                <ul>
-                    <li><strong>Community Coding Camp</strong>: Mentor (Summer 2021)
-                        <ul>
-                            <li>Taught Python programming to high school students.</li>
-                            <li>Designed exercises to enhance problem-solving skills.</li>
-                        </ul>
-                    </li>
-                    <li><strong>Food Bank</strong>: Volunteer (2022)
-                        <ul>
-                            <li>Distributed meals to underprivileged families.</li>
-                            <li>Organized donation drives to support the local community.</li>
-                        </ul>
-                    </li>
-                </ul>
+            <div id="ResearchExperience" class="tabcontent" style="display:none;">
+                <h3>Research Experience</h3>
+            
+                <div class="experience-item">
+                    <h4>Research Assistant <span>@ Yuning Li's Lab, University of Waterloo</span></h4>
+                    <p><em>Chromatography, UV Testing, Organic Solar Cells</em></p>
+                    <p><strong>May 2019 – August 2019</strong></p>
+                    <ul>
+                        <li>Conducted chromatography and UV testing for organic solar cell research.</li>
+                        <li>Assisted in material analysis and testing protocols for optimizing cell performance.</li>
+                        <li>Collaborated with a team to document and present experimental findings.</li>
+                    </ul>
+                </div>
+                <hr>
+            
             </div>
         </section>
         
@@ -543,11 +556,11 @@
             }
         }
     
-        // Default tab for Experiences (WorkExperience)
-        const defaultExperienceTab = document.getElementById('WorkExperience');
+        // Default tab for Experiences (TechIndustry)
+        const defaultExperienceTab = document.getElementById('TechIndustry');
         if (defaultExperienceTab) {
             defaultExperienceTab.style.display = 'block';
-            const experienceButton = document.querySelector('button[onclick="openTab(event, \'WorkExperience\')"]');
+            const experienceButton = document.querySelector('button[onclick="openTab(event, \'TechIndustry\')"]');
             if (experienceButton) {
                 experienceButton.style.backgroundColor = '#007acc';
             }
@@ -557,9 +570,9 @@
             function updateTabCounts() {
                 // Array of tabs and their corresponding sections
                 const tabs = [
-                    { tabId: "tech-tab", sectionId: "WorkExperience" },
-                    { tabId: "academic-tab", sectionId: "AcademicExperience" },
-                    { tabId: "volunteer-tab", sectionId: "VolunteerExperience" },
+                    { tabId: "tech-tab", sectionId: "TechIndustry" },
+                    { tabId: "teaching-tab", sectionId: "TeachingExperience" },
+                    { tabId: "research-tab", sectionId: "ResearchExperience" },
                 ];
 
                 // Loop through tabs and update counts

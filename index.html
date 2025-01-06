@@ -375,6 +375,7 @@
                         <li>
                             Developing projects like 
                             <a  href data-tab="projects-route-tab" data-content="Route">LLM evacuation system</a>,  
+                            <a  href data-tab="projects-arduino-tab" data-content="Swim"> S.W.I.M (with Prof. Steve Mann)</a>,
                             <a  href data-tab="projects-food-tab" data-content="Food">LLM food recommendation</a>,
                             <a  href data-tab="projects-money-tab" data-content="Money">LLM spending analysis</a>,
                             <a  href data-tab="projects-robotics-tab" data-content="RoboticsProjects">autonomous robot</a>, and
@@ -405,7 +406,7 @@
         <section id = "skills" class="skills">
             <h2>What I Know</h2>
             <ul>
-                <li>Programming: Python, C++, JavaScript, TypeScript, Java, C#</li>
+                <li>Programming: Python, C++, Arduino, JavaScript, TypeScript, Java, C#</li>
                 <li>Tools: Selenium, Azure (Data Factory, Databricks), LTspice</li>
                 <li>Frameworks: React, Redux, Node.js, WebDriverIO</li>
                 <li>Data Analysis: SQL, Pandas, NumPy</li>
@@ -535,10 +536,12 @@
             
             <div class="tabs">
                 <button class="tablink" id = "projects-route-tab" onclick="openTab(event, 'Route')" aria-selected="true">LLM Empowered Evac System <span>- ACO, LLM, System</span></button>
+                <button class="tablink" id = "projects-arduino-tab" onclick="openTab(event, 'Swim')" aria-selected="true">S.W.I.M (with Prof Steve Mann) <span> -Arduino</button>
                 <button class="tablink" id = "projects-food-tab" onclick="openTab(event, 'Food')" aria-selected="true">What should I eat tonight...? <span>- API, LLM </span> </button>
                 <button class="tablink" id = "projects-money-tab" onclick="openTab(event, 'Money')" aria-selected="true">Where did my $$$ Go...? <span>- Analysis, Financial, LLM </span> </button>
                 <button class="tablink" id = "projects-robotics-tab" onclick="openTab(event, 'RoboticsProjects')" aria-selected="true">Autonomous robot <span>- LEGO MINDSTORMS, Design, Graphical Programming</span> </button>
                 <button class="tablink" id = "projects-matrix-tab" onclick="openTab(event, 'PythonProjects')" aria-selected="true">Tired of the repetitive matrix homework? <span> - Python, UI, Matrix</button>
+
             </div>
 
             
@@ -569,8 +572,29 @@
                     </iframe>
                 
                 </div>
-                
+            
+            </div>
 
+            <div id="Swim" class="tabcontent" style="display:none;">
+                <h3>S.W.I.M (with Prof. Steve Mann)</h3>
+                <p>Use LED strip and time-lapse photography to print... everything.</p>
+                <p>3 Steps: </p>
+                <ul>
+                    <li>Convert img to rgb arrays (by imread) with necessary cleaning </li>
+                    <li>LED Pattern Display Using NeoPixel and Full Image Data</li>
+                    <li>Motion Detection with builtin IMU to Trigger LED Animation (a more primitive way was letting it change frame by time)</li>
+                </ul>  
+                <div>
+                   <a href="https://github.com/chf-NewStart/swimProject" target="_blank">[GitHub Repo]</a>
+                </div>
+                
+                <!-- Snapshots -->
+                <div class="snapshots">
+
+                    <img src="swim/swim1.webp" alt="swim1" >
+                    <img src="swim/swim2.webp" alt="swim2" >
+                    <img src="swim/swim3.webp" alt="swim3" >
+                </div>
             </div>
         
             <div id="Food" class="tabcontent" style="display:none;">
@@ -648,6 +672,8 @@
                     <img src="matrix/matrix3.webp" alt="Matrix Snapshot 3" >
                 </div>
             </div>
+
+
             
         </section>
         

@@ -309,14 +309,40 @@
                 <li>
                     Experienced in:
                     <ul>
-                        <li>Data analysis, machine learning, and software development</li>
-                        <li>Developing projects like <a href="#projects">intelligent evacuation systems</a> and <a href="#projects">food recommendation engines</a></li>
-                        <li>Industry roles at <a href="#experience">Ford Motor</a>, <a href="#experience">Manulife</a>, and <a href="#experience">Teranet</a></li>
-                        <li>Teaching grad and undergrad students in <a href="#experience">ML</a> and <a href="#experience">Python</a> at UofT</li>
+                        <li>Python, data analysis, machine learning, and software development</li>
+                        <li>
+                            Developing projects like 
+                            <a  href data-tab="projects-route-tab" data-content="Route">LLM evacuation system</a>,  
+                            <a  href data-tab="projects-food-tab" data-content="Food">LLM food recommendation</a>,
+                            <a  href data-tab="projects-money-tab" data-content="Money">LLM spending analysis</a>,
+                            <a  href data-tab="projects-robotics-tab" data-content="RoboticsProjects">autonomous robot</a>, and
+                            <a  href data-tab="projects-matrix-tab" data-content="PythonProjects">matrix calculator</a>
+                        </li>
+                        
+                        <li>
+                            Industry roles at 
+                            <a href="#experience-ford" data-tab="experience-tab" data-content="experience-ford">Ford Motor</a>, 
+                            <a href="#experience-manulife" data-tab="experience-tab" data-content="experience-manulife">Manulife</a>, and 
+                            <a href="#experience-teranet" data-tab="experience-tab" data-content="experience-teranet">Teranet</a>
+                        </li>
+                        <li>
+                            Teaching grad and undergrad students in 
+                            <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">ML</a> and 
+                            <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">Python</a> at UofT
+                        </li>
+                        <li>
+                            Conducting research in 
+                            <a href="#ResearchExperience" data-tab="research-tab" data-content="ResearchExperience">organic solar cell technologies</a> at UWaterloo
+                        </li>
                     </ul>
+                </li>
+                <li>
+                    Contributed to the <span class="green-highlight">Data Analytics and Machine Learning Emphasis</span> at <span class="green-highlight">UofT</span> by providing a testimonial that highlights the importance of mastering machine learning and big data. 
+                    <a href="https://gradstudies.engineering.utoronto.ca/master-of-engineering-meng/emphasis-in-analytics/" target="_blank">Read the Full Testimonial Here</a>.
                 </li>
             </ul>
         </section>
+        
         
         
         
@@ -395,14 +421,14 @@
                 <span style="color: #1db954; font-weight: bold;">→ Explore My Past Experiences:</span>
             </div>
             
-            <button class="tablink" id="tech-tab" onclick="openTab(event, 'TechIndustry')"  aria-selected="true">CAN Tech Industry</button>
+            <button class="tablink" id="experience-tab" onclick="openTab(event, 'TechIndustry')"  aria-selected="true">CAN Tech Industry</button>
             <button class="tablink" id="teaching-tab" onclick="openTab(event, 'TeachingExperience')"  aria-selected="true">Teaching Experience</button>
             <button class="tablink" id="research-tab" onclick="openTab(event, 'ResearchExperience')"  aria-selected="true">Research Experience</button>
         
         
             <div id="TechIndustry" class="tabcontent" style="display:none;">
                 <h3>CAN Tech Industry</h3>
-                <div class="experience-item">
+                <div class="experience-item" id = "experience-ford">
                     <h4>CarPlay Network Performance Optimization <span>@ Ford Motor</span></h4>
                     <p><em>Python, Slash testing, DET</em></p>
                     <p><strong>May 2022 – August 2022</strong></p>
@@ -413,7 +439,7 @@
                         <li>Documented procedures for running performance tests, troubleshooting SSH and Selenium exceptions for future testers.</li>
                     </ul>
                 </div>
-                <div class="experience-item">
+                <div class="experience-item" id = "experience-manulife">
                     <h4>QA-Developer <span>@ Manulife, Online Banking Squad</span></h4>
                     <p><em>JavaScript, React, WebDriver IO</em></p>
                     <p><strong>January 2020 – April 2020</strong></p>
@@ -424,7 +450,7 @@
                         <li>Delivered a product demo to 50+ stakeholders, including developers, business analysts, and product owners.</li>
                     </ul>
                 </div>
-                <div class="experience-item">
+                <div class="experience-item" id = "experience-teranet">
                     <h4>QA Automation Specialist <span>@ Teranet CMS, Recovery Division</span></h4>
                     <p><em>C#, Selenium</em></p>
                     <p><strong>September 2020 – December 2020</strong></p>
@@ -433,7 +459,7 @@
                         <li>Optimized test execution times, enhancing overall technical health.</li>
                     </ul>
                 </div>
-                <div class="experience-item">
+                <div class="experience-item" id="experience-imagine">
                     <h4>QA-Developer <span>@ Imagine Communications Corp</span></h4>
                     <p><em>TypeScript, MySQL</em></p>
                     <p><strong>January 2021 – April 2021</strong></p>
@@ -448,7 +474,7 @@
             <div id="TeachingExperience" class="tabcontent" style="display:none;">
                 <h3>Teaching Experience</h3>
             
-                <div class="experience-item">
+                <div class="experience-item" id="TeachingExperience">
                     <h4>APS1070 (Foundations of Data Analytics and ML) <span>@ UofT</span></h4>
                     <p><em>Winter 2024, Summer 2024, Fall 2024, Winter 2025</em></p>
                     <ul>
@@ -511,15 +537,15 @@
             </div>
             
             <div class="tabs">
-                <button class="tablink" onclick="openTab(event, 'Route')" aria-selected="true">LLM Empowered Evac System <span>- ACO, LLM, System</span></button>
-                <button class="tablink" onclick="openTab(event, 'Food')" aria-selected="true">What should I eat tonight...? <span>- API, LLM </span> </button>
-                <button class="tablink" onclick="openTab(event, 'Money')" aria-selected="true">Where did my $$$ Go...? <span>- Analysis, Financial, LLM </span> </button>
-                <button class="tablink" onclick="openTab(event, 'RoboticsProjects')" aria-selected="true">Autonomous robot <span>- LEGO MINDSTORMS, Design, Graphical Programming</span> </button>
-                <button class="tablink" onclick="openTab(event, 'PythonProjects')" aria-selected="true">Tired of the repetitive matrix homework? <span> - Python, UI, Matrix</button>
+                <button class="tablink" id = "projects-route-tab" onclick="openTab(event, 'Route')" aria-selected="true">LLM Empowered Evac System <span>- ACO, LLM, System</span></button>
+                <button class="tablink" id = "projects-food-tab" onclick="openTab(event, 'Food')" aria-selected="true">What should I eat tonight...? <span>- API, LLM </span> </button>
+                <button class="tablink" id = "projects-money-tab" onclick="openTab(event, 'Money')" aria-selected="true">Where did my $$$ Go...? <span>- Analysis, Financial, LLM </span> </button>
+                <button class="tablink" id = "projects-robotics-tab" onclick="openTab(event, 'RoboticsProjects')" aria-selected="true">Autonomous robot <span>- LEGO MINDSTORMS, Design, Graphical Programming</span> </button>
+                <button class="tablink" id = "projects-matrix-tab" onclick="openTab(event, 'PythonProjects')" aria-selected="true">Tired of the repetitive matrix homework? <span> - Python, UI, Matrix</button>
             </div>
 
             
-            <div id="Route" class="tabcontent">
+            <div id="Route" class="tabcontent" style="display:none;">
                 <h3>Building Smart Evacuation Maps</h3>
                 <p>Integrated LLMs with Dijkstra's algorithm and Ant Colony Optimization (ACO)-inspired routing to design an intelligent evacuation system. </p>
                 <ul>
@@ -720,6 +746,34 @@
         // Call the function to update counts on page load
             updateTabCounts();
         });
+        document.addEventListener('DOMContentLoaded', () => {
+        // General function to activate tabs and scroll to content
+        function activateTabAndScroll(tabId, contentId) {
+            // Find the tab button and the content section
+            const tabButton = document.querySelector(`#${tabId}`);
+            const content = document.querySelector(`#${contentId}`);
+            
+            if (tabButton && content) {
+                tabButton.click(); // Simulate a click on the tab button
+                content.scrollIntoView({ behavior: 'smooth' }); // Smoothly scroll to the content
+            }
+        }
+
+        // Set up event listeners for links in "Who I Am" section
+        const links = document.querySelectorAll('a[data-tab][data-content]');
+        links.forEach(link => {
+            link.addEventListener('click', (event) => {
+                event.preventDefault(); // Prevent default anchor behavior
+                
+                // Read the data attributes from the link
+                const tabId = link.getAttribute('data-tab'); // Tab button ID
+                const contentId = link.getAttribute('data-content'); // Tab content ID
+
+                // Activate the tab and scroll to the content
+                activateTabAndScroll(tabId, contentId);
+            });
+        });
+    });
     </script>
     
     

@@ -264,6 +264,51 @@
             color: #1db954; /* Green highlight */
             font-weight: bold;
         }
+        .featured-alumni {
+            position: relative;
+            cursor: inline-block;
+        }
+
+        .featured-alumni .hover-content {
+            display: none; /* Initially hidden */
+            position: absolute;
+            top: 120%; /* Shift slightly below the link */
+            left: 10%; /* Center relative to the trigger element */
+            transform: translateX(-50%); /* Center alignment */
+            z-index: 10;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+            width: 350px; /* Ensure enough width */
+            line-height: 1.5;
+            text-align: center;
+        }
+
+
+        .featured-alumni .hover-content img {
+            width: 150px; /* Adjust the size as needed */
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover; /* Ensures the image is properly cropped */
+            object-position: left center; /* Focuses on the left side of the image */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin: 0 auto 10px auto;
+            display: block;
+        }
+
+
+
+
+        .featured-alumni .hover-content p {
+            font-size: 0.9rem; /* Slightly smaller font */
+            color: #333; /* Darker text for readability */
+        }
+
+        .featured-alumni:hover .hover-content {
+            display: block;
+        }
+
 
 
 
@@ -336,10 +381,18 @@
                         </li>
                     </ul>
                 </li>
-                <li>
+                <li class="featured-alumni">
                     Featured alumni in the <span class="green-highlight">Data Analytics and Machine Learning Emphasis</span> at <span class="green-highlight">UofT</span>.
                     Read more about it <a href="https://gradstudies.engineering.utoronto.ca/master-of-engineering-meng/emphasis-in-analytics/" target="_blank">here</a>.
+                    <div class="hover-content">
+                        <img src="alum.webp" alt="my photo">
+                        <p>
+                            "With the rapid growth of machine learning and the expansion of companies, machine learning and big data have become essential tool sets for ensuring continuous service availability and enhancing customer experiences. Mastering these areas enables me to drive data-driven strategies and strengthens my job prospects in today's competitive landscape."
+                        </p>
+                        <p><strong>Houfu Chen, ECE MEng student</strong></p>
+                    </div>
                 </li>
+                
             </ul>
         </section>
         

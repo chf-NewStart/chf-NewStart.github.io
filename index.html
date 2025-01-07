@@ -23,12 +23,45 @@
             padding: 0;
             line-height: 1.6;
         }
-        header {
+        body.creative header {
+            /* background-color: #007acc; */
+            /* background-color: #333333; */
+            /* background-size: cover; 
+            color: #ffffff;
+            padding: 20px;
+            text-align: center; */
+
+            /* background: url('hf3.webp') no-repeat center center; 
+            background-size: cover;  */
+            background: url('hf3.webp') repeat; 
+            background-size: 25px 25px;
+            background-color: rgba(0, 0, 0, 0.5); /* Black overlay with 70% opacity */
+            background-blend-mode: overlay;
+            color: #ffffff; /* Keep text readable */
+            padding: 20px;
+            text-align: center;
+            height: 200px; /* Adjust height if necessary */
+            animation: scrollBackground 10s linear infinite;
+        }
+        /* Professional Mode */
+        body.professional header {
             background-color: #007acc;
             color: #ffffff;
             padding: 20px;
-            text-align: center;
+            text-align: center; */
+
+            background: linear-gradient(90deg, #007acc, #1db954);
+            color: #ffffff;
         }
+        @keyframes scrollBackground {
+            from {
+                background-position: 0 0;
+            }
+            to {
+                background-position: 0px 100px;
+            }
+        }
+
         .container {
             width: 80%;
             margin: auto;
@@ -264,6 +297,9 @@
                 flex-direction: column; /* Stack buttons vertically on small screens */
                 gap: 5px;
             }
+            header {
+                background-size: 20px 20px;
+            }
         }
         .green-highlight {
             font-style: italic;
@@ -315,10 +351,35 @@
             display: block;
         }
 
+        #modeToggle {
+            cursor: pointer;
+            background-color: #333333;
+            color: #dcdcdc;
+            border: 2px solid #1db954; /* Matches the green border */
+            padding: 10px 20px;
+            margin: 5px;
+            font-family: Consolas, monospace;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            text-align: center;
+        }
+
+        #modeToggle:hover {
+            background-color: #007acc; /* Matches hover style of tabs */
+            color: #ffffff; /* Change text color on hover */
+        }
+
+        #modeToggle:focus {
+            outline: 2px solid #1db954; /* Accessible focus outline */
+            outline-offset: 2px;
+        }
+
+
     </style>
 
 </head>
-<body>
+<body class="professional">
     <header>
         <h1>Houfu Chen</h1>
         <p>Data Enthusiast | Project Lover | Creator</p>
@@ -329,6 +390,8 @@
             <a href="#projects">What I've Built</a> | 
             <a href="#contact">Get in Touch</a>
         </nav>
+        <button id="modeToggle">Switch Mode</button>
+
     </header>
     
     <div class="container">
@@ -794,6 +857,17 @@
             });
         });
     });
+        document.getElementById('modeToggle').addEventListener('click', function () {
+        const body = document.body;
+        if (body.classList.contains('creative')) {
+            body.classList.remove('creative');
+            body.classList.add('professional');
+        } else {
+            body.classList.remove('professional');
+            body.classList.add('creative');
+        }
+    });
+
     </script>
     
     

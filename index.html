@@ -403,7 +403,7 @@
             <h2>Who I Am</h2>
             <ul>
                 <li>
-                    A programming + ML + project enthusiast with a passion for solving problems using technology.
+                    A programming + ML + project enthusiast.
                 </li>
                 <li>
                     Graduated with distinction from <span class="green-highlight">University of Waterloo</span> 
@@ -414,37 +414,41 @@
                     at <span class="green-highlight">University of Toronto</span>, with graduation anticipated in March.
                 </li>                
                 <li>
-                    Experienced in:
+                    Industrial Roles:
                     <ul>
-                        <li>Python, data analysis, machine learning, and software development</li>
-                        
                         <li>
-                            Industry roles at 
-                            <a href="#experience-ford" data-tab="experience-tab" data-content="experience-ford">Ford Motor</a>, 
-                            <a href="#experience-manulife" data-tab="experience-tab" data-content="experience-manulife">Manulife</a>, 
+                            <a href="#experience-ford" data-tab="experience-tab" data-content="experience-ford">Ford Motor</a>,
+                            <a href="#experience-manulife" data-tab="experience-tab" data-content="experience-manulife">Manulife</a>,
                             <a href="#experience-teranet" data-tab="experience-tab" data-content="experience-teranet">Teranet</a>, and
                             <a href="#experience-imagine" data-tab="experience-tab" data-content="experience-imagine">Imagine Communications</a>
                         </li>
-                        <li>
-                            Teaching grad and undergrad students in 
-                            <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">ML</a> and 
-                            <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">Python</a> at UofT
-                        </li>
-                        <li>
-                            Conducting research in 
-                            <a href="#ResearchExperience" data-tab="research-tab" data-content="ResearchExperience">organic solar cell technologies</a> at UWaterloo
-                        </li>
-                        <li>
-                            Developing projects like 
-                            <a  href data-tab="projects-route-tab" data-content="Route">LLM evacuation system</a>,  
-                            <a  href data-tab="projects-arduino-tab" data-content="Swim"> S.W.I.M (sponsored by Prof. Steve Mann)</a>,
-                            <a  href data-tab="projects-food-tab" data-content="Food">LLM food recommendation</a>,
-                            <a  href data-tab="projects-money-tab" data-content="Money">LLM spending analysis</a>,
-                            <a  href data-tab="projects-robotics-tab" data-content="RoboticsProjects">autonomous robot</a>, and
-                            <a  href data-tab="projects-matrix-tab" data-content="PythonProjects">matrix calculator</a>
-                        </li>
                     </ul>
                 </li>
+                
+                <li>
+                    TA for:
+                    <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">ML</a> and 
+                    <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">Python</a> at UofT
+                </li>
+                
+                <li>
+                    Conducted Research:
+                    <a href="#ResearchExperience" data-tab="research-tab" data-content="ResearchExperience">Organic Solar Cell Technologies</a> at UWaterloo
+                </li>
+                
+                <li>
+                    Projects:
+                    <ul>
+                        <li><a href="#" data-tab="projects-route-tab" data-content="Route">AI Evacuation System</a></li>
+                        <li><a href="#" data-tab="projects-arduino-tab" data-content="Swim">S.W.I.M (sponsored by Prof. Steve Mann)</a></li>
+                        <li><a href="#" data-tab="projects-food-tab" data-content="Food">LLM Food Recommendation</a></li>
+                        <li><a href="#" data-tab="projects-money-tab" data-content="Money">LLM Spending Analysis</a></li>
+                        <li><a href="#" data-tab="projects-robotics-tab" data-content="RoboticsProjects">Autonomous Robot</a></li>
+                        <li><a href="#" data-tab="projects-Boop-tab" data-content="Boops">RL Agent for Boop</a></li>
+                        <li><a href="#" data-tab="projects-matrix-tab" data-content="PythonProjects">Matrix Calculator</a></li>
+                    </ul>
+                </li>
+                
                 <li class="featured-alumni">
                     Featured alumni in the <span class="green-highlight">Data Analytics and Machine Learning Emphasis</span> at <span class="green-highlight">UofT</span>.
                     Read more about it <a href="https://gradstudies.engineering.utoronto.ca/master-of-engineering-meng/emphasis-in-analytics/" target="_blank">here</a>.
@@ -622,7 +626,8 @@
             </div>
             
             <div class="tabs">
-                <button class="tablink" id = "projects-route-tab" onclick="openTab(event, 'Route')" aria-selected="true">LLM Empowered Evac System <span>- ACO, LLM, System</span></button>
+                <button class="tablink" id = "projects-route-tab" onclick="openTab(event, 'Route')" aria-selected="true">AI Empowered Evac System <span>- ACO, LLM, System</span></button>
+                <button class="tablink" id = "projects-rl-tab" onclick="openTab(event, 'Boop')" aria-selected="true">RL Agent Boop (the boardgame) <span>- RL, Python, Design</span></button>
                 <button class="tablink" id = "projects-arduino-tab" onclick="openTab(event, 'Swim')" aria-selected="true">S.W.I.M (sponsored by Prof. Steve Mann) <span> - Arduino</button>
                 <button class="tablink" id = "projects-food-tab" onclick="openTab(event, 'Food')" aria-selected="true">What should I eat tonight...? <span>- API, LLM </span> </button>
                 <button class="tablink" id = "projects-money-tab" onclick="openTab(event, 'Money')" aria-selected="true">Where did my $$$ Go...? <span>- Analysis, Financial, LLM </span> </button>
@@ -661,6 +666,32 @@
                 </div>
             
             </div>
+
+
+            <div id="Boop" class="tabcontent" style="display:none;">
+                <h3>Reinforcement Learning Agent for Boop</h3>
+                <p>Developed a reinforcement learning (RL) agent to play the board game <i>Boop</i>, focusing on training an AI that efficiently learns and adapts to game strategies.</p>
+                <ul>
+                    <li>Implemented Deep Q-Learning (DQN) for decision-making</li>
+                    <li>Optimized the agent using self-play and experience replay</li>
+                    <li>Achieved consistent improvement over random and rule-based agents</li>
+                </ul>
+
+                <div>
+                    <a href="https://github.com/chf-NewStart/BOOP-BoardGame-onlyKittens" target="_blank">[GitHub Repo]</a>
+                    <a href="https://medium.com/@houfuchen0702/rl-agent-to-play-boop-the-board-game-simplified-ver-part1-speedrun-graduation-d626a00bd911" target="_blank">[Medium Article]</a>
+                </div>
+
+                <!-- Embedded YouTube Video -->
+                <div style="margin-top:15px;">
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/_-Dn_dJZtqE" 
+                        title="Boop RL Agent Training and Gameplay" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
+                </div>
+            </div>
+
+
 
             <div id="Swim" class="tabcontent" style="display:none;">
                 <h3>S.W.I.M (sponsored by Prof. Steve Mann)</h3>
@@ -772,7 +803,8 @@
             <p>Email: <a href="mailto:houfu.chen@mail.utoronto.ca">houfu.chen@mail.utoronto.ca</a></p>
             <p>GitHub: <a href="https://github.com/chf-NewStart" target="_blank">github.com/chf-NewStart</a> & <a href="https://github.com/houfu0702" target="_blank">github.com/houfu0702</a></p>
             <p>LinkedIn: <a href="https://www.linkedin.com/in/houfuchen/" target="_blank">/houfuchen/</a></p>
-            <p>Resume: <a href="Houfu_resume_Feb21.pdf" target="_blank">Download My Resume</a></p>
+            <p>Resume: <a href="Houfu_ML_Final.pdf" target="_blank">ML Resume</a> & <a href="Houfu_resume_Feb21.pdf" target="_blank">QA-Dev Resume</a></p> 
+
         </section>
         
     </div>

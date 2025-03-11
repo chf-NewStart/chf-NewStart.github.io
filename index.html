@@ -439,6 +439,7 @@
                 <li>
                     Projects:
                     <ul>
+                        <li><a href="#" data-tab="projects-emo-tab" data-content="Emo"></a>Emotion Detection From Videos</li>
                         <li><a href="#" data-tab="projects-route-tab" data-content="Route">AI Evacuation System</a></li>
                         <li><a href="#" data-tab="projects-arduino-tab" data-content="Swim">S.W.I.M (sponsored by Prof. Steve Mann)</a></li>
                         <li><a href="#" data-tab="projects-food-tab" data-content="Food">LLM Food Recommendation</a></li>
@@ -626,6 +627,7 @@
             </div>
             
             <div class="tabs">
+                <button class="tablink" id = "projects-emo-tab" onclick="openTab(event, 'Emo')" aria-selected="true">Emotion Detection From Videos <span>- DeepFace, MediaPipe, Ollama,</span></button>
                 <button class="tablink" id = "projects-route-tab" onclick="openTab(event, 'Route')" aria-selected="true">AI Empowered Evac System <span>- ACO, LLM, System</span></button>
                 <button class="tablink" id = "projects-rl-tab" onclick="openTab(event, 'Boop')" aria-selected="true">RL Agent Boop (the boardgame) <span>- RL, Python, Design</span></button>
                 <button class="tablink" id = "projects-arduino-tab" onclick="openTab(event, 'Swim')" aria-selected="true">S.W.I.M (sponsored by Prof. Steve Mann) <span> - Arduino</button>
@@ -636,7 +638,35 @@
 
             </div>
 
+
+
+            <div id="Emo" class="tabcontent" style="display:none;">
+                <h3>Emotion Detection (Face+Voice+Gestures) in any videos </h3>
+                <p>Innovated end-to-end ML pipeline for facial analysis using DeepFace and MediaPipe with automated deployment </p>
+                <ul>
+                    <li>Created & deployed model endpoints for consistent contextual scene analysis and emotion correlation with high accuracy</li>
+                    <li>Implemented ML model monitoring and versioning system with real-time performance metrics.</li>
+                </ul>
+                <div>
+                   <a href="https://github.com/chf-NewStart/Facial-Analysis-on-Oval-Office" target="_blank">[GitHub Repo]</a>
+                </div>
+                <div class="snapshots">
+                    <img src="emo/emo1.webp" alt="emo1" >
+                    <img src="emo/emo2.webp" alt="emo2" >
+
+
+                </div>
+                <!-- Embedded YouTube Video -->
+                <div style="margin-top:15px;">
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/7GPsjpwm9X0?si=g1wM8RJF1Fa4I2BY" 
+                        title="Emo Detection" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
+                
+                </div>
             
+            </div>
+
             <div id="Route" class="tabcontent" style="display:none;">
                 <h3>Building Smart Evacuation Maps</h3>
                 <p>Integrated LLMs with Dijkstra's algorithm and Ant Colony Optimization (ACO)-inspired routing to design an intelligent evacuation system. </p>

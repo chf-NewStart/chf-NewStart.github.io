@@ -377,7 +377,303 @@
             color: #1db954; /* Green color for highlights */
             font-weight: bold; /* Optional: Add boldness for emphasis */
         }
+        /* Terminal Styles */
+        .terminal-container {
+            max-width: 100%;
+            margin: 20px 0;
+            border: 1px solid #444444;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            background-color: #1e1e1e;
+        }
 
+        .terminal-header {
+            background-color: #333;
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-title {
+            color: #dcdcdc;
+            font-size: 0.9rem;
+        }
+
+        .terminal-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .terminal-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .close-btn { background-color: #ff5f56; }
+        .minimize-btn { background-color: #ffbd2e; }
+        .maximize-btn { background-color: #27c93f; }
+
+        .terminal-content {
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #1e1e1e;
+        }
+
+        .prompt {
+            color: #1db954;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt::before {
+            content: ">";
+            margin-right: 10px;
+        }
+
+        .prompt-text {
+            display: inline-block;
+            border-right: 0.15em solid #1db954;
+            white-space: nowrap;
+            overflow: hidden;
+            animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #1db954 }
+        }
+
+        .project-tabs {
+            list-style: none;
+            margin-top: 10px;
+            padding: 0;
+        }
+
+        .project-tab {
+            margin-bottom: 10px;
+            border: 1px solid #444444;
+            border-radius: 4px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            position: relative;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .project-tab:nth-child(1) { animation-delay: 0.2s; }
+        .project-tab:nth-child(2) { animation-delay: 0.4s; }
+        .project-tab:nth-child(3) { animation-delay: 0.6s; }
+        .project-tab:nth-child(4) { animation-delay: 0.8s; }
+        .project-tab:nth-child(5) { animation-delay: 1.0s; }
+        .project-tab:nth-child(6) { animation-delay: 1.2s; }
+        .project-tab:nth-child(7) { animation-delay: 1.4s; }
+
+        .project-tab::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0;
+            background-color: rgba(29, 185, 84, 0.15);
+            z-index: -1;
+            transition: width 0.3s ease;
+        }
+
+        .project-tab:hover::before {
+            width: 100%;
+        }
+
+        .project-tab.active {
+            border-color: #1db954;
+            box-shadow: 0 0 8px rgba(29, 185, 84, 0.4);
+        }
+
+        .project-tab.active::before {
+            width: 100%;
+        }
+
+        .project-btn {
+            width: 100%;
+            text-align: left;
+            font-family: 'Consolas', monospace;
+            font-size: 1rem;
+            background-color: transparent;
+            color: #dcdcdc;
+            border: none;
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .project-btn:focus {
+            outline: none;
+        }
+
+        .project-title {
+            display: flex;
+            align-items: center;
+        }
+
+        .project-title::before {
+            content: ">";
+            margin-right: 10px;
+            color: #1db954;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .project-tab:hover .project-title::before,
+        .project-tab.active .project-title::before {
+            opacity: 1;
+        }
+
+        .project-title span {
+            transition: color 0.3s ease;
+        }
+
+        .project-tab:hover .project-title span,
+        .project-tab.active .project-title span {
+            color: #1db954;
+        }
+
+        .project-tags {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        /* Make sure this CSS is consistent for both terminals */
+        .terminal-input {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            position: relative; /* Important for cursor positioning */
+            width: 100%;
+        }
+
+        .terminal-input::before {
+            content: "user@portfolio:~$";
+            color: #007acc;
+            margin-right: 10px;
+            white-space: nowrap; /* Prevent wrapping */
+        }
+
+        .input-field {
+            background-color: transparent;
+            border: none;
+            color: #dcdcdc;
+            font-family: 'Consolas', monospace;
+            font-size: 1rem;
+            flex: 1;
+            caret-color: transparent; /* Hide browser caret */
+            padding-right: 15px; /* Make room for our custom cursor */
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 18px;
+            background-color: #1db954;
+            animation: blink 1s step-end infinite;
+            position: absolute; /* Position it over the input */
+            right: 10px; /* Adjust this value as needed */
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        @keyframes blink {
+            from, to { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .terminal-line {
+            margin-bottom: 5px;
+        }
+
+        /* Matrix effect */
+        .matrix-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.03;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .matrix-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Project Details */
+        .project-detail {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #252526;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeProjectDetail 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeProjectDetail {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive updates */
+        @media (max-width: 768px) {
+            .project-btn {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .project-tags {
+                margin-top: 5px;
+                margin-left: 20px;
+            }
+        }
+        .experience-detail {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #252526;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeProjectDetail 0.5s ease-out forwards;
+            position: relative; /* Important for the background effect */
+        }
 
 
     </style>
@@ -501,16 +797,51 @@
 
         <section id="experiences">
             <h2>Where I've Been</h2>
-            <div style="padding: 10px; border-left: 3px solid #444444;">
-                <span style="color: #1db954; font-weight: bold;">→ Explore My Past Experiences:</span>
-            </div>
-            <div class="tabs">
-                <button class="tablink" id="experience-tab" onclick="openTab(event, 'TechIndustry')"  aria-selected="true">CAN Tech Industry</button>
-                <button class="tablink" id="teaching-tab" onclick="openTab(event, 'TeachingExperience')"  aria-selected="true">Teaching Experience</button>
-                <button class="tablink" id="research-tab" onclick="openTab(event, 'ResearchExperience')"  aria-selected="true">Research Experience</button>
+            
+            <!-- Terminal Container for Experiences -->
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-title">experience_history.sh - Terminal</div>
+                    <div class="terminal-controls">
+                        <button class="terminal-button minimize-btn"></button>
+                        <button class="terminal-button maximize-btn"></button>
+                        <button class="terminal-button close-btn"></button>
+                    </div>
+                </div>
+                <div class="terminal-content">
+                    <div class="prompt">
+                        <span class="prompt-text">Explore My Past Experiences:</span>
+                    </div>
+        
+                    <ul class="project-tabs">
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleExperience('TechIndustry')">
+                                <div class="project-title"><span>CAN Tech Industry</span></div>
+                                <div class="project-tags">- Ford, Manulife, Teranet, Imagine</div>
+                            </button>
+                        </li>
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleExperience('TeachingExperience')">
+                                <div class="project-title"><span>Teaching Experience</span></div>
+                                <div class="project-tags">- Data Analytics, ML, Python, University of Toronto</div>
+                            </button>
+                        </li>
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleExperience('ResearchExperience')">
+                                <div class="project-title"><span>Research Experience</span></div>
+                                <div class="project-tags">- Organic Solar Cells, University of Waterloo</div>
+                            </button>
+                        </li>
+                    </ul>
+        
+                    <div class="terminal-input">
+                        <input type="text" class="input-field" placeholder="Type 'help' for available commands...">
+                        <span class="cursor"></span>
+                    </div>
+                </div>
             </div>
         
-            <div id="TechIndustry" class="tabcontent" style="display:none;">
+            <div id="TechIndustry" class="tabcontent experience-detail" style="display:none;">
                 <h3>CAN Tech Industry</h3>
                 <div class="experience-item" id = "experience-ford">
                     <h4>CarPlay Network Performance Optimization <span>@ Ford Motor</span></h4>
@@ -555,7 +886,7 @@
             </div>
             
         
-            <div id="TeachingExperience" class="tabcontent" style="display:none;">
+            <div id="TeachingExperience" class="tabcontent experience-detail" style="display:none;">
                 <h3>Teaching Experience</h3>
             
                 <div class="experience-item" id="TeachingExperience">
@@ -588,7 +919,7 @@
             </div>
             
         
-            <div id="ResearchExperience" class="tabcontent" style="display:none;">
+            <div id="ResearchExperience" class="tabcontent experience-detail" style="display:none;">
                 <h3>Research Experience</h3>
             
                 <div class="experience-item">
@@ -609,31 +940,83 @@
 
         
         
-        
 
         
         
 
+        <!-- Replace only your "What I've Built" section with this code -->
         <section id="projects" class="projects">
             <h2>What I've Built</h2>
-            <div style="padding: 10px; border-left: 3px solid #444444; margin-bottom: 10px;">
-                <span style="color: #1db954; font-weight: bold;">→ Select a Project:</span>
-            </div>
             
-            <div class="tabs">
-                <button class="tablink" id = "projects-emo-tab" onclick="openTab(event, 'Emo')" aria-selected="true">Emotion Detection in Videos <span>- DeepFace, MediaPipe, Ollama</span></button>
-                <button class="tablink" id = "projects-route-tab" onclick="openTab(event, 'Route')" aria-selected="true">LLM Empowered Evac System <span>- ACO, LLM, System</span></button>
-                <button class="tablink" id = "projects-arduino-tab" onclick="openTab(event, 'Swim')" aria-selected="true">S.W.I.M (sponsored by Prof. Steve Mann) <span> - Arduino</button>
-                <button class="tablink" id = "projects-food-tab" onclick="openTab(event, 'Food')" aria-selected="true">What should I eat tonight...? <span>- API, LLM </span> </button>
-                <button class="tablink" id = "projects-money-tab" onclick="openTab(event, 'Money')" aria-selected="true">Where did my $$$ Go...? <span>- Analysis, Financial, LLM </span> </button>
-                <button class="tablink" id = "projects-robotics-tab" onclick="openTab(event, 'RoboticsProjects')" aria-selected="true">Autonomous robot <span>- LEGO MINDSTORMS, Design, Graphical Programming</span> </button>
-                <button class="tablink" id = "projects-matrix-tab" onclick="openTab(event, 'PythonProjects')" aria-selected="true">Tired of the repetitive matrix homework? <span> - Python, UI, Matrix</button>
+            <!-- Terminal Container for Projects -->
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-title">project_selection.sh - Terminal</div>
+                    <div class="terminal-controls">
+                        <button class="terminal-button minimize-btn"></button>
+                        <button class="terminal-button maximize-btn"></button>
+                        <button class="terminal-button close-btn"></button>
+                    </div>
+                </div>
+                <div class="terminal-content">
+                    <div class="prompt">
+                        <span class="prompt-text">Select a Project:</span>
+                    </div>
 
+                    <ul class="project-tabs">
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleProject('Emo')">
+                                <div class="project-title"><span>Emotion Detection in Videos</span></div>
+                                <div class="project-tags">- DeepFace, MediaPipe, Ollama</div>
+                            </button>
+                        </li>
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleProject('Route')">
+                                <div class="project-title"><span>LLM Empowered Evac System</span></div>
+                                <div class="project-tags">- ACO, LLM, System</div>
+                            </button>
+                        </li>
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleProject('Swim')">
+                                <div class="project-title"><span>S.W.I.M (sponsored by Prof. Steve Mann)</span></div>
+                                <div class="project-tags">- Arduino</div>
+                            </button>
+                        </li>
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleProject('Food')">
+                                <div class="project-title"><span>What should I eat tonight...?</span></div>
+                                <div class="project-tags">- API, LLM</div>
+                            </button>
+                        </li>
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleProject('Money')">
+                                <div class="project-title"><span>Where did my $$$ Go...?</span></div>
+                                <div class="project-tags">- Analysis, Financial, LLM</div>
+                            </button>
+                        </li>
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleProject('RoboticsProjects')">
+                                <div class="project-title"><span>Autonomous robot</span></div>
+                                <div class="project-tags">- LEGO MINDSTORMS, Design, Graphical Programming</div>
+                            </button>
+                        </li>
+                        <li class="project-tab">
+                            <button class="project-btn" onclick="toggleProject('PythonProjects')">
+                                <div class="project-title"><span>Tired of the repetitive matrix homework?</span></div>
+                                <div class="project-tags">- Python, UI, Matrix</div>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="terminal-input">
+                        <input type="text" class="input-field" placeholder="Type 'help' for available commands...">
+                        <span class="cursor"></span>
+                    </div>
+                </div>
             </div>
 
-
-
-            <div id="Emo" class="tabcontent" style="display:none;">
+            <!-- Keep all your original tab content divs -->
+            <div id="Emo" class="tabcontent project-detail" style="display:none;">
                 <h3>Emotion Detection (Face+Voice+Gestures) in any videos </h3>
                 <p>Innovated end-to-end ML pipeline for facial analysis using DeepFace and MediaPipe with automated deployment </p>
                 <ul>
@@ -641,13 +1024,11 @@
                     <li>Implemented ML model monitoring and versioning system with real-time performance metrics.</li>
                 </ul>
                 <div>
-                   <a href="https://github.com/chf-NewStart/Facial-Analysis-on-Oval-Office" target="_blank">[GitHub Repo]</a>
+                    <a href="https://github.com/chf-NewStart/Facial-Analysis-on-Oval-Office" target="_blank">[GitHub Repo]</a>
                 </div>
                 <div class="snapshots">
                     <img src="emo/emo1.webp" alt="emo1" >
                     <img src="emo/emo2.webp" alt="emo2" >
-
-
                 </div>
                 <!-- Embedded YouTube Video -->
                 <div style="margin-top:15px;">
@@ -655,12 +1036,10 @@
                         title="Emo Detection" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                         allowfullscreen>
                     </iframe>
-                
                 </div>
-            
             </div>
 
-            <div id="Route" class="tabcontent" style="display:none;">
+            <div id="Route" class="tabcontent project-detail" style="display:none;">
                 <h3>Building Smart Evacuation Maps</h3>
                 <p>Integrated LLMs with Dijkstra's algorithm and Ant Colony Optimization (ACO)-inspired routing to design an intelligent evacuation system. </p>
                 <ul>
@@ -669,15 +1048,14 @@
                     <li>Consistently outperforming ACO in "full evacuation" (when all evacuees are safe)</li>
                 </ul>
                 <div>
-                   <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/git_Density_based%5BD%5D_large_scale_Dij%5BD%5D_Ant%5BD%5D_LLM%5BD%5D_ROUTE.ipynb" target="_blank">[GitHub Repo]</a>
-                   <a href="https://medium.com/@houfuchen0702/building-smart-evacuation-maps-integrating-dijkstra-aco-inspired-routing-and-llm-decision-making-8885dfbec49e" target="_blank">[Medium Article]</a>
+                    <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/git_Density_based%5BD%5D_large_scale_Dij%5BD%5D_Ant%5BD%5D_LLM%5BD%5D_ROUTE.ipynb" target="_blank">[GitHub Repo]</a>
+                    <a href="https://medium.com/@houfuchen0702/building-smart-evacuation-maps-integrating-dijkstra-aco-inspired-routing-and-llm-decision-making-8885dfbec49e" target="_blank">[Medium Article]</a>
                 </div>
                 <div class="snapshots">
                     <img src="route/aco_inspired.webp" alt="route1" >
                     <img src="route/main_route_algo.webp" alt="route2" >
                     <img src="route/final_result.webp" alt="route3" >
                     <img src="route/compare.webp" alt="route3" >
-
                 </div>
                 <!-- Embedded YouTube Video -->
                 <div style="margin-top:15px;">
@@ -685,71 +1063,39 @@
                         title="Comparing Dijkstra vs ACO-Inspired Dijkstra vs LLM choice" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                         allowfullscreen>
                     </iframe>
+                </div>
+            </div>
+
+            <!-- Continue adding the rest of your tab contents here -->
+            <div id="Swim" class="tabcontent project-detail" style="display:none;">
+                <h3>S.W.I.M (sponsored by Prof. Steve Mann)</h3>
+                <p> S.W.I.M = <a href="http://wearcam.org/swim/" target="_blank">Sequential Wave Imprinting Machine </a> </p>
+                <p>Use Arduino, LED strip, and time-lapse photography to print every digital picture... in real world</p>
+
+                <p>3 Steps: </p>
+                <ul>
+                    <li>Convert img to rgb arrays (by imread) with necessary cleaning </li>
+                    <li>LED Pattern Display Using NeoPixel and Full Image Data</li>
+                    <li>Motion Detection with builtin IMU to Trigger LED Animation (a more primitive way was letting it change frame by time)</li>
+                </ul>  
+                <div>
+                    <a href="https://github.com/chf-NewStart/swimProject" target="_blank">[GitHub Repo]</a>
+                </div>
                 
-                </div>
-            
-            </div>
-
-
-            <div id="Boop" class="tabcontent" style="display:none;">
-                <h3>Reinforcement Learning Agent for Boop</h3>
-                <p>Developed a reinforcement learning (RL) agent to play the board game <i>Boop</i>, focusing on training an AI that efficiently learns and adapts to game strategies.</p>
-                <ul>
-                    <li>Implemented Deep Q-Learning (DQN) for decision-making</li>
-                    <li>Optimized the agent using self-play and experience replay</li>
-                    <li>Achieved consistent improvement over random and rule-based agents</li>
-                </ul>
-
-                <div>
-                    <a href="https://github.com/chf-NewStart/BOOP-BoardGame-onlyKittens" target="_blank">[GitHub Repo]</a>
-                    <a href="https://medium.com/@houfuchen0702/rl-agent-to-play-boop-the-board-game-simplified-ver-part1-speedrun-graduation-d626a00bd911" target="_blank">[Medium Article]</a>
-                </div>
-
-                <!-- Embedded YouTube Video -->
-                <div style="margin-top:15px;">
-                    <iframe width="560" height="315" src="https://www.youtube.com/embed/_-Dn_dJZtqE" 
-                        title="Boop RL Agent Training and Gameplay" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen>
-                    </iframe>
+                <!-- Snapshots -->
+                <div class="snapshots">
+                    <img src="swim/swim1.webp" alt="swim1" >
+                    <img src="swim/swim2.webp" alt="swim2" >
+                    <img src="swim/swim3.webp" alt="swim3" >
                 </div>
             </div>
 
-
-
-
-            <div id="Boop" class="tabcontent" style="display:none;">
-                <h3>Reinforcement Learning Agent for Boop</h3>
-                <p>Developed a reinforcement learning (RL) agent to play the board game <i>Boop</i>, focusing on training an AI that efficiently learns and adapts to game strategies.</p>
-                <ul>
-                    <li>Implemented Deep Q-Learning (DQN) for decision-making</li>
-                    <li>Optimized the agent using self-play and experience replay</li>
-                    <li>Achieved consistent improvement over random and rule-based agents</li>
-                </ul>
-
-                <div>
-                    <a href="https://github.com/chf-NewStart/BOOP-BoardGame-onlyKittens" target="_blank">[GitHub Repo]</a>
-                    <a href="https://medium.com/@houfuchen0702/rl-agent-to-play-boop-the-board-game-simplified-ver-part1-speedrun-graduation-d626a00bd911" target="_blank">[Medium Article]</a>
-                </div>
-
-                <!-- Embedded YouTube Video -->
-                <div style="margin-top:15px;">
-                    <iframe width="560" height="315" src="https://www.youtube.com/embed/_-Dn_dJZtqE" 
-                        title="Boop RL Agent Training and Gameplay" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen>
-                    </iframe>
-                </div>
-            </div>
-
-
-
-        
-            <div id="Food" class="tabcontent" style="display:none;">
+            <div id="Food" class="tabcontent project-detail" style="display:none;">
                 <h3>Food Recommendation System</h3>
                 <p>Developed a food recommendation engine using LLMs, Yelp API, and Google Maps for personalized suggestions. </p>
                 <div>
-                   <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/foodRaccoon.ipynb" target="_blank">[GitHub Repo]</a>
-                   <a href="https://medium.com/@houfuchen0702/llm-yelp-google-map-powered-food-recommendation-system-91c10269f21d" target="_blank">[Medium Article]</a>
-
+                    <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/foodRaccoon.ipynb" target="_blank">[GitHub Repo]</a>
+                    <a href="https://medium.com/@houfuchen0702/llm-yelp-google-map-powered-food-recommendation-system-91c10269f21d" target="_blank">[Medium Article]</a>
                 </div>
 
                 <!-- Snapshots -->
@@ -761,15 +1107,14 @@
                 </div>
             </div>
 
-        
-            <div id="Money" class="tabcontent" style="display:none;">
+            <div id="Money" class="tabcontent project-detail" style="display:none;">
                 <h3>LLM-Powered Financial Tracker</h3>
                 <p>Built a tool to analyze personal finances using LLMs for flexible categorization and insights into spending patterns. </p>
                 <div>
-                   <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/AIAnalysisOnSpending%26Earning.ipynb" target="_blank">[GitHub Repo]</a>
-                   <a href="https://medium.com/@houfuchen0702/how-i-tracked-analyzed-my-spending-earning-by-llm-with-diy-flexibility-6fe4b2b8c966" target="_blank">[Medium Article]</a>
+                    <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/AIAnalysisOnSpending%26Earning.ipynb" target="_blank">[GitHub Repo]</a>
+                    <a href="https://medium.com/@houfuchen0702/how-i-tracked-analyzed-my-spending-earning-by-llm-with-diy-flexibility-6fe4b2b8c966" target="_blank">[Medium Article]</a>
                 </div>
-                                <!-- Snapshots -->
+                <!-- Snapshots -->
                 <div class="snapshots">
                     <img src="money/m1.webp" alt="money1" >
                     <img src="money/m2.webp" alt="money2" >
@@ -778,8 +1123,7 @@
                 </div>
             </div>
 
-
-            <div id="RoboticsProjects" class="tabcontent" style="display:none;">
+            <div id="RoboticsProjects" class="tabcontent project-detail" style="display:none;">
                 <h3>Autonomous Robot</h3>
                 <p>Designed and programmed a LEGO Mindstorms robot, showcasing retrieval and tracking capabilities. Achieved 3rd place in the competition!</p>
                 
@@ -799,7 +1143,7 @@
                 </div>
             </div>
 
-            <div id="PythonProjects" class="tabcontent" style="display:none;">
+            <div id="PythonProjects" class="tabcontent project-detail" style="display:none;">
                 <h3>Matrix Calculator:</h3> 
                 <p>Solves n-variable systems of equations using Python. It has a simple user interface and 3 functionalities: </p>
                 <ul>
@@ -818,35 +1162,8 @@
                     <img src="matrix/matrix3.webp" alt="Matrix Snapshot 3" >
                 </div>
             </div>
-            
-            <div id="Swim" class="tabcontent" style="display:none;">
-                <h3>S.W.I.M (sponsored by Prof. Steve Mann)</h3>
-                <p> S.W.I.M = <a href="http://wearcam.org/swim/" target="_blank">Sequential Wave Imprinting Machine </a> </p>
-                <p>Use Arduino, LED strip, and time-lapse photography to print every digital picture... in real world</p>
-
-                <p>3 Steps: </p>
-                <ul>
-                    <li>Convert img to rgb arrays (by imread) with necessary cleaning </li>
-                    <li>LED Pattern Display Using NeoPixel and Full Image Data</li>
-                    <li>Motion Detection with builtin IMU to Trigger LED Animation (a more primitive way was letting it change frame by time)</li>
-                </ul>  
-                <div>
-                   <a href="https://github.com/chf-NewStart/swimProject" target="_blank">[GitHub Repo]</a>
-                </div>
-                
-                <!-- Snapshots -->
-                <div class="snapshots">
-
-                    <img src="swim/swim1.webp" alt="swim1" >
-                    <img src="swim/swim2.webp" alt="swim2" >
-                    <img src="swim/swim3.webp" alt="swim3" >
-                </div>
-            </div>
-
-
-            
         </section>
-        
+                
 
         <section id = "contact" class="contact">
             <h2>Get in Touch</h2>
@@ -866,82 +1183,192 @@
     
 
     <script>
-        function openTab(event, tabName) {
-            // Get the parent container of the clicked button
-            const parentSection = event.currentTarget.closest('section');
-            if (!parentSection) return;
+        // Define all functions first
+        function toggleProject(id) {
+            // Hide all project tabs
+            const allTabs = document.querySelectorAll('#projects .project-tab');
+            allTabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
     
-            // Hide all tabcontent elements within the parent section
-            const tabcontent = parentSection.getElementsByClassName('tabcontent');
-            for (let i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].style.display = 'none';
+            // Find the clicked tab
+            const clickedTab = document.querySelector(`#projects .project-btn[onclick="toggleProject('${id}')"]`).parentElement;
+            if (clickedTab) {
+                clickedTab.classList.add('active');
             }
     
-            // Reset button background colors within the parent section
-            const tablinks = parentSection.getElementsByClassName('tablink');
-            for (let i = 0; i < tablinks.length; i++) {
-                tablinks[i].style.backgroundColor = '';
-            }
+            // Hide all project details
+            const allDetails = document.querySelectorAll('.project-detail');
+            allDetails.forEach(detail => {
+                detail.style.display = 'none';
+            });
     
-            // Show the selected tabcontent
-            const targetTab = document.getElementById(tabName);
-            if (targetTab) {
-                targetTab.style.display = 'block';
-            }
-    
-            // Highlight the clicked button
-            if (event && event.currentTarget) {
-                event.currentTarget.style.backgroundColor = '#007acc';
-            }
-        }
-    
-        // Default tab for Projects (Route)
-        const defaultProjectTab = document.getElementById('Route');
-        if (defaultProjectTab) {
-            defaultProjectTab.style.display = 'block';
-            const projectButton = document.querySelector('button[onclick="openTab(event, \'Route\')"]');
-            if (projectButton) {
-                projectButton.style.backgroundColor = '#007acc';
+            // Show the selected project detail
+            const projectDetail = document.getElementById(id);
+            if (projectDetail) {
+                projectDetail.style.display = 'block';
+                
+                // Smooth scroll to project detail
+                setTimeout(() => {
+                    projectDetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
             }
         }
     
-        // Default tab for Experiences (TechIndustry)
-        const defaultExperienceTab = document.getElementById('TechIndustry');
-        if (defaultExperienceTab) {
-            defaultExperienceTab.style.display = 'block';
-            const experienceButton = document.querySelector('button[onclick="openTab(event, \'TechIndustry\')"]');
-            if (experienceButton) {
-                experienceButton.style.backgroundColor = '#007acc';
+        function toggleExperience(id) {
+            // Hide all experience tabs
+            const allTabs = document.querySelectorAll('#experiences .project-tab');
+            allTabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+    
+            // Find the clicked tab
+            const clickedTab = document.querySelector(`#experiences .project-btn[onclick="toggleExperience('${id}')"]`).parentElement;
+            if (clickedTab) {
+                clickedTab.classList.add('active');
+            }
+    
+            // Hide all experience details
+            const allDetails = document.querySelectorAll('.experience-detail');
+            allDetails.forEach(detail => {
+                detail.style.display = 'none';
+            });
+    
+            // Show the selected experience detail
+            const experienceDetail = document.getElementById(id);
+            if (experienceDetail) {
+                experienceDetail.style.display = 'block';
+                
+                // Smooth scroll to experience detail
+                setTimeout(() => {
+                    experienceDetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
             }
         }
-        document.addEventListener("DOMContentLoaded", function () {
-            // Update tab counts dynamically
-            function updateTabCounts() {
-                // Array of tabs and their corresponding sections
-                const tabs = [
-                    { tabId: "experience-tab", sectionId: "TechIndustry" },
-                    { tabId: "teaching-tab", sectionId: "TeachingExperience" },
-                    { tabId: "research-tab", sectionId: "ResearchExperience" },
-                ];
-
-                // Loop through tabs and update counts
-                tabs.forEach(({ tabId, sectionId }) => {
-                    const tab = document.getElementById(tabId);
-                    const section = document.getElementById(sectionId);
-                    if (tab && section) {
-                        // Count the number of .experience-item in the section
-                        const count = section.getElementsByClassName("experience-item").length;
-                        // Update the tab text with the count
-                        tab.textContent = `${tab.textContent.split(" (")[0]} (${count})`;
+    
+        function handleCommand(command, section) {
+            // Get the terminal content within this section
+            const terminalContent = section.querySelector('.terminal-content');
+            if (!terminalContent) return;
+            
+            // Create response element
+            const response = document.createElement('div');
+            response.classList.add('terminal-line');
+            
+            // Determine which section this command is coming from
+            const isProjects = section.id === 'projects';
+            const isExperiences = section.id === 'experiences';
+            
+            // Process different commands based on context
+            switch(command) {
+                case 'help':
+                    if (isProjects) {
+                        response.innerHTML = `
+                            <div style="color: #1db954">Available commands:</div>
+                            <div>- help: Show this help message</div>
+                            <div>- list: Show all projects</div>
+                            <div>- open [project]: Open specific project (e.g., open emo)</div>
+                            <div>- clear: Clear terminal</div>
+                        `;
+                    } else if (isExperiences) {
+                        response.innerHTML = `
+                            <div style="color: #1db954">Available commands:</div>
+                            <div>- help: Show this help message</div>
+                            <div>- list: Show all experience categories</div>
+                            <div>- show [category]: Show specific experience (e.g., show tech)</div>
+                            <div>- clear: Clear terminal</div>
+                        `;
                     }
-                });
+                    break;
+                    
+                case 'list':
+                    if (isProjects) {
+                        response.innerHTML = `
+                            <div style="color: #1db954">Available projects:</div>
+                            <div>- emo: Emotion Detection in Videos</div>
+                            <div>- route: LLM Empowered Evac System</div>
+                            <div>- swim: S.W.I.M</div>
+                            <div>- food: What should I eat tonight?</div>
+                            <div>- money: Where did my $$$ Go?</div>
+                            <div>- roboticsprojects: Autonomous robot</div>
+                            <div>- pythonprojects: Matrix Calculator</div>
+                        `;
+                    } else if (isExperiences) {
+                        response.innerHTML = `
+                            <div style="color: #1db954">Experience categories:</div>
+                            <div>- tech: CAN Tech Industry</div>
+                            <div>- teaching: Teaching Experience</div>
+                            <div>- research: Research Experience</div>
+                        `;
+                    }
+                    break;
+                    
+                case 'clear':
+                    // Find the prompt and input within this section
+                    const prompt = section.querySelector('.prompt');
+                    const input = section.querySelector('.terminal-input');
+                    if (prompt && input) {
+                        // Clear terminal content but keep prompt and input
+                        terminalContent.innerHTML = '';
+                        terminalContent.appendChild(prompt);
+                        terminalContent.appendChild(input);
+                    }
+                    return;
+                    
+                default:
+                    if (isProjects && command.startsWith('open ')) {
+                        const projectId = command.split(' ')[1].charAt(0).toUpperCase() + command.split(' ')[1].slice(1);
+                        const validProjects = ['Emo', 'Route', 'Swim', 'Food', 'Money', 'RoboticsProjects', 'PythonProjects'];
+                        
+                        if (validProjects.includes(projectId)) {
+                            toggleProject(projectId);
+                            response.innerHTML = `Opening project: ${projectId}...`;
+                        } else {
+                            response.innerHTML = `Error: Project '${projectId}' not found. Type 'list' to see available projects.`;
+                        }
+                    } 
+                    else if (isExperiences && command.startsWith('show ')) {
+                        const category = command.split(' ')[1].toLowerCase();
+                        
+                        if (category === 'tech' || category === 'industry') {
+                            toggleExperience('TechIndustry');
+                            response.innerHTML = `Showing Tech Industry Experience...`;
+                        } else if (category === 'teaching') {
+                            toggleExperience('TeachingExperience');
+                            response.innerHTML = `Showing Teaching Experience...`;
+                        } else if (category === 'research') {
+                            toggleExperience('ResearchExperience');
+                            response.innerHTML = `Showing Research Experience...`;
+                        } else {
+                            response.innerHTML = `Error: Category '${category}' not found. Type 'list' to see available categories.`;
+                        }
+                    }
+                    else if (command === '') {
+                        return;
+                    } 
+                    else {
+                        response.innerHTML = `Command not found: ${command}. Type 'help' for available commands.`;
+                    }
             }
-
-        // Call the function to update counts on page load
-            updateTabCounts();
-        });
-        document.addEventListener('DOMContentLoaded', () => {
-        // General function to activate tabs and scroll to content
+            
+            // Insert response before the input field
+            const input = section.querySelector('.terminal-input');
+            if (input) {
+                terminalContent.insertBefore(response, input);
+            }
+            
+            // Scroll to the bottom
+            terminalContent.scrollTop = terminalContent.scrollHeight;
+        }
+    
+        function executeCommand(command) {
+            handleCommand(command, document.getElementById('projects'));
+        }
+    
+        function executeExperienceCommand(command) {
+            handleCommand(command, document.getElementById('experiences'));
+        }
+    
         function activateTabAndScroll(tabId, contentId) {
             // Find the tab button and the content section
             const tabButton = document.querySelector(`#${tabId}`);
@@ -952,33 +1379,184 @@
                 content.scrollIntoView({ behavior: 'smooth' }); // Smoothly scroll to the content
             }
         }
-
-        // Set up event listeners for links in "Who I Am" section
-        const links = document.querySelectorAll('a[data-tab][data-content]');
-        links.forEach(link => {
-            link.addEventListener('click', (event) => {
-                event.preventDefault(); // Prevent default anchor behavior
+    
+        function setupMatrixEffect(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+            
+            const matrixEffect = document.createElement('div');
+            matrixEffect.className = 'matrix-effect';
+            matrixEffect.innerHTML = `<canvas class="matrix-canvas" id="matrix-${sectionId}"></canvas>`;
+            section.appendChild(matrixEffect);
+            
+            const canvas = document.getElementById(`matrix-${sectionId}`);
+            if (canvas) {
+                const context = canvas.getContext('2d');
+                canvas.width = window.innerWidth;
+                canvas.height = section.offsetHeight;
                 
-                // Read the data attributes from the link
-                const tabId = link.getAttribute('data-tab'); // Tab button ID
-                const contentId = link.getAttribute('data-content'); // Tab content ID
-
-                // Activate the tab and scroll to the content
-                activateTabAndScroll(tabId, contentId);
-            });
-        });
-    });
-        document.getElementById('modeToggle').addEventListener('click', function () {
-        const body = document.body;
-        if (body.classList.contains('creative')) {
-            body.classList.remove('creative');
-            body.classList.add('professional');
-        } else {
-            body.classList.remove('professional');
-            body.classList.add('creative');
+                // Use different patterns for different sections
+                const binary = sectionId === 'projects' ? '01' : '10';
+                const fontSize = 16;
+                const columns = canvas.width / fontSize;
+                const rainDrops = [];
+                
+                for (let x = 0; x < columns; x++) {
+                    rainDrops[x] = 1;
+                }
+                
+                const draw = () => {
+                    context.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    context.fillStyle = '#1db95433';
+                    context.font = fontSize + 'px monospace';
+                    
+                    for (let i = 0; i < rainDrops.length; i++) {
+                        const text = binary.charAt(Math.floor(Math.random() * binary.length));
+                        context.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+                        
+                        if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                            rainDrops[i] = 0;
+                        }
+                        rainDrops[i]++;
+                    }
+                };
+                
+                setInterval(draw, 30);
+                
+                // Handle window resize for matrix effect
+                window.addEventListener('resize', () => {
+                    canvas.width = window.innerWidth;
+                    canvas.height = section.offsetHeight;
+                });
+            }
         }
-    });
-
+    
+        function addMatrixBackgroundToExperiences() {
+            // Get all experience detail divs
+            const expDetails = document.querySelectorAll('.experience-detail');
+            
+            expDetails.forEach((detail, index) => {
+                // Create matrix container
+                const matrixContainer = document.createElement('div');
+                matrixContainer.className = 'matrix-effect';
+                matrixContainer.innerHTML = `<canvas class="matrix-canvas" id="matrix-exp-${index}"></canvas>`;
+                
+                // Add to the experience detail before other content
+                detail.prepend(matrixContainer);
+                
+                // Setup the canvas
+                const canvas = document.getElementById(`matrix-exp-${index}`);
+                if (canvas) {
+                    const context = canvas.getContext('2d');
+                    canvas.width = detail.offsetWidth;
+                    canvas.height = detail.offsetHeight;
+                    
+                    // Use a different pattern than the project sections
+                    const binary = '10';
+                    const fontSize = 16;
+                    const columns = canvas.width / fontSize;
+                    const rainDrops = [];
+                    
+                    for (let x = 0; x < columns; x++) {
+                        rainDrops[x] = 1;
+                    }
+                    
+                    const draw = () => {
+                        context.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                        context.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        context.fillStyle = '#1db95433';
+                        context.font = fontSize + 'px monospace';
+                        
+                        for (let i = 0; i < rainDrops.length; i++) {
+                            const text = binary.charAt(Math.floor(Math.random() * binary.length));
+                            context.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+                            
+                            if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                                rainDrops[i] = 0;
+                            }
+                            rainDrops[i]++;
+                        }
+                    };
+                    
+                    setInterval(draw, 30);
+                    
+                    // Handle window resize
+                    window.addEventListener('resize', () => {
+                        canvas.width = detail.offsetWidth;
+                        canvas.height = detail.offsetHeight;
+                    });
+                }
+            });
+        }
+    
+        // Main initialization when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up matrix effects
+            setupMatrixEffect('projects');
+            setupMatrixEffect('experiences');
+            
+            // Add matrix backgrounds to experience details
+            addMatrixBackgroundToExperiences();
+            
+            // Setup event listeners for terminal inputs
+            const projectInput = document.querySelector('#projects .input-field');
+            if (projectInput) {
+                projectInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const command = this.value.trim().toLowerCase();
+                        handleCommand(command, document.getElementById('projects'));
+                        this.value = '';
+                    }
+                });
+            }
+            
+            const experienceInput = document.querySelector('#experiences .input-field');
+            if (experienceInput) {
+                experienceInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const command = this.value.trim().toLowerCase();
+                        handleCommand(command, document.getElementById('experiences'));
+                        this.value = '';
+                    }
+                });
+            }
+            
+            // Set up event listeners for links in "Who I Am" section
+            const links = document.querySelectorAll('a[data-tab][data-content]');
+            links.forEach(link => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault(); // Prevent default anchor behavior
+                    
+                    // Read the data attributes from the link
+                    const tabId = link.getAttribute('data-tab'); // Tab button ID
+                    const contentId = link.getAttribute('data-content'); // Tab content ID
+    
+                    // Activate the tab and scroll to the content
+                    activateTabAndScroll(tabId, contentId);
+                });
+            });
+            
+            // Mode toggle button
+            document.getElementById('modeToggle').addEventListener('click', function () {
+                const body = document.body;
+                if (body.classList.contains('creative')) {
+                    body.classList.remove('creative');
+                    body.classList.add('professional');
+                } else {
+                    body.classList.remove('professional');
+                    body.classList.add('creative');
+                }
+            });
+            
+            // Show default tabs after a short delay
+            setTimeout(() => {
+                toggleProject('Emo');
+                toggleExperience('TechIndustry');
+            }, 500);
+        });
     </script>
     
     

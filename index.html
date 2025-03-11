@@ -1511,13 +1511,26 @@
                 const documentHeight = document.body.scrollHeight;
                 
                 // Special case for bottom of page
-                if (scrollPos + windowHeight >= documentHeight - 50) {
+                if (scrollPos < 100) {
+                    // We're at the top of the page, activate the first dot
+                    dots.forEach(dot => dot.classList.remove('active'));
+                    dots[0].classList.add('active');
+                    return;
+                } 
+                else if (scrollPos + windowHeight >= documentHeight - 50) {
                     // We're at the bottom of the page, activate the last dot
                     dots.forEach(dot => dot.classList.remove('active'));
                     dots[dots.length-1].classList.add('active');
                     return;
-                }
+                };
                 
+                // elif (scrollPos + windowHeight >= documentHeight - 50) {
+                //     // We're at the bottom of the page, activate the last dot
+                //     dots.forEach(dot => dot.classList.remove('active'));
+                //     dots[dots.length-1].classList.add('active');
+                //     return;
+                // };
+
                 // Check each section's position
                 let activeIndex = 0;
                 sections.forEach((section, index) => {

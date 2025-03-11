@@ -675,6 +675,398 @@
             position: relative; /* Important for the background effect */
         }
 
+                /* General styling improvements */
+        body {
+            font-family: Consolas, monospace;
+            background-color: #1e1e1e;
+            color: #dcdcdc;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        
+        /* HEADER REDESIGN */
+        header {
+            background: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
+            color: #ffffff;
+            padding: 40px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 3px solid #1db954;
+        }
+        
+        /* Animated background pattern */
+        header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0, 122, 204, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 122, 204, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: 1;
+            animation: moveBackground 20s linear infinite;
+        }
+        
+        @keyframes moveBackground {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+        }
+        
+        header h1 {
+            font-size: 3rem;
+            margin: 0 0 10px 0;
+            position: relative;
+            z-index: 2;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        header p {
+            font-size: 1.3rem;
+            margin: 0 0 20px 0;
+            position: relative;
+            z-index: 2;
+            opacity: 0.9;
+        }
+        
+        /* Improved navigation */
+        header nav {
+            margin: 20px 0;
+            position: relative;
+            z-index: 2;
+            display: inline-block;
+            background-color: rgba(30, 30, 30, 0.7);
+            padding: 10px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+        }
+        
+        header nav a {
+            color: #dcdcdc;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+            transition: color 0.3s ease, transform 0.2s ease;
+            display: inline-block;
+            position: relative;
+        }
+        
+        header nav a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -4px;
+            left: 50%;
+            background-color: #1db954;
+            transition: width 0.3s ease, left 0.3s ease;
+        }
+        
+        header nav a:hover {
+            color: #1db954;
+            transform: translateY(-2px);
+        }
+        
+        header nav a:hover::after {
+            width: 100%;
+            left: 0;
+        }
+        
+        /* Mode toggle button */
+        #modeToggle {
+            cursor: pointer;
+            background: linear-gradient(135deg, #007acc 0%, #1db954 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 15px 0;
+            font-family: Consolas, monospace;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 2;
+            overflow: hidden;
+        }
+        
+        #modeToggle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1db954 0%, #007acc 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+        
+        #modeToggle:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        #modeToggle:hover::before {
+            opacity: 1;
+        }
+        
+        #modeToggle:active {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* WHO I AM SECTION REDESIGN */
+        #about {
+            padding: 60px 0;
+            position: relative;
+        }
+        
+        #about h2 {
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 40px;
+            position: relative;
+            color: #dcdcdc;
+        }
+        
+        #about h2::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #007acc, #1db954);
+        }
+        
+        .profile-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .profile-summary {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .profile-details {
+            flex: 2;
+            min-width: 300px;
+        }
+        
+        .profile-text {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            margin-bottom: 30px;
+            padding-left: 20px;
+            border-left: 4px solid #1db954;
+            color: #dcdcdc;
+        }
+        
+        .highlights-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .highlight-card {
+            background-color: #252526;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .highlight-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background-color: #1db954;
+        }
+        
+        .highlight-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .highlight-card h3 {
+            color: #1db954;
+            margin-top: 0;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .highlight-icon {
+            margin-right: 10px;
+            font-size: 1.4rem;
+        }
+        
+        .highlight-card ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 15px 0 0 0;
+        }
+        
+        .highlight-card li {
+            padding: 5px 0 5px 0;
+            position: relative;
+            margin-bottom: 8px;
+        }
+        
+        .highlight-card a {
+            color: #dcdcdc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .highlight-card a:hover {
+            color: #1db954;
+        }
+        
+        .highlight-item-title {
+            font-weight: bold;
+            color: #aaaaaa;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        /* WHAT I KNOW SECTION REDESIGN */
+        #skills {
+            padding: 60px 0;
+            background-color: #252526;
+            position: relative;
+        }
+        
+        #skills h2 {
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 40px;
+            position: relative;
+            color: #dcdcdc;
+        }
+        
+        #skills h2::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #007acc, #1db954);
+        }
+        
+        .skills-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+        
+        .skill-group {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .skill-group:hover {
+            transform: translateY(-5px);
+        }
+        
+        .skill-group h3 {
+            color: #007acc;
+            margin-top: 0;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .skill-group h3 i {
+            margin-right: 10px;
+            font-size: 1.5rem;
+        }
+        
+        .skill-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .skill-tag {
+            background-color: #333333;
+            color: #dcdcdc;
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+        
+        .skill-tag.primary {
+            background-color: rgba(0, 122, 204, 0.2);
+            color: #dcdcdc;
+            border-color: rgba(0, 122, 204, 0.3);
+        }
+        
+        .skill-tag.secondary {
+            background-color: rgba(29, 185, 84, 0.2);
+            color: #dcdcdc;
+            border-color: rgba(29, 185, 84, 0.3);
+        }
+        
+        .skill-tag:hover {
+            transform: translateY(-3px) scale(1.05);
+            background-color: #1db954;
+            color: white;
+            border-color: transparent;
+        }
+
+        @media (max-width: 768px) {
+            .profile-container {
+                flex-direction: column;
+            }
+            
+            .highlights-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .skills-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            header nav a {
+                margin: 0 10px;
+            }
+        }
+
 
     </style>
 
@@ -682,7 +1074,7 @@
 <body class="professional">
     <header>
         <h1>Houfu Chen</h1>
-        <p>Designer | Project Lover | Creator</p>
+        <p>Designer | Project Innovator | ML Enthusiast</p>
         <nav>
             <a href="#about">Who I Am</a> | 
             <a href="#skills">What I Know</a> | 
@@ -691,68 +1083,81 @@
             <a href="#contact">Get in Touch</a>
         </nav>
         <button id="modeToggle">Switch Mode</button>
-
     </header>
     
     <div class="container">
         <section id="about">
             <h2>Who I Am</h2>
-            <ul>
-                <li>
-                    A programming + ML + project enthusiast.
-                </li>
-                <li>
-                    Graduated with distinction from <span class="green-highlight">University of Waterloo</span> 
-                    with a <span class="green-highlight"><strong>BASc in Nanotechnology Engineering</strong></span>.
-                </li>
-                <li>
-                    Completed all requirements for <span class="green-highlight"><strong>MEng in Electrical and Computer Engineering</strong></span> 
-                    at <span class="green-highlight">University of Toronto</span>, with graduation anticipated in March.
-                </li>                
-                <li>
-                    Industrial Roles:
-                    <ul>
-                        <li>
-                            <a href="#experience-ford" data-tab="experience-tab" data-content="experience-ford">Ford Motor</a>,
-                            <a href="#experience-manulife" data-tab="experience-tab" data-content="experience-manulife">Manulife</a>,
-                            <a href="#experience-teranet" data-tab="experience-tab" data-content="experience-teranet">Teranet</a>, and
-                            <a href="#experience-imagine" data-tab="experience-tab" data-content="experience-imagine">Imagine Communications</a>
-                        </li>
-                        <li>
-                            Teaching grad and undergrad students in 
-                            <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">ML</a> and 
-                            <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">Python</a> at UofT
-                        </li>
-                        <li>
-                            Conducting research in 
-                            <a href="#ResearchExperience" data-tab="research-tab" data-content="ResearchExperience">organic solar cell technologies</a> at UWaterloo
-                        </li>
-                        <li>
-                            Developing projects like 
-                            <a  href data-tab="projects-emo-tab" data-content="Emo">Emotion detection in any videos</a>,  
-                            <a  href data-tab="projects-route-tab" data-content="Route">LLM evacuation system</a>,  
-                            <a  href data-tab="projects-arduino-tab" data-content="Swim"> S.W.I.M (sponsored by Prof. Steve Mann)</a>,
-                            <a  href data-tab="projects-food-tab" data-content="Food">LLM food recommendation</a>,
-                            <a  href data-tab="projects-money-tab" data-content="Money">LLM spending analysis</a>,
-                            <a  href data-tab="projects-robotics-tab" data-content="RoboticsProjects">autonomous robot</a>, and
-                            <a  href data-tab="projects-matrix-tab" data-content="PythonProjects">matrix calculator</a>
-                        </li>
-                    </ul>
-                </li>
-                
-                <li class="featured-alumni">
-                    Featured alumni in the <span class="green-highlight">Data Analytics and Machine Learning Emphasis</span> at <span class="green-highlight">UofT</span>.
-                    Read more about it <a href="https://gradstudies.engineering.utoronto.ca/master-of-engineering-meng/emphasis-in-analytics/" target="_blank">here</a>.
-                    <div class="hover-content">
-                        <img src="alum.webp" alt="my photo">
-                        <p>
-                            "With the rapid growth of machine learning and the expansion of companies, machine learning and big data have become essential tool sets for ensuring continuous service availability and enhancing customer experiences. Mastering these areas enables me to drive data-driven strategies and strengthens my job prospects in today's competitive landscape."
-                        </p>
-                        <p><strong>Houfu Chen, ECE MEng student</strong></p>
+            <div class="profile-container">
+                <div class="profile-summary">
+                    <p class="profile-text">
+                        I'm a programming and machine learning enthusiast with a passion for solving complex problems through technology. 
+                        My background spans education, industry experience, and innovative projects, all driven by a curiosity to explore new technologies.
+                    </p>
+                </div>
+                <div class="profile-details">
+                    <div class="highlights-container">
+                        <div class="highlight-card">
+                            <h3><span class="highlight-icon">🎓</span> Education</h3>
+                            <ul>
+                                <li>
+                                    <span class="highlight-item-title">MEng in Electrical and Computer Engineering</span>
+                                    <span class="green-highlight">University of Toronto</span>
+                                    <em>(Graduation: March 2025)</em>
+                                </li>
+                                <li>
+                                    <span class="highlight-item-title">BASc in Nanotechnology Engineering</span>
+                                    <span class="green-highlight">University of Waterloo</span>
+                                    <em>(With Distinction)</em>
+                                </li>
+                                <li class="featured-alumni">
+                                    Featured alumni in the <span class="green-highlight">Data Analytics and Machine Learning Emphasis</span> at <span class="green-highlight">UofT</span>.
+                                    Read more about it <a href="https://gradstudies.engineering.utoronto.ca/master-of-engineering-meng/emphasis-in-analytics/" target="_blank">here</a>.
+                                    <div class="hover-content">
+                                        <img src="alum.webp" alt="my photo">
+                                        <p>"With the rapid growth of machine learning and the expansion of companies, machine learning and big data have become essential tool sets for ensuring continuous service availability and enhancing customer experiences. Mastering these areas enables me to drive data-driven strategies and strengthens my job prospects in today's competitive landscape."</p>
+                                        <p><strong>Houfu Chen, ECE MEng student</strong></p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="highlight-card">
+                            <h3><span class="highlight-icon">💼</span> Industry Experience</h3>
+                            <ul>
+                                <li><a href="#experience-ford" data-tab="experience-tab" data-content="experience-ford">Ford Motor</a> - CarPlay Network Performance</li>
+                                <li><a href="#experience-manulife" data-tab="experience-tab" data-content="experience-manulife">Manulife</a> - Online Banking Development</li>
+                                <li><a href="#experience-teranet" data-tab="experience-tab" data-content="experience-teranet">Teranet</a> - QA Automation</li>
+                                <li><a href="#experience-imagine" data-tab="experience-tab" data-content="experience-imagine">Imagine Communications</a> - Quality Assurance</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="highlight-card">
+                            <h3><span class="highlight-icon">🔬</span> Teaching & Research</h3>
+                            <ul>
+                                <li>
+                                    <span class="highlight-item-title">Teaching Assistant</span>
+                                    <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">Machine Learning & Python</a> at University of Toronto
+                                </li>
+                                <li>
+                                    <span class="highlight-item-title">Research Assistant</span>
+                                    <a href="#ResearchExperience" data-tab="research-tab" data-content="ResearchExperience">Organic Solar Cell Technologies</a> at University of Waterloo
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="highlight-card">
+                            <h3><span class="highlight-icon">🚀</span> Project Highlights</h3>
+                            <ul>
+                                <li><a href data-tab="projects-emo-tab" data-content="Emo">Emotion Detection in Videos</a></li>
+                                <li><a href data-tab="projects-route-tab" data-content="Route">LLM Evacuation System</a></li>
+                                <li><a href data-tab="projects-arduino-tab" data-content="Swim">S.W.I.M</a> (Sponsored by Prof. Steve Mann)</li>
+                                <li><a href data-tab="projects-food-tab" data-content="Food">LLM Food Recommendation</a></li>
+                            </ul>
+                        </div>
                     </div>
-                </li>
-                
-            </ul>
+                </div>
+            </div>
         </section>
         
         
@@ -760,39 +1165,66 @@
         
         
         
-        <section id = "skills" class="skills">
+        <section id="skills" class="skills">
             <h2>What I Know</h2>
-            <ul>
-                <li>Programming: 
-                    <span class="green-highlight">Python</span>, 
-                    <span class="green-highlight">C++</span>, 
-                    <span class="green-highlight">Arduino</span>, 
-                    <span class="green-highlight">JavaScript</span>, 
-                    <span class="green-highlight">TypeScript</span>, 
-                    <span class="green-highlight">Java</span>, 
-                    <span class="green-highlight">C#</span>,
-                    <span class="green-highlight">R</span>
+            <div class="skills-wrapper">
+                <div class="skills-grid">
+                    <div class="skill-group">
+                        <h3><i class="highlight-icon">💻</i> Programming Languages</h3>
+                        <div class="skill-list">
+                            <span class="skill-tag primary">Python</span>
+                            <span class="skill-tag primary">JavaScript</span>
+                            <span class="skill-tag primary">TypeScript</span>
+                            <span class="skill-tag primary">C++</span>
+                            <span class="skill-tag secondary">Java</span>
+                            <span class="skill-tag secondary">C#</span>
+                            <span class="skill-tag secondary">R</span>
+                            <span class="skill-tag secondary">Arduino</span>
+                        </div>
+                    </div>
                     
-                </li>
-                <li>Tools: 
-                    <span class="green-highlight">Selenium</span>, 
-                    <span class="green-highlight">Azure (Data Factory, Databricks)</span>, 
-                    <span class="green-highlight">LTspice</span>
-                </li>
-                <li>Frameworks: 
-                    <span class="green-highlight">React</span>, 
-                    <span class="green-highlight">Redux</span>, 
-                    <span class="green-highlight">Node.js</span>, 
-                    <span class="green-highlight">WebDriverIO</span>
-                </li>
-                <li>Data Analysis: 
-                    <span class="green-highlight">MS Office</span>, 
-                    <span class="green-highlight">SQL</span>, 
-                    <span class="green-highlight">Pandas</span>, 
-                    <span class="green-highlight">NumPy</span>
-                </li>
-            </ul>
-            
+                    <div class="skill-group">
+                        <h3><i class="highlight-icon">🔧</i> Frameworks & Tools</h3>
+                        <div class="skill-list">
+                            <span class="skill-tag primary">React</span>
+                            <span class="skill-tag primary">Redux</span>
+                            <span class="skill-tag primary">Node.js</span>
+                            <span class="skill-tag secondary">Selenium</span>
+                            <span class="skill-tag secondary">WebDriverIO</span>
+                            <span class="skill-tag secondary">Azure</span>
+                            <span class="skill-tag secondary">Data Factory</span>
+                            <span class="skill-tag secondary">Databricks</span>
+                            <span class="skill-tag secondary">LTspice</span>
+                        </div>
+                    </div>
+                    
+                    <div class="skill-group">
+                        <h3><i class="highlight-icon">📊</i> Data Analysis</h3>
+                        <div class="skill-list">
+                            <span class="skill-tag primary">SQL</span>
+                            <span class="skill-tag primary">Pandas</span>
+                            <span class="skill-tag primary">NumPy</span>
+                            <span class="skill-tag secondary">Data Visualization</span>
+                            <span class="skill-tag secondary">MS Office</span>
+                            <span class="skill-tag secondary">Statistical Analysis</span>
+                        </div>
+                    </div>
+                    
+                    <div class="skill-group">
+                        <h3><i class="highlight-icon">🧠</i> Machine Learning</h3>
+                        <div class="skill-list">
+                            <span class="skill-tag primary">TensorFlow</span>
+                            <span class="skill-tag primary">PyTorch</span>
+                            <span class="skill-tag primary">Scikit-learn</span>
+                            <span class="skill-tag primary">DeepFace</span>
+                            <span class="skill-tag secondary">MediaPipe</span>
+                            <span class="skill-tag secondary">Ollama</span>
+                            <span class="skill-tag secondary">NLP</span>
+                            <span class="skill-tag secondary">Computer Vision</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section id="experiences">

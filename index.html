@@ -1578,6 +1578,51 @@
             updateIndicators();
         });
 
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle company links in "Industry Experience" section
+            const companyLinks = document.querySelectorAll('.company-link');
+            companyLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // First show the Tech Industry experience tab
+                    toggleExperience('TechIndustry');
+                    
+                    // Then scroll to the specific company section
+                    const companyId = this.getAttribute('href').substring(1); // Remove the # from the href
+                    const companySection = document.getElementById(companyId);
+                    if (companySection) {
+                        setTimeout(() => {
+                            companySection.scrollIntoView({ behavior: 'smooth' });
+                        }, 300); // Small delay to ensure the tab is opened first
+                    }
+                });
+            });
+            
+            // Handle project links in "Project Highlights" section
+            const projectLinks = document.querySelectorAll('.project-link');
+            projectLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const projectId = this.getAttribute('data-content');
+                    if (projectId) {
+                        toggleProject(projectId);
+                    }
+                });
+            });
+            
+            // Handle teaching/research links
+            const teachingLinks = document.querySelectorAll('.course-link, .research-link');
+            teachingLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const contentId = this.getAttribute('data-content');
+                    if (contentId) {
+                        toggleExperience(contentId);
+                    }
+                });
+            });
+        });
     </script>
     
     

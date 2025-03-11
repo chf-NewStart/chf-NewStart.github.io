@@ -646,10 +646,10 @@ a:hover {
     margin-top: 20px;
     display: flex;
     align-items: center;
-    position: relative;
     width: 100%;
     font-family: Consolas, 'Courier New', monospace;
 }
+
 
 .terminal-input::before {
     content: "user@portfolio:~$";
@@ -661,24 +661,27 @@ a:hover {
 .input-field {
     background-color: transparent;
     border: none;
-    color: #dcdcdc;
+    color: #1db954; /* Make text visible */
     font-family: Consolas, 'Courier New', monospace;
     font-size: 1rem;
-    flex: 1;
-    caret-color: transparent;
-    padding-right: 15px;
+    caret-color: #1db954; /* Native cursor color */
+    padding: 0;
+    outline: none;
 }
 
+
 .cursor {
-    display: inline-block;
+    /* display: inline-block;
     width: 10px;
     height: 18px;
     background-color: #1db954;
     animation: blink 1s step-end infinite;
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
+    position: static;
+    margin-left: 4px; */
+    /* right: 10px;
+    top: 50%; */
+    /* transform: translateY(-50%); */
+    display: none;
 }
 
 .terminal-line {

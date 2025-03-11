@@ -1496,11 +1496,74 @@
         });
 
 
-
-
-
-
-
+        // Enhanced fix for section indicators
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get elements
+            const sections = document.querySelectorAll('.scroll-section');
+            const dots = document.querySelectorAll('.indicator-dot');
+            
+            if (!sections.length || !dots.length) return;
+            
+            // Update active indicator based on scroll position
+            function updateIndicators() {
+                const scrollPos = window.scrollY;
+                const windowHeight = window.innerHeight;
+                const documentHeight = document.body.scrollHeight;
+                
+                // Special case for bottom of page
+                if (scrollPos + windowHeight >= documentHeight - 50) {
+                    // We're at the bottom of the page, activate the last dot
+                    dots.forEach(dot => dot.classList.remove('active'));
+                    dots[dots.length-1].classList.add('active');
+                    return;
+                }
+                
+                // Check each section's position
+                let activeIndex = 0;
+                sections.forEach((section, index) => {
+                    const rect = section.getBoundingClientRect();
+                    // If section is in viewport (with some leeway)
+                    if (rect.top < windowHeight/2 && rect.bottom > 0) {
+                        activeIndex = index;
+                    }
+                });
+                
+                // Update active dot
+                dots.forEach(dot => dot.classList.remove('active'));
+                dots[activeIndex].classList.add('active');
+            }
+            
+            // Add click handlers to dots
+            dots.forEach((dot, index) => {
+                dot.style.cursor = 'pointer';
+                
+                dot.addEventListener('click', function() {
+                    if (sections[index]) {
+                        window.scrollTo({
+                            top: sections[index].offsetTop,
+                            behavior: 'smooth'
+                        });
+                        
+                        // Update dots immediately
+                        dots.forEach(d => d.classList.remove('active'));
+                        dot.classList.add('active');
+                    }
+                });
+            });
+            
+            // Listen for scroll events with debounce
+            let scrollTimer;
+            window.addEventListener('scroll', function() {
+                clearTimeout(scrollTimer);
+                scrollTimer = setTimeout(updateIndicators, 10);
+            });
+            
+            // Also update on resize
+            window.addEventListener('resize', updateIndicators);
+            
+            // Initial update
+            updateIndicators();
+        });
 
     </script>
     

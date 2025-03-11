@@ -78,11 +78,10 @@
                                     <li class="featured-alumni">
                                         Featured alumni in the <span class="highlight-text">Data Analytics and Machine Learning Emphasis</span> at <span class="university-name">UofT</span>.
                                         <a href="https://gradstudies.engineering.utoronto.ca/master-of-engineering-meng/emphasis-in-analytics/" target="_blank" class="highlight-link">Read more here</a>.
-                                        <div class="hover-content">
+                                        <!-- <div class="hover-content">
                                             <img src="alum.webp" alt="my photo">
-                                            <p>"With the rapid growth of machine learning and the expansion of companies, machine learning and big data have become essential tool sets for ensuring continuous service availability and enhancing customer experiences. Mastering these areas enables me to drive data-driven strategies and strengthens my job prospects in today's competitive landscape."</p>
                                             <p><strong>Houfu Chen, ECE MEng student</strong></p>
-                                        </div>
+                                        </div> -->
                                     </li>
                                 </ul>
                             </div>
@@ -1461,11 +1460,49 @@
             // Allow natural scrolling
         }, { passive: true });
         });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.highlight-card');
+            
+            cards.forEach(card => {
+                card.addEventListener('mousemove', handleMouseMove);
+                card.addEventListener('mouseleave', handleMouseLeave);
+                card.addEventListener('mouseenter', function() {
+                    card.classList.add('tilting');
+                });
+            });
+            
+            function handleMouseMove(e) {
+                const card = e.currentTarget;
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left; // Get mouse X position within card
+                const y = e.clientY - rect.top;  // Get mouse Y position within card
+                
+                // Calculate rotation based on mouse position
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = (centerY - y) / 10; // Adjust divisor for sensitivity
+                const rotateY = (x - centerX) / 10;
+                
+                // Apply the transform
+                card.style.transform = `translateX(5px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            }
+            
+            function handleMouseLeave(e) {
+                const card = e.currentTarget;
+                card.classList.remove('tilting');
+                card.style.transform = '';
+            }
+        });
+
+
+
+
+
+
+
+
     </script>
-    
-    
-    
-    
     
     
 </body>

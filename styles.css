@@ -355,9 +355,22 @@ a:hover {
     box-sizing: border-box; /* Important - include padding in width calculation */
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
+.highlight-card {
+    transition: transform 0.2s ease;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+.highlight-card.tilting {
+    transition: transform 0.1s ease-out;
+}
+
+
 
 .highlight-card:hover {
-    transform: translateX(10px);
+    transform: translateX(5px);
     box-shadow: 0 5px 15px rgba(29, 185, 84, 0.3);
 }
 
@@ -422,26 +435,33 @@ a:hover {
     margin-bottom: 5px;
 }
 
-/* Featured Alumni Card */
-.featured-alumni {
-    position: relative;
-    cursor: pointer;
-}
-
+/* Apply this fix for the hover content */
 .featured-alumni .hover-content {
     display: none;
-    position: absolute;
-    top: 120%;
-    left: 10%;
-    transform: translateX(-50%);
-    z-index: 10;
+    position: fixed; /* Change from absolute to fixed */
+    top: 50%; /* Center vertically */
+    left: 50%; /* Center horizontally */
+    transform: translate(-50%, -50%); /* Center properly */
+    z-index: 99999; /* Very high z-index */
     background-color: #ffffff;
     padding: 20px;
     border-radius: 10px;
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4); /* Stronger shadow */
     width: 350px;
     line-height: 1.5;
     text-align: center;
+}
+
+/* Make the hover trigger work better */
+.featured-alumni:hover .hover-content {
+    display: block;
+}
+/* Also add this to ensure parent elements don't restrict the stacking context */
+.featured-alumni {
+    position: relative;
+    cursor: pointer;
+    z-index: 1;  /* Ensure parent has a z-index */
+    isolation: isolate; /* Create a new stacking context */
 }
 
 .featured-alumni .hover-content img {

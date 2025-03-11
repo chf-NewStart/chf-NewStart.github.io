@@ -422,31 +422,24 @@
                             <a href="#experience-teranet" data-tab="experience-tab" data-content="experience-teranet">Teranet</a>, and
                             <a href="#experience-imagine" data-tab="experience-tab" data-content="experience-imagine">Imagine Communications</a>
                         </li>
-                    </ul>
-                </li>
-                
-                <li>
-                    TA for:
-                    <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">ML</a> and 
-                    <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">Python</a> at UofT
-                </li>
-                
-                <li>
-                    Conducted Research:
-                    <a href="#ResearchExperience" data-tab="research-tab" data-content="ResearchExperience">Organic Solar Cell Technologies</a> at UWaterloo
-                </li>
-                
-                <li>
-                    Projects:
-                    <ul>
-                        <li><a href="#" data-tab="projects-emo-tab" data-content="Emo"></a>Emotion Detection From Videos</li>
-                        <li><a href="#" data-tab="projects-route-tab" data-content="Route">AI Evacuation System</a></li>
-                        <li><a href="#" data-tab="projects-arduino-tab" data-content="Swim">S.W.I.M (sponsored by Prof. Steve Mann)</a></li>
-                        <li><a href="#" data-tab="projects-food-tab" data-content="Food">LLM Food Recommendation</a></li>
-                        <li><a href="#" data-tab="projects-money-tab" data-content="Money">LLM Spending Analysis</a></li>
-                        <li><a href="#" data-tab="projects-robotics-tab" data-content="RoboticsProjects">Autonomous Robot</a></li>
-                        <li><a href="#" data-tab="projects-Boop-tab" data-content="Boops">RL Agent for Boop</a></li>
-                        <li><a href="#" data-tab="projects-matrix-tab" data-content="PythonProjects">Matrix Calculator</a></li>
+                        <li>
+                            Teaching grad and undergrad students in 
+                            <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">ML</a> and 
+                            <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience">Python</a> at UofT
+                        </li>
+                        <li>
+                            Conducting research in 
+                            <a href="#ResearchExperience" data-tab="research-tab" data-content="ResearchExperience">organic solar cell technologies</a> at UWaterloo
+                        </li>
+                        <li>
+                            Developing projects like 
+                            <a  href data-tab="projects-route-tab" data-content="Route">LLM evacuation system</a>,  
+                            <a  href data-tab="projects-arduino-tab" data-content="Swim"> S.W.I.M (sponsored by Prof. Steve Mann)</a>,
+                            <a  href data-tab="projects-food-tab" data-content="Food">LLM food recommendation</a>,
+                            <a  href data-tab="projects-money-tab" data-content="Money">LLM spending analysis</a>,
+                            <a  href data-tab="projects-robotics-tab" data-content="RoboticsProjects">autonomous robot</a>, and
+                            <a  href data-tab="projects-matrix-tab" data-content="PythonProjects">matrix calculator</a>
+                        </li>
                     </ul>
                 </li>
                 
@@ -627,9 +620,7 @@
             </div>
             
             <div class="tabs">
-                <button class="tablink" id = "projects-emo-tab" onclick="openTab(event, 'Emo')" aria-selected="true">Emotion Detection From Videos <span>- DeepFace, MediaPipe, Ollama,</span></button>
-                <button class="tablink" id = "projects-route-tab" onclick="openTab(event, 'Route')" aria-selected="true">AI Empowered Evac System <span>- ACO, LLM, System</span></button>
-                <button class="tablink" id = "projects-rl-tab" onclick="openTab(event, 'Boop')" aria-selected="true">RL Agent Boop (the boardgame) <span>- RL, Python, Design</span></button>
+                <button class="tablink" id = "projects-route-tab" onclick="openTab(event, 'Route')" aria-selected="true">LLM Empowered Evac System <span>- ACO, LLM, System</span></button>
                 <button class="tablink" id = "projects-arduino-tab" onclick="openTab(event, 'Swim')" aria-selected="true">S.W.I.M (sponsored by Prof. Steve Mann) <span> - Arduino</button>
                 <button class="tablink" id = "projects-food-tab" onclick="openTab(event, 'Food')" aria-selected="true">What should I eat tonight...? <span>- API, LLM </span> </button>
                 <button class="tablink" id = "projects-money-tab" onclick="openTab(event, 'Money')" aria-selected="true">Where did my $$$ Go...? <span>- Analysis, Financial, LLM </span> </button>
@@ -723,29 +714,32 @@
 
 
 
-            <div id="Swim" class="tabcontent" style="display:none;">
-                <h3>S.W.I.M (sponsored by Prof. Steve Mann)</h3>
-                <p> S.W.I.M = <a href="http://wearcam.org/swim/" target="_blank">Sequential Wave Imprinting Machine </a> </p>
-                <p>Use Arduino, LED strip, and time-lapse photography to print every digital picture... in real world</p>
 
-                <p>3 Steps: </p>
+            <div id="Boop" class="tabcontent" style="display:none;">
+                <h3>Reinforcement Learning Agent for Boop</h3>
+                <p>Developed a reinforcement learning (RL) agent to play the board game <i>Boop</i>, focusing on training an AI that efficiently learns and adapts to game strategies.</p>
                 <ul>
-                    <li>Convert img to rgb arrays (by imread) with necessary cleaning </li>
-                    <li>LED Pattern Display Using NeoPixel and Full Image Data</li>
-                    <li>Motion Detection with builtin IMU to Trigger LED Animation (a more primitive way was letting it change frame by time)</li>
-                </ul>  
-                <div>
-                   <a href="https://github.com/chf-NewStart/swimProject" target="_blank">[GitHub Repo]</a>
-                </div>
-                
-                <!-- Snapshots -->
-                <div class="snapshots">
+                    <li>Implemented Deep Q-Learning (DQN) for decision-making</li>
+                    <li>Optimized the agent using self-play and experience replay</li>
+                    <li>Achieved consistent improvement over random and rule-based agents</li>
+                </ul>
 
-                    <img src="swim/swim1.webp" alt="swim1" >
-                    <img src="swim/swim2.webp" alt="swim2" >
-                    <img src="swim/swim3.webp" alt="swim3" >
+                <div>
+                    <a href="https://github.com/chf-NewStart/BOOP-BoardGame-onlyKittens" target="_blank">[GitHub Repo]</a>
+                    <a href="https://medium.com/@houfuchen0702/rl-agent-to-play-boop-the-board-game-simplified-ver-part1-speedrun-graduation-d626a00bd911" target="_blank">[Medium Article]</a>
+                </div>
+
+                <!-- Embedded YouTube Video -->
+                <div style="margin-top:15px;">
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/_-Dn_dJZtqE" 
+                        title="Boop RL Agent Training and Gameplay" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
                 </div>
             </div>
+
+
+
         
             <div id="Food" class="tabcontent" style="display:none;">
                 <h3>Food Recommendation System</h3>
@@ -820,6 +814,30 @@
                     <img src="matrix/matrix1.webp" alt="Matrix Snapshot 1" >
                     <img src="matrix/matrix2.webp" alt="Matrix Snapshot 2" >
                     <img src="matrix/matrix3.webp" alt="Matrix Snapshot 3" >
+                </div>
+            </div>
+            
+            <div id="Swim" class="tabcontent" style="display:none;">
+                <h3>S.W.I.M (sponsored by Prof. Steve Mann)</h3>
+                <p> S.W.I.M = <a href="http://wearcam.org/swim/" target="_blank">Sequential Wave Imprinting Machine </a> </p>
+                <p>Use Arduino, LED strip, and time-lapse photography to print every digital picture... in real world</p>
+
+                <p>3 Steps: </p>
+                <ul>
+                    <li>Convert img to rgb arrays (by imread) with necessary cleaning </li>
+                    <li>LED Pattern Display Using NeoPixel and Full Image Data</li>
+                    <li>Motion Detection with builtin IMU to Trigger LED Animation (a more primitive way was letting it change frame by time)</li>
+                </ul>  
+                <div>
+                   <a href="https://github.com/chf-NewStart/swimProject" target="_blank">[GitHub Repo]</a>
+                </div>
+                
+                <!-- Snapshots -->
+                <div class="snapshots">
+
+                    <img src="swim/swim1.webp" alt="swim1" >
+                    <img src="swim/swim2.webp" alt="swim2" >
+                    <img src="swim/swim3.webp" alt="swim3" >
                 </div>
             </div>
 

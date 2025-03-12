@@ -611,6 +611,7 @@ a:hover {
 .maximize-btn { background-color: #27c93f; }
 
 .terminal-content {
+    min-width: 450px;
     padding: 20px;
     background-color: #1e1e1e;
     font-family: Consolas, 'Courier New', monospace;
@@ -643,31 +644,37 @@ a:hover {
 }
 
 .terminal-input {
-    margin-top: 20px;
     display: flex;
     align-items: center;
     width: 100%;
-    font-family: Consolas, 'Courier New', monospace;
+    font-family: Consolas, monospace;
+    position: relative;
+    margin-top: 20px;
+    white-space: nowrap;
+    overflow: visible; /* Allow content to be visible outside the container */
 }
-
 
 .terminal-input::before {
     content: "user@portfolio:~$";
     color: #007acc;
     margin-right: 10px;
     white-space: nowrap;
+    flex-shrink: 0; /* Prevent the prefix from shrinking */
 }
 
 .input-field {
     background-color: transparent;
     border: none;
-    color: #1db954; /* Make text visible */
-    font-family: Consolas, 'Courier New', monospace;
+    color: #1db954;
+    font-family: Consolas, monospace;
     font-size: 1rem;
-    caret-color: #1db954; /* Native cursor color */
+    caret-color: #1db954;
     padding: 0;
     outline: none;
+    width: 100%; /* Use full available width */
+    min-width: 200px; /* Ensure minimum width */
 }
+
 
 
 .cursor {
@@ -1042,6 +1049,19 @@ footer {
         font-size: 0.9rem;
     }
 }
+
+/* Handle very small screens */
+@media (max-width: 500px) {
+    .terminal-input::before {
+        content: "user$"; /* Shorter prefix on mobile */
+    }
+    
+    .input-field {
+        font-size: 0.9rem; /* Slightly smaller font on mobile */
+    }
+}
+
+
 
 /* Immediately activate animations for all sections */
 .reveal-content, 

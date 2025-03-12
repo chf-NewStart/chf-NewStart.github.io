@@ -7,6 +7,8 @@ class HomePage {
     get skillsSection() { return $('#skills-section'); }
     get experienceSection() { return $('#experience-section'); }
     get projectsSection() { return $('#projects-section'); }
+    get projectCard() { return $('div.project-title*=Emotion Detection'); }
+
     
     // Methods
     async open() {
@@ -34,6 +36,18 @@ class HomePage {
         const projectDetail = await $(`//h3[contains(text(), "${projectTitle}")]`);
         return projectDetail.isDisplayed();
     }
+    async clickEmotionDetectionProject(): Promise<void> {
+        await this.projectCard.waitForClickable();
+        await this.projectCard.click();
+        await browser.pause(1000); // Add small pause for smooth scrolling
+
+    }
+    async isEmotionDetectionProjectDisplayed(): Promise<boolean> {
+        await browser.pause(1000); // Add small pause for smooth scrolling
+        return await this.projectCard.isDisplayed();
+        
+    } 
+
 }
 
 export default new HomePage();

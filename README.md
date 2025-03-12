@@ -18,7 +18,6 @@ npx wdio config
 ```
 <img width="634" alt="image" src="https://github.com/user-attachments/assets/4ec2bff4-bc5e-4ad2-b776-7050fe3c1d98" />
 
-![image](https://github.com/user-attachments/assets/abba8cef-94a0-4883-8094-5338674ec42c)
 
 ```bash
 npm run wdio

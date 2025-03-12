@@ -798,11 +798,13 @@ a:hover {
 /* Project & Experience Details */
 .project-detail, 
 .experience-detail {
-    position: fixed; /* Change from absolute to fixed for better overlay */
+    position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
-    max-height: 90vh; /* Slightly larger max height */
+    left: 50%;        /* Center horizontally */
+    transform: translateX(-50%) translateY(100%); /* Center and hide initially */
+    width: 80%;       /* Limit width to 80% of screen */
+    max-width: 900px; /* Maximum width */
+    max-height: 60vh; /* Reduce from 90vh to 70vh */
     overflow-y: auto;
     background-color: rgba(37, 37, 38, 0.95);
     backdrop-filter: blur(10px);
@@ -812,16 +814,15 @@ a:hover {
     border-top-right-radius: 20px;
     border-top: 3px solid #1db954;
     padding: 30px;
-    transform: translateY(100%);
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: 0 -10px 30px rgba(0,0,0,0.2);
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .project-detail.active, 
 .experience-detail.active {
-    transform: translateY(0);
-    display: block;
+    transform: translateX(-50%) translateY(0); /* Center and show */
 }
+
 
 .project-detail h3, 
 .experience-detail h3 {
@@ -1027,10 +1028,11 @@ footer {
     
     .project-detail, 
     .experience-detail {
-        max-height: 80vh;
-        padding: 20px;
+        width: 90%;    /* Wider on mobile */
+        max-height: 70vh;
+        padding: 20px 15px;
     }
-    
+
     .snapshots {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
@@ -1063,6 +1065,44 @@ footer {
     animation: slideInRight 1s ease-out forwards;
 }
 
+/* Fix for the Tech Industry section specifically */
+#TechIndustry {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) translateY(100%) !important;
+    width: 80% !important;
+    max-width: 900px !important;
+    max-height: 70vh !important;
+    margin: 0 !important;
+}
+
+#TechIndustry.active {
+    transform: translateX(-50%) translateY(0) !important;
+}
+
+/* Ensure all experience details follow the same pattern */
+.experience-detail {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) translateY(100%) !important;
+    width: 80% !important;
+    max-width: 900px !important;
+    max-height: 70vh !important;
+    margin: 0 !important;
+    z-index: 100 !important;
+}
+
+.experience-detail.active {
+    transform: translateX(-50%) translateY(0) !important;
+}
+
+/* Make sure there are no overrides affecting the positioning */
+.tabcontent.experience-detail {
+    position: fixed !important;
+    max-height: 70vh !important;
+}
 @keyframes slideInLeft {
     from {
         opacity: 0;

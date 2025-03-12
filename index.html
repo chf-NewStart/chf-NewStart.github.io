@@ -599,6 +599,22 @@
                 detail.style.display = 'none';
             });
             
+            // After hiding the project detail:
+            document.querySelectorAll('.project-detail').forEach(detail => {
+                detail.classList.remove('active');
+                detail.style.display = 'none';
+            });
+            
+            // Add this to ensure the terminal is properly restored:
+            const terminalContainer = document.querySelector('.terminal-container');
+            if (terminalContainer) {
+                // Force a repaint by toggling a class
+                terminalContainer.classList.add('refreshed');
+                setTimeout(() => {
+                    terminalContainer.classList.remove('refreshed');
+                }, 10);
+            }
+            
             // Show the selected project detail
             const projectDetail = document.getElementById(id);
             if (projectDetail) {

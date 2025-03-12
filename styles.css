@@ -576,6 +576,9 @@ a:hover {
     margin-bottom: 20px;
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
+.terminal-container.refreshed {
+    opacity: 0.99; /* Force a repaint without visible change */
+}
 
 .terminal-header {
     background-color: #333;

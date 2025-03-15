@@ -297,12 +297,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             // Try loading required models - with properly fixed paths
+            // Change this in face-effects.js
             await Promise.all([
-                faceapi.nets.tinyFaceDetector.loadFromUri('./models'),
-                faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
-                faceapi.nets.faceExpressionNet.loadFromUri('./models')
+                faceapi.nets.tinyFaceDetector.loadFromUri('models/tiny_face_detector_model-weights_manifest.json'),
+                faceapi.nets.faceLandmark68Net.loadFromUri('models/face_landmark_68_model-weights_manifest.json'),
+                faceapi.nets.faceExpressionNet.loadFromUri('models/face_expression_model-weights_manifest.json')
             ]);
-            
             // If we reach here, models were loaded successfully
             isFaceDetectionActive = true;
             

@@ -2071,8 +2071,8 @@
                 
                 try {
                     // This is just a placeholder - in a real implementation you'd load TensorFlow.js and face-api.js
-                    // faceDetectionModel = await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-                    // faceDetectionModel = await facemesh.load();
+                    faceDetectionModel = await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+                    faceDetectionModel = await facemesh.load();
                     
                     // Simulate model loading
                     await new Promise(resolve => setTimeout(resolve, 1500));

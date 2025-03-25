@@ -606,7 +606,12 @@
                         <p>Email: <a href="mailto:houfu.chen@mail.utoronto.ca">houfu.chen@mail.utoronto.ca</a></p>
                         <p>GitHub: <a href="https://github.com/chf-NewStart" target="_blank">github.com/chf-NewStart</a></p>
                         <p>LinkedIn: <a href="https://www.linkedin.com/in/houfuchen/" target="_blank">/houfuchen/</a></p>
-                        <p>Resume: <a href="resumes/Houfu_ML_Mar24_f.pdf" target="_blank" data-en="here" data-zh="点击这里">here</a></p> 
+                        <p>
+                            <span data-en="Resume:" data-zh="简历：">Resume:</span> 
+                            <a id="resumeLink" href="resumes/Houfu_ML_Mar24_f.pdf" target="_blank">
+                              <span data-en="here" data-zh="点击这里">here</span>
+                            </a>
+                          </p>
                     </div>
                 </div>
             </section>
@@ -672,6 +677,14 @@
                     }
                 });
                 
+                // Update href attributes for links with language-specific URLs
+                document.querySelectorAll(`[data-${lang}-href]`).forEach(link => {
+                    const href = link.getAttribute(`data-${lang}-href`);
+                    if (href) {
+                        link.setAttribute('href', href);
+                    }
+                });
+                
                 // Update input placeholders
                 document.querySelectorAll(`input[data-${lang}-placeholder]`).forEach(input => {
                     const placeholder = input.getAttribute(`data-${lang}-placeholder`);
@@ -686,7 +699,20 @@
                 console.log('Language applied successfully');
             }
         });
-        
+        function updateResumeLink(lang) {
+            const resumeLink = document.getElementById('resumeLink');
+            if (resumeLink) {
+                if (lang === 'en') {
+                resumeLink.href = 'resumes/Houfu_ML_Mar24_f.pdf';
+                } else {
+                resumeLink.href = 'resumes/陈厚孚最终325.pdf';
+                }
+                console.log('Resume link updated for language:', lang, 'New href:', resumeLink.href);
+            } else {
+                console.error('Resume link element not found');
+            }
+        }
+                    
         // Keep all existing scripts from the original file
         // Define all functions first
         function toggleProject(id) {

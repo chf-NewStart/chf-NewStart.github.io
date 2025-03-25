@@ -599,22 +599,27 @@
 
 
             <!-- Contact Section -->
-            <section id="contact-section" class="scroll-section contact-section">
-                <div class="container">
-                    <h2 class="section-title reveal-content" data-en="Get in Touch" data-zh="联系方式">Get in Touch</h2>
-                    <div class="contact-content reveal-content">
-                        <p>Email: <a href="mailto:houfu.chen@mail.utoronto.ca">houfu.chen@mail.utoronto.ca</a></p>
-                        <p>GitHub: <a href="https://github.com/chf-NewStart" target="_blank">github.com/chf-NewStart</a></p>
-                        <p>LinkedIn: <a href="https://www.linkedin.com/in/houfuchen/" target="_blank">/houfuchen/</a></p>
-                        <p>
-                            <span data-en="Resume:" data-zh="简历：">Resume:</span> 
-                            <a id="resumeLink" href="resumes/Houfu_ML_Mar24_f.pdf" target="_blank">
-                              <span data-en="here" data-zh="点击这里">here</span>
-                            </a>
-                          </p>
-                    </div>
-                </div>
-            </section>
+            <div class="contact-content reveal-content">
+                <!-- Email with separate elements for each language -->
+                <p>
+                    <span data-en="Email:" data-zh="邮箱：">Email:</span>
+                    <a href="mailto:houfu.chen@mail.utoronto.ca" class="lang-en">houfu.chen@mail.utoronto.ca</a>
+                    <a href="mailto:houfuchen0702@qq.com" class="lang-zh" style="display: none;">houfuchen0702@qq.com</a>
+                </p>
+                
+                <p>GitHub: <a href="https://github.com/chf-NewStart" target="_blank">github.com/chf-NewStart</a></p>
+                
+                <p>LinkedIn: <a href="https://www.linkedin.com/in/houfuchen/" target="_blank">/houfuchen/</a></p>
+                
+                <!-- Resume with separate elements for each language -->
+                <p>
+                    <span data-en="Resume:" data-zh="简历：">Resume:</span>
+                    <a href="resumes/Houfu_ML_Mar24_f.pdf" target="_blank" class="lang-en">here</a>
+                    <a href="resumes/陈厚孚最终325.pdf" target="_blank" class="lang-zh" style="display: none;">点击这里</a>
+                </p>
+            </div>
+            
+            
         
     </div>
     <footer>
@@ -661,6 +666,23 @@
                 // Apply the new language
                 applyLanguage(currentLang);
             });
+            function switchLanguageElements(lang) {
+                console.log('Switching language elements to:', lang);
+                
+                // Hide all language-specific elements
+                document.querySelectorAll('.lang-en, .lang-zh').forEach(el => {
+                    el.style.display = 'none';
+                });
+                
+                // Show only elements for the current language
+                document.querySelectorAll(`.lang-${lang}`).forEach(el => {
+                    el.style.display = 'inline';
+                });
+                
+                console.log(`Displayed .lang-${lang} elements`);
+            }
+
+
             
             // Function to apply language to all elements
             function applyLanguage(lang) {
@@ -668,7 +690,8 @@
                 
                 // Update toggle button text
                 languageToggle.textContent = lang === 'en' ? 'EN / 中文' : '中文 / EN';
-                
+                switchLanguageElements(lang);
+
                 // Update all elements with data-en/data-zh attributes
                 document.querySelectorAll(`[data-${lang}]`).forEach(element => {
                     const translatedText = element.getAttribute(`data-${lang}`);

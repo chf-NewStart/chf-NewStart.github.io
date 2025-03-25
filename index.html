@@ -475,10 +475,10 @@
                 <div class="container">
                     <h2 class="section-title reveal-content" data-en="Get in Touch" data-zh="联系方式">Get in Touch</h2>
                     <div class="contact-content reveal-content">
-                        <p data-en="Email:" data-zh="邮箱：">Email: <a href="mailto:houfu.chen@mail.utoronto.ca">houfu.chen@mail.utoronto.ca</a></p>
+                        <p>Email: <a href="mailto:houfu.chen@mail.utoronto.ca">houfu.chen@mail.utoronto.ca</a></p>
                         <p>GitHub: <a href="https://github.com/chf-NewStart" target="_blank">github.com/chf-NewStart</a></p>
                         <p>LinkedIn: <a href="https://www.linkedin.com/in/houfuchen/" target="_blank">/houfuchen/</a></p>
-                        <p data-en="Resume:" data-zh="简历：">Resume: <a href="resumes/Houfu_ML_Mar24_f.pdf" target="_blank" data-en="here" data-zh="点击这里">here</a></p> 
+                        <p>Resume: <a href="resumes/Houfu_ML_Mar24_f.pdf" target="_blank" data-en="here" data-zh="点击这里">here</a></p> 
                     </div>
                 </div>
             </section>
@@ -493,44 +493,69 @@
     <!-- Add JavaScript for language switching -->
     <script>
         // Language toggle functionality
+        // Language switching functionality
         document.addEventListener('DOMContentLoaded', function() {
-            // Set default language from localStorage or use English
-            const currentLang = localStorage.getItem('language') || 'en';
-            setLanguage(currentLang);
+            console.log('DOM loaded, setting up language toggle');
             
-            // Set up language toggle button
+            // Get the language toggle button
             const languageToggle = document.getElementById('languageToggle');
-            if (languageToggle) {
-                languageToggle.addEventListener('click', function() {
-                    const newLang = currentLang === 'en' ? 'zh' : 'en';
-                    setLanguage(newLang);
-                    localStorage.setItem('language', newLang);
-                });
+            
+            if (!languageToggle) {
+                console.error('Language toggle button not found');
+                return;
             }
             
-            // Function to set language
-            function setLanguage(lang) {
-                // Update HTML lang attribute
-                document.documentElement.lang = lang;
+            console.log('Found language toggle button:', languageToggle);
+            
+            // Set default language from localStorage or use English
+            let currentLang = localStorage.getItem('language') || 'en';
+            console.log('Initial language:', currentLang);
+            
+            // Apply the current language immediately
+            applyLanguage(currentLang);
+            
+            // Add click event listener to language toggle button
+            languageToggle.addEventListener('click', function() {
+                console.log('Language toggle clicked');
+                
+                // Toggle between English and Chinese
+                currentLang = currentLang === 'en' ? 'zh' : 'en';
+                console.log('Switching to language:', currentLang);
+                
+                // Save language preference to localStorage
+                localStorage.setItem('language', currentLang);
+                
+                // Apply the new language
+                applyLanguage(currentLang);
+            });
+            
+            // Function to apply language to all elements
+            function applyLanguage(lang) {
+                console.log('Applying language:', lang);
                 
                 // Update toggle button text
                 languageToggle.textContent = lang === 'en' ? 'EN / 中文' : '中文 / EN';
                 
                 // Update all elements with data-en/data-zh attributes
-                document.querySelectorAll('[data-' + lang + ']').forEach(element => {
-                    // Only update if the element has content (not for attributes)
-                    if (element.hasAttribute('data-' + lang)) {
-                        element.textContent = element.getAttribute('data-' + lang);
+                document.querySelectorAll(`[data-${lang}]`).forEach(element => {
+                    const translatedText = element.getAttribute(`data-${lang}`);
+                    if (translatedText) {
+                        element.textContent = translatedText;
                     }
                 });
                 
                 // Update input placeholders
-                document.querySelectorAll('input[data-' + lang + '-placeholder]').forEach(input => {
-                    input.placeholder = input.getAttribute('data-' + lang + '-placeholder');
+                document.querySelectorAll(`input[data-${lang}-placeholder]`).forEach(input => {
+                    const placeholder = input.getAttribute(`data-${lang}-placeholder`);
+                    if (placeholder) {
+                        input.placeholder = placeholder;
+                    }
                 });
                 
-                // Set current language for future reference
-                document.documentElement.setAttribute('data-language', lang);
+                // Set language attribute on html element
+                document.documentElement.lang = lang;
+                
+                console.log('Language applied successfully');
             }
         });
         

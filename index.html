@@ -609,7 +609,7 @@
                         <div class="card-header">
                             <div class="profile-initial">HC</div>
                             <div class="card-name" data-en="Houfu Chen" data-zh="陈厚孚">Houfu Chen</div>
-                            <div class="card-title" data-en="ML Enthusiast & Developer" data-zh="机器学习爱好者 & 测试开发者">ML Enthusiast & QA-Developer</div>
+                            <div class="card-title" data-en="ML Enthusiast & QA-Developer" data-zh="机器学习爱好者 & 测试开发者">ML Enthusiast & QA-Developer</div>
                         </div>
                         
                         <div class="card-body">
@@ -661,11 +661,19 @@
                         
                         <div class="card-footer">
                             <div class="card-qr-code">
-                                <!-- Real WeChat QR Code Image -->
-                                <div class="qr-image-container">
+                                <!-- Language-specific QR Codes -->
+                                <div class="qr-image-container lang-zh" style="display: none;">
                                     <img src="resumes/wechatQR.jpg" alt="WeChat QR Code" class="qr-image">
                                 </div>
-                                <div class="qr-text" data-en="Scan to connect" data-zh="扫描以连接">Scan to connect</div>
+                                
+                                <!-- LinkedIn QR for English users -->
+                                <div class="qr-image-container lang-en">
+                                    <img src="resumes/linkedinQR.jpg" alt="LinkedIn QR Code" class="qr-image">
+                                </div>
+                                
+                                <!-- Language-specific text -->
+                                <div class="qr-text lang-zh" style="display: none;" data-zh="扫描以连接微信">扫描以连接微信</div>
+                                <div class="qr-text lang-en" data-en="Connect on LinkedIn">Connect on LinkedIn</div>
                             </div>
                         </div>
                     </div>

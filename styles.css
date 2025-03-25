@@ -1405,8 +1405,8 @@ footer {
 }
 
 .qr-image-container {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     margin-bottom: 10px;
     border-radius: 8px;
     overflow: hidden;

@@ -1404,6 +1404,16 @@ footer {
     justify-content: center;
 }
 
+.restaurant-travel{
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    color: #ccc; /* optional for muted tone */
+    display: flex;
+    align-items: center;
+    gap: 0.3rem; /* spacing between emoji/text if needed */  
+}
+
 .qr-image-container {
     width: 150px;
     height: 150px;

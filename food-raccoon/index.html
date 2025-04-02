@@ -250,6 +250,17 @@
                     </div>
                     
                     <div class="form-group">
+                        <label for="travelMode">Mode of transport</label>
+                        <select id="travelMode">
+                          <option value="walking">🚶 Walking</option>
+                          <option value="transit">🚌 Transit</option>
+                          <option value="driving">🚗 Driving</option>
+                          <option value="bicycling">🚴 Biking</option>
+                        </select>
+                      </div>
+                      
+                    
+                    <div class="form-group">
                         <label for="travelTime">Maximum travel time (in minutes)</label>
                         <input type="text" id="travelTime" placeholder="e.g., 10 for 10 mins, default is 15 mins" min="1" max="60">
                       </div>
@@ -315,7 +326,7 @@
                 
                 try {
                     const travelTime = document.getElementById('travelTime').value.trim();
-
+                    const travelMode = document.getElementById('travelMode').value;
 
 
                     // Make API request
@@ -327,7 +338,8 @@
                         body: JSON.stringify({
                             preference: preference,
                             location: location,
-                            travel_time: travelTime // <--- send this to Lambda
+                            travel_time: travelTime, 
+                            travel_mode: travelMode
                             })
                     });
                     

@@ -249,6 +249,12 @@
                         <input type="text" id="location" placeholder="e.g, Toronto; or getting specific: 11 St.Joseph Street, Toronto">
                     </div>
                     
+                    <div class="form-group">
+                        <label for="travelTime">Maximum travel time (in minutes)</label>
+                        <input type="text" id="travelTime" placeholder="e.g., 10 for 10 mins, default is 15 mins" min="1" max="60">
+                      </div>
+                      
+
                     <button id="submitBtn" class="submit-btn">Find Restaurants</button>
                     
                     <div class="error-message" id="errorMessage"></div>
@@ -308,6 +314,10 @@
                 loading.style.display = 'block';
                 
                 try {
+                    const travelTime = document.getElementById('travelTime').value.trim();
+
+
+
                     // Make API request
                     const response = await fetch(API_URL, {
                         method: 'POST',
@@ -316,8 +326,9 @@
                         },
                         body: JSON.stringify({
                             preference: preference,
-                            location: location
-                        })
+                            location: location,
+                            travel_time: travelTime // <--- send this to Lambda
+                            })
                     });
                     
                     // Get the response as JSON

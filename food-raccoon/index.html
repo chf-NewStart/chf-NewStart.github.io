@@ -426,20 +426,40 @@
                     <div class="restaurant-info">
                         <h3 class="restaurant-name">${restaurant.Name}</h3>
                         <div class="restaurant-rating">
-                            <span class="stars">${starsHTML}</span>
-                            <span>${rating.toFixed(1)} (${restaurant.Reviews} reviews)</span>
+                        <span class="stars">${starsHTML}</span>
+                        <span>${rating.toFixed(1)} (${restaurant.Reviews} reviews)</span>
                         </div>
                         ${restaurant.Categories ? `<div class="restaurant-categories">${restaurant.Categories}</div>` : ''}
                         <div class="restaurant-address">${restaurant.Address}</div>
+
+                        ${restaurant.TravelTime && restaurant.TravelMode ? `
+                        <div class="restaurant-travel">
+                            <span>🕒 ${restaurant.TravelTime} by ${formatTravelMode(restaurant.TravelMode)}</span>
+                        </div>
+                        ` : ''}
+
                         <div class="restaurant-link">
-                            <a href="${link}" target="_blank">View Details</a>
+                        <a href="${link}" target="_blank">View Details</a>
                         </div>
                     </div>
-                `;
+                    `;
+
                 
                 return card;
             }
             
+            function formatTravelMode(mode) {
+                switch (mode) {
+                    case 'walking': return 'walking 🚶';
+                    case 'transit': return 'transit 🚌';
+                    case 'driving': return 'driving 🚗';
+                    case 'bicycling': return 'biking 🚴';
+                    default: return mode;
+                }
+                }
+
+            
+
             // Generate stars for rating
             function generateStars(rating) {
                 const fullStars = Math.floor(rating);

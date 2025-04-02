@@ -387,10 +387,13 @@
                 // Get current language
                 const currentLang = localStorage.getItem('language') || 'en';
                 const preferenceInput = document.getElementById("preference").value;
+                console.log('preferenceInput: ', preferenceInput)
+                console.log('preference: ', preference)
+
 
                 // Display refined query
                 if (currentLang === 'en') {
-                    refinedQuery.innerHTML = `<p>Based on your preferences: ${preferenceInput}, I found these restaurants: <strong>${data.refined_query}</strong></p>, what do you think?`;
+                    refinedQuery.innerHTML = `<p>Based on your preferences: ${preference}, I found these restaurants: <strong>${data.refined_query}</strong></p>, what do you think?`;
                 } else {
                     refinedQuery.innerHTML = `<p>根据您的偏好，我们找到了这些餐厅: <strong>${data.refined_query}</strong></p>`;
                 }

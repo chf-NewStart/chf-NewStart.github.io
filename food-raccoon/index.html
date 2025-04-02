@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Houfu Chen - Food Recommendation System">
+    <meta name="keywords" content="Food Recommendation, ML, Houfu Chen">
+    <meta name="author" content="Houfu Chen">
+    <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+    <link rel="stylesheet" href="../styles.css">
+    <title>Food Raccoon - What Should I Eat Tonight?</title>
+    <style>
+        .food-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .food-form {
+            background-color: rgba(37, 37, 38, 0.5);
+            padding: 2rem;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border-left: 4px solid #1db954;
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #1db954;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            background-color: rgba(35, 35, 35, 0.8);
+            border: 1px solid #333;
+            border-radius: 5px;
+            color: #ffffff;
+            font-family: Consolas, monospace;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #1db954;
+            box-shadow: 0 0 5px rgba(29, 185, 84, 0.5);
+        }
+        
+        .submit-btn {
+            background: linear-gradient(90deg, #007acc, #1db954);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border: none;
+            cursor: pointer;
+            display: block;
+            margin: 0 auto;
+            font-family: Consolas, monospace;
+            font-size: 1rem;
+        }
+        
+        .error-message {
+            background-color: rgba(255, 99, 71, 0.1);
+            color: tomato;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            margin: 2rem 0;
+            display: none;
+        }
+        
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #1db954;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .refined-query {
+            background-color: rgba(29, 185, 84, 0.1);
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1.5rem;
+            border-left: 3px solid #1db954;
+        }
+        
+        .restaurant-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .restaurant-card {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border-left: 2px solid transparent;
+        }
+        
+        .restaurant-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            border-left-color: #1db954;
+        }
+        
+        .restaurant-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: #333;
+        }
+        
+        .placeholder-image {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+        
+        .restaurant-info {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .restaurant-name {
+            color: #1db954;
+            font-size: 1.2rem;
+            margin: 0 0 0.75rem 0;
+        }
+        
+        .restaurant-rating {
+            margin-bottom: 1rem;
+        }
+        
+        .stars {
+            color: #ffbd2e;
+            margin-right: 0.5rem;
+        }
+        
+        .restaurant-categories, .restaurant-address {
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+        
+        .restaurant-link {
+            margin-top: auto;
+            text-align: center;
+        }
+        
+        .restaurant-link a {
+            display: inline-block;
+            color: #1db954;
+            text-decoration: none;
+            border: 1px solid #1db954;
+            padding: 8px 15px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .restaurant-link a:hover {
+            background-color: #1db954;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .reset-btn {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto 0;
+            transition: background-color 0.3s ease;
+        }
+        
+        .reset-btn:hover {
+            background-color: #444;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation from your existing website -->
+    <nav class="sticky-nav">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">HC</div>
+                <div class="nav-links">
+                    <a href="../index.html#hero-section">Home</a>
+                    <a href="../index.html#about-section">About</a>
+                    <a href="../index.html#skills-section">Skills</a>
+                    <a href="../index.html#experience-section">Experience</a>
+                    <a href="../index.html#projects-section">Projects</a>
+                    <a href="../index.html#contact-section">Contact</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="scroll-container">
+        <section class="scroll-section">
+            <div class="container food-container">
+                <h2 class="section-title">What should I eat tonight...?</h2>
+                
+                <div class="food-form" id="foodForm">
+                    <div class="form-group">
+                        <label for="preference">What kind of flavor or taste are you craving?</label>
+                        <input type="text" id="preference" placeholder="e.g., something spicy, comfort food, healthy options...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="location">Your location (optional)</label>
+                        <input type="text" id="location" placeholder="We'll detect your location if left empty">
+                    </div>
+                    
+                    <button id="submitBtn" class="submit-btn">Find Restaurants</button>
+                    
+                    <div class="error-message" id="errorMessage"></div>
+                </div>
+                
+                <div class="loading" id="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Finding the perfect restaurants for you...</p>
+                </div>
+                
+                <div class="results" id="results">
+                    <div class="refined-query" id="refinedQuery"></div>
+                    
+                    <div class="restaurant-grid" id="recommendations"></div>
+                    
+                    <button id="resetBtn" class="reset-btn">Search Again</button>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <footer>
+        <p style="font-family: Consolas, monospace; color: #1db954;">
+            >_ Thank you for visiting! | &copy; 2025 Houfu Chen
+        </p>
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const preferenceInput = document.getElementById('preference');
+            const locationInput = document.getElementById('location');
+            const submitBtn = document.getElementById('submitBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const refinedQuery = document.getElementById('refinedQuery');
+            const recommendations = document.getElementById('recommendations');
+            
+            // Replace with your API Gateway URL
+            const API_URL = 'https://nsbg2x7a01.execute-api.us-east-2.amazonaws.com/prod';
+            
+            // Handle form submission
+            submitBtn.addEventListener('click', async function() {
+                const preference = preferenceInput.value.trim();
+                const location = locationInput.value.trim();
+                
+                // Validate input
+                if (!preference) {
+                    showError('Please enter what kind of food you are craving');
+                    return;
+                }
+                
+                // Hide error message, show loading
+                errorMessage.style.display = 'none';
+                foodForm.style.display = 'none';
+                loading.style.display = 'block';
+                
+                try {
+                    // Make API request
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            preference: preference,
+                            location: location
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to get recommendations');
+                    }
+                    
+                    // Process and display results
+                    displayResults(data);
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    showError('Something went wrong. Please try again later.');
+                    loading.style.display = 'none';
+                    foodForm.style.display = 'block';
+                }
+            });
+            
+            // Reset search
+            resetBtn.addEventListener('click', function() {
+                results.style.display = 'none';
+                foodForm.style.display = 'block';
+                preferenceInput.value = '';
+                locationInput.value = '';
+            });
+            
+            // Display error message
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            }
+            
+            // Display results
+            function displayResults(data) {
+                // Hide loading, show results
+                loading.style.display = 'none';
+                results.style.display = 'block';
+                
+                // Display refined query
+                refinedQuery.innerHTML = `<p>Based on your preferences, we found these restaurants for: <strong>${data.refined_query}</strong></p>`;
+                
+                // Clear previous recommendations
+                recommendations.innerHTML = '';
+                
+                // Add restaurant cards
+                if (data.recommendations.length === 0) {
+                    recommendations.innerHTML = '<p>No restaurants found. Please try a different preference or location.</p>';
+                } else {
+                    data.recommendations.forEach(restaurant => {
+                        const card = createRestaurantCard(restaurant);
+                        recommendations.appendChild(card);
+                    });
+                }
+            }
+            
+            // Create restaurant card
+            function createRestaurantCard(restaurant) {
+                const card = document.createElement('div');
+                card.className = 'restaurant-card';
+                
+                // Generate stars based on rating
+                const rating = parseFloat(restaurant.Rating) || 0;
+                const starsHTML = generateStars(rating);
+                
+                // Create link (prefer Yelp over Google Maps)
+                const link = restaurant.URL || restaurant['Google Maps URL'] || '#';
+                
+                // Image HTML
+                let imageHTML;
+                if (restaurant.Image) {
+                    imageHTML = `<img src="${restaurant.Image}" alt="${restaurant.Name}" class="restaurant-image">`;
+                } else {
+                    imageHTML = `<div class="restaurant-image placeholder-image">🍽️</div>`;
+                }
+                
+                card.innerHTML = `
+                    ${imageHTML}
+                    <div class="restaurant-info">
+                        <h3 class="restaurant-name">${restaurant.Name}</h3>
+                        <div class="restaurant-rating">
+                            <span class="stars">${starsHTML}</span>
+                            <span>${rating.toFixed(1)} (${restaurant.Reviews} reviews)</span>
+                        </div>
+                        ${restaurant.Categories ? `<div class="restaurant-categories">${restaurant.Categories}</div>` : ''}
+                        <div class="restaurant-address">${restaurant.Address}</div>
+                        <div class="restaurant-link">
+                            <a href="${link}" target="_blank">View Details</a>
+                        </div>
+                    </div>
+                `;
+                
+                return card;
+            }
+            
+            // Generate stars for rating
+            function generateStars(rating) {
+                const fullStars = Math.floor(rating);
+                const halfStar = rating - fullStars >= 0.5;
+                const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+                
+                let starsHTML = '';
+                for (let i = 0; i < fullStars; i++) {
+                    starsHTML += '★';
+                }
+                
+                if (halfStar) {
+                    starsHTML += '☆';
+                }
+                
+                for (let i = 0; i < emptyStars; i++) {
+                    starsHTML += '☆';
+                }
+                
+                return starsHTML;
+            }
+        });
+    </script>
+</body>
+</html>

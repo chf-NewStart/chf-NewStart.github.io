@@ -320,7 +320,11 @@
                         })
                     });
                     
-                    const data = await response.json();
+                    // Get the response as JSON
+                    const responseData = await response.json();
+                    
+                    // Parse the nested JSON string in the body
+                    const data = JSON.parse(responseData.body);
                     
                     if (!data.success) {
                         throw new Error(data.error || 'Failed to get recommendations');

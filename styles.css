@@ -1414,6 +1414,29 @@ footer {
     gap: 0.3rem; /* spacing between emoji/text if needed */  
 }
 
+#travelMode {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    border: 1px solid #4caf50;
+    border-radius: 5px;
+    padding: 6px 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.3s ease;
+  }
+  
+  #travelMode:focus {
+    border-color: #66ff99;
+  }
+  
+  #travelMode:hover {
+    border-color: #66ff99;
+    box-shadow: 0 0 5px #66ff99;
+  }
+  
+  
+
 .qr-image-container {
     width: 150px;
     height: 150px;

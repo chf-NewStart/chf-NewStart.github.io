@@ -288,7 +288,7 @@
                         <input type="range" id="weightRating" name="weightRating" min="0" max="5" step="0.1" value="2">
                         <span id="ratingDisplay">2</span>
                       
-                        <label for="weightReviews">Reviews importance</label>
+                        <label for="weightReviews">Number of Reviews importance</label>
                         <input type="range" id="weightReviews" name="weightReviews" min="0" max="5" step="0.1" value="0.001">
                         <span id="reviewsDisplay">0.001</span>
                       
@@ -343,63 +343,63 @@
             const API_URL = 'https://nsbg2x7a01.execute-api.us-east-2.amazonaws.com/prod/recommendations';
             
             // Handle form submission
-            submitBtn.addEventListener('click', async function() {
-                const preference = preferenceInput.value.trim();
-                const location = locationInput.value.trim();
+            // submitBtn.addEventListener('click', async function() {
+            //     const preference = preferenceInput.value.trim();
+            //     const location = locationInput.value.trim();
                 
-                // Validate input
-                // if (!preference) {
-                //     showError('Please enter what kind of food you are craving');
-                //     return;
-                // }
+            //     // Validate input
+            //     // if (!preference) {
+            //     //     showError('Please enter what kind of food you are craving');
+            //     //     return;
+            //     // }
                 
-                // Hide error message, show loading
-                errorMessage.style.display = 'none';
-                foodForm.style.display = 'none';
-                loading.style.display = 'block';
+            //     // Hide error message, show loading
+            //     errorMessage.style.display = 'none';
+            //     foodForm.style.display = 'none';
+            //     loading.style.display = 'block';
                 
-                try {
-                    const travelTime = document.getElementById('travelTime').value.trim();
-                    const travelMode = document.getElementById('travelMode').value;
-                    const maxPrice = document.getElementById("maxPrice").value;
+            //     try {
+            //         const travelTime = document.getElementById('travelTime').value.trim();
+            //         const travelMode = document.getElementById('travelMode').value;
+            //         const maxPrice = document.getElementById("maxPrice").value;
 
 
-                    // Make API request
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            preference: preference,
-                            location: location,
-                            travel_time: travelTime, 
-                            travel_mode: travelMode,
-                            max_price: maxPrice,
-                            weights: weights  
-                            })
-                    });
+            //         // Make API request
+            //         const response = await fetch(API_URL, {
+            //             method: 'POST',
+            //             headers: {
+            //                 'Content-Type': 'application/json'
+            //             },
+            //             body: JSON.stringify({
+            //                 preference: preference,
+            //                 location: location,
+            //                 travel_time: travelTime, 
+            //                 travel_mode: travelMode,
+            //                 max_price: maxPrice,
+            //                 weights: weights  
+            //                 })
+            //         });
                     
-                    // Get the response as JSON
-                    const responseData = await response.json();
+            //         // Get the response as JSON
+            //         const responseData = await response.json();
                     
-                    // Parse the nested JSON string in the body
-                    const data = JSON.parse(responseData.body);
+            //         // Parse the nested JSON string in the body
+            //         const data = JSON.parse(responseData.body);
                     
-                    if (!data.success) {
-                        throw new Error(data.error || 'Failed to get recommendations');
-                    }
+            //         if (!data.success) {
+            //             throw new Error(data.error || 'Failed to get recommendations');
+            //         }
                     
-                    // Process and display results
-                    displayResults(data);
+            //         // Process and display results
+            //         displayResults(data);
                     
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError('Something went wrong. Please try again later.');
-                    loading.style.display = 'none';
-                    foodForm.style.display = 'block';
-                }
-            });
+            //     } catch (error) {
+            //         console.error('Error:', error);
+            //         showError('Something went wrong. Please try again later.');
+            //         loading.style.display = 'none';
+            //         foodForm.style.display = 'block';
+            //     }
+            // });
             
             // Reset search
             resetBtn.addEventListener('click', function() {
@@ -522,6 +522,14 @@
                 const advanced = document.getElementById("advancedSettings");
                 advanced.style.display = this.checked ? "block" : "none";
             });
+            submitBtn.addEventListener('click', async function () {
+            const preference = preferenceInput.value.trim();
+            const location = locationInput.value.trim();
+            const travelTime = document.getElementById('travelTime').value.trim();
+            const travelMode = document.getElementById('travelMode').value;
+            const maxPrice = document.getElementById("maxPrice").value;
+
+            // ✅ Capture weights correctly
             const weights = document.getElementById("toggleAdvanced").checked
             ? {
                 rating: parseFloat(document.getElementById("weightRating").value),
@@ -529,6 +537,57 @@
                 price: parseFloat(document.getElementById("weightPrice").value),
                 }
             : null;
+
+            errorMessage.style.display = 'none';
+            foodForm.style.display = 'none';
+            loading.style.display = 'block';
+
+            try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                preference,
+                location,
+                travel_time: travelTime,
+                travel_mode: travelMode,
+                max_price: maxPrice,
+                weights // ← use this weights object!
+                })
+            });
+
+            const responseData = await response.json();
+            const data = JSON.parse(responseData.body);
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to get recommendations');
+            }
+
+            displayResults(data);
+
+            } catch (error) {
+            console.error('Error:', error);
+            showError('Something went wrong. Please try again later.');
+            loading.style.display = 'none';
+            foodForm.style.display = 'block';
+            }
+        });
+
+
+
+
+            document.getElementById("weightRating").addEventListener("input", function () {
+            document.getElementById("ratingDisplay").textContent = this.value;
+            });
+            document.getElementById("weightReviews").addEventListener("input", function () {
+            document.getElementById("reviewsDisplay").textContent = this.value;
+            });
+            document.getElementById("weightPrice").addEventListener("input", function () {
+            document.getElementById("priceDisplay").textContent = this.value;
+            });
+
 
 
 

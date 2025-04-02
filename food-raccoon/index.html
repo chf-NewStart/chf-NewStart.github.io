@@ -259,6 +259,17 @@
                         </select>
                       </div>
                       
+                      <div class="form-group">
+                        <label for="maxPrice">Max Price</label>
+                        <select id="maxPrice">
+                          <option value="">No limit</option>
+                          <option value="$">$ (Cheap)</option>
+                          <option value="$$">$$ (Moderate)</option>
+                          <option value="$$$">$$$ (Expensive)</option>
+                          <option value="$$$$">$$$$ (Very Expensive)</option>
+                        </select>
+                      </div>
+                      
                     
                     <div class="form-group">
                         <label for="travelTime">Maximum travel time (in minutes)</label>
@@ -327,6 +338,7 @@
                 try {
                     const travelTime = document.getElementById('travelTime').value.trim();
                     const travelMode = document.getElementById('travelMode').value;
+                    const maxPrice = document.getElementById("maxPrice").value;
 
 
                     // Make API request
@@ -339,7 +351,8 @@
                             preference: preference,
                             location: location,
                             travel_time: travelTime, 
-                            travel_mode: travelMode
+                            travel_mode: travelMode,
+                            max_price: maxPrice  
                             })
                     });
                     
@@ -438,8 +451,6 @@
                         </div>
                         ` : ''}
                         ${restaurant.Price ? `<div class="restaurant-price">${restaurant.Price}</div>` : ''}
-
-
                         <div class="restaurant-link">
                         <a href="${link}" target="_blank">View Details</a>
                         </div>

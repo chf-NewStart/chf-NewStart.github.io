@@ -390,12 +390,7 @@
 
                 // Display refined query
                 if (currentLang === 'en') {
-                    refinedQuery.innerHTML = `
-                    <p>Based on your preferences: 
-                        <span style="font-weight: 600;">${escapeHtml(preferenceInput)}</span>, 
-                        I found these restaurants for: 
-                        <strong>${escapeHtml(data.refined_query)}</strong>
-                    </p>`;
+                    refinedQuery.innerHTML = `<p>Based on your preferences: ${data.preferenceInput}, I found these restaurants: <strong>${data.refined_query}</strong></p>, what do you think?`;
                 } else {
                     refinedQuery.innerHTML = `<p>根据您的偏好，我们找到了这些餐厅: <strong>${data.refined_query}</strong></p>`;
                 }

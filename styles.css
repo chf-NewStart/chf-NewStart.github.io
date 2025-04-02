@@ -1414,7 +1414,15 @@ footer {
     gap: 0.3rem; /* spacing between emoji/text if needed */  
 }
 
+select {
+    min-width: 200px;
+    width: auto;
+  }
+  
+
 #travelMode {
+    width: 100%;
+    max-width: 250px; /* Or whatever width looks clean in your layout */
     background-color: #1e1e1e;
     color: #e0e0e0;
     border: 1px solid #4caf50;
@@ -1436,6 +1444,8 @@ footer {
   }
 
   #maxPrice {
+    width: 100%;
+    max-width: 250px; /* Or whatever width looks clean in your layout */
     background-color: #1e1e1e;
     color: #e0e0e0;
     border: 1px solid #4caf50;

@@ -389,9 +389,9 @@
 
                 // Display refined query
                 if (currentLang === 'en') {
-                    refinedQuery.innerHTML = `<p>Based on your preferences: ${preference}, I found these restaurants: <strong>${data.refined_query}</strong>, what do you think? </p>`;
+                    refinedQuery.innerHTML = `<p>Based on your inputs, I found these restaurants: <strong>${data.refined_query}</strong>, what do you think? </p>`;
                 } else {
-                    refinedQuery.innerHTML = `<p>根据您的偏好 ${preference}，我们找到了这些餐厅: <strong>${data.refined_query}</strong></p>`;
+                    refinedQuery.innerHTML = `<p>根据您的偏好，我们找到了这些餐厅: <strong>${data.refined_query}</strong></p>`;
                 }
                 
                 // Clear previous recommendations

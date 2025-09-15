@@ -383,7 +383,7 @@
                 this.phase = 'setup';                 // 'setup' | 'play' | 'gameover'
                 this.selectedTool = null;             // which symbol is selected to place
                 // Hunter's toolbox: change counts as you like
-                this.toolbox = { 'XX':2, '■':2, '☆':1, '✦':2, '△':1, '+':1 };
+                this.toolbox = { 'XX':1, '■':1, '☆':1, '✦':1, '△':1, '+':1 };
 
                 this.frozenDoors = new Set();     // keys of doors that cannot change
                 this.stunHunter = 0;              // >0 means hunter's next turn(s) skipped
@@ -473,6 +473,46 @@
                 this.render();          // just render the empty board now
                 this.updateSetupUI();   // show remaining counts, enable tools
             }
+
+            randomizeTools() {
+            if (this.phase !== 'setup') return;
+
+            // collect all placeable cells (not start and not exit, and empty)
+            const slots = [];
+            for (let y = 0; y < 4; y++) {
+                for (let x = 0; x < 4; x++) {
+                if ((x === 0 && y === 0) || (x === 3 && y === 3)) continue; // no start/exit
+                if (!this.grid[y][x].symbol) slots.push({x, y});
+                }
+            }
+
+            // Fisher–Yates shuffle to randomize slot order
+            for (let i = slots.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [slots[i], slots[j]] = [slots[j], slots[i]];
+            }
+
+            // flatten toolbox into a list of symbols to place
+            const pile = [];
+            for (const [sym, count] of Object.entries(this.toolbox)) {
+                for (let i = 0; i < count; i++) pile.push(sym);
+            }
+
+            // place as many as we can
+            let placed = 0;
+            while (pile.length && slots.length) {
+                const sym = pile.pop();       // take one symbol
+                const slot = slots.pop();     // take one random slot
+                this.grid[slot.y][slot.x].symbol = sym;
+                this.toolbox[sym] -= 1;
+                placed++;
+            }
+
+            this.log(`随机布置完成：放置了 ${placed} 个道具`);
+            this.render();
+            this.updateSetupUI();
+            }
+
 
             setDirection(dir) {
                 this.selectedDir = dir; // remember user’s selection
@@ -1351,6 +1391,7 @@
         function autoPlay() {
             if (!game) return;
             if (game.phase !== 'play') {
+                game.randomizeTools();  // ⬅️ scatter tools
                 game.finishSetup(); // auto-start if still in setup
             }
             

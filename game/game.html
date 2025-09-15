@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4x4 Grid Escape Game</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #764ba2;
+            margin-bottom: 20px;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 120px);
+            grid-template-rows: repeat(4, 120px);
+            gap: 2px;
+            background: #333;
+            padding: 2px;
+            margin: 20px auto;
+            width: fit-content;
+            position: relative;
+        }
+        
+        .cell {
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .cell.exit {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+        }
+        
+        .cell-symbol {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .unit {
+            margin: 2px;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .participant {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .hunter {
+            background: #f44336;
+            color: white;
+        }
+        
+        .door {
+            position: absolute;
+            background: #666;
+            font-size: 10px;
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+            z-index: 10;
+        }
+        
+        .door-horizontal {
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            text-align: center;
+        }
+        
+        .door-vertical {
+            top: 50%;
+            transform: translateY(-50%);
+            height: 40px;
+            writing-mode: vertical-lr;
+            text-align: center;
+        }
+        
+        .door-top {
+            top: -15px;
+        }
+        
+        .door-bottom {
+            bottom: -15px;
+        }
+        
+        .door-left {
+            left: -15px;
+        }
+        
+        .door-right {
+            right: -15px;
+        }
+        
+        .door.open {
+            background: #4CAF50;
+        }
+        
+        .door.closed {
+            background: #FF9800;
+        }
+        
+        .door.locked {
+            background: #f44336;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        
+        .control-group {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            flex: 1;
+            max-width: 300px;
+        }
+        
+        .control-group h3 {
+            margin-top: 0;
+            color: #764ba2;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.3);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .turn-indicator {
+            font-size: 18px;
+            font-weight: bold;
+            color: #764ba2;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .unit-status {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .unit-card {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            min-width: 150px;
+        }
+        
+        .unit-card.active {
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+        
+        .hp-bar {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .winner {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        .winner.participants {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: white;
+        }
+        
+        .winner.hunter {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            background: white;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎮 4x4 Grid Escape Game 🎮</h1>
+        
+        <div class="turn-indicator" id="turnIndicator">Game Not Started</div>
+        
+        <div class="game-board" id="gameBoard"></div>
+        
+        <div class="unit-status" id="unitStatus"></div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>Game Controls</h3>
+                <button onclick="initGame()">New Game</button>
+                <button onclick="autoPlay()" id="autoPlayBtn">Auto Play</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>Current Unit Actions</h3>
+                <div class="action-buttons" id="actionButtons">
+                    <button onclick="moveUnit('up')" id="moveUpBtn">↑ Move Up</button>
+                    <button onclick="moveUnit('down')" id="moveDownBtn">↓ Move Down</button>
+                    <button onclick="moveUnit('left')" id="moveLeftBtn">← Move Left</button>
+                    <button onclick="moveUnit('right')" id="moveRightBtn">→ Move Right</button>
+                    <button onclick="attackAction()" id="attackBtn">⚔️ Attack</button>
+                    <button onclick="unlockDoor()" id="unlockBtn">🔓 Unlock</button>
+                    <button onclick="openDoor()" id="openBtn">📂 Open</button>
+                    <button onclick="endTurn()" id="endTurnBtn">⏭️ End Turn</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status">
+            <h3>Game Log</h3>
+            <div class="log" id="gameLog"></div>
+        </div>
+        
+        <div id="winnerDisplay"></div>
+    </div>
+
+    <script>
+        class GameEngine {
+            constructor() {
+                this.grid = Array(4).fill().map(() => Array(4).fill().map(() => ({
+                    units: [],
+                    symbol: null,
+                    isExit: false
+                })));
+                
+                this.participants = [];
+                this.hunter = null;
+                this.doors = new Map(); // Key: "x1,y1-x2,y2", Value: state
+                this.currentTurn = 0;
+                this.currentUnitIndex = 0;
+                this.gameOver = false;
+                this.winner = null;
+                this.actionLog = [];
+                this.autoPlayInterval = null;
+            }
+            
+            init() {
+                // Reset game state
+                this.grid = Array(4).fill().map(() => Array(4).fill().map(() => ({
+                    units: [],
+                    symbol: null,
+                    isExit: false
+                })));
+                
+                // Create participants
+                this.participants = [
+                    { id: 'P1', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1 },
+                    { id: 'P2', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1 },
+                    { id: 'P3', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1 },
+                    { id: 'P4', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1 }
+                ];
+                
+                // Create hunter
+                this.hunter = { id: 'H', type: 'hunter', hp: 16, maxHp: 16, x: 0, y: 0, actions: 3, maxActions: 3 };
+                
+                // Place units on grid
+                this.participants.forEach(p => {
+                    this.grid[p.y][p.x].units.push(p);
+                });
+                this.grid[this.hunter.y][this.hunter.x].units.push(this.hunter);
+                
+                // Set exit
+                this.grid[3][3].isExit = true;
+                
+                // Set symbols (examples)
+                this.grid[2][2].symbol = 'XX'; // Damage
+                this.grid[1][3].symbol = '✦'; // Extra action
+                this.grid[2][0].symbol = '☆'; // Instant death
+                
+                // Initialize ALL doors between adjacent cells (all start as closed)
+                // Horizontal connections (left-right)
+                this.doors.set('0,0-1,0', 'locked');
+                this.doors.set('1,0-2,0', 'locked');
+                this.doors.set('2,0-3,0', 'locked');
+                this.doors.set('0,1-1,1', 'locked');
+                this.doors.set('1,1-2,1', 'locked');
+                this.doors.set('2,1-3,1', 'locked');
+                this.doors.set('0,2-1,2', 'locked');
+                this.doors.set('1,2-2,2', 'locked');
+                this.doors.set('2,2-3,2', 'locked');
+                this.doors.set('0,3-1,3', 'locked');
+                this.doors.set('1,3-2,3', 'locked');
+                this.doors.set('2,3-3,3', 'locked');
+                
+                // Vertical connections (up-down)
+                this.doors.set('0,0-0,1', 'locked');
+                this.doors.set('0,1-0,2', 'locked');
+                this.doors.set('0,2-0,3', 'locked');
+                this.doors.set('1,0-1,1', 'locked');
+                this.doors.set('1,1-1,2', 'locked');
+                this.doors.set('1,2-1,3', 'locked');
+                this.doors.set('2,0-2,1', 'locked');
+                this.doors.set('2,1-2,2', 'locked');
+                this.doors.set('2,2-2,3', 'locked');
+                this.doors.set('3,0-3,1', 'locked');
+                this.doors.set('3,1-3,2', 'locked');
+                this.doors.set('3,2-3,3', 'locked');
+                
+                this.currentTurn = 0;
+                this.currentUnitIndex = 0;
+                this.gameOver = false;
+                this.winner = null;
+                this.actionLog = [];
+                
+                this.log("Game initialized!");
+                this.startTurn();
+            }
+            
+            startTurn() {
+                if (this.gameOver) return;
+                
+                let currentUnit = this.getCurrentUnit();
+                if (currentUnit) {
+                    currentUnit.actions = currentUnit.maxActions;
+                    this.log(`${currentUnit.id}'s turn started (${currentUnit.actions} actions)`);
+                }
+                
+                this.render();
+            }
+            
+            getCurrentUnit() {
+                if (this.currentUnitIndex < this.participants.length) {
+                    return this.participants.find(p => p.hp > 0 && this.participants.indexOf(p) === this.currentUnitIndex);
+                } else if (this.currentUnitIndex === this.participants.length) {
+                    return this.hunter.hp > 0 ? this.hunter : null;
+                }
+                return null;
+            }
+            
+            getDoorKey(x1, y1, x2, y2) {
+                if (x1 > x2 || (x1 === x2 && y1 > y2)) {
+                    return `${x2},${y2}-${x1},${y1}`;
+                }
+                return `${x1},${y1}-${x2},${y2}`;
+            }
+            
+            getDoorState(x1, y1, x2, y2) {
+                const key = this.getDoorKey(x1, y1, x2, y2);
+                return this.doors.get(key) || 'open';
+            }
+            
+            move(direction) {
+                const unit = this.getCurrentUnit();
+                if (!unit || unit.actions <= 0) return false;
+                
+                let newX = unit.x;
+                let newY = unit.y;
+                
+                switch(direction) {
+                    case 'up': newY--; break;
+                    case 'down': newY++; break;
+                    case 'left': newX--; break;
+                    case 'right': newX++; break;
+                }
+                
+                // Check bounds
+                if (newX < 0 || newX >= 4 || newY < 0 || newY >= 4) {
+                    this.log(`${unit.id} cannot move ${direction} - out of bounds`);
+                    return false;
+                }
+                
+                // Check door
+                const doorState = this.getDoorState(unit.x, unit.y, newX, newY);
+                if (doorState !== 'open') {
+                    this.log(`${unit.id} cannot move ${direction} - door is ${doorState}`);
+                    return false;
+                }
+                
+                // Move unit
+                this.grid[unit.y][unit.x].units = this.grid[unit.y][unit.x].units.filter(u => u !== unit);
+                unit.x = newX;
+                unit.y = newY;
+                this.grid[unit.y][unit.x].units.push(unit);
+                
+                unit.actions--;
+                this.log(`${unit.id} moved ${direction} to (${unit.x}, ${unit.y})`);
+                
+                // Apply cell effects
+                this.applyCellEffects(unit);
+                
+                // Check win conditions
+                this.checkWinConditions();
+                
+                if (unit.actions <= 0) {
+                    this.nextTurn();
+                } else {
+                    this.render();
+                }
+                
+                return true;
+            }
+            
+            applyCellEffects(unit) {
+                const cell = this.grid[unit.y][unit.x];
+                
+                if (cell.symbol === 'XX') {
+                    unit.hp = Math.max(0, unit.hp - 1);
+                    this.log(`${unit.id} took 1 damage from trap! (HP: ${unit.hp})`);
+                }
+                
+                if (cell.symbol === '☆') {
+                    unit.hp = 0;
+                    this.log(`${unit.id} died instantly from death trap!`);
+                }
+                
+                if (cell.symbol === '✦') {
+                    unit.actions++;
+                    this.log(`${unit.id} gained +1 action!`);
+                    cell.symbol = null; // Consume the bonus
+                }
+                
+                if (cell.isExit && unit.type === 'participant') {
+                    this.log(`${unit.id} escaped through the exit!`);
+                    unit.escaped = true;
+                }
+            }
+            
+            attack() {
+                const unit = this.getCurrentUnit();
+                if (!unit || unit.actions <= 0) return false;
+                
+                const cell = this.grid[unit.y][unit.x];
+                let target = null;
+                
+                if (unit.type === 'participant') {
+                    target = cell.units.find(u => u.type === 'hunter');
+                    if (target) {
+                        target.hp = Math.max(0, target.hp - 2);
+                        this.log(`${unit.id} attacked ${target.id} for 2 damage! (HP: ${target.hp})`);
+                    }
+                else if (unit.type === 'hunter' && this.currentTurn === 0) {
+                        this.log(`${unit.id} cannot attack in the first round!`);
+                        return false;
+                }
+                } else if (unit.type === 'hunter') {
+                    const targets = cell.units.filter(u => u.type === 'participant' && u.hp > 0);
+                    if (targets.length > 0) {
+                        target = targets[0];
+                        target.hp = Math.max(0, target.hp - 3);
+                        this.log(`${unit.id} attacked ${target.id} for 3 damage! (HP: ${target.hp})`);
+                    }
+                }
+                
+                if (!target) {
+                    this.log(`${unit.id} has no valid targets to attack`);
+                    return false;
+                }
+                
+                unit.actions--;
+                
+                this.checkWinConditions();
+                
+                if (unit.actions <= 0) {
+                    this.nextTurn();
+                } else {
+                    this.render();
+                }
+                
+                return true;
+            }
+            
+            unlockDoor() {
+                const unit = this.getCurrentUnit();
+                if (!unit || unit.actions <= 0) return false;
+                
+                // Find adjacent locked doors
+                const adjacent = [
+                    {x: unit.x, y: unit.y - 1, dir: 'up'},
+                    {x: unit.x, y: unit.y + 1, dir: 'down'},
+                    {x: unit.x - 1, y: unit.y, dir: 'left'},
+                    {x: unit.x + 1, y: unit.y, dir: 'right'}
+                ];
+                
+                for (let adj of adjacent) {
+                    if (adj.x >= 0 && adj.x < 4 && adj.y >= 0 && adj.y < 4) {
+                        const key = this.getDoorKey(unit.x, unit.y, adj.x, adj.y);
+                        if (this.doors.get(key) === 'locked') {
+                            this.doors.set(key, 'closed');
+                            unit.actions--;
+                            this.log(`${unit.id} unlocked door ${adj.dir}`);
+                            
+                            if (unit.actions <= 0) {
+                                this.nextTurn();
+                            } else {
+                                this.render();
+                            }
+                            return true;
+                        }
+                    }
+                }
+                
+                this.log(`${unit.id} has no locked doors to unlock`);
+                return false;
+            }
+            
+            openDoor() {
+                const unit = this.getCurrentUnit();
+                if (!unit || unit.actions <= 0) return false;
+                
+                // Find adjacent closed doors
+                const adjacent = [
+                    {x: unit.x, y: unit.y - 1, dir: 'up'},
+                    {x: unit.x, y: unit.y + 1, dir: 'down'},
+                    {x: unit.x - 1, y: unit.y, dir: 'left'},
+                    {x: unit.x + 1, y: unit.y, dir: 'right'}
+                ];
+                
+                for (let adj of adjacent) {
+                    if (adj.x >= 0 && adj.x < 4 && adj.y >= 0 && adj.y < 4) {
+                        const key = this.getDoorKey(unit.x, unit.y, adj.x, adj.y);
+                        if (this.doors.get(key) === 'closed') {
+                            this.doors.set(key, 'open');
+                            unit.actions--;
+                            this.log(`${unit.id} opened door ${adj.dir}`);
+                            
+                            if (unit.actions <= 0) {
+                                this.nextTurn();
+                            } else {
+                                this.render();
+                            }
+                            return true;
+                        }
+                    }
+                }
+                
+                this.log(`${unit.id} has no closed doors to open`);
+                return false;
+            }
+            
+            nextTurn() {
+                if (this.gameOver) return;
+                
+                // Move to next unit
+                this.currentUnitIndex++;
+                
+                // Skip dead participants
+                while (this.currentUnitIndex < this.participants.length) {
+                    if (this.participants[this.currentUnitIndex].hp > 0 && 
+                        !this.participants[this.currentUnitIndex].escaped) {
+                        break;
+                    }
+                    this.currentUnitIndex++;
+                }
+                
+                // Check if round is complete
+                if (this.currentUnitIndex > this.participants.length) {
+                    this.currentUnitIndex = 0;
+                    this.currentTurn++;
+                    this.log(`--- Round ${this.currentTurn + 1} ---`);
+                    
+                    // Skip dead participants at start of new round
+                    while (this.currentUnitIndex < this.participants.length) {
+                        if (this.participants[this.currentUnitIndex].hp > 0 && 
+                            !this.participants[this.currentUnitIndex].escaped) {
+                            break;
+                        }
+                        this.currentUnitIndex++;
+                    }
+                }
+                
+                this.startTurn();
+            }
+            
+            checkWinConditions() {
+                // Check if any participant escaped
+                if (this.participants.some(p => p.escaped)) {
+                    this.gameOver = true;
+                    this.winner = 'participants';
+                    this.log("🎉 Participants WIN! A participant escaped!");
+                    return;
+                }
+                
+                // Check if hunter is dead
+                if (this.hunter.hp <= 0) {
+                    this.gameOver = true;
+                    this.winner = 'participants';
+                    this.log("🎉 Participants WIN! Hunter defeated!");
+                    return;
+                }
+                
+                // Check if all participants are dead
+                if (this.participants.every(p => p.hp <= 0)) {
+                    this.gameOver = true;
+                    this.winner = 'hunter';
+                    this.log("💀 Hunter WINS! All participants eliminated!");
+                    return;
+                }
+            }
+            
+            log(message) {
+                this.actionLog.push(message);
+                const logDiv = document.getElementById('gameLog');
+                if (logDiv) {
+                    const entry = document.createElement('div');
+                    entry.className = 'log-entry';
+                    entry.textContent = message;
+                    logDiv.appendChild(entry);
+                    logDiv.scrollTop = logDiv.scrollHeight;
+                }
+            }
+            
+            render() {
+                const board = document.getElementById('gameBoard');
+                board.innerHTML = '';
+                
+                // Render cells
+                for (let y = 0; y < 4; y++) {
+                    for (let x = 0; x < 4; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        if (this.grid[y][x].isExit) {
+                            cell.classList.add('exit');
+                            cell.innerHTML += '<div style="position:absolute;top:5px;left:5px;font-weight:bold;">EXIT</div>';
+                        }
+                        
+                        // Add symbol
+                        if (this.grid[y][x].symbol) {
+                            cell.innerHTML += `<div class="cell-symbol">${this.grid[y][x].symbol}</div>`;
+                        }
+                        
+                        // Add units
+                        this.grid[y][x].units.forEach(unit => {
+                            if (unit.hp > 0 && !unit.escaped) {
+                                const unitDiv = document.createElement('div');
+                                unitDiv.className = `unit ${unit.type}`;
+                                unitDiv.textContent = `${unit.id} (${unit.hp}HP)`;
+                                cell.appendChild(unitDiv);
+                            }
+                        });
+                        
+                        // Add doors
+                        // Top door
+                        if (y > 0) {
+                            const doorState = this.getDoorState(x, y, x, y - 1);
+                            if (this.doors.has(this.getDoorKey(x, y, x, y - 1))) {
+                                const door = document.createElement('div');
+                                door.className = `door door-horizontal door-top ${doorState}`;
+                                let doorText = '';
+                                if (doorState === 'locked') {
+                                    doorText = '🔒LOCKED';
+                                } else if (doorState === 'closed') {
+                                    doorText = '🚪CLOSED';
+                                } else {
+                                    doorText = '✅OPEN';
+                                }
+                                door.textContent = doorText;
+                                cell.appendChild(door);
+                            }
+                        }
+                        
+                        // Left door
+                        if (x > 0) {
+                            const doorState = this.getDoorState(x, y, x - 1, y);
+                            if (this.doors.has(this.getDoorKey(x, y, x - 1, y))) {
+                                const door = document.createElement('div');
+                                door.className = `door door-vertical door-left ${doorState}`;
+                                let doorText = '';
+                                if (doorState === 'locked') {
+                                    doorText = '🔒LOCKED';
+                                } else if (doorState === 'closed') {
+                                    doorText = '🚪CLOSED';
+                                } else {
+                                    doorText = '✅OPEN';
+                                }
+                                door.textContent = doorText;
+                                cell.appendChild(door);
+                            }
+                        }
+                        
+                        board.appendChild(cell);
+                    }
+                }
+                
+                // Update status display
+                this.updateStatusDisplay();
+            }
+            
+            updateStatusDisplay() {
+                const statusDiv = document.getElementById('unitStatus');
+                statusDiv.innerHTML = '';
+                
+                // Participants status
+                this.participants.forEach((p, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'unit-card';
+                    if (this.currentUnitIndex === index && !this.gameOver) {
+                        card.classList.add('active');
+                    }
+                    
+                    const hpPercent = (p.hp / p.maxHp) * 100;
+                    card.innerHTML = `
+                        <strong>${p.id}</strong>
+                        ${p.escaped ? '<span style="color:green"> (ESCAPED)</span>' : ''}
+                        ${p.hp <= 0 ? '<span style="color:red"> (DEAD)</span>' : ''}
+                        <div class="hp-bar">
+                            <div class="hp-fill" style="width:${hpPercent}%"></div>
+                        </div>
+                        <small>HP: ${p.hp}/${p.maxHp} | Actions: ${p.actions}</small>
+                    `;
+                    statusDiv.appendChild(card);
+                });
+                
+                // Hunter status
+                const hunterCard = document.createElement('div');
+                hunterCard.className = 'unit-card';
+                if (this.currentUnitIndex === this.participants.length && !this.gameOver) {
+                    hunterCard.classList.add('active');
+                }
+                
+                const hpPercent = (this.hunter.hp / this.hunter.maxHp) * 100;
+                hunterCard.innerHTML = `
+                    <strong>${this.hunter.id} (Hunter)</strong>
+                    ${this.hunter.hp <= 0 ? '<span style="color:red"> (DEAD)</span>' : ''}
+                    <div class="hp-bar">
+                        <div class="hp-fill" style="width:${hpPercent}%; background: linear-gradient(90deg, #f44336, #ff6b6b);"></div>
+                    </div>
+                    <small>HP: ${this.hunter.hp}/${this.hunter.maxHp} | Actions: ${this.hunter.actions}</small>
+                `;
+                statusDiv.appendChild(hunterCard);
+                
+                // Update turn indicator
+                const turnDiv = document.getElementById('turnIndicator');
+                if (this.gameOver) {
+                    turnDiv.textContent = 'Game Over!';
+                } else {
+                    const currentUnit = this.getCurrentUnit();
+                    if (currentUnit) {
+                        turnDiv.textContent = `Current Turn: ${currentUnit.id} (${currentUnit.type}) - Round ${this.currentTurn + 1}`;
+                    }
+                }
+                
+                // Update winner display
+                const winnerDiv = document.getElementById('winnerDisplay');
+                if (this.gameOver) {
+                    winnerDiv.className = `winner ${this.winner}`;
+                    winnerDiv.textContent = this.winner === 'participants' ? 
+                        '🎉 PARTICIPANTS WIN! 🎉' : '💀 HUNTER WINS! 💀';
+                } else {
+                    winnerDiv.innerHTML = '';
+                    winnerDiv.className = '';
+                }
+                
+                // Update button states
+                this.updateButtons();
+            }
+            
+            updateButtons() {
+                const unit = this.getCurrentUnit();
+                const hasActions = unit && unit.actions > 0;
+                const isGameOver = this.gameOver;
+                
+                document.getElementById('moveUpBtn').disabled = !hasActions || isGameOver;
+                document.getElementById('moveDownBtn').disabled = !hasActions || isGameOver;
+                document.getElementById('moveLeftBtn').disabled = !hasActions || isGameOver;
+                document.getElementById('moveRightBtn').disabled = !hasActions || isGameOver;
+                document.getElementById('attackBtn').disabled = !hasActions || isGameOver;
+                document.getElementById('unlockBtn').disabled = !hasActions || isGameOver;
+                document.getElementById('openBtn').disabled = !hasActions || isGameOver;
+                document.getElementById('endTurnBtn').disabled = !unit || isGameOver;
+            }
+        }
+        
+        // Game instance
+        let game = null;
+        
+        // Initialize game
+        function initGame() {
+            console.log('Initializing new game...');
+            const gameBoard = document.getElementById('gameBoard');
+            const gameLog = document.getElementById('gameLog');
+            
+            if (!gameBoard) {
+                console.error('Game board element not found!');
+                return;
+            }
+            
+            if (gameLog) {
+                gameLog.innerHTML = '';
+            }
+            
+            if (game && game.autoPlayInterval) {
+                clearInterval(game.autoPlayInterval);
+            }
+            
+            game = new GameEngine();
+            game.init();
+            document.getElementById('autoPlayBtn').textContent = 'Auto Play';
+            console.log('Game initialized successfully');
+        }
+        
+        // Movement functions
+        function moveUnit(direction) {
+            if (game) game.move(direction);
+        }
+        
+        // Action functions
+        function attackAction() {
+            if (game) game.attack();
+        }
+        
+        function unlockDoor() {
+            if (game) game.unlockDoor();
+        }
+        
+        function openDoor() {
+            if (game) game.openDoor();
+        }
+        
+        function endTurn() {
+            if (game) {
+                const unit = game.getCurrentUnit();
+                if (unit) {
+                    unit.actions = 0;
+                    game.nextTurn();
+                }
+            }
+        }
+        
+        // Auto-play functionality
+        function autoPlay() {
+            if (!game) return;
+            
+            if (game.autoPlayInterval) {
+                clearInterval(game.autoPlayInterval);
+                game.autoPlayInterval = null;
+                document.getElementById('autoPlayBtn').textContent = 'Auto Play';
+                return;
+            }
+            
+            document.getElementById('autoPlayBtn').textContent = 'Stop Auto';
+            
+            game.autoPlayInterval = setInterval(() => {
+                if (game.gameOver) {
+                    clearInterval(game.autoPlayInterval);
+                    game.autoPlayInterval = null;
+                    document.getElementById('autoPlayBtn').textContent = 'Auto Play';
+                    return;
+                }
+                
+                const unit = game.getCurrentUnit();
+                if (!unit) return;
+                
+                // Simple AI logic
+                if (unit.type === 'participant') {
+                    // Participants try to reach exit at bottom-right
+                    const exitX = 3, exitY = 3;
+                    const dx = exitX - unit.x;
+                    const dy = exitY - unit.y;
+                    
+                    // Try to move toward exit
+                    let moved = false;
+                    
+                    // Prioritize moving toward exit
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        if (dx > 0) moved = game.move('right');
+                        else if (dx < 0) moved = game.move('left');
+                        
+                        if (!moved) {
+                            if (dy > 0) moved = game.move('down');
+                            else if (dy < 0) moved = game.move('up');
+                        }
+                    } else {
+                        if (dy > 0) moved = game.move('down');
+                        else if (dy < 0) moved = game.move('up');
+                        
+                        if (!moved) {
+                            if (dx > 0) moved = game.move('right');
+                            else if (dx < 0) moved = game.move('left');
+                        }
+                    }
+                    
+                    // If can't move, try to unlock or open doors
+                    if (!moved) {
+                        if (!game.unlockDoor()) {
+                            if (!game.openDoor()) {
+                                // Attack if hunter is in same cell
+                                if (!game.attack()) {
+                                    // End turn if nothing else to do
+                                    unit.actions = 0;
+                                    game.nextTurn();
+                                }
+                            }
+                        }
+                    }
+                } else if (unit.type === 'hunter') {
+                    // Hunter tries to catch participants
+                    if (minDist === 0 && this.currentTurn > 0) {
+                        game.attack();
+                    }
+                    const aliveParticipants = game.participants.filter(p => p.hp > 0 && !p.escaped);
+                    if (aliveParticipants.length > 0) {
+                        // Find nearest participant
+                        let target = aliveParticipants[0];
+                        let minDist = Math.abs(target.x - unit.x) + Math.abs(target.y - unit.y);
+                        
+                        for (let p of aliveParticipants) {
+                            const dist = Math.abs(p.x - unit.x) + Math.abs(p.y - unit.y);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                target = p;
+                            }
+                        }
+                        
+                        // Try to attack if in same cell
+                        if (minDist === 0) {
+                            game.attack();
+                        } else {
+                            // Move toward target
+                            const dx = target.x - unit.x;
+                            const dy = target.y - unit.y;
+                            
+                            let moved = false;
+                            
+                            if (Math.abs(dx) > Math.abs(dy)) {
+                                if (dx > 0) moved = game.move('right');
+                                else if (dx < 0) moved = game.move('left');
+                                
+                                if (!moved) {
+                                    if (dy > 0) moved = game.move('down');
+                                    else if (dy < 0) moved = game.move('up');
+                                }
+                            } else {
+                                if (dy > 0) moved = game.move('down');
+                                else if (dy < 0) moved = game.move('up');
+                                
+                                if (!moved) {
+                                    if (dx > 0) moved = game.move('right');
+                                    else if (dx < 0) moved = game.move('left');
+                                }
+                            }
+                            
+                            // If can't move, try to unlock or open doors
+                            if (!moved) {
+                                if (!game.unlockDoor()) {
+                                    if (!game.openDoor()) {
+                                        // Random move if stuck
+                                        const dirs = ['up', 'down', 'left', 'right'];
+                                        for (let dir of dirs) {
+                                            if (game.move(dir)) break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Use remaining actions
+                    if (unit.actions > 0 && aliveParticipants.length === 0) {
+                        unit.actions = 0;
+                        game.nextTurn();
+                    }
+                }
+            }, 1000); // Move every second
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing game...');
+            initGame();
+        });
+    </script>
+</body>
+</html>

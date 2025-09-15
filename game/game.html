@@ -165,6 +165,12 @@
             font-size: 14px;
             transition: all 0.3s;
         }
+
+        .dir-btn.selected {
+            outline: 2px solid #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,.25);
+        }
+
         
         button:hover:not(:disabled) {
             background: #764ba2;
@@ -296,19 +302,41 @@
                 <button onclick="autoPlay()" id="autoPlayBtn">Auto Play</button>
             </div>
             
-            <div class="control-group">
-                <h3>Current Unit Actions</h3>
-                <div class="action-buttons" id="actionButtons">
-                    <button onclick="moveUnit('up')" id="moveUpBtn">↑ Move Up</button>
-                    <button onclick="moveUnit('down')" id="moveDownBtn">↓ Move Down</button>
-                    <button onclick="moveUnit('left')" id="moveLeftBtn">← Move Left</button>
-                    <button onclick="moveUnit('right')" id="moveRightBtn">→ Move Right</button>
-                    <button onclick="attackAction()" id="attackBtn">⚔️ Attack</button>
-                    <button onclick="unlockDoor()" id="unlockBtn">🔓 Unlock</button>
-                    <button onclick="openDoor()" id="openBtn">📂 Open</button>
-                    <button onclick="endTurn()" id="endTurnBtn">⏭️ End Turn</button>
-                </div>
-            </div>
+        <div class="control-group">
+        <h3>Current Unit Actions</h3>
+
+        <!-- Direction selector (first click) -->
+        <div style="display:grid;grid-template-columns:repeat(3,60px);gap:6px;justify-content:center;margin-bottom:8px;">
+            <div></div>
+            <button class="dir-btn" id="dirUp"    onclick="setDir('up')">↑</button>
+            <div></div>
+            <button class="dir-btn" id="dirLeft"  onclick="setDir('left')">←</button>
+            <div></div>
+            <button class="dir-btn" id="dirRight" onclick="setDir('right')">→</button>
+            <div></div>
+            <button class="dir-btn" id="dirDown"  onclick="setDir('down')">↓</button>
+            <div></div>
+        </div>
+
+        <!-- Actions (second click) -->
+        <div class="action-buttons" id="actionButtons">
+            <button onclick="moveUnit('up')" id="moveUpBtn">↑ Move Up</button>
+            <button onclick="moveUnit('down')" id="moveDownBtn">↓ Move Down</button>
+            <button onclick="moveUnit('left')" id="moveLeftBtn">← Move Left</button>
+            <button onclick="moveUnit('right')" id="moveRightBtn">→ Move Right</button>
+
+            <button onclick="attackAction()" id="attackBtn">⚔️ Attack</button>
+
+            <!-- use selected direction -->
+            <button onclick="unlockDoor()" id="unlockBtn">🔓 Unlock (dir)</button>
+            <button onclick="openDoor()"   id="openBtn">📂 Open (dir)</button>
+            <button onclick="closeDoor()"  id="closeBtn">🧲 Close (dir)</button>
+            <button onclick="lockDoor()"   id="lockBtn">🔒 Lock (dir)</button>
+
+            <button onclick="endTurn()" id="endTurnBtn">⏭️ End Turn</button>
+        </div>
+        </div>
+
         </div>
         
         <div class="status">
@@ -327,7 +355,7 @@
                     symbol: null,
                     isExit: false
                 })));
-                
+                this.selectedDir = null;
                 this.participants = [];
                 this.hunter = null;
                 this.doors = new Map(); // Key: "x1,y1-x2,y2", Value: state
@@ -410,6 +438,33 @@
                 this.log("Game initialized!");
                 this.startTurn();
             }
+            setDirection(dir) {
+                this.selectedDir = dir; // remember user’s selection
+                // visual button highlight:
+                ['up','down','left','right'].forEach(d => {
+                    const btn = document.getElementById('dir' + d.charAt(0).toUpperCase() + d.slice(1));
+                    if (btn) btn.classList.toggle('selected', d === dir);
+                });
+                // Refresh button enables based on chosen door states
+                this.updateButtons();
+            }
+
+            getAdjacentByDir(unit, dir) {
+                let nx = unit.x, ny = unit.y;
+                if (dir === 'up') ny--;
+                if (dir === 'down') ny++;
+                if (dir === 'left') nx--;
+                if (dir === 'right') nx++;
+                if (nx < 0 || nx > 3 || ny < 0 || ny > 3) return null; // OOB
+
+                const key = this.getDoorKey(unit.x, unit.y, nx, ny);
+                const state = this.doors.get(key);
+                if (!state) return null; // no door/wall
+
+                return { key, state, nx, ny, dir };
+            }
+
+
             
             startTurn() {
                 if (this.gameOver) return;
@@ -564,73 +619,102 @@
                 return true;
             }
             
-            unlockDoor() {
+            unlockDoor(dir = this.selectedDir) {
                 const unit = this.getCurrentUnit();
                 if (!unit || unit.actions <= 0) return false;
-                
-                // Find adjacent locked doors
-                const adjacent = [
-                    {x: unit.x, y: unit.y - 1, dir: 'up'},
-                    {x: unit.x, y: unit.y + 1, dir: 'down'},
-                    {x: unit.x - 1, y: unit.y, dir: 'left'},
-                    {x: unit.x + 1, y: unit.y, dir: 'right'}
-                ];
-                
-                for (let adj of adjacent) {
-                    if (adj.x >= 0 && adj.x < 4 && adj.y >= 0 && adj.y < 4) {
-                        const key = this.getDoorKey(unit.x, unit.y, adj.x, adj.y);
-                        if (this.doors.get(key) === 'locked') {
-                            this.doors.set(key, 'closed');
-                            unit.actions--;
-                            this.log(`${unit.id} unlocked door ${adj.dir}`);
-                            
-                            if (unit.actions <= 0) {
-                                this.nextTurn();
-                            } else {
-                                this.render();
-                            }
-                            return true;
-                        }
+
+                // If direction chosen, use it; else fallback to first adjacent locked (old behavior)
+                let target = dir ? this.getAdjacentByDir(unit, dir) : null;
+                if (!target || target.state !== 'locked') {
+                    // fallback scan
+                    const dirs = ['up','down','left','right'];
+                    for (const d of dirs) {
+                        const cand = this.getAdjacentByDir(unit, d);
+                        if (cand && cand.state === 'locked') { target = cand; break; }
                     }
                 }
-                
-                this.log(`${unit.id} has no locked doors to unlock`);
-                return false;
+                if (!target || target.state !== 'locked') {
+                    this.log(`${unit.id} has no locked door to unlock`);
+                    return false;
+                }
+                this.doors.set(target.key, 'closed');
+                unit.actions--;
+                this.log(`${unit.id} unlocked ${target.dir} door`);
+                unit.actions <= 0 ? this.nextTurn() : this.render();
+                return true;
             }
-            
-            openDoor() {
+
+            openDoor(dir = this.selectedDir) {
                 const unit = this.getCurrentUnit();
                 if (!unit || unit.actions <= 0) return false;
-                
-                // Find adjacent closed doors
-                const adjacent = [
-                    {x: unit.x, y: unit.y - 1, dir: 'up'},
-                    {x: unit.x, y: unit.y + 1, dir: 'down'},
-                    {x: unit.x - 1, y: unit.y, dir: 'left'},
-                    {x: unit.x + 1, y: unit.y, dir: 'right'}
-                ];
-                
-                for (let adj of adjacent) {
-                    if (adj.x >= 0 && adj.x < 4 && adj.y >= 0 && adj.y < 4) {
-                        const key = this.getDoorKey(unit.x, unit.y, adj.x, adj.y);
-                        if (this.doors.get(key) === 'closed') {
-                            this.doors.set(key, 'open');
-                            unit.actions--;
-                            this.log(`${unit.id} opened door ${adj.dir}`);
-                            
-                            if (unit.actions <= 0) {
-                                this.nextTurn();
-                            } else {
-                                this.render();
-                            }
-                            return true;
-                        }
+
+                let target = dir ? this.getAdjacentByDir(unit, dir) : null;
+                if (!target || target.state !== 'closed') {
+                    const dirs = ['up','down','left','right'];
+                    for (const d of dirs) {
+                        const cand = this.getAdjacentByDir(unit, d);
+                        if (cand && cand.state === 'closed') { target = cand; break; }
                     }
                 }
-                
-                this.log(`${unit.id} has no closed doors to open`);
-                return false;
+                if (!target || target.state !== 'closed') {
+                    this.log(`${unit.id} has no closed door to open`);
+                    return false;
+                }
+                this.doors.set(target.key, 'open');
+                unit.actions--;
+                this.log(`${unit.id} opened ${target.dir} door`);
+                unit.actions <= 0 ? this.nextTurn() : this.render();
+                return true;
             }
+
+            // NEW: Close an OPEN door
+            closeDoor(dir = this.selectedDir) {
+                const unit = this.getCurrentUnit();
+                if (!unit || unit.actions <= 0) return false;
+
+                let target = dir ? this.getAdjacentByDir(unit, dir) : null;
+                if (!target || target.state !== 'open') {
+                    const dirs = ['up','down','left','right'];
+                    for (const d of dirs) {
+                        const cand = this.getAdjacentByDir(unit, d);
+                        if (cand && cand.state === 'open') { target = cand; break; }
+                    }
+                }
+                if (!target || target.state !== 'open') {
+                    this.log(`${unit.id} has no open door to close`);
+                    return false;
+                }
+                this.doors.set(target.key, 'closed');
+                unit.actions--;
+                this.log(`${unit.id} closed ${target.dir} door`);
+                unit.actions <= 0 ? this.nextTurn() : this.render();
+                return true;
+            }
+
+            // NEW: Lock a CLOSED door
+            lockDoor(dir = this.selectedDir) {
+                const unit = this.getCurrentUnit();
+                if (!unit || unit.actions <= 0) return false;
+
+                let target = dir ? this.getAdjacentByDir(unit, dir) : null;
+                if (!target || target.state !== 'closed') {
+                    const dirs = ['up','down','left','right'];
+                    for (const d of dirs) {
+                        const cand = this.getAdjacentByDir(unit, d);
+                        if (cand && cand.state === 'closed') { target = cand; break; }
+                    }
+                }
+                if (!target || target.state !== 'closed') {
+                    this.log(`${unit.id} has no closed door to lock`);
+                    return false;
+                }
+                this.doors.set(target.key, 'locked');
+                unit.actions--;
+                this.log(`${unit.id} locked ${target.dir} door`);
+                unit.actions <= 0 ? this.nextTurn() : this.render();
+                return true;
+            }
+
             
             nextTurn() {
                 if (this.gameOver) return;
@@ -862,6 +946,29 @@
                 document.getElementById('unlockBtn').disabled = !hasActions || isGameOver;
                 document.getElementById('openBtn').disabled = !hasActions || isGameOver;
                 document.getElementById('endTurnBtn').disabled = !unit || isGameOver;
+
+                // Optional: if a direction is selected, enable/disable action buttons based on that door state
+                if (unit && !isGameOver && this.selectedDir) {
+                    const adj = this.getAdjacentByDir(unit, this.selectedDir);
+                    const unlockBtn = document.getElementById('unlockBtn');
+                    const openBtn   = document.getElementById('openBtn');
+                    const closeBtn  = document.getElementById('closeBtn');
+                    const lockBtn   = document.getElementById('lockBtn');
+
+                    if (adj) {
+                        if (unlockBtn) unlockBtn.disabled = !hasActions || adj.state !== 'locked';
+                        if (openBtn)   openBtn.disabled   = !hasActions || adj.state !== 'closed';
+                        if (closeBtn)  closeBtn.disabled  = !hasActions || adj.state !== 'open';
+                        if (lockBtn)   lockBtn.disabled   = !hasActions || adj.state !== 'closed';
+                    } else {
+                        // no door / out of bounds
+                        if (unlockBtn) unlockBtn.disabled = true;
+                        if (openBtn)   openBtn.disabled   = true;
+                        if (closeBtn)  closeBtn.disabled  = true;
+                        if (lockBtn)   lockBtn.disabled   = true;
+                    }
+                }
+
             }
         }
         
@@ -988,75 +1095,96 @@
                         }
                     }
                 } else if (unit.type === 'hunter') {
-                    // Hunter tries to catch participants
-                    if (minDist === 0 && this.currentTurn > 0) {
-                        game.attack();
-                    }
+                    // Gather live participants
                     const aliveParticipants = game.participants.filter(p => p.hp > 0 && !p.escaped);
-                    if (aliveParticipants.length > 0) {
-                        // Find nearest participant
-                        let target = aliveParticipants[0];
-                        let minDist = Math.abs(target.x - unit.x) + Math.abs(target.y - unit.y);
-                        
-                        for (let p of aliveParticipants) {
-                            const dist = Math.abs(p.x - unit.x) + Math.abs(p.y - unit.y);
-                            if (dist < minDist) {
-                                minDist = dist;
-                                target = p;
-                            }
+
+                    // If nobody left, end hunter's turn
+                    if (aliveParticipants.length === 0) {
+                        unit.actions = 0;
+                        game.nextTurn();
+                        return;
+                    }
+
+                    // Find nearest participant
+                    let target = aliveParticipants[0];
+                    let minDist = Math.abs(target.x - unit.x) + Math.abs(target.y - unit.y);
+                    for (const p of aliveParticipants) {
+                        const d = Math.abs(p.x - unit.x) + Math.abs(p.y - unit.y);
+                        if (d < minDist) { minDist = d; target = p; }
+                    }
+
+                    // If on the same cell and not first round → attack
+                    if (minDist === 0) {
+                        if (game.currentTurn > 0) { game.attack(); }
+                        else { // first round: cannot attack; try to reposition
+                            unit.actions = 0;
+                            game.nextTurn();
                         }
-                        
-                        // Try to attack if in same cell
-                        if (minDist === 0) {
-                            game.attack();
-                        } else {
-                            // Move toward target
-                            const dx = target.x - unit.x;
-                            const dy = target.y - unit.y;
-                            
-                            let moved = false;
-                            
-                            if (Math.abs(dx) > Math.abs(dy)) {
-                                if (dx > 0) moved = game.move('right');
-                                else if (dx < 0) moved = game.move('left');
-                                
-                                if (!moved) {
-                                    if (dy > 0) moved = game.move('down');
-                                    else if (dy < 0) moved = game.move('up');
-                                }
-                            } else {
-                                if (dy > 0) moved = game.move('down');
-                                else if (dy < 0) moved = game.move('up');
-                                
-                                if (!moved) {
-                                    if (dx > 0) moved = game.move('right');
-                                    else if (dx < 0) moved = game.move('left');
-                                }
-                            }
-                            
-                            // If can't move, try to unlock or open doors
-                            if (!moved) {
-                                if (!game.unlockDoor()) {
-                                    if (!game.openDoor()) {
-                                        // Random move if stuck
-                                        const dirs = ['up', 'down', 'left', 'right'];
-                                        for (let dir of dirs) {
-                                            if (game.move(dir)) break;
-                                        }
-                                    }
-                                }
-                            }
+                        return;
+                    }
+
+                    // Choose preferred direction(s) toward target
+                    const dx = target.x - unit.x;
+                    const dy = target.y - unit.y;
+                    const primaryDir  = Math.abs(dx) >= Math.abs(dy)
+                        ? (dx > 0 ? 'right' : 'left')
+                        : (dy > 0 ? 'down'  : 'up');
+                    const secondaryDir = Math.abs(dx) >= Math.abs(dy)
+                        ? (dy > 0 ? 'down'  : 'up')
+                        : (dx > 0 ? 'right' : 'left');
+
+                    // Try primary, then secondary
+                    const tryDirs = [primaryDir, secondaryDir];
+
+                    let acted = false;
+                    for (const dir of tryDirs) {
+                        // Inspect the door between unit and that neighbor
+                        const adj = game.getAdjacentByDir(unit, dir); // { key, state, nx, ny, dir } or null
+                        if (!adj) continue; // wall / out of bounds
+
+                        if (adj.state === 'open') {
+                            // Move through
+                            acted = game.move(dir);
+                        } else if (adj.state === 'closed') {
+                            // Open it
+                            acted = game.openDoor(dir);
+                        } else if (adj.state === 'locked') {
+                            // Unlock it
+                            acted = game.unlockDoor(dir);
+                        }
+                        if (acted) break; // consumed one action; let timer tick again
+                    }
+
+                    if (!acted) {
+                        // If both directions were walls or failed, try the other two as a fallback
+                        const fallback = ['up','down','left','right'].filter(d => !tryDirs.includes(d));
+                        for (const dir of fallback) {
+                            const adj = game.getAdjacentByDir(unit, dir);
+                            if (!adj) continue;
+                            if (adj.state === 'open' && game.move(dir)) { acted = true; break; }
+                            if (adj.state === 'closed' && game.openDoor(dir)) { acted = true; break; }
+                            if (adj.state === 'locked' && game.unlockDoor(dir)) { acted = true; break; }
                         }
                     }
-                    
-                    // Use remaining actions
-                    if (unit.actions > 0 && aliveParticipants.length === 0) {
+
+                    // If still nothing useful to do, end hunter's turn to avoid stalling
+                    if (!acted) {
                         unit.actions = 0;
                         game.nextTurn();
                     }
                 }
             }, 1000); // Move every second
         }
+        function setDir(dir) {
+            if (game) game.setDirection(dir);
+        }
+        function closeDoor() {
+            if (game) game.closeDoor(); // uses selected dir if set
+        }
+        function lockDoor() {
+            if (game) game.lockDoor();  // uses selected dir if set
+        }
+
         
         // Initialize on load
         document.addEventListener('DOMContentLoaded', function() {

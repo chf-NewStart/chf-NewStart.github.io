@@ -121,7 +121,11 @@
         .door-right {
             right: -15px;
         }
-        
+        .door.frozen {
+            outline: 2px solid #00bcd4;
+            box-shadow: 0 0 0 2px rgba(0,188,212,.25);
+        }
+
         .door.open {
             background: #4CAF50;
         }
@@ -352,6 +356,10 @@
                     symbol: null,
                     isExit: false
                 })));
+                this.frozenDoors = new Set();     // keys of doors that cannot change
+                this.stunHunter = 0;              // >0 means hunter's next turn(s) skipped
+                this.stunParticipants = 0;        // >0 means next participant turn(s) skipped
+
                 this.selectedDir = null;
                 this.participants = [];
                 this.hunter = null;
@@ -374,14 +382,14 @@
                 
                 // Create participants
                 this.participants = [
-                    { id: 'P1', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1 },
-                    { id: 'P2', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1 },
-                    { id: 'P3', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1 },
-                    { id: 'P4', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1 }
+                    { id: 'P1', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1, hasRevive: false},
+                    { id: 'P2', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1, hasRevive: false},
+                    { id: 'P3', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1, hasRevive: false},
+                    { id: 'P4', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1, hasRevive: false }
                 ];
                 
                 // Create hunter
-                this.hunter = { id: 'H', type: 'hunter', hp: 16, maxHp: 16, x: 0, y: 0, actions: 2, maxActions: 2 };
+                this.hunter = { id: 'H', type: 'hunter', hp: 16, maxHp: 16, x: 0, y: 0, actions: 2, maxActions: 2, hasRevive: false};
                 
                 // Place units on grid
                 this.participants.forEach(p => {
@@ -393,9 +401,16 @@
                 this.grid[3][3].isExit = true;
                 
                 // Set symbols (examples)
-                this.grid[2][2].symbol = 'XX'; // Damage
-                this.grid[1][3].symbol = '✦'; // Extra action
-                this.grid[2][0].symbol = '☆'; // Instant death
+                // existing
+                this.grid[2][2].symbol = 'XX';
+                this.grid[1][3].symbol = '✦';
+                this.grid[2][0].symbol = '☆';
+
+                // NEW examples (put anywhere you like)
+                this.grid[0][1].symbol = '■'; // freeze adjacent doors when entered
+                this.grid[2][1].symbol = '△'; // one-time death immunity
+                this.grid[1][2].symbol = '+'; // stun the other side for a turn
+
                 
                 // Initialize ALL doors between adjacent cells (all start as closed)
                 // Horizontal connections (left-right)
@@ -465,6 +480,25 @@
             
             startTurn() {
                 if (this.gameOver) return;
+                // If the next unit is stunned, skip their turn
+                const u = this.getCurrentUnit();
+                if (u) {
+                if (u.type === 'hunter' && this.stunHunter > 0) {
+                    this.stunHunter -= 1;
+                    this.log(`Hunter is stunned and skips this turn (＋)`);
+                    // skip entirely
+                    this.currentUnitIndex++;
+                    return this.startTurn(); // recurse to the next unit safely
+                }
+                if (u.type === 'participant' && this.stunParticipants > 0) {
+                    // find the next alive/active participant to stun
+                    this.stunParticipants -= 1;
+                    this.log(`Participant turn skipped due to ＋`);
+                    this.currentUnitIndex++;
+                    return this.startTurn();
+                }
+                }
+
                 this.selectedDir = null;
                 ['up','down','left','right'].forEach(d => {
                     const btn = document.getElementById('dir' + d.charAt(0).toUpperCase() + d.slice(1));
@@ -557,29 +591,84 @@
             }
             
             applyCellEffects(unit) {
-                const cell = this.grid[unit.y][unit.x];
-                
-                if (cell.symbol === 'XX') {
-                    unit.hp = Math.max(0, unit.hp - 1);
-                    this.log(`${unit.id} took 1 damage from trap! (HP: ${unit.hp})`);
-                }
-                
-                if (cell.symbol === '☆') {
-                    unit.hp = 0;
-                    this.log(`${unit.id} died instantly from death trap!`);
-                }
-                
-                if (cell.symbol === '✦') {
-                    unit.actions++;
-                    this.log(`${unit.id} gained +1 action!`);
-                    cell.symbol = null; // Consume the bonus
-                }
-                
-                if (cell.isExit && unit.type === 'participant') {
-                    this.log(`${unit.id} escaped through the exit!`);
-                    unit.escaped = true;
+            const cell = this.grid[unit.y][unit.x];
+            if (!cell) return;
+
+            // XX: 1 damage on entry
+            if (cell.symbol === 'XX') {
+                unit.hp = Math.max(0, unit.hp - 1);
+                this.log(`${unit.id} took 1 damage from trap! (HP: ${unit.hp})`);
+            }
+
+            // ☆: instant death (respect △ revive)
+            if (cell.symbol === '☆') {
+                if (unit.hasRevive) {
+                unit.hasRevive = false;
+                unit.hp = Math.max(unit.hp, 1);
+                this.log(`${unit.id} cheated death with △ (revive) and stays at 1 HP!`);
+                // consume the tile
+                cell.symbol = null;
+                } else {
+                unit.hp = 0;
+                this.log(`${unit.id} died instantly from death trap!`);
                 }
             }
+
+            // △: grant one-time death immunity (consume)
+            if (cell.symbol === '△') {
+                unit.hasRevive = true;
+                this.log(`${unit.id} gained △ (one-time death immunity)!`);
+                cell.symbol = null;
+            }
+
+            // ✦: +1 action (consume)
+            if (cell.symbol === '✦') {
+                unit.actions++;
+                this.log(`${unit.id} gained ✦ (+1 action this turn)!`);
+                cell.symbol = null;
+            }
+
+            // ＋: stun the other side for one upcoming turn (consume)
+            if (cell.symbol === '+') {
+                if (unit.type === 'participant') {
+                this.stunHunter += 1;
+                this.log(`${unit.id} triggered ＋: Hunter will skip their next turn`);
+                } else {
+                this.stunParticipants += 1;
+                this.log(`${unit.id} triggered ＋: The next Participant turn will be skipped`);
+                }
+                cell.symbol = null;
+            }
+
+            // ■: freeze ALL adjacent doors to this cell (persistent)
+            if (cell.symbol === '■') {
+                const adjs = [
+                {nx: unit.x, ny: unit.y - 1, dir: 'up'},
+                {nx: unit.x, ny: unit.y + 1, dir: 'down'},
+                {nx: unit.x - 1, ny: unit.y, dir: 'left'},
+                {nx: unit.x + 1, ny: unit.y, dir: 'right'}
+                ];
+                let frozenCount = 0;
+                for (const a of adjs) {
+                if (a.nx < 0 || a.nx > 3 || a.ny < 0 || a.ny > 3) continue;
+                const k = this.getDoorKey(unit.x, unit.y, a.nx, a.ny);
+                if (this.doors.has(k)) {
+                    this.frozenDoors.add(k);
+                    frozenCount++;
+                }
+                }
+                this.log(`${unit.id} activated ■: froze ${frozenCount} adjacent door(s)`);
+                // (leave the tile there to indicate area is "frozen source", or remove if you prefer)
+                // cell.symbol = null;
+            }
+
+            // Exit check
+            if (cell.isExit && unit.type === 'participant') {
+                this.log(`${unit.id} escaped through the exit!`);
+                unit.escaped = true;
+            }
+            }
+
             
             attack() {
                 const unit = this.getCurrentUnit();
@@ -593,6 +682,13 @@
                     if (target) {
                         target.hp = Math.max(0, target.hp - 2);
                         this.log(`${unit.id} attacked ${target.id} for 2 damage! (HP: ${target.hp})`);
+                        // after damage assignment but before logging death/win
+                        if (target.hp <= 0 && target.hasRevive) {
+                            target.hasRevive = false;
+                            target.hp = 1;
+                            this.log(`${target.id} avoided death with △ and stays at 1 HP!`);
+                        }
+
                     }
                 } else if (unit.type === 'hunter') {
                     // 🔒 Block attacks in the first round
@@ -605,7 +701,14 @@
                     if (targets.length > 0) {
                         target = targets[0];
                         target.hp = Math.max(0, target.hp - 3);
-                        this.log(`${unit.id} attacked ${target.id} for 3 damage! (HP: ${target.hp})`);
+                        // after damage assignment but before logging death/win
+                        if (target.hp <= 0 && target.hasRevive) {
+                            target.hasRevive = false;
+                            target.hp = 1;
+                            this.log(`${target.id} avoided death with △ and stays at 1 HP!`);
+                        }
+
+                        this.log(`${unit.id} attacked ${target.id} for 2 damage! (HP: ${target.hp})`);
                     }
                 }
 
@@ -647,11 +750,16 @@
                         if (cand && cand.state === 'locked') { target = cand; break; }
                     }
                 }
+                if (target && this.frozenDoors.has(target.key)) {
+                    this.log(`Door ${target.dir} is frozen and cannot be changed`);
+                    return false;
+                }
                 if (!target || target.state !== 'locked') {
                     this.log(`${unit.id} has no locked door to unlock`);
                     return false;
                 }
                 this.doors.set(target.key, 'closed');
+
                 unit.actions--;
                 this.log(`${unit.id} unlocked ${target.dir} door`);
                 unit.actions <= 0 ? this.nextTurn() : this.render();
@@ -669,6 +777,11 @@
                         const cand = this.getAdjacentByDir(unit, d);
                         if (cand && cand.state === 'closed') { target = cand; break; }
                     }
+                }
+
+                if (target && this.frozenDoors.has(target.key)) {
+                    this.log(`Door ${target.dir} is frozen and cannot be changed`);
+                    return false;
                 }
                 if (!target || target.state !== 'closed') {
                     this.log(`${unit.id} has no closed door to open`);
@@ -694,6 +807,10 @@
                         if (cand && cand.state === 'open') { target = cand; break; }
                     }
                 }
+                if (target && this.frozenDoors.has(target.key)) {
+                    this.log(`Door ${target.dir} is frozen and cannot be changed`);
+                    return false;
+                }
                 if (!target || target.state !== 'open') {
                     this.log(`${unit.id} has no open door to close`);
                     return false;
@@ -717,6 +834,10 @@
                         const cand = this.getAdjacentByDir(unit, d);
                         if (cand && cand.state === 'closed') { target = cand; break; }
                     }
+                }
+                if (target && this.frozenDoors.has(target.key)) {
+                    this.log(`Door ${target.dir} is frozen and cannot be changed`);
+                    return false;
                 }
                 if (!target || target.state !== 'closed') {
                     this.log(`${unit.id} has no closed door to lock`);
@@ -869,43 +990,44 @@
                         });
                         
                         // Add doors
-                        // Top door
+                        // --- Top door ---
                         if (y > 0) {
-                            const doorState = this.getDoorState(x, y, x, y - 1);
-                            if (this.doors.has(this.getDoorKey(x, y, x, y - 1))) {
-                                const door = document.createElement('div');
-                                door.className = `door door-horizontal door-top ${doorState}`;
-                                let doorText = '';
-                                if (doorState === 'locked') {
-                                    doorText = '🔒LOCKED';
-                                } else if (doorState === 'closed') {
-                                    doorText = '🚪CLOSED';
-                                } else {
-                                    doorText = '✅OPEN';
-                                }
-                                door.textContent = doorText;
-                                cell.appendChild(door);
-                            }
+                        const keyTop = this.getDoorKey(x, y, x, y - 1);
+                        if (this.doors.has(keyTop)) {
+                            const doorStateTop = this.getDoorState(x, y, x, y - 1);   // <— define it
+                            const door = document.createElement('div');
+                            door.className = `door door-horizontal door-top ${doorStateTop}`;
+                            if (this.frozenDoors.has(keyTop)) door.classList.add('frozen');
+
+                            let doorText = '';
+                            if (doorStateTop === 'locked') doorText = '🔒LOCKED';
+                            else if (doorStateTop === 'closed') doorText = '🚪CLOSED';
+                            else doorText = '✅OPEN';
+                            if (this.frozenDoors.has(keyTop)) doorText += ' ❄️';
+                            door.textContent = doorText;
+                            cell.appendChild(door);
                         }
-                        
-                        // Left door
+                        }
+
+                        // --- Left door ---
                         if (x > 0) {
-                            const doorState = this.getDoorState(x, y, x - 1, y);
-                            if (this.doors.has(this.getDoorKey(x, y, x - 1, y))) {
-                                const door = document.createElement('div');
-                                door.className = `door door-vertical door-left ${doorState}`;
-                                let doorText = '';
-                                if (doorState === 'locked') {
-                                    doorText = '🔒LOCKED';
-                                } else if (doorState === 'closed') {
-                                    doorText = '🚪CLOSED';
-                                } else {
-                                    doorText = '✅OPEN';
-                                }
-                                door.textContent = doorText;
-                                cell.appendChild(door);
-                            }
+                        const keyLeft = this.getDoorKey(x, y, x - 1, y);
+                        if (this.doors.has(keyLeft)) {
+                            const doorStateLeft = this.getDoorState(x, y, x - 1, y);   // <— define it
+                            const door = document.createElement('div');
+                            door.className = `door door-vertical door-left ${doorStateLeft}`;
+                            if (this.frozenDoors.has(keyLeft)) door.classList.add('frozen');
+
+                            let doorText = '';
+                            if (doorStateLeft === 'locked') doorText = '🔒LOCKED';
+                            else if (doorStateLeft === 'closed') doorText = '🚪CLOSED';
+                            else doorText = '✅OPEN';
+                            if (this.frozenDoors.has(keyLeft)) doorText += ' ❄️';
+                            door.textContent = doorText;
+                            cell.appendChild(door);
                         }
+                        }
+
                         
                         board.appendChild(cell);
                     }
@@ -994,6 +1116,10 @@
                 // document.getElementById('moveLeftBtn').disabled = !hasActions || isGameOver;
                 // document.getElementById('moveRightBtn').disabled = !hasActions || isGameOver;
                 document.getElementById('attackBtn').disabled = !hasActions || isGameOver;
+                if (unit && unit.type === 'hunter' && this.currentTurn === 0) {
+                    document.getElementById('attackBtn').disabled = true;
+                }
+
                 document.getElementById('unlockBtn').disabled = !hasActions || isGameOver;
                 document.getElementById('openBtn').disabled = !hasActions || isGameOver;
                 document.getElementById('endTurnBtn').disabled = !unit || isGameOver;

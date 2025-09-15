@@ -320,10 +320,7 @@
 
         <!-- Actions (second click) -->
         <div class="action-buttons" id="actionButtons">
-            <button onclick="moveUnit('up')" id="moveUpBtn">↑ Move Up</button>
-            <button onclick="moveUnit('down')" id="moveDownBtn">↓ Move Down</button>
-            <button onclick="moveUnit('left')" id="moveLeftBtn">← Move Left</button>
-            <button onclick="moveUnit('right')" id="moveRightBtn">→ Move Right</button>
+            <button onclick="moveSelected()" id="moveDirBtn">🏃 Move (dir)</button>
 
             <button onclick="attackAction()" id="attackBtn">⚔️ Attack</button>
 
@@ -384,7 +381,7 @@
                 ];
                 
                 // Create hunter
-                this.hunter = { id: 'H', type: 'hunter', hp: 16, maxHp: 16, x: 0, y: 0, actions: 3, maxActions: 3 };
+                this.hunter = { id: 'H', type: 'hunter', hp: 16, maxHp: 16, x: 0, y: 0, actions: 2, maxActions: 2 };
                 
                 // Place units on grid
                 this.participants.forEach(p => {
@@ -468,7 +465,12 @@
             
             startTurn() {
                 if (this.gameOver) return;
-                
+                this.selectedDir = null;
+                ['up','down','left','right'].forEach(d => {
+                    const btn = document.getElementById('dir' + d.charAt(0).toUpperCase() + d.slice(1));
+                    if (btn) btn.classList.remove('selected');
+                });
+
                 let currentUnit = this.getCurrentUnit();
                 if (currentUnit) {
                     currentUnit.actions = currentUnit.maxActions;
@@ -546,6 +548,10 @@
                 } else {
                     this.render();
                 }
+                if (this.gameOver) { 
+                    this.render();
+                    return true; 
+                }
                 
                 return true;
             }
@@ -578,21 +584,23 @@
             attack() {
                 const unit = this.getCurrentUnit();
                 if (!unit || unit.actions <= 0) return false;
-                
+
                 const cell = this.grid[unit.y][unit.x];
                 let target = null;
-                
+
                 if (unit.type === 'participant') {
                     target = cell.units.find(u => u.type === 'hunter');
                     if (target) {
                         target.hp = Math.max(0, target.hp - 2);
                         this.log(`${unit.id} attacked ${target.id} for 2 damage! (HP: ${target.hp})`);
                     }
-                else if (unit.type === 'hunter' && this.currentTurn === 0) {
+                } else if (unit.type === 'hunter') {
+                    // 🔒 Block attacks in the first round
+                    if (this.currentTurn === 0) {
                         this.log(`${unit.id} cannot attack in the first round!`);
                         return false;
-                }
-                } else if (unit.type === 'hunter') {
+                    }
+
                     const targets = cell.units.filter(u => u.type === 'participant' && u.hp > 0);
                     if (targets.length > 0) {
                         target = targets[0];
@@ -600,24 +608,30 @@
                         this.log(`${unit.id} attacked ${target.id} for 3 damage! (HP: ${target.hp})`);
                     }
                 }
-                
+
                 if (!target) {
                     this.log(`${unit.id} has no valid targets to attack`);
                     return false;
                 }
-                
+
                 unit.actions--;
-                
+
                 this.checkWinConditions();
-                
+
                 if (unit.actions <= 0) {
                     this.nextTurn();
                 } else {
                     this.render();
                 }
-                
+
+                if (this.gameOver) { 
+                    this.render();
+                    return true; 
+                }
+
                 return true;
             }
+
             
             unlockDoor(dir = this.selectedDir) {
                 const unit = this.getCurrentUnit();
@@ -714,6 +728,17 @@
                 unit.actions <= 0 ? this.nextTurn() : this.render();
                 return true;
             }
+            moveDir(dir = this.selectedDir) {
+                const unit = this.getCurrentUnit();
+                if (!unit || unit.actions <= 0) return false;
+
+                // If a direction is selected, try that; else do nothing (explicit control)
+                if (!dir) {
+                    this.log(`${unit.id} no direction selected for Move`);
+                    return false;
+                }
+                return this.move(dir); // uses your existing move() which checks door/open/etc
+            }
 
             
             nextTurn() {
@@ -751,30 +776,56 @@
             }
             
             checkWinConditions() {
-                // Check if any participant escaped
-                if (this.participants.some(p => p.escaped)) {
-                    this.gameOver = true;
-                    this.winner = 'participants';
-                    this.log("🎉 Participants WIN! A participant escaped!");
-                    return;
+            // participant escaped
+            if (this.participants.some(p => p.escaped)) {
+                this.gameOver = true;
+                this.winner = 'participants';
+                this.log("🎉 Participants WIN! A participant escaped!");
+
+                // 🔧 stop autoplay & render immediately
+                if (this.autoPlayInterval) {
+                clearInterval(this.autoPlayInterval);
+                this.autoPlayInterval = null;
+                const btn = document.getElementById('autoPlayBtn');
+                if (btn) btn.textContent = 'Auto Play';
                 }
-                
-                // Check if hunter is dead
-                if (this.hunter.hp <= 0) {
-                    this.gameOver = true;
-                    this.winner = 'participants';
-                    this.log("🎉 Participants WIN! Hunter defeated!");
-                    return;
-                }
-                
-                // Check if all participants are dead
-                if (this.participants.every(p => p.hp <= 0)) {
-                    this.gameOver = true;
-                    this.winner = 'hunter';
-                    this.log("💀 Hunter WINS! All participants eliminated!");
-                    return;
-                }
+                this.render();
+                return;
             }
+
+            // hunter dead
+            if (this.hunter.hp <= 0) {
+                this.gameOver = true;
+                this.winner = 'participants';
+                this.log("🎉 Participants WIN! Hunter defeated!");
+
+                if (this.autoPlayInterval) {
+                clearInterval(this.autoPlayInterval);
+                this.autoPlayInterval = null;
+                const btn = document.getElementById('autoPlayBtn');
+                if (btn) btn.textContent = 'Auto Play';
+                }
+                this.render();
+                return;
+            }
+
+            // all participants dead
+            if (this.participants.every(p => p.hp <= 0)) {
+                this.gameOver = true;
+                this.winner = 'hunter';
+                this.log("💀 Hunter WINS! All participants eliminated!");
+
+                if (this.autoPlayInterval) {
+                clearInterval(this.autoPlayInterval);
+                this.autoPlayInterval = null;
+                const btn = document.getElementById('autoPlayBtn');
+                if (btn) btn.textContent = 'Auto Play';
+                }
+                this.render();
+                return;
+            }
+            }
+
             
             log(message) {
                 this.actionLog.push(message);
@@ -938,14 +989,28 @@
                 const hasActions = unit && unit.actions > 0;
                 const isGameOver = this.gameOver;
                 
-                document.getElementById('moveUpBtn').disabled = !hasActions || isGameOver;
-                document.getElementById('moveDownBtn').disabled = !hasActions || isGameOver;
-                document.getElementById('moveLeftBtn').disabled = !hasActions || isGameOver;
-                document.getElementById('moveRightBtn').disabled = !hasActions || isGameOver;
+                // document.getElementById('moveUpBtn').disabled = !hasActions || isGameOver;
+                // document.getElementById('moveDownBtn').disabled = !hasActions || isGameOver;
+                // document.getElementById('moveLeftBtn').disabled = !hasActions || isGameOver;
+                // document.getElementById('moveRightBtn').disabled = !hasActions || isGameOver;
                 document.getElementById('attackBtn').disabled = !hasActions || isGameOver;
                 document.getElementById('unlockBtn').disabled = !hasActions || isGameOver;
                 document.getElementById('openBtn').disabled = !hasActions || isGameOver;
                 document.getElementById('endTurnBtn').disabled = !unit || isGameOver;
+                const moveDirBtn = document.getElementById('moveDirBtn');
+                if (moveDirBtn) {
+                    if (!unit || isGameOver) {
+                        moveDirBtn.disabled = true;
+                    } else if (this.selectedDir) {
+                        const adj = this.getAdjacentByDir(unit, this.selectedDir);
+                        // enable Move only if the selected edge exists and is open
+                        moveDirBtn.disabled = !hasActions || !adj || adj.state !== 'open';
+                    } else {
+                        // no direction selected → disabled
+                        moveDirBtn.disabled = true;
+                    }
+                }
+
 
                 // Optional: if a direction is selected, enable/disable action buttons based on that door state
                 if (unit && !isGameOver && this.selectedDir) {
@@ -1027,6 +1092,11 @@
                 }
             }
         }
+
+        function moveSelected() {
+            if (game) game.moveDir();
+        }
+
         
         // Auto-play functionality
         function autoPlay() {

@@ -30,61 +30,92 @@ def test():
         "message": "Backend test route works."
     })
 
+def fallback_keywords(preference: str) -> str:
+    p = (preference or "").lower().strip()
+
+    if not p:
+        return "美食"
+    if "spicy and sour" in p or ("spicy" in p and "sour" in p):
+        return "酸菜鱼 川菜 贵州菜"
+    if "spicy" in p or "辣" in p:
+        return "川菜 火锅 湘菜 麻辣烫"
+    if "sweet" in p or "甜" in p:
+        return "甜品 奶茶 蛋糕"
+    if "sour" in p or "酸" in p:
+        return "酸菜鱼 贵州菜 云南菜"
+    if "bbq" in p or "barbecue" in p or "烧烤" in p:
+        return "烧烤 烤串 夜宵"
+    if "noodle" in p or "面" in p:
+        return "面馆 拉面 牛肉面"
+    if "hotpot" in p or "火锅" in p:
+        return "火锅"
+    return "美食"
 
 def map_preference_to_keywords(preference: str) -> str:
+    preference = (preference or "").strip()
 
     if not preference:
         return "美食"
 
-    prompt = f"""
-User food craving: "{preference}"
-
-Convert this craving into Chinese cuisine keywords suitable for searching restaurants on AMap.
-
-Return only 3–5 short keywords separated by spaces.
-
-Examples:
-spicy food -> 川菜 火锅 湘菜 麻辣烫
-sweet dessert -> 甜品 奶茶 蛋糕
-noodles -> 面馆 拉面 牛肉面
-barbecue -> 烧烤 烤串
-
-Output ONLY the keywords.
-"""
-
-    response = client.chat.completions.create(
-        model="deepseek-chat",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
-
-    keywords = response.choices[0].message.content.strip()
-
-    return keywords
-
-def map_preference_to_keywords(preference: str):
-
     try:
-
         prompt = f"""
-Convert this food craving into Chinese cuisine search keywords for restaurants:
+You convert user food cravings into search keywords for AMap restaurant search in mainland China.
 
+User craving:
 {preference}
 
-Return 3-5 Chinese cuisine keywords separated by spaces.
+Rules:
+1. Output ONLY simplified Chinese.
+2. Output ONLY 3 to 5 short restaurant-search keywords.
+3. Separate keywords with spaces.
+4. No English.
+5. No quotes.
+6. No commas.
+7. No explanation.
+8. Prefer cuisine or dish/category words that Chinese users actually search on maps.
+
+Good outputs:
+川菜 火锅 湘菜 麻辣烫
+甜品 奶茶 蛋糕
+面馆 拉面 牛肉面
+烧烤 烤串 夜宵
+酸菜鱼 贵州菜 云南菜
+
+Bad outputs:
+"Sweet and sour Chinese"
+Sweet and sour pork
+Chinese restaurant
+I recommend these keywords
+
+Now output ONLY the keywords.
 """
 
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
+            temperature=0.1
         )
 
-        return response.choices[0].message.content.strip()
+        keywords = response.choices[0].message.content.strip()
+
+        # cleanup
+        keywords = keywords.replace(",", " ")
+        keywords = keywords.replace("，", " ")
+        keywords = keywords.replace('"', "")
+        keywords = keywords.replace("'", "")
+        keywords = " ".join(keywords.split())
+
+        # if model still returns too much English, force fallback
+        ascii_count = sum(1 for ch in keywords if ord(ch) < 128)
+        if len(keywords) > 0 and ascii_count / len(keywords) > 0.5:
+            return fallback_keywords(preference)
+
+        return keywords if keywords else fallback_keywords(preference)
 
     except Exception:
+        return fallback_keywords(preference)
+    
 
-        return preference or "美食"
     
 @app.route("/recommendations", methods=["GET"])
 def recommendations_get_help():
@@ -104,6 +135,8 @@ def recommendations():
         travel_mode = (data.get("travel_mode") or "walking").strip()
 
         keywords = map_preference_to_keywords(preference)
+        print("USER PREFERENCE:", preference)
+        print("KEYWORDS SENT TO AMAP:", keywords)
 
         geo_url = "https://restapi.amap.com/v3/geocode/geo"
         geo_params = {

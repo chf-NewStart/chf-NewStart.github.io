@@ -360,9 +360,11 @@
             const results = document.getElementById('results');
             const refinedQuery = document.getElementById('refinedQuery');
             const recommendations = document.getElementById('recommendations');
-            
+            const foodForm = document.getElementById('foodForm');
+
             // Replace with your API Gateway URL
-            const API_URL = 'https://nsbg2x7a01.execute-api.us-east-2.amazonaws.com/prod/recommendations';
+            // const API_URL = 'https://nsbg2x7a01.execute-api.us-east-2.amazonaws.com/prod/recommendations';
+            const API_URL = 'http://127.0.0.1:5000/recommendations';
             
             // Reset search
             resetBtn.addEventListener('click', function() {
@@ -550,8 +552,11 @@
                         })
                     });
 
-                    const responseData = await response.json();
-                    const data = JSON.parse(responseData.body);
+                    //uncomment 2 lines for aws
+                    //const responseData = await response.json();
+                    //const data = JSON.parse(responseData.body);
+                    
+                    const data = await response.json();
 
                     if (!data.success) {
                         throw new Error(data.error || 'Failed to get recommendations');

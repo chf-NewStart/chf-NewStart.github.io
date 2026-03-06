@@ -374,6 +374,51 @@
                 preferenceInput.value = '';
                 locationInput.value = '';
             });
+
+            
+            function autofillCurrentLocation() {
+                if (!navigator.geolocation) {
+                    console.log("Geolocation is not supported by this browser.");
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+
+                        console.log("Current coords:", lat, lng);
+
+                        // store coordinates on the input element for later submission
+                        locationInput.dataset.lat = lat;
+                        locationInput.dataset.lng = lng;
+
+                        // optional placeholder while reverse geocoding
+                        locationInput.placeholder = `Current location detected (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+
+                        try {
+                            // call your backend reverse-geocode helper
+                            const resp = await fetch(`http://127.0.0.1:5000/reverse_geocode?lat=${lat}&lng=${lng}`);
+                            const data = await resp.json();
+
+                            if (data.success && data.address) {
+                                locationInput.value = data.address;
+                            }
+                        } catch (err) {
+                            console.error("Reverse geocode failed:", err);
+                        }
+                    },
+                    (error) => {
+                        console.error("Geolocation error:", error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 300000
+                    }
+                );
+            }
+
             
             // Display error message
             function showError(message) {
@@ -518,6 +563,8 @@
             });
             
             submitBtn.addEventListener('click', async function () {
+                const lat = locationInput.dataset.lat || "";
+                const lng = locationInput.dataset.lng || "";
                 const preference = preferenceInput.value.trim();
                 const location = locationInput.value.trim();
                 const travelTime = document.getElementById('travelTime').value.trim();
@@ -546,6 +593,8 @@
                         body: JSON.stringify({
                         preference,
                         location,
+                        lat,
+                        lng,
                         travel_time: travelTime,
                         travel_mode: travelMode,
                         max_price: maxPrice,
@@ -639,6 +688,7 @@
                 
                 // Set language attribute on html element
                 document.documentElement.lang = lang;
+                autofillCurrentLocation()
             }
         });
     </script>

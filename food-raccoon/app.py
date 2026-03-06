@@ -30,6 +30,46 @@ def test():
         "message": "Backend test route works."
     })
 
+@app.route("/reverse_geocode", methods=["GET"])
+def reverse_geocode():
+    try:
+        lat = request.args.get("lat", "").strip()
+        lng = request.args.get("lng", "").strip()
+
+        if not lat or not lng:
+            return jsonify({
+                "success": False,
+                "error": "Missing lat/lng"
+            }), 400
+
+        url = "https://restapi.amap.com/v3/geocode/regeo"
+        params = {
+            "key": AMAP_KEY,
+            "location": f"{lng},{lat}"
+        }
+
+        res = requests.get(url, params=params, timeout=10).json()
+
+        if res.get("status") != "1":
+            return jsonify({
+                "success": False,
+                "error": "Reverse geocoding failed",
+                "amap_response": res
+            }), 400
+
+        address = res.get("regeocode", {}).get("formatted_address", "")
+
+        return jsonify({
+            "success": True,
+            "address": address
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
 def fallback_keywords(preference: str) -> str:
     p = (preference or "").lower().strip()
 
@@ -131,8 +171,54 @@ def recommendations():
         data = request.get_json(silent=True) or {}
 
         preference = (data.get("preference") or "").strip()
-        location = (data.get("location") or "").strip() or "北京市"
+        lat = (data.get("lat") or "").strip()
+        lng = (data.get("lng") or "").strip()
+        location = (data.get("location") or "").strip()
         travel_mode = (data.get("travel_mode") or "walking").strip()
+                
+        if lat and lng:
+            user_location = f"{lng},{lat}"
+
+            # reverse geocode to get city/province
+            regeo_url = "https://restapi.amap.com/v3/geocode/regeo"
+            regeo_params = {
+                "key": AMAP_KEY,
+                "location": user_location
+            }
+
+            regeo_res = requests.get(regeo_url, params=regeo_params, timeout=10).json()
+
+            if regeo_res.get("status") != "1":
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to reverse geocode coordinates",
+                    "amap_response": regeo_res
+                }), 400
+
+            comp = regeo_res.get("regeocode", {}).get("addressComponent", {})
+            city = comp.get("city") or comp.get("province") or ""
+        else:
+            location = location or "北京市"
+
+            geo_url = "https://restapi.amap.com/v3/geocode/geo"
+            geo_params = {
+                "key": AMAP_KEY,
+                "address": location
+            }
+
+            geo_res = requests.get(geo_url, params=geo_params, timeout=10).json()
+
+            if geo_res.get("status") != "1" or not geo_res.get("geocodes"):
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to geocode location",
+                    "amap_response": geo_res
+                }), 400
+
+            geocode = geo_res["geocodes"][0]
+            user_location = geocode.get("location", "")
+            city = geocode.get("city") or geocode.get("province") or ""
+
 
         keywords = map_preference_to_keywords(preference)
         print("USER PREFERENCE:", preference)

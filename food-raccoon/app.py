@@ -5,6 +5,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+
 AMAP_KEY = "e053b682f51ae08601c242e65c1b3ae7"
 
 from openai import OpenAI
@@ -199,7 +200,6 @@ def recommendations():
             city = comp.get("city") or comp.get("province") or ""
         else:
             location = location or "北京市"
-
             geo_url = "https://restapi.amap.com/v3/geocode/geo"
             geo_params = {
                 "key": AMAP_KEY,

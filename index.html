@@ -110,6 +110,9 @@
                                 <button class="explorer-btn" onclick="switchAboutCard('card-phd', this)">
                                     <span class="highlight-icon">[::]</span> <span data-en="Greenhouse_Twin_WIP.log" data-zh="温室数字孪生_WIP.log">Greenhouse_Twin_WIP.log</span>
                                 </button>
+                                <button class="explorer-btn" onclick="switchAboutCard('card-skills', this)">
+                                    <span class="highlight-icon">[::]</span> <span data-en="tech_stack.json" data-zh="技术栈.json">tech_stack.json</span>
+                                </button>
                             </div>
 
                             <div class="explorer-content">
@@ -203,6 +206,32 @@
                                         </button>
                                     </div>
                                 </div>
+                                <div id="card-skills" class="highlight-card">
+                                    <div class="vertical-accent"></div>
+                                    <h3><span data-en="System Capabilities" data-zh="系统能力">System Capabilities</span></h3>
+                                    
+                                    <ul class="highlight-list">
+                                        <li>
+                                            <strong style="color: #1db954;">[SYS] Languages:</strong>
+                                            <span style="color: #dcdcdc;">Python, C++, JavaScript, TypeScript, Java, C#, R, SQL</span>
+                                        </li>
+                                        <li>
+                                            <strong style="color: #1db954;">[ML] Machine Learning:</strong>
+                                            <span style="color: #dcdcdc;">PyTorch, TensorFlow, Scikit-learn, DeepFace, MediaPipe, State-Space Models</span>
+                                        </li>
+                                        <li>
+                                            <strong style="color: #1db954;">[DAT] Data & Analysis:</strong>
+                                            <span style="color: #dcdcdc;">Pandas, NumPy, SciPy, COBRApy, Data Visualization</span>
+                                        </li>
+                                        <li>
+                                            <strong style="color: #1db954;">[CFG] Frameworks & Tools:</strong>
+                                            <span style="color: #dcdcdc;">React, Node.js, Git, Docker, AWS, Azure, Selenium</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+
+
                             </div>
                         </div>
                     </div>
@@ -283,68 +312,7 @@
 
 
         
-         <!-- Skills Section -->
-         <section id="skills-section" class="scroll-section skills-section">
-            <div class="container">
-                <h2 class="section-title reveal-content" data-en="What I Know" data-zh="我的技能">What I Know</h2>
-                <div class="skills-grid">
-                    <div class="skill-group stagger-item">
-                        <h3><span class="highlight-icon">[SYS]</span> <span data-en="Programming Languages" data-zh="编程语言">Programming Languages</span></h3>
-                        <div class="skill-list">
-                            <span class="skill-tag primary">Python</span>
-                            <span class="skill-tag primary">JavaScript</span>
-                            <span class="skill-tag primary">TypeScript</span>
-                            <span class="skill-tag primary">C++</span>
-                            <span class="skill-tag secondary">Java</span>
-                            <span class="skill-tag secondary">C#</span>
-                            <span class="skill-tag secondary">R</span>
-                            <span class="skill-tag secondary">Arduino</span>
-                        </div>
-                    </div>
-                    
-                    <div class="skill-group stagger-item">
-                        <h3><span class="highlight-icon">[CFG]</span> <span data-en="Frameworks & Tools" data-zh="框架和工具">Frameworks & Tools</span></h3>
-                        <div class="skill-list">
-                            <span class="skill-tag primary">React</span>
-                            <span class="skill-tag primary">Redux</span>
-                            <span class="skill-tag primary">Node.js</span>
-                            <span class="skill-tag secondary">Selenium</span>
-                            <span class="skill-tag secondary">WebDriverIO</span>
-                            <span class="skill-tag secondary">Azure</span>
-                            <span class="skill-tag secondary">Data Factory</span>
-                            <span class="skill-tag secondary">Databricks</span>
-                            <span class="skill-tag secondary">LTspice</span>
-                        </div>
-                    </div>
-                    
-                    <div class="skill-group stagger-item">
-                        <h3><span class="highlight-icon">[DAT]</span> <span data-en="Data Analysis" data-zh="数据分析">Data Analysis</span></h3>
-                        <div class="skill-list">
-                            <span class="skill-tag primary">SQL</span>
-                            <span class="skill-tag primary">Pandas</span>
-                            <span class="skill-tag primary">NumPy</span>
-                            <span class="skill-tag secondary" data-en="Data Visualization" data-zh="数据可视化">Data Visualization</span>
-                            <span class="skill-tag secondary">MS Office</span>
-                            <span class="skill-tag secondary" data-en="Statistical Analysis" data-zh="统计分析">Statistical Analysis</span>
-                        </div>
-                    </div>
-                    
-                    <div class="skill-group stagger-item">
-                        <h3><span class="highlight-icon">[ML]</span> <span data-en="Machine Learning" data-zh="机器学习">Machine Learning</span></h3>
-                        <div class="skill-list">
-                            <span class="skill-tag primary">TensorFlow</span>
-                            <span class="skill-tag primary">PyTorch</span>
-                            <span class="skill-tag primary">Scikit-learn</span>
-                            <span class="skill-tag primary">DeepFace</span>
-                            <span class="skill-tag secondary">MediaPipe</span>
-                            <span class="skill-tag secondary">Ollama</span>
-                            <span class="skill-tag secondary">NLP</span>
-                            <span class="skill-tag secondary" data-en="Computer Vision" data-zh="计算机视觉">Computer Vision</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+
 
         <!-- Experience Section -->
         <section id="experience-section" class="scroll-section experience-section">
@@ -775,107 +743,62 @@
             <div class="container">
                 <h2 class="section-title reveal-content" data-en="Get in Touch" data-zh="联系方式">Get in Touch</h2>
                 
-                <!-- Modern Digital Business Card -->
-                <div class="digital-card-container reveal-content">
-                    <div class="digital-card">
-                        <div class="card-header">
-                            <div class="profile-initial">HC</div>
-                            <div class="card-name" data-en="Houfu Chen" data-zh="陈厚孚">Houfu Chen</div>
-                            <div class="card-title" data-en="ML Enthusiast & QA-Developer" data-zh="机器学习爱好者 & 测试开发者">ML Enthusiast & QA-Developer</div>
+                    <div class="terminal-container reveal-content" style="max-width: 700px; margin: 0 auto; text-align: left;">
+                        <div class="terminal-header">
+                            <div class="terminal-title">~/contact_protocols.sh - bash - 80x24</div>
                         </div>
                         
-                        <div class="card-body">
-                            <!-- Contact Items with Icons -->
-                            <div class="contact-item email-item">
-                                <div class="contact-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="2" y="6" width="20" height="12"></rect>
-                                        <path d="M 2 6 L 10 15 L 20 6 z"/>
-                                    </svg>
-                                </div>
-                                <div class="contact-label" data-en="EMAIL" data-zh="邮箱">EMAIL</div>
-                                <div class="contact-value-container">
-                                    <a href="mailto:houfu.chen@mail.utoronto.ca" class="contact-value lang-en">houfu.chen@mail.utoronto.ca</a>
-                                    <a href="mailto:houfuchen0702@qq.com" class="contact-value lang-zh" style="display: none;">houfuchen0702@qq.com</a>
-                                </div>
-                            </div>
+                        <div class="terminal-content" style="padding: 20px 25px; font-family: Consolas, monospace; background-color: #0a0a0a;">
                             
-                            <div class="contact-item github-item">
-                                <div class="contact-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-                                    </svg>
-                                </div>
-                                <div class="contact-label">GITHUB</div>
-                                <div class="contact-value-container">
-                                    <a href="https://github.com/chf-NewStart" target="_blank" class="contact-value">github.com/chf-NewStart</a>
+                            <p style="color: #666; margin-bottom: 20px; font-size: 0.85rem;">
+                                Last login: <span id="login-time">Thu May 07 06:20:30</span> on ttys001
+                            </p>
+
+                            <div style="margin-bottom: 20px;">
+                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
+                                <span style="color: #dcdcdc;">fetch contact --email</span>
+                                <br>
+                                <span style="color: #888;">> </span><a href="mailto:houfu.chen@mail.utoronto.ca" class="highlight-link">houfu.chen@mail.utoronto.ca</a>
+                            </div>
+
+                            <div style="margin-bottom: 20px;">
+                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
+                                <span style="color: #dcdcdc;">fetch contact --github</span>
+                                <br>
+                                <span style="color: #888;">> </span><a href="https://github.com/chf-NewStart" target="_blank" class="highlight-link">github.com/chf-NewStart</a>
+                            </div>
+
+                            <div style="margin-bottom: 20px;">
+                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
+                                <span style="color: #dcdcdc;">fetch contact --linkedin</span>
+                                <br>
+                                <span style="color: #888;">> </span><a href="https://www.linkedin.com/in/houfuchen/" target="_blank" class="highlight-link">/in/houfuchen/</a>
+                            </div>
+
+                            <div style="margin-bottom: 20px;">
+                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
+                                <span style="color: #dcdcdc;">download --file cv_data.pdf</span>
+                                <br>
+                                <span style="color: #888;">> </span><a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" class="highlight-link" data-en="[Download Industry CV]" data-zh="[下载简历]">[Download Industry CV]</a>
+                            </div>
+
+                            <div style="margin-bottom: 20px;">
+                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
+                                <span style="color: #dcdcdc;">generate_qr --network linkedin --render</span>
+                                <br>
+                                <div style="margin-top: 10px; margin-left: 15px;">
+                                    <img src="resumes/linkedinQR.png" alt="LinkedIn QR" style="width: 100px; height: 100px; border: 2px solid #1db954; opacity: 0.8; transition: opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
                                 </div>
                             </div>
-                            
-                            <div class="contact-item linkedin-item">
-                                <div class="contact-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
-                                        <rect x="2" y="9" width="4" height="12"></rect>
-                                        <circle cx="4" cy="4" r="2"></circle>
-                                    </svg>
-                                </div>
-                                <div class="contact-label">LINKEDIN</div>
-                                <div class="contact-value-container">
-                                    <a href="https://www.linkedin.com/in/houfuchen/" target="_blank" class="contact-value">/houfuchen/</a>
-                                </div>
+
+                            <div>
+                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
+                                <span class="cursor" style="display: inline-block; width: 8px; height: 16px; background-color: #1db954; vertical-align: middle; margin-left: 5px; animation: blink 1s step-end infinite;"></span>
                             </div>
-                            
-                            <div class="contact-item resume-item">
-                                <div class="contact-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="6" y="4" width="15" height="20"></rect>
-                                        <rect x="12" y="4" width="6" height="8"></rect>
 
-                                        <!-- <path d="M 6 10 L 13 10 z"/> -->
-                                        <path d="M 6 18 L 14 18 z"/>
-
-                                        <!-- <path d="M 6 10 L 13 10 z"/> -->
-
-                                    </svg>
-
-                                </div>
-                                <div class="contact-label" data-en="RESUME" data-zh="简历">RESUME</div>
-                                <div class="contact-value-container">
-                                    <!-- English -->
-                                    <a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" class="contact-value lang-en" data-en="Industry CV" data-zh="">Industry CV</a>
-                                    <span class="lang-en divider">|</span>
-                                    <a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" class="contact-value lang-en" data-en="PhD CV" data-zh="">PhD CV</a>
-                                  
-                                    <!-- Chinese -->
-                                    <a href="resumes/陈厚孚最终402.pdf" target="_blank" class="contact-value lang-zh" style="display: none;" data-en="" data-zh="行业简历">行业简历</a>
-                                  </div>
-                                  
-                                
-                            </div>
-                        </div>
-                        
-                        <div class="card-footer">
-                            <div class="card-qr-code">
-                                <!-- Language-specific QR Codes -->
-                                <div class="qr-image-container lang-zh" style="display: none;">
-                                    <img src="resumes/wechatQR.png"alt="WeChat QR Code" class="qr-image">
-                                </div>
-                                
-                                <!-- LinkedIn QR for English users -->
-                                <div class="qr-image-container lang-en">
-                                    <img src="resumes/linkedinQR.png" alt="LinkedIn QR Code" class="qr-image">
-                                </div>
-                                
-                                <!-- Language-specific text -->
-                                <div class="qr-text lang-zh" style="display: none;" data-zh="扫描以连接微信">扫描以连接微信</div>
-                                <div class="qr-text lang-en" data-en="Connect on LinkedIn">Connect on LinkedIn</div>
-                            </div>
                         </div>
                     </div>
-                </div>
                 
-                <!-- Add spacer for bottom padding -->
                 <div style="height: 150px; width: 100%; display: block; clear: both;"></div>
             </div>
         </section>

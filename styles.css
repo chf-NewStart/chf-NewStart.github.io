@@ -183,16 +183,7 @@ a:hover {
     color: #1db954;
 }
 
-.section-title::after {
-    content: '';
-    position: absolute;
-    width: 60px;
-    height: 3px;
-    background: linear-gradient(90deg, #007acc, #1db954);
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-}
+
 
 .green-highlight, 
 .university-name, 
@@ -337,10 +328,13 @@ a:hover {
 
 /* ===== ABOUT SECTION ===== */
 .about-section {
-    background-color: #1e1e1e;
     padding: 80px 0;
     position: relative;
     overflow: visible;
+}
+
+body, .scroll-container, .scroll-section {
+    background-color: #050505 !important; /* Pure, deep terminal black */
 }
 
 .about-content {
@@ -1331,6 +1325,25 @@ footer {
 
 .resume-item:hover .contact-icon {
     animation: wobble 0.8s ease;
+}
+
+/* Force all section titles to the left to match the terminal aesthetic */
+.section-title {
+    text-align: left;
+    font-family: Consolas, monospace; /* Ensures they use the coding font */
+    font-size: 2.5rem;
+    color: #1db954;
+    margin-bottom: 40px;
+    padding-left: 0;
+    text-transform: uppercase;
+}
+
+/* Add a hacker-style prompt before every section title */
+.section-title::before {
+    content: "root@hc:~/";
+    color: #888; /* Dark gray so the green title pops */
+    font-size: 1.5rem;
+    margin-right: 15px;
 }
 
 @keyframes bounce {

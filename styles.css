@@ -1055,6 +1055,15 @@ footer {
     padding-left: 0;
     margin-left: 10px;
     border-left: 1px dashed #333;
+    color: #dcdcdc; /* Light, readable terminal gray */
+    line-height: 1.6; /* Gives the text nice breathing room */
+    margin-bottom: 15px;
+}
+
+/* Make the bold labels pop */
+.explorer-content .highlight-list strong {
+    color: #ffffff; /* Pure white for contrast */
+    font-weight: bold;
 }
 
 .explorer-content .highlight-list li {
@@ -1208,14 +1217,19 @@ footer {
 }
 
 /* Mobile override for the new layout */
-@media (max-width: 768px) {
+@media (max-width: 1100px) {
     .about-explorer {
         flex-direction: column;
+        gap: 20px;
     }
     .explorer-menu {
         max-width: 100%;
         width: 100%;
-        box-sizing: border-box;
+        min-width: auto; /* Removes the rigid width limit */
+    }
+    .explorer-content {
+        width: 100%;
+        min-height: auto; /* Lets the height be flexible on mobile */
     }
 }
 .contact-icon {

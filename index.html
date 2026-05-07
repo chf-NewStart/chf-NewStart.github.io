@@ -929,21 +929,20 @@
                 }, 500); // Match transition time
             });
         }
+
         function switchAboutCard(cardId, buttonElement) {
-            // 1. Hide all the highlight cards
-            document.querySelectorAll('.explorer-content .highlight-card').forEach(card => {
+            const sectionContainer = document.getElementById('about-section');
+
+            sectionContainer.querySelectorAll('.explorer-content .highlight-card').forEach(card => {
                 card.classList.remove('active-card');
             });
-            
-            // 2. Remove the 'active' styling from all the menu buttons
-            document.querySelectorAll('.explorer-btn').forEach(btn => {
+
+            sectionContainer.querySelectorAll('.explorer-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            
-            // 3. Show the specific card we clicked
+
             document.getElementById(cardId).classList.add('active-card');
             buttonElement.classList.add('active');
-            //
         }
         function switchExpCard(cardId, buttonElement) {
             // 1. Find the specific container for the Experience section

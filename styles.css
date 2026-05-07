@@ -646,77 +646,21 @@ body, .scroll-container, .scroll-section {
 }
 
 /* Project / Experience Tabs */
-.project-tabs {
-    list-style: none;
-    margin-top: 10px;
-    padding: 0;
-}
-
-.project-tab {
-    margin-bottom: 10px;
-    border: 1px solid #444444;
-    border-radius: 4px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    position: relative;
-    opacity: 0;
-    transform: translateY(20px);
-    animation: fadeIn 0.5s ease forwards;
-}
-
-.project-tab:nth-child(1) { animation-delay: 0.2s; }
-.project-tab:nth-child(2) { animation-delay: 0.4s; }
-.project-tab:nth-child(3) { animation-delay: 0.6s; }
-.project-tab:nth-child(4) { animation-delay: 0.8s; }
-.project-tab:nth-child(5) { animation-delay: 1.0s; }
-.project-tab:nth-child(6) { animation-delay: 1.2s; }
-.project-tab:nth-child(7) { animation-delay: 1.4s; }
-
-.project-tab::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    width: 0;
-    background-color: rgba(29, 185, 84, 0.15);
-    z-index: -1;
-    transition: width 0.3s ease;
-}
-
-.project-tab:hover::before {
-    width: 100%;
-}
-
-.project-tab.active {
-    border-color: #1db954;
-    box-shadow: 0 0 8px rgba(29, 185, 84, 0.4);
-}
-
-.project-tab.active::before {
-    width: 100%;
-}
-
 .project-btn {
-    width: 100%;
-    text-align: left;
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 0; /* Kill the rounded corners */
+    color: #888;
     font-family: Consolas, monospace;
-    font-size: 1rem;
-    background-color: transparent;
-    color: #dcdcdc;
-    border: none;
-    padding: 15px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: relative;
-    z-index: 1;
+    padding: 10px 15px;
 }
 
-.project-btn:focus {
-    outline: none;
-}
+
+
+
+
+
+
 
 .project-title {
     display: flex;
@@ -732,17 +676,55 @@ body, .scroll-container, .scroll-section {
     transition: opacity 0.3s ease;
 }
 
-.project-tab:hover .project-title::before,
-.project-tab.active .project-title::before {
-    opacity: 1;
-}
+
 
 .project-title span {
     transition: color 0.3s ease;
 }
 
-.project-tab:hover .project-title span,
-.project-tab.active .project-title span {
+
+/* Make the container a strict vertical list */
+.project-tabs {
+    display: flex;
+    flex-direction: column; /* Stacks them vertically */
+    gap: 5px; /* Tight, terminal-like spacing */
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    width: 100%;
+    max-width: 400px; /* Forces all items to be exactly the same width */
+}
+
+.project-tab {
+    width: 100%;
+}
+
+/* Strip the boxes and make them look like terminal lines */
+.project-btn {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none; /* Kill the full box border */
+    border-left: 2px solid #333; /* Keep a subtle line on the left */
+    padding: 12px 15px;
+    color: #888;
+    font-family: Consolas, monospace;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+/* The active/hover state: instead of a box, it highlights the line */
+.project-tab.active .project-btn,
+.project-btn:hover {
+    border-left: 2px solid #1db954; /* Green indicator on the left */
+    background: rgba(29, 185, 84, 0.05); /* Very faint highlight row */
+    color: #1db954;
+}
+
+/* Ensure the titles inherit the right color */
+.project-tab.active .project-title span,
+.project-btn:hover .project-title span {
     color: #1db954;
 }
 
@@ -752,32 +734,34 @@ body, .scroll-container, .scroll-section {
     font-family: Consolas, 'Courier New', monospace;
 }
 
-/* Project & Experience Details */
+/* Project & Experience Details - Terminal Output Style */
 .project-detail, 
 .experience-detail {
-    position: fixed;
-    bottom: 0;
-    left: 50%;        /* Center horizontally */
-    transform: translateX(-50%) translateY(100%); /* Center and hide initially */
-    width: 80%;       /* Limit width to 80% of screen */
-    max-width: 900px; /* Maximum width */
-    max-height: 60vh; /* Reduce from 90vh to 70vh */
-    overflow-y: auto;
-    background-color: rgba(37, 37, 38, 0.95);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    z-index: 100;
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
-    border-top: 3px solid #1db954;
-    padding: 30px;
-    box-shadow: 0 -10px 30px rgba(0,0,0,0.2);
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Keep it in the normal flow of the page */
+    position: relative;
+    width: 100%;
+    max-width: none;
+    margin-top: 20px;
+    padding: 0 0 0 20px; /* Indent the output slightly */
+    
+    /* Terminal output visual styling */
+    background-color: transparent; 
+    border-left: 2px dashed #333; /* Faint line connecting it to the prompt */
+    border-top: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    
+    /* Animation setup */
+    display: none;
+    opacity: 0;
+    transform: translateY(-10px); /* Slight slide-down effect instead of screen-takeover */
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .project-detail.active, 
 .experience-detail.active {
-    transform: translateX(-50%) translateY(0); /* Center and show */
+    opacity: 1;
+    transform: translateY(0);
 }
 
 
@@ -811,24 +795,8 @@ body, .scroll-container, .scroll-section {
 }
 
 .detail-close {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 30px;
-    height: 30px;
-    background-color: rgba(29, 185, 84, 0.3);
-    border: 2px solid #1db954;
-    border-radius: 50%;
-    color: #ffffff;
-    font-size: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    z-index: 1001;
+    display: none !important; /* Terminals don't close text lines */
 }
-
 .detail-close:hover {
     background-color: #1db954;
     transform: rotate(90deg);
@@ -1438,45 +1406,18 @@ footer {
 .reveal-content-right {
     animation: slideInRight 1s ease-out forwards;
 }
-
-/* Fix for the Tech Industry section specifically */
-#TechIndustry {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 50% !important;
-    transform: translateX(-50%) translateY(100%) !important;
-    width: 80% !important;
-    max-width: 900px !important;
-    max-height: 70vh !important;
-    margin: 0 !important;
+/* Fix text colors inside the new side-by-side panes */
+.explorer-content p, 
+.explorer-content strong {
+    color: #dcdcdc !important; /* Light terminal gray */
 }
 
-#TechIndustry.active {
-    transform: translateX(-50%) translateY(0) !important;
+.explorer-content h4 span {
+    color: #aaaaaa; /* Dims the '@ Company' text slightly */
 }
 
-/* Ensure all experience details follow the same pattern */
-.experience-detail {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 50% !important;
-    transform: translateX(-50%) translateY(100%) !important;
-    width: 80% !important;
-    max-width: 900px !important;
-    max-height: 70vh !important;
-    margin: 0 !important;
-    z-index: 100 !important;
-}
 
-.experience-detail.active {
-    transform: translateX(-50%) translateY(0) !important;
-}
 
-/* Make sure there are no overrides affecting the positioning */
-.tabcontent.experience-detail {
-    position: fixed !important;
-    max-height: 70vh !important;
-}
 @keyframes slideInLeft {
     from {
         opacity: 0;

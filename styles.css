@@ -14,6 +14,29 @@ body {
     overflow-y: auto; /* Allow vertical scrolling on body */
     height: 100%;
 }
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+body {
+    font-family: 'Space Mono', 'Courier New', monospace;
+    background-color: #f4f4f0; /* Slightly off-white, raw paper look */
+    color: #111;
+}
+
+
+
+/* Apply to your project and experience cards */
+.card, .project-container, .experience-box {
+    border-radius: 0px !important; /* Kill the rounded edges */
+    border: 3px solid #1a1a1a;
+    box-shadow: 6px 6px 0px #1a1a1a; /* Hard, pixelated shadow */
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+/* Make it satisfying to click */
+.card:active, .project-container:active {
+    transform: translate(4px, 4px);
+    box-shadow: 2px 2px 0px #1a1a1a;
+}
 
 /* ===== LAYOUT & CONTAINERS ===== */
 .scroll-container {
@@ -133,6 +156,13 @@ h1, h2 {
 h3 {
     color: #1db954;
 }
+
+/* Make your headings look like command prompts */
+h1, h2, h3 {
+    text-transform: uppercase;
+    letter-spacing: -1px;
+}
+
 
 a {
     color: #1db954;
@@ -261,11 +291,14 @@ a:hover {
 .hero-section h1 {
     font-size: 4rem;
     margin-bottom: 1rem;
-    background: linear-gradient(90deg, #007acc, #1db954);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: none;
-    display: inline-block;
+    color: #1db954; /* Solid terminal green */
+    background: none;
+    -webkit-text-fill-color: #1db954;
+    text-transform: uppercase;
+    letter-spacing: -2px;
+    border-right: 15px solid #1db954; /* Blinking cursor effect */
+    padding-right: 10px;
+    animation: blink 1s step-end infinite;
 }
 
 .hero-section p {
@@ -274,23 +307,19 @@ a:hover {
     opacity: 0.9;
 }
 
-.cta-button {
-    display: inline-block;
-    background: linear-gradient(90deg, #007acc, #1db954);
-    color: white;
-    padding: 12px 30px;
-    border-radius: 30px;
-    font-weight: bold;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    border: none;
+.cta-button, .skill-tag {
+    background: transparent;
+    color: #1db954;
+    border: 2px solid #1db954;
+    border-radius: 0px; /* Square buttons */
+    box-shadow: 4px 4px 0px #1db954;
 }
 
-.cta-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-    text-decoration: none;
+.cta-button:hover, .skill-tag:hover {
+    background: #1db954;
+    color: #111;
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #111; /* Satisfying physical click effect */
 }
 
 .parallax-bg {
@@ -342,58 +371,8 @@ a:hover {
 }
 
 /* Highlight Cards */
-.highlight-card {
-    position: relative;
-    background-color: rgba(35, 35, 35, 0.8);
-    border-radius: 8px;
-    padding: 20px 20px 20px 30px; /* Increase left padding for the vertical line */
-    margin-bottom: 25px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(50, 50, 50, 0.8);
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box; /* Important - include padding in width calculation */
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-.highlight-card {
-    transition: transform 0.2s ease;
-    transform-style: preserve-3d;
-    perspective: 1000px;
-    transform: translateZ(0);
-    will-change: transform;
-}
-
-.highlight-card.tilting {
-    transition: transform 0.1s ease-out;
-}
 
 
-
-.highlight-card:hover {
-    transform: translateX(5px);
-    box-shadow: 0 5px 15px rgba(29, 185, 84, 0.3);
-}
-
-/* Better vertical accent line */
-.highlight-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 5px;
-    background: linear-gradient(to bottom, #1db954, #007acc);
-    border-top-left-radius: 8px;
-    border-bottom-left-radius: 8px;
-}
-
-.highlight-card h3 {
-    color: #1db954;
-    margin-top: 0;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-}
 
 .highlight-icon {
     font-size: 1.8rem;
@@ -402,31 +381,6 @@ a:hover {
     vertical-align: middle;
 }
 
-.highlight-card ul {
-    list-style-type: none;
-    padding: 0;
-    margin: 15px 0 0 0;
-}
-
-.highlight-card li {
-    padding: 5px 0;
-    position: relative;
-    margin-bottom: 8px;
-    color: #e0e0e0;
-}
-
-.highlight-card a {
-    color: #1db954;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    border-bottom: 1px dotted transparent;
-}
-
-.highlight-card a:hover {
-    color: #25e070;
-    border-bottom: 1px dotted #25e070;
-    text-decoration: none;
-}
 
 .highlight-item-title {
     font-weight: bold;
@@ -498,31 +452,7 @@ a:hover {
     gap: 25px;
 }
 
-.skill-group {
-    background-color: #1e1e1e;
-    border-radius: 10px;
-    padding: 25px;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease;
-}
 
-.skill-group:hover {
-    transform: translateY(-5px);
-}
-
-.skill-group h3 {
-    color: #007acc;
-    margin-top: 0;
-    font-size: 1.3rem;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-}
-
-.skill-group h3 i {
-    margin-right: 10px;
-    font-size: 1.5rem;
-}
 
 .skill-list {
     display: flex;
@@ -553,12 +483,7 @@ a:hover {
     border-color: rgba(29, 185, 84, 0.3);
 }
 
-.skill-tag:hover {
-    transform: translateY(-3px) scale(1.05);
-    background-color: #1db954;
-    color: white;
-    border-color: transparent;
-}
+
 
 /* ===== EXPERIENCE & PROJECTS SECTIONS ===== */
 .projects-section, 
@@ -922,25 +847,32 @@ a:hover {
 /* Snapshots Grid */
 .snapshots {
     display: grid; 
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
     margin: 20px 0;
     justify-content: center;
 }
 
+/* Force images to stay in their boxes with the Matrix filter */
 .snapshots img {
-    max-width: 100%;
-    height: 200px;
-    object-fit: contain;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    transition: transform 0.3s, box-shadow 0.3s, filter 0.3s;
+    width: 100%;
+    height: 180px;         /* Locks the height so they are all uniform */
+    object-fit: cover;     /* Fills the box perfectly without stretching */
+    box-sizing: border-box;
+    border-radius: 0px !important;
+    border: 2px solid #333;
+    filter: grayscale(100%) contrast(120%) sepia(20%) hue-rotate(80deg);
+    transition: all 0.1s;
 }
 
+/* The brutalist hover effect */
 .snapshots img:hover {
-    transform: scale(1.2);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    filter: none;
+    border-color: #1db954;
+    transform: translate(-4px, -4px); /* Matches the card hover effect */
+    box-shadow: 8px 8px 0px rgba(29, 185, 84, 0.4);
     z-index: 2;
+    position: relative;
 }
 
 .snapshots img:not(:hover) {
@@ -1013,37 +945,7 @@ footer {
     background: rgba(29, 185, 84, 0.8);
 }
 
-.digital-card-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 50px auto;
-    perspective: 1000px;
-}
 
-.digital-card {
-    width: 100%;
-    max-width: 600px;
-    background: linear-gradient(145deg, rgba(40, 40, 40, 0.9), rgba(25, 25, 25, 0.95));
-    border-radius: 16px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 
-                0 0 0 1px rgba(255, 255, 255, 0.1) inset,
-                0 0 20px rgba(29, 185, 84, 0.1);
-    overflow: hidden;
-    padding: 30px;
-    transition: transform 0.5s ease, box-shadow 0.5s ease;
-    transform-style: preserve-3d;
-    position: relative;
-    backdrop-filter: blur(5px);
-    border-left: 4px solid #1db954;
-}
-
-.digital-card:hover {
-    transform: translateY(-10px) rotateY(5deg);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 
-                0 0 0 1px rgba(255, 255, 255, 0.15) inset,
-                0 0 30px rgba(29, 185, 84, 0.2);
-}
 
 .card-header {
     display: flex;
@@ -1067,6 +969,28 @@ footer {
     margin-bottom: 15px;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+
+/* Brutalist Cards */
+.highlight-card, .skill-group, .digital-card {
+    border-radius: 0px !important; /* Kill rounded edges */
+    background-color: #111;
+    border: 2px solid #333;
+    box-shadow: 8px 8px 0px rgba(29, 185, 84, 0.2); /* Hard, blocky shadow */
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.highlight-card:hover, .skill-group:hover, .digital-card:hover {
+    transform: translate(-4px, -4px) !important;
+    box-shadow: 12px 12px 0px rgba(29, 185, 84, 0.4) !important;
+    border-color: #1db954;
+}
+
+/* Fix the card vertical accent to be a solid block, not a gradient */
+.highlight-card::before {
+    background: #1db954; 
+    border-radius: 0;
 }
 
 .card-name {

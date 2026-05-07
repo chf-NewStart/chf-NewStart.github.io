@@ -70,92 +70,221 @@
                 <div class="parallax-bg" style="background-image: url('hf3.webp');"></div>
                 <div class="container">
                     <h1 class="reveal-content" data-en="Houfu Chen" data-zh="陈厚孚">Houfu Chen</h1>
-                    <p class="reveal-content" data-en="QA Engineer | Project Innovator | ML Enthusiast" data-zh="测试工程师 | 项目创新者 | 机器学习爱好者">Designer | Project Innovator | ML Enthusiast</p>
+                    <p class="reveal-content" data-en="ML Engineer | Digital Twin Researcher | Systems Architect" data-zh="机器学习工程师 | 数字孪生研究员 | 系统架构师">
+                        ML Engineer | Digital Twin Researcher | Systems Architect
+                    </p>
                     <div class="hero-cta reveal-content">
                         <a href="food-raccoon/index.html" class="cta-button" data-en="Hungry, but dont know what to eat?" data-zh="饿了但不知道吃啥？">Hungry?</a>
                     </div>
                 </div>
             </section>
 
-
+            
             <!-- About Section -->
             <section id="about-section" class="scroll-section about-section">
                 <div class="container">
                     <h2 class="section-title reveal-content" data-en="Who I Am" data-zh="关于我">Who I Am</h2>
                     <div class="about-content">
-                        <div class="about-text reveal-content-left">
+                        <div class="about-text reveal-content" style="width: 100%; margin-bottom: 30px;">
                             <p class="profile-text" data-en="I'm a programming and machine learning enthusiast with a passion for solving complex problems through technology. My background spans education, industry experience, and innovative projects, all driven by a curiosity to explore new technologies." data-zh="我是一名编程和机器学习爱好者，热衷于通过技术解决复杂问题。我的背景涵盖教育、行业经验和创新项目，所有这些都源于对探索新技术的好奇心。">
                                 I'm a programming and machine learning enthusiast with a passion for solving complex problems through technology. 
                                 My background spans education, industry experience, and innovative projects, all driven by a curiosity to explore new technologies.
                             </p>
                         </div>
-                        <div class="about-highlights reveal-content-right">
-                            <div class="highlight-card stagger-item">
-                                <div class="vertical-accent"></div>
-                                <h3><span class="highlight-icon">[::]</span> <span data-en="Education" data-zh="教育背景">Education</span></h3>
-                                <ul class="highlight-list">
-                                    <li>
-                                        <span class="highlight-item-title" data-en="MEng in Electrical and Computer Engineering" data-zh="电气与计算机工程硕士">MEng in Electrical and Computer Engineering</span>
-                                        <span class="university-name">University of Toronto</span>
-                                        <em class="date-range" data-en="(Graduated March 2025)" data-zh="(2025年3月毕业)">(Graduated March 2025)</em>
-                                    </li>
-                                    <li>
-                                        <span class="highlight-item-title" data-en="BASc in Nanotechnology Engineering" data-zh="纳米技术工程学士">BASc in Nanotechnology Engineering</span>
-                                        <span class="university-name">University of Waterloo</span>
-                                        <em class="date-range" data-en="(Graduated June 2023, With Distinction)" data-zh="(2023年6月毕业)">(Graduated June 2023, With Distinction)</em>
-                                    </li>
-                                    <li class="featured-alumni">
-                                        <span data-en="Featured alumni in the" data-zh="在">Featured alumni in the</span> <span class="highlight-text" data-en="Data Analytics and Machine Learning Emphasis" data-zh="数据分析和机器学习重点领域">Data Analytics and Machine Learning Emphasis</span> <span data-en="at" data-zh="中被评为杰出校友。">at</span> <span class="university-name">UofT</span>.
-                                        <a href="https://gradstudies.engineering.utoronto.ca/master-of-engineering-meng/emphasis-in-analytics/" target="_blank" class="highlight-link" data-en="Read more here" data-zh="点击了解更多">Read more here</a>.
-                                    </li>
-                                </ul>
+
+                        <div class="about-explorer reveal-content">
+                            <div class="explorer-menu">
+                                <div class="explorer-header">~/about_me $ ls</div>
+                                <button class="explorer-btn active" onclick="switchAboutCard('card-edu', this)">
+                                    <span class="highlight-icon">[::]</span> <span data-en="Education.log" data-zh="教育背景.log">Education.log</span>
+                                </button>
+                                <button class="explorer-btn" onclick="switchAboutCard('card-industry', this)">
+                                    <span class="highlight-icon">[::]</span> <span data-en="Industry_Exp.log" data-zh="行业经验.log">Industry_Exp.log</span>
+                                </button>
+                                <button class="explorer-btn" onclick="switchAboutCard('card-teach', this)">
+                                    <span class="highlight-icon">[::]</span> <span data-en="Teaching_Research.log" data-zh="教学与研究.log">Teaching_Research.log</span>
+                                </button>
+                                <button class="explorer-btn" onclick="switchAboutCard('card-proj', this)">
+                                    <span class="highlight-icon">[::]</span> <span data-en="Projects.log" data-zh="项目亮点.log">Projects.log</span>
+                                </button>
+                                <button class="explorer-btn" onclick="switchAboutCard('card-phd', this)">
+                                    <span class="highlight-icon">[::]</span> <span data-en="Greenhouse_Twin_WIP.log" data-zh="温室数字孪生_WIP.log">Greenhouse_Twin_WIP.log</span>
+                                </button>
                             </div>
-                            
-                            <div class="highlight-card stagger-item">
-                                <div class="vertical-accent"></div>
-                                <h3><span class="highlight-icon">[::]</span> <span data-en="Industry Experience" data-zh="行业经验">Industry Experience</span></h3>
-                                <ul class="highlight-list">
-                                    <li><a href="#experience-ford" data-tab="experience-tab" data-content="experience-ford" class="company-link">Ford Motor</a> - <span class="position-text" data-en="CarPlay Network Performance" data-zh="CarPlay网络性能测试">CarPlay Network Performance</span></li>
-                                    <li><a href="#experience-manulife" data-tab="experience-tab" data-content="experience-manulife" class="company-link">Manulife</a> - <span class="position-text" data-en="Online Banking Development" data-zh="网上银行开发">Online Banking Development</span></li>
-                                    <li><a href="#experience-teranet" data-tab="experience-tab" data-content="experience-teranet" class="company-link">Teranet</a> - <span class="position-text" data-en="QA Automation" data-zh="自动化测试">QA Automation</span></li>
-                                    <li><a href="#experience-imagine" data-tab="experience-tab" data-content="experience-imagine" class="company-link">Imagine Communications</a> - <span class="position-text" data-en="Quality Assurance" data-zh="质量保证">Quality Assurance</span></li>
-                                </ul>
-                            </div>
-                            
-                            <div class="highlight-card stagger-item">
-                                <div class="vertical-accent"></div>
-                                <h3><span class="highlight-icon">[::]</span> <span data-en="Teaching & Research" data-zh="教学与研究">Teaching & Research</span></h3>
-                                <ul class="highlight-list">
-                                    <li>
-                                        <span class="highlight-item-title" data-en="Teaching Assistant" data-zh="助教">Teaching Assistant</span>
-                                        <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience" class="course-link" data-en="Machine Learning & Python" data-zh="机器学习与Python">Machine Learning & Python</a> <span data-en="at" data-zh="在">at</span> <span class="university-name">University of Toronto</span>
-                                    </li>
-                                    <li>
-                                        <span class="highlight-item-title" data-en="Research Assistant" data-zh="研究助理">Research Assistant</span>
-                                        <a href="#ResearchExperience" data-tab="research-tab" data-content="ResearchExperience" class="research-link" data-en="Organic Solar Cell Technologies" data-zh="有机太阳能电池技术">Organic Solar Cell Technologies</a> <span data-en="at" data-zh="在">at</span> <span class="university-name">University of Waterloo</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            
-                            <div class="highlight-card stagger-item">
-                                <div class="vertical-accent"></div>
-                                <h3><span class="highlight-icon">[::]</span> <span data-en="Project Highlights" data-zh="项目亮点">Project Highlights</span></h3>
-                                <ul class="highlight-list">
-                                    <li><a href="#" data-tab="projects-emo-tab" data-content="Emo" class="project-link" data-en="Emotion Detection in Videos" data-zh="视频情感检测">Emotion Detection in Videos</a></li>
-                                    <li><a href="#" data-tab="projects-route-tab" data-content="Route" class="project-link" data-en="LLM Evacuation System" data-zh="LLM疏散系统">LLM Evacuation System</a></li>
-                                    <li><a href="#" data-tab="projects-arduino-tab" data-content="Swim" class="project-link" data-en="S.W.I.M" data-zh="S.W.I.M">S.W.I.M</a> <span class="collaborator" data-en="(Sponsored by Prof. Steve Mann)" data-zh="（由Steve Mann教授赞助）">(Sponsored by Prof. Steve Mann)</span></li>
-                                    <li><a href="#" data-tab="projects-food-tab" data-content="Food" class="project-link" data-en="LLM Food Recommendation" data-zh="LLM食物推荐">LLM Food Recommendation</a></li>
-                                </ul>
+
+                            <div class="explorer-content">
+                                <div id="card-edu" class="highlight-card active-card">
+                                    <div class="vertical-accent"></div>
+                                    <h3><span data-en="Education" data-zh="教育背景">Education</span></h3>
+                                    <ul class="highlight-list">
+                                        <li>
+                                            <span class="highlight-item-title" data-en="MEng in Electrical and Computer Engineering" data-zh="电气与计算机工程硕士">MEng in Electrical and Computer Engineering</span>
+                                            <span class="university-name">University of Toronto</span>
+                                            <em class="date-range" data-en="(Graduated March 2025)" data-zh="(2025年3月毕业)">(Graduated March 2025)</em>
+                                        </li>
+                                        <li>
+                                            <span class="highlight-item-title" data-en="BASc in Nanotechnology Engineering" data-zh="纳米技术工程学士">BASc in Nanotechnology Engineering</span>
+                                            <span class="university-name">University of Waterloo</span>
+                                            <em class="date-range" data-en="(Graduated June 2023, With Distinction)" data-zh="(2023年6月毕业)">(Graduated June 2023, With Distinction)</em>
+                                        </li>
+                                        <li class="featured-alumni">
+                                            <span data-en="Featured alumni in the" data-zh="在">Featured alumni in the</span> <span class="highlight-text" data-en="Data Analytics and Machine Learning Emphasis" data-zh="数据分析和机器学习重点领域">Data Analytics and Machine Learning Emphasis</span> <span data-en="at" data-zh="中被评为杰出校友。">at</span> <span class="university-name">UofT</span>.
+                                            <a href="https://gradstudies.engineering.utoronto.ca/master-of-engineering-meng/emphasis-in-analytics/" target="_blank" class="highlight-link" data-en="Read more here" data-zh="点击了解更多">Read more here</a>.
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div id="card-industry" class="highlight-card">
+                                    <div class="vertical-accent"></div>
+                                    <h3><span data-en="Industry Experience" data-zh="行业经验">Industry Experience</span></h3>
+                                    <ul class="highlight-list">
+                                        <li><a href="#experience-ford" data-tab="experience-tab" data-content="experience-ford" class="company-link">Ford Motor</a> - <span class="position-text" data-en="CarPlay Network Performance" data-zh="CarPlay网络性能测试">CarPlay Network Performance</span></li>
+                                        <li><a href="#experience-manulife" data-tab="experience-tab" data-content="experience-manulife" class="company-link">Manulife</a> - <span class="position-text" data-en="Online Banking Development" data-zh="网上银行开发">Online Banking Development</span></li>
+                                        <li><a href="#experience-teranet" data-tab="experience-tab" data-content="experience-teranet" class="company-link">Teranet</a> - <span class="position-text" data-en="QA Automation" data-zh="自动化测试">QA Automation</span></li>
+                                        <li><a href="#experience-imagine" data-tab="experience-tab" data-content="experience-imagine" class="company-link">Imagine Communications</a> - <span class="position-text" data-en="Quality Assurance" data-zh="质量保证">Quality Assurance</span></li>
+                                    </ul>
+                                </div>
+
+                                <div id="card-teach" class="highlight-card">
+                                    <div class="vertical-accent"></div>
+                                    <h3><span data-en="Teaching & Research" data-zh="教学与研究">Teaching & Research</span></h3>
+                                    <ul class="highlight-list">
+                                        <li>
+                                            <span class="highlight-item-title" data-en="Teaching Assistant" data-zh="助教">Teaching Assistant</span>
+                                            <a href="#TeachingExperience" data-tab="teaching-tab" data-content="TeachingExperience" class="course-link" data-en="Machine Learning & Python" data-zh="机器学习与Python">Machine Learning & Python</a> <span data-en="at" data-zh="在">at</span> <span class="university-name">University of Toronto</span>
+                                        </li>
+                                        <li>
+                                            <span class="highlight-item-title" data-en="Research Assistant" data-zh="研究助理">Research Assistant</span>
+                                            <a href="#ResearchExperience" data-tab="research-tab" data-content="ResearchExperience" class="research-link" data-en="Organic Solar Cell Technologies" data-zh="有机太阳能电池技术">Organic Solar Cell Technologies</a> <span data-en="at" data-zh="在">at</span> <span class="university-name">University of Waterloo</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div id="card-proj" class="highlight-card">
+                                    <div class="vertical-accent"></div>
+                                    <h3><span data-en="Project Highlights" data-zh="项目亮点">Project Highlights</span></h3>
+                                    <ul class="highlight-list">
+                                        <li><a href="#" data-tab="projects-emo-tab" data-content="Emo" class="project-link" data-en="Emotion Detection in Videos" data-zh="视频情感检测">Emotion Detection in Videos</a></li>
+                                        <li><a href="#" data-tab="projects-route-tab" data-content="Route" class="project-link" data-en="LLM Evacuation System" data-zh="LLM疏散系统">LLM Evacuation System</a></li>
+                                        <li><a href="#" data-tab="projects-arduino-tab" data-content="Swim" class="project-link" data-en="S.W.I.M" data-zh="S.W.I.M">S.W.I.M</a> <span class="collaborator" data-en="(Sponsored by Prof. Steve Mann)" data-zh="（由Steve Mann教授赞助）">(Sponsored by Prof. Steve Mann)</span></li>
+                                        <li><a href="#" data-tab="projects-food-tab" data-content="Food" class="project-link" data-en="LLM Food Recommendation" data-zh="LLM食物推荐">LLM Food Recommendation</a></li>
+                                    </ul>
+                                </div>
+
+                                <div id="card-phd" class="highlight-card">
+                                    <div class="vertical-accent"></div>
+                                    <h3><span data-en="Greenhouse-Level Digital Twin Framework" data-zh="温室级数字孪生框架">Greenhouse-Level Digital Twin Framework</span></h3>
+                                    
+                                    <p style="color: #1db954; font-family: Consolas, monospace; margin-top: -10px; margin-bottom: 15px; font-size: 0.9rem;" data-en="> Status: Active PhD Research (Publication Pending)" data-zh="> 状态：在读博士研究 (等待发表)">
+                                        > Status: Active PhD Research (Publication Pending)
+                                    </p>
+
+                                    <ul class="highlight-list">
+                                        <li data-en="Designing a probabilistic state-estimation framework to create a living digital twin of a heterogeneous greenhouse environment." data-zh="设计概率状态估计框架，创建异构温室环境的动态数字孪生。">
+                                            Designing a probabilistic state-estimation framework to create a living digital twin of a heterogeneous greenhouse environment.
+                                        </li>
+                                        <li>
+                                            <strong data-en="The Core Architecture:" data-zh="核心架构：">The Core Architecture:</strong> 
+                                            <span data-en="Bridging the gap between mechanistic biological predictions and noisy real-world sensor data." data-zh="弥合机制生物学预测与现实世界嘈杂传感器数据之间的差距。">Bridging the gap between mechanistic biological predictions and noisy real-world sensor data.</span>
+                                        </li>
+                                        <li>
+                                            <strong data-en="Mathematical Frameworks:" data-zh="数学框架：">Mathematical Frameworks:</strong> 
+                                            <span data-en="Implementing dynamic Flux Balance Analysis (dFBA) and Kalman Filtering to continuously track and correct hidden biomass states across multiple spatial zones." data-zh="实施动态通量平衡分析（dFBA）和卡尔曼滤波，以持续跟踪和纠正多个空间区域的隐藏生物量状态。">Implementing dynamic Flux Balance Analysis (dFBA) and Kalman Filtering to continuously track and correct hidden biomass states across multiple spatial zones.</span>
+                                        </li>
+                                        <li>
+                                            <strong data-en="Tech Stack:" data-zh="技术栈：">Tech Stack:</strong> 
+                                            <span class="skill-tag secondary" style="margin-top: 5px; display: inline-block;">Python</span> 
+                                            <span class="skill-tag secondary">COBRApy</span> 
+                                            <span class="skill-tag secondary">State-Space Models</span> 
+                                            <span class="skill-tag secondary">SciPy</span>
+                                        </li>
+                                    </ul>
+
+                                    <div style="margin-top: 25px;">
+                                        <button class="locked-repo-btn" disabled>
+                                            <span data-en="[🔒 Repository Locked - Pending Peer Review]" data-zh="[🔒 源代码已锁定 - 等待同行评审]">[🔒 Repository Locked - Pending Peer Review]</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
             
-        
-        
-        
-        
+            <section id="personal-section" class="scroll-section projects-section">
+                <div class="container">
+                    <h2 class="section-title reveal-content" data-en="Off The Clock" data-zh="业余时间">Off The Clock</h2>
+                
+                    <div class="terminal-container reveal-content">
+                        <div class="terminal-header">
+                            <div class="terminal-title" data-en="/var/log/personal.sh - Terminal" data-zh="/var/log/personal.sh - 终端">/var/log/personal.sh - Terminal</div>
+                            <div class="terminal-controls">
+                                <button class="terminal-button minimize-btn"></button>
+                                <button class="terminal-button maximize-btn"></button>
+                                <button class="terminal-button close-btn"></button>
+                            </div>
+                        </div>
+                        <div class="terminal-content">
+                            <div class="prompt">
+                                <span class="prompt-text" data-en="Accessing personal directories:" data-zh="访问个人目录：">Accessing personal directories:</span>
+                            </div>
+
+                            <ul class="project-tabs">
+                                <li class="project-tab">
+                                    <button class="project-btn" onclick="togglePersonal('PhDTab')">
+                                        <div class="project-title"><span data-en="PhD Journey & Research" data-zh="博士之旅与研究">PhD Journey & Research</span></div>
+                                        <div class="project-tags">- UofT, Computer Science</div>
+                                    </button>
+                                </li>
+                                <li class="project-tab">
+                                    <button class="project-btn" onclick="togglePersonal('NotesTab')">
+                                        <div class="project-title"><span data-en="Reading Notes & Blogs" data-zh="阅读笔记与博客">Reading Notes & Blogs</span></div>
+                                        <div class="project-tags">- AI, Algorithms, Books</div>
+                                    </button>
+                                </li>
+                                <li class="project-tab">
+                                    <button class="project-btn" onclick="togglePersonal('GalleryTab')">
+                                        <div class="project-title"><span>media_viewer.exe</span></div>
+                                        <div class="project-tags">- Photography, Life, Plants</div>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="PhDTab" class="tabcontent project-detail" style="display:none;">
+                    <h3 data-en="Computer Science PhD Journey" data-zh="计算机科学博士之旅">Computer Science PhD Journey</h3>
+                    <p><strong>Status:</strong> Application Submitted (Dec 2025) @ University of Toronto</p>
+                    <ul>
+                        <li><strong>Research Focus:</strong> [Insert your specific research niche here]</li>
+                        <li><strong>Updates:</strong> Waiting for the next step!</li>
+                    </ul>
+                </div>
+
+                <div id="NotesTab" class="tabcontent project-detail" style="display:none;">
+                    <h3 data-en="Knowledge Base" data-zh="知识库">Knowledge Base</h3>
+                    <p data-en="A collection of my thoughts, articles, and book notes." data-zh="我的想法、文章和读书笔记的集合。">A collection of my thoughts, articles, and book notes.</p>
+                    <ul>
+                        <li><strong>Computer Vision & AI:</strong> Notes from recent deep dives.</li>
+                        <li><strong>Algorithms:</strong> Problem-solving patterns and optimizations.</li>
+                        <li><strong>How to Be an Imperfectionist:</strong> Key takeaways on productivity and letting go of perfection.</li>
+                    </ul>
+                </div>
+
+                <div id="GalleryTab" class="tabcontent project-detail" style="display:none;">
+                    <h3 data-en="Visual Logs" data-zh="视觉日志">Visual Logs</h3>
+                    <p data-en="Life updates and photography." data-zh="生活动态和摄影。">Life updates and photography.</p>
+                    <div class="snapshots">
+                        <img src="placeholder1.jpg" alt="Gallery Image 1">
+                        <img src="placeholder2.jpg" alt="Gallery Image 2">
+                        <img src="placeholder3.jpg" alt="Tomato plant progress">
+                    </div>
+                </div>
+        </section>
+
+
         
          <!-- Skills Section -->
          <section id="skills-section" class="scroll-section skills-section">
@@ -975,6 +1104,22 @@
                 }, 500); // Match transition time
             });
         }
+        function switchAboutCard(cardId, buttonElement) {
+            // 1. Hide all the highlight cards
+            document.querySelectorAll('.explorer-content .highlight-card').forEach(card => {
+                card.classList.remove('active-card');
+            });
+            
+            // 2. Remove the 'active' styling from all the menu buttons
+            document.querySelectorAll('.explorer-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // 3. Show the specific card we clicked
+            document.getElementById(cardId).classList.add('active-card');
+            buttonElement.classList.add('active');
+            //
+        }
 
         async function translateWebsite() {
         const translationElements = document.querySelectorAll('[data-en]');
@@ -1120,6 +1265,38 @@
                         console.log('Added close button to', detail.id);
                     }
                 });
+            }
+            function togglePersonal(id) {
+                // Hide all open detail panels using your existing helper
+                closeAllDetails();
+                
+                // Show the selected personal detail
+                const personalDetail = document.getElementById(id);
+                if (personalDetail) {
+                    personalDetail.style.display = 'block';
+                    
+                    // Force a reflow
+                    void personalDetail.offsetWidth;
+                    
+                    // Add active class for smooth slide-up animation
+                    setTimeout(() => {
+                        personalDetail.classList.add('active');
+                    }, 10);
+                }
+                
+                // Update tab styles for the personal section
+                const personalTabs = document.querySelectorAll('#personal-section .project-tab');
+                personalTabs.forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                const selectedTab = document.querySelector(`#personal-section .project-btn[onclick*="'${id}'"]`)?.parentElement;
+                if (selectedTab) {
+                    selectedTab.classList.add('active');
+                }
+                
+                if (event) event.preventDefault();
+                return false;
             }
             
             // Make all project buttons work

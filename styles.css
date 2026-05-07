@@ -438,6 +438,27 @@ a:hover {
     display: block;
 }
 
+/* ===== Locked Repository Button ===== */
+.locked-repo-btn {
+    background-color: rgba(0, 0, 0, 0.2);
+    color: #666;
+    border: 1px dashed #555;
+    padding: 12px 15px;
+    font-family: Consolas, monospace;
+    font-size: 0.9rem;
+    cursor: not-allowed;
+    width: 100%;
+    text-align: left;
+    transition: all 0.3s ease;
+}
+
+/* Give it a slight red hacker-warning effect on hover to show it's restricted */
+.locked-repo-btn:hover {
+    background-color: rgba(255, 68, 68, 0.05);
+    border-color: #ff4444;
+    color: #ff4444;
+}
+
 /* ===== SKILLS SECTION ===== */
 .skills-section {
     background-color: #111;
@@ -457,7 +478,14 @@ a:hover {
 .skill-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px; /* Uniform space between all pills, vertically and horizontally */
+    margin: 0;
+    padding: 0;
+}
+
+.skill-tag {
+    /* Keep your existing colors and styles, but make sure margin is removed */
+    margin: 0; /* The parent 'gap' handles the spacing now */
 }
 
 .skill-tag {
@@ -987,12 +1015,52 @@ footer {
     border-color: #1db954;
 }
 
+.skill-group {
+    /* Keep your existing border, background, and shadow rules! Just add/update these: */
+    padding: 25px 30px; 
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* Adds space between the header and the pills */
+}
+
+.skill-group h3 {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px; /* Space between [SYS] and the text */
+    margin: 0; /* Remove default margin since we added gap to the parent */
+    line-height: 1.3;
+}
+
+.skill-group h3 .highlight-icon {
+    /* Prevents the [SYS] icon from shrinking if the text wraps */
+    flex-shrink: 0; 
+}
+
+
+
 /* Fix the card vertical accent to be a solid block, not a gradient */
 .highlight-card::before {
     background: #1db954; 
     border-radius: 0;
 }
+.explorer-content .highlight-card {
+    /* ... your existing rules like display: none; ... */
+    padding: 20px 25px; /* Adds 20px top/bottom, 25px left/right */
+    box-sizing: border-box; /* Ensures padding doesn't break the width */
+}
 
+/* Optional: Add a subtle left border to the text block to anchor it */
+.explorer-content .highlight-list {
+    padding-left: 0;
+    margin-left: 10px;
+    border-left: 1px dashed #333;
+}
+
+.explorer-content .highlight-list li {
+    padding-left: 15px; /* Pushes the text away from the dashed line */
+    margin-bottom: 15px;
+}
 .card-name {
     font-size: 1.8rem;
     font-weight: bold;
@@ -1029,7 +1097,127 @@ footer {
     transform: translateX(5px);
     border-left-color: #1db954;
 }
+/* ===== NEW ABOUT EXPLORER LAYOUT ===== */
+.about-explorer {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+    width: 100%;
+}
 
+.explorer-menu {
+    flex: 1;
+    min-width: 250px;
+    max-width: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: #111;
+    border: 2px solid #333;
+    padding: 15px;
+    box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.5);
+}
+
+.explorer-header {
+    color: #007acc;
+    font-weight: bold;
+    margin-bottom: 10px;
+    border-bottom: 1px dashed #333;
+    padding-bottom: 10px;
+}
+
+.explorer-btn {
+    background: transparent;
+    color: #dcdcdc;
+    border: 1px solid transparent;
+    padding: 12px 15px;
+    text-align: left;
+    font-family: Consolas, monospace;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.explorer-btn .highlight-icon {
+    margin-right: 15px;
+    font-size: 1.2rem;
+    color: #555;
+    transition: color 0.2s ease;
+}
+
+/* Hover and Active states for the menu */
+.explorer-btn:hover, .explorer-btn.active {
+    background: rgba(29, 185, 84, 0.1);
+    border-color: #1db954;
+    color: #1db954;
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0px rgba(29, 185, 84, 0.2);
+}
+
+.explorer-btn:hover .highlight-icon, .explorer-btn.active .highlight-icon {
+    color: #1db954;
+}
+
+
+
+.highlight-card {
+    display: none; /* Hide all cards by default */
+    margin: 0; 
+    width: 100%;
+    animation: quickFadeIn 0.3s ease-out forwards;
+}
+
+.highlight-card.active-card {
+    display: block; /* Only show the active one */
+}
+
+/* Card Container Logic with Overflow Control */
+.explorer-content {
+    flex: 2;
+    position: relative;
+    min-height: 350px;
+    max-height: 450px; /* This stops the box from growing forever */
+    overflow-y: auto;  /* This adds an internal scrollbar if text gets too long */
+    padding-right: 15px; /* Gives the text breathing room away from the scrollbar */
+}
+
+/* Custom Hacker/Terminal Scrollbar for Webkit (Chrome, Safari, Edge) */
+.explorer-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.explorer-content::-webkit-scrollbar-track {
+    background: #111;
+    border-left: 1px dashed #333;
+}
+
+.explorer-content::-webkit-scrollbar-thumb {
+    background: #1db954; /* Your accent green */
+    border-radius: 4px;
+}
+
+.explorer-content::-webkit-scrollbar-thumb:hover {
+    background: #007acc; /* Changes to blue on hover */
+}
+
+@keyframes quickFadeIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Mobile override for the new layout */
+@media (max-width: 768px) {
+    .about-explorer {
+        flex-direction: column;
+    }
+    .explorer-menu {
+        max-width: 100%;
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
 .contact-icon {
     grid-area: icon;
     width: 40px;

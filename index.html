@@ -647,61 +647,66 @@
             </div>
         </section>
 
+
+        
         <section id="contact-section" class="scroll-section contact-section">
             <div class="container">
                 <h2 class="section-title reveal-content" data-en="Get in Touch" data-zh="联系方式">Get in Touch</h2>
                 
-                    <div class="terminal-container reveal-content" style="max-width: 700px; margin: 0 auto; text-align: left;">
 
-                        <div class="explorer-content reveal-content" style="border: 2px solid #333; box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.5); padding: 0;">
+                        <div class="terminal-container reveal-content" style="max-width: 800px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.4); border: 1px solid #333;">
                             
-                            <p style="color: #666; margin-bottom: 20px; font-size: 0.85rem;">
-                                Last login: <span id="login-time">Thu May 07 06:20:30</span> on ttys001
-                            </p>
-
-                            <div style="margin-bottom: 20px;">
-                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
-                                <span style="color: #dcdcdc;">fetch contact --email</span>
-                                <br>
-                                <span style="color: #888;">> </span><a href="mailto:houfu.chen@mail.utoronto.ca" class="highlight-link">houfu.chen@mail.utoronto.ca</a>
-                            </div>
-
-                            <div style="margin-bottom: 20px;">
-                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
-                                <span style="color: #dcdcdc;">fetch contact --github</span>
-                                <br>
-                                <span style="color: #888;">> </span><a href="https://github.com/chf-NewStart" target="_blank" class="highlight-link">github.com/chf-NewStart</a>
-                            </div>
-
-                            <div style="margin-bottom: 20px;">
-                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
-                                <span style="color: #dcdcdc;">fetch contact --linkedin</span>
-                                <br>
-                                <span style="color: #888;">> </span><a href="https://www.linkedin.com/in/houfuchen/" target="_blank" class="highlight-link">/in/houfuchen/</a>
-                            </div>
-
-                            <div style="margin-bottom: 20px;">
-                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
-                                <span style="color: #dcdcdc;">download --file cv_data.pdf</span>
-                                <br>
-                                <span style="color: #888;">> </span><a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" class="highlight-link" data-en="[Download Industry CV]" data-zh="[下载简历]">[Download Industry CV]</a>
-                            </div>
-
-                            <div style="margin-bottom: 20px;">
-                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
-                                <span style="color: #dcdcdc;">generate_qr --network linkedin --render</span>
-                                <br>
-                                <div style="margin-top: 10px; margin-left: 15px;">
-                                    <img src="resumes/linkedinQR.png" alt="LinkedIn QR" style="width: 100px; height: 100px; border: 2px solid #1db954; opacity: 0.8; transition: opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+                            <div class="terminal-header" style="background-color: #333; padding: 10px 15px; display: flex; align-items: center; position: relative;">
+                                <div class="mac-buttons" style="display: flex; gap: 8px; z-index: 2;">
+                                    <span style="width: 12px; height: 12px; border-radius: 50%; background-color: #ff5f56;"></span>
+                                    <span style="width: 12px; height: 12px; border-radius: 50%; background-color: #ffbd2e;"></span>
+                                    <span style="width: 12px; height: 12px; border-radius: 50%; background-color: #27c93f;"></span>
+                                </div>
+                                <div class="terminal-title" style="position: absolute; width: 100%; left: 0; text-align: center; color: #999; font-size: 0.75rem; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+                                    houfu — zsh — 80×24
                                 </div>
                             </div>
 
-                            <div>
-                                <span style="color: #1db954; font-weight: bold;">houfu@system</span><span style="color: #fff;">:</span><span style="color: #007acc;">~</span><span style="color: #fff;">$</span> 
-                                <span class="cursor" style="display: inline-block; width: 8px; height: 16px; background-color: #1db954; vertical-align: middle; margin-left: 5px; animation: blink 1s step-end infinite;"></span>
-                            </div>
+                            <div class="explorer-content" style="background-color: #1e1e1e; padding: 30px; border: none; text-align: left;">
+                                
+                                <p style="color: #666; margin-bottom: 25px; font-size: 0.85rem;">
+                                    Last login: Thu May 07 06:20:30 on ttys001
+                                </p>
 
+                                <div style="margin-bottom: 25px;">
+                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
+                                    <span style="color: #dcdcdc;">echo $EMAIL</span><br>
+                                    <span style="color: #888; margin-left: 15px;">> </span><a href="mailto:houfu.chen@mail.utoronto.ca" class="highlight-link">houfu.chen@mail.utoronto.ca</a>
+                                </div>
+
+                                <div style="margin-bottom: 25px;">
+                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
+                                    <span style="color: #dcdcdc;">gh repo view</span><br>
+                                    <span style="color: #888; margin-left: 15px;">> </span><a href="https://github.com/chf-NewStart" target="_blank" class="highlight-link">github.com/chf-NewStart</a>
+                                </div>
+
+                                <div style="margin-bottom: 25px;">
+                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
+                                    <span style="color: #dcdcdc;">open ./social/linkedin</span><br>
+                                    <span style="color: #888; margin-left: 15px;">> </span>
+                                    <a href="https://linkedin.com/in/houfuchen" target="_blank" class="highlight-link" style="color: #1db954;">
+                                        [ACCESS_GRANTED] Opening linkedin.com/in/houfuchen...
+                                    </a>
+                                </div>
+
+                                <div style="margin-bottom: 25px;">
+                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
+                                    <span style="color: #dcdcdc;">curl -O cv_houfu_chen.pdf</span><br>
+                                    <span style="color: #888; margin-left: 15px;">> </span><a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" class="highlight-link" data-en="[Download_CV.pdf]" data-zh="[下载简历.pdf]">[Download_CV.pdf]</a>
+                                </div>
+
+                                <div>
+                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
+                                    <span class="cursor" style="display: inline-block; width: 8px; height: 16px; background-color: #1db954; vertical-align: middle; margin-left: 5px; animation: blink 1s step-end infinite;"></span>
+                                </div>
+                            </div>
                         </div>
+                        <div style="height: 150px;"></div>
                     </div>
                 
                 <div style="height: 150px; width: 100%; display: block; clear: both;"></div>
@@ -929,6 +934,27 @@
                 }, 500); // Match transition time
             });
         }
+        // Add this inside your existing DOMContentLoaded listener
+        const sections = document.querySelectorAll('section[id]');
+        const navLinks = document.querySelectorAll('.nav-links a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= (sectionTop - sectionHeight / 3)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active-nav');
+                if (link.getAttribute('href').includes(current)) {
+                    link.classList.add('active-nav');
+                }
+            });
+        });
 
         function switchAboutCard(cardId, buttonElement) {
             const sectionContainer = document.getElementById('about-section');

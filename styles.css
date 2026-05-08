@@ -1208,6 +1208,18 @@ footer {
     stroke: #1db954;
 }
 
+.nav-links a.active-nav {
+    color: #1db954 !important; /* Spotify Green */
+    border-bottom: 2px solid #1db954;
+    padding-bottom: 5px;
+}
+
+/* Fix the lost margin you mentioned */
+.about-explorer .explorer-content {
+    margin-left: 0; /* Standardize terminal spacing */
+    padding: 30px;
+    width: 100%;
+}
 .contact-label {
     grid-area: label;
     font-size: 0.8rem;

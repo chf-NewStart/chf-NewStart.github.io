@@ -702,10 +702,11 @@
                                     <span style="color: #888; margin-left: 15px;">> </span><a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" class="highlight-link" data-en="[Download_CV.pdf]" data-zh="[下载简历.pdf]">[Download_CV.pdf]</a>
                                 </div>
 
-                                <div>
-                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
-                                    <span class="cursor" style="display: inline-block; width: 8px; height: 16px; background-color: #1db954; vertical-align: middle; margin-left: 5px; animation: blink 1s step-end infinite;"></span>
+                                <div style="display: flex; align-items: center; margin-top: 15px;">
+                                    <span style="color: #1db954; font-weight: bold; white-space: nowrap;">houfu@system</span><span style="color: #dcdcdc;">:</span><span style="color: #007acc; white-space: nowrap;">~</span><span style="color: #dcdcdc;">$</span>&nbsp;
+                                    <input type="text" id="terminal-cmd" autocomplete="off" spellcheck="false" placeholder="type 'help'..." style="background: transparent; border: none; color: #1db954; font-family: Consolas, monospace; font-size: 0.85rem; outline: none; width: 100%; caret-color: #1db954;">
                                 </div>
+                                <div id="terminal-output" style="color: #888; font-size: 0.85rem; margin-top: 10px; white-space: pre-line;"></div>
                             </div>
                         </div>
                         <div style="height: 150px;"></div>
@@ -1240,34 +1241,42 @@
 
     </script>
 
-    <script>
-    // Easter Egg Keylogger
-    const secretCode = ['s', 'u', 'd', 'o'];
-    let keyBuffer = [];
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const cmdInput = document.getElementById('terminal-cmd');
+        const outputDiv = document.getElementById('terminal-output');
 
-    document.addEventListener('keydown', (e) => {
-        // Only track letters so we don't pick up modifier keys
-        if (e.key.length === 1) {
-            keyBuffer.push(e.key.toLowerCase());
-        }
-        
-        // Keep buffer the same length as the secret code
-        if (keyBuffer.length > secretCode.length) {
-            keyBuffer.shift();
-        }
+        if (cmdInput) {
+            cmdInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const command = this.value.trim().toLowerCase();
+                    this.value = ''; // clear the input field
 
-        // Check if the arrays match
-        if (JSON.stringify(keyBuffer) === JSON.stringify(secretCode)) {
-            triggerEasterEgg();
-            keyBuffer = []; // Reset the buffer
+                    // Command Logic
+                    if (command === 'help') {
+                        outputDiv.innerHTML = "> AVAILABLE COMMANDS:<br>> clear  - clear terminal output<br>> whoami - display current user<br>> sudo   - execute with root privileges";
+                    } 
+                    else if (command === 'clear') {
+                        outputDiv.innerHTML = '';
+                    }
+                    else if (command === 'whoami') {
+                        outputDiv.innerHTML = "> guest_user";
+                    }
+                    else if (command === 'sudo') {
+                        outputDiv.innerHTML = "> EXECUTING ROOT OVERRIDE...";
+                        triggerEasterEgg();
+                    }
+                    else if (command !== '') {
+                        outputDiv.innerHTML = `> zsh: command not found: ${command}`;
+                    }
+                }
+            });
         }
     });
 
     function triggerEasterEgg() {
-        // Toggle the 'sudo-mode' class on the body
         document.body.classList.toggle('sudo-mode');
 
-        // Create the terminal alert notification
         const notification = document.createElement('div');
         notification.className = 'terminal-alert';
 
@@ -1279,10 +1288,9 @@
 
         document.body.appendChild(notification);
 
-        // Fade out and remove the notification after 3 seconds
         setTimeout(() => {
             notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 500); // Wait for CSS fade transition
+            setTimeout(() => notification.remove(), 500);
         }, 3000);
     }
 </script>

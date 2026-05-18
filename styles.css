@@ -1746,3 +1746,17 @@ body.sudo-mode .snapshots img:hover {
     75% { opacity: 0.8; transform: translate(-1px, 1px) scale(0.998); }
     100% { opacity: 1; transform: translate(0, 0) scale(1); }
 }
+
+/* Override the top navigation bar and logo */
+body.sudo-mode .logo,
+body.sudo-mode .nav-links a.active-nav {
+    color: #ff4444 !important;
+}
+
+body.sudo-mode .nav-links a.active-nav {
+    border-bottom-color: #ff4444 !important;
+}
+
+body.sudo-mode .nav-links a::after {
+    background: #ff4444 !important;
+}

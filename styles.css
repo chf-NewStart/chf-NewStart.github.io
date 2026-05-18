@@ -845,6 +845,7 @@ body, .scroll-container, .scroll-section {
 
 /* Force images to stay in their boxes with the Matrix filter */
 .snapshots img {
+    image-rendering: pixelated;
     width: 100%;
     height: 180px;         /* Locks the height so they are all uniform */
     object-fit: cover;     /* Fills the box perfectly without stretching */
@@ -1213,6 +1214,7 @@ footer {
     border-bottom: 2px solid #1db954;
     padding-bottom: 5px;
 }
+
 
 /* Fix the lost margin you mentioned */
 .about-explorer .explorer-content {

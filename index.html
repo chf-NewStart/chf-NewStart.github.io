@@ -10,7 +10,6 @@
     <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
     <script src="face-effects.js"></script>
@@ -19,22 +18,25 @@
     <!-- Additional styles for language toggle button -->
     <style>
         .language-toggle {
-            display: flex;
-            align-items: center;
+            display: inline-block;
             margin-left: 20px;
             cursor: pointer;
-            position: relative;
-            background: linear-gradient(90deg, #007acc, #1db954);
-            border-radius: 20px;
+            background: transparent;
+            border: 2px solid #333; /* Matches your brutalist cards */
+            border-radius: 0; /* Kill the rounded edges */
             padding: 5px 12px;
+            font-family: Consolas, monospace;
             font-size: 0.9rem;
-            color: white;
-            border: none;
-            transition: all 0.3s ease;
+            color: #888;
+            transition: all 0.1s ease;
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5); /* Hard shadow */
         }
+
         .language-toggle:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            border-color: #1db954;
+            color: #1db954;
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px rgba(29, 185, 84, 0.2);
         }
         @media (max-width: 768px) {
             .language-toggle {
@@ -69,12 +71,11 @@
                 <div class="parallax-bg" style="background-image: url('hf3.webp');"></div>
                 <div class="container">
                     <h1 class="reveal-content" data-en="Houfu Chen" data-zh="陈厚孚">Houfu Chen</h1>
-                    <p class="reveal-content" data-en="ML Engineer | Digital Twin Researcher | Systems Architect" data-zh="机器学习工程师 | 数字孪生研究员 | 系统架构师">
-                        ML Engineer | Digital Twin Researcher | Systems Architect
+                    <p class="reveal-content" data-en="ML Engineer | Digital Twin Researcher | PhD Candidate" data-zh="机器学习工程师 | 数字孪生研究员 | 博士生">
+                        ML Engineer | Digital Twin Researcher | PhD Candidate
                     </p>
                     <div class="hero-cta reveal-content">
-                        <a href="food-raccoon/index.html" class="cta-button" data-en="Hungry, but dont know what to eat?" data-zh="饿了但不知道吃啥？">Hungry?</a>
-                    </div>
+                        <a href="#projects-section" class="cta-button" data-en="> Explore Arch" data-zh="> 探索架构">> Explore Arch</a>                    </div>
                 </div>
             </section>
 
@@ -489,12 +490,12 @@
                             </ul>
                             <a href="https://github.com/chf-NewStart/Facial-Analysis-on-Oval-Office" target="_blank" class="highlight-link">[GitHub Repo]</a>
                             <div class="snapshots" style="margin-top: 15px;">
-                                <img src="emo/emo1.webp" alt="emo1">
-                                <img src="emo/emo2.webp" alt="emo2">
+                                <img src="emo/emo1.webp" alt="emo1" loading="lazy">
+                                <img src="emo/emo2.webp" alt="emo2" loading="lazy">
                             </div>
                             <!-- Embedded YouTube Video -->
                             <div style="margin-top:15px;">
-                                <iframe width="560" height="315" src="https://www.youtube.com/embed/7GPsjpwm9X0?si=g1wM8RJF1Fa4I2BY" 
+                                <iframe width="560" height="315" src="https://www.youtube.com/embed/7GPsjpwm9X0?si=g1wM8RJF1Fa4I2BY" loading="lazy"
                                     title="Emo Detection" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                                     allowfullscreen>
                                 </iframe>
@@ -522,8 +523,8 @@
                             </ul>
                             <a href="https://github.com/chf-NewStart/swimProject" target="_blank" class="highlight-link">[GitHub Repo]</a>
                             <div class="snapshots" style="margin-top: 15px;">
-                                <img src="swim/swim1.webp" alt="swim1">
-                                <img src="swim/swim2.webp" alt="swim2">
+                                <img src="swim/swim1.webp" alt="swim1" loading="lazy">
+                                <img src="swim/swim2.webp" alt="swim2" loading="lazy">
                             </div>
                         </div>
 
@@ -559,13 +560,13 @@
                             </ul>
                             
                             <div class="snapshots" style="margin-top: 15px;">
-                                <img src="robo1/motion1.webp" alt="robo1">
-                                <img src="robo1/motion3.webp" alt="robo3">
-                                <img src="robo1/motion4.webp" alt="robo4">
-                                <img src="robo1/motion5.webp" alt="robo5">
+                                <img src="robo1/motion1.webp" alt="robo1" loading="lazy">
+                                <img src="robo1/motion3.webp" alt="robo3" loading="lazy">
+                                <img src="robo1/motion4.webp" alt="robo4" loading="lazy">
+                                <img src="robo1/motion5.webp" alt="robo5" loading="lazy">
                             </div>
                             <div style="margin-top:15px;">
-                            <iframe width="560" height="315" src="https://www.youtube.com/embed/3dYSAhPe7kY" 
+                            <iframe width="560" height="315" src="https://www.youtube.com/embed/3dYSAhPe7kY" loading="lazy"
                                     title="Robotics Project Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                                     allowfullscreen>
                             </iframe>
@@ -638,9 +639,9 @@
                             <h3 data-en="Visual Logs" data-zh="视觉日志">Visual Logs</h3>
                             <p data-en="Life updates, plants, and photography." data-zh="生活动态和摄影。">Life updates, plants, and photography.</p>
                             <div class="snapshots">
-                                <img src="placeholder1.jpg" alt="Gallery Image 1">
-                                <img src="placeholder2.jpg" alt="Gallery Image 2">
-                                <img src="placeholder3.jpg" alt="Tomato plant progress">
+                                <img src="placeholder1.jpg" alt="Gallery Image 1" loading="lazy">
+                                <img src="placeholder2.jpg" alt="Gallery Image 2" loading="lazy">
+                                <img src="placeholder3.jpg" alt="Tomato plant progress" loading="lazy">
                             </div>
                         </div>
 

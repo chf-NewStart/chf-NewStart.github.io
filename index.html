@@ -13,17 +13,16 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
     <script src="face-effects.js"></script>
-    <title>HC-Webpage</title>
+    <title>Houfu Chen | Digital Twin Researcher & ML Engineer</title>
 
-    <!-- Additional styles for language toggle button -->
     <style>
         .language-toggle {
             display: inline-block;
             margin-left: 20px;
             cursor: pointer;
             background: transparent;
-            border: 2px solid #333; /* Matches your brutalist cards */
-            border-radius: 0; /* Kill the rounded edges */
+            border: 2px solid #333;
+            border-radius: 0; 
             padding: 5px 12px;
             font-family: Consolas, monospace;
             font-size: 0.9rem;
@@ -1240,6 +1239,53 @@
         });
 
     </script>
+
+    <script>
+    // Easter Egg Keylogger
+    const secretCode = ['s', 'u', 'd', 'o'];
+    let keyBuffer = [];
+
+    document.addEventListener('keydown', (e) => {
+        // Only track letters so we don't pick up modifier keys
+        if (e.key.length === 1) {
+            keyBuffer.push(e.key.toLowerCase());
+        }
+        
+        // Keep buffer the same length as the secret code
+        if (keyBuffer.length > secretCode.length) {
+            keyBuffer.shift();
+        }
+
+        // Check if the arrays match
+        if (JSON.stringify(keyBuffer) === JSON.stringify(secretCode)) {
+            triggerEasterEgg();
+            keyBuffer = []; // Reset the buffer
+        }
+    });
+
+    function triggerEasterEgg() {
+        // Toggle the 'sudo-mode' class on the body
+        document.body.classList.toggle('sudo-mode');
+
+        // Create the terminal alert notification
+        const notification = document.createElement('div');
+        notification.className = 'terminal-alert';
+
+        if (document.body.classList.contains('sudo-mode')) {
+            notification.innerHTML = '> ROOT ACCESS GRANTED. OVERRIDING VISUALS... <span class="blink">_</span>';
+        } else {
+            notification.innerHTML = '> CONNECTION TERMINATED. REVERTING... <span class="blink">_</span>';
+        }
+
+        document.body.appendChild(notification);
+
+        // Fade out and remove the notification after 3 seconds
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 500); // Wait for CSS fade transition
+        }, 3000);
+    }
+</script>
     
     
 </body>

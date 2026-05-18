@@ -626,21 +626,6 @@ body, .scroll-container, .scroll-section {
 }
 
 
-
-.cursor {
-    /* display: inline-block;
-    width: 10px;
-    height: 18px;
-    background-color: #1db954;
-    animation: blink 1s step-end infinite;
-    position: static;
-    margin-left: 4px; */
-    /* right: 10px;
-    top: 50%; */
-    /* transform: translateY(-50%); */
-    display: none;
-}
-
 .terminal-line {
     margin-bottom: 5px;
 }
@@ -654,11 +639,6 @@ body, .scroll-container, .scroll-section {
     font-family: Consolas, monospace;
     padding: 10px 15px;
 }
-
-
-
-
-
 
 
 
@@ -1681,4 +1661,88 @@ iframe {
     padding-bottom: 150px !important;
     position: relative;
     min-height: 50vh;
+}
+
+/* ===== EASTER EGG NOTIFICATION ===== */
+.terminal-alert {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 68, 68, 0.15); /* Tinted Red */
+    border: 2px solid #ff4444;
+    color: #ff4444;
+    padding: 15px 25px;
+    font-family: Consolas, monospace;
+    font-weight: bold;
+    font-size: 1rem;
+    z-index: 9999; /* Ensure it stays on top */
+    box-shadow: 6px 6px 0px rgba(255, 68, 68, 0.4);
+    transition: opacity 0.5s ease;
+    pointer-events: none; /* Prevents it from blocking clicks */
+}
+
+/* Make the cursor in the alert blink */
+.terminal-alert .blink {
+    animation: blink 1s step-end infinite;
+}
+
+/* ===== SUDO MODE VISUAL OVERRIDES ===== */
+/* Trigger a quick glitch/flicker effect when activated */
+body.sudo-mode {
+    animation: crt-flicker 0.15s 3; 
+}
+
+/* Target your main text elements and accents */
+body.sudo-mode h1, 
+body.sudo-mode h2, 
+body.sudo-mode h3, 
+body.sudo-mode .project-title::before,
+body.sudo-mode .prompt::before,
+body.sudo-mode .prompt-text,
+body.sudo-mode .input-field,
+body.sudo-mode .highlight-icon,
+body.sudo-mode .section-title,
+body.sudo-mode .profile-text {
+    color: #ff4444 !important;
+    border-color: #ff4444 !important;
+}
+
+/* Update your brutalist buttons and tabs */
+body.sudo-mode .cta-button, 
+body.sudo-mode .skill-tag,
+body.sudo-mode .language-toggle,
+body.sudo-mode .explorer-btn.active,
+body.sudo-mode .project-btn:hover {
+    border-color: #ff4444 !important;
+    color: #ff4444 !important;
+    box-shadow: 4px 4px 0px #ff4444 !important;
+}
+
+/* Button Hover states in Sudo Mode */
+body.sudo-mode .cta-button:hover,
+body.sudo-mode .language-toggle:hover {
+    background-color: #ff4444 !important;
+    color: #111 !important;
+    box-shadow: 2px 2px 0px #111 !important;
+}
+
+/* Alter your image filters to a deep hacker red */
+body.sudo-mode .snapshots img {
+    filter: grayscale(100%) contrast(150%) sepia(80%) hue-rotate(320deg) !important;
+    border-color: #ff4444 !important;
+}
+
+body.sudo-mode .snapshots img:hover {
+    filter: none !important;
+    box-shadow: 8px 8px 0px rgba(255, 68, 68, 0.5) !important;
+}
+
+/* The CRT Glitch Animation */
+@keyframes crt-flicker {
+    0% { opacity: 0.9; transform: translate(1px, 1px) scale(1.001); }
+    25% { opacity: 0.5; transform: translate(-1px, -1px) scale(0.999); }
+    50% { opacity: 1; transform: translate(1px, -1px) scale(1.002); }
+    75% { opacity: 0.8; transform: translate(-1px, 1px) scale(0.998); }
+    100% { opacity: 1; transform: translate(0, 0) scale(1); }
 }

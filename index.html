@@ -59,6 +59,7 @@
                         <a href="#experience-section" data-en="Experience" data-zh="经历">Experience</a>
                         <a href="#projects-section" data-en="Projects" data-zh="项目">Projects</a>
                         <a href="#contact-section" data-en="Contact" data-zh="联系">Contact</a>
+                        <button class="language-toggle" id="tomatoToggle" style="color: #ff5f56; border-color: #333;">[ 🍅 ]</button>
                         <button class="language-toggle" id="languageToggle">EN / 中文</button>
                     </div>
                 </div>
@@ -80,16 +81,63 @@
 
             
             <!-- About Section -->
-            <section id="about-section" class="scroll-section about-section">
-                <div class="container">
-                    <h2 class="section-title reveal-content" data-en="Who I Am" data-zh="关于我">Who I Am</h2>
-                    <div class="about-content">
-                        <div class="about-text reveal-content" style="width: 100%; margin-bottom: 30px;">
-                            <p class="profile-text" data-en="I'm a programming and machine learning enthusiast with a passion for solving complex problems through technology. My background spans education, industry experience, and innovative projects, all driven by a curiosity to explore new technologies." data-zh="我是一名编程和机器学习爱好者，热衷于通过技术解决复杂问题。我的背景涵盖教育、行业经验和创新项目，所有这些都源于对探索新技术的好奇心。">
-                                I'm a programming and machine learning enthusiast with a passion for solving complex problems through technology. 
-                                My background spans education, industry experience, and innovative projects, all driven by a curiosity to explore new technologies.
-                            </p>
-                        </div>
+            <div style="color: #666; font-size: 0.75rem; margin-bottom: 15px; font-family: Consolas, monospace; line-height: 1.4;">
+                                        [  <span style="color: #1db954;">OK</span>  ] Started System Logging Service.<br>
+                                        [  <span style="color: #1db954;">OK</span>  ] Reached target System Initialization.<br>
+                                        [  <span style="color: #1db954;">OK</span>  ] Started Kernel Logging Service.<br>
+                                        Mounting /boot/efi...<br>
+                                        Starting hc-core-services.service...<br>
+                                        [  <span style="color: #1db954;">OK</span>  ] Started HC Core Services.<br>
+                                        Loading MOTD...
+                                    </div>
+
+                                    <div style="color: #ff5f56; line-height: 1.1; margin-bottom: 25px; font-size: 0.8rem; white-space: pre;">
+            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠻⣶⡆⠀⠿⠀⣶⠒⠊⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+            ⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣴⠾⠛⢹⣶⡤⢶⣿⡟⠶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀
+            ⠀⠀⠀⠀⠀⣠⣶⣤⣤⣤⣤⣴⠂⠸⠋⢀⣄⡉⠓⠀⠲⣶⣾⣿⣷⣄⠀⠀⠀⠀
+            ⠀⠀⠀⢀⣾⡿⠋⠁⣠⣤⣿⡟⢀⣠⣾⣿⣿⣿⣷⣶⣤⣼⣿⣿⣿⣿⣆⠀⠀⠀
+            ⠀⠀⠀⣾⡟⠀⣰⣿⣿⣿⣿⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠀
+            ⠀⠀⢸⡿⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
+            ⠀⠀⢸⡇⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
+            ⠀⠀⢸⣿⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
+            ⠀⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠁⠀⠀
+            ⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀
+            ⠀⠀⠀⠀⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀
+            ⠀⠀⠀⠀⠀⠀⠉⠛⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠋⠀⠀⠀⠀⠀⠀⠀
+            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠉⠉⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                                    </div>
+
+                            <div class="about-content">
+                                <div class="about-text reveal-content" style="width: 100%; margin-bottom: 30px;">
+                                                        <div class="profile-text" style="color: #dcdcdc;">
+                                                            <p style="margin-bottom: 20px;" data-en="I am a PhD candidate and systems engineer. True to my engineering background, my approach is strictly practical: making complex simulation systems actually work..." data-zh="我是一名博士生兼系统工程师。秉承务实的工程学底色，我的关注点始终在于落地：让复杂的模拟系统真正运转起来。。。">
+                                                                I am a PhD candidate and systems engineer. True to my engineering background, my approach is strictly practical: making complex simulation systems actually work...
+                                                            </p>
+                                                            
+                                                            <ul style="list-style-type: none; padding-left: 0; margin-bottom: 0;">
+                                                                <li style="margin-bottom: 12px; display: flex; align-items: flex-start;">
+                                                                    <span style="color: #1db954; margin-right: 10px; font-weight: bold;">></span> 
+                                                                    <span data-en="Building living digital twins for heterogeneous environments." data-zh="为异构环境构建动态数字孪生。">
+                                                                        Building living digital twins for heterogeneous environments.
+                                                                    </span>
+                                                                </li>
+                                                                <li style="margin-bottom: 12px; display: flex; align-items: flex-start;">
+                                                                    <span style="color: #1db954; margin-right: 10px; font-weight: bold;">></span> 
+                                                                    <span data-en="Integrating machine learning, signal filtering, and probabilistic state estimation." data-zh="融合机器学习、信号滤波与概率状态估计。">
+                                                                        Integrating machine learning, signal filtering, and probabilistic state estimation.
+                                                                    </span>
+                                                                </li>
+                                                                <li style="display: flex; align-items: flex-start;">
+                                                                    <span style="color: #1db954; margin-right: 10px; font-weight: bold;">></span> 
+                                                                    <span data-en="Bridging the gap between noisy data and mechanistic biological models to turn theoretical WIPs into functional realities." data-zh="弥合海量噪声数据与机制生物学模型之间的差距——将理论上的“开发中 (WIP)”转化为真正落地的工程现实。">
+                                                                        Bridging the gap between noisy data and mechanistic biological models to turn theoretical WIPs into functional realities.
+                                                                    </span>
+                                                                </li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
 
                         <div class="about-explorer reveal-content">
                             <div class="explorer-menu">
@@ -650,88 +698,38 @@
         </section>
 
 
-        
         <section id="contact-section" class="scroll-section contact-section">
-            <div class="container">
-                <h2 class="section-title reveal-content" data-en="Get in Touch" data-zh="联系方式">Get in Touch</h2>
-                
-
-                        <div class="terminal-container reveal-content" style="max-width: 800px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.4); border: 1px solid #333;">
+                    <div class="container">
+                        <h2 class="section-title reveal-content" data-en="Get in Touch" data-zh="联系方式">Get in Touch</h2>
+                        
+                        <div class="reveal-content" style="max-width: 600px; text-align: left; font-family: Consolas, monospace; margin-left: 20px;">
+                            <p style="color: #dcdcdc; margin-bottom: 40px; font-size: 1.1rem; border-left: 2px dashed #333; padding-left: 15px;" data-en="Currently researching Digital Twins and Computational Modeling as a PhD student at UWaterloo. Always open to collaborations and technical discussions. My inbox is always open. ^_−" data-zh="目前在滑铁卢大学攻读博士学位，专注于数字孪生与计算建模研究。欢迎随时进行学术交流与技术探讨。期待你的来信。^_−">
+                                Currently researching Digital Twins and Computational Modeling as a PhD student at UWaterloo. Always open to collaborations and technical discussions. My inbox is always open. ^_−
+                            </p>
                             
-                            <div class="terminal-header" style="background-color: #333; padding: 10px 15px; display: flex; align-items: center; position: relative;">
-                                <div class="mac-buttons" style="display: flex; gap: 8px; z-index: 2;">
-                                    <span style="width: 12px; height: 12px; border-radius: 50%; background-color: #ff5f56;"></span>
-                                    <span style="width: 12px; height: 12px; border-radius: 50%; background-color: #ffbd2e;"></span>
-                                    <span style="width: 12px; height: 12px; border-radius: 50%; background-color: #27c93f;"></span>
-                                </div>
-                                <div class="terminal-title" style="position: absolute; width: 100%; left: 0; text-align: center; color: #999; font-size: 0.75rem; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
-                                    houfu — zsh — 80×24
-                                </div>
-                            </div>
-
-                            <div class="explorer-content" style="background-color: #1e1e1e; padding: 30px; border: none; text-align: left; max-height: none; overflow-y: hidden;">                                                            
-                                <p style="color: #666; margin-bottom: 15px; font-size: 0.85rem;">
-                                    Last login: Thu May 07 06:20:30 on ttys001
-                                </p>
-
-                                <div style="color: #ff5f56; line-height: 1.1; margin-bottom: 25px; font-size: 0.8rem; white-space: pre;">
-                            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠻⣶⡆⠀⠿⠀⣶⠒⠊⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                            ⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣴⠾⠛⢹⣶⡤⢶⣿⡟⠶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀
-                            ⠀⠀⠀⠀⠀⣠⣶⣤⣤⣤⣤⣴⠂⠸⠋⢀⣄⡉⠓⠀⠲⣶⣾⣿⣷⣄⠀⠀⠀⠀
-                            ⠀⠀⠀⢀⣾⡿⠋⠁⣠⣤⣿⡟⢀⣠⣾⣿⣿⣿⣷⣶⣤⣼⣿⣿⣿⣿⣆⠀⠀⠀
-                            ⠀⠀⠀⣾⡟⠀⣰⣿⣿⣿⣿⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠀
-                            ⠀⠀⢸⡿⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
-                            ⠀⠀⢸⡇⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
-                            ⠀⠀⢸⣿⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
-                            ⠀⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠁⠀⠀
-                            ⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀
-                            ⠀⠀⠀⠀⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀
-                            ⠀⠀⠀⠀⠀⠀⠉⠛⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠋⠀⠀⠀⠀⠀⠀⠀
-                            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠉⠉⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                                </div>
-
-                                <div style="margin-bottom: 25px;">
-                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
-                                    <span style="color: #dcdcdc;">echo $EMAIL</span><br>
-                                    <span style="color: #888; margin-left: 15px;">> </span><a href="mailto:h534chen@uwaterloo.ca" class="highlight-link">h534chen@uwaterloo.ca</a>
-                                </div>
-
-                                <div style="margin-bottom: 25px;">
-                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
-                                    <span style="color: #dcdcdc;">gh repo view</span><br>
-                                    <span style="color: #888; margin-left: 15px;">> </span><a href="https://github.com/chf-NewStart" target="_blank" class="highlight-link">github.com/chf-NewStart</a>
-                                </div>
-
-                                <div style="margin-bottom: 25px;">
-                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
-                                    <span style="color: #dcdcdc;">open ./social/linkedin</span><br>
-                                    <span style="color: #888; margin-left: 15px;">> </span>
-                                    <a href="https://linkedin.com/in/houfuchen" target="_blank" class="highlight-link" style="color: #1db954;">
-                                        [ACCESS_GRANTED] Opening linkedin.com/in/houfuchen...
-                                    </a>
-                                </div>
-
-                                <div style="margin-bottom: 25px;">
-                                    <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
-                                    <span style="color: #dcdcdc;">curl -O cv_houfu_chen.pdf</span><br>
-                                    <span style="color: #888; margin-left: 15px;">> </span><a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" class="highlight-link" data-en="[Download_CV.pdf]" data-zh="[下载简历.pdf]">[Download_CV.pdf]</a>
-                                </div>
-
-                                <div style="display: flex; align-items: center; margin-top: 15px;">
-                                    <span style="color: #1db954; font-weight: bold; white-space: nowrap;">houfu@system</span><span style="color: #dcdcdc;">:</span><span style="color: #007acc; white-space: nowrap;">~</span><span style="color: #dcdcdc;">$</span>&nbsp;
-                                    <input type="text" id="terminal-cmd" autocomplete="off" spellcheck="false" placeholder="type 'help'..." style="background: transparent; border: none; color: #1db954; font-family: Consolas, monospace; font-size: 0.85rem; outline: none; width: 100%; caret-color: #1db954;">
-                                </div>
-                                <div id="terminal-output" style="color: #888; font-size: 0.85rem; margin-top: 10px; white-space: pre-line;"></div>
-                            </div>
+                            <ul class="highlight-list" style="list-style: none; padding: 0; font-size: 1.1rem;">
+                                <li style="margin-bottom: 25px; display: flex; align-items: center;">
+                                    <strong style="color: #1db954; width: 120px;">[EMAIL]</strong> 
+                                    <a href="mailto:h534chen@uwaterloo.ca" class="highlight-link">h534chen@uwaterloo.ca</a>
+                                </li>
+                                <li style="margin-bottom: 25px; display: flex; align-items: center;">
+                                    <strong style="color: #1db954; width: 120px;">[GITHUB]</strong> 
+                                    <a href="https://github.com/chf-NewStart" target="_blank" class="highlight-link">github.com/chf-NewStart</a>
+                                </li>
+                                <li style="margin-bottom: 25px; display: flex; align-items: center;">
+                                    <strong style="color: #1db954; width: 120px;">[LINKEDIN]</strong> 
+                                    <a href="https://linkedin.com/in/houfuchen" target="_blank" class="highlight-link">linkedin.com/in/houfuchen</a>
+                                </li>
+                                <li style="margin-bottom: 25px; display: flex; align-items: center;">
+                                    <strong style="color: #1db954; width: 120px;">[RESUME]</strong> 
+                                    <a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" class="highlight-link" data-en="Download_CV.pdf" data-zh="下载简历.pdf">Download_CV.pdf</a>
+                                </li>
+                            </ul>
                         </div>
-                        <div style="height: 150px;"></div>
+                        
+                        <div style="height: 100px; width: 100%; display: block; clear: both;"></div>
                     </div>
-                
-                <div style="height: 150px; width: 100%; display: block; clear: both;"></div>
-            </div>
-        </section>
+                </section>
         
     </div>
     <footer>
@@ -1262,6 +1260,14 @@
     document.addEventListener('DOMContentLoaded', () => {
         const cmdInput = document.getElementById('terminal-cmd');
         const outputDiv = document.getElementById('terminal-output');
+        const tomatoBtn = document.getElementById('tomatoToggle');
+
+        // Allow the navbar button to trigger Tomato Mode
+        if (tomatoBtn) {
+            tomatoBtn.addEventListener('click', () => {
+                triggerEasterEgg();
+            });
+        }
 
         if (cmdInput) {
             cmdInput.addEventListener('keypress', function(e) {

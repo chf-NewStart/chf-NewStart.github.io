@@ -669,11 +669,28 @@
                                 </div>
                             </div>
 
-                            <div class="explorer-content" style="background-color: #1e1e1e; padding: 30px; border: none; text-align: left;">
-                                
-                                <p style="color: #666; margin-bottom: 25px; font-size: 0.85rem;">
+                            <div class="explorer-content" style="background-color: #1e1e1e; padding: 30px; border: none; text-align: left; max-height: none; overflow-y: hidden;">                                                            
+                                <p style="color: #666; margin-bottom: 15px; font-size: 0.85rem;">
                                     Last login: Thu May 07 06:20:30 on ttys001
                                 </p>
+
+                                <div style="color: #ff5f56; line-height: 1.1; margin-bottom: 25px; font-size: 0.8rem; white-space: pre;">
+                            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠻⣶⡆⠀⠿⠀⣶⠒⠊⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                            ⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣴⠾⠛⢹⣶⡤⢶⣿⡟⠶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀
+                            ⠀⠀⠀⠀⠀⣠⣶⣤⣤⣤⣤⣴⠂⠸⠋⢀⣄⡉⠓⠀⠲⣶⣾⣿⣷⣄⠀⠀⠀⠀
+                            ⠀⠀⠀⢀⣾⡿⠋⠁⣠⣤⣿⡟⢀⣠⣾⣿⣿⣿⣷⣶⣤⣼⣿⣿⣿⣿⣆⠀⠀⠀
+                            ⠀⠀⠀⣾⡟⠀⣰⣿⣿⣿⣿⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠀
+                            ⠀⠀⢸⡿⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
+                            ⠀⠀⢸⡇⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
+                            ⠀⠀⢸⣿⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
+                            ⠀⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠁⠀⠀
+                            ⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀
+                            ⠀⠀⠀⠀⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀
+                            ⠀⠀⠀⠀⠀⠀⠉⠛⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠋⠀⠀⠀⠀⠀⠀⠀
+                            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠉⠉⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                                </div>
 
                                 <div style="margin-bottom: 25px;">
                                     <span style="color: #1db954; font-weight: bold;">houfu@system</span>:<span style="color: #007acc;">~</span>$ 
@@ -1254,7 +1271,7 @@
 
                     // Command Logic
                     if (command === 'help') {
-                        outputDiv.innerHTML = "> AVAILABLE COMMANDS:<br>> clear  - clear terminal output<br>> whoami - display current user<br>> sudo   - execute with root privileges";
+                        outputDiv.innerHTML = "> AVAILABLE COMMANDS:<br>> clear  - clear terminal output<br>> whoami - display current user<br>> tomato - [RESTRICTED] system override";
                     } 
                     else if (command === 'clear') {
                         outputDiv.innerHTML = '';
@@ -1262,7 +1279,7 @@
                     else if (command === 'whoami') {
                         outputDiv.innerHTML = "> guest_user";
                     }
-                    else if (command === 'sudo') {
+                    else if (command === 'tomato') {
                         outputDiv.innerHTML = "> EXECUTING ROOT OVERRIDE...";
                         triggerEasterEgg();
                     }

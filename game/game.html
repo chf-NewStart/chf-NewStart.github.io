@@ -154,16 +154,20 @@
     .tbtn {
       background: #0d0d0d; border: 1px solid #1e1e1e; color: #555;
       font-family: Consolas, monospace; font-size: 0.68rem;
-      padding: 7px 8px; cursor: pointer; text-align: left; transition: all 0.1s;
+      padding: 8px 10px; cursor: pointer; text-align: left; transition: all 0.1s;
+      line-height: 1.5;
     }
     .tbtn:hover:not(:disabled) { border-color: #888; color: #aaa; }
     .tbtn.sel  { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.08); }
     .tbtn:disabled { opacity: 0.25; cursor: not-allowed; }
 
     /* Log */
-    .log { max-height: 130px; overflow-y: auto; font-size: 0.66rem; line-height: 1.75; }
-    .log div { color: #2e2e2e; }
-    .log div:last-child { color: #888; }
+    .log { max-height: 160px; overflow-y: auto; font-size: 0.7rem; line-height: 1.8; }
+    .log div { color: #484848; }
+    .log div.log-action  { color: #777; }
+    .log div.log-event   { color: #1db954; }
+    .log div.log-danger  { color: #f44336; }
+    .log div.log-round   { color: #555; border-top: 1px solid #1a1a1a; margin-top: 3px; padding-top: 3px; }
 
     @media (max-width: 660px) {
       .layout { flex-direction: column; }
@@ -369,21 +373,22 @@ class GameEngine {
   }
 
   refreshSetupUI() {
-    const labels = {
-      'XX':'XX  · 1 dmg on entry',
-      '■' :'■   · freeze adj doors',
-      '☆' :'☆   · instant kill',
-      '✦' :'✦   · +1 action',
-      '△' :'△   · death immunity',
-      '+' :'+   · stun opponent'
+    const traps = {
+      'XX':{ name:'Damage',       desc:'−1 HP on entry'        },
+      '■' :{ name:'Freeze',       desc:'locks adjacent doors'   },
+      '☆' :{ name:'Instant Kill', desc:'kills on entry'         },
+      '✦' :{ name:'Bonus Action', desc:'+1 action to stepper'   },
+      '△' :{ name:'Revive',       desc:'survive death once'     },
+      '+' :{ name:'Stun',         desc:'skip opponent next turn' },
     };
     const grid = document.getElementById('toolGrid');
     if (!grid) return;
     grid.innerHTML = '';
     for (const [sym, cnt] of Object.entries(this.toolbox)) {
+      const t = traps[sym];
       const b = document.createElement('button');
       b.className = 'tbtn' + (this.selectedTool===sym?' sel':'');
-      b.textContent = `${labels[sym]}  ×${cnt}`;
+      b.innerHTML = `<span style="font-size:1.1em;margin-right:5px">${sym}</span><span style="color:#aaa">${t.name}</span><br><span style="font-size:0.6rem;color:#555">${t.desc}</span><span style="float:right;color:#777">×${cnt}</span>`;
       b.disabled = cnt <= 0;
       b.onclick = () => this.setTool(sym);
       grid.appendChild(b);
@@ -395,9 +400,14 @@ class GameEngine {
 
   randomizeTools() {
     if (this.phase !== 'setup') return;
+    // Clear any existing placements first so re-randomizing always works
+    for (let y=0;y<4;y++) for (let x=0;x<4;x++) {
+      const cell = this.grid[y][x];
+      if (cell.symbol) { this.toolbox[cell.symbol]++; cell.symbol=null; }
+    }
     const slots = [];
     for (let y=0;y<4;y++) for (let x=0;x<4;x++)
-      if (!((x===0&&y===0)||(x===3&&y===3)) && !this.grid[y][x].symbol) slots.push({x,y});
+      if (!((x===0&&y===0)||(x===3&&y===3))) slots.push({x,y});
     for (let i=slots.length-1;i>0;i--) {
       const j=Math.floor(Math.random()*(i+1));
       [slots[i],slots[j]]=[slots[j],slots[i]];
@@ -624,9 +634,17 @@ class GameEngine {
     else if (this.participants.every(p=>p.hp<=0))      end('hunter',      '💀 HUNTER WINS — all eliminated!');
   }
 
-  log(msg) {
+  log(msg, type='') {
     const el = document.getElementById('gameLog');
-    if (el) { const d=document.createElement('div'); d.textContent=msg; el.appendChild(d); el.scrollTop=el.scrollHeight; }
+    if (!el) return;
+    const d = document.createElement('div');
+    d.textContent = msg;
+    if (type) d.className = 'log-'+type;
+    else if (/WIN|ESCAPED|escaped|ESCAPE/.test(msg))   d.className = 'log-event';
+    else if (/attack|hit|kill|stun|dmg|HP:|died/.test(msg)) d.className = 'log-danger';
+    else if (/GAME START|Round/.test(msg))              d.className = 'log-round';
+    else if (/→|\[/.test(msg))                         d.className = 'log-action';
+    el.appendChild(d); el.scrollTop = el.scrollHeight;
   }
 
   /* ── Render ── */

@@ -456,6 +456,8 @@ function trainStep(){
 
 const env=new HeadlessEnv(0.7);
 
+const TRAIN_EVERY = 4;  // only call TF.js every N env steps — keeps each episode fast
+
 function runEpisode(){
   let state=env.reset(), epR=0;
   for(let step=0;step<MAX_STEPS;step++){
@@ -464,7 +466,7 @@ function runEpisode(){
     const[next,r,done,winner]=env.step(action);
     pushBuf(state,action,r,next,done);
     state=next; epR+=r; totalSteps++;
-    trainStep();
+    if(totalSteps%TRAIN_EVERY===0) trainStep();       // 4× fewer TF.js calls
     if(totalSteps%TARGET_SYNC===0) syncTarget();
     if(done) break;
   }
@@ -484,16 +486,35 @@ function runEpisode(){
    TRAINING LOOP & UI
    ═══════════════════════════════════════════════════════════ */
 
-function toggleTrain(){
+async function toggleTrain(){
   if(training){ stopTrain(); return; }
   if(!qNet) initModels();
+
+  // Pre-compile WebGL shaders — without this the first episode stalls for ~10s
+  document.getElementById('stateLabel').textContent='warming up...';
+  document.getElementById('dot').classList.add('running');
+  addLog('Warming up GPU shaders...','event');
+  await warmupTF();
+
   training=true;
   document.getElementById('startBtn').textContent='⏹ Stop Training';
   document.getElementById('startBtn').classList.add('active');
-  document.getElementById('dot').classList.add('running');
   document.getElementById('stateLabel').textContent='training';
   addLog('Training started.','event');
   loop();
+}
+
+async function warmupTF(){
+  // Run a dummy forward + backward pass so WebGL programs are compiled before the loop.
+  // This ~2s wait beats a ~10s invisible freeze on episode 1.
+  await tf.nextFrame();
+  tf.tidy(()=>{ qNet.predict(tf.zeros([BATCH, STATE_DIM])); });
+  await tf.nextFrame();
+  await optimizer.minimize(()=>tf.tidy(()=>{
+    const out=qNet.predict(tf.zeros([BATCH,STATE_DIM]));
+    return tf.mean(out);
+  }));
+  await tf.nextFrame();
 }
 
 function stopTrain(){
@@ -525,17 +546,21 @@ function loop(){
 }
 
 function resetTraining(){
-  stopTrain();
+  // Cancel loop directly — don't call stopTrain() to avoid "Paused" messaging
+  training=false;
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
   initModels();
   document.getElementById('progBar').style.width='0%';
   document.getElementById('dot').className='status-dot';
   document.getElementById('stateLabel').textContent='idle';
+  document.getElementById('startBtn').textContent='▶ Start Training';
+  document.getElementById('startBtn').classList.remove('active');
   document.getElementById('saveBtn').disabled=true;
   document.getElementById('downloadBtn').disabled=true;
   document.getElementById('saveBanner').classList.remove('show');
-  document.getElementById('startBtn').textContent='▶ Start Training';
   clearChart();
-  addLog('Reset.','event');
+  document.getElementById('trainLog').innerHTML='';
+  addLog('Ready. Press Start Training to begin.','event');
 }
 
 function updateUI(wr,avgR){

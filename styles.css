@@ -1452,18 +1452,48 @@ footer {
         padding: 16px;
         max-height: none;
         overflow-x: hidden;
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
     }
 
     .explorer-content .highlight-card {
         padding: 14px 16px;
+        box-sizing: border-box;
+        max-width: 100%;
     }
 
-    /* Tame shadows that bleed off-screen */
+    /* Force column layout on all phones */
+    .about-explorer {
+        flex-direction: column;
+        gap: 15px;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .explorer-menu {
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Fix card sizing — border-box prevents 4px border overflow */
+    .highlight-card,
+    .skill-group,
+    .digital-card {
+        box-sizing: border-box;
+        max-width: 100%;
+        overflow: hidden;
+        width: 100%;
+    }
+
+    /* Tame shadows — remove rightward offset so they don't bleed off-screen */
     .highlight-card,
     .skill-group,
     .digital-card,
     .explorer-menu {
-        box-shadow: 3px 3px 0 rgba(29,185,84,0.2);
+        box-shadow: 0 4px 0 rgba(29,185,84,0.2);
     }
 
     /* Disable hover transform on touch — causes clipping */
@@ -1471,7 +1501,13 @@ footer {
     .skill-group:hover,
     .digital-card:hover {
         transform: none;
-        box-shadow: 3px 3px 0 rgba(29,185,84,0.3);
+        box-shadow: 0 4px 0 rgba(29,185,84,0.3);
+    }
+
+    /* Fix terminal min-width bleeding into layout */
+    .terminal-content {
+        min-width: 0;
+        width: 100%;
     }
 
     /* Keep all media inside cards from overflowing */

@@ -180,6 +180,10 @@
         <button class="btn" id="newGameBtn" onclick="initGame()" data-en="⟳ New Game" data-zh="⟳ 新游戏">⟳ New Game</button>
         <button class="btn" id="autoPlayBtn" onclick="autoPlay()" data-en="▶ Auto Play" data-zh="▶ 自动">▶ Auto Play</button>
       </div>
+      <div style="display:flex;gap:4px;margin-top:6px;">
+        <button class="tbtn sel" id="btnDijkstra" onclick="setHunterMode('dijkstra')" data-en="H: Dijkstra" data-zh="H: 最短路">H: Dijkstra</button>
+        <button class="tbtn" id="btnRL" onclick="setHunterMode('rl')" disabled data-en="H: RL ⟳" data-zh="H: RL ⟳">H: RL ⟳</button>
+      </div>
     </div>
 
     <div class="pcard">
@@ -708,11 +712,20 @@ function autoPlay() {
 
   const dk=game.dkey.bind(game);
 
+  // RL setup: place all 6 traps before the game starts
+  if(hunterMode==='rl'&&rlWeights&&game.phase==='setup'){
+    rlResetSetup();
+    while(game.phase==='setup'&&!rlPlaceNextTrap()){/* place one at a time until done */}
+    game.finishSetup();
+  }
+
   game.autoPlayInterval=setInterval(()=>{
     if(!game||game.gameOver){
       clearInterval(game?.autoPlayInterval);if(game)game.autoPlayInterval=null;
       document.getElementById('autoPlayBtn').textContent=t('▶ Auto Play','▶ 自动');return;
     }
+    // RL setup phase shouldn't happen inside interval, but guard anyway
+    if(game.phase==='setup'&&hunterMode==='rl'&&rlWeights){game.finishSetup();return;}
     const unit=game.curUnit();if(!unit){game.nextTurn();return;}
 
     if(unit.type==='participant'){
@@ -728,6 +741,9 @@ function autoPlay() {
       unit.moves=0;unit.attacks=0;game.nextTurn();
 
     } else {
+      // ── RL hunter path ────────────────────────────────
+      if(hunterMode==='rl'&&rlWeights){stepRLHunter();return;}
+
       const alive=game.participants.filter(p=>p.hp>0&&!p.escaped);
       if(!alive.length){unit.moves=0;unit.attacks=0;game.nextTurn();return;}
 
@@ -752,7 +768,232 @@ function autoPlay() {
   },700);
 }
 
-document.addEventListener('DOMContentLoaded',()=>{applyLang();initGame();});
+document.addEventListener('DOMContentLoaded',()=>{applyLang();initGame();loadRLWeights();});
+
+/* ══════════════════════════════════════════════════════════
+   RL HUNTER — browser inference
+   Weights loaded from /game/hunter_rl.json (produced by rl/train_hunter.py).
+   State vector and action encoding must match escape_env.py exactly.
+   ══════════════════════════════════════════════════════════ */
+
+let hunterMode = 'dijkstra';  // 'dijkstra' | 'rl'
+let rlWeights  = null;        // { weights: [...], biases: [...] } once loaded
+
+// Door enumeration — MUST match DOOR_ORDER in escape_env.py
+const DOOR_ORDER_PAIRS = [];
+(()=>{
+  for(let x1=0;x1<4;x1++) for(let y1=0;y1<4;y1++){
+    if(x1+1<4) DOOR_ORDER_PAIRS.push([x1,y1,x1+1,y1]);
+    if(y1+1<4) DOOR_ORDER_PAIRS.push([x1,y1,x1,y1+1]);
+  }
+})();
+
+// Trap cell enumeration — MUST match TRAP_CELLS in escape_env.py
+const RL_TRAP_CELLS = [];
+(()=>{
+  for(let y=0;y<4;y++) for(let x=0;x<4;x++)
+    if(!(x===0&&y===0)&&!(x===3&&y===3)) RL_TRAP_CELLS.push([x,y]);
+})();
+const RL_TRAP_VAL = {'XX':0.3,'☆':1.0,'■':0.6,'+': -0.5,'△': -0.3};
+const RL_SETUP_TRAPS = ['XX','XX','☆','■','+','△'];
+
+function setHunterMode(m) {
+  if(m==='rl'&&!rlWeights){return;}
+  hunterMode = m;
+  document.getElementById('btnDijkstra').classList.toggle('sel', m==='dijkstra');
+  document.getElementById('btnRL').classList.toggle('sel', m==='rl');
+}
+
+function loadRLWeights() {
+  fetch('/game/hunter_rl.json')
+    .then(r=>{ if(!r.ok) throw new Error('not found'); return r.json(); })
+    .then(data=>{
+      rlWeights = data;
+      const btn = document.getElementById('btnRL');
+      btn.disabled = false;
+      btn.dataset.en = 'H: RL ✓';
+      btn.dataset.zh = 'H: RL ✓';
+      btn.textContent = 'H: RL ✓';
+      console.log('RL weights loaded — state_dim:', data.state_dim, 'hidden:', data.hidden);
+    })
+    .catch(()=>{
+      // No weights file yet — button stays disabled
+      const btn = document.getElementById('btnRL');
+      btn.dataset.en = 'H: RL (train first)';
+      btn.dataset.zh = 'H: RL (先训练)';
+      btn.textContent = t('H: RL (train first)','H: RL (先训练)');
+    });
+}
+
+// Forward pass through [state_dim → hidden → hidden → n_actions] MLP
+// All hidden layers use ReLU; output layer is linear.
+function nnForward(weights, biases, input) {
+  let x = input;
+  for(let i=0;i<weights.length;i++){
+    const W=weights[i], b=biases[i], out=new Array(W.length);
+    for(let j=0;j<W.length;j++){
+      let s=b[j];
+      for(let k=0;k<x.length;k++) s+=W[j][k]*x[k];
+      out[j] = i<weights.length-1 ? Math.max(0,s) : s;  // ReLU on hidden, linear on output
+    }
+    x=out;
+  }
+  return x;  // Q-values
+}
+
+// Build state vector — must match EscapeGridEnv._state() in escape_env.py (62 dims)
+// isPlay: false during setup phase, true during play phase
+// rlTrapIdx: how many traps have been placed so far (0-6)
+// placedTraps: Map of (x,y) string → trap symbol for already-placed traps
+function getRLState(g, isPlay, rlTrapIdx, placedTraps) {
+  const s = [];
+  const trapsLeft = Math.max(0, RL_SETUP_TRAPS.length - (rlTrapIdx||0));
+
+  // Phase + trap budget
+  s.push(isPlay ? 1.0 : 0.0);
+  s.push(trapsLeft / RL_SETUP_TRAPS.length);
+
+  // Trap cells (what's placed where)
+  const trapMap = placedTraps || new Map();
+  for(const [tx,ty] of RL_TRAP_CELLS){
+    const sym = trapMap.get(`${tx},${ty}`) || (g.grid?.[ty]?.[tx]?.symbol) || '';
+    s.push(RL_TRAP_VAL[sym] ?? 0.0);
+  }
+
+  // Hunter
+  const h = g.hunter;
+  s.push(h.x/3, h.y/3, h.hp/16);
+
+  // Participants
+  for(const p of g.participants){
+    const alive=(p.hp>0&&!p.escaped)?1:0;
+    s.push(alive, p.x/3, p.y/3, p.hp/5);
+  }
+
+  // Door states
+  const DOOR_ENC={'locked':0.0,'closed':0.33,'open':1.0};
+  for(const [x1,y1,x2,y2] of DOOR_ORDER_PAIRS){
+    const k=g.dkey(x1,y1,x2,y2);
+    const frozen=g.frozenDoors.has(k);
+    s.push(frozen?-0.33:(DOOR_ENC[g.doors.get(k)]??0.0));
+  }
+
+  // Action budget + round
+  s.push((isPlay?h.moves:4)/4, isPlay?h.attacks:1);
+  s.push(Math.min(g.currentTurn,20)/20);
+  return s;  // 62 elements
+}
+
+// Valid action mask — must match EscapeGridEnv.valid_actions() (14 entries)
+function getRLMask(g, isPlay, occupiedTrapCells) {
+  const mask=new Array(14).fill(false);
+  if(!isPlay){
+    // Setup phase: valid = trap cell indices not yet occupied
+    const occ = occupiedTrapCells || new Set();
+    for(let i=0;i<RL_TRAP_CELLS.length;i++){
+      const [tx,ty]=RL_TRAP_CELLS[i];
+      if(!occ.has(`${tx},${ty}`)) mask[i]=true;
+    }
+  } else {
+    // Play phase
+    const h=g.hunter;
+    if(h.moves>0){
+      for(const [a,[dx,dy]] of [[0,[0,-1]],[1,[0,1]],[2,[-1,0]],[3,[1,0]]]){
+        const nx=h.x+dx,ny=h.y+dy;
+        if(nx>=0&&nx<4&&ny>=0&&ny<4){
+          const k=g.dkey(h.x,h.y,nx,ny);
+          if(!g.frozenDoors.has(k)&&g.doors.get(k)==='open') mask[a]=true;
+        }
+      }
+      for(const[dx,dy]of[[0,-1],[0,1],[-1,0],[1,0]]){
+        const nx=h.x+dx,ny=h.y+dy;
+        if(nx>=0&&nx<4&&ny>=0&&ny<4){
+          const k=g.dkey(h.x,h.y,nx,ny);
+          if(!g.frozenDoors.has(k)){
+            if(g.doors.get(k)==='locked') mask[5]=true;
+            if(g.doors.get(k)==='closed') mask[6]=true;
+          }
+        }
+      }
+    }
+    if(h.attacks>0&&g.currentTurn>0){
+      const living=g.participants.filter(p=>p.hp>0&&!p.escaped);
+      if(living.some(p=>p.x===h.x&&p.y===h.y)) mask[4]=true;
+    }
+    mask[7]=true;  // pass always valid
+  }
+  return mask;
+}
+
+// RL setup-phase state (trap placements so far)
+let rlTrapIdx = 0;           // how many traps placed in current RL setup
+let rlPlacedTraps = new Map(); // key "x,y" → symbol
+
+// Pick best valid RL action (argmax of masked Q-values, 14 outputs)
+function getRLAction(state, mask) {
+  const q = nnForward(rlWeights.weights, rlWeights.biases, state);
+  let best=-Infinity, bestA=7;
+  for(let a=0;a<q.length;a++){
+    if(mask[a]&&q[a]>best){best=q[a];bestA=a;}
+  }
+  return bestA;
+}
+
+// Called when RL auto-play starts — reset trap tracking
+function rlResetSetup() {
+  rlTrapIdx=0; rlPlacedTraps=new Map();
+}
+
+// Place next RL trap during setup phase. Returns true when setup is complete.
+function rlPlaceNextTrap() {
+  if(rlTrapIdx>=RL_SETUP_TRAPS.length) return true;
+  const occ=new Set(rlPlacedTraps.keys());
+  const state=getRLState(game, false, rlTrapIdx, rlPlacedTraps);
+  const mask=getRLMask(game, false, occ);
+  const action=getRLAction(state,mask);
+  if(action>=RL_TRAP_CELLS.length){rlTrapIdx++; return rlTrapIdx>=RL_SETUP_TRAPS.length;}
+  const [tx,ty]=RL_TRAP_CELLS[action];
+  const sym=RL_SETUP_TRAPS[rlTrapIdx];
+  const key=`${tx},${ty}`;
+  if(occ.has(key)){
+    // Fallback: pick first unoccupied
+    for(let i=0;i<RL_TRAP_CELLS.length;i++){
+      const [fx,fy]=RL_TRAP_CELLS[i];
+      if(!occ.has(`${fx},${fy}`)){
+        game.placeToolAt(fx,fy); rlPlacedTraps.set(`${fx},${fy}`,sym); rlTrapIdx++; break;
+      }
+    }
+  } else {
+    game.selectedTool=sym;
+    game.placeToolAt(tx,ty);
+    rlPlacedTraps.set(key,sym);
+    rlTrapIdx++;
+  }
+  return rlTrapIdx>=RL_SETUP_TRAPS.length;
+}
+
+// Execute a single RL play-phase action — called each autoPlay tick
+function stepRLHunter() {
+  if(!game||game.gameOver||game.phase!=='play') return;
+  const unit=game.curUnit();
+  if(!unit||unit.type!=='hunter') return;
+  if(!game.hasActions(unit)){game.nextTurn();return;}
+
+  const state=getRLState(game, true, rlTrapIdx, rlPlacedTraps);
+  const mask=getRLMask(game, true, null);
+  const action=getRLAction(state,mask);
+
+  switch(action){
+    case 0: game.move('up');    break;
+    case 1: game.move('down');  break;
+    case 2: game.move('left');  break;
+    case 3: game.move('right'); break;
+    case 4: game.attack();      break;
+    case 5: game.unlockDoor();  break;
+    case 6: game.openDoor();    break;
+    case 7: unit.moves=0; unit.attacks=0; game.nextTurn(); break;
+  }
+}
 </script>
 </body>
 </html>

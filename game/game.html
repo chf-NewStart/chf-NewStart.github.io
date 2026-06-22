@@ -306,6 +306,20 @@ class GameEngine {
 
   hasActions(unit) { return unit.moves>0 || unit.attacks>0; }
 
+  // True if a participant has at least one possible action this turn
+  participantCanAct(p) {
+    // Can attack if hunter shares the cell
+    if(this.grid[p.y][p.x].units.some(u=>u.type==='hunter'&&u.hp>0)) return true;
+    // Can act on any adjacent door that isn't frozen
+    for(const[dx,dy]of[[0,-1],[0,1],[-1,0],[1,0]]){
+      const nx=p.x+dx, ny=p.y+dy;
+      if(nx<0||nx>3||ny<0||ny>3) continue;
+      const k=this.dkey(p.x,p.y,nx,ny);
+      if(this.doors.has(k)&&!this.frozenDoors.has(k)) return true;
+    }
+    return false;
+  }
+
   /* ── Setup ── */
   setTool(sym) { if(this.phase!=='setup')return; this.selectedTool=(this.selectedTool===sym)?null:sym; this.refreshSetupUI(); }
 
@@ -376,10 +390,14 @@ class GameEngine {
 
   startTurn() {
     if(this.gameOver||this.phase!=='play')return;
+    // Check for deadlock before proceeding (catches cases that bypass afterAction)
+    this.checkWin(); if(this.gameOver)return;
     const u=this.curUnit();
     if(u){
       if(u.type==='hunter'&&this.stunHunter>0){this.stunHunter--;this.log(t('Hunter stunned — turn skipped.','猎手被眩晕——跳过回合。'),'danger');this.currentUnitIndex++;return this.startTurn();}
       if(u.type==='participant'&&this.stunPart>0){this.stunPart--;this.log(t('Participant stunned — turn skipped.','参与者被眩晕——跳过回合。'),'danger');this.currentUnitIndex++;return this.startTurn();}
+      // Auto-skip participant with no possible actions (e.g. fully frozen in)
+      if(u.type==='participant'&&!this.participantCanAct(u)){this.log(t(`${u.id} trapped — no valid actions, turn skipped.`,`${u.id}被困——无法行动，跳过回合。`),'danger');this.currentUnitIndex++;return this.startTurn();}
     }
     this.selectedDir=null;
     ['Up','Down','Left','Right'].forEach(d=>document.getElementById('dir'+d)?.classList.remove('sel'));
@@ -521,6 +539,15 @@ class GameEngine {
     if(this.participants.some(p=>p.escaped))      end('participants',t('🎉 PARTICIPANTS WIN — escaped!','🎉 参与者获胜——逃脱！'));
     else if(this.hunter.hp<=0)                    end('participants',t('🎉 PARTICIPANTS WIN — hunter defeated!','🎉 参与者获胜——猎手被击败！'));
     else if(this.participants.every(p=>p.hp<=0))  end('hunter',      t('💀 HUNTER WINS — all eliminated!','💀 猎手获胜——全员淘汰！'));
+    else {
+      // Deadlock: every surviving participant is permanently trapped AND hunter can't path to any of them
+      const alive=this.participants.filter(p=>p.hp>0&&!p.escaped);
+      if(alive.length>0&&alive.every(p=>!this.participantCanAct(p))){
+        const dk=(x1,y1,x2,y2)=>this.dkey(x1,y1,x2,y2);
+        const reachable=alive.some(p=>findPath(this.hunter.x,this.hunter.y,p.x,p.y,this.doors,this.frozenDoors,dk)!==null);
+        if(!reachable) end('hunter',t('💀 HUNTER WINS — participants sealed in frozen cells!','💀 猎手获胜——参与者被冰封！'));
+      }
+    }
   }
 
   log(msg,type='') {

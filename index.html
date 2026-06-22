@@ -42,6 +42,31 @@
                 font-size: 0.8rem;
             }
         }
+
+        /* Game arcade cards */
+        .gc-card {
+            border: 1px solid #1c1c1c;
+            padding: 18px;
+            background: #0d0d0d;
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.15s;
+            font-family: Consolas, 'Courier New', monospace;
+        }
+        .gc-card:hover:not(.gc-soon) { border-color: #1db954; }
+        .gc-soon { opacity: 0.45; pointer-events: none; }
+        .gc-icon  { color: #1db954; font-size: 1rem; margin-bottom: 9px; }
+        .gc-title { color: #ddd; font-size: 0.9rem; margin-bottom: 6px; }
+        .gc-desc  { color: #555; font-size: 0.67rem; line-height: 1.75; flex: 1; }
+        .gc-tags  { display: flex; gap: 5px; flex-wrap: wrap; margin: 11px 0 8px; }
+        .gc-tag   { font-size: 0.58rem; padding: 2px 6px; border: 1px solid #222; color: #444; font-family: Consolas, monospace; }
+        .gc-tag.green { border-color: rgba(29,185,84,0.3); color: #1db954; }
+        .gc-tag.red   { border-color: rgba(244,67,54,0.3); color: #f44336; }
+        .gc-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #141414; margin-top: auto; }
+        .gc-meta   { font-size: 0.6rem; color: #333; font-family: Consolas, monospace; }
+        .gc-play   { color: #1db954; font-size: 0.68rem; text-decoration: none; border: 1px solid #1db954; padding: 4px 11px; font-family: Consolas, monospace; transition: background 0.1s; }
+        .gc-play:hover { background: rgba(29,185,84,0.1); }
+        .gc-soon-badge { font-size: 0.6rem; color: #333; border: 1px solid #1e1e1e; padding: 3px 9px; font-family: Consolas, monospace; }
     </style>
 </head>
 <body>
@@ -56,6 +81,7 @@
                         <a href="#about-section" data-en="About" data-zh="关于我">About</a>
                         <a href="#experience-section" data-en="Experience" data-zh="经历">Experience</a>
                         <a href="#projects-section" data-en="Projects" data-zh="项目">Projects</a>
+                        <a href="#games-section" data-en="Games" data-zh="游戏">Games</a>
                         <a href="#personal-section" data-en="Off The Clock" data-zh="业余时间">Off The Clock</a>
                         <a href="#contact-section" data-en="Contact" data-zh="联系">Contact</a>
                         <a href="/personality/" data-en="Personality" data-zh="性格">Personality</a>
@@ -535,6 +561,71 @@
                             <a href="https://github.com/chf-NewStart/MatrixCalculator_chf" target="_blank" class="highlight-link">[GitHub Repo]</a>
                         </div>
 
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="games-section" class="scroll-section projects-section">
+            <div class="container">
+                <h2 class="section-title reveal-content" data-en="Game Arcade" data-zh="游戏厅">Game Arcade</h2>
+
+                <div class="reveal-content" style="max-width:860px;margin:0 auto;">
+                    <div style="font-family:Consolas,monospace;font-size:0.7rem;color:#333;margin-bottom:18px;letter-spacing:1px;">~/games $ ls --status</div>
+
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
+
+                        <!-- Escape Grid -->
+                        <div class="gc-card">
+                            <div class="gc-icon">[::]</div>
+                            <div class="gc-title" data-en="escape_grid.exe" data-zh="逃脱方格.exe">escape_grid.exe</div>
+                            <div class="gc-desc" data-en="4 participants vs 1 hunter on a 4×4 grid. Unlock doors, dodge traps, reach the exit. Dijkstra AI pathfinding." data-zh="4名参与者对抗猎手的4×4格逃脱游戏。解锁门道、躲避陷阱、到达出口。Dijkstra路径AI。">4 participants vs 1 hunter on a 4×4 grid. Unlock doors, dodge traps, reach the exit. Dijkstra AI pathfinding.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green" data-en="turn-based" data-zh="回合制">turn-based</span>
+                                <span class="gc-tag" data-en="traps" data-zh="陷阱">traps</span>
+                                <span class="gc-tag" data-en="auto-play" data-zh="自动游玩">auto-play</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">JS · Dijkstra</span>
+                                <a class="gc-play" href="/game/game.html" target="_blank" data-en="→ play" data-zh="→ 游玩">→ play</a>
+                            </div>
+                        </div>
+
+                        <!-- Gomoku -->
+                        <div class="gc-card">
+                            <div class="gc-icon">[⬡]</div>
+                            <div class="gc-title" data-en="gomoku.exe" data-zh="五子棋.exe">gomoku.exe</div>
+                            <div class="gc-desc" data-en="5-in-a-row on a 15×15 board. Minimax AI with alpha-beta pruning at 3 difficulty levels. RL agent slot reserved." data-zh="15×15五子棋。三难度极大极小AI（α-β剪枝）。RL智能体插槽预留。">5-in-a-row on a 15×15 board. Minimax AI with alpha-beta pruning at 3 difficulty levels. RL agent slot reserved.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green" data-en="strategy" data-zh="策略">strategy</span>
+                                <span class="gc-tag" data-en="minimax AI" data-zh="极大极小AI">minimax AI</span>
+                                <span class="gc-tag red" data-en="RL soon" data-zh="RL即将来临">RL soon</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">JS · alpha-beta</span>
+                                <a class="gc-play" href="/game/gomoku.html" target="_blank" data-en="→ play" data-zh="→ 游玩">→ play</a>
+                            </div>
+                        </div>
+
+                        <!-- RL slot -->
+                        <div class="gc-card gc-soon">
+                            <div class="gc-icon" style="color:#f44336">[RL]</div>
+                            <div class="gc-title" data-en="gomoku_rl_agent.py" data-zh="五子棋RL智能体.py">gomoku_rl_agent.py</div>
+                            <div class="gc-desc" data-en="Policy gradient agent trained in PyTorch, exported to JSON and loaded in browser. Will explain its learned patterns — forks, double-threes, diagonal threats." data-zh="PyTorch策略梯度智能体，导出JSON在浏览器运行。可视化学习到的策略——叉形、双三、斜线威胁。">Policy gradient agent trained in PyTorch, exported to JSON and loaded in browser. Will explain its learned patterns — forks, double-threes, diagonal threats.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag red" data-en="reinforcement learning" data-zh="强化学习">reinforcement learning</span>
+                                <span class="gc-tag" data-en="PyTorch" data-zh="PyTorch">PyTorch</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">Python · in training</span>
+                                <span class="gc-soon-badge" data-en="[ coming soon ]" data-zh="[ 敬请期待 ]">[ coming soon ]</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div style="text-align:right;margin-top:20px;">
+                        <a href="/game/" target="_blank" style="font-family:Consolas,monospace;font-size:0.72rem;color:#1db954;text-decoration:none;border:1px solid #1db954;padding:6px 14px;transition:background 0.1s;" onmouseover="this.style.background='rgba(29,185,84,0.08)'" onmouseout="this.style.background=''" data-en="→ Open Game Arcade" data-zh="→ 进入游戏厅">→ Open Game Arcade</a>
                     </div>
                 </div>
             </div>

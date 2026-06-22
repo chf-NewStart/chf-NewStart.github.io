@@ -396,7 +396,9 @@ function buildModel(){
   return m;
 }
 
-function initModels(){
+async function initModels(){
+  await tf.setBackend('cpu');  // WebGL costs more than it saves for a 26K-param net
+  await tf.ready();
   if(qNet){ qNet.dispose(); qTarget.dispose(); }
   qNet=buildModel(); qTarget=buildModel();
   syncTarget();
@@ -488,13 +490,7 @@ function runEpisode(){
 
 async function toggleTrain(){
   if(training){ stopTrain(); return; }
-  if(!qNet) initModels();
-
-  // Pre-compile WebGL shaders — without this the first episode stalls for ~10s
-  document.getElementById('stateLabel').textContent='warming up...';
-  document.getElementById('dot').classList.add('running');
-  addLog('Warming up GPU shaders...','event');
-  await warmupTF();
+  if(!qNet) await initModels();
 
   training=true;
   document.getElementById('startBtn').textContent='⏹ Stop Training';

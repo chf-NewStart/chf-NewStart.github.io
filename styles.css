@@ -1449,7 +1449,7 @@ footer {
 
     /* Explorer layout on mobile */
     .about-explorer .explorer-content {
-        padding: 16px;
+        padding: 16px 28px 16px 16px;
         max-height: none;
         overflow-x: hidden;
         box-sizing: border-box;

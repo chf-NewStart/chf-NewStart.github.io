@@ -126,6 +126,15 @@
         /* ── QUIZ ── */
         #screen-quiz { display: none; padding: 40px 0 80px; }
 
+        .person-label {
+            font-size: 0.75rem;
+            color: var(--green);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            min-height: 1.2em;
+            margin-bottom: 6px;
+        }
+
         .progress-wrap {
             background: var(--border);
             height: 3px;
@@ -186,7 +195,6 @@
             padding: 14px 6px;
             cursor: pointer;
             transition: all 0.15s;
-            position: relative;
         }
         .scale-btn:hover {
             border-color: var(--green);
@@ -200,13 +208,6 @@
             color: var(--green);
             box-shadow: 0 0 0 1px var(--green);
         }
-        .scale-btn .val-label {
-            display: block;
-            font-size: 0.65rem;
-            color: var(--muted);
-            margin-top: 4px;
-        }
-        .scale-btn.selected .val-label { color: var(--green); }
 
         .nav-btns {
             display: flex;
@@ -226,12 +227,8 @@
         }
         .nav-btn:hover:not(:disabled) { border-color: var(--text); color: var(--text); }
         .nav-btn:disabled { opacity: 0.3; cursor: default; }
-        .nav-btn.next-btn {
-            border-color: var(--green); color: var(--green);
-        }
-        .nav-btn.next-btn:hover:not(:disabled) {
-            background: var(--green); color: #111;
-        }
+        .nav-btn.next-btn { border-color: var(--green); color: var(--green); }
+        .nav-btn.next-btn:hover:not(:disabled) { background: var(--green); color: #111; }
         .nav-btn.next-btn:disabled { opacity: 0.3; }
 
         /* ── RESULTS ── */
@@ -246,7 +243,43 @@
             font-weight: bold;
             margin-bottom: 6px;
         }
-        .result-tagline { font-size: 0.9rem; color: var(--muted); }
+        .result-tagline { font-size: 0.9rem; color: var(--muted); margin-bottom: 20px; }
+
+        .action-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .share-btn, .compare-btn {
+            background: transparent;
+            font-family: var(--font);
+            font-size: 0.85rem;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .share-btn {
+            border: 1px solid var(--border);
+            color: var(--muted);
+        }
+        .share-btn:hover { border-color: var(--text); color: var(--text); }
+        .compare-btn {
+            border: 2px solid var(--green);
+            color: var(--green);
+            box-shadow: 3px 3px 0 var(--green);
+        }
+        .compare-btn:hover {
+            background: var(--green); color: #111;
+            transform: translate(1px,1px); box-shadow: 2px 2px 0 #111;
+        }
+        .share-feedback {
+            font-size: 0.8rem;
+            color: var(--green);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .share-feedback.visible { opacity: 1; }
 
         /* 2D Plot */
         .plot-section {
@@ -259,19 +292,28 @@
         .plot-title {
             font-size: 0.8rem;
             color: var(--muted);
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+        .dot-legend {
+            display: none;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 16px;
+        }
+        .dot-legend.visible { display: flex; }
+        .dot-legend-item { display: flex; align-items: center; gap: 8px; }
+        .dot-legend-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
         .plot-container {
             width: 100%;
             max-width: 460px;
             margin: 0 auto;
         }
-        #attachment-plot {
-            width: 100%;
-            height: auto;
-        }
+        #attachment-plot { width: 100%; height: auto; }
 
         /* Score bars */
         .scores-section { margin-bottom: 40px; }
@@ -282,12 +324,7 @@
             margin-bottom: 16px;
         }
         .score-label { width: 120px; font-size: 0.85rem; color: var(--muted); flex-shrink: 0; }
-        .score-track {
-            flex: 1;
-            height: 8px;
-            background: var(--border);
-            position: relative;
-        }
+        .score-track { flex: 1; height: 8px; background: var(--border); position: relative; }
         .score-fill {
             height: 100%;
             width: 0%;
@@ -315,10 +352,7 @@
             color: var(--text);
             margin-bottom: 14px;
         }
-        .desc-card ul {
-            list-style: none;
-            padding: 0;
-        }
+        .desc-card ul { list-style: none; padding: 0; }
         .desc-card ul li {
             font-size: 0.9rem;
             color: var(--text);
@@ -326,10 +360,51 @@
             padding: 6px 0 6px 22px;
             position: relative;
         }
-        .desc-card ul li::before {
-            content: '>';
-            position: absolute; left: 0;
+        .desc-card ul li::before { content: '>'; position: absolute; left: 0; color: var(--green); }
+
+        /* Compatibility section */
+        .compat-section {
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            box-shadow: 6px 6px 0 rgba(29,185,84,0.12);
+            padding: 32px;
+            margin-bottom: 32px;
+            display: none;
+        }
+        .compat-section.visible { display: block; }
+        .compat-section h3 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
             color: var(--green);
+        }
+        .compat-header {
+            display: flex;
+            align-items: baseline;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .compat-pair {
+            font-size: 1rem;
+            color: #fff;
+        }
+        .compat-score-pills {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+        .compat-pill {
+            width: 28px; height: 10px;
+            border: 1px solid var(--border);
+        }
+        .compat-pill.filled { background: var(--green); border-color: var(--green); }
+        .compat-note {
+            font-size: 0.9rem;
+            line-height: 1.75;
+            color: var(--text);
+            border-left: 3px solid #333;
+            padding-left: 14px;
         }
 
         .other-types { margin-bottom: 40px; }
@@ -380,11 +455,25 @@
         .attribution a { color: #555; }
         .attribution a:hover { color: var(--muted); }
 
+        /* ── MOBILE ── */
         @media (max-width: 600px) {
-            .question-card { padding: 24px 18px; }
-            .scale-btn { padding: 12px 4px; font-size: 0.85rem; }
-            .plot-section { padding: 20px 16px; }
-            .desc-card { padding: 24px 18px; }
+            .question-card { padding: 24px 16px; }
+            .q-text { font-size: 1rem; }
+            .scale-btn { padding: 12px 2px; font-size: 0.82rem; }
+            .scale-labels { font-size: 0.66rem; }
+            .plot-section { padding: 20px 12px; }
+            .desc-card { padding: 24px 16px; }
+            .compat-section { padding: 24px 16px; }
+            .action-row { flex-direction: column; align-items: flex-start; }
+            .action-row button { width: 100%; }
+            .result-type-name { font-size: clamp(1.5rem, 7vw, 2.5rem); }
+            .type-grid { grid-template-columns: repeat(2, 1fr); }
+            .score-label { width: 90px; font-size: 0.8rem; }
+        }
+
+        @keyframes pulseRing {
+            0%   { r: 18; opacity: 0.5; }
+            100% { r: 38; opacity: 0; }
         }
     </style>
 </head>
@@ -439,6 +528,7 @@
 <div id="screen-quiz">
 <div class="container">
 
+    <div class="person-label" id="person-label"></div>
     <div class="progress-label" id="progress-label">Question 1 of 18</div>
     <div class="progress-wrap">
         <div class="progress-bar" id="progress-bar"></div>
@@ -460,12 +550,26 @@
 
     <div class="result-header">
         <div class="label">> attachment_style.result</div>
-        <div class="result-type-name" id="result-type-name" style="color: var(--green)"></div>
+        <div class="result-type-name" id="result-type-name"></div>
         <div class="result-tagline" id="result-tagline"></div>
+        <div class="action-row" id="action-row">
+            <button class="share-btn" onclick="copyShareLink()">⎘ Copy Share Link</button>
+            <span class="share-feedback" id="share-feedback">Copied to clipboard!</span>
+        </div>
     </div>
 
     <div class="plot-section">
         <div class="plot-title">> 2D Attachment Space — Anxiety × Avoidance</div>
+        <div class="dot-legend" id="dot-legend">
+            <div class="dot-legend-item">
+                <div class="dot-legend-swatch" id="legend-swatch-you" style="background:#fff"></div>
+                <span id="legend-label-you">You</span>
+            </div>
+            <div class="dot-legend-item">
+                <div class="dot-legend-swatch" id="legend-swatch-partner" style="background:#fff; opacity:0.5"></div>
+                <span id="legend-label-partner">Partner</span>
+            </div>
+        </div>
         <div class="plot-container">
             <svg id="attachment-plot" viewBox="0 0 460 460" xmlns="http://www.w3.org/2000/svg">
                 <!-- Quadrant backgrounds -->
@@ -482,11 +586,11 @@
                     <line x1="325" y1="40" x2="325" y2="420"/>
                 </g>
 
-                <!-- Axis dividers (bright) -->
+                <!-- Axis dividers -->
                 <line x1="230" y1="40" x2="230" y2="420" stroke="#333" stroke-width="1.5" stroke-dasharray="4,4"/>
                 <line x1="40" y1="230" x2="420" y2="230" stroke="#333" stroke-width="1.5" stroke-dasharray="4,4"/>
 
-                <!-- Outer axes -->
+                <!-- Outer border -->
                 <rect x="40" y="40" width="380" height="380" fill="none" stroke="#444" stroke-width="1.5"/>
 
                 <!-- Quadrant labels -->
@@ -510,10 +614,15 @@
                 <text x="230" y="455" text-anchor="middle" fill="#888" font-family="'Space Mono',monospace" font-size="10">ANXIETY →</text>
                 <text x="14" y="230" text-anchor="middle" fill="#888" font-family="'Space Mono',monospace" font-size="10" transform="rotate(-90,14,230)">AVOIDANCE ↓</text>
 
-                <!-- User dot (animated) -->
-                <circle id="user-dot" cx="-50" cy="-50" r="10" fill="transparent" stroke="white" stroke-width="2.5"/>
-                <circle id="user-dot-inner" cx="-50" cy="-50" r="5" fill="white"/>
-                <circle id="user-dot-ring" cx="-50" cy="-50" r="18" fill="none" stroke="white" stroke-width="1" opacity="0.4"/>
+                <!-- P1 dot (you / first person) -->
+                <circle id="p1-dot"       cx="-50" cy="-50" r="10" fill="transparent" stroke="white" stroke-width="2.5"/>
+                <circle id="p1-dot-inner" cx="-50" cy="-50" r="5"  fill="white"/>
+                <circle id="p1-dot-ring"  cx="-50" cy="-50" r="18" fill="none" stroke="white" stroke-width="1" opacity="0.4"/>
+
+                <!-- P2 dot (partner, compare mode only) -->
+                <circle id="p2-dot"       cx="-50" cy="-50" r="9"  fill="transparent" stroke="white" stroke-width="2" stroke-dasharray="3,3"/>
+                <circle id="p2-dot-inner" cx="-50" cy="-50" r="4"  fill="white" opacity="0.7"/>
+                <circle id="p2-dot-ring"  cx="-50" cy="-50" r="16" fill="none" stroke="white" stroke-width="1" opacity="0.3"/>
             </svg>
         </div>
     </div>
@@ -536,19 +645,29 @@
         </div>
     </div>
 
-    <!-- Description -->
+    <!-- Type description -->
     <div class="desc-card" id="desc-card">
-        <h3 id="desc-heading" style="color: var(--green)"></h3>
+        <h3 id="desc-heading"></h3>
         <div id="desc-body"></div>
     </div>
 
-    <!-- Compare other types -->
+    <!-- Compatibility (compare mode) -->
+    <div class="compat-section" id="compat-section">
+        <h3>Compatibility Analysis</h3>
+        <div class="compat-header">
+            <div class="compat-pair" id="compat-pair"></div>
+        </div>
+        <div class="compat-score-pills" id="compat-pills"></div>
+        <div class="compat-note" id="compat-note"></div>
+    </div>
+
+    <!-- Explore all types -->
     <div class="other-types">
         <h3>Explore all types</h3>
         <div class="type-grid" id="type-grid"></div>
     </div>
 
-    <div class="retake-wrap">
+    <div class="retake-wrap" id="retake-wrap">
         <button class="retake-btn" onclick="retakeQuiz()">↩ Retake Quiz</button>
     </div>
 
@@ -565,7 +684,6 @@
 
 <script>
 const QUESTIONS = [
-    // — Anxiety dimension —
     { text: "I often wonder whether my partner truly values me as much as I value them.", dim: 'anxiety', dir: 'forward' },
     { text: "When my partner is unavailable or seems distant, I start to worry about our relationship.", dim: 'anxiety', dir: 'forward' },
     { text: "I need regular reassurance that things are okay between me and my partner.", dim: 'anxiety', dir: 'forward' },
@@ -575,8 +693,6 @@ const QUESTIONS = [
     { text: "I generally feel confident and secure in my partner's love and commitment.", dim: 'anxiety', dir: 'reverse' },
     { text: "I trust that my partner will be there for me when I really need support.", dim: 'anxiety', dir: 'reverse' },
     { text: "I rarely worry about being left or rejected by the people I care about.", dim: 'anxiety', dir: 'reverse' },
-
-    // — Avoidance dimension —
     { text: "Even in close relationships, I tend to maintain some emotional distance.", dim: 'avoidance', dir: 'forward' },
     { text: "I find it difficult to truly depend on a romantic partner.", dim: 'avoidance', dir: 'forward' },
     { text: "When a relationship gets very intense, I feel the urge to pull back.", dim: 'avoidance', dir: 'forward' },
@@ -588,14 +704,10 @@ const QUESTIONS = [
     { text: "Opening up and being vulnerable with someone I trust comes naturally to me.", dim: 'avoidance', dir: 'reverse' },
 ];
 
-const SCALE_LABELS = ['Strongly\nDisagree', 'Disagree', 'Neutral', 'Agree', 'Strongly\nAgree'];
-
 const TYPES = {
     secure: {
-        name: 'Secure',
-        tagline: 'Comfortable with closeness and independence',
-        color: '#1db954',
-        axisNote: 'Low Anxiety · Low Avoidance',
+        name: 'Secure', tagline: 'Comfortable with closeness and independence',
+        color: '#1db954', axisNote: 'Low Anxiety · Low Avoidance',
         heading: 'You are Secure',
         desc: [
             `You're comfortable with both intimacy and independence. You can depend on others without feeling threatened, and you're equally comfortable when others rely on you.`,
@@ -611,10 +723,8 @@ const TYPES = {
         ]
     },
     anxious: {
-        name: 'Anxious',
-        tagline: 'Craves closeness, worries about reciprocation',
-        color: '#ffbd2e',
-        axisNote: 'High Anxiety · Low Avoidance',
+        name: 'Anxious', tagline: 'Craves closeness, worries about reciprocation',
+        color: '#ffbd2e', axisNote: 'High Anxiety · Low Avoidance',
         heading: 'You are Anxious (Preoccupied)',
         desc: [
             `You deeply value connection and closeness — perhaps more intensely than most. The challenge is that you often worry about whether your partner shares that depth of feeling.`,
@@ -630,10 +740,8 @@ const TYPES = {
         ]
     },
     avoidant: {
-        name: 'Avoidant',
-        tagline: 'Values independence, uncomfortable with too much closeness',
-        color: '#007acc',
-        axisNote: 'Low Anxiety · High Avoidance',
+        name: 'Avoidant', tagline: 'Values independence, uncomfortable with too much closeness',
+        color: '#007acc', axisNote: 'Low Anxiety · High Avoidance',
         heading: 'You are Dismissing-Avoidant',
         desc: [
             `You highly value your independence and emotional self-sufficiency. You tend to feel most comfortable with some degree of space, and may find that intense emotional closeness triggers a subtle urge to step back.`,
@@ -649,10 +757,8 @@ const TYPES = {
         ]
     },
     fearful: {
-        name: 'Fearful-Avoidant',
-        tagline: 'Wants closeness, but closeness also feels threatening',
-        color: '#ff5f56',
-        axisNote: 'High Anxiety · High Avoidance',
+        name: 'Fearful-Avoidant', tagline: 'Wants closeness, but closeness also feels threatening',
+        color: '#ff5f56', axisNote: 'High Anxiety · High Avoidance',
         heading: 'You are Fearful-Avoidant',
         desc: [
             `You experience a complex push-pull in relationships: you want closeness, but getting close also triggers fear. You crave intimacy and connection, yet something makes it feel unsafe.`,
@@ -669,22 +775,66 @@ const TYPES = {
     }
 };
 
+const COMPATIBILITY = {
+    'secure-secure':   { score: 5, note: "Textbook pairing. Both of you can give and receive care freely — this tends to be stable, warm, and resilient through conflict." },
+    'anxious-secure':  { score: 4, note: "Works well when the secure partner stays consistent. The secure person's reliability gradually teaches the anxious partner that closeness is safe." },
+    'avoidant-secure': { score: 4, note: "Often successful. The secure partner gives the avoidant space without withdrawing; the avoidant typically opens up more over time." },
+    'fearful-secure':  { score: 3, note: "The secure person can be an anchor — but the fearful partner's oscillation can feel draining. Consistent reassurance and patience matter a lot." },
+    'anxious-anxious': { score: 2, note: "Deeply validating when things are good, but one bad day can send both spiralling. Needs strong communication and external support." },
+    'anxious-avoidant':{ score: 2, note: "The classic trap: the anxious partner chases, the avoidant pulls back — which confirms both their fears. Very common, very destabilizing. Awareness is the first step." },
+    'anxious-fearful': { score: 2, note: "Both are hypersensitive to rejection. At best, deeply empathetic. At worst, a feedback loop of anxiety and withdrawal." },
+    'avoidant-avoidant':{ score: 3, note: "Stable but potentially emotionally distant. Two avoidants can coexist peacefully — but may never reach the depth either privately craves." },
+    'avoidant-fearful':{ score: 2, note: "The fearful partner craves closeness the avoidant struggles to give. Both suppress vulnerability differently. Deliberate emotional work is needed." },
+    'fearful-fearful': { score: 2, note: "The most complex pairing. Both want closeness and fear it. Can be deeply understanding of each other — or trigger each other's defenses at every turn." }
+};
+
+// ── STATE ──
 let currentQ = 0;
 let answers = new Array(QUESTIONS.length).fill(null);
+let questionOrder = [];
 let computedType = null;
+let person1 = null;
+let isCompareMode = false;
 
-function startQuiz() {
-    document.getElementById('screen-intro').style.display = 'none';
-    document.getElementById('screen-quiz').style.display = 'block';
+// ── UTILS ──
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function svgCoords(anxietyPct, avoidancePct) {
+    return {
+        x: 40 + (anxietyPct   / 100) * 380,
+        y: 40 + (avoidancePct / 100) * 380
+    };
+}
+
+// ── QUIZ FLOW ──
+function startQuiz(forCompare = false) {
+    isCompareMode = forCompare;
+    currentQ = 0;
+    answers = new Array(QUESTIONS.length).fill(null);
+    questionOrder = shuffle([...Array(QUESTIONS.length).keys()]);
+
+    document.getElementById('person-label').textContent =
+        forCompare ? '[ Partner\'s Turn ]' : '';
+
+    document.getElementById('screen-intro').style.display   = 'none';
+    document.getElementById('screen-results').style.display = 'none';
+    document.getElementById('screen-quiz').style.display    = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     renderQuestion();
 }
 
 function renderQuestion() {
-    const q = QUESTIONS[currentQ];
+    const qi = questionOrder[currentQ];
+    const q  = QUESTIONS[qi];
     const pct = (currentQ / QUESTIONS.length) * 100;
 
-    document.getElementById('progress-label').textContent =
-        `Question ${currentQ + 1} of ${QUESTIONS.length}`;
+    document.getElementById('progress-label').textContent = `Question ${currentQ + 1} of ${QUESTIONS.length}`;
     document.getElementById('progress-bar').style.width = pct + '%';
 
     const area = document.getElementById('question-area');
@@ -700,9 +850,7 @@ function renderQuestion() {
                 <div class="scale-btns">
                     ${[1,2,3,4,5].map(v => `
                         <button class="scale-btn ${answers[currentQ] === v ? 'selected' : ''}"
-                                onclick="selectAnswer(${v})" data-val="${v}">
-                            ${v}
-                        </button>
+                                onclick="selectAnswer(${v})" data-val="${v}">${v}</button>
                     `).join('')}
                 </div>
             </div>
@@ -711,9 +859,8 @@ function renderQuestion() {
 
     document.getElementById('btn-back').disabled = currentQ === 0;
     document.getElementById('btn-next').disabled = answers[currentQ] === null;
-
-    const isLast = currentQ === QUESTIONS.length - 1;
-    document.getElementById('btn-next').textContent = isLast ? 'See Results →' : 'Next →';
+    document.getElementById('btn-next').textContent =
+        currentQ === QUESTIONS.length - 1 ? 'See Results →' : 'Next →';
 }
 
 function selectAnswer(val) {
@@ -735,24 +882,23 @@ function goNext() {
 }
 
 function goBack() {
-    if (currentQ > 0) {
-        currentQ--;
-        renderQuestion();
-    }
+    if (currentQ > 0) { currentQ--; renderQuestion(); }
 }
 
+// ── SCORING ──
 function computeScores() {
     let anxietyRaw = 0, avoidanceRaw = 0;
-    QUESTIONS.forEach((q, i) => {
-        const raw = answers[i];
+    questionOrder.forEach((qi, pos) => {
+        const q     = QUESTIONS[qi];
+        const raw   = answers[pos];
         const score = q.dir === 'forward' ? raw : (6 - raw);
-        if (q.dim === 'anxiety') anxietyRaw += score;
-        else avoidanceRaw += score;
+        if (q.dim === 'anxiety') anxietyRaw   += score;
+        else                     avoidanceRaw += score;
     });
-    // Normalize 9–45 → 0–100
-    const anxietyPct  = Math.round((anxietyRaw  - 9) / 36 * 100);
-    const avoidancePct = Math.round((avoidanceRaw - 9) / 36 * 100);
-    return { anxietyPct, avoidancePct };
+    return {
+        anxietyPct:   Math.round((anxietyRaw   - 9) / 36 * 100),
+        avoidancePct: Math.round((avoidanceRaw - 9) / 36 * 100)
+    };
 }
 
 function getType(a, v) {
@@ -762,84 +908,211 @@ function getType(a, v) {
     return 'secure';
 }
 
+// ── RESULTS ──
 function showResults() {
-    document.getElementById('screen-quiz').style.display = 'none';
-    document.getElementById('screen-results').style.display = 'block';
-
     const { anxietyPct, avoidancePct } = computeScores();
-    computedType = getType(anxietyPct, avoidancePct);
-    const typeData = TYPES[computedType];
+    const type = getType(anxietyPct, avoidancePct);
+    computedType = type;
+
+    document.getElementById('screen-quiz').style.display    = 'none';
+    document.getElementById('screen-results').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const typeData = TYPES[type];
 
     // Header
-    document.getElementById('result-type-name').textContent = typeData.name;
-    document.getElementById('result-type-name').style.color = typeData.color;
+    const nameEl = document.getElementById('result-type-name');
+    nameEl.textContent = typeData.name;
+    nameEl.style.color = typeData.color;
     document.getElementById('result-tagline').textContent = typeData.tagline;
 
-    // Animate score bars
+    // Score bars
     requestAnimationFrame(() => {
         setTimeout(() => {
-            document.getElementById('bar-anxiety').style.width  = anxietyPct  + '%';
+            document.getElementById('bar-anxiety').style.width   = anxietyPct   + '%';
             document.getElementById('bar-avoidance').style.width = avoidancePct + '%';
         }, 200);
-        document.getElementById('pct-anxiety').textContent  = anxietyPct  + '%';
+        document.getElementById('pct-anxiety').textContent   = anxietyPct   + '%';
         document.getElementById('pct-avoidance').textContent = avoidancePct + '%';
     });
 
-    // Animate dot on SVG plot
-    // SVG space: x axis = anxiety (40–420), y axis = avoidance flipped (40–420)
-    // Low avoidance = top of chart, high avoidance = bottom
-    const svgX = 40 + (anxietyPct   / 100) * 380;
-    const svgY = 40 + (avoidancePct / 100) * 380;
-
-    setTimeout(() => {
-        const dot      = document.getElementById('user-dot');
-        const dotInner = document.getElementById('user-dot-inner');
-        const dotRing  = document.getElementById('user-dot-ring');
-
-        [dot, dotInner, dotRing].forEach(el => {
-            el.style.transition = 'cx 0.9s cubic-bezier(0.34,1.56,0.64,1), cy 0.9s cubic-bezier(0.34,1.56,0.64,1)';
-        });
-
-        dot.setAttribute('cx', svgX);      dot.setAttribute('cy', svgY);
-        dotInner.setAttribute('cx', svgX); dotInner.setAttribute('cy', svgY);
-        dotRing.setAttribute('cx', svgX);  dotRing.setAttribute('cy', svgY);
-
-        dot.setAttribute('stroke', typeData.color);
-        dotInner.setAttribute('fill', typeData.color);
-        dotRing.setAttribute('stroke', typeData.color);
-        dot.setAttribute('fill', typeData.color + '30');
-
-        // Pulse ring animation
-        dotRing.style.animation = 'pulseRing 1.5s ease-out 0.9s forwards';
-    }, 400);
+    // Plot P1 dot
+    const { x, y } = svgCoords(anxietyPct, avoidancePct);
+    placeDot('p1', x, y, typeData.color, 400);
 
     // Description
-    renderDescription(computedType);
+    renderDescription(type);
 
     // Type grid
     renderTypeGrid();
+
+    // Action buttons
+    const actionRow = document.getElementById('action-row');
+    if (isCompareMode && person1) {
+        // In compare mode: already stored P1, this is P2
+        // Plot P1 dot too
+        const p1data  = TYPES[person1.type];
+        const { x: x1, y: y1 } = svgCoords(person1.anxietyPct, person1.avoidancePct);
+        placeDot('p1', x1, y1, p1data.color, 200);
+
+        const p2data  = typeData;
+        placeDot('p2', x, y, p2data.color, 600);
+
+        // Show legend
+        const legend = document.getElementById('dot-legend');
+        legend.classList.add('visible');
+        document.getElementById('legend-swatch-you').style.background     = p1data.color;
+        document.getElementById('legend-swatch-partner').style.background = p2data.color;
+        document.getElementById('legend-swatch-partner').style.opacity    = '0.8';
+
+        // Show compat
+        showCompatibility(person1.type, type);
+
+        // Retake
+        actionRow.innerHTML = `
+            <button class="share-btn" onclick="copyShareLink()">⎘ Copy Share Link</button>
+            <span class="share-feedback" id="share-feedback"></span>
+            <button class="retake-btn" style="margin-left:auto" onclick="retakeQuiz()">↩ Retake</button>
+        `;
+        document.getElementById('retake-wrap').style.display = 'none';
+
+    } else {
+        // Solo mode: update URL + show compare button
+        const url = new URL(window.location);
+        url.searchParams.set('a', anxietyPct);
+        url.searchParams.set('v', avoidancePct);
+        history.replaceState(null, '', url.toString());
+
+        // Reset P2 dot off-screen
+        ['p2-dot','p2-dot-inner','p2-dot-ring'].forEach(id => resetDotEl(id));
+
+        actionRow.innerHTML = `
+            <button class="share-btn" onclick="copyShareLink()">⎘ Copy Share Link</button>
+            <span class="share-feedback" id="share-feedback"></span>
+            <button class="compare-btn" onclick="startCompare()">+ Compare with Partner</button>
+        `;
+        document.getElementById('dot-legend').classList.remove('visible');
+        document.getElementById('compat-section').classList.remove('visible');
+        document.getElementById('retake-wrap').style.display = '';
+    }
 }
 
+function showResultsFromURL(anxietyPct, avoidancePct) {
+    // Show results without running quiz (from shared link)
+    const type = getType(anxietyPct, avoidancePct);
+    computedType = type;
+
+    document.getElementById('screen-intro').style.display   = 'none';
+    document.getElementById('screen-results').style.display = 'block';
+
+    const typeData = TYPES[type];
+    const nameEl = document.getElementById('result-type-name');
+    nameEl.textContent = typeData.name;
+    nameEl.style.color = typeData.color;
+    document.getElementById('result-tagline').textContent = typeData.tagline;
+
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            document.getElementById('bar-anxiety').style.width   = anxietyPct   + '%';
+            document.getElementById('bar-avoidance').style.width = avoidancePct + '%';
+        }, 300);
+        document.getElementById('pct-anxiety').textContent   = anxietyPct   + '%';
+        document.getElementById('pct-avoidance').textContent = avoidancePct + '%';
+    });
+
+    const { x, y } = svgCoords(anxietyPct, avoidancePct);
+    placeDot('p1', x, y, typeData.color, 600);
+
+    renderDescription(type);
+    renderTypeGrid();
+
+    const actionRow = document.getElementById('action-row');
+    actionRow.innerHTML = `
+        <button class="share-btn" onclick="copyShareLink()">⎘ Copy Share Link</button>
+        <span class="share-feedback" id="share-feedback"></span>
+    `;
+    document.getElementById('compat-section').classList.remove('visible');
+}
+
+function placeDot(prefix, x, y, color, delay) {
+    const dot   = document.getElementById(`${prefix}-dot`);
+    const inner = document.getElementById(`${prefix}-dot-inner`);
+    const ring  = document.getElementById(`${prefix}-dot-ring`);
+
+    setTimeout(() => {
+        [dot, inner, ring].forEach(el => {
+            if (!el) return;
+            el.style.transition = 'cx 0.9s cubic-bezier(0.34,1.56,0.64,1), cy 0.9s cubic-bezier(0.34,1.56,0.64,1)';
+            el.setAttribute('cx', x);
+            el.setAttribute('cy', y);
+        });
+        if (dot)   { dot.setAttribute('stroke', color); dot.setAttribute('fill', color + '30'); }
+        if (inner) { inner.setAttribute('fill', color); }
+        if (ring)  { ring.setAttribute('stroke', color); ring.style.animation = 'pulseRing 1.5s ease-out 0.9s forwards'; }
+    }, delay);
+}
+
+function resetDotEl(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.transition = 'none';
+    el.setAttribute('cx', -50);
+    el.setAttribute('cy', -50);
+}
+
+function showCompatibility(type1, type2) {
+    const section = document.getElementById('compat-section');
+    section.classList.add('visible');
+
+    const key = [type1, type2].sort().join('-');
+    const compat = COMPATIBILITY[key] || { score: 3, note: "A unique pairing. Every combination can work with the right awareness and communication." };
+
+    const t1 = TYPES[type1], t2 = TYPES[type2];
+    document.getElementById('compat-pair').innerHTML =
+        `<span style="color:${t1.color}">${t1.name}</span> + <span style="color:${t2.color}">${t2.name}</span>`;
+
+    const pills = document.getElementById('compat-pills');
+    pills.innerHTML = [1,2,3,4,5].map(i =>
+        `<div class="compat-pill ${i <= compat.score ? 'filled' : ''}"></div>`
+    ).join('');
+
+    document.getElementById('compat-note').textContent = compat.note;
+}
+
+function startCompare() {
+    const url = new URL(window.location);
+    const a = parseInt(url.searchParams.get('a'));
+    const v = parseInt(url.searchParams.get('v'));
+    person1 = {
+        anxietyPct:   isNaN(a) ? 0 : a,
+        avoidancePct: isNaN(v) ? 0 : v,
+        type: computedType
+    };
+    startQuiz(true);
+}
+
+// ── DESCRIPTION ──
 function renderDescription(typeKey) {
     const d = TYPES[typeKey];
-    document.getElementById('desc-heading').textContent = d.heading;
-    document.getElementById('desc-heading').style.color = d.color;
-
-    const body = document.getElementById('desc-body');
-    body.innerHTML = d.desc.map(p => `<p>${p}</p>`).join('') +
+    const heading = document.getElementById('desc-heading');
+    heading.textContent = d.heading;
+    heading.style.color = d.color;
+    document.getElementById('desc-body').innerHTML =
+        d.desc.map(p => `<p>${p}</p>`).join('') +
         '<ul>' + d.traits.map(t => `<li>${t}</li>`).join('') + '</ul>';
 }
 
+// ── TYPE GRID ──
 function renderTypeGrid() {
-    const grid = document.getElementById('type-grid');
-    grid.innerHTML = Object.entries(TYPES).map(([key, t]) => `
-        <div class="type-mini ${key === computedType ? 'active-type' : ''}"
-             onclick="switchType('${key}')"
-             style="${key === computedType ? 'border-color:'+t.color+';' : ''}">
-            <div class="type-name" style="color:${t.color}">${t.name}</div>
-            <div class="type-axis">${t.axisNote}</div>
-        </div>
-    `).join('');
+    document.getElementById('type-grid').innerHTML =
+        Object.entries(TYPES).map(([key, t]) => `
+            <div class="type-mini ${key === computedType ? 'active-type' : ''}"
+                 onclick="switchType('${key}')"
+                 style="${key === computedType ? 'border-color:'+t.color : ''}">
+                <div class="type-name" style="color:${t.color}">${t.name}</div>
+                <div class="type-axis">${t.axisNote}</div>
+            </div>
+        `).join('');
 }
 
 function switchType(typeKey) {
@@ -848,32 +1121,59 @@ function switchType(typeKey) {
     renderTypeGrid();
 }
 
+// ── SHARE ──
+function copyShareLink() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+        const fb = document.getElementById('share-feedback');
+        if (fb) {
+            fb.textContent = 'Copied!';
+            fb.classList.add('visible');
+            setTimeout(() => fb.classList.remove('visible'), 2000);
+        }
+    }).catch(() => {
+        // Fallback: select text
+        const tmp = document.createElement('input');
+        tmp.value = window.location.href;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand('copy');
+        document.body.removeChild(tmp);
+    });
+}
+
+// ── RETAKE ──
 function retakeQuiz() {
+    person1 = null;
+    isCompareMode = false;
+    computedType = null;
     currentQ = 0;
     answers = new Array(QUESTIONS.length).fill(null);
-    computedType = null;
 
-    // Reset dot off-screen
-    ['user-dot','user-dot-inner','user-dot-ring'].forEach(id => {
-        const el = document.getElementById(id);
-        el.style.transition = 'none';
-        el.setAttribute('cx', -50);
-        el.setAttribute('cy', -50);
-    });
+    ['p1-dot','p1-dot-inner','p1-dot-ring','p2-dot','p2-dot-inner','p2-dot-ring'].forEach(resetDotEl);
+
+    document.getElementById('bar-anxiety').style.width   = '0%';
+    document.getElementById('bar-avoidance').style.width = '0%';
+    document.getElementById('dot-legend').classList.remove('visible');
+    document.getElementById('compat-section').classList.remove('visible');
+    document.getElementById('retake-wrap').style.display = '';
+
+    history.replaceState(null, '', window.location.pathname);
 
     document.getElementById('screen-results').style.display = 'none';
-    document.getElementById('screen-intro').style.display = 'flex';
-
+    document.getElementById('screen-intro').style.display   = 'flex';
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-</script>
 
-<style>
-@keyframes pulseRing {
-    0%   { r: 18; opacity: 0.5; }
-    100% { r: 38; opacity: 0; }
-}
-</style>
+// ── LOAD FROM URL ──
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const a = parseInt(params.get('a'));
+    const v = parseInt(params.get('v'));
+    if (!isNaN(a) && !isNaN(v) && a >= 0 && a <= 100 && v >= 0 && v <= 100) {
+        showResultsFromURL(a, v);
+    }
+});
+</script>
 
 </body>
 </html>

@@ -50,12 +50,13 @@
             <div class="container">
                 <div class="nav-content">
                     <div class="logo">HC</div>
-                    <div class="nav-links">
+                    <button class="hamburger" id="hamburgerBtn" aria-label="Menu">☰</button>
+                    <div class="nav-links" id="navLinks">
                         <a href="#hero-section" data-en="Home" data-zh="首页">Home</a>
                         <a href="#about-section" data-en="About" data-zh="关于我">About</a>
-                        <a href="#skills-section" data-en="Skills" data-zh="技能">Skills</a>
                         <a href="#experience-section" data-en="Experience" data-zh="经历">Experience</a>
                         <a href="#projects-section" data-en="Projects" data-zh="项目">Projects</a>
+                        <a href="#personal-section" data-en="Off The Clock" data-zh="业余时间">Off The Clock</a>
                         <a href="#contact-section" data-en="Contact" data-zh="联系">Contact</a>
                         <a href="/personality/" data-en="Personality" data-zh="性格">Personality</a>
                         <button class="language-toggle" id="tomatoToggle" style="color: #ff5f56; border-color: #333;">[ 🍅 ]</button>
@@ -556,6 +557,9 @@
                         <button class="explorer-btn" onclick="switchPersonalCard('pers-gallery', this)">
                             <span class="highlight-icon">[::]</span> <span>media_viewer.exe</span>
                         </button>
+                        <button class="explorer-btn" onclick="switchPersonalCard('pers-personality', this)">
+                            <span class="highlight-icon">[::]</span> <span data-en="Attachment_Style" data-zh="依恋风格">Attachment_Style</span>
+                        </button>
                     </div>
 
                     <div class="explorer-content">
@@ -588,11 +592,19 @@
                             <div class="vertical-accent"></div>
                             <h3 data-en="Visual Logs" data-zh="视觉日志">Visual Logs</h3>
                             <p data-en="Life updates, plants, and photography." data-zh="生活动态和摄影。">Life updates, plants, and photography.</p>
-                            <div class="snapshots">
-                                <img src="placeholder1.jpg" alt="Gallery Image 1" loading="lazy">
-                                <img src="placeholder2.jpg" alt="Gallery Image 2" loading="lazy">
-                                <img src="placeholder3.jpg" alt="Tomato plant progress" loading="lazy">
-                            </div>
+                            <p style="color: #555; font-family: Consolas, monospace; font-size: 0.85rem;">// photos coming soon</p>
+                        </div>
+
+                        <div id="pers-personality" class="highlight-card">
+                            <div class="vertical-accent"></div>
+                            <h3 data-en="Attachment Style Quiz" data-zh="依恋风格测验">Attachment Style Quiz</h3>
+                            <p data-en="Discover your attachment style — Secure, Anxious, Avoidant, or Fearful — through 18 questions inspired by the ECR-R framework from \"Attached\" by Levine & Heller." data-zh="通过18道问题探索你的依恋风格——安全型、焦虑型、回避型或恐惧型。灵感来自Levine与Heller的《依恋》。">Discover your attachment style — Secure, Anxious, Avoidant, or Fearful — through 18 questions inspired by the ECR-R framework from "Attached" by Levine & Heller.</p>
+                            <ul class="highlight-list">
+                                <li>2D scatter plot visualization on Anxiety × Avoidance axes</li>
+                                <li>Shareable result links</li>
+                                <li>Compare mode: plot two people on the same chart</li>
+                            </ul>
+                            <a href="/personality/" class="highlight-link" style="display: inline-block; margin-top: 12px;">→ Take the quiz</a>
                         </div>
 
                     </div>
@@ -997,6 +1009,22 @@
             notification.style.opacity = '0';
             setTimeout(() => notification.remove(), 500);
         }, 3000);
+    }
+
+    // Hamburger nav
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const navMenu = document.getElementById('navLinks');
+    if (hamburgerBtn && navMenu) {
+        hamburgerBtn.addEventListener('click', () => {
+            navMenu.classList.toggle('nav-open');
+            hamburgerBtn.textContent = navMenu.classList.contains('nav-open') ? '✕' : '☰';
+        });
+        navMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('nav-open');
+                hamburgerBtn.textContent = '☰';
+            });
+        });
     }
 </script>
     

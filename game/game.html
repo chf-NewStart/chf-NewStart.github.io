@@ -186,7 +186,7 @@
   <div class="pg-sub">
     4 participants (green) start at (0,0) · reach EXIT at (3,3) to win · hunter (red) starts at (1,2)<br>
     Doors shown as cell borders: <span style="color:#1db954">green dashed</span> = open · <span style="color:#888">gray</span> = closed · <span style="color:#c62828">red</span> = locked · <span style="color:#00bcd4">cyan</span> = frozen<br>
-    Participants &amp; hunter each get <strong style="color:#ddd">2 actions/turn</strong> · hunter cannot attack in Round 1
+    Participants get <strong style="color:#ddd">2 actions/turn</strong> · hunter gets <strong style="color:#f44336">3 actions/turn</strong>
   </div>
   <a class="pg-back" href="/">← back to portfolio</a>
 </div>
@@ -314,9 +314,9 @@ class GameEngine {
       x:0, y:0, actions:2, maxActions:2, hasRevive:false
     }));
 
-    // Hunter — starts at (1,2), not at (0,0) with the group
+    // Hunter — starts at (1,2), 3 actions to offset 4-on-1 disadvantage
     this.hunter = { id:'H', type:'hunter', hp:16, maxHp:16,
-                    x:1, y:2, actions:2, maxActions:2, hasRevive:false };
+                    x:1, y:2, actions:3, maxActions:3, hasRevive:false };
 
     this.participants.forEach(p => this.grid[p.y][p.x].units.push(p));
     this.grid[this.hunter.y][this.hunter.x].units.push(this.hunter);
@@ -579,7 +579,6 @@ class GameEngine {
         this.log(`${unit.id} attacks H for 2. H HP: ${target.hp}`);
       }
     } else {
-      if (this.currentTurn===0) { this.log('Hunter cannot attack in Round 1.'); return false; }
       const tgts = cell.units.filter(u=>u.type==='participant'&&u.hp>0);
       if (tgts.length) {
         target=tgts[0];
@@ -748,7 +747,7 @@ class GameEngine {
   updateButtons() {
     const unit=this.curUnit(), has=unit&&unit.actions>0, over=this.gameOver, dir=this.selectedDir;
     const dis=(id,v)=>{ const el=document.getElementById(id); if(el) el.disabled=v; };
-    dis('attackBtn',  !has||over||(unit?.type==='hunter'&&this.currentTurn===0));
+    dis('attackBtn',  !has||over);
     dis('endTurnBtn', !unit||over);
     if (unit&&!over&&dir) {
       const a=this.adjByDir(unit,dir);
@@ -782,7 +781,16 @@ function openDoor()     { if(game?.phase==='play') game.openDoor(); }
 function closeDoor()    { if(game?.phase==='play') game.closeDoor(); }
 function lockDoor()     { if(game?.phase==='play') game.lockDoor(); }
 function finishSetup()  { game?.finishSetup(); }
-function randomizeSetup(){ game?.randomizeTools(); }
+function randomizeSetup() {
+  if (!game || game.phase !== 'setup') {
+    document.getElementById('gameLog').innerHTML = '';
+    if (game?.autoPlayInterval) clearInterval(game.autoPlayInterval);
+    game = new GameEngine();
+    game.init();
+    document.getElementById('autoPlayBtn').textContent = '▶ Auto Play';
+  }
+  game.randomizeTools();
+}
 function endTurn() {
   if (!game) return;
   const u=game.curUnit(); if(u){u.actions=0;game.nextTurn();}
@@ -828,8 +836,7 @@ function autoPlay() {
       if (!alive.length) { unit.actions=0; game.nextTurn(); return; }
       let tgt=alive[0], minD=Math.abs(tgt.x-unit.x)+Math.abs(tgt.y-unit.y);
       for (const p of alive) { const d=Math.abs(p.x-unit.x)+Math.abs(p.y-unit.y); if(d<minD){minD=d;tgt=p;} }
-      if (minD===0 && game.currentTurn>0) { game.attack(); return; }
-      if (minD===0) { unit.actions=0; game.nextTurn(); return; }
+      if (minD===0) { game.attack(); return; }
       const dx=tgt.x-unit.x, dy=tgt.y-unit.y;
       const pd=Math.abs(dx)>=Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
       const sd=Math.abs(dx)>=Math.abs(dy)?(dy>0?'down':'up'):(dx>0?'right':'left');

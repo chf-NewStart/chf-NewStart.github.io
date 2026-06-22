@@ -82,7 +82,25 @@
     @media (max-width: 700px) {
       .layout { flex-direction: column; }
     }
+
+    /* Player type selector */
+    .player-row { display: flex; gap: 10px; }
+    .player-slot { flex: 1; }
+    .slot-label { font-size: 0.68rem; margin-bottom: 5px; }
+    .green-t { color: #1db954; }
+    .red-t   { color: #f44336; }
+
+    /* Remote play */
+    .remote-row { display: flex; gap: 5px; align-items: center; margin-bottom: 5px; }
+    .join-input { flex: 1; background: #0d0d0d; border: 1px solid #1e1e1e; color: #ccc; font-family: Consolas, monospace; font-size: 0.68rem; padding: 6px 8px; min-width: 0; }
+    .join-input:focus { outline: none; border-color: #1db954; }
+    .room-code-display { font-size: 0.68rem; color: #555; white-space: nowrap; }
+    .room-code { color: #1db954; margin-left: 4px; letter-spacing: 2px; }
+    .conn-status { font-size: 0.65rem; color: #555; margin-top: 4px; min-height: 1em; }
+    .conn-status.ok { color: #1db954; }
+    .conn-status.err { color: #f44336; }
   </style>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 
@@ -117,11 +135,24 @@
     </div>
 
     <div class="pcard">
-      <div class="pcard-title" data-en="// mode" data-zh="// 模式">// mode</div>
-      <div class="tog-row" id="modeRow">
-        <button class="tog sel" data-mode="HvAI" onclick="setMode('HvAI')" data-en="Human vs AI" data-zh="人机对战">Human vs AI</button>
-        <button class="tog"     data-mode="HvH"  onclick="setMode('HvH')"  data-en="Human vs Human" data-zh="双人对战">Human vs Human</button>
-        <button class="tog"     data-mode="AIvAI" onclick="setMode('AIvAI')" data-en="AI vs AI" data-zh="AI自战">AI vs AI</button>
+      <div class="pcard-title" data-en="// players" data-zh="// 玩家设置">// players</div>
+      <div class="player-row">
+        <div class="player-slot">
+          <div class="slot-label green-t">● <span data-en="Black" data-zh="黑方">Black</span></div>
+          <div class="tog-row">
+            <button class="tog sel ptype-1" data-val="human"  onclick="setPlayerType(1,'human')"  data-en="Human"  data-zh="人">Human</button>
+            <button class="tog     ptype-1" data-val="ai"     onclick="setPlayerType(1,'ai')"     data-en="AI"     data-zh="AI">AI</button>
+            <button class="tog     ptype-1" data-val="random" onclick="setPlayerType(1,'random')" data-en="Rand"   data-zh="随机">Rand</button>
+          </div>
+        </div>
+        <div class="player-slot">
+          <div class="slot-label red-t">● <span data-en="White" data-zh="白方">White</span></div>
+          <div class="tog-row">
+            <button class="tog     ptype-2" data-val="human"  onclick="setPlayerType(2,'human')"  data-en="Human"  data-zh="人">Human</button>
+            <button class="tog sel ptype-2" data-val="ai"     onclick="setPlayerType(2,'ai')"     data-en="AI"     data-zh="AI">AI</button>
+            <button class="tog     ptype-2" data-val="random" onclick="setPlayerType(2,'random')" data-en="Rand"   data-zh="随机">Rand</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -138,10 +169,23 @@
     <div class="pcard">
       <div class="pcard-title" data-en="// game" data-zh="// 游戏">// game</div>
       <div class="brow">
-        <button class="btn" id="newBtn"    onclick="newGame()"  data-en="⟳ New Game" data-zh="⟳ 新游戏">⟳ New Game</button>
-        <button class="btn" id="resignBtn" onclick="resign()"   data-en="⚑ Resign"   data-zh="⚑ 认输">⚑ Resign</button>
-        <button class="btn" id="autoBtn"   onclick="toggleAuto()" style="display:none" data-en="▶ Auto" data-zh="▶ 自动">▶ Auto</button>
+        <button class="btn" id="newBtn"    onclick="newGame()"      data-en="⟳ New Game" data-zh="⟳ 新游戏">⟳ New Game</button>
+        <button class="btn" id="resignBtn" onclick="resign()"       data-en="⚑ Resign"   data-zh="⚑ 认输">⚑ Resign</button>
+        <button class="btn" id="pauseBtn"  onclick="togglePause()"  style="display:none" data-en="⏸ Pause" data-zh="⏸ 暂停">⏸ Pause</button>
       </div>
+    </div>
+
+    <div class="pcard">
+      <div class="pcard-title" data-en="// remote play" data-zh="// 联机对战">// remote play</div>
+      <div class="remote-row">
+        <button class="btn" style="flex:0 0 auto" onclick="createRoom()" data-en="Create Room" data-zh="创建房间">Create Room</button>
+        <span class="room-code-display"><span data-en="code:" data-zh="房间码:">code:</span><span id="roomCode" class="room-code">—</span></span>
+      </div>
+      <div class="remote-row">
+        <input class="join-input" id="joinCode" placeholder="paste room code to join" maxlength="36">
+        <button class="btn" style="flex:0 0 auto" onclick="joinRoom()" data-en="Join" data-zh="加入">Join</button>
+      </div>
+      <div id="connStatus" class="conn-status"></div>
     </div>
 
     <div class="pcard">
@@ -161,7 +205,7 @@ function applyLang() {
   document.getElementById('pgSub').textContent   = t('5 in a row wins · 15×15 · click to place your stone', '五子连珠获胜 · 15×15棋盘 · 点击落子');
   document.getElementById('pgBack').textContent  = t('← back to games', '← 返回游戏厅');
   document.querySelectorAll('[data-en]').forEach(el => { el.textContent = t(el.dataset.en, el.dataset.zh); });
-  updateAutoBtn();
+  updatePauseBtn();
   renderPanel();
 }
 function toggleLang() {
@@ -191,32 +235,33 @@ function computeLayout() {
 }
 
 /* ── Game state ───────────────────────────────── */
-let board, curP, gameOver, winResult, lastMove, moveCount, aiThinking, autoInterval;
+let board, curP, gameOver, winResult, lastMove, moveCount, aiThinking;
 let scores = {1: 0, 2: 0};
-let mode = 'HvAI', diff = 'normal';
+let diff = 'normal';
+let playerTypes = {1: 'human', 2: 'ai'};
+let paused = false;
+let remoteMode = false, myColor = null, remotePeer = null, remoteConn = null;
 
 function newGame() {
-  if (autoInterval) { clearInterval(autoInterval); autoInterval = null; }
+  paused = false;
   board = Array.from({length: N}, () => new Array(N).fill(0));
   curP = 1; gameOver = false; winResult = null; lastMove = null; moveCount = 0; aiThinking = false;
   document.getElementById('newBtn').className = 'btn';
   document.getElementById('winBanner').className = 'win-banner';
-  updateAutoBtn();
+  updatePauseBtn();
   log(t('── new game ──', '── 新游戏 ──'), 'lround');
   draw();
   renderPanel();
-  // If AI goes first (AIvAI or HvAI where AI is black), trigger AI
   scheduleAI();
 }
 
-/* ── Mode / difficulty ────────────────────────── */
-function setMode(m) {
-  mode = m;
-  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('sel', b.dataset.mode === m));
-  const showDiff = m !== 'HvH';
-  document.getElementById('diffCard').style.display = showDiff ? '' : 'none';
-  const showAuto = m === 'AIvAI';
-  document.getElementById('autoBtn').style.display = showAuto ? '' : 'none';
+/* ── Player type ──────────────────────────────── */
+function setPlayerType(p, t) {
+  playerTypes[p] = t;
+  document.querySelectorAll(`.ptype-${p}`).forEach(b => b.classList.toggle('sel', b.dataset.val === t));
+  const bothAuto = playerTypes[1] !== 'human' && playerTypes[2] !== 'human';
+  document.getElementById('diffCard').style.display = (playerTypes[1] === 'ai' || playerTypes[2] === 'ai') ? '' : 'none';
+  updatePauseBtn();
   newGame();
 }
 function setDiff(d) {
@@ -227,41 +272,43 @@ function setDiff(d) {
 
 /* ── Who is AI ────────────────────────────────── */
 function isAI(player) {
-  if (mode === 'HvH') return false;
-  if (mode === 'AIvAI') return true;
-  return player === 2; // HvAI: player 2 (red/white) is AI
+  if (remoteMode) return false;
+  const t = playerTypes[player];
+  return t === 'ai' || t === 'random';
 }
 
-/* ── Auto play (AIvAI) ────────────────────────── */
-function updateAutoBtn() {
-  const btn = document.getElementById('autoBtn');
-  btn.textContent = autoInterval ? t('⏹ Stop', '⏹ 停止') : t('▶ Auto', '▶ 自动');
+/* ── Pause (for AI vs AI / AI vs Rand) ───────── */
+function updatePauseBtn() {
+  const bothAuto = !remoteMode && playerTypes[1] !== 'human' && playerTypes[2] !== 'human';
+  const btn = document.getElementById('pauseBtn');
+  btn.style.display = bothAuto ? '' : 'none';
+  btn.textContent = paused ? t('▶ Resume', '▶ 继续') : t('⏸ Pause', '⏸ 暂停');
 }
-function toggleAuto() {
-  if (autoInterval) { clearInterval(autoInterval); autoInterval = null; updateAutoBtn(); return; }
-  if (gameOver) { newGame(); }
-  updateAutoBtn();
-  scheduleAI();
+function togglePause() {
+  paused = !paused;
+  updatePauseBtn();
+  if (!paused) scheduleAI();
 }
 
 function scheduleAI() {
-  if (gameOver || !isAI(curP) || aiThinking) return;
-  if (mode === 'AIvAI' && !autoInterval) return; // wait for manual toggle
+  if (gameOver || !isAI(curP) || aiThinking || paused) return;
   aiThinking = true;
   canvas.classList.add('thinking');
   renderPanel();
+  const bothAuto = playerTypes[1] !== 'human' && playerTypes[2] !== 'human';
   setTimeout(() => {
     if (gameOver) { aiThinking = false; canvas.classList.remove('thinking'); return; }
-    const move = getBestMove();
+    const move = getAIMove();
     aiThinking = false;
     canvas.classList.remove('thinking');
     if (move) placeStone(move[0], move[1]);
-  }, mode === 'AIvAI' ? 300 : 80);
+  }, bothAuto ? 300 : 80);
 }
 
 /* ── Place stone ──────────────────────────────── */
-function placeStone(r, c) {
+function placeStone(r, c, sendRemote = false) {
   if (gameOver || board[r][c] !== 0) return;
+  if (sendRemote && remoteConn && remoteConn.open) remoteConn.send({type:'move',r,c});
   board[r][c] = curP;
   lastMove = [r, c];
   moveCount++;
@@ -289,7 +336,9 @@ function placeStone(r, c) {
 
 /* ── Canvas click ─────────────────────────────── */
 canvas.addEventListener('click', e => {
-  if (gameOver || isAI(curP) || aiThinking) return;
+  if (gameOver || aiThinking) return;
+  if (remoteMode && curP !== myColor) return;
+  if (!remoteMode && isAI(curP)) return;
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   const c = Math.round((mx - PAD) / CELL);
@@ -297,13 +346,13 @@ canvas.addEventListener('click', e => {
   if (r < 0 || r >= N || c < 0 || c >= N) return;
   if (Math.abs(mx - (PAD + c*CELL)) > CELL/2) return;
   if (Math.abs(my - (PAD + r*CELL)) > CELL/2) return;
-  placeStone(r, c);
+  placeStone(r, c, remoteMode);
 });
 
 /* ── Hover preview ────────────────────────────── */
 let hoverCell = null;
 canvas.addEventListener('mousemove', e => {
-  if (gameOver || isAI(curP) || aiThinking) { hoverCell = null; return; }
+  if (gameOver || aiThinking || (remoteMode && curP !== myColor) || (!remoteMode && isAI(curP))) { hoverCell = null; return; }
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   const c = Math.round((mx - PAD) / CELL);
@@ -411,28 +460,25 @@ function renderPanel() {
   } else {
     tb.className = 'turn-bar' + (curP === 2 ? ' red-t' : '');
     const whose = curP === 1 ? t('Black', '黑方') : t('White', '白方');
-    const who = isAI(curP) ? t('AI', 'AI') : t('You', '你');
-    tb.textContent = `${whose} (${who})${thinking}${thinking ? '' : t(' · click to place', ' · 点击落子')}`;
+    let who;
+    if (remoteMode) who = curP === myColor ? t('You', '你') : t('Remote', '对方');
+    else { const tp = playerTypes[curP]; who = tp==='human' ? t('You','你') : tp==='random' ? t('Random','随机') : 'AI'; }
+    const canClick = !isAI(curP) && !(remoteMode && curP !== myColor);
+    tb.textContent = `${whose} (${who})${thinking}${!thinking && canClick ? t(' · click to place',' · 点击落子') : ''}`;
     if (aiThinking) tb.innerHTML += `<span class="thinking-dot"></span>`;
   }
   document.getElementById('s1').textContent = scores[1];
   document.getElementById('s2').textContent = scores[2];
 
-  const p1l = document.getElementById('p1label');
-  const p2l = document.getElementById('p2label');
-  if (mode === 'HvAI') {
-    p1l.innerHTML = `●&nbsp;<span>${t('You (Black)', '你（黑方）')}</span>`;
-    p2l.innerHTML = `●&nbsp;<span>${t('AI (White)', 'AI（白方）')}</span>`;
-  } else if (mode === 'HvH') {
-    p1l.innerHTML = `●&nbsp;<span>${t('Player 1', '玩家1')}</span>`;
-    p2l.innerHTML = `●&nbsp;<span>${t('Player 2', '玩家2')}</span>`;
+  const typeLabel = tp => tp==='human' ? t('Human','人') : tp==='random' ? t('Random','随机') : 'AI';
+  if (remoteMode) {
+    document.getElementById('p1label').innerHTML = `●&nbsp;<span>${t('Black','黑方')} (${myColor===1?t('You','你'):t('Remote','对方')})</span>`;
+    document.getElementById('p2label').innerHTML = `●&nbsp;<span>${t('White','白方')} (${myColor===2?t('You','你'):t('Remote','对方')})</span>`;
   } else {
-    p1l.innerHTML = `●&nbsp;<span>${t('AI Black', 'AI黑方')}</span>`;
-    p2l.innerHTML = `●&nbsp;<span>${t('AI White', 'AI白方')}</span>`;
+    document.getElementById('p1label').innerHTML = `●&nbsp;<span>${t('Black','黑方')} (${typeLabel(playerTypes[1])})</span>`;
+    document.getElementById('p2label').innerHTML = `●&nbsp;<span>${t('White','白方')} (${typeLabel(playerTypes[2])})</span>`;
   }
-
-  const rb = document.getElementById('resignBtn');
-  rb.disabled = gameOver;
+  document.getElementById('resignBtn').disabled = gameOver;
 }
 
 /* ── Resign ───────────────────────────────────── */
@@ -605,6 +651,14 @@ function minimax(board, depth, alpha, beta, isMax, lr, lc) {
   }
 }
 
+function getAIMove() {
+  if (playerTypes[curP] === 'random') {
+    const cands = getCandidates(board, curP);
+    return cands.length ? cands[Math.floor(Math.random() * cands.length)] : null;
+  }
+  return getBestMove();
+}
+
 function getBestMove() {
   const player = curP;
   const isMax  = player === 1;
@@ -633,6 +687,57 @@ function getBestMove() {
     if (Math.abs(bestScore) >= 500000) break; // found forced win/loss
   }
   return bestMove;
+}
+
+/* ── Remote play via PeerJS ───────────────────── */
+function setConnStatus(msg, cls='') {
+  const el = document.getElementById('connStatus');
+  el.textContent = msg; el.className = 'conn-status' + (cls ? ' '+cls : '');
+}
+
+function createRoom() {
+  if (remotePeer) { remotePeer.destroy(); remotePeer = null; }
+  remoteMode = false;
+  setConnStatus(t('Creating room...', '创建中...'));
+  remotePeer = new Peer();
+  remotePeer.on('open', id => {
+    document.getElementById('roomCode').textContent = id;
+    setConnStatus(t('Waiting for opponent — share the code above', '等待对方加入，分享上方代码'));
+    myColor = 1;
+  });
+  remotePeer.on('connection', c => {
+    remoteConn = c;
+    remoteMode = true;
+    setConnStatus(t('Connected! You play Black.', '已连接！你执黑方。'), 'ok');
+    updatePauseBtn();
+    c.on('data', data => { if (data.type === 'move') placeStone(data.r, data.c, false); });
+    c.on('close', () => { remoteMode = false; setConnStatus(t('Opponent disconnected.', '对方已断开。'), 'err'); });
+    newGame();
+  });
+  remotePeer.on('error', e => setConnStatus('Error: ' + e.type, 'err'));
+}
+
+function joinRoom() {
+  const code = document.getElementById('joinCode').value.trim();
+  if (!code) return;
+  if (remotePeer) { remotePeer.destroy(); remotePeer = null; }
+  remoteMode = false;
+  setConnStatus(t('Connecting...', '连接中...'));
+  remotePeer = new Peer();
+  remotePeer.on('open', () => {
+    const c = remotePeer.connect(code);
+    c.on('open', () => {
+      remoteConn = c;
+      myColor = 2;
+      remoteMode = true;
+      setConnStatus(t('Connected! You play White.', '已连接！你执白方。'), 'ok');
+      updatePauseBtn();
+      c.on('data', data => { if (data.type === 'move') placeStone(data.r, data.c, false); });
+      c.on('close', () => { remoteMode = false; setConnStatus(t('Host disconnected.', '对方已断开。'), 'err'); });
+    });
+    c.on('error', () => setConnStatus(t('Could not connect.', '无法连接。'), 'err'));
+  });
+  remotePeer.on('error', e => setConnStatus('Error: ' + e.type, 'err'));
 }
 
 /* ── Init ─────────────────────────────────────── */

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Train RL Hunter // houfu.xyz</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Consolas, 'Courier New', monospace; background: #080808; color: #ccc; min-height: 100vh; padding: 24px 20px; }
@@ -372,103 +372,164 @@ class HeadlessEnv {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   DQN TRAINING
+   PURE-JS DQN  — no TF.js, no WebGL, no shader compilation
    ═══════════════════════════════════════════════════════════ */
 
-const HIDDEN=128, GAMMA=0.95, BATCH=64, BUF_CAP=60000;
+const HIDDEN=128, GAMMA=0.95, BATCH=32, BUF_CAP=30000;
 const EPS_START=1.0, EPS_END=0.05, EPS_DECAY=0.9995;
-const TARGET_SYNC=300, MAX_STEPS=260;
+const TARGET_SYNC=300, MAX_STEPS=260, TRAIN_EVERY=8;
+const LR=1e-3, BETA1=0.9, BETA2=0.999, ADAM_EPS=1e-8;
 const ACTION_NAMES=['move_up','move_down','move_left','move_right','attack','unlock','open_door','pass',
                     'trap8','trap9','trap10','trap11','trap12','trap13'];
 
-let qNet=null, qTarget=null, optimizer=null;
+/* ── Tiny MLP: He init, ReLU hidden layers, linear output ─ */
+function randn(){
+  const u=Math.random()||1e-10;
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*Math.random());
+}
+function makeLayer(inp,out){
+  const l={inp,out,t:0,
+    W:new Float32Array(out*inp), b:new Float32Array(out),
+    mW:new Float32Array(out*inp), vW:new Float32Array(out*inp),
+    mb:new Float32Array(out),     vb:new Float32Array(out)};
+  const std=Math.sqrt(2/inp); // He init
+  for(let i=0;i<l.W.length;i++) l.W[i]=randn()*std;
+  return l;
+}
+function makeNet(){
+  return [makeLayer(STATE_DIM,HIDDEN), makeLayer(HIDDEN,HIDDEN), makeLayer(HIDDEN,N_ACTIONS)];
+}
+function copyNet(src,dst){
+  for(let l=0;l<src.length;l++){dst[l].W.set(src[l].W); dst[l].b.set(src[l].b);}
+}
+
+// Forward pass — returns array of activations [input, h1, h2, out]
+function forward(net,x){
+  const acts=[x];
+  for(let l=0;l<net.length;l++){
+    const{W,b,inp,out}=net[l], last=l===net.length-1;
+    const y=new Float32Array(out);
+    for(let j=0;j<out;j++){
+      let s=b[j]; const off=j*inp;
+      for(let k=0;k<inp;k++) s+=W[off+k]*x[k];
+      y[j]=last||s>0?s:0;  // linear on last layer, ReLU on hidden
+    }
+    acts.push(y); x=y;
+  }
+  return acts;
+}
+function getQ(net,s){ const a=forward(net,s); return a[a.length-1]; }
+
+/* ── Adam update ──────────────────────────────────────── */
+function adamUpdate(layer,dW,db){
+  layer.t++;
+  const{t,W,b,mW,vW,mb,vb}=layer;
+  const bc1=1-BETA1**t, bc2=1-BETA2**t;
+  for(let i=0;i<W.length;i++){
+    mW[i]=BETA1*mW[i]+(1-BETA1)*dW[i];
+    vW[i]=BETA2*vW[i]+(1-BETA2)*dW[i]*dW[i];
+    W[i]-=LR*(mW[i]/bc1)/(Math.sqrt(vW[i]/bc2)+ADAM_EPS);
+  }
+  for(let i=0;i<b.length;i++){
+    mb[i]=BETA1*mb[i]+(1-BETA1)*db[i];
+    vb[i]=BETA2*vb[i]+(1-BETA2)*db[i]*db[i];
+    b[i]-=LR*(mb[i]/bc1)/(Math.sqrt(vb[i]/bc2)+ADAM_EPS);
+  }
+}
+
+/* ── Replay buffer ────────────────────────────────────── */
 let replayBuf=[], bufHead=0;
+function pushBuf(s,a,r,s2,done){
+  const e=[s,a,r,s2,done?1:0];
+  if(replayBuf.length<BUF_CAP) replayBuf.push(e);
+  else{ replayBuf[bufHead]=e; bufHead=(bufHead+1)%BUF_CAP; }
+}
+
+/* ── DQN training step ────────────────────────────────── */
+function trainStep(){
+  if(replayBuf.length<BATCH) return;
+  const batch=[];
+  for(let i=0;i<BATCH;i++) batch.push(replayBuf[Math.floor(Math.random()*replayBuf.length)]);
+
+  const nl=qNet.length;
+  const dW=qNet.map(l=>new Float32Array(l.W.length));
+  const db=qNet.map(l=>new Float32Array(l.b.length));
+
+  for(const[s,a,r,s2,done] of batch){
+    const qN=getQ(qTarget,s2);
+    let maxQ=-Infinity;
+    for(let i=0;i<N_ACTIONS;i++) if(qN[i]>maxQ) maxQ=qN[i];
+    const tgt=done?r:r+GAMMA*maxQ;
+
+    const acts=forward(qNet,s);
+    const q=acts[nl];
+    const err=q[a]-tgt;
+    const g=(Math.abs(err)<=1?err:Math.sign(err))/BATCH; // Huber/batch
+
+    let dCur=new Float32Array(N_ACTIONS);
+    dCur[a]=g;
+
+    for(let l=nl-1;l>=0;l--){
+      const{W,inp,out}=qNet[l];
+      const aIn=acts[l], aOut=acts[l+1], last=l===nl-1;
+      const dz=new Float32Array(out);
+      for(let j=0;j<out;j++) dz[j]=last?dCur[j]:dCur[j]*(aOut[j]>0?1:0);
+      for(let j=0;j<out;j++){
+        db[l][j]+=dz[j];
+        const off=j*inp;
+        for(let k=0;k<inp;k++) dW[l][off+k]+=dz[j]*aIn[k];
+      }
+      if(l>0){
+        const dIn=new Float32Array(inp);
+        for(let k=0;k<inp;k++){
+          let sv=0;
+          for(let j=0;j<out;j++) sv+=W[j*inp+k]*dz[j];
+          dIn[k]=sv;
+        }
+        dCur=dIn;
+      }
+    }
+  }
+  for(let l=0;l<nl;l++) adamUpdate(qNet[l],dW[l],db[l]);
+}
+
+/* ── Agent state ──────────────────────────────────────── */
+let qNet=null, qTarget=null;
 let eps=EPS_START, totalSteps=0, episode=0;
 let winHist=[], rewardHist=[];
 let training=false, rafId=null;
 let chartData=[];
 
-function buildModel(){
-  const m=tf.sequential();
-  m.add(tf.layers.dense({inputShape:[STATE_DIM],units:HIDDEN,activation:'relu',kernelInitializer:'glorotUniform'}));
-  m.add(tf.layers.dense({units:HIDDEN,activation:'relu',kernelInitializer:'glorotUniform'}));
-  m.add(tf.layers.dense({units:N_ACTIONS,kernelInitializer:'glorotUniform'}));
-  return m;
-}
-
-async function initModels(){
-  await tf.setBackend('cpu');  // WebGL costs more than it saves for a 26K-param net
-  await tf.ready();
-  if(qNet){ qNet.dispose(); qTarget.dispose(); }
-  qNet=buildModel(); qTarget=buildModel();
-  syncTarget();
-  optimizer=tf.train.adam(1e-3);
-  replayBuf=[]; bufHead=0; eps=EPS_START; totalSteps=0; episode=0;
+function initModels(){
+  qNet=makeNet(); qTarget=makeNet(); copyNet(qNet,qTarget);
+  replayBuf=[]; bufHead=0;
+  eps=EPS_START; totalSteps=0; episode=0;
   winHist=[]; rewardHist=[]; chartData=[];
 }
+function syncTarget(){ copyNet(qNet,qTarget); }
 
-function syncTarget(){
-  const w=qNet.getWeights(); qTarget.setWeights(w.map(t=>t.clone())); w.forEach(t=>t.dispose());
-}
-
-function chooseAction(state, mask){
+function chooseAction(state,mask){
   if(Math.random()<eps){
-    const valid=mask.map((v,i)=>v?i:-1).filter(i=>i>=0);
-    return valid[Math.floor(Math.random()*valid.length)];
+    const v=[]; for(let i=0;i<mask.length;i++) if(mask[i]) v.push(i);
+    return v[Math.floor(Math.random()*v.length)];
   }
-  return tf.tidy(()=>{
-    const q=qNet.predict(tf.tensor2d([state])).dataSync();
-    let best=-Infinity, bestA=7;
-    for(let a=0;a<q.length;a++) if(mask[a]&&q[a]>best){best=q[a];bestA=a;}
-    return bestA;
-  });
-}
-
-function pushBuf(s,a,r,s2,done){
-  const entry=[s,a,r,s2,done?1:0];
-  if(replayBuf.length<BUF_CAP) replayBuf.push(entry);
-  else{replayBuf[bufHead]=entry;bufHead=(bufHead+1)%BUF_CAP;}
-}
-
-function sampleBuf(){
-  const idxs=[];
-  while(idxs.length<BATCH) idxs.push(Math.floor(Math.random()*replayBuf.length));
-  return idxs.map(i=>replayBuf[i]);
-}
-
-function trainStep(){
-  if(replayBuf.length<BATCH) return;
-  const batch=sampleBuf();
-  const s =batch.map(b=>b[0]), a=batch.map(b=>b[1]), r=batch.map(b=>b[2]);
-  const s2=batch.map(b=>b[3]), d=batch.map(b=>b[4]);
-  tf.tidy(()=>{
-    const sT=tf.tensor2d(s), s2T=tf.tensor2d(s2);
-    const aT=tf.tensor1d(a,'int32'), rT=tf.tensor1d(r), dT=tf.tensor1d(d);
-    const qNext=qTarget.predict(s2T).max(1);
-    const target=rT.add(tf.scalar(GAMMA).mul(qNext).mul(tf.scalar(1).sub(dT)));
-    const loss=()=>tf.tidy(()=>{
-      const qAll=qNet.predict(sT);
-      const aOH=tf.oneHot(aT,N_ACTIONS).toFloat();
-      const qCur=qAll.mul(aOH).sum(1);
-      return tf.losses.huberLoss(target,qCur);
-    });
-    optimizer.minimize(loss);
-  });
+  const q=getQ(qNet,state);
+  let best=-Infinity, bestA=7;
+  for(let a=0;a<q.length;a++) if(mask[a]&&q[a]>best){best=q[a];bestA=a;}
+  return bestA;
 }
 
 const env=new HeadlessEnv(0.7);
-
-const TRAIN_EVERY = 4;  // only call TF.js every N env steps — keeps each episode fast
 
 function runEpisode(){
   let state=env.reset(), epR=0;
   for(let step=0;step<MAX_STEPS;step++){
     const mask=env.validActions();
     const action=chooseAction(state,mask);
-    const[next,r,done,winner]=env.step(action);
+    const[next,r,done]=env.step(action);
     pushBuf(state,action,r,next,done);
     state=next; epR+=r; totalSteps++;
-    if(totalSteps%TRAIN_EVERY===0) trainStep();       // 4× fewer TF.js calls
+    if(totalSteps%TRAIN_EVERY===0) trainStep();
     if(totalSteps%TARGET_SYNC===0) syncTarget();
     if(done) break;
   }
@@ -479,7 +540,7 @@ function runEpisode(){
   rewardHist.push(epR); if(rewardHist.length>200) rewardHist.shift();
   const wr=winHist.reduce((a,b)=>a+b,0)/winHist.length;
   const avgR=rewardHist.reduce((a,b)=>a+b,0)/rewardHist.length;
-  chartData.push({ep:episode, wr});               // every episode so chart is never empty
+  chartData.push({ep:episode,wr});
   if(episode%100===0) addLog(`ep ${episode} | win=${(wr*100).toFixed(0)}% | avg_r=${avgR.toFixed(1)} | ε=${eps.toFixed(3)}`,'event');
   updateUI(wr,avgR);
 }
@@ -488,29 +549,16 @@ function runEpisode(){
    TRAINING LOOP & UI
    ═══════════════════════════════════════════════════════════ */
 
-async function toggleTrain(){
+function toggleTrain(){
   if(training){ stopTrain(); return; }
-  if(!qNet) await initModels();
-
+  if(!qNet) initModels();
   training=true;
   document.getElementById('startBtn').textContent='⏹ Stop Training';
   document.getElementById('startBtn').classList.add('active');
+  document.getElementById('dot').classList.add('running');
   document.getElementById('stateLabel').textContent='training';
   addLog('Training started.','event');
   loop();
-}
-
-async function warmupTF(){
-  // Run a dummy forward + backward pass so WebGL programs are compiled before the loop.
-  // This ~2s wait beats a ~10s invisible freeze on episode 1.
-  await tf.nextFrame();
-  tf.tidy(()=>{ qNet.predict(tf.zeros([BATCH, STATE_DIM])); });
-  await tf.nextFrame();
-  await optimizer.minimize(()=>tf.tidy(()=>{
-    const out=qNet.predict(tf.zeros([BATCH,STATE_DIM]));
-    return tf.mean(out);
-  }));
-  await tf.nextFrame();
 }
 
 function stopTrain(){
@@ -525,14 +573,11 @@ function stopTrain(){
   addLog('Paused.','event');
 }
 
-async function loop(){
+function loop(){
   if(!training) return;
   const maxEp=+document.getElementById('maxEpSlider').value;
   const speed=+document.getElementById('speedSlider').value;
-  for(let i=0;i<speed&&episode<maxEp;i++){
-    runEpisode();
-    await tf.nextFrame();   // yield after each episode so browser can repaint
-  }
+  for(let i=0;i<speed&&episode<maxEp;i++) runEpisode();
   if(episode>=maxEp){
     stopTrain();
     document.getElementById('dot').className='status-dot done';
@@ -541,11 +586,10 @@ async function loop(){
     saveWeights();
     return;
   }
-  if(training) rafId=requestAnimationFrame(loop);
+  rafId=requestAnimationFrame(loop);
 }
 
 function resetTraining(){
-  // Cancel loop directly — don't call stopTrain() to avoid "Paused" messaging
   training=false;
   if(rafId){cancelAnimationFrame(rafId);rafId=null;}
   initModels();
@@ -570,7 +614,7 @@ function updateUI(wr,avgR){
   document.getElementById('epsVal').textContent=eps.toFixed(3);
   document.getElementById('bufSize').textContent=`${replayBuf.length} / ${BUF_CAP}`;
   document.getElementById('progBar').style.width=`${Math.min(100,episode/maxEp*100).toFixed(1)}%`;
-  drawChart();   // every episode — canvas draw is fast, browser only paints on next frame anyway
+  drawChart();
 }
 
 /* ── Chart ─────────────────────────────────────────────── */
@@ -581,13 +625,10 @@ function drawChart(){
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,W,H);
   if(!chartData.length) return;
-  // Grid
   ctx.strokeStyle='#151515';ctx.lineWidth=1;
   for(let i=0;i<=4;i++){const y=H-i*(H/4);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-  // Labels
   ctx.fillStyle='#2a2a2a';ctx.font='9px Consolas';
   for(let i=0;i<=4;i++) ctx.fillText(`${i*25}%`,2,H-i*(H/4)-2);
-  // Line
   ctx.strokeStyle='#1db954';ctx.lineWidth=2;ctx.beginPath();
   const maxEp=+document.getElementById('maxEpSlider').value;
   chartData.forEach((d,i)=>{
@@ -605,34 +646,25 @@ function addLog(msg,cls=''){
 }
 
 /* ── Save / export weights ─────────────────────────────── */
-async function getWeightData(){
-  const layers=qNet.layers.filter(l=>l.getWeights().length>0);
-  const weights=[], biases=[];
-  for(const l of layers){
-    const[W,b]=l.getWeights();
-    weights.push(Array.from(await W.data()).reduce((acc,v,i)=>{
-      const row=Math.floor(i/W.shape[1]);
-      if(!acc[row])acc[row]=[];acc[row].push(v);return acc;
-    },[]));
-    biases.push(Array.from(await b.data()));
-  }
-  return {version:2,state_dim:STATE_DIM,action_dim:N_ACTIONS,hidden:HIDDEN,action_names:ACTION_NAMES,weights,biases};
+function getWeightData(){
+  return {
+    version:2, state_dim:STATE_DIM, action_dim:N_ACTIONS, hidden:HIDDEN,
+    action_names:ACTION_NAMES,
+    weights:qNet.map(l=>Array.from({length:l.out},(_,j)=>Array.from({length:l.inp},(_,k)=>l.W[j*l.inp+k]))),
+    biases:qNet.map(l=>Array.from(l.b)),
+  };
 }
-
-async function saveWeights(){
+function saveWeights(){
   if(!qNet) return;
-  const data=await getWeightData();
-  localStorage.setItem('hunter_rl_weights',JSON.stringify(data));
+  localStorage.setItem('hunter_rl_weights',JSON.stringify(getWeightData()));
   document.getElementById('saveBanner').classList.add('show');
   document.getElementById('saveBtn').disabled=false;
   document.getElementById('downloadBtn').disabled=false;
   addLog('Weights saved to localStorage — switch to game and select H: RL ✓','good');
 }
-
-async function downloadJSON(){
+function downloadJSON(){
   if(!qNet) return;
-  const data=await getWeightData();
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify(getWeightData(),null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hunter_rl.json';a.click();
 }
 
@@ -640,7 +672,6 @@ async function downloadJSON(){
 document.addEventListener('DOMContentLoaded',()=>{
   drawChart();
   addLog('Ready. Press Start Training to begin.','event');
-  // Show existing weights if any
   if(localStorage.getItem('hunter_rl_weights')){
     addLog('Found existing weights in localStorage.','good');
     document.getElementById('saveBtn').disabled=false;

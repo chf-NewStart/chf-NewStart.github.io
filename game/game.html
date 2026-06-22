@@ -1,1567 +1,830 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4x4 Grid Escape Game</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 0;
-            padding: 20px;
-            color: #333;
-        }
-        
-        .game-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        
-        h1 {
-            text-align: center;
-            color: #764ba2;
-            margin-bottom: 20px;
-        }
-        
-        .game-board {
-            display: grid;
-            grid-template-columns: repeat(4, 120px);
-            grid-template-rows: repeat(4, 120px);
-            gap: 2px;
-            background: #333;
-            padding: 2px;
-            margin: 20px auto;
-            width: fit-content;
-            position: relative;
-        }
-        
-        .cell {
-            background: #f0f0f0;
-            border: 1px solid #ccc;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
-        
-        .cell.exit {
-            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-        }
-        
-        .cell-symbol {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        
-        .unit {
-            margin: 2px;
-            padding: 4px 8px;
-            border-radius: 5px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-        
-        .participant {
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .hunter {
-            background: #f44336;
-            color: white;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escape Grid // houfu.xyz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        #toolButtons button.selected { outline:2px solid #764ba2; box-shadow:0 0 0 3px rgba(118,75,162,.25); }
-        .cell.blocked { cursor:not-allowed; }
-        .cell.placeable { cursor:pointer; }
+    body {
+      font-family: Consolas, 'Courier New', monospace;
+      background: #080808;
+      color: #ccc;
+      min-height: 100vh;
+      padding: 20px 16px;
+    }
 
-        
-        .door {
-            position: absolute;
-            background: #666;
-            font-size: 10px;
-            color: white;
-            padding: 2px 4px;
-            border-radius: 3px;
-            z-index: 10;
-        }
-        
-        .door-horizontal {
-            left: 50%;
-            transform: translateX(-50%);
-            width: 40px;
-            text-align: center;
-        }
-        
-        .door-vertical {
-            top: 50%;
-            transform: translateY(-50%);
-            height: 40px;
-            writing-mode: vertical-lr;
-            text-align: center;
-        }
-        
-        .door-top {
-            top: -15px;
-        }
-        
-        .door-bottom {
-            bottom: -15px;
-        }
-        
-        .door-left {
-            left: -15px;
-        }
-        
-        .door-right {
-            right: -15px;
-        }
-        .door.frozen {
-            outline: 2px solid #00bcd4;
-            box-shadow: 0 0 0 2px rgba(0,188,212,.25);
-        }
+    .pg-header { max-width: 880px; margin: 0 auto 18px; }
+    .pg-title { color: #1db954; font-size: 1.4rem; text-transform: uppercase; letter-spacing: -1px; }
+    .pg-sub { color: #444; font-size: 0.72rem; margin-top: 3px; line-height: 1.6; }
+    .pg-back { font-size: 0.72rem; color: #1db954; text-decoration: none; margin-top: 6px; display: inline-block; }
+    .pg-back:hover { text-decoration: underline; }
 
-        .door.open {
-            background: #4CAF50;
-        }
-        
-        .door.closed {
-            background: #FF9800;
-        }
-        
-        .door.locked {
-            background: #f44336;
-        }
-        
-        .controls {
-            display: flex;
-            gap: 20px;
-            margin: 20px 0;
-            justify-content: center;
-        }
-        
-        .control-group {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 10px;
-            flex: 1;
-            max-width: 300px;
-        }
-        
-        .control-group h3 {
-            margin-top: 0;
-            color: #764ba2;
-        }
-        
-        button {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
+    /* Layout */
+    .layout { display: flex; gap: 20px; align-items: flex-start; max-width: 880px; margin: 0 auto; }
+    .board-col { flex: 0 0 auto; }
+    .panel-col { flex: 1; min-width: 0; }
 
-        .dir-btn.selected {
-            outline: 2px solid #667eea;
-            box-shadow: 0 0 0 3px rgba(102,126,234,.25);
-        }
+    /* Legend */
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.68rem; color: #444; }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .leg { display: inline-block; width: 20px; height: 0; }
 
-        
-        button:hover:not(:disabled) {
-            background: #764ba2;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.3);
-        }
-        
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        
-        .status {
-            background: #f8f8f8;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-left: 4px solid #667eea;
-        }
-        
-        .turn-indicator {
-            font-size: 18px;
-            font-weight: bold;
-            color: #764ba2;
-            text-align: center;
-            margin: 10px 0;
-        }
-        
-        .unit-status {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 20px 0;
-        }
-        
-        .unit-card {
-            background: white;
-            border: 2px solid #ddd;
-            padding: 10px;
-            border-radius: 8px;
-            min-width: 150px;
-        }
-        
-        .unit-card.active {
-            border-color: #667eea;
-            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
-        }
-        
-        .hp-bar {
-            height: 20px;
-            background: #e0e0e0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 5px 0;
-        }
-        
-        .hp-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4CAF50, #8BC34A);
-            transition: width 0.3s;
-        }
-        
-        .action-buttons {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 5px;
-            margin-top: 10px;
-        }
-        
-        .winner {
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 10px;
-            animation: pulse 2s infinite;
-        }
-        
-        .winner.participants {
-            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-            color: white;
-        }
-        
-        .winner.hunter {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .log {
-            max-height: 200px;
-            overflow-y: auto;
-            background: #f8f8f8;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-        
-        .log-entry {
-            margin: 5px 0;
-            padding: 5px;
-            background: white;
-            border-radius: 3px;
-        }
-    </style>
+    /* Board */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, 112px);
+      grid-template-rows: repeat(4, 112px);
+      background: #080808;
+    }
+
+    .cell {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 6px;
+      background: #101010;
+      transition: background 0.1s;
+    }
+    .cell.exit { background: rgba(29,185,84,0.07); }
+    .cell.placeable:hover { background: rgba(29,185,84,0.05); cursor: pointer; }
+
+    .exit-tag {
+      position: absolute; top: 3px; left: 4px;
+      font-size: 9px; color: #1db954; font-weight: bold; letter-spacing: 1px;
+    }
+    .trap-icon {
+      position: absolute; top: 3px; right: 3px;
+      font-size: 14px; line-height: 1;
+    }
+    .cell-coord {
+      position: absolute; bottom: 2px; right: 3px;
+      font-size: 8px; color: #1e1e1e;
+    }
+
+    /* Unit badges */
+    .badge {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: bold;
+      border: 2px solid transparent;
+      position: relative; flex-shrink: 0;
+      transition: box-shadow 0.2s;
+    }
+    .badge.participant { background: rgba(29,185,84,0.15); border-color: #1db954; color: #1db954; }
+    .badge.hunter      { background: rgba(244,67,54,0.15);  border-color: #f44336; color: #f44336; }
+    .badge.current     { box-shadow: 0 0 0 2px currentColor, 0 0 10px currentColor; }
+    .badge-hp {
+      position: absolute; bottom: -5px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 7px; color: #666; white-space: nowrap;
+    }
+
+    /* Panel cards */
+    .pcard { background: #111; border: 1px solid #1c1c1c; padding: 11px 13px; margin-bottom: 8px; }
+    .pcard-title {
+      color: #1db954; font-size: 0.68rem; text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 8px; padding-bottom: 5px;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    /* Turn bar */
+    .turn-bar {
+      border: 1px solid #1db954; padding: 8px 12px;
+      color: #1db954; font-size: 0.82rem; margin-bottom: 8px;
+    }
+    .turn-bar.hunter-t { border-color: #f44336; color: #f44336; }
+
+    /* Win banner */
+    .win-banner { display: none; padding: 10px; text-align: center; font-size: 1rem; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+    .win-banner.win-p { display: block; color: #1db954; border: 2px solid #1db954; }
+    .win-banner.win-h { display: block; color: #f44336;  border: 2px solid #f44336; }
+
+    /* Unit cards */
+    .ucards { display: flex; flex-wrap: wrap; gap: 5px; }
+    .ucard {
+      flex: 1; min-width: 56px;
+      background: #0d0d0d; border: 1px solid #1c1c1c;
+      padding: 6px 7px; font-size: 0.68rem;
+    }
+    .ucard.active   { border-color: #1db954; }
+    .ucard.hunter-c { }
+    .ucard.hunter-c.active { border-color: #f44336; }
+    .ucard .uname { color: #999; margin-bottom: 3px; }
+    .ucard.hunter-c .uname { color: #f44336; }
+    .hpbar  { height: 3px; background: #1a1a1a; margin: 3px 0; }
+    .hpfill { height: 100%; background: #1db954; transition: width 0.3s; }
+    .hunter-c .hpfill { background: #f44336; }
+    .ustat  { color: #383838; font-size: 0.62rem; }
+
+    /* D-pad */
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 34px);
+      grid-template-rows:    repeat(3, 34px);
+      gap: 3px; justify-content: center; margin-bottom: 10px;
+    }
+    .dp {
+      background: #0d0d0d; border: 1px solid #1e1e1e; color: #555;
+      font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.1s; user-select: none;
+    }
+    .dp:hover { border-color: #1db954; color: #1db954; }
+    .dp.sel   { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.08); }
+    .dp.center { background: #080808; border-color: #111; cursor: default; color: #111; }
+
+    /* Buttons */
+    .brow { display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+    .btn {
+      flex: 1; background: transparent; border: 1px solid #1e1e1e;
+      color: #484848; font-family: Consolas, monospace; font-size: 0.72rem;
+      padding: 7px 8px; cursor: pointer; transition: all 0.1s; white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { border-color: #1db954; color: #1db954; }
+    .btn:disabled { opacity: 0.2; cursor: not-allowed; }
+    .btn.full { flex: 0 0 100%; }
+
+    /* Setup tools */
+    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+    .tbtn {
+      background: #0d0d0d; border: 1px solid #1e1e1e; color: #555;
+      font-family: Consolas, monospace; font-size: 0.68rem;
+      padding: 7px 8px; cursor: pointer; text-align: left; transition: all 0.1s;
+    }
+    .tbtn:hover:not(:disabled) { border-color: #888; color: #aaa; }
+    .tbtn.sel  { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.08); }
+    .tbtn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+    /* Log */
+    .log { max-height: 130px; overflow-y: auto; font-size: 0.66rem; line-height: 1.75; }
+    .log div { color: #2e2e2e; }
+    .log div:last-child { color: #888; }
+
+    @media (max-width: 660px) {
+      .layout { flex-direction: column; }
+      .board {
+        grid-template-columns: repeat(4, 80px);
+        grid-template-rows:    repeat(4, 80px);
+      }
+      .badge { width: 23px; height: 23px; font-size: 7px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1>🎮 4x4 Grid Escape Game 🎮</h1>
-        
-        <div class="turn-indicator" id="turnIndicator">Game Not Started</div>
-        
-        <div class="game-board" id="gameBoard"></div>
-        
-        <div class="unit-status" id="unitStatus"></div>
-        
-        <div class="controls">
-            <div class="control-group">
-                <h3>Game Controls</h3>
-                <button onclick="initGame()">New Game</button>
-                <button onclick="autoPlay()" id="autoPlayBtn">Auto Play</button>
-            </div>
-            
-        <div class="control-group">
-        <h3>Current Unit Actions</h3>
-        <div class="control-group" id="setupPanel">
-            <h3>Hunter Setup</h3>
-            <div id="toolButtons" style="display:flex;flex-wrap:wrap;gap:6px;">
-                <button id="tool-XX"  onclick="selectTool('XX')">XX (伤害)</button>
-                <button id="tool-■"   onclick="selectTool('■')">■ (冻结门)</button>
-                <button id="tool-☆"   onclick="selectTool('☆')">☆ (即死)</button>
-                <button id="tool-✦"   onclick="selectTool('✦')">✦ (+1行动)</button>
-                <button id="tool-△"   onclick="selectTool('△')">△ (免死一次)</button>
-                <button id="tool-+"   onclick="selectTool('+')">＋ (对方停一回合)</button>
-            </div>
-            <div id="toolHint" style="margin-top:8px;font-size:12px;color:#666;">
-                点击一个工具，然后在棋盘上点击要放置的格子。不能放在起始格(0,0)与出口格(3,3)。
-            </div>
-            <div style="margin-top:8px;display:flex;gap:8px;">
-                <button onclick="finishSetup()" id="startGameBtn">✅ 完成布置，开始游戏</button>
-                <button onclick="clearSelectedCell()" id="clearCellBtn">🧹 清除所选工具</button>
-            </div>
-        </div>
 
+<div class="pg-header">
+  <div class="pg-title">&gt;_ Escape Grid</div>
+  <div class="pg-sub">
+    4 participants (green) start at (0,0) · reach EXIT at (3,3) to win · hunter (red) starts at (1,2)<br>
+    Doors shown as cell borders: <span style="color:#1db954">green dashed</span> = open · <span style="color:#888">gray</span> = closed · <span style="color:#c62828">red</span> = locked · <span style="color:#00bcd4">cyan</span> = frozen<br>
+    Participants &amp; hunter each get <strong style="color:#ddd">2 actions/turn</strong> · hunter cannot attack in Round 1
+  </div>
+  <a class="pg-back" href="/">← back to portfolio</a>
+</div>
 
-        <!-- Direction selector (first click) -->
-        <div style="display:grid;grid-template-columns:repeat(3,60px);gap:6px;justify-content:center;margin-bottom:8px;">
-            <div></div>
-            <button class="dir-btn" id="dirUp"    onclick="setDir('up')">↑</button>
-            <div></div>
-            <button class="dir-btn" id="dirLeft"  onclick="setDir('left')">←</button>
-            <div></div>
-            <button class="dir-btn" id="dirRight" onclick="setDir('right')">→</button>
-            <div></div>
-            <button class="dir-btn" id="dirDown"  onclick="setDir('down')">↓</button>
-            <div></div>
-        </div>
+<div class="layout">
 
-        <!-- Actions (second click) -->
-        <div class="action-buttons" id="actionButtons">
-            <button onclick="moveSelected()" id="moveDirBtn">🏃 Move (dir)</button>
+  <!-- Board -->
+  <div class="board-col">
+    <div class="legend">
+      <span><span class="leg" style="border-top:2px dashed rgba(29,185,84,0.55)"></span>Open</span>
+      <span><span class="leg" style="border-top:3px solid #484848"></span>Closed</span>
+      <span><span class="leg" style="border-top:3px solid #b71c1c"></span>Locked</span>
+      <span><span class="leg" style="border-top:3px double #00bcd4"></span>Frozen</span>
+    </div>
+    <div id="gameBoard" class="board"></div>
+    <div style="font-size:0.62rem;color:#1e1e1e;margin-top:4px;text-align:right;">door state = cell border · click cell during setup to place trap</div>
+  </div>
 
-            <button onclick="attackAction()" id="attackBtn">⚔️ Attack</button>
+  <!-- Panel -->
+  <div class="panel-col">
+    <div id="winBanner" class="win-banner"></div>
+    <div id="turnBar" class="turn-bar">Press ⟳ New Game to begin</div>
 
-            <!-- use selected direction -->
-            <button onclick="unlockDoor()" id="unlockBtn">🔓 Unlock (dir)</button>
-            <button onclick="openDoor()"   id="openBtn">📂 Open (dir)</button>
-            <button onclick="closeDoor()"  id="closeBtn">🧲 Close (dir)</button>
-            <button onclick="lockDoor()"   id="lockBtn">🔒 Lock (dir)</button>
-
-            <button onclick="endTurn()" id="endTurnBtn">⏭️ End Turn</button>
-        </div>
-        </div>
-
-        </div>
-        
-        <div class="status">
-            <h3>Game Log</h3>
-            <div class="log" id="gameLog"></div>
-        </div>
-        
-        <div id="winnerDisplay"></div>
+    <div class="pcard">
+      <div class="pcard-title">// unit_status</div>
+      <div class="ucards" id="unitCards"></div>
     </div>
 
-    <script>
-        class GameEngine {
-            constructor() {
-                this.grid = Array(4).fill().map(() => Array(4).fill().map(() => ({
-                    units: [],
-                    symbol: null,
-                    isExit: false
-                })));
-                this.phase = 'setup';                 // 'setup' | 'play' | 'gameover'
-                this.selectedTool = null;             // which symbol is selected to place
-                // Hunter's toolbox: change counts as you like
-                this.toolbox = { 'XX':1, '■':1, '☆':1, '✦':1, '△':1, '+':1 };
-
-                this.frozenDoors = new Set();     // keys of doors that cannot change
-                this.stunHunter = 0;              // >0 means hunter's next turn(s) skipped
-                this.stunParticipants = 0;        // >0 means next participant turn(s) skipped
-
-                this.selectedDir = null;
-                this.participants = [];
-                this.hunter = null;
-                this.doors = new Map(); // Key: "x1,y1-x2,y2", Value: state
-                this.currentTurn = 0;
-                this.currentUnitIndex = 0;
-                this.gameOver = false;
-                this.winner = null;
-                this.actionLog = [];
-                this.autoPlayInterval = null;
-            }
-            
-            init() {
-                // Reset game state
-                this.grid = Array(4).fill().map(() => Array(4).fill().map(() => ({
-                    units: [],
-                    symbol: null,
-                    isExit: false
-                })));
-                
-                // Create participants
-                this.participants = [
-                    { id: 'P1', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1, hasRevive: false},
-                    { id: 'P2', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1, hasRevive: false},
-                    { id: 'P3', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1, hasRevive: false},
-                    { id: 'P4', type: 'participant', hp: 5, maxHp: 5, x: 0, y: 0, actions: 1, maxActions: 1, hasRevive: false }
-                ];
-                
-                // Create hunter
-                this.hunter = { id: 'H', type: 'hunter', hp: 16, maxHp: 16, x: 0, y: 0, actions: 2, maxActions: 2, hasRevive: false};
-                
-                // Place units on grid
-                this.participants.forEach(p => {
-                    this.grid[p.y][p.x].units.push(p);
-                });
-                this.grid[this.hunter.y][this.hunter.x].units.push(this.hunter);
-                
-                // Set exit
-                this.grid[3][3].isExit = true;
-                
-                
-                // Initialize ALL doors between adjacent cells (all start as closed)
-                // Horizontal connections (left-right)
-                this.doors.set('0,0-1,0', 'locked');
-                this.doors.set('1,0-2,0', 'locked');
-                this.doors.set('2,0-3,0', 'locked');
-                this.doors.set('0,1-1,1', 'locked');
-                this.doors.set('1,1-2,1', 'locked');
-                this.doors.set('2,1-3,1', 'locked');
-                this.doors.set('0,2-1,2', 'locked');
-                this.doors.set('1,2-2,2', 'locked');
-                this.doors.set('2,2-3,2', 'locked');
-                this.doors.set('0,3-1,3', 'locked');
-                this.doors.set('1,3-2,3', 'locked');
-                this.doors.set('2,3-3,3', 'locked');
-                
-                // Vertical connections (up-down)
-                this.doors.set('0,0-0,1', 'locked');
-                this.doors.set('0,1-0,2', 'locked');
-                this.doors.set('0,2-0,3', 'locked');
-                this.doors.set('1,0-1,1', 'locked');
-                this.doors.set('1,1-1,2', 'locked');
-                this.doors.set('1,2-1,3', 'locked');
-                this.doors.set('2,0-2,1', 'locked');
-                this.doors.set('2,1-2,2', 'locked');
-                this.doors.set('2,2-2,3', 'locked');
-                this.doors.set('3,0-3,1', 'locked');
-                this.doors.set('3,1-3,2', 'locked');
-                this.doors.set('3,2-3,3', 'locked');
-                
-                this.currentTurn = 0;
-                this.currentUnitIndex = 0;
-                this.gameOver = false;
-                this.winner = null;
-                this.actionLog = [];
-                this.phase = 'setup';
-                this.selectedTool = null;
-                // reset toolbox (optional if you want fresh each game)
-                this.toolbox = { 'XX':1, '■':1, '☆':1, '✦':1, '△':1, '+':1 };
-
-                this.log("Setup phase: Hunter, place your 道具.");
-                this.render();          // just render the empty board now
-                this.updateSetupUI();   // show remaining counts, enable tools
-            }
-
-            randomizeTools() {
-            if (this.phase !== 'setup') return;
-
-            // collect all placeable cells (not start and not exit, and empty)
-            const slots = [];
-            for (let y = 0; y < 4; y++) {
-                for (let x = 0; x < 4; x++) {
-                if ((x === 0 && y === 0) || (x === 3 && y === 3)) continue; // no start/exit
-                if (!this.grid[y][x].symbol) slots.push({x, y});
-                }
-            }
-
-            // Fisher–Yates shuffle to randomize slot order
-            for (let i = slots.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [slots[i], slots[j]] = [slots[j], slots[i]];
-            }
-
-            // flatten toolbox into a list of symbols to place
-            const pile = [];
-            for (const [sym, count] of Object.entries(this.toolbox)) {
-                for (let i = 0; i < count; i++) pile.push(sym);
-            }
-
-            // place as many as we can
-            let placed = 0;
-            while (pile.length && slots.length) {
-                const sym = pile.pop();       // take one symbol
-                const slot = slots.pop();     // take one random slot
-                this.grid[slot.y][slot.x].symbol = sym;
-                this.toolbox[sym] -= 1;
-                placed++;
-            }
-
-            this.log(`随机布置完成：放置了 ${placed} 个道具`);
-            this.render();
-            this.updateSetupUI();
-            }
-
-
-            setDirection(dir) {
-                this.selectedDir = dir; // remember user’s selection
-                // visual button highlight:
-                ['up','down','left','right'].forEach(d => {
-                    const btn = document.getElementById('dir' + d.charAt(0).toUpperCase() + d.slice(1));
-                    if (btn) btn.classList.toggle('selected', d === dir);
-                });
-                // Refresh button enables based on chosen door states
-                this.updateButtons();
-            }
-            // UI helper to refresh tool button states and counts
-            updateSetupUI() {
-            const panel = document.getElementById('setupPanel');
-            if (!panel) return;
-            // Show panel only during setup
-            panel.style.display = (this.phase === 'setup') ? 'block' : 'none';
-
-            // Mark selected tool button and show remaining counts in the labels
-            const labels = { 'XX':'XX (伤害)', '■':'■ (冻结门)', '☆':'☆ (即死)', '✦':'✦ (+1行动)', '△':'△ (免死一次)', '+':'＋ (对方停一回合)' };
-            for (const key of Object.keys(this.toolbox)) {
-                const btn = document.getElementById(`tool-${key}`);
-                if (!btn) continue;
-                btn.textContent = `${labels[key]} ×${this.toolbox[key]}`;
-                btn.disabled = (this.toolbox[key] <= 0);
-                btn.classList.toggle('selected', this.selectedTool === key);
-            }
-
-            // Start button enabled only when all counts placed or you decide otherwise
-            const startBtn = document.getElementById('startGameBtn');
-            if (startBtn) {
-                const remaining = Object.values(this.toolbox).reduce((a,b)=>a+b,0);
-                startBtn.disabled = remaining > 0;
-                startBtn.textContent = remaining > 0
-                ? `还剩 ${remaining} 个未放置`
-                : '✅ 完成布置，开始游戏';
-            }
-            }
-
-            // Called from UI buttons
-            setTool(symbol) {
-            if (this.phase !== 'setup') return;
-            this.selectedTool = symbol;
-            this.updateSetupUI();
-            }
-
-            // Click on a cell during setup
-            placeToolAt(x, y) {
-            if (this.phase !== 'setup') return;
-            // forbid start cell and exit
-            if ((x === 0 && y === 0) || (x === 3 && y === 3)) { this.log('不能放在起点或出口'); return; }
-            if (!this.selectedTool) { this.log('先选择一个工具'); return; }
-            if ((this.toolbox[this.selectedTool] || 0) <= 0) { this.log('该工具已用完'); return; }
-
-            // place on cell; one cell can hold only one symbol (change if you want stacking)
-            const cell = this.grid[y][x];
-            if (cell.symbol) { this.log('该格已有工具，先清空'); return; }
-
-            cell.symbol = this.selectedTool;
-            this.toolbox[this.selectedTool] -= 1;
-            this.log(`放置 ${this.selectedTool} 于 (${x}, ${y})`);
-            this.render();
-            this.updateSetupUI();
-            }
-
-            // Remove any symbol from a cell (for corrections)
-            clearToolAt(x, y) {
-            if (this.phase !== 'setup') return;
-            const cell = this.grid[y][x];
-            if (!cell.symbol) return;
-            const sym = cell.symbol;
-            cell.symbol = null;
-            if (this.toolbox[sym] !== undefined) this.toolbox[sym] += 1;
-            this.log(`清除了 (${x}, ${y}) 的 ${sym}`);
-            this.render();
-            this.updateSetupUI();
-            }
-
-            // Start the game
-            finishSetup() {
-            if (this.phase !== 'setup') return;
-            this.phase = 'play';
-            this.selectedTool = null;
-            this.updateSetupUI();
-            this.log('Setup 完成，开始第 1 回合');
-            this.startTurn();
-            }
-
-
-            getAdjacentByDir(unit, dir) {
-                let nx = unit.x, ny = unit.y;
-                if (dir === 'up') ny--;
-                if (dir === 'down') ny++;
-                if (dir === 'left') nx--;
-                if (dir === 'right') nx++;
-                if (nx < 0 || nx > 3 || ny < 0 || ny > 3) return null; // OOB
-
-                const key = this.getDoorKey(unit.x, unit.y, nx, ny);
-                const state = this.doors.get(key);
-                if (!state) return null; // no door/wall
-
-                return { key, state, nx, ny, dir };
-            }
-
-
-            
-            startTurn() {
-                if (this.gameOver || this.phase !== 'play') return;
-                // If the next unit is stunned, skip their turn
-                const u = this.getCurrentUnit();
-                if (u) {
-                if (u.type === 'hunter' && this.stunHunter > 0) {
-                    this.stunHunter -= 1;
-                    this.log(`Hunter is stunned and skips this turn (＋)`);
-                    // skip entirely
-                    this.currentUnitIndex++;
-                    return this.startTurn(); // recurse to the next unit safely
-                }
-                if (u.type === 'participant' && this.stunParticipants > 0) {
-                    // find the next alive/active participant to stun
-                    this.stunParticipants -= 1;
-                    this.log(`Participant turn skipped due to ＋`);
-                    this.currentUnitIndex++;
-                    return this.startTurn();
-                }
-                }
-
-                this.selectedDir = null;
-                ['up','down','left','right'].forEach(d => {
-                    const btn = document.getElementById('dir' + d.charAt(0).toUpperCase() + d.slice(1));
-                    if (btn) btn.classList.remove('selected');
-                });
-
-                let currentUnit = this.getCurrentUnit();
-                if (currentUnit) {
-                    currentUnit.actions = currentUnit.maxActions;
-                    this.log(`${currentUnit.id}'s turn started (${currentUnit.actions} actions)`);
-                }
-                
-                this.render();
-            }
-            
-            getCurrentUnit() {
-                if (this.currentUnitIndex < this.participants.length) {
-                    return this.participants.find(p => p.hp > 0 && this.participants.indexOf(p) === this.currentUnitIndex);
-                } else if (this.currentUnitIndex === this.participants.length) {
-                    return this.hunter.hp > 0 ? this.hunter : null;
-                }
-                return null;
-            }
-            
-            getDoorKey(x1, y1, x2, y2) {
-                if (x1 > x2 || (x1 === x2 && y1 > y2)) {
-                    return `${x2},${y2}-${x1},${y1}`;
-                }
-                return `${x1},${y1}-${x2},${y2}`;
-            }
-            
-            getDoorState(x1, y1, x2, y2) {
-                const key = this.getDoorKey(x1, y1, x2, y2);
-                return this.doors.get(key) || 'open';
-            }
-            
-            move(direction) {
-                if (this.phase !== 'play') { this.log('Still in setup phase. Finish setup first.'); return false; }
-                const unit = this.getCurrentUnit();
-                if (!unit || unit.actions <= 0) return false;
-                
-                let newX = unit.x;
-                let newY = unit.y;
-                
-                switch(direction) {
-                    case 'up': newY--; break;
-                    case 'down': newY++; break;
-                    case 'left': newX--; break;
-                    case 'right': newX++; break;
-                }
-                
-                // Check bounds
-                if (newX < 0 || newX >= 4 || newY < 0 || newY >= 4) {
-                    this.log(`${unit.id} cannot move ${direction} - out of bounds`);
-                    return false;
-                }
-                
-                // Check door
-                const doorState = this.getDoorState(unit.x, unit.y, newX, newY);
-                if (doorState !== 'open') {
-                    this.log(`${unit.id} cannot move ${direction} - door is ${doorState}`);
-                    return false;
-                }
-                
-                // Move unit
-                this.grid[unit.y][unit.x].units = this.grid[unit.y][unit.x].units.filter(u => u !== unit);
-                unit.x = newX;
-                unit.y = newY;
-                this.grid[unit.y][unit.x].units.push(unit);
-                
-                unit.actions--;
-                this.log(`${unit.id} moved ${direction} to (${unit.x}, ${unit.y})`);
-                
-                // Apply cell effects
-                this.applyCellEffects(unit);
-                
-                // Check win conditions
-                this.checkWinConditions();
-                
-                if (unit.actions <= 0) {
-                    this.nextTurn();
-                } else {
-                    this.render();
-                }
-                if (this.gameOver) { 
-                    this.render();
-                    return true; 
-                }
-                
-                return true;
-            }
-            
-            applyCellEffects(unit) {
-            const cell = this.grid[unit.y][unit.x];
-            if (!cell) return;
-
-            // XX: 1 damage on entry
-            if (cell.symbol === 'XX') {
-                unit.hp = Math.max(0, unit.hp - 1);
-                this.log(`${unit.id} took 1 damage from trap! (HP: ${unit.hp})`);
-            }
-
-            // ☆: instant death (respect △ revive)
-            if (cell.symbol === '☆') {
-                if (unit.hasRevive) {
-                unit.hasRevive = false;
-                unit.hp = Math.max(unit.hp, 1);
-                this.log(`${unit.id} cheated death with △ (revive) and stays at 1 HP!`);
-                // consume the tile
-                cell.symbol = null;
-                } else {
-                unit.hp = 0;
-                this.log(`${unit.id} died instantly from death trap!`);
-                }
-            }
-
-            // △: grant one-time death immunity (consume)
-            if (cell.symbol === '△') {
-                unit.hasRevive = true;
-                this.log(`${unit.id} gained △ (one-time death immunity)!`);
-                cell.symbol = null;
-            }
-
-            // ✦: +1 action (consume)
-            if (cell.symbol === '✦') {
-                unit.actions++;
-                this.log(`${unit.id} gained ✦ (+1 action this turn)!`);
-                cell.symbol = null;
-            }
-
-            // ＋: stun the other side for one upcoming turn (consume)
-            if (cell.symbol === '+') {
-                if (unit.type === 'participant') {
-                this.stunHunter += 1;
-                this.log(`${unit.id} triggered ＋: Hunter will skip their next turn`);
-                } else {
-                this.stunParticipants += 1;
-                this.log(`${unit.id} triggered ＋: The next Participant turn will be skipped`);
-                }
-                cell.symbol = null;
-            }
-
-            // ■: freeze ALL adjacent doors to this cell (persistent)
-            if (cell.symbol === '■') {
-                const adjs = [
-                {nx: unit.x, ny: unit.y - 1, dir: 'up'},
-                {nx: unit.x, ny: unit.y + 1, dir: 'down'},
-                {nx: unit.x - 1, ny: unit.y, dir: 'left'},
-                {nx: unit.x + 1, ny: unit.y, dir: 'right'}
-                ];
-                let frozenCount = 0;
-                for (const a of adjs) {
-                if (a.nx < 0 || a.nx > 3 || a.ny < 0 || a.ny > 3) continue;
-                const k = this.getDoorKey(unit.x, unit.y, a.nx, a.ny);
-                if (this.doors.has(k)) {
-                    this.frozenDoors.add(k);
-                    frozenCount++;
-                }
-                }
-                this.log(`${unit.id} activated ■: froze ${frozenCount} adjacent door(s)`);
-                // (leave the tile there to indicate area is "frozen source", or remove if you prefer)
-                // cell.symbol = null;
-            }
-
-            // Exit check
-            if (cell.isExit && unit.type === 'participant') {
-                this.log(`${unit.id} escaped through the exit!`);
-                unit.escaped = true;
-            }
-            }
-
-            
-            attack() {
-                if (this.phase !== 'play') { this.log('Still in setup phase. Finish setup first.'); return false; }
-                const unit = this.getCurrentUnit();
-                if (!unit || unit.actions <= 0) return false;
-
-                const cell = this.grid[unit.y][unit.x];
-                let target = null;
-
-                if (unit.type === 'participant') {
-                    target = cell.units.find(u => u.type === 'hunter');
-                    if (target) {
-                        target.hp = Math.max(0, target.hp - 2);
-                        this.log(`${unit.id} attacked ${target.id} for 2 damage! (HP: ${target.hp})`);
-                        // after damage assignment but before logging death/win
-                        if (target.hp <= 0 && target.hasRevive) {
-                            target.hasRevive = false;
-                            target.hp = 1;
-                            this.log(`${target.id} avoided death with △ and stays at 1 HP!`);
-                        }
-
-                    }
-                } else if (unit.type === 'hunter') {
-                    // 🔒 Block attacks in the first round
-                    if (this.currentTurn === 0) {
-                        this.log(`${unit.id} cannot attack in the first round!`);
-                        return false;
-                    }
-
-                    const targets = cell.units.filter(u => u.type === 'participant' && u.hp > 0);
-                    if (targets.length > 0) {
-                        target = targets[0];
-                        target.hp = Math.max(0, target.hp - 3);
-                        // after damage assignment but before logging death/win
-                        if (target.hp <= 0 && target.hasRevive) {
-                            target.hasRevive = false;
-                            target.hp = 1;
-                            this.log(`${target.id} avoided death with △ and stays at 1 HP!`);
-                        }
-
-                        this.log(`${unit.id} attacked ${target.id} for 2 damage! (HP: ${target.hp})`);
-                    }
-                }
-
-                if (!target) {
-                    this.log(`${unit.id} has no valid targets to attack`);
-                    return false;
-                }
-
-                unit.actions--;
-
-                this.checkWinConditions();
-
-                if (unit.actions <= 0) {
-                    this.nextTurn();
-                } else {
-                    this.render();
-                }
-
-                if (this.gameOver) { 
-                    this.render();
-                    return true; 
-                }
-
-                return true;
-            }
-
-            
-            unlockDoor(dir = this.selectedDir) {
-                if (this.phase !== 'play') { this.log('Still in setup phase. Finish setup first.'); return false; }
-                const unit = this.getCurrentUnit();
-                if (!unit || unit.actions <= 0) return false;
-
-                // If direction chosen, use it; else fallback to first adjacent locked (old behavior)
-                let target = dir ? this.getAdjacentByDir(unit, dir) : null;
-                if (!target || target.state !== 'locked') {
-                    // fallback scan
-                    const dirs = ['up','down','left','right'];
-                    for (const d of dirs) {
-                        const cand = this.getAdjacentByDir(unit, d);
-                        if (cand && cand.state === 'locked') { target = cand; break; }
-                    }
-                }
-                if (target && this.frozenDoors.has(target.key)) {
-                    this.log(`Door ${target.dir} is frozen and cannot be changed`);
-                    return false;
-                }
-                if (!target || target.state !== 'locked') {
-                    this.log(`${unit.id} has no locked door to unlock`);
-                    return false;
-                }
-                this.doors.set(target.key, 'closed');
-
-                unit.actions--;
-                this.log(`${unit.id} unlocked ${target.dir} door`);
-                unit.actions <= 0 ? this.nextTurn() : this.render();
-                return true;
-            }
-
-            openDoor(dir = this.selectedDir) {
-                const unit = this.getCurrentUnit();
-                if (!unit || unit.actions <= 0) return false;
-
-                let target = dir ? this.getAdjacentByDir(unit, dir) : null;
-                if (!target || target.state !== 'closed') {
-                    const dirs = ['up','down','left','right'];
-                    for (const d of dirs) {
-                        const cand = this.getAdjacentByDir(unit, d);
-                        if (cand && cand.state === 'closed') { target = cand; break; }
-                    }
-                }
-
-                if (target && this.frozenDoors.has(target.key)) {
-                    this.log(`Door ${target.dir} is frozen and cannot be changed`);
-                    return false;
-                }
-                if (!target || target.state !== 'closed') {
-                    this.log(`${unit.id} has no closed door to open`);
-                    return false;
-                }
-                this.doors.set(target.key, 'open');
-                unit.actions--;
-                this.log(`${unit.id} opened ${target.dir} door`);
-                unit.actions <= 0 ? this.nextTurn() : this.render();
-                return true;
-            }
-
-            // NEW: Close an OPEN door
-            closeDoor(dir = this.selectedDir) {
-                const unit = this.getCurrentUnit();
-                if (!unit || unit.actions <= 0) return false;
-
-                let target = dir ? this.getAdjacentByDir(unit, dir) : null;
-                if (!target || target.state !== 'open') {
-                    const dirs = ['up','down','left','right'];
-                    for (const d of dirs) {
-                        const cand = this.getAdjacentByDir(unit, d);
-                        if (cand && cand.state === 'open') { target = cand; break; }
-                    }
-                }
-                if (target && this.frozenDoors.has(target.key)) {
-                    this.log(`Door ${target.dir} is frozen and cannot be changed`);
-                    return false;
-                }
-                if (!target || target.state !== 'open') {
-                    this.log(`${unit.id} has no open door to close`);
-                    return false;
-                }
-                this.doors.set(target.key, 'closed');
-                unit.actions--;
-                this.log(`${unit.id} closed ${target.dir} door`);
-                unit.actions <= 0 ? this.nextTurn() : this.render();
-                return true;
-            }
-
-            // NEW: Lock a CLOSED door
-            lockDoor(dir = this.selectedDir) {
-                const unit = this.getCurrentUnit();
-                if (!unit || unit.actions <= 0) return false;
-
-                let target = dir ? this.getAdjacentByDir(unit, dir) : null;
-                if (!target || target.state !== 'closed') {
-                    const dirs = ['up','down','left','right'];
-                    for (const d of dirs) {
-                        const cand = this.getAdjacentByDir(unit, d);
-                        if (cand && cand.state === 'closed') { target = cand; break; }
-                    }
-                }
-                if (target && this.frozenDoors.has(target.key)) {
-                    this.log(`Door ${target.dir} is frozen and cannot be changed`);
-                    return false;
-                }
-                if (!target || target.state !== 'closed') {
-                    this.log(`${unit.id} has no closed door to lock`);
-                    return false;
-                }
-                this.doors.set(target.key, 'locked');
-                unit.actions--;
-                this.log(`${unit.id} locked ${target.dir} door`);
-                unit.actions <= 0 ? this.nextTurn() : this.render();
-                return true;
-            }
-            moveDir(dir = this.selectedDir) {
-                if (this.phase !== 'play') { this.log('Still in setup phase. Finish setup first.'); return false; }
-                const unit = this.getCurrentUnit();
-                if (!unit || unit.actions <= 0) return false;
-
-                // If a direction is selected, try that; else do nothing (explicit control)
-                if (!dir) {
-                    this.log(`${unit.id} no direction selected for Move`);
-                    return false;
-                }
-                return this.move(dir); // uses your existing move() which checks door/open/etc
-            }
-
-            
-            nextTurn() {
-                if (this.gameOver) return;
-                
-                // Move to next unit
-                this.currentUnitIndex++;
-                
-                // Skip dead participants
-                while (this.currentUnitIndex < this.participants.length) {
-                    if (this.participants[this.currentUnitIndex].hp > 0 && 
-                        !this.participants[this.currentUnitIndex].escaped) {
-                        break;
-                    }
-                    this.currentUnitIndex++;
-                }
-                
-                // Check if round is complete
-                if (this.currentUnitIndex > this.participants.length) {
-                    this.currentUnitIndex = 0;
-                    this.currentTurn++;
-                    this.log(`--- Round ${this.currentTurn + 1} ---`);
-                    
-                    // Skip dead participants at start of new round
-                    while (this.currentUnitIndex < this.participants.length) {
-                        if (this.participants[this.currentUnitIndex].hp > 0 && 
-                            !this.participants[this.currentUnitIndex].escaped) {
-                            break;
-                        }
-                        this.currentUnitIndex++;
-                    }
-                }
-                
-                this.startTurn();
-            }
-            
-            checkWinConditions() {
-            // participant escaped
-            if (this.participants.some(p => p.escaped)) {
-                this.gameOver = true;
-                this.winner = 'participants';
-                this.log("🎉 Participants WIN! A participant escaped!");
-
-                // 🔧 stop autoplay & render immediately
-                if (this.autoPlayInterval) {
-                clearInterval(this.autoPlayInterval);
-                this.autoPlayInterval = null;
-                const btn = document.getElementById('autoPlayBtn');
-                if (btn) btn.textContent = 'Auto Play';
-                }
-                this.render();
-                return;
-            }
-
-            // hunter dead
-            if (this.hunter.hp <= 0) {
-                this.gameOver = true;
-                this.winner = 'participants';
-                this.log("🎉 Participants WIN! Hunter defeated!");
-
-                if (this.autoPlayInterval) {
-                clearInterval(this.autoPlayInterval);
-                this.autoPlayInterval = null;
-                const btn = document.getElementById('autoPlayBtn');
-                if (btn) btn.textContent = 'Auto Play';
-                }
-                this.render();
-                return;
-            }
-
-            // all participants dead
-            if (this.participants.every(p => p.hp <= 0)) {
-                this.gameOver = true;
-                this.winner = 'hunter';
-                this.log("💀 Hunter WINS! All participants eliminated!");
-
-                if (this.autoPlayInterval) {
-                clearInterval(this.autoPlayInterval);
-                this.autoPlayInterval = null;
-                const btn = document.getElementById('autoPlayBtn');
-                if (btn) btn.textContent = 'Auto Play';
-                }
-                this.render();
-                return;
-            }
-            }
-
-            
-            log(message) {
-                this.actionLog.push(message);
-                const logDiv = document.getElementById('gameLog');
-                if (logDiv) {
-                    const entry = document.createElement('div');
-                    entry.className = 'log-entry';
-                    entry.textContent = message;
-                    logDiv.appendChild(entry);
-                    logDiv.scrollTop = logDiv.scrollHeight;
-                }
-            }
-            
-            render() {
-                const board = document.getElementById('gameBoard');
-                board.innerHTML = '';
-                
-                // Render cells
-                for (let y = 0; y < 4; y++) {
-                    for (let x = 0; x < 4; x++) {
-                        const cell = document.createElement('div');
-                        cell.className = 'cell';
-                        if (this.grid[y][x].isExit) {
-                            cell.classList.add('exit');
-                            cell.innerHTML += '<div style="position:absolute;top:5px;left:5px;font-weight:bold;">EXIT</div>';
-                        }
-
-                        // Click to place/remove
-                        if (this.phase === 'setup') {
-                        if ((x === 0 && y === 0) || (x === 3 && y === 3)) {
-                            cell.classList.add('blocked');
-                        } else {
-                            cell.classList.add('placeable');
-                            cell.onclick = () => {
-                            // If there is already a symbol, clicking removes it. Otherwise place selected tool.
-                            if (this.grid[y][x].symbol) {
-                                this.clearToolAt(x, y);
-                            } else {
-                                this.placeToolAt(x, y);
-                            }
-                            };
-                        }
-                        }
-                        
-                        // Add symbol
-                        if (this.grid[y][x].symbol) {
-                            cell.innerHTML += `<div class="cell-symbol">${this.grid[y][x].symbol}</div>`;
-                        }
-                        
-                        // Add units
-                        this.grid[y][x].units.forEach(unit => {
-                            if (unit.hp > 0 && !unit.escaped) {
-                                const unitDiv = document.createElement('div');
-                                unitDiv.className = `unit ${unit.type}`;
-                                unitDiv.textContent = `${unit.id} (${unit.hp}HP)`;
-                                cell.appendChild(unitDiv);
-                            }
-                        });
-                        
-                        // Add doors
-                        // --- Top door ---
-                        if (y > 0) {
-                        const keyTop = this.getDoorKey(x, y, x, y - 1);
-                        if (this.doors.has(keyTop)) {
-                            const doorStateTop = this.getDoorState(x, y, x, y - 1);   // <— define it
-                            const door = document.createElement('div');
-                            door.className = `door door-horizontal door-top ${doorStateTop}`;
-                            if (this.frozenDoors.has(keyTop)) door.classList.add('frozen');
-
-                            let doorText = '';
-                            if (doorStateTop === 'locked') doorText = '🔒LOCKED';
-                            else if (doorStateTop === 'closed') doorText = '🚪CLOSED';
-                            else doorText = '✅OPEN';
-                            if (this.frozenDoors.has(keyTop)) doorText += ' ❄️';
-                            door.textContent = doorText;
-                            cell.appendChild(door);
-                        }
-                        }
-
-                        // --- Left door ---
-                        if (x > 0) {
-                        const keyLeft = this.getDoorKey(x, y, x - 1, y);
-                        if (this.doors.has(keyLeft)) {
-                            const doorStateLeft = this.getDoorState(x, y, x - 1, y);   // <— define it
-                            const door = document.createElement('div');
-                            door.className = `door door-vertical door-left ${doorStateLeft}`;
-                            if (this.frozenDoors.has(keyLeft)) door.classList.add('frozen');
-
-                            let doorText = '';
-                            if (doorStateLeft === 'locked') doorText = '🔒LOCKED';
-                            else if (doorStateLeft === 'closed') doorText = '🚪CLOSED';
-                            else doorText = '✅OPEN';
-                            if (this.frozenDoors.has(keyLeft)) doorText += ' ❄️';
-                            door.textContent = doorText;
-                            cell.appendChild(door);
-                        }
-                        }
-
-                        
-                        board.appendChild(cell);
-                    }
-                }
-                
-                // Update status display
-                this.updateStatusDisplay();
-            }
-            
-            updateStatusDisplay() {
-                const statusDiv = document.getElementById('unitStatus');
-                statusDiv.innerHTML = '';
-                
-                // Participants status
-                this.participants.forEach((p, index) => {
-                    const card = document.createElement('div');
-                    card.className = 'unit-card';
-                    if (this.currentUnitIndex === index && !this.gameOver) {
-                        card.classList.add('active');
-                    }
-                    
-                    const hpPercent = (p.hp / p.maxHp) * 100;
-                    card.innerHTML = `
-                        <strong>${p.id}</strong>
-                        ${p.escaped ? '<span style="color:green"> (ESCAPED)</span>' : ''}
-                        ${p.hp <= 0 ? '<span style="color:red"> (DEAD)</span>' : ''}
-                        <div class="hp-bar">
-                            <div class="hp-fill" style="width:${hpPercent}%"></div>
-                        </div>
-                        <small>HP: ${p.hp}/${p.maxHp} | Actions: ${p.actions}</small>
-                    `;
-                    statusDiv.appendChild(card);
-                });
-                
-                // Hunter status
-                const hunterCard = document.createElement('div');
-                hunterCard.className = 'unit-card';
-                if (this.currentUnitIndex === this.participants.length && !this.gameOver) {
-                    hunterCard.classList.add('active');
-                }
-                
-                const hpPercent = (this.hunter.hp / this.hunter.maxHp) * 100;
-                hunterCard.innerHTML = `
-                    <strong>${this.hunter.id} (Hunter)</strong>
-                    ${this.hunter.hp <= 0 ? '<span style="color:red"> (DEAD)</span>' : ''}
-                    <div class="hp-bar">
-                        <div class="hp-fill" style="width:${hpPercent}%; background: linear-gradient(90deg, #f44336, #ff6b6b);"></div>
-                    </div>
-                    <small>HP: ${this.hunter.hp}/${this.hunter.maxHp} | Actions: ${this.hunter.actions}</small>
-                `;
-                statusDiv.appendChild(hunterCard);
-                
-                // Update turn indicator
-                const turnDiv = document.getElementById('turnIndicator');
-                if (this.gameOver) {
-                    turnDiv.textContent = 'Game Over!';
-                } else {
-                    const currentUnit = this.getCurrentUnit();
-                    if (currentUnit) {
-                        turnDiv.textContent = `Current Turn: ${currentUnit.id} (${currentUnit.type}) - Round ${this.currentTurn + 1}`;
-                    }
-                }
-                
-                // Update winner display
-                const winnerDiv = document.getElementById('winnerDisplay');
-                if (this.gameOver) {
-                    winnerDiv.className = `winner ${this.winner}`;
-                    winnerDiv.textContent = this.winner === 'participants' ? 
-                        '🎉 PARTICIPANTS WIN! 🎉' : '💀 HUNTER WINS! 💀';
-                } else {
-                    winnerDiv.innerHTML = '';
-                    winnerDiv.className = '';
-                }
-                
-                // Update button states
-                this.updateButtons();
-            }
-            
-            updateButtons() {
-                const unit = this.getCurrentUnit();
-                const hasActions = unit && unit.actions > 0;
-                const isGameOver = this.gameOver;
-                
-                // document.getElementById('moveUpBtn').disabled = !hasActions || isGameOver;
-                // document.getElementById('moveDownBtn').disabled = !hasActions || isGameOver;
-                // document.getElementById('moveLeftBtn').disabled = !hasActions || isGameOver;
-                // document.getElementById('moveRightBtn').disabled = !hasActions || isGameOver;
-                document.getElementById('attackBtn').disabled = !hasActions || isGameOver;
-                if (unit && unit.type === 'hunter' && this.currentTurn === 0) {
-                    document.getElementById('attackBtn').disabled = true;
-                }
-
-                document.getElementById('unlockBtn').disabled = !hasActions || isGameOver;
-                document.getElementById('openBtn').disabled = !hasActions || isGameOver;
-                document.getElementById('endTurnBtn').disabled = !unit || isGameOver;
-                const moveDirBtn = document.getElementById('moveDirBtn');
-                if (moveDirBtn) {
-                    if (!unit || isGameOver) {
-                        moveDirBtn.disabled = true;
-                    } else if (this.selectedDir) {
-                        const adj = this.getAdjacentByDir(unit, this.selectedDir);
-                        // enable Move only if the selected edge exists and is open
-                        moveDirBtn.disabled = !hasActions || !adj || adj.state !== 'open';
-                    } else {
-                        // no direction selected → disabled
-                        moveDirBtn.disabled = true;
-                    }
-                }
-
-
-                // Optional: if a direction is selected, enable/disable action buttons based on that door state
-                if (unit && !isGameOver && this.selectedDir) {
-                    const adj = this.getAdjacentByDir(unit, this.selectedDir);
-                    const unlockBtn = document.getElementById('unlockBtn');
-                    const openBtn   = document.getElementById('openBtn');
-                    const closeBtn  = document.getElementById('closeBtn');
-                    const lockBtn   = document.getElementById('lockBtn');
-
-                    if (adj) {
-                        if (unlockBtn) unlockBtn.disabled = !hasActions || adj.state !== 'locked';
-                        if (openBtn)   openBtn.disabled   = !hasActions || adj.state !== 'closed';
-                        if (closeBtn)  closeBtn.disabled  = !hasActions || adj.state !== 'open';
-                        if (lockBtn)   lockBtn.disabled   = !hasActions || adj.state !== 'closed';
-                    } else {
-                        // no door / out of bounds
-                        if (unlockBtn) unlockBtn.disabled = true;
-                        if (openBtn)   openBtn.disabled   = true;
-                        if (closeBtn)  closeBtn.disabled  = true;
-                        if (lockBtn)   lockBtn.disabled   = true;
-                    }
-                }
-
-            }
-        }
-        
-        // Game instance
-        let game = null;
-        
-        // Initialize game
-        function initGame() {
-            console.log('Initializing new game...');
-            const gameBoard = document.getElementById('gameBoard');
-            const gameLog = document.getElementById('gameLog');
-            
-            if (!gameBoard) {
-                console.error('Game board element not found!');
-                return;
-            }
-            
-            if (gameLog) {
-                gameLog.innerHTML = '';
-            }
-            
-            if (game && game.autoPlayInterval) {
-                clearInterval(game.autoPlayInterval);
-            }
-            
-            game = new GameEngine();
-            game.init();
-            document.getElementById('autoPlayBtn').textContent = 'Auto Play';
-            console.log('Game initialized successfully');
-        }
-        
-        // Movement functions
-        function moveUnit(direction) {
-            if (game) game.move(direction);
-        }
-        
-        // Action functions
-        function attackAction() {
-            if (game) game.attack();
-        }
-        
-        function unlockDoor() {
-            if (game) game.unlockDoor();
-        }
-        
-        function openDoor() {
-            if (game && game.phase !== 'play') { game.log('Still in setup phase. Finish setup first.'); return; }
-            if (game) game.openDoor();
-        }
-        
-        function endTurn() {
-            if (game) {
-                const unit = game.getCurrentUnit();
-                if (unit) {
-                    unit.actions = 0;
-                    game.nextTurn();
-                }
-            }
-        }
-
-        function moveSelected() {
-            if (game) game.moveDir();
-        }
-
-        
-        // Auto-play functionality
-        function autoPlay() {
-            if (!game) return;
-            if (game.phase !== 'play') {
-                game.randomizeTools();  // ⬅️ scatter tools
-                game.finishSetup(); // auto-start if still in setup
-            }
-            
-            if (game.autoPlayInterval) {
-                clearInterval(game.autoPlayInterval);
-                game.autoPlayInterval = null;
-                document.getElementById('autoPlayBtn').textContent = 'Auto Play';
-                return;
-            }
-            
-            document.getElementById('autoPlayBtn').textContent = 'Stop Auto';
-            
-            game.autoPlayInterval = setInterval(() => {
-                if (game.gameOver) {
-                    clearInterval(game.autoPlayInterval);
-                    game.autoPlayInterval = null;
-                    document.getElementById('autoPlayBtn').textContent = 'Auto Play';
-                    return;
-                }
-                
-                const unit = game.getCurrentUnit();
-                if (!unit) return;
-                
-                // Simple AI logic
-                if (unit.type === 'participant') {
-                    // Participants try to reach exit at bottom-right
-                    const exitX = 3, exitY = 3;
-                    const dx = exitX - unit.x;
-                    const dy = exitY - unit.y;
-                    
-                    // Try to move toward exit
-                    let moved = false;
-                    
-                    // Prioritize moving toward exit
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        if (dx > 0) moved = game.move('right');
-                        else if (dx < 0) moved = game.move('left');
-                        
-                        if (!moved) {
-                            if (dy > 0) moved = game.move('down');
-                            else if (dy < 0) moved = game.move('up');
-                        }
-                    } else {
-                        if (dy > 0) moved = game.move('down');
-                        else if (dy < 0) moved = game.move('up');
-                        
-                        if (!moved) {
-                            if (dx > 0) moved = game.move('right');
-                            else if (dx < 0) moved = game.move('left');
-                        }
-                    }
-                    
-                    // If can't move, try to unlock or open doors
-                    if (!moved) {
-                        if (!game.unlockDoor()) {
-                            if (!game.openDoor()) {
-                                // Attack if hunter is in same cell
-                                if (!game.attack()) {
-                                    // End turn if nothing else to do
-                                    unit.actions = 0;
-                                    game.nextTurn();
-                                }
-                            }
-                        }
-                    }
-                } else if (unit.type === 'hunter') {
-                    // Gather live participants
-                    const aliveParticipants = game.participants.filter(p => p.hp > 0 && !p.escaped);
-
-                    // If nobody left, end hunter's turn
-                    if (aliveParticipants.length === 0) {
-                        unit.actions = 0;
-                        game.nextTurn();
-                        return;
-                    }
-
-                    // Find nearest participant
-                    let target = aliveParticipants[0];
-                    let minDist = Math.abs(target.x - unit.x) + Math.abs(target.y - unit.y);
-                    for (const p of aliveParticipants) {
-                        const d = Math.abs(p.x - unit.x) + Math.abs(p.y - unit.y);
-                        if (d < minDist) { minDist = d; target = p; }
-                    }
-
-                    // If on the same cell and not first round → attack
-                    if (minDist === 0) {
-                        if (game.currentTurn > 0) { game.attack(); }
-                        else { // first round: cannot attack; try to reposition
-                            unit.actions = 0;
-                            game.nextTurn();
-                        }
-                        return;
-                    }
-
-                    // Choose preferred direction(s) toward target
-                    const dx = target.x - unit.x;
-                    const dy = target.y - unit.y;
-                    const primaryDir  = Math.abs(dx) >= Math.abs(dy)
-                        ? (dx > 0 ? 'right' : 'left')
-                        : (dy > 0 ? 'down'  : 'up');
-                    const secondaryDir = Math.abs(dx) >= Math.abs(dy)
-                        ? (dy > 0 ? 'down'  : 'up')
-                        : (dx > 0 ? 'right' : 'left');
-
-                    // Try primary, then secondary
-                    const tryDirs = [primaryDir, secondaryDir];
-
-                    let acted = false;
-                    for (const dir of tryDirs) {
-                        // Inspect the door between unit and that neighbor
-                        const adj = game.getAdjacentByDir(unit, dir); // { key, state, nx, ny, dir } or null
-                        if (!adj) continue; // wall / out of bounds
-
-                        if (adj.state === 'open') {
-                            // Move through
-                            acted = game.move(dir);
-                        } else if (adj.state === 'closed') {
-                            // Open it
-                            acted = game.openDoor(dir);
-                        } else if (adj.state === 'locked') {
-                            // Unlock it
-                            acted = game.unlockDoor(dir);
-                        }
-                        if (acted) break; // consumed one action; let timer tick again
-                    }
-
-                    if (!acted) {
-                        // If both directions were walls or failed, try the other two as a fallback
-                        const fallback = ['up','down','left','right'].filter(d => !tryDirs.includes(d));
-                        for (const dir of fallback) {
-                            const adj = game.getAdjacentByDir(unit, dir);
-                            if (!adj) continue;
-                            if (adj.state === 'open' && game.move(dir)) { acted = true; break; }
-                            if (adj.state === 'closed' && game.openDoor(dir)) { acted = true; break; }
-                            if (adj.state === 'locked' && game.unlockDoor(dir)) { acted = true; break; }
-                        }
-                    }
-
-                    // If still nothing useful to do, end hunter's turn to avoid stalling
-                    if (!acted) {
-                        unit.actions = 0;
-                        game.nextTurn();
-                    }
-                }
-            }, 1000); // Move every second
-        }
-        function setDir(dir) {
-            if (game) game.setDirection(dir);
-        }
-        function closeDoor() {
-            if (game && game.phase !== 'play') { game.log('Still in setup phase. Finish setup first.'); return; }
-            if (game) game.closeDoor(); // uses selected dir if set
-        }
-        function lockDoor() {
-            if (game && game.phase !== 'play') { game.log('Still in setup phase. Finish setup first.'); return; }
-            if (game) game.lockDoor();  // uses selected dir if set
-        }
-        function selectTool(sym){ if (game) game.setTool(sym); }
-        function finishSetup(){ if (game) game.finishSetup(); }
-        function clearSelectedCell(){
-            // clears the cell you last clicked; or, click directly on the board (see next section)
-            alert('提示：直接在棋盘上再次点击已有符号的格子即可清除。');
-        }
-
-        
-        // Initialize on load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing game...');
-            initGame();
-        });
-    </script>
+    <div class="pcard" id="setupPanel" style="display:none">
+      <div class="pcard-title">// hunter_setup · select trap → click board cell</div>
+      <div class="tool-grid" id="toolGrid"></div>
+      <div id="setupHint" style="font-size:0.68rem;color:#383838;margin-bottom:8px;">
+        Click a cell again to remove a placed trap.
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" id="startBtn" onclick="finishSetup()" disabled>✅ Start Game</button>
+        <button class="btn" onclick="randomizeSetup()">🎲 Randomize</button>
+      </div>
+    </div>
+
+    <div class="pcard" id="controlPanel" style="display:none">
+      <div class="pcard-title">// controls · pick direction → then action</div>
+      <div class="dpad">
+        <div></div>
+        <div class="dp" id="dirUp"    onclick="setDir('up')">↑</div>
+        <div></div>
+        <div class="dp" id="dirLeft"  onclick="setDir('left')">←</div>
+        <div class="dp center">·</div>
+        <div class="dp" id="dirRight" onclick="setDir('right')">→</div>
+        <div></div>
+        <div class="dp" id="dirDown"  onclick="setDir('down')">↓</div>
+        <div></div>
+      </div>
+      <div class="brow">
+        <button class="btn" id="moveBtn"   onclick="moveSelected()">🏃 Move</button>
+        <button class="btn" id="attackBtn" onclick="attackAction()">⚔️ Attack</button>
+      </div>
+      <div class="brow">
+        <button class="btn" id="unlockBtn" onclick="unlockDoor()">🔑 Unlock</button>
+        <button class="btn" id="openBtn"   onclick="openDoor()">📂 Open</button>
+      </div>
+      <div class="brow">
+        <button class="btn" id="closeBtn"  onclick="closeDoor()">🧲 Close</button>
+        <button class="btn" id="lockBtn"   onclick="lockDoor()">🔒 Lock</button>
+      </div>
+      <div class="brow">
+        <button class="btn full" id="endTurnBtn" onclick="endTurn()">⏭ End Turn</button>
+      </div>
+    </div>
+
+    <div class="pcard">
+      <div class="pcard-title">// game</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" onclick="initGame()">⟳ New Game</button>
+        <button class="btn" id="autoPlayBtn" onclick="autoPlay()">▶ Auto Play</button>
+      </div>
+    </div>
+
+    <div class="pcard">
+      <div class="pcard-title">// log</div>
+      <div class="log" id="gameLog"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Door border helper ───────────────────────────────── */
+function doorCSS(state, frozen) {
+  if (frozen)            return '3px double #00bcd4';
+  if (state === 'open')  return '2px dashed rgba(29,185,84,0.5)';
+  if (state === 'closed')return '3px solid #484848';
+  if (state === 'locked')return '3px solid #b71c1c';
+  return '1px solid #181818';
+}
+
+/* ── Game Engine ──────────────────────────────────────── */
+class GameEngine {
+  constructor() {
+    this.grid = [];
+    this.phase = 'idle';
+    this.selectedTool = null;
+    this.toolbox = { 'XX':1, '■':1, '☆':1, '✦':1, '△':1, '+':1 };
+    this.frozenDoors = new Set();
+    this.stunHunter = 0;
+    this.stunPart   = 0;
+    this.selectedDir = null;
+    this.participants = [];
+    this.hunter = null;
+    this.doors = new Map();
+    this.currentTurn = 0;
+    this.currentUnitIndex = 0;
+    this.gameOver = false;
+    this.winner = null;
+    this.autoPlayInterval = null;
+  }
+
+  init() {
+    this.grid = Array(4).fill(null).map(() =>
+      Array(4).fill(null).map(() => ({ units:[], symbol:null, isExit:false }))
+    );
+
+    // 4 participants — 2 actions each (was 1: key balance fix)
+    this.participants = ['P1','P2','P3','P4'].map(id => ({
+      id, type:'participant', hp:5, maxHp:5,
+      x:0, y:0, actions:2, maxActions:2, hasRevive:false
+    }));
+
+    // Hunter — starts at (1,2), not at (0,0) with the group
+    this.hunter = { id:'H', type:'hunter', hp:16, maxHp:16,
+                    x:1, y:2, actions:2, maxActions:2, hasRevive:false };
+
+    this.participants.forEach(p => this.grid[p.y][p.x].units.push(p));
+    this.grid[this.hunter.y][this.hunter.x].units.push(this.hunter);
+    this.grid[3][3].isExit = true;
+
+    // All doors start CLOSED (not locked) — participants can open+move in one turn
+    this.doors.clear();
+    for (let y=0;y<4;y++) for (let x=0;x<4;x++) {
+      if (x<3) this.doors.set(this.dkey(x,y,x+1,y), 'closed');
+      if (y<3) this.doors.set(this.dkey(x,y,x,y+1), 'closed');
+    }
+
+    this.currentTurn = 0; this.currentUnitIndex = 0;
+    this.gameOver = false; this.winner = null;
+    this.frozenDoors = new Set(); this.stunHunter = 0; this.stunPart = 0;
+    this.phase = 'setup'; this.selectedTool = null;
+    this.toolbox = { 'XX':1, '■':1, '☆':1, '✦':1, '△':1, '+':1 };
+
+    this.log('[ SETUP ] Hunter: place your 6 traps on the board.');
+    document.getElementById('setupPanel').style.display  = 'block';
+    document.getElementById('controlPanel').style.display= 'none';
+    this.render();
+    this.refreshSetupUI();
+  }
+
+  /* ── Setup ── */
+  setTool(sym) {
+    if (this.phase !== 'setup') return;
+    this.selectedTool = (this.selectedTool === sym) ? null : sym;
+    this.refreshSetupUI();
+  }
+
+  placeToolAt(x, y) {
+    if (this.phase !== 'setup') return;
+    if ((x===0&&y===0)||(x===3&&y===3)) { this.log('Cannot place on start or exit.'); return; }
+    const cell = this.grid[y][x];
+    if (cell.symbol) { this.clearToolAt(x,y); return; }
+    if (!this.selectedTool)                    { this.log('Select a trap first.'); return; }
+    if (!this.toolbox[this.selectedTool])      { this.log('None left.'); return; }
+    cell.symbol = this.selectedTool;
+    this.toolbox[this.selectedTool]--;
+    this.log(`Placed ${this.selectedTool} at (${x},${y})`);
+    this.render(); this.refreshSetupUI();
+  }
+
+  clearToolAt(x, y) {
+    if (this.phase !== 'setup') return;
+    const cell = this.grid[y][x];
+    if (!cell.symbol) return;
+    this.toolbox[cell.symbol]++;
+    cell.symbol = null;
+    this.log(`Cleared (${x},${y})`);
+    this.render(); this.refreshSetupUI();
+  }
+
+  refreshSetupUI() {
+    const labels = {
+      'XX':'XX  · 1 dmg on entry',
+      '■' :'■   · freeze adj doors',
+      '☆' :'☆   · instant kill',
+      '✦' :'✦   · +1 action',
+      '△' :'△   · death immunity',
+      '+' :'+   · stun opponent'
+    };
+    const grid = document.getElementById('toolGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    for (const [sym, cnt] of Object.entries(this.toolbox)) {
+      const b = document.createElement('button');
+      b.className = 'tbtn' + (this.selectedTool===sym?' sel':'');
+      b.textContent = `${labels[sym]}  ×${cnt}`;
+      b.disabled = cnt <= 0;
+      b.onclick = () => this.setTool(sym);
+      grid.appendChild(b);
+    }
+    const rem = Object.values(this.toolbox).reduce((a,b)=>a+b,0);
+    const sb = document.getElementById('startBtn');
+    if (sb) { sb.disabled = rem > 0; sb.textContent = rem > 0 ? `✅ Start (${rem} left)` : '✅ Start Game'; }
+  }
+
+  randomizeTools() {
+    if (this.phase !== 'setup') return;
+    const slots = [];
+    for (let y=0;y<4;y++) for (let x=0;x<4;x++)
+      if (!((x===0&&y===0)||(x===3&&y===3)) && !this.grid[y][x].symbol) slots.push({x,y});
+    for (let i=slots.length-1;i>0;i--) {
+      const j=Math.floor(Math.random()*(i+1));
+      [slots[i],slots[j]]=[slots[j],slots[i]];
+    }
+    const pile = [];
+    for (const [s,c] of Object.entries(this.toolbox)) for (let i=0;i<c;i++) pile.push(s);
+    while (pile.length && slots.length) {
+      const sym=pile.pop(), sl=slots.pop();
+      this.grid[sl.y][sl.x].symbol=sym; this.toolbox[sym]--;
+    }
+    this.log('Traps randomized.'); this.render(); this.refreshSetupUI();
+  }
+
+  finishSetup() {
+    if (this.phase !== 'setup') return;
+    this.phase = 'play'; this.selectedTool = null;
+    document.getElementById('setupPanel').style.display  = 'none';
+    document.getElementById('controlPanel').style.display= 'block';
+    this.log('[ GAME START ]');
+    this.startTurn();
+  }
+
+  /* ── Turn flow ── */
+  setDirection(dir) {
+    this.selectedDir = dir;
+    ['Up','Down','Left','Right'].forEach(d =>
+      document.getElementById('dir'+d)?.classList.toggle('sel', d.toLowerCase()===dir)
+    );
+    this.updateButtons();
+  }
+
+  startTurn() {
+    if (this.gameOver || this.phase!=='play') return;
+    const u = this.curUnit();
+    if (u) {
+      if (u.type==='hunter' && this.stunHunter>0) {
+        this.stunHunter--; this.log('Hunter stunned — turn skipped.');
+        this.currentUnitIndex++; return this.startTurn();
+      }
+      if (u.type==='participant' && this.stunPart>0) {
+        this.stunPart--; this.log('Participant stunned — turn skipped.');
+        this.currentUnitIndex++; return this.startTurn();
+      }
+    }
+    this.selectedDir = null;
+    ['Up','Down','Left','Right'].forEach(d => document.getElementById('dir'+d)?.classList.remove('sel'));
+    const cu = this.curUnit();
+    if (cu) { cu.actions = cu.maxActions; this.log(`[ ${cu.id} ] ${cu.actions} actions.`); }
+    this.render();
+  }
+
+  curUnit() {
+    if (this.currentUnitIndex < this.participants.length) {
+      const p = this.participants[this.currentUnitIndex];
+      return (p && p.hp>0 && !p.escaped) ? p : null;
+    }
+    if (this.currentUnitIndex === this.participants.length)
+      return this.hunter.hp>0 ? this.hunter : null;
+    return null;
+  }
+
+  nextTurn() {
+    if (this.gameOver) return;
+    this.currentUnitIndex++;
+    while (this.currentUnitIndex < this.participants.length) {
+      const p = this.participants[this.currentUnitIndex];
+      if (p && p.hp>0 && !p.escaped) break;
+      this.currentUnitIndex++;
+    }
+    if (this.currentUnitIndex > this.participants.length) {
+      this.currentUnitIndex = 0; this.currentTurn++;
+      this.log(`--- Round ${this.currentTurn+1} ---`);
+      while (this.currentUnitIndex < this.participants.length) {
+        const p = this.participants[this.currentUnitIndex];
+        if (p && p.hp>0 && !p.escaped) break;
+        this.currentUnitIndex++;
+      }
+    }
+    this.startTurn();
+  }
+
+  /* ── Door helpers ── */
+  dkey(x1,y1,x2,y2) {
+    return (x1>x2||(x1===x2&&y1>y2)) ? `${x2},${y2}-${x1},${y1}` : `${x1},${y1}-${x2},${y2}`;
+  }
+  dstate(x1,y1,x2,y2) { return this.doors.get(this.dkey(x1,y1,x2,y2)) || 'open'; }
+
+  adjByDir(unit, dir) {
+    let nx=unit.x, ny=unit.y;
+    if (dir==='up')   ny--; if (dir==='down')  ny++;
+    if (dir==='left') nx--; if (dir==='right') nx++;
+    if (nx<0||nx>3||ny<0||ny>3) return null;
+    const key = this.dkey(unit.x,unit.y,nx,ny);
+    const state = this.doors.get(key);
+    if (state==null) return null;
+    return { key, state, nx, ny, dir };
+  }
+
+  /* ── Actions ── */
+  move(dir) {
+    if (this.phase!=='play') return false;
+    const unit = this.curUnit();
+    if (!unit||unit.actions<=0) return false;
+    let nx=unit.x,ny=unit.y;
+    if (dir==='up')   ny--; if (dir==='down')  ny++;
+    if (dir==='left') nx--; if (dir==='right') nx++;
+    if (nx<0||nx>3||ny<0||ny>3)             { this.log(`${unit.id}: edge.`); return false; }
+    if (this.dstate(unit.x,unit.y,nx,ny)!=='open') { this.log(`${unit.id}: door ${dir} is ${this.dstate(unit.x,unit.y,nx,ny)}.`); return false; }
+    this.grid[unit.y][unit.x].units = this.grid[unit.y][unit.x].units.filter(u=>u!==unit);
+    unit.x=nx; unit.y=ny;
+    this.grid[ny][nx].units.push(unit);
+    unit.actions--;
+    this.log(`${unit.id} → (${nx},${ny})`);
+    this.applyEffects(unit);
+    this.checkWin();
+    if (!this.gameOver) { if (unit.actions<=0) this.nextTurn(); else this.render(); }
+    return true;
+  }
+
+  moveDir(dir=this.selectedDir) {
+    if (!dir) { this.log('Pick a direction first.'); return false; }
+    return this.move(dir);
+  }
+
+  applyEffects(unit) {
+    const cell = this.grid[unit.y][unit.x];
+    if (!cell) return;
+    if (cell.symbol==='XX') {
+      unit.hp = Math.max(0,unit.hp-1);
+      this.log(`${unit.id} hit XX! HP: ${unit.hp}`);
+    }
+    if (cell.symbol==='☆') {
+      if (unit.hasRevive) { unit.hasRevive=false; unit.hp=Math.max(unit.hp,1); cell.symbol=null; this.log(`${unit.id} survived ☆ with △! HP=1`); }
+      else { unit.hp=0; this.log(`${unit.id} hit ☆ — instant kill!`); }
+    }
+    if (cell.symbol==='△') { unit.hasRevive=true; cell.symbol=null; this.log(`${unit.id} got △ (one revive).`); }
+    if (cell.symbol==='✦') { unit.actions++; cell.symbol=null; this.log(`${unit.id} got ✦ (+1 action).`); }
+    if (cell.symbol==='+') {
+      if (unit.type==='participant') this.stunHunter++;
+      else this.stunPart++;
+      cell.symbol=null; this.log(`${unit.id} triggered +.`);
+    }
+    if (cell.symbol==='■') {
+      let fc=0;
+      for (const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
+        const nx=unit.x+dx, ny=unit.y+dy;
+        if (nx<0||nx>3||ny<0||ny>3) continue;
+        const k=this.dkey(unit.x,unit.y,nx,ny);
+        if (this.doors.has(k)) { this.frozenDoors.add(k); fc++; }
+      }
+      this.log(`${unit.id} activated ■ — froze ${fc} door(s).`);
+    }
+    if (cell.isExit && unit.type==='participant') {
+      unit.escaped=true; this.log(`${unit.id} ESCAPED!`);
+    }
+  }
+
+  attack() {
+    if (this.phase!=='play') return false;
+    const unit = this.curUnit();
+    if (!unit||unit.actions<=0) return false;
+    const cell = this.grid[unit.y][unit.x];
+    let target = null;
+    if (unit.type==='participant') {
+      target = cell.units.find(u=>u.type==='hunter');
+      if (target) {
+        target.hp=Math.max(0,target.hp-2);
+        if (target.hp<=0&&target.hasRevive) { target.hasRevive=false; target.hp=1; }
+        this.log(`${unit.id} attacks H for 2. H HP: ${target.hp}`);
+      }
+    } else {
+      if (this.currentTurn===0) { this.log('Hunter cannot attack in Round 1.'); return false; }
+      const tgts = cell.units.filter(u=>u.type==='participant'&&u.hp>0);
+      if (tgts.length) {
+        target=tgts[0];
+        target.hp=Math.max(0,target.hp-3);
+        if (target.hp<=0&&target.hasRevive) { target.hasRevive=false; target.hp=1; }
+        this.log(`H attacks ${target.id} for 3. ${target.id} HP: ${target.hp}`);
+      }
+    }
+    if (!target) { this.log(`${unit.id}: no target.`); return false; }
+    unit.actions--;
+    this.checkWin();
+    if (!this.gameOver) { if (unit.actions<=0) this.nextTurn(); else this.render(); }
+    return true;
+  }
+
+  _doorAction(dir, from, to, verb) {
+    if (this.phase!=='play') return false;
+    const unit = this.curUnit();
+    if (!unit||unit.actions<=0) return false;
+    let t = dir ? this.adjByDir(unit,dir) : null;
+    if (!t||t.state!==from) {
+      for (const d of ['up','down','left','right']) {
+        const c=this.adjByDir(unit,d);
+        if (c&&c.state===from) { t=c; break; }
+      }
+    }
+    if (!t||t.state!==from) { this.log(`${unit.id}: no ${from} door to ${verb}.`); return false; }
+    if (this.frozenDoors.has(t.key)) { this.log('Door is frozen!'); return false; }
+    this.doors.set(t.key, to);
+    unit.actions--;
+    this.log(`${unit.id} ${verb}s door ${t.dir}.`);
+    if (!this.gameOver) { if (unit.actions<=0) this.nextTurn(); else this.render(); }
+    return true;
+  }
+
+  unlockDoor(dir=this.selectedDir) { return this._doorAction(dir,'locked','closed','unlock'); }
+  openDoor  (dir=this.selectedDir) { return this._doorAction(dir,'closed','open',  'open');   }
+  closeDoor (dir=this.selectedDir) { return this._doorAction(dir,'open',  'closed','close');  }
+  lockDoor  (dir=this.selectedDir) { return this._doorAction(dir,'closed','locked','lock');   }
+
+  checkWin() {
+    const end = (w, msg) => {
+      this.gameOver=true; this.winner=w; this.log(msg);
+      if (this.autoPlayInterval) {
+        clearInterval(this.autoPlayInterval); this.autoPlayInterval=null;
+        document.getElementById('autoPlayBtn').textContent='▶ Auto Play';
+      }
+      this.render();
+    };
+    if (this.participants.some(p=>p.escaped))          end('participants','🎉 PARTICIPANTS WIN — escaped!');
+    else if (this.hunter.hp<=0)                        end('participants','🎉 PARTICIPANTS WIN — hunter defeated!');
+    else if (this.participants.every(p=>p.hp<=0))      end('hunter',      '💀 HUNTER WINS — all eliminated!');
+  }
+
+  log(msg) {
+    const el = document.getElementById('gameLog');
+    if (el) { const d=document.createElement('div'); d.textContent=msg; el.appendChild(d); el.scrollTop=el.scrollHeight; }
+  }
+
+  /* ── Render ── */
+  render() {
+    const board = document.getElementById('gameBoard');
+    if (!board) return;
+    board.innerHTML = '';
+    const cu = this.curUnit();
+
+    for (let y=0;y<4;y++) for (let x=0;x<4;x++) {
+      const cd = this.grid[y][x];
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (cd.isExit?' exit':'');
+
+      // Border = door state
+      const wall = '2px solid #1e1e1e';
+      const bFor = (tx,ty) => {
+        const k=this.dkey(x,y,tx,ty);
+        return this.doors.has(k) ? doorCSS(this.doors.get(k), this.frozenDoors.has(k)) : wall;
+      };
+      cell.style.borderTop    = y===0 ? wall : bFor(x,y-1);
+      cell.style.borderLeft   = x===0 ? wall : bFor(x-1,y);
+      cell.style.borderRight  = x===3 ? wall : 'none';
+      cell.style.borderBottom = y===3 ? wall : 'none';
+
+      // Setup click
+      if (this.phase==='setup' && !((x===0&&y===0)||(x===3&&y===3))) {
+        cell.classList.add('placeable');
+        cell.onclick = () => this.placeToolAt(x,y);
+      }
+
+      if (cd.isExit) {
+        const t=document.createElement('div'); t.className='exit-tag'; t.textContent='EXIT'; cell.appendChild(t);
+      }
+      if (cd.symbol) {
+        const t=document.createElement('div'); t.className='trap-icon'; t.textContent=cd.symbol; cell.appendChild(t);
+      }
+
+      cd.units.forEach(u => {
+        if ((u.hp<=0&&!u.escaped)||u.escaped) return;
+        const b=document.createElement('div');
+        b.className=`badge ${u.type}`+(cu&&u===cu?' current':'');
+        b.textContent=u.id;
+        const hp=document.createElement('div');
+        hp.className='badge-hp'; hp.textContent=u.hp+'♥';
+        b.appendChild(hp); cell.appendChild(b);
+      });
+
+      const coord=document.createElement('div'); coord.className='cell-coord';
+      coord.textContent=`${x},${y}`; cell.appendChild(coord);
+      board.appendChild(cell);
+    }
+
+    this.renderPanel();
+  }
+
+  renderPanel() {
+    // Win banner
+    const wb = document.getElementById('winBanner');
+    if (wb) {
+      wb.className='win-banner';
+      if (this.gameOver) {
+        wb.classList.add(this.winner==='participants'?'win-p':'win-h');
+        wb.textContent=this.winner==='participants'?'🎉 PARTICIPANTS WIN':'💀 HUNTER WINS';
+      }
+    }
+    // Turn bar
+    const tb = document.getElementById('turnBar');
+    if (tb) {
+      const cu=this.curUnit();
+      if (this.gameOver)    { tb.className='turn-bar'; tb.textContent='Game Over'; }
+      else if (!cu)         { tb.className='turn-bar'; tb.textContent='...'; }
+      else {
+        tb.className='turn-bar'+(cu.type==='hunter'?' hunter-t':'');
+        tb.textContent=`${cu.id}'s turn · Round ${this.currentTurn+1} · ${cu.actions} action(s)`;
+      }
+    }
+    // Unit cards
+    const uc = document.getElementById('unitCards');
+    if (uc) {
+      uc.innerHTML='';
+      const cu=this.curUnit();
+      this.participants.forEach(p => {
+        const c=document.createElement('div');
+        c.className='ucard'+(cu===p?' active':'');
+        c.innerHTML=`<div class="uname">${p.id}${p.escaped?' ✓':p.hp<=0?' ✗':''}</div>
+          <div class="hpbar"><div class="hpfill" style="width:${p.hp/p.maxHp*100}%"></div></div>
+          <div class="ustat">${p.hp}/${p.maxHp}hp · ${p.actions}act${p.hasRevive?' △':''}</div>`;
+        uc.appendChild(c);
+      });
+      const hc=document.createElement('div');
+      hc.className='ucard hunter-c'+(cu===this.hunter?' active':'');
+      hc.innerHTML=`<div class="uname">H (hunter)</div>
+        <div class="hpbar"><div class="hpfill" style="width:${this.hunter.hp/this.hunter.maxHp*100}%"></div></div>
+        <div class="ustat">${this.hunter.hp}/${this.hunter.maxHp}hp · ${this.hunter.actions}act${this.hunter.hasRevive?' △':''}</div>`;
+      uc.appendChild(hc);
+    }
+    this.updateButtons();
+  }
+
+  updateButtons() {
+    const unit=this.curUnit(), has=unit&&unit.actions>0, over=this.gameOver, dir=this.selectedDir;
+    const dis=(id,v)=>{ const el=document.getElementById(id); if(el) el.disabled=v; };
+    dis('attackBtn',  !has||over||(unit?.type==='hunter'&&this.currentTurn===0));
+    dis('endTurnBtn', !unit||over);
+    if (unit&&!over&&dir) {
+      const a=this.adjByDir(unit,dir);
+      dis('moveBtn',   !has||!a||a.state!=='open');
+      dis('unlockBtn', !has||!a||a.state!=='locked'||this.frozenDoors.has(a?.key));
+      dis('openBtn',   !has||!a||a.state!=='closed'||this.frozenDoors.has(a?.key));
+      dis('closeBtn',  !has||!a||a.state!=='open'  ||this.frozenDoors.has(a?.key));
+      dis('lockBtn',   !has||!a||a.state!=='closed'||this.frozenDoors.has(a?.key));
+    } else {
+      ['moveBtn','unlockBtn','openBtn','closeBtn','lockBtn'].forEach(id=>dis(id,!has||over||!dir));
+    }
+  }
+}
+
+/* ── Global wiring ─────────────────────────────────────── */
+let game = null;
+
+function initGame() {
+  document.getElementById('gameLog').innerHTML='';
+  if (game?.autoPlayInterval) clearInterval(game.autoPlayInterval);
+  game = new GameEngine();
+  game.init();
+  document.getElementById('autoPlayBtn').textContent='▶ Auto Play';
+}
+
+function setDir(d)      { game?.setDirection(d); }
+function moveSelected() { game?.moveDir(); }
+function attackAction() { game?.attack(); }
+function unlockDoor()   { game?.unlockDoor(); }
+function openDoor()     { if(game?.phase==='play') game.openDoor(); }
+function closeDoor()    { if(game?.phase==='play') game.closeDoor(); }
+function lockDoor()     { if(game?.phase==='play') game.lockDoor(); }
+function finishSetup()  { game?.finishSetup(); }
+function randomizeSetup(){ game?.randomizeTools(); }
+function endTurn() {
+  if (!game) return;
+  const u=game.curUnit(); if(u){u.actions=0;game.nextTurn();}
+}
+
+function autoPlay() {
+  if (!game) return;
+  if (game.phase==='setup') { game.randomizeTools(); game.finishSetup(); }
+  if (game.autoPlayInterval) {
+    clearInterval(game.autoPlayInterval); game.autoPlayInterval=null;
+    document.getElementById('autoPlayBtn').textContent='▶ Auto Play';
+    return;
+  }
+  document.getElementById('autoPlayBtn').textContent='⏹ Stop';
+
+  const tryDoorThenMove = (unit, dir) => {
+    const a=game.adjByDir(unit,dir);
+    if (!a) return false;
+    if (a.state==='open')   return game.move(dir);
+    if (a.state==='closed') return game.openDoor(dir);
+    if (a.state==='locked') return game.unlockDoor(dir);
+    return false;
+  };
+
+  game.autoPlayInterval = setInterval(() => {
+    if (!game||game.gameOver) {
+      clearInterval(game?.autoPlayInterval); if(game) game.autoPlayInterval=null;
+      document.getElementById('autoPlayBtn').textContent='▶ Auto Play'; return;
+    }
+    const unit=game.curUnit();
+    if (!unit) { game.nextTurn(); return; }
+
+    if (unit.type==='participant') {
+      const dx=3-unit.x, dy=3-unit.y;
+      const pd=Math.abs(dx)>=Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+      const sd=Math.abs(dx)>=Math.abs(dy)?(dy>0?'down':'up'):(dx>0?'right':'left');
+      let ok=tryDoorThenMove(unit,pd)||tryDoorThenMove(unit,sd);
+      if (!ok) for (const d of ['up','down','left','right']) { if(tryDoorThenMove(unit,d)){ok=true;break;} }
+      if (!ok) { if(!game.attack()) { unit.actions=0; game.nextTurn(); } }
+
+    } else {
+      const alive=game.participants.filter(p=>p.hp>0&&!p.escaped);
+      if (!alive.length) { unit.actions=0; game.nextTurn(); return; }
+      let tgt=alive[0], minD=Math.abs(tgt.x-unit.x)+Math.abs(tgt.y-unit.y);
+      for (const p of alive) { const d=Math.abs(p.x-unit.x)+Math.abs(p.y-unit.y); if(d<minD){minD=d;tgt=p;} }
+      if (minD===0 && game.currentTurn>0) { game.attack(); return; }
+      if (minD===0) { unit.actions=0; game.nextTurn(); return; }
+      const dx=tgt.x-unit.x, dy=tgt.y-unit.y;
+      const pd=Math.abs(dx)>=Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+      const sd=Math.abs(dx)>=Math.abs(dy)?(dy>0?'down':'up'):(dx>0?'right':'left');
+      let ok=false;
+      for (const d of [pd,sd,...['up','down','left','right'].filter(x=>x!==pd&&x!==sd)]) {
+        if(tryDoorThenMove(unit,d)){ok=true;break;}
+      }
+      if (!ok) { unit.actions=0; game.nextTurn(); }
+    }
+  }, 700);
+}
+
+document.addEventListener('DOMContentLoaded', initGame);
+</script>
 </body>
 </html>

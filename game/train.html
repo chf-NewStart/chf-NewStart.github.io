@@ -91,8 +91,8 @@
       </div>
       <div class="slider-row">
         <span>speed (ep/tick)</span>
-        <input type="range" id="speedSlider" min="1" max="30" step="1" value="8" oninput="document.getElementById('speedVal').textContent=this.value">
-        <span class="slider-val" id="speedVal">8</span>
+        <input type="range" id="speedSlider" min="1" max="20" step="1" value="3" oninput="document.getElementById('speedVal').textContent=this.value">
+        <span class="slider-val" id="speedVal">3</span>
       </div>
       <button class="btn" id="startBtn" onclick="toggleTrain()">▶ Start Training</button>
       <div class="save-banner" id="saveBanner">✓ weights saved — H: RL ready in game</div>
@@ -477,8 +477,8 @@ function runEpisode(){
   rewardHist.push(epR); if(rewardHist.length>200) rewardHist.shift();
   const wr=winHist.reduce((a,b)=>a+b,0)/winHist.length;
   const avgR=rewardHist.reduce((a,b)=>a+b,0)/rewardHist.length;
-  if(episode%100===0) chartData.push({ep:episode,wr});
-  if(episode%200===0) addLog(`ep ${episode} | win=${(wr*100).toFixed(0)}% | avg_r=${avgR.toFixed(1)} | ε=${eps.toFixed(3)}`,'event');
+  chartData.push({ep:episode, wr});               // every episode so chart is never empty
+  if(episode%100===0) addLog(`ep ${episode} | win=${(wr*100).toFixed(0)}% | avg_r=${avgR.toFixed(1)} | ε=${eps.toFixed(3)}`,'event');
   updateUI(wr,avgR);
 }
 
@@ -529,11 +529,14 @@ function stopTrain(){
   addLog('Paused.','event');
 }
 
-function loop(){
+async function loop(){
   if(!training) return;
   const maxEp=+document.getElementById('maxEpSlider').value;
   const speed=+document.getElementById('speedSlider').value;
-  for(let i=0;i<speed&&episode<maxEp;i++) runEpisode();
+  for(let i=0;i<speed&&episode<maxEp;i++){
+    runEpisode();
+    await tf.nextFrame();   // yield after each episode so browser can repaint
+  }
   if(episode>=maxEp){
     stopTrain();
     document.getElementById('dot').className='status-dot done';
@@ -542,7 +545,7 @@ function loop(){
     saveWeights();
     return;
   }
-  rafId=requestAnimationFrame(loop);
+  if(training) rafId=requestAnimationFrame(loop);
 }
 
 function resetTraining(){
@@ -571,7 +574,7 @@ function updateUI(wr,avgR){
   document.getElementById('epsVal').textContent=eps.toFixed(3);
   document.getElementById('bufSize').textContent=`${replayBuf.length} / ${BUF_CAP}`;
   document.getElementById('progBar').style.width=`${Math.min(100,episode/maxEp*100).toFixed(1)}%`;
-  if(episode%50===0) drawChart();
+  drawChart();   // every episode — canvas draw is fast, browser only paints on next frame anyway
 }
 
 /* ── Chart ─────────────────────────────────────────────── */

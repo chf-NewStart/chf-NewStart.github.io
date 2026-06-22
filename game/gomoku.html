@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gomoku // houfu.xyz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Consolas, 'Courier New', monospace; background: #080808; color: #ccc; min-height: 100vh; padding: 20px 16px; }
+
+    .pg-header { max-width: 920px; margin: 0 auto 18px; }
+    .pg-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .pg-title { color: #1db954; font-size: 1.4rem; text-transform: uppercase; letter-spacing: -1px; }
+    .pg-sub   { color: #666; font-size: 0.72rem; margin-top: 3px; line-height: 1.6; }
+    .pg-back  { font-size: 0.72rem; color: #1db954; text-decoration: none; margin-top: 6px; display: inline-block; }
+    .pg-back:hover { text-decoration: underline; }
+    .lang-btn { background: transparent; border: 1px solid #1db954; color: #1db954; font-family: Consolas, monospace; font-size: 0.72rem; padding: 5px 11px; cursor: pointer; transition: background 0.1s; flex-shrink: 0; }
+    .lang-btn:hover { background: rgba(29,185,84,0.1); }
+
+    .layout { display: flex; gap: 20px; align-items: flex-start; max-width: 920px; margin: 0 auto; }
+    .board-col { flex: 0 0 auto; }
+    .panel-col { flex: 1; min-width: 0; }
+
+    /* Canvas wrapper */
+    #boardWrap { position: relative; display: inline-block; }
+    #boardCanvas { display: block; cursor: crosshair; }
+    #boardCanvas.thinking { cursor: wait; }
+
+    /* Coord labels */
+    .col-labels, .row-labels { position: absolute; font-size: 9px; color: #2a2a2a; user-select: none; pointer-events: none; }
+
+    /* Panel */
+    .pcard { background: #111; border: 1px solid #1c1c1c; padding: 11px 13px; margin-bottom: 8px; }
+    .pcard-title { color: #1db954; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #1a1a1a; }
+
+    /* Turn bar */
+    .turn-bar { border: 1px solid #1db954; padding: 8px 12px; color: #1db954; font-size: 0.82rem; margin-bottom: 8px; }
+    .turn-bar.red-t { border-color: #f44336; color: #f44336; }
+    .turn-bar.done  { border-color: #555; color: #888; }
+
+    /* Win banner */
+    .win-banner { display: none; padding: 10px; text-align: center; font-size: 1rem; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+    .win-banner.win-g { display: block; color: #1db954; border: 2px solid #1db954; }
+    .win-banner.win-r { display: block; color: #f44336; border: 2px solid #f44336; }
+
+    /* Score row */
+    .score-row { display: flex; gap: 8px; margin-bottom: 6px; }
+    .sbox { flex: 1; border: 1px solid #1c1c1c; padding: 6px 9px; font-size: 0.68rem; }
+    .sbox .slabel { color: #555; margin-bottom: 2px; }
+    .sbox .sval   { font-size: 1rem; color: #ccc; }
+    .sbox.green .sval { color: #1db954; }
+    .sbox.red   .sval { color: #f44336; }
+
+    /* Mode / difficulty toggles */
+    .tog-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
+    .tog { flex: 1; background: #0d0d0d; border: 1px solid #1e1e1e; color: #555; font-family: Consolas, monospace; font-size: 0.65rem; padding: 5px 6px; cursor: pointer; text-align: center; transition: all 0.1s; white-space: nowrap; }
+    .tog:hover:not(:disabled) { border-color: #888; color: #aaa; }
+    .tog.sel { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.06); }
+    .tog.rl-slot { border-color: rgba(244,67,54,0.3); color: rgba(244,67,54,0.4); cursor: not-allowed; }
+
+    /* Buttons */
+    .brow { display: flex; gap: 5px; margin-top: 4px; }
+    .btn { flex: 1; background: transparent; border: 1px solid #2a2a2a; color: #777; font-family: Consolas, monospace; font-size: 0.72rem; padding: 7px 8px; cursor: pointer; transition: all 0.1s; }
+    .btn:hover:not(:disabled) { border-color: #1db954; color: #1db954; }
+    .btn:disabled { opacity: 0.2; cursor: not-allowed; }
+    @keyframes btn-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.3);}50%{box-shadow:0 0 0 5px rgba(255,255,255,0);} }
+    .btn.glow-g { border-color: #1db954; color: #1db954; animation: btn-pulse 1.4s infinite; }
+    .btn.glow-r { border-color: #f44336; color: #f44336; animation: btn-pulse 1.4s infinite; }
+
+    /* Log */
+    .log { max-height: 150px; overflow-y: auto; font-size: 0.67rem; line-height: 1.8; }
+    .log div         { color: #555; }
+    .log div.lmove   { color: #888; }
+    .log div.lwin    { color: #1db954; }
+    .log div.lwin-r  { color: #f44336; }
+    .log div.lround  { color: #444; border-top: 1px solid #161616; margin-top: 2px; padding-top: 2px; }
+
+    /* Thinking indicator */
+    .thinking-dot::after { content: ''; animation: dots 1.2s infinite; }
+    @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+
+    @media (max-width: 700px) {
+      .layout { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="pg-header">
+  <div class="pg-header-row">
+    <div>
+      <div class="pg-title" id="pgTitle">Gomoku</div>
+      <div class="pg-sub" id="pgSub"></div>
+      <a class="pg-back" id="pgBack" href="/game/">← back to games</a>
+    </div>
+    <button class="lang-btn" id="langBtn" onclick="toggleLang()">中文</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="board-col">
+    <div id="boardWrap">
+      <canvas id="boardCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="panel-col">
+    <div id="winBanner" class="win-banner"></div>
+    <div id="turnBar" class="turn-bar"></div>
+
+    <div class="pcard">
+      <div class="pcard-title" data-en="// score" data-zh="// 比分">// score</div>
+      <div class="score-row">
+        <div class="sbox green"><div class="slabel" id="p1label">●&nbsp;<span data-en="Black" data-zh="黑方">Black</span></div><div class="sval" id="s1">0</div></div>
+        <div class="sbox red">  <div class="slabel" id="p2label">●&nbsp;<span data-en="White" data-zh="白方">White</span></div><div class="sval" id="s2">0</div></div>
+      </div>
+    </div>
+
+    <div class="pcard">
+      <div class="pcard-title" data-en="// mode" data-zh="// 模式">// mode</div>
+      <div class="tog-row" id="modeRow">
+        <button class="tog sel" data-mode="HvAI" onclick="setMode('HvAI')" data-en="Human vs AI" data-zh="人机对战">Human vs AI</button>
+        <button class="tog"     data-mode="HvH"  onclick="setMode('HvH')"  data-en="Human vs Human" data-zh="双人对战">Human vs Human</button>
+        <button class="tog"     data-mode="AIvAI" onclick="setMode('AIvAI')" data-en="AI vs AI" data-zh="AI自战">AI vs AI</button>
+      </div>
+    </div>
+
+    <div class="pcard" id="diffCard">
+      <div class="pcard-title" data-en="// ai difficulty" data-zh="// AI难度">// ai difficulty</div>
+      <div class="tog-row" id="diffRow">
+        <button class="tog"     data-diff="easy"   onclick="setDiff('easy')"   data-en="Casual"  data-zh="休闲">Casual</button>
+        <button class="tog sel" data-diff="normal" onclick="setDiff('normal')" data-en="Normal"  data-zh="普通">Normal</button>
+        <button class="tog"     data-diff="hard"   onclick="setDiff('hard')"   data-en="Hard"    data-zh="困难">Hard</button>
+        <button class="tog rl-slot" disabled title="RL agent coming soon" data-en="RL ▷" data-zh="RL ▷">RL ▷</button>
+      </div>
+    </div>
+
+    <div class="pcard">
+      <div class="pcard-title" data-en="// game" data-zh="// 游戏">// game</div>
+      <div class="brow">
+        <button class="btn" id="newBtn"    onclick="newGame()"  data-en="⟳ New Game" data-zh="⟳ 新游戏">⟳ New Game</button>
+        <button class="btn" id="resignBtn" onclick="resign()"   data-en="⚑ Resign"   data-zh="⚑ 认输">⚑ Resign</button>
+        <button class="btn" id="autoBtn"   onclick="toggleAuto()" style="display:none" data-en="▶ Auto" data-zh="▶ 自动">▶ Auto</button>
+      </div>
+    </div>
+
+    <div class="pcard">
+      <div class="pcard-title" data-en="// log" data-zh="// 棋谱">// log</div>
+      <div class="log" id="gameLog"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── i18n ─────────────────────────────────────── */
+let lang = 'en';
+function t(en, zh) { return lang === 'zh' ? zh : en; }
+
+function applyLang() {
+  document.getElementById('pgTitle').textContent = t('Gomoku', '五子棋');
+  document.getElementById('pgSub').textContent   = t('5 in a row wins · 15×15 · click to place your stone', '五子连珠获胜 · 15×15棋盘 · 点击落子');
+  document.getElementById('pgBack').textContent  = t('← back to games', '← 返回游戏厅');
+  document.querySelectorAll('[data-en]').forEach(el => { el.textContent = t(el.dataset.en, el.dataset.zh); });
+  updateAutoBtn();
+  renderPanel();
+}
+function toggleLang() {
+  lang = lang === 'en' ? 'zh' : 'en';
+  document.getElementById('langBtn').textContent = lang === 'zh' ? 'English' : '中文';
+  applyLang();
+}
+
+/* ── Constants ────────────────────────────────── */
+const N    = 15;
+const COLS = 'ABCDEFGHJKLMNOP'; // skip I (Go convention)
+const STARS = [[3,3],[3,7],[3,11],[7,3],[7,7],[7,11],[11,3],[11,7],[11,11]];
+const DEPTHS = { easy: 1, normal: 2, hard: 4 };
+
+/* ── Canvas setup ─────────────────────────────── */
+const canvas = document.getElementById('boardCanvas');
+const ctx    = canvas.getContext('2d');
+let PAD, CELL, CSIZE;
+
+function computeLayout() {
+  const maxW = Math.min(window.innerWidth - 40, 520);
+  CELL  = Math.floor((maxW - 56) / (N - 1));
+  PAD   = Math.floor(CELL * 0.8);
+  CSIZE = CELL * (N - 1) + PAD * 2;
+  canvas.width  = CSIZE;
+  canvas.height = CSIZE;
+}
+
+/* ── Game state ───────────────────────────────── */
+let board, curP, gameOver, winResult, lastMove, moveCount, aiThinking, autoInterval;
+let scores = {1: 0, 2: 0};
+let mode = 'HvAI', diff = 'normal';
+
+function newGame() {
+  if (autoInterval) { clearInterval(autoInterval); autoInterval = null; }
+  board = Array.from({length: N}, () => new Array(N).fill(0));
+  curP = 1; gameOver = false; winResult = null; lastMove = null; moveCount = 0; aiThinking = false;
+  document.getElementById('newBtn').className = 'btn';
+  document.getElementById('winBanner').className = 'win-banner';
+  updateAutoBtn();
+  log(t('── new game ──', '── 新游戏 ──'), 'lround');
+  draw();
+  renderPanel();
+  // If AI goes first (AIvAI or HvAI where AI is black), trigger AI
+  scheduleAI();
+}
+
+/* ── Mode / difficulty ────────────────────────── */
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('sel', b.dataset.mode === m));
+  const showDiff = m !== 'HvH';
+  document.getElementById('diffCard').style.display = showDiff ? '' : 'none';
+  const showAuto = m === 'AIvAI';
+  document.getElementById('autoBtn').style.display = showAuto ? '' : 'none';
+  newGame();
+}
+function setDiff(d) {
+  diff = d;
+  document.querySelectorAll('[data-diff]').forEach(b => { if (b.dataset.diff) b.classList.toggle('sel', b.dataset.diff === d); });
+  newGame();
+}
+
+/* ── Who is AI ────────────────────────────────── */
+function isAI(player) {
+  if (mode === 'HvH') return false;
+  if (mode === 'AIvAI') return true;
+  return player === 2; // HvAI: player 2 (red/white) is AI
+}
+
+/* ── Auto play (AIvAI) ────────────────────────── */
+function updateAutoBtn() {
+  const btn = document.getElementById('autoBtn');
+  btn.textContent = autoInterval ? t('⏹ Stop', '⏹ 停止') : t('▶ Auto', '▶ 自动');
+}
+function toggleAuto() {
+  if (autoInterval) { clearInterval(autoInterval); autoInterval = null; updateAutoBtn(); return; }
+  if (gameOver) { newGame(); }
+  updateAutoBtn();
+  scheduleAI();
+}
+
+function scheduleAI() {
+  if (gameOver || !isAI(curP) || aiThinking) return;
+  if (mode === 'AIvAI' && !autoInterval) return; // wait for manual toggle
+  aiThinking = true;
+  canvas.classList.add('thinking');
+  renderPanel();
+  setTimeout(() => {
+    if (gameOver) { aiThinking = false; canvas.classList.remove('thinking'); return; }
+    const move = getBestMove();
+    aiThinking = false;
+    canvas.classList.remove('thinking');
+    if (move) placeStone(move[0], move[1]);
+  }, mode === 'AIvAI' ? 300 : 80);
+}
+
+/* ── Place stone ──────────────────────────────── */
+function placeStone(r, c) {
+  if (gameOver || board[r][c] !== 0) return;
+  board[r][c] = curP;
+  lastMove = [r, c];
+  moveCount++;
+  const col = COLS[c], row = N - r;
+  log(`${moveCount}. ${t(curP===1?'Black':'White', curP===1?'黑方':'白方')} ${col}${row}`, 'lmove');
+
+  const wr = checkWin(board, r, c);
+  if (wr) {
+    winResult = wr;
+    gameOver = true;
+    scores[wr.player]++;
+    const winner = wr.player === 1 ? t('Black wins!', '黑方获胜！') : t('White wins!', '白方获胜！');
+    log(winner, wr.player === 1 ? 'lwin' : 'lwin-r');
+    const wb = document.getElementById('winBanner');
+    wb.className = 'win-banner ' + (wr.player === 1 ? 'win-g' : 'win-r');
+    wb.textContent = winner;
+    document.getElementById('newBtn').className = 'btn ' + (wr.player === 1 ? 'glow-g' : 'glow-r');
+    draw(); renderPanel(); return;
+  }
+
+  curP = curP === 1 ? 2 : 1;
+  draw(); renderPanel();
+  scheduleAI();
+}
+
+/* ── Canvas click ─────────────────────────────── */
+canvas.addEventListener('click', e => {
+  if (gameOver || isAI(curP) || aiThinking) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const c = Math.round((mx - PAD) / CELL);
+  const r = Math.round((my - PAD) / CELL);
+  if (r < 0 || r >= N || c < 0 || c >= N) return;
+  if (Math.abs(mx - (PAD + c*CELL)) > CELL/2) return;
+  if (Math.abs(my - (PAD + r*CELL)) > CELL/2) return;
+  placeStone(r, c);
+});
+
+/* ── Hover preview ────────────────────────────── */
+let hoverCell = null;
+canvas.addEventListener('mousemove', e => {
+  if (gameOver || isAI(curP) || aiThinking) { hoverCell = null; return; }
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const c = Math.round((mx - PAD) / CELL);
+  const r = Math.round((my - PAD) / CELL);
+  if (r < 0 || r >= N || c < 0 || c >= N || board[r][c] !== 0) { hoverCell = null; draw(); return; }
+  if (!hoverCell || hoverCell[0] !== r || hoverCell[1] !== c) { hoverCell = [r, c]; draw(); }
+});
+canvas.addEventListener('mouseleave', () => { hoverCell = null; draw(); });
+
+/* ── Draw ─────────────────────────────────────── */
+function draw() {
+  ctx.clearRect(0, 0, CSIZE, CSIZE);
+
+  // Background
+  ctx.fillStyle = '#0e0e0e';
+  ctx.fillRect(0, 0, CSIZE, CSIZE);
+
+  // Grid lines
+  ctx.strokeStyle = '#242424';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < N; i++) {
+    const x = PAD + i * CELL, y = PAD + i * CELL;
+    ctx.beginPath(); ctx.moveTo(x, PAD); ctx.lineTo(x, PAD + (N-1)*CELL); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(PAD + (N-1)*CELL, y); ctx.stroke();
+  }
+
+  // Star points
+  ctx.fillStyle = '#2a2a2a';
+  for (const [sr, sc] of STARS) {
+    ctx.beginPath();
+    ctx.arc(PAD + sc*CELL, PAD + sr*CELL, Math.max(2, CELL/14), 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Coord labels (very faint)
+  ctx.fillStyle = '#252525';
+  ctx.font = `${Math.max(8, CELL*0.28)}px Consolas, monospace`;
+  ctx.textAlign = 'center';
+  for (let i = 0; i < N; i++) {
+    ctx.fillText(COLS[i], PAD + i*CELL, PAD - 6);
+    ctx.fillText(String(N - i), PAD - 10, PAD + i*CELL + 3);
+  }
+
+  // Hover ghost
+  if (hoverCell) {
+    const [hr, hc] = hoverCell;
+    ctx.globalAlpha = 0.35;
+    drawStone(hr, hc, curP, false, false);
+    ctx.globalAlpha = 1;
+  }
+
+  // Stones
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      if (board[r][c] !== 0) {
+        const isWinStone = winResult?.line.some(([wr, wc]) => wr === r && wc === c);
+        const isLast = lastMove && lastMove[0] === r && lastMove[1] === c;
+        drawStone(r, c, board[r][c], isWinStone, isLast);
+      }
+    }
+  }
+}
+
+function drawStone(r, c, player, isWin, isLast) {
+  const x = PAD + c * CELL, y = PAD + r * CELL;
+  const radius = CELL * 0.40;
+  const color = player === 1 ? '#1db954' : '#f44336';
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = isWin ? (player === 1 ? '#4eff8a' : '#ff6b5b') : color;
+
+  if (isWin) {
+    ctx.shadowColor = color; ctx.shadowBlur = 12;
+  }
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Last move dot
+  if (isLast && !isWin) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.28, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fill();
+  }
+
+  // Stone number (move number) — subtle
+  if (moveCount <= 30 && !isWin) {
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.font = `${Math.max(6, CELL*0.22)}px Consolas, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // find move number from board order — too expensive; skip for now
+    ctx.textBaseline = 'alphabetic';
+  }
+}
+
+/* ── Panel ────────────────────────────────────── */
+function renderPanel() {
+  const tb = document.getElementById('turnBar');
+  const thinking = aiThinking ? (lang==='zh' ? ' 思考中' : ' thinking') : '';
+  if (gameOver) {
+    tb.className = 'turn-bar done';
+    tb.textContent = t('Game over · start new game', '游戏结束 · 开始新游戏');
+  } else {
+    tb.className = 'turn-bar' + (curP === 2 ? ' red-t' : '');
+    const whose = curP === 1 ? t('Black', '黑方') : t('White', '白方');
+    const who = isAI(curP) ? t('AI', 'AI') : t('You', '你');
+    tb.textContent = `${whose} (${who})${thinking}${thinking ? '' : t(' · click to place', ' · 点击落子')}`;
+    if (aiThinking) tb.innerHTML += `<span class="thinking-dot"></span>`;
+  }
+  document.getElementById('s1').textContent = scores[1];
+  document.getElementById('s2').textContent = scores[2];
+
+  const p1l = document.getElementById('p1label');
+  const p2l = document.getElementById('p2label');
+  if (mode === 'HvAI') {
+    p1l.innerHTML = `●&nbsp;<span>${t('You (Black)', '你（黑方）')}</span>`;
+    p2l.innerHTML = `●&nbsp;<span>${t('AI (White)', 'AI（白方）')}</span>`;
+  } else if (mode === 'HvH') {
+    p1l.innerHTML = `●&nbsp;<span>${t('Player 1', '玩家1')}</span>`;
+    p2l.innerHTML = `●&nbsp;<span>${t('Player 2', '玩家2')}</span>`;
+  } else {
+    p1l.innerHTML = `●&nbsp;<span>${t('AI Black', 'AI黑方')}</span>`;
+    p2l.innerHTML = `●&nbsp;<span>${t('AI White', 'AI白方')}</span>`;
+  }
+
+  const rb = document.getElementById('resignBtn');
+  rb.disabled = gameOver;
+}
+
+/* ── Resign ───────────────────────────────────── */
+function resign() {
+  if (gameOver) return;
+  const loser = curP;
+  const winner = loser === 1 ? 2 : 1;
+  scores[winner]++;
+  gameOver = true;
+  const msg = t(`${loser===1?'Black':'White'} resigned — ${winner===1?'Black':'White'} wins!`,
+                `${loser===1?'黑方':'白方'}认输——${winner===1?'黑方':'白方'}获胜！`);
+  log(msg, winner === 1 ? 'lwin' : 'lwin-r');
+  const wb = document.getElementById('winBanner');
+  wb.className = 'win-banner ' + (winner === 1 ? 'win-g' : 'win-r');
+  wb.textContent = msg;
+  document.getElementById('newBtn').className = 'btn ' + (winner === 1 ? 'glow-g' : 'glow-r');
+  renderPanel(); draw();
+}
+
+/* ── Log ──────────────────────────────────────── */
+function log(msg, cls = '') {
+  const el = document.getElementById('gameLog');
+  const d = document.createElement('div');
+  d.textContent = msg;
+  if (cls) d.className = cls;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+/* ═══════════════════════════════════════════════
+   AI — Minimax with alpha-beta pruning
+   ═══════════════════════════════════════════════ */
+
+function evaluate(board) {
+  let score = 0;
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      for (const [dr, dc] of dirs) {
+        const er = r + 4*dr, ec = c + 4*dc;
+        if (er < 0 || er >= N || ec < 0 || ec >= N) continue;
+        let b = 0, w = 0;
+        for (let i = 0; i < 5; i++) {
+          const v = board[r + i*dr][c + i*dc];
+          if (v === 1) b++;
+          else if (v === 2) w++;
+        }
+        if (b > 0 && w > 0) continue;
+        if (b === 5) return  1000000;
+        if (w === 5) return -1000000;
+        if (b > 0) score += windowScore(b);
+        if (w > 0) score -= windowScore(w);
+      }
+    }
+  }
+  return score;
+}
+
+function windowScore(n) {
+  if (n === 4) return 1000;
+  if (n === 3) return 100;
+  if (n === 2) return 10;
+  return 1;
+}
+
+function checkWin(board, r, c) {
+  const player = board[r][c];
+  if (!player) return null;
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  for (const [dr, dc] of dirs) {
+    const line = [[r, c]];
+    for (let d = 1; d < 5; d++) {
+      const nr = r+d*dr, nc = c+d*dc;
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N || board[nr][nc] !== player) break;
+      line.push([nr, nc]);
+    }
+    for (let d = 1; d < 5; d++) {
+      const nr = r-d*dr, nc = c-d*dc;
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N || board[nr][nc] !== player) break;
+      line.push([nr, nc]);
+    }
+    if (line.length >= 5) return { player, line };
+  }
+  return null;
+}
+
+// Fast win check (boolean) for AI search — avoids building line array
+function isWinMove(board, r, c, player) {
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  for (const [dr, dc] of dirs) {
+    let cnt = 1;
+    for (let d = 1; d < 5; d++) { const nr=r+d*dr,nc=c+d*dc; if(nr<0||nr>=N||nc<0||nc>=N||board[nr][nc]!==player)break; cnt++; }
+    for (let d = 1; d < 5; d++) { const nr=r-d*dr,nc=c-d*dc; if(nr<0||nr>=N||nc<0||nc>=N||board[nr][nc]!==player)break; cnt++; }
+    if (cnt >= 5) return true;
+  }
+  return false;
+}
+
+function getCandidates(board, player) {
+  const opp = player === 1 ? 2 : 1;
+  const wins = [], blocks = [], others = [];
+  const seen = new Set();
+  let hasStone = false;
+
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      if (board[r][c] === 0) continue;
+      hasStone = true;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const nr = r+dr, nc = c+dc;
+          if (nr < 0 || nr >= N || nc < 0 || nc >= N || board[nr][nc] !== 0) continue;
+          const key = nr*N+nc;
+          if (seen.has(key)) continue;
+          seen.add(key);
+
+          board[nr][nc] = player;
+          const pw = isWinMove(board, nr, nc, player);
+          board[nr][nc] = 0;
+          if (pw) { wins.push([nr, nc]); continue; }
+
+          board[nr][nc] = opp;
+          const ow = isWinMove(board, nr, nc, opp);
+          board[nr][nc] = 0;
+          if (ow) { blocks.push([nr, nc]); continue; }
+
+          others.push([nr, nc]);
+        }
+      }
+    }
+  }
+  if (!hasStone) return [[7, 7]];
+  // If we have a winning move, only return that
+  if (wins.length) return wins;
+  return [...blocks, ...others];
+}
+
+function minimax(board, depth, alpha, beta, isMax, lr, lc) {
+  if (lr !== null && isWinMove(board, lr, lc, board[lr][lc])) {
+    return board[lr][lc] === 1 ? 500000 + depth : -(500000 + depth);
+  }
+  if (depth === 0) return evaluate(board);
+
+  const player = isMax ? 1 : 2;
+  const cands = getCandidates(board, player);
+
+  if (isMax) {
+    let best = -Infinity;
+    for (const [r, c] of cands) {
+      board[r][c] = 1;
+      const s = minimax(board, depth-1, alpha, beta, false, r, c);
+      board[r][c] = 0;
+      if (s > best) best = s;
+      if (best > alpha) alpha = best;
+      if (beta <= alpha) break;
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (const [r, c] of cands) {
+      board[r][c] = 2;
+      const s = minimax(board, depth-1, alpha, beta, true, r, c);
+      board[r][c] = 0;
+      if (s < best) best = s;
+      if (best < beta) beta = best;
+      if (beta <= alpha) break;
+    }
+    return best;
+  }
+}
+
+function getBestMove() {
+  const player = curP;
+  const isMax  = player === 1;
+  const depth  = DEPTHS[diff];
+  const cands  = getCandidates(board, player);
+  if (!cands.length) return null;
+  if (cands.length === 1) return cands[0];
+
+  let bestScore = isMax ? -Infinity : Infinity;
+  let bestMove  = cands[0];
+
+  for (const [r, c] of cands) {
+    board[r][c] = player;
+    let score;
+    if (isWinMove(board, r, c, player)) {
+      score = isMax ? 1000000 : -1000000;
+    } else {
+      score = minimax(board, depth - 1, -Infinity, Infinity, !isMax, r, c);
+    }
+    board[r][c] = 0;
+
+    if (isMax ? score > bestScore : score < bestScore) {
+      bestScore = score;
+      bestMove  = [r, c];
+    }
+    if (Math.abs(bestScore) >= 500000) break; // found forced win/loss
+  }
+  return bestMove;
+}
+
+/* ── Init ─────────────────────────────────────── */
+function init() {
+  computeLayout();
+  applyLang();
+  newGame();
+}
+
+window.addEventListener('resize', () => { computeLayout(); draw(); });
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

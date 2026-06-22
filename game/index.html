@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Arcade // houfu.xyz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Consolas, 'Courier New', monospace; background: #080808; color: #ccc; min-height: 100vh; padding: 32px 20px; }
+
+    .header { max-width: 860px; margin: 0 auto 36px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .header-left .title { color: #1db954; font-size: 1.5rem; text-transform: uppercase; letter-spacing: -1px; }
+    .header-left .sub   { color: #555; font-size: 0.72rem; margin-top: 4px; line-height: 1.7; }
+    .header-left .back  { color: #1db954; font-size: 0.72rem; text-decoration: none; margin-top: 8px; display: inline-block; }
+    .header-left .back:hover { text-decoration: underline; }
+    .lang-btn { background: transparent; border: 1px solid #1db954; color: #1db954; font-family: Consolas, monospace; font-size: 0.72rem; padding: 5px 11px; cursor: pointer; transition: background 0.1s; }
+    .lang-btn:hover { background: rgba(29,185,84,0.1); }
+
+    .grid { max-width: 860px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+
+    .card { border: 1px solid #1c1c1c; padding: 20px; background: #0d0d0d; position: relative; transition: border-color 0.15s; display: flex; flex-direction: column; }
+    .card:hover { border-color: #1db954; }
+    .card.soon { opacity: 0.45; pointer-events: none; }
+
+    .card-icon { color: #1db954; font-size: 1.1rem; margin-bottom: 10px; }
+    .card-title { color: #ddd; font-size: 0.95rem; margin-bottom: 6px; }
+    .card-desc  { color: #555; font-size: 0.7rem; line-height: 1.75; flex: 1; }
+    .card-tags  { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+    .tag { font-size: 0.6rem; padding: 2px 7px; border: 1px solid #222; color: #444; }
+    .tag.green { border-color: rgba(29,185,84,0.3); color: #1db954; }
+    .tag.red   { border-color: rgba(244,67,54,0.3); color: #f44336; }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 12px; border-top: 1px solid #141414; }
+    .card-meta { font-size: 0.62rem; color: #333; }
+    .play-btn { color: #1db954; font-size: 0.72rem; text-decoration: none; border: 1px solid #1db954; padding: 5px 12px; transition: all 0.1s; }
+    .play-btn:hover { background: rgba(29,185,84,0.1); }
+    .soon-badge { font-size: 0.62rem; color: #333; border: 1px solid #1e1e1e; padding: 4px 10px; }
+
+    .section-label { max-width: 860px; margin: 0 auto 12px; font-size: 0.65rem; color: #333; text-transform: uppercase; letter-spacing: 2px; }
+    .divider { max-width: 860px; margin: 28px auto 20px; border: none; border-top: 1px solid #141414; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <div class="title" id="pgTitle">&gt;_ Game Arcade</div>
+    <div class="sub" id="pgSub">browser games built with hand-coded JS · RL agents in training</div>
+    <a class="back" id="pgBack" href="/">← back to portfolio</a>
+  </div>
+  <button class="lang-btn" id="langBtn" onclick="toggleLang()">中文</button>
+</div>
+
+<div class="section-label" id="lblPlayable" data-en="// playable now" data-zh="// 可以游玩">// playable now</div>
+<div class="grid">
+
+  <div class="card">
+    <div class="card-icon">[::]</div>
+    <div class="card-title" id="g1title" data-en="escape_grid.exe" data-zh="逃脱方格.exe">escape_grid.exe</div>
+    <div class="card-desc" id="g1desc" data-en="4 participants vs 1 hunter on a 4×4 grid. Unlock doors, dodge traps, reach the exit. Hunter places traps before the game starts." data-zh="4名参与者对抗1名猎手的4×4格逃脱游戏。解锁门道、躲避陷阱、到达出口。猎手在开始前布置陷阱。">4 participants vs 1 hunter on a 4×4 grid. Unlock doors, dodge traps, reach the exit. Hunter places traps before the game starts.</div>
+    <div class="card-tags">
+      <span class="tag green" data-en="turn-based" data-zh="回合制">turn-based</span>
+      <span class="tag" data-en="4×4 grid" data-zh="4×4格">4×4 grid</span>
+      <span class="tag" data-en="traps" data-zh="陷阱">traps</span>
+      <span class="tag" data-en="auto-play" data-zh="自动游玩">auto-play</span>
+    </div>
+    <div class="card-footer">
+      <span class="card-meta" data-en="JS · minimax pathfinding" data-zh="JS · 最短路径AI">JS · minimax pathfinding</span>
+      <a class="play-btn" href="/game/game.html" data-en="→ play" data-zh="→ 游玩">→ play</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-icon">[⬡]</div>
+    <div class="card-title" id="g2title" data-en="gomoku.exe" data-zh="五子棋.exe">gomoku.exe</div>
+    <div class="card-desc" id="g2desc" data-en="Classic 5-in-a-row strategy game on a 15×15 board. Play against a minimax AI at three difficulty levels. RL agent slot reserved for future training." data-zh="经典15×15五子棋对战。挑战三种难度的极小化极大AI。RL智能体插槽预留，等待未来训练。">Classic 5-in-a-row strategy game on a 15×15 board. Play against a minimax AI at three difficulty levels. RL agent slot reserved for future training.</div>
+    <div class="card-tags">
+      <span class="tag green" data-en="strategy" data-zh="策略">strategy</span>
+      <span class="tag" data-en="15×15" data-zh="15×15">15×15</span>
+      <span class="tag" data-en="minimax AI" data-zh="极大极小AI">minimax AI</span>
+      <span class="tag red" data-en="RL soon" data-zh="RL敬请期待">RL soon</span>
+    </div>
+    <div class="card-footer">
+      <span class="card-meta" data-en="JS · alpha-beta pruning" data-zh="JS · α-β剪枝">JS · alpha-beta pruning</span>
+      <a class="play-btn" href="/game/gomoku.html" data-en="→ play" data-zh="→ 游玩">→ play</a>
+    </div>
+  </div>
+
+</div>
+
+<hr class="divider">
+<div class="section-label" id="lblSoon" data-en="// in the lab" data-zh="// 实验室中">// in the lab</div>
+<div class="grid">
+
+  <div class="card soon">
+    <div class="card-icon" style="color:#f44336">[RL]</div>
+    <div class="card-title" data-en="gomoku_rl_agent.py" data-zh="五子棋强化学习.py">gomoku_rl_agent.py</div>
+    <div class="card-desc" data-en="Train a policy gradient agent to play Gomoku. Export weights to JSON, load in browser. Visualise learned patterns — double-threes, forks, diagonal threats." data-zh="训练策略梯度智能体玩五子棋。导出权重为JSON并在浏览器加载。可视化学到的策略——双三、叉形、斜线威胁。">Train a policy gradient agent to play Gomoku. Export weights to JSON, load in browser. Visualise learned patterns — double-threes, forks, diagonal threats.</div>
+    <div class="card-tags">
+      <span class="tag red" data-en="reinforcement learning" data-zh="强化学习">reinforcement learning</span>
+      <span class="tag" data-en="PyTorch" data-zh="PyTorch">PyTorch</span>
+      <span class="tag" data-en="explainability" data-zh="可解释性">explainability</span>
+    </div>
+    <div class="card-footer">
+      <span class="card-meta" data-en="Python · coming soon" data-zh="Python · 敬请期待">Python · coming soon</span>
+      <span class="soon-badge" data-en="[ in progress ]" data-zh="[ 进行中 ]">[ in progress ]</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let lang = 'en';
+function t(en, zh) { return lang === 'zh' ? zh : en; }
+
+function applyLang() {
+  document.getElementById('pgTitle').textContent = t('>_ Game Arcade', '>_ 游戏厅');
+  document.getElementById('pgSub').textContent   = t('browser games built with hand-coded JS · RL agents in training', '手写JS构建的浏览器游戏 · RL智能体训练中');
+  document.getElementById('pgBack').textContent  = t('← back to portfolio', '← 返回作品集');
+  document.querySelectorAll('[data-en]').forEach(el => { el.textContent = t(el.dataset.en, el.dataset.zh); });
+}
+
+function toggleLang() {
+  lang = lang === 'en' ? 'zh' : 'en';
+  document.getElementById('langBtn').textContent = lang === 'zh' ? 'English' : '中文';
+  applyLang();
+}
+
+document.addEventListener('DOMContentLoaded', applyLang);
+</script>
+</body>
+</html>

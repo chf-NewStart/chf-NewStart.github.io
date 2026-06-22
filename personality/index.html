@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attachment Style | houfu.xyz</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="../favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../favicon_io/favicon-16x16.png">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #050505;
+            --bg2: #111;
+            --border: #333;
+            --green: #1db954;
+            --blue: #007acc;
+            --yellow: #ffbd2e;
+            --red: #ff5f56;
+            --text: #dcdcdc;
+            --muted: #888;
+            --font: 'Space Mono', Consolas, monospace;
+        }
+
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: rgba(5,5,5,0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            padding: 14px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        nav .logo { color: var(--green); font-weight: bold; font-size: 1.1rem; text-decoration: none; }
+        nav .back {
+            color: var(--muted); text-decoration: none; font-size: 0.85rem;
+            border: 1px solid var(--border); padding: 6px 14px;
+            transition: all 0.2s;
+        }
+        nav .back:hover { color: var(--green); border-color: var(--green); }
+
+        /* ── LAYOUT ── */
+        main { padding-top: 70px; }
+
+        .container {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ── INTRO ── */
+        #screen-intro {
+            min-height: calc(100vh - 70px);
+            display: flex; align-items: center; justify-content: center;
+            padding: 60px 24px;
+        }
+        .intro-inner { max-width: 700px; }
+
+        .boot-label {
+            color: var(--muted); font-size: 0.75rem; line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .boot-label span { color: var(--green); }
+
+        h1.page-title {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            color: var(--green);
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: var(--muted); font-size: 0.9rem; margin-bottom: 32px;
+        }
+
+        .intro-desc {
+            color: var(--text);
+            font-size: 0.95rem;
+            line-height: 1.75;
+            border-left: 3px solid var(--green);
+            padding-left: 18px;
+            margin-bottom: 32px;
+        }
+        .intro-desc strong { color: #fff; }
+
+        .tag-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 40px; }
+        .tag {
+            border: 1px solid var(--border);
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .start-btn {
+            background: transparent;
+            border: 2px solid var(--green);
+            color: var(--green);
+            font-family: var(--font);
+            font-size: 1rem;
+            padding: 14px 32px;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 var(--green);
+            transition: all 0.1s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .start-btn:hover {
+            background: var(--green); color: #111;
+            transform: translate(2px,2px);
+            box-shadow: 2px 2px 0 #111;
+        }
+
+        /* ── QUIZ ── */
+        #screen-quiz { display: none; padding: 40px 0 80px; }
+
+        .progress-wrap {
+            background: var(--border);
+            height: 3px;
+            margin-bottom: 48px;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background: var(--green);
+            transition: width 0.4s ease;
+            width: 0%;
+        }
+        .progress-label {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .question-card {
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            box-shadow: 6px 6px 0 rgba(29,185,84,0.15);
+            padding: 36px;
+            margin-bottom: 32px;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(16px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .q-num { color: var(--muted); font-size: 0.8rem; margin-bottom: 14px; }
+        .q-text { font-size: 1.1rem; color: #fff; line-height: 1.5; margin-bottom: 32px; }
+
+        .scale-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+        .scale-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .scale-btn {
+            flex: 1;
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--muted);
+            font-family: var(--font);
+            font-size: 0.95rem;
+            padding: 14px 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .scale-btn:hover {
+            border-color: var(--green);
+            color: var(--green);
+            background: rgba(29,185,84,0.07);
+            transform: translateY(-2px);
+        }
+        .scale-btn.selected {
+            border-color: var(--green);
+            background: rgba(29,185,84,0.15);
+            color: var(--green);
+            box-shadow: 0 0 0 1px var(--green);
+        }
+        .scale-btn .val-label {
+            display: block;
+            font-size: 0.65rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+        .scale-btn.selected .val-label { color: var(--green); }
+
+        .nav-btns {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .nav-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-family: var(--font);
+            font-size: 0.85rem;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-btn:hover:not(:disabled) { border-color: var(--text); color: var(--text); }
+        .nav-btn:disabled { opacity: 0.3; cursor: default; }
+        .nav-btn.next-btn {
+            border-color: var(--green); color: var(--green);
+        }
+        .nav-btn.next-btn:hover:not(:disabled) {
+            background: var(--green); color: #111;
+        }
+        .nav-btn.next-btn:disabled { opacity: 0.3; }
+
+        /* ── RESULTS ── */
+        #screen-results { display: none; padding: 60px 0 100px; }
+
+        .result-header { margin-bottom: 48px; }
+        .result-header .label { color: var(--muted); font-size: 0.8rem; margin-bottom: 10px; }
+        .result-type-name {
+            font-size: clamp(2rem, 5vw, 3rem);
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .result-tagline { font-size: 0.9rem; color: var(--muted); }
+
+        /* 2D Plot */
+        .plot-section {
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            box-shadow: 8px 8px 0 rgba(29,185,84,0.12);
+            padding: 32px;
+            margin-bottom: 40px;
+        }
+        .plot-title {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .plot-container {
+            width: 100%;
+            max-width: 460px;
+            margin: 0 auto;
+        }
+        #attachment-plot {
+            width: 100%;
+            height: auto;
+        }
+
+        /* Score bars */
+        .scores-section { margin-bottom: 40px; }
+        .score-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .score-label { width: 120px; font-size: 0.85rem; color: var(--muted); flex-shrink: 0; }
+        .score-track {
+            flex: 1;
+            height: 8px;
+            background: var(--border);
+            position: relative;
+        }
+        .score-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .score-pct { font-size: 0.85rem; color: var(--text); width: 40px; text-align: right; }
+
+        /* Result description card */
+        .desc-card {
+            background: var(--bg2);
+            border: 2px solid var(--border);
+            box-shadow: 6px 6px 0 rgba(29,185,84,0.12);
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+        .desc-card h3 {
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+        .desc-card p {
+            font-size: 0.9rem;
+            line-height: 1.75;
+            color: var(--text);
+            margin-bottom: 14px;
+        }
+        .desc-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .desc-card ul li {
+            font-size: 0.9rem;
+            color: var(--text);
+            line-height: 1.6;
+            padding: 6px 0 6px 22px;
+            position: relative;
+        }
+        .desc-card ul li::before {
+            content: '>';
+            position: absolute; left: 0;
+            color: var(--green);
+        }
+
+        .other-types { margin-bottom: 40px; }
+        .other-types h3 {
+            font-size: 0.8rem; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+        .type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .type-mini {
+            border: 1px solid var(--border);
+            padding: 14px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .type-mini:hover { border-color: var(--green); }
+        .type-mini.active-type { border-color: var(--green); background: rgba(29,185,84,0.07); }
+        .type-mini .type-name { font-weight: bold; color: #fff; margin-bottom: 4px; }
+        .type-mini .type-axis { color: var(--muted); font-size: 0.75rem; }
+
+        .retake-wrap { text-align: center; padding-top: 20px; }
+        .retake-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-family: var(--font);
+            font-size: 0.85rem;
+            padding: 12px 28px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .retake-btn:hover { border-color: var(--text); color: var(--text); }
+
+        .attribution {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #555;
+            margin-top: 60px;
+            padding-top: 24px;
+            border-top: 1px dashed var(--border);
+            line-height: 1.6;
+        }
+        .attribution a { color: #555; }
+        .attribution a:hover { color: var(--muted); }
+
+        @media (max-width: 600px) {
+            .question-card { padding: 24px 18px; }
+            .scale-btn { padding: 12px 4px; font-size: 0.85rem; }
+            .plot-section { padding: 20px 16px; }
+            .desc-card { padding: 24px 18px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <a href="/" class="logo">HC</a>
+    <a href="/" class="back">← Back to Portfolio</a>
+</nav>
+
+<main>
+
+<!-- ═══ INTRO SCREEN ═══ -->
+<div id="screen-intro">
+<div class="container">
+<div class="intro-inner">
+
+    <div class="boot-label">
+        [  <span>OK</span>  ] Loading personality module...<br>
+        [  <span>OK</span>  ] Attachment theory engine: <span>READY</span><br>
+        > <span>attachment_quiz.exe</span>
+    </div>
+
+    <h1 class="page-title">What's Your<br>Attachment Style?</h1>
+    <p class="subtitle">Based on <em>Attached</em> — Amir Levine & Rachel S.F. Heller</p>
+
+    <p class="intro-desc">
+        Every one of us has an <strong>attachment style</strong> — a consistent pattern of how we
+        think, feel, and behave in close relationships. Developed by researchers Bartholomew,
+        Ainsworth, and Shaver, the model places you on two axes:
+        <strong>Anxiety</strong> (how much you worry about your relationships) and
+        <strong>Avoidance</strong> (how comfortable you are with closeness and dependence).
+        This quiz — inspired by the work in <em>Attached</em> — will plot exactly where you land.
+    </p>
+
+    <div class="tag-row">
+        <span class="tag">18 questions</span>
+        <span class="tag">~4 minutes</span>
+        <span class="tag">2D visualization</span>
+        <span class="tag">Secure / Anxious / Avoidant / Fearful</span>
+    </div>
+
+    <button class="start-btn" onclick="startQuiz()">
+        > Begin Assessment
+    </button>
+
+</div>
+</div>
+</div>
+
+<!-- ═══ QUIZ SCREEN ═══ -->
+<div id="screen-quiz">
+<div class="container">
+
+    <div class="progress-label" id="progress-label">Question 1 of 18</div>
+    <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <div id="question-area"></div>
+
+    <div class="nav-btns">
+        <button class="nav-btn" id="btn-back" onclick="goBack()">← Back</button>
+        <button class="nav-btn next-btn" id="btn-next" onclick="goNext()" disabled>Next →</button>
+    </div>
+
+</div>
+</div>
+
+<!-- ═══ RESULTS SCREEN ═══ -->
+<div id="screen-results">
+<div class="container">
+
+    <div class="result-header">
+        <div class="label">> attachment_style.result</div>
+        <div class="result-type-name" id="result-type-name" style="color: var(--green)"></div>
+        <div class="result-tagline" id="result-tagline"></div>
+    </div>
+
+    <div class="plot-section">
+        <div class="plot-title">> 2D Attachment Space — Anxiety × Avoidance</div>
+        <div class="plot-container">
+            <svg id="attachment-plot" viewBox="0 0 460 460" xmlns="http://www.w3.org/2000/svg">
+                <!-- Quadrant backgrounds -->
+                <rect x="40" y="40"  width="190" height="190" fill="rgba(29,185,84,0.07)"/>
+                <rect x="230" y="40" width="190" height="190" fill="rgba(255,189,46,0.07)"/>
+                <rect x="40" y="230" width="190" height="190" fill="rgba(0,122,204,0.07)"/>
+                <rect x="230" y="230" width="190" height="190" fill="rgba(255,95,86,0.07)"/>
+
+                <!-- Grid lines -->
+                <g stroke="#222" stroke-width="1">
+                    <line x1="40" y1="135" x2="420" y2="135"/>
+                    <line x1="40" y1="325" x2="420" y2="325"/>
+                    <line x1="135" y1="40" x2="135" y2="420"/>
+                    <line x1="325" y1="40" x2="325" y2="420"/>
+                </g>
+
+                <!-- Axis dividers (bright) -->
+                <line x1="230" y1="40" x2="230" y2="420" stroke="#333" stroke-width="1.5" stroke-dasharray="4,4"/>
+                <line x1="40" y1="230" x2="420" y2="230" stroke="#333" stroke-width="1.5" stroke-dasharray="4,4"/>
+
+                <!-- Outer axes -->
+                <rect x="40" y="40" width="380" height="380" fill="none" stroke="#444" stroke-width="1.5"/>
+
+                <!-- Quadrant labels -->
+                <text x="135" y="110" text-anchor="middle" fill="#1db954" font-family="'Space Mono',monospace" font-size="11" font-weight="bold">SECURE</text>
+                <text x="135" y="126" text-anchor="middle" fill="#555" font-family="'Space Mono',monospace" font-size="9">low anxiety</text>
+                <text x="135" y="139" text-anchor="middle" fill="#555" font-family="'Space Mono',monospace" font-size="9">low avoidance</text>
+
+                <text x="325" y="110" text-anchor="middle" fill="#ffbd2e" font-family="'Space Mono',monospace" font-size="11" font-weight="bold">ANXIOUS</text>
+                <text x="325" y="126" text-anchor="middle" fill="#555" font-family="'Space Mono',monospace" font-size="9">high anxiety</text>
+                <text x="325" y="139" text-anchor="middle" fill="#555" font-family="'Space Mono',monospace" font-size="9">low avoidance</text>
+
+                <text x="135" y="310" text-anchor="middle" fill="#007acc" font-family="'Space Mono',monospace" font-size="11" font-weight="bold">AVOIDANT</text>
+                <text x="135" y="326" text-anchor="middle" fill="#555" font-family="'Space Mono',monospace" font-size="9">low anxiety</text>
+                <text x="135" y="339" text-anchor="middle" fill="#555" font-family="'Space Mono',monospace" font-size="9">high avoidance</text>
+
+                <text x="325" y="310" text-anchor="middle" fill="#ff5f56" font-family="'Space Mono',monospace" font-size="11" font-weight="bold">FEARFUL</text>
+                <text x="325" y="326" text-anchor="middle" fill="#555" font-family="'Space Mono',monospace" font-size="9">high anxiety</text>
+                <text x="325" y="339" text-anchor="middle" fill="#555" font-family="'Space Mono',monospace" font-size="9">high avoidance</text>
+
+                <!-- Axis labels -->
+                <text x="230" y="455" text-anchor="middle" fill="#888" font-family="'Space Mono',monospace" font-size="10">ANXIETY →</text>
+                <text x="14" y="230" text-anchor="middle" fill="#888" font-family="'Space Mono',monospace" font-size="10" transform="rotate(-90,14,230)">AVOIDANCE ↓</text>
+
+                <!-- User dot (animated) -->
+                <circle id="user-dot" cx="-50" cy="-50" r="10" fill="transparent" stroke="white" stroke-width="2.5"/>
+                <circle id="user-dot-inner" cx="-50" cy="-50" r="5" fill="white"/>
+                <circle id="user-dot-ring" cx="-50" cy="-50" r="18" fill="none" stroke="white" stroke-width="1" opacity="0.4"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Score bars -->
+    <div class="scores-section">
+        <div class="score-row">
+            <span class="score-label">Anxiety</span>
+            <div class="score-track">
+                <div class="score-fill" id="bar-anxiety" style="background: var(--yellow)"></div>
+            </div>
+            <span class="score-pct" id="pct-anxiety">0%</span>
+        </div>
+        <div class="score-row">
+            <span class="score-label">Avoidance</span>
+            <div class="score-track">
+                <div class="score-fill" id="bar-avoidance" style="background: var(--blue)"></div>
+            </div>
+            <span class="score-pct" id="pct-avoidance">0%</span>
+        </div>
+    </div>
+
+    <!-- Description -->
+    <div class="desc-card" id="desc-card">
+        <h3 id="desc-heading" style="color: var(--green)"></h3>
+        <div id="desc-body"></div>
+    </div>
+
+    <!-- Compare other types -->
+    <div class="other-types">
+        <h3>Explore all types</h3>
+        <div class="type-grid" id="type-grid"></div>
+    </div>
+
+    <div class="retake-wrap">
+        <button class="retake-btn" onclick="retakeQuiz()">↩ Retake Quiz</button>
+    </div>
+
+    <div class="attribution">
+        Quiz structure inspired by <em>Attached: The New Science of Adult Attachment</em> (2010)<br>
+        by Amir Levine &amp; Rachel S.F. Heller, and the ECR-R research tradition.<br>
+        <a href="https://www.amazon.com/dp/1591843995" target="_blank" rel="noopener">Get the book →</a>
+    </div>
+
+</div>
+</div>
+
+</main>
+
+<script>
+const QUESTIONS = [
+    // — Anxiety dimension —
+    { text: "I often wonder whether my partner truly values me as much as I value them.", dim: 'anxiety', dir: 'forward' },
+    { text: "When my partner is unavailable or seems distant, I start to worry about our relationship.", dim: 'anxiety', dir: 'forward' },
+    { text: "I need regular reassurance that things are okay between me and my partner.", dim: 'anxiety', dir: 'forward' },
+    { text: "A single cold or critical interaction can make me fear the relationship is falling apart.", dim: 'anxiety', dir: 'forward' },
+    { text: "I wish my partner would want to be closer or more connected than they sometimes seem to.", dim: 'anxiety', dir: 'forward' },
+    { text: "I tend to feel more worried about my relationship than my partner seems to be.", dim: 'anxiety', dir: 'forward' },
+    { text: "I generally feel confident and secure in my partner's love and commitment.", dim: 'anxiety', dir: 'reverse' },
+    { text: "I trust that my partner will be there for me when I really need support.", dim: 'anxiety', dir: 'reverse' },
+    { text: "I rarely worry about being left or rejected by the people I care about.", dim: 'anxiety', dir: 'reverse' },
+
+    // — Avoidance dimension —
+    { text: "Even in close relationships, I tend to maintain some emotional distance.", dim: 'avoidance', dir: 'forward' },
+    { text: "I find it difficult to truly depend on a romantic partner.", dim: 'avoidance', dir: 'forward' },
+    { text: "When a relationship gets very intense, I feel the urge to pull back.", dim: 'avoidance', dir: 'forward' },
+    { text: "I tend to process difficult feelings on my own rather than bring them to my partner.", dim: 'avoidance', dir: 'forward' },
+    { text: "I feel uncomfortable when someone wants to get very emotionally close to me.", dim: 'avoidance', dir: 'forward' },
+    { text: "Sharing my deepest feelings with a partner feels risky or uncomfortable.", dim: 'avoidance', dir: 'forward' },
+    { text: "I feel at ease and comfortable getting emotionally close to a romantic partner.", dim: 'avoidance', dir: 'reverse' },
+    { text: "I'm comfortable having my partner depend on me, and depending on them in return.", dim: 'avoidance', dir: 'reverse' },
+    { text: "Opening up and being vulnerable with someone I trust comes naturally to me.", dim: 'avoidance', dir: 'reverse' },
+];
+
+const SCALE_LABELS = ['Strongly\nDisagree', 'Disagree', 'Neutral', 'Agree', 'Strongly\nAgree'];
+
+const TYPES = {
+    secure: {
+        name: 'Secure',
+        tagline: 'Comfortable with closeness and independence',
+        color: '#1db954',
+        axisNote: 'Low Anxiety · Low Avoidance',
+        heading: 'You are Secure',
+        desc: [
+            `You're comfortable with both intimacy and independence. You can depend on others without feeling threatened, and you're equally comfortable when others rely on you.`,
+            `You tend to communicate needs directly, handle conflict without catastrophising, and feel confident in your relationships even when things get hard. This doesn't mean your relationships are perfect — it means you have the emotional tools to work through difficulty.`,
+            `In relationships, you typically: set clear boundaries while staying connected, recover well from disagreements, support your partner's autonomy, and trust your partner's intentions even in uncertain moments.`
+        ],
+        traits: [
+            'Communicates needs clearly and directly',
+            'Tolerates temporary distance without spiralling',
+            'Trusts partners without constant reassurance',
+            'Balances closeness and autonomy naturally',
+            'Recovers from conflict without lasting resentment'
+        ]
+    },
+    anxious: {
+        name: 'Anxious',
+        tagline: 'Craves closeness, worries about reciprocation',
+        color: '#ffbd2e',
+        axisNote: 'High Anxiety · Low Avoidance',
+        heading: 'You are Anxious (Preoccupied)',
+        desc: [
+            `You deeply value connection and closeness — perhaps more intensely than most. The challenge is that you often worry about whether your partner shares that depth of feeling.`,
+            `This usually develops from early experiences where love or attention felt inconsistent, teaching you that connection requires constant effort to maintain. In adult relationships, this shows up as heightened sensitivity to your partner's emotional signals.`,
+            `In relationships, you may find yourself: seeking more reassurance than your partner naturally offers, feeling intense distress during distance or conflict, reading deeply into small interactions, or feeling chronically "not enough." Your strength is your deep capacity for connection and emotional attunement.`
+        ],
+        traits: [
+            'Deeply attuned to partner\'s moods and signals',
+            'Strong desire for closeness and intimacy',
+            'Feels relationship anxiety more acutely than others',
+            'Can become preoccupied with relationship worries',
+            'Tremendous capacity for love and loyalty'
+        ]
+    },
+    avoidant: {
+        name: 'Avoidant',
+        tagline: 'Values independence, uncomfortable with too much closeness',
+        color: '#007acc',
+        axisNote: 'Low Anxiety · High Avoidance',
+        heading: 'You are Dismissing-Avoidant',
+        desc: [
+            `You highly value your independence and emotional self-sufficiency. You tend to feel most comfortable with some degree of space, and may find that intense emotional closeness triggers a subtle urge to step back.`,
+            `This style often develops when early caregivers were consistently emotionally unavailable, teaching you that self-reliance is safer than depending on others. Feelings get processed internally, which can look like stoicism or distance to partners.`,
+            `In relationships, you may notice: needing more alone time than your partner, feeling overwhelmed by others' emotional needs, downplaying the importance of relationships even when they matter, or struggling to ask for help. Your strength: you're resilient, self-sufficient, and bring calm to emotional situations.`
+        ],
+        traits: [
+            'Highly self-reliant and independent',
+            'Calm in emotional situations others find overwhelming',
+            'Needs space to process feelings internally',
+            'Values independence alongside (not instead of) connection',
+            'Can provide stability to more anxious partners'
+        ]
+    },
+    fearful: {
+        name: 'Fearful-Avoidant',
+        tagline: 'Wants closeness, but closeness also feels threatening',
+        color: '#ff5f56',
+        axisNote: 'High Anxiety · High Avoidance',
+        heading: 'You are Fearful-Avoidant',
+        desc: [
+            `You experience a complex push-pull in relationships: you want closeness, but getting close also triggers fear. You crave intimacy and connection, yet something makes it feel unsafe.`,
+            `This style is often associated with more disrupted early experiences — learning both that others are needed and that others can't be trusted. It's sometimes called "disorganised" attachment because there's no consistent strategy: neither leaning in nor pulling back feels safe.`,
+            `In relationships, you may oscillate between wanting intensity and pulling away, struggle to trust even when you want to, feel confused by your own reactions, or push people away right when things were getting good. Know this: this style is the most responsive to growth through therapy, self-reflection, and safe relationships.`
+        ],
+        traits: [
+            'Deep desire for intimacy alongside fear of it',
+            'High emotional sensitivity in both directions',
+            'May oscillate between closeness and withdrawal',
+            'Often very self-aware and reflective',
+            'Most responsive to therapeutic growth and healing'
+        ]
+    }
+};
+
+let currentQ = 0;
+let answers = new Array(QUESTIONS.length).fill(null);
+let computedType = null;
+
+function startQuiz() {
+    document.getElementById('screen-intro').style.display = 'none';
+    document.getElementById('screen-quiz').style.display = 'block';
+    renderQuestion();
+}
+
+function renderQuestion() {
+    const q = QUESTIONS[currentQ];
+    const pct = (currentQ / QUESTIONS.length) * 100;
+
+    document.getElementById('progress-label').textContent =
+        `Question ${currentQ + 1} of ${QUESTIONS.length}`;
+    document.getElementById('progress-bar').style.width = pct + '%';
+
+    const area = document.getElementById('question-area');
+    area.innerHTML = `
+        <div class="question-card">
+            <div class="q-num">[${currentQ + 1}/${QUESTIONS.length}] ${q.dim.toUpperCase()}</div>
+            <div class="q-text">${q.text}</div>
+            <div class="scale-wrap">
+                <div class="scale-labels">
+                    <span>Strongly Disagree</span>
+                    <span>Strongly Agree</span>
+                </div>
+                <div class="scale-btns">
+                    ${[1,2,3,4,5].map(v => `
+                        <button class="scale-btn ${answers[currentQ] === v ? 'selected' : ''}"
+                                onclick="selectAnswer(${v})" data-val="${v}">
+                            ${v}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('btn-back').disabled = currentQ === 0;
+    document.getElementById('btn-next').disabled = answers[currentQ] === null;
+
+    const isLast = currentQ === QUESTIONS.length - 1;
+    document.getElementById('btn-next').textContent = isLast ? 'See Results →' : 'Next →';
+}
+
+function selectAnswer(val) {
+    answers[currentQ] = val;
+    document.querySelectorAll('.scale-btn').forEach(b => {
+        b.classList.toggle('selected', parseInt(b.dataset.val) === val);
+    });
+    document.getElementById('btn-next').disabled = false;
+}
+
+function goNext() {
+    if (answers[currentQ] === null) return;
+    if (currentQ === QUESTIONS.length - 1) {
+        showResults();
+    } else {
+        currentQ++;
+        renderQuestion();
+    }
+}
+
+function goBack() {
+    if (currentQ > 0) {
+        currentQ--;
+        renderQuestion();
+    }
+}
+
+function computeScores() {
+    let anxietyRaw = 0, avoidanceRaw = 0;
+    QUESTIONS.forEach((q, i) => {
+        const raw = answers[i];
+        const score = q.dir === 'forward' ? raw : (6 - raw);
+        if (q.dim === 'anxiety') anxietyRaw += score;
+        else avoidanceRaw += score;
+    });
+    // Normalize 9–45 → 0–100
+    const anxietyPct  = Math.round((anxietyRaw  - 9) / 36 * 100);
+    const avoidancePct = Math.round((avoidanceRaw - 9) / 36 * 100);
+    return { anxietyPct, avoidancePct };
+}
+
+function getType(a, v) {
+    if (a >= 50 && v >= 50) return 'fearful';
+    if (a >= 50 && v <  50) return 'anxious';
+    if (a <  50 && v >= 50) return 'avoidant';
+    return 'secure';
+}
+
+function showResults() {
+    document.getElementById('screen-quiz').style.display = 'none';
+    document.getElementById('screen-results').style.display = 'block';
+
+    const { anxietyPct, avoidancePct } = computeScores();
+    computedType = getType(anxietyPct, avoidancePct);
+    const typeData = TYPES[computedType];
+
+    // Header
+    document.getElementById('result-type-name').textContent = typeData.name;
+    document.getElementById('result-type-name').style.color = typeData.color;
+    document.getElementById('result-tagline').textContent = typeData.tagline;
+
+    // Animate score bars
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            document.getElementById('bar-anxiety').style.width  = anxietyPct  + '%';
+            document.getElementById('bar-avoidance').style.width = avoidancePct + '%';
+        }, 200);
+        document.getElementById('pct-anxiety').textContent  = anxietyPct  + '%';
+        document.getElementById('pct-avoidance').textContent = avoidancePct + '%';
+    });
+
+    // Animate dot on SVG plot
+    // SVG space: x axis = anxiety (40–420), y axis = avoidance flipped (40–420)
+    // Low avoidance = top of chart, high avoidance = bottom
+    const svgX = 40 + (anxietyPct   / 100) * 380;
+    const svgY = 40 + (avoidancePct / 100) * 380;
+
+    setTimeout(() => {
+        const dot      = document.getElementById('user-dot');
+        const dotInner = document.getElementById('user-dot-inner');
+        const dotRing  = document.getElementById('user-dot-ring');
+
+        [dot, dotInner, dotRing].forEach(el => {
+            el.style.transition = 'cx 0.9s cubic-bezier(0.34,1.56,0.64,1), cy 0.9s cubic-bezier(0.34,1.56,0.64,1)';
+        });
+
+        dot.setAttribute('cx', svgX);      dot.setAttribute('cy', svgY);
+        dotInner.setAttribute('cx', svgX); dotInner.setAttribute('cy', svgY);
+        dotRing.setAttribute('cx', svgX);  dotRing.setAttribute('cy', svgY);
+
+        dot.setAttribute('stroke', typeData.color);
+        dotInner.setAttribute('fill', typeData.color);
+        dotRing.setAttribute('stroke', typeData.color);
+        dot.setAttribute('fill', typeData.color + '30');
+
+        // Pulse ring animation
+        dotRing.style.animation = 'pulseRing 1.5s ease-out 0.9s forwards';
+    }, 400);
+
+    // Description
+    renderDescription(computedType);
+
+    // Type grid
+    renderTypeGrid();
+}
+
+function renderDescription(typeKey) {
+    const d = TYPES[typeKey];
+    document.getElementById('desc-heading').textContent = d.heading;
+    document.getElementById('desc-heading').style.color = d.color;
+
+    const body = document.getElementById('desc-body');
+    body.innerHTML = d.desc.map(p => `<p>${p}</p>`).join('') +
+        '<ul>' + d.traits.map(t => `<li>${t}</li>`).join('') + '</ul>';
+}
+
+function renderTypeGrid() {
+    const grid = document.getElementById('type-grid');
+    grid.innerHTML = Object.entries(TYPES).map(([key, t]) => `
+        <div class="type-mini ${key === computedType ? 'active-type' : ''}"
+             onclick="switchType('${key}')"
+             style="${key === computedType ? 'border-color:'+t.color+';' : ''}">
+            <div class="type-name" style="color:${t.color}">${t.name}</div>
+            <div class="type-axis">${t.axisNote}</div>
+        </div>
+    `).join('');
+}
+
+function switchType(typeKey) {
+    computedType = typeKey;
+    renderDescription(typeKey);
+    renderTypeGrid();
+}
+
+function retakeQuiz() {
+    currentQ = 0;
+    answers = new Array(QUESTIONS.length).fill(null);
+    computedType = null;
+
+    // Reset dot off-screen
+    ['user-dot','user-dot-inner','user-dot-ring'].forEach(id => {
+        const el = document.getElementById(id);
+        el.style.transition = 'none';
+        el.setAttribute('cx', -50);
+        el.setAttribute('cy', -50);
+    });
+
+    document.getElementById('screen-results').style.display = 'none';
+    document.getElementById('screen-intro').style.display = 'flex';
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+
+<style>
+@keyframes pulseRing {
+    0%   { r: 18; opacity: 0.5; }
+    100% { r: 38; opacity: 0; }
+}
+</style>
+
+</body>
+</html>

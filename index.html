@@ -11,8 +11,6 @@
     <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
-    <script src="face-effects.js"></script>
     <title>Houfu Chen | Digital Twin Researcher & ML Engineer</title>
 
     <style>
@@ -59,6 +57,7 @@
                         <a href="#experience-section" data-en="Experience" data-zh="经历">Experience</a>
                         <a href="#projects-section" data-en="Projects" data-zh="项目">Projects</a>
                         <a href="#contact-section" data-en="Contact" data-zh="联系">Contact</a>
+                        <a href="/personality/" data-en="Personality" data-zh="性格">Personality</a>
                         <button class="language-toggle" id="tomatoToggle" style="color: #ff5f56; border-color: #333;">[ 🍅 ]</button>
                         <button class="language-toggle" id="languageToggle">EN / 中文</button>
                     </div>
@@ -81,6 +80,8 @@
 
             
             <!-- About Section -->
+            <section id="about-section" class="scroll-section about-section">
+            <div class="container">
             <div style="color: #666; font-size: 0.75rem; margin-bottom: 15px; font-family: Consolas, monospace; line-height: 1.4;">
                                         [  <span style="color: #1db954;">OK</span>  ] Started System Logging Service.<br>
                                         [  <span style="color: #1db954;">OK</span>  ] Reached target System Initialization.<br>
@@ -387,104 +388,6 @@
         
 
                 
-            
-            <div id="TechIndustry" class="tabcontent experience-detail" style="display:none;">
-                <h3 data-en="CAN Tech Industry" data-zh="加拿大科技行业">CAN Tech Industry</h3>
-                <div class="experience-item" id="experience-ford">
-                    <h4 data-en="Performance Testing Engineer" data-zh="性能测试工程师">Performance Testing Engineer <span>@ Ford Motor Company of Canada</span></h4>
-                    <p><em>Ubuntu, iperf3, TCP/IP, Selenium</em></p>
-                    <p><strong data-en="May 2022 – August 2022" data-zh="2022年5月 – 2022年8月">May 2022 – August 2022</strong></p>
-                    <ul>
-                        <li data-en="Conducted comprehensive WiFi performance testing of vehicle ECU components (SYNC and TCU) using iperf3 across multiple protocols (TCP/UDP/FTP/HTTP)." data-zh="使用iperf3通过多种协议（TCP/UDP/FTP/HTTP）对车辆ECU组件（SYNC和TCU）进行全面WiFi性能测试。">Conducted comprehensive WiFi performance testing of vehicle ECU components (SYNC and TCU) using iperf3 across multiple protocols (TCP/UDP/FTP/HTTP).</li>
-                        <li data-en="Evaluated network performance under various scenarios including multiple file transfers, large file transfers, and combined operations." data-zh="评估各种场景下的网络性能，包括多文件传输、大文件传输和组合操作。">Evaluated network performance under various scenarios including multiple file transfers, large file transfers, and combined operations.</li>
-                        <li data-en="Optimized testing environment by resolving 40+ SSH exception issues through Ubuntu and iperf version updates and WLAN command modifications." data-zh="通过Ubuntu和iperf版本更新以及WLAN命令修改解决了40多个SSH异常问题，优化了测试环境。">Optimized testing environment by resolving 40+ SSH exception issues through Ubuntu and iperf version updates and WLAN command modifications.</li>
-                        <li data-en="Fixed Selenium automation exceptions by updating ChromeDriver versions on testing systems." data-zh="通过更新测试系统上的ChromeDriver版本修复了Selenium自动化异常。">Fixed Selenium automation exceptions by updating ChromeDriver versions on testing systems.</li>
-                        <li data-en="Created detailed technical documentation for test procedures and troubleshooting guides for future testing engineers." data-zh="为测试程序创建了详细的技术文档，并为未来的测试工程师提供了故障排除指南。">Created detailed technical documentation for test procedures and troubleshooting guides for future testing engineers.</li>
-                    </ul>
-                </div>
-                <div class="experience-item" id = "experience-manulife">
-                    <h4 data-en="QA-Developer" data-zh="质量保证开发人员">QA-Developer <span>@ Manulife, Online Banking Squad</span></h4>
-                    <p><em>JavaScript, React, WebDriver IO</em></p>
-                    <p><strong data-en="January 2020 – April 2020" data-zh="2020年1月 – 2020年4月">January 2020 – April 2020</strong></p>
-                    <ul>
-                        <li data-en="Developed and fixed components in web pages using modern (ES6) JavaScript, HTML, and MUX components." data-zh="使用现代（ES6）JavaScript、HTML和MUX组件开发和修复网页中的组件。">Developed and fixed components in web pages using modern (ES6) JavaScript, HTML, and MUX components.</li>
-                        <li data-en="Wrote BDDs for cross-browser (4 browsers) testing and resolved 9 IE-specific defects." data-zh="为跨浏览器（4种浏览器）测试编写BDD，并解决了9个IE特定缺陷。">Wrote BDDs for cross-browser (4 browsers) testing and resolved 9 IE-specific defects.</li>
-                        <li data-en="Improved code health by addressing 40+ SonarQube issues and achieving 98%+ test coverage." data-zh="通过解决40多个SonarQube问题并实现98%以上的测试覆盖率，改善了代码健康度。">Improved code health by addressing 40+ SonarQube issues and achieving 98%+ test coverage.</li>
-                        <li data-en="Delivered a product demo to 50+ stakeholders, including developers, business analysts, and product owners." data-zh="向50多位利益相关者（包括开发人员、业务分析师和产品负责人）展示了产品演示。">Delivered a product demo to 50+ stakeholders, including developers, business analysts, and product owners.</li>
-                    </ul>
-                </div>
-                <div class="experience-item" id = "experience-teranet">
-                    <h4 data-en="QA Automation Specialist" data-zh="QA自动化专家">QA Automation Specialist <span>@ Teranet CMS, Recovery Division</span></h4>
-                    <p><em>C#, Selenium</em></p>
-                    <p><strong data-en="September 2020 – December 2020" data-zh="2020年9月 – 2020年12月">September 2020 – December 2020</strong></p>
-                    <ul>
-                        <li data-en="Wrote regression tests with C# under the Selenium framework." data-zh="使用C#在Selenium框架下编写回归测试。">Wrote regression tests with C# under the Selenium framework.</li>
-                        <li data-en="Optimized test execution times, enhancing overall technical health." data-zh="优化了测试执行时间，提高了整体技术健康度。">Optimized test execution times, enhancing overall technical health.</li>
-                    </ul>
-                </div>
-                <div class="experience-item" id="experience-imagine">
-                    <h4 data-en="QA-Developer" data-zh="质量保证开发人员">QA-Developer <span>@ Imagine Communications Corp</span></h4>
-                    <p><em>TypeScript, MySQL</em></p>
-                    <p><strong data-en="January 2021 – April 2021" data-zh="2021年1月 – 2021年4月">January 2021 – April 2021</strong></p>
-                    <ul>
-                        <li data-en="Developed autonomous testing scripts for UI interaction (e.g., clicks, keystrokes)." data-zh="开发了UI交互（如点击、按键）的自主测试脚本。">Developed autonomous testing scripts for UI interaction (e.g., clicks, keystrokes).</li>
-                        <li data-en="Monitored daily server status through automated scripts and UI testing." data-zh="通过自动化脚本和UI测试监控每日服务器状态。">Monitored daily server status through automated scripts and UI testing.</li>
-                    </ul>
-                </div>
-            </div>
-            
-        
-            <div id="TeachingExperience" class="tabcontent experience-detail" style="display:none;">
-                <h3 data-en="Teaching Experience" data-zh="教学经验">Teaching Experience</h3>
-            
-                <div class="experience-item" id="TeachingExperience">
-                    <h4>APS1070 (Foundations of Data Analytics and ML) <span>@ UofT</span></h4>
-                    <p><em data-en="Winter 2024, Summer 2024, Fall 2024, Winter 2025" data-zh="2024年冬季，2024年夏季，2024年秋季，2025年冬季">Winter 2024, Summer 2024, Fall 2024, Winter 2025</em></p>
-                    <ul>
-                        <li data-en="Marking, Tutorials, Piazza Monitoring, Invigilation" data-zh="批改作业，教程，Piazza监控，监考">Marking, Tutorials, Piazza Monitoring, Invigilation</li>
-                        <li data-en="Graded more than 200 projects per term" data-zh="每学期批改200多个项目">Graded more than 200 projects per term</li>
-                        <li data-en="Led 10+ Tutorials per term" data-zh="每学期带领10多次辅导课">Led 10+ Tutorials per term</li>
-                    </ul>
-                </div>
-            
-                <div class="experience-item">
-                    <h4>CSC108 (Introduction to Computer Programming) <span>@ UofT</span></h4>
-                    <p><em data-en="Winter 2024, Fall 2024" data-zh="2024年冬季，2024年秋季">Winter 2024, Fall 2024</em></p>
-                    <ul>
-                        <li data-en="Marking, Office Hours, Invigilation" data-zh="批改作业，答疑时间，监考">Marking, Office Hours, Invigilation</li>
-                        <li data-en="Providing classroom helps during every lecture" data-zh="在每次讲课期间提供课堂帮助">Providing classroom helps during every lecture</li>
-                    </ul>
-                </div>
-            
-                <div class="experience-item">
-                    <h4>MIE370 (Introduction to ML) <span>@ UofT</span></h4>
-                    <p><em data-en="Summer 2024, Fall 2024" data-zh="2024年夏季，2024年秋季">Summer 2024, Fall 2024</em></p>
-                    <ul>
-                        <li data-en="Created 2 Projects, 2 Tutorials, 2 Exam Questions" data-zh="创建了2个项目，2个教程，2个考试问题">Created 2 Projects, 2 Tutorials, 2 Exam Questions</li>
-                        <li data-en="Marking, Office Hours, Invigilation" data-zh="批改作业，答疑时间，监考">Marking, Office Hours, Invigilation</li>
-                    </ul>
-                </div>
-            </div>
-            
-        
-            <div id="ResearchExperience" class="tabcontent experience-detail" style="display:none;">
-                <h3 data-en="Research Experience" data-zh="研究经验">Research Experience</h3>
-            
-                <div class="experience-item">
-                    <h4 data-en="Research Assistant" data-zh="研究助理">Research Assistant <span>@ Prof. Yuning Li's Lab, University of Waterloo</span></h4>
-                    <p><em>Chromatography, UV Testing, Organic Solar Cells</em></p>
-                    <p><strong data-en="May 2019 – August 2019" data-zh="2019年5月 – 2019年8月">May 2019 – August 2019</strong></p>
-                    <ul>
-                        <li data-en="Conducted chromatography and UV testing for organic solar cell research." data-zh="为有机太阳能电池研究进行色谱分析和紫外线测试。">Conducted chromatography and UV testing for organic solar cell research.</li>
-                        <li data-en="Assisted in material analysis and testing protocols for optimizing cell performance." data-zh="协助进行材料分析和测试协议，以优化电池性能。">Assisted in material analysis and testing protocols for optimizing cell performance.</li>
-                        <li data-en="Collaborated with a team to document and present experimental findings." data-zh="与团队合作记录和展示实验结果。">Collaborated with a team to document and present experimental findings.</li>
-                    </ul>
-                </div>
-                
-            
-            </div>
-        </div>
-        </section>
         
 
         
@@ -1032,227 +935,6 @@
             document.getElementById(cardId).classList.add('active-card');
             buttonElement.classList.add('active');
         }
-        async function translateWebsite() {
-        const translationElements = document.querySelectorAll('[data-en]');
-        
-        for (const element of translationElements) {
-            const englishText = element.getAttribute('data-en');
-            
-            try {
-            // Call translation service API (this is pseudocode)
-            const chineseText = await translateText(englishText, 'en', 'zh');
-            element.setAttribute('data-zh', chineseText);
-            } catch (error) {
-            console.error('Translation failed:', error);
-            }
-        }
-        }
-
-        // Rest of your JavaScript functions...
-        // (All the original JavaScript code from the existing file)
-
-        // Fix for project and experience interactions
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing project and experience interactions');
-            
-            // Fix for project toggle
-            function toggleProject(id) {
-                console.log('Toggling project:', id);
-                
-                // Hide all project details
-                document.querySelectorAll('.project-detail').forEach(detail => {
-                    detail.classList.remove('active');
-                    detail.style.display = 'none';
-                });
-                
-                // Show the selected project detail
-                const projectDetail = document.getElementById(id);
-                if (projectDetail) {
-                    projectDetail.style.display = 'block';
-                    
-                    // Force a reflow
-                    void projectDetail.offsetWidth;
-                    
-                    // Add active class for animation
-                    setTimeout(() => {
-                        projectDetail.classList.add('active');
-                    }, 10);
-                    
-                    console.log('Project detail displayed:', id);
-                } else {
-                    console.error('Project detail not found:', id);
-                }
-                
-                // Update tab styles
-                const projectTabs = document.querySelectorAll('#projects-section .project-tab');
-                projectTabs.forEach(tab => {
-                    tab.classList.remove('active');
-                });
-                
-                const selectedTab = document.querySelector(`.project-btn[onclick*="'${id}'"]`)?.parentElement;
-                if (selectedTab) {
-                    selectedTab.classList.add('active');
-                }
-                
-                return false;
-            }
-            
-            // Fix for experience toggle
-            function toggleExperience(id) {
-                console.log('Toggling experience:', id);
-                
-                // Hide all experience details
-                document.querySelectorAll('.experience-detail').forEach(detail => {
-                    detail.classList.remove('active');
-                    detail.style.display = 'none';
-                });
-                
-                // Show the selected experience detail
-                const experienceDetail = document.getElementById(id);
-                if (experienceDetail) {
-                    experienceDetail.style.display = 'block';
-                    
-                    // Force a reflow
-                    void experienceDetail.offsetWidth;
-                    
-                    // Add active class for animation
-                    setTimeout(() => {
-                        experienceDetail.classList.add('active');
-                    }, 10);
-                    
-                    console.log('Experience detail displayed:', id);
-                } else {
-                    console.error('Experience detail not found:', id);
-                }
-                
-                // Update tab styles
-                const experienceTabs = document.querySelectorAll('#experience-section .project-tab');
-                experienceTabs.forEach(tab => {
-                    tab.classList.remove('active');
-                });
-                
-                const selectedTab = document.querySelector(`.project-btn[onclick*="'${id}'"]`)?.parentElement;
-                if (selectedTab) {
-                    selectedTab.classList.add('active');
-                }
-                
-                return false;
-            }
-
-
-            
-            // Add close buttons to all detail panels
-            function addCloseButtons() {
-                console.log('Adding close buttons to detail panels');
-                
-                document.querySelectorAll('.project-detail, .experience-detail').forEach(detail => {
-                    // Check if it already has a close button
-                    if (!detail.querySelector('.detail-close')) {
-                        const closeBtn = document.createElement('div');
-                        closeBtn.className = 'detail-close';
-                        closeBtn.innerHTML = '×';
-                        closeBtn.style.position = 'absolute';
-                        closeBtn.style.top = '15px';
-                        closeBtn.style.right = '15px';
-                        closeBtn.style.width = '30px';
-                        closeBtn.style.height = '30px';
-                        closeBtn.style.background = 'rgba(29, 185, 84, 0.3)';
-                        closeBtn.style.border = '2px solid #1db954';
-                        closeBtn.style.borderRadius = '50%';
-                        closeBtn.style.color = '#ffffff';
-                        closeBtn.style.fontSize = '20px';
-                        closeBtn.style.display = 'flex';
-                        closeBtn.style.alignItems = 'center';
-                        closeBtn.style.justifyContent = 'center';
-                        closeBtn.style.cursor = 'pointer';
-                        closeBtn.style.zIndex = '1001';
-                        
-                        closeBtn.addEventListener('click', function() {
-                            detail.classList.remove('active');
-                            setTimeout(() => {
-                                detail.style.display = 'none';
-                            }, 500);
-                        });
-                        
-                        detail.appendChild(closeBtn);
-                        console.log('Added close button to', detail.id);
-                    }
-                });
-            }
-            function togglePersonal(id) {
-                // Hide all open detail panels using your existing helper
-                closeAllDetails();
-                
-                // Show the selected personal detail
-                const personalDetail = document.getElementById(id);
-                if (personalDetail) {
-                    personalDetail.style.display = 'block';
-                    
-                    // Force a reflow
-                    void personalDetail.offsetWidth;
-                    
-                    // Add active class for smooth slide-up animation
-                    setTimeout(() => {
-                        personalDetail.classList.add('active');
-                    }, 10);
-                }
-                
-                // Update tab styles for the personal section
-                const personalTabs = document.querySelectorAll('#personal-section .project-tab');
-                personalTabs.forEach(tab => {
-                    tab.classList.remove('active');
-                });
-                
-                const selectedTab = document.querySelector(`#personal-section .project-btn[onclick*="'${id}'"]`)?.parentElement;
-                if (selectedTab) {
-                    selectedTab.classList.add('active');
-                }
-                
-                if (event) event.preventDefault();
-                return false;
-            }
-            
-            // Make all project buttons work
-            document.querySelectorAll('.project-btn').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    // Extract project ID from onclick attribute
-                    const onclickAttr = this.getAttribute('onclick');
-                    const match = onclickAttr.match(/toggleProject\('([^']+)'\)/);
-                    
-                    if (match && match[1]) {
-                        const projectId = match[1];
-                        console.log('Project button clicked:', projectId);
-                        toggleProject(projectId);
-                        e.preventDefault();
-                    }
-                });
-            });
-            
-            // Make all experience buttons work
-            document.querySelectorAll('.project-btn[onclick*="toggleExperience"]').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    // Extract experience ID from onclick attribute
-                    const onclickAttr = this.getAttribute('onclick');
-                    const match = onclickAttr.match(/toggleExperience\('([^']+)'\)/);
-                    
-                    if (match && match[1]) {
-                        const experienceId = match[1];
-                        console.log('Experience button clicked:', experienceId);
-                        toggleExperience(experienceId);
-                        e.preventDefault();
-                    }
-                });
-            });
-            
-            // Add close buttons initially
-            addCloseButtons();
-            
-            // Expose functions globally for onclick attributes
-            window.toggleProject = toggleProject;
-            window.toggleExperience = toggleExperience;
-            
-            console.log('Project and experience interactions initialized');
-        });
 
     </script>
 

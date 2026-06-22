@@ -1172,7 +1172,8 @@ footer {
     }
     .explorer-content {
         width: 100%;
-        min-height: auto; /* Lets the height be flexible on mobile */
+        min-height: auto;
+        box-sizing: border-box;
     }
 }
 .contact-icon {
@@ -1198,9 +1199,10 @@ footer {
 
 /* Fix the lost margin you mentioned */
 .about-explorer .explorer-content {
-    margin-left: 0; /* Standardize terminal spacing */
+    margin-left: 0;
     padding: 30px;
     width: 100%;
+    box-sizing: border-box;
 }
 .contact-label {
     grid-area: label;
@@ -1444,13 +1446,47 @@ footer {
         min-width: unset;
     }
 
-    div:has(> iframe) {
-        width: 100%;
+    /* Explorer layout on mobile */
+    .about-explorer .explorer-content {
+        padding: 16px;
+        max-height: none;
+        overflow-x: hidden;
     }
 
-    iframe {
+    .explorer-content .highlight-card {
+        padding: 14px 16px;
+    }
+
+    /* Tame shadows that bleed off-screen */
+    .highlight-card,
+    .skill-group,
+    .digital-card {
+        box-shadow: 3px 3px 0 rgba(29,185,84,0.2);
+    }
+
+    /* Disable hover transform on touch — causes clipping */
+    .highlight-card:hover,
+    .skill-group:hover,
+    .digital-card:hover {
+        transform: none;
+        box-shadow: 3px 3px 0 rgba(29,185,84,0.3);
+    }
+
+    /* Keep all media inside cards from overflowing */
+    .explorer-content img,
+    .explorer-content iframe {
+        max-width: 100%;
         width: 100%;
+        height: auto;
+    }
+
+    .explorer-content iframe {
         height: 200px;
+    }
+
+    div:has(> iframe) {
+        width: 100%;
+        overflow: hidden;
     }
 }
 

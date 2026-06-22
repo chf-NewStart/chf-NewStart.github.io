@@ -9,130 +9,89 @@
 
     body {
       font-family: Consolas, 'Courier New', monospace;
-      background: #080808;
-      color: #ccc;
-      min-height: 100vh;
-      padding: 20px 16px;
+      background: #080808; color: #ccc;
+      min-height: 100vh; padding: 20px 16px;
     }
 
     .pg-header { max-width: 880px; margin: 0 auto 18px; }
     .pg-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .pg-title { color: #1db954; font-size: 1.4rem; text-transform: uppercase; letter-spacing: -1px; }
-    .pg-sub { color: #444; font-size: 0.72rem; margin-top: 3px; line-height: 1.6; }
+    .pg-sub { color: #666; font-size: 0.72rem; margin-top: 3px; line-height: 1.6; }
     .pg-back { font-size: 0.72rem; color: #1db954; text-decoration: none; margin-top: 6px; display: inline-block; }
     .pg-back:hover { text-decoration: underline; }
-
-    .lang-btn {
-      background: transparent; border: 1px solid #1db954;
-      color: #1db954; font-family: Consolas, monospace; font-size: 0.72rem;
-      padding: 5px 11px; cursor: pointer; flex-shrink: 0; transition: background 0.1s;
-    }
+    .lang-btn { background: transparent; border: 1px solid #1db954; color: #1db954; font-family: Consolas, monospace; font-size: 0.72rem; padding: 5px 11px; cursor: pointer; flex-shrink: 0; transition: background 0.1s; }
     .lang-btn:hover { background: rgba(29,185,84,0.1); }
 
-    /* Layout */
     .layout { display: flex; gap: 20px; align-items: flex-start; max-width: 880px; margin: 0 auto; }
     .board-col { flex: 0 0 auto; }
     .panel-col { flex: 1; min-width: 0; }
 
-    /* Legend */
-    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.68rem; color: #444; }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.68rem; color: #666; }
     .legend span { display: flex; align-items: center; gap: 5px; }
     .leg { display: inline-block; width: 20px; height: 0; }
 
-    /* Board */
-    .board {
-      display: grid;
-      grid-template-columns: repeat(4, 112px);
-      grid-template-rows: repeat(4, 112px);
-      background: #080808;
-    }
-
-    .cell {
-      position: relative;
-      display: flex; flex-wrap: wrap;
-      align-items: center; justify-content: center;
-      gap: 3px; padding: 6px;
-      background: #101010; transition: background 0.1s;
-    }
+    .board { display: grid; grid-template-columns: repeat(4, 112px); grid-template-rows: repeat(4, 112px); background: #080808; }
+    .cell { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 3px; padding: 6px; background: #101010; transition: background 0.1s; }
     .cell.exit { background: rgba(29,185,84,0.07); }
     .cell.placeable:hover { background: rgba(29,185,84,0.05); cursor: pointer; }
-
     .exit-tag { position: absolute; top: 3px; left: 4px; font-size: 9px; color: #1db954; font-weight: bold; letter-spacing: 1px; }
     .trap-icon { position: absolute; top: 3px; right: 3px; font-size: 14px; line-height: 1; }
     .cell-coord { position: absolute; bottom: 2px; right: 3px; font-size: 8px; color: #1e1e1e; }
 
-    /* Unit badges */
-    .badge {
-      width: 30px; height: 30px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 9px; font-weight: bold; border: 2px solid transparent;
-      position: relative; flex-shrink: 0; transition: box-shadow 0.2s;
-    }
+    .badge { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; border: 2px solid transparent; position: relative; flex-shrink: 0; transition: box-shadow 0.2s; }
     .badge.participant { background: rgba(29,185,84,0.15); border-color: #1db954; color: #1db954; }
     .badge.hunter      { background: rgba(244,67,54,0.15);  border-color: #f44336; color: #f44336; }
     .badge.current     { box-shadow: 0 0 0 2px currentColor, 0 0 10px currentColor; }
     .badge-hp { position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); font-size: 7px; color: #666; white-space: nowrap; }
 
-    /* Panel cards */
     .pcard { background: #111; border: 1px solid #1c1c1c; padding: 11px 13px; margin-bottom: 8px; }
     .pcard-title { color: #1db954; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #1a1a1a; }
 
-    /* Turn bar */
     .turn-bar { border: 1px solid #1db954; padding: 8px 12px; color: #1db954; font-size: 0.82rem; margin-bottom: 8px; }
     .turn-bar.hunter-t { border-color: #f44336; color: #f44336; }
 
-    /* Win banner */
     .win-banner { display: none; padding: 10px; text-align: center; font-size: 1rem; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
     .win-banner.win-p { display: block; color: #1db954; border: 2px solid #1db954; }
     .win-banner.win-h { display: block; color: #f44336;  border: 2px solid #f44336; }
 
-    /* Unit cards */
     .ucards { display: flex; flex-wrap: wrap; gap: 5px; }
     .ucard { flex: 1; min-width: 56px; background: #0d0d0d; border: 1px solid #1c1c1c; padding: 6px 7px; font-size: 0.68rem; }
-    .ucard.active   { border-color: #1db954; }
+    .ucard.active { border-color: #1db954; }
     .ucard.hunter-c.active { border-color: #f44336; }
     .ucard .uname { color: #999; margin-bottom: 3px; }
     .ucard.hunter-c .uname { color: #f44336; }
     .hpbar  { height: 3px; background: #1a1a1a; margin: 3px 0; }
     .hpfill { height: 100%; background: #1db954; transition: width 0.3s; }
     .hunter-c .hpfill { background: #f44336; }
-    .ustat  { color: #383838; font-size: 0.62rem; }
+    .ustat  { color: #777; font-size: 0.62rem; }
 
-    /* D-pad */
     .dpad { display: grid; grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 34px); gap: 3px; justify-content: center; margin-bottom: 10px; }
     .dp { background: #0d0d0d; border: 1px solid #1e1e1e; color: #555; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s; user-select: none; }
     .dp:hover { border-color: #1db954; color: #1db954; }
     .dp.sel   { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.08); }
     .dp.center { background: #080808; border-color: #111; cursor: default; color: #111; }
 
-    /* Buttons */
     .brow { display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
-    .btn { flex: 1; background: transparent; border: 1px solid #1e1e1e; color: #484848; font-family: Consolas, monospace; font-size: 0.72rem; padding: 7px 8px; cursor: pointer; transition: all 0.1s; white-space: nowrap; }
+    .btn { flex: 1; background: transparent; border: 1px solid #2a2a2a; color: #777; font-family: Consolas, monospace; font-size: 0.72rem; padding: 7px 8px; cursor: pointer; transition: all 0.1s; white-space: nowrap; }
     .btn:hover:not(:disabled) { border-color: #1db954; color: #1db954; }
     .btn:disabled { opacity: 0.2; cursor: not-allowed; }
     .btn.full { flex: 0 0 100%; }
-
-    @keyframes btn-pulse {
-      0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
-      50%      { box-shadow: 0 0 0 5px rgba(255,255,255,0); }
-    }
+    @keyframes btn-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.3);}50%{box-shadow:0 0 0 5px rgba(255,255,255,0);} }
     .btn.new-game-glow   { border-color: #1db954; color: #1db954; animation: btn-pulse 1.4s ease-in-out infinite; }
     .btn.new-game-glow-h { border-color: #f44336; color: #f44336; animation: btn-pulse 1.4s ease-in-out infinite; }
 
-    /* Setup tools */
     .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
-    .tbtn { background: #0d0d0d; border: 1px solid #1e1e1e; color: #555; font-family: Consolas, monospace; font-size: 0.68rem; padding: 8px 10px; cursor: pointer; text-align: left; transition: all 0.1s; line-height: 1.5; }
+    .tbtn { background: #0d0d0d; border: 1px solid #2a2a2a; color: #888; font-family: Consolas, monospace; font-size: 0.68rem; padding: 8px 10px; cursor: pointer; text-align: left; transition: all 0.1s; line-height: 1.5; }
     .tbtn:hover:not(:disabled) { border-color: #888; color: #aaa; }
     .tbtn.sel  { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.08); }
     .tbtn:disabled { opacity: 0.25; cursor: not-allowed; }
 
-    /* Log */
     .log { max-height: 160px; overflow-y: auto; font-size: 0.7rem; line-height: 1.8; }
-    .log div          { color: #484848; }
-    .log div.log-action  { color: #777; }
-    .log div.log-event   { color: #1db954; }
-    .log div.log-danger  { color: #f44336; }
-    .log div.log-round   { color: #555; border-top: 1px solid #1a1a1a; margin-top: 3px; padding-top: 3px; }
+    .log div            { color: #666; }
+    .log div.log-action { color: #999; }
+    .log div.log-event  { color: #1db954; }
+    .log div.log-danger { color: #f44336; }
+    .log div.log-round  { color: #777; border-top: 1px solid #1a1a1a; margin-top: 3px; padding-top: 3px; }
 
     @media (max-width: 660px) {
       .layout { flex-direction: column; }
@@ -155,8 +114,6 @@
 </div>
 
 <div class="layout">
-
-  <!-- Board -->
   <div class="board-col">
     <div class="legend">
       <span><span class="leg" style="border-top:2px dashed rgba(29,185,84,0.55)"></span><span data-en="Open"   data-zh="开启">Open</span></span>
@@ -165,10 +122,9 @@
       <span><span class="leg" style="border-top:3px double #00bcd4"></span><span data-en="Frozen" data-zh="冰冻">Frozen</span></span>
     </div>
     <div id="gameBoard" class="board"></div>
-    <div id="boardCaption" style="font-size:0.62rem;color:#1e1e1e;margin-top:4px;text-align:right;" data-en="door state = cell border · click cell during setup to place trap" data-zh="门状态=格子边框 · 布置阶段点击格子放置陷阱">door state = cell border · click cell during setup to place trap</div>
+    <div style="font-size:0.62rem;color:#1e1e1e;margin-top:4px;text-align:right;" data-en="door state = cell border · click cell during setup to place trap" data-zh="门状态=格子边框 · 布置阶段点击格子放置陷阱">door state = cell border · click cell during setup to place trap</div>
   </div>
 
-  <!-- Panel -->
   <div class="panel-col">
     <div id="winBanner" class="win-banner"></div>
     <div id="turnBar" class="turn-bar"></div>
@@ -179,9 +135,9 @@
     </div>
 
     <div class="pcard" id="setupPanel" style="display:none">
-      <div class="pcard-title" id="setupTitle" data-en="// hunter_setup · select trap → click board cell" data-zh="// 猎手布置 · 选择陷阱 → 点击格子">// hunter_setup · select trap → click board cell</div>
+      <div class="pcard-title" data-en="// hunter_setup · select trap → click board cell" data-zh="// 猎手布置 · 选择陷阱 → 点击格子">// hunter_setup · select trap → click board cell</div>
       <div class="tool-grid" id="toolGrid"></div>
-      <div id="setupHint" style="font-size:0.68rem;color:#383838;margin-bottom:8px;" data-en="Click a cell again to remove a placed trap." data-zh="再次点击格子可移除陷阱。">Click a cell again to remove a placed trap.</div>
+      <div style="font-size:0.68rem;color:#666;margin-bottom:8px;" data-en="Click a cell again to remove a placed trap." data-zh="再次点击格子可移除陷阱。">Click a cell again to remove a placed trap.</div>
       <div style="display:flex;gap:6px;">
         <button class="btn" id="startBtn" onclick="finishSetup()" disabled></button>
         <button class="btn" id="randBtn"  onclick="randomizeSetup()"></button>
@@ -189,7 +145,7 @@
     </div>
 
     <div class="pcard" id="controlPanel" style="display:none">
-      <div class="pcard-title" id="controlsTitle" data-en="// controls · pick direction → then action" data-zh="// 控制 · 选方向 → 执行动作">// controls · pick direction → then action</div>
+      <div class="pcard-title" data-en="// controls · pick direction → then action" data-zh="// 控制 · 选方向 → 执行动作">// controls · pick direction → then action</div>
       <div class="dpad">
         <div></div>
         <div class="dp" id="dirUp"    onclick="setDir('up')">↑</div>
@@ -236,36 +192,21 @@
 <script>
 /* ── i18n ─────────────────────────────────────────────── */
 let lang = 'en';
-
-function t(en, zh) { return lang === 'zh' ? zh : en; }
-
-function tDir(d) {
-  return lang === 'zh' ? ({ up:'上', down:'下', left:'左', right:'右' }[d] || d) : d;
-}
-function tState(s) {
-  return lang === 'zh' ? ({ open:'开启', closed:'关闭', locked:'锁定' }[s] || s) : s;
-}
-function tVerb(v) {
-  return lang === 'zh' ? ({ unlock:'解锁', open:'开启', close:'关闭', lock:'锁定' }[v] || v) : v;
-}
+function t(en, zh)  { return lang === 'zh' ? zh : en; }
+function tDir(d)    { return lang === 'zh' ? ({up:'上',down:'下',left:'左',right:'右'}[d]||d) : d; }
+function tState(s)  { return lang === 'zh' ? ({open:'开启',closed:'关闭',locked:'锁定'}[s]||s) : s; }
+function tVerb(v)   { return lang === 'zh' ? ({unlock:'解锁',open:'开启',close:'关闭',lock:'锁定'}[v]||v) : v; }
 
 function applyLang() {
-  document.getElementById('pgTitle').textContent = t('Escape Grid', '逃脱方格');
+  document.getElementById('pgTitle').textContent = t('Escape Grid','逃脱方格');
   document.getElementById('pgSub').innerHTML = lang === 'zh'
-    ? `4名参与者（<span style="color:#1db954">绿</span>）从(0,0)出发 · 到达(3,3)<span style="color:#1db954">出口</span>获胜 · 猎手（<span style="color:#f44336">红</span>）从(1,2)出发<br>门以格子边框显示：<span style="color:#1db954">绿虚线</span>=开启 · <span style="color:#888">灰</span>=关闭 · <span style="color:#c62828">红</span>=锁定 · <span style="color:#00bcd4">青</span>=冰冻<br>参与者每回合 <strong style="color:#ddd">2行动</strong> · 猎手每回合 <strong style="color:#f44336">3行动</strong>`
-    : `4 participants (green) start at (0,0) · reach EXIT at (3,3) to win · hunter (red) starts at (1,2)<br>Doors shown as cell borders: <span style="color:#1db954">green dashed</span> = open · <span style="color:#888">gray</span> = closed · <span style="color:#c62828">red</span> = locked · <span style="color:#00bcd4">cyan</span> = frozen<br>Participants get <strong style="color:#ddd">2 actions/turn</strong> · hunter gets <strong style="color:#f44336">3 actions/turn</strong>`;
-  document.getElementById('pgBack').textContent = t('← back to portfolio', '← 返回作品集');
-
-  // All elements with data-en/data-zh
-  document.querySelectorAll('[data-en]').forEach(el => {
-    el.textContent = t(el.dataset.en, el.dataset.zh);
-  });
-
-  // Dynamic button labels that change during gameplay
+    ? `所有单位从(0,0)出发 · 参与者（<span style="color:#1db954">绿</span>）到达(3,3)<span style="color:#1db954">出口</span>获胜 · 猎手（<span style="color:#f44336">红</span>）消灭所有参与者获胜<br>门以格子边框显示：<span style="color:#1db954">绿虚线</span>=开启 · <span style="color:#888">灰</span>=关闭 · <span style="color:#c62828">红</span>=锁定 · <span style="color:#00bcd4">青</span>=冰冻<br>参与者每回合：<strong style="color:#ddd">1次移动</strong>+<strong style="color:#ddd">1次攻击</strong> · 猎手：<strong style="color:#f44336">4次移动</strong>+<strong style="color:#f44336">1次攻击</strong>（第1轮不能攻击）`
+    : `All units start at (0,0) · participants (green) reach EXIT at (3,3) to win · hunter (red) eliminates all to win<br>Doors shown as cell borders: <span style="color:#1db954">green dashed</span>=open · <span style="color:#888">gray</span>=closed · <span style="color:#c62828">red</span>=locked · <span style="color:#00bcd4">cyan</span>=frozen<br>Participants per turn: <strong style="color:#ddd">1 move</strong>+<strong style="color:#ddd">1 attack</strong> · Hunter: <strong style="color:#f44336">4 moves</strong>+<strong style="color:#f44336">1 attack</strong> (no attack Round 1)`;
+  document.getElementById('pgBack').textContent = t('← back to portfolio','← 返回作品集');
+  document.querySelectorAll('[data-en]').forEach(el => { el.textContent = t(el.dataset.en, el.dataset.zh); });
   const isAuto = game?.autoPlayInterval != null;
   const ab = document.getElementById('autoPlayBtn');
   if (ab) ab.textContent = isAuto ? t('⏹ Stop','⏹ 停止') : t('▶ Auto Play','▶ 自动');
-
   if (game?.phase === 'setup') game.refreshSetupUI();
   if (game) game.render();
   else document.getElementById('turnBar').textContent = t('Press ⟳ New Game to begin','按 ⟳ 新游戏 开始');
@@ -277,7 +218,7 @@ function toggleLang() {
   applyLang();
 }
 
-/* ── Door border helper ───────────────────────────────── */
+/* ── Door CSS ─────────────────────────────────────────── */
 function doorCSS(state, frozen) {
   if (frozen)             return '3px double #00bcd4';
   if (state === 'open')   return '2px dashed rgba(29,185,84,0.5)';
@@ -286,20 +227,18 @@ function doorCSS(state, frozen) {
   return '1px solid #181818';
 }
 
-/* ── Pathfinder (Dijkstra on 4×4 door graph) ───────────── */
+/* ── Dijkstra pathfinder ──────────────────────────────── */
 function findPath(sx, sy, ex, ey, doors, frozenDoors, dkeyFn) {
   const idx = (x,y) => x*4+y;
   const INF = 1e9;
-  const dist = Array(16).fill(INF);
-  const prev = Array(16).fill(-1);
+  const dist = Array(16).fill(INF), prev = Array(16).fill(-1);
   dist[idx(sx,sy)] = 0;
-  const visited = new Set();
-
+  const vis = new Set();
   for (;;) {
     let u=-1, ud=INF;
-    for (let i=0;i<16;i++) if (!visited.has(i) && dist[i]<ud) { ud=dist[i]; u=i; }
-    if (u===-1 || u===idx(ex,ey)) break;
-    visited.add(u);
+    for (let i=0;i<16;i++) if (!vis.has(i)&&dist[i]<ud){ud=dist[i];u=i;}
+    if (u===-1||u===idx(ex,ey)) break;
+    vis.add(u);
     const x=Math.floor(u/4), y=u%4;
     for (const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
       const nx=x+dx, ny=y+dy;
@@ -307,31 +246,19 @@ function findPath(sx, sy, ex, ey, doors, frozenDoors, dkeyFn) {
       const k=dkeyFn(x,y,nx,ny);
       if (frozenDoors.has(k)) continue;
       const s=doors.get(k);
-      const c = s==='open'?1 : s==='closed'?2 : s==='locked'?3 : INF;
+      const c=s==='open'?1:s==='closed'?2:s==='locked'?3:INF;
       if (c===INF) continue;
       const nd=dist[u]+c, v=idx(nx,ny);
-      if (nd<dist[v]) { dist[v]=nd; prev[v]=u; }
+      if (nd<dist[v]){dist[v]=nd;prev[v]=u;}
     }
   }
-
   const endK=idx(ex,ey);
   if (dist[endK]===INF) return null;
-  const path=[];
-  let cur=endK;
-  while (cur!==idx(sx,sy)) {
-    path.unshift({x:Math.floor(cur/4), y:cur%4});
-    cur=prev[cur];
-    if (cur===-1) return null;
-  }
+  const path=[]; let cur=endK;
+  while (cur!==idx(sx,sy)){path.unshift({x:Math.floor(cur/4),y:cur%4});cur=prev[cur];if(cur===-1)return null;}
   return path;
 }
-
-function dirTo(fx,fy,tx,ty) {
-  if (tx>fx) return 'right';
-  if (tx<fx) return 'left';
-  if (ty>fy) return 'down';
-  return 'up';
-}
+function dirTo(fx,fy,tx,ty){if(tx>fx)return'right';if(tx<fx)return'left';if(ty>fy)return'down';return'up';}
 
 /* ── Game Engine ──────────────────────────────────────── */
 class GameEngine {
@@ -347,17 +274,20 @@ class GameEngine {
   init() {
     this.grid=Array(4).fill(null).map(()=>Array(4).fill(null).map(()=>({units:[],symbol:null,isExit:false})));
 
+    // All units start at (0,0). Participants: 1 move + 1 attack. Hunter: 4 moves + 1 attack.
     this.participants=['P1','P2','P3','P4'].map(id=>({
-      id, type:'participant', hp:5, maxHp:5, x:0, y:0, actions:2, maxActions:2, hasRevive:false
+      id, type:'participant', hp:5, maxHp:5, x:0, y:0,
+      moves:1, maxMoves:1, attacks:1, maxAttacks:1, hasRevive:false
     }));
-    this.hunter={id:'H', type:'hunter', hp:16, maxHp:16, x:1, y:2, actions:3, maxActions:3, hasRevive:false};
+    this.hunter={id:'H', type:'hunter', hp:16, maxHp:16, x:0, y:0,
+                 moves:4, maxMoves:4, attacks:1, maxAttacks:1, hasRevive:false};
 
-    this.participants.forEach(p=>this.grid[p.y][p.x].units.push(p));
-    this.grid[this.hunter.y][this.hunter.x].units.push(this.hunter);
+    this.participants.forEach(p=>this.grid[0][0].units.push(p));
+    this.grid[0][0].units.push(this.hunter);
     this.grid[3][3].isExit=true;
 
     this.doors.clear();
-    for (let y=0;y<4;y++) for (let x=0;x<4;x++) {
+    for (let y=0;y<4;y++) for (let x=0;x<4;x++){
       if (x<3) this.doors.set(this.dkey(x,y,x+1,y),'closed');
       if (y<3) this.doors.set(this.dkey(x,y,x,y+1),'closed');
     }
@@ -374,77 +304,62 @@ class GameEngine {
     this.render(); this.refreshSetupUI();
   }
 
+  hasActions(unit) { return unit.moves>0 || unit.attacks>0; }
+
   /* ── Setup ── */
-  setTool(sym) {
-    if (this.phase!=='setup') return;
-    this.selectedTool=(this.selectedTool===sym)?null:sym;
-    this.refreshSetupUI();
-  }
+  setTool(sym) { if(this.phase!=='setup')return; this.selectedTool=(this.selectedTool===sym)?null:sym; this.refreshSetupUI(); }
 
   placeToolAt(x,y) {
-    if (this.phase!=='setup') return;
-    if ((x===0&&y===0)||(x===3&&y===3)) { this.log(t('Cannot place on start or exit.','不能放在起点或终点。')); return; }
+    if(this.phase!=='setup')return;
+    if((x===0&&y===0)||(x===3&&y===3)){this.log(t('Cannot place on start or exit.','不能放在起点或终点。'));return;}
     const cell=this.grid[y][x];
-    if (cell.symbol) { this.clearToolAt(x,y); return; }
-    if (!this.selectedTool)               { this.log(t('Select a trap first.','请先选择陷阱。')); return; }
-    if (!this.toolbox[this.selectedTool]) { this.log(t('None left.','已用完。')); return; }
+    if(cell.symbol){this.clearToolAt(x,y);return;}
+    if(!this.selectedTool){this.log(t('Select a trap first.','请先选择陷阱。'));return;}
+    if(!this.toolbox[this.selectedTool]){this.log(t('None left.','已用完。'));return;}
     cell.symbol=this.selectedTool; this.toolbox[this.selectedTool]--;
     this.log(t(`Placed ${this.selectedTool} at (${x},${y})`,`在(${x},${y})放置了${this.selectedTool}`));
     this.render(); this.refreshSetupUI();
   }
 
   clearToolAt(x,y) {
-    if (this.phase!=='setup') return;
-    const cell=this.grid[y][x]; if (!cell.symbol) return;
+    if(this.phase!=='setup')return;
+    const cell=this.grid[y][x]; if(!cell.symbol)return;
     this.toolbox[cell.symbol]++; cell.symbol=null;
     this.log(t(`Cleared (${x},${y})`,`清除(${x},${y})`));
     this.render(); this.refreshSetupUI();
   }
 
   refreshSetupUI() {
-    const traps = {
-      'XX':{ en:'Damage',       zh:'伤害',     den:'−1 HP on entry',         dzh:'进入时−1血'     },
-      '■' :{ en:'Freeze',       zh:'冰冻',     den:'locks adjacent doors',   dzh:'冻结相邻门'     },
-      '☆' :{ en:'Instant Kill', zh:'即死',     den:'kills on entry',         dzh:'进入即死'       },
-      '✦' :{ en:'Bonus Action', zh:'额外行动', den:'+1 action to stepper',   dzh:'+1行动给踩者'   },
-      '△' :{ en:'Revive',       zh:'复活',     den:'survive death once',     dzh:'死亡豁免一次'   },
-      '+' :{ en:'Stun',         zh:'眩晕',     den:'skip opponent next turn', dzh:'对手跳过下回合' },
-    };
-    const grid=document.getElementById('toolGrid'); if (!grid) return;
-    grid.innerHTML='';
-    for (const [sym,cnt] of Object.entries(this.toolbox)) {
+    const traps={'XX':{en:'Damage',zh:'伤害',den:'−1 HP on entry',dzh:'进入时−1血'},'■':{en:'Freeze',zh:'冰冻',den:'locks adjacent doors',dzh:'冻结相邻门'},'☆':{en:'Instant Kill',zh:'即死',den:'kills on entry',dzh:'进入即死'},'✦':{en:'Bonus Move',zh:'额外移动',den:'+1 move action',dzh:'+1次移动'},'△':{en:'Revive',zh:'复活',den:'survive death once',dzh:'死亡豁免一次'},'+':{en:'Stun',zh:'眩晕',den:'skip opponent next turn',dzh:'对手跳过下回合'}};
+    const grid=document.getElementById('toolGrid'); if(!grid)return; grid.innerHTML='';
+    for(const[sym,cnt]of Object.entries(this.toolbox)){
       const tr=traps[sym];
       const b=document.createElement('button');
       b.className='tbtn'+(this.selectedTool===sym?' sel':'');
-      b.innerHTML=`<span style="font-size:1.1em;margin-right:5px">${sym}</span><span style="color:#aaa">${t(tr.en,tr.zh)}</span><br><span style="font-size:0.6rem;color:#555">${t(tr.den,tr.dzh)}</span><span style="float:right;color:#777">×${cnt}</span>`;
-      b.disabled=cnt<=0; b.onclick=()=>this.setTool(sym);
-      grid.appendChild(b);
+      b.innerHTML=`<span style="font-size:1.1em;margin-right:5px">${sym}</span><span style="color:#ccc">${t(tr.en,tr.zh)}</span><br><span style="font-size:0.6rem;color:#777">${t(tr.den,tr.dzh)}</span><span style="float:right;color:#999">×${cnt}</span>`;
+      b.disabled=cnt<=0; b.onclick=()=>this.setTool(sym); grid.appendChild(b);
     }
     const rem=Object.values(this.toolbox).reduce((a,b)=>a+b,0);
     const sb=document.getElementById('startBtn');
-    if (sb) { sb.disabled=rem>0; sb.textContent=rem>0?t(`✅ Start (${rem} left)`,`✅ 开始（剩${rem}个）`):t('✅ Start Game','✅ 开始游戏'); }
+    if(sb){sb.disabled=rem>0;sb.textContent=rem>0?t(`✅ Start (${rem} left)`,`✅ 开始（剩${rem}个）`):t('✅ Start Game','✅ 开始游戏');}
     const rb=document.getElementById('randBtn');
-    if (rb) rb.textContent=t('🎲 Randomize','🎲 随机布置');
+    if(rb)rb.textContent=t('🎲 Randomize','🎲 随机布置');
   }
 
   randomizeTools() {
-    if (this.phase!=='setup') return;
-    for (let y=0;y<4;y++) for (let x=0;x<4;x++) {
-      const cell=this.grid[y][x];
-      if (cell.symbol) { this.toolbox[cell.symbol]++; cell.symbol=null; }
-    }
+    if(this.phase!=='setup')return;
+    for(let y=0;y<4;y++) for(let x=0;x<4;x++){const c=this.grid[y][x];if(c.symbol){this.toolbox[c.symbol]++;c.symbol=null;}}
     const slots=[];
-    for (let y=0;y<4;y++) for (let x=0;x<4;x++)
-      if (!((x===0&&y===0)||(x===3&&y===3))) slots.push({x,y});
-    for (let i=slots.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [slots[i],slots[j]]=[slots[j],slots[i]]; }
+    for(let y=0;y<4;y++) for(let x=0;x<4;x++) if(!((x===0&&y===0)||(x===3&&y===3)))slots.push({x,y});
+    for(let i=slots.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[slots[i],slots[j]]=[slots[j],slots[i]];}
     const pile=[];
-    for (const [s,c] of Object.entries(this.toolbox)) for (let i=0;i<c;i++) pile.push(s);
-    while (pile.length&&slots.length) { const sym=pile.pop(),sl=slots.pop(); this.grid[sl.y][sl.x].symbol=sym; this.toolbox[sym]--; }
+    for(const[s,c]of Object.entries(this.toolbox))for(let i=0;i<c;i++)pile.push(s);
+    while(pile.length&&slots.length){const sym=pile.pop(),sl=slots.pop();this.grid[sl.y][sl.x].symbol=sym;this.toolbox[sym]--;}
     this.log(t('Traps randomized.','陷阱已随机布置。')); this.render(); this.refreshSetupUI();
   }
 
   finishSetup() {
-    if (this.phase!=='setup') return;
+    if(this.phase!=='setup')return;
     this.phase='play'; this.selectedTool=null;
     document.getElementById('setupPanel').style.display='none';
     document.getElementById('controlPanel').style.display='block';
@@ -460,138 +375,134 @@ class GameEngine {
   }
 
   startTurn() {
-    if (this.gameOver||this.phase!=='play') return;
+    if(this.gameOver||this.phase!=='play')return;
     const u=this.curUnit();
-    if (u) {
-      if (u.type==='hunter'&&this.stunHunter>0) { this.stunHunter--; this.log(t('Hunter stunned — turn skipped.','猎手被眩晕——跳过回合。'),'danger'); this.currentUnitIndex++; return this.startTurn(); }
-      if (u.type==='participant'&&this.stunPart>0) { this.stunPart--; this.log(t('Participant stunned — turn skipped.','参与者被眩晕——跳过回合。'),'danger'); this.currentUnitIndex++; return this.startTurn(); }
+    if(u){
+      if(u.type==='hunter'&&this.stunHunter>0){this.stunHunter--;this.log(t('Hunter stunned — turn skipped.','猎手被眩晕——跳过回合。'),'danger');this.currentUnitIndex++;return this.startTurn();}
+      if(u.type==='participant'&&this.stunPart>0){this.stunPart--;this.log(t('Participant stunned — turn skipped.','参与者被眩晕——跳过回合。'),'danger');this.currentUnitIndex++;return this.startTurn();}
     }
     this.selectedDir=null;
     ['Up','Down','Left','Right'].forEach(d=>document.getElementById('dir'+d)?.classList.remove('sel'));
     const cu=this.curUnit();
-    if (cu) { cu.actions=cu.maxActions; this.log(t(`[ ${cu.id} ] ${cu.actions} actions.`,`[ ${cu.id} ] ${cu.actions}个行动。`),'action'); }
+    if(cu){
+      cu.moves=cu.maxMoves; cu.attacks=cu.maxAttacks;
+      const atkInfo = (cu.type==='hunter'&&this.currentTurn===0) ? t(' · no atk (Rd 1)',' · 不可攻击(第1轮)') : t(` · atk ✓`,' · 可攻击');
+      this.log(t(`[ ${cu.id} ] ${cu.moves} move(s)${atkInfo}`,`[ ${cu.id} ] ${cu.moves}次移动${atkInfo}`),'action');
+    }
     this.render();
   }
 
   curUnit() {
-    if (this.currentUnitIndex<this.participants.length) {
-      const p=this.participants[this.currentUnitIndex];
-      return (p&&p.hp>0&&!p.escaped)?p:null;
-    }
-    if (this.currentUnitIndex===this.participants.length) return this.hunter.hp>0?this.hunter:null;
+    if(this.currentUnitIndex<this.participants.length){const p=this.participants[this.currentUnitIndex];return(p&&p.hp>0&&!p.escaped)?p:null;}
+    if(this.currentUnitIndex===this.participants.length)return this.hunter.hp>0?this.hunter:null;
     return null;
   }
 
   nextTurn() {
-    if (this.gameOver) return;
+    if(this.gameOver)return;
     this.currentUnitIndex++;
-    while (this.currentUnitIndex<this.participants.length) {
-      const p=this.participants[this.currentUnitIndex];
-      if (p&&p.hp>0&&!p.escaped) break;
-      this.currentUnitIndex++;
-    }
-    if (this.currentUnitIndex>this.participants.length) {
+    while(this.currentUnitIndex<this.participants.length){const p=this.participants[this.currentUnitIndex];if(p&&p.hp>0&&!p.escaped)break;this.currentUnitIndex++;}
+    if(this.currentUnitIndex>this.participants.length){
       this.currentUnitIndex=0; this.currentTurn++;
       this.log(t(`--- Round ${this.currentTurn+1} ---`,`--- 第${this.currentTurn+1}轮 ---`),'round');
-      while (this.currentUnitIndex<this.participants.length) {
-        const p=this.participants[this.currentUnitIndex];
-        if (p&&p.hp>0&&!p.escaped) break;
-        this.currentUnitIndex++;
-      }
+      while(this.currentUnitIndex<this.participants.length){const p=this.participants[this.currentUnitIndex];if(p&&p.hp>0&&!p.escaped)break;this.currentUnitIndex++;}
     }
     this.startTurn();
   }
 
-  /* ── Door helpers ── */
-  dkey(x1,y1,x2,y2) { return (x1>x2||(x1===x2&&y1>y2))?`${x2},${y2}-${x1},${y1}`:`${x1},${y1}-${x2},${y2}`; }
-  dstate(x1,y1,x2,y2) { return this.doors.get(this.dkey(x1,y1,x2,y2))||'open'; }
+  afterAction(unit) {
+    this.checkWin();
+    if(!this.gameOver){
+      if(unit.hp<=0||!this.hasActions(unit)) this.nextTurn();
+      else this.render();
+    }
+  }
 
-  adjByDir(unit,dir) {
+  /* ── Door helpers ── */
+  dkey(x1,y1,x2,y2){return(x1>x2||(x1===x2&&y1>y2))?`${x2},${y2}-${x1},${y1}`:`${x1},${y1}-${x2},${y2}`;}
+  dstate(x1,y1,x2,y2){return this.doors.get(this.dkey(x1,y1,x2,y2))||'open';}
+
+  adjByDir(unit,dir){
     let nx=unit.x,ny=unit.y;
-    if (dir==='up') ny--; if (dir==='down') ny++;
-    if (dir==='left') nx--; if (dir==='right') nx++;
-    if (nx<0||nx>3||ny<0||ny>3) return null;
+    if(dir==='up')ny--;if(dir==='down')ny++;if(dir==='left')nx--;if(dir==='right')nx++;
+    if(nx<0||nx>3||ny<0||ny>3)return null;
     const key=this.dkey(unit.x,unit.y,nx,ny);
     const state=this.doors.get(key);
-    if (state==null) return null;
-    return {key,state,nx,ny,dir};
+    if(state==null)return null;
+    return{key,state,nx,ny,dir};
   }
 
   /* ── Actions ── */
   move(dir) {
-    if (this.phase!=='play') return false;
-    const unit=this.curUnit(); if (!unit||unit.actions<=0) return false;
+    if(this.phase!=='play')return false;
+    const unit=this.curUnit(); if(!unit||unit.moves<=0)return false;
     let nx=unit.x,ny=unit.y;
-    if (dir==='up') ny--; if (dir==='down') ny++;
-    if (dir==='left') nx--; if (dir==='right') nx++;
-    if (nx<0||nx>3||ny<0||ny>3) { this.log(t(`${unit.id}: edge.`,`${unit.id}：到达边界。`)); return false; }
+    if(dir==='up')ny--;if(dir==='down')ny++;if(dir==='left')nx--;if(dir==='right')nx++;
+    if(nx<0||nx>3||ny<0||ny>3){this.log(t(`${unit.id}: edge.`,`${unit.id}：到达边界。`));return false;}
     const ds=this.dstate(unit.x,unit.y,nx,ny);
-    if (ds!=='open') { this.log(t(`${unit.id}: door ${dir} is ${ds}.`,`${unit.id}：${tDir(dir)}方向门为${tState(ds)}。`)); return false; }
+    if(ds!=='open'){this.log(t(`${unit.id}: door ${dir} is ${ds}.`,`${unit.id}：${tDir(dir)}方向门为${tState(ds)}。`));return false;}
     this.grid[unit.y][unit.x].units=this.grid[unit.y][unit.x].units.filter(u=>u!==unit);
-    unit.x=nx; unit.y=ny; this.grid[ny][nx].units.push(unit); unit.actions--;
+    unit.x=nx;unit.y=ny;this.grid[ny][nx].units.push(unit);unit.moves--;
     this.log(`${unit.id} → (${nx},${ny})`,'action');
-    this.applyEffects(unit); this.checkWin();
-    if (!this.gameOver) { if (unit.actions<=0) this.nextTurn(); else this.render(); }
+    this.applyEffects(unit);
+    this.afterAction(unit);
     return true;
   }
 
-  moveDir(dir=this.selectedDir) {
-    if (!dir) { this.log(t('Pick a direction first.','请先选择方向。')); return false; }
+  moveDir(dir=this.selectedDir){
+    if(!dir){this.log(t('Pick a direction first.','请先选择方向。'));return false;}
     return this.move(dir);
   }
 
+  // Returns true if the unit died from this effect (instant kill path)
   applyEffects(unit) {
-    const cell=this.grid[unit.y][unit.x]; if (!cell) return;
-    if (cell.symbol==='XX') { unit.hp=Math.max(0,unit.hp-1); this.log(t(`${unit.id} hit XX! HP: ${unit.hp}`,`${unit.id}触发XX！血量：${unit.hp}`),'danger'); }
-    if (cell.symbol==='☆') {
-      if (unit.hasRevive) { unit.hasRevive=false; unit.hp=Math.max(unit.hp,1); cell.symbol=null; this.log(t(`${unit.id} survived ☆ with △! HP=1`,`${unit.id}凭借△存活☆！血量=1`),'event'); }
-      else { unit.hp=0; this.log(t(`${unit.id} hit ☆ — instant kill!`,`${unit.id}触发☆——即死！`),'danger'); }
+    const cell=this.grid[unit.y][unit.x]; if(!cell)return;
+    if(cell.symbol==='XX'){unit.hp=Math.max(0,unit.hp-1);this.log(t(`${unit.id} hit XX! HP: ${unit.hp}`,`${unit.id}触发XX！血量：${unit.hp}`),'danger');}
+    if(cell.symbol==='☆'){
+      if(unit.hasRevive){unit.hasRevive=false;unit.hp=Math.max(unit.hp,1);cell.symbol=null;this.log(t(`${unit.id} survived ☆ with △! HP=1`,`${unit.id}凭借△存活☆！血量=1`),'event');}
+      else{unit.hp=0;cell.symbol=null;this.log(t(`${unit.id} hit ☆ — instant kill!`,`${unit.id}触发☆——即死！`),'danger');return;} // stop processing after instant kill
     }
-    if (cell.symbol==='△') { unit.hasRevive=true; cell.symbol=null; this.log(t(`${unit.id} got △ (one revive).`,`${unit.id}获得△（一次复活）。`),'event'); }
-    if (cell.symbol==='✦') { unit.actions++; cell.symbol=null; this.log(t(`${unit.id} got ✦ (+1 action).`,`${unit.id}获得✦（+1行动）。`),'event'); }
-    if (cell.symbol==='+') { if (unit.type==='participant') this.stunHunter++; else this.stunPart++; cell.symbol=null; this.log(t(`${unit.id} triggered +.`,`${unit.id}触发+。`),'danger'); }
-    if (cell.symbol==='■') {
+    if(cell.symbol==='△'){unit.hasRevive=true;cell.symbol=null;this.log(t(`${unit.id} got △ (one revive).`,`${unit.id}获得△（一次复活）。`),'event');}
+    if(cell.symbol==='✦'){unit.moves++;cell.symbol=null;this.log(t(`${unit.id} got ✦ (+1 move).`,`${unit.id}获得✦（+1次移动）。`),'event');}
+    if(cell.symbol==='+'){if(unit.type==='participant')this.stunHunter++;else this.stunPart++;cell.symbol=null;this.log(t(`${unit.id} triggered +.`,`${unit.id}触发+。`),'danger');}
+    if(cell.symbol==='■'){
       let fc=0;
-      for (const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
-        const nx=unit.x+dx,ny=unit.y+dy; if (nx<0||nx>3||ny<0||ny>3) continue;
-        const k=this.dkey(unit.x,unit.y,nx,ny); if (this.doors.has(k)) { this.frozenDoors.add(k); fc++; }
-      }
+      for(const[dx,dy]of[[0,-1],[0,1],[-1,0],[1,0]]){const nx=unit.x+dx,ny=unit.y+dy;if(nx<0||nx>3||ny<0||ny>3)continue;const k=this.dkey(unit.x,unit.y,nx,ny);if(this.doors.has(k)){this.frozenDoors.add(k);fc++;}}
       this.log(t(`${unit.id} activated ■ — froze ${fc} door(s).`,`${unit.id}激活■——冻结了${fc}扇门。`),'danger');
     }
-    if (cell.isExit&&unit.type==='participant') { unit.escaped=true; this.log(t(`${unit.id} ESCAPED!`,`${unit.id}逃脱了！`),'event'); }
+    if(cell.isExit&&unit.type==='participant'){unit.escaped=true;this.log(t(`${unit.id} ESCAPED!`,`${unit.id}逃脱了！`),'event');}
   }
 
   attack() {
-    if (this.phase!=='play') return false;
-    const unit=this.curUnit(); if (!unit||unit.actions<=0) return false;
+    if(this.phase!=='play')return false;
+    const unit=this.curUnit(); if(!unit||unit.attacks<=0)return false;
+    if(unit.type==='hunter'&&this.currentTurn===0){this.log(t('Hunter cannot attack in Round 1.','第1轮猎手不能攻击。'),'danger');return false;}
     const cell=this.grid[unit.y][unit.x]; let target=null;
-    if (unit.type==='participant') {
+    if(unit.type==='participant'){
       target=cell.units.find(u=>u.type==='hunter');
-      if (target) { target.hp=Math.max(0,target.hp-2); if (target.hp<=0&&target.hasRevive){target.hasRevive=false;target.hp=1;} this.log(t(`${unit.id} attacks H for 2. H HP: ${target.hp}`,`${unit.id}攻击H造成2伤害。H血量：${target.hp}`),'danger'); }
+      if(target){target.hp=Math.max(0,target.hp-2);if(target.hp<=0&&target.hasRevive){target.hasRevive=false;target.hp=1;}this.log(t(`${unit.id} attacks H for 2. H HP: ${target.hp}`,`${unit.id}攻击H造成2伤害。H血量：${target.hp}`),'danger');}
     } else {
       const tgts=cell.units.filter(u=>u.type==='participant'&&u.hp>0);
-      if (tgts.length) { target=tgts[0]; target.hp=Math.max(0,target.hp-3); if (target.hp<=0&&target.hasRevive){target.hasRevive=false;target.hp=1;} this.log(t(`H attacks ${target.id} for 3. ${target.id} HP: ${target.hp}`,`H攻击${target.id}造成3伤害。${target.id}血量：${target.hp}`),'danger'); }
+      if(tgts.length){target=tgts[0];target.hp=Math.max(0,target.hp-3);if(target.hp<=0&&target.hasRevive){target.hasRevive=false;target.hp=1;}this.log(t(`H attacks ${target.id} for 3. ${target.id} HP: ${target.hp}`,`H攻击${target.id}造成3伤害。${target.id}血量：${target.hp}`),'danger');}
     }
-    if (!target) { this.log(t(`${unit.id}: no target.`,`${unit.id}：没有目标。`)); return false; }
-    unit.actions--; this.checkWin();
-    if (!this.gameOver) { if (unit.actions<=0) this.nextTurn(); else this.render(); }
+    if(!target){this.log(t(`${unit.id}: no target.`,`${unit.id}：没有目标。`));return false;}
+    unit.attacks--;
+    this.afterAction(unit);
     return true;
   }
 
-  _doorAction(dir, from, to, verb) {
-    if (this.phase!=='play') return false;
-    const unit=this.curUnit(); if (!unit||unit.actions<=0) return false;
+  _doorAction(dir,from,to,verb) {
+    if(this.phase!=='play')return false;
+    const unit=this.curUnit(); if(!unit||unit.moves<=0)return false;
     let door=dir?this.adjByDir(unit,dir):null;
-    if (!door||door.state!==from) {
-      for (const d of ['up','down','left','right']) {
-        const c=this.adjByDir(unit,d); if (c&&c.state===from){door=c;break;}
-      }
+    if(!door||door.state!==from){
+      for(const d of['up','down','left','right']){const c=this.adjByDir(unit,d);if(c&&c.state===from){door=c;break;}}
     }
-    if (!door||door.state!==from) { this.log(t(`${unit.id}: no ${from} door to ${verb}.`,`${unit.id}：没有可${tVerb(verb)}的${tState(from)}门。`)); return false; }
-    if (this.frozenDoors.has(door.key)) { this.log(t('Door is frozen!','门已冰冻！'),'danger'); return false; }
-    this.doors.set(door.key,to); unit.actions--;
+    if(!door||door.state!==from){this.log(t(`${unit.id}: no ${from} door to ${verb}.`,`${unit.id}：没有可${tVerb(verb)}的${tState(from)}门。`));return false;}
+    if(this.frozenDoors.has(door.key)){this.log(t('Door is frozen!','门已冰冻！'),'danger');return false;}
+    this.doors.set(door.key,to); unit.moves--;
     this.log(t(`${unit.id} ${verb}s door ${door.dir}.`,`${unit.id}${tVerb(verb)}了${tDir(door.dir)}方向的门。`),'action');
-    if (!this.gameOver) { if (unit.actions<=0) this.nextTurn(); else this.render(); }
+    this.afterAction(unit);
     return true;
   }
 
@@ -602,61 +513,53 @@ class GameEngine {
 
   checkWin() {
     const end=(w,msg)=>{
-      this.gameOver=true; this.winner=w; this.log(msg,'event');
-      if (this.autoPlayInterval){clearInterval(this.autoPlayInterval);this.autoPlayInterval=null;document.getElementById('autoPlayBtn').textContent=t('▶ Auto Play','▶ 自动');}
-      const nb=document.getElementById('newGameBtn');
-      if (nb) nb.className='btn '+(w==='participants'?'new-game-glow':'new-game-glow-h');
+      this.gameOver=true;this.winner=w;this.log(msg,'event');
+      if(this.autoPlayInterval){clearInterval(this.autoPlayInterval);this.autoPlayInterval=null;document.getElementById('autoPlayBtn').textContent=t('▶ Auto Play','▶ 自动');}
+      const nb=document.getElementById('newGameBtn');if(nb)nb.className='btn '+(w==='participants'?'new-game-glow':'new-game-glow-h');
       this.render();
     };
-    if (this.participants.some(p=>p.escaped))       end('participants',t('🎉 PARTICIPANTS WIN — escaped!','🎉 参与者获胜——逃脱！'));
-    else if (this.hunter.hp<=0)                     end('participants',t('🎉 PARTICIPANTS WIN — hunter defeated!','🎉 参与者获胜——猎手被击败！'));
-    else if (this.participants.every(p=>p.hp<=0))   end('hunter',      t('💀 HUNTER WINS — all eliminated!','💀 猎手获胜——全员淘汰！'));
+    if(this.participants.some(p=>p.escaped))      end('participants',t('🎉 PARTICIPANTS WIN — escaped!','🎉 参与者获胜——逃脱！'));
+    else if(this.hunter.hp<=0)                    end('participants',t('🎉 PARTICIPANTS WIN — hunter defeated!','🎉 参与者获胜——猎手被击败！'));
+    else if(this.participants.every(p=>p.hp<=0))  end('hunter',      t('💀 HUNTER WINS — all eliminated!','💀 猎手获胜——全员淘汰！'));
   }
 
-  log(msg, type='') {
-    const el=document.getElementById('gameLog'); if (!el) return;
-    const d=document.createElement('div'); d.textContent=msg;
-    if (type) d.className='log-'+type;
-    else if (/WIN|ESCAPED|逃脱|获胜/.test(msg))      d.className='log-event';
-    else if (/attack|hit|kill|stun|dmg|HP:|血量|攻击|触发|冻结|淘汰|即死/.test(msg)) d.className='log-danger';
-    else if (/GAME START|Round|游戏开始|轮/.test(msg)) d.className='log-round';
-    else if (/→|\[/.test(msg))                       d.className='log-action';
-    el.appendChild(d); el.scrollTop=el.scrollHeight;
+  log(msg,type='') {
+    const el=document.getElementById('gameLog');if(!el)return;
+    const d=document.createElement('div');d.textContent=msg;
+    if(type)d.className='log-'+type;
+    else if(/WIN|ESCAPED|逃脱|获胜/.test(msg))d.className='log-event';
+    else if(/attack|hit|kill|stun|HP:|血量|攻击|触发|冻结|淘汰|即死/.test(msg))d.className='log-danger';
+    else if(/GAME START|Round|游戏开始|轮/.test(msg))d.className='log-round';
+    else if(/→|\[/.test(msg))d.className='log-action';
+    el.appendChild(d);el.scrollTop=el.scrollHeight;
   }
 
   /* ── Render ── */
   render() {
-    const board=document.getElementById('gameBoard'); if (!board) return;
-    board.innerHTML=''; const cu=this.curUnit();
-
-    for (let y=0;y<4;y++) for (let x=0;x<4;x++) {
+    const board=document.getElementById('gameBoard');if(!board)return;
+    board.innerHTML='';const cu=this.curUnit();
+    for(let y=0;y<4;y++) for(let x=0;x<4;x++){
       const cd=this.grid[y][x];
       const cell=document.createElement('div');
       cell.className='cell'+(cd.isExit?' exit':'');
-
       const wall='2px solid #1e1e1e';
       const bFor=(tx,ty)=>{const k=this.dkey(x,y,tx,ty);return this.doors.has(k)?doorCSS(this.doors.get(k),this.frozenDoors.has(k)):wall;};
       cell.style.borderTop   =y===0?wall:bFor(x,y-1);
       cell.style.borderLeft  =x===0?wall:bFor(x-1,y);
       cell.style.borderRight =x===3?wall:'none';
       cell.style.borderBottom=y===3?wall:'none';
-
-      if (this.phase==='setup'&&!((x===0&&y===0)||(x===3&&y===3))) {
-        cell.classList.add('placeable'); cell.onclick=()=>this.placeToolAt(x,y);
-      }
-      if (cd.isExit) { const tag=document.createElement('div'); tag.className='exit-tag'; tag.textContent=t('EXIT','出口'); cell.appendChild(tag); }
-      if (cd.symbol) { const ti=document.createElement('div'); ti.className='trap-icon'; ti.textContent=cd.symbol; cell.appendChild(ti); }
-
+      if(this.phase==='setup'&&!((x===0&&y===0)||(x===3&&y===3))){cell.classList.add('placeable');cell.onclick=()=>this.placeToolAt(x,y);}
+      if(cd.isExit){const tag=document.createElement('div');tag.className='exit-tag';tag.textContent=t('EXIT','出口');cell.appendChild(tag);}
+      if(cd.symbol){const ti=document.createElement('div');ti.className='trap-icon';ti.textContent=cd.symbol;cell.appendChild(ti);}
       cd.units.forEach(u=>{
-        if ((u.hp<=0&&!u.escaped)||u.escaped) return;
+        if((u.hp<=0&&!u.escaped)||u.escaped)return;
         const b=document.createElement('div');
         b.className=`badge ${u.type}`+(cu&&u===cu?' current':'');
         b.textContent=u.id;
-        const hp=document.createElement('div'); hp.className='badge-hp'; hp.textContent=u.hp+'♥'; b.appendChild(hp);
+        const hp=document.createElement('div');hp.className='badge-hp';hp.textContent=u.hp+'♥';b.appendChild(hp);
         cell.appendChild(b);
       });
-
-      const coord=document.createElement('div'); coord.className='cell-coord'; coord.textContent=`${x},${y}`; cell.appendChild(coord);
+      const coord=document.createElement('div');coord.className='cell-coord';coord.textContent=`${x},${y}`;cell.appendChild(coord);
       board.appendChild(cell);
     }
     this.renderPanel();
@@ -664,43 +567,54 @@ class GameEngine {
 
   renderPanel() {
     const wb=document.getElementById('winBanner');
-    if (wb) { wb.className='win-banner'; if (this.gameOver){wb.classList.add(this.winner==='participants'?'win-p':'win-h');wb.textContent=this.winner==='participants'?t('🎉 PARTICIPANTS WIN','🎉 参与者获胜'):t('💀 HUNTER WINS','💀 猎手获胜');}}
+    if(wb){wb.className='win-banner';if(this.gameOver){wb.classList.add(this.winner==='participants'?'win-p':'win-h');wb.textContent=this.winner==='participants'?t('🎉 PARTICIPANTS WIN','🎉 参与者获胜'):t('💀 HUNTER WINS','💀 猎手获胜');}}
 
     const tb=document.getElementById('turnBar');
-    if (tb) {
+    if(tb){
       const cu=this.curUnit();
-      if (this.gameOver)  { tb.className='turn-bar'; tb.textContent=t('Game Over','游戏结束'); }
-      else if (!cu)       { tb.className='turn-bar'; tb.textContent='...'; }
-      else { tb.className='turn-bar'+(cu.type==='hunter'?' hunter-t':''); tb.textContent=t(`${cu.id}'s turn · Round ${this.currentTurn+1} · ${cu.actions} action(s)`,`${cu.id}的回合 · 第${this.currentTurn+1}轮 · ${cu.actions}个行动`); }
+      if(this.gameOver){tb.className='turn-bar';tb.textContent=t('Game Over','游戏结束');}
+      else if(!cu){tb.className='turn-bar';tb.textContent='...';}
+      else{
+        tb.className='turn-bar'+(cu.type==='hunter'?' hunter-t':'');
+        const noAtk=cu.type==='hunter'&&this.currentTurn===0;
+        const atkStr=noAtk?t('no atk','不可攻击'):cu.attacks>0?t('atk ✓','可攻击'):t('atk ✗','已攻击');
+        tb.textContent=t(`${cu.id} · Round ${this.currentTurn+1} · ${cu.moves} move(s) · ${atkStr}`,`${cu.id} · 第${this.currentTurn+1}轮 · ${cu.moves}次移动 · ${atkStr}`);
+      }
     }
 
     const uc=document.getElementById('unitCards');
-    if (uc) {
-      uc.innerHTML=''; const cu=this.curUnit();
+    if(uc){
+      uc.innerHTML='';const cu=this.curUnit();
       this.participants.forEach(p=>{
-        const c=document.createElement('div'); c.className='ucard'+(cu===p?' active':'');
-        c.innerHTML=`<div class="uname">${p.id}${p.escaped?t(' ✓',' ✓'):p.hp<=0?t(' ✗',' ✗'):''}</div><div class="hpbar"><div class="hpfill" style="width:${p.hp/p.maxHp*100}%"></div></div><div class="ustat">${p.hp}/${p.maxHp}${t('hp','血')} · ${p.actions}${t('act','行动')}${p.hasRevive?' △':''}</div>`;
+        const c=document.createElement('div');c.className='ucard'+(cu===p?' active':'');
+        const atkMark=p.attacks>0?'⚔':'·';
+        c.innerHTML=`<div class="uname">${p.id}${p.escaped?t(' ✓',' ✓'):p.hp<=0?t(' ✗',' ✗'):''}</div><div class="hpbar"><div class="hpfill" style="width:${p.hp/p.maxHp*100}%"></div></div><div class="ustat">${p.hp}/${p.maxHp}${t('hp','血')} · ${p.moves}${t('mv','移')} ${atkMark}${p.hasRevive?' △':''}</div>`;
         uc.appendChild(c);
       });
-      const hc=document.createElement('div'); hc.className='ucard hunter-c'+(cu===this.hunter?' active':'');
-      hc.innerHTML=`<div class="uname">H ${t('(hunter)','(猎手)')}</div><div class="hpbar"><div class="hpfill" style="width:${this.hunter.hp/this.hunter.maxHp*100}%"></div></div><div class="ustat">${this.hunter.hp}/${this.hunter.maxHp}${t('hp','血')} · ${this.hunter.actions}${t('act','行动')}${this.hunter.hasRevive?' △':''}</div>`;
+      const hc=document.createElement('div');hc.className='ucard hunter-c'+(cu===this.hunter?' active':'');
+      const hAtk=this.hunter.attacks>0?(this.currentTurn===0?t('no atk Rd1','轮1不攻'):'⚔'):'·';
+      hc.innerHTML=`<div class="uname">H ${t('(hunter)','(猎手)')}</div><div class="hpbar"><div class="hpfill" style="width:${this.hunter.hp/this.hunter.maxHp*100}%"></div></div><div class="ustat">${this.hunter.hp}/${this.hunter.maxHp}${t('hp','血')} · ${this.hunter.moves}${t('mv','移')} ${hAtk}${this.hunter.hasRevive?' △':''}</div>`;
       uc.appendChild(hc);
     }
     this.updateButtons();
   }
 
   updateButtons() {
-    const unit=this.curUnit(),has=unit&&unit.actions>0,over=this.gameOver,dir=this.selectedDir;
+    const unit=this.curUnit(),over=this.gameOver,dir=this.selectedDir;
+    const canMove=unit&&unit.moves>0;
+    const canAtk=unit&&unit.attacks>0&&!(unit.type==='hunter'&&this.currentTurn===0);
     const dis=(id,v)=>{const el=document.getElementById(id);if(el)el.disabled=v;};
-    dis('attackBtn',!has||over); dis('endTurnBtn',!unit||over);
-    if (unit&&!over&&dir) {
+    dis('attackBtn',!canAtk||over); dis('endTurnBtn',!unit||over);
+    if(unit&&!over&&dir){
       const a=this.adjByDir(unit,dir);
-      dis('moveBtn',  !has||!a||a.state!=='open');
-      dis('unlockBtn',!has||!a||a.state!=='locked'||this.frozenDoors.has(a?.key));
-      dis('openBtn',  !has||!a||a.state!=='closed'||this.frozenDoors.has(a?.key));
-      dis('closeBtn', !has||!a||a.state!=='open'  ||this.frozenDoors.has(a?.key));
-      dis('lockBtn',  !has||!a||a.state!=='closed'||this.frozenDoors.has(a?.key));
-    } else { ['moveBtn','unlockBtn','openBtn','closeBtn','lockBtn'].forEach(id=>dis(id,!has||over||!dir)); }
+      dis('moveBtn',  !canMove||!a||a.state!=='open');
+      dis('unlockBtn',!canMove||!a||a.state!=='locked'||this.frozenDoors.has(a?.key));
+      dis('openBtn',  !canMove||!a||a.state!=='closed'||this.frozenDoors.has(a?.key));
+      dis('closeBtn', !canMove||!a||a.state!=='open'  ||this.frozenDoors.has(a?.key));
+      dis('lockBtn',  !canMove||!a||a.state!=='closed'||this.frozenDoors.has(a?.key));
+    } else {
+      ['moveBtn','unlockBtn','openBtn','closeBtn','lockBtn'].forEach(id=>dis(id,!canMove||over||!dir));
+    }
   }
 }
 
@@ -709,28 +623,28 @@ let game=null;
 
 function initGame() {
   document.getElementById('gameLog').innerHTML='';
-  if (game?.autoPlayInterval) clearInterval(game.autoPlayInterval);
-  const nb=document.getElementById('newGameBtn'); if (nb) nb.className='btn';
-  game=new GameEngine(); game.init();
+  if(game?.autoPlayInterval)clearInterval(game.autoPlayInterval);
+  const nb=document.getElementById('newGameBtn');if(nb)nb.className='btn';
+  game=new GameEngine();game.init();
   document.getElementById('autoPlayBtn').textContent=t('▶ Auto Play','▶ 自动');
   applyLang();
 }
 
-function setDir(d)       { game?.setDirection(d); }
-function moveSelected()  { game?.moveDir(); }
-function attackAction()  { game?.attack(); }
-function unlockDoor()    { game?.unlockDoor(); }
-function openDoor()      { if(game?.phase==='play') game.openDoor(); }
-function closeDoor()     { if(game?.phase==='play') game.closeDoor(); }
-function lockDoor()      { if(game?.phase==='play') game.lockDoor(); }
-function finishSetup()   { game?.finishSetup(); }
+function setDir(d)      {game?.setDirection(d);}
+function moveSelected() {game?.moveDir();}
+function attackAction() {game?.attack();}
+function unlockDoor()   {game?.unlockDoor();}
+function openDoor()     {if(game?.phase==='play')game.openDoor();}
+function closeDoor()    {if(game?.phase==='play')game.closeDoor();}
+function lockDoor()     {if(game?.phase==='play')game.lockDoor();}
+function finishSetup()  {game?.finishSetup();}
 
 function randomizeSetup() {
-  if (!game||game.phase!=='setup') {
+  if(!game||game.phase!=='setup'){
     document.getElementById('gameLog').innerHTML='';
-    if (game?.autoPlayInterval) clearInterval(game.autoPlayInterval);
-    const nb=document.getElementById('newGameBtn'); if(nb) nb.className='btn';
-    game=new GameEngine(); game.init();
+    if(game?.autoPlayInterval)clearInterval(game.autoPlayInterval);
+    const nb=document.getElementById('newGameBtn');if(nb)nb.className='btn';
+    game=new GameEngine();game.init();
     document.getElementById('autoPlayBtn').textContent=t('▶ Auto Play','▶ 自动');
     applyLang();
   }
@@ -738,59 +652,75 @@ function randomizeSetup() {
 }
 
 function endTurn() {
-  if (!game) return;
-  const u=game.curUnit(); if(u){u.actions=0;game.nextTurn();}
+  if(!game)return;
+  const u=game.curUnit();if(u){u.moves=0;u.attacks=0;game.nextTurn();}
 }
 
 function autoPlay() {
-  if (!game) return;
-  if (game.phase==='setup') {
+  if(!game)return;
+  if(game.phase==='setup'){
     const rem=Object.values(game.toolbox).reduce((a,b)=>a+b,0);
-    if (rem>0) game.randomizeTools();
+    if(rem>0)game.randomizeTools();
     game.finishSetup();
   }
-  if (game.autoPlayInterval) {
-    clearInterval(game.autoPlayInterval); game.autoPlayInterval=null;
-    document.getElementById('autoPlayBtn').textContent=t('▶ Auto Play','▶ 自动'); return;
+  if(game.autoPlayInterval){
+    clearInterval(game.autoPlayInterval);game.autoPlayInterval=null;
+    document.getElementById('autoPlayBtn').textContent=t('▶ Auto Play','▶ 自动');return;
   }
   document.getElementById('autoPlayBtn').textContent=t('⏹ Stop','⏹ 停止');
 
   const stepToward=(unit,path)=>{
-    if (!path||path.length===0) return false;
-    const next=path[0], dir=dirTo(unit.x,unit.y,next.x,next.y);
-    const a=game.adjByDir(unit,dir); if (!a) return false;
-    if (a.state==='open')   return game.move(dir);
-    if (a.state==='closed') return game.openDoor(dir);
-    if (a.state==='locked') return game.unlockDoor(dir);
+    if(!path||path.length===0)return false;
+    const next=path[0],dir=dirTo(unit.x,unit.y,next.x,next.y);
+    const a=game.adjByDir(unit,dir);if(!a)return false;
+    if(a.state==='open')  return game.move(dir);
+    if(a.state==='closed')return game.openDoor(dir);
+    if(a.state==='locked')return game.unlockDoor(dir);
     return false;
   };
 
   const dk=game.dkey.bind(game);
 
   game.autoPlayInterval=setInterval(()=>{
-    if (!game||game.gameOver) {
-      clearInterval(game?.autoPlayInterval); if(game) game.autoPlayInterval=null;
-      document.getElementById('autoPlayBtn').textContent=t('▶ Auto Play','▶ 自动'); return;
+    if(!game||game.gameOver){
+      clearInterval(game?.autoPlayInterval);if(game)game.autoPlayInterval=null;
+      document.getElementById('autoPlayBtn').textContent=t('▶ Auto Play','▶ 自动');return;
     }
-    const unit=game.curUnit(); if (!unit){game.nextTurn();return;}
+    const unit=game.curUnit();if(!unit){game.nextTurn();return;}
 
-    if (unit.type==='participant') {
-      const path=findPath(unit.x,unit.y,3,3,game.doors,game.frozenDoors,dk);
-      if (!stepToward(unit,path)) { if(!game.attack()){unit.actions=0;game.nextTurn();} }
+    if(unit.type==='participant'){
+      // Move first (1 move action), then attack if hunter in same cell
+      if(unit.moves>0){
+        const path=findPath(unit.x,unit.y,3,3,game.doors,game.frozenDoors,dk);
+        if(stepToward(unit,path))return;
+        unit.moves=0; // can't make progress, skip move
+      }
+      if(unit.attacks>0&&game.grid[unit.y][unit.x].units.some(u=>u.type==='hunter'&&game.hunter.hp>0)){
+        game.attack();return;
+      }
+      unit.moves=0;unit.attacks=0;game.nextTurn();
+
     } else {
       const alive=game.participants.filter(p=>p.hp>0&&!p.escaped);
-      if (!alive.length){unit.actions=0;game.nextTurn();return;}
-      const sameCell=alive.find(p=>p.x===unit.x&&p.y===unit.y);
-      if (sameCell){game.attack();return;}
-      let bestPath=null,bestCost=Infinity;
-      for (const p of alive) {
-        const path=findPath(unit.x,unit.y,p.x,p.y,game.doors,game.frozenDoors,dk);
-        if (!path) continue;
-        let c=0,cx=unit.x,cy=unit.y;
-        for (const step of path){const k=dk(cx,cy,step.x,step.y);const s=game.doors.get(k);c+=s==='open'?1:s==='closed'?2:s==='locked'?3:999;cx=step.x;cy=step.y;}
-        if (c<bestCost){bestCost=c;bestPath=path;}
+      if(!alive.length){unit.moves=0;unit.attacks=0;game.nextTurn();return;}
+
+      // Attack if in same cell and allowed
+      if(unit.attacks>0&&game.currentTurn>0&&alive.some(p=>p.x===unit.x&&p.y===unit.y)){
+        game.attack();return;
       }
-      if (!stepToward(unit,bestPath)){unit.actions=0;game.nextTurn();}
+      // Use move actions to chase nearest participant (by path cost)
+      if(unit.moves>0){
+        let bestPath=null,bestCost=Infinity;
+        for(const p of alive){
+          const path=findPath(unit.x,unit.y,p.x,p.y,game.doors,game.frozenDoors,dk);
+          if(!path)continue;
+          let c=0,cx=unit.x,cy=unit.y;
+          for(const step of path){const k=dk(cx,cy,step.x,step.y);const s=game.doors.get(k);c+=s==='open'?1:s==='closed'?2:s==='locked'?3:999;cx=step.x;cy=step.y;}
+          if(c<bestCost){bestCost=c;bestPath=path;}
+        }
+        if(stepToward(unit,bestPath))return;
+      }
+      unit.moves=0;unit.attacks=0;game.nextTurn();
     }
   },700);
 }

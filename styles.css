@@ -1168,7 +1168,8 @@ footer {
     .explorer-menu {
         max-width: 100%;
         width: 100%;
-        min-width: auto; /* Removes the rigid width limit */
+        min-width: auto;
+        box-sizing: border-box;
     }
     .explorer-content {
         width: 100%;
@@ -1460,7 +1461,8 @@ footer {
     /* Tame shadows that bleed off-screen */
     .highlight-card,
     .skill-group,
-    .digital-card {
+    .digital-card,
+    .explorer-menu {
         box-shadow: 3px 3px 0 rgba(29,185,84,0.2);
     }
 

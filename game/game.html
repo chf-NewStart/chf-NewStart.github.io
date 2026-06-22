@@ -183,6 +183,7 @@
       <div style="display:flex;gap:4px;margin-top:6px;">
         <button class="tbtn sel" id="btnDijkstra" onclick="setHunterMode('dijkstra')" data-en="H: Dijkstra" data-zh="H: 最短路">H: Dijkstra</button>
         <button class="tbtn" id="btnRL" onclick="setHunterMode('rl')" disabled data-en="H: RL ⟳" data-zh="H: RL ⟳">H: RL ⟳</button>
+        <a href="/game/train.html" style="font-size:0.6rem;color:#444;text-decoration:none;align-self:center;margin-left:2px;" data-en="train→" data-zh="训练→">train→</a>
       </div>
     </div>
 
@@ -805,24 +806,33 @@ function setHunterMode(m) {
 }
 
 function loadRLWeights() {
+  // 1. Check localStorage first (set by train.html)
+  const stored = localStorage.getItem('hunter_rl_weights');
+  if(stored){
+    try{
+      rlWeights = JSON.parse(stored);
+      _rlReady();
+      return;
+    }catch(e){}
+  }
+  // 2. Fall back to static JSON file
   fetch('/game/hunter_rl.json')
     .then(r=>{ if(!r.ok) throw new Error('not found'); return r.json(); })
-    .then(data=>{
-      rlWeights = data;
-      const btn = document.getElementById('btnRL');
-      btn.disabled = false;
-      btn.dataset.en = 'H: RL ✓';
-      btn.dataset.zh = 'H: RL ✓';
-      btn.textContent = 'H: RL ✓';
-      console.log('RL weights loaded — state_dim:', data.state_dim, 'hidden:', data.hidden);
-    })
+    .then(data=>{ rlWeights=data; _rlReady(); })
     .catch(()=>{
-      // No weights file yet — button stays disabled
-      const btn = document.getElementById('btnRL');
-      btn.dataset.en = 'H: RL (train first)';
-      btn.dataset.zh = 'H: RL (先训练)';
-      btn.textContent = t('H: RL (train first)','H: RL (先训练)');
+      const btn=document.getElementById('btnRL');
+      btn.dataset.en='H: RL (train first)';
+      btn.dataset.zh='H: RL (先训练)';
+      btn.textContent=t('H: RL (train first)','H: RL (先训练)');
     });
+}
+
+function _rlReady(){
+  const btn=document.getElementById('btnRL');
+  btn.disabled=false;
+  btn.dataset.en='H: RL ✓';
+  btn.dataset.zh='H: RL ✓';
+  btn.textContent='H: RL ✓';
 }
 
 // Forward pass through [state_dim → hidden → hidden → n_actions] MLP

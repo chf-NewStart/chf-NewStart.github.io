@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Train RL Hunter // houfu.xyz</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Consolas, 'Courier New', monospace; background: #080808; color: #ccc; min-height: 100vh; padding: 24px 20px; }
+
+    .hdr { max-width: 760px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .hdr-left .title { color: #1db954; font-size: 1.3rem; text-transform: uppercase; letter-spacing: -1px; }
+    .hdr-left .sub   { color: #444; font-size: 0.7rem; margin-top: 4px; }
+    .hdr-left a      { color: #1db954; font-size: 0.7rem; text-decoration: none; display: inline-block; margin-top: 6px; }
+
+    .layout { max-width: 760px; margin: 0 auto; display: flex; gap: 18px; flex-wrap: wrap; }
+    .col-left  { flex: 0 0 280px; }
+    .col-right { flex: 1; min-width: 260px; }
+
+    .card { background: #0d0d0d; border: 1px solid #1a1a1a; padding: 14px; margin-bottom: 10px; }
+    .card-title { color: #1db954; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #161616; }
+
+    .stat-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; font-size: 0.7rem; }
+    .stat-label { color: #444; }
+    .stat-val   { color: #ccc; }
+    .stat-val.green { color: #1db954; }
+    .stat-val.red   { color: #f44336; }
+
+    .progress-bar-wrap { background: #111; height: 4px; margin: 10px 0; }
+    .progress-bar { height: 4px; background: #1db954; transition: width 0.3s; }
+
+    .btn { width: 100%; background: transparent; border: 1px solid #2a2a2a; color: #777; font-family: Consolas, monospace; font-size: 0.72rem; padding: 8px; cursor: pointer; margin-bottom: 6px; transition: all 0.1s; }
+    .btn:hover:not(:disabled) { border-color: #1db954; color: #1db954; }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn.active { border-color: #f44336; color: #f44336; }
+
+    .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #333; margin-right: 6px; }
+    .status-dot.running { background: #1db954; animation: pulse 1s infinite; }
+    .status-dot.done    { background: #1db954; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    canvas#chart { width: 100%; height: 160px; display: block; background: #0a0a0a; border: 1px solid #1a1a1a; margin-bottom: 10px; }
+
+    .log { max-height: 180px; overflow-y: auto; font-size: 0.63rem; line-height: 1.8; }
+    .log div       { color: #444; }
+    .log div.good  { color: #1db954; }
+    .log div.event { color: #888; }
+
+    .slider-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.68rem; color: #666; }
+    .slider-row input[type=range] { accent-color: #1db954; width: 120px; }
+    .slider-val { color: #aaa; min-width: 30px; text-align: right; }
+
+    .save-banner { display: none; padding: 8px; border: 1px solid #1db954; color: #1db954; font-size: 0.7rem; text-align: center; margin-bottom: 6px; }
+    .save-banner.show { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="title">&gt;_ Train RL Hunter</div>
+    <div class="sub">DQN · runs in browser · saves to game automatically</div>
+    <a href="/game/game.html">← back to escape grid</a>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="col-left">
+
+    <div class="card">
+      <div class="card-title">// status</div>
+      <div class="stat-row">
+        <span class="stat-label">state</span>
+        <span><span class="status-dot" id="dot"></span><span id="stateLabel" class="stat-val">idle</span></span>
+      </div>
+      <div class="stat-row"><span class="stat-label">episode</span><span class="stat-val" id="epNum">0 / 8000</span></div>
+      <div class="stat-row"><span class="stat-label">win rate (last 200)</span><span class="stat-val green" id="winRate">—</span></div>
+      <div class="stat-row"><span class="stat-label">avg reward</span><span class="stat-val" id="avgReward">—</span></div>
+      <div class="stat-row"><span class="stat-label">epsilon</span><span class="stat-val" id="epsVal">1.000</span></div>
+      <div class="stat-row"><span class="stat-label">replay buffer</span><span class="stat-val" id="bufSize">0 / 60000</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progBar" style="width:0%"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">// controls</div>
+      <div class="slider-row">
+        <span>episodes</span>
+        <input type="range" id="maxEpSlider" min="1000" max="20000" step="1000" value="8000" oninput="document.getElementById('maxEpVal').textContent=this.value">
+        <span class="slider-val" id="maxEpVal">8000</span>
+      </div>
+      <div class="slider-row">
+        <span>speed (ep/tick)</span>
+        <input type="range" id="speedSlider" min="1" max="30" step="1" value="8" oninput="document.getElementById('speedVal').textContent=this.value">
+        <span class="slider-val" id="speedVal">8</span>
+      </div>
+      <button class="btn" id="startBtn" onclick="toggleTrain()">▶ Start Training</button>
+      <div class="save-banner" id="saveBanner">✓ weights saved — H: RL ready in game</div>
+      <button class="btn" id="saveBtn" onclick="saveWeights()" disabled>⬇ Save Weights to Game</button>
+      <button class="btn" id="downloadBtn" onclick="downloadJSON()" disabled>⬇ Download hunter_rl.json</button>
+      <button class="btn" onclick="resetTraining()">↺ Reset</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">// hyperparams</div>
+      <div class="stat-row"><span class="stat-label">network</span><span class="stat-val">62→128→128→14</span></div>
+      <div class="stat-row"><span class="stat-label">optimizer</span><span class="stat-val">Adam lr=1e-3</span></div>
+      <div class="stat-row"><span class="stat-label">gamma</span><span class="stat-val">0.95</span></div>
+      <div class="stat-row"><span class="stat-label">batch</span><span class="stat-val">64</span></div>
+      <div class="stat-row"><span class="stat-label">ε decay</span><span class="stat-val">×0.9995/ep</span></div>
+      <div class="stat-row"><span class="stat-label">target sync</span><span class="stat-val">every 300 steps</span></div>
+      <div class="stat-row"><span class="stat-label">participant AI</span><span class="stat-val">70% greedy</span></div>
+    </div>
+
+  </div>
+
+  <div class="col-right">
+    <div class="card">
+      <div class="card-title">// win rate over time</div>
+      <canvas id="chart" width="440" height="160"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">// training log</div>
+      <div class="log" id="trainLog"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   HEADLESS ESCAPE GRID ENVIRONMENT
+   Mirrors escape_env.py exactly — same state vector, same actions.
+   ═══════════════════════════════════════════════════════════ */
+
+const GRID=4, EXIT_X=3, EXIT_Y=3;
+const LOCKED=0, CLOSED=1, OPEN=2, FROZEN=3;
+const N_ACTIONS=14, STATE_DIM=62;
+
+const SETUP_TRAPS=['XX','XX','☆','■','+','△'];
+const TRAP_VAL={'XX':0.3,'☆':1.0,'■':0.6,'+':-0.5,'△':-0.3};
+const DOOR_ENC_V=[0.0,0.33,1.0,-0.33]; // LOCKED,CLOSED,OPEN,FROZEN
+
+// Trap cells — row-major, skip (0,0) and (3,3)
+const TRAP_CELLS=[];
+for(let y=0;y<4;y++) for(let x=0;x<4;x++)
+  if(!(x===0&&y===0)&&!(x===3&&y===3)) TRAP_CELLS.push([x,y]);
+
+// Door order — same as Python DOOR_ORDER
+const DOOR_ORDER=[];
+for(let x=0;x<4;x++) for(let y=0;y<4;y++){
+  if(x+1<4) DOOR_ORDER.push([x,y,x+1,y]);
+  if(y+1<4) DOOR_ORDER.push([x,y,x,y+1]);
+}
+
+function dkey(x1,y1,x2,y2){
+  if(x1>x2||(x1===x2&&y1>y2)) return `${x2},${y2},${x1},${y1}`;
+  return `${x1},${y1},${x2},${y2}`;
+}
+function adjCells(x,y){
+  const r=[];
+  for(const[dx,dy]of[[0,-1],[0,1],[-1,0],[1,0]]){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<GRID&&ny>=0&&ny<GRID)r.push([nx,ny]);}
+  return r;
+}
+
+class HeadlessEnv {
+  constructor(greedyProb=0.7){ this.greedyProb=greedyProb; }
+
+  reset(){
+    this.doors=new Map(); for(const[x1,y1,x2,y2]of DOOR_ORDER) this.doors.set(dkey(x1,y1,x2,y2),LOCKED);
+    this.frozen=new Set(); this.traps=new Map();
+    this.round=0; this.stunH=0; this.stunP=0;
+    this.hunter={x:0,y:0,hp:16,hasRevive:false};
+    this.parts=[0,1,2,3].map(i=>({id:i,x:0,y:0,hp:5,hasRevive:false,escaped:false}));
+    this.hMoves=4; this.hAtk=1;
+    this.phase='setup'; this.trapIdx=0;
+    this.done=false; this.winner=null;
+    return this._state();
+  }
+
+  _state(){
+    const s=[];
+    s.push(this.phase==='play'?1:0);
+    s.push(Math.max(0,SETUP_TRAPS.length-this.trapIdx)/SETUP_TRAPS.length);
+    for(const[tx,ty]of TRAP_CELLS){ const sym=this.traps.get(`${tx},${ty}`)||''; s.push(TRAP_VAL[sym]??0); }
+    const h=this.hunter;
+    s.push(h.x/3,h.y/3,h.hp/16);
+    for(const p of this.parts){ const a=p.hp>0&&!p.escaped?1:0; s.push(a,p.x/3,p.y/3,p.hp/5); }
+    for(const[x1,y1,x2,y2]of DOOR_ORDER){
+      const k=dkey(x1,y1,x2,y2);
+      const st=this.frozen.has(k)?FROZEN:(this.doors.get(k)??OPEN);
+      s.push(DOOR_ENC_V[st]);
+    }
+    s.push(this.hMoves/4,this.hAtk);
+    s.push(Math.min(this.round,20)/20);
+    return s;
+  }
+
+  validActions(){
+    const m=new Array(N_ACTIONS).fill(false);
+    if(this.phase==='setup'){
+      const occ=new Set(this.traps.keys());
+      for(let i=0;i<TRAP_CELLS.length;i++){const[tx,ty]=TRAP_CELLS[i];if(!occ.has(`${tx},${ty}`))m[i]=true;}
+    } else {
+      const h=this.hunter;
+      if(this.hMoves>0){
+        for(const[a,[dx,dy]]of [[0,[0,-1]],[1,[0,1]],[2,[-1,0]],[3,[1,0]]]){
+          const nx=h.x+dx,ny=h.y+dy;
+          if(nx>=0&&nx<GRID&&ny>=0&&ny<GRID){const k=dkey(h.x,h.y,nx,ny);if(!this.frozen.has(k)&&this.doors.get(k)===OPEN)m[a]=true;}
+        }
+        for(const[nx,ny]of adjCells(h.x,h.y)){
+          const k=dkey(h.x,h.y,nx,ny);
+          if(!this.frozen.has(k)){if(this.doors.get(k)===LOCKED)m[5]=true;if(this.doors.get(k)===CLOSED)m[6]=true;}
+        }
+      }
+      if(this.hAtk>0&&this.round>0){
+        const living=this.parts.filter(p=>p.hp>0&&!p.escaped);
+        if(living.some(p=>p.x===h.x&&p.y===h.y))m[4]=true;
+      }
+      m[7]=true;
+    }
+    return m;
+  }
+
+  step(action){
+    if(this.done) return [this._state(),0,true,this.winner];
+    let r=0;
+    if(this.phase==='setup') r=this._setupStep(action);
+    else r=this._playStep(action);
+    this._checkWin();
+    return [this._state(),r,this.done,this.winner];
+  }
+
+  _setupStep(action){
+    if(action>=TRAP_CELLS.length) return -0.2;
+    const[tx,ty]=TRAP_CELLS[action], key=`${tx},${ty}`;
+    if(this.traps.has(key)) return -0.2;
+    this.traps.set(key,SETUP_TRAPS[this.trapIdx]);
+    this.trapIdx++;
+    if(this.trapIdx>=SETUP_TRAPS.length) this.phase='play';
+    return 0.0;
+  }
+
+  _playStep(action){
+    let r=-0.05;
+    if(action===0) r+=this._hMove(0,-1);
+    else if(action===1) r+=this._hMove(0,1);
+    else if(action===2) r+=this._hMove(-1,0);
+    else if(action===3) r+=this._hMove(1,0);
+    else if(action===4) r+=this._hAtk();
+    else if(action===5) r+=this._hDoor(LOCKED,CLOSED);
+    else if(action===6) r+=this._hDoor(CLOSED,OPEN);
+    else if(action===7){ this.hMoves=0; this.hAtk=0; }
+    if(this.hMoves<=0&&this.hAtk<=0){ r+=this._partTurns(); if(!this.done)this._startHunterTurn(); }
+    return r;
+  }
+
+  _hMove(dx,dy){
+    const h=this.hunter; const nx=h.x+dx,ny=h.y+dy;
+    if(nx<0||nx>=GRID||ny<0||ny>=GRID) return -0.1;
+    const k=dkey(h.x,h.y,nx,ny);
+    if(this.frozen.has(k)||this.doors.get(k)!==OPEN) return -0.1;
+    h.x=nx;h.y=ny;this.hMoves--;
+    const living=this.parts.filter(p=>p.hp>0&&!p.escaped);
+    if(!living.length) return 0;
+    return 0.05/(Math.min(...living.map(p=>Math.abs(p.x-h.x)+Math.abs(p.y-h.y)))+1);
+  }
+
+  _hAtk(){
+    if(this.round===0) return -0.2;
+    const h=this.hunter;
+    const t=this.parts.find(p=>p.hp>0&&!p.escaped&&p.x===h.x&&p.y===h.y);
+    if(!t) return -0.1;
+    t.hp=Math.max(0,t.hp-3); this.hAtk--;
+    if(t.hp<=0){if(t.hasRevive){t.hasRevive=false;t.hp=1;return 2;}return 10;}
+    return 1.5;
+  }
+
+  _hDoor(from,to){
+    const h=this.hunter;
+    for(const[nx,ny]of adjCells(h.x,h.y)){
+      const k=dkey(h.x,h.y,nx,ny);
+      if(!this.frozen.has(k)&&this.doors.get(k)===from){this.doors.set(k,to);this.hMoves--;return 0.05;}
+    }
+    return -0.1;
+  }
+
+  _partTurns(){
+    let r=0;
+    for(const p of this.parts){
+      if(p.hp<=0||p.escaped||this.done) continue;
+      if(this.stunP>0){this.stunP--;continue;}
+      if(Math.random()<this.greedyProb) r+=this._partGreedy(p);
+      else r+=this._partRandom(p);
+      if(this.done) return r;
+      if(p.x===this.hunter.x&&p.y===this.hunter.y){
+        this.hunter.hp=Math.max(0,this.hunter.hp-2);
+        if(this.hunter.hp<=0){if(this.hunter.hasRevive){this.hunter.hasRevive=false;this.hunter.hp=1;}
+          else{r-=30;this.winner='participants';this.done=true;return r;}}
+      }
+    }
+    this.round++;
+    return r;
+  }
+
+  _partGreedy(p){
+    const path=this._bfs(p.x,p.y,EXIT_X,EXIT_Y);
+    if(!path||!path.length) return 0;
+    const[nx,ny]=path[0]; const k=dkey(p.x,p.y,nx,ny);
+    if(this.frozen.has(k)) return 0;
+    const st=this.doors.get(k);
+    if(st===OPEN){p.x=nx;p.y=ny;return this._applyTrap(p);}
+    if(st===LOCKED) this.doors.set(k,CLOSED);
+    else if(st===CLOSED) this.doors.set(k,OPEN);
+    return 0;
+  }
+
+  _partRandom(p){
+    const opts=adjCells(p.x,p.y).filter(([nx,ny])=>{const k=dkey(p.x,p.y,nx,ny);return !this.frozen.has(k)&&this.doors.get(k)===OPEN;});
+    if(opts.length){const[nx,ny]=opts[Math.floor(Math.random()*opts.length)];p.x=nx;p.y=ny;return this._applyTrap(p);}
+    return 0;
+  }
+
+  _applyTrap(p){
+    const key=`${p.x},${p.y}`;
+    if(p.x===EXIT_X&&p.y===EXIT_Y){p.escaped=true;this.winner='participants';this.done=true;return -20;}
+    if(!this.traps.has(key)) return 0;
+    const trap=this.traps.get(key);
+    if(trap==='XX') p.hp=Math.max(0,p.hp-1);
+    else if(trap==='☆'){if(p.hasRevive){p.hasRevive=false;p.hp=Math.max(p.hp,1);}else p.hp=0;this.traps.delete(key);}
+    else if(trap==='■'){for(const[nx,ny]of adjCells(p.x,p.y))this.frozen.add(dkey(p.x,p.y,nx,ny));this.traps.delete(key);}
+    else if(trap==='+'){this.stunH++;this.traps.delete(key);}
+    else if(trap==='△'){p.hasRevive=true;this.traps.delete(key);}
+    return 0;
+  }
+
+  _startHunterTurn(){
+    if(this.stunH>0){this.stunH--;this.hMoves=0;this.hAtk=0;}
+    else{this.hMoves=4;this.hAtk=1;}
+  }
+
+  _checkWin(){
+    if(this.done) return;
+    const living=this.parts.filter(p=>p.hp>0&&!p.escaped);
+    if(this.parts.some(p=>p.escaped)){this.done=true;this.winner='participants';return;}
+    if(this.hunter.hp<=0){this.done=true;this.winner='participants';return;}
+    if(!living){this.done=true;this.winner='hunter';return;}
+    if(this.phase==='play'&&living.every(p=>!this._canAct(p))){
+      if(!living.some(p=>this._bfs(this.hunter.x,this.hunter.y,p.x,p.y))){this.done=true;this.winner='hunter';}
+    }
+  }
+
+  _canAct(p){
+    if(p.x===this.hunter.x&&p.y===this.hunter.y) return true;
+    return adjCells(p.x,p.y).some(([nx,ny])=>!this.frozen.has(dkey(p.x,p.y,nx,ny)));
+  }
+
+  _bfs(sx,sy,ex,ey){
+    if(sx===ex&&sy===ey) return [];
+    const q=[[sx,sy,[]]],vis=new Set([`${sx},${sy}`]);
+    while(q.length){
+      const[x,y,path]=q.shift();
+      for(const[nx,ny]of adjCells(x,y)){
+        const k2=`${nx},${ny}`;if(vis.has(k2))continue;
+        const k=dkey(x,y,nx,ny);if(this.frozen.has(k))continue;
+        vis.add(k2);const np=[...path,[nx,ny]];
+        if(nx===ex&&ny===ey)return np;
+        q.push([nx,ny,np]);
+      }
+    }
+    return null;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DQN TRAINING
+   ═══════════════════════════════════════════════════════════ */
+
+const HIDDEN=128, GAMMA=0.95, BATCH=64, BUF_CAP=60000;
+const EPS_START=1.0, EPS_END=0.05, EPS_DECAY=0.9995;
+const TARGET_SYNC=300, MAX_STEPS=260;
+const ACTION_NAMES=['move_up','move_down','move_left','move_right','attack','unlock','open_door','pass',
+                    'trap8','trap9','trap10','trap11','trap12','trap13'];
+
+let qNet=null, qTarget=null, optimizer=null;
+let replayBuf=[], bufHead=0;
+let eps=EPS_START, totalSteps=0, episode=0;
+let winHist=[], rewardHist=[];
+let training=false, rafId=null;
+let chartData=[];
+
+function buildModel(){
+  const m=tf.sequential();
+  m.add(tf.layers.dense({inputShape:[STATE_DIM],units:HIDDEN,activation:'relu',kernelInitializer:'glorotUniform'}));
+  m.add(tf.layers.dense({units:HIDDEN,activation:'relu',kernelInitializer:'glorotUniform'}));
+  m.add(tf.layers.dense({units:N_ACTIONS,kernelInitializer:'glorotUniform'}));
+  return m;
+}
+
+function initModels(){
+  if(qNet){ qNet.dispose(); qTarget.dispose(); }
+  qNet=buildModel(); qTarget=buildModel();
+  syncTarget();
+  optimizer=tf.train.adam(1e-3);
+  replayBuf=[]; bufHead=0; eps=EPS_START; totalSteps=0; episode=0;
+  winHist=[]; rewardHist=[]; chartData=[];
+}
+
+function syncTarget(){
+  const w=qNet.getWeights(); qTarget.setWeights(w.map(t=>t.clone())); w.forEach(t=>t.dispose());
+}
+
+function chooseAction(state, mask){
+  if(Math.random()<eps){
+    const valid=mask.map((v,i)=>v?i:-1).filter(i=>i>=0);
+    return valid[Math.floor(Math.random()*valid.length)];
+  }
+  return tf.tidy(()=>{
+    const q=qNet.predict(tf.tensor2d([state])).dataSync();
+    let best=-Infinity, bestA=7;
+    for(let a=0;a<q.length;a++) if(mask[a]&&q[a]>best){best=q[a];bestA=a;}
+    return bestA;
+  });
+}
+
+function pushBuf(s,a,r,s2,done){
+  const entry=[s,a,r,s2,done?1:0];
+  if(replayBuf.length<BUF_CAP) replayBuf.push(entry);
+  else{replayBuf[bufHead]=entry;bufHead=(bufHead+1)%BUF_CAP;}
+}
+
+function sampleBuf(){
+  const idxs=[];
+  while(idxs.length<BATCH) idxs.push(Math.floor(Math.random()*replayBuf.length));
+  return idxs.map(i=>replayBuf[i]);
+}
+
+function trainStep(){
+  if(replayBuf.length<BATCH) return;
+  const batch=sampleBuf();
+  const s =batch.map(b=>b[0]), a=batch.map(b=>b[1]), r=batch.map(b=>b[2]);
+  const s2=batch.map(b=>b[3]), d=batch.map(b=>b[4]);
+  tf.tidy(()=>{
+    const sT=tf.tensor2d(s), s2T=tf.tensor2d(s2);
+    const aT=tf.tensor1d(a,'int32'), rT=tf.tensor1d(r), dT=tf.tensor1d(d);
+    const qNext=qTarget.predict(s2T).max(1);
+    const target=rT.add(tf.scalar(GAMMA).mul(qNext).mul(tf.scalar(1).sub(dT)));
+    const loss=()=>tf.tidy(()=>{
+      const qAll=qNet.predict(sT);
+      const aOH=tf.oneHot(aT,N_ACTIONS).toFloat();
+      const qCur=qAll.mul(aOH).sum(1);
+      return tf.losses.huberLoss(target,qCur);
+    });
+    optimizer.minimize(loss);
+  });
+}
+
+const env=new HeadlessEnv(0.7);
+
+function runEpisode(){
+  let state=env.reset(), epR=0;
+  for(let step=0;step<MAX_STEPS;step++){
+    const mask=env.validActions();
+    const action=chooseAction(state,mask);
+    const[next,r,done,winner]=env.step(action);
+    pushBuf(state,action,r,next,done);
+    state=next; epR+=r; totalSteps++;
+    trainStep();
+    if(totalSteps%TARGET_SYNC===0) syncTarget();
+    if(done) break;
+  }
+  eps=Math.max(EPS_END,eps*EPS_DECAY);
+  episode++;
+  const won=env.winner==='hunter'?1:0;
+  winHist.push(won); if(winHist.length>200) winHist.shift();
+  rewardHist.push(epR); if(rewardHist.length>200) rewardHist.shift();
+  const wr=winHist.reduce((a,b)=>a+b,0)/winHist.length;
+  const avgR=rewardHist.reduce((a,b)=>a+b,0)/rewardHist.length;
+  if(episode%100===0) chartData.push({ep:episode,wr});
+  if(episode%200===0) addLog(`ep ${episode} | win=${(wr*100).toFixed(0)}% | avg_r=${avgR.toFixed(1)} | ε=${eps.toFixed(3)}`,'event');
+  updateUI(wr,avgR);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TRAINING LOOP & UI
+   ═══════════════════════════════════════════════════════════ */
+
+function toggleTrain(){
+  if(training){ stopTrain(); return; }
+  if(!qNet) initModels();
+  training=true;
+  document.getElementById('startBtn').textContent='⏹ Stop Training';
+  document.getElementById('startBtn').classList.add('active');
+  document.getElementById('dot').classList.add('running');
+  document.getElementById('stateLabel').textContent='training';
+  addLog('Training started.','event');
+  loop();
+}
+
+function stopTrain(){
+  training=false;
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  document.getElementById('startBtn').textContent='▶ Resume Training';
+  document.getElementById('startBtn').classList.remove('active');
+  document.getElementById('dot').classList.remove('running');
+  document.getElementById('stateLabel').textContent='paused';
+  document.getElementById('saveBtn').disabled=false;
+  document.getElementById('downloadBtn').disabled=false;
+  addLog('Paused.','event');
+}
+
+function loop(){
+  if(!training) return;
+  const maxEp=+document.getElementById('maxEpSlider').value;
+  const speed=+document.getElementById('speedSlider').value;
+  for(let i=0;i<speed&&episode<maxEp;i++) runEpisode();
+  if(episode>=maxEp){
+    stopTrain();
+    document.getElementById('dot').className='status-dot done';
+    document.getElementById('stateLabel').textContent='done';
+    addLog(`Training complete — ${episode} episodes.`,'good');
+    saveWeights();
+    return;
+  }
+  rafId=requestAnimationFrame(loop);
+}
+
+function resetTraining(){
+  stopTrain();
+  initModels();
+  document.getElementById('progBar').style.width='0%';
+  document.getElementById('dot').className='status-dot';
+  document.getElementById('stateLabel').textContent='idle';
+  document.getElementById('saveBtn').disabled=true;
+  document.getElementById('downloadBtn').disabled=true;
+  document.getElementById('saveBanner').classList.remove('show');
+  document.getElementById('startBtn').textContent='▶ Start Training';
+  clearChart();
+  addLog('Reset.','event');
+}
+
+function updateUI(wr,avgR){
+  const maxEp=+document.getElementById('maxEpSlider').value;
+  document.getElementById('epNum').textContent=`${episode} / ${maxEp}`;
+  document.getElementById('winRate').textContent=`${(wr*100).toFixed(1)}%`;
+  document.getElementById('avgReward').textContent=avgR.toFixed(2);
+  document.getElementById('epsVal').textContent=eps.toFixed(3);
+  document.getElementById('bufSize').textContent=`${replayBuf.length} / ${BUF_CAP}`;
+  document.getElementById('progBar').style.width=`${Math.min(100,episode/maxEp*100).toFixed(1)}%`;
+  if(episode%50===0) drawChart();
+}
+
+/* ── Chart ─────────────────────────────────────────────── */
+function clearChart(){chartData=[];drawChart();}
+function drawChart(){
+  const cv=document.getElementById('chart'), ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,W,H);
+  if(!chartData.length) return;
+  // Grid
+  ctx.strokeStyle='#151515';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=H-i*(H/4);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  // Labels
+  ctx.fillStyle='#2a2a2a';ctx.font='9px Consolas';
+  for(let i=0;i<=4;i++) ctx.fillText(`${i*25}%`,2,H-i*(H/4)-2);
+  // Line
+  ctx.strokeStyle='#1db954';ctx.lineWidth=2;ctx.beginPath();
+  const maxEp=+document.getElementById('maxEpSlider').value;
+  chartData.forEach((d,i)=>{
+    const x=d.ep/maxEp*W, y=H-d.wr*H;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+
+/* ── Log ───────────────────────────────────────────────── */
+function addLog(msg,cls=''){
+  const el=document.getElementById('trainLog');
+  const d=document.createElement('div');d.textContent=msg;if(cls)d.className=cls;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+
+/* ── Save / export weights ─────────────────────────────── */
+async function getWeightData(){
+  const layers=qNet.layers.filter(l=>l.getWeights().length>0);
+  const weights=[], biases=[];
+  for(const l of layers){
+    const[W,b]=l.getWeights();
+    weights.push(Array.from(await W.data()).reduce((acc,v,i)=>{
+      const row=Math.floor(i/W.shape[1]);
+      if(!acc[row])acc[row]=[];acc[row].push(v);return acc;
+    },[]));
+    biases.push(Array.from(await b.data()));
+  }
+  return {version:2,state_dim:STATE_DIM,action_dim:N_ACTIONS,hidden:HIDDEN,action_names:ACTION_NAMES,weights,biases};
+}
+
+async function saveWeights(){
+  if(!qNet) return;
+  const data=await getWeightData();
+  localStorage.setItem('hunter_rl_weights',JSON.stringify(data));
+  document.getElementById('saveBanner').classList.add('show');
+  document.getElementById('saveBtn').disabled=false;
+  document.getElementById('downloadBtn').disabled=false;
+  addLog('Weights saved to localStorage — switch to game and select H: RL ✓','good');
+}
+
+async function downloadJSON(){
+  if(!qNet) return;
+  const data=await getWeightData();
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hunter_rl.json';a.click();
+}
+
+/* ── Init ──────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded',()=>{
+  drawChart();
+  addLog('Ready. Press Start Training to begin.','event');
+  // Show existing weights if any
+  if(localStorage.getItem('hunter_rl_weights')){
+    addLog('Found existing weights in localStorage.','good');
+    document.getElementById('saveBtn').disabled=false;
+    document.getElementById('downloadBtn').disabled=false;
+  }
+});
+</script>
+</body>
+</html>

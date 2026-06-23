@@ -548,6 +548,10 @@ document.querySelectorAll('.pbtn[data-preset]').forEach(btn => {
     dragPattern = btn.dataset.preset;
     dragOff = null;
     e.dataTransfer.effectAllowed = 'copy';
+    // hide the browser's default drag ghost; canvas preview takes its place
+    const blank = new Image();
+    blank.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(blank, 0, 0);
   });
   btn.addEventListener('dragend', () => {
     dragPattern = null; dragOff = null; dragCursor = null;

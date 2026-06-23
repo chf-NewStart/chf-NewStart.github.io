@@ -41,9 +41,7 @@
     .stat-row { display: flex; gap: 6px; margin-bottom: 8px; }
     .sbox { flex: 1; background: #0d0d0d; border: 1px solid #1c1c1c; padding: 6px 8px; }
     .slabel { font-size: 0.6rem; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
-    .sval { font-size: 1rem; color: #1db954; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sval.red { color: #f44336; }
-    .sbox-state { flex: 0 0 auto; min-width: 72px; }
+    .sval { font-size: 1rem; color: #1db954; }
 
     .brow { display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
     .btn { flex: 1; background: transparent; border: 1px solid #2a2a2a; color: #777; font-family: Consolas, monospace; font-size: 0.72rem; padding: 7px 8px; cursor: pointer; transition: all 0.1s; white-space: nowrap; }
@@ -105,10 +103,6 @@
         <div class="sbox">
           <div class="slabel" data-en="live cells" data-zh="活细胞">live cells</div>
           <div class="sval" id="cellCount">0</div>
-        </div>
-        <div class="sbox sbox-state">
-          <div class="slabel" data-en="state" data-zh="状态">state</div>
-          <div class="sval red" id="stateLabel">paused</div>
         </div>
       </div>
     </div>
@@ -278,19 +272,14 @@ function loop(t) {
 function togglePlay() {
   running = !running;
   const btn = document.getElementById('playBtn');
-  const lbl = document.getElementById('stateLabel');
   if (running) {
     btn.textContent = t('⏸ Pause', '⏸ 暂停');
     btn.classList.add('active');
-    lbl.textContent = t('running', '运行中');
-    lbl.className = 'sval';
     canvas.classList.add('running');
     rafId = requestAnimationFrame(loop);
   } else {
     btn.textContent = t('⏵ Play', '⏵ 播放');
     btn.classList.remove('active');
-    lbl.textContent = t('paused', '已暂停');
-    lbl.className = 'sval red';
     canvas.classList.remove('running');
     cancelAnimationFrame(rafId);
   }
@@ -344,12 +333,8 @@ function randomize(density = 0.2) {
 }
 
 function updateUI() {
-  const running2 = running;
   const btn = document.getElementById('playBtn');
-  btn.textContent = running2 ? t('⏸ Pause','⏸ 暂停') : t('⏵ Play','⏵ 播放');
-  document.getElementById('stateLabel').textContent = running2 ? t('running','运行中') : t('paused','已暂停');
-  document.getElementById('stepBtn').dataset.en  = '⏭ Step';
-  document.getElementById('stepBtn').dataset.zh  = '⏭ 步进';
+  btn.textContent = running ? t('⏸ Pause','⏸ 暂停') : t('⏵ Play','⏵ 播放');
 }
 
 /* ── Mouse / touch drawing ────────────────────────── */

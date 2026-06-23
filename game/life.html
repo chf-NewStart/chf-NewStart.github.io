@@ -116,6 +116,7 @@
       <div class="brow">
         <button class="btn" id="playBtn"  onclick="togglePlay()"  data-en="⏵ Play"  data-zh="⏵ 播放">⏵ Play</button>
         <button class="btn" id="stepBtn"  onclick="stepOnce()"    data-en="⏭ Step"  data-zh="⏭ 步进">⏭ Step</button>
+        <button class="btn" id="undoBtn"  onclick="undoStep()"    data-en="↩ Undo"  data-zh="↩ 撤销" disabled>↩ Undo</button>
       </div>
       <div class="brow">
         <button class="btn danger" onclick="clearGrid()"    data-en="⬜ Clear"    data-zh="⬜ 清空">⬜ Clear</button>
@@ -247,8 +248,30 @@ function neighbors(c, r) {
 }
 
 let generation = 0;
+let stepHistory = [];
+const MAX_HISTORY = 50;
+
+function pushHistory() {
+  stepHistory.push({ grid: grid.slice(), generation });
+  if (stepHistory.length > MAX_HISTORY) stepHistory.shift();
+  document.getElementById('undoBtn').disabled = false;
+}
+
+function undoStep() {
+  if (stepHistory.length === 0) return;
+  if (running) togglePlay();
+  const state = stepHistory.pop();
+  grid = state.grid;
+  generation = state.generation;
+  document.getElementById('genCount').textContent  = generation;
+  const live = grid.reduce((s, v) => s + v, 0);
+  document.getElementById('cellCount').textContent = live;
+  document.getElementById('undoBtn').disabled = stepHistory.length === 0;
+  draw();
+}
 
 function step() {
+  pushHistory();
   let live = 0;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
@@ -321,8 +344,14 @@ function setCellSize(v) {
   if (wasRunning) togglePlay();
 }
 
+function clearHistory() {
+  stepHistory = [];
+  document.getElementById('undoBtn').disabled = true;
+}
+
 function clearGrid() {
   if (running) togglePlay();
+  clearHistory();
   grid.fill(0);
   generation = 0;
   document.getElementById('genCount').textContent  = 0;
@@ -332,6 +361,7 @@ function clearGrid() {
 
 function randomize(density = 0.2) {
   if (running) togglePlay();
+  clearHistory();
   for (let i = 0; i < grid.length; i++) grid[i] = Math.random() < density ? 1 : 0;
   generation = 0;
   document.getElementById('genCount').textContent  = 0;
@@ -410,6 +440,7 @@ const PRESETS = {
 
 function loadPreset(name) {
   if (running) togglePlay();
+  clearHistory();
   grid.fill(0);
   generation = 0;
   document.getElementById('genCount').textContent  = 0;
@@ -429,6 +460,7 @@ function loadPreset(name) {
 window.addEventListener('resize', () => {
   const wasRunning = running;
   if (running) togglePlay();
+  clearHistory();
   initGrid(); draw();
   if (wasRunning) togglePlay();
 });

@@ -178,6 +178,7 @@
       <div class="pcard-title" data-en="// game" data-zh="// 游戏">// game</div>
       <div class="brow">
         <button class="btn" id="newBtn"    onclick="requestNewGame()" data-en="⟳ New Game" data-zh="⟳ 新游戏">⟳ New Game</button>
+        <button class="btn" id="undoBtn"   onclick="undoMove()"       data-en="↩ Undo"     data-zh="↩ 悔棋"   disabled>↩ Undo</button>
         <button class="btn" id="resignBtn" onclick="resign()"       data-en="⚑ Resign"   data-zh="⚑ 认输">⚑ Resign</button>
         <button class="btn" id="pauseBtn"  onclick="togglePause()"  style="display:none" data-en="⏸ Pause" data-zh="⏸ 暂停">⏸ Pause</button>
       </div>
@@ -244,6 +245,7 @@ function computeLayout() {
 
 /* ── Game state ───────────────────────────────── */
 let board, curP, gameOver, winResult, lastMove, moveCount, aiThinking;
+let history = [];
 let scores = {1: 0, 2: 0};
 let diff = 'normal';
 let playerTypes = {1: 'human', 2: 'ai'};
@@ -254,6 +256,8 @@ function newGame() {
   paused = false;
   board = Array.from({length: N}, () => new Array(N).fill(0));
   curP = 1; gameOver = false; winResult = null; lastMove = null; moveCount = 0; aiThinking = false;
+  history = [];
+  document.getElementById('undoBtn').disabled = true;
   document.getElementById('newBtn').className = 'btn';
   document.getElementById('winBanner').className = 'win-banner';
   updatePauseBtn();
@@ -313,9 +317,31 @@ function scheduleAI() {
   }, bothAuto ? 300 : 80);
 }
 
+/* ── Undo ─────────────────────────────────────── */
+function undoMove() {
+  if (history.length === 0 || remoteMode || aiThinking) return;
+  const state = history.pop();
+  board     = state.board;
+  curP      = state.curP;
+  lastMove  = state.lastMove;
+  moveCount = state.moveCount;
+  gameOver  = false;
+  winResult = null;
+  document.getElementById('winBanner').className = 'win-banner';
+  document.getElementById('newBtn').className = 'btn';
+  document.getElementById('undoBtn').disabled = history.length === 0;
+  log(t('↩ undo', '↩ 悔棋'), 'lround');
+  draw();
+  renderPanel();
+}
+
 /* ── Place stone ──────────────────────────────── */
 function placeStone(r, c) {
   if (gameOver || board[r][c] !== 0) return;
+  if (!remoteMode) {
+    history.push({ board: board.map(row => [...row]), curP, lastMove, moveCount });
+    document.getElementById('undoBtn').disabled = false;
+  }
   board[r][c] = curP;
   lastMove = [r, c];
   moveCount++;

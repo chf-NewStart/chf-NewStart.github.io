@@ -527,21 +527,22 @@ function onEnvChange() {
 async function init() {
   setStatus('loading GLPK…', 'busy');
 
-  // glpk.js v4 is an ES module — use dynamic import instead of a script tag
-  const GLPK_URLS = [
-    'https://cdn.jsdelivr.net/npm/glpk.js@4.0.1/dist/glpk.min.js',
-    'https://unpkg.com/glpk.js@4.0.1/dist/glpk.min.js',
-  ];
+  // glpk.js ships as CommonJS (module.exports). Fetch the source and run it
+  // inside a fake CJS wrapper so we can extract the factory in the browser.
   let GLPK_factory = null;
-  for (const url of GLPK_URLS) {
-    try {
-      const mod = await import(url);
-      GLPK_factory = mod.default ?? mod;
-      if (typeof GLPK_factory === 'function') break;
-    } catch (_) { GLPK_factory = null; }
+  try {
+    const src = await fetch('https://cdn.jsdelivr.net/npm/glpk.js@4.0.1/dist/glpk.js')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); });
+    const mod = { exports: {} };
+    // eslint-disable-next-line no-new-func
+    new Function('module', 'exports', src)(mod, mod.exports);
+    GLPK_factory = mod.exports;
+  } catch (e) {
+    setStatus('GLPK fetch failed: ' + e.message, 'err');
+    return;
   }
-  if (!GLPK_factory) {
-    setStatus('GLPK failed to load from CDN', 'err');
+  if (typeof GLPK_factory !== 'function') {
+    setStatus('GLPK: unexpected export format', 'err');
     return;
   }
   try {

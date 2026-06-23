@@ -153,9 +153,9 @@
     <div class="pcard">
       <div class="pcard-title" data-en="// rules (B3/S23)" data-zh="// 规则 (B3/S23)">// rules (B3/S23)</div>
       <div class="rule-info">
-        <b>Birth</b> — dead cell with exactly 3 neighbors → alive<br>
-        <b>Survive</b> — live cell with 2 or 3 neighbors → stays<br>
-        <b>Death</b> — all other live cells → die<br>
+        <b style="color:#1db954">■</b> <b>Survive</b> — live, 2–3 neighbours<br>
+        <b style="color:#f44336">■</b> <b>Die</b> — live, &lt;2 or &gt;3 neighbours<br>
+        <b style="color:#3a3a3a">■</b> <b>Born next</b> — dead, exactly 3 neighbours<br>
         <span style="color:#222;margin-top:4px;display:block">Grid wraps toroidally.</span>
       </div>
     </div>
@@ -205,6 +205,7 @@ function idx(c, r) { return r * COLS + c; }
 /* ── Rendering ────────────────────────────────────── */
 const GREEN     = '#1db954';
 const RED       = '#f44336';
+const GHOST     = '#3a3a3a';   // dead cell that will be born next turn
 const BG        = '#0a0a0a';
 const GRID_LINE = '#111111';
 
@@ -222,13 +223,19 @@ function draw() {
     ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(canvas.width, r * CELL); ctx.stroke();
   }
 
-  // Live cells — green if will survive (2-3 neighbors), red if will die
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      if (!grid[idx(c, r)]) continue;
+      const alive = grid[idx(c, r)];
       const n = neighbors(c, r);
-      ctx.fillStyle = (n === 2 || n === 3) ? GREEN : RED;
-      ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 1, CELL - 1);
+      if (alive) {
+        // green = survives (2-3 neighbours), red = dies
+        ctx.fillStyle = (n === 2 || n === 3) ? GREEN : RED;
+        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 1, CELL - 1);
+      } else if (n === 3) {
+        // dead cell with exactly 3 neighbours → born next turn
+        ctx.fillStyle = GHOST;
+        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 1, CELL - 1);
+      }
     }
   }
 }

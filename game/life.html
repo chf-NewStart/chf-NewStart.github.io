@@ -153,7 +153,11 @@
         <button class="pbtn" draggable="true" data-preset="diehard" onclick="loadPreset('diehard')">Diehard<span>dies at gen 130</span></button>
         <button class="pbtn" draggable="true" data-preset="lwss"    onclick="loadPreset('lwss')">LWSS<span>lightweight spaceship</span></button>
       </div>
-      <div style="font-size:0.6rem;color:#333;margin-top:6px">drag a pattern onto the canvas to stamp it</div>
+      <div style="font-size:0.6rem;color:#333;margin-top:6px;margin-bottom:6px">drag onto canvas to stamp · click to load</div>
+      <div class="brow">
+        <button class="btn" id="rotBtn"  onclick="rotateStamp()">↻ <span id="rotLabel">0°</span></button>
+        <button class="btn" id="flipBtn" onclick="flipStamp()">⟺ <span id="flipLabel">normal</span></button>
+      </div>
     </div>
 
     <!-- Rules -->
@@ -252,12 +256,38 @@ function draw() {
 
   // ghost preview while dragging a pattern over the canvas
   if (dragPattern && dragOff) {
-    ctx.fillStyle = 'rgba(29,185,84,0.4)';
-    PRESETS[dragPattern].forEach(([dc, dr]) => {
-      const c = ((dragOff.c + dc) % COLS + COLS) % COLS;
-      const r = ((dragOff.r + dr) % ROWS + ROWS) % ROWS;
+    const tCells = transformCells(PRESETS[dragPattern]);
+
+    // full-canvas crosshair at cursor position (very faint)
+    if (dragCursor) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+      const cx = (dragCursor.c + 0.5) * CELL, cy = (dragCursor.r + 0.5) * CELL;
+      ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height); ctx.stroke();
+    }
+
+    // ghost cells (brighter fill)
+    ctx.fillStyle = 'rgba(29,185,84,0.55)';
+    let minC = Infinity, minR = Infinity, maxC2 = -Infinity, maxR2 = -Infinity;
+    tCells.forEach(([dc, dr]) => {
+      const rawC = dragOff.c + dc, rawR = dragOff.r + dr;
+      if (rawC < minC) minC = rawC; if (rawC > maxC2) maxC2 = rawC;
+      if (rawR < minR) minR = rawR; if (rawR > maxR2) maxR2 = rawR;
+      const c = (rawC % COLS + COLS) % COLS, r = (rawR % ROWS + ROWS) % ROWS;
       ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 1, CELL - 1);
     });
+
+    // dashed bounding box around the whole pattern footprint
+    ctx.strokeStyle = 'rgba(29,185,84,0.85)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(
+      minC * CELL + 0.5, minR * CELL + 0.5,
+      (maxC2 - minC + 1) * CELL, (maxR2 - minR + 1) * CELL
+    );
+    ctx.setLineDash([]);
   }
 }
 
@@ -478,8 +508,40 @@ function loadPreset(name) {
   draw();
 }
 
+/* ── Pattern transform (rotate / mirror) ─────────── */
+let stampRot = 0, stampFlipH = false;
+
+function transformCells(cells) {
+  let pts = cells.map(([c, r]) => [c, r]);
+  if (stampFlipH) {
+    const mc = Math.max(...pts.map(([c]) => c));
+    pts = pts.map(([c, r]) => [mc - c, r]);
+  }
+  // rotate 90° CW, stampRot times:  (c,r) → (maxR−r, c)
+  for (let i = 0; i < stampRot; i++) {
+    const mr = Math.max(...pts.map(([, r]) => r));
+    pts = pts.map(([c, r]) => [mr - r, c]);
+  }
+  return pts;
+}
+
+function rotateStamp() {
+  stampRot = (stampRot + 1) % 4;
+  const labels = ['0°', '90°', '180°', '270°'];
+  document.getElementById('rotLabel').textContent = labels[stampRot];
+  document.getElementById('rotBtn').classList.toggle('active', stampRot !== 0);
+  if (dragPattern && dragOff) draw();
+}
+
+function flipStamp() {
+  stampFlipH = !stampFlipH;
+  document.getElementById('flipLabel').textContent = stampFlipH ? 'mirrored' : 'normal';
+  document.getElementById('flipBtn').classList.toggle('active', stampFlipH);
+  if (dragPattern && dragOff) draw();
+}
+
 /* ── Drag-and-drop pattern stamp ──────────────────── */
-let dragPattern = null, dragOff = null;
+let dragPattern = null, dragOff = null, dragCursor = null;
 
 document.querySelectorAll('.pbtn[data-preset]').forEach(btn => {
   btn.addEventListener('dragstart', e => {
@@ -488,21 +550,22 @@ document.querySelectorAll('.pbtn[data-preset]').forEach(btn => {
     e.dataTransfer.effectAllowed = 'copy';
   });
   btn.addEventListener('dragend', () => {
-    dragPattern = null; dragOff = null;
+    dragPattern = null; dragOff = null; dragCursor = null;
     canvas.classList.remove('drag-over');
     draw();
   });
 });
 
 canvas.addEventListener('dragenter', e => { e.preventDefault(); canvas.classList.add('drag-over'); });
-canvas.addEventListener('dragleave', () => { dragOff = null; canvas.classList.remove('drag-over'); draw(); });
+canvas.addEventListener('dragleave', () => { dragOff = null; dragCursor = null; canvas.classList.remove('drag-over'); draw(); });
 canvas.addEventListener('dragover',  e => {
   e.preventDefault();
   if (!dragPattern) return;
   const [cc, cr] = cellAt(e);
-  const cells = PRESETS[dragPattern];
+  dragCursor = { c: cc, r: cr };
+  const cells = transformCells(PRESETS[dragPattern]);
   const maxC = Math.max(...cells.map(([c]) => c));
-  const maxR = Math.max(...cells.map(([,r]) => r));
+  const maxR = Math.max(...cells.map(([, r]) => r));
   const nc = cc - Math.floor(maxC / 2), nr = cr - Math.floor(maxR / 2);
   if (!dragOff || dragOff.c !== nc || dragOff.r !== nr) {
     dragOff = { c: nc, r: nr };
@@ -513,12 +576,12 @@ canvas.addEventListener('drop', e => {
   e.preventDefault();
   canvas.classList.remove('drag-over');
   if (!dragPattern || !dragOff) return;
-  PRESETS[dragPattern].forEach(([dc, dr]) => {
+  transformCells(PRESETS[dragPattern]).forEach(([dc, dr]) => {
     const c = ((dragOff.c + dc) % COLS + COLS) % COLS;
     const r = ((dragOff.r + dr) % ROWS + ROWS) % ROWS;
     grid[idx(c, r)] = 1;
   });
-  dragPattern = null; dragOff = null;
+  dragPattern = null; dragOff = null; dragCursor = null;
   draw();
 });
 

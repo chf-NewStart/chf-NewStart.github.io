@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Greenhouse Digital Twin // houfu.xyz</title>
-  <script src="https://cdn.jsdelivr.net/npm/glpk.js@4.0.1/dist/glpk.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -527,10 +526,28 @@ function onEnvChange() {
 /* ── Init ────────────────────────────────────────── */
 async function init() {
   setStatus('loading GLPK…', 'busy');
+
+  // glpk.js v4 is an ES module — use dynamic import instead of a script tag
+  const GLPK_URLS = [
+    'https://cdn.jsdelivr.net/npm/glpk.js@4.0.1/dist/glpk.min.js',
+    'https://unpkg.com/glpk.js@4.0.1/dist/glpk.min.js',
+  ];
+  let GLPK_factory = null;
+  for (const url of GLPK_URLS) {
+    try {
+      const mod = await import(url);
+      GLPK_factory = mod.default ?? mod;
+      if (typeof GLPK_factory === 'function') break;
+    } catch (_) { GLPK_factory = null; }
+  }
+  if (!GLPK_factory) {
+    setStatus('GLPK failed to load from CDN', 'err');
+    return;
+  }
   try {
-    glpk = await GLPK();
+    glpk = await GLPK_factory();
   } catch (e) {
-    setStatus('GLPK failed to load: ' + e.message, 'err');
+    setStatus('GLPK init failed: ' + e.message, 'err');
     return;
   }
 

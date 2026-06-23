@@ -53,9 +53,11 @@
     .slider-row input[type=range] { flex: 1; accent-color: #1db954; }
 
     .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-    .pbtn { background: #0d0d0d; border: 1px solid #222; color: #666; font-family: Consolas, monospace; font-size: 0.68rem; padding: 7px 8px; cursor: pointer; text-align: left; transition: all 0.1s; line-height: 1.5; }
+    .pbtn { background: #0d0d0d; border: 1px solid #222; color: #666; font-family: Consolas, monospace; font-size: 0.68rem; padding: 7px 8px; cursor: grab; text-align: left; transition: all 0.1s; line-height: 1.5; user-select: none; }
     .pbtn:hover { border-color: #888; color: #aaa; }
+    .pbtn:active { cursor: grabbing; }
     .pbtn span { display: block; font-size: 0.58rem; color: #333; margin-top: 1px; }
+    canvas.drag-over { border-color: #1db954; cursor: copy; }
 
     .rule-info { font-size: 0.67rem; color: #333; line-height: 1.8; }
     .rule-info b { color: #555; }
@@ -141,16 +143,17 @@
     <!-- Presets -->
     <div class="pcard">
       <div class="pcard-title" data-en="// patterns" data-zh="// 预设图案">// patterns</div>
-      <div class="preset-grid">
-        <button class="pbtn" onclick="loadPreset('glider')">Glider<span>classic mover</span></button>
-        <button class="pbtn" onclick="loadPreset('blinker')">Blinker<span>period-2 oscillator</span></button>
-        <button class="pbtn" onclick="loadPreset('pulsar')">Pulsar<span>period-3 oscillator</span></button>
-        <button class="pbtn" onclick="loadPreset('rpento')">R-pentomino<span>chaotic, ~1k gens</span></button>
-        <button class="pbtn" onclick="loadPreset('gun')">Gosper Gun<span>infinite glider factory</span></button>
-        <button class="pbtn" onclick="loadPreset('acorn')">Acorn<span>5206 gen lifespan</span></button>
-        <button class="pbtn" onclick="loadPreset('diehard')">Diehard<span>dies at gen 130</span></button>
-        <button class="pbtn" onclick="loadPreset('lwss')">LWSS<span>lightweight spaceship</span></button>
+      <div class="preset-grid" id="presetGrid">
+        <button class="pbtn" draggable="true" data-preset="glider"  onclick="loadPreset('glider')">Glider<span>classic mover</span></button>
+        <button class="pbtn" draggable="true" data-preset="blinker" onclick="loadPreset('blinker')">Blinker<span>period-2 oscillator</span></button>
+        <button class="pbtn" draggable="true" data-preset="pulsar"  onclick="loadPreset('pulsar')">Pulsar<span>period-3 oscillator</span></button>
+        <button class="pbtn" draggable="true" data-preset="rpento"  onclick="loadPreset('rpento')">R-pentomino<span>chaotic, ~1k gens</span></button>
+        <button class="pbtn" draggable="true" data-preset="gun"     onclick="loadPreset('gun')">Gosper Gun<span>infinite glider factory</span></button>
+        <button class="pbtn" draggable="true" data-preset="acorn"   onclick="loadPreset('acorn')">Acorn<span>5206 gen lifespan</span></button>
+        <button class="pbtn" draggable="true" data-preset="diehard" onclick="loadPreset('diehard')">Diehard<span>dies at gen 130</span></button>
+        <button class="pbtn" draggable="true" data-preset="lwss"    onclick="loadPreset('lwss')">LWSS<span>lightweight spaceship</span></button>
       </div>
+      <div style="font-size:0.6rem;color:#333;margin-top:6px">drag a pattern onto the canvas to stamp it</div>
     </div>
 
     <!-- Rules -->
@@ -246,6 +249,16 @@ function draw() {
   }
   document.getElementById('cellCount').textContent = live;
   document.getElementById('nextCount').textContent = nextLive;
+
+  // ghost preview while dragging a pattern over the canvas
+  if (dragPattern && dragOff) {
+    ctx.fillStyle = 'rgba(29,185,84,0.4)';
+    PRESETS[dragPattern].forEach(([dc, dr]) => {
+      const c = ((dragOff.c + dc) % COLS + COLS) % COLS;
+      const r = ((dragOff.r + dr) % ROWS + ROWS) % ROWS;
+      ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 1, CELL - 1);
+    });
+  }
 }
 
 /* ── Simulation ───────────────────────────────────── */
@@ -464,6 +477,50 @@ function loadPreset(name) {
   place(cells, offC, offR);
   draw();
 }
+
+/* ── Drag-and-drop pattern stamp ──────────────────── */
+let dragPattern = null, dragOff = null;
+
+document.querySelectorAll('.pbtn[data-preset]').forEach(btn => {
+  btn.addEventListener('dragstart', e => {
+    dragPattern = btn.dataset.preset;
+    dragOff = null;
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+  btn.addEventListener('dragend', () => {
+    dragPattern = null; dragOff = null;
+    canvas.classList.remove('drag-over');
+    draw();
+  });
+});
+
+canvas.addEventListener('dragenter', e => { e.preventDefault(); canvas.classList.add('drag-over'); });
+canvas.addEventListener('dragleave', () => { dragOff = null; canvas.classList.remove('drag-over'); draw(); });
+canvas.addEventListener('dragover',  e => {
+  e.preventDefault();
+  if (!dragPattern) return;
+  const [cc, cr] = cellAt(e);
+  const cells = PRESETS[dragPattern];
+  const maxC = Math.max(...cells.map(([c]) => c));
+  const maxR = Math.max(...cells.map(([,r]) => r));
+  const nc = cc - Math.floor(maxC / 2), nr = cr - Math.floor(maxR / 2);
+  if (!dragOff || dragOff.c !== nc || dragOff.r !== nr) {
+    dragOff = { c: nc, r: nr };
+    draw();
+  }
+});
+canvas.addEventListener('drop', e => {
+  e.preventDefault();
+  canvas.classList.remove('drag-over');
+  if (!dragPattern || !dragOff) return;
+  PRESETS[dragPattern].forEach(([dc, dr]) => {
+    const c = ((dragOff.c + dc) % COLS + COLS) % COLS;
+    const r = ((dragOff.r + dr) % ROWS + ROWS) % ROWS;
+    grid[idx(c, r)] = 1;
+  });
+  dragPattern = null; dragOff = null;
+  draw();
+});
 
 /* ── Init ─────────────────────────────────────────── */
 window.addEventListener('resize', () => {

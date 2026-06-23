@@ -69,78 +69,57 @@
         .gc-play:hover { background: rgba(29,185,84,0.1); }
         .gc-soon-badge { font-size: 0.6rem; color: #333; border: 1px solid #1e1e1e; padding: 3px 9px; font-family: Consolas, monospace; }
 
-        /* Neofetch hero card */
+        /* Hero terminal card */
         .neofetch-card {
-            background: rgba(5,5,5,0.87);
-            border: 1px solid #1e1e1e;
-            max-width: 1000px;
+            background: rgba(4,4,4,0.92);
+            border: 1px solid #1c1c1c;
+            max-width: 1020px;
             width: 100%;
             font-family: Consolas, 'Courier New', monospace;
             text-align: left;
         }
         .nf-titlebar {
-            background: #0d0d0d;
-            border-bottom: 1px solid #1a1a1a;
-            padding: 7px 14px;
-            font-size: 0.7rem;
-            color: #333;
+            background: #0a0a0a;
+            border-bottom: 1px solid #181818;
+            padding: 8px 16px;
+            font-size: 0.75rem;
+            color: #2e2e2e;
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .nf-dots { display: flex; gap: 6px; }
-        .nf-dots span { width: 10px; height: 10px; border-radius: 50%; display: block; }
-        .nf-dot-r { background: #f44336; opacity: .6; }
-        .nf-dot-y { background: #ffb300; opacity: .6; }
-        .nf-dot-g { background: #1db954; opacity: .6; }
-        .nf-body {
-            display: flex;
-            padding: 36px 44px;
-            gap: 48px;
-            align-items: flex-start;
+        .nf-dots { display: flex; gap: 7px; }
+        .nf-dots span { width: 11px; height: 11px; border-radius: 50%; display: block; }
+        .nf-dot-r { background: #f44336; opacity: .7; }
+        .nf-dot-y { background: #ffb300; opacity: .7; }
+        .nf-dot-g { background: #1db954; opacity: .7; }
+        .nf-terminal { padding: 24px 36px 32px; }
+        .nf-cmd { font-size: 0.9rem; margin-bottom: 16px; color: #444; }
+        .nf-ps1 { color: #1db954; }
+        .nf-fetch-row {
+            display: flex; gap: 44px; align-items: flex-start; margin-bottom: 8px;
         }
-        .nf-art {
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 18px;
-        }
-        .nf-ascii {
-            color: #1db954;
-            font-size: 0.82rem;
-            line-height: 1.25;
-            margin: 0;
-            white-space: pre;
-            opacity: .85;
-        }
-        .nf-color-row { display: flex; gap: 4px; }
-        .nf-color-swatch { width: 14px; height: 14px; }
-        .nf-info { flex: 1; min-width: 0; }
-        .nf-uname { font-size: 1.05rem; color: #1db954; margin-bottom: 2px; }
-        .nf-uname span { color: #555; }
-        .nf-sep { color: #222; font-size: 0.7rem; margin-bottom: 14px; letter-spacing: 1px; }
-        .nf-row { display: flex; gap: 0; font-size: 0.82rem; margin-bottom: 8px; }
-        .nf-key { color: #1db954; width: 80px; flex-shrink: 0; }
-        .nf-colon { color: #333; margin-right: 10px; }
+        .nf-tomato { margin: 0; line-height: 1.35; font-size: 0.92rem; flex-shrink: 0; white-space: pre; }
+        .nf-info { flex: 1; min-width: 0; padding-top: 4px; }
+        .nf-uname { font-size: 1.1rem; margin-bottom: 4px; }
+        .nf-sep { color: #1e1e1e; font-size: 0.75rem; margin-bottom: 14px; }
+        .nf-row { font-size: 0.9rem; margin-bottom: 10px; display: flex; align-items: baseline; }
+        .nf-key { color: #1db954; width: 76px; flex-shrink: 0; }
+        .nf-colon { color: #2e2e2e; margin-right: 10px; }
         .nf-val { color: #999; }
-        .nf-games-row {
-            display: flex; align-items: center; gap: 8px;
-            flex-wrap: wrap; margin-top: 22px;
-        }
-        .nf-prompt { font-size: 0.72rem; color: #333; flex-shrink: 0; }
+        .nf-games-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
         .hero-game-btn {
-            font-family: Consolas, monospace; font-size: 0.75rem;
-            color: #f44336; border: 1px solid rgba(244,67,54,0.35);
-            padding: 5px 12px; text-decoration: none;
-            transition: background 0.1s, border-color 0.1s;
-            white-space: nowrap;
+            font-family: Consolas, monospace; font-size: 0.85rem;
+            color: #f44336; border: 1px solid rgba(244,67,54,0.28);
+            padding: 5px 14px; text-decoration: none;
+            transition: background 0.1s, border-color 0.1s; white-space: nowrap;
         }
         .hero-game-btn:hover { background: rgba(244,67,54,0.1); border-color: #f44336; }
-        .nf-cta { margin-top: 22px; }
+        .nf-cursor { color: #1db954; animation: blink 1s step-end infinite; }
         @media (max-width: 640px) {
-            .nf-art { display: none; }
-            .nf-body { padding: 20px 18px; gap: 0; }
+            .nf-tomato { display: none; }
+            .nf-terminal { padding: 16px 20px 24px; }
+            .nf-row { font-size: 0.82rem; }
         }
     </style>
 </head>
@@ -180,42 +159,44 @@
                             </div>
                             houfu@system: ~
                         </div>
-                        <div class="nf-body">
-                            <div class="nf-art">
-                                <pre class="nf-ascii">██╗  ██╗ ██████╗
-██║  ██║██╔════╝
-███████║██║
-██╔══██║██║
-██║  ██║╚██████╗
-╚═╝  ╚═╝ ╚═════╝</pre>
-                                <div style="font-size:2.2rem;line-height:1;opacity:0.85">🍅</div>
-                                <div class="nf-color-row">
-                                    <div class="nf-color-swatch" style="background:#1e1e1e"></div>
-                                    <div class="nf-color-swatch" style="background:#f44336"></div>
-                                    <div class="nf-color-swatch" style="background:#1db954"></div>
-                                    <div class="nf-color-swatch" style="background:#ffb300"></div>
-                                    <div class="nf-color-swatch" style="background:#dcdcdc"></div>
+                        <div class="nf-terminal">
+
+                            <div class="nf-cmd"><span class="nf-ps1">houfu@system:~$</span> neofetch</div>
+
+                            <div class="nf-fetch-row">
+                                <pre class="nf-tomato"><span style="color:#1db954">    ╻╻
+   ╺╋╸</span>
+<span style="color:#c0392b">  ╭─────╮
+ ╭│     │╮
+ ││  ◦  ││
+ ││     ││
+ │╰─────╯│
+  ╰─────╯</span></pre>
+                                <div class="nf-info">
+                                    <div class="nf-uname"><span style="color:#1db954">houfu</span><span style="color:#2e2e2e">@</span><span style="color:#1db954">system</span></div>
+                                    <div class="nf-sep">──────────────────────────────────</div>
+                                    <div class="nf-row"><span class="nf-key" data-en="Name"   data-zh="姓名" >Name  </span><span class="nf-colon">:</span><span class="nf-val" data-en="Houfu Chen"                              data-zh="陈厚孚"              >Houfu Chen</span></div>
+                                    <div class="nf-row"><span class="nf-key" data-en="Role"   data-zh="职位" >Role  </span><span class="nf-colon">:</span><span class="nf-val" data-en="PhD Candidate · Digital Twin Researcher" data-zh="博士生 · 数字孪生研究员">PhD Candidate · Digital Twin Researcher</span></div>
+                                    <div class="nf-row"><span class="nf-key" data-en="School" data-zh="学校" >School</span><span class="nf-colon">:</span><span class="nf-val" data-en="University of Waterloo"                  data-zh="滑铁卢大学"          >University of Waterloo</span></div>
+                                    <div class="nf-row"><span class="nf-key" data-en="Focus"  data-zh="方向" >Focus </span><span class="nf-colon">:</span><span class="nf-val" data-en="Tomato Growth FBA · Digital Twins"       data-zh="番茄生长FBA · 数字孪生" >Tomato Growth FBA · Digital Twins</span></div>
+                                    <div class="nf-row"><span class="nf-key" data-en="Stack"  data-zh="技术栈">Stack </span><span class="nf-colon">:</span><span class="nf-val">Python · JS · C++ · PyTorch</span></div>
+                                    <div class="nf-row"><span class="nf-key" data-en="Status" data-zh="状态" >Status</span><span class="nf-colon">:</span><span class="nf-val" style="color:#1db954" data-en="always building" data-zh="持续构建中">always building</span></div>
                                 </div>
                             </div>
-                            <div class="nf-info">
-                                <div class="nf-uname"><span style="color:#1db954">houfu</span><span>@</span><span style="color:#1db954">system</span></div>
-                                <div class="nf-sep">────────────────────────</div>
-                                <div class="nf-row"><span class="nf-key" data-en="Name" data-zh="姓名">Name</span><span class="nf-colon">:</span><span class="nf-val" data-en="Houfu Chen" data-zh="陈厚孚">Houfu Chen</span></div>
-                                <div class="nf-row"><span class="nf-key" data-en="Role" data-zh="职位">Role</span><span class="nf-colon">:</span><span class="nf-val" data-en="PhD Candidate · Digital Twin Researcher" data-zh="博士生 · 数字孪生研究员">PhD Candidate · Digital Twin Researcher</span></div>
-                                <div class="nf-row"><span class="nf-key" data-en="School" data-zh="学校">School</span><span class="nf-colon">:</span><span class="nf-val" data-en="University of Waterloo" data-zh="滑铁卢大学">University of Waterloo</span></div>
-                                <div class="nf-row"><span class="nf-key" data-en="Focus" data-zh="方向">Focus</span><span class="nf-colon">:</span><span class="nf-val" data-en="🍅 Tomato Growth FBA · Digital Twins" data-zh="🍅 番茄生长FBA · 数字孪生">🍅 Tomato Growth FBA · Digital Twins</span></div>
-                                <div class="nf-row"><span class="nf-key" data-en="Stack" data-zh="技术栈">Stack</span><span class="nf-colon">:</span><span class="nf-val">Python · JS · C++ · PyTorch</span></div>
-                                <div class="nf-row"><span class="nf-key" data-en="Status" data-zh="状态">Status</span><span class="nf-colon">:</span><span class="nf-val" style="color:#1db954" data-en="always building 🍅" data-zh="持续构建中 🍅">always building 🍅</span></div>
-                                <div class="nf-games-row">
-                                    <span class="nf-prompt">~/games $</span>
-                                    <a class="hero-game-btn" href="/game/game.html" target="_blank">[::] escape_grid</a>
-                                    <a class="hero-game-btn" href="/game/gomoku.html" target="_blank">[⬡] gomoku</a>
-                                    <a class="hero-game-btn" href="/game/train.html" target="_blank">[⚙] dqn_train</a>
-                                </div>
-                                <div class="nf-cta">
-                                    <a href="#about-section" class="cta-button" data-en="> boot sequence" data-zh="> 启动序列">> boot sequence</a>
-                                </div>
+
+                            <div class="nf-cmd" style="margin-top:22px"><span class="nf-ps1">houfu@system:~/games$</span> ls</div>
+                            <div class="nf-games-row">
+                                <a class="hero-game-btn" href="/game/game.html"   target="_blank">[::] escape_grid</a>
+                                <a class="hero-game-btn" href="/game/gomoku.html" target="_blank">[⬡] gomoku</a>
+                                <a class="hero-game-btn" href="/game/train.html"  target="_blank">[⚙] dqn_train</a>
                             </div>
+
+                            <div class="nf-cmd" style="margin-top:20px"><span class="nf-ps1">houfu@system:~$</span> <span class="nf-cursor">▋</span></div>
+
+                            <div style="margin-top:20px">
+                                <a href="#about-section" class="cta-button" data-en="> boot sequence" data-zh="> 启动序列">> boot sequence</a>
+                            </div>
+
                         </div>
                     </div>
                 </div>

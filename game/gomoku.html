@@ -104,7 +104,8 @@
     #boardWrap { position: relative; display: inline-block; }
     .board-overlay { position: absolute; inset: 0; background: rgba(8,8,8,0.82); display: none; align-items: center; justify-content: center; text-align: center; font-size: 0.75rem; color: #1db954; line-height: 1.8; padding: 20px; }
   </style>
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -176,7 +177,7 @@
     <div class="pcard">
       <div class="pcard-title" data-en="// game" data-zh="// 游戏">// game</div>
       <div class="brow">
-        <button class="btn" id="newBtn"    onclick="newGame()"      data-en="⟳ New Game" data-zh="⟳ 新游戏">⟳ New Game</button>
+        <button class="btn" id="newBtn"    onclick="requestNewGame()" data-en="⟳ New Game" data-zh="⟳ 新游戏">⟳ New Game</button>
         <button class="btn" id="resignBtn" onclick="resign()"       data-en="⚑ Resign"   data-zh="⚑ 认输">⚑ Resign</button>
         <button class="btn" id="pauseBtn"  onclick="togglePause()"  style="display:none" data-en="⏸ Pause" data-zh="⏸ 暂停">⏸ Pause</button>
       </div>
@@ -247,7 +248,7 @@ let scores = {1: 0, 2: 0};
 let diff = 'normal';
 let playerTypes = {1: 'human', 2: 'ai'};
 let paused = false;
-let remoteMode = false, myColor = null, remotePeer = null, remoteConn = null;
+let remoteMode = false, myColor = null;
 
 function newGame() {
   paused = false;
@@ -308,14 +309,13 @@ function scheduleAI() {
     const move = getAIMove();
     aiThinking = false;
     canvas.classList.remove('thinking');
-    if (move) placeStone(move[0], move[1]);
+    if (move) placeStone(move[0], move[1]);  // AI always local, never remote
   }, bothAuto ? 300 : 80);
 }
 
 /* ── Place stone ──────────────────────────────── */
-function placeStone(r, c, sendRemote = false) {
+function placeStone(r, c) {
   if (gameOver || board[r][c] !== 0) return;
-  if (sendRemote && remoteConn && remoteConn.open) remoteConn.send({type:'move',r,c});
   board[r][c] = curP;
   lastMove = [r, c];
   moveCount++;
@@ -344,7 +344,7 @@ function placeStone(r, c, sendRemote = false) {
 /* ── Canvas click ─────────────────────────────── */
 canvas.addEventListener('click', e => {
   if (gameOver || aiThinking) return;
-  if (document.getElementById('boardOverlay').style.display !== 'none') return; // waiting for remote
+  if (document.getElementById('boardOverlay').style.display !== 'none') return;
   if (remoteMode && curP !== myColor) return;
   if (!remoteMode && isAI(curP)) return;
   const rect = canvas.getBoundingClientRect();
@@ -354,7 +354,8 @@ canvas.addEventListener('click', e => {
   if (r < 0 || r >= N || c < 0 || c >= N) return;
   if (Math.abs(mx - (PAD + c*CELL)) > CELL/2) return;
   if (Math.abs(my - (PAD + r*CELL)) > CELL/2) return;
-  placeStone(r, c, remoteMode);
+  if (remoteMode) { fbSendMove(r, c); }  // Firebase echoes back → placeStone fires on both sides
+  else { placeStone(r, c); }
 });
 
 /* ── Hover preview ────────────────────────────── */
@@ -697,26 +698,30 @@ function getBestMove() {
   return bestMove;
 }
 
-/* ── Remote play via PeerJS ───────────────────── */
+/* ── Firebase remote play ─────────────────────── */
+const firebaseConfig = {
+  apiKey:            'AIzaSyAedvXKKf0YZLuaNTwCm7_-Y_pJoZchqwo',
+  authDomain:        'remoteplay-b5486.firebaseapp.com',
+  databaseURL:       'https://remoteplay-b5486-default-rtdb.firebaseio.com',
+  projectId:         'remoteplay-b5486',
+  storageBucket:     'remoteplay-b5486.firebasestorage.app',
+  messagingSenderId: '142560337765',
+  appId:             '1:142560337765:web:a0fad172347d04dc638b8c',
+};
 
-// Multiple STUN + TURN providers — if one is down the next one works
-const ICE = { config: { iceServers: [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:global.stun.twilio.com:3478' },
-  // OpenRelay (Metered.ca public TURN)
-  { urls: 'turn:openrelay.metered.ca:80',               username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443',              username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp',username: 'openrelayproject', credential: 'openrelayproject' },
-  // FreeTURN (separate free public TURN)
-  { urls: 'turn:freestun.net:3478',  username: 'free', credential: 'free' },
-  { urls: 'turn:freestun.net:3479',  username: 'free', credential: 'free' },
-  { urls: 'turns:freestun.net:5350', username: 'free', credential: 'free' },
-]}};
+let _fbDb = null, _fbCode = null, _fbSession = 0;
+let _fbMoveRef = null, _fbMoveCb = null;
+let _fbSessRef = null, _fbSessCb = null;
+let _fbJoinRef = null, _fbJoinCb = null;
+
+function fbDb() {
+  if (!_fbDb) { firebase.initializeApp(firebaseConfig); _fbDb = firebase.database(); }
+  return _fbDb;
+}
+function gameRef(sub) { return fbDb().ref(`games/${_fbCode}/${sub}`); }
 
 function shortId() {
-  // Unambiguous chars only (no O/0, I/1) — 6 chars, easy to type on mobile
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no O/0, I/1
   let id = '';
   for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
   return id;
@@ -727,61 +732,92 @@ function setConnStatus(msg, cls='') {
   el.textContent = msg; el.className = 'conn-status' + (cls ? ' '+cls : '');
 }
 function showOverlay(msg) {
-  const ov = document.getElementById('boardOverlay');
   document.getElementById('boardOverlayMsg').textContent = msg;
-  ov.style.display = 'flex';
+  document.getElementById('boardOverlay').style.display = 'flex';
 }
 function hideOverlay() { document.getElementById('boardOverlay').style.display = 'none'; }
 
-function wireConn(c, isHost) {
-  remoteConn = c;
-  remoteMode = true;
-  hideOverlay();
-  setConnStatus(isHost ? t('Connected! You play Black.','已连接！你执黑方。') : t('Connected! You play White.','已连接！你执白方。'), 'ok');
-  updatePauseBtn();
-  c.on('data', data => { if (data.type === 'move') placeStone(data.r, data.c, false); });
-  c.on('close', () => {
-    remoteMode = false; hideOverlay();
-    setConnStatus(t('Opponent disconnected.', '对方已断开。'), 'err');
+function fbListenMoves(session) {
+  if (_fbMoveRef && _fbMoveCb) { _fbMoveRef.off('child_added', _fbMoveCb); }
+  _fbMoveRef = gameRef('moves');
+  _fbMoveCb = _fbMoveRef.on('child_added', snap => {
+    const d = snap.val();
+    if (d.s === session) placeStone(d.r, d.c);
   });
 }
 
-function createRoom() {
-  if (remotePeer) { remotePeer.destroy(); remotePeer = null; }
-  remoteMode = false; myColor = 1;
-  setConnStatus(t('Creating room...', '创建中...'));
-  remotePeer = new Peer(shortId(), ICE);
-  remotePeer.on('open', id => {
-    document.getElementById('roomCode').textContent = id;
-    setConnStatus(t('Waiting for opponent — share the code above', '等待对方加入，分享上方代码'));
-    showOverlay(t('Waiting for opponent…\nShare the room code on the right.', '等待对方加入…\n将房间码分享给对方。'));
-  });
-  remotePeer.on('connection', c => {
-    if (remoteMode) { c.close(); return; }  // reject 3rd-party attempts
-    wireConn(c, true);
-    newGame();
-  });
-  remotePeer.on('error', e => { hideOverlay(); setConnStatus('Error: ' + e.type + ' — try Create Room again', 'err'); });
+function fbSendMove(r, c) {
+  gameRef('moves').push({ r, c, s: _fbSession });
 }
 
-function joinRoom() {
+function fbListenSession() {
+  if (_fbSessRef && _fbSessCb) { _fbSessRef.off('value', _fbSessCb); }
+  _fbSessRef = gameRef('session');
+  _fbSessCb = _fbSessRef.on('value', snap => {
+    const s = snap.val() ?? 0;
+    if (remoteMode && s !== _fbSession) {
+      _fbSession = s;
+      fbListenMoves(s);
+      newGame();
+    }
+  });
+}
+
+async function createRoom() {
+  _fbCode = shortId();
+  myColor = 1; remoteMode = false; _fbSession = 0;
+  document.getElementById('roomCode').textContent = _fbCode;
+  setConnStatus(t('Waiting for opponent — share the code above', '等待对方加入，分享上方代码'));
+  showOverlay(t('Waiting for opponent…\nShare the room code on the right.', '等待对方加入…\n将房间码分享给对方。'));
+
+  await gameRef('meta').set({ created: Date.now(), session: 0 });
+
+  if (_fbJoinRef && _fbJoinCb) { _fbJoinRef.off('value', _fbJoinCb); }
+  _fbJoinRef = gameRef('joined');
+  _fbJoinCb = _fbJoinRef.on('value', snap => {
+    if (snap.val() && !remoteMode) {
+      remoteMode = true;
+      hideOverlay();
+      setConnStatus(t('Connected! You play Black.', '已连接！你执黑方。'), 'ok');
+      updatePauseBtn();
+      fbListenMoves(0);
+      fbListenSession();
+      newGame();
+    }
+  });
+}
+
+async function joinRoom() {
   const code = document.getElementById('joinCode').value.trim().toUpperCase();
   if (!code) return;
-  if (remotePeer) { remotePeer.destroy(); remotePeer = null; }
-  remoteMode = false; myColor = 2;
-  setConnStatus(t('Step 1/3: registering with signaling server…', '1/3: 注册信令服务器…'));
-  showOverlay(t('Connecting to host…\n(may take up to 25s across different networks)', '连接中…\n（跨网络最多需25秒）'));
-  remotePeer = new Peer(shortId(), ICE);
-  remotePeer.on('open', () => {
-    setConnStatus(t('Step 2/3: reaching host peer…', '2/3: 联系主机…'));
-    const c = remotePeer.connect(code, {reliable: true, serialization: 'json'});
-    const timeout = setTimeout(() => {
-      if (!remoteMode) { hideOverlay(); setConnStatus(t('Timed out — TURN relay may be slow. Try again, or both join the same WiFi.', '超时 — 重试，或连同一WiFi'), 'err'); }
-    }, 25000);
-    c.on('open', () => { clearTimeout(timeout); setConnStatus(t('Step 3/3: opening data channel…', '3/3: 打开数据通道…')); wireConn(c, false); });
-    c.on('error', e => { clearTimeout(timeout); hideOverlay(); setConnStatus('Connection error: ' + (e.message||e.type||e), 'err'); });
-  });
-  remotePeer.on('error', e => { hideOverlay(); setConnStatus('Peer error: ' + e.type + (e.type==='unavailable-id'?' (room not found — check code)':''), 'err'); });
+  setConnStatus(t('Looking up room…', '查找房间…'));
+  showOverlay(t('Connecting…', '连接中…'));
+
+  const snap = await fbDb().ref(`games/${code}/meta`).once('value');
+  if (!snap.exists()) {
+    hideOverlay();
+    setConnStatus(t('Room not found — check the code.', '未找到房间，请检查代码。'), 'err');
+    return;
+  }
+
+  _fbCode = code; myColor = 2; remoteMode = true;
+  _fbSession = snap.val().session ?? 0;
+  await fbDb().ref(`games/${code}/joined`).set(true);
+
+  hideOverlay();
+  setConnStatus(t('Connected! You play White.', '已连接！你执白方。'), 'ok');
+  updatePauseBtn();
+  fbListenMoves(_fbSession);
+  fbListenSession();
+}
+
+function requestNewGame() {
+  if (!remoteMode) { newGame(); return; }
+  if (myColor !== 1) {
+    setConnStatus(t('Only Black (host) can start a new game.', '只有黑方（主机）可发起新游戏。'));
+    return;
+  }
+  gameRef('session').set(_fbSession + 1); // both sides' listeners will call newGame()
 }
 
 /* ── Init ─────────────────────────────────────── */

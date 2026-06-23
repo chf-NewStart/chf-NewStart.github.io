@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Greenhouse Digital Twin // houfu.xyz</title>
+  <script src="https://cdn.jsdelivr.net/npm/glpk.js@4.0.1/dist/glpk.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Consolas, 'Courier New', monospace;
+      background: #080808; color: #ccc;
+      min-height: 100vh; padding: 20px 16px;
+    }
+
+    .pg-header { max-width: 1100px; margin: 0 auto 14px; }
+    .pg-title  { color: #1db954; font-size: 1.4rem; text-transform: uppercase; letter-spacing: -1px; }
+    .pg-sub    { color: #555; font-size: 0.72rem; margin-top: 3px; line-height: 1.7; }
+    .pg-back   { font-size: 0.72rem; color: #1db954; text-decoration: none; margin-top: 5px; display: inline-block; }
+    .pg-back:hover { text-decoration: underline; }
+
+    .status-bar {
+      max-width: 1100px; margin: 0 auto 14px;
+      padding: 6px 12px; background: #0d0d0d; border: 1px solid #1a1a1a;
+      font-size: 0.69rem; color: #333; display: flex; align-items: center; gap: 8px;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #444; flex-shrink: 0; }
+    .status-dot.ok   { background: #1db954; }
+    .status-dot.busy { background: #ff9800; }
+    .status-dot.err  { background: #f44336; }
+    #statusText { color: #666; }
+
+    .layout { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+
+    .pcard { background: #111; border: 1px solid #1c1c1c; padding: 13px 15px; }
+    .pcard-title {
+      color: #1db954; font-size: 0.67rem; text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #1a1a1a;
+    }
+
+    /* Environmental controls */
+    .env-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+    .env-item label { display: block; font-size: 0.61rem; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .env-item input[type=range] { width: 100%; accent-color: #1db954; cursor: pointer; }
+    .env-val { font-size: 0.88rem; color: #1db954; margin-top: 4px; }
+    .env-unit { color: #333; font-size: 0.7rem; }
+
+    /* Results */
+    .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .flux-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 5px 0; border-bottom: 1px solid #141414; font-size: 0.72rem;
+    }
+    .flux-row:last-child { border-bottom: none; }
+    .flux-label { color: #555; }
+    .flux-val   { color: #1db954; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+    .flux-unit  { color: #2a2a2a; font-size: 0.65rem; margin-left: 4px; }
+
+    /* Phloem link */
+    .phloem-link {
+      margin: 0 0 12px; padding: 6px 10px;
+      background: #0d0d0d; border: 1px solid #1a1a1a; border-left: 2px solid #1db954;
+      font-size: 0.67rem; color: #333; display: flex; gap: 18px;
+    }
+    .phloem-link span { color: #1db954; }
+
+    /* Fruit composition bars */
+    .comp-section-label {
+      font-size: 0.6rem; color: #333; text-transform: uppercase; letter-spacing: 1px;
+      margin: 10px 0 6px;
+    }
+    .comp-row { margin-bottom: 6px; }
+    .comp-meta { display: flex; justify-content: space-between; font-size: 0.64rem; margin-bottom: 2px; }
+    .comp-name { color: #555; }
+    .comp-pct  { color: #444; font-variant-numeric: tabular-nums; }
+    .comp-bg   { background: #0d0d0d; height: 7px; border-radius: 0; }
+    .comp-bar  { height: 100%; width: 0%; transition: width 0.5s ease; }
+    .bar-sugar  { background: #1db954; }
+    .bar-acid   { background: #f44336; }
+    .bar-aa     { background: #ff9800; }
+    .bar-struct { background: #2196f3; }
+
+    .model-tag {
+      display: inline-block; font-size: 0.6rem; color: #2a2a2a;
+      border: 1px solid #1c1c1c; padding: 1px 5px; margin-left: 6px; vertical-align: middle;
+    }
+
+    @media (max-width: 760px) {
+      .env-grid     { grid-template-columns: 1fr 1fr; }
+      .results-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 420px) {
+      .env-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="pg-header">
+  <div class="pg-title">Greenhouse Digital Twin <span style="color:#1a1a1a;font-size:0.8rem">🍅</span></div>
+  <div class="pg-sub">
+    Sl2183 (stem·leaf·root) → phloem (Suc, Gln) + xylem (NO₃⁻) → FRIM1 (fruit) · real FBA via GLPK · <em>Solanum lycopersicum</em>
+  </div>
+  <a class="pg-back" href="/">← back to portfolio</a>
+</div>
+
+<div class="status-bar">
+  <div class="status-dot" id="statusDot"></div>
+  <span id="statusText">initializing…</span>
+</div>
+
+<div class="layout">
+
+  <!-- Environmental controls -->
+  <div class="pcard">
+    <div class="pcard-title">// greenhouse environment</div>
+    <div class="env-grid">
+      <div class="env-item">
+        <label>☀ Light (PPFD)</label>
+        <input type="range" id="slLight" min="0" max="2000" value="800" step="50" oninput="onEnvChange()">
+        <div class="env-val"><span id="vLight">800</span> <span class="env-unit">µmol/m²/s</span></div>
+      </div>
+      <div class="env-item">
+        <label>💨 CO₂</label>
+        <input type="range" id="slCO2" min="200" max="1200" value="400" step="50" oninput="onEnvChange()">
+        <div class="env-val"><span id="vCO2">400</span> <span class="env-unit">ppm</span></div>
+      </div>
+      <div class="env-item">
+        <label>💧 Water availability</label>
+        <input type="range" id="slWater" min="10" max="100" value="85" step="5" oninput="onEnvChange()">
+        <div class="env-val"><span id="vWater">85</span> <span class="env-unit">%</span></div>
+      </div>
+      <div class="env-item">
+        <label>⚗ Nitrogen (NO₃⁻)</label>
+        <input type="range" id="slN" min="5" max="100" value="70" step="5" oninput="onEnvChange()">
+        <div class="env-val"><span id="vN">70</span> <span class="env-unit">%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vascular link indicator -->
+  <div class="phloem-link" id="phloemLink" style="display:none">
+    phloem&nbsp;→&nbsp;sucrose: <span id="pl_sucr">–</span>&nbsp;mmol/gDW/h
+    &nbsp;·&nbsp; glutamine: <span id="pl_gln">–</span>&nbsp;mmol/gDW/h
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    xylem&nbsp;→&nbsp;NO₃⁻: <span id="pl_no3">–</span>&nbsp;mmol/gDW/h
+  </div>
+
+  <!-- Results -->
+  <div class="results-grid">
+
+    <!-- Source model -->
+    <div class="pcard">
+      <div class="pcard-title">// source <span class="model-tag">Sl2183 · 2183 rxn</span></div>
+
+      <div class="flux-row">
+        <span class="flux-label">biomass production</span>
+        <span class="flux-val"><span id="r_biomass">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+      <div class="flux-row">
+        <span class="flux-label">photon uptake</span>
+        <span class="flux-val"><span id="r_photon">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+      <div class="flux-row">
+        <span class="flux-label">CO₂ net flux</span>
+        <span class="flux-val"><span id="r_co2">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+      <div class="flux-row">
+        <span class="flux-label">H₂O exchange</span>
+        <span class="flux-val"><span id="r_h2o">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+      <div class="flux-row">
+        <span class="flux-label">NO₃⁻ uptake</span>
+        <span class="flux-val"><span id="r_no3">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+      <div class="flux-row" style="margin-top:6px;padding-top:8px;border-top:1px solid #1c1c1c;border-bottom:none">
+        <span class="flux-label">→ phloem sucrose</span>
+        <span class="flux-val" style="color:#ff9800"><span id="r_sucr">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+      <div class="flux-row">
+        <span class="flux-label">→ phloem glutamine</span>
+        <span class="flux-val" style="color:#ff9800"><span id="r_gln">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+      <div class="flux-row">
+        <span class="flux-label">→ xylem NO₃⁻</span>
+        <span class="flux-val" style="color:#2196f3"><span id="r_xno3">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+    </div>
+
+    <!-- Sink model -->
+    <div class="pcard">
+      <div class="pcard-title">// sink <span class="model-tag">FRIM1 · 71 rxn</span></div>
+
+      <div class="flux-row">
+        <span class="flux-label">sucrose uptake (phloem)</span>
+        <span class="flux-val" style="color:#ff9800"><span id="f_suc_up">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+      <div class="flux-row">
+        <span class="flux-label">glutamine uptake (phloem)</span>
+        <span class="flux-val" style="color:#ff9800"><span id="f_gln_up">–</span><span class="flux-unit">mmol/gDW/h</span></span>
+      </div>
+
+      <div class="comp-section-label">── fruit composition (relative flux) ──</div>
+
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">glucose (vacuole)</span><span class="comp-pct" id="p_glc">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-sugar" id="b_glc"></div></div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">fructose (vacuole)</span><span class="comp-pct" id="p_fru">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-sugar" id="b_fru"></div></div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">sucrose (vacuole)</span><span class="comp-pct" id="p_suc">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-sugar" id="b_suc"></div></div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">malate</span><span class="comp-pct" id="p_mal">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-acid" id="b_mal"></div></div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">citrate</span><span class="comp-pct" id="p_cit">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-acid" id="b_cit"></div></div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">amino acids (Glu/Asp/Ala/Ser)</span><span class="comp-pct" id="p_aa">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-aa" id="b_aa"></div></div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">starch</span><span class="comp-pct" id="p_sta">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-struct" id="b_sta"></div></div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">protein</span><span class="comp-pct" id="p_pro">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-struct" id="b_pro"></div></div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">lipids (DAG)</span><span class="comp-pct" id="p_lip">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-struct" id="b_lip"></div></div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-meta"><span class="comp-name">cell wall</span><span class="comp-pct" id="p_cw">–</span></div>
+        <div class="comp-bg"><div class="comp-bar bar-struct" id="b_cw"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ── Globals ─────────────────────────────────────── */
+let glpk = null, stemModel = null, fruitModel = null;
+let solveTimer = null;
+
+function setStatus(text, state) {
+  document.getElementById('statusText').textContent = text;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot' + (state ? ' ' + state : '');
+}
+
+function fx(v) { return (v == null || isNaN(v)) ? '–' : v.toFixed(4); }
+
+/* ── Parse Sl2183 (SBML Level 3 + FBC) ──────────── */
+function parseStemModel(doc) {
+  const FBC = 'http://www.sbml.org/sbml/level3/version1/fbc/version2';
+
+  // Flux bound parameters (only 3: lb=-99999, lb=0, ub=99999)
+  const params = {};
+  Array.from(doc.getElementsByTagName('parameter')).forEach(p => {
+    params[p.getAttribute('id')] = +p.getAttribute('value') || 0;
+  });
+
+  // Boundary species = those in compartment 'b'
+  const boundarySpecies = new Set();
+  Array.from(doc.getElementsByTagName('species')).forEach(s => {
+    if (s.getAttribute('compartment') === 'b') boundarySpecies.add(s.getAttribute('id'));
+  });
+
+  // Internal species → index (for mass balance constraints)
+  const speciesIdx = {};
+  let si = 0;
+  Array.from(doc.getElementsByTagName('species')).forEach(s => {
+    const id = s.getAttribute('id');
+    if (!boundarySpecies.has(id)) speciesIdx[id] = si++;
+  });
+
+  // Reactions
+  const reactions = [], rxnIdx = {};
+  Array.from(doc.getElementsByTagName('reaction')).forEach(rxn => {
+    const id = rxn.getAttribute('id');
+    const lbId = rxn.getAttributeNS(FBC, 'lowerFluxBound') || rxn.getAttribute('fbc:lowerFluxBound');
+    const ubId = rxn.getAttributeNS(FBC, 'upperFluxBound') || rxn.getAttribute('fbc:upperFluxBound');
+
+    const stoich = {};
+    const rl = rxn.getElementsByTagName('listOfReactants')[0];
+    const pl = rxn.getElementsByTagName('listOfProducts')[0];
+    if (rl) Array.from(rl.getElementsByTagName('speciesReference')).forEach(sr => {
+      const sp = sr.getAttribute('species');
+      if (!boundarySpecies.has(sp)) stoich[sp] = (stoich[sp] || 0) - +sr.getAttribute('stoichiometry');
+    });
+    if (pl) Array.from(pl.getElementsByTagName('speciesReference')).forEach(sr => {
+      const sp = sr.getAttribute('species');
+      if (!boundarySpecies.has(sp)) stoich[sp] = (stoich[sp] || 0) + +sr.getAttribute('stoichiometry');
+    });
+
+    rxnIdx[id] = reactions.length;
+    reactions.push({ id, lb: params[lbId] ?? -99999, ub: params[ubId] ?? 99999, stoich });
+  });
+
+  // Objective (from fbc:listOfObjectives)
+  const fbcFluxObj = doc.getElementsByTagNameNS(FBC, 'fluxObjective')[0];
+  const objective = fbcFluxObj
+    ? (fbcFluxObj.getAttributeNS(FBC, 'reaction') || fbcFluxObj.getAttribute('fbc:reaction') || 'R_BIOMASS_STEM')
+    : 'R_BIOMASS_STEM';
+
+  return { speciesIdx, reactions, rxnIdx, objective };
+}
+
+/* ── Parse FRIM1 (SBML Level 2) ──────────────────── */
+function parseFruitModel(doc) {
+  // Known input boundary species (phloem/external supply)
+  const INPUTS = new Set(['Suc_in', 'Gln_in', 'NO3', 'Pi']);
+
+  const boundarySpecies = new Set();
+  const outputSpecies   = new Set();
+  Array.from(doc.getElementsByTagName('species')).forEach(s => {
+    if (s.getAttribute('boundaryCondition') === 'true') {
+      const id = s.getAttribute('id');
+      boundarySpecies.add(id);
+      if (!INPUTS.has(id)) outputSpecies.add(id);
+    }
+  });
+
+  const speciesIdx = {};
+  let si = 0;
+  Array.from(doc.getElementsByTagName('species')).forEach(s => {
+    const id = s.getAttribute('id');
+    if (!boundarySpecies.has(id)) speciesIdx[id] = si++;
+  });
+
+  const reactions = [], rxnIdx = {};
+  const objectiveVars = [];
+  const seen = new Set();
+
+  Array.from(doc.getElementsByTagName('reaction')).forEach(rxn => {
+    const id = rxn.getAttribute('id');
+    if (seen.has(id)) return; // deduplicate (model has duplicate VGln_up)
+    seen.add(id);
+
+    const reversible = rxn.getAttribute('reversible') === 'true';
+    const stoich = {};
+    let producesOutput = false;
+
+    const rl = rxn.getElementsByTagName('listOfReactants')[0];
+    const pl = rxn.getElementsByTagName('listOfProducts')[0];
+    if (rl) Array.from(rl.getElementsByTagName('speciesReference')).forEach(sr => {
+      const sp = sr.getAttribute('species');
+      if (!boundarySpecies.has(sp)) stoich[sp] = (stoich[sp] || 0) - +sr.getAttribute('stoichiometry');
+    });
+    if (pl) Array.from(pl.getElementsByTagName('speciesReference')).forEach(sr => {
+      const sp = sr.getAttribute('species');
+      if (outputSpecies.has(sp)) producesOutput = true;
+      if (!boundarySpecies.has(sp)) stoich[sp] = (stoich[sp] || 0) + +sr.getAttribute('stoichiometry');
+    });
+
+    if (producesOutput) objectiveVars.push({ name: id, coef: 1 });
+
+    rxnIdx[id] = reactions.length;
+    reactions.push({ id, lb: reversible ? -1000 : 0, ub: 1000, stoich });
+  });
+
+  return { speciesIdx, reactions, rxnIdx, objectiveVars };
+}
+
+/* ── Build GLPK LP from parsed model ────────────── */
+function buildLP(model, objVars, overrides) {
+  // Mass balance constraints: for each internal species, sum stoich_ij * v_j = 0
+  const cons = {};
+  model.reactions.forEach(rxn => {
+    Object.entries(rxn.stoich).forEach(([sp, coef]) => {
+      if (sp in model.speciesIdx) (cons[sp] = cons[sp] || []).push({ name: rxn.id, coef });
+    });
+  });
+
+  const subjectTo = Object.entries(cons).map(([sp, vars]) => ({
+    name: sp, vars, bnds: { type: glpk.GLP_FX, lb: 0, ub: 0 }
+  }));
+
+  const bounds = model.reactions.map(rxn => {
+    let { lb, ub } = rxn;
+    const ov = overrides?.[rxn.id];
+    if (ov) {
+      if (ov.lb !== undefined) lb = ov.lb;
+      if (ov.ub !== undefined) ub = ov.ub;
+    }
+    return { name: rxn.id, type: glpk.GLP_DB, lb: Math.min(lb, ub), ub: Math.max(lb, ub) };
+  });
+
+  return {
+    name: 'FBA',
+    objective: { direction: glpk.GLP_MAX, name: 'obj', vars: objVars },
+    subjectTo,
+    bounds
+  };
+}
+
+/* ── Main solve ──────────────────────────────────── */
+async function runSim() {
+  if (!glpk || !stemModel || !fruitModel) return;
+
+  const light = +document.getElementById('slLight').value;
+  const co2   = +document.getElementById('slCO2').value;
+  const water = +document.getElementById('slWater').value;
+  const nit   = +document.getElementById('slN').value;
+
+  document.getElementById('vLight').textContent = light;
+  document.getElementById('vCO2').textContent   = co2;
+  document.getElementById('vWater').textContent  = water;
+  document.getElementById('vN').textContent      = nit;
+
+  setStatus('solving Sl2183…', 'busy');
+  await new Promise(r => requestAnimationFrame(r));
+
+  /* ── 1. Stem / leaf / root FBA ─── */
+  // All key exchanges: positive flux = uptake (boundary → internal)
+  const stemOverrides = {
+    'R_EX_photon_h': { ub: light / 2000 * 500 },         // photon uptake capped by PPFD
+    'R_EX_co2_e':    { ub: co2   / 1200 * 200 },         // CO2 available from air
+    'R_EX_h2o_c':    { ub: water / 100  * 1000 },        // water availability
+    'R_EX_no3_c':    { ub: nit   / 100  * 100 },         // nitrate supply
+  };
+
+  let stemRes;
+  try {
+    stemRes = glpk.solve(
+      buildLP(stemModel, [{ name: stemModel.objective, coef: 1 }], stemOverrides),
+      { msglev: glpk.GLP_MSG_OFF }
+    );
+  } catch (e) { setStatus('stem LP error: ' + e.message, 'err'); return; }
+
+  if (stemRes.result.status !== glpk.GLP_OPT) {
+    setStatus('stem: ' + (stemRes.result.status === glpk.GLP_INFEAS ? 'infeasible' : 'no solution'), 'err');
+    return;
+  }
+
+  const sv = stemRes.result.vars;
+  const bioFlux  = sv[stemModel.objective] || 0;
+  const photon   = sv['R_EX_photon_h'] || 0;
+  const co2Flux  = sv['R_EX_co2_e']   || 0;
+  const h2oFlux  = sv['R_EX_h2o_c']   || 0;
+  const no3Flux  = sv['R_EX_no3_c']   || 0;
+  const sucrExp  = sv['R_EX_sucr_c']  || 0;
+  const glnExp   = sv['R_EX_gln_L_c'] || 0;
+
+  document.getElementById('r_biomass').textContent = fx(bioFlux);
+  document.getElementById('r_photon').textContent  = fx(photon);
+  document.getElementById('r_co2').textContent     = fx(co2Flux);
+  document.getElementById('r_h2o').textContent     = fx(h2oFlux);
+  document.getElementById('r_no3').textContent     = fx(no3Flux);
+  document.getElementById('r_sucr').textContent    = fx(sucrExp);
+  document.getElementById('r_gln').textContent     = fx(glnExp);
+
+  // Phloem link indicator
+  // Xylem NO3 to fruit = total soil uptake minus N exported as Gln via phloem
+  // (each Gln carries 2N; NO3 carries 1N — approximate: xylem_NO3 ≈ no3Flux - glnExp*2)
+  const xylNO3 = Math.max(0, no3Flux - glnExp * 2);
+
+  document.getElementById('pl_sucr').textContent = fx(sucrExp);
+  document.getElementById('pl_gln').textContent  = fx(glnExp);
+  document.getElementById('pl_no3').textContent  = fx(xylNO3);
+  document.getElementById('r_xno3').textContent  = fx(xylNO3);
+  document.getElementById('phloemLink').style.display = '';
+
+  /* ── 2. Fruit FBA (FRIM1) ─── */
+  setStatus('solving FRIM1…', 'busy');
+  await new Promise(r => requestAnimationFrame(r));
+
+  const fruitOverrides = {
+    'VSuc_up': { ub: Math.max(0, sucrExp) },
+    'VGln_up': { ub: Math.max(0, glnExp)  },
+    'Vnr':     { ub: xylNO3 },             // xylem NO3 → nitrate reductase in fruit
+  };
+
+  let fruitRes;
+  try {
+    fruitRes = glpk.solve(
+      buildLP(fruitModel, fruitModel.objectiveVars, fruitOverrides),
+      { msglev: glpk.GLP_MSG_OFF }
+    );
+  } catch (e) { setStatus('fruit LP error: ' + e.message, 'err'); return; }
+
+  const fv = fruitRes?.result?.vars || {};
+  document.getElementById('f_suc_up').textContent = fx(fv['VSuc_up'] || 0);
+  document.getElementById('f_gln_up').textContent = fx(fv['VGln_up'] || 0);
+
+  // Fruit composition
+  const comps = {
+    glc: Math.max(0, fv['Vac_glc'] || 0),
+    fru: Math.max(0, fv['Vac_fru'] || 0),
+    suc: Math.max(0, fv['Vac_suc'] || 0),
+    mal: Math.max(0, fv['Vac_mal'] || 0),
+    cit: Math.max(0, fv['Vac_cit'] || 0),
+    aa:  Math.max(0, (fv['Vac_Glu']||0)+(fv['Vac_Asp']||0)+(fv['Vac_Ala']||0)+(fv['Vac_Ser']||0)),
+    sta: Math.max(0, fv['Vss']      || 0),
+    pro: Math.max(0, fv['Vprotein'] || 0),
+    lip: Math.max(0, fv['Vdag']     || fv['Vfas'] || 0),
+    cw:  Math.max(0, fv['Vcw']      || 0),
+  };
+
+  const total = Object.values(comps).reduce((a, b) => a + b, 0);
+  const keys  = ['glc','fru','suc','mal','cit','aa','sta','pro','lip','cw'];
+  keys.forEach(k => {
+    const w = total > 0 ? comps[k] / total * 100 : 0;
+    document.getElementById('b_' + k).style.width = w.toFixed(2) + '%';
+    document.getElementById('p_' + k).textContent = total > 0 ? w.toFixed(1) + '%' : '–';
+  });
+
+  setStatus('solved ✓', 'ok');
+}
+
+function onEnvChange() {
+  clearTimeout(solveTimer);
+  solveTimer = setTimeout(runSim, 350);
+}
+
+/* ── Init ────────────────────────────────────────── */
+async function init() {
+  setStatus('loading GLPK…', 'busy');
+  try {
+    glpk = await GLPK();
+  } catch (e) {
+    setStatus('GLPK failed to load: ' + e.message, 'err');
+    return;
+  }
+
+  setStatus('fetching models…', 'busy');
+  let stemXML, fruitXML;
+  try {
+    [stemXML, fruitXML] = await Promise.all([
+      fetch('/Supp_File_2.xml').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
+      fetch('/wtfruit.xml').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
+    ]);
+  } catch (e) {
+    setStatus('fetch error: ' + e.message, 'err');
+    return;
+  }
+
+  setStatus('parsing Sl2183 (2183 rxn)…', 'busy');
+  await new Promise(r => setTimeout(r, 10));
+  const parser = new DOMParser();
+  stemModel  = parseStemModel(parser.parseFromString(stemXML, 'text/xml'));
+
+  setStatus('parsing FRIM1 (71 rxn)…', 'busy');
+  await new Promise(r => setTimeout(r, 10));
+  fruitModel = parseFruitModel(parser.parseFromString(fruitXML, 'text/xml'));
+
+  setStatus('running initial solve…', 'busy');
+  await runSim();
+}
+
+init();
+</script>
+</body>
+</html>

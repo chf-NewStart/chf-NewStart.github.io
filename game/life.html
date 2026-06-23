@@ -589,6 +589,63 @@ canvas.addEventListener('drop', e => {
   draw();
 });
 
+/* ── Touch drag-and-drop for mobile ──────────────── */
+let touchDragActive = false;
+
+document.querySelectorAll('.pbtn[data-preset]').forEach(btn => {
+  btn.addEventListener('touchstart', e => {
+    e.preventDefault(); // stop browser selection / long-press menu
+    dragPattern = btn.dataset.preset;
+    dragOff = null; dragCursor = null;
+    touchDragActive = true;
+    btn.classList.add('active');
+  }, { passive: false });
+});
+
+document.addEventListener('touchmove', e => {
+  if (!touchDragActive || !dragPattern) return;
+  e.preventDefault(); // block page scroll while dragging a pattern
+  const touch = e.touches[0];
+  const rect  = canvas.getBoundingClientRect();
+  const x = touch.clientX - rect.left, y = touch.clientY - rect.top;
+  if (x >= 0 && x < rect.width && y >= 0 && y < rect.height) {
+    canvas.classList.add('drag-over');
+    const cc = Math.floor(x / CELL), cr = Math.floor(y / CELL);
+    dragCursor = { c: cc, r: cr };
+    const cells = transformCells(PRESETS[dragPattern]);
+    const maxC  = Math.max(...cells.map(([c]) => c));
+    const maxR  = Math.max(...cells.map(([, r]) => r));
+    const nc = cc - Math.floor(maxC / 2), nr = cr - Math.floor(maxR / 2);
+    if (!dragOff || dragOff.c !== nc || dragOff.r !== nr) { dragOff = { c: nc, r: nr }; draw(); }
+  } else {
+    if (dragOff) { dragOff = null; dragCursor = null; canvas.classList.remove('drag-over'); draw(); }
+  }
+}, { passive: false });
+
+function endTouchDrag() {
+  if (!touchDragActive) return;
+  touchDragActive = false;
+  document.querySelectorAll('.pbtn.active').forEach(b => b.classList.remove('active'));
+  canvas.classList.remove('drag-over');
+  if (dragPattern && dragOff) {
+    // finger lifted over canvas — stamp
+    transformCells(PRESETS[dragPattern]).forEach(([dc, dr]) => {
+      const c = ((dragOff.c + dc) % COLS + COLS) % COLS;
+      const r = ((dragOff.r + dr) % ROWS + ROWS) % ROWS;
+      grid[idx(c, r)] = 1;
+    });
+    dragPattern = null; dragOff = null; dragCursor = null;
+    draw();
+  } else if (dragPattern) {
+    // finger never reached canvas — treat as tap → load centered
+    const p = dragPattern;
+    dragPattern = null; dragOff = null; dragCursor = null;
+    loadPreset(p);
+  }
+}
+document.addEventListener('touchend',    endTouchDrag);
+document.addEventListener('touchcancel', endTouchDrag);
+
 /* ── Init ─────────────────────────────────────────── */
 window.addEventListener('resize', () => {
   const wasRunning = running;

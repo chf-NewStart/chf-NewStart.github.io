@@ -73,7 +73,7 @@
         .neofetch-card {
             background: rgba(5,5,5,0.87);
             border: 1px solid #1e1e1e;
-            max-width: 860px;
+            max-width: 1000px;
             width: 100%;
             font-family: Consolas, 'Courier New', monospace;
             text-align: left;
@@ -95,8 +95,8 @@
         .nf-dot-g { background: #1db954; opacity: .6; }
         .nf-body {
             display: flex;
-            padding: 28px 32px;
-            gap: 40px;
+            padding: 36px 44px;
+            gap: 48px;
             align-items: flex-start;
         }
         .nf-art {
@@ -108,7 +108,7 @@
         }
         .nf-ascii {
             color: #1db954;
-            font-size: 0.72rem;
+            font-size: 0.82rem;
             line-height: 1.25;
             margin: 0;
             white-space: pre;
@@ -120,8 +120,8 @@
         .nf-uname { font-size: 1.05rem; color: #1db954; margin-bottom: 2px; }
         .nf-uname span { color: #555; }
         .nf-sep { color: #222; font-size: 0.7rem; margin-bottom: 14px; letter-spacing: 1px; }
-        .nf-row { display: flex; gap: 0; font-size: 0.76rem; margin-bottom: 7px; }
-        .nf-key { color: #1db954; width: 72px; flex-shrink: 0; }
+        .nf-row { display: flex; gap: 0; font-size: 0.82rem; margin-bottom: 8px; }
+        .nf-key { color: #1db954; width: 80px; flex-shrink: 0; }
         .nf-colon { color: #333; margin-right: 10px; }
         .nf-val { color: #999; }
         .nf-games-row {
@@ -130,13 +130,13 @@
         }
         .nf-prompt { font-size: 0.72rem; color: #333; flex-shrink: 0; }
         .hero-game-btn {
-            font-family: Consolas, monospace; font-size: 0.72rem;
-            color: #555; border: 1px solid #222;
-            padding: 4px 10px; text-decoration: none;
-            transition: color 0.1s, border-color 0.1s;
+            font-family: Consolas, monospace; font-size: 0.75rem;
+            color: #f44336; border: 1px solid rgba(244,67,54,0.35);
+            padding: 5px 12px; text-decoration: none;
+            transition: background 0.1s, border-color 0.1s;
             white-space: nowrap;
         }
-        .hero-game-btn:hover { color: #1db954; border-color: #1db954; }
+        .hero-game-btn:hover { background: rgba(244,67,54,0.1); border-color: #f44336; }
         .nf-cta { margin-top: 22px; }
         @media (max-width: 640px) {
             .nf-art { display: none; }
@@ -188,6 +188,7 @@
 ██╔══██║██║
 ██║  ██║╚██████╗
 ╚═╝  ╚═╝ ╚═════╝</pre>
+                                <div style="font-size:2.2rem;line-height:1;opacity:0.85">🍅</div>
                                 <div class="nf-color-row">
                                     <div class="nf-color-swatch" style="background:#1e1e1e"></div>
                                     <div class="nf-color-swatch" style="background:#f44336"></div>
@@ -200,11 +201,11 @@
                                 <div class="nf-uname"><span style="color:#1db954">houfu</span><span>@</span><span style="color:#1db954">system</span></div>
                                 <div class="nf-sep">────────────────────────</div>
                                 <div class="nf-row"><span class="nf-key" data-en="Name" data-zh="姓名">Name</span><span class="nf-colon">:</span><span class="nf-val" data-en="Houfu Chen" data-zh="陈厚孚">Houfu Chen</span></div>
-                                <div class="nf-row"><span class="nf-key" data-en="Role" data-zh="职位">Role</span><span class="nf-colon">:</span><span class="nf-val" data-en="PhD Candidate · ML Engineer" data-zh="博士生 · 机器学习工程师">PhD Candidate · ML Engineer</span></div>
+                                <div class="nf-row"><span class="nf-key" data-en="Role" data-zh="职位">Role</span><span class="nf-colon">:</span><span class="nf-val" data-en="PhD Candidate · Digital Twin Researcher" data-zh="博士生 · 数字孪生研究员">PhD Candidate · Digital Twin Researcher</span></div>
                                 <div class="nf-row"><span class="nf-key" data-en="School" data-zh="学校">School</span><span class="nf-colon">:</span><span class="nf-val" data-en="University of Waterloo" data-zh="滑铁卢大学">University of Waterloo</span></div>
-                                <div class="nf-row"><span class="nf-key" data-en="Focus" data-zh="方向">Focus</span><span class="nf-colon">:</span><span class="nf-val" data-en="Digital Twins · RL" data-zh="数字孪生 · 强化学习">Digital Twins · RL</span></div>
+                                <div class="nf-row"><span class="nf-key" data-en="Focus" data-zh="方向">Focus</span><span class="nf-colon">:</span><span class="nf-val" data-en="🍅 Tomato Growth FBA · Digital Twins" data-zh="🍅 番茄生长FBA · 数字孪生">🍅 Tomato Growth FBA · Digital Twins</span></div>
                                 <div class="nf-row"><span class="nf-key" data-en="Stack" data-zh="技术栈">Stack</span><span class="nf-colon">:</span><span class="nf-val">Python · JS · C++ · PyTorch</span></div>
-                                <div class="nf-row"><span class="nf-key" data-en="Status" data-zh="状态">Status</span><span class="nf-colon">:</span><span class="nf-val" style="color:#1db954" data-en="always building" data-zh="持续构建中">always building</span></div>
+                                <div class="nf-row"><span class="nf-key" data-en="Status" data-zh="状态">Status</span><span class="nf-colon">:</span><span class="nf-val" style="color:#1db954" data-en="always building 🍅" data-zh="持续构建中 🍅">always building 🍅</span></div>
                                 <div class="nf-games-row">
                                     <span class="nf-prompt">~/games $</span>
                                     <a class="hero-game-btn" href="/game/game.html" target="_blank">[::] escape_grid</a>

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conway's Life // houfu.xyz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Consolas, 'Courier New', monospace;
+      background: #080808; color: #ccc;
+      min-height: 100vh; padding: 20px 16px;
+    }
+
+    .pg-header { max-width: 980px; margin: 0 auto 18px; }
+    .pg-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .pg-title { color: #1db954; font-size: 1.4rem; text-transform: uppercase; letter-spacing: -1px; }
+    .pg-sub   { color: #666; font-size: 0.72rem; margin-top: 3px; line-height: 1.6; }
+    .pg-back  { font-size: 0.72rem; color: #1db954; text-decoration: none; margin-top: 6px; display: inline-block; }
+    .pg-back:hover { text-decoration: underline; }
+    .lang-btn { background: transparent; border: 1px solid #1db954; color: #1db954; font-family: Consolas, monospace; font-size: 0.72rem; padding: 5px 11px; cursor: pointer; flex-shrink: 0; transition: background 0.1s; }
+    .lang-btn:hover { background: rgba(29,185,84,0.1); }
+
+    .layout { display: flex; gap: 20px; align-items: flex-start; max-width: 980px; margin: 0 auto; }
+    .board-col { flex: 0 0 auto; }
+    .panel-col { flex: 1; min-width: 180px; }
+
+    canvas {
+      display: block;
+      background: #0a0a0a;
+      border: 1px solid #1c1c1c;
+      cursor: crosshair;
+      image-rendering: pixelated;
+    }
+    canvas.running { border-color: #1db954; }
+
+    .pcard { background: #111; border: 1px solid #1c1c1c; padding: 11px 13px; margin-bottom: 8px; }
+    .pcard-title { color: #1db954; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #1a1a1a; }
+
+    .stat-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .sbox { flex: 1; background: #0d0d0d; border: 1px solid #1c1c1c; padding: 6px 8px; }
+    .slabel { font-size: 0.6rem; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+    .sval { font-size: 1rem; color: #1db954; }
+    .sval.red { color: #f44336; }
+
+    .brow { display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+    .btn { flex: 1; background: transparent; border: 1px solid #2a2a2a; color: #777; font-family: Consolas, monospace; font-size: 0.72rem; padding: 7px 8px; cursor: pointer; transition: all 0.1s; white-space: nowrap; }
+    .btn:hover { border-color: #1db954; color: #1db954; }
+    .btn.active { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.08); }
+    .btn.danger:hover { border-color: #f44336; color: #f44336; }
+
+    .slider-row { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: #555; margin-top: 4px; }
+    .slider-row input[type=range] { flex: 1; accent-color: #1db954; }
+
+    .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .pbtn { background: #0d0d0d; border: 1px solid #222; color: #666; font-family: Consolas, monospace; font-size: 0.68rem; padding: 7px 8px; cursor: pointer; text-align: left; transition: all 0.1s; line-height: 1.5; }
+    .pbtn:hover { border-color: #888; color: #aaa; }
+    .pbtn span { display: block; font-size: 0.58rem; color: #333; margin-top: 1px; }
+
+    .rule-info { font-size: 0.67rem; color: #333; line-height: 1.8; }
+    .rule-info b { color: #555; }
+
+    @keyframes pulse-border {
+      0%,100% { box-shadow: 0 0 0 0 rgba(29,185,84,0.4); }
+      50%      { box-shadow: 0 0 0 4px rgba(29,185,84,0); }
+    }
+    canvas.running { animation: pulse-border 2s ease-in-out infinite; }
+
+    @media (max-width: 700px) {
+      .layout { flex-direction: column; }
+      .panel-col { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="pg-header">
+  <div class="pg-header-row">
+    <div>
+      <div class="pg-title" id="pgTitle">Conway's Game of Life</div>
+      <div class="pg-sub"  id="pgSub">Click to draw · drag to paint · watch it evolve</div>
+      <a class="pg-back" href="/">← back to portfolio</a>
+    </div>
+    <button class="lang-btn" id="langBtn" onclick="toggleLang()">中文</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="board-col">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="panel-col">
+
+    <!-- Stats -->
+    <div class="pcard">
+      <div class="pcard-title" data-en="// status" data-zh="// 状态">// status</div>
+      <div class="stat-row">
+        <div class="sbox">
+          <div class="slabel" data-en="generation" data-zh="代数">generation</div>
+          <div class="sval" id="genCount">0</div>
+        </div>
+        <div class="sbox">
+          <div class="slabel" data-en="live cells" data-zh="活细胞">live cells</div>
+          <div class="sval" id="cellCount">0</div>
+        </div>
+        <div class="sbox">
+          <div class="slabel" data-en="state" data-zh="状态">state</div>
+          <div class="sval red" id="stateLabel">paused</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="pcard">
+      <div class="pcard-title" data-en="// controls" data-zh="// 控制">// controls</div>
+      <div class="brow">
+        <button class="btn" id="playBtn"  onclick="togglePlay()"  data-en="⏵ Play"  data-zh="⏵ 播放">⏵ Play</button>
+        <button class="btn" id="stepBtn"  onclick="stepOnce()"    data-en="⏭ Step"  data-zh="⏭ 步进">⏭ Step</button>
+      </div>
+      <div class="brow">
+        <button class="btn danger" onclick="clearGrid()"    data-en="⬜ Clear"    data-zh="⬜ 清空">⬜ Clear</button>
+        <button class="btn"        onclick="randomize(0.2)" data-en="⚄ Random"   data-zh="⚄ 随机">⚄ Random</button>
+      </div>
+      <div class="slider-row">
+        <span data-en="speed" data-zh="速度">speed</span>
+        <input type="range" id="speedSlider" min="1" max="30" value="10" oninput="setSpeed(this.value)">
+        <span id="speedLabel">10 fps</span>
+      </div>
+      <div class="slider-row" style="margin-top:8px">
+        <span data-en="cell px" data-zh="格大小">cell px</span>
+        <input type="range" id="cellSizeSlider" min="4" max="16" value="8" oninput="setCellSize(this.value)">
+        <span id="cellSizeLabel">8</span>
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div class="pcard">
+      <div class="pcard-title" data-en="// patterns" data-zh="// 预设图案">// patterns</div>
+      <div class="preset-grid">
+        <button class="pbtn" onclick="loadPreset('glider')">Glider<span>classic mover</span></button>
+        <button class="pbtn" onclick="loadPreset('blinker')">Blinker<span>period-2 oscillator</span></button>
+        <button class="pbtn" onclick="loadPreset('pulsar')">Pulsar<span>period-3 oscillator</span></button>
+        <button class="pbtn" onclick="loadPreset('rpento')">R-pentomino<span>chaotic, ~1k gens</span></button>
+        <button class="pbtn" onclick="loadPreset('gun')">Gosper Gun<span>infinite glider factory</span></button>
+        <button class="pbtn" onclick="loadPreset('acorn')">Acorn<span>5206 gen lifespan</span></button>
+        <button class="pbtn" onclick="loadPreset('diehard')">Diehard<span>dies at gen 130</span></button>
+        <button class="pbtn" onclick="loadPreset('lwss')">LWSS<span>lightweight spaceship</span></button>
+      </div>
+    </div>
+
+    <!-- Rules -->
+    <div class="pcard">
+      <div class="pcard-title" data-en="// rules (B3/S23)" data-zh="// 规则 (B3/S23)">// rules (B3/S23)</div>
+      <div class="rule-info">
+        <b>Birth</b> — dead cell with exactly 3 neighbors → alive<br>
+        <b>Survive</b> — live cell with 2 or 3 neighbors → stays<br>
+        <b>Death</b> — all other live cells → die<br>
+        <span style="color:#222;margin-top:4px;display:block">Grid wraps toroidally.</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ── i18n ─────────────────────────────────────────── */
+let lang = 'en';
+function t(en, zh) { return lang === 'zh' ? zh : en; }
+function toggleLang() {
+  lang = lang === 'en' ? 'zh' : 'en';
+  document.getElementById('langBtn').textContent = lang === 'en' ? '中文' : 'EN';
+  document.querySelectorAll('[data-en]').forEach(el => {
+    el.textContent = lang === 'zh' ? el.dataset.zh : el.dataset.en;
+  });
+  updateUI();
+}
+
+/* ── Canvas / grid setup ──────────────────────────── */
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+
+let CELL = 8;
+let COLS, ROWS;
+let grid, next;
+
+function initGrid() {
+  const maxW = Math.min(window.innerWidth - 220, 720);
+  const maxH = Math.min(window.innerHeight - 140, 640);
+  COLS = Math.floor(maxW / CELL);
+  ROWS = Math.floor(maxH / CELL);
+  canvas.width  = COLS * CELL;
+  canvas.height = ROWS * CELL;
+  grid = new Uint8Array(COLS * ROWS);
+  next = new Uint8Array(COLS * ROWS);
+}
+
+function idx(c, r) { return r * COLS + c; }
+
+/* ── Rendering ────────────────────────────────────── */
+const GREEN      = '#1db954';
+const GREEN_DIM  = '#0d3a1e';
+const BG         = '#0a0a0a';
+const GRID_LINE  = '#111111';
+
+function draw() {
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Grid lines
+  ctx.strokeStyle = GRID_LINE;
+  ctx.lineWidth = 0.5;
+  for (let c = 0; c <= COLS; c++) {
+    ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, canvas.height); ctx.stroke();
+  }
+  for (let r = 0; r <= ROWS; r++) {
+    ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(canvas.width, r * CELL); ctx.stroke();
+  }
+
+  // Live cells
+  ctx.fillStyle = GREEN;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[idx(c, r)]) {
+        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 1, CELL - 1);
+      }
+    }
+  }
+}
+
+/* ── Simulation ───────────────────────────────────── */
+function neighbors(c, r) {
+  let n = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nc = (c + dc + COLS) % COLS;
+      const nr = (r + dr + ROWS) % ROWS;
+      n += grid[idx(nc, nr)];
+    }
+  }
+  return n;
+}
+
+let generation = 0;
+
+function step() {
+  let live = 0;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const n = neighbors(c, r);
+      const alive = grid[idx(c, r)];
+      const willLive = alive ? (n === 2 || n === 3) : (n === 3);
+      next[idx(c, r)] = willLive ? 1 : 0;
+      if (willLive) live++;
+    }
+  }
+  [grid, next] = [next, grid];
+  generation++;
+  document.getElementById('genCount').textContent  = generation;
+  document.getElementById('cellCount').textContent = live;
+}
+
+/* ── Run loop ─────────────────────────────────────── */
+let running = false, fps = 10, rafId = null, lastT = 0;
+
+function loop(t) {
+  if (!running) return;
+  rafId = requestAnimationFrame(loop);
+  if (t - lastT < 1000 / fps) return;
+  lastT = t;
+  step();
+  draw();
+}
+
+function togglePlay() {
+  running = !running;
+  const btn = document.getElementById('playBtn');
+  const lbl = document.getElementById('stateLabel');
+  if (running) {
+    btn.textContent = t('⏸ Pause', '⏸ 暂停');
+    btn.classList.add('active');
+    lbl.textContent = t('running', '运行中');
+    lbl.className = 'sval';
+    canvas.classList.add('running');
+    rafId = requestAnimationFrame(loop);
+  } else {
+    btn.textContent = t('⏵ Play', '⏵ 播放');
+    btn.classList.remove('active');
+    lbl.textContent = t('paused', '已暂停');
+    lbl.className = 'sval red';
+    canvas.classList.remove('running');
+    cancelAnimationFrame(rafId);
+  }
+}
+
+function stepOnce() {
+  if (running) togglePlay();
+  step(); draw();
+}
+
+function setSpeed(v) {
+  fps = +v;
+  document.getElementById('speedLabel').textContent = v + ' fps';
+}
+
+function setCellSize(v) {
+  CELL = +v;
+  document.getElementById('cellSizeLabel').textContent = v;
+  const wasRunning = running;
+  if (running) togglePlay();
+  const snap = grid.slice();
+  const oldC = COLS, oldR = ROWS;
+  initGrid();
+  // copy old cells into new grid (top-left aligned)
+  const mc = Math.min(oldC, COLS), mr = Math.min(oldR, ROWS);
+  for (let r = 0; r < mr; r++)
+    for (let c = 0; c < mc; c++)
+      grid[idx(c, r)] = snap[r * oldC + c];
+  generation = 0;
+  draw();
+  if (wasRunning) togglePlay();
+}
+
+function clearGrid() {
+  if (running) togglePlay();
+  grid.fill(0);
+  generation = 0;
+  document.getElementById('genCount').textContent  = 0;
+  document.getElementById('cellCount').textContent = 0;
+  draw();
+}
+
+function randomize(density = 0.2) {
+  if (running) togglePlay();
+  for (let i = 0; i < grid.length; i++) grid[i] = Math.random() < density ? 1 : 0;
+  generation = 0;
+  document.getElementById('genCount').textContent  = 0;
+  const live = grid.reduce((s, v) => s + v, 0);
+  document.getElementById('cellCount').textContent = live;
+  draw();
+}
+
+function updateUI() {
+  const running2 = running;
+  const btn = document.getElementById('playBtn');
+  btn.textContent = running2 ? t('⏸ Pause','⏸ 暂停') : t('⏵ Play','⏵ 播放');
+  document.getElementById('stateLabel').textContent = running2 ? t('running','运行中') : t('paused','已暂停');
+  document.getElementById('stepBtn').dataset.en  = '⏭ Step';
+  document.getElementById('stepBtn').dataset.zh  = '⏭ 步进';
+}
+
+/* ── Mouse / touch drawing ────────────────────────── */
+let painting = false, paintVal = 1;
+
+function cellAt(e) {
+  const r = canvas.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+  return [Math.floor(x / CELL), Math.floor(y / CELL)];
+}
+
+function paint(e) {
+  const [c, r] = cellAt(e);
+  if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
+  grid[idx(c, r)] = paintVal;
+  draw();
+}
+
+canvas.addEventListener('mousedown', e => {
+  const [c, r] = cellAt(e);
+  if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
+  paintVal = grid[idx(c, r)] ? 0 : 1;
+  painting = true;
+  paint(e);
+});
+canvas.addEventListener('mousemove', e => { if (painting) paint(e); });
+canvas.addEventListener('mouseup',   () => { painting = false; });
+canvas.addEventListener('mouseleave',() => { painting = false; });
+
+canvas.addEventListener('touchstart', e => { e.preventDefault(); painting = true; paint(e); }, { passive: false });
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); if (painting) paint(e); }, { passive: false });
+canvas.addEventListener('touchend',   () => { painting = false; });
+
+/* ── Presets ──────────────────────────────────────── */
+function place(cells, offC, offR) {
+  cells.forEach(([dc, dr]) => {
+    const c = offC + dc, r = offR + dr;
+    if (c >= 0 && c < COLS && r >= 0 && r < ROWS) grid[idx(c, r)] = 1;
+  });
+}
+
+const PRESETS = {
+  glider:  [[1,0],[2,1],[0,2],[1,2],[2,2]],
+  blinker: [[0,0],[1,0],[2,0]],
+  pulsar:  (()=>{
+    const p=[];
+    [2,3,4,8,9,10].forEach(c=>{ [0,5,7,12].forEach(r=>p.push([c,r])); });
+    [0,5,7,12].forEach(r=>{ [2,3,4,8,9,10].forEach(c=>p.push([c,r])); });
+    // remove duplicates
+    const seen=new Set(); return p.filter(([c,r])=>{ const k=c+','+r; return seen.has(k)?false:(seen.add(k),true); });
+  })(),
+  rpento:  [[1,0],[2,0],[0,1],[1,1],[1,2]],
+  gun: [
+    [0,4],[0,5],[1,4],[1,5],
+    [10,4],[10,5],[10,6],[11,3],[11,7],[12,2],[12,8],[13,2],[13,8],
+    [14,5],[15,3],[15,7],[16,4],[16,5],[16,6],[17,5],
+    [20,2],[20,3],[20,4],[21,2],[21,3],[21,4],[22,1],[22,5],[24,0],[24,1],[24,5],[24,6],
+    [34,2],[34,3],[35,2],[35,3]
+  ],
+  acorn:   [[1,0],[3,1],[0,2],[1,2],[4,2],[5,2],[6,2]],
+  diehard: [[6,0],[0,1],[1,1],[1,2],[5,2],[6,2],[7,2]],
+  lwss:    [[1,0],[4,0],[0,1],[0,2],[4,2],[0,3],[1,3],[2,3],[3,3]],
+};
+
+function loadPreset(name) {
+  if (running) togglePlay();
+  grid.fill(0);
+  generation = 0;
+  document.getElementById('genCount').textContent  = 0;
+  const cells = PRESETS[name];
+  // Center on grid
+  const maxC = Math.max(...cells.map(([c]) => c));
+  const maxR = Math.max(...cells.map(([,r]) => r));
+  const offC = Math.floor((COLS - maxC) / 2);
+  const offR = Math.floor((ROWS - maxR) / 2);
+  place(cells, offC, offR);
+  const live = grid.reduce((s, v) => s + v, 0);
+  document.getElementById('cellCount').textContent = live;
+  draw();
+}
+
+/* ── Init ─────────────────────────────────────────── */
+window.addEventListener('resize', () => {
+  const wasRunning = running;
+  if (running) togglePlay();
+  initGrid(); draw();
+  if (wasRunning) togglePlay();
+});
+
+initGrid();
+loadPreset('gun');  // start with something visually impressive
+</script>
+</body>
+</html>

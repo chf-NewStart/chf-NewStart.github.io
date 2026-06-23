@@ -137,8 +137,8 @@
     <div class="pcard">
       <div class="pcard-title" data-en="// score" data-zh="// 比分">// score</div>
       <div class="score-row">
-        <div class="sbox green"><div class="slabel" id="p1label">●&nbsp;<span data-en="Black" data-zh="黑方">Black</span></div><div class="sval" id="s1">0</div></div>
-        <div class="sbox red">  <div class="slabel" id="p2label">●&nbsp;<span data-en="White" data-zh="白方">White</span></div><div class="sval" id="s2">0</div></div>
+        <div class="sbox green"><div class="slabel" id="p1label">●&nbsp;<span data-en="Lime" data-zh="青柠">Lime</span></div><div class="sval" id="s1">0</div></div>
+        <div class="sbox red">  <div class="slabel" id="p2label">●&nbsp;<span data-en="Tomato" data-zh="番茄">Tomato</span></div><div class="sval" id="s2">0</div></div>
       </div>
     </div>
 
@@ -146,7 +146,7 @@
       <div class="pcard-title" data-en="// players" data-zh="// 玩家设置">// players</div>
       <div class="player-row">
         <div class="player-slot">
-          <div class="slot-label green-t">● <span data-en="Black" data-zh="黑方">Black</span></div>
+          <div class="slot-label green-t">● <span data-en="Lime" data-zh="青柠">Lime</span></div>
           <div class="tog-row">
             <button class="tog sel ptype-1" data-val="human"  onclick="setPlayerType(1,'human')"  data-en="Human"  data-zh="人">Human</button>
             <button class="tog     ptype-1" data-val="ai"     onclick="setPlayerType(1,'ai')"     data-en="AI"     data-zh="AI">AI</button>
@@ -154,7 +154,7 @@
           </div>
         </div>
         <div class="player-slot">
-          <div class="slot-label red-t">● <span data-en="White" data-zh="白方">White</span></div>
+          <div class="slot-label red-t">● <span data-en="Tomato" data-zh="番茄">Tomato</span></div>
           <div class="tog-row">
             <button class="tog     ptype-2" data-val="human"  onclick="setPlayerType(2,'human')"  data-en="Human"  data-zh="人">Human</button>
             <button class="tog sel ptype-2" data-val="ai"     onclick="setPlayerType(2,'ai')"     data-en="AI"     data-zh="AI">AI</button>
@@ -320,14 +320,14 @@ function placeStone(r, c) {
   lastMove = [r, c];
   moveCount++;
   const col = COLS[c], row = N - r;
-  log(`${moveCount}. ${t(curP===1?'Black':'White', curP===1?'黑方':'白方')} ${col}${row}`, 'lmove');
+  log(`${moveCount}. ${t(curP===1?'Lime':'Tomato', curP===1?'青柠':'番茄')} ${col}${row}`, 'lmove');
 
   const wr = checkWin(board, r, c);
   if (wr) {
     winResult = wr;
     gameOver = true;
     scores[wr.player]++;
-    const winner = wr.player === 1 ? t('Black wins!', '黑方获胜！') : t('White wins!', '白方获胜！');
+    const winner = wr.player === 1 ? t('Lime wins!', '青柠获胜！') : t('Tomato wins!', '番茄获胜！');
     log(winner, wr.player === 1 ? 'lwin' : 'lwin-r');
     const wb = document.getElementById('winBanner');
     wb.className = 'win-banner ' + (wr.player === 1 ? 'win-g' : 'win-r');
@@ -468,7 +468,7 @@ function renderPanel() {
     tb.textContent = t('Game over · start new game', '游戏结束 · 开始新游戏');
   } else {
     tb.className = 'turn-bar' + (curP === 2 ? ' red-t' : '');
-    const whose = curP === 1 ? t('Black', '黑方') : t('White', '白方');
+    const whose = curP === 1 ? t('Lime', '青柠') : t('Tomato', '番茄');
     let who;
     if (remoteMode) who = curP === myColor ? t('You', '你') : t('Remote', '对方');
     else { const tp = playerTypes[curP]; who = tp==='human' ? t('You','你') : tp==='random' ? t('Random','随机') : 'AI'; }
@@ -481,11 +481,11 @@ function renderPanel() {
 
   const typeLabel = tp => tp==='human' ? t('Human','人') : tp==='random' ? t('Random','随机') : 'AI';
   if (remoteMode) {
-    document.getElementById('p1label').innerHTML = `●&nbsp;<span>${t('Black','黑方')} (${myColor===1?t('You','你'):t('Remote','对方')})</span>`;
-    document.getElementById('p2label').innerHTML = `●&nbsp;<span>${t('White','白方')} (${myColor===2?t('You','你'):t('Remote','对方')})</span>`;
+    document.getElementById('p1label').innerHTML = `●&nbsp;<span>${t('Lime','青柠')} (${myColor===1?t('You','你'):t('Remote','对方')})</span>`;
+    document.getElementById('p2label').innerHTML = `●&nbsp;<span>${t('Tomato','番茄')} (${myColor===2?t('You','你'):t('Remote','对方')})</span>`;
   } else {
-    document.getElementById('p1label').innerHTML = `●&nbsp;<span>${t('Black','黑方')} (${typeLabel(playerTypes[1])})</span>`;
-    document.getElementById('p2label').innerHTML = `●&nbsp;<span>${t('White','白方')} (${typeLabel(playerTypes[2])})</span>`;
+    document.getElementById('p1label').innerHTML = `●&nbsp;<span>${t('Lime','青柠')} (${typeLabel(playerTypes[1])})</span>`;
+    document.getElementById('p2label').innerHTML = `●&nbsp;<span>${t('Tomato','番茄')} (${typeLabel(playerTypes[2])})</span>`;
   }
   document.getElementById('resignBtn').disabled = gameOver;
 }
@@ -778,7 +778,7 @@ async function createRoom() {
     if (snap.val() && !remoteMode) {
       remoteMode = true;
       hideOverlay();
-      setConnStatus(t('Connected! You play Black.', '已连接！你执黑方。'), 'ok');
+      setConnStatus(t('Connected! You play Lime.', '已连接！你执青柠。'), 'ok');
       updatePauseBtn();
       fbListenMoves(0);
       fbListenSession();
@@ -805,7 +805,7 @@ async function joinRoom() {
   await fbDb().ref(`games/${code}/joined`).set(true);
 
   hideOverlay();
-  setConnStatus(t('Connected! You play White.', '已连接！你执白方。'), 'ok');
+  setConnStatus(t('Connected! You play Tomato.', '已连接！你执番茄。'), 'ok');
   updatePauseBtn();
   fbListenMoves(_fbSession);
   fbListenSession();
@@ -814,7 +814,7 @@ async function joinRoom() {
 function requestNewGame() {
   if (!remoteMode) { newGame(); return; }
   if (myColor !== 1) {
-    setConnStatus(t('Only Black (host) can start a new game.', '只有黑方（主机）可发起新游戏。'));
+    setConnStatus(t('Only Lime (host) can start a new game.', '只有青柠（主机）可发起新游戏。'));
     return;
   }
   gameRef('session').set(_fbSession + 1); // both sides' listeners will call newGame()

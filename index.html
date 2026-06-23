@@ -20,13 +20,14 @@
             cursor: pointer;
             background: transparent;
             border: 2px solid #333;
-            border-radius: 0; 
+            border-radius: 0;
             padding: 5px 12px;
             font-family: Consolas, monospace;
             font-size: 0.9rem;
             color: #888;
             transition: all 0.1s ease;
-            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5); /* Hard shadow */
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+            white-space: nowrap;
         }
 
         .language-toggle:hover {
@@ -67,6 +68,18 @@
         .gc-play   { color: #1db954; font-size: 0.68rem; text-decoration: none; border: 1px solid #1db954; padding: 4px 11px; font-family: Consolas, monospace; transition: background 0.1s; }
         .gc-play:hover { background: rgba(29,185,84,0.1); }
         .gc-soon-badge { font-size: 0.6rem; color: #333; border: 1px solid #1e1e1e; padding: 3px 9px; font-family: Consolas, monospace; }
+
+        /* Hero game quick-launch */
+        .hero-games { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+        .hero-games-label { font-family: Consolas, monospace; font-size: 0.72rem; color: #3a3a3a; flex-shrink: 0; }
+        .hero-game-btn {
+            font-family: Consolas, monospace; font-size: 0.72rem;
+            color: #666; border: 1px solid #2a2a2a;
+            padding: 5px 12px; text-decoration: none;
+            transition: color 0.1s, border-color 0.1s;
+            white-space: nowrap;
+        }
+        .hero-game-btn:hover { color: #1db954; border-color: #1db954; }
     </style>
 </head>
 <body>
@@ -101,7 +114,14 @@
                         ML Engineer | Digital Twin Researcher | PhD Candidate
                     </p>
                     <div class="hero-cta reveal-content">
-                        <a href="#projects-section" class="cta-button" data-en="> Explore Arch" data-zh="> 探索架构">> Explore Arch</a>                    </div>
+                        <a href="#projects-section" class="cta-button" data-en="> Explore Arch" data-zh="> 探索架构">> Explore Arch</a>
+                    </div>
+                    <div class="hero-games reveal-content">
+                        <span class="hero-games-label">~/games $</span>
+                        <a class="hero-game-btn" href="/game/game.html" target="_blank" data-en="[::] escape_grid" data-zh="[::] 逃脱方格">[::] escape_grid</a>
+                        <a class="hero-game-btn" href="/game/gomoku.html" target="_blank" data-en="[⬡] gomoku" data-zh="[⬡] 五子棋">[⬡] gomoku</a>
+                        <a class="hero-game-btn" href="/game/train.html" target="_blank" data-en="[⚙] dqn_train" data-zh="[⚙] DQN训练">[⚙] dqn_train</a>
+                    </div>
                 </div>
             </section>
 

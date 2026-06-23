@@ -67,7 +67,10 @@
     canvas.running { animation: pulse-border 2s ease-in-out infinite; }
 
     @media (max-width: 700px) {
+      body { padding: 12px; }
       .layout { flex-direction: column; }
+      .board-col { width: 100%; }
+      .board-col canvas { width: 100% !important; }
       .panel-col { width: 100%; }
     }
   </style>
@@ -181,8 +184,13 @@ let COLS, ROWS;
 let grid, next;
 
 function initGrid() {
-  const maxW = Math.min(window.innerWidth - 220, 720);
-  const maxH = Math.min(window.innerHeight - 140, 640);
+  const mobile = window.innerWidth <= 700;
+  const maxW = mobile
+    ? window.innerWidth - 32
+    : Math.min(window.innerWidth - 240, 720);
+  const maxH = mobile
+    ? Math.round(window.innerHeight * 0.52)
+    : Math.min(window.innerHeight - 140, 640);
   COLS = Math.floor(maxW / CELL);
   ROWS = Math.floor(maxH / CELL);
   canvas.width  = COLS * CELL;

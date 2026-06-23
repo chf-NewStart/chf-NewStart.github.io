@@ -550,44 +550,33 @@ function log(msg, cls = '') {
 function evaluate(board) {
   let score = 0;
   const dirs = [[0,1],[1,0],[1,1],[1,-1]];
-
   for (let r = 0; r < N; r++) {
     for (let c = 0; c < N; c++) {
-      if (board[r][c] === 0) continue;
-      const player = board[r][c];
-
       for (const [dr, dc] of dirs) {
-        // Only score from the start of each run (avoid double-counting)
-        const pr = r - dr, pc = c - dc;
-        if (pr >= 0 && pr < N && pc >= 0 && pc < N && board[pr][pc] === player) continue;
-
-        // Count run length
-        let len = 0, er = r, ec = c;
-        while (er >= 0 && er < N && ec >= 0 && ec < N && board[er][ec] === player) {
-          len++; er += dr; ec += dc;
+        const er = r + 4*dr, ec = c + 4*dc;
+        if (er < 0 || er >= N || ec < 0 || ec >= N) continue;
+        let b = 0, w = 0;
+        for (let i = 0; i < 5; i++) {
+          const v = board[r + i*dr][c + i*dc];
+          if (v === 1) b++;
+          else if (v === 2) w++;
         }
-
-        if (len >= 5) return player === 1 ? 1000000 : -1000000;
-
-        // Open ends matter: a blocked run is not a real threat
-        const leftOpen  = pr >= 0 && pr < N && pc >= 0 && pc < N && board[pr][pc] === 0;
-        const rightOpen = er >= 0 && er < N && ec >= 0 && ec < N && board[er][ec] === 0;
-        const openEnds  = (leftOpen ? 1 : 0) + (rightOpen ? 1 : 0);
-        if (openEnds === 0) continue;
-
-        const s = runScore(len, openEnds);
-        score += player === 1 ? s : -s;
+        if (b > 0 && w > 0) continue;
+        if (b === 5) return  1000000;
+        if (w === 5) return -1000000;
+        if (b > 0) score += windowScore(b);
+        if (w > 0) score -= windowScore(w);
       }
     }
   }
   return score;
 }
 
-function runScore(len, openEnds) {
-  if (len === 4) return openEnds === 2 ? 50000 : 5000;
-  if (len === 3) return openEnds === 2 ?  1000 :  100;
-  if (len === 2) return openEnds === 2 ?    20 :    5;
-  return openEnds === 2 ? 2 : 1;
+function windowScore(n) {
+  if (n === 4) return 1000;
+  if (n === 3) return 100;
+  if (n === 2) return 10;
+  return 1;
 }
 
 function checkWin(board, r, c) {

@@ -389,7 +389,7 @@ function categoryBars(a, max) {
       `<tr><td class="cd-date">${t.date?prettyDate(t.date):''}</td><td>${esc(cleanMerchant(t.name))}</td><td class="num">${fmt(t.amt)}</td></tr>`
     ).join('');
     return `
-    <div class="bar-row cat-row" onclick="toggleCat(${i})">
+    <div class="bar-row cat-row" data-cat="${i}">
       <div class="bar-head">
         <span class="bl"><span class="caret" id="caret-${i}">▸</span> ${esc(cat)} <span class="bv2">×${txns.length}</span></span>
         <span class="bv">${fmt(val)}</span>
@@ -468,6 +468,12 @@ fi.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.
 ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
 ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
 dz.addEventListener('drop', e => { if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+// Delegated click: expand/collapse a category. Survives re-renders, reliable on touch.
+$('report').addEventListener('click', e => {
+  const row = e.target.closest('.cat-row');
+  if (row && row.dataset.cat != null) toggleCat(row.dataset.cat);
+});
 
 applyLang();
 </script>

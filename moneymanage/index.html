@@ -81,6 +81,21 @@
     .cat-detail td { padding: 3px 7px; font-size: 0.66rem; border-bottom: 1px solid #121212; color:#aaa; }
     .cat-detail .cd-date { color:#444; white-space:nowrap; width:78px; }
 
+    /* Pie / donut charts */
+    .pie-wrap { display:flex; gap:20px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+    .pie-mini-wrap { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin:2px 0 12px; }
+    .pie { flex-shrink:0; }
+    .pie path { transition: opacity .1s; cursor:default; }
+    .pie path:hover { opacity:.75; }
+    .pie-c1 { fill:#ddd; font:600 0.82rem Consolas,monospace; }
+    .pie-c2 { fill:#555; font:0.52rem Consolas,monospace; letter-spacing:1px; text-transform:uppercase; }
+    .legend { font-size:0.68rem; flex:1; min-width:155px; }
+    .lg-item { display:flex; align-items:center; gap:8px; padding:3px 0; border-bottom:1px solid #141414; }
+    .lg-sw { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+    .lg-name { color:#bbb; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .lg-pct { color:#666; width:36px; text-align:right; }
+    .lg-amt { color:#8a8a8a; width:66px; text-align:right; }
+
     /* Table */
     table { width:100%; border-collapse:collapse; font-size:0.7rem; }
     th, td { text-align:left; padding:5px 8px; border-bottom:1px solid #161616; }
@@ -166,7 +181,9 @@ const T = {
   total:      ['Total', '合计'],
   reset:      ['↺ load another file', '↺ 加载其它文件'],
   noticeAI:   ['biggest spend category', '最大消费类别'],
-  clickHint:  ['↑ click any category to see its transactions', '↑ 点击任意类别查看明细交易'],
+  clickHint:  ['↑ click any category to see its transactions & merchant split', '↑ 点击任意类别查看明细交易与商户占比'],
+  spentLabel: ['spent', '已花'],
+  otherM:     ['other', '其它'],
 };
 const tr = k => (T[k] ? T[k][LANG === 'en' ? 0 : 1] : k);
 
@@ -174,6 +191,10 @@ const tr = k => (T[k] ? T[k][LANG === 'en' ? 0 : 1] : k);
 let CUR = 'CAD';
 const fmt = n => n.toLocaleString('en-CA', { style:'currency', currency: CUR, minimumFractionDigits:2 });
 const fmt0 = n => n.toLocaleString('en-CA', { style:'currency', currency: CUR, maximumFractionDigits:0 });
+const short = n => '$' + Math.round(n).toLocaleString('en-CA');
+
+/* On-theme palette for pie/donut slices (brand green first) */
+const PIE_COLORS = ['#1db954','#3fa7d6','#e6a532','#f44336','#9b59b6','#1abc9c','#d98cba','#8d9aa3','#b5cc4f','#5d6d7e'];
 
 /* ── OFX parsing (tolerant SGML) ── */
 function field(tag, block) {
@@ -355,7 +376,7 @@ function render() {
 
   /* Spending by category (click to drill down) */
   if (a.byCat.length) html += card(tr('spendCat'),
-    categoryBars(a, catMax) + `<div class="pg-sub" style="margin-top:8px">${tr('clickHint')}</div>`,
+    categoryPie(a) + categoryBars(a, catMax) + `<div class="pg-sub" style="margin-top:8px">${tr('clickHint')}</div>`,
     `${tr('total')}: ${fmt(a.realSpend)}`);
 
   /* Subscriptions */
@@ -382,21 +403,71 @@ function render() {
   $('dropzone').classList.add('hidden');
 }
 
+/* ── SVG donut + legend (no libraries) ── */
+function arcSeg(cx, cy, R, r, a0, a1, color) {
+  const large = (a1 - a0) > Math.PI ? 1 : 0;
+  const p = (rad, ang) => [(cx + rad*Math.cos(ang)).toFixed(2), (cy + rad*Math.sin(ang)).toFixed(2)];
+  const [x0,y0]=p(R,a0), [x1,y1]=p(R,a1), [xi1,yi1]=p(r,a1), [xi0,yi0]=p(r,a0);
+  return `<path d="M ${x0} ${y0} A ${R} ${R} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${r} ${r} 0 ${large} 0 ${xi0} ${yi0} Z" fill="${color}"><title>${esc(color)}</title></path>`;
+}
+function donut(slices, size, thickness, centerLines) {
+  const total = slices.reduce((s,x)=>s+x.value,0) || 1;
+  const R = size/2, cx = R, cy = R, ir = R - thickness, rMid = (R+ir)/2;
+  let body = '';
+  if (slices.length === 1 || slices[0].value/total > 0.9999) {
+    body = `<circle cx="${cx}" cy="${cy}" r="${rMid}" fill="none" stroke="${slices[0].color}" stroke-width="${thickness}"/>`;
+  } else {
+    let a0 = -Math.PI/2;
+    for (const s of slices) { const a1 = a0 + (s.value/total)*2*Math.PI; body += arcSeg(cx,cy,R,ir,a0,a1,s.color); a0 = a1; }
+  }
+  let txt = '';
+  if (centerLines) txt = `<text x="${cx}" y="${cy-1}" text-anchor="middle" class="pie-c1">${esc(centerLines[0])}</text>` +
+    (centerLines[1] ? `<text x="${cx}" y="${cy+13}" text-anchor="middle" class="pie-c2">${esc(centerLines[1])}</text>` : '');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="pie">${body}${txt}</svg>`;
+}
+function legend(items) {
+  const total = items.reduce((s,x)=>s+x.value,0) || 1;
+  return `<div class="legend">` + items.map(it =>
+    `<div class="lg-item"><span class="lg-sw" style="background:${it.color}"></span><span class="lg-name">${esc(it.label)}</span><span class="lg-pct">${(it.value/total*100).toFixed(0)}%</span><span class="lg-amt">${fmt0(it.value)}</span></div>`
+  ).join('') + `</div>`;
+}
+function catColor(i) { return PIE_COLORS[i % PIE_COLORS.length]; }
+
+/* Big-picture donut: spending share across categories */
+function categoryPie(a) {
+  const slices = a.byCat.map(([cat,val],i)=>({ label:cat, value:val, color:catColor(i) }));
+  return `<div class="pie-wrap">${donut(slices, 150, 26, [short(a.realSpend), tr('spentLabel')])}${legend(slices)}</div>`;
+}
+/* Within a category: split by merchant (top 6 + other) */
+function merchantSlices(txns) {
+  const m = {};
+  txns.forEach(t => { const k = cleanMerchant(t.name); m[k] = (m[k]||0) + t.amt; });
+  const arr = Object.entries(m).sort((a,b)=>b[1]-a[1]);
+  const slices = arr.slice(0,6).map(([l,v],i)=>({ label:l, value:v, color:catColor(i) }));
+  const rest = arr.slice(6);
+  if (rest.length) slices.push({ label: tr('otherM') + ' ×' + rest.length, value: rest.reduce((s,x)=>s+x[1],0), color:'#555' });
+  return slices;
+}
+
 function categoryBars(a, max) {
   return a.byCat.map(([cat, val], i) => {
+    const color = catColor(i);
     const txns = (a.catTxns[cat] || []).slice().sort((x,y)=>y.amt-x.amt);
     const rows = txns.map(t =>
       `<tr><td class="cd-date">${t.date?prettyDate(t.date):''}</td><td>${esc(cleanMerchant(t.name))}</td><td class="num">${fmt(t.amt)}</td></tr>`
     ).join('');
+    const mSlices = merchantSlices(txns);
+    const sub = txns.length > 1
+      ? `<div class="pie-mini-wrap">${donut(mSlices, 104, 18)}${legend(mSlices)}</div>` : '';
     return `
     <div class="bar-row cat-row" data-cat="${i}">
       <div class="bar-head">
         <span class="bl"><span class="caret" id="caret-${i}">▸</span> ${esc(cat)} <span class="bv2">×${txns.length}</span></span>
         <span class="bv">${fmt(val)}</span>
       </div>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,(val/max*100)).toFixed(1)}%"></div></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,(val/max*100)).toFixed(1)}%;background:${color}"></div></div>
     </div>
-    <div class="cat-detail hidden" id="catd-${i}"><table>${rows}</table></div>`;
+    <div class="cat-detail hidden" id="catd-${i}">${sub}<table>${rows}</table></div>`;
   }).join('');
 }
 function toggleCat(i) {

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>fin_tracker // houfu.xyz</title>
+  <meta name="description" content="Client-side OFX/QFX bank-statement dashboard. Everything runs in your browser — nothing is uploaded.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Consolas, 'Courier New', monospace; background: #080808; color: #ccc; min-height: 100vh; padding: 20px 16px; line-height: 1.5; }
+    a { color: #1db954; }
+
+    .wrap { max-width: 920px; margin: 0 auto; }
+
+    /* Header */
+    .pg-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+    .pg-title { color: #1db954; font-size: 1.4rem; text-transform: uppercase; letter-spacing: -1px; }
+    .pg-sub   { color: #666; font-size: 0.72rem; margin-top: 3px; line-height: 1.6; }
+    .pg-back  { font-size: 0.72rem; color: #1db954; text-decoration: none; margin-top: 6px; display: inline-block; }
+    .pg-back:hover { text-decoration: underline; }
+    .lang-btn { background: transparent; border: 1px solid #1db954; color: #1db954; font-family: Consolas, monospace; font-size: 0.72rem; padding: 5px 11px; cursor: pointer; transition: background 0.1s; flex-shrink: 0; }
+    .lang-btn:hover { background: rgba(29,185,84,0.1); }
+
+    /* Privacy banner */
+    .privacy { border: 1px solid rgba(29,185,84,0.35); background: rgba(29,185,84,0.04); color: #8fce9f; font-size: 0.7rem; padding: 9px 12px; margin: 16px 0; line-height: 1.7; }
+    .privacy b { color: #1db954; }
+
+    /* Dropzone */
+    .drop { border: 1px dashed #2a2a2a; padding: 38px 20px; text-align: center; cursor: pointer; transition: all 0.12s; background: #0c0c0c; }
+    .drop:hover, .drop.over { border-color: #1db954; background: rgba(29,185,84,0.05); }
+    .drop .dz-icon { color: #1db954; font-size: 1.6rem; }
+    .drop .dz-main { color: #ccc; font-size: 0.85rem; margin-top: 10px; }
+    .drop .dz-sub  { color: #555; font-size: 0.68rem; margin-top: 6px; }
+    .err { color: #f44336; font-size: 0.72rem; margin-top: 10px; min-height: 1em; }
+
+    /* Cards */
+    .pcard { background: #111; border: 1px solid #1c1c1c; padding: 13px 15px; margin-bottom: 12px; }
+    .pcard-title { color: #1db954; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 5px; border-bottom: 1px solid #1a1a1a; display:flex; justify-content:space-between; }
+    .pcard-title .pt-note { color:#444; text-transform:none; letter-spacing:0; }
+
+    .grid { display: grid; gap: 10px; }
+    .grid.c3 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .grid.c2 { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+
+    /* Stat box */
+    .stat { border: 1px solid #1c1c1c; padding: 10px 12px; background:#0d0d0d; }
+    .stat .s-label { color: #555; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; }
+    .stat .s-val   { font-size: 1.25rem; margin-top: 5px; color: #ddd; }
+    .stat .s-val.green { color: #1db954; }
+    .stat .s-val.red   { color: #f44336; }
+    .stat .s-sub   { color: #444; font-size: 0.62rem; margin-top: 3px; }
+
+    /* Account row */
+    .acct { border: 1px solid #1c1c1c; padding: 11px 13px; background:#0d0d0d; }
+    .acct .a-top { display:flex; justify-content:space-between; align-items:baseline; }
+    .acct .a-type { color:#1db954; font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; }
+    .acct .a-id   { color:#444; font-size:0.65rem; }
+    .acct .a-bal  { font-size:1.15rem; color:#ddd; margin-top:6px; }
+    .acct .a-flow { color:#555; font-size:0.64rem; margin-top:4px; }
+    .acct .a-flow .in  { color:#1db954; }
+    .acct .a-flow .out { color:#f44336; }
+
+    /* Bars */
+    .bar-row { margin-bottom: 9px; }
+    .bar-head { display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:3px; }
+    .bar-head .bl { color:#bbb; }
+    .bar-head .bv { color:#777; }
+    .bar-track { background:#0a0a0a; border:1px solid #161616; height:14px; position:relative; }
+    .bar-fill  { height:100%; background:linear-gradient(90deg,#0f7a37,#1db954); }
+    .bar-fill.alt { background:linear-gradient(90deg,#7a2a24,#f44336); }
+    .bar-fill.muted { background:#2c2c2c; }
+
+    /* Table */
+    table { width:100%; border-collapse:collapse; font-size:0.7rem; }
+    th, td { text-align:left; padding:5px 8px; border-bottom:1px solid #161616; }
+    th { color:#555; font-size:0.6rem; text-transform:uppercase; letter-spacing:1px; font-weight:normal; }
+    td.num { text-align:right; color:#bbb; }
+    td.neg { color:#f44336; }
+    td.pos { color:#1db954; }
+    tr:hover td { background:#0d0d0d; }
+
+    .sub-list { font-size:0.72rem; }
+    .sub-item { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #161616; }
+    .sub-item .si-name { color:#ccc; }
+    .sub-item .si-meta { color:#555; font-size:0.62rem; }
+    .sub-item .si-amt  { color:#f44336; }
+
+    .hidden { display:none; }
+    .footnote { color:#3a3a3a; font-size:0.62rem; margin-top:18px; line-height:1.7; }
+    .reset-btn { background:transparent; border:1px solid #333; color:#888; font-family:Consolas,monospace; font-size:0.66rem; padding:4px 10px; cursor:pointer; }
+    .reset-btn:hover { border-color:#f44336; color:#f44336; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="pg-header-row">
+    <div>
+      <div class="pg-title">fin_tracker</div>
+      <div class="pg-sub" data-en="Drop a bank OFX/QFX export → instant spending breakdown." data-zh="拖入银行 OFX/QFX 导出文件 → 即时消费分析。">Drop a bank OFX/QFX export → instant spending breakdown.</div>
+      <a class="pg-back" href="/" data-en="← back to houfu.xyz" data-zh="← 返回 houfu.xyz">← back to houfu.xyz</a>
+    </div>
+    <button class="lang-btn" id="langBtn" onclick="toggleLang()">中文</button>
+  </div>
+
+  <div class="privacy">
+    <b data-en="100% private." data-zh="100% 私密。">100% private.</b>
+    <span data-en="Your file is parsed entirely in this browser tab. Nothing is uploaded, stored, or sent anywhere — there are no network calls at all. Close the tab and it's gone." data-zh="文件完全在本浏览器标签页内解析。不会上传、存储或发送到任何地方——没有任何网络请求。关闭标签页即清除。">Your file is parsed entirely in this browser tab. Nothing is uploaded, stored, or sent anywhere — there are no network calls at all. Close the tab and it's gone.</span>
+  </div>
+
+  <div id="dropzone" class="drop">
+    <div class="dz-icon">[↓]</div>
+    <div class="dz-main" data-en="Drop your .ofx / .qfx file here, or click to browse" data-zh="将 .ofx / .qfx 文件拖到此处，或点击浏览">Drop your .ofx / .qfx file here, or click to browse</div>
+    <div class="dz-sub" data-en="Exported from online banking → &quot;Download / Export account activity&quot; → OFX/Quicken format" data-zh="从网银导出 → “下载/导出账户活动” → OFX/Quicken 格式">Exported from online banking → "Download / Export account activity" → OFX/Quicken format</div>
+    <input type="file" id="fileInput" accept=".ofx,.qfx,.txt" class="hidden">
+  </div>
+  <div class="err" id="err"></div>
+
+  <div id="report" class="hidden"></div>
+
+  <div class="footnote" id="footnote"></div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────
+   fin_tracker — client-side OFX/QFX statement dashboard
+   No frameworks, no network. Parses SGML-style OFX in-browser.
+   ───────────────────────────────────────────────────────── */
+
+let LANG = 'en';
+let DATA = null;             // parsed { accounts: [...] }
+const $ = id => document.getElementById(id);
+
+const T = {
+  overview:   ['Overview', '总览'],
+  accounts:   ['Accounts', '账户'],
+  spendCat:   ['Spending by category', '消费分类'],
+  subs:       ['Subscriptions & recurring', '订阅与周期性支出'],
+  topMerch:   ['Top merchants', '主要商户'],
+  byMonth:    ['Spending by month', '每月消费'],
+  cashflow:   ['Cash flow', '现金流'],
+  moneyIn:    ['Money in', '收入'],
+  moneyOut:   ['Money out', '支出'],
+  realSpend:  ['Real spending', '实际消费'],
+  transfers:  ['Internal transfers', '内部转账'],
+  etransfers: ['E-transfers sent', '发出转账'],
+  net:        ['Net', '净额'],
+  period:     ['Period', '周期'],
+  txns:       ['transactions', '笔交易'],
+  balance:    ['Balance', '余额'],
+  available:  ['avail', '可用'],
+  excl:       ['excludes card payments & internal moves', '不含信用卡还款与内部转账'],
+  merchant:   ['Merchant', '商户'],
+  visits:     ['Count', '次数'],
+  total:      ['Total', '合计'],
+  reset:      ['↺ load another file', '↺ 加载其它文件'],
+  noticeAI:   ['biggest spend category', '最大消费类别'],
+};
+const tr = k => (T[k] ? T[k][LANG === 'en' ? 0 : 1] : k);
+
+/* ── Currency / number formatting ── */
+let CUR = 'CAD';
+const fmt = n => n.toLocaleString('en-CA', { style:'currency', currency: CUR, minimumFractionDigits:2 });
+const fmt0 = n => n.toLocaleString('en-CA', { style:'currency', currency: CUR, maximumFractionDigits:0 });
+
+/* ── OFX parsing (tolerant SGML) ── */
+function field(tag, block) {
+  const m = block.match(new RegExp('<' + tag + '>([^<\\r\\n]*)', 'i'));
+  return m ? m[1].trim().replace(/&amp;/g, '&').replace(/&lt;/g,'<').replace(/&gt;/g,'>') : null;
+}
+function ofxDate(s) { return s ? s.slice(0, 8) : null; } // YYYYMMDD
+
+function parseOFX(text) {
+  if (!/<OFX>/i.test(text) && !/<STMTTRN>/i.test(text))
+    throw new Error('notofx');
+
+  const cur = text.match(/<CURDEF>([A-Z]{3})/i);
+  if (cur) CUR = cur[1];
+
+  const accounts = [];
+  // Split into statement blocks (bank + credit card)
+  const stmtBlocks = text.split(/<STMTRS>|<CCSTMTRS>/i).slice(1);
+  for (const blk of stmtBlocks) {
+    const isCC = /<CCACCTFROM>/i.test(blk);
+    const acctId = field('ACCTID', blk) || '????';
+    const type = isCC ? 'credit card' : (field('ACCTTYPE', blk) || 'account').toLowerCase();
+
+    const txns = [];
+    const trMatches = blk.match(/<STMTTRN>[\s\S]*?<\/STMTTRN>/gi) || [];
+    for (const tr of trMatches) {
+      const amt = parseFloat(field('TRNAMT', tr));
+      if (isNaN(amt)) continue;
+      txns.push({
+        date: ofxDate(field('DTPOSTED', tr)),
+        amt,
+        name: (field('NAME', tr) || field('MEMO', tr) || '').trim(),
+      });
+    }
+    if (!txns.length) continue;
+
+    // balances: first LEDGERBAL/AVAILBAL BALAMT in block
+    const led = blk.match(/<LEDGERBAL>[\s\S]*?<BALAMT>([^<\r\n]*)/i);
+    const avl = blk.match(/<AVAILBAL>[\s\S]*?<BALAMT>([^<\r\n]*)/i);
+    accounts.push({
+      acctId, type, isCC,
+      ledger: led ? parseFloat(led[1]) : null,
+      avail:  avl ? parseFloat(avl[1]) : null,
+      txns,
+    });
+  }
+  if (!accounts.length) throw new Error('notxn');
+  return { accounts };
+}
+
+/* ── Classification ── */
+function isInternal(name) {
+  const u = name.toUpperCase();
+  return /TFR-TO C\/C|TFR-FROM|PAYMENT - THANK YOU|\bSSV\b|\bPTS\b/.test(u);
+}
+function isETransfer(name) { return /SEND E-TFR|E-TFR|INTERAC/i.test(name); }
+
+const CATS = [
+  ['AI & Cloud',   ['CLAUDE','ANTHROPIC','GOOGLE ONE','GOOGLE *GOOGLE','AMAZON WEB','GOOGLE*PLAY',' AWS','OPENAI','CURSOR','VERCEL','NETLIFY','GITHUB']],
+  ['Apple',        ['APPLE.COM']],
+  ['Transport',    ['UBER','PRESTO','GO TVM','GO TRANSIT','METROLINX','MASABI','UNION STATION','CURB','PORTERAIR','FLIX','GRT PAY','LYFT','PARKING','PETRO','ESSO','SHELL','GAS']],
+  ['Groceries',    ['NOFRILLS','SOBEYS','T&T','FOOD BASICS','HUA SHENG','FARAH','CENTRAL SUPER','ALI FOODS','FANTASTIC WOK','PRODUCE PLACE','SUPERMARKET','LOBLAW','METRO','COSTCO','WALMART','ZEHRS','FRESHCO']],
+  ['Dining',       ['TIM HORTONS','SUBWAY','MIZU','KATSUYA','HANOI','LANZHOU','SEOUL','GRILL','DAVES HOT','ROSIES','STOCKYARDS','AGHA','FUWA','FLOCK STOP','KARAOKE','PANCAKE','LEMO','DESSERT','NOODLE','BURGER','CAFE','EATERY','RESTAURANT','WOK','CHICKEN','SUSHI','STARBUCKS','MCDONALD','PIZZA','COFFEE','BAR']],
+  ['Shopping',     ['ADIDAS','SPORT CHEK','SPORTCHEK','DEADSTOCK','LIDS','LITTLE BURGUNDY','AMZN','AMAZON.CA','DOLLARAMA','SHOPPERS','REXALL','WORDS WORTH','BOOKS','APPAREL','VINTAGE','ANTIQUE','SUNGLASS','MARKET ROAD','BURNS','UP & UP','WHITE TIGER','ELEGANT','NIKE','UNIQLO','SP DEADSTOCK','SQ *']],
+  ['University',   ['UW ','UNIV OF W','WATCARD','ATHLETICS','WATERLOO STAR','RETAIL SERVICE']],
+];
+function categorize(name) {
+  const u = name.toUpperCase();
+  for (const [cat, keys] of CATS) if (keys.some(k => u.includes(k))) return cat;
+  return 'Other';
+}
+
+/* ── Aggregation ── */
+function analyze(data) {
+  const all = [];
+  data.accounts.forEach(a => a.txns.forEach(t => all.push(t)));
+
+  let moneyIn = 0, moneyOut = 0, realSpend = 0, transfers = 0, etransfers = 0;
+  const byCat = {}, byMonth = {}, byMerch = {}, subs = {};
+  const SUB_KEYS = ['APPLE.COM','GOOGLE ONE','GOOGLE*PLAY','CLAUDE','ANTHROPIC','AMAZON WEB','NETFLIX','SPOTIFY','OPENAI','DISNEY','YOUTUBE'];
+
+  for (const t of all) {
+    const internal = isInternal(t.name), etfr = isETransfer(t.name);
+    if (t.amt > 0) { if (!internal) moneyIn += t.amt; continue; }
+    const out = -t.amt;
+    moneyOut += out;
+    if (internal) { transfers += out; continue; }
+    if (etfr) { etransfers += out; continue; }
+
+    // real external spend
+    realSpend += out;
+    const cat = categorize(t.name);
+    byCat[cat] = (byCat[cat] || 0) + out;
+    const mo = t.date ? t.date.slice(0,6) : '??????';
+    byMonth[mo] = (byMonth[mo] || 0) + out;
+    const m = cleanMerchant(t.name);
+    if (!byMerch[m]) byMerch[m] = { total:0, n:0 };
+    byMerch[m].total += out; byMerch[m].n++;
+
+    const u = t.name.toUpperCase();
+    for (const k of SUB_KEYS) if (u.includes(k)) {
+      if (!subs[k]) subs[k] = { total:0, n:0 };
+      subs[k].total += out; subs[k].n++;
+    }
+  }
+
+  const dates = all.map(t => t.date).filter(Boolean).sort();
+  return {
+    moneyIn, moneyOut, realSpend, transfers, etransfers,
+    net: moneyIn - moneyOut,
+    byCat: Object.entries(byCat).sort((a,b)=>b[1]-a[1]),
+    byMonth: Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0])),
+    byMerch: Object.entries(byMerch).sort((a,b)=>b[1].total-a[1].total),
+    subs: Object.entries(subs).sort((a,b)=>b[1].total-a[1].total),
+    start: dates[0], end: dates[dates.length-1],
+    nTxn: all.length,
+  };
+}
+function cleanMerchant(name) {
+  return name.replace(/\s+/g,' ')
+    .replace(/\*[A-Z0-9]{4,}.*$/,'')      // strip ref codes after *
+    .replace(/#\d+.*$/,'')                // strip store numbers
+    .replace(/\s+\d{2,}.*$/,'')           // trailing numbers
+    .replace(/_V$/,'').trim() || name.trim();
+}
+function prettyMonth(yyyymm) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const y = yyyymm.slice(0,4), m = parseInt(yyyymm.slice(4,6),10);
+  return (months[m-1]||'?') + ' ' + y;
+}
+function maskAcct(id){ return id.length > 4 ? '••' + id.slice(-4) : id; }
+
+/* ── Rendering ── */
+function render() {
+  if (!DATA) return;
+  const a = analyze(DATA);
+  const bars = (rows, max, alt) => rows.map(([label, val]) => `
+    <div class="bar-row">
+      <div class="bar-head"><span class="bl">${esc(label)}</span><span class="bv">${fmt(val)}</span></div>
+      <div class="bar-track"><div class="bar-fill ${alt||''}" style="width:${Math.max(2,(val/max*100)).toFixed(1)}%"></div></div>
+    </div>`).join('');
+
+  const catMax = a.byCat.length ? a.byCat[0][1] : 1;
+  const moMax  = a.byMonth.length ? Math.max(...a.byMonth.map(m=>m[1])) : 1;
+
+  let html = '';
+
+  /* Overview */
+  html += card(tr('overview'), `
+    <div class="grid c3">
+      ${stat(tr('moneyIn'),  fmt0(a.moneyIn),  'green')}
+      ${stat(tr('moneyOut'), fmt0(a.moneyOut), 'red')}
+      ${stat(tr('net'), (a.net>=0?'+':'') + fmt0(a.net), a.net>=0?'green':'red')}
+    </div>
+    <div class="pg-sub" style="margin-top:10px">${tr('period')}: ${a.start?prettyDate(a.start):'?'} – ${a.end?prettyDate(a.end):'?'} · ${a.nTxn} ${tr('txns')} · ${DATA.accounts.length} ${tr('accounts').toLowerCase()}</div>
+  `);
+
+  /* Cash flow split */
+  const flowMax = Math.max(a.realSpend, a.transfers, a.etransfers, 1);
+  html += card(tr('cashflow'), bars([
+    [tr('realSpend'), a.realSpend],
+    [tr('etransfers'), a.etransfers],
+    [tr('transfers'), a.transfers],
+  ].filter(r=>r[1]>0), flowMax, 'alt') +
+  `<div class="pg-sub" style="margin-top:4px">* ${tr('excl')}</div>`);
+
+  /* Accounts */
+  html += card(tr('accounts'), `<div class="grid c2">` + DATA.accounts.map(acc => {
+    let inn=0, out=0;
+    acc.txns.forEach(t => t.amt>0 ? inn+=t.amt : out+=-t.amt);
+    return `<div class="acct">
+      <div class="a-top"><span class="a-type">${acc.type}</span><span class="a-id">${maskAcct(acc.acctId)}</span></div>
+      <div class="a-bal">${acc.ledger!=null?fmt(acc.ledger):'—'}</div>
+      <div class="a-flow"><span class="in">▲ ${fmt0(inn)}</span> &nbsp; <span class="out">▼ ${fmt0(out)}</span>${acc.avail!=null?` &nbsp; · ${tr('available')} ${fmt0(acc.avail)}`:''}</div>
+    </div>`;
+  }).join('') + `</div>`);
+
+  /* Spending by category */
+  if (a.byCat.length) html += card(tr('spendCat'),
+    bars(a.byCat.map(([c,v])=>[c,v]), catMax),
+    `${tr('total')}: ${fmt(a.realSpend)}`);
+
+  /* Subscriptions */
+  if (a.subs.length) html += card(tr('subs'),
+    `<div class="sub-list">` + a.subs.map(([k,v]) =>
+      `<div class="sub-item"><span><span class="si-name">${esc(k)}</span> <span class="si-meta">×${v.n}</span></span><span class="si-amt">${fmt(v.total)}</span></div>`
+    ).join('') + `</div>`);
+
+  /* Spending by month */
+  if (a.byMonth.length > 1) html += card(tr('byMonth'),
+    bars(a.byMonth.map(([m,v])=>[prettyMonth(m),v]), moMax));
+
+  /* Top merchants */
+  const top = a.byMerch.slice(0, 12);
+  if (top.length) html += card(tr('topMerch'),
+    `<table><thead><tr><th>${tr('merchant')}</th><th style="text-align:right">${tr('visits')}</th><th style="text-align:right">${tr('total')}</th></tr></thead><tbody>` +
+    top.map(([m,v]) => `<tr><td>${esc(m)}</td><td class="num">${v.n}</td><td class="num">${fmt(v.total)}</td></tr>`).join('') +
+    `</tbody></table>`);
+
+  html += `<button class="reset-btn" onclick="resetAll()">${tr('reset')}</button>`;
+
+  $('report').innerHTML = html;
+  $('report').classList.remove('hidden');
+  $('dropzone').classList.add('hidden');
+}
+
+function card(title, body, note) {
+  return `<div class="pcard"><div class="pcard-title"><span>${title}</span>${note?`<span class="pt-note">${note}</span>`:''}</div>${body}</div>`;
+}
+function stat(label, val, cls) {
+  return `<div class="stat"><div class="s-label">${label}</div><div class="s-val ${cls||''}">${val}</div></div>`;
+}
+function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function prettyDate(yyyymmdd){ return yyyymmdd.slice(0,4)+'-'+yyyymmdd.slice(4,6)+'-'+yyyymmdd.slice(6,8); }
+
+/* ── File handling ── */
+function handleFile(file) {
+  $('err').textContent = '';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      DATA = parseOFX(e.target.result);
+      render();
+    } catch (err) {
+      const msg = err.message === 'notofx'
+        ? (LANG==='en' ? "That doesn't look like an OFX/QFX file." : '这看起来不是 OFX/QFX 文件。')
+        : err.message === 'notxn'
+        ? (LANG==='en' ? 'No transactions found in that file.' : '文件中未找到交易记录。')
+        : (LANG==='en' ? 'Could not parse that file: ' : '无法解析文件：') + err.message;
+      $('err').textContent = msg;
+    }
+  };
+  reader.onerror = () => { $('err').textContent = LANG==='en'?'Could not read the file.':'无法读取文件。'; };
+  reader.readAsText(file);
+}
+function resetAll() {
+  DATA = null;
+  $('report').classList.add('hidden');
+  $('report').innerHTML = '';
+  $('dropzone').classList.remove('hidden');
+  $('fileInput').value = '';
+}
+
+/* ── Language ── */
+function applyLang() {
+  document.querySelectorAll('[data-en]').forEach(el => {
+    const v = el.getAttribute(LANG === 'en' ? 'data-en' : 'data-zh');
+    if (v != null) el.innerHTML = v;
+  });
+  $('langBtn').textContent = LANG === 'en' ? '中文' : 'EN';
+  document.documentElement.lang = LANG === 'en' ? 'en' : 'zh';
+  renderFootnote();
+  if (DATA) render();
+}
+function toggleLang() { LANG = LANG === 'en' ? 'zh' : 'en'; applyLang(); }
+function renderFootnote() {
+  $('footnote').innerHTML = LANG === 'en'
+    ? 'Built as the live demo for my <a href="/#projects-section">LLM-Powered Financial Tracker</a>. Tested with RBC / TD OFX &amp; QFX exports. Categories are heuristic — your bank may name things differently. No data leaves this page.'
+    : '作为我的 <a href="/#projects-section">LLM 财务跟踪器</a> 的在线演示而构建。已用 RBC / TD 的 OFX 与 QFX 导出测试。分类基于启发式规则——你的银行命名可能不同。数据不会离开本页面。';
+}
+
+/* ── Wire up ── */
+const dz = $('dropzone'), fi = $('fileInput');
+dz.addEventListener('click', () => fi.click());
+fi.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+dz.addEventListener('drop', e => { if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+applyLang();
+</script>
+</body>
+</html>

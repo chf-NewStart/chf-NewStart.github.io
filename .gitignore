@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# Personal financial data — never commit/publish bank exports to this public site
+*.ofx
+*.qfx
+moneymanage/*.ofx
+moneymanage/*.qfx

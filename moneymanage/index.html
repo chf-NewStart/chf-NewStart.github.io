@@ -80,6 +80,33 @@
     .cat-detail table { width:100%; }
     .cat-detail td { padding: 3px 7px; font-size: 0.66rem; border-bottom: 1px solid #121212; color:#aaa; }
     .cat-detail .cd-date { color:#444; white-space:nowrap; width:78px; }
+    .cat-detail .cd-cat { text-align:right; width:124px; }
+    .cat-select { background:#0a0a0a; border:1px solid #222; color:#777; font-family:Consolas,monospace; font-size:0.62rem; padding:2px 4px; max-width:120px; cursor:pointer; }
+    .cat-select:hover { border-color:#1db954; color:#bbb; }
+    .cat-select:focus { outline:none; border-color:#1db954; }
+
+    /* Insights list */
+    .tips { list-style:none; }
+    .tips li { font-size:0.72rem; color:#bbb; line-height:1.7; padding:7px 0 7px 18px; border-bottom:1px solid #141414; position:relative; }
+    .tips li:last-child { border-bottom:none; }
+    .tips li::before { content:'→'; color:#1db954; position:absolute; left:0; }
+
+    /* AI mode */
+    .ai-warn { color:#b58b5a; font-size:0.66rem; line-height:1.7; border:1px solid rgba(230,165,50,0.25); background:rgba(230,165,50,0.05); padding:9px 11px; margin-bottom:12px; }
+    .ai-warn b { color:#e6a532; }
+    .ai-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+    .ai-key { flex:1; min-width:200px; background:#0a0a0a; border:1px solid #222; color:#ccc; font-family:Consolas,monospace; font-size:0.72rem; padding:7px 9px; }
+    .ai-key:focus { outline:none; border-color:#1db954; }
+    .ai-remember { color:#666; font-size:0.66rem; display:flex; align-items:center; gap:5px; cursor:pointer; }
+    .ai-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .ai-btn { background:transparent; border:1px solid #1db954; color:#1db954; font-family:Consolas,monospace; font-size:0.7rem; padding:7px 13px; cursor:pointer; transition:background .1s; }
+    .ai-btn:hover:not(:disabled) { background:rgba(29,185,84,0.1); }
+    .ai-btn:disabled { opacity:0.4; cursor:default; }
+    .ai-btn.ghost { border-color:#333; color:#888; }
+    .ai-btn.ghost:hover:not(:disabled) { border-color:#f44336; color:#f44336; background:transparent; }
+    .ai-status { color:#666; font-size:0.66rem; min-height:1em; margin-bottom:6px; }
+    .ai-status.err { color:#f44336; }
+    .ai-output { color:#bbb; font-size:0.74rem; line-height:1.85; white-space:pre-wrap; }
 
     /* Pie / donut charts */
     .pie-wrap { display:flex; gap:20px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
@@ -144,6 +171,25 @@
 
   <div id="report" class="hidden"></div>
 
+  <div id="aiCard" class="pcard hidden">
+    <div class="pcard-title"><span data-en="✨ AI mode — optional" data-zh="✨ AI 模式 — 可选">✨ AI mode — optional</span></div>
+    <div class="ai-warn">
+      <b data-en="This is the one part that uses the network." data-zh="这是唯一会联网的功能。">This is the one part that uses the network.</b>
+      <span data-en="With your own Anthropic API key, AI mode can label the &quot;Other&quot; bucket and write a spending summary with suggestions. Your key and the data sent (merchant names, or category totals) go directly to the Anthropic API and nowhere else. The key is stored only in this browser." data-zh="使用你自己的 Anthropic API 密钥，AI 模式可以标注“其它”类别并生成带建议的消费总结。你的密钥及发送的数据（商户名称或分类汇总）仅直接发往 Anthropic API。密钥只保存在本浏览器中。"> With your own Anthropic API key, AI mode can label the "Other" bucket and write a spending summary with suggestions. Your key and the data sent (merchant names, or category totals) go directly to the Anthropic API and nowhere else. The key is stored only in this browser.</span>
+    </div>
+    <div class="ai-row">
+      <input type="password" id="aiKey" class="ai-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+      <label class="ai-remember"><input type="checkbox" id="aiRemember"> <span data-en="remember in this browser" data-zh="在本浏览器记住">remember in this browser</span></label>
+      <button class="ai-btn ghost" id="aiForget" data-en="forget" data-zh="清除">forget</button>
+    </div>
+    <div class="ai-actions">
+      <button class="ai-btn" id="aiCatBtn" data-en="Auto-label &quot;Other&quot;" data-zh="自动标注“其它”">Auto-label "Other"</button>
+      <button class="ai-btn" id="aiSumBtn" data-en="Summarize &amp; suggest" data-zh="总结并给建议">Summarize &amp; suggest</button>
+    </div>
+    <div class="ai-status" id="aiStatus"></div>
+    <div class="ai-output" id="aiOutput"></div>
+  </div>
+
   <div class="footnote" id="footnote"></div>
 </div>
 
@@ -156,6 +202,15 @@
 let LANG = 'en';
 let DATA = null;             // parsed { accounts: [...] }
 const $ = id => document.getElementById(id);
+
+/* Learned rules + AI key — persisted in THIS browser only (localStorage) */
+const LS_RULES = 'fintracker_rules', LS_AIRULES = 'fintracker_airules', LS_KEY = 'fintracker_key';
+function loadJSON(k){ try { return JSON.parse(localStorage.getItem(k)) || {}; } catch { return {}; } }
+function saveJSON(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+let userRules = loadJSON(LS_RULES);   // merchant → category, set by hand (highest priority)
+let aiRules   = loadJSON(LS_AIRULES); // merchant → category, set by AI mode
+let expandedCats = new Set();         // category names currently drilled open
+function merchantKey(name){ return cleanMerchant(name).toUpperCase(); }
 
 const T = {
   overview:   ['Overview', '总览'],
@@ -181,9 +236,10 @@ const T = {
   total:      ['Total', '合计'],
   reset:      ['↺ load another file', '↺ 加载其它文件'],
   noticeAI:   ['biggest spend category', '最大消费类别'],
-  clickHint:  ['↑ click any category to see its transactions & merchant split', '↑ 点击任意类别查看明细交易与商户占比'],
+  clickHint:  ['↑ click any category to see its transactions & merchant split — and recategorize any row (it remembers)', '↑ 点击任意类别查看明细与商户占比——也可重新归类任意行（会被记住）'],
   spentLabel: ['spent', '已花'],
   otherM:     ['other', '其它'],
+  insights:   ['Insights & suggestions', '洞察与建议'],
 };
 const tr = k => (T[k] ? T[k][LANG === 'en' ? 0 : 1] : k);
 
@@ -261,7 +317,11 @@ const CATS = [
   ['Shopping',     ['ADIDAS','SPORT CHEK','SPORTCHEK','DEADSTOCK','LIDS','LITTLE BURGUNDY','AMZN','AMAZON.CA','DOLLARAMA','SHOPPERS','REXALL','WORDS WORTH','BOOKS','APPAREL','VINTAGE','ANTIQUE','SUNGLASS','MARKET ROAD','BURNS','UP & UP','WHITE TIGER','ELEGANT','NIKE','UNIQLO','SP DEADSTOCK','SQ *']],
   ['University',   ['UW ','UNIV OF W','WATCARD','ATHLETICS','WATERLOO STAR','RETAIL SERVICE']],
 ];
+const CAT_NAMES = CATS.map(c => c[0]).concat(['Other']);
 function categorize(name) {
+  const key = merchantKey(name);
+  if (userRules[key]) return userRules[key];   // hand-assigned wins
+  if (aiRules[key])   return aiRules[key];      // then AI-assigned
   const u = name.toUpperCase();
   for (const [cat, keys] of CATS) if (keys.some(k => u.includes(k))) return cat;
   return 'Other';
@@ -385,6 +445,11 @@ function render() {
       `<div class="sub-item"><span><span class="si-name">${esc(k)}</span> <span class="si-meta">×${v.n}</span></span><span class="si-amt">${fmt(v.total)}</span></div>`
     ).join('') + `</div>`);
 
+  /* Insights & suggestions (rule-based, no AI) */
+  const tips = insights(a);
+  if (tips.length) html += card(tr('insights'),
+    `<ul class="tips">` + tips.map(t => `<li>${esc(t)}</li>`).join('') + `</ul>`);
+
   /* Spending by month */
   if (a.byMonth.length > 1) html += card(tr('byMonth'),
     bars(a.byMonth.map(([m,v])=>[prettyMonth(m),v]), moMax));
@@ -401,6 +466,7 @@ function render() {
   $('report').innerHTML = html;
   $('report').classList.remove('hidden');
   $('dropzone').classList.add('hidden');
+  $('aiCard').classList.remove('hidden');
 }
 
 /* ── SVG donut + legend (no libraries) ── */
@@ -449,32 +515,88 @@ function merchantSlices(txns) {
   return slices;
 }
 
+function catOptions(current){
+  return CAT_NAMES.map(c => `<option value="${escAttr(c)}"${c===current?' selected':''}>${esc(c)}</option>`).join('')
+    + `<option value="__auto__">↺ auto</option>`;
+}
 function categoryBars(a, max) {
   return a.byCat.map(([cat, val], i) => {
     const color = catColor(i);
     const txns = (a.catTxns[cat] || []).slice().sort((x,y)=>y.amt-x.amt);
     const rows = txns.map(t =>
-      `<tr><td class="cd-date">${t.date?prettyDate(t.date):''}</td><td>${esc(cleanMerchant(t.name))}</td><td class="num">${fmt(t.amt)}</td></tr>`
+      `<tr><td class="cd-date">${t.date?prettyDate(t.date):''}</td><td>${esc(cleanMerchant(t.name))}</td>` +
+      `<td class="num">${fmt(t.amt)}</td>` +
+      `<td class="cd-cat"><select class="cat-select" data-key="${escAttr(merchantKey(t.name))}">${catOptions(cat)}</select></td></tr>`
     ).join('');
     const mSlices = merchantSlices(txns);
     const sub = txns.length > 1
       ? `<div class="pie-mini-wrap">${donut(mSlices, 104, 18)}${legend(mSlices)}</div>` : '';
+    const open = expandedCats.has(cat);
     return `
-    <div class="bar-row cat-row" data-cat="${i}">
+    <div class="bar-row cat-row" data-cat="${i}" data-catname="${escAttr(cat)}">
       <div class="bar-head">
-        <span class="bl"><span class="caret" id="caret-${i}">▸</span> ${esc(cat)} <span class="bv2">×${txns.length}</span></span>
+        <span class="bl"><span class="caret" id="caret-${i}">${open?'▾':'▸'}</span> ${esc(cat)} <span class="bv2">×${txns.length}</span></span>
         <span class="bv">${fmt(val)}</span>
       </div>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,(val/max*100)).toFixed(1)}%;background:${color}"></div></div>
     </div>
-    <div class="cat-detail hidden" id="catd-${i}">${sub}<table>${rows}</table></div>`;
+    <div class="cat-detail ${open?'':'hidden'}" id="catd-${i}">${sub}<table>${rows}</table></div>`;
   }).join('');
 }
-function toggleCat(i) {
+function toggleCat(i, name) {
   const d = $('catd-'+i), c = $('caret-'+i);
   if (!d) return;
   const collapsed = d.classList.toggle('hidden');
   if (c) c.textContent = collapsed ? '▸' : '▾';
+  if (name != null) { collapsed ? expandedCats.delete(name) : expandedCats.add(name); }
+}
+function assignCat(key, cat) {
+  if (cat === '__auto__') delete userRules[key];
+  else userRules[key] = cat;
+  saveJSON(LS_RULES, userRules);
+  render();
+}
+
+/* Rule-based spending suggestions — no AI, runs entirely offline */
+function insights(a) {
+  const out = [];
+  const spend = a.realSpend || 1;
+  const pct = v => Math.round(v / spend * 100);
+  const cat = Object.fromEntries(a.byCat);
+  const en = LANG === 'en';
+
+  if (a.byCat.length) {
+    const [c, v] = a.byCat[0];
+    out.push(en ? `Your biggest category is ${c} at ${fmt0(v)} — ${pct(v)}% of all spending.`
+                : `最大消费类别是 ${c}，共 ${fmt0(v)}，占总消费的 ${pct(v)}%。`);
+  }
+  if (a.subs.length) {
+    const subTotal = a.subs.reduce((s, [, x]) => s + x.total, 0);
+    const names = a.subs.map(s => s[0]).slice(0, 4).join(en ? ', ' : '、');
+    out.push(en ? `Recurring subscriptions total ${fmt0(subTotal)} across ${a.subs.length} service${a.subs.length === 1 ? '' : 's'} (${names}) — worth a quick audit for ones you don't use.`
+                : `周期性订阅共 ${fmt0(subTotal)}，涉及 ${a.subs.length} 项服务（${names}）——值得检查有没有不再使用的。`);
+  }
+  const dining = cat['Dining'] || 0, groceries = cat['Groceries'] || 0;
+  if (dining > 0 && dining > groceries) {
+    out.push(en ? `You spent more eating out & on delivery (${fmt0(dining)}) than on groceries (${fmt0(groceries)}). A few more home-cooked meals would free up cash.`
+                : `外出就餐与外卖（${fmt0(dining)}）超过了买菜（${fmt0(groceries)}）。多在家做几顿能省下一笔。`);
+  }
+  const ai = cat['AI & Cloud'] || 0;
+  if (ai > 0 && pct(ai) >= 10) {
+    out.push(en ? `AI & cloud is ${fmt0(ai)} (${pct(ai)}% of spend) — a large line item. Confirm every tier is actually in use.`
+                : `AI 与云服务为 ${fmt0(ai)}（占 ${pct(ai)}%），是一项大开销——确认这些订阅都在使用。`);
+  }
+  const outflow = a.realSpend + a.etransfers;
+  if (outflow > a.moneyIn) {
+    out.push(en ? `Spending plus e-transfers (${fmt0(outflow)}) outpaced money in (${fmt0(a.moneyIn)}) this period — you drew down savings.`
+                : `本期支出加转账（${fmt0(outflow)}）超过了收入（${fmt0(a.moneyIn)}）——动用了存款。`);
+  }
+  const other = cat['Other'] || 0;
+  if (other > 0 && pct(other) >= 8) {
+    out.push(en ? `${fmt0(other)} (${pct(other)}%) is still uncategorized in "Other" — tap those rows to label them, or use AI mode below.`
+                : `仍有 ${fmt0(other)}（${pct(other)}%）归在“其它”——点击这些行手动标注，或用下方 AI 模式。`);
+  }
+  return out;
 }
 
 function card(title, body, note) {
@@ -484,6 +606,7 @@ function stat(label, val, cls) {
   return `<div class="stat"><div class="s-label">${label}</div><div class="s-val ${cls||''}">${val}</div></div>`;
 }
 function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function escAttr(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function prettyDate(yyyymmdd){ return yyyymmdd.slice(0,4)+'-'+yyyymmdd.slice(4,6)+'-'+yyyymmdd.slice(6,8); }
 
 /* ── File handling ── */
@@ -508,8 +631,12 @@ function handleFile(file) {
 }
 function resetAll() {
   DATA = null;
+  expandedCats.clear();
   $('report').classList.add('hidden');
   $('report').innerHTML = '';
+  $('aiCard').classList.add('hidden');
+  $('aiOutput').textContent = '';
+  $('aiStatus').textContent = '';
   $('dropzone').classList.remove('hidden');
   $('fileInput').value = '';
 }
@@ -528,8 +655,8 @@ function applyLang() {
 function toggleLang() { LANG = LANG === 'en' ? 'zh' : 'en'; applyLang(); }
 function renderFootnote() {
   $('footnote').innerHTML = LANG === 'en'
-    ? 'A fully client-side companion to my <a href="/#projects-section">LLM-Powered Financial Tracker</a> — here, categories are matched by simple keyword rules (no LLM, no upload, no network). Tested with RBC / TD OFX &amp; QFX exports; your bank may name things differently. No data leaves this page.'
-    : '我的 <a href="/#projects-section">LLM 财务跟踪器</a> 的纯前端配套工具——此处分类基于简单的关键词规则（无 LLM、不上传、无网络请求）。已用 RBC / TD 的 OFX 与 QFX 导出测试，你的银行命名可能不同。数据不会离开本页面。';
+    ? 'A client-side companion to my <a href="/#projects-section">LLM-Powered Financial Tracker</a>. By default everything runs in this browser — categories are matched by keyword rules, your edits are remembered locally, and nothing is uploaded. AI mode (opt-in, your own key) is the one exception that calls the Anthropic API. Tested with RBC / TD OFX &amp; QFX exports.'
+    : '我的 <a href="/#projects-section">LLM 财务跟踪器</a> 的前端配套工具。默认情况下一切都在本浏览器内运行——分类基于关键词规则，你的修改保存在本地，不上传任何数据。AI 模式（需自行提供密钥、可选）是唯一会调用 Anthropic API 的功能。已用 RBC / TD 的 OFX 与 QFX 导出测试。';
 }
 
 /* ── Wire up ── */
@@ -543,8 +670,108 @@ dz.addEventListener('drop', e => { if (e.dataTransfer.files[0]) handleFile(e.dat
 // Delegated click: expand/collapse a category. Survives re-renders, reliable on touch.
 $('report').addEventListener('click', e => {
   const row = e.target.closest('.cat-row');
-  if (row && row.dataset.cat != null) toggleCat(row.dataset.cat);
+  if (row && row.dataset.cat != null) toggleCat(row.dataset.cat, row.dataset.catname);
 });
+// Delegated change: recategorize a merchant (remembered in localStorage).
+$('report').addEventListener('change', e => {
+  const sel = e.target.closest('.cat-select');
+  if (sel) assignCat(sel.dataset.key, sel.value);
+});
+
+/* ── AI mode (opt-in; calls the Anthropic API with the user's own key) ── */
+function aiKey(){ return ($('aiKey').value || '').trim(); }
+function saveKeyMaybe(){ if ($('aiRemember').checked) { try { localStorage.setItem(LS_KEY, aiKey()); } catch {} } }
+function setAiBusy(busy, msg){
+  $('aiCatBtn').disabled = busy; $('aiSumBtn').disabled = busy;
+  $('aiStatus').className = 'ai-status';
+  if (msg != null) $('aiStatus').textContent = msg;
+}
+function aiErr(e){ $('aiStatus').className = 'ai-status err'; $('aiStatus').textContent = (LANG==='en'?'Failed: ':'失败：') + e.message; }
+
+async function callClaude(system, userText, maxTokens){
+  const key = aiKey();
+  if (!key) throw new Error(LANG==='en' ? 'Enter your Anthropic API key first.' : '请先输入你的 Anthropic API 密钥。');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-8',
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: userText }],
+    }),
+  });
+  if (!res.ok) {
+    let msg = 'HTTP ' + res.status;
+    try { const j = await res.json(); if (j.error && j.error.message) msg = j.error.message; } catch {}
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+}
+
+async function aiCategorize(){
+  if (!DATA) return;
+  const a = analyze(DATA);
+  const merchants = [...new Set((a.catTxns['Other'] || []).map(t => cleanMerchant(t.name)))];
+  if (!merchants.length) { setAiBusy(false, LANG==='en' ? 'Nothing left in "Other" to label. 🎉' : '“其它”里没有需要标注的项目。🎉'); return; }
+  setAiBusy(true, LANG==='en' ? `Labeling ${merchants.length} merchants…` : `正在标注 ${merchants.length} 个商户…`);
+  try {
+    const cats = CAT_NAMES.filter(c => c !== 'Other');
+    const system = `You categorize bank-transaction merchant names into exactly one of these categories: ${cats.join(', ')}; or "Other" if truly none fit. Reply with ONLY a JSON object mapping each merchant name (verbatim) to one category string — no prose, no code fence.`;
+    const txt = await callClaude(system, merchants.map(m => `- ${m}`).join('\n'), 2048);
+    const s = txt.indexOf('{'), ei = txt.lastIndexOf('}');
+    if (s < 0 || ei < 0) throw new Error(LANG==='en' ? 'Could not parse the AI response.' : '无法解析 AI 响应。');
+    const map = JSON.parse(txt.slice(s, ei + 1));
+    let n = 0;
+    for (const [m, c] of Object.entries(map)) {
+      if (CAT_NAMES.includes(c) && c !== 'Other') { aiRules[merchantKey(m)] = c; n++; }
+    }
+    saveJSON(LS_AIRULES, aiRules);
+    render();
+    setAiBusy(false, LANG==='en' ? `Labeled ${n} merchant${n===1?'':'s'}. (Tweak any with the dropdowns.)` : `已标注 ${n} 个商户。（可用下拉菜单微调。）`);
+  } catch(e){ aiErr(e); setAiBusy(false, null); }
+}
+
+async function aiSummarize(){
+  if (!DATA) return;
+  const a = analyze(DATA);
+  $('aiOutput').textContent = '';
+  setAiBusy(true, LANG==='en' ? 'Writing your summary…' : '正在生成总结…');
+  try {
+    const lines = [];
+    lines.push(`Currency: ${CUR}. Period: ${a.start?prettyDate(a.start):'?'} to ${a.end?prettyDate(a.end):'?'}.`);
+    lines.push(`Money in: ${fmt(a.moneyIn)}. Real spending: ${fmt(a.realSpend)}. E-transfers sent: ${fmt(a.etransfers)}. Internal transfers: ${fmt(a.transfers)}.`);
+    lines.push('Spending by category: ' + a.byCat.map(([c,v]) => `${c} ${fmt(v)}`).join(', ') + '.');
+    lines.push('Top merchants: ' + a.byMerch.slice(0,8).map(([m,v]) => `${m} ${fmt(v.total)}`).join(', ') + '.');
+    if (a.subs.length) lines.push('Recurring: ' + a.subs.map(([k,v]) => `${k} ${fmt(v.total)}`).join(', ') + '.');
+    const system = `You are a sharp, friendly personal-finance assistant. Given one person's bank activity for a period, write a concise readout of ~130-180 words: the big picture, 2-3 specific patterns or outliers worth noting, and 2-3 concrete, practical, non-judgmental suggestions to save or rebalance. Use the actual numbers given. Don't moralize. ${LANG==='en' ? 'Respond in English.' : 'Respond in Simplified Chinese.'} Plain text, short paragraphs, no markdown headers.`;
+    const txt = await callClaude(system, lines.join('\n'), 1024);
+    setAiBusy(false, '');
+    $('aiOutput').textContent = txt;
+  } catch(e){ aiErr(e); setAiBusy(false, null); }
+}
+
+(function initAi(){
+  const saved = localStorage.getItem(LS_KEY);
+  if (saved) { $('aiKey').value = saved; $('aiRemember').checked = true; }
+  $('aiKey').addEventListener('input', saveKeyMaybe);
+  $('aiRemember').addEventListener('change', () => {
+    $('aiRemember').checked ? saveKeyMaybe() : localStorage.removeItem(LS_KEY);
+  });
+  $('aiForget').addEventListener('click', () => {
+    $('aiKey').value = ''; $('aiRemember').checked = false;
+    try { localStorage.removeItem(LS_KEY); } catch {}
+    setAiBusy(false, LANG==='en' ? 'Key forgotten.' : '密钥已清除。');
+  });
+  $('aiCatBtn').addEventListener('click', aiCategorize);
+  $('aiSumBtn').addEventListener('click', aiSummarize);
+})();
 
 applyLang();
 </script>

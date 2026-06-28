@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- The browser will refuse to send data anywhere except the Anthropic API.
+       Even in a worst case, an API key cannot be exfiltrated to another server. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.anthropic.com; base-uri 'none'; form-action 'none'">
   <title>fin_tracker // houfu.xyz</title>
   <meta name="description" content="Client-side OFX/QFX bank-statement dashboard. Everything runs in your browser — nothing is uploaded.">
   <style>
@@ -98,7 +101,8 @@
     .ai-key { flex:1; min-width:200px; background:#0a0a0a; border:1px solid #222; color:#ccc; font-family:Consolas,monospace; font-size:0.72rem; padding:7px 9px; }
     .ai-key:focus { outline:none; border-color:#1db954; }
     .ai-remember { color:#666; font-size:0.66rem; display:flex; align-items:center; gap:5px; cursor:pointer; }
-    .ai-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .ai-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+    .ai-note { color:#444; font-size:0.6rem; margin-bottom:8px; }
     .ai-btn { background:transparent; border:1px solid #1db954; color:#1db954; font-family:Consolas,monospace; font-size:0.7rem; padding:7px 13px; cursor:pointer; transition:background .1s; }
     .ai-btn:hover:not(:disabled) { background:rgba(29,185,84,0.1); }
     .ai-btn:disabled { opacity:0.4; cursor:default; }
@@ -186,6 +190,7 @@
       <button class="ai-btn" id="aiCatBtn" data-en="Auto-label &quot;Other&quot;" data-zh="自动标注“其它”">Auto-label "Other"</button>
       <button class="ai-btn" id="aiSumBtn" data-en="Summarize &amp; suggest" data-zh="总结并给建议">Summarize &amp; suggest</button>
     </div>
+    <div class="ai-note" data-en="auto-label → Haiku (cheap &amp; fast) · summary → Opus (sharper) — pennies per click" data-zh="自动标注 → Haiku（便宜快速）· 总结 → Opus（更精准）——每次仅几分钱">auto-label → Haiku (cheap &amp; fast) · summary → Opus (sharper) — pennies per click</div>
     <div class="ai-status" id="aiStatus"></div>
     <div class="ai-output" id="aiOutput"></div>
   </div>
@@ -445,7 +450,7 @@ function render() {
     let inn=0, out=0;
     acc.txns.forEach(t => t.amt>0 ? inn+=t.amt : out+=-t.amt);
     return `<div class="acct">
-      <div class="a-top"><span class="a-type">${acc.type}</span><span class="a-id">${maskAcct(acc.acctId)}</span></div>
+      <div class="a-top"><span class="a-type">${esc(acc.type)}</span><span class="a-id">${esc(maskAcct(acc.acctId))}</span></div>
       <div class="a-bal">${acc.ledger!=null?fmt(acc.ledger):'—'}</div>
       <div class="a-flow"><span class="in">▲ ${fmt0(inn)}</span> &nbsp; <span class="out">▼ ${fmt0(out)}</span>${acc.avail!=null?` &nbsp; · ${tr('available')} ${fmt0(acc.avail)}`:''}</div>
     </div>`;
@@ -705,7 +710,7 @@ function setAiBusy(busy, msg){
 }
 function aiErr(e){ $('aiStatus').className = 'ai-status err'; $('aiStatus').textContent = (LANG==='en'?'Failed: ':'失败：') + e.message; }
 
-async function callClaude(system, userText, maxTokens){
+async function callClaude(model, system, userText, maxTokens){
   const key = aiKey();
   if (!key) throw new Error(LANG==='en' ? 'Enter your Anthropic API key first.' : '请先输入你的 Anthropic API 密钥。');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -717,7 +722,7 @@ async function callClaude(system, userText, maxTokens){
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-opus-4-8',
+      model,
       max_tokens: maxTokens,
       system,
       messages: [{ role: 'user', content: userText }],
@@ -741,7 +746,7 @@ async function aiCategorize(){
   try {
     const cats = CAT_NAMES.filter(c => c !== 'Other');
     const system = `You categorize bank-transaction merchant names into exactly one of these categories: ${cats.join(', ')}; or "Other" if truly none fit. Reply with ONLY a JSON object mapping each merchant name (verbatim) to one category string — no prose, no code fence.`;
-    const txt = await callClaude(system, merchants.map(m => `- ${m}`).join('\n'), 2048);
+    const txt = await callClaude('claude-haiku-4-5', system, merchants.map(m => `- ${m}`).join('\n'), 2048);
     const s = txt.indexOf('{'), ei = txt.lastIndexOf('}');
     if (s < 0 || ei < 0) throw new Error(LANG==='en' ? 'Could not parse the AI response.' : '无法解析 AI 响应。');
     const map = JSON.parse(txt.slice(s, ei + 1));
@@ -768,7 +773,7 @@ async function aiSummarize(){
     lines.push('Top merchants: ' + a.byMerch.slice(0,8).map(([m,v]) => `${m} ${fmt(v.total)}`).join(', ') + '.');
     if (a.subs.length) lines.push('Recurring: ' + a.subs.map(([k,v]) => `${k} ${fmt(v.total)}`).join(', ') + '.');
     const system = `You are a sharp, friendly personal-finance assistant. Given one person's bank activity for a period, write a concise readout of ~130-180 words: the big picture, 2-3 specific patterns or outliers worth noting, and 2-3 concrete, practical, non-judgmental suggestions to save or rebalance. Use the actual numbers given. Don't moralize. ${LANG==='en' ? 'Respond in English.' : 'Respond in Simplified Chinese.'} Plain text, short paragraphs, no markdown headers.`;
-    const txt = await callClaude(system, lines.join('\n'), 1024);
+    const txt = await callClaude('claude-opus-4-8', system, lines.join('\n'), 1024);
     setAiBusy(false, '');
     $('aiOutput').textContent = txt;
   } catch(e){ aiErr(e); setAiBusy(false, null); }

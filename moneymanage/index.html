@@ -70,6 +70,17 @@
     .bar-fill.alt { background:linear-gradient(90deg,#7a2a24,#f44336); }
     .bar-fill.muted { background:#2c2c2c; }
 
+    /* Clickable category drill-down */
+    .cat-row { cursor: pointer; }
+    .cat-row:hover .bl { color: #1db954; }
+    .cat-row:hover .bar-track { border-color:#2a2a2a; }
+    .caret { color:#1db954; display:inline-block; width:11px; }
+    .bv2 { color:#555; font-size:0.62rem; }
+    .cat-detail { margin: -3px 0 11px 15px; padding-left: 11px; border-left: 1px solid #1a1a1a; }
+    .cat-detail table { width:100%; }
+    .cat-detail td { padding: 3px 7px; font-size: 0.66rem; border-bottom: 1px solid #121212; color:#aaa; }
+    .cat-detail .cd-date { color:#444; white-space:nowrap; width:78px; }
+
     /* Table */
     table { width:100%; border-collapse:collapse; font-size:0.7rem; }
     th, td { text-align:left; padding:5px 8px; border-bottom:1px solid #161616; }
@@ -155,6 +166,7 @@ const T = {
   total:      ['Total', '合计'],
   reset:      ['↺ load another file', '↺ 加载其它文件'],
   noticeAI:   ['biggest spend category', '最大消费类别'],
+  clickHint:  ['↑ click any category to see its transactions', '↑ 点击任意类别查看明细交易'],
 };
 const tr = k => (T[k] ? T[k][LANG === 'en' ? 0 : 1] : k);
 
@@ -240,7 +252,7 @@ function analyze(data) {
   data.accounts.forEach(a => a.txns.forEach(t => all.push(t)));
 
   let moneyIn = 0, moneyOut = 0, realSpend = 0, transfers = 0, etransfers = 0;
-  const byCat = {}, byMonth = {}, byMerch = {}, subs = {};
+  const byCat = {}, catTxns = {}, byMonth = {}, byMerch = {}, subs = {};
   const SUB_KEYS = ['APPLE.COM','GOOGLE ONE','GOOGLE*PLAY','CLAUDE','ANTHROPIC','AMAZON WEB','NETFLIX','SPOTIFY','OPENAI','DISNEY','YOUTUBE'];
 
   for (const t of all) {
@@ -255,6 +267,7 @@ function analyze(data) {
     realSpend += out;
     const cat = categorize(t.name);
     byCat[cat] = (byCat[cat] || 0) + out;
+    (catTxns[cat] = catTxns[cat] || []).push({ date: t.date, name: t.name, amt: out });
     const mo = t.date ? t.date.slice(0,6) : '??????';
     byMonth[mo] = (byMonth[mo] || 0) + out;
     const m = cleanMerchant(t.name);
@@ -273,6 +286,7 @@ function analyze(data) {
     moneyIn, moneyOut, realSpend, transfers, etransfers,
     net: moneyIn - moneyOut,
     byCat: Object.entries(byCat).sort((a,b)=>b[1]-a[1]),
+    catTxns,
     byMonth: Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0])),
     byMerch: Object.entries(byMerch).sort((a,b)=>b[1].total-a[1].total),
     subs: Object.entries(subs).sort((a,b)=>b[1].total-a[1].total),
@@ -339,9 +353,9 @@ function render() {
     </div>`;
   }).join('') + `</div>`);
 
-  /* Spending by category */
+  /* Spending by category (click to drill down) */
   if (a.byCat.length) html += card(tr('spendCat'),
-    bars(a.byCat.map(([c,v])=>[c,v]), catMax),
+    categoryBars(a, catMax) + `<div class="pg-sub" style="margin-top:8px">${tr('clickHint')}</div>`,
     `${tr('total')}: ${fmt(a.realSpend)}`);
 
   /* Subscriptions */
@@ -366,6 +380,30 @@ function render() {
   $('report').innerHTML = html;
   $('report').classList.remove('hidden');
   $('dropzone').classList.add('hidden');
+}
+
+function categoryBars(a, max) {
+  return a.byCat.map(([cat, val], i) => {
+    const txns = (a.catTxns[cat] || []).slice().sort((x,y)=>y.amt-x.amt);
+    const rows = txns.map(t =>
+      `<tr><td class="cd-date">${t.date?prettyDate(t.date):''}</td><td>${esc(cleanMerchant(t.name))}</td><td class="num">${fmt(t.amt)}</td></tr>`
+    ).join('');
+    return `
+    <div class="bar-row cat-row" onclick="toggleCat(${i})">
+      <div class="bar-head">
+        <span class="bl"><span class="caret" id="caret-${i}">▸</span> ${esc(cat)} <span class="bv2">×${txns.length}</span></span>
+        <span class="bv">${fmt(val)}</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,(val/max*100)).toFixed(1)}%"></div></div>
+    </div>
+    <div class="cat-detail hidden" id="catd-${i}"><table>${rows}</table></div>`;
+  }).join('');
+}
+function toggleCat(i) {
+  const d = $('catd-'+i), c = $('caret-'+i);
+  if (!d) return;
+  const collapsed = d.classList.toggle('hidden');
+  if (c) c.textContent = collapsed ? '▸' : '▾';
 }
 
 function card(title, body, note) {

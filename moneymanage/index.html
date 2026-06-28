@@ -212,6 +212,23 @@ let aiRules   = loadJSON(LS_AIRULES); // merchant → category, set by AI mode
 let expandedCats = new Set();         // category names currently drilled open
 function merchantKey(name){ return cleanMerchant(name).toUpperCase(); }
 
+/* AI mode is owner-only. Visit with ?ai=1 to unlock (remembered on this
+   device); ?ai=0 to hide again. Public visitors see only the rule-based tool.
+   Soft gate — your tokens are safe regardless: the key is never embedded. */
+const LS_AI_ON = 'fintracker_ai_on';
+function resolveAiUnlock(){
+  try {
+    const p = new URLSearchParams(location.search);
+    if (p.has('ai')) {
+      const v = (p.get('ai') || '1').toLowerCase();
+      if (['0','off','false','no'].includes(v)) localStorage.removeItem(LS_AI_ON);
+      else localStorage.setItem(LS_AI_ON, '1');
+    }
+    return localStorage.getItem(LS_AI_ON) === '1';
+  } catch { try { return new URLSearchParams(location.search).has('ai'); } catch { return false; } }
+}
+const AI_ON = resolveAiUnlock();
+
 const T = {
   overview:   ['Overview', '总览'],
   accounts:   ['Accounts', '账户'],
@@ -466,7 +483,7 @@ function render() {
   $('report').innerHTML = html;
   $('report').classList.remove('hidden');
   $('dropzone').classList.add('hidden');
-  $('aiCard').classList.remove('hidden');
+  if (AI_ON) $('aiCard').classList.remove('hidden');   // owner-only; see resolveAiUnlock
 }
 
 /* ── SVG donut + legend (no libraries) ── */

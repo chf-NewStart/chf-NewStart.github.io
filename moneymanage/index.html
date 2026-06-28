@@ -457,8 +457,8 @@ function applyLang() {
 function toggleLang() { LANG = LANG === 'en' ? 'zh' : 'en'; applyLang(); }
 function renderFootnote() {
   $('footnote').innerHTML = LANG === 'en'
-    ? 'Built as the live demo for my <a href="/#projects-section">LLM-Powered Financial Tracker</a>. Tested with RBC / TD OFX &amp; QFX exports. Categories are heuristic — your bank may name things differently. No data leaves this page.'
-    : '作为我的 <a href="/#projects-section">LLM 财务跟踪器</a> 的在线演示而构建。已用 RBC / TD 的 OFX 与 QFX 导出测试。分类基于启发式规则——你的银行命名可能不同。数据不会离开本页面。';
+    ? 'A fully client-side companion to my <a href="/#projects-section">LLM-Powered Financial Tracker</a> — here, categories are matched by simple keyword rules (no LLM, no upload, no network). Tested with RBC / TD OFX &amp; QFX exports; your bank may name things differently. No data leaves this page.'
+    : '我的 <a href="/#projects-section">LLM 财务跟踪器</a> 的纯前端配套工具——此处分类基于简单的关键词规则（无 LLM、不上传、无网络请求）。已用 RBC / TD 的 OFX 与 QFX 导出测试，你的银行命名可能不同。数据不会离开本页面。';
 }
 
 /* ── Wire up ── */

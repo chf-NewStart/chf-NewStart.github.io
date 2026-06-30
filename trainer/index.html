@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Same lockdown as fin_tracker: the browser will refuse to send anything
+       anywhere except the Anthropic API. A key cannot be exfiltrated. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.anthropic.com; base-uri 'none'; form-action 'none'">
+  <title>tutor // houfu.xyz</title>
+  <meta name="description" content="An infinite, Socratic personal tutor. Bring your own Anthropic API key — nothing is uploaded anywhere else.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Consolas, 'Courier New', monospace; background: #080808; color: #ccc; min-height: 100vh; padding: 20px 16px; line-height: 1.5; }
+    a { color: #1db954; }
+    .wrap { max-width: 920px; margin: 0 auto; }
+
+    /* Header */
+    .pg-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+    .pg-title { color: #1db954; font-size: 1.4rem; text-transform: uppercase; letter-spacing: -1px; }
+    .pg-sub   { color: #666; font-size: 0.72rem; margin-top: 3px; line-height: 1.6; }
+    .pg-back  { font-size: 0.72rem; color: #1db954; text-decoration: none; margin-top: 6px; display: inline-block; }
+    .pg-back:hover { text-decoration: underline; }
+    .lang-btn { background: transparent; border: 1px solid #1db954; color: #1db954; font-family: Consolas, monospace; font-size: 0.72rem; padding: 5px 11px; cursor: pointer; transition: background 0.1s; flex-shrink: 0; }
+    .lang-btn:hover { background: rgba(29,185,84,0.1); }
+
+    /* Privacy / key banner */
+    .privacy { border: 1px solid rgba(29,185,84,0.35); background: rgba(29,185,84,0.04); color: #8fce9f; font-size: 0.7rem; padding: 9px 12px; margin: 16px 0; line-height: 1.7; }
+    .privacy b { color: #1db954; }
+
+    /* Key row */
+    .key-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+    .key-in { flex: 1 1 240px; background: #0c0c0c; border: 1px solid #2a2a2a; color: #ccc; font-family: Consolas, monospace; font-size: 0.78rem; padding: 8px 10px; }
+    .key-in:focus { outline: none; border-color: #1db954; }
+    .key-remember { font-size: 0.68rem; color: #888; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+    .btn { background: transparent; border: 1px solid #1db954; color: #1db954; font-family: Consolas, monospace; font-size: 0.72rem; padding: 7px 13px; cursor: pointer; transition: background 0.1s; }
+    .btn:hover:not(:disabled) { background: rgba(29,185,84,0.12); }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn.ghost { border-color: #444; color: #888; }
+    .btn.ghost:hover:not(:disabled) { background: rgba(255,255,255,0.04); }
+    select.btn { -webkit-appearance: none; appearance: none; }
+
+    .section-label { color: #666; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; margin: 22px 0 10px; }
+
+    /* Mode grid */
+    .mode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+    .mode-card { background: #111; border: 1px solid #1c1c1c; padding: 13px 14px; cursor: pointer; transition: border-color 0.12s, background 0.12s; }
+    .mode-card:hover { border-color: #1db954; background: rgba(29,185,84,0.04); }
+    .mode-card.active { border-color: #1db954; background: rgba(29,185,84,0.07); }
+    .mode-card .mc-title { color: #1db954; font-size: 0.84rem; display: flex; align-items: center; gap: 7px; }
+    .mode-card .mc-blurb { color: #999; font-size: 0.7rem; margin-top: 7px; line-height: 1.55; }
+
+    /* Setup form */
+    .setup { background: #0c0c0c; border: 1px solid #1c1c1c; padding: 15px; margin-top: 14px; display: none; }
+    .setup.show { display: block; }
+    .setup .fld { margin-bottom: 11px; }
+    .setup label { display: block; color: #aaa; font-size: 0.72rem; margin-bottom: 5px; }
+    .setup input, .setup textarea { width: 100%; background: #080808; border: 1px solid #2a2a2a; color: #ccc; font-family: Consolas, monospace; font-size: 0.78rem; padding: 8px 10px; resize: vertical; }
+    .setup input:focus, .setup textarea:focus { outline: none; border-color: #1db954; }
+    .setup textarea { min-height: 80px; }
+
+    /* Chat */
+    .chat { display: none; margin-top: 14px; }
+    .chat.show { display: block; }
+    .chat-head { display: flex; justify-content: space-between; align-items: center; border: 1px solid #1c1c1c; border-bottom: none; background: #111; padding: 9px 13px; }
+    .chat-head .ch-mode { color: #1db954; font-size: 0.76rem; }
+    .log { border: 1px solid #1c1c1c; background: #0a0a0a; padding: 14px; min-height: 240px; max-height: 56vh; overflow-y: auto; }
+    .msg { margin-bottom: 14px; font-size: 0.82rem; line-height: 1.65; white-space: pre-wrap; word-wrap: break-word; }
+    .msg .who { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+    .msg.tutor .who { color: #1db954; }
+    .msg.me { color: #cfe9d6; }
+    .msg.me .who { color: #5a7a64; }
+    .msg.sys { color: #b08; }
+    .typing { color: #1db954; font-size: 0.78rem; }
+    .compose { display: flex; gap: 8px; border: 1px solid #1c1c1c; border-top: none; background: #111; padding: 10px 13px; }
+    .compose textarea { flex: 1; background: #080808; border: 1px solid #2a2a2a; color: #ccc; font-family: Consolas, monospace; font-size: 0.8rem; padding: 8px 10px; resize: none; min-height: 42px; }
+    .compose textarea:focus { outline: none; border-color: #1db954; }
+    .status { color: #888; font-size: 0.7rem; min-height: 1em; margin-top: 8px; }
+    .status.err { color: #f44336; }
+
+    .footnote { color: #444; font-size: 0.66rem; margin-top: 26px; line-height: 1.7; border-top: 1px solid #161616; padding-top: 14px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="pg-header-row">
+    <div>
+      <div class="pg-title">∞ Tutor</div>
+      <div class="pg-sub" data-en="An infinite, Socratic personal tutor — it won't just hand you answers." data-zh="一个无限的苏格拉底式私人导师——它不会直接把答案喂给你。">An infinite, Socratic personal tutor — it won't just hand you answers.</div>
+      <a class="pg-back" href="/" data-en="← back to houfu.xyz" data-zh="← 返回 houfu.xyz">← back to houfu.xyz</a>
+    </div>
+    <button class="lang-btn" id="langBtn">中文</button>
+  </div>
+
+  <div class="privacy">
+    <b data-en="Bring your own key — nothing is uploaded to me." data-zh="自带密钥——不会上传任何内容到我这里。">Bring your own key — nothing is uploaded to me.</b>
+    <span data-en="Enter your own Anthropic API key below. Your key and your messages go directly from your browser to the Anthropic API and nowhere else (enforced by this page's content-security-policy). The key is stored only in this browser." data-zh="在下方输入你自己的 Anthropic API 密钥。你的密钥和对话内容仅从你的浏览器直接发往 Anthropic API，不会发往任何其他地方（由本页面的内容安全策略强制保证）。密钥只保存在本浏览器中。"> Enter your own Anthropic API key below. Your key and your messages go directly from your browser to the Anthropic API and nowhere else (enforced by this page's content-security-policy). The key is stored only in this browser.</span>
+  </div>
+
+  <div class="key-row">
+    <input type="password" id="aiKey" class="key-in" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+    <label class="key-remember"><input type="checkbox" id="aiRemember"> <span data-en="remember in this browser" data-zh="在本浏览器记住">remember in this browser</span></label>
+    <button class="btn ghost" id="aiForget" data-en="forget" data-zh="清除">forget</button>
+    <select class="btn" id="modelSel" title="model">
+      <option value="claude-opus-4-8">Opus 4.8 · sharp</option>
+      <option value="claude-haiku-4-5">Haiku 4.5 · cheap</option>
+    </select>
+  </div>
+
+  <div class="section-label" data-en="① Pick a tutoring mode" data-zh="① 选择一种辅导模式">① Pick a tutoring mode</div>
+  <div class="mode-grid" id="modeGrid"></div>
+
+  <div class="setup" id="setup">
+    <div class="section-label" style="margin-top:0" data-en="② Fill in the blanks" data-zh="② 填写空白处">② Fill in the blanks</div>
+    <div id="setupFields"></div>
+    <button class="btn" id="startBtn" data-en="Start session →" data-zh="开始 →">Start session →</button>
+  </div>
+
+  <div class="chat" id="chat">
+    <div class="chat-head">
+      <span class="ch-mode" id="chMode"></span>
+      <button class="btn ghost" id="resetBtn" data-en="end session" data-zh="结束本次">end session</button>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="compose">
+      <textarea id="input" rows="2" data-en-ph="Type your answer… (Enter to send, Shift+Enter for newline)" data-zh-ph="输入你的回答…（回车发送，Shift+回车换行）"></textarea>
+      <button class="btn" id="sendBtn" data-en="send" data-zh="发送">send</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="footnote" id="footnote"></div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────
+   ∞ tutor — a Socratic, multi-turn AI tutor.
+   Bring-your-own-key, same lockdown as fin_tracker:
+   the key & messages go ONLY to api.anthropic.com (CSP-enforced)
+   and the key lives only in this browser's localStorage.
+   ───────────────────────────────────────────────────────── */
+
+let LANG = 'en';
+const $ = id => document.getElementById(id);
+
+/* ── The six tutoring modes. Each `system` builds the instruction
+      sent as the conversation's system prompt. ── */
+const MODES = [
+  {
+    id: 'mistake', icon: '⚠',
+    title: ['Realistic Mistake Simulator', '真实错误模拟器'],
+    blurb: ['Thrown into a real scenario where you\'ll likely slip — no answers handed over, only questions that make you find your own mistake.',
+            '把你直接丢进真实场景，你很可能犯错——它不给答案，只用问题逼你自己找出错在哪。'],
+    fields: [{ key: 'concept', label: ['Concept or skill to drill', '要训练的概念或技能'], ph: ['e.g. React useEffect dependencies', '例如：React useEffect 依赖项'] }],
+    system: v => `Do not explain ${v.concept} to me. Put me directly into a realistic, concrete real-world scenario where I have to use it and will likely make a mistake. When I make a mistake, do NOT give me the answer. Ask me a question that forces me to figure out where I went wrong. Only reveal the answer after I have tried at least twice. Keep repeating with new scenarios until I can get it right without hesitation. Begin now with the first scenario.`
+  },
+  {
+    id: 'confusion', icon: '✶',
+    title: ['Confusion Clearer', '困惑破解器'],
+    blurb: ['Gives you the one sentence that unlocks everything else, in plain analogy — then quizzes you before moving on.',
+            '先给你那句能解开一切的话，用生活化的比喻讲清——然后先考你，再继续。'],
+    fields: [{ key: 'content', label: ['Paste the content that confuses you', '粘贴让你困惑的内容'], type: 'textarea', ph: ['Paste the confusing material here…', '把让你困惑的材料粘贴到这里…'] }],
+    system: v => `I find this content very confusing. Before explaining it, give me a single sentence that, if I understand it, will make everything else make sense. Explain only that sentence first, using a daily-life analogy with no technical jargon. Then give me three questions that only someone who truly understands the topic can answer. Do NOT proceed until I have answered these three questions. Here is the content:\n\n${v.content}`
+  },
+  {
+    id: 'path', icon: '◷',
+    title: ['Personalized Learning Path', '个性化学习路径'],
+    blurb: ['A 7-day plan built backwards from your real goal and deadline — daily 45-min tasks, a success check, and one trap to avoid.',
+            '从你真实的目标和截止日期倒推出的 7 天计划——每天一个 45 分钟任务、一个完成度检验，以及一个当天必须避开的坑。'],
+    fields: [
+      { key: 'goal', label: ['Your primary goal', '你的主要目标'], ph: ['e.g. ship a small SaaS landing page', '例如：上线一个小型 SaaS 落地页'] },
+      { key: 'skill', label: ['The skill involved', '涉及的技能'], ph: ['e.g. frontend / Tailwind', '例如：前端 / Tailwind'] },
+      { key: 'result', label: ['Specific result you need', '你需要的具体成果'], ph: ['e.g. a deployed page with a working signup form', '例如：一个上线、表单可用的页面'] },
+      { key: 'deadline', label: ['Deadline', '截止日期'], ph: ['e.g. in 7 days', '例如：7 天内'] },
+      { key: 'mastered', label: ['What you\'ve already mastered', '你已经掌握的'], ph: ['e.g. basic HTML/CSS', '例如：基础 HTML/CSS'] }
+    ],
+    system: v => `My primary goal is: ${v.goal}. This is not about learning ${v.skill} in a general sense. I need to achieve ${v.result} by ${v.deadline}. I have already mastered: ${v.mastered}. Create a 7-day learning path. Each day must include a single task completable in 45 minutes, a clear way to measure if I did it well, and one thing I absolutely must NOT do that day to avoid wasting time. If the overall path will not get me to my goal, readjust it until it will. Present the full plan, then offer to coach me through day 1.`
+  },
+  {
+    id: 'blindspot', icon: '◉',
+    title: ['Blind Spot Detector', '盲点探测器'],
+    blurb: ['Five deceptively simple questions that expose what someone who never studied this deeply would miss. Honest, never condescending.',
+            '五个看似简单、实则能暴露“从没真正深入学过”的问题。诚实，但不居高临下。'],
+    fields: [{ key: 'skill', label: ['Skill you think you\'ve mastered', '你自认为已掌握的技能'], ph: ['e.g. SQL joins', '例如：SQL 连接'] }],
+    system: v => `I feel like I have mastered ${v.skill}. Prove me wrong. Challenge me with 5 deceptively simple questions that expose the flaws of someone who has never truly studied this in depth. Ask them ONE at a time and wait for my answer. For each answer I give, tell me what it reveals about what is still lacking in my foundational knowledge. Do not be condescending. If my understanding is only superficial, tell me the truth. Begin with question 1.`
+  },
+  {
+    id: 'mirror', icon: '◑',
+    title: ['Brutal Mirror of Progress', '进步的残酷镜子'],
+    blurb: ['Tracks whether you\'re actually improving across this session or just rephrasing the same mistakes. No sugar-coating.',
+            '追踪你在本次对话里是真的进步了，还是只是换个说法重复同样的错误。绝不粉饰。'],
+    fields: [{ key: 'skill', label: ['Skill to track', '要追踪的技能'], ph: ['e.g. writing clear commit messages', '例如：写清晰的提交信息'] }],
+    system: v => `I want you to track my evolution in ${v.skill} across this conversation. With every reply I make, compare it to my previous ones and tell me whether I have genuinely improved or am just repeating the same mistakes with different words. If I am stagnating, tell me directly — do not sugar-coat it. Do not praise me unless the progress is real and measurable. Start by asking me to produce a first sample so you have a baseline.`
+  },
+  {
+    id: 'worstcase', icon: '⚡',
+    title: ['Worst-Case Scenario Professor', '最坏情况教授'],
+    blurb: ['Drops you into a high-pressure crisis with no manual, then pinpoints exactly where you\'d fail in real life and what to train.',
+            '把你扔进没有手册、没时间冷静思考的高压危机，然后精确指出你在现实中会在哪里崩、需要提前练什么。'],
+    fields: [{ key: 'skill', label: ['Skill to stress-test', '要压力测试的技能'], ph: ['e.g. debugging a production outage', '例如：排查线上故障'] }],
+    system: v => `I want to learn ${v.skill} by thinking about the worst case: a situation where everything goes wrong and I must solve it under high pressure, with no manual and no time to think calmly. Create a high-pressure, realistic scenario related to ${v.skill}, throw me into it without warning, and observe my reaction. React in-character as the scenario unfolds based on my choices. Afterward, pinpoint exactly where my reaction would fail in real life and what I need to train in advance so I don't make that mistake again. Begin the scenario now.`
+  }
+];
+
+const LANGNOTE = () => LANG === 'en' ? ' Always respond in English.' : ' Always respond in Simplified Chinese (简体中文).';
+
+/* ── State ── */
+const LS_KEY = 'tutor_key';
+let selectedMode = null;
+let convo = [];          // [{role:'user'|'assistant', content}]
+let activeSystem = '';
+let busy = false;
+
+/* ── Language ── */
+function applyLang(){
+  document.documentElement.lang = LANG === 'en' ? 'en' : 'zh';
+  $('langBtn').textContent = LANG === 'en' ? '中文' : 'EN';
+  document.querySelectorAll('[data-en]').forEach(el => {
+    const t = el.getAttribute('data-' + LANG); if (t != null) el.textContent = t;
+  });
+  document.querySelectorAll('[data-en-ph]').forEach(el => {
+    const t = el.getAttribute('data-' + LANG + '-ph'); if (t != null) el.placeholder = t;
+  });
+  renderModes();
+  if (selectedMode) renderSetup(selectedMode);
+  $('footnote').innerHTML = LANG === 'en'
+    ? 'The tutor\'s teaching style is the prompt; the intelligence is whichever Claude model you pick. Inspired by a set of “infinite tutor” prompts. A companion to my other <a href="/">browser tools</a>.'
+    : '导师的教学风格来自提示词；智能来自你选择的 Claude 模型。灵感源自一组“无限导师”提示词。这是我其他<a href="/">浏览器工具</a>的姊妹项目。';
+}
+
+/* ── Render mode cards ── */
+function renderModes(){
+  $('modeGrid').innerHTML = MODES.map(m => `
+    <div class="mode-card${selectedMode === m.id ? ' active' : ''}" data-mode="${m.id}">
+      <div class="mc-title">${m.icon} ${m.title[LANG === 'en' ? 0 : 1]}</div>
+      <div class="mc-blurb">${m.blurb[LANG === 'en' ? 0 : 1]}</div>
+    </div>`).join('');
+}
+
+function renderSetup(id){
+  const m = MODES.find(x => x.id === id); if (!m) return;
+  $('setupFields').innerHTML = m.fields.map(f => {
+    const label = f.label[LANG === 'en' ? 0 : 1];
+    const ph = f.ph[LANG === 'en' ? 0 : 1];
+    const ctrl = f.type === 'textarea'
+      ? `<textarea data-fkey="${f.key}" placeholder="${ph.replace(/"/g,'&quot;')}"></textarea>`
+      : `<input type="text" data-fkey="${f.key}" placeholder="${ph.replace(/"/g,'&quot;')}">`;
+    return `<div class="fld"><label>${label}</label>${ctrl}</div>`;
+  }).join('');
+  $('setup').classList.add('show');
+}
+
+/* ── Mode selection ── */
+$('modeGrid').addEventListener('click', e => {
+  const card = e.target.closest('.mode-card'); if (!card) return;
+  selectedMode = card.dataset.mode;
+  renderModes();
+  renderSetup(selectedMode);
+  $('setup').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+/* ── Start a session ── */
+$('startBtn').addEventListener('click', () => {
+  const m = MODES.find(x => x.id === selectedMode); if (!m) return;
+  const values = {};
+  let missing = false;
+  $('setupFields').querySelectorAll('[data-fkey]').forEach(el => {
+    values[el.dataset.fkey] = (el.value || '').trim();
+    if (!values[el.dataset.fkey]) missing = true;
+  });
+  if (missing) {
+    setStatus(LANG === 'en' ? 'Fill every field first.' : '请先填写所有字段。', true);
+    return;
+  }
+  if (!aiKey()) { setStatus(LANG === 'en' ? 'Enter your Anthropic API key at the top first.' : '请先在顶部输入你的 Anthropic API 密钥。', true); return; }
+
+  activeSystem = m.system(values) + LANGNOTE();
+  convo = [];
+  $('log').innerHTML = '';
+  $('setup').classList.remove('show');
+  $('modeGrid').style.display = 'none';
+  document.querySelectorAll('.section-label')[0].style.display = 'none';
+  $('chMode').textContent = m.icon + ' ' + m.title[LANG === 'en' ? 0 : 1];
+  $('chat').classList.add('show');
+  // Kick it off — the model speaks first based on the system prompt.
+  sendToModel(LANG === 'en' ? "Let's begin." : '我们开始吧。', true);
+});
+
+/* ── End session ── */
+$('resetBtn').addEventListener('click', () => {
+  $('chat').classList.remove('show');
+  $('modeGrid').style.display = '';
+  document.querySelectorAll('.section-label')[0].style.display = '';
+  selectedMode = null; convo = []; activeSystem = '';
+  renderModes();
+  $('setup').classList.remove('show');
+  setStatus('');
+});
+
+/* ── Send box ── */
+$('sendBtn').addEventListener('click', submitInput);
+$('input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInput(); }
+});
+function submitInput(){
+  const text = ($('input').value || '').trim();
+  if (!text || busy) return;
+  $('input').value = '';
+  sendToModel(text, false);
+}
+
+/* ── Rendering messages ── */
+function addMsg(role, text){
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'assistant' ? 'tutor' : role === 'user' ? 'me' : 'sys');
+  const who = role === 'assistant' ? (LANG === 'en' ? 'tutor' : '导师')
+            : role === 'user' ? (LANG === 'en' ? 'you' : '你') : 'system';
+  div.innerHTML = `<span class="who">${who}</span>`;
+  div.appendChild(document.createTextNode(text));
+  $('log').appendChild(div);
+  $('log').scrollTop = $('log').scrollHeight;
+  return div;
+}
+
+/* ── The conversation call ── */
+async function sendToModel(userText, isKickoff){
+  if (busy) return;
+  busy = true; setBusy(true);
+  if (!isKickoff) addMsg('user', userText);
+  convo.push({ role: 'user', content: userText });
+
+  const typing = addMsg('assistant', LANG === 'en' ? '…thinking' : '…思考中');
+  typing.querySelector('.who').nextSibling.textContent = LANG === 'en' ? '…' : '…';
+
+  try {
+    const reply = await callClaudeChat($('modelSel').value, activeSystem, convo, 1500);
+    convo.push({ role: 'assistant', content: reply });
+    typing.remove();
+    addMsg('assistant', reply);
+    setStatus('');
+  } catch (e) {
+    typing.remove();
+    convo.pop(); // drop the user turn that failed so retry is clean
+    if (isKickoff) addMsg('sys', LANG === 'en' ? 'Could not start the session.' : '无法开始本次会话。');
+    setStatus((LANG === 'en' ? 'Failed: ' : '失败：') + e.message, true);
+  } finally {
+    busy = false; setBusy(false);
+    $('input').focus();
+  }
+}
+
+/* ── Anthropic call (multi-turn) — same lockdown as fin_tracker ── */
+async function callClaudeChat(model, system, messages, maxTokens){
+  const key = aiKey();
+  if (!key) throw new Error(LANG === 'en' ? 'Enter your Anthropic API key first.' : '请先输入你的 Anthropic API 密钥。');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
+  });
+  if (!res.ok) {
+    let msg = 'HTTP ' + res.status;
+    try { const j = await res.json(); if (j.error && j.error.message) msg = j.error.message; } catch {}
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+}
+
+/* ── Key handling — stored only in this browser ── */
+function aiKey(){ return ($('aiKey').value || '').trim(); }
+function saveKeyMaybe(){ if ($('aiRemember').checked) { try { localStorage.setItem(LS_KEY, aiKey()); } catch {} } }
+$('aiKey').addEventListener('input', saveKeyMaybe);
+$('aiRemember').addEventListener('change', () => {
+  $('aiRemember').checked ? saveKeyMaybe() : localStorage.removeItem(LS_KEY);
+});
+$('aiForget').addEventListener('click', () => {
+  $('aiKey').value = ''; $('aiRemember').checked = false;
+  try { localStorage.removeItem(LS_KEY); } catch {}
+  setStatus(LANG === 'en' ? 'Key forgotten.' : '密钥已清除。');
+});
+
+/* ── Small helpers ── */
+function setBusy(b){ $('sendBtn').disabled = b; $('startBtn').disabled = b; }
+function setStatus(msg, err){ $('status').className = 'status' + (err ? ' err' : ''); $('status').textContent = msg; }
+
+$('langBtn').addEventListener('click', () => { LANG = LANG === 'en' ? 'zh' : 'en'; applyLang(); });
+
+/* ── Init ── */
+(function init(){
+  const saved = localStorage.getItem(LS_KEY);
+  if (saved) { $('aiKey').value = saved; $('aiRemember').checked = true; }
+  applyLang();
+})();
+</script>
+</body>
+</html>

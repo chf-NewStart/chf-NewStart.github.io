@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Same lockdown as fin_tracker: the browser will refuse to send anything
-       anywhere except the Anthropic API. A key cannot be exfiltrated. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.anthropic.com; base-uri 'none'; form-action 'none'">
+  <!-- Same lockdown idea as fin_tracker: the browser may ONLY reach the four
+       AI providers whitelisted below. A key cannot be exfiltrated anywhere else. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://openrouter.ai; base-uri 'none'; form-action 'none'">
   <title>tutor // houfu.xyz</title>
-  <meta name="description" content="An infinite, Socratic personal tutor. Bring your own Anthropic API key — nothing is uploaded anywhere else.">
+  <meta name="description" content="An infinite, Socratic personal tutor. Bring your own API key — Claude, GPT, Gemini, or any model via OpenRouter. Nothing is uploaded anywhere else.">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Consolas, 'Courier New', monospace; background: #080808; color: #ccc; min-height: 100vh; padding: 20px 16px; line-height: 1.5; }
@@ -29,8 +29,10 @@
 
     /* Key row */
     .key-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
-    .key-in { flex: 1 1 240px; background: #0c0c0c; border: 1px solid #2a2a2a; color: #ccc; font-family: Consolas, monospace; font-size: 0.78rem; padding: 8px 10px; }
+    .key-in { flex: 1 1 220px; background: #0c0c0c; border: 1px solid #2a2a2a; color: #ccc; font-family: Consolas, monospace; font-size: 0.78rem; padding: 8px 10px; }
     .key-in:focus { outline: none; border-color: #1db954; }
+    .model-in { flex: 1 1 150px; background: #0c0c0c; border: 1px solid #2a2a2a; color: #ccc; font-family: Consolas, monospace; font-size: 0.78rem; padding: 8px 10px; }
+    .model-in:focus { outline: none; border-color: #1db954; }
     .key-remember { font-size: 0.68rem; color: #888; display: flex; align-items: center; gap: 5px; cursor: pointer; }
     .btn { background: transparent; border: 1px solid #1db954; color: #1db954; font-family: Consolas, monospace; font-size: 0.72rem; padding: 7px 13px; cursor: pointer; transition: background 0.1s; }
     .btn:hover:not(:disabled) { background: rgba(29,185,84,0.12); }
@@ -94,17 +96,16 @@
 
   <div class="privacy">
     <b data-en="Bring your own key — nothing is uploaded to me." data-zh="自带密钥——不会上传任何内容到我这里。">Bring your own key — nothing is uploaded to me.</b>
-    <span data-en="Enter your own Anthropic API key below. Your key and your messages go directly from your browser to the Anthropic API and nowhere else (enforced by this page's content-security-policy). The key is stored only in this browser." data-zh="在下方输入你自己的 Anthropic API 密钥。你的密钥和对话内容仅从你的浏览器直接发往 Anthropic API，不会发往任何其他地方（由本页面的内容安全策略强制保证）。密钥只保存在本浏览器中。"> Enter your own Anthropic API key below. Your key and your messages go directly from your browser to the Anthropic API and nowhere else (enforced by this page's content-security-policy). The key is stored only in this browser.</span>
+    <span data-en="Pick a provider and paste your own API key. Your key and messages go directly from your browser to that provider's API — Anthropic, OpenAI, Google, or OpenRouter — and nowhere else (this page's content-security-policy allows only those four). The key is stored only in this browser, separately per provider." data-zh="选择一个服务商并粘贴你自己的 API 密钥。你的密钥和对话内容仅从浏览器直接发往该服务商的 API——Anthropic、OpenAI、Google 或 OpenRouter——不会发往任何其他地方（本页面的内容安全策略只允许这四个）。密钥按服务商分别只保存在本浏览器中。"> Pick a provider and paste your own API key. Your key and messages go directly from your browser to that provider's API — Anthropic, OpenAI, Google, or OpenRouter — and nowhere else (this page's content-security-policy allows only those four). The key is stored only in this browser, separately per provider.</span>
   </div>
 
   <div class="key-row">
+    <select class="btn" id="providerSel" title="provider"></select>
     <input type="password" id="aiKey" class="key-in" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+    <input type="text" id="modelInput" class="model-in" list="modelList" title="model" placeholder="model" autocomplete="off" spellcheck="false">
+    <datalist id="modelList"></datalist>
     <label class="key-remember"><input type="checkbox" id="aiRemember"> <span data-en="remember in this browser" data-zh="在本浏览器记住">remember in this browser</span></label>
     <button class="btn ghost" id="aiForget" data-en="forget" data-zh="清除">forget</button>
-    <select class="btn" id="modelSel" title="model">
-      <option value="claude-opus-4-8">Opus 4.8 · sharp</option>
-      <option value="claude-haiku-4-5">Haiku 4.5 · cheap</option>
-    </select>
   </div>
 
   <div class="section-label" data-en="① Pick a tutoring mode" data-zh="① 选择一种辅导模式">① Pick a tutoring mode</div>
@@ -135,9 +136,10 @@
 <script>
 /* ─────────────────────────────────────────────────────────
    ∞ tutor — a Socratic, multi-turn AI tutor.
-   Bring-your-own-key, same lockdown as fin_tracker:
-   the key & messages go ONLY to api.anthropic.com (CSP-enforced)
-   and the key lives only in this browser's localStorage.
+   Bring-your-own-key for any of 4 providers (Anthropic / OpenAI /
+   Google / OpenRouter). Same lockdown idea as fin_tracker: the CSP
+   whitelists only those 4 hosts, so a key can't be exfiltrated
+   elsewhere, and the key lives only in this browser's localStorage.
    ───────────────────────────────────────────────────────── */
 
 let LANG = 'en';
@@ -204,8 +206,63 @@ const MODES = [
 
 const LANGNOTE = () => LANG === 'en' ? ' Always respond in English.' : ' Always respond in Simplified Chinese (简体中文).';
 
+/* ── Providers ── bring your own key for any of these. Each adapts the request
+   to that provider's API shape. The CSP whitelists exactly these four hosts,
+   so a key can only ever reach the provider you picked — nowhere else. ── */
+const PROVIDERS = {
+  anthropic: {
+    label: 'Anthropic · Claude',
+    keyPh: 'sk-ant-...',
+    models: ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+    endpoint: () => 'https://api.anthropic.com/v1/messages',
+    headers: key => ({
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    }),
+    body: (model, system, messages, max) => ({ model, max_tokens: max, system, messages }),
+    parse: d => (d.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim(),
+  },
+  openai: {
+    label: 'OpenAI · GPT',
+    keyPh: 'sk-...',
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'o4-mini'],
+    endpoint: () => 'https://api.openai.com/v1/chat/completions',
+    headers: key => ({ 'content-type': 'application/json', 'authorization': 'Bearer ' + key }),
+    body: (model, system, messages, max) => ({ model, max_completion_tokens: max, messages: [{ role: 'system', content: system }, ...messages] }),
+    parse: d => ((d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '').trim(),
+  },
+  openrouter: {
+    label: 'OpenRouter · any model',
+    keyPh: 'sk-or-...',
+    models: ['anthropic/claude-opus-4-8', 'openai/gpt-4o', 'google/gemini-2.5-pro', 'meta-llama/llama-3.3-70b-instruct', 'deepseek/deepseek-chat'],
+    endpoint: () => 'https://openrouter.ai/api/v1/chat/completions',
+    headers: key => ({ 'content-type': 'application/json', 'authorization': 'Bearer ' + key }),
+    body: (model, system, messages, max) => ({ model, max_tokens: max, messages: [{ role: 'system', content: system }, ...messages] }),
+    parse: d => ((d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '').trim(),
+  },
+  google: {
+    label: 'Google · Gemini',
+    keyPh: 'AIza...',
+    models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+    endpoint: (model, key) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+    headers: () => ({ 'content-type': 'application/json' }),
+    body: (model, system, messages, max) => ({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+      generationConfig: { maxOutputTokens: max },
+    }),
+    parse: d => { const c = d.candidates && d.candidates[0]; const ps = (c && c.content && c.content.parts) || []; return ps.map(p => p.text || '').join('').trim(); },
+  },
+};
+function errMsg(d){ return d && d.error && (d.error.message || d.error); }
+
 /* ── State ── */
-const LS_KEY = 'tutor_key';
+const LS_KEY_PREFIX = 'tutor_key_';   // key stored per provider
+const LS_PROVIDER = 'tutor_provider';
+const LS_MODEL_PREFIX = 'tutor_model_';
+function curProvider(){ return $('providerSel').value; }
 let selectedMode = null;
 let convo = [];          // [{role:'user'|'assistant', content}]
 let activeSystem = '';
@@ -224,8 +281,8 @@ function applyLang(){
   renderModes();
   if (selectedMode) renderSetup(selectedMode);
   $('footnote').innerHTML = LANG === 'en'
-    ? 'The tutor\'s teaching style is the prompt; the intelligence is whichever Claude model you pick. Inspired by a set of “infinite tutor” prompts. A companion to my other <a href="/">browser tools</a>.'
-    : '导师的教学风格来自提示词；智能来自你选择的 Claude 模型。灵感源自一组“无限导师”提示词。这是我其他<a href="/">浏览器工具</a>的姊妹项目。';
+    ? 'The tutor\'s teaching style is the prompt; the intelligence is whichever model you bring — Claude, GPT, Gemini, or anything on OpenRouter. Inspired by a set of “infinite tutor” prompts. A companion to my other <a href="/">browser tools</a>.'
+    : '导师的教学风格来自提示词；智能来自你自带的模型——Claude、GPT、Gemini，或 OpenRouter 上的任意模型。灵感源自一组“无限导师”提示词。这是我其他<a href="/">浏览器工具</a>的姊妹项目。';
 }
 
 /* ── Render mode cards ── */
@@ -272,7 +329,7 @@ $('startBtn').addEventListener('click', () => {
     setStatus(LANG === 'en' ? 'Fill every field first.' : '请先填写所有字段。', true);
     return;
   }
-  if (!aiKey()) { setStatus(LANG === 'en' ? 'Enter your Anthropic API key at the top first.' : '请先在顶部输入你的 Anthropic API 密钥。', true); return; }
+  if (!aiKey()) { setStatus(LANG === 'en' ? 'Enter your API key at the top first.' : '请先在顶部输入你的 API 密钥。', true); return; }
 
   activeSystem = m.system(values) + LANGNOTE();
   convo = [];
@@ -333,7 +390,7 @@ async function sendToModel(userText, isKickoff){
   typing.querySelector('.who').nextSibling.textContent = LANG === 'en' ? '…' : '…';
 
   try {
-    const reply = await callClaudeChat($('modelSel').value, activeSystem, convo, 1500);
+    const reply = await callChat(curProvider(), ($('modelInput').value || '').trim(), activeSystem, convo, 1500);
     convo.push({ role: 'assistant', content: reply });
     typing.remove();
     addMsg('assistant', reply);
@@ -349,41 +406,56 @@ async function sendToModel(userText, isKickoff){
   }
 }
 
-/* ── Anthropic call (multi-turn) — same lockdown as fin_tracker ── */
-async function callClaudeChat(model, system, messages, maxTokens){
+/* ── Provider-agnostic chat call (multi-turn). The CSP only allows the four
+   whitelisted hosts, so the key can't leak anywhere else. ── */
+async function callChat(provider, model, system, messages, maxTokens){
+  const p = PROVIDERS[provider];
   const key = aiKey();
-  if (!key) throw new Error(LANG === 'en' ? 'Enter your Anthropic API key first.' : '请先输入你的 Anthropic API 密钥。');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  if (!key) throw new Error(LANG === 'en' ? 'Enter your API key first.' : '请先输入你的 API 密钥。');
+  if (!model) throw new Error(LANG === 'en' ? 'Enter a model name first.' : '请先输入模型名称。');
+  const res = await fetch(p.endpoint(model, key), {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
+    headers: p.headers(key),
+    body: JSON.stringify(p.body(model, system, messages, maxTokens)),
   });
   if (!res.ok) {
     let msg = 'HTTP ' + res.status;
-    try { const j = await res.json(); if (j.error && j.error.message) msg = j.error.message; } catch {}
+    try { const j = await res.json(); const m = errMsg(j); if (m) msg = m; } catch {}
     throw new Error(msg);
   }
-  const data = await res.json();
-  return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+  const text = p.parse(await res.json());
+  if (!text) throw new Error(LANG === 'en' ? 'The model returned an empty response.' : '模型返回了空响应。');
+  return text;
 }
 
-/* ── Key handling — stored only in this browser ── */
+/* ── Key + provider + model — stored only in this browser, per provider ── */
 function aiKey(){ return ($('aiKey').value || '').trim(); }
-function saveKeyMaybe(){ if ($('aiRemember').checked) { try { localStorage.setItem(LS_KEY, aiKey()); } catch {} } }
+function saveKeyMaybe(){ if ($('aiRemember').checked) { try { localStorage.setItem(LS_KEY_PREFIX + curProvider(), aiKey()); } catch {} } }
 $('aiKey').addEventListener('input', saveKeyMaybe);
 $('aiRemember').addEventListener('change', () => {
-  $('aiRemember').checked ? saveKeyMaybe() : localStorage.removeItem(LS_KEY);
+  $('aiRemember').checked ? saveKeyMaybe() : localStorage.removeItem(LS_KEY_PREFIX + curProvider());
 });
 $('aiForget').addEventListener('click', () => {
   $('aiKey').value = ''; $('aiRemember').checked = false;
-  try { localStorage.removeItem(LS_KEY); } catch {}
+  try { localStorage.removeItem(LS_KEY_PREFIX + curProvider()); } catch {}
   setStatus(LANG === 'en' ? 'Key forgotten.' : '密钥已清除。');
 });
+$('modelInput').addEventListener('input', () => {
+  try { localStorage.setItem(LS_MODEL_PREFIX + curProvider(), ($('modelInput').value || '').trim()); } catch {}
+});
+
+/* Switch provider: swap key placeholder, model suggestions, and remembered key. */
+function applyProvider(){
+  const prov = curProvider(), p = PROVIDERS[prov];
+  try { localStorage.setItem(LS_PROVIDER, prov); } catch {}
+  $('aiKey').placeholder = p.keyPh;
+  $('modelList').innerHTML = p.models.map(m => `<option value="${m}"></option>`).join('');
+  $('modelInput').value = localStorage.getItem(LS_MODEL_PREFIX + prov) || p.models[0];
+  const savedKey = localStorage.getItem(LS_KEY_PREFIX + prov);
+  if (savedKey != null) { $('aiKey').value = savedKey; $('aiRemember').checked = true; }
+  else { $('aiKey').value = ''; $('aiRemember').checked = false; }
+}
+$('providerSel').addEventListener('change', applyProvider);
 
 /* ── Small helpers ── */
 function setBusy(b){ $('sendBtn').disabled = b; $('startBtn').disabled = b; }
@@ -393,8 +465,12 @@ $('langBtn').addEventListener('click', () => { LANG = LANG === 'en' ? 'zh' : 'en
 
 /* ── Init ── */
 (function init(){
-  const saved = localStorage.getItem(LS_KEY);
-  if (saved) { $('aiKey').value = saved; $('aiRemember').checked = true; }
+  // Populate provider dropdown, restore last-used provider.
+  $('providerSel').innerHTML = Object.entries(PROVIDERS)
+    .map(([id, p]) => `<option value="${id}">${p.label}</option>`).join('');
+  const lastProv = localStorage.getItem(LS_PROVIDER);
+  if (lastProv && PROVIDERS[lastProv]) $('providerSel').value = lastProv;
+  applyProvider();   // sets placeholder, model list, and remembered key
   applyLang();
 })();
 </script>

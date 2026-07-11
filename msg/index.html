@@ -190,12 +190,6 @@ textarea.tin:focus{border-color:var(--green);}
         <input class="tin" id="name" maxlength="60" placeholder="anonymous">
       </div>
 
-      <div class="fld in-line">
-        <span class="ps1">?</span><span class="out" data-en="reply-to (optional):" data-zh="回复方式(可选):">reply-to (optional):</span>
-        <input class="tin" id="contact" maxlength="120"
-          data-ph-en="email / wechat / ig" data-ph-zh="邮箱 / 微信 / ig" placeholder="email / wechat / ig">
-      </div>
-
       <p class="line err" id="err" style="margin-top:14px"
          data-en="error: message body is empty. write something first." data-zh="error: 留言为空,先写点什么吧。">error: message body is empty. write something first.</p>
 
@@ -256,7 +250,6 @@ function go(id){
 function resetAll(){
   document.getElementById('message').value='';
   document.getElementById('name').value='';
-  document.getElementById('contact').value='';
   selectedMood='';
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
   go('s2');
@@ -271,27 +264,25 @@ document.querySelectorAll('.chip').forEach(c=>{
   });
 });
 
-function buildMail(msg,name,contact){
+function buildMail(msg,name){
   const tag = selectedMood ? '['+selectedMood+'] ' : '';
   const from = name || 'anonymous';
   const subject = encodeURIComponent(tag+'msgbox: '+from+' (houfu72.com)');
   const body = encodeURIComponent(
-    [msg,'','—','from: '+from, contact?'reply-to: '+contact:'', 'tag: '+(selectedMood||'—')]
-    .filter(Boolean).join('\n'));
+    [msg,'','—','from: '+from, 'tag: '+(selectedMood||'—')].join('\n'));
   return 'mailto:'+MY_EMAIL+'?subject='+subject+'&body='+body;
 }
 
 function send(){
-  const msg     = document.getElementById('message').value.trim();
-  const name    = document.getElementById('name').value.trim();
-  const contact = document.getElementById('contact').value.trim();
-  const err     = document.getElementById('err');
+  const msg  = document.getElementById('message').value.trim();
+  const name = document.getElementById('name').value.trim();
+  const err  = document.getElementById('err');
 
   if(!msg){ err.style.display='block'; return; }
   err.style.display='none';
 
   if(!FORMSPREE_ID){
-    document.getElementById('mailtoLink').href = buildMail(msg,name,contact);
+    document.getElementById('mailtoLink').href = buildMail(msg,name);
     go('s4');
     return;
   }
@@ -304,7 +295,6 @@ function send(){
   const f=new FormData();
   f.append('message',msg);
   f.append('name',name||'anonymous');
-  f.append('contact',contact);
   f.append('tag',selectedMood||'—');
   f.append('_subject',(selectedMood?'['+selectedMood+'] ':'')+'msgbox: '+(name||'anonymous')+' (houfu72.com)');
 
@@ -315,7 +305,7 @@ function send(){
   })
   .catch(()=>{
     btn.textContent=orig; btn.style.pointerEvents='auto';
-    document.getElementById('mailtoLink').href = buildMail(msg,name,contact);
+    document.getElementById('mailtoLink').href = buildMail(msg,name);
     go('s4');
   });
 }

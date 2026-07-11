@@ -149,24 +149,13 @@ textarea.tin:focus{border-color:var(--green);}
 
   <div class="body">
 
-    <!-- ============ SCREEN 1 : BOOT ============ -->
-    <div class="screen active" id="s1">
-      <p class="line"><span class="ps1">visitor@houfu72.com:~$</span> <span class="cmd">./msgbox</span></p>
-      <p class="line out" data-en="initializing message box ... ok" data-zh="正在初始化留言信箱 ... ok">initializing message box ... ok</p>
-      <p class="line out"><span data-en="recipient : houfu" data-zh="收件人 : houfu">recipient : houfu</span></p>
+    <!-- ============ SCREEN 2 : COMPOSE ============ -->
+    <div class="screen active" id="s2">
+      <p class="line"><span class="ps1">visitor@houfu72.com:~$</span> <span class="cmd">./msgbox --to houfu</span></p>
       <p class="line dim" data-en="# say what u wanna say. anonymous is fine, kind words preferred."
                           data-zh="# 想说什么就说。匿名也行,友善优先。"># say what u wanna say. anonymous is fine, kind words preferred.</p>
       <p class="line dim" data-en="# every message gets read. no exceptions."
                           data-zh="# 每条留言我都会看,一条不落。"># every message gets read. no exceptions.</p>
-      <div class="gap"></div>
-      <div class="actions">
-        <button class="tbtn" onclick="go('s2')" data-en="[ start ]" data-zh="[ 开始 ]">[ start ]</button>
-      </div>
-    </div>
-
-    <!-- ============ SCREEN 2 : COMPOSE ============ -->
-    <div class="screen" id="s2">
-      <p class="line"><span class="ps1">msgbox&gt;</span> <span class="cmd" data-en="compose --to houfu" data-zh="compose --to houfu">compose --to houfu</span></p>
 
       <p class="line out" style="margin-top:12px"><span class="ps1">?</span> <span data-en="tag your message (optional):" data-zh="给留言加个标签(可选):">tag your message (optional):</span></p>
       <div class="chips" id="moods">
@@ -195,7 +184,6 @@ textarea.tin:focus{border-color:var(--green);}
 
       <div class="actions">
         <button class="tbtn" id="sendBtn" onclick="send()" data-en="[ send ▸ ]" data-zh="[ 发送 ▸ ]">[ send ▸ ]</button>
-        <button class="tbtn alt" onclick="go('s1')" data-en="[ back ]" data-zh="[ 返回 ]">[ back ]</button>
       </div>
     </div>
 

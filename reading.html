@@ -50,9 +50,6 @@
     .panel p:last-child { margin-bottom: 0; }
     .muted { color: var(--ink-soft); }
     .small { font-size: 0.8rem; }
-    ul.links { list-style: none; font-size: 0.9rem; }
-    ul.links li { margin-bottom: 7px; }
-    ul.links li::before { content: "→ "; color: var(--accent); }
 
     /* library */
     .shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-bottom: 22px; }
@@ -143,31 +140,13 @@
       <div id="qOut"></div>
     </div>
 
-    <div class="panel">
-      <h2>Christophe André — <em>Trois minutes à méditer</em></h2>
-      <p class="muted small">« La grâce qui traverse au feu rouge » is one of ~40 short radio chronicles (France&nbsp;Inter / France&nbsp;Culture, 2016) collected in this book (L'Iconoclaste, 2017). The full book exists only in print/ebook and has no official English edition — but the author has posted many chronicles free on his blog.</p>
-      <ul class="links">
-        <li><a href="https://www.christopheandre.com/le-blog-de-christophe-andre/la-grace-qui-traverse-au-feu-rouge/" target="_blank" rel="noopener">Read « La grâce qui traverse au feu rouge » (original, français)</a></li>
-        <li><a href="https://www-christopheandre-com.translate.goog/le-blog-de-christophe-andre/la-grace-qui-traverse-au-feu-rouge/?_x_tr_sl=fr&_x_tr_tl=en&_x_tr_hl=en" target="_blank" rel="noopener">Same chapter in English (via Google Translate)</a></li>
-        <li><a href="https://www.christopheandre.com/le-blog-de-christophe-andre/" target="_blank" rel="noopener">All free chronicles on his blog (français)</a></li>
-        <li><a href="https://www-christopheandre-com.translate.goog/le-blog-de-christophe-andre/?_x_tr_sl=fr&_x_tr_tl=en&_x_tr_hl=en" target="_blank" rel="noopener">His blog in English (via Google Translate)</a></li>
-        <li><a href="https://editions-iconoclaste.fr/livre/trois-minutes-a-mediter/" target="_blank" rel="noopener">The book at L'Iconoclaste (to read the entirety)</a></li>
-      </ul>
-    </div>
-
-    <div class="panel">
-      <h2>Your texts</h2>
-      <p class="muted small">Paste a chapter from a copy you own — or <strong>upload a PDF / .txt</strong> — to read it here with paragraph-level notes. The file is read entirely in your browser and never uploaded. On Chrome/Edge, one click translates it <strong>line by line on-device</strong> in the direction picked above (built-in browser translator — the text never leaves your machine); elsewhere, use the link under each paragraph or paste your own translation.</p>
-    </div>
-
     <div class="shelf" id="shelf"></div>
     <div class="row" style="margin-top:4px">
-      <button class="btn" id="newBtn">+ New text</button>
+      <button class="btn quiet" id="newBtn">+ new text (paste or PDF)</button>
       <button class="btn quiet" id="backupBtn">back up everything (.json)</button>
       <button class="btn quiet" id="restoreBtn">restore a backup…</button>
       <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
     </div>
-    <p class="small muted" style="margin-top:10px">Texts and notes persist in this browser automatically. The backup file lets you move them to another browser, device, or computer.</p>
   </div>
 
   <!-- ============ EDITOR ============ -->
@@ -245,6 +224,7 @@
   function renderShelf(){
     var shelf = byId('shelf');
     shelf.innerHTML = '';
+    byId('backupBtn').classList.toggle('hidden', !state.chapters.length);
     state.chapters.forEach(function(ch){
       var noteCount = Object.keys(ch.notes || {}).length;
       var div = document.createElement('div');

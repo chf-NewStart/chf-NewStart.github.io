@@ -131,10 +131,8 @@
       <textarea id="qDrop" placeholder="Paste the passage here… or drop a screenshot onto this area."></textarea>
       <div class="row">
         <button class="btn" id="qGo">translate</button>
-        <button class="btn quiet" id="qImgBtn" type="button">or a screenshot…</button>
         <button class="btn quiet hidden" id="qAllText" type="button">use all text from the image</button>
         <button class="btn quiet hidden" id="qKeep">keep in library</button>
-        <input type="file" id="qImgFile" accept="image/*" class="hidden">
       </div>
       <p class="small muted" id="qStatus" style="margin-top:8px"></p>
       <div id="qOut"></div>
@@ -532,11 +530,6 @@
   };
 
   /* ---- screenshot OCR: local tesseract + highlight-color detection ---- */
-  byId('qImgBtn').onclick = function(){ byId('qImgFile').click(); };
-  byId('qImgFile').onchange = function(){
-    var f = this.files[0]; this.value = '';
-    if (f) runOcr(f);
-  };
   byId('qAllText').onclick = function(){
     byId('qDrop').value = qFullText;
     byId('qAllText').classList.add('hidden');

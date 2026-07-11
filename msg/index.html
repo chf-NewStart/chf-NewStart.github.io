@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Say something to me~</title>
+<meta name="description" content="Drop Houfu a little message.">
+<link rel="icon" href="/favicon_io/favicon.ico">
+<style>
+/* =========================================================================
+   MESSAGE BOX  —  claymorphism / neo-brutalist style
+   -------------------------------------------------------------------------
+   TO GET REPLIES IN YOUR INBOX:
+   1. Go to https://formspree.io  ->  sign up (free)  ->  New Form.
+   2. Use your email houfuchen0702@gmail.com as the destination.
+   3. Copy the form's endpoint id (looks like "xzzabcde", the part after
+      /f/ in the URL https://formspree.io/f/xzzabcde ).
+   4. Paste it into FORMSPREE_ID below (in the <script> at the bottom).
+   Until you do that, the Send button falls back to opening the sender's
+   email app pre-addressed to you — so the page still works right now.
+   ========================================================================= */
+
+:root{
+  --pink:#ff4fa3;
+  --pink-soft:#ffd7ea;
+  --ink:#1c1c1e;
+  --line:#1c1c1e;
+  --paper:#fbfbfd;
+  --muted:#6b6b70;
+  --shadow: 6px 6px 0 var(--line);
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;margin:0;}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,
+             "Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color:var(--ink);
+  background:linear-gradient(140deg,#ffdff0 0%,#e9defd 45%,#d8f6ec 100%);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;overflow:hidden;position:relative;
+}
+
+/* floating decorations */
+.deco{position:fixed;font-size:26px;user-select:none;pointer-events:none;opacity:.9;
+  animation:float 7s ease-in-out infinite;z-index:0;}
+@keyframes float{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-16px) rotate(12deg)}}
+
+/* card */
+.card{
+  position:relative;z-index:1;
+  width:100%;max-width:440px;
+  background:var(--paper);
+  border:3px solid var(--line);
+  border-radius:34px;
+  box-shadow:10px 12px 0 rgba(28,28,30,.9);
+  padding:34px 28px 30px;
+  animation:pop .45s cubic-bezier(.2,1.3,.5,1) both;
+}
+@keyframes pop{from{transform:scale(.9) translateY(14px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+
+/* app icon */
+.appicon{
+  width:78px;height:78px;margin:0 auto 18px;
+  border:3px solid var(--line);border-radius:20px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:40px;background:var(--pink);
+  box-shadow:5px 6px 0 var(--line);
+  position:relative;
+}
+.appicon.white{background:#fff;}
+
+h1{font-size:29px;line-height:1.18;font-weight:900;letter-spacing:-.5px;
+  margin:0 0 10px;text-align:center;}
+.sub{font-size:14.5px;color:var(--muted);text-align:center;margin:0 0 22px;line-height:1.5;}
+.sys{font-size:13px;color:var(--muted);text-align:center;margin:0 0 22px;line-height:1.5;}
+.sys b{color:var(--pink);}
+
+/* buttons */
+.btn{
+  display:block;width:100%;border:3px solid var(--line);border-radius:40px;
+  padding:15px 20px;font-size:17px;font-weight:800;cursor:pointer;
+  background:#fff;color:var(--ink);
+  box-shadow:var(--shadow);transition:transform .06s ease,box-shadow .06s ease;
+  font-family:inherit;text-align:center;
+}
+.btn:active{transform:translate(6px,6px);box-shadow:0 0 0 var(--line);}
+.btn.primary{background:var(--pink);color:#fff;}
+.btn + .btn{margin-top:12px;}
+.btn-row{display:flex;gap:12px;}
+.btn-row .btn{flex:1;margin:0;}
+
+/* form fields */
+label.fld{display:block;font-size:14px;font-weight:800;margin:0 0 7px;}
+label.fld .opt{font-weight:600;color:var(--muted);font-size:12px;}
+.input,textarea{
+  width:100%;border:3px solid var(--line);border-radius:16px;
+  padding:13px 15px;font-size:15px;font-family:inherit;color:var(--ink);
+  background:#fff;box-shadow:3px 4px 0 var(--line);margin-bottom:16px;
+  outline:none;transition:box-shadow .1s;
+}
+.input:focus,textarea:focus{box-shadow:3px 4px 0 var(--pink);}
+textarea{resize:vertical;min-height:120px;line-height:1.5;}
+
+/* mood grid */
+.moods{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.mood{
+  border:3px solid var(--line);border-radius:16px;background:#fff;
+  padding:10px 4px 8px;cursor:pointer;text-align:center;
+  box-shadow:3px 4px 0 var(--line);transition:transform .06s,box-shadow .06s;
+  font-family:inherit;
+}
+.mood:active{transform:translate(3px,4px);box-shadow:0 0 0 var(--line);}
+.mood .e{font-size:24px;display:block;line-height:1.2;}
+.mood .t{font-size:11px;color:var(--muted);margin-top:3px;display:block;}
+.mood.sel{background:var(--pink-soft);box-shadow:3px 4px 0 var(--pink);border-color:var(--pink);}
+.mood.sel .t{color:var(--pink);font-weight:700;}
+
+.hint{font-size:12px;color:var(--muted);text-align:center;margin:14px 0 0;line-height:1.5;}
+
+/* success hearts */
+.hearts{text-align:center;font-size:20px;letter-spacing:4px;margin-top:20px;
+  animation:pulse 1.6s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* screens */
+.screen{display:none;}
+.screen.active{display:block;}
+
+/* lang toggle */
+.lang{position:fixed;top:16px;right:16px;z-index:5;border:3px solid var(--line);
+  background:#fff;border-radius:30px;padding:8px 14px;font-size:12px;font-weight:800;
+  cursor:pointer;box-shadow:3px 4px 0 var(--line);font-family:inherit;}
+.lang:active{transform:translate(3px,4px);box-shadow:0 0 0 var(--line);}
+.back{position:fixed;top:16px;left:16px;z-index:5;border:3px solid var(--line);
+  background:#fff;border-radius:30px;padding:8px 14px;font-size:12px;font-weight:800;
+  cursor:pointer;box-shadow:3px 4px 0 var(--line);text-decoration:none;color:var(--ink);}
+.back:active{transform:translate(3px,4px);box-shadow:0 0 0 var(--line);}
+
+.spin{display:inline-block;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (max-width:400px){
+  h1{font-size:25px;}
+  .card{padding:28px 20px 24px;}
+}
+</style>
+</head>
+<body>
+
+<span class="deco" style="top:12%;left:10%;animation-delay:0s">🌸</span>
+<span class="deco" style="top:22%;right:12%;animation-delay:1.2s">✨</span>
+<span class="deco" style="bottom:16%;left:14%;animation-delay:2.1s">💌</span>
+<span class="deco" style="bottom:24%;right:10%;animation-delay:.6s">🌷</span>
+<span class="deco" style="top:50%;left:5%;animation-delay:1.7s">💗</span>
+
+<a class="back" href="/" title="Home">←</a>
+<button class="lang" id="langBtn">EN / 中文</button>
+
+<!-- ===================== SCREEN 1 : INTRO ===================== -->
+<div class="card screen active" id="s1">
+  <div class="appicon">💌</div>
+  <h1 data-en="Got something to tell me?" data-zh="有话想对我说吗?">Got something to tell me?</h1>
+  <p class="sys"
+     data-en="System detected: this box is emptier than my weekend plans."
+     data-zh="系统检测到:这个信箱比我的周末还空。">
+     System detected: this box is emptier than my weekend plans.</p>
+  <button class="btn primary" onclick="go('s2')"
+          data-en="Write something →" data-zh="写点什么 →">Write something →</button>
+  <p class="hint"
+     data-en="Anonymous is fine. Kind words preferred 🩷"
+     data-zh="匿名也可以,友善优先 🩷">Anonymous is fine. Kind words preferred 🩷</p>
+</div>
+
+<!-- ===================== SCREEN 2 : FORM ===================== -->
+<div class="card screen" id="s2">
+  <div class="appicon white">✍️</div>
+  <h1 data-en="Say what you wanna say" data-zh="想说什么就说吧">Say what you wanna say</h1>
+  <p class="sub" data-en="Pick a vibe, then type away." data-zh="选个心情,然后开始写。">Pick a vibe, then type away.</p>
+
+  <div class="moods" id="moods">
+    <button type="button" class="mood" data-mood="hi">     <span class="e">👋</span><span class="t" data-en="hi"     data-zh="打招呼">hi</span></button>
+    <button type="button" class="mood" data-mood="crush">  <span class="e">😳</span><span class="t" data-en="crush"  data-zh="心动">crush</span></button>
+    <button type="button" class="mood" data-mood="idea">   <span class="e">💡</span><span class="t" data-en="idea"   data-zh="点子">idea</span></button>
+    <button type="button" class="mood" data-mood="thanks"> <span class="e">🙏</span><span class="t" data-en="thanks" data-zh="感谢">thanks</span></button>
+    <button type="button" class="mood" data-mood="miss">   <span class="e">🥺</span><span class="t" data-en="miss u" data-zh="想你">miss u</span></button>
+    <button type="button" class="mood" data-mood="hype">   <span class="e">🔥</span><span class="t" data-en="hype"   data-zh="嗨起来">hype</span></button>
+    <button type="button" class="mood" data-mood="secret"> <span class="e">🤫</span><span class="t" data-en="secret" data-zh="秘密">secret</span></button>
+    <button type="button" class="mood" data-mood="other">  <span class="e">✏️</span><span class="t" data-en="other"  data-zh="其他">other</span></button>
+  </div>
+
+  <label class="fld" data-en="Your message" data-zh="你的留言">Your message</label>
+  <textarea id="message" maxlength="1000"
+    data-ph-en="Type it here... I read every one."
+    data-ph-zh="在这里写吧…我每一条都会看。"
+    placeholder="Type it here... I read every one."></textarea>
+
+  <label class="fld">
+    <span data-en="Who's this? " data-zh="你是谁? ">Who's this? </span>
+    <span class="opt" data-en="(optional)" data-zh="(可选)">(optional)</span>
+  </label>
+  <input class="input" id="name" maxlength="60"
+    data-ph-en="A name or nickname"
+    data-ph-zh="名字或昵称"
+    placeholder="A name or nickname">
+
+  <label class="fld">
+    <span data-en="Contact " data-zh="联系方式 ">Contact </span>
+    <span class="opt" data-en="(optional — so I can reply)" data-zh="(可选 — 方便我回复)">(optional — so I can reply)</span>
+  </label>
+  <input class="input" id="contact" maxlength="120"
+    data-ph-en="email / wechat / instagram..."
+    data-ph-zh="邮箱 / 微信 / instagram…"
+    placeholder="email / wechat / instagram...">
+
+  <button class="btn primary" id="sendBtn" onclick="send()"
+          data-en="Send it 💌" data-zh="发送 💌">Send it 💌</button>
+  <p class="hint" id="err" style="color:var(--pink);display:none;"
+     data-en="Write a little something first 🥲" data-zh="先写点内容吧 🥲">Write a little something first 🥲</p>
+</div>
+
+<!-- ===================== SCREEN 3 : SUCCESS ===================== -->
+<div class="card screen" id="s3">
+  <div class="appicon">🎉</div>
+  <h1 data-en="Got it! Thank you~" data-zh="收到啦!谢谢你~">Got it! Thank you~</h1>
+  <p class="sub" id="successSub"
+     data-en="Your message is on its way to me. Made my day a little brighter."
+     data-zh="你的留言已经送到我这儿了。今天因为你亮了一点。">
+     Your message is on its way to me. Made my day a little brighter.</p>
+  <button class="btn" onclick="resetAll()"
+          data-en="Send another →" data-zh="再写一条 →">Send another →</button>
+  <a class="btn" href="/" style="text-decoration:none;line-height:1.2;"
+     data-en="Back to home" data-zh="回到主页">Back to home</a>
+  <div class="hearts">💗 💗 💗 💗 💗</div>
+</div>
+
+<!-- ===================== SCREEN 4 : MAILTO FALLBACK ===================== -->
+<div class="card screen" id="s4">
+  <div class="appicon white">📮</div>
+  <h1 data-en="One tap to send" data-zh="一步就能寄出">One tap to send</h1>
+  <p class="sub"
+     data-en="Your email app will open with the message ready — just hit send."
+     data-zh="邮件App会自动打开并填好内容 — 你点一下发送就好。">
+     Your email app will open with the message ready — just hit send.</p>
+  <a class="btn primary" id="mailtoLink" href="#"
+     data-en="Open email & send 💌" data-zh="打开邮件并发送 💌">Open email & send 💌</a>
+  <button class="btn" onclick="go('s2')"
+          data-en="← Back" data-zh="← 返回">← Back</button>
+</div>
+
+<script>
+/* ======================================================================
+   CONFIG — paste your Formspree id between the quotes to get inbox delivery
+   e.g.  const FORMSPREE_ID = "xzzabcde";
+   Leave it empty ("") to use the email-app fallback.
+   ====================================================================== */
+const FORMSPREE_ID = "";
+const MY_EMAIL     = "houfuchen0702@gmail.com";
+
+/* ---- state ---- */
+let selectedMood = "";
+
+/* ---- screen switching ---- */
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function resetAll(){
+  document.getElementById('message').value='';
+  document.getElementById('name').value='';
+  document.getElementById('contact').value='';
+  selectedMood='';
+  document.querySelectorAll('.mood').forEach(m=>m.classList.remove('sel'));
+  go('s1');
+}
+
+/* ---- mood picker ---- */
+document.querySelectorAll('.mood').forEach(m=>{
+  m.addEventListener('click',()=>{
+    document.querySelectorAll('.mood').forEach(x=>x.classList.remove('sel'));
+    m.classList.add('sel');
+    selectedMood = m.dataset.mood;
+  });
+});
+
+/* ---- send ---- */
+function send(){
+  const msg     = document.getElementById('message').value.trim();
+  const name    = document.getElementById('name').value.trim();
+  const contact = document.getElementById('contact').value.trim();
+  const err     = document.getElementById('err');
+
+  if(!msg){ err.style.display='block'; return; }
+  err.style.display='none';
+
+  const moodTxt = selectedMood ? '['+selectedMood+'] ' : '';
+  const fullName = name || 'Someone';
+
+  /* No Formspree id set -> email-app fallback */
+  if(!FORMSPREE_ID){
+    const subject = encodeURIComponent(moodTxt + 'Message from ' + fullName + ' (houfu72.com)');
+    const bodyLines = [
+      msg, '', '—',
+      'From: ' + fullName,
+      contact ? 'Contact: ' + contact : '',
+      'Mood: ' + (selectedMood || '—')
+    ].filter(Boolean).join('\n');
+    document.getElementById('mailtoLink').href =
+      'mailto:' + MY_EMAIL + '?subject=' + subject + '&body=' + encodeURIComponent(bodyLines);
+    go('s4');
+    return;
+  }
+
+  /* Formspree AJAX submit */
+  const btn = document.getElementById('sendBtn');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spin">🌸</span>';
+  btn.style.pointerEvents='none';
+
+  fetch('https://formspree.io/f/' + FORMSPREE_ID, {
+    method:'POST',
+    headers:{'Accept':'application/json'},
+    body:(()=>{const f=new FormData();
+      f.append('message',msg);
+      f.append('name',fullName);
+      f.append('contact',contact);
+      f.append('mood',selectedMood||'—');
+      f.append('_subject',moodTxt+'Message from '+fullName+' (houfu72.com)');
+      return f;})()
+  })
+  .then(r=>{
+    btn.innerHTML=orig; btn.style.pointerEvents='auto';
+    if(r.ok){ go('s3'); }
+    else{ throw new Error('bad response'); }
+  })
+  .catch(()=>{
+    /* network / config problem -> fall back to email app */
+    btn.innerHTML=orig; btn.style.pointerEvents='auto';
+    const subject = encodeURIComponent(moodTxt + 'Message from ' + fullName + ' (houfu72.com)');
+    const bodyLines = [msg,'','—','From: '+fullName,contact?'Contact: '+contact:'','Mood: '+(selectedMood||'—')].filter(Boolean).join('\n');
+    document.getElementById('mailtoLink').href='mailto:'+MY_EMAIL+'?subject='+subject+'&body='+encodeURIComponent(bodyLines);
+    go('s4');
+  });
+}
+
+/* ---- language toggle (mirrors main site EN/中文) ---- */
+let lang = localStorage.getItem('msgLang') || 'en';
+function applyLang(){
+  document.querySelectorAll('[data-en]').forEach(el=>{
+    const t = el.getAttribute('data-'+lang);
+    if(t!==null) el.textContent = t;
+  });
+  document.querySelectorAll('[data-ph-en]').forEach(el=>{
+    const p = el.getAttribute('data-ph-'+lang);
+    if(p!==null) el.placeholder = p;
+  });
+  document.documentElement.lang = (lang==='zh'?'zh':'en');
+}
+document.getElementById('langBtn').addEventListener('click',()=>{
+  lang = (lang==='en'?'zh':'en');
+  localStorage.setItem('msgLang',lang);
+  applyLang();
+});
+applyLang();
+</script>
+</body>
+</html>

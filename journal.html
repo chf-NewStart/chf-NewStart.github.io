@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Journal intime // houfu72.com</title>
+  <meta name="description" content="A quiet private journal — one page per day, saved only in your browser.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+  <meta name="theme-color" content="#f4efe6">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --paper: #f4efe6; --ink: #2b2620; --ink-soft: #6b6257; --line: #ddd4c4;
+      --card: #faf6ee; --accent: #7a5c2e; --accent-soft: rgba(122,92,46,0.12);
+    }
+    html[data-theme="dark"] {
+      --paper: #14120f; --ink: #d8d2c6; --ink-soft: #8a8378; --line: #2b2820;
+      --card: #1b1814; --accent: #c9a35e; --accent-soft: rgba(201,163,94,0.12);
+    }
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: var(--paper); color: var(--ink);
+      min-height: 100vh; padding: 36px 20px 80px;
+      line-height: 1.8;
+    }
+    .wrap { max-width: 680px; margin: 0 auto; }
+    a { color: var(--accent); }
+
+    .fade { transition: opacity 1.4s ease; }
+    body.writing .fade { opacity: 0.07; transition: opacity 2.2s ease; }
+
+    .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+    h1 { font-size: 1.5rem; font-weight: normal; font-style: italic; }
+    .top .tools { display: flex; gap: 10px; align-items: center; }
+    .sub { color: var(--ink-soft); font-size: 0.85rem; margin-bottom: 34px; }
+
+    .btn {
+      font-family: inherit; font-size: 0.8rem; color: var(--accent);
+      background: transparent; border: 1px solid var(--accent); border-radius: 3px;
+      padding: 5px 12px; cursor: pointer; text-decoration: none; display: inline-block;
+    }
+    .btn:hover { background: var(--accent-soft); }
+    .btn.quiet { border-color: var(--line); color: var(--ink-soft); }
+    .btn.quiet:hover { background: var(--accent-soft); color: var(--accent); }
+    .hidden { display: none; }
+
+    .day { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+    .day h2 { font-size: 1.12rem; font-weight: normal; font-style: italic; }
+    .whisper { font-size: 0.74rem; color: var(--ink-soft); min-height: 1.2em; }
+
+    #page {
+      width: 100%; min-height: 58vh; resize: none; overflow: hidden;
+      font-family: inherit; font-size: 1.05rem; line-height: 1.95; color: var(--ink);
+      background: transparent; border: none; outline: none;
+      border-top: 1px solid var(--line); padding: 22px 2px 40px;
+      caret-color: var(--accent);
+    }
+    #page::placeholder { color: var(--ink-soft); opacity: 0.55; font-style: italic; }
+
+    .archive { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
+    .archive .cap { font-size: 0.74rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 10px; }
+    .past {
+      display: flex; gap: 14px; align-items: baseline; padding: 7px 4px;
+      cursor: pointer; border-radius: 3px; font-size: 0.9rem;
+    }
+    .past:hover { background: var(--accent-soft); }
+    .past .d { color: var(--accent); white-space: nowrap; font-size: 0.82rem; }
+    .past .p { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .toolsrow { margin-top: 30px; display: flex; gap: 10px; flex-wrap: wrap; }
+    footer { max-width: 680px; margin: 46px auto 0; font-size: 0.75rem; color: var(--ink-soft); }
+    @media (max-width: 720px) { body { padding: 24px 14px 60px; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top fade">
+    <h1>Journal intime</h1>
+    <div class="tools">
+      <button class="btn quiet" id="themeBtn">night / day</button>
+      <a class="btn quiet" href="/">← houfu72.com</a>
+    </div>
+  </div>
+  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage) — nothing is uploaded, ever.</p>
+
+  <div class="day">
+    <h2 id="dayTitle"></h2>
+    <span class="whisper fade" id="whisper"></span>
+  </div>
+  <div class="fade" id="notToday" style="margin-bottom:10px" hidden>
+    <button class="btn quiet" id="todayBtn">← back to today</button>
+  </div>
+
+  <textarea id="page" placeholder="It's just you here. Start anywhere…" spellcheck="false"></textarea>
+
+  <div class="archive fade" id="archive" hidden>
+    <div class="cap">EARLIER PAGES</div>
+    <div id="pastList"></div>
+  </div>
+
+  <div class="toolsrow fade">
+    <button class="btn quiet hidden" id="exportBtn">export everything (.md)</button>
+    <button class="btn quiet hidden" id="backupBtn">back up (.json)</button>
+    <button class="btn quiet" id="restoreBtn">restore a backup…</button>
+    <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
+  </div>
+
+</div>
+<footer class="fade">The page saves itself as you write. · <a href="/">houfu72.com</a></footer>
+
+<script>
+(function(){
+  'use strict';
+  var KEY = 'journalIntime.v1';
+  var state = load();
+
+  function load(){
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.entries) return s; } catch(e){}
+    return { entries: {} };
+  }
+  function persist(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+  function byId(id){ return document.getElementById(id); }
+
+  function dayKey(d){
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+  function prettyDate(key){
+    var p = key.split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  /* ---- theme (shared look with the reading room) ---- */
+  var savedTheme = localStorage.getItem('readingRoom.theme');
+  var startDark = savedTheme ? savedTheme === 'dark'
+    : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (startDark) document.documentElement.setAttribute('data-theme', 'dark');
+  byId('themeBtn').onclick = function(){
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('readingRoom.theme', next);
+  };
+
+  /* ---- one open page at a time ---- */
+  var today = dayKey(new Date());
+  var openDay = today;
+  var page = byId('page');
+
+  function openEntry(key){
+    openDay = key;
+    byId('dayTitle').textContent = prettyDate(key) + (key === today ? '' : '');
+    byId('notToday').hidden = (key === today);
+    page.value = (state.entries[key] && state.entries[key].text) || '';
+    grow();
+    whisperCount();
+    renderArchive();
+  }
+
+  function grow(){
+    page.style.height = 'auto';
+    page.style.height = Math.max(page.scrollHeight, window.innerHeight * 0.58) + 'px';
+  }
+
+  function wordCount(t){
+    t = t.trim();
+    return t ? t.split(/\s+/).length : 0;
+  }
+  function whisperCount(msg){
+    var n = wordCount(page.value);
+    byId('whisper').textContent = (msg ? msg + ' · ' : '') + (n ? n + ' word' + (n > 1 ? 's' : '') : '');
+  }
+
+  /* ---- autosave, quietly ---- */
+  var saveTimer = null;
+  page.addEventListener('input', function(){
+    grow();
+    document.body.classList.add('writing');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      var t = page.value;
+      if (t.trim()) state.entries[openDay] = { text: t, updated: Date.now() };
+      else delete state.entries[openDay];
+      persist();
+      var at = new Date();
+      whisperCount('saved ' + String(at.getHours()).padStart(2, '0') + ':' + String(at.getMinutes()).padStart(2, '0'));
+      toolsVisibility();
+    }, 400);
+  });
+  document.addEventListener('mousemove', function(){ document.body.classList.remove('writing'); });
+  page.addEventListener('blur', function(){ document.body.classList.remove('writing'); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') document.body.classList.remove('writing'); });
+  window.addEventListener('resize', grow);
+
+  /* ---- earlier pages ---- */
+  function renderArchive(){
+    var keys = Object.keys(state.entries).filter(function(k){ return k !== openDay; }).sort().reverse();
+    byId('archive').hidden = !keys.length;
+    var list = byId('pastList');
+    list.innerHTML = '';
+    keys.forEach(function(k){
+      var row = document.createElement('div');
+      row.className = 'past';
+      var preview = state.entries[k].text.replace(/\s+/g, ' ').trim().slice(0, 90);
+      var d = document.createElement('span'); d.className = 'd'; d.textContent = k;
+      var p = document.createElement('span'); p.className = 'p'; p.textContent = preview;
+      row.appendChild(d); row.appendChild(p);
+      row.onclick = function(){ openEntry(k); window.scrollTo(0, 0); };
+      list.appendChild(row);
+    });
+    toolsVisibility();
+  }
+  byId('todayBtn').onclick = function(){ openEntry(today); };
+
+  function toolsVisibility(){
+    var any = Object.keys(state.entries).length > 0;
+    byId('exportBtn').classList.toggle('hidden', !any);
+    byId('backupBtn').classList.toggle('hidden', !any);
+  }
+
+  /* ---- export / backup / restore ---- */
+  function download(name, text, type){
+    var blob = new Blob([text], { type: type });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  byId('exportBtn').onclick = function(){
+    var keys = Object.keys(state.entries).sort();
+    var lines = ['# Journal intime', ''];
+    keys.forEach(function(k){
+      lines.push('## ' + prettyDate(k), '', state.entries[k].text.trim(), '');
+    });
+    download('journal-intime.md', lines.join('\n'), 'text/markdown');
+  };
+  byId('backupBtn').onclick = function(){
+    download('journal-intime-backup.json', JSON.stringify(state, null, 2), 'application/json');
+  };
+  byId('restoreBtn').onclick = function(){ byId('restoreFile').click(); };
+  byId('restoreFile').onchange = function(){
+    var f = this.files[0]; this.value = ''; if (!f) return;
+    f.text().then(function(t){
+      var s = JSON.parse(t);
+      if (!s || !s.entries) throw new Error('format');
+      var added = 0;
+      Object.keys(s.entries).forEach(function(k){
+        var inc = s.entries[k];
+        if (!inc || !inc.text) return;
+        var cur = state.entries[k];
+        /* never lose words: on conflict keep the longer page */
+        if (!cur || inc.text.length > cur.text.length) { state.entries[k] = inc; added++; }
+      });
+      persist();
+      openEntry(openDay);
+      alert(added + ' page(s) restored.');
+    }).catch(function(){ alert('Invalid backup file.'); });
+  };
+
+  openEntry(today);
+  if (window.matchMedia && matchMedia('(pointer: fine)').matches) page.focus();
+})();
+</script>
+</body>
+</html>

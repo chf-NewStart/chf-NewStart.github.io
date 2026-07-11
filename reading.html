@@ -120,6 +120,21 @@
   <div id="viewHome">
 
     <div class="panel">
+      <h2>Déposer un passage — instant FR + EN</h2>
+      <p class="muted small">Paste a copied passage, or drop / paste a <strong>screenshot</strong> of the page — local OCR reads it in your browser (nothing is uploaded) and, if part of the image is highlighted, keeps <strong>only the highlighted passage</strong>. Then one click gives you the original with English under each paragraph. Nothing is saved unless you keep it.</p>
+      <textarea id="qDrop" placeholder="Collez le passage ici… ou déposez une capture d'écran sur cette zone."></textarea>
+      <div class="row">
+        <button class="btn" id="qGo">traduire</button>
+        <button class="btn quiet" id="qImgBtn" type="button">ou une capture d'écran…</button>
+        <button class="btn quiet hidden" id="qAllText" type="button">utiliser tout le texte de l'image</button>
+        <button class="btn quiet hidden" id="qKeep">garder dans la bibliothèque</button>
+        <input type="file" id="qImgFile" accept="image/*" class="hidden">
+      </div>
+      <p class="small muted" id="qStatus" style="margin-top:8px"></p>
+      <div id="qOut"></div>
+    </div>
+
+    <div class="panel">
       <h2>Christophe André — <em>Trois minutes à méditer</em></h2>
       <p class="muted small">« La grâce qui traverse au feu rouge » is one of ~40 short radio chronicles (France&nbsp;Inter / France&nbsp;Culture, 2016) collected in this book (L'Iconoclaste, 2017). The full book exists only in print/ebook and has no official English edition — but the author has posted many chronicles free on his blog.</p>
       <ul class="links">
@@ -414,6 +429,248 @@
 
   /* ---- on-device translation (Chrome/Edge built-in Translator API) ---- */
   var canTranslate = ('Translator' in window);
+
+  async function makeTranslator(onStatus){
+    var avail = await Translator.availability({ sourceLanguage: 'fr', targetLanguage: 'en' });
+    if (avail === 'unavailable') throw new Error('FR→EN indisponible sur ce navigateur');
+    return Translator.create({
+      sourceLanguage: 'fr', targetLanguage: 'en',
+      monitor: function(m){
+        m.addEventListener('downloadprogress', function(e){
+          onStatus('modèle de traduction… ' + Math.round((e.loaded || 0) * 100) + '%');
+        });
+      }
+    });
+  }
+
+  /* ---- quick drop: paste passage or screenshot -> instant FR + EN ---- */
+  var qFullText = '';   // all OCR text, offered when highlight-only was auto-selected
+  var qResult = null;   // { fr: [...], en: [...] } of the last translation
+
+  byId('qGo').onclick = async function(){
+    var frP = paras(byId('qDrop').value);
+    if (!frP.length) { byId('qDrop').focus(); return; }
+    var st = byId('qStatus'), out = byId('qOut');
+    byId('qKeep').classList.add('hidden');
+    out.innerHTML = '';
+    frP.forEach(function(p){
+      var div = document.createElement('div');
+      div.className = 'para stack';
+      var fr = document.createElement('div'); fr.className = 'fr'; fr.textContent = p;
+      div.appendChild(fr);
+      out.appendChild(div);
+    });
+    if (!canTranslate) {
+      st.innerHTML = 'La traduction sur l\'appareil demande Chrome ou Edge — en attendant : ';
+      var a = document.createElement('a');
+      a.href = 'https://translate.google.com/?sl=fr&tl=en&op=translate&text=' + encodeURIComponent(byId('qDrop').value.slice(0, 1800));
+      a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'ouvrir dans Google Translate ↗';
+      st.appendChild(a);
+      return;
+    }
+    var btn = byId('qGo');
+    btn.disabled = true;
+    try {
+      var tr = await makeTranslator(function(s){ st.textContent = s; });
+      var en = [];
+      var divs = out.querySelectorAll('.para');
+      for (var i = 0; i < frP.length; i++){
+        st.textContent = 'traduction ' + (i + 1) + '/' + frP.length + '…';
+        var t = await tr.translate(frP[i]);
+        en.push(t);
+        var enDiv = document.createElement('div');
+        enDiv.className = 'en';
+        enDiv.textContent = t;
+        divs[i].appendChild(enDiv);
+      }
+      qResult = { fr: frP, en: en };
+      st.textContent = '';
+      byId('qKeep').classList.remove('hidden');
+    } catch (e) {
+      st.textContent = 'échec : ' + (e && e.message ? e.message.slice(0, 80) : 'erreur');
+    }
+    btn.disabled = false;
+  };
+
+  byId('qKeep').onclick = function(){
+    if (!qResult) return;
+    var title = qResult.fr[0].split(/\s+/).slice(0, 6).join(' ');
+    if (title.length > 48) title = title.slice(0, 48);
+    var id = 'q' + (state.chapters.length + 1) + '_' + qResult.fr.join('').length;
+    state.chapters.push({
+      id: id, title: title + '…',
+      fr: qResult.fr.join('\n\n'), en: qResult.en.join('\n\n'),
+      enAuto: true, notes: {}
+    });
+    save();
+    byId('qDrop').value = ''; byId('qOut').innerHTML = '';
+    byId('qKeep').classList.add('hidden');
+    qResult = null;
+    openReader(id);
+  };
+
+  /* ---- screenshot OCR: local tesseract + highlight-color detection ---- */
+  byId('qImgBtn').onclick = function(){ byId('qImgFile').click(); };
+  byId('qImgFile').onchange = function(){
+    var f = this.files[0]; this.value = '';
+    if (f) runOcr(f);
+  };
+  byId('qAllText').onclick = function(){
+    byId('qDrop').value = qFullText;
+    byId('qAllText').classList.add('hidden');
+    byId('qStatus').textContent = 'texte complet de l\'image chargé.';
+  };
+  document.addEventListener('paste', function(ev){
+    if (!ev.clipboardData) return;
+    for (var i = 0; i < ev.clipboardData.items.length; i++){
+      var it = ev.clipboardData.items[i];
+      if (it.type && it.type.indexOf('image/') === 0){
+        ev.preventDefault();
+        runOcr(it.getAsFile());
+        return;
+      }
+    }
+  });
+  var qPanel = byId('qDrop').closest('.panel');
+  qPanel.addEventListener('dragover', function(ev){ ev.preventDefault(); });
+  qPanel.addEventListener('drop', function(ev){
+    ev.preventDefault();
+    var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+    if (f && f.type.indexOf('image/') === 0) runOcr(f);
+  });
+
+  function loadScript(src){
+    return new Promise(function(res, rej){
+      var s = document.createElement('script');
+      s.src = src; s.onload = res;
+      s.onerror = function(){ rej(new Error('chargement impossible : ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function runOcr(file){
+    var st = byId('qStatus');
+    byId('qAllText').classList.add('hidden');
+    try {
+      st.textContent = 'chargement de l\'OCR local…';
+      if (!window.Tesseract) await loadScript('/vendor/tesseract/tesseract.min.js');
+      var bmp = await createImageBitmap(file);
+      var scale = Math.min(1, 1600 / bmp.width);
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.round(bmp.width * scale);
+      canvas.height = Math.round(bmp.height * scale);
+      var ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+      /* OCR a whitened copy: colored highlight backgrounds break Tesseract's
+         binarisation, so lift every light pixel to pure white and keep only ink.
+         The original canvas keeps the colors for highlight detection below. */
+      var ocrCanvas = document.createElement('canvas');
+      ocrCanvas.width = canvas.width; ocrCanvas.height = canvas.height;
+      var octx = ocrCanvas.getContext('2d');
+      octx.drawImage(canvas, 0, 0);
+      var id = octx.getImageData(0, 0, ocrCanvas.width, ocrCanvas.height);
+      var px = id.data, lum = 0, cnt = 0;
+      for (var s = 0; s < px.length; s += 4 * 97){ lum += px[s] + px[s + 1] + px[s + 2]; cnt++; }
+      if (lum / cnt > 380) {   // light page: safe to whiten (skip for dark-mode shots)
+        for (var j = 0; j < px.length; j += 4){
+          if (px[j] + px[j + 1] + px[j + 2] > 330) { px[j] = px[j + 1] = px[j + 2] = 255; }
+        }
+        octx.putImageData(id, 0, 0);
+      }
+      var worker = await Tesseract.createWorker('fra', 1, {
+        workerPath: '/vendor/tesseract/worker.min.js',
+        corePath: '/vendor/tesseract/',
+        langPath: '/vendor/tesseract',
+        logger: function(m){
+          if (m.status === 'recognizing text') st.textContent = 'lecture de l\'image… ' + Math.round(m.progress * 100) + '%';
+          else st.textContent = 'OCR : ' + m.status + '…';
+        }
+      });
+      var data = (await worker.recognize(ocrCanvas)).data;
+      await worker.terminate();
+      var lines = [];
+      (data.blocks || []).forEach(function(b){ (b.paragraphs || []).forEach(function(pg){ (pg.lines || []).forEach(function(l){ lines.push(l); }); }); });
+      if (!lines.length && data.lines) lines = data.lines;
+      if (!lines.length) { st.textContent = 'aucun texte reconnu dans l\'image.'; return; }
+      var hl = markHighlighted(ctx, canvas.width, canvas.height, lines);
+      var allText = joinLines(lines, function(){ return true; });
+      var hlText = hl.count >= 3 ? joinLines(lines, function(w){ return hl.map.get(w); }) : '';
+      qFullText = allText;
+      var frac = hl.total ? hl.count / hl.total : 0;
+      if (hlText && frac > 0.02 && frac < 0.98) {
+        byId('qDrop').value = hlText;
+        st.textContent = 'passage surligné détecté (' + hl.count + ' mots) — vérifiez l\'OCR puis « traduire ».';
+        byId('qAllText').classList.remove('hidden');
+      } else {
+        byId('qDrop').value = allText;
+        st.textContent = 'texte reconnu — vérifiez l\'OCR puis « traduire ».';
+      }
+    } catch (e) {
+      st.textContent = 'échec de l\'OCR : ' + (e && e.message ? e.message.slice(0, 80) : 'erreur');
+    }
+  }
+
+  /* a word counts as highlighted when the light pixels around its glyphs
+     differ clearly from the page's dominant background colour */
+  function markHighlighted(ctx, W, H, lines){
+    var img = ctx.getImageData(0, 0, W, H).data;
+    var quant = function(r, g, b){ return ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4); };
+    var counts = {};
+    for (var y = 0; y < H; y += 7){
+      for (var x = 0; x < W; x += 7){
+        var i = (y * W + x) * 4;
+        var k = quant(img[i], img[i + 1], img[i + 2]);
+        counts[k] = (counts[k] || 0) + 1;
+      }
+    }
+    var bg = 0, bc = 0;
+    Object.keys(counts).forEach(function(k){ if (counts[k] > bc) { bc = counts[k]; bg = +k; } });
+    var bgR = ((bg >> 8) & 15) << 4, bgG = ((bg >> 4) & 15) << 4, bgB = (bg & 15) << 4;
+    var map = new Map(), total = 0, count = 0, prev = false;
+    lines.forEach(function(l){
+      (l.words || []).forEach(function(w){
+        total++;
+        var b = w.bbox, n = 0, far = 0;
+        for (var y = b.y0; y < b.y1; y += 3){
+          for (var x = b.x0; x < b.x1; x += 3){
+            var i = (Math.min(y, H - 1) * W + Math.min(x, W - 1)) * 4;
+            var r = img[i], g = img[i + 1], bl = img[i + 2];
+            if (r + g + bl > 330){
+              n++;
+              if (Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(bl - bgB) > 70) far++;
+            }
+          }
+        }
+        var isHl = n > 3 ? (far / n > 0.5) : prev;
+        prev = isHl;
+        map.set(w, isHl);
+        if (isHl) count++;
+      });
+    });
+    return { map: map, total: total, count: count };
+  }
+
+  function joinLines(lines, keep){
+    var heights = lines.map(function(l){ return l.bbox.y1 - l.bbox.y0; }).sort(function(a, b){ return a - b; });
+    var medH = heights[Math.floor(heights.length / 2)] || 20;
+    var out = '', lastBottom = null;
+    lines.forEach(function(l){
+      var ws = (l.words || []).filter(keep).map(function(w){ return w.text; });
+      if (!ws.length) return;
+      var seg = ws.join(' ').replace(/\s+/g, ' ').trim();
+      if (!seg) return;
+      if (!out) { out = seg; }
+      else {
+        var gap = lastBottom === null ? 0 : l.bbox.y0 - lastBottom;
+        if (gap > medH * 1.4) out += '\n\n' + seg;
+        else if (/[-­]$/.test(out)) out = out.replace(/[-­]$/, '') + seg;
+        else out += ' ' + seg;
+      }
+      lastBottom = l.bbox.y1;
+    });
+    return out;
+  }
+
   byId('translateBtn').onclick = async function(){
     var ch = find(currentId); if (!ch || !canTranslate) return;
     if (ch.en && !ch.enAuto &&
@@ -421,16 +678,7 @@
     var btn = byId('translateBtn');
     btn.disabled = true;
     try {
-      var avail = await Translator.availability({ sourceLanguage: 'fr', targetLanguage: 'en' });
-      if (avail === 'unavailable') { btn.textContent = 'FR→EN indisponible sur ce navigateur'; return; }
-      var tr = await Translator.create({
-        sourceLanguage: 'fr', targetLanguage: 'en',
-        monitor: function(m){
-          m.addEventListener('downloadprogress', function(e){
-            btn.textContent = 'modèle de traduction… ' + Math.round((e.loaded || 0) * 100) + '%';
-          });
-        }
-      });
+      var tr = await makeTranslator(function(s){ btn.textContent = s; });
       var frP = paras(ch.fr), out = [];
       var paraEls = byId('rBody').querySelectorAll('.para');
       for (var i = 0; i < frP.length; i++){

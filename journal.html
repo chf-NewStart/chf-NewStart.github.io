@@ -60,14 +60,30 @@
     #page::placeholder { color: var(--ink-soft); opacity: 0.55; font-style: italic; }
 
     .archive { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
-    .archive .cap { font-size: 0.74rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 10px; }
-    .past {
-      display: flex; gap: 14px; align-items: baseline; padding: 7px 4px;
-      cursor: pointer; border-radius: 3px; font-size: 0.9rem;
+    .cap-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .archive .cap { font-size: 0.74rem; color: var(--ink-soft); letter-spacing: 1px; }
+    .cal-nav { display: flex; gap: 8px; align-items: baseline; }
+    .cal-nav .btn { padding: 2px 10px; }
+    .cal-label { font-size: 0.82rem; color: var(--ink-soft); min-width: 118px; text-align: center; }
+    .calbox { max-width: 340px; }
+    .cal-head, .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .cal-head { margin-bottom: 4px; }
+    .cal-head span { font-size: 0.64rem; color: var(--ink-soft); text-align: center; letter-spacing: 1px; }
+    .cal-day {
+      position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem; color: var(--ink-soft); border-radius: 3px;
     }
-    .past:hover { background: var(--accent-soft); }
-    .past .d { color: var(--accent); white-space: nowrap; font-size: 0.82rem; }
-    .past .p { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cal-day.in-month { color: var(--ink); }
+    .cal-day.clickable { cursor: pointer; }
+    .cal-day.clickable:hover { background: var(--accent-soft); }
+    .cal-day.future { opacity: 0.3; }
+    .cal-day.is-today { outline: 1px solid var(--line); }
+    .cal-day.has-entry { color: var(--accent); }
+    .cal-day.has-entry::after {
+      content: ''; position: absolute; bottom: 4px; left: 50%; margin-left: -2px;
+      width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+    }
+    .cal-day.is-open { background: var(--accent-soft); }
 
     .toolsrow { margin-top: 30px; display: flex; gap: 10px; flex-wrap: wrap; }
     footer { max-width: 680px; margin: 46px auto 0; font-size: 0.75rem; color: var(--ink-soft); }
@@ -97,8 +113,18 @@
   <textarea id="page" placeholder="It's just you here. Start anywhere…" spellcheck="false"></textarea>
 
   <div class="archive fade" id="archive" hidden>
-    <div class="cap">EARLIER PAGES</div>
-    <div id="pastList"></div>
+    <div class="cap-row">
+      <div class="cap">PAGES</div>
+      <div class="cal-nav">
+        <button class="btn quiet" id="calPrev" type="button">‹</button>
+        <span class="cal-label" id="calLabel"></span>
+        <button class="btn quiet" id="calNext" type="button">›</button>
+      </div>
+    </div>
+    <div class="calbox">
+      <div class="cal-head" id="calHead"></div>
+      <div class="cal" id="calGrid"></div>
+    </div>
   </div>
 
   <div class="toolsrow fade">
@@ -189,7 +215,7 @@
       persist();
       var at = new Date();
       whisperCount('saved ' + String(at.getHours()).padStart(2, '0') + ':' + String(at.getMinutes()).padStart(2, '0'));
-      toolsVisibility();
+      renderArchive();
     }, 400);
   });
   document.addEventListener('mousemove', function(){ document.body.classList.remove('writing'); });
@@ -197,24 +223,68 @@
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape') document.body.classList.remove('writing'); });
   window.addEventListener('resize', grow);
 
-  /* ---- earlier pages ---- */
+  /* ---- calendar of pages ---- */
+  var calY, calM;
+  (function(){ var d = new Date(); calY = d.getFullYear(); calM = d.getMonth(); })();
+  function pad2(n){ return String(n).padStart(2, '0'); }
+
   function renderArchive(){
-    var keys = Object.keys(state.entries).filter(function(k){ return k !== openDay; }).sort().reverse();
-    byId('archive').hidden = !keys.length;
-    var list = byId('pastList');
-    list.innerHTML = '';
-    keys.forEach(function(k){
-      var row = document.createElement('div');
-      row.className = 'past';
-      var preview = state.entries[k].text.replace(/\s+/g, ' ').trim().slice(0, 90);
-      var d = document.createElement('span'); d.className = 'd'; d.textContent = k;
-      var p = document.createElement('span'); p.className = 'p'; p.textContent = preview;
-      row.appendChild(d); row.appendChild(p);
-      row.onclick = function(){ openEntry(k); window.scrollTo(0, 0); };
-      list.appendChild(row);
-    });
+    var any = Object.keys(state.entries).length > 0;
+    byId('archive').hidden = !any;
     toolsVisibility();
+    if (any) renderCalendar();
   }
+
+  function renderCalendar(){
+    byId('calLabel').textContent = new Date(calY, calM, 1)
+      .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    var head = byId('calHead');
+    head.innerHTML = '';
+    ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function(w){
+      var s = document.createElement('span');
+      s.textContent = w;
+      head.appendChild(s);
+    });
+    var grid = byId('calGrid');
+    grid.innerHTML = '';
+    var offset = (new Date(calY, calM, 1).getDay() + 6) % 7;   // Monday first
+    var daysInMonth = new Date(calY, calM + 1, 0).getDate();
+    for (var i = 0; i < offset; i++){
+      var blank = document.createElement('div');
+      blank.className = 'cal-day';
+      grid.appendChild(blank);
+    }
+    for (var day = 1; day <= daysInMonth; day++){
+      (function(day){
+        var key = calY + '-' + pad2(calM + 1) + '-' + pad2(day);
+        var cell = document.createElement('div');
+        cell.className = 'cal-day in-month';
+        cell.textContent = day;
+        if (key === today) cell.classList.add('is-today');
+        if (key === openDay) cell.classList.add('is-open');
+        if (state.entries[key]) {
+          cell.classList.add('has-entry');
+          cell.title = state.entries[key].text.replace(/\s+/g, ' ').trim().slice(0, 90);
+        }
+        if (key <= today) {
+          cell.classList.add('clickable');
+          cell.onclick = function(){ openEntry(key); window.scrollTo(0, 0); };
+        } else {
+          cell.classList.add('future');
+        }
+        grid.appendChild(cell);
+      })(day);
+    }
+  }
+
+  byId('calPrev').onclick = function(){
+    calM--; if (calM < 0) { calM = 11; calY--; }
+    renderCalendar();
+  };
+  byId('calNext').onclick = function(){
+    calM++; if (calM > 11) { calM = 0; calY++; }
+    renderCalendar();
+  };
   byId('todayBtn').onclick = function(){ openEntry(today); };
 
   function toolsVisibility(){

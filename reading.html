@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salle de lecture // houfu72.com</title>
+  <meta name="description" content="A quiet private reading room — paste a text you own, read it in parallel French/English, and take paragraph-level notes stored only in your browser.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+  <meta name="theme-color" content="#f4efe6">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --paper: #f4efe6; --ink: #2b2620; --ink-soft: #6b6257; --line: #ddd4c4;
+      --card: #faf6ee; --accent: #7a5c2e; --accent-soft: rgba(122,92,46,0.12);
+      --note-bg: #fdf9e8; --note-line: #e6dbb0;
+    }
+    html[data-theme="dark"] {
+      --paper: #14120f; --ink: #d8d2c6; --ink-soft: #8a8378; --line: #2b2820;
+      --card: #1b1814; --accent: #c9a35e; --accent-soft: rgba(201,163,94,0.12);
+      --note-bg: #201d14; --note-line: #3a3320;
+    }
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: var(--paper); color: var(--ink);
+      min-height: 100vh; padding: 36px 20px 80px;
+      line-height: 1.7;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    a { color: var(--accent); }
+
+    .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+    h1 { font-size: 1.5rem; font-weight: normal; font-style: italic; }
+    .top .tools { display: flex; gap: 10px; align-items: center; font-size: 0.8rem; }
+    .sub { color: var(--ink-soft); font-size: 0.85rem; margin-bottom: 30px; }
+
+    .btn {
+      font-family: inherit; font-size: 0.8rem; color: var(--accent);
+      background: transparent; border: 1px solid var(--accent); border-radius: 3px;
+      padding: 5px 12px; cursor: pointer; text-decoration: none; display: inline-block;
+    }
+    .btn:hover { background: var(--accent-soft); }
+    .btn.quiet { border-color: var(--line); color: var(--ink-soft); }
+    .btn.quiet:hover { background: var(--accent-soft); color: var(--accent); }
+
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 22px 24px; margin-bottom: 22px; }
+    .panel h2 { font-size: 1.05rem; font-weight: normal; margin-bottom: 10px; }
+    .panel p { font-size: 0.92rem; margin-bottom: 10px; }
+    .panel p:last-child { margin-bottom: 0; }
+    .muted { color: var(--ink-soft); }
+    .small { font-size: 0.8rem; }
+    ul.links { list-style: none; font-size: 0.9rem; }
+    ul.links li { margin-bottom: 7px; }
+    ul.links li::before { content: "→ "; color: var(--accent); }
+
+    /* library */
+    .shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .book {
+      background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+      padding: 16px 18px; cursor: pointer;
+    }
+    .book:hover { border-color: var(--accent); }
+    .book .t { font-style: italic; margin-bottom: 4px; }
+    .book .m { font-size: 0.75rem; color: var(--ink-soft); }
+
+    /* editor */
+    label { display: block; font-size: 0.8rem; color: var(--ink-soft); margin: 14px 0 4px; }
+    input[type=text], textarea {
+      width: 100%; font-family: inherit; font-size: 0.92rem; color: var(--ink);
+      background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 9px 11px;
+    }
+    textarea { min-height: 180px; resize: vertical; line-height: 1.6; }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    .row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .import-row { display: flex; gap: 12px; align-items: center; margin: 6px 0 8px; flex-wrap: wrap; }
+
+    /* reader */
+    .chapter-title { font-size: 1.3rem; font-style: italic; margin: 10px 0 2px; }
+    .chapter-meta { color: var(--ink-soft); font-size: 0.8rem; margin-bottom: 24px; }
+    .para { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; padding: 14px 0 6px; border-top: 1px solid var(--line); }
+    .para.solo, .para.stack { grid-template-columns: 1fr; }
+    .para.stack { gap: 6px; }
+    .para .fr { font-size: 1rem; }
+    .para .en { font-size: 0.92rem; color: var(--ink-soft); }
+    .para.stack .en { font-style: italic; }
+    .para-tools { grid-column: 1 / -1; display: flex; gap: 14px; font-size: 0.72rem; margin-top: 6px; }
+    .para-tools a, .para-tools button {
+      font-family: inherit; font-size: 0.72rem; color: var(--ink-soft);
+      background: none; border: none; cursor: pointer; text-decoration: none; padding: 0;
+    }
+    .para-tools a:hover, .para-tools button:hover { color: var(--accent); }
+    .para-tools .has-note { color: var(--accent); }
+    .note-box { grid-column: 1 / -1; margin-top: 8px; }
+    .note-box textarea {
+      min-height: 64px; background: var(--note-bg); border-color: var(--note-line);
+      font-size: 0.85rem;
+    }
+    @media (max-width: 720px) {
+      .para { grid-template-columns: 1fr; gap: 8px; }
+      body { padding: 24px 14px 60px; }
+    }
+    .hidden { display: none; }
+    footer { max-width: 980px; margin: 60px auto 0; font-size: 0.75rem; color: var(--ink-soft); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h1>Salle de lecture</h1>
+    <div class="tools">
+      <button class="btn quiet" id="themeBtn">nuit / jour</button>
+      <a class="btn quiet" href="/">← houfu72.com</a>
+    </div>
+  </div>
+  <p class="sub">A private reading room. Texts you paste here live only in this browser (localStorage) — nothing is uploaded or published.</p>
+
+  <!-- ============ HOME / LIBRARY ============ -->
+  <div id="viewHome">
+
+    <div class="panel">
+      <h2>Christophe André — <em>Trois minutes à méditer</em></h2>
+      <p class="muted small">« La grâce qui traverse au feu rouge » is one of ~40 short radio chronicles (France&nbsp;Inter / France&nbsp;Culture, 2016) collected in this book (L'Iconoclaste, 2017). The full book exists only in print/ebook and has no official English edition — but the author has posted many chronicles free on his blog.</p>
+      <ul class="links">
+        <li><a href="https://www.christopheandre.com/le-blog-de-christophe-andre/la-grace-qui-traverse-au-feu-rouge/" target="_blank" rel="noopener">Read « La grâce qui traverse au feu rouge » (original, français)</a></li>
+        <li><a href="https://www-christopheandre-com.translate.goog/le-blog-de-christophe-andre/la-grace-qui-traverse-au-feu-rouge/?_x_tr_sl=fr&_x_tr_tl=en&_x_tr_hl=en" target="_blank" rel="noopener">Same chapter in English (via Google Translate)</a></li>
+        <li><a href="https://www.christopheandre.com/le-blog-de-christophe-andre/" target="_blank" rel="noopener">All free chronicles on his blog (français)</a></li>
+        <li><a href="https://www-christopheandre-com.translate.goog/le-blog-de-christophe-andre/?_x_tr_sl=fr&_x_tr_tl=en&_x_tr_hl=en" target="_blank" rel="noopener">His blog in English (via Google Translate)</a></li>
+        <li><a href="https://editions-iconoclaste.fr/livre/trois-minutes-a-mediter/" target="_blank" rel="noopener">The book at L'Iconoclaste (to read the entirety)</a></li>
+      </ul>
+    </div>
+
+    <div class="panel">
+      <h2>Your texts</h2>
+      <p class="muted small">Paste a chapter from a copy you own — or <strong>upload a PDF / .txt</strong> — to read it here with paragraph-level notes. The file is read entirely in your browser and never uploaded. On Chrome/Edge, one click translates it <strong>line by line into English on-device</strong> (built-in browser translator — the text never leaves your machine); elsewhere, use the “EN” link under each paragraph or paste your own translation.</p>
+    </div>
+
+    <div class="shelf" id="shelf"></div>
+    <div class="row" style="margin-top:4px">
+      <button class="btn" id="newBtn">+ Nouveau texte</button>
+      <button class="btn quiet" id="backupBtn">sauvegarder tout (.json)</button>
+      <button class="btn quiet" id="restoreBtn">restaurer une sauvegarde…</button>
+      <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
+    </div>
+    <p class="small muted" style="margin-top:10px">Texts and notes persist in this browser automatically. The backup file lets you move them to another browser, device, or computer.</p>
+  </div>
+
+  <!-- ============ EDITOR ============ -->
+  <div id="viewEdit" class="hidden">
+    <div class="panel">
+      <h2 id="editHeading">Nouveau texte</h2>
+      <label for="fTitle">Titre</label>
+      <input type="text" id="fTitle" placeholder="La grâce qui traverse au feu rouge">
+      <label for="fFr">Texte (français) — blank line between paragraphs</label>
+      <div class="import-row">
+        <button class="btn quiet" id="importBtn" type="button">importer un PDF / .txt…</button>
+        <span class="small muted" id="importStatus"></span>
+        <input type="file" id="importFile" accept=".pdf,.txt,application/pdf,text/plain" class="hidden">
+      </div>
+      <textarea id="fFr" placeholder="Collez ici le texte de votre exemplaire… ou importez un fichier ci-dessus."></textarea>
+      <label for="fEn">English translation (optional) — same paragraph breaks to align side-by-side</label>
+      <textarea id="fEn" placeholder="Optional…"></textarea>
+      <div class="row">
+        <button class="btn" id="saveBtn">Enregistrer</button>
+        <button class="btn quiet" id="cancelBtn">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ READER ============ -->
+  <div id="viewRead" class="hidden">
+    <div class="row" style="margin:0 0 8px">
+      <button class="btn quiet" id="backBtn">← bibliothèque</button>
+      <button class="btn quiet" id="layoutBtn"></button>
+      <button class="btn quiet" id="translateBtn"></button>
+      <button class="btn quiet" id="editBtn">modifier</button>
+      <button class="btn quiet" id="exportBtn">exporter mes notes (.md)</button>
+      <button class="btn quiet" id="deleteBtn">supprimer</button>
+    </div>
+    <div class="chapter-title" id="rTitle"></div>
+    <div class="chapter-meta" id="rMeta"></div>
+    <div id="rBody"></div>
+  </div>
+
+</div>
+<footer>Notes are keyed to paragraph position — if you re-edit the text and paragraphs shift, re-check your notes. · <a href="/">houfu72.com</a></footer>
+
+<script>
+(function(){
+  'use strict';
+  var KEY = 'readingRoom.v1';
+  var state = load();
+
+  function load(){
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.chapters) return s; } catch(e){}
+    return { chapters: [] };
+  }
+  function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function paras(text){ return text.split(/\n\s*\n/).map(function(p){ return p.trim(); }).filter(Boolean); }
+  function byId(id){ return document.getElementById(id); }
+
+  /* ---- theme ---- */
+  var savedTheme = localStorage.getItem('readingRoom.theme');
+  var startDark = savedTheme ? savedTheme === 'dark'
+    : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (startDark) document.documentElement.setAttribute('data-theme', 'dark');
+  byId('themeBtn').onclick = function(){
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('readingRoom.theme', next);
+  };
+
+  /* ---- views ---- */
+  var views = ['viewHome','viewEdit','viewRead'];
+  function show(v){ views.forEach(function(x){ byId(x).classList.toggle('hidden', x !== v); }); window.scrollTo(0,0); }
+
+  /* ---- library ---- */
+  function renderShelf(){
+    var shelf = byId('shelf');
+    shelf.innerHTML = '';
+    state.chapters.forEach(function(ch){
+      var noteCount = Object.keys(ch.notes || {}).length;
+      var div = document.createElement('div');
+      div.className = 'book';
+      div.innerHTML = '<div class="t">' + esc(ch.title || 'Sans titre') + '</div>' +
+        '<div class="m">' + paras(ch.fr).length + ' ¶ · ' + (ch.en ? 'FR + EN' : 'FR') +
+        (noteCount ? ' · ' + noteCount + ' note' + (noteCount > 1 ? 's' : '') : '') + '</div>';
+      div.onclick = function(){ openReader(ch.id); };
+      shelf.appendChild(div);
+    });
+  }
+
+  /* ---- editor ---- */
+  var editingId = null;
+  byId('newBtn').onclick = function(){
+    editingId = null;
+    byId('editHeading').textContent = 'Nouveau texte';
+    byId('fTitle').value = ''; byId('fFr').value = ''; byId('fEn').value = '';
+    show('viewEdit');
+  };
+  byId('cancelBtn').onclick = function(){ show('viewHome'); renderShelf(); };
+  byId('saveBtn').onclick = function(){
+    var fr = byId('fFr').value.trim();
+    if (!fr) { byId('fFr').focus(); return; }
+    if (editingId) {
+      var ch = find(editingId);
+      ch.title = byId('fTitle').value.trim();
+      var newEn = byId('fEn').value.trim();
+      if (newEn !== ch.en) ch.enAuto = false;
+      ch.fr = fr; ch.en = newEn;
+      save(); openReader(ch.id);
+    } else {
+      var id = 'c' + (state.chapters.length + 1) + '_' + fr.length;
+      state.chapters.push({ id: id, title: byId('fTitle').value.trim(), fr: fr, en: byId('fEn').value.trim(), notes: {} });
+      save(); openReader(id);
+    }
+  };
+
+  function find(id){ return state.chapters.filter(function(c){ return c.id === id; })[0]; }
+
+  /* ---- reader ---- */
+  var currentId = null;
+  var layout = localStorage.getItem('readingRoom.layout') || 'stack';
+  function openReader(id){
+    var ch = find(id); if (!ch) { show('viewHome'); return; }
+    currentId = id;
+    byId('rTitle').textContent = ch.title || 'Sans titre';
+    var fr = paras(ch.fr), en = ch.en ? paras(ch.en) : [];
+    byId('rMeta').textContent = fr.length + ' paragraphes' +
+      (en.length ? (ch.enAuto ? ' · English: machine-translated on-device' : ' · parallel English') : '');
+    var lb = byId('layoutBtn');
+    lb.classList.toggle('hidden', !en.length);
+    lb.textContent = layout === 'stack' ? '⇆ côte à côte' : '↕ ligne à ligne';
+    var tb = byId('translateBtn');
+    tb.classList.toggle('hidden', !canTranslate);
+    tb.disabled = false;
+    tb.textContent = en.length ? '🌐 retraduire' : '🌐 traduire FR→EN';
+    var body = byId('rBody');
+    body.innerHTML = '';
+    fr.forEach(function(p, i){
+      var div = document.createElement('div');
+      div.className = 'para' + (en.length ? (layout === 'stack' ? ' stack' : '') : ' solo');
+      var noteVal = (ch.notes || {})[i] || '';
+      var gUrl = 'https://translate.google.com/?sl=fr&tl=en&op=translate&text=' + encodeURIComponent(p.slice(0, 1800));
+      div.innerHTML =
+        '<div class="fr">' + esc(p) + '</div>' +
+        (en.length ? '<div class="en">' + esc(en[i] || '') + '</div>' : '') +
+        '<div class="para-tools">' +
+          '<button data-i="' + i + '" class="noteToggle' + (noteVal ? ' has-note' : '') + '">✎ note' + (noteVal ? ' •' : '') + '</button>' +
+          (en.length ? '' : '<a href="' + gUrl + '" target="_blank" rel="noopener">EN ↗</a>') +
+        '</div>' +
+        '<div class="note-box' + (noteVal ? '' : ' hidden') + '"><textarea data-i="' + i + '" placeholder="Votre note…">' + esc(noteVal) + '</textarea></div>';
+      body.appendChild(div);
+    });
+
+    body.querySelectorAll('.noteToggle').forEach(function(btn){
+      btn.onclick = function(){
+        var box = btn.closest('.para').querySelector('.note-box');
+        box.classList.toggle('hidden');
+        if (!box.classList.contains('hidden')) box.querySelector('textarea').focus();
+      };
+    });
+    body.querySelectorAll('.note-box textarea').forEach(function(ta){
+      ta.oninput = function(){
+        var ch2 = find(currentId);
+        if (!ch2.notes) ch2.notes = {};
+        var i = ta.getAttribute('data-i');
+        if (ta.value.trim()) ch2.notes[i] = ta.value; else delete ch2.notes[i];
+        save();
+        var btn = ta.closest('.para').querySelector('.noteToggle');
+        btn.classList.toggle('has-note', !!ta.value.trim());
+        btn.textContent = '✎ note' + (ta.value.trim() ? ' •' : '');
+      };
+    });
+    show('viewRead');
+  }
+
+  /* ---- whole-library backup / restore ---- */
+  byId('backupBtn').onclick = function(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'salle-de-lecture-backup.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  byId('restoreBtn').onclick = function(){ byId('restoreFile').click(); };
+  byId('restoreFile').onchange = function(){
+    var f = this.files[0]; this.value = ''; if (!f) return;
+    f.text().then(function(t){
+      var s = JSON.parse(t);
+      if (!s || !Array.isArray(s.chapters)) throw new Error('format');
+      var have = {};
+      state.chapters.forEach(function(c){ have[c.id] = true; });
+      var added = 0;
+      s.chapters.forEach(function(c){
+        if (c && c.id && c.fr && !have[c.id]) { state.chapters.push(c); added++; }
+      });
+      save(); renderShelf();
+      alert(added + ' texte(s) restauré(s).');
+    }).catch(function(){ alert('Fichier de sauvegarde invalide.'); });
+  };
+
+  /* ---- file import (all in-browser; the file is never uploaded anywhere) ---- */
+  byId('importBtn').onclick = function(){ byId('importFile').click(); };
+  byId('importFile').onchange = function(){
+    var f = this.files[0]; this.value = ''; if (!f) return;
+    var st = byId('importStatus');
+    var job;
+    if (/\.pdf$/i.test(f.name) || f.type === 'application/pdf') {
+      st.textContent = 'chargement du lecteur PDF…';
+      job = extractPdf(f, function(p, n){ st.textContent = 'page ' + p + '/' + n + '…'; });
+    } else {
+      job = f.text();
+    }
+    job.then(function(text){
+      if (!byId('fTitle').value) byId('fTitle').value = f.name.replace(/\.(pdf|txt)$/i, '');
+      byId('fFr').value = (text || '').trim();
+      st.textContent = byId('fFr').value
+        ? 'importé — relisez et ajustez les sauts de paragraphe si besoin'
+        : 'aucun texte trouvé (PDF scanné sans couche texte ?)';
+    }).catch(function(e){
+      st.textContent = 'échec de l\'import : ' + (e && e.message ? e.message.slice(0, 80) : 'erreur');
+    });
+  };
+
+  async function extractPdf(file, onPage){
+    var lib = await import('/vendor/pdfjs/pdf.min.js');
+    lib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.js';
+    var pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+    var pages = [];
+    for (var p = 1; p <= pdf.numPages; p++){
+      onPage(p, pdf.numPages);
+      var tc = await (await pdf.getPage(p)).getTextContent();
+      var lines = [''], k = 0;
+      tc.items.forEach(function(it){
+        if (it.str) lines[k] += it.str;
+        if (it.hasEOL) lines[++k] = '';
+      });
+      var parasText = linesToParas(lines);
+      if (parasText) pages.push(parasText);
+    }
+    return pages.join('\n\n');
+  }
+
+  /* rebuild paragraphs from raw PDF lines: join hyphenated breaks, drop bare
+     page numbers, break where a sentence ends at a line end */
+  function linesToParas(lines){
+    var clean = lines.map(function(l){ return l.replace(/\s+/g, ' ').trim(); });
+    var lens = clean.filter(function(l){ return l.length > 3; })
+                    .map(function(l){ return l.length; })
+                    .sort(function(a, b){ return a - b; });
+    var med = lens.length ? lens[Math.floor(lens.length / 2)] : 60;
+    var out = [], cur = '';
+    clean.forEach(function(l, i){
+      if (!l || /^\d+$/.test(l)) {
+        if (cur) { out.push(cur); cur = ''; }
+        return;
+      }
+      cur = cur
+        ? (/[-­]$/.test(cur) ? cur.replace(/[-­]$/, '') + l : cur + ' ' + l)
+        : l;
+      var endsSentence = /[.!?…»"”]$/.test(l);
+      var short = l.length < med * 0.6;
+      var nextStartsNew = /^[«"“A-ZÀ-ÖØ-Þ—–-]/.test(clean[i + 1] || '');
+      if (endsSentence && (short || nextStartsNew)) { out.push(cur); cur = ''; }
+    });
+    if (cur) out.push(cur);
+    return out.join('\n\n');
+  }
+
+  /* ---- on-device translation (Chrome/Edge built-in Translator API) ---- */
+  var canTranslate = ('Translator' in window);
+  byId('translateBtn').onclick = async function(){
+    var ch = find(currentId); if (!ch || !canTranslate) return;
+    if (ch.en && !ch.enAuto &&
+        !confirm('Remplacer votre traduction anglaise par une traduction automatique ?')) return;
+    var btn = byId('translateBtn');
+    btn.disabled = true;
+    try {
+      var avail = await Translator.availability({ sourceLanguage: 'fr', targetLanguage: 'en' });
+      if (avail === 'unavailable') { btn.textContent = 'FR→EN indisponible sur ce navigateur'; return; }
+      var tr = await Translator.create({
+        sourceLanguage: 'fr', targetLanguage: 'en',
+        monitor: function(m){
+          m.addEventListener('downloadprogress', function(e){
+            btn.textContent = 'modèle de traduction… ' + Math.round((e.loaded || 0) * 100) + '%';
+          });
+        }
+      });
+      var frP = paras(ch.fr), out = [];
+      var paraEls = byId('rBody').querySelectorAll('.para');
+      for (var i = 0; i < frP.length; i++){
+        btn.textContent = 'traduction ' + (i + 1) + '/' + frP.length + '…';
+        var t = await tr.translate(frP[i]);
+        out.push(t);
+        var el = paraEls[i];
+        if (el){
+          el.classList.remove('solo');
+          if (layout === 'stack') el.classList.add('stack');
+          var enDiv = el.querySelector('.en');
+          if (!enDiv){
+            enDiv = document.createElement('div');
+            enDiv.className = 'en';
+            el.querySelector('.fr').after(enDiv);
+          }
+          enDiv.textContent = t;
+        }
+      }
+      ch.en = out.join('\n\n');
+      ch.enAuto = true;
+      save();
+      openReader(currentId);
+    } catch (e) {
+      btn.textContent = 'échec : ' + (e && e.message ? e.message.slice(0, 60) : 'erreur');
+      btn.disabled = false;
+    }
+  };
+
+  byId('backBtn').onclick = function(){ show('viewHome'); renderShelf(); };
+  byId('layoutBtn').onclick = function(){
+    layout = layout === 'stack' ? 'side' : 'stack';
+    localStorage.setItem('readingRoom.layout', layout);
+    openReader(currentId);
+  };
+  byId('editBtn').onclick = function(){
+    var ch = find(currentId); if (!ch) return;
+    editingId = currentId;
+    byId('editHeading').textContent = 'Modifier';
+    byId('fTitle').value = ch.title; byId('fFr').value = ch.fr; byId('fEn').value = ch.en || '';
+    show('viewEdit');
+  };
+  byId('deleteBtn').onclick = function(){
+    var ch = find(currentId); if (!ch) return;
+    if (!confirm('Supprimer « ' + (ch.title || 'Sans titre') + ' » et ses notes ?')) return;
+    state.chapters = state.chapters.filter(function(c){ return c.id !== currentId; });
+    save(); show('viewHome'); renderShelf();
+  };
+  byId('exportBtn').onclick = function(){
+    var ch = find(currentId); if (!ch) return;
+    var fr = paras(ch.fr);
+    var lines = ['# Notes — ' + (ch.title || 'Sans titre'), ''];
+    var any = false;
+    fr.forEach(function(p, i){
+      var n = (ch.notes || {})[i];
+      if (!n) return;
+      any = true;
+      lines.push('> ' + p.slice(0, 140) + (p.length > 140 ? '…' : ''), '', n, '');
+    });
+    if (!any) lines.push('(aucune note)');
+    var blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'notes-' + (ch.title || 'texte').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.md';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  renderShelf();
+})();
+</script>
+</body>
+</html>

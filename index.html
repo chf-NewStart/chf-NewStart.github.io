@@ -656,6 +656,9 @@
                         <button class="explorer-btn" onclick="switchPersonalCard('pers-notes', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Knowledge_Base" data-zh="知识库">Knowledge_Base</span>
                         </button>
+                        <button class="explorer-btn" onclick="switchPersonalCard('pers-reading', this)">
+                            <span class="highlight-icon">[📖]</span> <span data-en="Reading_Room" data-zh="阅读室">Reading_Room</span>
+                        </button>
                         <button class="explorer-btn" onclick="switchPersonalCard('pers-personality', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Attachment_Style" data-zh="依恋风格">Attachment_Style</span>
                         </button>
@@ -688,6 +691,18 @@
                                 <li><strong>Algorithms:</strong> Problem-solving patterns and optimizations.</li>
                                 <li><strong>How to Be an Imperfectionist:</strong> Key takeaways on productivity.</li>
                             </ul>
+                        </div>
+
+                        <div id="pers-reading" class="highlight-card">
+                            <div class="vertical-accent"></div>
+                            <h3 data-en="Salle de lecture — bilingual reading room" data-zh="阅读室 — 双语阅读间">Salle de lecture — bilingual reading room</h3>
+                            <p data-en="A private reader for books I'm working through in French: paste a chapter or upload a PDF, get English interleaved line by line (translated on-device — nothing is uploaded), and attach notes to any paragraph." data-zh="我的法语读书角：粘贴章节或上传 PDF，逐行对照英文（本地翻译，任何内容都不会上传），并可在任意段落做笔记。">A private reader for books I'm working through in French: paste a chapter or upload a PDF, get English interleaved line by line (translated on-device — nothing is uploaded), and attach notes to any paragraph.</p>
+                            <ul class="highlight-list">
+                                <li>PDF / text import, parsed entirely in the browser</li>
+                                <li>Line-by-line FR→EN via the browser's built-in translator</li>
+                                <li>Paragraph notes · markdown export · JSON backup</li>
+                            </ul>
+                            <a href="/reading.html" class="highlight-link" style="display: inline-block; margin-top: 12px;" data-en="→ Enter the reading room" data-zh="→ 进入阅读室">→ Enter the reading room</a>
                         </div>
 
 

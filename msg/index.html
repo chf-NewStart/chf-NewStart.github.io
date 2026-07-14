@@ -179,6 +179,18 @@ textarea.tin:focus{border-style:solid;box-shadow:0 0 8px rgba(29,185,84,0.35);}
         <input class="tin" id="name" maxlength="60" placeholder="anonymous">
       </div>
 
+      <div class="fld">
+        <p class="line dim" data-en="# staying anonymous? cool. but wanna make me guess who u are? drop some hints:"
+                            data-zh="# 想匿名?可以。但要不要让我猜猜你是谁?留几个线索:"># staying anonymous? cool. but wanna make me guess who u are? drop some hints:</p>
+        <div class="in-line">
+          <span class="ps1">?</span><span class="out" data-en="hints (optional):" data-zh="线索(可选):">hints (optional):</span>
+          <input class="tin" id="hints" maxlength="200"
+            data-ph-en="e.g. we met at..., i'm the one who always..."
+            data-ph-zh="比如:我们在…认识的,我就是那个总是…的人"
+            placeholder="e.g. we met at..., i'm the one who always...">
+        </div>
+      </div>
+
       <p class="line err" id="err" style="margin-top:14px"
          data-en="error: message body is empty. write something first." data-zh="error: 留言为空,先写点什么吧。">error: message body is empty. write something first.</p>
 
@@ -238,6 +250,7 @@ function go(id){
 function resetAll(){
   document.getElementById('message').value='';
   document.getElementById('name').value='';
+  document.getElementById('hints').value='';
   selectedMood='';
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
   go('s2');
@@ -252,25 +265,26 @@ document.querySelectorAll('.chip').forEach(c=>{
   });
 });
 
-function buildMail(msg,name){
+function buildMail(msg,name,hints){
   const tag = selectedMood ? '['+selectedMood+'] ' : '';
-  const from = name || 'anonymous';
+  const from = name || (hints ? 'anonymous 🕵️' : 'anonymous');
   const subject = encodeURIComponent(tag+'msgbox: '+from+' (houfu72.com)');
   const body = encodeURIComponent(
-    [msg,'','—','from: '+from, 'tag: '+(selectedMood||'—')].join('\n'));
+    [msg,'','—','from: '+from, 'tag: '+(selectedMood||'—'), 'hints: '+(hints||'—')].join('\n'));
   return 'mailto:'+MY_EMAIL+'?subject='+subject+'&body='+body;
 }
 
 function send(){
-  const msg  = document.getElementById('message').value.trim();
-  const name = document.getElementById('name').value.trim();
-  const err  = document.getElementById('err');
+  const msg   = document.getElementById('message').value.trim();
+  const name  = document.getElementById('name').value.trim();
+  const hints = document.getElementById('hints').value.trim();
+  const err   = document.getElementById('err');
 
   if(!msg){ err.style.display='block'; return; }
   err.style.display='none';
 
   if(!FORMSPREE_ID){
-    document.getElementById('mailtoLink').href = buildMail(msg,name);
+    document.getElementById('mailtoLink').href = buildMail(msg,name,hints);
     go('s4');
     return;
   }
@@ -284,7 +298,8 @@ function send(){
   f.append('message',msg);
   f.append('name',name||'anonymous');
   f.append('tag',selectedMood||'—');
-  f.append('_subject',(selectedMood?'['+selectedMood+'] ':'')+'msgbox: '+(name||'anonymous')+' (houfu72.com)');
+  f.append('hints',hints||'—');
+  f.append('_subject',(selectedMood?'['+selectedMood+'] ':'')+'msgbox: '+(name||(hints?'anonymous 🕵️':'anonymous'))+' (houfu72.com)');
 
   fetch('https://formspree.io/f/'+FORMSPREE_ID,{method:'POST',headers:{'Accept':'application/json'},body:f})
   .then(r=>{
@@ -293,7 +308,7 @@ function send(){
   })
   .catch(()=>{
     btn.textContent=orig; btn.style.pointerEvents='auto';
-    document.getElementById('mailtoLink').href = buildMail(msg,name);
+    document.getElementById('mailtoLink').href = buildMail(msg,name,hints);
     go('s4');
   });
 }

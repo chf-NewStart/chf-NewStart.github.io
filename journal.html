@@ -8,6 +8,9 @@
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
   <meta name="theme-color" content="#f4efe6">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Long+Cang&display=swap" rel="stylesheet">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -20,7 +23,7 @@
       --card: #1b1814; --accent: #c9a35e; --accent-soft: rgba(201,163,94,0.12);
     }
     body {
-      font-family: Georgia, 'Times New Roman', serif;
+      font-family: 'Caveat', 'Long Cang', 'Kaiti SC', 'STKaiti', 'KaiTi', cursive, Georgia, serif;
       background: var(--paper); color: var(--ink);
       min-height: 100vh; padding: 36px 20px 80px;
       line-height: 1.8;
@@ -31,13 +34,43 @@
     .fade { transition: opacity 1.4s ease; }
     body.writing .fade { opacity: 0.07; transition: opacity 2.2s ease; }
 
+    /* gentle entrance: things rise onto the page like ink settling */
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+    .wrap > * { animation: rise .7s ease backwards; }
+    .wrap > *:nth-child(2) { animation-delay: .08s; }
+    .wrap > *:nth-child(3) { animation-delay: .16s; }
+    .wrap > *:nth-child(4) { animation-delay: .22s; }
+    .wrap > *:nth-child(5) { animation-delay: .28s; }
+    .wrap > *:nth-child(n+6) { animation-delay: .34s; }
+    .held-item { animation: rise .45s ease backwards; }
+    .whisper.pop { animation: rise .5s ease; }
+
+    /* hand-drawn underline that draws itself under the title */
+    h1 .scribble { display: block; width: 175px; height: 12px; overflow: visible; }
+    h1 .scribble path {
+      fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round;
+      stroke-dasharray: 260; stroke-dashoffset: 260;
+      animation: draw 1.3s .4s ease forwards;
+    }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    /* mono mode: console type for a terminal feeling (toggle next to night/day) */
+    html[data-font="mono"] { font-size: 12.5px; }
+    html[data-font="mono"] body { font-family: Consolas, 'Courier New', monospace; }
+    html[data-font="mono"] .day h2 { transform: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .wrap > *, .held-item, .whisper.pop { animation: none; }
+      h1 .scribble path { animation: none; stroke-dashoffset: 0; }
+    }
+
     .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
-    h1 { font-size: 1.5rem; font-weight: normal; font-style: italic; }
+    h1 { font-size: 2.2rem; font-weight: normal; }
     .top .tools { display: flex; gap: 10px; align-items: center; }
-    .sub { color: var(--ink-soft); font-size: 0.85rem; margin-bottom: 34px; }
+    .sub { color: var(--ink-soft); font-size: 1.05rem; margin-bottom: 34px; }
 
     .btn {
-      font-family: inherit; font-size: 0.8rem; color: var(--accent);
+      font-family: inherit; font-size: 0.98rem; color: var(--accent);
       background: transparent; border: 1px solid var(--accent); border-radius: 3px;
       padding: 5px 12px; cursor: pointer; text-decoration: none; display: inline-block;
     }
@@ -47,12 +80,13 @@
     .hidden { display: none; }
 
     .day { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
-    .day h2 { font-size: 1.12rem; font-weight: normal; font-style: italic; }
-    .whisper { font-size: 0.74rem; color: var(--ink-soft); min-height: 1.2em; }
+    .day h2 { font-size: 1.6rem; font-weight: normal; transform: rotate(-0.6deg); }
+    .whisper { font-size: 0.95rem; color: var(--ink-soft); min-height: 1.2em; }
+    #syncSig { cursor: pointer; user-select: none; }
 
     #page {
       width: 100%; min-height: 58vh; resize: none; overflow: hidden;
-      font-family: inherit; font-size: 1.05rem; line-height: 1.95; color: var(--ink);
+      font-family: inherit; font-size: 1.4rem; line-height: 1.9; color: var(--ink);
       background: transparent; border: none; outline: none;
       border-top: 1px solid var(--line); padding: 22px 2px 40px;
       caret-color: var(--accent);
@@ -61,17 +95,17 @@
 
     .archive { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
     .cap-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-    .archive .cap { font-size: 0.74rem; color: var(--ink-soft); letter-spacing: 1px; }
+    .archive .cap { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 1px; }
     .cal-nav { display: flex; gap: 8px; align-items: baseline; }
     .cal-nav .btn { padding: 2px 10px; }
-    .cal-label { font-size: 0.82rem; color: var(--ink-soft); min-width: 118px; text-align: center; }
+    .cal-label { font-size: 0.98rem; color: var(--ink-soft); min-width: 118px; text-align: center; }
     .calbox { max-width: 340px; }
     .cal-head, .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .cal-head { margin-bottom: 4px; }
-    .cal-head span { font-size: 0.64rem; color: var(--ink-soft); text-align: center; letter-spacing: 1px; }
+    .cal-head span { font-size: 0.78rem; color: var(--ink-soft); text-align: center; letter-spacing: 1px; }
     .cal-day {
       position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-      font-size: 0.82rem; color: var(--ink-soft); border-radius: 3px;
+      font-size: 1rem; color: var(--ink-soft); border-radius: 3px;
     }
     .cal-day.in-month { color: var(--ink); }
     .cal-day.clickable { cursor: pointer; }
@@ -86,22 +120,22 @@
     .cal-day.is-open { background: var(--accent-soft); }
 
     .held { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
-    .held .cap { font-size: 0.74rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 12px; }
+    .held .cap { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 12px; }
     .held-item { border-left: 2px solid var(--line); padding: 4px 12px 6px; margin-bottom: 14px; }
     .held-item.ready { border-left-color: var(--accent); }
-    .held-item .txt { font-size: 0.95rem; white-space: pre-wrap; word-break: break-word; }
+    .held-item .txt { font-size: 1.25rem; white-space: pre-wrap; word-break: break-word; }
     .held-item.waiting .txt { opacity: 0.5; }
-    .held-item .meta { font-size: 0.72rem; color: var(--ink-soft); margin-top: 6px; display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
-    .linkish { background: none; border: none; font-family: inherit; font-size: 0.72rem; color: var(--accent); cursor: pointer; padding: 0; text-decoration: underline; }
+    .held-item .meta { font-size: 0.92rem; color: var(--ink-soft); margin-top: 6px; display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+    .linkish { background: none; border: none; font-family: inherit; font-size: 0.92rem; color: var(--accent); cursor: pointer; padding: 0; text-decoration: underline; }
     .linkish.quiet { color: var(--ink-soft); }
 
-    .nudge { font-size: 0.78rem; color: var(--ink-soft); font-style: italic; margin-top: 26px; }
+    .nudge { font-size: 1rem; color: var(--ink-soft); font-style: italic; margin-top: 26px; }
     .nudge:empty { display: none; }
 
     .sync { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
-    .sync .cap { font-size: 0.74rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 12px; }
+    .sync .cap { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 12px; }
     .sync-form { display: grid; gap: 12px; max-width: 440px; margin-top: 14px; }
-    .sync-form label { font-size: 0.78rem; color: var(--ink-soft); display: block; }
+    .sync-form label { font-size: 0.95rem; color: var(--ink-soft); display: block; }
     .sync-form input {
       width: 100%; margin-top: 4px; font-family: inherit; font-size: 0.9rem; color: var(--ink);
       background: var(--card); border: 1px solid var(--line); border-radius: 3px; padding: 6px 9px;
@@ -109,7 +143,7 @@
     .sync-form input:focus { outline: none; border-color: var(--accent); }
 
     .toolsrow { margin-top: 30px; display: flex; gap: 10px; flex-wrap: wrap; }
-    footer { max-width: 680px; margin: 46px auto 0; font-size: 0.75rem; color: var(--ink-soft); }
+    footer { max-width: 680px; margin: 46px auto 0; font-size: 0.95rem; color: var(--ink-soft); }
     @media (max-width: 720px) { body { padding: 24px 14px 60px; } }
   </style>
 </head>
@@ -117,8 +151,9 @@
 <div class="wrap">
 
   <div class="top fade">
-    <h1>Journal intime</h1>
+    <h1>Journal intime<svg class="scribble" viewBox="0 0 175 12" aria-hidden="true"><path d="M3,8 Q30,3 60,7 T110,6 T172,8"/></svg></h1>
     <div class="tools">
+      <button class="btn quiet" id="fontBtn">hand / mono</button>
       <button class="btn quiet" id="themeBtn">night / day</button>
       <a class="btn quiet" href="/">← houfu72.com</a>
     </div>
@@ -128,6 +163,7 @@
   <div class="day">
     <h2 id="dayTitle"></h2>
     <span class="whisper fade" id="whisper"></span>
+    <span class="whisper fade" id="syncSig" title="tap to sync now"></span>
   </div>
   <div class="fade" id="notToday" style="margin-bottom:10px" hidden>
     <button class="btn quiet" id="todayBtn">← back to today</button>
@@ -166,7 +202,8 @@
   </div>
 
   <div class="sync fade">
-    <div class="cap">SYNC <span id="syncState">— off (this browser only)</span></div>
+    <div class="cap">SYNC <span id="syncState">— off (this browser only)</span> <button class="linkish quiet hidden" id="syncToggle">settings…</button></div>
+    <div id="syncBody">
     <div class="toolsrow" style="margin-top:0">
       <button class="btn quiet" id="syncSetupBtn">set up sync…</button>
       <button class="btn quiet hidden" id="syncNowBtn">sync now</button>
@@ -181,6 +218,7 @@
       <label>passphrase — pages are encrypted with it before they leave this device
         <input id="syncPass" type="password" autocomplete="off"></label>
       <div><button class="btn" id="syncSaveBtn">save &amp; first sync</button></div>
+    </div>
     </div>
   </div>
 
@@ -226,6 +264,17 @@
     localStorage.setItem('readingRoom.theme', next);
   };
 
+  /* ---- hand / mono: handwriting by default, console type on request ---- */
+  if (localStorage.getItem('journal.font') === 'mono')
+    document.documentElement.setAttribute('data-font', 'mono');
+  byId('fontBtn').onclick = function(){
+    var mono = document.documentElement.getAttribute('data-font') === 'mono';
+    if (mono) document.documentElement.removeAttribute('data-font');
+    else document.documentElement.setAttribute('data-font', 'mono');
+    localStorage.setItem('journal.font', mono ? 'hand' : 'mono');
+    grow();
+  };
+
   /* ---- one open page at a time ---- */
   var today = dayKey(new Date());
   var openDay = today;
@@ -248,11 +297,17 @@
 
   function wordCount(t){
     t = t.trim();
-    return t ? t.split(/\s+/).length : 0;
+    if (!t) return 0;
+    /* count each Chinese character + each latin word */
+    var cjk = (t.match(/[一-鿿]/g) || []).length;
+    var words = (t.replace(/[一-鿿]/g, ' ').match(/\S+/g) || []).length;
+    return cjk + words;
   }
   function whisperCount(msg){
     var n = wordCount(page.value);
-    byId('whisper').textContent = (msg ? msg + ' · ' : '') + (n ? n + ' word' + (n > 1 ? 's' : '') : '');
+    var w = byId('whisper');
+    w.textContent = (msg ? msg + ' · ' : '') + (n ? n + ' word' + (n > 1 ? 's' : '') : '');
+    if (msg){ w.classList.remove('pop'); void w.offsetWidth; w.classList.add('pop'); }
   }
 
   /* ---- autosave, quietly ---- */
@@ -507,15 +562,23 @@
   var syncCfg = null, syncing = false, syncTimer = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
 
+  var syncOpen = false;
   function setSyncStatus(msg){ byId('syncState').textContent = '— ' + msg; }
+  function setSyncSignal(s){ byId('syncSig').textContent = s; }
   function syncUI(){
     var on = !!(syncCfg && syncCfg.repo && syncCfg.token && syncCfg.pass);
     setSyncStatus(on ? 'to ' + syncCfg.repo + ' (encrypted)' : 'off (this browser only)');
+    /* once sync is on, the plumbing folds away into one quiet line */
+    byId('syncToggle').classList.toggle('hidden', !on);
+    byId('syncBody').classList.toggle('hidden', on && !syncOpen);
     byId('syncNowBtn').classList.toggle('hidden', !on);
     byId('syncLinkBtn').classList.toggle('hidden', !on);
     byId('syncOffBtn').classList.toggle('hidden', !on);
     byId('syncSetupBtn').textContent = on ? 'change settings…' : 'set up sync…';
+    if (!on) setSyncSignal('');
   }
+  byId('syncToggle').onclick = function(){ syncOpen = !syncOpen; syncUI(); };
+  byId('syncSig').onclick = function(){ doSync(); };
 
   byId('syncSetupBtn').onclick = function(){
     var f = byId('syncForm');
@@ -540,6 +603,7 @@
     syncCfg = { repo: repo, token: token, pass: pass };
     localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg));
     byId('syncForm').classList.add('hidden');
+    syncOpen = false;
     syncUI();
     doSync();
   };
@@ -607,6 +671,7 @@
     if (!syncCfg || syncing) return;
     syncing = true;
     setSyncStatus('syncing…');
+    setSyncSignal('☁ …');
     gh('GET').then(function(r){
       if (r.status === 404) return { sha: null, remote: null };
       if (r.status === 401 || r.status === 403) throw new Error('token rejected — check its access to ' + syncCfg.repo);
@@ -633,9 +698,13 @@
     }).then(function(r){
       if (!r.ok) throw new Error('push failed (' + r.status + ')');
       var at = new Date();
-      setSyncStatus('synced ' + pad2(at.getHours()) + ':' + pad2(at.getMinutes()) + ' · to ' + syncCfg.repo);
+      setSyncStatus('✓ synced ' + pad2(at.getHours()) + ':' + pad2(at.getMinutes()) + ' · to ' + syncCfg.repo);
+      setSyncSignal('☁ ✓');
     }).catch(function(e){
+      /* unfold the settings so the problem is visible, not silent */
+      syncOpen = true; syncUI();
       setSyncStatus('sync: ' + (e && e.message ? e.message : 'failed'));
+      setSyncSignal('☁ !');
     }).then(function(){ syncing = false; });
   }
   byId('syncNowBtn').onclick = doSync;

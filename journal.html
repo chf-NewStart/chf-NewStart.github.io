@@ -28,6 +28,12 @@
       min-height: 100vh; padding: 36px 20px 80px;
       line-height: 1.8;
     }
+    /* paper grain — a whisper of fiber over everything (hand mode only) */
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 2;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    html[data-font="mono"] body::before { display: none; }
     .wrap { max-width: 680px; margin: 0 auto; }
     a { color: var(--accent); }
 
@@ -99,7 +105,14 @@
       background: transparent; border: none; outline: none;
       border-top: 1px solid var(--line); padding: 22px 2px 40px;
       caret-color: var(--accent);
+      /* ruled diary lines under the ink */
+      background-image: repeating-linear-gradient(to bottom,
+        transparent 0, transparent calc(1.9em - 1px),
+        var(--line) calc(1.9em - 1px), var(--line) 1.9em);
+      background-origin: content-box;
+      background-attachment: local;
     }
+    html[data-font="mono"] #page { background-image: none; }
     #page::placeholder { color: var(--ink-soft); opacity: 0.55; font-style: italic; }
 
     .archive { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
@@ -171,6 +184,7 @@
 
   <div class="day">
     <h2 id="dayTitle"></h2><span id="dayCursor" aria-hidden="true">▋</span>
+    <span class="whisper fade" id="wx"></span>
     <span class="whisper fade" id="whisper"></span>
     <span class="whisper fade" id="syncSig" title="tap to sync now"></span>
   </div>
@@ -243,9 +257,9 @@
   function load(){
     try {
       var s = JSON.parse(localStorage.getItem(KEY));
-      if (s && s.entries) { if (!s.held) s.held = []; return s; }
+      if (s && s.entries) { if (!s.held) s.held = []; if (!s.wx) s.wx = {}; return s; }
     } catch(e){}
-    return { entries: {}, held: [] };
+    return { entries: {}, held: [], wx: {} };
   }
   function persist(){ localStorage.setItem(KEY, JSON.stringify(state)); }
   function byId(id){ return document.getElementById(id); }
@@ -296,7 +310,44 @@
     page.value = (state.entries[key] && state.entries[key].text) || '';
     grow();
     whisperCount();
+    showWx();
     renderArchive();
+  }
+
+  /* ---- weather stamp: a diary remembers the sky ---- */
+  function wxEmoji(c){
+    if (c === 0) return '☀️';
+    if (c <= 2) return '🌤️';
+    if (c === 3) return '☁️';
+    if (c === 45 || c === 48) return '🌫️';
+    if (c >= 51 && c <= 57) return '🌦️';
+    if (c >= 61 && c <= 67) return '🌧️';
+    if (c >= 71 && c <= 77) return '❄️';
+    if (c >= 80 && c <= 82) return '🌧️';
+    if (c >= 85 && c <= 86) return '❄️';
+    if (c >= 95) return '⛈️';
+    return '🌡️';
+  }
+  function showWx(){
+    byId('wx').textContent = state.wx[openDay] || '';
+  }
+  function fetchWx(){
+    if (state.wx[today]){ showWx(); return; }
+    fetch('https://get.geojs.io/v1/ip/geo.json')
+      .then(function(r){ return r.json(); })
+      .then(function(g){
+        return fetch('https://api.open-meteo.com/v1/forecast?latitude=' + g.latitude +
+                     '&longitude=' + g.longitude + '&current=temperature_2m,weather_code')
+          .then(function(r){ return r.json(); })
+          .then(function(j){
+            state.wx[today] = wxEmoji(j.current.weather_code) + ' ' +
+              Math.round(j.current.temperature_2m) + '°C';
+            persist();
+            showWx();
+            scheduleSync();
+          });
+      })
+      .catch(function(){}); /* no weather is fine — the page never nags */
   }
 
   function grow(){
@@ -552,6 +603,7 @@
         var dup = state.held.some(function(x){ return x.heldAt === h.heldAt && x.text === h.text; });
         if (!dup) state.held.push(h);
       });
+      Object.keys(s.wx || {}).forEach(function(k){ if (!state.wx[k]) state.wx[k] = s.wx[k]; });
       persist();
       openEntry(openDay);
       renderHeld();
@@ -673,6 +725,9 @@
       var dup = state.held.some(function(x){ return x.heldAt === h.heldAt && x.text === h.text; });
       if (!dup){ state.held.push(h); changed = true; }
     });
+    Object.keys(inc.wx || {}).forEach(function(k){
+      if (!state.wx[k]){ state.wx[k] = inc.wx[k]; changed = true; }
+    });
     return changed;
   }
 
@@ -698,7 +753,7 @@
         if (document.activeElement !== page) openEntry(openDay); else renderArchive();
         renderHeld();
       }
-      return encryptState(syncCfg.pass, { entries: state.entries, held: state.held })
+      return encryptState(syncCfg.pass, { entries: state.entries, held: state.held, wx: state.wx })
         .then(function(enc){
           var body = { message: 'journal sync', content: btoa(enc) };
           if (got.sha) body.sha = got.sha;
@@ -751,6 +806,7 @@
 
   openEntry(today);
   renderHeld();
+  fetchWx();
   syncUI();
   if (syncCfg) doSync();
   if (window.matchMedia && matchMedia('(pointer: fine)').matches) page.focus();

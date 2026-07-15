@@ -98,6 +98,7 @@
     .day h2 { font-size: 1.6rem; font-weight: normal; transform: rotate(-0.6deg); }
     .whisper { font-size: 0.95rem; color: var(--ink-soft); min-height: 1.2em; }
     #syncSig { cursor: pointer; user-select: none; }
+    #wx svg { width: 24px; height: 24px; vertical-align: -7px; }
 
     #page {
       width: 100%; min-height: 58vh; resize: none; overflow: hidden;
@@ -105,10 +106,12 @@
       background: transparent; border: none; outline: none;
       border-top: 1px solid var(--line); padding: 22px 2px 40px;
       caret-color: var(--accent);
-      /* ruled diary lines under the ink */
+      /* ruled diary lines — placed at the text baseline so letters sit ON
+         the line (bowl of the p resting on it, tail below), like real paper */
       background-image: repeating-linear-gradient(to bottom,
-        transparent 0, transparent calc(1.9em - 1px),
-        var(--line) calc(1.9em - 1px), var(--line) 1.9em);
+        transparent 0, transparent calc(1.25em - 1px),
+        var(--line) calc(1.25em - 1px), var(--line) 1.25em,
+        transparent 1.25em, transparent 1.9em);
       background-origin: content-box;
       background-attachment: local;
     }
@@ -315,21 +318,32 @@
   }
 
   /* ---- weather stamp: a diary remembers the sky ---- */
-  function wxEmoji(c){
-    if (c === 0) return '☀️';
-    if (c <= 2) return '🌤️';
-    if (c === 3) return '☁️';
-    if (c === 45 || c === 48) return '🌫️';
-    if (c >= 51 && c <= 57) return '🌦️';
-    if (c >= 61 && c <= 67) return '🌧️';
-    if (c >= 71 && c <= 77) return '❄️';
-    if (c >= 80 && c <= 82) return '🌧️';
-    if (c >= 85 && c <= 86) return '❄️';
-    if (c >= 95) return '⛈️';
-    return '🌡️';
+  /* crayon-style doodles, like a kid drew the sky in the margin */
+  var WX_ICONS = {
+    sun: '<svg viewBox="0 0 24 24"><g fill="none" stroke="#e8a33d" stroke-width="1.8" stroke-linecap="round" transform="rotate(-8 12 12)"><circle cx="12" cy="12" r="4" fill="#f7d774"/><path d="M12 3.2v2.4M12 18.4v2M3.2 12h2.4M18.6 12h2.2M5.6 5.6l1.7 1.7M16.8 16.8l1.4 1.4M18.4 5.6l-1.5 1.5M7.2 16.8l-1.8 1.8"/></g></svg>',
+    partly: '<svg viewBox="0 0 24 24"><g fill="none" stroke="#e8a33d" stroke-width="1.6" stroke-linecap="round"><circle cx="16.5" cy="7.5" r="3" fill="#f7d774"/><path d="M16.5 2.4v1.5M21.4 7.5h1.4M19.9 4l1.1-1.1M19.9 11l1.1 1.1"/></g><path d="M5.5 18.5c-2.2.2-3.3-1.5-2.7-3 .4-1.2 1.8-1.7 2.8-1.4.2-1.8 1.6-3 3.5-3 1.8.1 3 1.4 3.2 2.7 1.7-.5 3.5.4 3.6 2.2.1 1.7-1.4 2.7-3 2.5z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    cloud: '<svg viewBox="0 0 24 24"><path d="M6.5 17c-2.4.2-3.6-1.6-3-3.3.5-1.4 2-1.9 3.1-1.6.2-2 1.8-3.4 3.9-3.3 2 .1 3.3 1.5 3.5 3 1.9-.6 3.9.4 4 2.4.1 1.9-1.6 2.9-3.3 2.8z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    fog: '<svg viewBox="0 0 24 24" fill="none" stroke="#9aa3b2" stroke-width="1.7" stroke-linecap="round"><path d="M4 9.5c2-.8 4-.8 6 0s4 .8 6 0M4.5 13c2-.8 4-.8 6 0s4 .8 5.5 0M5 16.5c2-.8 4-.8 6 0s3.5.8 5.5 0"/></svg>',
+    rain: '<svg viewBox="0 0 24 24"><path d="M6.5 14c-2.4.2-3.6-1.6-3-3.3.5-1.4 2-1.9 3.1-1.6.2-2 1.8-3.4 3.9-3.3 2 .1 3.3 1.5 3.5 3 1.9-.6 3.9.4 4 2.4.1 1.9-1.6 2.9-3.3 2.8z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 17.5l-.9 2.3M12 17.5l-.9 2.3M16 17.5l-.9 2.3" stroke="#5a8fd6" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>',
+    snow: '<svg viewBox="0 0 24 24"><path d="M6.5 14c-2.4.2-3.6-1.6-3-3.3.5-1.4 2-1.9 3.1-1.6.2-2 1.8-3.4 3.9-3.3 2 .1 3.3 1.5 3.5 3 1.9-.6 3.9.4 4 2.4.1 1.9-1.6 2.9-3.3 2.8z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 18v3M6.7 19.5h2.6M12 17.4v3M10.7 18.9h2.6M16 18v3M14.7 19.5h2.6" stroke="#7fb3d8" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>',
+    storm: '<svg viewBox="0 0 24 24"><path d="M6.5 13c-2.4.2-3.6-1.6-3-3.3.5-1.4 2-1.9 3.1-1.6.2-2 1.8-3.4 3.9-3.3 2 .1 3.3 1.5 3.5 3 1.9-.6 3.9.4 4 2.4.1 1.9-1.6 2.9-3.3 2.8z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/><path d="M12.5 13.5l-2.4 4h2.1l-1.5 3.6 4.2-4.9h-2.1l1.7-2.7z" fill="#f2c94c" stroke="#d9a520" stroke-width="1" stroke-linejoin="round"/></svg>'
+  };
+  function wxKind(c){
+    if (c === 0) return 'sun';
+    if (c <= 2) return 'partly';
+    if (c === 3) return 'cloud';
+    if (c === 45 || c === 48) return 'fog';
+    if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82)) return 'rain';
+    if ((c >= 71 && c <= 77) || c === 85 || c === 86) return 'snow';
+    if (c >= 95) return 'storm';
+    return 'partly';
   }
   function showWx(){
-    byId('wx').textContent = state.wx[openDay] || '';
+    var w = state.wx[openDay], el = byId('wx');
+    if (!w){ el.textContent = ''; return; }
+    if (typeof w === 'string'){ el.textContent = w; return; } /* pre-doodle stamps */
+    el.innerHTML = WX_ICONS[w.k] || '';
+    el.appendChild(document.createTextNode(' ' + w.t + '°C'));
   }
   function fetchWx(){
     if (state.wx[today]){ showWx(); return; }
@@ -340,8 +354,8 @@
                      '&longitude=' + g.longitude + '&current=temperature_2m,weather_code')
           .then(function(r){ return r.json(); })
           .then(function(j){
-            state.wx[today] = wxEmoji(j.current.weather_code) + ' ' +
-              Math.round(j.current.temperature_2m) + '°C';
+            state.wx[today] = { k: wxKind(j.current.weather_code),
+                                t: Math.round(j.current.temperature_2m) };
             persist();
             showWx();
             scheduleSync();

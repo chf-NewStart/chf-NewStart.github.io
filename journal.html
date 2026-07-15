@@ -170,6 +170,7 @@
     <div class="toolsrow" style="margin-top:0">
       <button class="btn quiet" id="syncSetupBtn">set up sync…</button>
       <button class="btn quiet hidden" id="syncNowBtn">sync now</button>
+      <button class="btn quiet hidden" id="syncLinkBtn">copy setup link for another device</button>
       <button class="btn quiet hidden" id="syncOffBtn">turn off</button>
     </div>
     <div class="sync-form hidden" id="syncForm">
@@ -511,6 +512,7 @@
     var on = !!(syncCfg && syncCfg.repo && syncCfg.token && syncCfg.pass);
     setSyncStatus(on ? 'to ' + syncCfg.repo + ' (encrypted)' : 'off (this browser only)');
     byId('syncNowBtn').classList.toggle('hidden', !on);
+    byId('syncLinkBtn').classList.toggle('hidden', !on);
     byId('syncOffBtn').classList.toggle('hidden', !on);
     byId('syncSetupBtn').textContent = on ? 'change settings…' : 'set up sync…';
   }
@@ -637,6 +639,32 @@
     }).then(function(){ syncing = false; });
   }
   byId('syncNowBtn').onclick = doSync;
+
+  /* one-tap setup on another device: config rides in the URL fragment
+     (never sent to any server), is saved on first open, then wiped from
+     the address bar. Share it only device-to-device (AirDrop), since it
+     contains the token and passphrase. */
+  byId('syncLinkBtn').onclick = function(){
+    if (!syncCfg) return;
+    var link = location.href.split('#')[0] + '#setup=' +
+      btoa(unescape(encodeURIComponent(JSON.stringify(syncCfg))));
+    copyText(link, function(){
+      setSyncStatus('setup link copied — AirDrop it to your other device and open it once');
+    });
+  };
+  (function importFromLink(){
+    var m = location.hash.match(/^#setup=(.+)$/);
+    if (!m) return;
+    try {
+      var cfg = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+      if (cfg && cfg.repo && cfg.token && cfg.pass){
+        syncCfg = { repo: cfg.repo, token: cfg.token, pass: cfg.pass };
+        localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg));
+      }
+    } catch(e){}
+    history.replaceState(null, '', location.pathname + location.search);
+  })();
+
   function scheduleSync(){
     if (!syncCfg) return;
     clearTimeout(syncTimer);

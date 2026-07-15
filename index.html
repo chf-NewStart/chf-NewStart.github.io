@@ -1011,22 +1011,42 @@
         if (c >= 95) return 'storm';
         return 'partly';
     }
+    /* Environment Canada sensor AQHI for Canadian visitors; model AQI elsewhere */
+    function fetchAqhi(lat, lon){
+        var bbox = (lon - 0.7) + ',' + (lat - 0.5) + ',' + (lon + 0.7) + ',' + (lat + 0.5);
+        return fetch('https://api.weather.gc.ca/collections/aqhi-observations-realtime/items?f=json&limit=20&latest=true&bbox=' + bbox)
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                var best = null, bd = Infinity;
+                (d.features || []).forEach(function(f){
+                    var c = f.geometry.coordinates;
+                    var dd = Math.pow(c[0] - lon, 2) + Math.pow(c[1] - lat, 2);
+                    if (f.properties && f.properties.aqhi != null && dd < bd){ bd = dd; best = f.properties.aqhi; }
+                });
+                return best == null ? null : Math.round(best);
+            })
+            .catch(function(){ return null; });
+    }
     fetch('https://get.geojs.io/v1/ip/geo.json')
         .then(function(r){ return r.json(); })
         .then(function(g){
-            var base = 'latitude=' + g.latitude + '&longitude=' + g.longitude;
+            var lat = parseFloat(g.latitude), lon = parseFloat(g.longitude);
+            var base = 'latitude=' + lat + '&longitude=' + lon;
             return Promise.all([
                 fetch('https://api.open-meteo.com/v1/forecast?' + base + '&current=temperature_2m,weather_code')
                     .then(function(r){ return r.json(); }),
                 fetch('https://air-quality-api.open-meteo.com/v1/air-quality?' + base + '&current=us_aqi')
                     .then(function(r){ return r.json(); })
-                    .catch(function(){ return null; })
+                    .catch(function(){ return null; }),
+                g.country_code === 'CA' ? fetchAqhi(lat, lon) : Promise.resolve(null)
             ]).then(function(res){
-                var j = res[0], a = res[1];
+                var j = res[0], a = res[1], aqhi = res[2];
                 var aqi = (a && a.current && a.current.us_aqi != null) ? Math.round(a.current.us_aqi) : null;
-                el.innerHTML = ICONS[(aqi != null && aqi >= 150) ? 'haze' : kind(j.current.weather_code)] || '';
+                var smoky = (aqhi != null && aqhi >= 7) || (aqi != null && aqi >= 150);
+                el.innerHTML = ICONS[smoky ? 'haze' : kind(j.current.weather_code)] || '';
                 var txt = ' ' + Math.round(j.current.temperature_2m) + '°C';
-                if (aqi != null && aqi >= 100) txt += ' · AQI ' + aqi;
+                if (aqhi != null && aqhi >= 4) txt += ' · AQHI ' + aqhi;
+                else if (aqi != null && aqi >= 100) txt += ' · AQI ' + aqi;
                 el.appendChild(document.createTextNode(txt + ' · ' + (g.city || '')));
             });
         })

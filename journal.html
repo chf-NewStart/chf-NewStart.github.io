@@ -343,11 +343,13 @@
     var w = state.wx[openDay], el = byId('wx');
     if (!w){ el.textContent = ''; return; }
     if (typeof w === 'string'){ el.textContent = w; return; } /* pre-doodle stamps */
-    /* heavy smoke overrules a pretty sky — draw what it actually feels like */
-    var icon = (w.aqi != null && w.aqi >= 150) ? 'haze' : w.k;
-    el.innerHTML = WX_ICONS[icon] || '';
+    /* heavy smoke overrules a pretty sky — draw what it actually feels like.
+       AQHI is Environment Canada's sensor reading (1-10+); AQI is the model. */
+    var smoky = (w.aqhi != null && w.aqhi >= 7) || (w.aqi != null && w.aqi >= 150);
+    el.innerHTML = WX_ICONS[smoky ? 'haze' : w.k] || '';
     var txt = ' ' + w.t + '°C';
-    if (w.aqi != null && w.aqi >= 100) txt += ' · AQI ' + w.aqi;
+    if (w.aqhi != null && w.aqhi >= 4) txt += ' · AQHI ' + w.aqhi;
+    else if (w.aqi != null && w.aqi >= 100) txt += ' · AQI ' + w.aqi;
     el.appendChild(document.createTextNode(txt));
   }
   /* migrate emoji-era stamps into doodles */
@@ -366,19 +368,39 @@
     if (changed) persist();
   })();
 
+  /* nearest Environment Canada AQHI station — real sensors, not a model,
+     because the model called a smoke day "good" once. Never again. */
+  function fetchAqhi(lat, lon){
+    var bbox = (lon - 0.7) + ',' + (lat - 0.5) + ',' + (lon + 0.7) + ',' + (lat + 0.5);
+    return fetch('https://api.weather.gc.ca/collections/aqhi-observations-realtime/items?f=json&limit=20&latest=true&bbox=' + bbox)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var best = null, bd = Infinity;
+        (d.features || []).forEach(function(f){
+          var c = f.geometry.coordinates;
+          var dd = Math.pow(c[0] - lon, 2) + Math.pow(c[1] - lat, 2);
+          if (f.properties && f.properties.aqhi != null && dd < bd){ bd = dd; best = f.properties.aqhi; }
+        });
+        return best == null ? null : Math.round(best);
+      })
+      .catch(function(){ return null; });
+  }
+
   function fetchWx(){
     var w0 = state.wx[today];
-    if (w0 && typeof w0 !== 'string' && w0.aqi !== undefined){ showWx(); return; }
+    if (w0 && typeof w0 !== 'string' && w0.aqhi !== undefined){ showWx(); return; }
     fetch('https://get.geojs.io/v1/ip/geo.json')
       .then(function(r){ return r.json(); })
       .then(function(g){
-        var base = 'latitude=' + g.latitude + '&longitude=' + g.longitude;
+        var lat = parseFloat(g.latitude), lon = parseFloat(g.longitude);
+        var base = 'latitude=' + lat + '&longitude=' + lon;
         return Promise.all([
           fetch('https://api.open-meteo.com/v1/forecast?' + base + '&current=temperature_2m,weather_code')
             .then(function(r){ return r.json(); }),
           fetch('https://air-quality-api.open-meteo.com/v1/air-quality?' + base + '&current=us_aqi')
             .then(function(r){ return r.json(); })
-            .catch(function(){ return null; })
+            .catch(function(){ return null; }),
+          g.country_code === 'CA' ? fetchAqhi(lat, lon) : Promise.resolve(null)
         ]);
       })
       .then(function(res){
@@ -386,7 +408,8 @@
         var aqi = (a && a.current && a.current.us_aqi != null) ? Math.round(a.current.us_aqi) : null;
         state.wx[today] = { k: wxKind(j.current.weather_code),
                             t: Math.round(j.current.temperature_2m),
-                            aqi: aqi };
+                            aqi: aqi,
+                            aqhi: res[2] };
         persist();
         showWx();
         scheduleSync();

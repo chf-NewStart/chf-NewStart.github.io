@@ -35,8 +35,8 @@
     body.writing .fade { opacity: 0.07; transition: opacity 2.2s ease; }
 
     /* gentle entrance: things rise onto the page like ink settling */
-    @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
-    .wrap > * { animation: rise .7s ease backwards; }
+    @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+    .wrap > * { animation: rise .9s ease backwards; }
     .wrap > *:nth-child(2) { animation-delay: .08s; }
     .wrap > *:nth-child(3) { animation-delay: .16s; }
     .wrap > *:nth-child(4) { animation-delay: .22s; }
@@ -54,13 +54,22 @@
     }
     @keyframes draw { to { stroke-dashoffset: 0; } }
 
-    /* mono mode: console type for a terminal feeling (toggle next to night/day) */
-    html[data-font="mono"] { font-size: 12.5px; }
+    /* mono mode: not just the font — the full terminal skin, matching the
+       msgbox: near-black panel, spotify green, prompt line, blinking cursor */
+    html[data-font="mono"] {
+      font-size: 12.5px;
+      --paper: #050505; --ink: #c9c9c9; --ink-soft: #555; --line: #242424;
+      --card: #0d0d0d; --accent: #1db954; --accent-soft: rgba(29,185,84,0.12);
+    }
     html[data-font="mono"] body { font-family: Consolas, 'Courier New', monospace; }
     html[data-font="mono"] .day h2 { transform: none; }
+    html[data-font="mono"] .day h2::before { content: 'houfu@journal:~$ '; color: var(--accent); }
+    #dayCursor { display: none; color: var(--accent); animation: blink 1s step-end infinite; }
+    html[data-font="mono"] #dayCursor { display: inline; }
+    @keyframes blink { 50% { opacity: 0; } }
 
     @media (prefers-reduced-motion: reduce) {
-      .wrap > *, .held-item, .whisper.pop { animation: none; }
+      .wrap > *, .held-item, .whisper.pop, #dayCursor { animation: none; }
       h1 .scribble path { animation: none; stroke-dashoffset: 0; }
     }
 
@@ -161,7 +170,7 @@
   <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage) — nothing leaves this device unless you turn on encrypted sync to your own private repo, below.</p>
 
   <div class="day">
-    <h2 id="dayTitle"></h2>
+    <h2 id="dayTitle"></h2><span id="dayCursor" aria-hidden="true">▋</span>
     <span class="whisper fade" id="whisper"></span>
     <span class="whisper fade" id="syncSig" title="tap to sync now"></span>
   </div>

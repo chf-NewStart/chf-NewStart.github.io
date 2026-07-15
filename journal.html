@@ -85,6 +85,29 @@
     }
     .cal-day.is-open { background: var(--accent-soft); }
 
+    .held { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
+    .held .cap { font-size: 0.74rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 12px; }
+    .held-item { border-left: 2px solid var(--line); padding: 4px 12px 6px; margin-bottom: 14px; }
+    .held-item.ready { border-left-color: var(--accent); }
+    .held-item .txt { font-size: 0.95rem; white-space: pre-wrap; word-break: break-word; }
+    .held-item.waiting .txt { opacity: 0.5; }
+    .held-item .meta { font-size: 0.72rem; color: var(--ink-soft); margin-top: 6px; display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+    .linkish { background: none; border: none; font-family: inherit; font-size: 0.72rem; color: var(--accent); cursor: pointer; padding: 0; text-decoration: underline; }
+    .linkish.quiet { color: var(--ink-soft); }
+
+    .nudge { font-size: 0.78rem; color: var(--ink-soft); font-style: italic; margin-top: 26px; }
+    .nudge:empty { display: none; }
+
+    .sync { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
+    .sync .cap { font-size: 0.74rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 12px; }
+    .sync-form { display: grid; gap: 12px; max-width: 440px; margin-top: 14px; }
+    .sync-form label { font-size: 0.78rem; color: var(--ink-soft); display: block; }
+    .sync-form input {
+      width: 100%; margin-top: 4px; font-family: inherit; font-size: 0.9rem; color: var(--ink);
+      background: var(--card); border: 1px solid var(--line); border-radius: 3px; padding: 6px 9px;
+    }
+    .sync-form input:focus { outline: none; border-color: var(--accent); }
+
     .toolsrow { margin-top: 30px; display: flex; gap: 10px; flex-wrap: wrap; }
     footer { max-width: 680px; margin: 46px auto 0; font-size: 0.75rem; color: var(--ink-soft); }
     @media (max-width: 720px) { body { padding: 24px 14px 60px; } }
@@ -100,7 +123,7 @@
       <a class="btn quiet" href="/">← houfu72.com</a>
     </div>
   </div>
-  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage) — nothing is uploaded, ever.</p>
+  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage) — nothing leaves this device unless you turn on encrypted sync to your own private repo, below.</p>
 
   <div class="day">
     <h2 id="dayTitle"></h2>
@@ -111,6 +134,11 @@
   </div>
 
   <textarea id="page" placeholder="It's just you here. Start anywhere…" spellcheck="false"></textarea>
+
+  <div class="held fade" id="held" hidden>
+    <div class="cap">RESTING — words wait here 24h before you decide to send them</div>
+    <div id="heldList"></div>
+  </div>
 
   <div class="archive fade" id="archive" hidden>
     <div class="cap-row">
@@ -127,11 +155,32 @@
     </div>
   </div>
 
+  <p class="nudge fade" id="nudge"></p>
+
   <div class="toolsrow fade">
+    <button class="btn quiet" id="holdBtn">hold a thought (24h)</button>
     <button class="btn quiet hidden" id="exportBtn">export everything (.md)</button>
     <button class="btn quiet hidden" id="backupBtn">back up (.json)</button>
     <button class="btn quiet" id="restoreBtn">restore a backup…</button>
     <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
+  </div>
+
+  <div class="sync fade">
+    <div class="cap">SYNC <span id="syncState">— off (this browser only)</span></div>
+    <div class="toolsrow" style="margin-top:0">
+      <button class="btn quiet" id="syncSetupBtn">set up sync…</button>
+      <button class="btn quiet hidden" id="syncNowBtn">sync now</button>
+      <button class="btn quiet hidden" id="syncOffBtn">turn off</button>
+    </div>
+    <div class="sync-form hidden" id="syncForm">
+      <label>your private repo (owner/name)
+        <input id="syncRepo" placeholder="chf-NewStart/journal-data" autocomplete="off" spellcheck="false"></label>
+      <label>fine-grained token — contents read &amp; write, that repo only
+        <input id="syncToken" type="password" autocomplete="off"></label>
+      <label>passphrase — pages are encrypted with it before they leave this device
+        <input id="syncPass" type="password" autocomplete="off"></label>
+      <div><button class="btn" id="syncSaveBtn">save &amp; first sync</button></div>
+    </div>
   </div>
 
 </div>
@@ -144,8 +193,11 @@
   var state = load();
 
   function load(){
-    try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.entries) return s; } catch(e){}
-    return { entries: {} };
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY));
+      if (s && s.entries) { if (!s.held) s.held = []; return s; }
+    } catch(e){}
+    return { entries: {}, held: [] };
   }
   function persist(){ localStorage.setItem(KEY, JSON.stringify(state)); }
   function byId(id){ return document.getElementById(id); }
@@ -216,12 +268,112 @@
       var at = new Date();
       whisperCount('saved ' + String(at.getHours()).padStart(2, '0') + ':' + String(at.getMinutes()).padStart(2, '0'));
       renderArchive();
+      scheduleSync();
     }, 400);
   });
   document.addEventListener('mousemove', function(){ document.body.classList.remove('writing'); });
   page.addEventListener('blur', function(){ document.body.classList.remove('writing'); });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape') document.body.classList.remove('writing'); });
   window.addEventListener('resize', grow);
+
+  /* ---- hold a thought: write first, decide to send 24h later ---- */
+  var HOLD_MS = 24 * 60 * 60 * 1000;
+
+  byId('holdBtn').onclick = function(){
+    var sel = page.value.substring(page.selectionStart, page.selectionEnd).trim();
+    var text = sel || page.value.trim();
+    if (!text) { whisperCount('nothing to hold yet — write first'); return; }
+    state.held.push({ text: text, heldAt: Date.now(), day: openDay });
+    persist();
+    renderHeld();
+    scheduleSync();
+    whisperCount(sel ? 'held that part — it rests until tomorrow' : 'held the whole page — it rests until tomorrow');
+  };
+
+  function copyText(t, done){
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(done, function(){ fallbackCopy(t); done(); });
+    } else { fallbackCopy(t); done(); }
+  }
+  function fallbackCopy(t){
+    var ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  function renderHeld(){
+    var box = byId('held'), list = byId('heldList');
+    box.hidden = state.held.length === 0;
+    list.innerHTML = '';
+    state.held.forEach(function(h, i){
+      var ready = Date.now() - h.heldAt >= HOLD_MS;
+      var item = document.createElement('div');
+      item.className = 'held-item ' + (ready ? 'ready' : 'waiting');
+
+      var txt = document.createElement('div');
+      txt.className = 'txt'; txt.textContent = h.text;
+      item.appendChild(txt);
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+      var when = document.createElement('span');
+      if (ready) {
+        when.textContent = 'rested. read it again — still true, still worth sending?';
+      } else {
+        var at = new Date(h.heldAt + HOLD_MS);
+        when.textContent = 'resting until ' + at.toLocaleString('en-US',
+          { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+      }
+      meta.appendChild(when);
+
+      if (ready) {
+        var cp = document.createElement('button');
+        cp.className = 'linkish'; cp.textContent = 'copy & send it';
+        cp.onclick = function(){
+          copyText(h.text, function(){
+            state.held.splice(i, 1); persist(); renderHeld(); scheduleSync();
+            whisperCount('copied — send it if it still feels right');
+          });
+        };
+        meta.appendChild(cp);
+      }
+
+      var drop = document.createElement('button');
+      drop.className = 'linkish quiet'; drop.textContent = 'let it go';
+      drop.onclick = function(){
+        state.held.splice(i, 1); persist(); renderHeld(); scheduleSync();
+        whisperCount('let go. it stays in your page for ' + prettyDate(h.day));
+      };
+      meta.appendChild(drop);
+
+      item.appendChild(meta);
+      list.appendChild(item);
+    });
+  }
+  setInterval(renderHeld, 60000); /* flip waiting → ready while the page sits open */
+
+  /* ---- gentle backup reminder: localStorage is the only copy ---- */
+  function renderNudge(){
+    var n = Object.keys(state.entries).length;
+    var el = byId('nudge');
+    if (!n) { el.textContent = ''; return; }
+    var last = state.lastBackupAt || 0;
+    var TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
+    if (!last && n >= 5) {
+      el.textContent = 'ps: ' + n + ' pages live only in this browser. worth a back up (.json) below — takes one tap.';
+    } else if (last && Date.now() - last > TWO_WEEKS) {
+      el.textContent = 'ps: last backup was over two weeks ago. your pages deserve a copy.';
+    } else {
+      el.textContent = '';
+    }
+  }
+  function markBackedUp(){
+    state.lastBackupAt = Date.now();
+    persist();
+    renderNudge();
+  }
 
   /* ---- calendar of pages ---- */
   var calY, calM;
@@ -232,6 +384,7 @@
     var any = Object.keys(state.entries).length > 0;
     byId('archive').hidden = !any;
     toolsVisibility();
+    renderNudge();
     if (any) renderCalendar();
   }
 
@@ -309,9 +462,11 @@
       lines.push('## ' + prettyDate(k), '', state.entries[k].text.trim(), '');
     });
     download('journal-intime.md', lines.join('\n'), 'text/markdown');
+    markBackedUp();
   };
   byId('backupBtn').onclick = function(){
     download('journal-intime-backup.json', JSON.stringify(state, null, 2), 'application/json');
+    markBackedUp();
   };
   byId('restoreBtn').onclick = function(){ byId('restoreFile').click(); };
   byId('restoreFile').onchange = function(){
@@ -327,13 +482,171 @@
         /* never lose words: on conflict keep the longer page */
         if (!cur || inc.text.length > cur.text.length) { state.entries[k] = inc; added++; }
       });
+      (s.held || []).forEach(function(h){
+        if (!h || !h.text || !h.heldAt) return;
+        var dup = state.held.some(function(x){ return x.heldAt === h.heldAt && x.text === h.text; });
+        if (!dup) state.held.push(h);
+      });
       persist();
       openEntry(openDay);
+      renderHeld();
       alert(added + ' page(s) restored.');
     }).catch(function(){ alert('Invalid backup file.'); });
   };
 
+  /* ====================================================================
+     OPTIONAL SYNC — one encrypted blob in a private GitHub repo you own.
+     Pages are AES-GCM encrypted on-device with your passphrase before
+     upload; the repo only ever sees ciphertext. Token + passphrase live
+     in this browser's localStorage (same trust level as the pages
+     themselves). Turn it off any time; the page is pure-local without it.
+     ==================================================================== */
+  var SYNC_KEY = 'journalIntime.sync.v1';
+  var SYNC_FILE = 'journal.enc.json';
+  var syncCfg = null, syncing = false, syncTimer = null;
+  try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
+
+  function setSyncStatus(msg){ byId('syncState').textContent = '— ' + msg; }
+  function syncUI(){
+    var on = !!(syncCfg && syncCfg.repo && syncCfg.token && syncCfg.pass);
+    setSyncStatus(on ? 'to ' + syncCfg.repo + ' (encrypted)' : 'off (this browser only)');
+    byId('syncNowBtn').classList.toggle('hidden', !on);
+    byId('syncOffBtn').classList.toggle('hidden', !on);
+    byId('syncSetupBtn').textContent = on ? 'change settings…' : 'set up sync…';
+  }
+
+  byId('syncSetupBtn').onclick = function(){
+    var f = byId('syncForm');
+    f.classList.toggle('hidden');
+    if (!f.classList.contains('hidden') && syncCfg){
+      byId('syncRepo').value = syncCfg.repo || '';
+      byId('syncToken').value = syncCfg.token || '';
+      byId('syncPass').value = syncCfg.pass || '';
+    }
+  };
+  byId('syncOffBtn').onclick = function(){
+    localStorage.removeItem(SYNC_KEY); syncCfg = null; syncUI();
+  };
+  byId('syncSaveBtn').onclick = function(){
+    var repo = byId('syncRepo').value.trim();
+    var token = byId('syncToken').value.trim();
+    var pass = byId('syncPass').value;
+    if (!/^[^\/\s]+\/[^\/\s]+$/.test(repo) || !token || !pass){
+      alert('Need all three: repo as owner/name, a token, and a passphrase.');
+      return;
+    }
+    syncCfg = { repo: repo, token: token, pass: pass };
+    localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg));
+    byId('syncForm').classList.add('hidden');
+    syncUI();
+    doSync();
+  };
+
+  /* -- crypto: PBKDF2 (310k, SHA-256) -> AES-256-GCM, WebCrypto only -- */
+  function b64(buf){
+    var s = ''; new Uint8Array(buf).forEach(function(b){ s += String.fromCharCode(b); });
+    return btoa(s);
+  }
+  function unb64(str){
+    var bin = atob(str), a = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return a;
+  }
+  function deriveKey(pass, salt){
+    return crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey'])
+      .then(function(km){
+        return crypto.subtle.deriveKey(
+          { name: 'PBKDF2', salt: salt, iterations: 310000, hash: 'SHA-256' },
+          km, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+      });
+  }
+  function encryptState(pass, obj){
+    var salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return deriveKey(pass, salt).then(function(key){
+      return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key,
+        new TextEncoder().encode(JSON.stringify(obj)));
+    }).then(function(ct){
+      return JSON.stringify({ v: 1, salt: b64(salt), iv: b64(iv), data: b64(ct) });
+    });
+  }
+  function decryptState(pass, str){
+    var p = JSON.parse(str);
+    return deriveKey(pass, unb64(p.salt)).then(function(key){
+      return crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(p.iv) }, key, unb64(p.data));
+    }).then(function(pt){ return JSON.parse(new TextDecoder().decode(pt)); });
+  }
+
+  function gh(method, body){
+    return fetch('https://api.github.com/repos/' + syncCfg.repo + '/contents/' + SYNC_FILE, {
+      method: method,
+      headers: { 'Authorization': 'Bearer ' + syncCfg.token, 'Accept': 'application/vnd.github+json' },
+      body: body ? JSON.stringify(body) : undefined
+    });
+  }
+
+  /* same never-lose-words rule as restore: longer page wins per day */
+  function mergeState(inc){
+    var changed = false;
+    Object.keys(inc.entries || {}).forEach(function(k){
+      var i = inc.entries[k]; if (!i || !i.text) return;
+      var c = state.entries[k];
+      if (!c || i.text.length > c.text.length){ state.entries[k] = i; changed = true; }
+    });
+    (inc.held || []).forEach(function(h){
+      if (!h || !h.text || !h.heldAt) return;
+      var dup = state.held.some(function(x){ return x.heldAt === h.heldAt && x.text === h.text; });
+      if (!dup){ state.held.push(h); changed = true; }
+    });
+    return changed;
+  }
+
+  function doSync(){
+    if (!syncCfg || syncing) return;
+    syncing = true;
+    setSyncStatus('syncing…');
+    gh('GET').then(function(r){
+      if (r.status === 404) return { sha: null, remote: null };
+      if (r.status === 401 || r.status === 403) throw new Error('token rejected — check its access to ' + syncCfg.repo);
+      if (!r.ok) throw new Error('github said ' + r.status);
+      return r.json().then(function(j){
+        var raw = atob((j.content || '').replace(/\n/g, ''));
+        return decryptState(syncCfg.pass, raw).then(
+          function(remote){ return { sha: j.sha, remote: remote }; },
+          function(){ throw new Error('could not decrypt — wrong passphrase? nothing was changed.'); });
+      });
+    }).then(function(got){
+      if (got.remote && mergeState(got.remote)){
+        persist();
+        /* don't yank the page out from under mid-sentence typing */
+        if (document.activeElement !== page) openEntry(openDay); else renderArchive();
+        renderHeld();
+      }
+      return encryptState(syncCfg.pass, { entries: state.entries, held: state.held })
+        .then(function(enc){
+          var body = { message: 'journal sync', content: btoa(enc) };
+          if (got.sha) body.sha = got.sha;
+          return gh('PUT', body);
+        });
+    }).then(function(r){
+      if (!r.ok) throw new Error('push failed (' + r.status + ')');
+      var at = new Date();
+      setSyncStatus('synced ' + pad2(at.getHours()) + ':' + pad2(at.getMinutes()) + ' · to ' + syncCfg.repo);
+    }).catch(function(e){
+      setSyncStatus('sync: ' + (e && e.message ? e.message : 'failed'));
+    }).then(function(){ syncing = false; });
+  }
+  byId('syncNowBtn').onclick = doSync;
+  function scheduleSync(){
+    if (!syncCfg) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(doSync, 4000);
+  }
+
   openEntry(today);
+  renderHeld();
+  syncUI();
+  if (syncCfg) doSync();
   if (window.matchMedia && matchMedia('(pointer: fine)').matches) page.focus();
 })();
 </script>

@@ -345,8 +345,24 @@
     el.innerHTML = WX_ICONS[w.k] || '';
     el.appendChild(document.createTextNode(' ' + w.t + '°C'));
   }
+  /* migrate emoji-era stamps into doodles */
+  (function(){
+    var map = { '☀️':'sun', '🌤️':'partly', '☁️':'cloud', '🌫️':'fog',
+                '🌦️':'rain', '🌧️':'rain', '❄️':'snow', '⛈️':'storm', '🌡️':'partly' };
+    var changed = false;
+    Object.keys(state.wx).forEach(function(k){
+      var w = state.wx[k];
+      if (typeof w !== 'string') return;
+      var kind = null;
+      Object.keys(map).forEach(function(e){ if (w.indexOf(e) === 0) kind = map[e]; });
+      var m = w.match(/(-?\d+)\s*°/);
+      if (kind && m){ state.wx[k] = { k: kind, t: +m[1] }; changed = true; }
+    });
+    if (changed) persist();
+  })();
+
   function fetchWx(){
-    if (state.wx[today]){ showWx(); return; }
+    if (state.wx[today] && typeof state.wx[today] !== 'string'){ showWx(); return; }
     fetch('https://get.geojs.io/v1/ip/geo.json')
       .then(function(r){ return r.json(); })
       .then(function(g){

@@ -10,17 +10,19 @@
   <meta name="theme-color" content="#f4efe6">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Long+Cang&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Homemade+Apple&family=Long+Cang&display=swap" rel="stylesheet">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* palette lifted from the owner's Notability pages:
+       tan kraft paper, visible rules, purple ink */
     :root {
-      --paper: #f4efe6; --ink: #2b2620; --ink-soft: #6b6257; --line: #ddd4c4;
-      --card: #faf6ee; --accent: #7a5c2e; --accent-soft: rgba(122,92,46,0.12);
+      --paper: #e6dcb6; --ink: #5f43ac; --ink-soft: #8b7fa6; --line: #c8bc92;
+      --card: #ede4c6; --accent: #7e57c8; --accent-soft: rgba(126,87,200,0.14);
     }
     html[data-theme="dark"] {
-      --paper: #14120f; --ink: #d8d2c6; --ink-soft: #8a8378; --line: #2b2820;
-      --card: #1b1814; --accent: #c9a35e; --accent-soft: rgba(201,163,94,0.12);
+      --paper: #16121f; --ink: #cec2ee; --ink-soft: #857a9e; --line: #2c2540;
+      --card: #1d1830; --accent: #a98fe0; --accent-soft: rgba(169,143,224,0.14);
     }
     body {
       font-family: 'Caveat', 'Long Cang', 'Kaiti SC', 'STKaiti', 'KaiTi', cursive, Georgia, serif;
@@ -59,6 +61,16 @@
       animation: draw 1.3s .4s ease forwards;
     }
     @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    /* the "ink" parts — what you write — in the loopiest hand;
+       UI chrome stays in the tidier Caveat for legibility */
+    h1, .day h2, #page, .held-item .txt {
+      font-family: 'Homemade Apple', 'Caveat', 'Long Cang', 'Kaiti SC', 'STKaiti', 'KaiTi', cursive, Georgia, serif;
+    }
+    html[data-font="mono"] h1, html[data-font="mono"] .day h2,
+    html[data-font="mono"] #page, html[data-font="mono"] .held-item .txt {
+      font-family: Consolas, 'Courier New', monospace;
+    }
 
     /* mono mode: not just the font — the full terminal skin, matching the
        msgbox: near-black panel, spotify green, prompt line, blinking cursor */
@@ -102,7 +114,7 @@
 
     #page {
       width: 100%; min-height: 58vh; resize: none; overflow: hidden;
-      font-family: inherit; font-size: 1.4rem; line-height: 1.9; color: var(--ink);
+      font-size: 1.4rem; line-height: 1.9; color: var(--ink);
       background: transparent; border: none; outline: none;
       border-top: 1px solid var(--line); padding: 22px 2px 40px;
       caret-color: var(--accent);

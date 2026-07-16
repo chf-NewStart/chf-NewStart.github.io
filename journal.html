@@ -77,10 +77,13 @@
        UI chrome stays in the tidier Caveat for legibility */
     h1, .day h2, #page, .held-item .txt {
       font-family: 'Houfu Hand', 'Homemade Apple', 'Caveat', 'Long Cang', 'Kaiti SC', 'STKaiti', 'KaiTi', cursive, Georgia, serif;
+      /* this hand's space glyph is narrow — give words room to breathe */
+      word-spacing: 0.22em;
     }
     html[data-font="mono"] h1, html[data-font="mono"] .day h2,
     html[data-font="mono"] #page, html[data-font="mono"] .held-item .txt {
       font-family: Consolas, 'Courier New', monospace;
+      word-spacing: normal;
     }
 
     /* mono mode: not just the font — the full terminal skin, matching the

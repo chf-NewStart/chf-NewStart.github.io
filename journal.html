@@ -13,6 +13,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Homemade+Apple&family=Long+Cang&display=swap" rel="stylesheet">
 
   <style>
+    /* the owner's own handwriting, scanned via Calligraphr — covers A-Z a-z 0-9
+       and basic punctuation; anything it lacks (CJK, other marks) falls through
+       to Caveat / Long Cang below */
+    @font-face {
+      font-family: 'Houfu Hand';
+      src: url('/fonts/houfu-hand.woff2') format('woff2');
+      font-display: swap;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     /* palette lifted from the owner's Notability pages:
        tan kraft paper, visible rules, purple ink */
@@ -65,7 +73,7 @@
     /* the "ink" parts — what you write — in the loopiest hand;
        UI chrome stays in the tidier Caveat for legibility */
     h1, .day h2, #page, .held-item .txt {
-      font-family: 'Homemade Apple', 'Caveat', 'Long Cang', 'Kaiti SC', 'STKaiti', 'KaiTi', cursive, Georgia, serif;
+      font-family: 'Houfu Hand', 'Homemade Apple', 'Caveat', 'Long Cang', 'Kaiti SC', 'STKaiti', 'KaiTi', cursive, Georgia, serif;
     }
     html[data-font="mono"] h1, html[data-font="mono"] .day h2,
     html[data-font="mono"] #page, html[data-font="mono"] .held-item .txt {

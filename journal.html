@@ -20,6 +20,9 @@
       font-family: 'Houfu Hand';
       src: url('/fonts/houfu-hand.woff2') format('woff2');
       font-display: swap;
+      /* this hand renders small for its em box — scale the glyphs up without
+         touching line-height, so they still sit on the ruled lines */
+      size-adjust: 122%;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     /* palette lifted from the owner's Notability pages:

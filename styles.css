@@ -655,12 +655,6 @@ footer {
     color: var(--ink-soft);
 }
 
-.weather-glyph {
-    display: inline-block;
-    min-width: 1.5em;
-    color: var(--accent);
-}
-
 .scroll-cue {
     display: flex;
     position: absolute;
@@ -985,6 +979,132 @@ footer {
     font-size: 0.76rem;
 }
 
+.case-study-eyebrow {
+    margin: 0 0 13px !important;
+    color: var(--accent) !important;
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+}
+
+.case-study-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin: 26px 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    list-style: none;
+}
+
+.case-study-grid li {
+    display: grid;
+    min-height: 150px;
+    align-content: start;
+    gap: 13px;
+    padding: 22px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.case-study-grid strong {
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.case-study-grid span {
+    color: var(--muted);
+    line-height: 1.65;
+}
+
+.case-study-note {
+    margin: 0 !important;
+    padding: 15px 17px;
+    border-left: 2px solid var(--accent);
+    color: var(--ink-soft) !important;
+    background: var(--accent-soft);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+}
+
+.case-study-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-top: 22px;
+}
+
+.project-archive {
+    margin-top: 30px;
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+}
+
+.archive-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: baseline;
+    margin-bottom: 18px;
+}
+
+.archive-heading .section-console {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.archive-heading > p:last-child {
+    max-width: 52ch;
+    margin: 0;
+    color: var(--muted-deep);
+    font-size: 0.8rem;
+}
+
+.archive-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+}
+
+.archive-grid a {
+    display: flex;
+    min-height: 112px;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-soft);
+    background: rgba(255, 255, 255, 0.012);
+    text-decoration: none;
+    transition: color 160ms ease, background 160ms ease;
+}
+
+.archive-grid a:hover {
+    color: var(--ink);
+    background: var(--accent-soft);
+}
+
+.archive-grid span {
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.archive-grid small {
+    color: var(--muted-deep);
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    line-height: 1.5;
+}
+
 .panel-command {
     margin: 0 0 12px !important;
     color: var(--muted-deep) !important;
@@ -1118,6 +1238,10 @@ iframe {
     font-family: var(--mono);
     font-size: 0.68rem;
     letter-spacing: 0.05em;
+}
+
+.lab-swipe-hint {
+    display: none;
 }
 
 .arcade-grid {
@@ -1930,6 +2054,10 @@ body.sudo-mode {
     .contact-shell {
         gap: 58px;
     }
+
+    .archive-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-height: 800px) and (min-width: 901px) {
@@ -1986,14 +2114,33 @@ body.sudo-mode {
     }
 
     .arcade-grid {
-        grid-template-columns: 1fr;
+        display: flex;
+        gap: 12px;
+        padding: 2px 18px 15px 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: thin;
     }
 
     .gc-card,
     .gc-featured,
     .gc-card:nth-last-child(2),
     .gc-card:last-child {
-        grid-column: 1;
+        min-width: 0;
+        flex: 0 0 calc(100% - 18px);
+        grid-column: auto;
+        scroll-snap-align: start;
+    }
+
+    .lab-swipe-hint {
+        display: block;
+        margin: -8px 0 12px;
+        color: var(--accent);
+        font-family: var(--mono);
+        font-size: 0.62rem;
+        letter-spacing: 0.1em;
     }
 
     .logo-copy small {
@@ -2091,6 +2238,30 @@ body.sudo-mode {
 
     .highlight-card h3 {
         font-size: 1.7rem;
+    }
+
+    .case-study-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .case-study-grid li {
+        min-height: 0;
+    }
+
+    .archive-heading {
+        display: block;
+    }
+
+    .archive-heading .section-console {
+        margin-bottom: 10px;
+    }
+
+    .archive-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .archive-grid a {
+        min-height: 96px;
     }
 
     .game-index {

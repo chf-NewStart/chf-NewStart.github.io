@@ -150,23 +150,18 @@
         }
     }
 
-    window.switchAboutCard = (panelId, button) => switchPanel('about-section', panelId, button);
-    window.switchExpCard = (panelId, button) => switchPanel('experience-section', panelId, button);
-    window.switchProjCard = (panelId, button) => switchPanel('projects-section', panelId, button);
-    window.switchPersonalCard = (panelId, button) => switchPanel('personal-section', panelId, button);
-
     document.querySelectorAll('.about-explorer').forEach((explorer, explorerIndex) => {
+        const section = explorer.closest('section[id]');
         const menu = explorer.querySelector('.explorer-menu');
         const buttons = [...explorer.querySelectorAll('.explorer-btn')];
         const panels = [...explorer.querySelectorAll('.explorer-content .highlight-card')];
-        if (!menu || !buttons.length) return;
+        if (!section || !menu || !buttons.length) return;
 
         menu.setAttribute('role', 'tablist');
         menu.setAttribute('aria-label', `Content selector ${explorerIndex + 1}`);
 
         buttons.forEach((button, index) => {
-            const match = button.getAttribute('onclick')?.match(/'([^']+)'/);
-            const panelId = match?.[1] || panels[index]?.id;
+            const panelId = button.dataset.panel || panels[index]?.id;
             if (!panelId) return;
 
             const panel = document.getElementById(panelId);
@@ -185,6 +180,8 @@
                 panel.tabIndex = 0;
                 panel.hidden = !active;
             }
+
+            button.addEventListener('click', () => switchPanel(section.id, panelId, button));
 
             button.addEventListener('keydown', (event) => {
                 const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
@@ -245,100 +242,19 @@
         }
     });
 
-    const weatherOutput = document.getElementById('nfWeather');
-
-    function weatherGlyph(code, smoky = false) {
-        if (smoky) return '≋';
-        if (code === 0) return '☼';
-        if (code <= 2) return '◒';
-        if (code === 3) return '☁';
-        if (code === 45 || code === 48) return '≋';
-        if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return '☂';
-        if ((code >= 71 && code <= 77) || code === 85 || code === 86) return '✳';
-        if (code >= 95) return 'ϟ';
-        return '◒';
-    }
-
-    async function fetchJson(url) {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-        return response.json();
-    }
-
-    async function fetchCanadianAqhi(latitude, longitude) {
-        const bounds = [longitude - 0.7, latitude - 0.5, longitude + 0.7, latitude + 0.5].join(',');
-        try {
-            const data = await fetchJson(`https://api.weather.gc.ca/collections/aqhi-observations-realtime/items?f=json&limit=20&latest=true&bbox=${bounds}`);
-            let closest = null;
-            let closestDistance = Infinity;
-
-            (data.features || []).forEach((feature) => {
-                const coordinates = feature.geometry?.coordinates;
-                const aqhi = feature.properties?.aqhi;
-                if (!coordinates || aqhi == null) return;
-
-                const distance = ((coordinates[0] - longitude) ** 2) + ((coordinates[1] - latitude) ** 2);
-                if (distance < closestDistance) {
-                    closestDistance = distance;
-                    closest = Math.round(aqhi);
-                }
-            });
-
-            return closest;
-        } catch {
-            return null;
-        }
-    }
-
-    function renderWeather({ code, temperature, city, aqhi, aqi }) {
-        if (!weatherOutput) return;
-        const smoky = (aqhi != null && aqhi >= 7) || (aqi != null && aqi >= 150);
-        const glyph = document.createElement('span');
-        glyph.className = 'weather-glyph';
-        glyph.setAttribute('aria-hidden', 'true');
-        glyph.textContent = weatherGlyph(code, smoky);
-
-        const details = [`${Math.round(temperature)}°C`];
-        if (aqhi != null && aqhi >= 4) details.push(`AQHI ${aqhi}`);
-        else if (aqi != null && aqi >= 100) details.push(`AQI ${aqi}`);
-        if (city) details.push(city);
-
-        weatherOutput.replaceChildren(glyph, document.createTextNode(details.join(' · ')));
-    }
-
-    async function loadLocalWeather() {
-        if (!weatherOutput) return;
-
-        try {
-            const location = await fetchJson('https://get.geojs.io/v1/ip/geo.json');
-            const latitude = Number.parseFloat(location.latitude);
-            const longitude = Number.parseFloat(location.longitude);
-            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error('Location unavailable');
-
-            const coordinates = `latitude=${latitude}&longitude=${longitude}`;
-            const [forecast, air, aqhi] = await Promise.all([
-                fetchJson(`https://api.open-meteo.com/v1/forecast?${coordinates}&current=temperature_2m,weather_code`),
-                fetchJson(`https://air-quality-api.open-meteo.com/v1/air-quality?${coordinates}&current=us_aqi`).catch(() => null),
-                location.country_code === 'CA' ? fetchCanadianAqhi(latitude, longitude) : Promise.resolve(null)
-            ]);
-
-            const current = forecast.current;
-            if (!current || current.temperature_2m == null || current.weather_code == null) throw new Error('Weather unavailable');
-            const aqi = air?.current?.us_aqi == null ? null : Math.round(air.current.us_aqi);
-            renderWeather({
-                code: current.weather_code,
-                temperature: current.temperature_2m,
-                city: location.city,
-                aqhi,
-                aqi
-            });
-        } catch {
-            weatherOutput.textContent = currentLanguage === 'zh' ? '暂时无法获取' : 'Conditions unavailable';
-        }
-    }
+    const labCarousel = document.querySelector('.arcade-grid');
+    labCarousel?.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        labCarousel.scrollBy({
+            left: direction * labCarousel.clientWidth * 0.95,
+            behavior: prefersReducedMotion ? 'auto' : 'smooth'
+        });
+    });
 
     setTomatoMode(localStorage.getItem('tomatoMode') === 'on', false);
     applyLanguage(currentLanguage);
     updateScrollUI();
-    loadLocalWeather();
 })();

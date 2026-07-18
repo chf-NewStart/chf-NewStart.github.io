@@ -1893,6 +1893,143 @@ body.sudo-mode {
     animation: flicker 180ms steps(2) 2;
 }
 
+.tomato-pet {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 950;
+    width: min(286px, calc(100vw - 44px));
+    overflow: hidden;
+    border: 1px solid rgba(255, 118, 95, 0.48);
+    color: var(--ink-soft);
+    background:
+        linear-gradient(rgba(255, 118, 95, 0.035) 1px, transparent 1px),
+        rgba(3, 8, 6, 0.96);
+    background-size: 100% 4px;
+    box-shadow: 10px 10px 0 rgba(255, 95, 86, 0.08), 0 22px 70px rgba(0, 0, 0, 0.46);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(18px) scale(0.96);
+    transform-origin: right bottom;
+    visibility: hidden;
+    transition: opacity 220ms ease, transform 220ms ease, visibility 220ms;
+}
+
+.tomato-pet.is-awake {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    visibility: visible;
+}
+
+.tomato-pet-titlebar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 34px;
+    padding: 5px 7px 5px 11px;
+    border-bottom: 1px solid rgba(255, 118, 95, 0.25);
+    color: var(--tomato);
+    background: rgba(255, 118, 95, 0.07);
+    font-family: var(--mono);
+    font-size: 0.57rem;
+    letter-spacing: 0.1em;
+}
+
+.tomato-pet-friendship {
+    justify-self: end;
+    color: var(--muted-deep);
+    letter-spacing: 0.04em;
+}
+
+.tomato-pet-close {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid transparent;
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--mono);
+    line-height: 1;
+}
+
+.tomato-pet-close:hover {
+    border-color: rgba(255, 118, 95, 0.36);
+    color: var(--tomato);
+    background: rgba(255, 118, 95, 0.08);
+}
+
+.tomato-pet-character {
+    display: grid;
+    width: 100%;
+    min-height: 114px;
+    place-items: center;
+    padding: 12px 10px 7px;
+    overflow: hidden;
+    border: 0;
+    color: var(--tomato);
+    background: transparent;
+    cursor: pointer;
+    animation: tomatoWander 4.8s ease-in-out infinite alternate;
+}
+
+.tomato-pet-character:hover {
+    color: #ff9b86;
+    filter: drop-shadow(0 0 8px rgba(255, 95, 86, 0.28));
+}
+
+.tomato-pet-character.is-petted {
+    animation: tomatoBop 360ms cubic-bezier(0.2, 0.85, 0.3, 1.25);
+}
+
+.tomato-pet-art {
+    display: block;
+    width: max-content;
+    margin: 0;
+    color: currentColor;
+    font-family: var(--mono);
+    font-size: 5px;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1;
+    text-align: left;
+    text-shadow: 0 0 12px rgba(255, 95, 86, 0.22);
+    white-space: pre;
+}
+
+.tomato-pet-status {
+    min-height: 31px;
+    margin: 0;
+    padding: 8px 12px 2px;
+    border-top: 1px solid rgba(255, 118, 95, 0.18);
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    line-height: 1.45;
+}
+
+.tomato-pet-status::before {
+    color: var(--tomato);
+    content: '> ';
+}
+
+.tomato-pet-hint {
+    display: block;
+    padding: 0 12px 9px;
+    color: var(--muted-deep);
+    font-family: var(--mono);
+    font-size: 0.52rem;
+    letter-spacing: 0.04em;
+}
+
+body.sudo-mode .terminal-alert {
+    bottom: 240px;
+}
+
 .terminal-alert {
     position: fixed;
     right: 24px;
@@ -1929,6 +2066,17 @@ body.sudo-mode {
 
 @keyframes flicker {
     50% { opacity: 0.82; filter: contrast(120%); }
+}
+
+@keyframes tomatoWander {
+    from { transform: translate(-7px, 1px) rotate(-0.7deg); }
+    to { transform: translate(7px, -2px) rotate(0.7deg); }
+}
+
+@keyframes tomatoBop {
+    0%, 100% { transform: translateY(0) scale(1); }
+    42% { transform: translateY(-8px) scale(1.035, 0.97); }
+    72% { transform: translateY(2px) scale(0.98, 1.025); }
 }
 
 @media (max-width: 1120px) {
@@ -2300,6 +2448,46 @@ body.sudo-mode {
     footer p {
         flex-direction: column;
         gap: 7px;
+    }
+
+    .tomato-pet {
+        right: 14px;
+        bottom: 14px;
+        width: 184px;
+    }
+
+    .tomato-pet-titlebar {
+        grid-template-columns: 1fr auto;
+    }
+
+    .tomato-pet-friendship {
+        display: none;
+    }
+
+    .tomato-pet-character {
+        min-height: 64px;
+        padding: 7px;
+        font-size: 2.45rem;
+    }
+
+    .tomato-pet-character::before {
+        content: '🍅';
+    }
+
+    .tomato-pet-art,
+    .tomato-pet-hint {
+        display: none;
+    }
+
+    .tomato-pet-status {
+        min-height: 40px;
+        padding: 7px 9px;
+        font-size: 0.58rem;
+    }
+
+    body.sudo-mode .terminal-alert {
+        right: 14px;
+        bottom: 154px;
     }
 }
 

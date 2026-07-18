@@ -7,10 +7,17 @@
     const hamburger = document.getElementById('hamburgerBtn');
     const navMenu = document.getElementById('navLinks');
     const tomatoToggle = document.getElementById('tomatoToggle');
+    const tomatoPet = document.getElementById('tomatoPet');
+    const tomatoPetButton = document.getElementById('tomatoPetButton');
+    const tomatoPetClose = document.getElementById('tomatoPetClose');
+    const tomatoPetStatus = document.getElementById('tomatoPetStatus');
+    const tomatoPetFriendship = document.getElementById('tomatoPetFriendship');
     const scrollProgress = document.getElementById('scrollProgress');
     const nav = document.querySelector('.sticky-nav');
     const year = document.getElementById('currentYear');
     let currentLanguage = localStorage.getItem('language') === 'zh' ? 'zh' : 'en';
+    let tomatoPetCount = Math.min(Math.max(Number.parseInt(localStorage.getItem('tomatoPetPats') || '0', 10) || 0, 0), 99);
+    let tomatoPetTimer = null;
 
     document.querySelectorAll('[target="_blank"]').forEach((link) => {
         link.rel = 'noopener noreferrer';
@@ -58,6 +65,8 @@
                     : (expanded ? 'Close menu' : 'Open menu')
             );
         }
+
+        updateTomatoPetCopy();
     }
 
     languageToggle?.addEventListener('click', () => {
@@ -86,7 +95,9 @@
     });
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') setMenu(false);
+        if (event.key !== 'Escape') return;
+        setMenu(false);
+        if (body.classList.contains('sudo-mode')) setTomatoMode(false, false);
     });
 
     document.addEventListener('click', (event) => {
@@ -216,18 +227,72 @@
 
     function setTomatoMode(enabled, announce = true) {
         body.classList.toggle('sudo-mode', enabled);
+        tomatoPet?.classList.toggle('is-awake', enabled);
+        tomatoPet?.setAttribute('aria-hidden', String(!enabled));
         tomatoToggle?.setAttribute('aria-pressed', String(enabled));
         localStorage.setItem('tomatoMode', enabled ? 'on' : 'off');
+        if (enabled && tomatoPetStatus) {
+            tomatoPetStatus.textContent = currentLanguage === 'zh' ? '你好，小小世界。' : 'hello, tiny world.';
+        }
+        updateTomatoPetCopy();
         if (announce) {
             showNotice(enabled
-                ? '> TOMATO MODE ENABLED · visual spectrum shifted'
-                : '> TOMATO MODE DISABLED · default spectrum restored');
+                ? (currentLanguage === 'zh' ? '> 番茄宠物已上线 · 点击和它互动' : '> TOMATO PET ONLINE · click to pet')
+                : (currentLanguage === 'zh' ? '> 番茄宠物已休息' : '> TOMATO PET IS RESTING'));
         }
+    }
+
+    function updateTomatoPetCopy() {
+        const enabled = body.classList.contains('sudo-mode');
+        if (tomatoToggle) {
+            tomatoToggle.setAttribute(
+                'aria-label',
+                currentLanguage === 'zh'
+                    ? (enabled ? '让番茄宠物休息' : '唤醒番茄宠物')
+                    : (enabled ? 'Put tomato pet away' : 'Wake tomato pet')
+            );
+            tomatoToggle.title = currentLanguage === 'zh'
+                ? (enabled ? '让番茄休息' : '唤醒番茄')
+                : (enabled ? 'Put tomato to sleep' : 'Wake tomato pet');
+        }
+
+        tomatoPet?.setAttribute('aria-label', currentLanguage === 'zh' ? '番茄宠物' : 'Tomato pet');
+        tomatoPetButton?.setAttribute('aria-label', currentLanguage === 'zh' ? '摸摸番茄' : 'Pet the tomato');
+        if (tomatoPetClose) {
+            const closeLabel = currentLanguage === 'zh' ? '让番茄宠物休息' : 'Put tomato pet away';
+            tomatoPetClose.setAttribute('aria-label', closeLabel);
+            tomatoPetClose.title = closeLabel;
+        }
+        if (tomatoPetFriendship) {
+            tomatoPetFriendship.textContent = `${currentLanguage === 'zh' ? '亲密度' : 'FRIENDSHIP'} ${String(tomatoPetCount).padStart(2, '0')}`;
+        }
+    }
+
+    function petTomato() {
+        if (!tomatoPetButton || !tomatoPetStatus) return;
+
+        tomatoPetCount = Math.min(tomatoPetCount + 1, 99);
+        localStorage.setItem('tomatoPetPats', String(tomatoPetCount));
+        updateTomatoPetCopy();
+
+        const messages = currentLanguage === 'zh'
+            ? ['光合作用 +1', '传感器显示：开心', '模型置信度：熟透了', '小世界，大番茄', '谢谢你，人类。']
+            : ['photosynthesis +1', 'sensor says: happy', 'model confidence: ripe', 'tiny world, big tomato', 'thank you, human.'];
+        tomatoPetStatus.textContent = messages[(tomatoPetCount - 1) % messages.length];
+
+        window.clearTimeout(tomatoPetTimer);
+        tomatoPetButton.classList.remove('is-petted');
+        void tomatoPetButton.offsetWidth;
+        tomatoPetButton.classList.add('is-petted');
+        tomatoPetTimer = window.setTimeout(() => tomatoPetButton.classList.remove('is-petted'), 380);
     }
 
     tomatoToggle?.addEventListener('click', () => {
         setTomatoMode(!body.classList.contains('sudo-mode'));
     });
+
+    tomatoPetButton?.addEventListener('click', petTomato);
+    tomatoPetClose?.addEventListener('click', () => setTomatoMode(false));
 
     const copyEmail = document.getElementById('copyEmail');
     copyEmail?.addEventListener('click', async () => {

@@ -83,31 +83,49 @@
                 </div>
             </div>
         </nav>
-        <aside class="tomato-pet" id="tomatoPet" aria-label="Tomato pet" aria-hidden="true">
+        <aside class="tomato-pet" id="tomatoPet" data-mood="idle" aria-label="Tomato pet" aria-hidden="true" hidden>
             <div class="tomato-pet-titlebar">
-                <span>TOMATO.PET</span>
-                <span class="tomato-pet-friendship" id="tomatoPetFriendship">FRIENDSHIP 00</span>
+                <span class="tomato-pet-name"><i aria-hidden="true"></i>TOMA.PET</span>
+                <span class="tomato-pet-mood" id="tomatoPetMood">CURIOUS</span>
                 <button class="tomato-pet-close" id="tomatoPetClose" type="button" aria-label="Put tomato pet away" title="Put tomato pet away">×</button>
             </div>
-            <button class="tomato-pet-character" id="tomatoPetButton" type="button" aria-label="Pet the tomato" aria-describedby="tomatoPetStatus tomatoPetHint">
-                <span class="tomato-pet-art" aria-hidden="true">⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠻⣶⡆⠀⠿⠀⣶⠒⠊⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣴⠾⠛⢹⣶⡤⢶⣿⡟⠶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⣠⣶⣤⣤⣤⣤⣴⠂⠸⠋⢀⣄⡉⠓⠀⠲⣶⣾⣿⣷⣄⠀⠀⠀⠀
-⠀⠀⠀⢀⣾⡿⠋⠁⣠⣤⣿⡟⢀⣠⣾⣿⣿⣿⣷⣶⣤⣼⣿⣿⣿⣿⣆⠀⠀⠀
-⠀⠀⠀⣾⡟⠀⣰⣿⣿⣿⣿⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠀
-⠀⠀⢸⡿⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
-⠀⠀⢸⡇⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
-⠀⠀⢸⣿⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
-⠀⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠁⠀⠀
-⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀
-⠀⠀⠀⠀⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠉⠛⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠋⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠉⠉⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀</span>
-            </button>
-            <p class="tomato-pet-status" id="tomatoPetStatus" role="status" aria-live="polite" data-en="hello, tiny world." data-zh="你好，小小世界。">hello, tiny world.</p>
-            <small class="tomato-pet-hint" id="tomatoPetHint" data-en="click the tomato to pet it" data-zh="点击番茄和它互动">click the tomato to pet it</small>
+            <div class="tomato-pet-scene">
+                <span class="tomato-pet-scan" aria-hidden="true"></span>
+                <span class="tomato-pet-spark spark-one" aria-hidden="true">✦</span>
+                <span class="tomato-pet-spark spark-two" aria-hidden="true">·</span>
+                <button class="tomato-pet-character" id="tomatoPetButton" type="button" aria-label="Pet Toma" aria-describedby="tomatoPetStatus tomatoPetHint">
+                    <span class="tomato-sprite" aria-hidden="true">
+                        <span class="tomato-leaf leaf-one"></span>
+                        <span class="tomato-leaf leaf-two"></span>
+                        <span class="tomato-leaf leaf-three"></span>
+                        <span class="tomato-body">
+                            <span class="tomato-shine"></span>
+                            <span class="tomato-eye eye-left"></span>
+                            <span class="tomato-eye eye-right"></span>
+                            <span class="tomato-cheek cheek-left"></span>
+                            <span class="tomato-cheek cheek-right"></span>
+                            <span class="tomato-mouth"></span>
+                        </span>
+                        <span class="tomato-foot foot-left"></span>
+                        <span class="tomato-foot foot-right"></span>
+                    </span>
+                </button>
+                <span class="tomato-pet-bubble" id="tomatoPetBubble" aria-hidden="true">+1 BOND</span>
+            </div>
+            <div class="tomato-pet-readout">
+                <p class="tomato-pet-status" id="tomatoPetStatus" role="status" aria-live="polite">A pocket-sized greenhouse twin.</p>
+                <div class="tomato-pet-bond">
+                    <span data-en="BOND" data-zh="亲密度">BOND</span>
+                    <span class="tomato-pet-friendship" id="tomatoPetFriendship">00 / 99</span>
+                    <span class="tomato-pet-track" id="tomatoPetTrack" role="progressbar" aria-label="Bond with Toma" aria-valuemin="0" aria-valuemax="99" aria-valuenow="0"><i id="tomatoPetFill"></i></span>
+                </div>
+            </div>
+            <div class="tomato-pet-controls" aria-label="Care for Toma">
+                <button type="button" data-tomato-action="pat"><span aria-hidden="true">♡</span><span data-en="PAT" data-zh="摸摸">PAT</span></button>
+                <button type="button" data-tomato-action="water"><span aria-hidden="true">◒</span><span data-en="WATER" data-zh="浇水">WATER</span></button>
+                <button type="button" data-tomato-action="sun"><span aria-hidden="true">☼</span><span data-en="SUN" data-zh="晒晒">SUN</span></button>
+            </div>
+            <small class="tomato-pet-hint" id="tomatoPetHint" data-en="care is remembered on this device" data-zh="照顾记录会保存在此设备">care is remembered on this device</small>
         </aside>
         <main id="main-content" class="scroll-container">
             <!-- Hero Section -->
@@ -536,7 +554,6 @@
                     </div>
                     <div class="archive-grid">
                         <a href="https://github.com/chf-NewStart/Facial-Analysis-on-Oval-Office" target="_blank" rel="noopener noreferrer"><span data-en="Multimodal emotion analysis" data-zh="多模态情感分析">Multimodal emotion analysis</span><small>DeepFace · MediaPipe · Ollama ↗</small></a>
-                        <a href="/food-raccoon/index.html"><span data-en="Food recommendation system" data-zh="食物推荐系统">Food recommendation system</span><small>LLM · Yelp · Maps →</small></a>
                         <a href="/moneymanage/"><span data-en="Personal finance tracker" data-zh="个人财务追踪器">Personal finance tracker</span><small>Local-first · OFX/QFX →</small></a>
                         <a href="https://www.youtube.com/watch?v=3dYSAhPe7kY" target="_blank" rel="noopener noreferrer"><span data-en="Autonomous retrieval robot" data-zh="自主取物机器人">Autonomous retrieval robot</span><small>LEGO Mindstorms · 3rd place ↗</small></a>
                         <a href="https://github.com/chf-NewStart/MatrixCalculator_chf" target="_blank" rel="noopener noreferrer"><span data-en="Matrix calculator" data-zh="矩阵计算器">Matrix calculator</span><small>Python · GUI ↗</small></a>

@@ -11,6 +11,5 @@ moneymanage/*.qfx
 .env
 .env.*
 !.env.example
-food-raccoon/.env
 __pycache__/
 *.py[cod]

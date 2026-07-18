@@ -1866,14 +1866,8 @@ footer p {
 }
 
 /* Existing standalone tools */
-.food-container {
-    padding-top: calc(var(--nav-height) + 54px) !important;
-}
-
 .terminal-container,
-.face-effects-container,
-.restaurant-card,
-.food-form {
+.face-effects-container {
     border: 1px solid var(--line) !important;
     color: var(--ink-soft);
     background: var(--surface) !important;
@@ -1902,7 +1896,7 @@ textarea {
     display: none !important;
 }
 
-/* Motion and alternate mode */
+/* Motion and pocket-twin pet */
 .reveal-content,
 .reveal-content-left,
 .reveal-content-right,
@@ -1910,34 +1904,30 @@ textarea {
     animation: reveal 650ms cubic-bezier(0.2, 0.72, 0.25, 1) both;
 }
 
-body.sudo-mode {
-    --accent: #ff927e;
-    --accent-strong: #ff5f56;
-    --accent-soft: rgba(255, 95, 86, 0.1);
-    --line-strong: rgba(255, 118, 95, 0.34);
-    animation: flicker 180ms steps(2) 2;
-}
-
 .tomato-pet {
     position: fixed;
     right: 22px;
     bottom: 22px;
     z-index: 950;
-    width: min(286px, calc(100vw - 44px));
+    width: min(304px, calc(100vw - 44px));
     overflow: hidden;
     border: 1px solid rgba(255, 118, 95, 0.48);
+    border-radius: 14px;
     color: var(--ink-soft);
     background:
-        linear-gradient(rgba(255, 118, 95, 0.035) 1px, transparent 1px),
-        rgba(3, 8, 6, 0.96);
-    background-size: 100% 4px;
-    box-shadow: 10px 10px 0 rgba(255, 95, 86, 0.08), 0 22px 70px rgba(0, 0, 0, 0.46);
+        linear-gradient(135deg, rgba(255, 118, 95, 0.07), transparent 45%),
+        rgba(4, 10, 8, 0.97);
+    box-shadow: 8px 10px 0 rgba(255, 95, 86, 0.08), 0 24px 70px rgba(0, 0, 0, 0.52);
     opacity: 0;
     pointer-events: none;
-    transform: translateY(18px) scale(0.96);
+    transform: translateY(14px) scale(0.97);
     transform-origin: right bottom;
     visibility: hidden;
-    transition: opacity 220ms ease, transform 220ms ease, visibility 220ms;
+    transition: opacity 180ms ease, transform 220ms cubic-bezier(0.2, 0.8, 0.25, 1), visibility 180ms;
+}
+
+.tomato-pet[hidden] {
+    display: none;
 }
 
 .tomato-pet.is-awake {
@@ -1949,29 +1939,48 @@ body.sudo-mode {
 
 .tomato-pet-titlebar {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto auto;
     gap: 10px;
     align-items: center;
-    min-height: 34px;
-    padding: 5px 7px 5px 11px;
+    min-height: 40px;
+    padding: 5px 6px 5px 12px;
     border-bottom: 1px solid rgba(255, 118, 95, 0.25);
     color: var(--tomato);
     background: rgba(255, 118, 95, 0.07);
     font-family: var(--mono);
-    font-size: 0.57rem;
-    letter-spacing: 0.1em;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
 }
 
-.tomato-pet-friendship {
-    justify-self: end;
-    color: var(--muted-deep);
-    letter-spacing: 0.04em;
+.tomato-pet-name {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    font-weight: 600;
+}
+
+.tomato-pet-name i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 9px var(--accent);
+    animation: statusPulse 1.8s ease-in-out infinite;
+}
+
+.tomato-pet-mood {
+    padding: 3px 6px;
+    border: 1px solid rgba(255, 118, 95, 0.2);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 0.54rem;
+    letter-spacing: 0.06em;
 }
 
 .tomato-pet-close {
     display: grid;
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     place-items: center;
     padding: 0;
     border: 1px solid transparent;
@@ -1988,52 +1997,230 @@ body.sudo-mode {
     background: rgba(255, 118, 95, 0.08);
 }
 
+.tomato-pet-scene {
+    display: grid;
+    position: relative;
+    min-height: 154px;
+    place-items: center;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(255, 118, 95, 0.18);
+    background:
+        radial-gradient(circle at 50% 58%, rgba(255, 118, 95, 0.16), transparent 42%),
+        linear-gradient(rgba(118, 247, 165, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(118, 247, 165, 0.045) 1px, transparent 1px);
+    background-size: auto, 16px 16px, 16px 16px;
+    transition: background 260ms ease;
+}
+
+.tomato-pet[data-mood="sun"] .tomato-pet-scene {
+    background:
+        radial-gradient(circle at 72% 22%, rgba(255, 214, 102, 0.34), transparent 31%),
+        radial-gradient(circle at 50% 58%, rgba(255, 118, 95, 0.18), transparent 43%),
+        linear-gradient(rgba(118, 247, 165, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(118, 247, 165, 0.045) 1px, transparent 1px);
+    background-size: auto, auto, 16px 16px, 16px 16px;
+}
+
+.tomato-pet[data-mood="water"] .tomato-pet-scene {
+    background:
+        radial-gradient(circle at 28% 24%, rgba(110, 214, 232, 0.28), transparent 30%),
+        radial-gradient(circle at 50% 58%, rgba(255, 118, 95, 0.16), transparent 42%),
+        linear-gradient(rgba(118, 247, 165, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(118, 247, 165, 0.045) 1px, transparent 1px);
+    background-size: auto, auto, 16px 16px, 16px 16px;
+}
+
+.tomato-pet-scan {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(transparent 50%, rgba(0, 0, 0, 0.12) 50%);
+    background-size: 100% 4px;
+    opacity: 0.32;
+}
+
+.tomato-pet-spark {
+    position: absolute;
+    color: rgba(255, 190, 173, 0.62);
+    font-family: var(--mono);
+    animation: tomatoSpark 2.8s ease-in-out infinite;
+}
+
+.spark-one { top: 29px; left: 42px; }
+.spark-two { right: 43px; bottom: 28px; animation-delay: -1.3s; }
+
 .tomato-pet-character {
     display: grid;
-    width: 100%;
-    min-height: 114px;
+    position: relative;
+    z-index: 2;
+    width: 142px;
+    height: 128px;
     place-items: center;
-    padding: 12px 10px 7px;
-    overflow: hidden;
+    padding: 6px;
     border: 0;
-    color: var(--tomato);
     background: transparent;
     cursor: pointer;
-    animation: tomatoWander 4.8s ease-in-out infinite alternate;
 }
 
 .tomato-pet-character:hover {
-    color: #ff9b86;
-    filter: drop-shadow(0 0 8px rgba(255, 95, 86, 0.28));
+    filter: drop-shadow(0 0 10px rgba(255, 95, 86, 0.24));
 }
 
 .tomato-pet-character.is-petted {
-    animation: tomatoBop 360ms cubic-bezier(0.2, 0.85, 0.3, 1.25);
+    animation: tomatoBop 420ms cubic-bezier(0.2, 0.85, 0.3, 1.25);
 }
 
-.tomato-pet-art {
+.tomato-sprite {
     display: block;
-    width: max-content;
-    margin: 0;
-    color: currentColor;
+    position: relative;
+    width: 108px;
+    height: 104px;
+    animation: tomatoFloat 3.8s ease-in-out infinite;
+}
+
+.tomato-body {
+    position: absolute;
+    top: 21px;
+    left: 8px;
+    width: 92px;
+    height: 78px;
+    border: 1px solid rgba(255, 202, 187, 0.5);
+    border-radius: 50% 48% 52% 50% / 45% 46% 55% 55%;
+    background:
+        radial-gradient(circle at 33% 25%, rgba(255, 238, 224, 0.42), transparent 14%),
+        radial-gradient(circle at 52% 70%, #ff6b55, #e8463c 72%);
+    box-shadow: inset -10px -12px 18px rgba(126, 18, 19, 0.18), 0 12px 24px rgba(255, 72, 59, 0.22);
+}
+
+.tomato-leaf {
+    position: absolute;
+    z-index: 3;
+    top: 12px;
+    left: 42px;
+    width: 28px;
+    height: 13px;
+    border-radius: 100% 0 100% 0;
+    background: #4ed07d;
+    transform-origin: 5px 8px;
+    transition: transform 260ms ease;
+}
+
+.leaf-one { transform: rotate(-28deg) translateX(-13px); }
+.leaf-two { transform: rotate(27deg) translateX(4px); }
+.leaf-three { transform: rotate(88deg) translate(1px, -8px) scale(0.82); }
+
+.tomato-pet[data-mood="sun"] .leaf-one { transform: rotate(-42deg) translateX(-15px); }
+.tomato-pet[data-mood="sun"] .leaf-two { transform: rotate(15deg) translateX(7px); }
+
+.tomato-shine {
+    position: absolute;
+    top: 11px;
+    left: 18px;
+    width: 16px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.26);
+    transform: rotate(-20deg);
+}
+
+.tomato-eye {
+    position: absolute;
+    top: 31px;
+    width: 7px;
+    height: 10px;
+    border-radius: 50%;
+    background: #351b1a;
+    transform-origin: center;
+    animation: tomatoBlink 4.8s infinite;
+}
+
+.eye-left { left: 28px; }
+.eye-right { right: 28px; }
+
+.tomato-pet[data-mood="happy"] .tomato-eye,
+.tomato-pet[data-mood="sun"] .tomato-eye {
+    height: 4px;
+    border-radius: 50% 50% 0 0;
+    animation: none;
+}
+
+.tomato-pet[data-mood="sleepy"] .tomato-eye {
+    height: 2px;
+    animation: none;
+}
+
+.tomato-cheek {
+    position: absolute;
+    top: 46px;
+    width: 11px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(123, 20, 36, 0.2);
+}
+
+.cheek-left { left: 17px; }
+.cheek-right { right: 17px; }
+
+.tomato-mouth {
+    position: absolute;
+    top: 48px;
+    left: 35px;
+    width: 22px;
+    height: 11px;
+    border-bottom: 3px solid #5a2525;
+    border-radius: 50%;
+    transition: width 180ms ease, height 180ms ease, transform 180ms ease;
+}
+
+.tomato-pet[data-mood="happy"] .tomato-mouth,
+.tomato-pet[data-mood="sun"] .tomato-mouth {
+    height: 15px;
+    transform: translateY(-2px);
+}
+
+.tomato-foot {
+    position: absolute;
+    z-index: -1;
+    top: 92px;
+    width: 24px;
+    height: 8px;
+    border-radius: 50%;
+    background: #b93436;
+}
+
+.foot-left { left: 20px; transform: rotate(-8deg); }
+.foot-right { right: 20px; transform: rotate(8deg); }
+
+.tomato-pet-bubble {
+    position: absolute;
+    top: 30px;
+    right: 34px;
+    z-index: 4;
+    padding: 4px 7px;
+    border: 1px solid rgba(255, 118, 95, 0.34);
+    border-radius: 999px;
+    color: #ffab98;
+    background: rgba(4, 10, 8, 0.9);
     font-family: var(--mono);
-    font-size: 5px;
-    font-weight: 500;
-    letter-spacing: 0;
-    line-height: 1;
-    text-align: left;
-    text-shadow: 0 0 12px rgba(255, 95, 86, 0.22);
-    white-space: pre;
+    font-size: 0.55rem;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.tomato-pet-bubble.is-visible {
+    animation: tomatoBubble 780ms ease-out both;
+}
+
+.tomato-pet-readout {
+    padding: 10px 12px 9px;
 }
 
 .tomato-pet-status {
-    min-height: 31px;
-    margin: 0;
-    padding: 8px 12px 2px;
-    border-top: 1px solid rgba(255, 118, 95, 0.18);
+    min-height: 35px;
+    margin: 0 0 8px;
     color: var(--ink-soft);
     font-family: var(--mono);
-    font-size: 0.66rem;
+    font-size: 0.7rem;
     line-height: 1.45;
 }
 
@@ -2042,17 +2229,81 @@ body.sudo-mode {
     content: '> ';
 }
 
-.tomato-pet-hint {
-    display: block;
-    padding: 0 12px 9px;
-    color: var(--muted-deep);
+.tomato-pet-bond {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 5px 8px;
+    align-items: center;
+    color: var(--muted);
     font-family: var(--mono);
-    font-size: 0.52rem;
-    letter-spacing: 0.04em;
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
 }
 
-body.sudo-mode .terminal-alert {
-    bottom: 240px;
+.tomato-pet-friendship {
+    justify-self: end;
+    color: #ffab98;
+}
+
+.tomato-pet-track {
+    grid-column: 1 / -1;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.tomato-pet-track i {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #ff6354, #ffb08d);
+    box-shadow: 0 0 10px rgba(255, 99, 84, 0.35);
+    transition: width 320ms ease;
+}
+
+.tomato-pet-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    border-top: 1px solid rgba(255, 118, 95, 0.18);
+    border-bottom: 1px solid rgba(255, 118, 95, 0.18);
+    background: rgba(255, 118, 95, 0.16);
+}
+
+.tomato-pet-controls button {
+    display: inline-flex;
+    min-height: 42px;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    color: var(--muted);
+    background: rgba(3, 8, 6, 0.96);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.05em;
+}
+
+.tomato-pet-controls button:hover {
+    color: #ffab98;
+    background: rgba(255, 118, 95, 0.08);
+}
+
+.tomato-pet-hint {
+    display: block;
+    padding: 8px 12px 9px;
+    color: var(--muted-deep);
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+
+body.pet-is-open .terminal-alert {
+    bottom: 392px;
 }
 
 .terminal-alert {
@@ -2089,19 +2340,31 @@ body.sudo-mode .terminal-alert {
     to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes flicker {
-    50% { opacity: 0.82; filter: contrast(120%); }
-}
-
-@keyframes tomatoWander {
-    from { transform: translate(-7px, 1px) rotate(-0.7deg); }
-    to { transform: translate(7px, -2px) rotate(0.7deg); }
+@keyframes tomatoFloat {
+    0%, 100% { transform: translateY(1px) rotate(-0.6deg); }
+    50% { transform: translateY(-3px) rotate(0.6deg); }
 }
 
 @keyframes tomatoBop {
     0%, 100% { transform: translateY(0) scale(1); }
-    42% { transform: translateY(-8px) scale(1.035, 0.97); }
-    72% { transform: translateY(2px) scale(0.98, 1.025); }
+    42% { transform: translateY(-6px) scale(1.04, 0.96); }
+    72% { transform: translateY(2px) scale(0.97, 1.03); }
+}
+
+@keyframes tomatoBlink {
+    0%, 45%, 49%, 100% { transform: scaleY(1); }
+    47% { transform: scaleY(0.12); }
+}
+
+@keyframes tomatoSpark {
+    0%, 100% { opacity: 0.25; transform: scale(0.8) rotate(0); }
+    50% { opacity: 0.85; transform: scale(1.15) rotate(12deg); }
+}
+
+@keyframes tomatoBubble {
+    0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+    20%, 65% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-12px) scale(0.96); }
 }
 
 @media (max-width: 1120px) {
@@ -2476,43 +2739,44 @@ body.sudo-mode .terminal-alert {
     }
 
     .tomato-pet {
-        right: 14px;
-        bottom: 14px;
-        width: 184px;
+        right: 12px;
+        bottom: 12px;
+        width: min(270px, calc(100vw - 24px));
     }
 
-    .tomato-pet-titlebar {
-        grid-template-columns: 1fr auto;
-    }
-
-    .tomato-pet-friendship {
+    .tomato-pet-mood {
         display: none;
+    }
+
+    .tomato-pet-scene {
+        min-height: 138px;
     }
 
     .tomato-pet-character {
-        min-height: 64px;
-        padding: 7px;
-        font-size: 2.45rem;
+        width: 134px;
+        height: 116px;
     }
 
-    .tomato-pet-character::before {
-        content: '🍅';
+    .tomato-sprite {
+        scale: 0.92;
     }
 
-    .tomato-pet-art,
     .tomato-pet-hint {
-        display: none;
+        font-size: 0.55rem;
     }
 
     .tomato-pet-status {
-        min-height: 40px;
-        padding: 7px 9px;
-        font-size: 0.58rem;
+        min-height: 34px;
+        font-size: 0.66rem;
     }
 
-    body.sudo-mode .terminal-alert {
-        right: 14px;
-        bottom: 154px;
+    .tomato-pet-controls button {
+        min-height: 44px;
+    }
+
+    body.pet-is-open .terminal-alert {
+        right: 12px;
+        bottom: 370px;
     }
 }
 

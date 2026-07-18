@@ -3,239 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Houfu Chen — PhD candidate at the University of Waterloo building living digital twins for greenhouse systems (dynamic FBA, Kalman filtering, ML). MEng in ECE (UofT), BASc in Nanotechnology (Waterloo).">
-    <meta name="keywords" content="Data Science, Machine Learning, Tech, Teaching, Houfu Chen, MEng, ECE, GitHub Pages">
+    <meta name="description" content="Houfu Chen is a PhD researcher and engineer building digital twins, machine learning systems, and practical tools for complex environments.">
+    <meta name="keywords" content="Digital Twins, Machine Learning, Systems Modeling, Computational Modeling, Houfu Chen, University of Waterloo">
     <meta name="author" content="Houfu Chen">
+    <meta name="theme-color" content="#08100e">
+    <meta name="color-scheme" content="dark">
+    <link rel="canonical" href="https://houfu72.com/">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://houfu72.com/">
+    <meta property="og:title" content="Houfu Chen — Digital Twin Researcher &amp; Engineer">
+    <meta property="og:description" content="Researching living digital twins and building practical ML systems, simulations, and interactive tools.">
+    <meta property="og:image" content="https://houfu72.com/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Houfu Chen — Digital Twin Researcher and Engineer">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Houfu Chen — Digital Twin Researcher &amp; Engineer">
+    <meta name="twitter:description" content="Researching living digital twins and building practical ML systems, simulations, and interactive tools.">
+    <meta name="twitter:image" content="https://houfu72.com/og.png">
     <link rel="apple-touch-icon" sizes="180x180" href="favicon_io/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <title>Houfu Chen | Digital Twin Researcher & ML Engineer</title>
-
-    <style>
-        .language-toggle {
-            display: inline-block;
-            margin-left: 20px;
-            cursor: pointer;
-            background: transparent;
-            border: 2px solid #333;
-            border-radius: 0;
-            padding: 5px 12px;
-            font-family: Consolas, monospace;
-            font-size: 0.9rem;
-            color: #888;
-            transition: all 0.1s ease;
-            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
-            white-space: nowrap;
-        }
-
-        .language-toggle:hover {
-            border-color: #1db954;
-            color: #1db954;
-            transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0px rgba(29, 185, 84, 0.2);
-        }
-        @media (max-width: 768px) {
-            .language-toggle {
-                margin-left: 10px;
-                padding: 4px 8px;
-                font-size: 0.8rem;
-            }
-        }
-
-        /* Game arcade cards */
-        .gc-card {
-            border: 1px solid #1c1c1c;
-            padding: 18px;
-            background: #0d0d0d;
-            display: flex;
-            flex-direction: column;
-            transition: border-color 0.15s;
-            font-family: Consolas, 'Courier New', monospace;
-        }
-        .gc-card:hover:not(.gc-soon) { border-color: #1db954; }
-        .gc-soon { opacity: 0.45; pointer-events: none; }
-        .gc-icon  { color: #1db954; font-size: 1rem; margin-bottom: 9px; }
-        .gc-title { color: #ddd; font-size: 0.9rem; margin-bottom: 6px; }
-        .gc-desc  { color: #555; font-size: 0.67rem; line-height: 1.75; flex: 1; }
-        .gc-tags  { display: flex; gap: 5px; flex-wrap: wrap; margin: 11px 0 8px; }
-        .gc-tag   { font-size: 0.58rem; padding: 2px 6px; border: 1px solid #222; color: #444; font-family: Consolas, monospace; }
-        .gc-tag.green { border-color: rgba(29,185,84,0.3); color: #1db954; }
-        .gc-tag.red   { border-color: rgba(244,67,54,0.3); color: #f44336; }
-        .gc-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #141414; margin-top: auto; }
-        .gc-meta   { font-size: 0.6rem; color: #333; font-family: Consolas, monospace; }
-        .gc-play   { color: #1db954; font-size: 0.68rem; text-decoration: none; border: 1px solid #1db954; padding: 4px 11px; font-family: Consolas, monospace; transition: background 0.1s; }
-        .gc-play:hover { background: rgba(29,185,84,0.1); }
-        .gc-soon-badge { font-size: 0.6rem; color: #333; border: 1px solid #1e1e1e; padding: 3px 9px; font-family: Consolas, monospace; }
-
-        /* Hero terminal — no box, floats over parallax */
-        .neofetch-card {
-            max-width: 900px;
-            width: 100%;
-            font-family: Consolas, 'Courier New', monospace;
-            text-align: left;
-        }
-        .nf-terminal { padding: 0; text-shadow: 0 1px 8px rgba(0,0,0,0.9); }
-        .nf-cmd { font-size: 0.92rem; margin-bottom: 16px; color: #555; }
-        .nf-ps1 { color: #1db954; }
-        .nf-fetch-row {
-            display: flex; gap: 44px; align-items: flex-start; margin-bottom: 8px;
-        }
-        .nf-tomato { margin: 0; line-height: 1.35; font-size: 0.92rem; flex-shrink: 0; white-space: pre; }
-        .nf-info { flex: 1; min-width: 0; padding-top: 4px; }
-        .nf-uname { font-size: 1.1rem; margin-bottom: 4px; }
-        .nf-sep { color: #1e1e1e; font-size: 0.75rem; margin-bottom: 14px; }
-        .nf-row { font-size: 0.9rem; margin-bottom: 10px; display: flex; align-items: baseline; }
-        .nf-key { color: #1db954; width: 76px; flex-shrink: 0; }
-        .nf-colon { color: #2e2e2e; margin-right: 10px; }
-        .nf-val { color: #bbb; }
-        .nf-games-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
-        .hero-game-btn {
-            font-family: Consolas, monospace; font-size: 0.85rem;
-            color: #f44336; border: 1px solid rgba(244,67,54,0.28);
-            padding: 5px 14px; text-decoration: none;
-            transition: background 0.1s, border-color 0.1s; white-space: nowrap;
-        }
-        .hero-game-btn:hover { background: rgba(244,67,54,0.1); border-color: #f44336; }
-        .nf-cursor { color: #1db954; animation: blink 1s step-end infinite; }
-        @media (max-width: 640px) {
-            .nf-tomato { display: none; }
-            .nf-terminal { padding: 16px 20px 24px; }
-            .nf-row { font-size: 0.82rem; }
-        }
-    </style>
+    <title>Houfu Chen — Digital Twin Researcher &amp; Engineer</title>
 </head>
 <body>
+        <a class="skip-link" href="#main-content">Skip to main content</a>
+        <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
         <!-- Sticky Navigation -->
-        <nav class="sticky-nav">
+        <nav class="sticky-nav" aria-label="Primary navigation">
             <div class="container">
                 <div class="nav-content">
-                    <div class="logo">HC</div>
-                    <button class="hamburger" id="hamburgerBtn" aria-label="Menu">☰</button>
+                    <a class="logo" href="#hero-section" aria-label="Houfu Chen, home">
+                        <span class="logo-mark">HC</span>
+                        <span class="logo-copy"><strong>Houfu Chen</strong><small>research / systems / play</small></span>
+                    </a>
+                    <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">☰</button>
                     <div class="nav-links" id="navLinks">
-                        <a href="#hero-section" data-en="Home" data-zh="首页">Home</a>
                         <a href="#about-section" data-en="About" data-zh="关于我">About</a>
                         <a href="#experience-section" data-en="Experience" data-zh="经历">Experience</a>
-                        <a href="#projects-section" data-en="Projects" data-zh="项目">Projects</a>
-                        <a href="#personal-section" data-en="Off The Clock" data-zh="业余时间">Off The Clock</a>
+                        <a href="#projects-section" data-en="Work" data-zh="项目">Work</a>
+                        <a href="#games-section" data-en="Lab" data-zh="实验室">Lab</a>
+                        <a href="#personal-section" data-en="Elsewhere" data-zh="生活之外">Elsewhere</a>
                         <a href="#contact-section" data-en="Contact" data-zh="联系">Contact</a>
-                        <a href="/personality/" data-en="Personality" data-zh="性格">Personality</a>
-                        <a class="language-toggle" href="/msg/" target="_blank" title="leave me a note" style="text-decoration:none;">[ ✉ ]</a>
-                        <button class="language-toggle" id="tomatoToggle" style="color: #ff5f56; border-color: #333;">[ 🍅 ]</button>
-                        <button class="language-toggle" id="languageToggle">EN / 中文</button>
+                        <div class="nav-actions">
+                            <a class="nav-icon-link" href="/msg/" target="_blank" aria-label="Leave Houfu a note" title="Leave me a note">✉</a>
+                            <button class="icon-button" id="tomatoToggle" type="button" aria-label="Toggle tomato mode" aria-pressed="false" title="Tomato mode">🍅</button>
+                            <button class="language-toggle" id="languageToggle" type="button" aria-label="Switch language">EN / 中文</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </nav>
-        <div class="scroll-container">
+        <main id="main-content" class="scroll-container">
             <!-- Hero Section -->
             <section id="hero-section" class="scroll-section hero-section">
-                <div class="parallax-bg" style="background-image: url('hf3.webp');"></div>
+                <div class="parallax-bg"></div>
                 <div class="container">
-                    <div class="neofetch-card reveal-content">
-                        <div class="nf-terminal">
-
-                            <div class="nf-cmd"><span class="nf-ps1">houfu@system:~$</span> neofetch</div>
-
-                            <div class="nf-fetch-row">
-                                <pre class="nf-tomato" style="color:#1db954">██╗  ██╗ ██████╗
-██║  ██║██╔════╝
-███████║██║
-██╔══██║██║
-██║  ██║╚██████╗
-╚═╝  ╚═╝ ╚═════╝</pre>
-                                <div class="nf-info">
-                                    <div class="nf-uname"><span style="color:#1db954">houfu</span><span style="color:#2e2e2e">@</span><span style="color:#1db954">system</span></div>
-                                    <div class="nf-sep">──────────────────────────────────</div>
-                                    <div class="nf-row"><span class="nf-key" data-en="Name"   data-zh="姓名" >Name  </span><span class="nf-colon">:</span><span class="nf-val" data-en="Houfu Chen"                              data-zh="陈厚孚"              >Houfu Chen</span></div>
-                                    <div class="nf-row"><span class="nf-key" data-en="Role"   data-zh="职位" >Role  </span><span class="nf-colon">:</span><span class="nf-val" data-en="PhD Candidate · Digital Twin Researcher" data-zh="博士生 · 数字孪生研究员">PhD Candidate · Digital Twin Researcher</span></div>
-                                    <div class="nf-row"><span class="nf-key" data-en="School" data-zh="学校" >School</span><span class="nf-colon">:</span><span class="nf-val" data-en="University of Waterloo"                  data-zh="滑铁卢大学"          >University of Waterloo</span></div>
-                                    <div class="nf-row"><span class="nf-key" data-en="Focus"  data-zh="方向" >Focus </span><span class="nf-colon">:</span><span class="nf-val" data-en="Tomato Growth FBA · Digital Twins"       data-zh="番茄生长FBA · 数字孪生" >Tomato Growth FBA · Digital Twins</span></div>
-                                    <div class="nf-row"><span class="nf-key" data-en="Stack"  data-zh="技术栈">Stack </span><span class="nf-colon">:</span><span class="nf-val">Python · JS · C++ · PyTorch</span></div>
-                                    <div class="nf-row"><span class="nf-key" data-en="Status" data-zh="状态" >Status</span><span class="nf-colon">:</span><span class="nf-val" style="color:#1db954" data-en="always building" data-zh="持续构建中">always building</span></div>
-                                    <div class="nf-row"><span class="nf-key" data-en="Sky" data-zh="天气">Sky   </span><span class="nf-colon">:</span><span class="nf-val" id="nfWeather">…</span></div>
-                                </div>
+                    <div class="hero-layout reveal-content">
+                        <div class="hero-copy">
+                            <div class="availability"><span></span><span data-en="PhD researcher · University of Waterloo" data-zh="博士研究员 · 滑铁卢大学">PhD researcher · University of Waterloo</span></div>
+                            <p class="hero-command"><span>houfu@research:~$</span> build --useful --curious</p>
+                            <h1 data-en="I build digital twins that make complex systems understandable." data-zh="我构建数字孪生，让复杂系统变得可理解。">I build digital twins that make complex systems understandable.</h1>
+                            <p class="hero-lede" data-en="I’m Houfu Chen — a digital twin researcher and engineer connecting mechanistic models, noisy sensor data, and machine learning to create tools that work beyond the lab." data-zh="我是陈厚孚，一名数字孪生研究员与工程师。我将机制模型、含噪传感器数据与机器学习连接起来，打造真正走出实验室的工具。">I’m Houfu Chen — a digital twin researcher and engineer connecting mechanistic models, noisy sensor data, and machine learning to create tools that work beyond the lab.</p>
+                            <div class="hero-actions">
+                                <a href="#projects-section" class="cta-button" data-en="Explore selected work" data-zh="查看精选项目">Explore selected work</a>
+                                <a href="mailto:h534chen@uwaterloo.ca" class="text-link" data-en="Start a conversation ↗" data-zh="发起交流 ↗">Start a conversation ↗</a>
                             </div>
-
-                            <div class="nf-cmd" style="margin-top:22px"><span class="nf-ps1">houfu@system:~/games$</span> ls</div>
-                            <div class="nf-games-row">
-                                <a class="hero-game-btn" href="https://lifegameproject.com/" target="_blank">[🕹] arcade @ lifegameproject.com</a>
-                            </div>
-
-                            <div class="nf-cmd" style="margin-top:18px"><span class="nf-ps1">houfu@system:~/tools$</span> ls</div>
-                            <div class="nf-games-row">
-                                <a class="hero-game-btn" href="/reading.html" target="_blank">[📖] reading_room</a>
-                                <a class="hero-game-btn" href="/journal.html" target="_blank">[✎] journal_intime</a>
-                                <a class="hero-game-btn" href="/moneymanage/" target="_blank">[$] fin_tracker</a>
-                                <a class="hero-game-btn" href="/msg/" target="_blank">[✉] msg_box</a>
-                            </div>
-
-                            <div class="nf-cmd" style="margin-top:20px"><span class="nf-ps1">houfu@system:~$</span> <span class="nf-cursor">▋</span></div>
-
-                            <div style="margin-top:20px">
-                                <a href="#about-section" class="cta-button" data-en="> boot sequence" data-zh="> 启动序列">> boot sequence</a>
-                            </div>
-
+                            <ul class="hero-stack" aria-label="Core tools">
+                                <li>Python</li><li>PyTorch</li><li>COBRApy</li><li>State-space models</li>
+                            </ul>
+                            <nav class="hero-quicklinks" aria-label="Live tools">
+                                <span>OPEN /</span>
+                                <a href="/reading.html">Reading room</a>
+                                <a href="/journal.html">Journal</a>
+                                <a href="/moneymanage/">Finance tracker</a>
+                                <a href="/msg/">Message box</a>
+                                <a href="https://lifegameproject.com/" target="_blank">Arcade ↗</a>
+                            </nav>
                         </div>
+                        <aside class="hero-signal" aria-label="Current research snapshot">
+                            <div class="signal-topline"><span data-en="LIVE RESEARCH SIGNAL" data-zh="实时研究信号">LIVE RESEARCH SIGNAL</span><span class="signal-pulse">●</span></div>
+                            <div class="signal-visual" aria-hidden="true">
+                                <span class="orbit orbit-one"></span><span class="orbit orbit-two"></span><span class="signal-core">DT</span>
+                            </div>
+                            <dl>
+                                <div><dt data-en="Focus" data-zh="方向">Focus</dt><dd data-en="Living greenhouse twins" data-zh="动态温室数字孪生">Living greenhouse twins</dd></div>
+                                <div><dt data-en="Method" data-zh="方法">Method</dt><dd>dFBA + Kalman filtering</dd></div>
+                                <div><dt data-en="Mode" data-zh="状态">Mode</dt><dd data-en="Always building" data-zh="持续构建中">Always building</dd></div>
+                                <div><dt data-en="Sky" data-zh="天气">Sky</dt><dd id="nfWeather" aria-live="polite">Loading local conditions…</dd></div>
+                            </dl>
+                        </aside>
                     </div>
                 </div>
+                <a class="scroll-cue" href="#about-section" aria-label="Scroll to about section"><span></span><small>SCROLL</small></a>
             </section>
 
-            
+
             <!-- About Section -->
             <section id="about-section" class="scroll-section about-section">
             <div class="container">
-            <div style="color: #666; font-size: 0.75rem; margin-bottom: 15px; font-family: Consolas, monospace; line-height: 1.4;">
-                                        [  <span style="color: #1db954;">OK</span>  ] Started System Logging Service.<br>
-                                        [  <span style="color: #1db954;">OK</span>  ] Reached target System Initialization.<br>
-                                        [  <span style="color: #1db954;">OK</span>  ] Started Kernel Logging Service.<br>
-                                        Mounting /boot/efi...<br>
-                                        Starting hc-core-services.service...<br>
-                                        [  <span style="color: #1db954;">OK</span>  ] Started HC Core Services.<br>
-                                        Loading MOTD...
-                                    </div>
-
-                                    <div style="color: #ff5f56; line-height: 1.1; margin-bottom: 25px; font-size: 0.8rem; white-space: pre;">
-            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠻⣶⡆⠀⠿⠀⣶⠒⠊⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-            ⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣴⠾⠛⢹⣶⡤⢶⣿⡟⠶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀
-            ⠀⠀⠀⠀⠀⣠⣶⣤⣤⣤⣤⣴⠂⠸⠋⢀⣄⡉⠓⠀⠲⣶⣾⣿⣷⣄⠀⠀⠀⠀
-            ⠀⠀⠀⢀⣾⡿⠋⠁⣠⣤⣿⡟⢀⣠⣾⣿⣿⣿⣷⣶⣤⣼⣿⣿⣿⣿⣆⠀⠀⠀
-            ⠀⠀⠀⣾⡟⠀⣰⣿⣿⣿⣿⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠀
-            ⠀⠀⢸⡿⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
-            ⠀⠀⢸⡇⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
-            ⠀⠀⢸⣿⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀
-            ⠀⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠁⠀⠀
-            ⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀
-            ⠀⠀⠀⠀⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀
-            ⠀⠀⠀⠀⠀⠀⠉⠛⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠋⠀⠀⠀⠀⠀⠀⠀
-            ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠉⠉⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                                    </div>
-
+                            <div class="section-heading reveal-content">
+                                <div><p class="section-kicker">01 / PROFILE</p><h2 class="section-title" data-en="Engineer by training. Builder by instinct." data-zh="工程训练，建造本能。">Engineer by training. Builder by instinct.</h2></div>
+                                <p class="section-summary" data-en="I work where models meet reality: noisy signals, heterogeneous environments, and systems that need to stay useful outside a notebook." data-zh="我的工作位于模型与现实的交界处：含噪信号、异构环境，以及需要走出笔记本仍然有用的系统。">I work where models meet reality: noisy signals, heterogeneous environments, and systems that need to stay useful outside a notebook.</p>
+                            </div>
                             <div class="about-content">
-                                <div class="about-text reveal-content" style="width: 100%; margin-bottom: 30px;">
-                                                        <div class="profile-text" style="color: #dcdcdc;">
-                                                            <p style="margin-bottom: 20px;" data-en="I am a PhD candidate and systems engineer. True to my engineering background, my approach is strictly practical: making complex simulation systems actually work..." data-zh="我是一名博士生兼系统工程师。秉承务实的工程学底色，我的关注点始终在于落地：让复杂的模拟系统真正运转起来。。。">
-                                                                I am a PhD candidate and systems engineer. True to my engineering background, my approach is strictly practical: making complex simulation systems actually work...
+                                <div class="about-text reveal-content">
+                                                        <div class="profile-text">
+                                                            <p data-en="I’m a PhD candidate and engineer with one practical obsession: making complex simulation systems actually work." data-zh="我是一名博士生兼工程师，专注于一个务实目标：让复杂的模拟系统真正运转起来。">
+                                                                I’m a PhD candidate and engineer with one practical obsession: making complex simulation systems actually work.
                                                             </p>
-                                                            
-                                                            <ul style="list-style-type: none; padding-left: 0; margin-bottom: 0;">
-                                                                <li style="margin-bottom: 12px; display: flex; align-items: flex-start;">
-                                                                    <span style="color: #1db954; margin-right: 10px; font-weight: bold;">></span> 
+
+                                                            <ul>
+                                                                <li>
+                                                                    <span class="list-marker">01</span>
                                                                     <span data-en="Building living digital twins for heterogeneous environments." data-zh="为异构环境构建动态数字孪生。">
                                                                         Building living digital twins for heterogeneous environments.
                                                                     </span>
                                                                 </li>
-                                                                <li style="margin-bottom: 12px; display: flex; align-items: flex-start;">
-                                                                    <span style="color: #1db954; margin-right: 10px; font-weight: bold;">></span> 
+                                                                <li>
+                                                                    <span class="list-marker">02</span>
                                                                     <span data-en="Integrating machine learning, signal filtering, and probabilistic state estimation." data-zh="融合机器学习、信号滤波与概率状态估计。">
                                                                         Integrating machine learning, signal filtering, and probabilistic state estimation.
                                                                     </span>
                                                                 </li>
-                                                                <li style="display: flex; align-items: flex-start;">
-                                                                    <span style="color: #1db954; margin-right: 10px; font-weight: bold;">></span> 
+                                                                <li>
+                                                                    <span class="list-marker">03</span>
                                                                     <span data-en="Bridging the gap between noisy data and mechanistic biological models to turn theoretical WIPs into functional realities." data-zh="弥合海量噪声数据与机制生物学模型之间的差距——将理论上的“开发中 (WIP)”转化为真正落地的工程现实。">
                                                                         Bridging the gap between noisy data and mechanistic biological models to turn theoretical WIPs into functional realities.
                                                                     </span>
@@ -247,22 +144,22 @@
                         <div class="about-explorer reveal-content">
                             <div class="explorer-menu">
                                 <div class="explorer-header">~/about_me $ ls</div>
-                                <button class="explorer-btn active" onclick="switchAboutCard('card-edu', this)">
+                                <button type="button" class="explorer-btn active" onclick="switchAboutCard('card-edu', this)">
                                     <span class="highlight-icon">[::]</span> <span data-en="Education.log" data-zh="教育背景.log">Education.log</span>
                                 </button>
-                                <button class="explorer-btn" onclick="switchAboutCard('card-industry', this)">
+                                <button type="button" class="explorer-btn" onclick="switchAboutCard('card-industry', this)">
                                     <span class="highlight-icon">[::]</span> <span data-en="Industry_Exp.log" data-zh="行业经验.log">Industry_Exp.log</span>
                                 </button>
-                                <button class="explorer-btn" onclick="switchAboutCard('card-teach', this)">
+                                <button type="button" class="explorer-btn" onclick="switchAboutCard('card-teach', this)">
                                     <span class="highlight-icon">[::]</span> <span data-en="Teaching_Research.log" data-zh="教学与研究.log">Teaching_Research.log</span>
                                 </button>
-                                <button class="explorer-btn" onclick="switchAboutCard('card-proj', this)">
+                                <button type="button" class="explorer-btn" onclick="switchAboutCard('card-proj', this)">
                                     <span class="highlight-icon">[::]</span> <span data-en="Projects.log" data-zh="项目亮点.log">Projects.log</span>
                                 </button>
-                                <button class="explorer-btn" onclick="switchAboutCard('card-phd', this)">
+                                <button type="button" class="explorer-btn" onclick="switchAboutCard('card-phd', this)">
                                     <span class="highlight-icon">[::]</span> <span data-en="Greenhouse_Twin_WIP.log" data-zh="温室数字孪生_WIP.log">Greenhouse_Twin_WIP.log</span>
                                 </button>
-                                <button class="explorer-btn" onclick="switchAboutCard('card-skills', this)">
+                                <button type="button" class="explorer-btn" onclick="switchAboutCard('card-skills', this)">
                                     <span class="highlight-icon">[::]</span> <span data-en="tech_stack.json" data-zh="技术栈.json">tech_stack.json</span>
                                 </button>
                             </div>
@@ -302,11 +199,11 @@
 
                                 <div id="card-teach" class="highlight-card">
                                     <div class="vertical-accent"></div>
-                                    <h3><span data-en="Teaching & Research" data-zh="教学与研究">Teaching & Research</span></h3>
+                                    <h3><span data-en="Teaching &amp; Research" data-zh="教学与研究">Teaching &amp; Research</span></h3>
                                     <ul class="highlight-list">
                                         <li>
                                             <span class="highlight-item-title" data-en="Teaching Assistant" data-zh="助教">Teaching Assistant</span>
-                                            <a href="#experience-section" class="course-link" data-en="Machine Learning & Python" data-zh="机器学习与Python">Machine Learning & Python</a> <span data-en="at" data-zh="在">at</span> <span class="university-name">University of Toronto</span>
+                                            <a href="#experience-section" class="course-link" data-en="Machine Learning &amp; Python" data-zh="机器学习与Python">Machine Learning &amp; Python</a> <span data-en="at" data-zh="在">at</span> <span class="university-name">University of Toronto</span>
                                         </li>
                                         <li>
                                             <span class="highlight-item-title" data-en="Research Assistant" data-zh="研究助理">Research Assistant</span>
@@ -329,8 +226,8 @@
                                 <div id="card-phd" class="highlight-card">
                                     <div class="vertical-accent"></div>
                                     <h3><span data-en="Greenhouse-Level Digital Twin Framework" data-zh="温室级数字孪生框架">Greenhouse-Level Digital Twin Framework</span></h3>
-                                    
-                                    <p style="color: #1db954; font-family: Consolas, monospace; margin-top: -10px; margin-bottom: 15px; font-size: 0.9rem;" data-en="> Status: Active PhD Research (Publication Pending)" data-zh="> 状态：在读博士研究 (等待发表)">
+
+                                    <p class="status-line" data-en="> Status: Active PhD Research (Publication Pending)" data-zh="> 状态：在读博士研究 (等待发表)">
                                         > Status: Active PhD Research (Publication Pending)
                                     </p>
 
@@ -339,45 +236,45 @@
                                             Designing a probabilistic state-estimation framework to create a living digital twin of a heterogeneous greenhouse environment.
                                         </li>
                                         <li>
-                                            <strong data-en="The Core Architecture:" data-zh="核心架构：">The Core Architecture:</strong> 
+                                            <strong data-en="The Core Architecture:" data-zh="核心架构：">The Core Architecture:</strong>
                                             <span data-en="Bridging the gap between mechanistic biological predictions and noisy real-world sensor data." data-zh="弥合机制生物学预测与现实世界嘈杂传感器数据之间的差距。">Bridging the gap between mechanistic biological predictions and noisy real-world sensor data.</span>
                                         </li>
                                         <li>
-                                            <strong data-en="Mathematical Frameworks:" data-zh="数学框架：">Mathematical Frameworks:</strong> 
+                                            <strong data-en="Mathematical Frameworks:" data-zh="数学框架：">Mathematical Frameworks:</strong>
                                             <span data-en="Implementing dynamic Flux Balance Analysis (dFBA) and Kalman Filtering to continuously track and correct hidden biomass states across multiple spatial zones." data-zh="实施动态通量平衡分析（dFBA）和卡尔曼滤波，以持续跟踪和纠正多个空间区域的隐藏生物量状态。">Implementing dynamic Flux Balance Analysis (dFBA) and Kalman Filtering to continuously track and correct hidden biomass states across multiple spatial zones.</span>
                                         </li>
                                         <li>
-                                            <strong data-en="Tech Stack:" data-zh="技术栈：">Tech Stack:</strong> 
+                                            <strong data-en="Tech Stack:" data-zh="技术栈：">Tech Stack:</strong>
                                             <span data-en="Python, COBRApy, State-Space Models, NumPy, SciPy" data-zh="Python, COBRApy, 状态空间模型, NumPy, SciPy">Python, COBRApy, State-Space Models, NumPy, SciPy</span>
                                         </li>
                                     </ul>
 
-                                    <div style="margin-top: 25px;">
-                                        <button class="locked-repo-btn" disabled>
-                                            <span data-en="[🔒 Repository Locked - Pending Peer Review]" data-zh="[🔒 源代码已锁定 - 等待同行评审]">[🔒 Repository Locked - Pending Peer Review]</span>
+                                    <div class="locked-repo">
+                                        <button class="locked-repo-btn" type="button" disabled>
+                                            <span data-en="[🔒 Repository Locked - [WIP]]" data-zh="[🔒 源代码已锁定 - WIP]">[🔒 Repository Locked - Pending Peer Review]</span>
                                         </button>
                                     </div>
                                 </div>
                                 <div id="card-skills" class="highlight-card">
                                     <div class="vertical-accent"></div>
                                     <h3><span data-en="System Capabilities" data-zh="系统能力">System Capabilities</span></h3>
-                                    
+
                                     <ul class="highlight-list">
                                         <li>
-                                            <strong style="color: #1db954;">[SYS] Languages:</strong>
-                                            <span style="color: #dcdcdc;">Python, C++, JavaScript, TypeScript, Java, C#, R, SQL</span>
+                                            <strong>[SYS] Languages:</strong>
+                                            <span>Python, C++, JavaScript, TypeScript, Java, C#, R, SQL</span>
                                         </li>
                                         <li>
-                                            <strong style="color: #1db954;">[ML] Machine Learning:</strong>
-                                            <span style="color: #dcdcdc;">PyTorch, TensorFlow, Scikit-learn, DeepFace, MediaPipe, State-Space Models</span>
+                                            <strong>[ML] Machine Learning:</strong>
+                                            <span>PyTorch, TensorFlow, Scikit-learn, DeepFace, MediaPipe, State-Space Models</span>
                                         </li>
                                         <li>
-                                            <strong style="color: #1db954;">[DAT] Data & Analysis:</strong>
-                                            <span style="color: #dcdcdc;">Pandas, NumPy, SciPy, COBRApy, Data Visualization</span>
+                                            <strong>[DAT] Data &amp; Analysis:</strong>
+                                            <span>Pandas, NumPy, SciPy, COBRApy, Data Visualization</span>
                                         </li>
                                         <li>
-                                            <strong style="color: #1db954;">[CFG] Frameworks & Tools:</strong>
-                                            <span style="color: #dcdcdc;">React, Node.js, Git, Docker, AWS, Azure, Selenium</span>
+                                            <strong>[CFG] Frameworks &amp; Tools:</strong>
+                                            <span>React, Node.js, Git, Docker, AWS, Azure, Selenium</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -389,40 +286,43 @@
                     </div>
                 </div>
             </section>
-            
 
 
-                
+
+
         <section id="experience-section" class="scroll-section experience-section">
             <div class="container">
-                <h2 class="section-title reveal-content" data-en="Where I've Been" data-zh="我的经历">Where I've Been</h2>
-                
+                <div class="section-heading reveal-content">
+                    <div><p class="section-kicker">02 / EXPERIENCE</p><h2 class="section-title" data-en="Range is part of the toolkit." data-zh="跨界经验，本身就是工具。">Range is part of the toolkit.</h2></div>
+                    <p class="section-summary" data-en="Research, teaching, product engineering, and consulting have taught me to move between technical depth and human context." data-zh="研究、教学、产品工程与咨询经历，让我能够在技术深度与人的真实需求之间切换。">Research, teaching, product engineering, and consulting have taught me to move between technical depth and human context.</p>
+                </div>
+
                 <div class="about-explorer reveal-content">
                     <div class="explorer-menu">
                         <div class="explorer-header">~/experience $ ls -l</div>
-                        
-                        <button class="explorer-btn active" onclick="switchExpCard('exp-consulting', this)">
+
+                        <button type="button" class="explorer-btn active" onclick="switchExpCard('exp-consulting', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="FAW-VW_Consulting" data-zh="一汽大众管理/协调">Management_Consulting</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchExpCard('exp-tech', this)">
+                        <button type="button" class="explorer-btn" onclick="switchExpCard('exp-tech', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Ford_Manulife_Tech" data-zh="福特+宏利tech经验">CAN_Tech_Industry</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchExpCard('exp-teach', this)">
+                        <button type="button" class="explorer-btn" onclick="switchExpCard('exp-teach', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Teaching_Experience" data-zh="教学经验">Teaching_Experience</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchExpCard('exp-research', this)">
+                        <button type="button" class="explorer-btn" onclick="switchExpCard('exp-research', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Research_Experience" data-zh="研究经验">Research_Experience</span>
                         </button>
                     </div>
 
                     <div class="explorer-content">
-                        
+
                         <div id="exp-consulting" class="highlight-card active-card">
                             <div class="vertical-accent"></div>
                             <h3 data-en="Management / Consulting" data-zh="咨询 / 管理">Management / Consulting</h3>
-                            <div class="experience-item" style="border-bottom: none;">
-                                <h4 data-en="Complaints Management & Operational Consulting" data-zh="投诉处理与内部咨询">
-                                    Complaints Management & Operational Consulting <span>@ FAW-Volkswagen</span>
+                            <div class="experience-item">
+                                <h4 data-en="Complaints Management &amp; Operational Consulting" data-zh="投诉处理与内部咨询">
+                                    Complaints Management &amp; Operational Consulting <span>@ FAW-Volkswagen</span>
                                 </h4>
                                 <p><em data-en="Dispute Resolution, Risk Prevention" data-zh="纠纷处理，风险防控">Dispute Resolution, Risk Prevention</em></p>
                                 <p><strong data-en="May 2024 – July 2025" data-zh="2024年5月 – 2025年7月">May 2024 – July 2025</strong></p>
@@ -447,7 +347,7 @@
                                 <p><em>JavaScript, React, WebDriver IO</em></p>
                                 <p><strong data-en="January 2020 – April 2020" data-zh="2020年1月 – 2020年4月">January 2020 – April 2020</strong></p>
                             </div>
-                            <div class="experience-item" style="border-bottom: none;">
+                            <div class="experience-item">
                                 <h4 data-en="QA Automation Specialist" data-zh="QA自动化专家">QA Automation Specialist <span>@ Teranet CMS</span></h4>
                                 <p><em>C#, Selenium</em></p>
                                 <p><strong data-en="September 2020 – December 2020" data-zh="2020年9月 – 2020年12月">September 2020 – December 2020</strong></p>
@@ -464,7 +364,7 @@
                                     <li data-en="Led 10+ Tutorials per term" data-zh="每学期带领10多次辅导课">Led 10+ Tutorials per term</li>
                                 </ul>
                             </div>
-                            <div class="experience-item" style="border-bottom: none;">
+                            <div class="experience-item">
                                 <h4>MIE370 (Introduction to ML) <span>@ UofT</span></h4>
                                 <ul class="highlight-list">
                                     <li data-en="Created 2 Projects, 2 Tutorials, 2 Exam Questions" data-zh="创建了2个项目，2个教程，2个考试问题">Created 2 Projects, 2 Tutorials, 2 Exam Questions</li>
@@ -475,7 +375,7 @@
                         <div id="exp-research" class="highlight-card">
                             <div class="vertical-accent"></div>
                             <h3 data-en="Research Experience" data-zh="研究经验">Research Experience</h3>
-                            <div class="experience-item" style="border-bottom: none;">
+                            <div class="experience-item">
                                 <h4 data-en="Research Assistant" data-zh="研究助理">Research Assistant <span>@ Prof. Yuning Li's Lab, UWaterloo</span></h4>
                                 <p><em>Chromatography, UV Testing, Organic Solar Cells</em></p>
                                 <p><strong data-en="May 2019 – August 2019" data-zh="2019年5月 – 2019年8月">May 2019 – August 2019</strong></p>
@@ -489,51 +389,54 @@
                 </div>
             </div>
         </section>
-        
 
-                
-        
 
-        
-        
 
-        
-        
+
+
+
+
+
+
+
 
         <!-- Projects Section -->
         <section id="projects-section" class="scroll-section projects-section">
             <div class="container">
-                <h2 class="section-title reveal-content" data-en="What I've Built" data-zh="我的项目">What I've Built</h2>
-                
+                <div class="section-heading reveal-content">
+                    <div><p class="section-kicker">03 / SELECTED WORK</p><h2 class="section-title" data-en="Proof lives in the prototype." data-zh="原型就是最好的证明。">Proof lives in the prototype.</h2></div>
+                    <p class="section-summary" data-en="A selection of models, tools, and experiments across multimodal AI, routing, hardware, robotics, and personal software." data-zh="一组跨越多模态 AI、路径规划、硬件、机器人和个人软件的模型、工具与实验。">A selection of models, tools, and experiments across multimodal AI, routing, hardware, robotics, and personal software.</p>
+                </div>
+
                 <div class="about-explorer reveal-content">
                     <div class="explorer-menu">
                         <div class="explorer-header">~/projects $ ls -l</div>
-                        
-                        <button class="explorer-btn active" onclick="switchProjCard('proj-emo', this)">
+
+                        <button type="button" class="explorer-btn active" onclick="switchProjCard('proj-emo', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Emotion_Detection" data-zh="情感检测">Emotion_Detection</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchProjCard('proj-evac', this)">
+                        <button type="button" class="explorer-btn" onclick="switchProjCard('proj-evac', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Smart_Evac_Map" data-zh="智能疏散系统">Smart_Evac_Map</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchProjCard('proj-swim', this)">
+                        <button type="button" class="explorer-btn" onclick="switchProjCard('proj-swim', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="S.W.I.M_Hardware" data-zh="S.W.I.M硬件">S.W.I.M_Hardware</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchProjCard('proj-food', this)">
+                        <button type="button" class="explorer-btn" onclick="switchProjCard('proj-food', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Food_Raccoon_AI" data-zh="AI美食推荐">Food_Raccoon_AI</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchProjCard('proj-money', this)">
+                        <button type="button" class="explorer-btn" onclick="switchProjCard('proj-money', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="LLM_Fin_Tracker" data-zh="LLM财务跟踪">LLM_Fin_Tracker</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchProjCard('proj-robot', this)">
+                        <button type="button" class="explorer-btn" onclick="switchProjCard('proj-robot', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Autonomous_Robot" data-zh="自主机器人">Autonomous_Robot</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchProjCard('proj-matrix', this)">
+                        <button type="button" class="explorer-btn" onclick="switchProjCard('proj-matrix', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Matrix_Calc.py" data-zh="矩阵计算器.py">Matrix_Calc.py</span>
                         </button>
                     </div>
 
                     <div class="explorer-content">
-                        
+
                         <div id="proj-emo" class="highlight-card active-card">
                             <div class="vertical-accent"></div>
                             <h3 data-en="Emotion Detection (Face+Voice+Gestures)" data-zh="视频情感检测（面部+声音+手势）">Emotion Detection (Face+Voice+Gestures)</h3>
@@ -543,14 +446,14 @@
                                 <li data-en="Created custom Ollama endpoints with temporal emotion smoothing using a 0.5-second rolling window to enhance accuracy." data-zh="创建了自定义Ollama端点，使用0.5秒滚动窗口进行时间情感平滑处理。">Created custom Ollama endpoints with temporal emotion smoothing using a 0.5-second rolling window to enhance accuracy.</li>
                             </ul>
                             <a href="https://github.com/chf-NewStart/Facial-Analysis-on-Oval-Office" target="_blank" class="highlight-link">[GitHub Repo]</a>
-                            <div class="snapshots" style="margin-top: 15px;">
-                                <img src="emo/emo1.webp" alt="emo1" loading="lazy">
-                                <img src="emo/emo2.webp" alt="emo2" loading="lazy">
+                            <div class="snapshots">
+                                <img src="emo/emo1.webp" alt="Facial-analysis demo tracking multiple speakers" loading="lazy">
+                                <img src="emo/emo2.webp" alt="Multimodal emotion-analysis interface" loading="lazy">
                             </div>
                             <!-- Embedded YouTube Video -->
-                            <div style="margin-top:15px;">
+                            <div class="media-embed">
                                 <iframe width="560" height="315" src="https://www.youtube.com/embed/7GPsjpwm9X0?si=g1wM8RJF1Fa4I2BY" loading="lazy"
-                                    title="Emo Detection" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    title="Emotion detection project demo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowfullscreen>
                                 </iframe>
                             </div>
@@ -576,9 +479,9 @@
                                 <li data-en="Use Arduino, LED strip, and time-lapse photography to print digital pictures into the real world." data-zh="使用Arduino、LED灯带和延时摄影在现实世界中打印数字图片。">Use Arduino, LED strip, and time-lapse photography to print digital pictures into the real world.</li>
                             </ul>
                             <a href="https://github.com/chf-NewStart/swimProject" target="_blank" class="highlight-link">[GitHub Repo]</a>
-                            <div class="snapshots" style="margin-top: 15px;">
-                                <img src="swim/swim1.webp" alt="swim1" loading="lazy">
-                                <img src="swim/swim2.webp" alt="swim2" loading="lazy">
+                            <div class="snapshots">
+                                <img src="swim/swim1.webp" alt="Sequential Wave Imprinting Machine light pattern" loading="lazy">
+                                <img src="swim/swim2.webp" alt="S.W.I.M. hardware experiment in motion" loading="lazy">
                             </div>
                         </div>
 
@@ -614,16 +517,16 @@
                             <ul class="highlight-list">
                                 <li data-en="Designed and programmed a LEGO Mindstorms robot, showcasing retrieval and tracking capabilities. Achieved 3rd place!" data-zh="设计并编程乐高机器人，展示检索和跟踪功能。获得第三名！">Designed and programmed a LEGO Mindstorms robot, showcasing retrieval and tracking capabilities. Achieved 3rd place!</li>
                             </ul>
-                            
-                            <div class="snapshots" style="margin-top: 15px;">
-                                <img src="robo1/motion1.webp" alt="robo1" loading="lazy">
-                                <img src="robo1/motion3.webp" alt="robo3" loading="lazy">
-                                <img src="robo1/motion4.webp" alt="robo4" loading="lazy">
-                                <img src="robo1/motion5.webp" alt="robo5" loading="lazy">
+
+                            <div class="snapshots">
+                                <img src="robo1/motion1.webp" alt="Autonomous robot beginning its retrieval run" loading="lazy">
+                                <img src="robo1/motion3.webp" alt="Autonomous robot tracking its target" loading="lazy">
+                                <img src="robo1/motion4.webp" alt="Autonomous robot navigating the course" loading="lazy">
+                                <img src="robo1/motion5.webp" alt="Autonomous robot completing the task" loading="lazy">
                             </div>
-                            <div style="margin-top:15px;">
+                            <div class="media-embed">
                             <iframe width="560" height="315" src="https://www.youtube.com/embed/3dYSAhPe7kY" loading="lazy"
-                                    title="Robotics Project Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    title="Robotics project demo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowfullscreen>
                             </iframe>
                         </div>
@@ -645,42 +548,149 @@
             </div>
         </section>
 
+        <section id="games-section" class="scroll-section projects-section">
+            <div class="container">
+                <div class="section-heading reveal-content">
+                    <div><p class="section-kicker">04 / LIVE LAB</p><h2 class="section-title" data-en="Useful tools, built in public." data-zh="公开构建，真正有用。">Useful tools, built in public.</h2></div>
+                    <p class="section-summary" data-en="A growing shelf of focused browser tools: read, reflect, track, play, and leave a signal." data-zh="一组持续生长的浏览器工具：阅读、记录、追踪、游戏，也可以留下讯息。">A growing shelf of focused browser tools: read, reflect, track, play, and leave a signal.</p>
+                </div>
+
+                <div class="reveal-content">
+                    <div class="section-console">~/live-lab $ ls --available</div>
+
+                    <div class="arcade-grid">
+                        <div class="gc-card">
+                            <div class="gc-icon">[📖]</div>
+                            <div class="gc-title" data-en="reading_room.app" data-zh="双语阅读室.app">reading_room.app</div>
+                            <div class="gc-desc" data-en="A private bilingual reader with local OCR, PDF and text import, line-by-line translation, paragraph notes, and portable backups." data-zh="私密双语阅读器：本地 OCR、PDF 与文本导入、逐行翻译、段落笔记和便携备份。">A private bilingual reader with local OCR, PDF and text import, line-by-line translation, paragraph notes, and portable backups.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green">local-first</span>
+                                <span class="gc-tag">OCR</span>
+                                <span class="gc-tag">FR → EN</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">Browser · private</span>
+                                <a class="gc-play" href="/reading.html" data-en="→ open" data-zh="→ 打开">→ open</a>
+                            </div>
+                        </div>
+
+                        <div class="gc-card">
+                            <div class="gc-icon">[✎]</div>
+                            <div class="gc-title" data-en="journal_intime.app" data-zh="即时日记.app">journal_intime.app</div>
+                            <div class="gc-desc" data-en="A calm space for small reflections and daily signals, designed to make writing feel lighter and more immediate." data-zh="一个记录日常信号与短小思考的安静空间，让写作变得更轻、更即时。">A calm space for small reflections and daily signals, designed to make writing feel lighter and more immediate.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green">reflection</span>
+                                <span class="gc-tag">daily</span>
+                                <span class="gc-tag">weather-aware</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">Journal · browser</span>
+                                <a class="gc-play" href="/journal.html" data-en="→ write" data-zh="→ 记录">→ write</a>
+                            </div>
+                        </div>
+
+                        <div class="gc-card">
+                            <div class="gc-icon">[$]</div>
+                            <div class="gc-title" data-en="fin_tracker.app" data-zh="财务追踪器.app">fin_tracker.app</div>
+                            <div class="gc-desc" data-en="A teachable personal finance tracker for categorizing transactions, seeing patterns, and keeping private data under your control." data-zh="可学习的个人财务追踪器：整理交易、发现规律，并让私人数据始终由你掌控。">A teachable personal finance tracker for categorizing transactions, seeing patterns, and keeping private data under your control.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green">insights</span>
+                                <span class="gc-tag">categories</span>
+                                <span class="gc-tag">privacy</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">Data · local</span>
+                                <a class="gc-play" href="/moneymanage/" data-en="→ track" data-zh="→ 开始">→ track</a>
+                            </div>
+                        </div>
+
+                        <div class="gc-card">
+                            <div class="gc-icon">[✉]</div>
+                            <div class="gc-title" data-en="message_box.app" data-zh="匿名留言箱.app">message_box.app</div>
+                            <div class="gc-desc" data-en="A low-friction way to leave a private note, question, or hello without needing to open an email client." data-zh="无需打开邮件客户端，也能轻松留下一条私密留言、问题或问候。">A low-friction way to leave a private note, question, or hello without needing to open an email client.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green">direct</span>
+                                <span class="gc-tag">private</span>
+                                <span class="gc-tag">no login</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">Inbox · async</span>
+                                <a class="gc-play" href="/msg/" data-en="→ leave a note" data-zh="→ 留言">→ leave a note</a>
+                            </div>
+                        </div>
+
+                        <div class="gc-card">
+                            <div class="gc-icon">[🕹]</div>
+                            <div class="gc-title" data-en="game_life.exe" data-zh="游戏人生.exe">game_life.exe</div>
+                            <div class="gc-desc" data-en="Nine hand-built browser games — including cellular automata, AI board games, a roguelike maze, a metabolism sim, and three real-time co-op games." data-zh="九款手工构建的浏览器游戏：元胞自动机、AI 棋类、肉鸽迷宫、代谢模拟，以及三款实时双人合作游戏。">Nine hand-built browser games — including cellular automata, AI board games, a roguelike maze, a metabolism sim, and three real-time co-op games.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green">9 games</span>
+                                <span class="gc-tag">3 co-op</span>
+                                <span class="gc-tag">AI</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">Separate arcade</span>
+                                <a class="gc-play" href="https://lifegameproject.com/" target="_blank" data-en="→ play ↗" data-zh="→ 游玩 ↗">→ play ↗</a>
+                            </div>
+                        </div>
+
+                        <div class="gc-card">
+                            <div class="gc-icon">[◎]</div>
+                            <div class="gc-title" data-en="attachment_quiz.app" data-zh="依恋风格测验.app">attachment_quiz.app</div>
+                            <div class="gc-desc" data-en="An 18-question attachment-style explorer with a clear Anxiety × Avoidance visualization, shareable results, and compare mode." data-zh="18 道题探索依恋风格，包含清晰的焦虑 × 回避可视化、可分享结果与双人比较模式。">An 18-question attachment-style explorer with a clear Anxiety × Avoidance visualization, shareable results, and compare mode.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green">visualization</span>
+                                <span class="gc-tag">shareable</span>
+                                <span class="gc-tag">compare</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">18 questions</span>
+                                <a class="gc-play" href="/personality/" data-en="→ explore" data-zh="→ 探索">→ explore</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <section id="personal-section" class="scroll-section projects-section">
             <div class="container">
-                <h2 class="section-title reveal-content" data-en="Off The Clock" data-zh="业余时间">Off The Clock</h2>
-                
+                <div class="section-heading reveal-content">
+                    <div><p class="section-kicker">05 / ELSEWHERE</p><h2 class="section-title" data-en="There’s more than one mode." data-zh="不止一种运行模式。">There’s more than one mode.</h2></div>
+                    <p class="section-summary" data-en="Notes from the PhD journey, private-by-design experiments, and ideas I’m still turning over." data-zh="博士旅程笔记、注重隐私的个人实验，以及仍在不断推敲的想法。">Notes from the PhD journey, private-by-design experiments, and ideas I’m still turning over.</p>
+                </div>
+
                 <div class="about-explorer reveal-content">
                     <div class="explorer-menu">
                         <div class="explorer-header">~/personal_logs $ ls -a</div>
-                        
-                        <button class="explorer-btn active" onclick="switchPersonalCard('pers-phd', this)">
+
+                        <button type="button" class="explorer-btn active" onclick="switchPersonalCard('pers-phd', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="PhD" data-zh="博士">PhD</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchPersonalCard('pers-notes', this)">
+                        <button type="button" class="explorer-btn" onclick="switchPersonalCard('pers-notes', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Knowledge_Base" data-zh="知识库">Knowledge_Base</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchPersonalCard('pers-reading', this)">
+                        <button type="button" class="explorer-btn" onclick="switchPersonalCard('pers-reading', this)">
                             <span class="highlight-icon">[📖]</span> <span data-en="Reading_Room" data-zh="阅读室">Reading_Room</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchPersonalCard('pers-personality', this)">
+                        <button type="button" class="explorer-btn" onclick="switchPersonalCard('pers-personality', this)">
                             <span class="highlight-icon">[::]</span> <span data-en="Attachment_Style" data-zh="依恋风格">Attachment_Style</span>
                         </button>
-                        <button class="explorer-btn" onclick="switchPersonalCard('pers-game', this)">
+                        <button type="button" class="explorer-btn" onclick="switchPersonalCard('pers-game', this)">
                             <span class="highlight-icon">[🕹]</span> <span data-en="game_life.exe" data-zh="游戏人生.exe">game_life.exe</span>
                         </button>
                     </div>
 
                     <div class="explorer-content">
-                        
+
                         <div id="pers-phd" class="highlight-card active-card">
                             <div class="vertical-accent"></div>
-                            <h3 data-en="Computer Science PhD Journey" data-zh="计算机科学博士之旅">Computer Science PhD Journey</h3>
-                            <p><strong style="color: #1db954;">Status:</strong> Current PhD @ University of Waterloo</p>
+                            <h3 data-en="Interdisciplinary PhD Journey" data-zh="跨学科博士之旅">Interdisciplinary PhD Journey</h3>
+                            <p><strong class="accent-label">Status:</strong> Current PhD @ University of Waterloo</p>
                             <ul class="highlight-list">
-                                <li><strong>Research Focus:</strong> Digital Twins & Systems Architecture</li>
+                                <li><strong>Research Focus:</strong> Digital Twins &amp; Systems Architecture</li>
                                 <li><strong>Department:</strong> Chemical Engineering</li>
-                                <li><strong>Supervisors:</strong> Prof. Nasser Mohieddin Abukhdeir & Prof. Christian Euler</li>
+                                <li><strong>Supervisors:</strong> Prof. Nasser Mohieddin Abukhdeir &amp; Prof. Christian Euler</li>
 
 
                             </ul>
@@ -691,7 +701,7 @@
                             <h3 data-en="Knowledge Base" data-zh="知识库">Knowledge Base</h3>
                             <p data-en="A collection of my thoughts, articles, and book notes." data-zh="我的想法、文章和读书笔记的集合。">A collection of my thoughts, articles, and book notes.</p>
                             <ul class="highlight-list">
-                                <li><strong>Computer Vision & AI:</strong> Notes from recent deep dives.</li>
+                                <li><strong>Computer Vision &amp; AI:</strong> Notes from recent deep dives.</li>
                                 <li><strong>Algorithms:</strong> Problem-solving patterns and optimizations.</li>
                                 <li><strong>How to Be an Imperfectionist:</strong> Key takeaways on productivity.</li>
                             </ul>
@@ -700,51 +710,42 @@
                         <div id="pers-reading" class="highlight-card">
                             <div class="vertical-accent"></div>
                             <h3 data-en="Salle de lecture — bilingual reading room" data-zh="阅读室 — 双语阅读间">Salle de lecture — bilingual reading room</h3>
-                            <p data-en="A private reader for books I'm working through in French: paste a chapter or upload a PDF, get English interleaved line by line (translated on-device — nothing is uploaded), and attach notes to any paragraph." data-zh="我的法语读书角：粘贴章节或上传 PDF，逐行对照英文（本地翻译，任何内容都不会上传），并可在任意段落做笔记。">A private reader for books I'm working through in French: paste a chapter or upload a PDF, get English interleaved line by line (translated on-device — nothing is uploaded), and attach notes to any paragraph.</p>
+                            <p data-en="A private reader for books I’m working through in French: import a passage, interleave English line by line, and attach notes to any paragraph." data-zh="我的法语读书角：导入章节、逐行对照英文，并可在任意段落添加笔记。">A private reader for books I’m working through in French: import a passage, interleave English line by line, and attach notes to any paragraph.</p>
                             <ul class="highlight-list">
-                                <li>Drop a screenshot — local OCR pulls out just the highlighted passage</li>
-                                <li>PDF / text import, parsed entirely in the browser</li>
-                                <li>Line-by-line FR→EN via the browser's built-in translator</li>
-                                <li>Paragraph notes · markdown export · JSON backup</li>
+                                <li data-en="Local OCR extracts highlighted text from screenshots" data-zh="本地 OCR 从截图中提取高亮文字">Local OCR extracts highlighted text from screenshots</li>
+                                <li data-en="PDF and text import stay in the browser" data-zh="PDF 与文本导入全程留在浏览器中">PDF and text import stay in the browser</li>
+                                <li data-en="Paragraph notes, markdown export, and JSON backup" data-zh="段落笔记、Markdown 导出与 JSON 备份">Paragraph notes, markdown export, and JSON backup</li>
                             </ul>
-                            <a href="/reading.html" class="highlight-link" style="display: inline-block; margin-top: 12px;" data-en="→ Enter the reading room" data-zh="→ 进入阅读室">→ Enter the reading room</a>
+                            <a href="/reading.html" class="highlight-link inline-action" data-en="→ Enter the reading room" data-zh="→ 进入阅读室">→ Enter the reading room</a>
                         </div>
-
 
                         <div id="pers-game" class="highlight-card">
                             <div class="vertical-accent"></div>
-                            <div style="font-family:Consolas,monospace;font-size:0.66rem;color:#444;letter-spacing:2px;margin-bottom:8px;">~/life $ ./game_life --launch</div>
-                            <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
-                                <h3 style="letter-spacing:1px;">🕹 GAME LIFE</h3>
-                                <span style="font-family:Consolas,monospace;font-size:0.66rem;color:#1db954;border:1px solid #1db954;padding:2px 7px;" data-en="9 games · 3 co-op" data-zh="9 款游戏 · 3 款双人">9 games · 3 co-op</span>
+                            <p class="panel-command">~/life $ ./game_life --launch</p>
+                            <div class="panel-title-row">
+                                <h3 data-en="Game Life" data-zh="游戏人生">Game Life</h3>
+                                <span class="status-badge" data-en="9 games · 3 co-op" data-zh="9 款游戏 · 3 款双人">9 games · 3 co-op</span>
                             </div>
-                            <p style="color:#1db954;font-family:Consolas,monospace;font-size:0.82rem;margin-top:4px;" data-en="browser game arcade · hand-coded · RL agents in training" data-zh="浏览器游戏厅 · 纯手写 · 强化学习智能体训练中">browser game arcade · hand-coded · RL agents in training</p>
-                            <p style="color:#999;font-size:0.82rem;margin-top:13px;line-height:1.65;" data-en="A whole arcade with its own home — cellular automata, AI board games, a torch-lit roguelike maze, a plant-metabolism farming sim, and three two-player co-op games you steer with a friend in real time." data-zh="一整座有自己家的游戏厅——元胞自动机、AI 棋类、火把照明的肉鸽迷宫、植物代谢种植模拟，还有三款与好友实时联机的双人合作游戏。">A whole arcade with its own home — cellular automata, AI board games, a torch-lit roguelike maze, a plant-metabolism farming sim, and three two-player co-op games you steer with a friend in real time.</p>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-family:Consolas,monospace;font-size:0.73rem;color:#9a9a9a;margin:16px 0;border:1px solid #1c1c1c;background:#0c0c0c;padding:13px 14px;">
-                                <span><span style="color:#1db954">[##]</span> game_of_life.exe</span>
-                                <span><span style="color:#1db954">[⬡]</span> gomoku.exe</span>
-                                <span><span style="color:#1db954">[▦]</span> labyrinth.exe</span>
-                                <span><span style="color:#1db954">[◍]</span> grow_a_tomato.exe</span>
-                                <span><span style="color:#1db954">[🍅]</span> tomatoswipe.exe</span>
-                                <span><span style="color:#1db954">[9]</span> sudoku.exe</span>
-                                <span><span style="color:#1db954">[◖●◗]</span> keep_up.exe</span>
-                                <span><span style="color:#1db954">[◂▴▸]</span> lander.exe</span>
-                                <span><span style="color:#1db954">[o–o]</span> tether.exe</span>
-                            </div>
-                            <p style="color:#1db954;font-family:Consolas,monospace;font-size:0.78rem;font-style:italic;border-left:2px solid #1db954;padding-left:11px;margin:16px 0;" data-en="“Life is a game — so enjoy every piece of it. Don't be afraid. Don't rush.”" data-zh="“人生即游戏——尽情享受每一刻。别害怕，别着急。”">"Life is a game — so enjoy every piece of it. Don't be afraid. Don't rush."</p>
-                            <a href="https://lifegameproject.com/" target="_blank" class="highlight-link" style="display:inline-block;margin-top:6px;font-size:0.92rem;" data-en="→ Enter the arcade @ lifegameproject.com" data-zh="→ 进入游戏厅 @ lifegameproject.com">→ Enter the arcade @ lifegameproject.com</a>
+                            <p data-en="A whole arcade with its own home — cellular automata, AI board games, a torch-lit roguelike maze, a plant-metabolism farming sim, and real-time co-op." data-zh="一整座有自己家的游戏厅——元胞自动机、AI 棋类、火把照明的肉鸽迷宫、植物代谢种植模拟和实时双人合作。">A whole arcade with its own home — cellular automata, AI board games, a torch-lit roguelike maze, a plant-metabolism farming sim, and real-time co-op.</p>
+                            <ul class="game-index" aria-label="Game Life titles">
+                                <li>game_of_life.exe</li><li>gomoku.exe</li><li>labyrinth.exe</li>
+                                <li>grow_a_tomato.exe</li><li>tomatoswipe.exe</li><li>sudoku.exe</li>
+                                <li>keep_up.exe</li><li>lander.exe</li><li>tether.exe</li>
+                            </ul>
+                            <blockquote class="panel-quote" data-en="Life is a game — enjoy every piece of it. Don’t be afraid. Don’t rush." data-zh="人生即游戏——尽情享受每一刻。别害怕，别着急。">Life is a game — enjoy every piece of it. Don’t be afraid. Don’t rush.</blockquote>
+                            <a href="https://lifegameproject.com/" target="_blank" class="highlight-link inline-action" data-en="→ Enter the arcade ↗" data-zh="→ 进入游戏厅 ↗">→ Enter the arcade ↗</a>
                         </div>
 
                         <div id="pers-personality" class="highlight-card">
                             <div class="vertical-accent"></div>
                             <h3 data-en="Attachment Style Quiz" data-zh="依恋风格测验">Attachment Style Quiz</h3>
-                            <p data-en="Discover your attachment style — Secure, Anxious, Avoidant, or Fearful — through 18 questions inspired by the ECR-R framework from \"Attached\" by Levine & Heller." data-zh="通过18道问题探索你的依恋风格——安全型、焦虑型、回避型或恐惧型。灵感来自Levine与Heller的《依恋》。">Discover your attachment style — Secure, Anxious, Avoidant, or Fearful — through 18 questions inspired by the ECR-R framework from "Attached" by Levine & Heller.</p>
+                            <p data-en="Discover your attachment style — Secure, Anxious, Avoidant, or Fearful — through 18 questions inspired by the ECR-R framework from &quot;Attached&quot; by Levine &amp; Heller." data-zh="通过18道问题探索你的依恋风格——安全型、焦虑型、回避型或恐惧型。灵感来自Levine与Heller的《依恋》。">Discover your attachment style — Secure, Anxious, Avoidant, or Fearful — through 18 questions inspired by “Attached” by Levine &amp; Heller.</p>
                             <ul class="highlight-list">
                                 <li>2D scatter plot visualization on Anxiety × Avoidance axes</li>
                                 <li>Shareable result links</li>
                                 <li>Compare mode: plot two people on the same chart</li>
                             </ul>
-                            <a href="/personality/" class="highlight-link" style="display: inline-block; margin-top: 12px;">→ Take the quiz</a>
+                            <a href="/personality/" class="highlight-link inline-action">→ Take the quiz</a>
                         </div>
 
                     </div>
@@ -755,304 +756,29 @@
 
         <section id="contact-section" class="scroll-section contact-section">
                     <div class="container">
-                        <h2 class="section-title reveal-content" data-en="Get in Touch" data-zh="联系方式">Get in Touch</h2>
-                        
-                        <div class="reveal-content" style="max-width: 600px; text-align: left; font-family: Consolas, monospace; margin-left: 20px;">
-                            <p style="color: #dcdcdc; margin-bottom: 40px; font-size: 1.1rem; border-left: 2px dashed #333; padding-left: 15px;" data-en="Currently researching Digital Twins and Computational Modeling as a PhD student at UWaterloo. Always open to collaborations and technical discussions. My inbox is always open. ^_−" data-zh="目前在滑铁卢大学攻读博士学位，专注于数字孪生与计算建模研究。欢迎随时进行学术交流与技术探讨。期待你的来信。^_−">
-                                Currently researching Digital Twins and Computational Modeling as a PhD student at UWaterloo. Always open to collaborations and technical discussions. My inbox is always open. ^_−
-                            </p>
-                            
-                            <ul class="highlight-list" style="list-style: none; padding: 0; font-size: 1.1rem;">
-                                <li style="margin-bottom: 25px; display: flex; align-items: center;">
-                                    <strong style="color: #1db954; width: 120px;">[EMAIL]</strong> 
-                                    <a href="mailto:h534chen@uwaterloo.ca" class="highlight-link">h534chen@uwaterloo.ca</a>
-                                </li>
-                                <li style="margin-bottom: 25px; display: flex; align-items: center;">
-                                    <strong style="color: #1db954; width: 120px;">[GITHUB]</strong> 
-                                    <a href="https://github.com/chf-NewStart" target="_blank" class="highlight-link">github.com/chf-NewStart</a>
-                                </li>
-                                <li style="margin-bottom: 25px; display: flex; align-items: center;">
-                                    <strong style="color: #1db954; width: 120px;">[LINKEDIN]</strong> 
-                                    <a href="https://linkedin.com/in/houfuchen" target="_blank" class="highlight-link">linkedin.com/in/houfuchen</a>
-                                </li>
-                                <li style="margin-bottom: 25px; display: flex; align-items: center;">
-                                    <strong style="color: #1db954; width: 120px;">[RESUME]</strong>
-                                    <a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" class="highlight-link" data-en="Download_CV.pdf" data-zh="下载简历.pdf">Download_CV.pdf</a>
-                                </li>
-                                <li style="margin-bottom: 25px; display: flex; align-items: center;">
-                                    <strong style="color: #1db954; width: 120px;">[MSGBOX]</strong>
-                                    <a href="/msg/" target="_blank" class="highlight-link" data-en="./msgbox — leave me a note" data-zh="./msgbox — 给我留言">./msgbox — leave me a note</a>
-                                </li>
+                        <div class="contact-shell reveal-content">
+                            <div class="contact-copy">
+                                <p class="section-kicker">06 / CONTACT</p>
+                                <h2 class="section-title" data-en="Let’s make something useful." data-zh="一起做点真正有用的事。">Let’s make something useful.</h2>
+                                <p data-en="I’m open to research collaborations, technical conversations, and ambitious systems problems — especially where modeling, sensing, and machine learning overlap." data-zh="我欢迎研究合作、技术交流与有挑战性的系统问题——尤其是建模、传感和机器学习的交汇处。">I’m open to research collaborations, technical conversations, and ambitious systems problems — especially where modeling, sensing, and machine learning overlap.</p>
+                                <a class="cta-button" href="mailto:h534chen@uwaterloo.ca" data-en="Email Houfu" data-zh="给厚孚发邮件">Email Houfu</a>
+                            </div>
+                            <ul class="contact-links" aria-label="Contact links">
+                                <li><span>EMAIL</span><a href="mailto:h534chen@uwaterloo.ca">h534chen@uwaterloo.ca</a><button class="copy-button" id="copyEmail" type="button" data-copy="h534chen@uwaterloo.ca" data-en="Copy" data-zh="复制">Copy</button></li>
+                                <li><span>GITHUB</span><a href="https://github.com/chf-NewStart" target="_blank">chf-NewStart ↗</a></li>
+                                <li><span>LINKEDIN</span><a href="https://linkedin.com/in/houfuchen" target="_blank">houfuchen ↗</a></li>
+                                <li><span>RESUME</span><a href="resumes/Houfu_Jan20_PhDAppf.pdf" target="_blank" data-en="Download CV ↗" data-zh="下载简历 ↗">Download CV ↗</a></li>
+                                <li><span>MSGBOX</span><a href="/msg/" data-en="Leave a note ↗" data-zh="给我留言 ↗">Leave a note ↗</a></li>
                             </ul>
                         </div>
-                        
-                        <div style="height: 100px; width: 100%; display: block; clear: both;"></div>
                     </div>
                 </section>
-        
-    </div>
+
+    </main>
     <footer>
-        <p style="font-family: Consolas, monospace; color: #1db954;">
-            >_ <span data-en="Thank you for visiting!" data-zh="感谢您的访问！">Thank you for visiting!</span> | &copy; 2026 Houfu Chen
-        </p>
+        <p><span>HC / SYSTEMS &amp; RESEARCH</span><span>&copy; <span id="currentYear">2026</span> Houfu Chen</span><span data-en="Built with curiosity in Waterloo" data-zh="在滑铁卢，以好奇心构建">Built with curiosity in Waterloo</span></p>
     </footer>
-    
-    <!-- Add JavaScript for language switching -->
-    <script>
-        // Language toggle functionality
-        // Language switching functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const languageToggle = document.getElementById('languageToggle');
-            if (!languageToggle) return;
 
-            // Set default language from localStorage or use English
-            let currentLang = localStorage.getItem('language') || 'en';
-
-            // Apply the current language immediately
-            applyLanguage(currentLang);
-            
-            // Add click event listener to language toggle button
-            languageToggle.addEventListener('click', function() {
-                currentLang = currentLang === 'en' ? 'zh' : 'en';
-                localStorage.setItem('language', currentLang);
-                applyLanguage(currentLang);
-            });
-
-
-            
-            // Function to apply language to all elements
-            function applyLanguage(lang) {
-                // Update toggle button text
-                languageToggle.textContent = lang === 'en' ? 'EN / 中文' : '中文 / EN';
-
-                // Update all elements with data-en/data-zh attributes
-                document.querySelectorAll(`[data-${lang}]`).forEach(element => {
-                    const translatedText = element.getAttribute(`data-${lang}`);
-                    if (translatedText) {
-                        element.textContent = translatedText;
-                    }
-                });
-                
-                // Update href attributes for links with language-specific URLs
-                document.querySelectorAll(`[data-${lang}-href]`).forEach(link => {
-                    const href = link.getAttribute(`data-${lang}-href`);
-                    if (href) {
-                        link.setAttribute('href', href);
-                    }
-                });
-                
-                // Update input placeholders
-                document.querySelectorAll(`input[data-${lang}-placeholder]`).forEach(input => {
-                    const placeholder = input.getAttribute(`data-${lang}-placeholder`);
-                    if (placeholder) {
-                        input.placeholder = placeholder;
-                    }
-                });
-                
-                // Set language attribute on html element
-                document.documentElement.lang = lang;
-            }
-        });
-                    
-        // Scroll-spy: highlight the nav link for the section currently in view
-        const sections = document.querySelectorAll('section[id]');
-        const navLinks = document.querySelectorAll('.nav-links a');
-
-        window.addEventListener('scroll', () => {
-            let current = '';
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop;
-                const sectionHeight = section.clientHeight;
-                if (pageYOffset >= (sectionTop - sectionHeight / 3)) {
-                    current = section.getAttribute('id');
-                }
-            });
-
-            navLinks.forEach(link => {
-                link.classList.remove('active-nav');
-                if (link.getAttribute('href').includes(current)) {
-                    link.classList.add('active-nav');
-                }
-            });
-        });
-
-        function switchAboutCard(cardId, buttonElement) {
-            const sectionContainer = document.getElementById('about-section');
-
-            sectionContainer.querySelectorAll('.explorer-content .highlight-card').forEach(card => {
-                card.classList.remove('active-card');
-            });
-
-            sectionContainer.querySelectorAll('.explorer-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-
-            document.getElementById(cardId).classList.add('active-card');
-            buttonElement.classList.add('active');
-        }
-        function switchExpCard(cardId, buttonElement) {
-            // 1. Find the specific container for the Experience section
-            const expContainer = document.getElementById('experience-section');
-            
-            // 2. Hide all cards inside the Experience section
-            expContainer.querySelectorAll('.explorer-content .highlight-card').forEach(card => {
-                card.classList.remove('active-card');
-            });
-            
-            // 3. Remove active state from all buttons in the Experience section
-            expContainer.querySelectorAll('.explorer-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // 4. Activate the clicked card and button
-            document.getElementById(cardId).classList.add('active-card');
-            buttonElement.classList.add('active');
-        }
-
-        // Function for 'What I've Built'
-        function switchProjCard(cardId, buttonElement) {
-            const sectionContainer = document.getElementById('projects-section');
-            sectionContainer.querySelectorAll('.explorer-content .highlight-card').forEach(card => {
-                card.classList.remove('active-card');
-            });
-            sectionContainer.querySelectorAll('.explorer-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById(cardId).classList.add('active-card');
-            buttonElement.classList.add('active');
-        }
-
-        // Function for 'Off The Clock'
-        function switchPersonalCard(cardId, buttonElement) {
-            const sectionContainer = document.getElementById('personal-section');
-            sectionContainer.querySelectorAll('.explorer-content .highlight-card').forEach(card => {
-                card.classList.remove('active-card');
-            });
-            sectionContainer.querySelectorAll('.explorer-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById(cardId).classList.add('active-card');
-            buttonElement.classList.add('active');
-        }
-
-    </script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // Navbar 🍅 button triggers Tomato (sudo) Mode
-        const tomatoBtn = document.getElementById('tomatoToggle');
-        if (tomatoBtn) {
-            tomatoBtn.addEventListener('click', triggerEasterEgg);
-        }
-    });
-
-    function triggerEasterEgg() {
-        document.body.classList.toggle('sudo-mode');
-
-        const notification = document.createElement('div');
-        notification.className = 'terminal-alert';
-
-        if (document.body.classList.contains('sudo-mode')) {
-            notification.innerHTML = '> ROOT ACCESS GRANTED. OVERRIDING VISUALS... <span class="blink">_</span>';
-        } else {
-            notification.innerHTML = '> CONNECTION TERMINATED. REVERTING... <span class="blink">_</span>';
-        }
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 500);
-        }, 3000);
-    }
-
-    // Hamburger nav
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
-    const navMenu = document.getElementById('navLinks');
-    if (hamburgerBtn && navMenu) {
-        hamburgerBtn.addEventListener('click', () => {
-            navMenu.classList.toggle('nav-open');
-            hamburgerBtn.textContent = navMenu.classList.contains('nav-open') ? '✕' : '☰';
-        });
-        navMenu.querySelectorAll('a').forEach(link => {
-            link.addEventListener('click', () => {
-                navMenu.classList.remove('nav-open');
-                hamburgerBtn.textContent = '☰';
-            });
-        });
-    }
-</script>
-
-<style>#nfWeather svg { width: 16px; height: 16px; vertical-align: -3px; }</style>
-<script>
-/* Sky row in the neofetch card — the visitor's local weather, like a real
-   neofetch config. IP lookup via geojs.io, conditions via open-meteo. */
-(function(){
-    var el = document.getElementById('nfWeather');
-    if (!el) return;
-    /* crayon doodles instead of emoji — same little sky as the journal */
-    var ICONS = {
-        sun: '<svg viewBox="0 0 24 24"><g fill="none" stroke="#e8a33d" stroke-width="1.8" stroke-linecap="round" transform="rotate(-8 12 12)"><circle cx="12" cy="12" r="4" fill="#f7d774"/><path d="M12 3.2v2.4M12 18.4v2M3.2 12h2.4M18.6 12h2.2M5.6 5.6l1.7 1.7M16.8 16.8l1.4 1.4M18.4 5.6l-1.5 1.5M7.2 16.8l-1.8 1.8"/></g></svg>',
-        partly: '<svg viewBox="0 0 24 24"><g fill="none" stroke="#e8a33d" stroke-width="1.6" stroke-linecap="round"><circle cx="16.5" cy="7.5" r="3" fill="#f7d774"/><path d="M16.5 2.4v1.5M21.4 7.5h1.4M19.9 4l1.1-1.1M19.9 11l1.1 1.1"/></g><path d="M5.5 18.5c-2.2.2-3.3-1.5-2.7-3 .4-1.2 1.8-1.7 2.8-1.4.2-1.8 1.6-3 3.5-3 1.8.1 3 1.4 3.2 2.7 1.7-.5 3.5.4 3.6 2.2.1 1.7-1.4 2.7-3 2.5z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/></svg>',
-        cloud: '<svg viewBox="0 0 24 24"><path d="M6.5 17c-2.4.2-3.6-1.6-3-3.3.5-1.4 2-1.9 3.1-1.6.2-2 1.8-3.4 3.9-3.3 2 .1 3.3 1.5 3.5 3 1.9-.6 3.9.4 4 2.4.1 1.9-1.6 2.9-3.3 2.8z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/></svg>',
-        fog: '<svg viewBox="0 0 24 24" fill="none" stroke="#9aa3b2" stroke-width="1.7" stroke-linecap="round"><path d="M4 9.5c2-.8 4-.8 6 0s4 .8 6 0M4.5 13c2-.8 4-.8 6 0s4 .8 5.5 0M5 16.5c2-.8 4-.8 6 0s3.5.8 5.5 0"/></svg>',
-        rain: '<svg viewBox="0 0 24 24"><path d="M6.5 14c-2.4.2-3.6-1.6-3-3.3.5-1.4 2-1.9 3.1-1.6.2-2 1.8-3.4 3.9-3.3 2 .1 3.3 1.5 3.5 3 1.9-.6 3.9.4 4 2.4.1 1.9-1.6 2.9-3.3 2.8z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 17.5l-.9 2.3M12 17.5l-.9 2.3M16 17.5l-.9 2.3" stroke="#5a8fd6" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>',
-        snow: '<svg viewBox="0 0 24 24"><path d="M6.5 14c-2.4.2-3.6-1.6-3-3.3.5-1.4 2-1.9 3.1-1.6.2-2 1.8-3.4 3.9-3.3 2 .1 3.3 1.5 3.5 3 1.9-.6 3.9.4 4 2.4.1 1.9-1.6 2.9-3.3 2.8z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 18v3M6.7 19.5h2.6M12 17.4v3M10.7 18.9h2.6M16 18v3M14.7 19.5h2.6" stroke="#7fb3d8" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>',
-        storm: '<svg viewBox="0 0 24 24"><path d="M6.5 13c-2.4.2-3.6-1.6-3-3.3.5-1.4 2-1.9 3.1-1.6.2-2 1.8-3.4 3.9-3.3 2 .1 3.3 1.5 3.5 3 1.9-.6 3.9.4 4 2.4.1 1.9-1.6 2.9-3.3 2.8z" fill="#dde4ee" stroke="#8a93a6" stroke-width="1.7" stroke-linejoin="round"/><path d="M12.5 13.5l-2.4 4h2.1l-1.5 3.6 4.2-4.9h-2.1l1.7-2.7z" fill="#f2c94c" stroke="#d9a520" stroke-width="1" stroke-linejoin="round"/></svg>',
-        haze: '<svg viewBox="0 0 24 24" fill="none" stroke="#b08d5a" stroke-width="1.7" stroke-linecap="round"><path d="M4 9c2-.9 4-.9 6 0s4 .9 6 0M4.5 12.5c2-.9 4-.9 6 0s4 .9 5.5 0M5 16c2-.9 4-.9 6 0s3.5.9 5.5 0"/><g fill="#b08d5a" stroke="none"><circle cx="18.5" cy="9.3" r=".8"/><circle cx="6.5" cy="13.8" r=".8"/><circle cx="16.5" cy="17.4" r=".8"/></g></svg>'
-    };
-    function kind(c){
-        if (c === 0) return 'sun';
-        if (c <= 2) return 'partly';
-        if (c === 3) return 'cloud';
-        if (c === 45 || c === 48) return 'fog';
-        if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82)) return 'rain';
-        if ((c >= 71 && c <= 77) || c === 85 || c === 86) return 'snow';
-        if (c >= 95) return 'storm';
-        return 'partly';
-    }
-    /* Environment Canada sensor AQHI for Canadian visitors; model AQI elsewhere */
-    function fetchAqhi(lat, lon){
-        var bbox = (lon - 0.7) + ',' + (lat - 0.5) + ',' + (lon + 0.7) + ',' + (lat + 0.5);
-        return fetch('https://api.weather.gc.ca/collections/aqhi-observations-realtime/items?f=json&limit=20&latest=true&bbox=' + bbox)
-            .then(function(r){ return r.json(); })
-            .then(function(d){
-                var best = null, bd = Infinity;
-                (d.features || []).forEach(function(f){
-                    var c = f.geometry.coordinates;
-                    var dd = Math.pow(c[0] - lon, 2) + Math.pow(c[1] - lat, 2);
-                    if (f.properties && f.properties.aqhi != null && dd < bd){ bd = dd; best = f.properties.aqhi; }
-                });
-                return best == null ? null : Math.round(best);
-            })
-            .catch(function(){ return null; });
-    }
-    fetch('https://get.geojs.io/v1/ip/geo.json')
-        .then(function(r){ return r.json(); })
-        .then(function(g){
-            var lat = parseFloat(g.latitude), lon = parseFloat(g.longitude);
-            var base = 'latitude=' + lat + '&longitude=' + lon;
-            return Promise.all([
-                fetch('https://api.open-meteo.com/v1/forecast?' + base + '&current=temperature_2m,weather_code')
-                    .then(function(r){ return r.json(); }),
-                fetch('https://air-quality-api.open-meteo.com/v1/air-quality?' + base + '&current=us_aqi')
-                    .then(function(r){ return r.json(); })
-                    .catch(function(){ return null; }),
-                g.country_code === 'CA' ? fetchAqhi(lat, lon) : Promise.resolve(null)
-            ]).then(function(res){
-                var j = res[0], a = res[1], aqhi = res[2];
-                var aqi = (a && a.current && a.current.us_aqi != null) ? Math.round(a.current.us_aqi) : null;
-                var smoky = (aqhi != null && aqhi >= 7) || (aqi != null && aqi >= 150);
-                el.innerHTML = ICONS[smoky ? 'haze' : kind(j.current.weather_code)] || '';
-                var txt = ' ' + Math.round(j.current.temperature_2m) + '°C';
-                if (aqhi != null && aqhi >= 4) txt += ' · AQHI ' + aqhi;
-                else if (aqi != null && aqi >= 100) txt += ' · AQI ' + aqi;
-                el.appendChild(document.createTextNode(txt + ' · ' + (g.city || '')));
-            });
-        })
-        .catch(function(){ el.textContent = 'clear, probably'; });
-})();
-</script>
-
+    <script src="site.js" defer></script>
 </body>
 </html>

@@ -559,7 +559,31 @@
                     <div class="section-console">~/live-lab $ ls --available</div>
 
                     <div class="arcade-grid">
-                        <div class="gc-card">
+                        <div class="gc-card gc-featured gc-life-card">
+                            <div class="gc-visual gc-life-visual">
+                                <img src="game/life-card.png" alt="A neon cellular butterfly from Conway’s Game of Life" width="710" height="490">
+                                <span class="gc-visual-badge" data-en="FLAGSHIP · LIVE" data-zh="旗舰 · 在线">FLAGSHIP · LIVE</span>
+                            </div>
+                            <div class="gc-icon">[##]</div>
+                            <div class="gc-title" data-en="game_of_life.exe" data-zh="生命游戏.exe">game_of_life.exe</div>
+                            <div class="gc-desc" data-en="Draw patterns, watch them evolve, and turn them into music. Explore a sandbox, 11 leaderboard challenges, and a Music Box sequencer." data-zh="绘制图案、观察演化，并把它们变成音乐。探索沙盒、11 个排行榜挑战与八音盒音序器。">Draw patterns, watch them evolve, and turn them into music. Explore a sandbox, 11 leaderboard challenges, and a Music Box sequencer.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green">flagship</span>
+                                <span class="gc-tag">sandbox</span>
+                                <span class="gc-tag">challenges</span>
+                                <span class="gc-tag">music</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">JS · PWA · leaderboard</span>
+                                <a class="gc-play" href="https://lifegameproject.com/life.html" target="_blank" data-en="→ play ↗" data-zh="→ 游玩 ↗">→ play ↗</a>
+                            </div>
+                        </div>
+
+                        <div class="gc-card gc-reading-card">
+                            <div class="gc-visual gc-reading-visual" aria-hidden="true">
+                                <div class="reading-sheet"><span>LE PETIT PRINCE</span><i></i><i></i><i class="is-highlighted"></i><i></i></div>
+                                <div class="reading-note">FR <b>→</b> EN</div>
+                            </div>
                             <div class="gc-icon">[📖]</div>
                             <div class="gc-title" data-en="reading_room.app" data-zh="双语阅读室.app">reading_room.app</div>
                             <div class="gc-desc" data-en="A private bilingual reader with local OCR, PDF and text import, line-by-line translation, paragraph notes, and portable backups." data-zh="私密双语阅读器：本地 OCR、PDF 与文本导入、逐行翻译、段落笔记和便携备份。">A private bilingual reader with local OCR, PDF and text import, line-by-line translation, paragraph notes, and portable backups.</div>
@@ -574,7 +598,12 @@
                             </div>
                         </div>
 
-                        <div class="gc-card">
+                        <div class="gc-card gc-journal-card">
+                            <div class="gc-visual gc-journal-visual" aria-hidden="true">
+                                <span class="journal-date">JUL · 18</span>
+                                <div class="journal-entry"><i></i><i></i><i></i><i></i></div>
+                                <span class="journal-cursor">_</span>
+                            </div>
                             <div class="gc-icon">[✎]</div>
                             <div class="gc-title" data-en="journal_intime.app" data-zh="即时日记.app">journal_intime.app</div>
                             <div class="gc-desc" data-en="A calm space for small reflections and daily signals, designed to make writing feel lighter and more immediate." data-zh="一个记录日常信号与短小思考的安静空间，让写作变得更轻、更即时。">A calm space for small reflections and daily signals, designed to make writing feel lighter and more immediate.</div>
@@ -589,7 +618,11 @@
                             </div>
                         </div>
 
-                        <div class="gc-card">
+                        <div class="gc-card gc-finance-card">
+                            <div class="gc-visual gc-finance-visual" aria-hidden="true">
+                                <div class="finance-total"><span>THIS MONTH</span><strong>$2,418</strong></div>
+                                <div class="finance-bars"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                            </div>
                             <div class="gc-icon">[$]</div>
                             <div class="gc-title" data-en="fin_tracker.app" data-zh="财务追踪器.app">fin_tracker.app</div>
                             <div class="gc-desc" data-en="A teachable personal finance tracker for categorizing transactions, seeing patterns, and keeping private data under your control." data-zh="可学习的个人财务追踪器：整理交易、发现规律，并让私人数据始终由你掌控。">A teachable personal finance tracker for categorizing transactions, seeing patterns, and keeping private data under your control.</div>
@@ -604,7 +637,11 @@
                             </div>
                         </div>
 
-                        <div class="gc-card">
+                        <div class="gc-card gc-message-card">
+                            <div class="gc-visual gc-message-visual" aria-hidden="true">
+                                <div class="message-envelope"><span>hello, houfu</span><i></i></div>
+                                <span class="message-signal">● delivered privately</span>
+                            </div>
                             <div class="gc-icon">[✉]</div>
                             <div class="gc-title" data-en="message_box.app" data-zh="匿名留言箱.app">message_box.app</div>
                             <div class="gc-desc" data-en="A low-friction way to leave a private note, question, or hello without needing to open an email client." data-zh="无需打开邮件客户端，也能轻松留下一条私密留言、问题或问候。">A low-friction way to leave a private note, question, or hello without needing to open an email client.</div>
@@ -619,22 +656,13 @@
                             </div>
                         </div>
 
-                        <div class="gc-card">
-                            <div class="gc-icon">[🕹]</div>
-                            <div class="gc-title" data-en="game_life.exe" data-zh="游戏人生.exe">game_life.exe</div>
-                            <div class="gc-desc" data-en="Nine hand-built browser games — including cellular automata, AI board games, a roguelike maze, a metabolism sim, and three real-time co-op games." data-zh="九款手工构建的浏览器游戏：元胞自动机、AI 棋类、肉鸽迷宫、代谢模拟，以及三款实时双人合作游戏。">Nine hand-built browser games — including cellular automata, AI board games, a roguelike maze, a metabolism sim, and three real-time co-op games.</div>
-                            <div class="gc-tags">
-                                <span class="gc-tag green">9 games</span>
-                                <span class="gc-tag">3 co-op</span>
-                                <span class="gc-tag">AI</span>
+                        <div class="gc-card gc-attachment-card">
+                            <div class="gc-visual gc-attachment-visual" aria-hidden="true">
+                                <span class="axis-label axis-anxiety">ANXIETY</span>
+                                <span class="axis-label axis-avoidance">AVOIDANCE</span>
+                                <i class="axis-x"></i><i class="axis-y"></i>
+                                <b class="plot-dot dot-one"></b><b class="plot-dot dot-two"></b><b class="plot-dot dot-three"></b>
                             </div>
-                            <div class="gc-footer">
-                                <span class="gc-meta">Separate arcade</span>
-                                <a class="gc-play" href="https://lifegameproject.com/" target="_blank" data-en="→ play ↗" data-zh="→ 游玩 ↗">→ play ↗</a>
-                            </div>
-                        </div>
-
-                        <div class="gc-card">
                             <div class="gc-icon">[◎]</div>
                             <div class="gc-title" data-en="attachment_quiz.app" data-zh="依恋风格测验.app">attachment_quiz.app</div>
                             <div class="gc-desc" data-en="An 18-question attachment-style explorer with a clear Anxiety × Avoidance visualization, shareable results, and compare mode." data-zh="18 道题探索依恋风格，包含清晰的焦虑 × 回避可视化、可分享结果与双人比较模式。">An 18-question attachment-style explorer with a clear Anxiety × Avoidance visualization, shareable results, and compare mode.</div>

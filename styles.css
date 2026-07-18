@@ -7,7 +7,7 @@
     --ink: #edf7f1;
     --ink-soft: #c7d7ce;
     --muted: #8ca198;
-    --muted-deep: #60776d;
+    --muted-deep: #769086;
     --line: rgba(181, 224, 201, 0.14);
     --line-strong: rgba(118, 247, 165, 0.32);
     --accent: #76f7a5;
@@ -575,10 +575,11 @@ footer {
 
 .signal-core {
     display: grid;
+    grid-template-rows: auto auto;
     position: relative;
     z-index: 2;
-    width: 72px;
-    height: 72px;
+    width: 88px;
+    height: 88px;
     place-items: center;
     border: 1px solid var(--accent);
     border-radius: 50%;
@@ -587,6 +588,18 @@ footer {
     font-family: var(--mono);
     font-size: 1.1rem;
     box-shadow: 0 0 40px rgba(118, 247, 165, 0.2), inset 0 0 24px rgba(118, 247, 165, 0.08);
+}
+
+.signal-abbr {
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+.signal-core small {
+    font-family: var(--display);
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .orbit {
@@ -1836,8 +1849,20 @@ footer p {
     gap: 24px;
     margin: 0 auto;
     color: var(--muted-deep);
-    font-size: 0.62rem;
+    font-size: 0.7rem;
     letter-spacing: 0.04em;
+}
+
+.footer-affiliation {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    color: var(--ink-soft);
+}
+
+.footer-affiliation strong {
+    color: var(--accent);
+    font-weight: 600;
 }
 
 /* Existing standalone tools */

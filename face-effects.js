@@ -296,18 +296,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (statusMessage) statusMessage.textContent = "Loading emotion detection models...";
         
         try {
-            // Try loading required models - with properly fixed paths
-            // Change this in face-effects.js
+            // face-api resolves each manifest and its weight shard relative to
+            // this directory. Keep the model files local so camera frames never
+            // need to leave the page.
             await Promise.all([
-<<<<<<< HEAD
                 faceapi.nets.tinyFaceDetector.loadFromUri('models'),
                 faceapi.nets.faceLandmark68Net.loadFromUri('models'),
                 faceapi.nets.faceExpressionNet.loadFromUri('models')
-=======
-                faceapi.nets.tinyFaceDetector.loadFromUri('models/tiny_face_detector_model-weights_manifest.json'),
-                faceapi.nets.faceLandmark68Net.loadFromUri('models/face_landmark_68_model-weights_manifest.json'),
-                faceapi.nets.faceExpressionNet.loadFromUri('models/face_expression_model-weights_manifest.json')
->>>>>>> f8b9a2cf6c2637cf2f0029106ac81b76ccf33adb
             ]);
             // If we reach here, models were loaded successfully
             isFaceDetectionActive = true;

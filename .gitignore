@@ -6,3 +6,11 @@
 *.qfx
 moneymanage/*.ofx
 moneymanage/*.qfx
+
+# Local credentials and runtime configuration
+.env
+.env.*
+!.env.example
+food-raccoon/.env
+__pycache__/
+*.py[cod]

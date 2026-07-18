@@ -6,8 +6,11 @@
     <meta name="description" content="Houfu Chen - Food Recommendation System">
     <meta name="keywords" content="Food Recommendation, ML, Houfu Chen">
     <meta name="author" content="Houfu Chen">
-    <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="../favicon_io/tomato-apple-touch-icon.png">
+    <link rel="icon" href="../favicon_io/tomato-favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="../favicon_io/tomato-favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../favicon_io/tomato-favicon-16x16.png">
+    <link rel="manifest" href="../site.webmanifest">
     <link rel="stylesheet" href="../styles.css">
     <title>Food Raccoon - What Should I Eat Tonight?</title>
     <style>
@@ -362,10 +365,12 @@
             const recommendations = document.getElementById('recommendations');
             const foodForm = document.getElementById('foodForm');
 
-            // Replace with your API Gateway URL
-            // const API_URL = 'https://nsbg2x7a01.execute-api.us-east-2.amazonaws.com/prod/recommendations';
-            const API_URL = 'http://127.0.0.1:5000/recommendations';
-            console.log("API_URL NOW =", API_URL);
+            // The public static site never proxies paid requests. The local
+            // development backend is opt-in and is only enabled on localhost.
+            const API_URL = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+                ? 'http://127.0.0.1:5000/recommendations'
+                : '';
+            const REVERSE_GEOCODE_URL = API_URL.replace(/\/recommendations$/, '/reverse_geocode');
             
             // Reset search
             resetBtn.addEventListener('click', function() {
@@ -397,8 +402,8 @@
                         locationInput.placeholder = `Current location detected (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
 
                         try {
-                            // call your backend reverse-geocode helper
-                            const resp = await fetch(`http://127.0.0.1:5000/reverse_geocode?lat=${lat}&lng=${lng}`);
+                            if (!REVERSE_GEOCODE_URL) return;
+                            const resp = await fetch(`${REVERSE_GEOCODE_URL}?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`);
                             const data = await resp.json();
 
                             if (data.success && data.address) {
@@ -436,24 +441,30 @@
                 const currentLang = localStorage.getItem('language') || 'en';
 
                 // Display refined query
-                if (currentLang === 'en') {
-                    refinedQuery.innerHTML = `<p>Based on your inputs, I found these restaurants: <strong>${data.refined_query}</strong>, what do you think? </p>`;
-                } else {
-                    refinedQuery.innerHTML = `<p>根据您的偏好，我们找到了这些餐厅: <strong>${data.refined_query}</strong></p>`;
-                }
+                const queryParagraph = document.createElement('p');
+                queryParagraph.append(currentLang === 'en'
+                    ? 'Based on your inputs, I found these restaurants: '
+                    : '根据您的偏好，我们找到了这些餐厅: ');
+                const queryStrong = document.createElement('strong');
+                queryStrong.textContent = String(data.refined_query || '');
+                queryParagraph.append(queryStrong);
+                if (currentLang === 'en') queryParagraph.append(', what do you think?');
+                refinedQuery.replaceChildren(queryParagraph);
                 
+                const recommendationList = Array.isArray(data.recommendations) ? data.recommendations : [];
+
                 // Clear previous recommendations
                 recommendations.innerHTML = '';
                 
                 // Add restaurant cards
-                if (data.recommendations.length === 0) {
+                if (recommendationList.length === 0) {
                     if (currentLang === 'en') {
                         recommendations.innerHTML = '<p>No restaurants found. Please try a different preference or location.</p>';
                     } else {
                         recommendations.innerHTML = '<p>未找到餐厅。请尝试不同的偏好或位置。</p>';
                     }
                 } else {
-                    data.recommendations.forEach(restaurant => {
+                    recommendationList.forEach(restaurant => {
                         const card = createRestaurantCard(restaurant);
                         recommendations.appendChild(card);
                     });
@@ -469,44 +480,73 @@
                 const rating = parseFloat(restaurant.Rating) || 0;
                 const starsHTML = generateStars(rating);
                 
-                // Create link (prefer Yelp over Google Maps)
-                const link = restaurant.URL || restaurant['Google Maps URL'] || '#';
-                
-                // Image HTML
-                let imageHTML;
-                if (restaurant.Image) {
-                    imageHTML = `<img src="${restaurant.Image}" alt="${restaurant.Name}" class="restaurant-image">`;
-                } else {
-                    imageHTML = `<div class="restaurant-image placeholder-image">🍽️</div>`;
-                }
-                
                 // Get current language
                 const currentLang = localStorage.getItem('language') || 'en';
                 const viewDetailsText = currentLang === 'en' ? 'View Details' : '查看详情';
                 const reviewsText = currentLang === 'en' ? 'reviews' : '条评价';
-                
-                card.innerHTML = `
-                    ${imageHTML}
-                    <div class="restaurant-info">
-                        <h3 class="restaurant-name">${restaurant.Name}</h3>
-                        <div class="restaurant-rating">
-                        <span class="stars">${starsHTML}</span>
-                        <span>${rating.toFixed(1)} (${restaurant.Reviews} ${reviewsText})</span>
-                        </div>
-                        ${restaurant.Categories ? `<div class="restaurant-categories">${restaurant.Categories}</div>` : ''}
-                        <div class="restaurant-address">${restaurant.Address}</div>
 
-                        ${restaurant.TravelTime && restaurant.TravelMode ? `
-                        <div class="restaurant-travel">
-                            <span>🕒 ${restaurant.TravelTime} by ${formatTravelMode(restaurant.TravelMode)}</span>
-                        </div>
-                        ` : ''}
-                        ${restaurant.Price ? `<div class="restaurant-price">${restaurant.Price}</div>` : ''}
-                        <div class="restaurant-link">
-                        <a href="${link}" target="_blank">${viewDetailsText}</a>
-                        </div>
-                    </div>
-                    `;
+                const image = restaurant.Image ? document.createElement('img') : document.createElement('div');
+                image.className = `restaurant-image${restaurant.Image ? '' : ' placeholder-image'}`;
+                if (restaurant.Image) {
+                    image.src = String(restaurant.Image);
+                    image.alt = String(restaurant.Name || 'Restaurant');
+                    image.loading = 'lazy';
+                    image.referrerPolicy = 'no-referrer';
+                } else {
+                    image.textContent = '🍽️';
+                }
+
+                const info = document.createElement('div');
+                info.className = 'restaurant-info';
+                const heading = document.createElement('h3');
+                heading.className = 'restaurant-name';
+                heading.textContent = String(restaurant.Name || 'Unknown restaurant');
+                info.append(heading);
+
+                const ratingRow = document.createElement('div');
+                ratingRow.className = 'restaurant-rating';
+                const stars = document.createElement('span');
+                stars.className = 'stars';
+                stars.textContent = starsHTML;
+                const reviews = Number.isFinite(Number(restaurant.Reviews)) ? Number(restaurant.Reviews) : 0;
+                const ratingText = document.createElement('span');
+                ratingText.textContent = `${rating.toFixed(1)} (${reviews} ${reviewsText})`;
+                ratingRow.append(stars, ratingText);
+                info.append(ratingRow);
+
+                const appendField = (className, value) => {
+                    if (!value) return;
+                    const field = document.createElement('div');
+                    field.className = className;
+                    field.textContent = String(value);
+                    info.append(field);
+                };
+                appendField('restaurant-categories', restaurant.Categories);
+                appendField('restaurant-address', restaurant.Address);
+                if (restaurant.TravelTime && restaurant.TravelMode) {
+                    appendField('restaurant-travel', `🕒 ${restaurant.TravelTime} by ${formatTravelMode(restaurant.TravelMode)}`);
+                }
+                appendField('restaurant-price', restaurant.Price);
+
+                const link = restaurant.URL || restaurant['Google Maps URL'] || '';
+                if (link) {
+                    let safeLink = '#';
+                    try {
+                        const parsed = new URL(link, window.location.href);
+                        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') safeLink = parsed.href;
+                    } catch { /* leave the safe placeholder */ }
+                    const linkWrap = document.createElement('div');
+                    linkWrap.className = 'restaurant-link';
+                    const anchor = document.createElement('a');
+                    anchor.href = safeLink;
+                    anchor.target = '_blank';
+                    anchor.rel = 'noopener noreferrer';
+                    anchor.textContent = viewDetailsText;
+                    linkWrap.append(anchor);
+                    info.append(linkWrap);
+                }
+
+                card.append(image, info);
 
                 
                 return card;
@@ -585,6 +625,10 @@
                 loading.style.display = 'block';
 
                 try {
+                    if (!API_URL) {
+                        throw new Error('Food search is offline on the public site.');
+                    }
+
                     const response = await fetch(API_URL, {
                         method: 'POST',
                         headers: {

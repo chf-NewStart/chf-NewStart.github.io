@@ -88,7 +88,7 @@
         col = mix(col, c1, smoothstep(0.04, 0.14, b));
         col = mix(col, c2, smoothstep(0.14, 0.28, b));
         col = mix(col, c3, smoothstep(0.28, 0.40, b));
-        col *= mix(0.40, 0.86, smoothstep(0.18, 0.40, b));
+        col *= mix(0.07, 0.26, smoothstep(0.16, 0.40, b));
         float vig = smoothstep(1.15, 0.35, length(uv - 0.5));
         col *= mix(0.5, 1.0, vig);
         o = vec4(col, 1.0);
@@ -186,7 +186,7 @@
         canvas.width = outW;
         canvas.height = outH;
 
-        const simScale = Math.min(1, 460 / cssW);
+        const simScale = Math.min(1, 620 / cssW);
         simW = Math.max(64, Math.round(cssW * simScale));
         simH = Math.max(64, Math.round(cssH * simScale));
 

@@ -399,8 +399,8 @@ h4 {
     pointer-events: none;
     content: '';
     background:
-        linear-gradient(90deg, rgba(3, 8, 6, 0.86) 0%, rgba(3, 8, 6, 0.58) 42%, rgba(3, 8, 6, 0.22) 72%, rgba(3, 8, 6, 0.5) 100%),
-        linear-gradient(0deg, var(--bg) 1%, transparent 44%);
+        linear-gradient(90deg, rgba(3, 8, 6, 0.62) 0%, rgba(3, 8, 6, 0.34) 42%, rgba(3, 8, 6, 0.1) 72%, rgba(3, 8, 6, 0.3) 100%),
+        linear-gradient(0deg, rgba(7, 16, 14, 0.85) 1%, transparent 40%);
 }
 
 .hero-section .container {

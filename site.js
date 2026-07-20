@@ -217,21 +217,6 @@
         link.rel = 'noopener noreferrer';
     });
 
-    const spaceBg = document.querySelector('.space-bg');
-    if (spaceBg) {
-        const spaceImages = ['tarantula', 'pillars', 'cosmic-cliffs', 'southern-ring', 'deep-field'];
-        let lastSpace = -1;
-        try {
-            lastSpace = Number.parseInt(localStorage.getItem('spaceBg') || '-1', 10);
-        } catch { /* storage unavailable — any pick works */ }
-        let spaceIndex = Math.floor(Math.random() * spaceImages.length);
-        if (spaceIndex === lastSpace) spaceIndex = (spaceIndex + 1) % spaceImages.length;
-        try {
-            localStorage.setItem('spaceBg', String(spaceIndex));
-        } catch { /* quota or private mode — background still applies */ }
-        spaceBg.style.setProperty('--space-image', `url("space/jwst-${spaceImages[spaceIndex]}.webp")`);
-    }
-
     if (year) year.textContent = new Date().getFullYear();
 
     function applyLanguage(language) {

@@ -55,8 +55,8 @@
     </script>
     <title>Houfu Chen — Digital Twin Researcher &amp; Engineer</title>
 </head>
-<body class="has-space-bg">
-        <div class="space-bg" aria-hidden="true"></div>
+<body class="has-bio-bg">
+        <canvas class="bio-bg" id="bioBg" aria-hidden="true"></canvas>
         <a class="skip-link" href="#main-content">Skip to main content</a>
         <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
         <!-- Sticky Navigation -->
@@ -77,7 +77,7 @@
                         <a href="#contact-section" data-en="Contact" data-zh="联系">Contact</a>
                         <div class="nav-actions">
                             <a class="nav-icon-link" href="/msg/" target="_blank" rel="noopener noreferrer" aria-label="Leave Houfu a note" title="Leave me a note">✉</a>
-                            <button class="icon-button" id="tomatoToggle" type="button" aria-label="Toggle tomato mode" aria-pressed="false" title="Tomato mode">🍅</button>
+                            <button class="icon-button" id="tomatoToggle" type="button" aria-label="Toggle tomato mode" aria-pressed="false" title="Tomato mode"><img src="/favicon_io/tomato-favicon-32x32.png?v=3" width="20" height="20" alt="" aria-hidden="true"></button>
                             <button class="language-toggle" id="languageToggle" type="button" aria-label="Switch language">EN / 中文</button>
                         </div>
                     </div>
@@ -119,7 +119,6 @@
         <main id="main-content" class="scroll-container">
             <!-- Hero Section -->
             <section id="hero-section" class="scroll-section hero-section">
-                <div class="parallax-bg"></div>
                 <div class="container">
                     <div class="hero-layout reveal-content">
                         <div class="hero-copy">
@@ -813,10 +812,11 @@
             <span class="footer-affiliation"><strong>UNIVERSITY OF WATERLOO</strong><span>Houfu Chen · PhD Researcher · Chemical Engineering · E6-3018</span></span>
             <span>&copy; <span id="currentYear">2026</span> Houfu Chen</span>
             <span data-en="Built with curiosity in Waterloo" data-zh="在滑铁卢，以好奇心构建">Built with curiosity in Waterloo</span>
-            <span data-en="Backdrop: JWST imagery · NASA/ESA/CSA/STScI" data-zh="背景：JWST 影像 · NASA/ESA/CSA/STScI">Backdrop: JWST imagery · NASA/ESA/CSA/STScI</span>
+            <span data-en="Backdrop: live reaction–diffusion (Gray–Scott)" data-zh="背景：实时反应扩散模拟（Gray–Scott）">Backdrop: live reaction–diffusion (Gray–Scott)</span>
         </p>
     </footer>
 
+    <script src="bio-bg.js" defer></script>
     <script src="toma-sprites.js" defer></script>
     <script src="site.js" defer></script>
 </body>

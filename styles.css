@@ -47,22 +47,38 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-body.has-space-bg {
+body.has-bio-bg {
     background:
         radial-gradient(circle at 10% 10%, rgba(35, 199, 103, 0.08), transparent 30rem),
-        radial-gradient(circle at 88% 42%, rgba(110, 214, 232, 0.05), transparent 34rem);
+        radial-gradient(circle at 88% 42%, rgba(110, 214, 232, 0.05), transparent 34rem),
+        var(--bg);
 }
 
-.space-bg {
+.bio-bg {
     position: fixed;
     inset: 0;
     z-index: -2;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
-    background-color: var(--bg);
-    background-image: linear-gradient(rgba(4, 10, 8, 0.64), rgba(4, 10, 8, 0.82)), var(--space-image, none);
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: auto, cover;
+    opacity: 0;
+    transition: opacity 1200ms ease;
+    /* Fallback shown when WebGL2 is unavailable (canvas never paints). */
+    background:
+        radial-gradient(circle at 22% 18%, rgba(35, 199, 103, 0.12), transparent 40%),
+        radial-gradient(circle at 82% 72%, rgba(110, 214, 232, 0.09), transparent 42%),
+        var(--bg-deep);
+}
+
+.bio-bg.is-live,
+.bio-bg--fallback {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bio-bg {
+        transition: none;
+    }
 }
 
 body::before {
@@ -330,6 +346,18 @@ h4 {
     text-decoration: none;
 }
 
+.icon-button img {
+    display: block;
+    width: 22px;
+    height: 22px;
+    image-rendering: pixelated;
+}
+
+.icon-button[aria-pressed="true"] {
+    border-color: var(--line-strong);
+    background: rgba(255, 118, 95, 0.12);
+}
+
 .language-toggle {
     min-height: 36px;
     padding: 0 11px;
@@ -361,19 +389,7 @@ h4 {
     padding: calc(var(--nav-height) + 72px) 0 88px;
     overflow: hidden;
     border-top: 0;
-    background: var(--bg-deep);
-}
-
-.parallax-bg {
-    position: absolute;
-    inset: 0 0 0 48%;
-    z-index: 0;
-    background-position: center;
-    background-image: url('hf3.webp');
-    background-size: cover;
-    filter: saturate(80%) contrast(115%);
-    opacity: 0.28;
-    mask-image: linear-gradient(90deg, transparent, black 28%, black 80%, transparent);
+    background: transparent;
 }
 
 .hero-section::before {
@@ -383,8 +399,8 @@ h4 {
     pointer-events: none;
     content: '';
     background:
-        linear-gradient(90deg, var(--bg-deep) 0%, rgba(3, 8, 6, 0.96) 38%, rgba(3, 8, 6, 0.45) 72%, var(--bg-deep) 100%),
-        linear-gradient(0deg, var(--bg-deep), transparent 38%);
+        linear-gradient(90deg, rgba(3, 8, 6, 0.86) 0%, rgba(3, 8, 6, 0.58) 42%, rgba(3, 8, 6, 0.22) 72%, rgba(3, 8, 6, 0.5) 100%),
+        linear-gradient(0deg, var(--bg) 1%, transparent 44%);
 }
 
 .hero-section .container {
@@ -719,6 +735,15 @@ footer {
     gap: clamp(48px, 8vw, 120px);
     align-items: end;
     margin-bottom: 64px;
+}
+
+/* Soft dark halo so section text stays legible over the live backdrop. */
+.section-kicker,
+.section-title,
+.section-summary,
+.hero-copy h1,
+.hero-lead {
+    text-shadow: 0 1px 18px rgba(3, 8, 6, 0.62), 0 1px 3px rgba(3, 8, 6, 0.55);
 }
 
 .section-kicker {
@@ -1857,7 +1882,7 @@ iframe {
 footer {
     padding: 24px 0;
     border-top: 1px solid var(--line);
-    background: var(--bg-deep);
+    background: linear-gradient(0deg, rgba(3, 8, 6, 0.74), rgba(3, 8, 6, 0.44));
 }
 
 footer p {
@@ -2571,11 +2596,6 @@ body.pet-is-open .terminal-alert {
 
     .hero-section {
         padding: calc(var(--nav-height) + 54px) 0 76px;
-    }
-
-    .parallax-bg {
-        left: 20%;
-        opacity: 0.2;
     }
 
     .availability {

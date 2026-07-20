@@ -21,11 +21,11 @@
     <meta name="twitter:title" content="Houfu Chen — Digital Twin Researcher &amp; Engineer">
     <meta name="twitter:description" content="Building small, working worlds through living digital twins, mechanistic models, state estimation, and machine learning.">
     <meta name="twitter:image" content="https://houfu72.com/og-v2.jpg">
-    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/tomato-apple-touch-icon.png">
-    <link rel="icon" href="/favicon_io/tomato-favicon.ico" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/tomato-favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/tomato-apple-touch-icon.png?v=3">
+    <link rel="icon" href="/favicon_io/tomato-favicon.ico?v=3" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/tomato-favicon-32x32.png?v=3">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png?v=3">
+    <link rel="manifest" href="/site.webmanifest?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
@@ -55,7 +55,8 @@
     </script>
     <title>Houfu Chen — Digital Twin Researcher &amp; Engineer</title>
 </head>
-<body>
+<body class="has-space-bg">
+        <div class="space-bg" aria-hidden="true"></div>
         <a class="skip-link" href="#main-content">Skip to main content</a>
         <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
         <!-- Sticky Navigation -->
@@ -86,6 +87,7 @@
         <aside class="tomato-pet" id="tomatoPet" data-mood="idle" aria-label="Tomato pet" aria-hidden="true" hidden>
             <div class="tomato-pet-titlebar">
                 <span class="tomato-pet-name"><i aria-hidden="true"></i>TOMA.PET</span>
+                <span class="tomato-pet-stage" id="tomatoPetStage">LV.1 SPROUT</span>
                 <span class="tomato-pet-mood" id="tomatoPetMood">CURIOUS</span>
                 <button class="tomato-pet-close" id="tomatoPetClose" type="button" aria-label="Put tomato pet away" title="Put tomato pet away">×</button>
             </div>
@@ -94,21 +96,8 @@
                 <span class="tomato-pet-spark spark-one" aria-hidden="true">✦</span>
                 <span class="tomato-pet-spark spark-two" aria-hidden="true">·</span>
                 <button class="tomato-pet-character" id="tomatoPetButton" type="button" aria-label="Pet Toma" aria-describedby="tomatoPetStatus tomatoPetHint">
-                    <span class="tomato-sprite" aria-hidden="true">
-                        <span class="tomato-leaf leaf-one"></span>
-                        <span class="tomato-leaf leaf-two"></span>
-                        <span class="tomato-leaf leaf-three"></span>
-                        <span class="tomato-body">
-                            <span class="tomato-shine"></span>
-                            <span class="tomato-eye eye-left"></span>
-                            <span class="tomato-eye eye-right"></span>
-                            <span class="tomato-cheek cheek-left"></span>
-                            <span class="tomato-cheek cheek-right"></span>
-                            <span class="tomato-mouth"></span>
-                        </span>
-                        <span class="tomato-foot foot-left"></span>
-                        <span class="tomato-foot foot-right"></span>
-                    </span>
+                    <canvas class="toma-canvas" id="tomatoPetCanvas" width="24" height="24" aria-hidden="true"></canvas>
+                    <span class="tomato-pet-zzz" aria-hidden="true"><i>z</i><i>z</i><i>z</i></span>
                 </button>
                 <span class="tomato-pet-bubble" id="tomatoPetBubble" aria-hidden="true">+1 BOND</span>
             </div>
@@ -824,9 +813,11 @@
             <span class="footer-affiliation"><strong>UNIVERSITY OF WATERLOO</strong><span>Houfu Chen · PhD Researcher · Chemical Engineering · E6-3018</span></span>
             <span>&copy; <span id="currentYear">2026</span> Houfu Chen</span>
             <span data-en="Built with curiosity in Waterloo" data-zh="在滑铁卢，以好奇心构建">Built with curiosity in Waterloo</span>
+            <span data-en="Backdrop: JWST imagery · NASA/ESA/CSA/STScI" data-zh="背景：JWST 影像 · NASA/ESA/CSA/STScI">Backdrop: JWST imagery · NASA/ESA/CSA/STScI</span>
         </p>
     </footer>
 
+    <script src="toma-sprites.js" defer></script>
     <script src="site.js" defer></script>
 </body>
 </html>

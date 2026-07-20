@@ -47,11 +47,13 @@ body {
     text-rendering: optimizeLegibility;
 }
 
+/* No opaque bottom layer here: body must stay transparent so the fixed
+   .bio-bg canvas (z-index: -2) can show through — an opaque body
+   background paints over negative-z fixed elements. */
 body.has-bio-bg {
     background:
         radial-gradient(circle at 10% 10%, rgba(35, 199, 103, 0.08), transparent 30rem),
-        radial-gradient(circle at 88% 42%, rgba(110, 214, 232, 0.05), transparent 34rem),
-        var(--bg);
+        radial-gradient(circle at 88% 42%, rgba(110, 214, 232, 0.05), transparent 34rem);
 }
 
 .bio-bg {

@@ -72,6 +72,39 @@
         return sqrt(md);
     }
 
+    // Cheap 2-octave scalar field used as a flow potential (stream function).
+    float potential(vec2 x) {
+        return vnoise(x) * 0.65 + vnoise(x * 2.1 + 11.0) * 0.35;
+    }
+
+    // Incompressible velocity = curl of the potential (its perpendicular
+    // gradient). Divergence-free flow reads as a real fluid: it swirls and
+    // shears without sources or sinks.
+    vec2 flowVel(vec2 x) {
+        float e = 0.06;
+        float px = potential(x + vec2(e, 0.0)) - potential(x - vec2(e, 0.0));
+        float py = potential(x + vec2(0.0, e)) - potential(x - vec2(0.0, e));
+        return vec2(py, -px) / (2.0 * e);
+    }
+
+    // Colour + coverage of the chloroplast granules at a sampling coordinate.
+    // Factored out so two time-offset layers can be sampled and cross-faded.
+    vec4 chloroplasts(vec2 gcoord) {
+        vec2 gid;
+        float gd = granules(gcoord, gid);
+        float gA = hash1(gid);
+        float gB = hash1(gid + 5.1);
+        float gsize = 0.34 + 0.10 * gB;
+        float gran = smoothstep(gsize, gsize - 0.09, gd);
+        // green -> lime -> gold, with a rare carotenoid red/orange granule
+        // (the pigment family that turns a tomato red).
+        vec3 chl = mix(vec3(0.16, 0.55, 0.14), vec3(0.42, 0.80, 0.22), smoothstep(0.2, 0.9, gA));
+        chl = mix(chl, vec3(0.62, 0.66, 0.12), smoothstep(0.6, 1.0, gB) * 0.6);
+        chl = mix(chl, vec3(0.86, 0.32, 0.10), step(0.94, gA));
+        chl *= 0.55 + 0.75 * smoothstep(gsize, 0.0, gd); // fake spherical shading
+        return vec4(chl, gran);
+    }
+
     // Leaf-cell Voronoi. Returns distance to the cell wall; writes the cell id
     // and the vector from this pixel to the owning cell's centre.
     float voronoi(vec2 x, float t, out vec2 cellId, out vec2 toCell) {
@@ -118,46 +151,36 @@
         float r1 = hash1(cellId + 11.3);
         float r2 = hash1(cellId + 27.7);
 
-        // Cytoplasmic streaming: spin the cell interior slowly, each cell with
-        // its own direction and rate, so the granules circulate.
-        vec2 local = -toCell;
-        float spin = (r0 - 0.5) * 2.0;
-        float ang = uTime * (0.14 + 0.22 * r1) * spin;
-        float ca = cos(ang), sa = sin(ang);
-        vec2 rl = mat2(ca, -sa, sa, ca) * local;
+        // Cytoplasmic streaming. The granules are carried by an incompressible
+        // flow field (curl of noise) plus a per-cell circulation, so they glide
+        // along curving currents like real cytoplasm. To keep the advection
+        // from shearing the pattern into streaks over time, the flow is sampled
+        // as two half-cycle-offset layers and cross-faded: each layer resets
+        // its distortion to zero at the seam, hidden behind zero weight.
+        vec2 local = -toCell;                    // cell centre -> pixel, ~[-1,1]
+        float spin = (r0 - 0.5) * 2.0;           // per-cell direction + strength
 
-        vec2 gcoord = rl * 9.0 + cellId * 7.0;
-        vec2 gid;
-        float gd = granules(gcoord, gid);
-        float gA = hash1(gid);
-        float gB = hash1(gid + 5.1);
+        vec2 v = flowVel(local * 1.5 + cellId * 3.3);
+        v += vec2(-local.y, local.x) * spin * (0.6 + 0.4 * r1); // circulation
+
+        vec2 base = local * 9.0 + cellId * 7.0;
+        const float AMP = 2.2;                   // granule-widths carried per cycle
+        float ph = uTime * 0.085;
+        float t0 = fract(ph);
+        float t1 = fract(ph + 0.5);
+        float w0 = sin(3.14159265 * t0);
+        float w1 = sin(3.14159265 * t1);
+        vec4 g0 = chloroplasts(base - v * (AMP * t0));
+        vec4 g1 = chloroplasts(base - v * (AMP * t1));
+        vec4 gcol = (g0 * w0 + g1 * w1) / max(1e-4, w0 + w1);
 
         // 0 at the wall, 1 deep inside the cell.
         float interior = smoothstep(0.0, 0.14, border);
 
-        // Round granule mask with a soft edge; size varies a little.
-        float gsize = 0.34 + 0.10 * gB;
-        float gran = smoothstep(gsize, gsize - 0.09, gd);
-
-        // Chloroplast palette: green -> lime -> gold, with a rare carotenoid
-        // red/orange granule (the pigment family that makes a tomato red).
-        vec3 green = vec3(0.16, 0.55, 0.14);
-        vec3 lime  = vec3(0.42, 0.80, 0.22);
-        vec3 gold  = vec3(0.62, 0.66, 0.12);
-        vec3 chl = mix(green, lime, smoothstep(0.2, 0.9, gA));
-        chl = mix(chl, gold, smoothstep(0.6, 1.0, gB) * 0.6);
-        float red = step(0.94, gA);
-        chl = mix(chl, vec3(0.86, 0.32, 0.10), red);
-
-        // Fake spherical shading: bright toward each granule's centre.
-        float shade = smoothstep(gsize, 0.0, gd);
-        chl *= 0.55 + 0.75 * shade;
-
         // Dark green cytoplasm between the granules.
         vec3 cyto = mix(vec3(0.015, 0.035, 0.022), vec3(0.030, 0.080, 0.040), interior);
 
-        vec3 col = cyto;
-        col = mix(col, chl, gran * (0.35 + 0.65 * interior));
+        vec3 col = mix(cyto, gcol.rgb, gcol.a * (0.35 + 0.65 * interior));
 
         // Cell wall: dark vein plus a thin iridescent rim, like the chromatic
         // fringing of a bright-field microscope.

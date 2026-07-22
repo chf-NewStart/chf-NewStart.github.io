@@ -28,7 +28,11 @@
     const FRAG = `#version 300 es
     precision highp float;
     uniform vec2 uRes;
-    uniform float uTime;
+    uniform float uTime;   // wall-clock seconds (slow wobble, haze)
+    uniform float uFlow;   // accumulated streaming phase (scroll speeds it up)
+    uniform float uEnergy; // 0..1 stir intensity from recent scrolling
+    uniform float uScroll; // page scroll offset in CSS px (parallax)
+    uniform float uDir;    // smoothed scroll direction, -1..1
     out vec4 o;
 
     float hash1(vec2 p) {
@@ -142,7 +146,8 @@
 
         const float CELLS = 2.6;
         vec2 drift = vec2(uTime * 0.020, uTime * 0.012);
-        vec2 q = p * CELLS + drift;
+        // Scrolling pans the tissue vertically (parallax).
+        vec2 q = p * CELLS + drift + vec2(0.0, uScroll * 0.0011 * CELLS);
 
         vec2 cellId, toCell;
         float border = voronoi(q, uTime * 0.18, cellId, toCell);
@@ -162,10 +167,11 @@
 
         vec2 v = flowVel(local * 1.5 + cellId * 3.3);
         v += vec2(-local.y, local.x) * spin * (0.6 + 0.4 * r1); // circulation
+        v += vec2(0.0, uDir) * uEnergy * 2.6;    // scrolling drags a current through
 
         vec2 base = local * 9.0 + cellId * 7.0;
-        const float AMP = 2.2;                   // granule-widths carried per cycle
-        float ph = uTime * 0.085;
+        float AMP = 2.2 + uEnergy * 3.2;         // granules surge while scrolling
+        float ph = uFlow;                        // phase advances faster when stirred
         float t0 = fract(ph);
         float t1 = fract(ph + 0.5);
         float w0 = sin(3.14159265 * t0);
@@ -193,9 +199,10 @@
         // Faint volumetric green haze so the tissue reads as depth, not a decal.
         col += vec3(0.020, 0.060, 0.030) * fbm(p * 1.5 + drift * 2.0) * 0.5;
 
-        // Dim and vignette so the field sits quietly behind page content.
+        // Dim and vignette so the field sits quietly behind page content;
+        // scrolling lifts it a touch so the tissue visibly stirs awake.
         float vig = smoothstep(1.40, 0.20, length(p));
-        col *= mix(0.28, 1.0, vig) * 0.62;
+        col *= mix(0.28, 1.0, vig) * (0.62 + uEnergy * 0.22);
 
         o = vec4(col, 1.0);
     }`;
@@ -241,9 +248,22 @@
     gl.useProgram(prog);
     const uRes = gl.getUniformLocation(prog, 'uRes');
     const uTime = gl.getUniformLocation(prog, 'uTime');
+    const uFlow = gl.getUniformLocation(prog, 'uFlow');
+    const uEnergy = gl.getUniformLocation(prog, 'uEnergy');
+    const uScroll = gl.getUniformLocation(prog, 'uScroll');
+    const uDir = gl.getUniformLocation(prog, 'uDir');
 
     let outW = 0;
     let outH = 0;
+
+    // Streaming/scroll state.
+    const BASE_FLOW = 0.085;                 // resting phase rate (matches before)
+    let flow = 0;                            // accumulated streaming phase
+    let energy = 0;                          // 0..1 stir intensity
+    let dir = 0;                             // smoothed scroll direction, -1..1
+    let scrollY = window.scrollY || window.pageYOffset || 0;
+    let prevScroll = scrollY;
+    let lastT = performance.now();
 
     function setup() {
         const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
@@ -260,7 +280,31 @@
         gl.bindVertexArray(vao);
         gl.uniform2f(uRes, outW, outH);
         gl.uniform1f(uTime, seconds);
+        gl.uniform1f(uFlow, flow);
+        gl.uniform1f(uEnergy, energy);
+        gl.uniform1f(uScroll, scrollY);
+        gl.uniform1f(uDir, dir);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+
+    // Fold recent scroll motion into the stir energy and streaming phase.
+    // Sampled once per frame so it is robust to irregular scroll events.
+    function integrate(now) {
+        let dt = (now - lastT) / 1000;
+        lastT = now;
+        if (dt > 0.05) dt = 0.05;            // clamp tab-switch / stall gaps
+
+        scrollY = window.scrollY || window.pageYOffset || 0;
+        const rawVel = scrollY - prevScroll;
+        prevScroll = scrollY;
+
+        const target = Math.min(Math.abs(rawVel) / 45, 1);
+        // Fast attack, slow release: energy jumps on scroll, eases back to calm.
+        energy += (target - energy) * (target > energy ? 0.45 : 0.045);
+        if (Math.abs(rawVel) > 0.5) dir += (Math.sign(rawVel) - dir) * 0.3;
+        else dir += (0 - dir) * 0.05;
+
+        flow += dt * (BASE_FLOW + energy * 0.55);
     }
 
     let raf = null;
@@ -276,12 +320,17 @@
 
     function frame() {
         raf = window.requestAnimationFrame(frame);
-        draw((performance.now() - startTime) / 1000);
+        const now = performance.now();
+        integrate(now);
+        draw((now - startTime) / 1000);
         markLive();
     }
 
     function start() {
         if (raf !== null || document.hidden) return;
+        // Prime timers so a resume doesn't register a huge dt or a scroll jump.
+        lastT = performance.now();
+        prevScroll = window.scrollY || window.pageYOffset || 0;
         raf = window.requestAnimationFrame(frame);
     }
 
@@ -293,7 +342,11 @@
     }
 
     function renderStatic() {
-        // A single developed frame for reduced-motion visitors.
+        // A single developed frame for reduced-motion visitors (no scroll stir).
+        flow = 0.68;
+        energy = 0;
+        dir = 0;
+        scrollY = window.scrollY || window.pageYOffset || 0;
         draw(8.0);
         markLive();
     }

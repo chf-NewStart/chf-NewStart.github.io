@@ -63,6 +63,24 @@
         return s;
     }
 
+    // Nearest-granule distance (fine Voronoi F1) for the discrete particles.
+    float granules(vec2 x, out vec2 id) {
+        vec2 n = floor(x), f = fract(x);
+        float md = 8.0;
+        vec2 mid = n;
+        for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+                vec2 g = vec2(float(i), float(j));
+                vec2 c = n + g;
+                vec2 r = g + hash2(c + 31.4) - f;
+                float d = dot(r, r);
+                if (d < md) { md = d; mid = c; }
+            }
+        }
+        id = mid;
+        return sqrt(md);
+    }
+
     // Cheap 2-octave scalar field used as a flow potential (stream function).
     float potential(vec2 x) {
         return vnoise(x) * 0.65 + vnoise(x * 2.1 + 11.0) * 0.35;
@@ -78,28 +96,36 @@
         return vec2(py, -px) / (2.0 * e);
     }
 
-    // Chloroplast pigment as a smooth, marbled liquid rather than discrete
-    // granules: domain-warped noise gives swirling green-gold filaments, with
-    // rare carotenoid red/orange threads (the pigments that turn a tomato red).
-    // Returns colour in .rgb and pigment density in .a. Factored out so two
-    // time-offset layers can be sampled and cross-faded for bounded flow.
+    // Cell contents = discrete chloroplast granules (round particles) floating
+    // in a soft marbled liquid medium. Both are sampled at the advected flow
+    // coordinate so the particles stream through the fluid. Returns pigment
+    // colour in .rgb and coverage in .a; factored out so two time-offset layers
+    // can be cross-faded for bounded flow.
     vec4 chloroplasts(vec2 gcoord) {
-        // Warp the domain so the density field folds into flowing streams.
-        vec2 warp = vec2(fbm3(gcoord * 0.7 + 1.7), fbm3(gcoord * 0.7 + 9.2)) - 0.5;
-        float dens = fbm3(gcoord * 0.9 + warp * 2.4);
-        dens = clamp((dens - 0.28) * 1.9, 0.0, 1.0);
-        dens = dens * dens * (3.0 - 2.0 * dens); // smootherstep contrast
+        // Soft flowing medium (domain-warped noise) that fills the cell.
+        vec2 warp = vec2(fbm3(gcoord * 0.6 + 1.7), fbm3(gcoord * 0.6 + 9.2)) - 0.5;
+        float med = fbm3(gcoord * 0.8 + warp * 2.2);
+        med = clamp((med - 0.30) * 1.8, 0.0, 1.0);
+        vec3 medCol = mix(vec3(0.08, 0.26, 0.09), vec3(0.28, 0.58, 0.17), smoothstep(0.2, 0.85, med));
 
-        // Green -> lime -> gold ramp through the pigment density.
-        vec3 chl = mix(vec3(0.03, 0.07, 0.04), vec3(0.16, 0.55, 0.14), smoothstep(0.08, 0.45, dens));
-        chl = mix(chl, vec3(0.42, 0.80, 0.22), smoothstep(0.40, 0.72, dens));
-        chl = mix(chl, vec3(0.66, 0.72, 0.16), smoothstep(0.70, 0.96, dens));
+        // Discrete granule particles (finer scale than the medium swirls).
+        vec2 gid;
+        float gd = granules(gcoord * 1.7 + 4.0, gid);
+        float gA = hash1(gid);
+        float gB = hash1(gid + 5.1);
+        float gsize = 0.30 + 0.12 * gB;
+        float pdot = smoothstep(gsize, gsize - 0.07, gd);       // round particle mask
+        float shade = smoothstep(gsize, 0.0, gd);               // spherical highlight
+        // green -> lime -> gold, with a rare carotenoid red/orange particle
+        // (the pigment family that turns a tomato red).
+        vec3 gCol = mix(vec3(0.18, 0.60, 0.15), vec3(0.50, 0.85, 0.24), smoothstep(0.2, 0.9, gA));
+        gCol = mix(gCol, vec3(0.70, 0.74, 0.16), smoothstep(0.6, 1.0, gB) * 0.7);
+        gCol = mix(gCol, vec3(0.92, 0.38, 0.10), step(0.93, gA));
+        gCol *= 0.5 + 0.7 * shade;
 
-        // Rare carotenoid threads woven through the densest plasma.
-        float caro = smoothstep(0.62, 0.92, fbm3(gcoord * 0.4 + 40.0)) * smoothstep(0.35, 0.7, dens);
-        chl = mix(chl, vec3(0.90, 0.36, 0.09), caro * 0.85);
-
-        return vec4(chl, dens);
+        vec3 col = mix(medCol * 0.7, gCol, pdot);               // particles over medium
+        float cov = clamp(med * 0.65 + pdot, 0.0, 1.0);
+        return vec4(col, cov);
     }
 
     // Leaf-cell Voronoi. Returns distance to the cell wall; writes the cell id
@@ -163,7 +189,7 @@
         v += vec2(0.0, uDir) * uEnergy * 2.6;    // scrolling drags a current through
 
         vec2 base = local * 5.6 + cellId * 7.0;  // larger, more liquid structures
-        float AMP = 2.4 + uEnergy * 3.4;         // pigment surges while scrolling
+        float AMP = 1.1 + uEnergy * 3.6;         // gentle drift at rest, surges on scroll
         float ph = uFlow;                        // phase advances faster when stirred
         float t0 = fract(ph);
         float t1 = fract(ph + 0.5);

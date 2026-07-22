@@ -1,8 +1,9 @@
-// Live reaction-diffusion backdrop (Gray-Scott model) rendered on the GPU.
-// A perpetually-dividing cellular pattern that glows mint -> cyan out of
-// near-black; the feed/kill parameters vary across the screen so coral,
-// worms and mitosis regimes coexist. Falls back to a static dark gradient
-// (CSS) when WebGL2 + float render targets are unavailable.
+// Live plant-tissue backdrop rendered on the GPU: a polygonal network of
+// leaf cells (Voronoi), each packed with green-to-gold chloroplast granules
+// that stream slowly around the cell interior (cytoplasmic streaming), with
+// thin iridescent cell walls like a bright-field microscope. A rare red/orange
+// granule stands in for the carotenoid pigments that turn a tomato red.
+// Falls back to a static dark gradient (CSS) when WebGL2 is unavailable.
 (() => {
     'use strict';
 
@@ -12,7 +13,7 @@
     const gl = canvas.getContext('webgl2', {
         antialias: false, depth: false, stencil: false, alpha: false, powerPreference: 'low-power',
     });
-    if (!gl || !gl.getExtension('EXT_color_buffer_float')) {
+    if (!gl) {
         canvas.classList.add('bio-bg--fallback');
         return;
     }
@@ -23,74 +24,205 @@
     in vec2 p;
     void main() { gl_Position = vec4(p, 0.0, 1.0); }`;
 
-    // Seed the field: A = 1 everywhere, B scattered as coarse specks.
-    const SEED_FRAG = `#version 300 es
+    // Single-pass procedural leaf tissue.
+    const FRAG = `#version 300 es
     precision highp float;
     uniform vec2 uRes;
-    uniform float uSeed;
+    uniform float uTime;   // wall-clock seconds (slow wobble, haze)
+    uniform float uFlow;   // accumulated streaming phase (scroll speeds it up)
+    uniform float uEnergy; // 0..1 stir intensity from recent scrolling
+    uniform float uScroll; // page scroll offset in CSS px (parallax)
+    uniform float uDir;    // smoothed scroll direction, -1..1
     out vec4 o;
-    float hash(vec2 v) {
-        return fract(sin(dot(v, vec2(127.1, 311.7))) * 43758.5453);
+
+    float hash1(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
     }
+    vec2 hash2(vec2 p) {
+        p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+        return fract(sin(p) * 43758.5453);
+    }
+    float vnoise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        float a = hash1(i);
+        float b = hash1(i + vec2(1.0, 0.0));
+        float c = hash1(i + vec2(0.0, 1.0));
+        float d = hash1(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+    }
+    float fbm(vec2 p) {
+        float s = 0.0, a = 0.5;
+        for (int i = 0; i < 4; i++) { s += a * vnoise(p); p *= 2.03; a *= 0.5; }
+        return s;
+    }
+    // Lighter 3-octave fbm for the pigment field (sampled twice per pixel).
+    float fbm3(vec2 p) {
+        float s = 0.0, a = 0.5;
+        for (int i = 0; i < 3; i++) { s += a * vnoise(p); p *= 2.05; a *= 0.5; }
+        return s;
+    }
+
+    // Nearest-granule distance (fine Voronoi F1) for the discrete particles.
+    float granules(vec2 x, out vec2 id) {
+        vec2 n = floor(x), f = fract(x);
+        float md = 8.0;
+        vec2 mid = n;
+        for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+                vec2 g = vec2(float(i), float(j));
+                vec2 c = n + g;
+                vec2 r = g + hash2(c + 31.4) - f;
+                float d = dot(r, r);
+                if (d < md) { md = d; mid = c; }
+            }
+        }
+        id = mid;
+        return sqrt(md);
+    }
+
+    // Cheap 2-octave scalar field used as a flow potential (stream function).
+    float potential(vec2 x) {
+        return vnoise(x) * 0.65 + vnoise(x * 2.1 + 11.0) * 0.35;
+    }
+
+    // Incompressible velocity = curl of the potential (its perpendicular
+    // gradient). Divergence-free flow reads as a real fluid: it swirls and
+    // shears without sources or sinks.
+    vec2 flowVel(vec2 x) {
+        float e = 0.06;
+        float px = potential(x + vec2(e, 0.0)) - potential(x - vec2(e, 0.0));
+        float py = potential(x + vec2(0.0, e)) - potential(x - vec2(0.0, e));
+        return vec2(py, -px) / (2.0 * e);
+    }
+
+    // Cell contents = discrete chloroplast granules (round particles) floating
+    // in a soft marbled liquid medium. Both are sampled at the advected flow
+    // coordinate so the particles stream through the fluid. Returns pigment
+    // colour in .rgb and coverage in .a; factored out so two time-offset layers
+    // can be cross-faded for bounded flow.
+    vec4 chloroplasts(vec2 gcoord) {
+        // Soft flowing medium (domain-warped noise) that fills the cell.
+        vec2 warp = vec2(fbm3(gcoord * 0.6 + 1.7), fbm3(gcoord * 0.6 + 9.2)) - 0.5;
+        float med = fbm3(gcoord * 0.8 + warp * 2.2);
+        med = clamp((med - 0.30) * 1.8, 0.0, 1.0);
+        vec3 medCol = mix(vec3(0.08, 0.26, 0.09), vec3(0.28, 0.58, 0.17), smoothstep(0.2, 0.85, med));
+
+        // Discrete granule particles (finer scale than the medium swirls).
+        vec2 gid;
+        float gd = granules(gcoord * 1.7 + 4.0, gid);
+        float gA = hash1(gid);
+        float gB = hash1(gid + 5.1);
+        float gsize = 0.30 + 0.12 * gB;
+        float pdot = smoothstep(gsize, gsize - 0.07, gd);       // round particle mask
+        float shade = smoothstep(gsize, 0.0, gd);               // spherical highlight
+        // green -> lime -> gold, with a rare carotenoid red/orange particle
+        // (the pigment family that turns a tomato red).
+        vec3 gCol = mix(vec3(0.18, 0.60, 0.15), vec3(0.50, 0.85, 0.24), smoothstep(0.2, 0.9, gA));
+        gCol = mix(gCol, vec3(0.70, 0.74, 0.16), smoothstep(0.6, 1.0, gB) * 0.7);
+        gCol = mix(gCol, vec3(0.92, 0.38, 0.10), step(0.93, gA));
+        gCol *= 0.5 + 0.7 * shade;
+
+        vec3 col = mix(medCol * 0.7, gCol, pdot);               // particles over medium
+        float cov = clamp(med * 0.65 + pdot, 0.0, 1.0);
+        return vec4(col, cov);
+    }
+
+    // Leaf-cell Voronoi. Returns distance to the cell wall; writes the cell id
+    // and the vector from this pixel to the owning cell's centre.
+    float voronoi(vec2 x, float t, out vec2 cellId, out vec2 toCell) {
+        vec2 n = floor(x), f = fract(x);
+        vec2 mg = vec2(0.0), mr = vec2(0.0);
+        float md = 8.0;
+        for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+                vec2 g = vec2(float(i), float(j));
+                vec2 ofs = 0.5 + 0.38 * sin(t + 6.2831853 * hash2(n + g));
+                vec2 r = g + ofs - f;
+                float d = dot(r, r);
+                if (d < md) { md = d; mr = r; mg = g; }
+            }
+        }
+        md = 8.0;
+        for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+                vec2 g = mg + vec2(float(i), float(j));
+                vec2 ofs = 0.5 + 0.38 * sin(t + 6.2831853 * hash2(n + g));
+                vec2 r = g + ofs - f;
+                vec2 diff = mr - r;
+                if (dot(diff, diff) > 0.00001) {
+                    md = min(md, dot(0.5 * (mr + r), normalize(r - mr)));
+                }
+            }
+        }
+        cellId = n + mg;
+        toCell = mr;
+        return md;
+    }
+
     void main() {
-        vec2 cell = floor(gl_FragCoord.xy / 5.0);
-        float b = hash(cell + uSeed) > 0.72 ? 1.0 : 0.0;
-        o = vec4(1.0, b, 0.0, 1.0);
-    }`;
+        vec2 p = (2.0 * gl_FragCoord.xy - uRes) / uRes.y;
 
-    // One Gray-Scott step. Feed (f) and kill (k) vary with position so
-    // several pattern regimes render simultaneously.
-    const SIM_FRAG = `#version 300 es
-    precision highp float;
-    uniform sampler2D uState;
-    uniform vec2 uTexel;
-    uniform vec2 uRes;
-    uniform float uTime;
-    out vec4 o;
-    void main() {
-        vec2 uv = gl_FragCoord.xy * uTexel;
-        vec2 s = texture(uState, uv).xy;
-        vec2 lap = -s;
-        lap += texture(uState, uv + vec2( uTexel.x, 0.0)).xy * 0.2;
-        lap += texture(uState, uv + vec2(-uTexel.x, 0.0)).xy * 0.2;
-        lap += texture(uState, uv + vec2(0.0,  uTexel.y)).xy * 0.2;
-        lap += texture(uState, uv + vec2(0.0, -uTexel.y)).xy * 0.2;
-        lap += texture(uState, uv + vec2( uTexel.x,  uTexel.y)).xy * 0.05;
-        lap += texture(uState, uv + vec2(-uTexel.x,  uTexel.y)).xy * 0.05;
-        lap += texture(uState, uv + vec2( uTexel.x, -uTexel.y)).xy * 0.05;
-        lap += texture(uState, uv + vec2(-uTexel.x, -uTexel.y)).xy * 0.05;
+        const float CELLS = 2.6;
+        vec2 drift = vec2(uTime * 0.020, uTime * 0.012);
+        // Scrolling pans the tissue vertically (parallax).
+        vec2 q = p * CELLS + drift + vec2(0.0, uScroll * 0.0011 * CELLS);
 
-        vec2 g = gl_FragCoord.xy / uRes;
-        float f = mix(0.028, 0.040, g.y) + 0.0010 * sin(uTime * 0.06);
-        float k = mix(0.0575, 0.0615, g.x) + 0.0008 * cos(uTime * 0.041);
+        vec2 cellId, toCell;
+        float border = voronoi(q, uTime * 0.18, cellId, toCell);
 
-        float a = s.x, b = s.y;
-        float reab = a * b * b;
-        a += (lap.x - reab + f * (1.0 - a));
-        b += (lap.y * 0.5 + reab - (k + f) * b);
-        o = vec4(clamp(a, 0.0, 1.0), clamp(b, 0.0, 1.0), 0.0, 1.0);
-    }`;
+        float r0 = hash1(cellId);
+        float r1 = hash1(cellId + 11.3);
+        float r2 = hash1(cellId + 27.7);
 
-    // Map chemical B through a dark bio color ramp with a vignette.
-    const RENDER_FRAG = `#version 300 es
-    precision highp float;
-    uniform sampler2D uState;
-    uniform vec2 uRes;
-    out vec4 o;
-    void main() {
-        vec2 uv = gl_FragCoord.xy / uRes;
-        float b = texture(uState, uv).y;
-        vec3 c0 = vec3(0.020, 0.063, 0.051);
-        vec3 c1 = vec3(0.137, 0.780, 0.404);
-        vec3 c2 = vec3(0.463, 0.969, 0.647);
-        vec3 c3 = vec3(0.431, 0.839, 0.910);
-        vec3 col = c0;
-        col = mix(col, c1, smoothstep(0.04, 0.14, b));
-        col = mix(col, c2, smoothstep(0.14, 0.28, b));
-        col = mix(col, c3, smoothstep(0.28, 0.40, b));
-        col *= mix(0.13, 0.42, smoothstep(0.16, 0.40, b));
-        float vig = smoothstep(1.15, 0.35, length(uv - 0.5));
-        col *= mix(0.5, 1.0, vig);
+        // Cytoplasmic streaming. The pigment is carried by an incompressible
+        // flow field (curl of noise) plus a per-cell circulation, so it swirls
+        // along curving currents like real liquid cytoplasm. To keep the
+        // advection from shearing the field over time, the flow is sampled as
+        // two half-cycle-offset layers and cross-faded: each layer resets its
+        // distortion to zero at the seam, hidden behind zero weight.
+        vec2 local = -toCell;                    // cell centre -> pixel, ~[-1,1]
+        float spin = (r0 - 0.5) * 2.0;           // per-cell direction + strength
+
+        vec2 v = flowVel(local * 1.5 + cellId * 3.3);
+        v += vec2(-local.y, local.x) * spin * (0.6 + 0.4 * r1); // circulation
+        v += vec2(0.0, uDir) * uEnergy * 2.6;    // scrolling drags a current through
+
+        vec2 base = local * 5.6 + cellId * 7.0;  // larger, more liquid structures
+        float AMP = 1.1 + uEnergy * 3.6;         // gentle drift at rest, surges on scroll
+        float ph = uFlow;                        // phase advances faster when stirred
+        float t0 = fract(ph);
+        float t1 = fract(ph + 0.5);
+        float w0 = sin(3.14159265 * t0);
+        float w1 = sin(3.14159265 * t1);
+        vec4 g0 = chloroplasts(base - v * (AMP * t0));
+        vec4 g1 = chloroplasts(base - v * (AMP * t1));
+        vec4 gcol = (g0 * w0 + g1 * w1) / max(1e-4, w0 + w1);
+
+        // 0 at the wall, 1 deep inside the cell.
+        float interior = smoothstep(0.0, 0.14, border);
+
+        // Dark cytoplasm the pigment streams through.
+        vec3 cyto = mix(vec3(0.015, 0.035, 0.022), vec3(0.030, 0.080, 0.040), interior);
+
+        vec3 col = mix(cyto, gcol.rgb, gcol.a * (0.55 + 0.45 * interior));
+
+        // Cell wall: dark vein plus a thin iridescent rim, like the chromatic
+        // fringing of a bright-field microscope.
+        float wall = 1.0 - smoothstep(0.0, 0.045, border);
+        float rim = smoothstep(0.020, 0.050, border) * (1.0 - smoothstep(0.050, 0.085, border));
+        vec3 irid = 0.5 + 0.5 * cos(6.2831853 * (border * 6.0 + r2) + vec3(0.0, 2.1, 4.2));
+        col = mix(col, vec3(0.005, 0.010, 0.008), wall * 0.85);
+        col += irid * rim * 0.18;
+
+        // Faint volumetric green haze so the tissue reads as depth, not a decal.
+        col += vec3(0.020, 0.060, 0.030) * fbm(p * 1.5 + drift * 2.0) * 0.5;
+
+        // Dim and vignette so the field sits quietly behind page content;
+        // scrolling lifts it a touch so the tissue visibly stirs awake.
+        float vig = smoothstep(1.40, 0.20, length(p));
+        col *= mix(0.28, 1.0, vig) * (0.62 + uEnergy * 0.22);
+
         o = vec4(col, 1.0);
     }`;
 
@@ -105,24 +237,20 @@
     }
 
     function program(fragSource) {
-        const p = gl.createProgram();
-        gl.attachShader(p, compile(gl.VERTEX_SHADER, VERT));
-        gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fragSource));
-        gl.bindAttribLocation(p, 0, 'p');
-        gl.linkProgram(p);
-        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-            throw new Error(gl.getProgramInfoLog(p) || 'program link failed');
+        const prog = gl.createProgram();
+        gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+        gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fragSource));
+        gl.bindAttribLocation(prog, 0, 'p');
+        gl.linkProgram(prog);
+        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+            throw new Error(gl.getProgramInfoLog(prog) || 'program link failed');
         }
-        return p;
+        return prog;
     }
 
-    let seedProg;
-    let simProg;
-    let renderProg;
+    let prog;
     try {
-        seedProg = program(SEED_FRAG);
-        simProg = program(SIM_FRAG);
-        renderProg = program(RENDER_FRAG);
+        prog = program(FRAG);
     } catch (err) {
         canvas.classList.add('bio-bg--fallback');
         return;
@@ -136,116 +264,92 @@
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-    const uniforms = (prog, names) => {
-        const map = {};
-        names.forEach((n) => { map[n] = gl.getUniformLocation(prog, n); });
-        return map;
-    };
-    const seedU = uniforms(seedProg, ['uRes', 'uSeed']);
-    const simU = uniforms(simProg, ['uState', 'uTexel', 'uRes', 'uTime']);
-    const renderU = uniforms(renderProg, ['uState', 'uRes']);
+    gl.useProgram(prog);
+    const uRes = gl.getUniformLocation(prog, 'uRes');
+    const uTime = gl.getUniformLocation(prog, 'uTime');
+    const uFlow = gl.getUniformLocation(prog, 'uFlow');
+    const uEnergy = gl.getUniformLocation(prog, 'uEnergy');
+    const uScroll = gl.getUniformLocation(prog, 'uScroll');
+    const uDir = gl.getUniformLocation(prog, 'uDir');
 
-    let simW = 0;
-    let simH = 0;
     let outW = 0;
     let outH = 0;
-    let targets = [];
-    let read = 0;
-    const STEPS_PER_FRAME = 14;
 
-    function makeTarget(w, h) {
-        const tex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        const fbo = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-        return { tex, fbo };
-    }
-
-    function seed() {
-        gl.useProgram(seedProg);
-        gl.viewport(0, 0, simW, simH);
-        gl.uniform2f(seedU.uRes, simW, simH);
-        gl.uniform1f(seedU.uSeed, Math.floor(Math.random() * 1000));
-        gl.bindFramebuffer(gl.FRAMEBUFFER, targets[0].fbo);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-        read = 0;
-    }
+    // Streaming/scroll state.
+    const BASE_FLOW = 0.085;                 // resting phase rate (matches before)
+    let flow = 0;                            // accumulated streaming phase
+    let energy = 0;                          // 0..1 stir intensity
+    let dir = 0;                             // smoothed scroll direction, -1..1
+    let scrollY = window.scrollY || window.pageYOffset || 0;
+    let prevScroll = scrollY;
+    let lastT = performance.now();
 
     function setup() {
         const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-        const cssW = window.innerWidth;
-        const cssH = window.innerHeight;
-        outW = Math.max(1, Math.round(cssW * dpr));
-        outH = Math.max(1, Math.round(cssH * dpr));
+        outW = Math.max(1, Math.round(window.innerWidth * dpr));
+        outH = Math.max(1, Math.round(window.innerHeight * dpr));
         canvas.width = outW;
         canvas.height = outH;
-
-        const simScale = Math.min(1, 620 / cssW);
-        simW = Math.max(64, Math.round(cssW * simScale));
-        simH = Math.max(64, Math.round(cssH * simScale));
-
-        targets.forEach((t) => { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fbo); });
-        targets = [makeTarget(simW, simH), makeTarget(simW, simH)];
-        seed();
-    }
-
-    function step(time) {
-        gl.useProgram(simProg);
-        gl.viewport(0, 0, simW, simH);
-        gl.uniform2f(simU.uTexel, 1 / simW, 1 / simH);
-        gl.uniform2f(simU.uRes, simW, simH);
-        gl.uniform1f(simU.uTime, time);
-        gl.uniform1i(simU.uState, 0);
-        for (let i = 0; i < STEPS_PER_FRAME; i += 1) {
-            const write = 1 - read;
-            gl.bindFramebuffer(gl.FRAMEBUFFER, targets[write].fbo);
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, targets[read].tex);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-            read = write;
-        }
-    }
-
-    function present() {
-        gl.useProgram(renderProg);
         gl.viewport(0, 0, outW, outH);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.uniform2f(renderU.uRes, outW, outH);
-        gl.uniform1i(renderU.uState, 0);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, targets[read].tex);
+    }
+
+    function draw(seconds) {
+        gl.viewport(0, 0, outW, outH);
+        gl.useProgram(prog);
+        gl.bindVertexArray(vao);
+        gl.uniform2f(uRes, outW, outH);
+        gl.uniform1f(uTime, seconds);
+        gl.uniform1f(uFlow, flow);
+        gl.uniform1f(uEnergy, energy);
+        gl.uniform1f(uScroll, scrollY);
+        gl.uniform1f(uDir, dir);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+
+    // Fold recent scroll motion into the stir energy and streaming phase.
+    // Sampled once per frame so it is robust to irregular scroll events.
+    function integrate(now) {
+        let dt = (now - lastT) / 1000;
+        lastT = now;
+        if (dt > 0.05) dt = 0.05;            // clamp tab-switch / stall gaps
+
+        scrollY = window.scrollY || window.pageYOffset || 0;
+        const rawVel = scrollY - prevScroll;
+        prevScroll = scrollY;
+
+        const target = Math.min(Math.abs(rawVel) / 45, 1);
+        // Fast attack, slow release: energy jumps on scroll, eases back to calm.
+        energy += (target - energy) * (target > energy ? 0.45 : 0.045);
+        if (Math.abs(rawVel) > 0.5) dir += (Math.sign(rawVel) - dir) * 0.3;
+        else dir += (0 - dir) * 0.05;
+
+        flow += dt * (BASE_FLOW + energy * 0.55);
     }
 
     let raf = null;
     let live = false;
     const startTime = performance.now();
-    // Pre-warm the field so the first painted frame is already a developed
-    // pattern instead of growing out of black. Tunable for debugging.
-    const WARMUP_STEPS = Math.max(0, Number(window.BIO_WARMUP) || 200);
 
-    function warmUp() {
-        for (let i = 0; i < WARMUP_STEPS; i += 1) step(i * 0.1);
-    }
-
-    function frame() {
-        raf = window.requestAnimationFrame(frame);
-        step((performance.now() - startTime) / 1000);
-        present();
+    function markLive() {
         if (!live) {
             live = true;
             canvas.classList.add('is-live');
         }
     }
 
+    function frame() {
+        raf = window.requestAnimationFrame(frame);
+        const now = performance.now();
+        integrate(now);
+        draw((now - startTime) / 1000);
+        markLive();
+    }
+
     function start() {
         if (raf !== null || document.hidden) return;
+        // Prime timers so a resume doesn't register a huge dt or a scroll jump.
+        lastT = performance.now();
+        prevScroll = window.scrollY || window.pageYOffset || 0;
         raf = window.requestAnimationFrame(frame);
     }
 
@@ -256,12 +360,14 @@
         }
     }
 
-    function renderStaticEvolved() {
-        // Warm the field up to a rich state, then present a single frame.
-        warmUp();
-        present();
-        live = true;
-        canvas.classList.add('is-live');
+    function renderStatic() {
+        // A single developed frame for reduced-motion visitors (no scroll stir).
+        flow = 0.68;
+        energy = 0;
+        dir = 0;
+        scrollY = window.scrollY || window.pageYOffset || 0;
+        draw(8.0);
+        markLive();
     }
 
     let resizeTimer = null;
@@ -271,7 +377,7 @@
             const wasRunning = raf !== null;
             stop();
             setup();
-            if (reduceMotion.matches) renderStaticEvolved();
+            if (reduceMotion.matches) renderStatic();
             else if (wasRunning || !live) start();
         }, 200);
     }, { passive: true });
@@ -284,15 +390,14 @@
     reduceMotion.addEventListener?.('change', () => {
         stop();
         setup();
-        if (reduceMotion.matches) renderStaticEvolved();
+        if (reduceMotion.matches) renderStatic();
         else start();
     });
 
     setup();
     if (reduceMotion.matches) {
-        renderStaticEvolved();
+        renderStatic();
     } else {
-        warmUp();
         start();
     }
 })();

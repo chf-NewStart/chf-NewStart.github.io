@@ -56,24 +56,11 @@
         for (int i = 0; i < 4; i++) { s += a * vnoise(p); p *= 2.03; a *= 0.5; }
         return s;
     }
-
-    // Packed round granules (fine-scale Voronoi F1). Returns distance to the
-    // nearest granule centre and writes that granule's cell id.
-    float granules(vec2 x, out vec2 id) {
-        vec2 n = floor(x), f = fract(x);
-        float md = 8.0;
-        vec2 mid = n;
-        for (int j = -1; j <= 1; j++) {
-            for (int i = -1; i <= 1; i++) {
-                vec2 g = vec2(float(i), float(j));
-                vec2 c = n + g;
-                vec2 r = g + hash2(c + 31.4) - f;
-                float d = dot(r, r);
-                if (d < md) { md = d; mid = c; }
-            }
-        }
-        id = mid;
-        return sqrt(md);
+    // Lighter 3-octave fbm for the pigment field (sampled twice per pixel).
+    float fbm3(vec2 p) {
+        float s = 0.0, a = 0.5;
+        for (int i = 0; i < 3; i++) { s += a * vnoise(p); p *= 2.05; a *= 0.5; }
+        return s;
     }
 
     // Cheap 2-octave scalar field used as a flow potential (stream function).
@@ -91,22 +78,28 @@
         return vec2(py, -px) / (2.0 * e);
     }
 
-    // Colour + coverage of the chloroplast granules at a sampling coordinate.
-    // Factored out so two time-offset layers can be sampled and cross-faded.
+    // Chloroplast pigment as a smooth, marbled liquid rather than discrete
+    // granules: domain-warped noise gives swirling green-gold filaments, with
+    // rare carotenoid red/orange threads (the pigments that turn a tomato red).
+    // Returns colour in .rgb and pigment density in .a. Factored out so two
+    // time-offset layers can be sampled and cross-faded for bounded flow.
     vec4 chloroplasts(vec2 gcoord) {
-        vec2 gid;
-        float gd = granules(gcoord, gid);
-        float gA = hash1(gid);
-        float gB = hash1(gid + 5.1);
-        float gsize = 0.34 + 0.10 * gB;
-        float gran = smoothstep(gsize, gsize - 0.09, gd);
-        // green -> lime -> gold, with a rare carotenoid red/orange granule
-        // (the pigment family that turns a tomato red).
-        vec3 chl = mix(vec3(0.16, 0.55, 0.14), vec3(0.42, 0.80, 0.22), smoothstep(0.2, 0.9, gA));
-        chl = mix(chl, vec3(0.62, 0.66, 0.12), smoothstep(0.6, 1.0, gB) * 0.6);
-        chl = mix(chl, vec3(0.86, 0.32, 0.10), step(0.94, gA));
-        chl *= 0.55 + 0.75 * smoothstep(gsize, 0.0, gd); // fake spherical shading
-        return vec4(chl, gran);
+        // Warp the domain so the density field folds into flowing streams.
+        vec2 warp = vec2(fbm3(gcoord * 0.7 + 1.7), fbm3(gcoord * 0.7 + 9.2)) - 0.5;
+        float dens = fbm3(gcoord * 0.9 + warp * 2.4);
+        dens = clamp((dens - 0.28) * 1.9, 0.0, 1.0);
+        dens = dens * dens * (3.0 - 2.0 * dens); // smootherstep contrast
+
+        // Green -> lime -> gold ramp through the pigment density.
+        vec3 chl = mix(vec3(0.03, 0.07, 0.04), vec3(0.16, 0.55, 0.14), smoothstep(0.08, 0.45, dens));
+        chl = mix(chl, vec3(0.42, 0.80, 0.22), smoothstep(0.40, 0.72, dens));
+        chl = mix(chl, vec3(0.66, 0.72, 0.16), smoothstep(0.70, 0.96, dens));
+
+        // Rare carotenoid threads woven through the densest plasma.
+        float caro = smoothstep(0.62, 0.92, fbm3(gcoord * 0.4 + 40.0)) * smoothstep(0.35, 0.7, dens);
+        chl = mix(chl, vec3(0.90, 0.36, 0.09), caro * 0.85);
+
+        return vec4(chl, dens);
     }
 
     // Leaf-cell Voronoi. Returns distance to the cell wall; writes the cell id
@@ -156,12 +149,12 @@
         float r1 = hash1(cellId + 11.3);
         float r2 = hash1(cellId + 27.7);
 
-        // Cytoplasmic streaming. The granules are carried by an incompressible
-        // flow field (curl of noise) plus a per-cell circulation, so they glide
-        // along curving currents like real cytoplasm. To keep the advection
-        // from shearing the pattern into streaks over time, the flow is sampled
-        // as two half-cycle-offset layers and cross-faded: each layer resets
-        // its distortion to zero at the seam, hidden behind zero weight.
+        // Cytoplasmic streaming. The pigment is carried by an incompressible
+        // flow field (curl of noise) plus a per-cell circulation, so it swirls
+        // along curving currents like real liquid cytoplasm. To keep the
+        // advection from shearing the field over time, the flow is sampled as
+        // two half-cycle-offset layers and cross-faded: each layer resets its
+        // distortion to zero at the seam, hidden behind zero weight.
         vec2 local = -toCell;                    // cell centre -> pixel, ~[-1,1]
         float spin = (r0 - 0.5) * 2.0;           // per-cell direction + strength
 
@@ -169,8 +162,8 @@
         v += vec2(-local.y, local.x) * spin * (0.6 + 0.4 * r1); // circulation
         v += vec2(0.0, uDir) * uEnergy * 2.6;    // scrolling drags a current through
 
-        vec2 base = local * 9.0 + cellId * 7.0;
-        float AMP = 2.2 + uEnergy * 3.2;         // granules surge while scrolling
+        vec2 base = local * 5.6 + cellId * 7.0;  // larger, more liquid structures
+        float AMP = 2.4 + uEnergy * 3.4;         // pigment surges while scrolling
         float ph = uFlow;                        // phase advances faster when stirred
         float t0 = fract(ph);
         float t1 = fract(ph + 0.5);
@@ -183,10 +176,10 @@
         // 0 at the wall, 1 deep inside the cell.
         float interior = smoothstep(0.0, 0.14, border);
 
-        // Dark green cytoplasm between the granules.
+        // Dark cytoplasm the pigment streams through.
         vec3 cyto = mix(vec3(0.015, 0.035, 0.022), vec3(0.030, 0.080, 0.040), interior);
 
-        vec3 col = mix(cyto, gcol.rgb, gcol.a * (0.35 + 0.65 * interior));
+        vec3 col = mix(cyto, gcol.rgb, gcol.a * (0.55 + 0.45 * interior));
 
         // Cell wall: dark vein plus a thin iridescent rim, like the chromatic
         // fringing of a bright-field microscope.

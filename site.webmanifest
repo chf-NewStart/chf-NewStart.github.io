@@ -1,6 +1,8 @@
 {
   "name": "Houfu Chen",
   "short_name": "Houfu",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/favicon_io/tomato-android-chrome-192x192.png?v=3",

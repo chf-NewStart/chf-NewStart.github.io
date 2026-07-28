@@ -11,9 +11,11 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/tomato-favicon-32x32.png?v=3">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png?v=3">
   <link rel="manifest" href="/site.webmanifest?v=3">
-  <meta name="theme-color" content="#f4efe6">
+  <meta name="theme-color" content="#e6dcb6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16121f" media="(prefers-color-scheme: dark)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Homemade+Apple&family=Long+Cang&display=swap" rel="stylesheet">
 
   <style>
@@ -32,13 +34,16 @@
     /* palette lifted from the owner's Notability pages:
        tan kraft paper, visible rules, purple ink */
     :root {
-      --paper: #e6dcb6; --ink: #5f43ac; --ink-soft: #8b7fa6; --line: #c8bc92;
-      --card: #ede4c6; --accent: #7e57c8; --accent-soft: rgba(126,87,200,0.14);
+      --paper: #e6dcb6; --ink: #5f43ac; --ink-soft: #675b80; --line: #c8bc92;
+      --card: #ede4c6; --accent: #6a44ab; --accent-soft: rgba(126,87,200,0.14);
     }
     html[data-theme="dark"] {
       --paper: #16121f; --ink: #cec2ee; --ink-soft: #857a9e; --line: #2c2540;
       --card: #1d1830; --accent: #a98fe0; --accent-soft: rgba(169,143,224,0.14);
     }
+    /* iOS Safari inflates text in tall blocks but leaves the pixel-based
+       ruled-line gradient alone, which slides the writing off the lines */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     body {
       font-family: 'Caveat', 'Long Cang', 'Kaiti SC', 'STKaiti', 'KaiTi', cursive, Georgia, serif;
       background: var(--paper); color: var(--ink);
@@ -48,6 +53,8 @@
     /* paper grain — a whisper of fiber over everything (hand mode only) */
     body::before {
       content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 2;
+      /* own compositor layer, so scrolling doesn't repaint the noise */
+      transform: translateZ(0);
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
     }
     html[data-font="mono"] body::before { display: none; }
@@ -94,7 +101,7 @@
        msgbox: near-black panel, spotify green, prompt line, blinking cursor */
     html[data-font="mono"] {
       font-size: 12.5px;
-      --paper: #050505; --ink: #c9c9c9; --ink-soft: #555; --line: #242424;
+      --paper: #050505; --ink: #c9c9c9; --ink-soft: #7d7d7d; --line: #242424;
       --card: #0d0d0d; --accent: #1db954; --accent-soft: rgba(29,185,84,0.12);
     }
     html[data-font="mono"] body { font-family: Consolas, 'Courier New', monospace; }
@@ -131,21 +138,26 @@
     #wx svg { width: 24px; height: 24px; vertical-align: -7px; }
 
     #page {
-      width: 100%; min-height: 58vh; resize: none; overflow: hidden;
-      font-size: 1.4rem; line-height: 1.9; color: var(--ink);
+      /* svh, not vh: on phones vh follows the URL bar, so the page kept
+         resizing mid-scroll and the view lurched */
+      width: 100%; min-height: 58vh; min-height: 58svh; resize: none; overflow: hidden;
+      /* whole-pixel type metrics: a fractional line box (1.9em of 22.4px =
+         42.56px) makes phones snap each gradient tile to device pixels, so
+         the ruled lines drift away from the text further down the page */
+      font-size: 22px; line-height: 42px; color: var(--ink);
       background: transparent; border: none; outline: none;
       border-top: 1px solid var(--line); padding: 22px 2px 40px;
       caret-color: var(--accent);
       /* ruled diary lines — placed at the text baseline so letters sit ON
          the line (bowl of the p resting on it, tail below), like real paper */
       background-image: repeating-linear-gradient(to bottom,
-        transparent 0, transparent calc(1.25em - 1px),
-        var(--line) calc(1.25em - 1px), var(--line) 1.25em,
-        transparent 1.25em, transparent 1.9em);
+        transparent 0, transparent 27px,
+        var(--line) 27px, var(--line) 28px,
+        transparent 28px, transparent 42px);
       background-origin: content-box;
       background-attachment: local;
     }
-    html[data-font="mono"] #page { background-image: none; }
+    html[data-font="mono"] #page { background-image: none; font-size: 17.5px; line-height: 1.9; }
     #page::placeholder { color: var(--ink-soft); opacity: 0.55; font-style: italic; }
 
     .archive { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
@@ -161,6 +173,7 @@
     .cal-day {
       position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
       font-size: 1rem; color: var(--ink-soft); border-radius: 3px;
+      border: 0; background: none; font: inherit; padding: 0;
     }
     .cal-day.in-month { color: var(--ink); }
     .cal-day.clickable { cursor: pointer; }
@@ -218,14 +231,14 @@
   <div class="day">
     <h2 id="dayTitle"></h2><span id="dayCursor" aria-hidden="true">▋</span>
     <span class="whisper fade" id="wx"></span>
-    <span class="whisper fade" id="whisper"></span>
-    <span class="whisper fade" id="syncSig" title="tap to sync now"></span>
+    <span class="whisper fade" id="whisper" role="status"></span>
+    <button type="button" class="whisper fade linkish quiet" id="syncSig" aria-label="Sync now" title="tap to sync now"></button>
   </div>
   <div class="fade" id="notToday" style="margin-bottom:10px" hidden>
     <button class="btn quiet" id="todayBtn">← back to today</button>
   </div>
 
-  <textarea id="page" placeholder="It's just you here. Start anywhere…" spellcheck="false"></textarea>
+  <textarea id="page" aria-labelledby="dayTitle" placeholder="It's just you here. Start anywhere…" spellcheck="false"></textarea>
 
   <div class="held fade" id="held" hidden>
     <div class="cap">RESTING — words wait here 24h before you decide to send them</div>
@@ -236,9 +249,9 @@
     <div class="cap-row">
       <div class="cap">PAGES</div>
       <div class="cal-nav">
-        <button class="btn quiet" id="calPrev" type="button">‹</button>
+        <button class="btn quiet" id="calPrev" type="button" aria-label="Previous month">‹</button>
         <span class="cal-label" id="calLabel"></span>
-        <button class="btn quiet" id="calNext" type="button">›</button>
+        <button class="btn quiet" id="calNext" type="button" aria-label="Next month">›</button>
       </div>
     </div>
     <div class="calbox">
@@ -258,7 +271,7 @@
   </div>
 
   <div class="sync fade">
-    <div class="cap">SYNC <span id="syncState">— off (this browser only)</span> <button class="linkish quiet hidden" id="syncToggle">settings…</button></div>
+    <div class="cap">SYNC <span id="syncState" role="status">— off (this browser only)</span> <button class="linkish quiet hidden" id="syncToggle">settings…</button></div>
     <div id="syncBody">
     <div class="toolsrow" style="margin-top:0">
       <button class="btn quiet" id="syncSetupBtn">set up sync…</button>
@@ -294,7 +307,17 @@
     } catch(e){}
     return { entries: {}, held: [], wx: {} };
   }
-  function persist(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+  function persist(){
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      return true;
+    } catch(e){
+      /* quota exceeded or storage blocked — say so instead of losing words silently */
+      var w = byId('whisper');
+      if (w) w.textContent = 'could not save — storage is full or blocked. back up below.';
+      return false;
+    }
+  }
   function byId(id){ return document.getElementById(id); }
 
   function dayKey(d){
@@ -309,15 +332,23 @@
   }
 
   /* ---- theme (shared look with the reading room) ---- */
+  function syncThemeColor(){
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){
+      m.setAttribute('content', dark ? '#16121f' : '#e6dcb6');
+    });
+  }
   var savedTheme = localStorage.getItem('readingRoom.theme');
   var startDark = savedTheme ? savedTheme === 'dark'
     : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
   if (startDark) document.documentElement.setAttribute('data-theme', 'dark');
+  syncThemeColor();
   byId('themeBtn').onclick = function(){
     var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
     else document.documentElement.removeAttribute('data-theme');
     localStorage.setItem('readingRoom.theme', next);
+    syncThemeColor();
   };
 
   /* ---- hand / mono: handwriting by default, console type on request ---- */
@@ -337,11 +368,12 @@
   var page = byId('page');
 
   function openEntry(key){
+    flushSave(); /* don't drop the last keystrokes of the day being left */
     openDay = key;
     byId('dayTitle').textContent = prettyDate(key) + (key === today ? '' : '');
     byId('notToday').hidden = (key === today);
     page.value = (state.entries[key] && state.entries[key].text) || '';
-    grow();
+    grow(true);
     whisperCount();
     showWx();
     renderArchive();
@@ -371,8 +403,8 @@
   }
   function showWx(){
     var w = state.wx[openDay], el = byId('wx');
-    if (!w){ el.textContent = ''; return; }
-    if (typeof w === 'string'){ el.textContent = w; return; } /* pre-doodle stamps */
+    if (!w){ el.textContent = ''; el.removeAttribute('aria-label'); el.removeAttribute('role'); return; }
+    if (typeof w === 'string'){ el.textContent = w; el.removeAttribute('aria-label'); el.removeAttribute('role'); return; } /* pre-doodle stamps */
     /* heavy smoke overrules a pretty sky — draw what it actually feels like.
        AQHI is Environment Canada's sensor reading (1-10+); AQI is the model. */
     var smoky = (w.aqhi != null && w.aqhi >= 7) || (w.aqi != null && w.aqi >= 150);
@@ -381,6 +413,8 @@
     if (w.aqhi != null && w.aqhi >= 4) txt += ' · AQHI ' + w.aqhi;
     else if (w.aqi != null && w.aqi >= 100) txt += ' · AQI ' + w.aqi;
     el.appendChild(document.createTextNode(txt));
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', (smoky ? 'haze' : w.k) + ',' + txt);
   }
   /* migrate emoji-era stamps into doodles */
   (function(){
@@ -447,9 +481,18 @@
       .catch(function(){}); /* no weather is fine — the page never nags */
   }
 
-  function grow(){
-    page.style.height = 'auto';
-    page.style.height = Math.max(page.scrollHeight, window.innerHeight * 0.58) + 'px';
+  var lastLen = -1;
+  /* fixed once per width, not read live: window.innerHeight shrinks and grows
+     with the phone's URL bar, and feeding that into the height every
+     keystroke made the page jitter while writing */
+  var baseMin = Math.round(window.innerHeight * 0.58);
+  function grow(force){
+    /* collapsing to 'auto' on every keystroke shortens the document for a
+       layout pass, which clamps the scroll position and makes phones jump —
+       only remeasure from scratch when text got shorter or layout changed */
+    if (force || page.value.length < lastLen) page.style.height = 'auto';
+    lastLen = page.value.length;
+    page.style.height = Math.max(page.scrollHeight, baseMin) + 'px';
   }
 
   function wordCount(t){
@@ -469,25 +512,48 @@
 
   /* ---- autosave, quietly ---- */
   var saveTimer = null;
+  function saveNow(){
+    saveTimer = null;
+    var t = page.value;
+    if (t.trim()) state.entries[openDay] = { text: t, updated: Date.now() };
+    else delete state.entries[openDay];
+    if (persist()){
+      var at = new Date();
+      whisperCount('saved ' + String(at.getHours()).padStart(2, '0') + ':' + String(at.getMinutes()).padStart(2, '0'));
+    }
+    renderArchive();
+    scheduleSync();
+  }
+  /* phones suspend timers the moment you switch apps or lock the screen —
+     a debounce alone can drop the last thing written. flush immediately
+     whenever the page is about to lose the user. */
+  function flushSave(){
+    if (saveTimer){ clearTimeout(saveTimer); saveNow(); }
+  }
   page.addEventListener('input', function(){
     grow();
     document.body.classList.add('writing');
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function(){
-      var t = page.value;
-      if (t.trim()) state.entries[openDay] = { text: t, updated: Date.now() };
-      else delete state.entries[openDay];
-      persist();
-      var at = new Date();
-      whisperCount('saved ' + String(at.getHours()).padStart(2, '0') + ':' + String(at.getMinutes()).padStart(2, '0'));
-      renderArchive();
-      scheduleSync();
-    }, 400);
+    saveTimer = setTimeout(saveNow, 400);
   });
+  window.addEventListener('pagehide', flushSave);
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) flushSave(); });
   document.addEventListener('mousemove', function(){ document.body.classList.remove('writing'); });
-  page.addEventListener('blur', function(){ document.body.classList.remove('writing'); });
+  page.addEventListener('blur', function(){ document.body.classList.remove('writing'); flushSave(); });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape') document.body.classList.remove('writing'); });
-  window.addEventListener('resize', grow);
+  var growW = window.innerWidth;
+  window.addEventListener('resize', function(){
+    /* keyboard show/hide and URL-bar collapse only change height — ignore
+       those; rewrapping only matters when the width actually changes */
+    if (window.innerWidth === growW) return;
+    growW = window.innerWidth;
+    baseMin = Math.round(window.innerHeight * 0.58);
+    grow(true);
+  });
+  if (document.fonts && document.fonts.ready){
+    /* the hand font rewraps lines when it arrives — remeasure then */
+    document.fonts.ready.then(function(){ grow(true); });
+  }
 
   /* ---- hold a thought: write first, decide to send 24h later ---- */
   var HOLD_MS = 24 * 60 * 60 * 1000;
@@ -623,7 +689,9 @@
     for (var day = 1; day <= daysInMonth; day++){
       (function(day){
         var key = calY + '-' + pad2(calM + 1) + '-' + pad2(day);
-        var cell = document.createElement('div');
+        var past = key <= today;
+        var cell = document.createElement(past ? 'button' : 'div');
+        if (past) cell.type = 'button';
         cell.className = 'cal-day in-month';
         cell.textContent = day;
         if (key === today) cell.classList.add('is-today');
@@ -632,9 +700,10 @@
           cell.classList.add('has-entry');
           cell.title = state.entries[key].text.replace(/\s+/g, ' ').trim().slice(0, 90);
         }
-        if (key <= today) {
+        if (past) {
           cell.classList.add('clickable');
           cell.onclick = function(){ openEntry(key); window.scrollTo(0, 0); };
+          cell.setAttribute('aria-label', prettyDate(key) + (state.entries[key] ? ', has entry' : ''));
         } else {
           cell.classList.add('future');
         }

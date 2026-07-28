@@ -229,7 +229,7 @@
                 element.dataset.originalHtml = element.innerHTML;
             }
 
-            if (element.childElementCount && currentLanguage === 'en' && element.dataset.originalHtml) {
+            if (currentLanguage === 'en' && element.dataset.originalHtml) {
                 element.innerHTML = element.dataset.originalHtml;
             } else {
                 const translation = element.dataset[currentLanguage];

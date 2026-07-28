@@ -11,7 +11,8 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/tomato-favicon-32x32.png?v=3">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png?v=3">
   <link rel="manifest" href="/site.webmanifest?v=3">
-  <meta name="theme-color" content="#f4efe6">
+  <meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14120f" media="(prefers-color-scheme: dark)">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -60,10 +61,11 @@
     .book {
       background: var(--card); border: 1px solid var(--line); border-radius: 4px;
       padding: 16px 18px; cursor: pointer;
+      display: block; width: 100%; text-align: left; font: inherit; color: inherit;
     }
     .book:hover { border-color: var(--accent); }
-    .book .t { font-style: italic; margin-bottom: 4px; }
-    .book .m { font-size: 0.75rem; color: var(--ink-soft); }
+    .book .t { display: block; font-style: italic; margin-bottom: 4px; }
+    .book .m { display: block; font-size: 0.75rem; color: var(--ink-soft); }
 
     /* editor */
     label { display: block; font-size: 0.8rem; color: var(--ink-soft); margin: 14px 0 4px; }
@@ -79,7 +81,7 @@
     .import-row { display: flex; gap: 12px; align-items: center; margin: 6px 0 8px; flex-wrap: wrap; }
 
     /* reader */
-    .chapter-title { font-size: 1.3rem; font-style: italic; margin: 10px 0 2px; }
+    .chapter-title { font-size: 1.3rem; font-weight: normal; font-style: italic; margin: 10px 0 2px; }
     .chapter-meta { color: var(--ink-soft); font-size: 0.8rem; margin-bottom: 24px; }
     .para { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; padding: 14px 0 6px; border-top: 1px solid var(--line); }
     .para.solo, .para.stack { grid-template-columns: 1fr; }
@@ -87,10 +89,11 @@
     .para .fr { font-size: 1rem; }
     .para .en { font-size: 0.92rem; color: var(--ink-soft); }
     .para.stack .en { font-style: italic; }
-    .para-tools { grid-column: 1 / -1; display: flex; gap: 14px; font-size: 0.72rem; margin-top: 6px; }
+    .para-tools { grid-column: 1 / -1; display: flex; gap: 18px; font-size: 0.72rem; margin-top: 6px; }
     .para-tools a, .para-tools button {
-      font-family: inherit; font-size: 0.72rem; color: var(--ink-soft);
-      background: none; border: none; cursor: pointer; text-decoration: none; padding: 0;
+      font-family: inherit; font-size: 0.8rem; color: var(--ink-soft);
+      background: none; border: none; cursor: pointer; text-decoration: none;
+      padding: 8px 10px; margin: -8px -6px;
     }
     .para-tools a:hover, .para-tools button:hover { color: var(--accent); }
     .para-tools .has-note { color: var(--accent); }
@@ -127,18 +130,18 @@
       <p class="muted small">Paste a copied passage, or drop / paste a <strong>screenshot</strong> of the page — local OCR reads it in your browser (nothing is uploaded) and, if part of the image is highlighted, keeps <strong>only the highlighted passage</strong>. Then one click gives you the original with the translation under each paragraph. Nothing is saved unless you keep it.</p>
       <div class="import-row">
         <span class="small muted">from</span>
-        <select id="langFrom"></select>
+        <select id="langFrom" aria-label="Translate from language"></select>
         <button class="btn quiet" id="langSwap" type="button" title="swap direction">⇄</button>
         <span class="small muted">to</span>
-        <select id="langTo"></select>
+        <select id="langTo" aria-label="Translate to language"></select>
       </div>
-      <textarea id="qDrop" placeholder="Paste the passage here… or drop a screenshot onto this area."></textarea>
+      <textarea id="qDrop" aria-label="Passage to translate" placeholder="Paste the passage here… or drop a screenshot onto this area."></textarea>
       <div class="row">
         <button class="btn" id="qGo">translate</button>
         <button class="btn quiet hidden" id="qAllText" type="button">use all text from the image</button>
         <button class="btn quiet hidden" id="qKeep">keep in library</button>
       </div>
-      <p class="small muted" id="qStatus" style="margin-top:8px"></p>
+      <p class="small muted" id="qStatus" role="status" style="margin-top:8px"></p>
       <div id="qOut"></div>
     </div>
 
@@ -160,7 +163,7 @@
       <label for="fFr">Original text — blank line between paragraphs</label>
       <div class="import-row">
         <button class="btn quiet" id="importBtn" type="button">import a PDF / .txt…</button>
-        <span class="small muted" id="importStatus"></span>
+        <span class="small muted" id="importStatus" role="status"></span>
         <input type="file" id="importFile" accept=".pdf,.txt,application/pdf,text/plain" class="hidden">
       </div>
       <textarea id="fFr" placeholder="Paste the text from your copy here… or import a file above."></textarea>
@@ -183,7 +186,7 @@
       <button class="btn quiet" id="exportBtn">export my notes (.md)</button>
       <button class="btn quiet" id="deleteBtn">delete</button>
     </div>
-    <div class="chapter-title" id="rTitle"></div>
+    <h2 class="chapter-title" id="rTitle"></h2>
     <div class="chapter-meta" id="rMeta"></div>
     <div id="rBody"></div>
   </div>
@@ -211,11 +214,19 @@
   var startDark = savedTheme ? savedTheme === 'dark'
     : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
   if (startDark) document.documentElement.setAttribute('data-theme', 'dark');
+  function syncThemeColor(){
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){
+      m.setAttribute('content', dark ? '#14120f' : '#f4efe6');
+    });
+  }
+  syncThemeColor();
   byId('themeBtn').onclick = function(){
     var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
     else document.documentElement.removeAttribute('data-theme');
     localStorage.setItem('readingRoom.theme', next);
+    syncThemeColor();
   };
 
   /* ---- views ---- */
@@ -229,11 +240,12 @@
     byId('backupBtn').classList.toggle('hidden', !state.chapters.length);
     state.chapters.forEach(function(ch){
       var noteCount = Object.keys(ch.notes || {}).length;
-      var div = document.createElement('div');
+      var div = document.createElement('button');
+      div.type = 'button';
       div.className = 'book';
-      div.innerHTML = '<div class="t">' + esc(ch.title || 'Untitled') + '</div>' +
-        '<div class="m">' + paras(ch.fr).length + ' ¶' + (ch.en ? ' · bilingual' : '') +
-        (noteCount ? ' · ' + noteCount + ' note' + (noteCount > 1 ? 's' : '') : '') + '</div>';
+      div.innerHTML = '<span class="t">' + esc(ch.title || 'Untitled') + '</span>' +
+        '<span class="m">' + paras(ch.fr).length + ' ¶' + (ch.en ? ' · bilingual' : '') +
+        (noteCount ? ' · ' + noteCount + ' note' + (noteCount > 1 ? 's' : '') : '') + '</span>';
       div.onclick = function(){ openReader(ch.id); };
       shelf.appendChild(div);
     });
@@ -259,7 +271,7 @@
       ch.fr = fr; ch.en = newEn;
       save(); openReader(ch.id);
     } else {
-      var id = 'c' + (state.chapters.length + 1) + '_' + fr.length;
+      var id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       state.chapters.push({ id: id, title: byId('fTitle').value.trim(), fr: fr, en: byId('fEn').value.trim(), notes: {} });
       save(); openReader(id);
     }
@@ -298,7 +310,7 @@
           '<button data-i="' + i + '" class="noteToggle' + (noteVal ? ' has-note' : '') + '">✎ note' + (noteVal ? ' •' : '') + '</button>' +
           (en.length ? '' : '<a href="' + gUrl + '" target="_blank" rel="noopener">' + langPref.to.toUpperCase() + ' ↗</a>') +
         '</div>' +
-        '<div class="note-box' + (noteVal ? '' : ' hidden') + '"><textarea data-i="' + i + '" placeholder="Your note…">' + esc(noteVal) + '</textarea></div>';
+        '<div class="note-box' + (noteVal ? '' : ' hidden') + '"><textarea data-i="' + i + '" aria-label="Note for paragraph ' + (i + 1) + '" placeholder="Your note…">' + esc(noteVal) + '</textarea></div>';
       body.appendChild(div);
     });
 
@@ -520,7 +532,7 @@
     if (!qResult) return;
     var title = qResult.fr[0].split(/\s+/).slice(0, 6).join(' ');
     if (title.length > 48) title = title.slice(0, 48);
-    var id = 'q' + (state.chapters.length + 1) + '_' + qResult.fr.join('').length;
+    var id = 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     state.chapters.push({
       id: id, title: title + '…',
       fr: qResult.fr.join('\n\n'), en: qResult.en.join('\n\n'),

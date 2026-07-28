@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /resumes/
+Disallow: /personality/*.pdf$
+
+Sitemap: https://houfu72.com/sitemap.xml

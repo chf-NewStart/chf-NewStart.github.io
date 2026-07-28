@@ -4,19 +4,36 @@
 // thin iridescent cell walls like a bright-field microscope. A rare red/orange
 // granule stands in for the carotenoid pigments that turn a tomato red.
 // Falls back to a static dark gradient (CSS) when WebGL2 is unavailable.
+//
+// This engine does NOT start itself. A mode manager owns the choice between
+// backdrop engines and drives us through window.BIO_BG:
+//     start()        lazily initialise, show the canvas, run the loop
+//     stop()         cancel the loop and hide the canvas (a later start() works)
+//     isSupported()  cheap capability probe, no permanent allocation
 (() => {
     'use strict';
 
-    const canvas = document.getElementById('bioBg');
-    if (!canvas) return;
+    const CANVAS_ID = 'bioBg';
 
-    const gl = canvas.getContext('webgl2', {
-        antialias: false, depth: false, stencil: false, alpha: false, powerPreference: 'low-power',
-    });
-    if (!gl) {
-        canvas.classList.add('bio-bg--fallback');
-        return;
-    }
+    // --- hero legibility ------------------------------------------------
+    // Body text in the hero sits directly on this backdrop, so a rounded,
+    // softly feathered rectangle around it is dimmed by a measured gain.
+    const SAFE_SELECTOR = '.hero-copy';
+    const SAFE_PAD = 24;                  // CSS px grown around the element
+    const SAFE_FALLBACK = [0, 0, 640, 420];
+    const SAFE_TARGET_MEAN = 20;          // 0..255 relative luminance
+    const SAFE_TARGET_P99 = 97;
+    const SAFE_GAIN_MIN = 0.25;
+    const SAFE_GAIN_MAX = 1.0;
+    const SAFE_PASSES = 3;                // set gain -> redraw -> re-measure
+    // Calibration probes: developed frames at the WORST-CASE exposure, i.e.
+    // uEnergy = 1, because scrolling lifts the shader's own exposure by ~1.36x.
+    const SAFE_PROBES = [
+        { seconds: 8.0, flow: 0.68 },
+        { seconds: 23.5, flow: 1.31 },
+    ];
+
+    const MIN_FRAME_MS = 15;              // ~60Hz cap; motion is dt-based
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -33,7 +50,12 @@
     uniform float uEnergy; // 0..1 stir intensity from recent scrolling
     uniform float uScroll; // page scroll offset in CSS px (parallax)
     uniform float uDir;    // smoothed scroll direction, -1..1
+    uniform vec4 uSafe;    // hero text rect: x, y, w, h in CSS px, y from TOP
+    uniform float uSafeGain; // brightness multiplier inside that rect
+    uniform float uDpr;    // device px per CSS px
     out vec4 o;
+
+    const float SAFE_FEATHER = 80.0;      // CSS px of smooth falloff
 
     float hash1(vec2 p) {
         return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -160,6 +182,20 @@
         return md;
     }
 
+    // Brightness multiplier for the hero safe rectangle: uSafeGain inside,
+    // 1.0 outside, with a rounded, C1-continuous falloff so no rectangular
+    // seam is visible on screen.
+    float safeFactor() {
+        if (uSafe.z <= 0.0 || uSafe.w <= 0.0 || uSafeGain >= 0.999) return 1.0;
+        // Fragment position in CSS px with the origin at the TOP-left corner.
+        vec2 fragCss = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / max(uDpr, 0.001);
+        vec2 hs = uSafe.zw * 0.5;            // 'half' is a reserved word in ESSL
+        vec2 d = abs(fragCss - (uSafe.xy + hs)) - hs;
+        // Euclidean distance to the rect: 0 inside, rounded at the corners.
+        float outside = length(max(d, vec2(0.0)));
+        return mix(uSafeGain, 1.0, smoothstep(0.0, SAFE_FEATHER, outside));
+    }
+
     void main() {
         vec2 p = (2.0 * gl_FragCoord.xy - uRes) / uRes.y;
 
@@ -223,9 +259,91 @@
         float vig = smoothstep(1.40, 0.20, length(p));
         col *= mix(0.28, 1.0, vig) * (0.62 + uEnergy * 0.22);
 
+        // Guaranteed contrast where body text lands (measured, see calibrate()).
+        col *= safeFactor();
+
         o = vec4(col, 1.0);
     }`;
 
+    // ---------------------------------------------------------------- state
+    let canvas = null;
+    let gl = null;
+    let prog = null;
+    let vao = null;
+    let buffer = null;
+    let uRes, uTime, uFlow, uEnergy, uScroll, uDir, uSafe, uSafeGain, uDpr;
+
+    let initTried = false;
+    let initOk = false;
+    let supportCache = null;
+
+    let active = false;                      // the mode manager selected us
+    let raf = null;
+    let live = false;
+    let lastDraw = 0;
+    let refreshTimer = null;
+
+    let dpr = 1;
+    let outW = 0;
+    let outH = 0;
+    let sizedW = 0;                          // CSS size the last setup() used
+    let sizedH = 0;
+
+    // Streaming/scroll state.
+    const BASE_FLOW = 0.085;                 // resting phase rate (matches before)
+    let flow = 0;                            // accumulated streaming phase
+    let energy = 0;                          // 0..1 stir intensity
+    let dir = 0;                             // smoothed scroll direction, -1..1
+    let scrollY = window.scrollY || window.pageYOffset || 0;
+    let prevScroll = scrollY;
+    let lastT = performance.now();
+    const startTime = performance.now();
+
+    // Hero safe-rect state.
+    let safeRect = SAFE_FALLBACK.slice();
+    let safeGain = 1.0;
+    let safeStats = { before: null, after: null };
+
+    function el() {
+        if (!canvas || !canvas.isConnected) {
+            canvas = document.getElementById(CANVAS_ID);
+        }
+        return canvas;
+    }
+
+    // ------------------------------------------------------------ support
+    // Cheap, side-effect-free probe: allocates a throwaway 1x1 context and
+    // immediately drops it, so nothing is retained when we are not chosen.
+    function isSupported() {
+        if (initOk) return true;
+        if (initTried && !initOk) return false;
+        if (!el()) return false;
+        if (supportCache !== null) return supportCache;
+        let ok = false;
+        try {
+            if (typeof window.WebGL2RenderingContext === 'function') {
+                const probe = document.createElement('canvas');
+                probe.width = 1;
+                probe.height = 1;
+                const ctx = probe.getContext('webgl2', {
+                    antialias: false, depth: false, stencil: false, alpha: false,
+                });
+                if (ctx) {
+                    // The shader declares highp in the fragment stage.
+                    const hp = ctx.getShaderPrecisionFormat(ctx.FRAGMENT_SHADER, ctx.HIGH_FLOAT);
+                    ok = !!hp && hp.precision > 0;
+                    const lose = ctx.getExtension('WEBGL_lose_context');
+                    if (lose) lose.loseContext();
+                }
+            }
+        } catch (err) {
+            ok = false;
+        }
+        supportCache = ok;
+        return ok;
+    }
+
+    // --------------------------------------------------------------- setup
     function compile(type, source) {
         const sh = gl.createShader(type);
         gl.shaderSource(sh, source);
@@ -237,77 +355,107 @@
     }
 
     function program(fragSource) {
-        const prog = gl.createProgram();
-        gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
-        gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fragSource));
-        gl.bindAttribLocation(prog, 0, 'p');
-        gl.linkProgram(prog);
-        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-            throw new Error(gl.getProgramInfoLog(prog) || 'program link failed');
+        const p = gl.createProgram();
+        gl.attachShader(p, compile(gl.VERTEX_SHADER, VERT));
+        gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fragSource));
+        gl.bindAttribLocation(p, 0, 'p');
+        gl.linkProgram(p);
+        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+            throw new Error(gl.getProgramInfoLog(p) || 'program link failed');
         }
-        return prog;
+        return p;
     }
 
-    let prog;
-    try {
-        prog = program(FRAG);
-    } catch (err) {
-        canvas.classList.add('bio-bg--fallback');
-        return;
+    function fallback() {
+        const c = el();
+        if (c) {
+            c.classList.add('bio-bg--fallback');
+            c.removeAttribute('hidden');
+        }
     }
 
-    const vao = gl.createVertexArray();
-    gl.bindVertexArray(vao);
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    // Lazy: no GPU resources exist until the manager first starts us.
+    function init() {
+        if (initTried) return initOk;
+        initTried = true;
+        const c = el();
+        if (!c) return false;
 
-    gl.useProgram(prog);
-    const uRes = gl.getUniformLocation(prog, 'uRes');
-    const uTime = gl.getUniformLocation(prog, 'uTime');
-    const uFlow = gl.getUniformLocation(prog, 'uFlow');
-    const uEnergy = gl.getUniformLocation(prog, 'uEnergy');
-    const uScroll = gl.getUniformLocation(prog, 'uScroll');
-    const uDir = gl.getUniformLocation(prog, 'uDir');
+        gl = c.getContext('webgl2', {
+            antialias: false, depth: false, stencil: false, alpha: false, powerPreference: 'low-power',
+        });
+        if (!gl) {
+            fallback();
+            return false;
+        }
+        try {
+            prog = program(FRAG);
+        } catch (err) {
+            gl = null;
+            fallback();
+            return false;
+        }
 
-    let outW = 0;
-    let outH = 0;
+        vao = gl.createVertexArray();
+        gl.bindVertexArray(vao);
+        buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-    // Streaming/scroll state.
-    const BASE_FLOW = 0.085;                 // resting phase rate (matches before)
-    let flow = 0;                            // accumulated streaming phase
-    let energy = 0;                          // 0..1 stir intensity
-    let dir = 0;                             // smoothed scroll direction, -1..1
-    let scrollY = window.scrollY || window.pageYOffset || 0;
-    let prevScroll = scrollY;
-    let lastT = performance.now();
+        gl.useProgram(prog);
+        uRes = gl.getUniformLocation(prog, 'uRes');
+        uTime = gl.getUniformLocation(prog, 'uTime');
+        uFlow = gl.getUniformLocation(prog, 'uFlow');
+        uEnergy = gl.getUniformLocation(prog, 'uEnergy');
+        uScroll = gl.getUniformLocation(prog, 'uScroll');
+        uDir = gl.getUniformLocation(prog, 'uDir');
+        uSafe = gl.getUniformLocation(prog, 'uSafe');
+        uSafeGain = gl.getUniformLocation(prog, 'uSafeGain');
+        uDpr = gl.getUniformLocation(prog, 'uDpr');
+
+        initOk = true;
+        return true;
+    }
 
     function setup() {
-        const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-        outW = Math.max(1, Math.round(window.innerWidth * dpr));
-        outH = Math.max(1, Math.round(window.innerHeight * dpr));
-        canvas.width = outW;
-        canvas.height = outH;
+        const c = el();
+        if (!c || !initOk) return;
+        dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+        sizedW = window.innerWidth;
+        sizedH = window.innerHeight;
+        outW = Math.max(1, Math.round(sizedW * dpr));
+        outH = Math.max(1, Math.round(sizedH * dpr));
+        c.width = outW;
+        c.height = outH;
         gl.viewport(0, 0, outW, outH);
     }
 
-    function draw(seconds) {
+    // ---------------------------------------------------------------- draw
+    function drawWith(seconds, flowV, energyV, scrollV, dirV, gainV) {
+        if (!initOk) return;
         gl.viewport(0, 0, outW, outH);
         gl.useProgram(prog);
         gl.bindVertexArray(vao);
         gl.uniform2f(uRes, outW, outH);
         gl.uniform1f(uTime, seconds);
-        gl.uniform1f(uFlow, flow);
-        gl.uniform1f(uEnergy, energy);
-        gl.uniform1f(uScroll, scrollY);
-        gl.uniform1f(uDir, dir);
+        gl.uniform1f(uFlow, flowV);
+        gl.uniform1f(uEnergy, energyV);
+        gl.uniform1f(uScroll, scrollV);
+        gl.uniform1f(uDir, dirV);
+        gl.uniform4f(uSafe, safeRect[0], safeRect[1], safeRect[2], safeRect[3]);
+        gl.uniform1f(uSafeGain, gainV);
+        gl.uniform1f(uDpr, dpr);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
 
+    function draw(seconds) {
+        drawWith(seconds, flow, energy, scrollY, dir, safeGain);
+    }
+
     // Fold recent scroll motion into the stir energy and streaming phase.
-    // Sampled once per frame so it is robust to irregular scroll events.
+    // Sampled once per drawn frame so it is robust to irregular scroll events.
     function integrate(now) {
         let dt = (now - lastT) / 1000;
         lastT = now;
@@ -326,34 +474,38 @@
         flow += dt * (BASE_FLOW + energy * 0.55);
     }
 
-    let raf = null;
-    let live = false;
-    const startTime = performance.now();
-
     function markLive() {
         if (!live) {
             live = true;
-            canvas.classList.add('is-live');
+            const c = el();
+            if (c) c.classList.add('is-live');
         }
     }
 
+    // Capped at ~60Hz: a 120Hz display would otherwise pay double the GPU cost
+    // for identical motion. The rAF is rescheduled first and the skipped time
+    // simply accumulates into the next dt, so flow advances by the same amount.
     function frame() {
         raf = window.requestAnimationFrame(frame);
         const now = performance.now();
+        if (now - lastDraw < MIN_FRAME_MS) return;
+        lastDraw = now;
         integrate(now);
         draw((now - startTime) / 1000);
         markLive();
     }
 
-    function start() {
-        if (raf !== null || document.hidden) return;
+    function resume() {
+        if (!active || raf !== null || !initOk) return;
+        if (document.hidden || reduceMotion.matches) return;
         // Prime timers so a resume doesn't register a huge dt or a scroll jump.
         lastT = performance.now();
+        lastDraw = 0;
         prevScroll = window.scrollY || window.pageYOffset || 0;
         raf = window.requestAnimationFrame(frame);
     }
 
-    function stop() {
+    function pause() {
         if (raf !== null) {
             window.cancelAnimationFrame(raf);
             raf = null;
@@ -370,34 +522,203 @@
         markLive();
     }
 
+    // ------------------------------------------------- hero-safe-rect logic
+    function readSafeRect() {
+        const c = el();
+        const attr = c && c.getAttribute('data-safe-rect');
+        if (attr) {
+            const parts = attr.split(',').map((n) => parseFloat(n));
+            if (parts.length === 4 && parts.every((n) => isFinite(n)) && parts[2] > 0 && parts[3] > 0) {
+                return parts;
+            }
+        }
+        const target = document.querySelector(SAFE_SELECTOR);
+        if (target) {
+            const r = target.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) {
+                // Viewport position the copy occupies at the top of the page:
+                // the rect lives in fixed viewport space, the copy does not.
+                const sy = window.scrollY || window.pageYOffset || 0;
+                const sx = window.scrollX || window.pageXOffset || 0;
+                return [
+                    r.left + sx - SAFE_PAD,
+                    r.top + sy - SAFE_PAD,
+                    r.width + SAFE_PAD * 2,
+                    r.height + SAFE_PAD * 2,
+                ];
+            }
+        }
+        return SAFE_FALLBACK.slice();
+    }
+
+    // Mean and 99th-percentile relative luminance (0..255) of the safe region,
+    // read back from the framebuffer. GPU stall: never call this per frame.
+    function measureSafe() {
+        if (!initOk || outW === 0) return null;
+        const x0 = Math.max(0, Math.min(outW, Math.round(safeRect[0] * dpr)));
+        const x1 = Math.max(0, Math.min(outW, Math.round((safeRect[0] + safeRect[2]) * dpr)));
+        // readPixels has its origin at the BOTTOM-left; the rect's y is from the top.
+        const yTop = Math.max(0, Math.min(outH, outH - Math.round(safeRect[1] * dpr)));
+        const yBot = Math.max(0, Math.min(outH, outH - Math.round((safeRect[1] + safeRect[3]) * dpr)));
+        const w = x1 - x0;
+        const h = yTop - yBot;
+        if (w <= 0 || h <= 0) return null;
+
+        const buf = new Uint8Array(w * h * 4);
+        gl.readPixels(x0, yBot, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+
+        // Sub-sample large regions: ~60k samples is plenty for a p99.
+        const step = Math.max(1, Math.round(Math.sqrt((w * h) / 60000)));
+        const hist = new Uint32Array(256);
+        let sum = 0;
+        let n = 0;
+        for (let y = 0; y < h; y += step) {
+            for (let x = 0; x < w; x += step) {
+                const i = (y * w + x) * 4;
+                const lum = 0.2126 * buf[i] + 0.7152 * buf[i + 1] + 0.0722 * buf[i + 2];
+                sum += lum;
+                hist[lum < 255 ? (lum + 0.5) | 0 : 255] += 1;
+                n += 1;
+            }
+        }
+        if (!n) return null;
+        const want = Math.ceil(n * 0.99);
+        let acc = 0;
+        let p99 = 255;
+        for (let b = 0; b < 256; b++) {
+            acc += hist[b];
+            if (acc >= want) { p99 = b; break; }
+        }
+        return { mean: sum / n, p99, samples: n };
+    }
+
+    // Draw the worst-case (max-energy) probes at a candidate gain and return
+    // the worst statistics across them.
+    function probeAt(gain) {
+        let worst = null;
+        for (let i = 0; i < SAFE_PROBES.length; i++) {
+            const pr = SAFE_PROBES[i];
+            drawWith(pr.seconds, pr.flow, 1.0, scrollY, 0.0, gain);
+            const s = measureSafe();
+            if (!s) return null;
+            if (!worst) worst = s;
+            else worst = { mean: Math.max(worst.mean, s.mean), p99: Math.max(worst.p99, s.p99), samples: s.samples };
+        }
+        return worst;
+    }
+
+    // Measure, then solve for the gain that brings the hero region to
+    // mean <= 20/255 and p99 <= 97/255. Once per size, off the hot path.
+    function calibrate() {
+        if (!initOk || outW === 0) return;
+        safeRect = readSafeRect();
+
+        const before = probeAt(1.0);
+        if (!before) { safeGain = 1.0; return; }
+        safeStats.before = before;
+
+        let gain = 1.0;
+        let stats = before;
+        for (let pass = 0; pass < SAFE_PASSES; pass++) {
+            if (stats.mean <= SAFE_TARGET_MEAN && stats.p99 <= SAFE_TARGET_P99) break;
+            const need = Math.min(
+                SAFE_TARGET_MEAN / Math.max(stats.mean, 0.001),
+                SAFE_TARGET_P99 / Math.max(stats.p99, 0.001)
+            );
+            const next = Math.max(SAFE_GAIN_MIN, Math.min(SAFE_GAIN_MAX, gain * need));
+            if (Math.abs(next - gain) < 0.002) { gain = next; break; }
+            gain = next;
+            const s = probeAt(gain);
+            if (!s) break;
+            stats = s;
+        }
+        safeGain = gain;
+        safeStats.after = stats;
+        // Leave the buffer holding the real state, not the last probe frame.
+        draw((performance.now() - startTime) / 1000);
+    }
+
+    // ------------------------------------------------------------ lifecycle
+    function applySize() {
+        setup();
+        calibrate();
+    }
+
+    function refresh() {
+        // Re-measure once after layout settles (reveal animation, web fonts),
+        // but only if the hero actually moved — calibration reads pixels back.
+        if (!active || !initOk) return;
+        const next = readSafeRect();
+        let moved = false;
+        for (let i = 0; i < 4; i++) if (Math.abs(next[i] - safeRect[i]) > 2) moved = true;
+        if (!moved) return;
+        calibrate();
+        if (reduceMotion.matches) renderStatic();
+    }
+
+    function start() {
+        const c = el();
+        if (!c) return;
+        active = true;
+        c.removeAttribute('hidden');
+        if (!init()) return;                 // fallback class already applied
+        if (outW === 0 || sizedW !== window.innerWidth || sizedH !== window.innerHeight) {
+            applySize();
+        }
+        if (reduceMotion.matches) {
+            renderStatic();
+        } else {
+            resume();
+        }
+        window.clearTimeout(refreshTimer);
+        refreshTimer = window.setTimeout(refresh, 900);
+    }
+
+    function stop() {
+        active = false;
+        pause();
+        window.clearTimeout(refreshTimer);
+        const c = el();
+        if (c) c.setAttribute('hidden', '');
+    }
+
     let resizeTimer = null;
     window.addEventListener('resize', () => {
         window.clearTimeout(resizeTimer);
         resizeTimer = window.setTimeout(() => {
-            const wasRunning = raf !== null;
-            stop();
-            setup();
+            if (!active || !initOk) return;
+            pause();
+            applySize();
             if (reduceMotion.matches) renderStatic();
-            else if (wasRunning || !live) start();
+            else resume();
         }, 200);
     }, { passive: true });
 
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) stop();
-        else if (!reduceMotion.matches) start();
+        if (document.hidden) pause();
+        else resume();
     });
 
     reduceMotion.addEventListener?.('change', () => {
-        stop();
-        setup();
+        if (!active || !initOk) return;
+        pause();
+        applySize();
         if (reduceMotion.matches) renderStatic();
-        else start();
+        else resume();
     });
 
-    setup();
-    if (reduceMotion.matches) {
-        renderStatic();
-    } else {
-        start();
-    }
+    window.BIO_BG = {
+        start,
+        stop,
+        isSupported,
+        // Diagnostics for the hero-legibility calibration (not used at runtime).
+        safeMetrics() {
+            return {
+                rect: safeRect.slice(),
+                gain: safeGain,
+                before: safeStats.before,
+                after: safeStats.after,
+            };
+        },
+    };
 })();

@@ -942,11 +942,18 @@ footer {
 }
 
 .highlight-card a,
-.highlight-link,
+.highlight-link {
+    font-weight: 600;
+}
+
+/* Company, course and project names. These used to be anchors pointing at
+   the section further down the page, so they read as links but only
+   scrolled — emphasis without the promise of a destination. */
 .company-link,
 .course-link,
 .research-link,
 .project-link {
+    color: var(--ink);
     font-weight: 600;
 }
 

@@ -23,6 +23,9 @@
     const SAFE_FALLBACK = [0, 0, 640, 420];
     const SAFE_TARGET_MEAN = 20;          // 0..255 relative luminance
     const SAFE_TARGET_P99 = 97;
+    // Gentle, fixed dim behind the hero copy — enough to keep the text
+    // comfortable, nowhere near enough to read as a dark patch.
+    const SAFE_GAIN_FIXED = 0.86;
     const SAFE_GAIN_MIN = 0.25;
     const SAFE_GAIN_MAX = 1.0;
     const SAFE_PASSES = 3;                // set gain -> redraw -> re-measure
@@ -257,7 +260,7 @@
         // Dim and vignette so the field sits quietly behind page content;
         // scrolling lifts it a touch so the tissue visibly stirs awake.
         float vig = smoothstep(1.40, 0.20, length(p));
-        col *= mix(0.28, 1.0, vig) * (0.62 + uEnergy * 0.22);
+        col *= mix(0.46, 1.0, vig) * (1.05 + uEnergy * 0.28);
 
         // Guaranteed contrast where body text lands (measured, see calibrate()).
         col *= safeFactor();
@@ -613,6 +616,17 @@
         if (!initOk || outW === 0) return;
         safeRect = readSafeRect();
 
+        // Measurement is disabled. It read pixels back from the DEFAULT
+        // framebuffer, whose contents are undefined once the compositor has
+        // swapped unless preserveDrawingBuffer is set — so on real GPUs the
+        // numbers were garbage and the solver bottomed the gain out at 0.25,
+        // dimming the whole hero region roughly fourfold. It only looked
+        // right under software rendering, which is where it was tested.
+        // A fixed, gentle dim needs no readback and cannot misfire.
+        safeGain = SAFE_GAIN_FIXED;
+        return;
+
+        /* eslint-disable no-unreachable */
         const before = probeAt(1.0);
         if (!before) { safeGain = 1.0; return; }
         safeStats.before = before;

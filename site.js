@@ -660,14 +660,15 @@
 
     function updateBackdropModeLabel() {
         if (!backdropModeBtn) return;
-        // Offer the mode you would switch TO, not the one you are in.
+        // Name the mode you would switch TO, not the one you are in. This is
+        // state-dependent, so it cannot come from a static data-en/data-zh
+        // pair the way the rest of the page's copy does.
         const next = backdropMode === 'flow' ? 'tissue' : 'flow';
         const label = currentLanguage === 'zh'
-            ? (next === 'tissue' ? '换成静态切片' : '换成流动组织')
-            : (next === 'tissue' ? 'switch to still section' : 'switch to flowing tissue');
-        backdropModeBtn.textContent = label;
-        backdropModeBtn.dataset.en = next === 'tissue' ? 'switch to still section' : 'switch to flowing tissue';
-        backdropModeBtn.dataset.zh = next === 'tissue' ? '换成静态切片' : '换成流动组织';
+            ? (next === 'tissue' ? '切换背景：静态切片' : '切换背景：流动组织')
+            : (next === 'tissue' ? 'Switch backdrop to still section' : 'Switch backdrop to flowing tissue');
+        backdropModeBtn.setAttribute('aria-label', label);
+        backdropModeBtn.title = label;
     }
 
     async function applyBackdropMode(mode, persist = true) {
@@ -701,7 +702,7 @@
     }
 
     if (backdropModeBtn) {
-        backdropModeBtn.hidden = false;
+
         backdropModeBtn.addEventListener('click', () => {
             applyBackdropMode(backdropMode === 'flow' ? 'tissue' : 'flow');
         });

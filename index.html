@@ -89,38 +89,6 @@
                 </div>
             </div>
         </nav>
-        <aside class="tomato-pet" id="tomatoPet" data-mood="idle" aria-label="Tomato pet" aria-hidden="true" hidden>
-            <div class="tomato-pet-titlebar">
-                <span class="tomato-pet-name"><i aria-hidden="true"></i>TOMA.PET</span>
-                <span class="tomato-pet-stage" id="tomatoPetStage">LV.1 SPROUT</span>
-                <span class="tomato-pet-mood" id="tomatoPetMood">CURIOUS</span>
-                <button class="tomato-pet-close" id="tomatoPetClose" type="button" aria-label="Put tomato pet away" title="Put tomato pet away">×</button>
-            </div>
-            <div class="tomato-pet-scene">
-                <span class="tomato-pet-scan" aria-hidden="true"></span>
-                <span class="tomato-pet-spark spark-one" aria-hidden="true">✦</span>
-                <span class="tomato-pet-spark spark-two" aria-hidden="true">·</span>
-                <button class="tomato-pet-character" id="tomatoPetButton" type="button" aria-label="Pet Toma" aria-describedby="tomatoPetStatus tomatoPetHint">
-                    <canvas class="toma-canvas" id="tomatoPetCanvas" width="24" height="24" aria-hidden="true"></canvas>
-                    <span class="tomato-pet-zzz" aria-hidden="true"><i>z</i><i>z</i><i>z</i></span>
-                </button>
-                <span class="tomato-pet-bubble" id="tomatoPetBubble" aria-hidden="true">+1 BOND</span>
-            </div>
-            <div class="tomato-pet-readout">
-                <p class="tomato-pet-status" id="tomatoPetStatus" role="status" aria-live="polite">A pocket-sized greenhouse twin.</p>
-                <div class="tomato-pet-bond">
-                    <span data-en="BOND" data-zh="亲密度">BOND</span>
-                    <span class="tomato-pet-friendship" id="tomatoPetFriendship">00 / 99</span>
-                    <span class="tomato-pet-track" id="tomatoPetTrack" role="progressbar" aria-label="Bond with Toma" aria-valuemin="0" aria-valuemax="99" aria-valuenow="0"><i id="tomatoPetFill"></i></span>
-                </div>
-            </div>
-            <div class="tomato-pet-controls" aria-label="Care for Toma">
-                <button type="button" data-tomato-action="pat"><span aria-hidden="true">♡</span><span data-en="PAT" data-zh="摸摸">PAT</span></button>
-                <button type="button" data-tomato-action="water"><span aria-hidden="true">◒</span><span data-en="WATER" data-zh="浇水">WATER</span></button>
-                <button type="button" data-tomato-action="sun"><span aria-hidden="true">☼</span><span data-en="SUN" data-zh="晒晒">SUN</span></button>
-            </div>
-            <small class="tomato-pet-hint" id="tomatoPetHint" data-en="care is remembered on this device" data-zh="照顾记录会保存在此设备">care is remembered on this device</small>
-        </aside>
         <main id="main-content" class="scroll-container">
             <!-- Hero Section -->
             <section id="hero-section" class="scroll-section hero-section">
@@ -885,7 +853,6 @@
     </footer>
 
     <script src="bio-bg.js" defer></script>
-    <script src="toma-sprites.js" defer></script>
     <script src="site.js" defer></script>
 </body>
 </html>

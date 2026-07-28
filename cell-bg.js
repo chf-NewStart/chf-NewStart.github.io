@@ -46,15 +46,17 @@
      Nothing here runs until start() is called: building a field costs a
      Voronoi tessellation plus a sprite atlas, and this engine may never be
      the selected one. */
-  var cvs = document.getElementById('tissueBg');
+  var cvs = null;
   var ctx = null;
-  var ctxTried = false;
 
-  /* Cheap, memoised, and safe to call before start(): getContext('2d') on our
-     own canvas is idempotent and allocates only the default backing store. */
+  /* Cheap, memoised, side-effect-free from the page's point of view, and safe
+     to call before start(): getContext('2d') on our own canvas is idempotent
+     and allocates only the default 300x150 backing store. Resolved lazily so
+     the file may be loaded before the element exists — a missing canvas is
+     simply "unsupported", never a throw. */
   function ensureCtx() {
-    if (ctxTried) return !!ctx;
-    ctxTried = true;
+    if (ctx) return true;
+    if (!cvs) cvs = document.getElementById('tissueBg');
     if (!cvs || typeof cvs.getContext !== 'function') return false;
     try { ctx = cvs.getContext('2d', { alpha: false }) || null; }
     catch (e) { ctx = null; }
@@ -166,9 +168,9 @@
   /* enabled: the manager has selected us. booted: a field has been built. */
   var enabled = false, booted = false;
   var t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-  var seedAttr = cvs ? parseInt(cvs.getAttribute('data-seed'), 10) : NaN;
-  var seedCounter = isFinite(seedAttr) ? (seedAttr >>> 0)
-                                       : ((Math.random() * 0x7fffffff) | 0);
+  /* data-seed is read on the first build (the element may not exist yet at
+     load time); an explicit reseed() before that wins. */
+  var seedCounter = (Math.random() * 0x7fffffff) | 0, seedExplicit = false;
 
   var mqReduce = null;
   try { mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)'); } catch (e) {}
@@ -1330,6 +1332,10 @@
 
     if (!booted) {
       booted = true;
+      if (!seedExplicit) {
+        var sa = parseInt(cvs.getAttribute('data-seed'), 10);
+        if (isFinite(sa)) seedCounter = sa >>> 0;
+      }
       var m0 = measure();
       lastW = m0.w; lastH = m0.h;
       rebuild(seedCounter, false);   /* first frame is drawn synchronously */
@@ -1372,6 +1378,7 @@
       seedCounter = (seed === undefined || seed === null)
         ? ((Math.random() * 0x7fffffff) | 0)
         : (seed >>> 0);
+      seedExplicit = true;
       if (live()) rebuild(seedCounter, true);
       return seedCounter;
     },

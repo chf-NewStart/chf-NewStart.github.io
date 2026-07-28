@@ -2769,3 +2769,358 @@ body.pet-is-open .terminal-alert {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ============================================================
+   FEATURED-ALUMNI INLINE DISCLOSURE
+   Reveals the verbatim UofT testimonial *in flow*, beneath the
+   claim in the Education panel. No floating layer, so nothing
+   can be clipped or mispositioned by any ancestor.
+
+   OPEN STATE is expressed as a small set of custom properties so
+   the three entry points (pointer hover / keyboard focus / click
+   + tap pin) apply byte-identical declarations.
+   ============================================================ */
+
+.alumni-evidence {
+    /* closed values — the single source of truth for the animation */
+    --ae-rows: 0fr;          /* grid-template-rows on the clip wrapper */
+    --ae-vis: hidden;        /* keeps the panel out of the a11y + tab order */
+    --ae-op: 0;
+    --ae-shift: -6px;
+    --ae-caret: 0deg;
+    --ae-label: var(--muted-deep);
+    --ae-rule: rgba(118, 247, 165, 0.34);
+    --ae-fade-delay: 0ms;
+    --ae-vis-delay: 380ms;   /* hold visibility until the collapse finishes */
+    display: block;
+    margin-top: 7px;
+}
+
+/* ---- open: pinned by click / tap, or previewed by keyboard focus ---- */
+.alumni-evidence.is-pinned,
+.alumni-evidence:not(.is-dismissed):has(:focus-visible) {
+    --ae-rows: 1fr;
+    --ae-vis: visible;
+    --ae-op: 1;
+    --ae-shift: 0px;
+    --ae-caret: 90deg;
+    --ae-label: var(--ink);
+    --ae-rule: var(--accent);
+    --ae-fade-delay: 90ms;
+    --ae-vis-delay: 0ms;
+}
+
+/* ---- open: pointer hover, fine pointers only ----
+   Gated behind (hover: hover) so a "sticky" iOS hover can never
+   fight the tap-to-toggle state. Same declarations as above; the
+   duplication is deliberate — a media query cannot be folded into
+   a selector list. Hovering the CARD keeps it open (WCAG 1.4.13
+   "hoverable"), which works for free because the card sits inside
+   the same wrapper. */
+@media (hover: hover) and (pointer: fine) {
+    .alumni-evidence:not(.is-dismissed):has(> .alumni-toggle:hover),
+    .alumni-evidence:not(.is-dismissed):has(> .alumni-panel:hover) {
+        --ae-rows: 1fr;
+        --ae-vis: visible;
+        --ae-op: 1;
+        --ae-shift: 0px;
+        --ae-caret: 90deg;
+        --ae-label: var(--ink);
+        --ae-rule: var(--accent);
+        --ae-fade-delay: 90ms;
+        --ae-vis-delay: 0ms;
+    }
+}
+
+/* ---- the trigger: a real <button>, so it is natively focusable ----
+   display:flex + fit-content (not inline-flex) on purpose: an inline
+   button sits in an anonymous line box whose descender leading would
+   leave a 3-4px dead band between the trigger and the panel, and the
+   pointer crossing it would flicker the disclosure shut. As a block
+   the two boxes are exactly contiguous.
+   Type matches the site's existing metadata voice (.date-range):
+   mono, 0.72rem, --muted-deep, no text-transform. */
+.alumni-toggle {
+    display: flex;
+    width: fit-content;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 3px 2px 4px 0;
+    border: 0;
+    color: var(--ae-label);
+    background: none;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: color 180ms ease;
+}
+
+/* The caret is real markup with aria-hidden, not generated content, so
+   it can never leak into the button's accessible name. */
+.alumni-toggle__caret {
+    display: inline-block;
+    width: 0.6em;
+    color: var(--accent);
+    font-size: 0.95rem;
+    line-height: 0;
+    transform: rotate(var(--ae-caret));
+    transition: transform 300ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.alumni-toggle__label {
+    border-bottom: 1px dotted var(--ae-rule);
+    padding-bottom: 2px;
+    transition: border-color 180ms ease;
+}
+
+.alumni-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+/* ---- the in-flow expander: 0fr -> 1fr gives a true auto height ---- */
+.alumni-panel {
+    display: grid;
+    grid-template-rows: var(--ae-rows);
+    transition: grid-template-rows 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.alumni-panel__clip {
+    min-height: 0;
+    overflow: hidden;
+    visibility: var(--ae-vis);
+    transition: visibility 0s linear var(--ae-vis-delay);
+}
+
+.alumni-panel__inner {
+    opacity: var(--ae-op);
+    transform: translateY(var(--ae-shift));
+    transition: opacity 260ms ease var(--ae-fade-delay),
+                transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ---- the pull-quote ----
+   Full width of the surrounding 72ch list column; the reading cap
+   lives on the text, not on the card, so no dead gutter is left
+   inside the card's own padding. */
+.alumni-pull {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    margin: 12px 0 4px;
+    padding: 20px 26px 16px 28px;
+    border: 1px solid var(--line);
+    border-left: 0;
+    background:
+        linear-gradient(180deg, rgba(118, 247, 165, 0.035), rgba(118, 247, 165, 0.008) 52%, rgba(118, 247, 165, 0)),
+        rgba(13, 23, 20, 0.6);
+    box-shadow: inset 0 1px 0 rgba(181, 224, 201, 0.05);
+}
+
+.alumni-pull::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    content: '';
+    background: linear-gradient(180deg, var(--accent) 0%, rgba(118, 247, 165, 0.62) 38%, rgba(118, 247, 165, 0.07) 100%);
+    box-shadow: 0 0 8px rgba(118, 247, 165, 0.22);
+}
+
+/* No text-transform: uppercase here on purpose — it would render the
+   site's "UofT" as "UOFT". The mono face + tracking carries the
+   terminal feel without touching the casing.
+   Descendant-scoped so it outranks `.highlight-card p`. */
+.alumni-pull .alumni-pull__eyebrow {
+    max-width: none;
+    margin: 0 0 12px;
+    color: var(--muted-deep);
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    letter-spacing: 0.13em;
+    line-height: 1.5;
+}
+
+.alumni-pull .alumni-pull__eyebrow::before {
+    content: '// ' / '';
+    color: var(--accent);
+}
+
+.alumni-pull .alumni-pull__quote {
+    margin: 0;
+}
+
+.alumni-pull .alumni-pull__quote p {
+    max-width: 62ch;
+    margin: 0;
+    color: var(--ink-soft);
+    font-family: var(--display);
+    font-size: 0.95rem;
+    font-style: normal;
+    line-height: 1.72;
+    letter-spacing: -0.004em;
+    text-indent: -0.42em;   /* hang the opening quote into the margin */
+    text-wrap: pretty;
+}
+
+.alumni-pull .alumni-pull__quote p::before {
+    content: '\201C' / '';
+    color: var(--accent);
+}
+
+.alumni-pull .alumni-pull__quote p::after {
+    content: '\201D' / '';
+    color: var(--accent);
+}
+
+/* One row: attribution left, source link right, shared baseline. */
+.alumni-pull .alumni-pull__by {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 18px;
+    margin: 16px 0 0;
+    padding-top: 12px;
+    text-align: left;
+}
+
+/* Hairline above the footer row. Absolutely positioned, so it is not
+   picked up as a flex item. */
+.alumni-pull .alumni-pull__by::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 1px;
+    content: '';
+    background: var(--line);
+}
+
+.alumni-pull .alumni-pull__name {
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    font-size: 0.71rem;
+    letter-spacing: 0.01em;
+}
+
+.alumni-pull .alumni-pull__name::before {
+    content: '\2014\A0' / '';
+    color: var(--muted-deep);
+}
+
+.alumni-pull .alumni-pull__src {
+    color: var(--muted-deep);
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(118, 247, 165, 0.2);
+    overflow-wrap: anywhere;
+}
+
+.alumni-pull .alumni-pull__src::after {
+    content: '\A0\2197' / '';
+}
+
+.alumni-pull .alumni-pull__src:hover,
+.alumni-pull .alumni-pull__src:focus-visible {
+    color: var(--accent);
+    border-bottom-color: var(--line-strong);
+}
+
+/* ---- Chinese mode: Latin micro-tracking reads as loose on CJK, and
+        11px is small for Han glyphs. Only the chrome is affected — the
+        quote and the attribution are never translated. ---- */
+html[lang^="zh"] .alumni-toggle {
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+}
+
+html[lang^="zh"] .alumni-pull .alumni-pull__eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+}
+
+html[lang^="zh"] .alumni-pull .alumni-pull__src {
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+}
+
+/* ---- touch: hover cannot happen, so the tap-to-toggle pin is the
+        only state. Give the trigger a 44px target. ---- */
+@media (hover: none), (pointer: coarse) {
+    .alumni-toggle {
+        padding: 12px 2px 12px 0;   /* -> 44px tap target */
+    }
+}
+
+/* ---- narrow screens: tighten the card so it never crowds ---- */
+@media (max-width: 600px) {
+    .alumni-pull {
+        padding: 16px 16px 13px 18px;
+    }
+
+    .alumni-pull .alumni-pull__quote p {
+        font-size: 0.9rem;
+        line-height: 1.7;
+    }
+}
+
+/* ---- reduced motion: instant show, no transform or fade timing ---- */
+@media (prefers-reduced-motion: reduce) {
+    .alumni-evidence {
+        --ae-shift: 0px;
+        --ae-fade-delay: 0ms;
+        --ae-vis-delay: 0ms;
+    }
+
+    .alumni-panel,
+    .alumni-panel__clip,
+    .alumni-panel__inner,
+    .alumni-toggle,
+    .alumni-toggle__caret,
+    .alumni-toggle__label {
+        transition: none !important;
+    }
+
+    .alumni-panel__inner {
+        transform: none !important;
+    }
+}
+
+/* ---- no-:has() fallback (pre-2023 engines): open on wrapper
+        focus-within, and on wrapper hover for fine pointers only. ---- */
+@supports not selector(:has(*)) {
+    .alumni-evidence:not(.is-dismissed):focus-within {
+        --ae-rows: 1fr;
+        --ae-vis: visible;
+        --ae-op: 1;
+        --ae-shift: 0px;
+        --ae-caret: 90deg;
+        --ae-label: var(--ink);
+        --ae-rule: var(--accent);
+        --ae-fade-delay: 90ms;
+        --ae-vis-delay: 0ms;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .alumni-evidence:not(.is-dismissed):hover {
+            --ae-rows: 1fr;
+            --ae-vis: visible;
+            --ae-op: 1;
+            --ae-shift: 0px;
+            --ae-caret: 90deg;
+            --ae-label: var(--ink);
+            --ae-rule: var(--accent);
+            --ae-fade-delay: 90ms;
+            --ae-vis-delay: 0ms;
+        }
+    }
+}

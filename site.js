@@ -653,6 +653,154 @@
         });
     });
 
+    // --- Featured-alumni inline disclosure --------------------------------
+    // Hover and keyboard-focus reveal are pure CSS and work with JS disabled.
+    // This handles tap-to-toggle, aria-expanded, inert, outside-tap close and
+    // Escape-to-dismiss (WCAG 1.4.13).
+    document.querySelectorAll('.alumni-evidence').forEach((wrap, index) => {
+        const toggle = wrap.querySelector('.alumni-toggle');
+        const panel = wrap.querySelector('.alumni-panel');
+        if (!toggle || !panel) return;
+
+        const eyebrow = panel.querySelector('.alumni-pull__eyebrow');
+        const uid = `alumni-${index + 1}`;
+        toggle.id = `${uid}-toggle`;
+        panel.id = `${uid}-panel`;
+        toggle.setAttribute('aria-controls', panel.id);
+        if (eyebrow) {
+            eyebrow.id = `${uid}-eyebrow`;
+            panel.setAttribute('aria-labelledby', eyebrow.id);
+        }
+        panel.inert = true;
+
+        const hasFocusPreview = () => {
+            const active = document.activeElement;
+            if (!active || !wrap.contains(active)) return false;
+            try {
+                return active.matches(':focus-visible');
+            } catch {
+                return true;
+            }
+        };
+
+        // aria-expanded tracks the pinned and keyboard-focus paths only. A
+        // bare hover preview is an event the AT user never made, so mirroring
+        // it into the a11y tree would be noise.
+        const isOpen = () => wrap.classList.contains('is-pinned')
+            || (!wrap.classList.contains('is-dismissed') && hasFocusPreview());
+
+        // --ae-vis is the component's single render signal, and custom
+        // properties are never mid-transition, so it reads 'hidden' the
+        // instant a collapse begins — before the 380ms visibility delay
+        // expires. Driving inert off it closes the window in which the
+        // citation link is still tabbable inside a panel on its way out.
+        const isVisible = () => getComputedStyle(wrap).getPropertyValue('--ae-vis').trim() === 'visible';
+
+        // Turning inert ON is deferred by one frame. Focus moving from the
+        // trigger INTO the panel fires focusout while activeElement is still
+        // <body>, so a synchronous inert would land mid-handoff and swallow
+        // the Tab. One frame is ~16ms against the 380ms it replaces, and the
+        // following focusin cancels it before it can apply.
+        let inertFrame = null;
+        const setInert = (on) => {
+            if (!on) {
+                if (inertFrame !== null) cancelAnimationFrame(inertFrame);
+                inertFrame = null;
+                panel.inert = false;
+                return;
+            }
+            if (panel.inert || inertFrame !== null) return;
+            inertFrame = requestAnimationFrame(() => {
+                inertFrame = null;
+                if (!isVisible()) panel.inert = true;
+            });
+        };
+
+        const sync = () => {
+            toggle.setAttribute('aria-expanded', isOpen() ? 'true' : 'false');
+            setInert(!isVisible());
+        };
+
+        // Synchronously first: getComputedStyle forces a style recalc and the
+        // :hover / :focus-visible flags are already set when the event is
+        // dispatched. The rAF pass is only a safety net for the rare ordering
+        // where they are not.
+        let queued = false;
+        const syncSoon = () => {
+            sync();
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(() => {
+                queued = false;
+                sync();
+            });
+        };
+
+        const setPinned = (on) => {
+            wrap.classList.toggle('is-pinned', on);
+            sync();
+            if (!on) return;
+            // block:'nearest' is a no-op when the panel is already in view.
+            panel.scrollIntoView({
+                block: 'nearest',
+                behavior: reducedMotionQuery.matches ? 'auto' : 'smooth'
+            });
+        };
+
+        toggle.addEventListener('click', () => {
+            const open = isOpen();
+            // is-dismissed suppresses the hover/focus preview that would
+            // otherwise outlive the unpin and leave the panel on screen; the
+            // pointerleave/pointerenter/focusout handlers re-arm it.
+            wrap.classList.toggle('is-dismissed', open);
+            setPinned(!open);
+        });
+
+        // pointerover/out rather than enter/leave: they fire per descendant,
+        // so sliding from the wrapper's dead space onto the trigger is caught.
+        ['pointerover', 'pointerout', 'focusin', 'focusout'].forEach((type) => {
+            wrap.addEventListener(type, syncSoon);
+        });
+
+        // Re-arm the preview once the pointer or focus leaves.
+        wrap.addEventListener('pointerleave', () => {
+            wrap.classList.remove('is-dismissed');
+            syncSoon();
+        });
+
+        wrap.addEventListener('pointerenter', () => {
+            if (!wrap.contains(document.activeElement)) wrap.classList.remove('is-dismissed');
+            syncSoon();
+        });
+
+        wrap.addEventListener('focusout', (event) => {
+            if (!wrap.contains(event.relatedTarget)) wrap.classList.remove('is-dismissed');
+            syncSoon();
+        });
+
+        // A tap anywhere outside the component releases the pin.
+        document.addEventListener('pointerdown', (event) => {
+            if (!wrap.classList.contains('is-pinned')) return;
+            if (wrap.contains(event.target)) return;
+            setPinned(false);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape' && event.key !== 'Esc') return;
+            const hovering = wrap.matches(':hover');
+            const focusInside = wrap.contains(document.activeElement);
+            if (!wrap.classList.contains('is-pinned') && !hovering && !focusInside) return;
+            // If focus sits inside the panel we are about to hide, park it on
+            // the trigger first so it is never lost to <body>.
+            if (panel.contains(document.activeElement)) toggle.focus();
+            if (hovering || focusInside) wrap.classList.add('is-dismissed');
+            setPinned(false);
+        });
+
+        sync();
+    });
+    // ---------------------------------------------------------------------
+
     setTomatoMode(localStorage.getItem('tomatoMode') === 'on', false);
     applyLanguage(currentLanguage);
     updateScrollUI();

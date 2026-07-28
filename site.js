@@ -433,6 +433,23 @@
         bodies.forEach((b) => { b.asleep = true; b.vx = b.vy = b.vrot = 0; b.y = rainH - b.r; place(b); });
     }
 
+    // Ambient drizzle: while the rain is on, bodies also fall from the top
+    // of the hero on their own, so it reads as weather rather than a cursor
+    // trick. The body cap turns sustained drizzle into gentle churn — the
+    // oldest fade out as new ones arrive.
+    let drizzleTimer = null;
+    function startDrizzle() {
+        if (drizzleTimer || rainReduced()) return;
+        drizzleTimer = window.setInterval(() => {
+            if (!rainOn || document.hidden) return;
+            ensureLayer();
+            if (rainW) spawnAt(rainW * (0.05 + 0.9 * Math.random()), -30 - Math.random() * 40);
+        }, 800);
+    }
+    function stopDrizzle() {
+        if (drizzleTimer) { window.clearInterval(drizzleTimer); drizzleTimer = null; }
+    }
+
     function updateRainLabel() {
         if (!tomatoToggle) return;
         const label = currentLanguage === 'zh'
@@ -447,10 +464,10 @@
         tomatoToggle?.setAttribute('aria-pressed', String(on));
         try { localStorage.setItem('tomatoRain', on ? 'on' : 'off'); } catch { /* private mode */ }
         updateRainLabel();
-        if (!on) { clearRain(); return; }
+        if (!on) { stopDrizzle(); clearRain(); return; }
         ensureLayer();
         if (rainReduced()) restingPile(7);
-        else { burst(6); ensureRainRaf(); }
+        else { burst(6); ensureRainRaf(); startDrizzle(); }
         if (announce) {
             showNotice(currentLanguage === 'zh' ? '> 番茄雨开始了' : '> TOMATO RAIN ENGAGED');
         }
@@ -483,9 +500,10 @@
 
     reducedMotionQuery.addEventListener?.('change', () => {
         if (!rainOn) return;
+        stopDrizzle();
         clearRain();
         if (rainReduced()) restingPile(7);
-        else { burst(6); ensureRainRaf(); }
+        else { burst(6); ensureRainRaf(); startDrizzle(); }
     });
 
     let rainResizeTimer = null;

@@ -57,7 +57,10 @@
     <title>Houfu Chen — Digital Twin Researcher &amp; Engineer</title>
 </head>
 <body class="has-bio-bg">
+        <!-- One canvas per backdrop engine: a canvas hands out a webgl2 OR a
+             2d context, never both, so the two modes cannot share one. -->
         <canvas class="bio-bg" id="bioBg" aria-hidden="true"></canvas>
+        <canvas class="bio-bg" id="tissueBg" aria-hidden="true" hidden></canvas>
         <a class="skip-link" href="#main-content">Skip to main content</a>
         <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
         <!-- Sticky Navigation -->
@@ -876,7 +879,10 @@
             <span class="footer-affiliation"><strong>UNIVERSITY OF WATERLOO</strong><span>Houfu Chen · PhD Researcher · Chemical Engineering · E6-3018</span></span>
             <span>&copy; <span id="currentYear">2026</span> Houfu Chen</span>
             <span data-en="Built with curiosity in Waterloo" data-zh="在滑铁卢，以好奇心构建">Built with curiosity in Waterloo</span>
-            <span data-en="Backdrop: live leaf tissue, streaming as you scroll" data-zh="背景：实时叶片组织，随滚动而流动">Backdrop: live leaf tissue, streaming as you scroll</span>
+            <span class="backdrop-credit">
+                <span data-en="Backdrop: live leaf tissue" data-zh="背景：实时叶片组织">Backdrop: live leaf tissue</span>
+                <button class="backdrop-mode" id="backdropMode" type="button" hidden></button>
+            </span>
         </p>
     </footer>
 

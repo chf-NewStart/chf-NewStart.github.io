@@ -1841,6 +1841,32 @@ footer p {
     letter-spacing: 0.04em;
 }
 
+.backdrop-credit {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: baseline;
+}
+
+.backdrop-mode {
+    padding: 0;
+    border: 0;
+    color: var(--muted);
+    background: none;
+    font: inherit;
+    letter-spacing: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.backdrop-mode:hover,
+.backdrop-mode:focus-visible {
+    color: var(--accent);
+    text-decoration-color: currentColor;
+}
+
 .footer-affiliation {
     display: inline-flex;
     flex-wrap: wrap;

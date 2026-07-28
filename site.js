@@ -261,6 +261,9 @@
         }
 
         updateTomatoPetCopy();
+        // The backdrop toggle names the mode you'd switch to, so its label is
+        // built in JS rather than from a static data-en/data-zh pair.
+        if (typeof updateBackdropModeLabel === 'function') updateBackdropModeLabel();
         if (tomatoPetStatus && body.classList.contains('pet-is-open')) {
             if (tomatoPet?.dataset.mood === 'idle') {
                 tomatoPetStatus.textContent = currentLanguage === 'zh'
@@ -627,6 +630,83 @@
         setTomatoMode(false);
         tomatoToggle?.focus();
     });
+
+    // --- Backdrop modes ---------------------------------------------------
+    // Two engines, one canvas each: 'flow' is the WebGL shader (bio-bg.js,
+    // loaded eagerly), 'tissue' is the Canvas2D field (cell-bg.js, fetched
+    // only if chosen, since most visitors never switch).
+    const backdropModeBtn = document.getElementById('backdropMode');
+    const BACKDROP_MODES = {
+        flow: { api: () => window.BIO_BG, src: null },
+        tissue: { api: () => window.CELL_BG, src: 'cell-bg.js' },
+    };
+    let backdropMode = localStorage.getItem('backdropMode') === 'tissue' ? 'tissue' : 'flow';
+    const loadedEngines = {};
+
+    function loadEngine(mode) {
+        const entry = BACKDROP_MODES[mode];
+        if (!entry.src || entry.api()) return Promise.resolve(entry.api());
+        if (!loadedEngines[mode]) {
+            loadedEngines[mode] = new Promise((resolve) => {
+                const tag = document.createElement('script');
+                tag.src = entry.src;
+                tag.onload = () => resolve(entry.api());
+                tag.onerror = () => resolve(null);
+                document.head.appendChild(tag);
+            });
+        }
+        return loadedEngines[mode];
+    }
+
+    function updateBackdropModeLabel() {
+        if (!backdropModeBtn) return;
+        // Offer the mode you would switch TO, not the one you are in.
+        const next = backdropMode === 'flow' ? 'tissue' : 'flow';
+        const label = currentLanguage === 'zh'
+            ? (next === 'tissue' ? '换成静态切片' : '换成流动组织')
+            : (next === 'tissue' ? 'switch to still section' : 'switch to flowing tissue');
+        backdropModeBtn.textContent = label;
+        backdropModeBtn.dataset.en = next === 'tissue' ? 'switch to still section' : 'switch to flowing tissue';
+        backdropModeBtn.dataset.zh = next === 'tissue' ? '换成静态切片' : '换成流动组织';
+    }
+
+    async function applyBackdropMode(mode, persist = true) {
+        const target = BACKDROP_MODES[mode] ? mode : 'flow';
+        const engine = await loadEngine(target);
+        if (!engine || (engine.isSupported && !engine.isSupported())) {
+            // Fall back to the other engine rather than leaving a blank page.
+            const other = target === 'flow' ? 'tissue' : 'flow';
+            if (other !== backdropMode || !BACKDROP_MODES[other].api()) {
+                const fallback = await loadEngine(other);
+                if (fallback && (!fallback.isSupported || fallback.isSupported())) {
+                    backdropMode = other;
+                    Object.keys(BACKDROP_MODES).forEach((m) => {
+                        if (m !== other) BACKDROP_MODES[m].api()?.stop?.();
+                    });
+                    fallback.start();
+                    updateBackdropModeLabel();
+                    return;
+                }
+            }
+            backdropModeBtn?.setAttribute('hidden', '');
+            return;
+        }
+        Object.keys(BACKDROP_MODES).forEach((m) => {
+            if (m !== target) BACKDROP_MODES[m].api()?.stop?.();
+        });
+        engine.start();
+        backdropMode = target;
+        if (persist) localStorage.setItem('backdropMode', target);
+        updateBackdropModeLabel();
+    }
+
+    if (backdropModeBtn) {
+        backdropModeBtn.hidden = false;
+        backdropModeBtn.addEventListener('click', () => {
+            applyBackdropMode(backdropMode === 'flow' ? 'tissue' : 'flow');
+        });
+    }
+    applyBackdropMode(backdropMode, false);
 
     const copyEmail = document.getElementById('copyEmail');
     copyEmail?.addEventListener('click', async () => {

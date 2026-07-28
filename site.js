@@ -253,7 +253,7 @@
     // deliberately not used — the campus fauna is the better joke anyway.
     const RAIN_SPRITES = ['goose', 'raccoon', 'glider', 'block', 'blinker'];
 
-    const REST = 0.10, WALL = 0.45, FRIC = 0.82, MAXV = 17, MAX_BODIES = 40;
+    const REST = 0.10, WALL = 0.45, FRIC = 0.82, MAXV = 17, MAX_BODIES = 56;
     const GRAV = 0.55, VDX = 0.92, VDY = 0.99, SLEEP_V = 0.35, SLEEP_FRAMES = 30;
 
     const hero = document.getElementById('hero-section');
@@ -415,12 +415,20 @@
     function burst(count) {
         ensureLayer();
         if (!rainW) return;
-        for (let i = 0; i < count; i++) {
+        // Shuffled column order: the line fills in everywhere at once instead
+        // of sweeping left to right.
+        const cols = Array.from({ length: count }, (_, i) => i);
+        for (let i = cols.length - 1; i > 0; i--) {
+            const j = (Math.random() * (i + 1)) | 0;
+            [cols[i], cols[j]] = [cols[j], cols[i]];
+        }
+        cols.forEach((col, i) => {
             window.setTimeout(() => {
                 if (!rainOn) return;
-                spawnAt(rainW * (0.1 + 0.8 * ((i + 0.5) / count)), -20 - Math.random() * 60);
-            }, i * 110);
-        }
+                const jitter = (Math.random() - 0.5) * (0.9 / count);
+                spawnAt(rainW * (0.05 + 0.9 * ((col + 0.5) / count) + jitter), -20 - Math.random() * 120);
+            }, i * 45);
+        });
     }
 
     function restingPile(count) {
@@ -467,7 +475,7 @@
         if (!on) { stopDrizzle(); clearRain(); return; }
         ensureLayer();
         if (rainReduced()) restingPile(7);
-        else { burst(6); ensureRainRaf(); startDrizzle(); }
+        else { burst(34); ensureRainRaf(); startDrizzle(); }
         if (announce) {
             showNotice(currentLanguage === 'zh' ? '> 番茄雨开始了' : '> TOMATO RAIN ENGAGED');
         }
@@ -503,7 +511,7 @@
         stopDrizzle();
         clearRain();
         if (rainReduced()) restingPile(7);
-        else { burst(6); ensureRainRaf(); startDrizzle(); }
+        else { burst(34); ensureRainRaf(); startDrizzle(); }
     });
 
     let rainResizeTimer = null;

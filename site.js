@@ -505,7 +505,7 @@
         tomatoToggle.title = label;
     }
 
-    function setRain(on, announce = true) {
+    function setRain(on, announce = true, opening = 34) {
         rainOn = on;
         tomatoToggle?.setAttribute('aria-pressed', String(on));
         try { localStorage.setItem('tomatoRain', on ? 'on' : 'off'); } catch { /* private mode */ }
@@ -513,7 +513,7 @@
         if (!on) { stopDrizzle(); clearRain(); return; }
         ensureLayer();
         if (rainReduced()) restingPile(7);
-        else { burst(34); ensureRainRaf(); startDrizzle(); }
+        else { burst(opening); ensureRainRaf(); startDrizzle(); }
         if (announce) {
             showNotice(currentLanguage === 'zh' ? '> 番茄雨开始了' : '> TOMATO RAIN ENGAGED');
         }
@@ -860,7 +860,11 @@
     });
     // ---------------------------------------------------------------------
 
-    setRain(localStorage.getItem('tomatoRain') === 'on', false);
+    // Rain is on unless the visitor has turned it off. Arriving is a gentler
+    // opening than tapping: a handful of bodies drifting in, then the drizzle,
+    // rather than dumping 34 over the headline the instant the page paints.
+    // Tapping still gets the full burst.
+    setRain(localStorage.getItem('tomatoRain') !== 'off', false, 9);
     applyLanguage(currentLanguage);
     updateScrollUI();
 })();

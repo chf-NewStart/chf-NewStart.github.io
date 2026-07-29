@@ -208,7 +208,7 @@
         vec2 q = p * CELLS + drift + vec2(0.0, uScroll * 0.0011 * CELLS);
 
         vec2 cellId, toCell;
-        float border = voronoi(q, uTime * 0.18, cellId, toCell);
+        float border = voronoi(q, 4.31 + uTime * 0.012, cellId, toCell);
 
         float r0 = hash1(cellId);
         float r1 = hash1(cellId + 11.3);
@@ -302,7 +302,7 @@
     let sizedH = 0;
 
     // Streaming/scroll state.
-    const BASE_FLOW = 0.085;                 // resting phase rate (matches before)
+    const BASE_FLOW = 0.30;                  // ~3.3s per cycle; 0.085 read as static
     // Envelope time constants in seconds. These replace per-frame smoothing
     // factors (0.45 attack / 0.045 release for energy, 0.3 / 0.05 for dir at
     // 60fps; tau = -T / ln(1 - k)), so the envelope keeps the same shape no

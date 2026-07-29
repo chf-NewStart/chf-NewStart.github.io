@@ -454,8 +454,10 @@
         const c = el();
         if (!c || !initOk) return;
         dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-        sizedW = window.innerWidth;
-        sizedH = window.innerHeight;
+        // Measure the canvas, not the window: the stylesheet sizes it in lvh,
+        // which does not equal innerHeight while the toolbars are showing.
+        sizedW = c.clientWidth || window.innerWidth;
+        sizedH = c.clientHeight || window.innerHeight;
         outW = Math.max(1, Math.round(sizedW * dpr));
         outH = Math.max(1, Math.round(sizedH * dpr));
         c.width = outW;
@@ -707,7 +709,8 @@
         active = true;
         c.removeAttribute('hidden');
         if (!init()) return;                 // fallback class already applied
-        if (outW === 0 || sizedW !== window.innerWidth || sizedH !== window.innerHeight) {
+        if (outW === 0 || sizedW !== (c.clientWidth || window.innerWidth)
+            || sizedH !== (c.clientHeight || window.innerHeight)) {
             applySize();
         }
         if (reduceMotion.matches) {

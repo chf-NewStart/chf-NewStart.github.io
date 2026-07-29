@@ -254,6 +254,8 @@
     const RAIN_SPRITES = ['goose', 'raccoon', 'glider', 'block', 'blinker'];
 
     const REST = 0.10, WALL = 0.45, FRIC = 0.82, MAXV = 17, MAX_BODIES = 56;
+    const VROT_DRAG = 0.94;       // spin bleeds off wherever a body rests
+    const VROT_STOP = 0.02;       // below this, stop turning outright
     const SLEEP_DRIFT = 0.25;     // px moved per frame below which a body settles
     const WAKE_OVERLAP = 0.35;    // px; below this, a pair counts as resolved
     const GRAV = 0.55, VDX = 0.92, VDY = 0.99, SLEEP_V = 0.35, SLEEP_FRAMES = 30;
@@ -353,6 +355,12 @@
             b.vy += GRAV;
             b.vx *= VDX;
             b.vy *= VDY;
+            // Angular drag applies every frame, not only on floor contact.
+            // Damping spin only in the floor branch meant anything that came
+            // to rest on top of the pile — most of it — never stopped turning,
+            // which also kept its drift above the sleep threshold forever.
+            b.vrot *= VROT_DRAG;
+            if (Math.abs(b.vrot) < VROT_STOP) b.vrot = 0;
             b.vx = Math.max(-MAXV, Math.min(MAXV, b.vx));
             b.vy = Math.max(-MAXV, Math.min(MAXV, b.vy));
             b.x += b.vx;
@@ -394,6 +402,7 @@
                     a.vx -= imp * nx; a.vy -= imp * ny;
                     c.vx += imp * nx; c.vy += imp * ny;
                 }
+                a.vrot *= FRIC; c.vrot *= FRIC;
                 if (push > WAKE_OVERLAP) {
                     a.asleep = c.asleep = false;
                     a.sleep = c.sleep = 0;

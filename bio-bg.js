@@ -266,10 +266,19 @@
         // Besides being the correct boundary condition, this is what guarantees
         // nothing can be advected across a cell boundary — the flow simply stops
         // before it gets there.
-        v *= smoothstep(0.0, 0.16, border);
+        // Flow lives in a BAND, not a ramp. No-slip holds at the wall surface,
+        // but the cortical cytoplasm layer has thickness and streams
+        // tangentially along the wall — and the middle of the cell is vacuole,
+        // with no cytoplasm to flow at all. A monotonic ramp put peak flow in
+        // the vacuole and zero flow exactly where the chloroplasts are packed
+        // (cortex peaks at border 0.04, the ramp reached full only at 0.16), so
+        // the visible pigment barely moved: correct anatomy and correct physics
+        // cancelling each other out. This peaks the shear across the cortical
+        // band where the granules actually sit.
+        v *= smoothstep(0.0, 0.045, border) * (1.0 - smoothstep(0.20, 0.44, border));
 
         vec2 base = local * 5.6 + cellId * 7.0;  // larger, more liquid structures
-        float AMP = 1.1 + uEnergy * 1.4;         // v is already scaled by energy above
+        float AMP = 1.6 + uEnergy * 1.4;         // longer travel per cycle, so streaming reads
         float ph = uFlow;                        // phase advances faster when stirred
         float t0 = fract(ph);
         float t1 = fract(ph + 0.5);

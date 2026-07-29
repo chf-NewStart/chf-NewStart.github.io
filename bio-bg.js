@@ -223,8 +223,12 @@
         vec2 local = -toCell;                    // cell centre -> pixel, ~[-1,1]
         float spin = (r0 - 0.5) * 2.0;           // per-cell direction + strength
 
-        vec2 v = flowVel(local * 1.5 + cellId * 3.3);
-        v += vec2(-local.y, local.x) * spin * (0.6 + 0.4 * r1); // circulation
+        // Cytoplasmic streaming is myosin walking along aligned actin cables at
+        // the cell cortex, so it runs as an organised rotational current with a
+        // consistent per-cell direction — not as turbulence. Circulation leads;
+        // the curl-noise stays only as a small irregularity on top of it.
+        vec2 v = vec2(-local.y, local.x) * spin * (1.5 + 0.5 * r1);
+        v += flowVel(local * 1.5 + cellId * 3.3) * 0.22;
         v += vec2(0.0, uDir) * uEnergy * 2.6;    // scrolling drags a current through
 
         vec2 base = local * 5.6 + cellId * 7.0;  // larger, more liquid structures
@@ -240,11 +244,16 @@
 
         // 0 at the wall, 1 deep inside the cell.
         float interior = smoothstep(0.0, 0.14, border);
+        // A mature plant cell is mostly central vacuole: the cytoplasm is a
+        // thin layer pressed against the wall, and that is where the
+        // chloroplasts sit. Weight pigment toward the periphery — the middle
+        // of a cell should be the emptiest part of it, not the fullest.
+        float cortex = 1.0 - smoothstep(0.04, 0.30, border);
 
-        // Dark cytoplasm the pigment streams through.
-        vec3 cyto = mix(vec3(0.015, 0.035, 0.022), vec3(0.030, 0.080, 0.040), interior);
+        // Vacuole in the centre, denser cytoplasm at the rim.
+        vec3 cyto = mix(vec3(0.014, 0.030, 0.020), vec3(0.026, 0.062, 0.034), cortex);
 
-        vec3 col = mix(cyto, gcol.rgb, gcol.a * (0.55 + 0.45 * interior));
+        vec3 col = mix(cyto, gcol.rgb, gcol.a * (0.16 + 0.84 * cortex));
 
         // Cell wall: dark vein plus a thin iridescent rim, like the chromatic
         // fringing of a bright-field microscope.
@@ -260,7 +269,7 @@
         // Dim and vignette so the field sits quietly behind page content;
         // scrolling lifts it a touch so the tissue visibly stirs awake.
         float vig = smoothstep(1.40, 0.20, length(p));
-        col *= mix(0.46, 1.0, vig) * (1.05 + uEnergy * 0.28);
+        col *= mix(0.46, 1.0, vig) * (1.45 + uEnergy * 0.28);
 
         // Guaranteed contrast where body text lands (measured, see calibrate()).
         col *= safeFactor();

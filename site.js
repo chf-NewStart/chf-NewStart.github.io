@@ -490,8 +490,8 @@
         if (!tomatoToggle) return;
         // Tap and hold do different things, so the label has to teach both.
         const label = currentLanguage === 'zh'
-            ? (rainOn ? '再来一轮番茄雨（长按停止）' : '来一场番茄雨')
-            : (rainOn ? 'Another round of tomato rain (hold to stop)' : 'Make it rain tomatoes');
+            ? (rainOn ? '停止番茄雨（长按可持续倾泻）' : '来一场番茄雨（长按持续倾泻）')
+            : (rainOn ? 'Stop the tomato rain (hold to pour more)' : 'Make it rain tomatoes (hold to pour)');
         tomatoToggle.setAttribute('aria-label', label);
         tomatoToggle.title = label;
     }
@@ -510,37 +510,51 @@
         }
     }
 
-    // Tap = another round; press and hold = stop. A hold is not discoverable
-    // or reachable by keyboard, so the title says so and Escape also stops.
-    const RAIN_HOLD_MS = 450;
+    // Tap toggles; press and hold pours. The plain tap does the safe, obvious
+    // thing (start, then stop) because that is the gesture everyone tries
+    // first and nobody should be stuck unable to turn it off. Holding is the
+    // hidden extra, and it pours continuously rather than firing one burst.
+    const RAIN_HOLD_MS = 260;      // past this, it is a pour, not a tap
+    const RAIN_POUR_MS = 70;       // spawn interval while held
     let rainHoldTimer = null;
-    let rainHeld = false;
+    let rainPourTimer = null;
+    let rainPoured = false;
+
+    function pourTick() {
+        if (!rainOn || rainReduced()) return;
+        ensureLayer();
+        if (rainW) spawnAt(rainW * (0.06 + 0.88 * Math.random()), -25 - Math.random() * 60);
+    }
 
     function beginRainHold() {
-        rainHeld = false;
-        if (!rainOn) return;                      // nothing to stop yet
+        rainPoured = false;
         window.clearTimeout(rainHoldTimer);
         rainHoldTimer = window.setTimeout(() => {
-            rainHeld = true;
-            setRain(false);
+            rainPoured = true;
+            if (!rainOn) setRain(true, false);       // holding from cold starts it
+            if (rainReduced()) return;
+            pourTick();
+            rainPourTimer = window.setInterval(pourTick, RAIN_POUR_MS);
         }, RAIN_HOLD_MS);
     }
 
     function endRainHold() {
         window.clearTimeout(rainHoldTimer);
         rainHoldTimer = null;
+        if (rainPourTimer) { window.clearInterval(rainPourTimer); rainPourTimer = null; }
     }
 
     tomatoToggle?.addEventListener('pointerdown', beginRainHold);
     tomatoToggle?.addEventListener('pointerup', endRainHold);
     tomatoToggle?.addEventListener('pointerleave', endRainHold);
     tomatoToggle?.addEventListener('pointercancel', endRainHold);
+    // A long press must not raise the iOS callout or start a selection.
+    tomatoToggle?.addEventListener('contextmenu', (e) => { if (rainPoured) e.preventDefault(); });
 
     tomatoToggle?.addEventListener('click', () => {
         setMenu(false);
-        if (rainHeld) { rainHeld = false; return; }   // the hold already stopped it
-        if (!rainOn) setRain(true);
-        else if (!rainReduced()) burst(34);           // another round
+        if (rainPoured) { rainPoured = false; return; }  // that was a pour, not a tap
+        setRain(!rainOn);
     });
 
     hero?.addEventListener('pointermove', (event) => {

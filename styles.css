@@ -336,6 +336,11 @@ h4 {
 .icon-button,
 .hamburger {
     display: grid;
+    /* A long press on these must not select text or raise the iOS callout. */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
     width: 36px;
     height: 36px;
     place-items: center;

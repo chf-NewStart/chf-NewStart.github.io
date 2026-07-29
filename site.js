@@ -259,6 +259,11 @@
     const hero = document.getElementById('hero-section');
     let rainLayer = null, bodies = [], rainRaf = 0, rainW = 0, rainH = 0;
     let rainOn = false, lastSpawn = 0;
+    // The tomato art is monospace, so its rendered width scales linearly with
+    // font-size. Measure that ratio once — reading offsetWidth forces a
+    // synchronous layout, and doing it on every spawn (drizzle + pointer)
+    // jittered the frame interval the WebGL backdrop shares.
+    let tomatoWidthPerFs = 0;
 
     function rainReduced() { return reducedMotionQuery.matches; }
 
@@ -309,7 +314,11 @@
             el.style.color = col;
             el.style.textShadow = `0 0 7px ${col}dd, 0 2px 6px rgba(0,0,0,0.75)`;
             layer.appendChild(el);
-            r = (el.offsetWidth * 0.32) || fs * 5.4;
+            if (!tomatoWidthPerFs) {
+                const w = el.offsetWidth;
+                if (w) tomatoWidthPerFs = w / fs;
+            }
+            r = tomatoWidthPerFs ? tomatoWidthPerFs * fs * 0.32 : fs * 5.4;
         } else {
             const name = RAIN_SPRITES[(Math.random() * RAIN_SPRITES.length) | 0];
             const size = 30 + Math.random() * 22;

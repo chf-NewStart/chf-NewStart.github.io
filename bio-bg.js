@@ -294,6 +294,25 @@
 
     // Streaming/scroll state.
     const BASE_FLOW = 0.085;                 // resting phase rate (matches before)
+    // Envelope time constants in seconds. These replace per-frame smoothing
+    // factors (0.45 attack / 0.045 release for energy, 0.3 / 0.05 for dir at
+    // 60fps; tau = -T / ln(1 - k)), so the envelope keeps the same shape no
+    // matter how often the loop runs. With per-frame factors, anything that
+    // jittered the frame interval — the tomato rain sharing the main thread —
+    // reshaped the envelope, and since energy also drives the shader's final
+    // exposure, that read as the backdrop flickering.
+    const ENERGY_ATTACK_TAU = 0.028;
+    const ENERGY_RELEASE_TAU = 0.36;
+    const DIR_ATTACK_TAU = 0.047;
+    const DIR_RELEASE_TAU = 0.33;
+    // Full stir at this scroll speed in CSS px/s (was 45 px/frame at 60fps).
+    const ENERGY_FULL_VEL = 2700;
+    const DIR_MIN_VEL = 30;                  // was 0.5 px/frame at 60fps
+    // Frames longer than this are genuine stalls (tab switch, jank spike):
+    // advance the flow by the cap instead of teleporting it. Ordinary heavy
+    // frames below the cap advance in real time, so motion stays wall-clock
+    // true under load instead of slowing down.
+    const MAX_DT = 0.25;
     let flow = 0;                            // accumulated streaming phase
     let energy = 0;                          // 0..1 stir intensity
     let dir = 0;                             // smoothed scroll direction, -1..1
@@ -460,19 +479,22 @@
     // Fold recent scroll motion into the stir energy and streaming phase.
     // Sampled once per drawn frame so it is robust to irregular scroll events.
     function integrate(now) {
-        let dt = (now - lastT) / 1000;
+        const rawDt = (now - lastT) / 1000;
         lastT = now;
-        if (dt > 0.05) dt = 0.05;            // clamp tab-switch / stall gaps
+        const dt = Math.min(rawDt, MAX_DT);
 
         scrollY = window.scrollY || window.pageYOffset || 0;
         const rawVel = scrollY - prevScroll;
         prevScroll = scrollY;
+        const vel = rawVel / Math.max(rawDt, 0.001);   // CSS px per second
 
-        const target = Math.min(Math.abs(rawVel) / 45, 1);
+        const target = Math.min(Math.abs(vel) / ENERGY_FULL_VEL, 1);
         // Fast attack, slow release: energy jumps on scroll, eases back to calm.
-        energy += (target - energy) * (target > energy ? 0.45 : 0.045);
-        if (Math.abs(rawVel) > 0.5) dir += (Math.sign(rawVel) - dir) * 0.3;
-        else dir += (0 - dir) * 0.05;
+        const eTau = target > energy ? ENERGY_ATTACK_TAU : ENERGY_RELEASE_TAU;
+        energy += (target - energy) * (1 - Math.exp(-dt / eTau));
+        const dTarget = Math.abs(vel) > DIR_MIN_VEL ? Math.sign(vel) : 0;
+        const dTau = dTarget !== 0 ? DIR_ATTACK_TAU : DIR_RELEASE_TAU;
+        dir += (dTarget - dir) * (1 - Math.exp(-dt / dTau));
 
         flow += dt * (BASE_FLOW + energy * 0.55);
     }

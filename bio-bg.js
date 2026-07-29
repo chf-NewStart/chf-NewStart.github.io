@@ -229,6 +229,17 @@
         // the curl-noise stays only as a small irregularity on top of it.
         vec2 v = vec2(-local.y, local.x) * spin * (1.5 + 0.5 * r1);
         v += flowVel(local * 1.5 + cellId * 3.3) * 0.22;
+
+        // Cytoplasm is a FLUID, not a turntable. Streaming runs in files along
+        // actin cables, so bands across the cell travel at different rates and
+        // shear past each other — that shear is most of what separates flowing
+        // cytoplasm from a rotating texture. Safe to add now that the wall
+        // lattice is anchored; while the walls were also sweeping, this smeared.
+        float lane = vnoise(local * 3.4 + cellId * 5.7);
+        // Organelles move saltatorily, jerking and pausing as they bind and
+        // release myosin. Per-lane phase, so the cell never pulses as one body.
+        float stutter = 0.82 + 0.26 * vnoise(vec2(uTime * 0.7 + lane * 9.3, lane * 4.1));
+        v *= (0.70 + 0.60 * lane) * stutter;
         v += vec2(0.0, uDir) * uEnergy * 2.6;    // scrolling drags a current through
 
         vec2 base = local * 5.6 + cellId * 7.0;  // larger, more liquid structures

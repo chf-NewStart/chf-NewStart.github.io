@@ -227,7 +227,19 @@
         // the cell cortex, so it runs as an organised rotational current with a
         // consistent per-cell direction — not as turbulence. Circulation leads;
         // the curl-noise stays only as a small irregularity on top of it.
-        vec2 v = vec2(-local.y, local.x) * spin * (1.5 + 0.5 * r1);
+        // Every cell is a differently shaped container, so its circulation
+        // should be a differently shaped vortex. Rotate into a per-cell
+        // principal axis and stretch the circulation along it: a stubby cell
+        // swirls round, an elongated one recirculates as a long ellipse. This
+        // costs one 2x2 rotation and two multiplies and adds NO noise samples,
+        // so it does not move the frame budget.
+        float th = r2 * 6.2831853;
+        float ca = cos(th), sa = sin(th);
+        float asp = 0.55 + 1.05 * r1;            // this cell's vortex aspect
+        vec2 e = vec2(ca * local.x - sa * local.y, sa * local.x + ca * local.y);
+        vec2 circ = vec2(-e.y * asp, e.x / asp);
+        vec2 v = vec2(ca * circ.x + sa * circ.y, -sa * circ.x + ca * circ.y);
+        v *= spin * (1.5 + 0.5 * r1);
         v += flowVel(local * 1.5 + cellId * 3.3) * 0.22;
 
         // Cytoplasm is a FLUID, not a turntable. Streaming runs in files along
@@ -240,10 +252,24 @@
         // release myosin. Per-lane phase, so the cell never pulses as one body.
         float stutter = 0.82 + 0.26 * vnoise(vec2(uTime * 0.7 + lane * 9.3, lane * 4.1));
         v *= (0.70 + 0.60 * lane) * stutter;
-        v += vec2(0.0, uDir) * uEnergy * 2.6;    // scrolling drags a current through
+        // Scrolling stirs each cell HARDER; it must not drag a current across the
+        // tissue. The uniform translation that used to be here was the same at
+        // every pixel regardless of which cell it fell in, so it swept pigment
+        // straight through the walls and carried chloroplasts from one cell into
+        // the next — which cannot happen, since the wall is what confines them.
+        // Energy now amplifies the cell's own circulation, and scroll direction
+        // only leans that circulation one way or the other.
+        v *= 1.0 + uEnergy * 2.2;
+        v += vec2(-local.y, local.x) * uDir * uEnergy * 0.9;
+
+        // No-slip: a real fluid has zero velocity where it meets a rigid wall.
+        // Besides being the correct boundary condition, this is what guarantees
+        // nothing can be advected across a cell boundary — the flow simply stops
+        // before it gets there.
+        v *= smoothstep(0.0, 0.16, border);
 
         vec2 base = local * 5.6 + cellId * 7.0;  // larger, more liquid structures
-        float AMP = 1.1 + uEnergy * 3.6;         // gentle drift at rest, surges on scroll
+        float AMP = 1.1 + uEnergy * 1.4;         // v is already scaled by energy above
         float ph = uFlow;                        // phase advances faster when stirred
         float t0 = fract(ph);
         float t1 = fract(ph + 0.5);

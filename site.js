@@ -254,6 +254,8 @@
     const RAIN_SPRITES = ['goose', 'raccoon', 'glider', 'block', 'blinker'];
 
     const REST = 0.10, WALL = 0.45, FRIC = 0.82, MAXV = 17, MAX_BODIES = 56;
+    const SLEEP_DRIFT = 0.25;     // px moved per frame below which a body settles
+    const WAKE_OVERLAP = 0.35;    // px; below this, a pair counts as resolved
     const GRAV = 0.55, VDX = 0.92, VDY = 0.99, SLEEP_V = 0.35, SLEEP_FRAMES = 30;
 
     const hero = document.getElementById('hero-section');
@@ -347,6 +349,7 @@
         let awake = 0;
         for (const b of bodies) {
             if (b.asleep) continue;
+            b.px = b.x; b.py = b.y; b.prot = b.rot;
             b.vy += GRAV;
             b.vx *= VDX;
             b.vy *= VDY;
@@ -368,9 +371,14 @@
         }
 
         // Separate overlapping bodies so they stack instead of interpenetrating.
+        // Two sleeping bodies are already resolved against each other, so skip
+        // the pair entirely: settled neighbours rest in permanent sub-pixel
+        // overlap, and re-solving them woke the whole pile every frame, which
+        // meant the loop never stopped and every scroll fought 56 live bodies.
         for (let i = 0; i < bodies.length; i++) {
             for (let j = i + 1; j < bodies.length; j++) {
                 const a = bodies[i], c = bodies[j];
+                if (a.asleep && c.asleep) continue;
                 const dx = c.x - a.x, dy = c.y - a.y;
                 const d2 = dx * dx + dy * dy;
                 const min = a.r + c.r;
@@ -386,19 +394,30 @@
                     a.vx -= imp * nx; a.vy -= imp * ny;
                     c.vx += imp * nx; c.vy += imp * ny;
                 }
-                a.asleep = c.asleep = false;
-                a.sleep = c.sleep = 0;
+                if (push > WAKE_OVERLAP) {
+                    a.asleep = c.asleep = false;
+                    a.sleep = c.sleep = 0;
+                }
             }
         }
 
         for (const b of bodies) {
-            place(b);
+            if (!b.asleep) place(b);
             if (b.asleep) continue;
             // A body resting quietly stops being simulated; when every body is
             // asleep the loop stops entirely rather than idling at 60fps.
-            if (Math.abs(b.vx) + Math.abs(b.vy) + Math.abs(b.vrot) < SLEEP_V && b.y >= rainH - b.r - 1) {
+            // Test how far the body actually MOVED, not its velocity. A body
+            // resting on the floor still carries |vy| ~= GRAV every frame:
+            // gravity accelerates it, the floor bounces it back, and it never
+            // drops below a velocity threshold. Displacement does settle.
+            const drift = Math.abs(b.x - b.px) + Math.abs(b.y - b.py) + Math.abs(b.rot - b.prot) * 0.5;
+            if (drift < SLEEP_DRIFT) {
                 b.sleep += 1;
-                if (b.sleep > SLEEP_FRAMES) { b.asleep = true; b.vx = b.vy = b.vrot = 0; }
+                if (b.sleep > SLEEP_FRAMES) {
+                    b.asleep = true;
+                    b.vx = b.vy = b.vrot = 0;
+                    place(b);
+                }
             } else {
                 b.sleep = 0;
             }
@@ -469,9 +488,10 @@
 
     function updateRainLabel() {
         if (!tomatoToggle) return;
+        // Tap and hold do different things, so the label has to teach both.
         const label = currentLanguage === 'zh'
-            ? (rainOn ? '停止番茄雨' : '来一场番茄雨')
-            : (rainOn ? 'Stop the tomato rain' : 'Make it rain tomatoes');
+            ? (rainOn ? '再来一轮番茄雨（长按停止）' : '来一场番茄雨')
+            : (rainOn ? 'Another round of tomato rain (hold to stop)' : 'Make it rain tomatoes');
         tomatoToggle.setAttribute('aria-label', label);
         tomatoToggle.title = label;
     }
@@ -490,9 +510,37 @@
         }
     }
 
+    // Tap = another round; press and hold = stop. A hold is not discoverable
+    // or reachable by keyboard, so the title says so and Escape also stops.
+    const RAIN_HOLD_MS = 450;
+    let rainHoldTimer = null;
+    let rainHeld = false;
+
+    function beginRainHold() {
+        rainHeld = false;
+        if (!rainOn) return;                      // nothing to stop yet
+        window.clearTimeout(rainHoldTimer);
+        rainHoldTimer = window.setTimeout(() => {
+            rainHeld = true;
+            setRain(false);
+        }, RAIN_HOLD_MS);
+    }
+
+    function endRainHold() {
+        window.clearTimeout(rainHoldTimer);
+        rainHoldTimer = null;
+    }
+
+    tomatoToggle?.addEventListener('pointerdown', beginRainHold);
+    tomatoToggle?.addEventListener('pointerup', endRainHold);
+    tomatoToggle?.addEventListener('pointerleave', endRainHold);
+    tomatoToggle?.addEventListener('pointercancel', endRainHold);
+
     tomatoToggle?.addEventListener('click', () => {
         setMenu(false);
-        setRain(!rainOn);
+        if (rainHeld) { rainHeld = false; return; }   // the hold already stopped it
+        if (!rainOn) setRain(true);
+        else if (!rainReduced()) burst(34);           // another round
     });
 
     hero?.addEventListener('pointermove', (event) => {

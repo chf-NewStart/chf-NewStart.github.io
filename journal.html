@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com https://api.weather.gc.ca https://get.geojs.io https://api.open-meteo.com https://air-quality-api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Journal intime // houfu72.com</title>
   <meta name="description" content="A quiet private journal — one page per day, saved only in your browser.">
@@ -954,14 +955,29 @@
   (function importFromLink(){
     var m = location.hash.match(/^#setup=(.+)$/);
     if (!m) return;
+    // Strip the hash first, whatever happens next, so the credentials never
+    // linger in the address bar or get re-applied on reload.
+    var clear = function(){ history.replaceState(null, '', location.pathname + location.search); };
     try {
       var cfg = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
       if (cfg && cfg.repo && cfg.token && cfg.pass){
-        syncCfg = { repo: cfg.repo, token: cfg.token, pass: cfg.pass };
-        localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg));
+        // A setup link carries a GitHub token that decides which repo this
+        // journal syncs to. Opening one you did not create yourself would
+        // silently point your entries at someone else's repo, so confirm the
+        // destination — naming the repo — before trusting it. Never auto-apply.
+        var ok = window.confirm(
+          'Connect this journal’s encrypted sync to the GitHub repo:\n\n    ' +
+          String(cfg.repo) +
+          '\n\nOnly continue if you created this setup link yourself. ' +
+          'A link from anyone else can redirect your journal to their repo.'
+        );
+        if (ok){
+          syncCfg = { repo: cfg.repo, token: cfg.token, pass: cfg.pass };
+          localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg));
+        }
       }
     } catch(e){}
-    history.replaceState(null, '', location.pathname + location.search);
+    clear();
   })();
 
   function scheduleSync(){

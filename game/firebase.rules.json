@@ -1,0 +1,36 @@
+{
+  "//": "Realtime Database security rules for the gomoku remote-play DB (remoteplay-b5486).",
+  "//paste": "Firebase console -> Realtime Database -> Rules -> paste this -> Publish.",
+  "//why": "Default test-mode rules ('.read'/'.write': true everywhere) let anyone read every game and write unlimited data, which is how a stranger can run up your quota. These rules confine all access to the /games/<code> paths the client actually uses, cap the room code and payload shapes, and deny everything else. There is no auth in the game, so writes stay open within those paths — pair this with Firebase budget alerts and a low daily usage cap.",
+
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "games": {
+      "$code": {
+        ".read": "$code.matches(/^[A-HJ-NP-Z2-9]{6}$/)",
+        ".write": "$code.matches(/^[A-HJ-NP-Z2-9]{6}$/)",
+
+        "meta": {
+          ".validate": "newData.hasChildren(['created'])",
+          "created": { ".validate": "newData.isNumber()" },
+          "session": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+        "session": { ".validate": "newData.isNumber()" },
+        "joined":  { ".validate": "newData.isBoolean()" },
+        "moves": {
+          "$moveId": {
+            ".validate": "newData.hasChildren(['r','c'])",
+            "r": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 20" },
+            "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 20" },
+            "s": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

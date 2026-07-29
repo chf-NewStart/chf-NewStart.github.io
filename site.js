@@ -505,10 +505,20 @@
         tomatoToggle.title = label;
     }
 
-    function setRain(on, announce = true, opening = 34) {
+    // v2 because the key's meaning changed. The previous build persisted on
+    // every boot, so it wrote "off" for everyone who merely loaded the page,
+    // not just those who opted out — reading that back would keep the new
+    // default suppressed forever. A fresh key discards those poisoned values.
+    const RAIN_KEY = 'tomatoRain.v2';
+
+    function setRain(on, announce = true, opening = 34, persist = true) {
         rainOn = on;
         tomatoToggle?.setAttribute('aria-pressed', String(on));
-        try { localStorage.setItem('tomatoRain', on ? 'on' : 'off'); } catch { /* private mode */ }
+        // Only an explicit choice is stored. Persisting the boot state is what
+        // caused the problem above.
+        if (persist) {
+            try { localStorage.setItem(RAIN_KEY, on ? 'on' : 'off'); } catch { /* private mode */ }
+        }
         updateRainLabel();
         if (!on) { stopDrizzle(); clearRain(); return; }
         ensureLayer();
@@ -864,7 +874,9 @@
     // opening than tapping: a handful of bodies drifting in, then the drizzle,
     // rather than dumping 34 over the headline the instant the page paints.
     // Tapping still gets the full burst.
-    setRain(localStorage.getItem('tomatoRain') !== 'off', false, 9);
+    let rainStored = null;
+    try { rainStored = localStorage.getItem(RAIN_KEY); } catch { /* private mode */ }
+    setRain(rainStored !== 'off', false, 9, false);
     applyLanguage(currentLanguage);
     updateScrollUI();
 })();

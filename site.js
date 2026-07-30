@@ -290,7 +290,15 @@
         // the page scrolled past it. Landing at the section's own bottom edge
         // is both what it should look like and the only floor that stays put
         // relative to the content around it.
+        const prevH = rainH;
         rainH = hero.clientHeight;
+        // The hero's height is not settled at first paint: web fonts arrive
+        // late and reflow the copy, images size, panels lay out. A body that
+        // already fell asleep against the older, shorter floor would hang
+        // exactly there while the real floor moved down past it — stopping in
+        // mid-air. Whenever the floor moves, put everything back in motion so
+        // it finishes the fall.
+        if (prevH && Math.abs(rainH - prevH) > 4 && bodies.length) wakeAll();
         return rainLayer;
     }
 
@@ -813,6 +821,13 @@
     let rainStored = null;
     try { rainStored = localStorage.getItem(RAIN_KEY); } catch { /* private mode */ }
     setRain(rainStored !== 'off', false, 9, false);
+
+    // Nothing spawns between bursts except the drizzle, so a floor that moves
+    // for a reason other than a spawn would go unnoticed until the next drop.
+    // Re-measure on the two events that actually move it.
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => { if (rainOn) { ensureLayer(); } });
+    }
     applyLanguage(currentLanguage);
     updateScrollUI();
 })();

@@ -488,7 +488,7 @@
             if (!rainOn || document.hidden) return;
             ensureLayer();
             if (rainW) spawnAt(rainW * (0.05 + 0.9 * Math.random()), -30 - Math.random() * 40);
-        }, 800);
+        }, 480);
     }
     function stopDrizzle() {
         if (drizzleTimer) { window.clearInterval(drizzleTimer); drizzleTimer = null; }

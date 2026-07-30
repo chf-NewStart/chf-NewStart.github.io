@@ -205,7 +205,13 @@
         const float CELLS = 2.6;
         vec2 drift = vec2(uTime * 0.020, uTime * 0.012);
         // Scrolling pans the tissue vertically (parallax).
-        vec2 q = p * CELLS + drift + vec2(0.0, uScroll * 0.0011 * CELLS);
+        // Parallax, cut to a whisper. At 0.0011 the tissue slid 2.9 cell widths
+        // per 1000px of scroll, so during a gesture the whole field translated
+        // as a rigid sheet — which swamped the internal streaming and read as
+        // the animation stopping and the picture merely moving. It also made a
+        // position:fixed backdrop appear to scroll, fighting its own fixedness.
+        // A microscope is a fixed window onto a specimen; it should stay put.
+        vec2 q = p * CELLS + drift + vec2(0.0, uScroll * 0.00022 * CELLS);
 
         vec2 cellId, toCell;
         float border = voronoi(q, 4.31 + uTime * 0.012, cellId, toCell);
@@ -784,10 +790,26 @@
     }
 
     let resizeTimer = null;
+    // Mobile browsers fire resize every time the URL bar slides away, so
+    // scrolling up and down on a phone was rebuilding the field at a new
+    // height on each direction change. Because the shader normalises by
+    // height (p = (2*fragCoord - uRes) / uRes.y), a height change rescales
+    // every cell and alters how many fit across — which reads as the backdrop
+    // changing WIDTH as you scroll. Rebuild only when the width really changes
+    // or the height moves further than a toolbar ever could.
+    let lastW = window.innerWidth;
+    let lastH = window.innerHeight;
+    const TOOLBAR_SLACK = 180;               // px of height churn to ignore
+
     window.addEventListener('resize', () => {
         window.clearTimeout(resizeTimer);
         resizeTimer = window.setTimeout(() => {
             if (!active || !initOk) return;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            if (w === lastW && Math.abs(h - lastH) < TOOLBAR_SLACK) return;
+            lastW = w;
+            lastH = h;
             pause();
             applySize();
             if (reduceMotion.matches) renderStatic();

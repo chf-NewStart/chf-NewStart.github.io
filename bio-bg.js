@@ -259,8 +259,15 @@
         // the next — which cannot happen, since the wall is what confines them.
         // Energy now amplifies the cell's own circulation, and scroll direction
         // only leans that circulation one way or the other.
-        v *= 1.0 + uEnergy * 2.2;
-        v += vec2(-local.y, local.x) * uDir * uEnergy * 0.9;
+        // Scroll reactivity, kept to a whisper. It used to multiply the flow by
+        // up to 3.2x, the hop length by 1.9x and the exposure by 1.19x all at
+        // once, so scrolling swung the total displacement nearly fourfold and
+        // the field lurched into a different character mid-gesture. Measured
+        // frame timing was untouched — 120fps and zero long frames either way —
+        // so this was never jank; it was the picture itself becoming unstable.
+        // Cytoplasm also does not stream faster because a human scrolled a page.
+        v *= 1.0 + uEnergy * 0.30;
+        v += vec2(-local.y, local.x) * uDir * uEnergy * 0.25;
 
         // No-slip: a real fluid has zero velocity where it meets a rigid wall.
         // Besides being the correct boundary condition, this is what guarantees
@@ -278,7 +285,7 @@
         v *= smoothstep(0.0, 0.045, border) * (1.0 - smoothstep(0.20, 0.44, border));
 
         vec2 base = local * 5.6 + cellId * 7.0;  // larger, more liquid structures
-        float AMP = 1.6 + uEnergy * 1.4;         // longer travel per cycle, so streaming reads
+        float AMP = 1.6 + uEnergy * 0.20;        // travel barely changes with scroll now
         float ph = uFlow;                        // phase advances faster when stirred
         float t0 = fract(ph);
         float t1 = fract(ph + 0.5);
@@ -315,7 +322,7 @@
         // Dim and vignette so the field sits quietly behind page content;
         // scrolling lifts it a touch so the tissue visibly stirs awake.
         float vig = smoothstep(1.40, 0.20, length(p));
-        col *= mix(0.46, 1.0, vig) * (1.45 + uEnergy * 0.28);
+        col *= mix(0.46, 1.0, vig) * (1.45 + uEnergy * 0.05);
 
         // Guaranteed contrast where body text lands (measured, see calibrate()).
         col *= safeFactor();

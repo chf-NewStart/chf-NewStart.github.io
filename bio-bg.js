@@ -56,6 +56,11 @@
     uniform vec4 uSafe;    // hero text rect: x, y, w, h in CSS px, y from TOP
     uniform float uSafeGain; // brightness multiplier inside that rect
     uniform float uDpr;    // device px per CSS px
+    // Height in device px the field normalises against. Deliberately NOT
+    // uRes.y: the backing store follows every change of the canvas box so the
+    // picture is never stretched, while this reference only moves on a real
+    // layout change, so a toolbar sliding away does not rescale the cells.
+    uniform float uRefH;
     out vec4 o;
 
     const float SAFE_FEATHER = 80.0;      // CSS px of smooth falloff
@@ -200,7 +205,7 @@
     }
 
     void main() {
-        vec2 p = (2.0 * gl_FragCoord.xy - uRes) / uRes.y;
+        vec2 p = (2.0 * gl_FragCoord.xy - uRes) / max(uRefH, 1.0);
 
         const float CELLS = 2.6;
         vec2 drift = vec2(uTime * 0.020, uTime * 0.012);
@@ -342,7 +347,7 @@
     let prog = null;
     let vao = null;
     let buffer = null;
-    let uRes, uTime, uFlow, uEnergy, uScroll, uDir, uSafe, uSafeGain, uDpr;
+    let uRes, uTime, uFlow, uEnergy, uScroll, uDir, uSafe, uSafeGain, uDpr, uRefH;
 
     let initTried = false;
     let initOk = false;
@@ -359,6 +364,14 @@
     let outH = 0;
     let sizedW = 0;                          // CSS size the last setup() used
     let sizedH = 0;
+    let refH = 0;                            // device px the field normalises by
+    // How far the canvas box may grow or shrink vertically before the field is
+    // rescaled. Mobile browsers change the box height by roughly a toolbar when
+    // the URL bar retracts or an in-app browser finishes settling; rescaling
+    // there alters how many cells fit across, which reads as the backdrop
+    // changing WIDTH while you scroll. Below this, the backing store still
+    // resizes — only the cell scale is held.
+    const REF_SLACK = 180;                   // CSS px
 
     // Streaming/scroll state.
     const BASE_FLOW = 0.30;                  // ~3.3s per cycle; 0.085 read as static
@@ -504,6 +517,7 @@
         uSafe = gl.getUniformLocation(prog, 'uSafe');
         uSafeGain = gl.getUniformLocation(prog, 'uSafeGain');
         uDpr = gl.getUniformLocation(prog, 'uDpr');
+        uRefH = gl.getUniformLocation(prog, 'uRefH');
 
         initOk = true;
         return true;
@@ -515,12 +529,23 @@
         dpr = Math.min(window.devicePixelRatio || 1, 1.25);
         // Measure the canvas, not the window: the stylesheet sizes it in lvh,
         // which does not equal innerHeight while the toolbars are showing.
+        const prevW = sizedW;
+        const prevH = sizedH;
         sizedW = c.clientWidth || window.innerWidth;
         sizedH = c.clientHeight || window.innerHeight;
         outW = Math.max(1, Math.round(sizedW * dpr));
         outH = Math.max(1, Math.round(sizedH * dpr));
+        // The backing store always matches the box, so the picture is drawn at
+        // the aspect ratio it is displayed at. Skipping this was the bug: a
+        // canvas measured before the box settled (an in-app browser sliding
+        // open) stayed at that shape and got stretched into the real one — a
+        // smeared, striped backdrop that only a reload cleared.
         c.width = outW;
         c.height = outH;
+        // Hold the cell scale unless the layout really changed.
+        if (refH === 0 || sizedW !== prevW || Math.abs(sizedH - prevH) >= REF_SLACK) {
+            refH = outH;
+        }
         gl.viewport(0, 0, outW, outH);
     }
 
@@ -539,6 +564,7 @@
         gl.uniform4f(uSafe, safeRect[0], safeRect[1], safeRect[2], safeRect[3]);
         gl.uniform1f(uSafeGain, gainV);
         gl.uniform1f(uDpr, dpr);
+        gl.uniform1f(uRefH, refH || outH);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
 
@@ -750,10 +776,28 @@
         calibrate();
     }
 
+    // True when the backing store no longer matches the box it is painted into.
+    function sizeStale() {
+        const c = el();
+        if (!c || outW === 0) return true;
+        return sizedW !== (c.clientWidth || window.innerWidth)
+            || sizedH !== (c.clientHeight || window.innerHeight);
+    }
+
+    function syncSize() {
+        if (!active || !initOk || !sizeStale()) return;
+        applySize();
+        if (reduceMotion.matches) renderStatic();
+    }
+
     function refresh() {
         // Re-measure once after layout settles (reveal animation, web fonts),
         // but only if the hero actually moved — calibration reads pixels back.
         if (!active || !initOk) return;
+        // Belt and braces for viewports that resize without telling anyone:
+        // some in-app browsers (Instagram, Messenger) finish opening after the
+        // page has already painted and fire no resize event at all.
+        syncSize();
         const next = readSafeRect();
         let moved = false;
         for (let i = 0; i < 4; i++) if (Math.abs(next[i] - safeRect[i]) > 2) moved = true;
@@ -768,10 +812,8 @@
         active = true;
         c.removeAttribute('hidden');
         if (!init()) return;                 // fallback class already applied
-        if (outW === 0 || sizedW !== (c.clientWidth || window.innerWidth)
-            || sizedH !== (c.clientHeight || window.innerHeight)) {
-            applySize();
-        }
+        if (sizeStale()) applySize();
+        observeBox(c);
         if (reduceMotion.matches) {
             renderStatic();
         } else {
@@ -789,33 +831,47 @@
         if (c) c.setAttribute('hidden', '');
     }
 
+    // Watch the canvas box, not the window. window.resize is the wrong signal
+    // twice over: it fires for toolbar churn that never touches a 100lvh box,
+    // and in-app browsers (the page opened inside Instagram) resize their
+    // webview after first paint without firing it at all — which left the
+    // backing store at the shape it was measured in and stretched the picture
+    // into the real one until a reload. A ResizeObserver on the element sees
+    // the box change whatever caused it, and REF_SLACK inside setup() keeps the
+    // cell scale from following small changes, so the old churn stays fixed.
     let resizeTimer = null;
-    // Mobile browsers fire resize every time the URL bar slides away, so
-    // scrolling up and down on a phone was rebuilding the field at a new
-    // height on each direction change. Because the shader normalises by
-    // height (p = (2*fragCoord - uRes) / uRes.y), a height change rescales
-    // every cell and alters how many fit across — which reads as the backdrop
-    // changing WIDTH as you scroll. Rebuild only when the width really changes
-    // or the height moves further than a toolbar ever could.
-    let lastW = window.innerWidth;
-    let lastH = window.innerHeight;
-    const TOOLBAR_SLACK = 180;               // px of height churn to ignore
 
-    window.addEventListener('resize', () => {
+    function onBoxChange() {
         window.clearTimeout(resizeTimer);
         resizeTimer = window.setTimeout(() => {
-            if (!active || !initOk) return;
-            const w = window.innerWidth;
-            const h = window.innerHeight;
-            if (w === lastW && Math.abs(h - lastH) < TOOLBAR_SLACK) return;
-            lastW = w;
-            lastH = h;
+            if (!active || !initOk || !sizeStale()) return;
             pause();
             applySize();
             if (reduceMotion.matches) renderStatic();
             else resume();
-        }, 200);
+        }, 150);
+    }
+
+    let boxObserver = null;
+    let boxObserved = null;
+
+    function observeBox(c) {
+        if (typeof ResizeObserver !== 'function' || boxObserved === c) return;
+        if (!boxObserver) boxObserver = new ResizeObserver(onBoxChange);
+        else boxObserver.disconnect();
+        boxObserver.observe(c);
+        boxObserved = c;
+    }
+
+    // Fallback for browsers without ResizeObserver, and a nudge for the ones
+    // that report the new box only after the orientation change has settled.
+    window.addEventListener('resize', onBoxChange, { passive: true });
+    window.addEventListener('orientationchange', () => {
+        window.setTimeout(onBoxChange, 250);
     }, { passive: true });
+    // Restored from the back/forward cache: the box may have changed while the
+    // page was frozen (rotated, reopened at another size).
+    window.addEventListener('pageshow', (e) => { if (e.persisted) syncSize(); });
 
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) pause();

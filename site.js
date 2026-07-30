@@ -252,7 +252,11 @@
     // deliberately not used — the campus fauna is the better joke anyway.
     const RAIN_SPRITES = ['goose', 'raccoon', 'glider', 'block', 'blinker'];
 
-    const REST = 0.10, WALL = 0.45, FRIC = 0.82, MAXV = 17, MAX_BODIES = 56;
+    const REST = 0.10, WALL = 0.45, FRIC = 0.82, MAXV = 17;
+    // Cap by width. 56 bodies heaped into a 400px-wide hero build a pile deep
+    // enough to bury the launcher panel underneath, and it is the most bodies
+    // on the weakest hardware. Wide screens keep the full crowd.
+    const MAX_BODIES = window.innerWidth < 560 ? 22 : (window.innerWidth < 900 ? 36 : 56);
     const VROT_DRAG = 0.94;       // spin bleeds off wherever a body rests
     const VROT_STOP = 0.02;       // below this, stop turning outright
     const SLEEP_DRIFT = 0.25;     // px moved per frame below which a body settles
@@ -279,7 +283,15 @@
             hero.appendChild(rainLayer);
         }
         rainW = hero.clientWidth;
-        rainH = hero.clientHeight;
+        // Land them inside the visible window, not at the bottom of the hero.
+        // On a phone the hero runs ~1027px against a ~773px viewport, so the
+        // floor sat 254px BELOW the screen: tomatoes drifted down, left the
+        // bottom edge and piled where nobody could see them, which reads as
+        // them floating away rather than landing. Clamp the floor to whatever
+        // part of the hero is actually on screen.
+        const heroTop = hero.getBoundingClientRect().top;
+        const visible = Math.round(window.innerHeight - Math.max(0, heroTop));
+        rainH = Math.max(240, Math.min(hero.clientHeight, visible));
         return rainLayer;
     }
 
@@ -308,7 +320,12 @@
         let el, r;
         // Roughly one in three is a tomato; the rest of the cast shares the remainder.
         if (Math.random() < 0.34) {
-            const fs = 3.8 + Math.random() * 3.6;
+            // Size the art to a TARGET WIDTH rather than a font-size, so a
+            // tomato is the same size as a goose. Picking font-size directly
+            // rendered them 86-171px against the sprites' 32-54px, and on a
+            // 400px phone the biggest was nearly half the screen.
+            const targetW = 30 + Math.random() * 22;
+            const fs = tomatoWidthPerFs ? targetW / tomatoWidthPerFs : 1.9;
             const col = TOMATO_COLORS[(Math.random() * TOMATO_COLORS.length) | 0];
             el = document.createElement('pre');
             el.className = 'tdrop';

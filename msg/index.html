@@ -252,6 +252,69 @@ textarea.tin:focus{border-style:solid;box-shadow:0 0 8px rgba(29,185,84,0.35);}
 const FORMSPREE_ID = "xbdnrgra";
 const MY_EMAIL     = "houfuchen0702@gmail.com";
 
+/* ----------------------------------------------------------------------
+   Send throttle. The free Formspree plan is a small monthly allowance and
+   this box is now linked straight from the hero, so anything that can post
+   in a loop — a bot that walked past the honeypot, or a bored visitor
+   holding the button — can drain a month of quota in a minute. The honeypot
+   alone does not stop that.
+
+   Three cheap limits, all client-side. None of them can stop a determined
+   attacker (nothing running in the page can), but together they cost a real
+   visitor nothing and turn casual abuse into something that takes days.
+   ---------------------------------------------------------------------- */
+const MIN_FILL_MS  = 2500;      // a human cannot land here and send this fast
+const COOLDOWN_MS  = 60000;     // between two sends from this browser
+const DAILY_CAP    = 5;         // sends per browser per day
+const THROTTLE_KEY = 'msgThrottle';
+const openedAt = Date.now();
+
+function today(){ return new Date().toISOString().slice(0,10); }
+
+function readThrottle(){
+  try {
+    const raw = JSON.parse(localStorage.getItem(THROTTLE_KEY) || '{}');
+    if (raw.day !== today()) return { day: today(), count: 0, last: raw.last || 0 };
+    return { day: raw.day, count: raw.count || 0, last: raw.last || 0 };
+  } catch { return { day: today(), count: 0, last: 0 }; }
+}
+
+function recordSend(){
+  const t = readThrottle();
+  try {
+    localStorage.setItem(THROTTLE_KEY, JSON.stringify({ day: today(), count: t.count + 1, last: Date.now() }));
+  } catch { /* private mode: the in-page limits below still apply */ }
+}
+
+// Returns null when the send may proceed, or [en, zh] to show instead.
+function throttleBlock(){
+  if (Date.now() - openedAt < MIN_FILL_MS) {
+    return ['error: slow down — that was faster than a human can type.',
+            'error: 慢一点 —— 这比人打字还快。'];
+  }
+  const t = readThrottle();
+  if (t.count >= DAILY_CAP) {
+    return ['error: daily limit reached. come back tomorrow, i will still read it.',
+            'error: 今天的留言数已达上限。明天再来,我一样会看。'];
+  }
+  const wait = Math.ceil((COOLDOWN_MS - (Date.now() - t.last)) / 1000);
+  if (t.last && wait > 0) {
+    return ['error: one at a time. try again in ' + wait + 's.',
+            'error: 一条一条来。' + wait + ' 秒后再试。'];
+  }
+  return null;
+}
+
+/* The error line carries its own translations, so swap the attributes too —
+   applyLang() re-reads them whenever the visitor flips the language. */
+function showErr(en, zh){
+  const err = document.getElementById('err');
+  err.setAttribute('data-en', en);
+  err.setAttribute('data-zh', zh);
+  err.textContent = (lang === 'zh') ? zh : en;
+  err.style.display = 'block';
+}
+
 let selectedMood = "";
 
 function go(id){
@@ -265,6 +328,7 @@ function resetAll(){
   document.getElementById('hints').value='';
   selectedMood='';
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('err').style.display='none';
   go('s2');
 }
 
@@ -294,7 +358,13 @@ function send(){
   const err   = document.getElementById('err');
 
   if(honeypot){ return; }
-  if(!msg){ err.style.display='block'; return; }
+  if(!msg){
+    showErr('error: message body is empty. write something first.',
+            'error: 留言为空,先写点什么吧。');
+    return;
+  }
+  const blocked = throttleBlock();
+  if(blocked){ showErr(blocked[0], blocked[1]); return; }
   err.style.display='none';
 
   if(!FORMSPREE_ID){
@@ -319,7 +389,9 @@ function send(){
   fetch('https://formspree.io/f/'+FORMSPREE_ID,{method:'POST',headers:{'Accept':'application/json'},body:f})
   .then(r=>{
     btn.textContent=orig; btn.style.pointerEvents='auto';
-    if(r.ok){ go('s3'); } else { throw new Error('bad response'); }
+    // Count only what actually reached the inbox: a failed send falls through
+    // to the mail-client screen and has spent none of the quota.
+    if(r.ok){ recordSend(); go('s3'); } else { throw new Error('bad response'); }
   })
   .catch(()=>{
     btn.textContent=orig; btn.style.pointerEvents='auto';

@@ -369,9 +369,24 @@ h4 {
     image-rendering: pixelated;
 }
 
-.icon-button[aria-pressed="true"] {
-    border-color: var(--line-strong);
-    background: rgba(255, 118, 95, 0.12);
+/* The tomato is a toggle, but the rain is on by default, so its "on" look IS
+   the look everybody sees first — which read as decoration, not a control.
+   Give the two states a difference you cannot miss once you have tapped it:
+   lit and full colour when the rain is falling, drained and dim when it is
+   not. Now a visitor who taps it once knows what the button is for. */
+.icon-button[aria-pressed="false"] img {
+    filter: grayscale(1);
+    opacity: 0.45;
+}
+
+.icon-button[aria-pressed] img {
+    transition: filter 220ms ease, opacity 220ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .icon-button[aria-pressed] img {
+        transition: none;
+    }
 }
 
 .language-toggle {
@@ -389,6 +404,19 @@ h4 {
     border-color: var(--line-strong);
     color: var(--accent);
     background: var(--accent-soft);
+}
+
+/* After the hover rule on purpose. Equal specificity, so whichever lands last
+   wins: a lit toggle must not look LESS active because the pointer is resting
+   on it. Hover still reads through the brighter border. */
+.icon-button[aria-pressed="true"],
+.icon-button[aria-pressed="true"]:hover {
+    background: rgba(255, 118, 95, 0.16);
+    box-shadow: 0 0 0 1px rgba(255, 118, 95, 0.12), 0 0 14px rgba(255, 118, 95, 0.16);
+}
+
+.icon-button[aria-pressed="true"] {
+    border-color: rgba(255, 118, 95, 0.55);
 }
 
 .hamburger {

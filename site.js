@@ -61,9 +61,8 @@
             );
         }
 
-        // These labels are state-dependent, so they are rebuilt in JS rather
-        // than swapped from static data-en/data-zh pairs like the page copy.
-        if (typeof updateBackdropModeLabel === 'function') updateBackdropModeLabel();
+        // State-dependent label, rebuilt in JS rather than swapped from a static
+        // data-en/data-zh pair like the rest of the page copy.
         if (typeof updateRainLabel === 'function') updateRainLabel();
     }
 
@@ -262,7 +261,7 @@
 
     const hero = document.getElementById('hero-section');
     let rainLayer = null, bodies = [], rainRaf = 0, rainW = 0, rainH = 0;
-    let rainOn = false, lastSpawn = 0;
+    let rainOn = false;
     // The tomato art is monospace, so its rendered width scales linearly with
     // font-size. Measure that ratio once — reading offsetWidth forces a
     // synchronous layout, and doing it on every spawn (drizzle + pointer)
@@ -576,20 +575,12 @@
         setRain(!rainOn);
     });
 
-    hero?.addEventListener('pointermove', (event) => {
-        if (!rainOn || rainReduced()) return;
-        const now = performance.now();
-        if (now - lastSpawn < 90) return;
-        lastSpawn = now;
-        const rect = hero.getBoundingClientRect();
-        spawnAt(event.clientX - rect.left, event.clientY - rect.top);
-    }, { passive: true });
-
-    hero?.addEventListener('pointerdown', (event) => {
-        if (!rainOn || rainReduced()) return;
-        const rect = hero.getBoundingClientRect();
-        spawnAt(event.clientX - rect.left, event.clientY - rect.top);
-    }, { passive: true });
+    // Nothing spawns from the pointer any more. Trailing tomatoes off the mouse
+    // read as jitter rather than play: every throttled move called
+    // getBoundingClientRect() — a forced synchronous layout — and then added a
+    // body, so moving the cursor across the hero meant a steady stream of
+    // layout flushes and new compositor work landing on top of the WebGL
+    // backdrop. The rain arrives on its own and the nav tomato is the control.
 
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) { if (rainRaf) { window.cancelAnimationFrame(rainRaf); rainRaf = 0; } }
@@ -619,83 +610,12 @@
         }, 180);
     }, { passive: true });
 
-    // --- Backdrop modes ---------------------------------------------------
-    // Two engines, one canvas each: 'flow' is the WebGL shader (bio-bg.js,
-    // loaded eagerly), 'tissue' is the Canvas2D field (cell-bg.js, fetched
-    // only if chosen, since most visitors never switch).
-    const backdropModeBtn = document.getElementById('backdropMode');
-    const BACKDROP_MODES = {
-        flow: { api: () => window.BIO_BG, src: null },
-        tissue: { api: () => window.CELL_BG, src: 'cell-bg.js' },
-    };
-    let backdropMode = localStorage.getItem('backdropMode') === 'tissue' ? 'tissue' : 'flow';
-    const loadedEngines = {};
-
-    function loadEngine(mode) {
-        const entry = BACKDROP_MODES[mode];
-        if (!entry.src || entry.api()) return Promise.resolve(entry.api());
-        if (!loadedEngines[mode]) {
-            loadedEngines[mode] = new Promise((resolve) => {
-                const tag = document.createElement('script');
-                tag.src = entry.src;
-                tag.onload = () => resolve(entry.api());
-                tag.onerror = () => resolve(null);
-                document.head.appendChild(tag);
-            });
-        }
-        return loadedEngines[mode];
+    // --- Backdrop ---------------------------------------------------------
+    // bio-bg.js deliberately does not start itself, so it has to be told to.
+    // Forgetting this once already shipped a page with a dead backdrop.
+    if (window.BIO_BG && (!window.BIO_BG.isSupported || window.BIO_BG.isSupported())) {
+        window.BIO_BG.start();
     }
-
-    function updateBackdropModeLabel() {
-        if (!backdropModeBtn) return;
-        // Name the mode you would switch TO, not the one you are in. This is
-        // state-dependent, so it cannot come from a static data-en/data-zh
-        // pair the way the rest of the page's copy does.
-        const next = backdropMode === 'flow' ? 'tissue' : 'flow';
-        const label = currentLanguage === 'zh'
-            ? (next === 'tissue' ? '切换背景：静态切片' : '切换背景：流动组织')
-            : (next === 'tissue' ? 'Switch backdrop to still section' : 'Switch backdrop to flowing tissue');
-        backdropModeBtn.setAttribute('aria-label', label);
-        backdropModeBtn.title = label;
-    }
-
-    async function applyBackdropMode(mode, persist = true) {
-        const target = BACKDROP_MODES[mode] ? mode : 'flow';
-        const engine = await loadEngine(target);
-        if (!engine || (engine.isSupported && !engine.isSupported())) {
-            // Fall back to the other engine rather than leaving a blank page.
-            const other = target === 'flow' ? 'tissue' : 'flow';
-            if (other !== backdropMode || !BACKDROP_MODES[other].api()) {
-                const fallback = await loadEngine(other);
-                if (fallback && (!fallback.isSupported || fallback.isSupported())) {
-                    backdropMode = other;
-                    Object.keys(BACKDROP_MODES).forEach((m) => {
-                        if (m !== other) BACKDROP_MODES[m].api()?.stop?.();
-                    });
-                    fallback.start();
-                    updateBackdropModeLabel();
-                    return;
-                }
-            }
-            backdropModeBtn?.setAttribute('hidden', '');
-            return;
-        }
-        Object.keys(BACKDROP_MODES).forEach((m) => {
-            if (m !== target) BACKDROP_MODES[m].api()?.stop?.();
-        });
-        engine.start();
-        backdropMode = target;
-        if (persist) localStorage.setItem('backdropMode', target);
-        updateBackdropModeLabel();
-    }
-
-    if (backdropModeBtn) {
-
-        backdropModeBtn.addEventListener('click', () => {
-            applyBackdropMode(backdropMode === 'flow' ? 'tissue' : 'flow');
-        });
-    }
-    applyBackdropMode(backdropMode, false);
 
     const copyEmail = document.getElementById('copyEmail');
     copyEmail?.addEventListener('click', async () => {

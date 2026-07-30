@@ -58,10 +58,7 @@
     <title>Houfu Chen — Digital Twin Researcher &amp; Engineer</title>
 </head>
 <body class="has-bio-bg">
-        <!-- One canvas per backdrop engine: a canvas hands out a webgl2 OR a
-             2d context, never both, so the two modes cannot share one. -->
         <canvas class="bio-bg" id="bioBg" aria-hidden="true"></canvas>
-        <canvas class="bio-bg" id="tissueBg" aria-hidden="true" hidden></canvas>
         <a class="skip-link" href="#main-content">Skip to main content</a>
         <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
         <!-- Sticky Navigation -->
@@ -82,7 +79,7 @@
                         <a href="#contact-section" data-en="Contact" data-zh="联系">Contact</a>
                         <div class="nav-actions">
                             <a class="nav-icon-link" href="/msg/" target="_blank" rel="noopener noreferrer" aria-label="Leave Houfu a note" title="Leave me a note">✉</a>
-                            <button class="icon-button" id="backdropMode" type="button" aria-label="Switch backdrop" title="Switch backdrop"><img src="/favicon_io/scope-32x32.png?v=1" width="20" height="20" alt="" aria-hidden="true"></button>
+                            <a class="icon-button" id="arcadeLink" href="https://lifegameproject.com/" target="_blank" rel="noopener noreferrer" aria-label="Play in the arcade" title="Play in the arcade"><img src="/favicon_io/arcade-32x32.png?v=1" width="20" height="20" alt="" aria-hidden="true"></a>
                             <button class="icon-button" id="tomatoToggle" type="button" aria-label="Toggle tomato mode" aria-pressed="false" title="Tomato mode"><img src="/favicon_io/tomato-favicon-32x32.png?v=3" width="20" height="20" alt="" aria-hidden="true"></button>
                             <button class="language-toggle" id="languageToggle" type="button" aria-label="Switch language">EN / 中文</button>
                         </div>

@@ -283,15 +283,14 @@
             hero.appendChild(rainLayer);
         }
         rainW = hero.clientWidth;
-        // Land them inside the visible window, not at the bottom of the hero.
-        // On a phone the hero runs ~1027px against a ~773px viewport, so the
-        // floor sat 254px BELOW the screen: tomatoes drifted down, left the
-        // bottom edge and piled where nobody could see them, which reads as
-        // them floating away rather than landing. Clamp the floor to whatever
-        // part of the hero is actually on screen.
-        const heroTop = hero.getBoundingClientRect().top;
-        const visible = Math.round(window.innerHeight - Math.max(0, heroTop));
-        rainH = Math.max(240, Math.min(hero.clientHeight, visible));
+        // The floor is the bottom of the hero, full stop. Clamping it to the
+        // visible window instead put the floor partway DOWN the section on a
+        // phone — 773px into a 1027px hero — so the pile settled in mid-air
+        // over the launcher panel and stayed at that document position while
+        // the page scrolled past it. Landing at the section's own bottom edge
+        // is both what it should look like and the only floor that stays put
+        // relative to the content around it.
+        rainH = hero.clientHeight;
         return rainLayer;
     }
 

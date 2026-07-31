@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src blob:; child-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="../favicon_io/tomato-favicon.ico?v=3" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="../favicon_io/tomato-favicon-32x32.png?v=3">
+  <link rel="canonical" href="https://houfu72.com/game/greenhouse.html">
   <title>Greenhouse Digital Twin // houfu72.com</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -435,7 +436,7 @@ async function runSim() {
 
   let stemRes;
   try {
-    stemRes = glpk.solve(
+    stemRes = await glpk.solve(
       buildLP(stemModel, [{ name: stemModel.objective, coef: 1 }], stemOverrides),
       { msglev: glpk.GLP_MSG_OFF }
     );
@@ -486,7 +487,7 @@ async function runSim() {
 
   let fruitRes;
   try {
-    fruitRes = glpk.solve(
+    fruitRes = await glpk.solve(
       buildLP(fruitModel, fruitModel.objectiveVars, fruitOverrides),
       { msglev: glpk.GLP_MSG_OFF }
     );
@@ -530,18 +531,16 @@ function onEnvChange() {
 async function init() {
   setStatus('loading GLPK…', 'busy');
 
-  // glpk.js ships as CommonJS (module.exports). Fetch the source and run it
-  // inside a fake CJS wrapper so we can extract the factory in the browser.
+  // glpk.js is vendored locally as dist/index.js (ES module). It embeds the
+  // solver wasm and runs it in a Web Worker built from a blob URL, so there is
+  // no network fetch, no wasm URL to resolve, and nothing to preload. The
+  // worker build's solve() is asynchronous (see runSim), unlike the old CJS one.
   let GLPK_factory = null;
   try {
-    const src = await fetch('https://cdn.jsdelivr.net/npm/glpk.js@4.0.1/dist/glpk.js')
-      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); });
-    const mod = { exports: {} };
-    // eslint-disable-next-line no-new-func
-    new Function('module', 'exports', src)(mod, mod.exports);
-    GLPK_factory = mod.exports;
+    const mod = await import('./glpk-4.0.1.mjs');
+    GLPK_factory = mod.default;
   } catch (e) {
-    setStatus('GLPK fetch failed: ' + e.message, 'err');
+    setStatus('GLPK load failed: ' + e.message, 'err');
     return;
   }
   if (typeof GLPK_factory !== 'function') {

@@ -88,9 +88,11 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `msg/` — terminal-style message box; the one page that sends data out (Formspree,
   with a mailto fallback).
 - `personality/` — attachment-style quiz with scored results.
-- `game/` — the arcade: Conway's Life, gomoku (with Firebase-backed remote play),
-  a greenhouse digital-twin farming sim, an escape-grid maze, and an RL hunter demo
-  trained by the code in `rl/`.
+- `game/` — the greenhouse digital-twin demo (two coupled genome-scale metabolic
+  models solved live in the browser via GLPK/WASM) and its SBML models. The
+  browser games (Conway's Life, gomoku, escape-grid, the RL hunter) now live at
+  lifegameproject.com; the pages left here are thin redirects to that arcade so
+  old links don't 404.
 
 ## Local development
 

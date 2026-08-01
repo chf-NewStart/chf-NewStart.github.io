@@ -130,7 +130,10 @@
     .btn:hover { background: var(--accent-soft); }
     .btn.quiet { border-color: var(--line); color: var(--ink-soft); }
     .btn.quiet:hover { background: var(--accent-soft); color: var(--accent); }
-    .hidden { display: none; }
+    /* !important because .sync-form (and anything else with a display of its
+       own further down this sheet) would otherwise out-order this utility and
+       keep "hidden" boxes on the page */
+    .hidden { display: none !important; }
 
     .day { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
     .day h2 { font-size: 1.6rem; font-weight: normal; transform: rotate(-0.6deg); }
@@ -806,7 +809,9 @@
 
   byId('aiBtn').onclick = function(){
     if (aiBusy) return;
-    if (!aiKey()){ byId('aiKeyForm').classList.remove('hidden'); byId('aiKeyInput').focus(); return; }
+    /* no focus() here — it scrolls the form into view from wherever you are
+       and pops the keyboard on a phone; the form opens right under the button */
+    if (!aiKey()){ byId('aiKeyForm').classList.remove('hidden'); return; }
     askReflection();
   };
   byId('aiKeySaveBtn').onclick = function(){

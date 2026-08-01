@@ -45,6 +45,10 @@
     /* iOS Safari inflates text in tall blocks but leaves the pixel-based
        ruled-line gradient alone, which slides the writing off the lines */
     html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    /* the page grows under your hands: every keystroke makes the textarea
+       taller, and scroll anchoring answers by scrolling down to hold whatever
+       sits below it still — which drags the line you are writing off screen */
+    html, body { overflow-anchor: none; }
     body {
       font-family: 'Caveat', 'Long Cang', 'Kaiti SC', 'STKaiti', 'KaiTi', cursive, Georgia, serif;
       background: var(--paper); color: var(--ink);
@@ -208,6 +212,15 @@
     .reflection .cap { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 6px; display: flex; gap: 14px; align-items: baseline; }
     .reflection .rtxt { font-size: 1.18rem; white-space: pre-wrap; word-break: break-word; }
     .reflection .rtxt.waiting { color: var(--ink-soft); font-style: italic; }
+    .rturn { font-size: 1.18rem; white-space: pre-wrap; word-break: break-word; margin-bottom: 12px; }
+    .rturn.you { color: var(--ink-soft); font-size: 1.05rem; padding-left: 14px; border-left: 1px solid var(--line); }
+    .reply-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+    .reply-row input {
+      flex: 1; min-width: 0; font-family: inherit; font-size: 1.02rem; color: var(--ink);
+      background: transparent; border: none; border-bottom: 1px solid var(--line);
+      padding: 4px 2px; caret-color: var(--accent);
+    }
+    .reply-row input:focus { outline: none; border-bottom-color: var(--accent); }
 
     .sync { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
     .sync .cap { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 12px; }
@@ -251,7 +264,11 @@
 
   <div class="reflection fade" id="reflection" hidden>
     <div class="cap">A REFLECTION <button class="linkish quiet" id="reflectionClear" type="button">let it fade</button></div>
-    <div class="rtxt" id="reflectionText"></div>
+    <div id="reflectionText"></div>
+    <div class="reply-row" id="replyRow" hidden>
+      <input id="replyInput" placeholder="say something back…" autocomplete="off" spellcheck="false">
+      <button class="linkish" id="replySend" type="button">send</button>
+    </div>
   </div>
 
   <div class="held fade" id="held" hidden>
@@ -862,23 +879,39 @@
     byId('aiKeyForm').classList.add('hidden');
     whisperCount('key forgotten');
   };
-  byId('reflectionClear').onclick = function(){ byId('reflection').hidden = true; };
+  byId('reflectionClear').onclick = function(){
+    byId('reflection').hidden = true;
+    aiThread = null;                       /* next reflection starts a fresh conversation */
+    byId('replyRow').hidden = true;
+  };
 
-  function askReflection(){
-    var text = page.value.trim();
-    if (!text){ whisperCount('write something first'); return; }
+  /* the whole exchange for the open page: system, the page, then the
+     back-and-forth. Kept in memory only — it is never saved or synced. */
+  var aiThread = null;
+
+  function renderThread(status){
+    var box = byId('reflectionText');
+    box.innerHTML = '';
+    (aiThread || []).forEach(function(m, i){
+      if (m.role === 'system' || i === 1) return;   /* i===1 is the page itself; no need to read it back */
+      var el = document.createElement('div');
+      el.className = 'rturn' + (m.role === 'user' ? ' you' : '');
+      el.textContent = m.content;
+      box.appendChild(el);
+    });
+    if (status){
+      var s = document.createElement('div');
+      s.className = 'rturn'; s.style.color = 'var(--ink-soft)'; s.style.fontStyle = 'italic';
+      s.textContent = status;
+      box.appendChild(s);
+    }
+  }
+
+  function aiSend(status){
     aiBusy = true;
-    var body = byId('reflectionText');
     byId('reflection').hidden = false;
-    body.classList.add('waiting');
-    var mem = aiMem() ? memoryText() : '';
-    body.textContent = mem ? 'reading your pages…' : 'reading your page…';
-    var sys = 'You are a quiet, kind companion reading a friend\'s private diary page. Reply in the language the page is mostly written in (English or Chinese). In 2 to 4 sentences: gently reflect back what you notice — feelings, patterns, what seems to matter — then offer one small, practical piece of advice or one question worth sitting with. Warm and specific, never preachy. Plain sentences only: no lists, no headings, no emoji.';
-    if (mem) sys += ' You are also given this person\'s earlier pages, oldest first, each under its date. Use them for continuity: notice what keeps coming back, what has shifted since, what they said they would do. Refer to a past day only when it genuinely illuminates today, and name it plainly ("three Thursdays running", "back in March"). Never recite the archive back at them.';
-    var user = mem
-      ? 'EARLIER PAGES (oldest first)\n\n' + mem + '\n\n=== TODAY\'S PAGE — reflect on this one ===\n\n' + prettyDate(openDay) + '\n\n' + text
-      : prettyDate(openDay) + '\n\n' + text;
-    fetch('https://api.deepseek.com/chat/completions', {
+    renderThread(status);
+    return fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiKey() },
       body: JSON.stringify({
@@ -887,10 +920,7 @@
            reply begins and hand back nothing — keep reflections quick */
         thinking: { type: 'disabled' },
         max_tokens: 800,
-        messages: [
-          { role: 'system', content: sys },
-          { role: 'user', content: user }
-        ]
+        messages: aiThread
       })
     }).then(function(r){
       if (r.status === 401) throw new Error('key rejected — check it in the form below');
@@ -899,13 +929,41 @@
       return r.json();
     }).then(function(j){
       var out = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '').trim();
-      body.classList.remove('waiting');
-      body.textContent = out || 'nothing came back — try again in a moment.';
+      aiThread.push({ role: 'assistant', content: out || '…' });
+      renderThread();
+      byId('replyRow').hidden = false;
     }).catch(function(e){
-      body.classList.remove('waiting');
-      body.textContent = 'no reflection today — ' + (e && e.message ? e.message : 'network hiccup') + '.';
+      renderThread('no reflection today — ' + (e && e.message ? e.message : 'network hiccup') + '.');
       if (e && e.message && e.message.indexOf('rejected') !== -1) byId('aiKeyForm').classList.remove('hidden');
     }).then(function(){ aiBusy = false; });
+  }
+
+  byId('replySend').onclick = function(){ sendReply(); };
+  byId('replyInput').addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); sendReply(); }
+  });
+  function sendReply(){
+    if (aiBusy || !aiThread) return;
+    var said = byId('replyInput').value.trim();
+    if (!said) return;
+    byId('replyInput').value = '';
+    aiThread.push({ role: 'user', content: said });
+    aiSend('thinking…');
+  }
+
+  function askReflection(){
+    var text = page.value.trim();
+    if (!text){ whisperCount('write something first'); return; }
+    var mem = aiMem() ? memoryText() : '';
+    var sys = 'You are a quiet, kind companion reading a friend\'s private diary page. Reply in the language the page is mostly written in (English or Chinese). In 2 to 4 sentences: gently reflect back what you notice — feelings, patterns, what seems to matter — then offer one small, practical piece of advice or one question worth sitting with. Warm and specific, never preachy. Plain sentences only: no lists, no headings, no emoji.';
+    if (mem) sys += ' You are also given this person\'s earlier pages, oldest first, each under its date. Use them for continuity: notice what keeps coming back, what has shifted since, what they said they would do. Refer to a past day only when it genuinely illuminates today, and name it plainly ("three Thursdays running", "back in March"). Never recite the archive back at them.';
+    sys += ' If they write back afterwards, keep talking with them in the same voice — brief, warm, plain. They are not looking for a therapist or a cheerleader, just someone thinking alongside them.';
+    var user = mem
+      ? 'EARLIER PAGES (oldest first)\n\n' + mem + '\n\n=== TODAY\'S PAGE — reflect on this one ===\n\n' + prettyDate(openDay) + '\n\n' + text
+      : prettyDate(openDay) + '\n\n' + text;
+    aiThread = [{ role: 'system', content: sys }, { role: 'user', content: user }];
+    byId('replyRow').hidden = true;
+    aiSend(mem ? 'reading your pages…' : 'reading your page…');
   }
 
   /* ====================================================================

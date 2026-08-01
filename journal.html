@@ -235,7 +235,7 @@
       <a class="btn quiet" href="/">← houfu72.com</a>
     </div>
   </div>
-  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage) — nothing leaves this device unless you turn on encrypted sync to your own private repo below — or tap “a reflection”, which sends just that one page to DeepSeek.</p>
+  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage) — nothing leaves this device unless you turn on encrypted sync to your own private repo below — or tap “a reflection”, which sends that one page to DeepSeek — and, only if you switch memory on, your earlier pages with it.</p>
 
   <div class="day">
     <h2 id="dayTitle"></h2><span id="dayCursor" aria-hidden="true">▋</span>
@@ -278,7 +278,8 @@
 
   <div class="toolsrow fade">
     <button class="btn quiet" id="holdBtn">hold a thought (24h)</button>
-    <button class="btn quiet" id="aiBtn" title="sends this one page to DeepSeek for a short reflection">a reflection…</button>
+    <button class="btn quiet" id="aiBtn" title="sends this page to DeepSeek for a short reflection">a reflection…</button>
+    <button class="btn quiet" id="aiMemBtn" title="off: only the open page is sent. on: your past pages go too, so the reflection can see patterns across time.">memory: off</button>
     <button class="btn quiet hidden" id="exportBtn">export everything (.md)</button>
     <button class="btn quiet hidden" id="backupBtn">back up (.json)</button>
     <button class="btn quiet" id="restoreBtn">restore a backup…</button>
@@ -804,8 +805,42 @@
 
   /* ---- a reflection: on request only, the open page goes to DeepSeek ---- */
   var AI_KEY = 'deepseek.apiKey';
+  var AI_MEM = 'journal.aiMemory';
   var aiBusy = false;
   function aiKey(){ return localStorage.getItem(AI_KEY) || ''; }
+  function aiMem(){ return localStorage.getItem(AI_MEM) === '1'; }
+
+  function renderMemBtn(){
+    byId('aiMemBtn').textContent = 'memory: ' + (aiMem() ? 'on' : 'off');
+  }
+  byId('aiMemBtn').onclick = function(){
+    var on = !aiMem();
+    localStorage.setItem(AI_MEM, on ? '1' : '0');
+    renderMemBtn();
+    whisperCount(on ? 'memory on — past pages travel with the next reflection'
+                    : 'memory off — only the open page is sent');
+  };
+  renderMemBtn();
+
+  /* Earlier pages, oldest first. Oldest-first matters: the history becomes a
+     stable prompt prefix, which DeepSeek bills at the cache-hit rate instead
+     of re-charging for the whole journal on every reflection. */
+  var MEM_CHARS = 400000;
+  function memoryText(){
+    var keys = Object.keys(state.entries).filter(function(k){ return k !== openDay; }).sort();
+    var chosen = [], total = 0;
+    for (var i = keys.length - 1; i >= 0; i--){          /* newest first while trimming… */
+      var txt = (state.entries[keys[i]].text || '').trim();
+      if (!txt) continue;
+      if (total + txt.length > MEM_CHARS) break;          /* …so the oldest fall off, not the recent */
+      total += txt.length;
+      chosen.push(keys[i]);
+    }
+    chosen.sort();                                        /* …then back to oldest-first for the prefix */
+    return chosen.map(function(k){
+      return prettyDate(k) + '\n' + state.entries[k].text.trim();
+    }).join('\n\n— — —\n\n');
+  }
 
   byId('aiBtn').onclick = function(){
     if (aiBusy) return;
@@ -836,7 +871,13 @@
     var body = byId('reflectionText');
     byId('reflection').hidden = false;
     body.classList.add('waiting');
-    body.textContent = 'reading your page…';
+    var mem = aiMem() ? memoryText() : '';
+    body.textContent = mem ? 'reading your pages…' : 'reading your page…';
+    var sys = 'You are a quiet, kind companion reading a friend\'s private diary page. Reply in the language the page is mostly written in (English or Chinese). In 2 to 4 sentences: gently reflect back what you notice — feelings, patterns, what seems to matter — then offer one small, practical piece of advice or one question worth sitting with. Warm and specific, never preachy. Plain sentences only: no lists, no headings, no emoji.';
+    if (mem) sys += ' You are also given this person\'s earlier pages, oldest first, each under its date. Use them for continuity: notice what keeps coming back, what has shifted since, what they said they would do. Refer to a past day only when it genuinely illuminates today, and name it plainly ("three Thursdays running", "back in March"). Never recite the archive back at them.';
+    var user = mem
+      ? 'EARLIER PAGES (oldest first)\n\n' + mem + '\n\n=== TODAY\'S PAGE — reflect on this one ===\n\n' + prettyDate(openDay) + '\n\n' + text
+      : prettyDate(openDay) + '\n\n' + text;
     fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiKey() },
@@ -847,8 +888,8 @@
         thinking: { type: 'disabled' },
         max_tokens: 800,
         messages: [
-          { role: 'system', content: 'You are a quiet, kind companion reading a friend\'s private diary page. Reply in the language the page is mostly written in (English or Chinese). In 2 to 4 sentences: gently reflect back what you notice — feelings, patterns, what seems to matter — then offer one small, practical piece of advice or one question worth sitting with. Warm and specific, never preachy. Plain sentences only: no lists, no headings, no emoji.' },
-          { role: 'user', content: prettyDate(openDay) + '\n\n' + text }
+          { role: 'system', content: sys },
+          { role: 'user', content: user }
         ]
       })
     }).then(function(r){

@@ -345,9 +345,9 @@
   function load(){
     try {
       var s = JSON.parse(localStorage.getItem(KEY));
-      if (s && s.entries) { if (!s.held) s.held = []; if (!s.wx) s.wx = {}; return s; }
+      if (s && s.entries) { if (!s.held) s.held = []; if (!s.wx) s.wx = {}; if (!s.reflections) s.reflections = {}; return s; }
     } catch(e){}
-    return { entries: {}, held: [], wx: {} };
+    return { entries: {}, held: [], wx: {}, reflections: {} };
   }
   function persist(){
     try {
@@ -415,7 +415,7 @@
     byId('dayTitle').textContent = prettyDate(key) + (key === today ? '' : '');
     byId('notToday').hidden = (key === today);
     page.value = (state.entries[key] && state.entries[key].text) || '';
-    byId('reflection').hidden = true;
+    restoreReflection();
     grow(true);
     whisperCount();
     showWx();
@@ -883,17 +883,36 @@
     byId('reflection').hidden = true;
     aiThread = null;                       /* next reflection starts a fresh conversation */
     byId('replyRow').hidden = true;
+    if (state.reflections) { delete state.reflections[openDay]; persist(); }
   };
 
+  /* Saved per day, and deliberately not part of the sync payload: entries
+     travel to your repo, the conversation about them stays on this device. */
+  function saveReflection(){
+    if (!state.reflections) state.reflections = {};
+    var turns = (aiThread || []).slice(2);          /* drop system + the page itself */
+    if (turns.length) state.reflections[openDay] = turns;
+    else delete state.reflections[openDay];
+    persist();
+  }
+  function restoreReflection(){
+    aiThread = null;
+    var turns = state.reflections && state.reflections[openDay];
+    byId('reflection').hidden = !turns;
+    byId('replyRow').hidden = !turns;
+    byId('reflectionText').innerHTML = '';
+    if (turns) renderTurns(turns);
+  }
+
   /* the whole exchange for the open page: system, the page, then the
-     back-and-forth. Kept in memory only — it is never saved or synced. */
+     back-and-forth. Rebuilt from the saved turns whenever you come back
+     to a day, so the system prompt always reflects today's page. */
   var aiThread = null;
 
-  function renderThread(status){
+  function renderTurns(turns, status){
     var box = byId('reflectionText');
     box.innerHTML = '';
-    (aiThread || []).forEach(function(m, i){
-      if (m.role === 'system' || i === 1) return;   /* i===1 is the page itself; no need to read it back */
+    (turns || []).forEach(function(m){
       var el = document.createElement('div');
       el.className = 'rturn' + (m.role === 'user' ? ' you' : '');
       el.textContent = m.content;
@@ -905,6 +924,20 @@
       s.textContent = status;
       box.appendChild(s);
     }
+  }
+  function renderThread(status){ renderTurns((aiThread || []).slice(2), status); }
+
+  /* system + the page as it stands right now; the saved turns hang off this */
+  function threadHead(){
+    var text = page.value.trim();
+    var mem = aiMem() ? memoryText() : '';
+    var sys = 'You are a quiet, kind companion reading a friend\'s private diary page. Reply in the language the page is mostly written in (English or Chinese). In 2 to 4 sentences: gently reflect back what you notice — feelings, patterns, what seems to matter — then offer one small, practical piece of advice or one question worth sitting with. Warm and specific, never preachy. Plain sentences only: no lists, no headings, no emoji.';
+    if (mem) sys += ' You are also given this person\'s earlier pages, oldest first, each under its date. Use them for continuity: notice what keeps coming back, what has shifted since, what they said they would do. Refer to a past day only when it genuinely illuminates today, and name it plainly ("three Thursdays running", "back in March"). Never recite the archive back at them.';
+    sys += ' If they write back afterwards, keep talking with them in the same voice — brief, warm, plain. They are not looking for a therapist or a cheerleader, just someone thinking alongside them.';
+    var user = mem
+      ? 'EARLIER PAGES (oldest first)\n\n' + mem + '\n\n=== TODAY\'S PAGE — reflect on this one ===\n\n' + prettyDate(openDay) + '\n\n' + text
+      : prettyDate(openDay) + '\n\n' + text;
+    return [{ role: 'system', content: sys }, { role: 'user', content: user }];
   }
 
   function aiSend(status){
@@ -932,6 +965,7 @@
       aiThread.push({ role: 'assistant', content: out || '…' });
       renderThread();
       byId('replyRow').hidden = false;
+      saveReflection();
     }).catch(function(e){
       renderThread('no reflection today — ' + (e && e.message ? e.message : 'network hiccup') + '.');
       if (e && e.message && e.message.indexOf('rejected') !== -1) byId('aiKeyForm').classList.remove('hidden');
@@ -943,10 +977,17 @@
     if (e.key === 'Enter'){ e.preventDefault(); sendReply(); }
   });
   function sendReply(){
-    if (aiBusy || !aiThread) return;
+    if (aiBusy) return;
     var said = byId('replyInput').value.trim();
     if (!said) return;
+    if (!aiKey()){ byId('aiKeyForm').classList.remove('hidden'); return; }
     byId('replyInput').value = '';
+    /* coming back to an old day: rebuild the conversation on top of a fresh
+       head, so the reply is answered against the page as it reads today */
+    if (!aiThread){
+      var saved = (state.reflections && state.reflections[openDay]) || [];
+      aiThread = threadHead().concat(saved);
+    }
     aiThread.push({ role: 'user', content: said });
     aiSend('thinking…');
   }
@@ -954,16 +995,9 @@
   function askReflection(){
     var text = page.value.trim();
     if (!text){ whisperCount('write something first'); return; }
-    var mem = aiMem() ? memoryText() : '';
-    var sys = 'You are a quiet, kind companion reading a friend\'s private diary page. Reply in the language the page is mostly written in (English or Chinese). In 2 to 4 sentences: gently reflect back what you notice — feelings, patterns, what seems to matter — then offer one small, practical piece of advice or one question worth sitting with. Warm and specific, never preachy. Plain sentences only: no lists, no headings, no emoji.';
-    if (mem) sys += ' You are also given this person\'s earlier pages, oldest first, each under its date. Use them for continuity: notice what keeps coming back, what has shifted since, what they said they would do. Refer to a past day only when it genuinely illuminates today, and name it plainly ("three Thursdays running", "back in March"). Never recite the archive back at them.';
-    sys += ' If they write back afterwards, keep talking with them in the same voice — brief, warm, plain. They are not looking for a therapist or a cheerleader, just someone thinking alongside them.';
-    var user = mem
-      ? 'EARLIER PAGES (oldest first)\n\n' + mem + '\n\n=== TODAY\'S PAGE — reflect on this one ===\n\n' + prettyDate(openDay) + '\n\n' + text
-      : prettyDate(openDay) + '\n\n' + text;
-    aiThread = [{ role: 'system', content: sys }, { role: 'user', content: user }];
+    aiThread = threadHead();
     byId('replyRow').hidden = true;
-    aiSend(mem ? 'reading your pages…' : 'reading your page…');
+    aiSend(aiMem() ? 'reading your pages…' : 'reading your page…');
   }
 
   /* ====================================================================

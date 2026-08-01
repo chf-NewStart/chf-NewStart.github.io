@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com https://api.weather.gc.ca https://get.geojs.io https://api.open-meteo.com https://air-quality-api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com https://api.weather.gc.ca https://get.geojs.io https://api.open-meteo.com https://air-quality-api.open-meteo.com https://api.deepseek.com; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Journal intime // houfu72.com</title>
   <meta name="description" content="A quiet private journal — one page per day, saved only in your browser.">
@@ -201,6 +201,11 @@
     .nudge { font-size: 1rem; color: var(--ink-soft); font-style: italic; margin-top: 26px; }
     .nudge:empty { display: none; }
 
+    .reflection { margin-top: 20px; border-left: 2px solid var(--accent); padding: 4px 14px 8px; }
+    .reflection .cap { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 6px; display: flex; gap: 14px; align-items: baseline; }
+    .reflection .rtxt { font-size: 1.18rem; white-space: pre-wrap; word-break: break-word; }
+    .reflection .rtxt.waiting { color: var(--ink-soft); font-style: italic; }
+
     .sync { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
     .sync .cap { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 12px; }
     .sync-form { display: grid; gap: 12px; max-width: 440px; margin-top: 14px; }
@@ -227,7 +232,7 @@
       <a class="btn quiet" href="/">← houfu72.com</a>
     </div>
   </div>
-  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage) — nothing leaves this device unless you turn on encrypted sync to your own private repo, below.</p>
+  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage) — nothing leaves this device unless you turn on encrypted sync to your own private repo below — or tap “a reflection”, which sends just that one page to DeepSeek.</p>
 
   <div class="day">
     <h2 id="dayTitle"></h2><span id="dayCursor" aria-hidden="true">▋</span>
@@ -240,6 +245,11 @@
   </div>
 
   <textarea id="page" aria-labelledby="dayTitle" placeholder="It's just you here. Start anywhere…" spellcheck="false"></textarea>
+
+  <div class="reflection fade" id="reflection" hidden>
+    <div class="cap">A REFLECTION <button class="linkish quiet" id="reflectionClear" type="button">let it fade</button></div>
+    <div class="rtxt" id="reflectionText"></div>
+  </div>
 
   <div class="held fade" id="held" hidden>
     <div class="cap">RESTING — words wait here 24h before you decide to send them</div>
@@ -265,10 +275,20 @@
 
   <div class="toolsrow fade">
     <button class="btn quiet" id="holdBtn">hold a thought (24h)</button>
+    <button class="btn quiet" id="aiBtn" title="sends this one page to DeepSeek for a short reflection">a reflection…</button>
     <button class="btn quiet hidden" id="exportBtn">export everything (.md)</button>
     <button class="btn quiet hidden" id="backupBtn">back up (.json)</button>
     <button class="btn quiet" id="restoreBtn">restore a backup…</button>
     <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
+  </div>
+
+  <div class="sync-form hidden fade" id="aiKeyForm">
+    <label>DeepSeek API key — a reflection sends the open page (only when you tap) to DeepSeek; the key stays in this browser
+      <input id="aiKeyInput" type="password" autocomplete="off"></label>
+    <div class="toolsrow" style="margin-top:0">
+      <button class="btn" id="aiKeySaveBtn">save &amp; reflect</button>
+      <button class="btn quiet" id="aiKeyForgetBtn">forget key</button>
+    </div>
   </div>
 
   <div class="sync fade">
@@ -374,6 +394,7 @@
     byId('dayTitle').textContent = prettyDate(key) + (key === today ? '' : '');
     byId('notToday').hidden = (key === today);
     page.value = (state.entries[key] && state.entries[key].text) || '';
+    byId('reflection').hidden = true;
     grow(true);
     whisperCount();
     showWx();
@@ -777,6 +798,69 @@
       alert(added + ' page(s) restored.');
     }).catch(function(){ alert('Invalid backup file.'); });
   };
+
+  /* ---- a reflection: on request only, the open page goes to DeepSeek ---- */
+  var AI_KEY = 'deepseek.apiKey';
+  var aiBusy = false;
+  function aiKey(){ return localStorage.getItem(AI_KEY) || ''; }
+
+  byId('aiBtn').onclick = function(){
+    if (aiBusy) return;
+    if (!aiKey()){ byId('aiKeyForm').classList.remove('hidden'); byId('aiKeyInput').focus(); return; }
+    askReflection();
+  };
+  byId('aiKeySaveBtn').onclick = function(){
+    var k = byId('aiKeyInput').value.trim();
+    if (!k){ alert('Paste your DeepSeek API key first — from platform.deepseek.com.'); return; }
+    localStorage.setItem(AI_KEY, k);
+    byId('aiKeyForm').classList.add('hidden');
+    askReflection();
+  };
+  byId('aiKeyForgetBtn').onclick = function(){
+    localStorage.removeItem(AI_KEY);
+    byId('aiKeyInput').value = '';
+    byId('aiKeyForm').classList.add('hidden');
+    whisperCount('key forgotten');
+  };
+  byId('reflectionClear').onclick = function(){ byId('reflection').hidden = true; };
+
+  function askReflection(){
+    var text = page.value.trim();
+    if (!text){ whisperCount('write something first'); return; }
+    aiBusy = true;
+    var body = byId('reflectionText');
+    byId('reflection').hidden = false;
+    body.classList.add('waiting');
+    body.textContent = 'reading your page…';
+    fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiKey() },
+      body: JSON.stringify({
+        model: 'deepseek-v4-flash',
+        /* thinking mode would spend the whole token budget before the
+           reply begins and hand back nothing — keep reflections quick */
+        thinking: { type: 'disabled' },
+        max_tokens: 800,
+        messages: [
+          { role: 'system', content: 'You are a quiet, kind companion reading a friend\'s private diary page. Reply in the language the page is mostly written in (English or Chinese). In 2 to 4 sentences: gently reflect back what you notice — feelings, patterns, what seems to matter — then offer one small, practical piece of advice or one question worth sitting with. Warm and specific, never preachy. Plain sentences only: no lists, no headings, no emoji.' },
+          { role: 'user', content: prettyDate(openDay) + '\n\n' + text }
+        ]
+      })
+    }).then(function(r){
+      if (r.status === 401) throw new Error('key rejected — check it in the form below');
+      if (r.status === 402) throw new Error('DeepSeek balance is empty — top up at platform.deepseek.com');
+      if (!r.ok) throw new Error('DeepSeek said ' + r.status);
+      return r.json();
+    }).then(function(j){
+      var out = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '').trim();
+      body.classList.remove('waiting');
+      body.textContent = out || 'nothing came back — try again in a moment.';
+    }).catch(function(e){
+      body.classList.remove('waiting');
+      body.textContent = 'no reflection today — ' + (e && e.message ? e.message : 'network hiccup') + '.';
+      if (e && e.message && e.message.indexOf('rejected') !== -1) byId('aiKeyForm').classList.remove('hidden');
+    }).then(function(){ aiBusy = false; });
+  }
 
   /* ====================================================================
      OPTIONAL SYNC — one encrypted blob in a private GitHub repo you own.

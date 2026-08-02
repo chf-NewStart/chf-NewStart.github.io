@@ -940,33 +940,74 @@
     return [{ role: 'system', content: sys }, { role: 'user', content: user }];
   }
 
-  function aiSend(status){
+  /* Thinking used to be off here, and the note said why: it would spend the
+     whole budget before the reply began and hand back nothing. That was true
+     of the budget, not of thinking — 800 tokens is a size for an answer
+     written straight out. Given room to think first it can do the thing this
+     page actually asks that is hard: read back through a year of pages and
+     find what keeps returning, what has shifted, what was promised and then
+     quietly dropped.
+
+     A ladder, not a setting. A key with no access to the pro model answers
+     400, and the rungs below are why such a key still gets a reflection
+     instead of an error where the reflection used to be. An empty answer means
+     thinking ran to the end of the budget — that rung failing, not a reply.
+     401 and 402 stop it dead: those are about the key, and no other model will
+     fix them. */
+  function aiModes(top){
+    return [
+      { model: 'deepseek-v4-pro',   thinking: { type: 'enabled'  }, reasoning_effort: top },
+      { model: 'deepseek-v4-flash', thinking: { type: 'enabled'  }, reasoning_effort: 'high' },
+      { model: 'deepseek-v4-flash', thinking: { type: 'disabled' } }
+    ];
+  }
+
+  function aiAsk(messages, top){
+    var modes = aiModes(top);
+    function attempt(i){
+      var last = i === modes.length - 1;
+      var body = { max_tokens: 8000, messages: messages };
+      for (var k in modes[i]) body[k] = modes[i][k];
+      return fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiKey() },
+        body: JSON.stringify(body)
+      }).then(function(r){
+        if (r.status === 401) throw new Error('key rejected — check it in the form below');
+        if (r.status === 402) throw new Error('DeepSeek balance is empty — top up at platform.deepseek.com');
+        if (!r.ok){
+          if (last) throw new Error('DeepSeek said ' + r.status);
+          return attempt(i + 1);
+        }
+        return r.json().then(function(j){
+          var msg = (j.choices && j.choices[0] && j.choices[0].message) || {};
+          var out = (msg.content || '').trim();
+          if (!out && !last) return attempt(i + 1);
+          return out;
+        });
+      }, function(err){
+        if (last) throw err;               // a hiccup high up is worth one more go
+        return attempt(i + 1);
+      });
+    }
+    return attempt(0);
+  }
+
+  function aiSend(status, top){
     aiBusy = true;
     byId('reflection').hidden = false;
     renderThread(status);
-    return fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiKey() },
-      body: JSON.stringify({
-        model: 'deepseek-v4-flash',
-        /* thinking mode would spend the whole token budget before the
-           reply begins and hand back nothing — keep reflections quick */
-        thinking: { type: 'disabled' },
-        max_tokens: 800,
-        messages: aiThread
-      })
-    }).then(function(r){
-      if (r.status === 401) throw new Error('key rejected — check it in the form below');
-      if (r.status === 402) throw new Error('DeepSeek balance is empty — top up at platform.deepseek.com');
-      if (!r.ok) throw new Error('DeepSeek said ' + r.status);
-      return r.json();
-    }).then(function(j){
-      var out = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '').trim();
+    /* it really is thinking now, which is slower than the old straight-out
+       reply — better to say so than to sit there looking stuck */
+    var slow = setTimeout(function(){ if (aiBusy) renderThread('still sitting with it…'); }, 9000);
+    return aiAsk(aiThread, top || 'high').then(function(out){
+      clearTimeout(slow);
       aiThread.push({ role: 'assistant', content: out || '…' });
       renderThread();
       byId('replyRow').hidden = false;
       saveReflection();
     }).catch(function(e){
+      clearTimeout(slow);
       renderThread('no reflection today — ' + (e && e.message ? e.message : 'network hiccup') + '.');
       if (e && e.message && e.message.indexOf('rejected') !== -1) byId('aiKeyForm').classList.remove('hidden');
     }).then(function(){ aiBusy = false; });
@@ -989,7 +1030,9 @@
       aiThread = threadHead().concat(saved);
     }
     aiThread.push({ role: 'user', content: said });
-    aiSend('thinking…');
+    // a back-and-forth reply is a short exchange — thinking, but not at the
+    // depth used for the first read of the archive, or the wait swamps it
+    aiSend('thinking…', 'high');
   }
 
   function askReflection(){
@@ -997,7 +1040,9 @@
     if (!text){ whisperCount('write something first'); return; }
     aiThread = threadHead();
     byId('replyRow').hidden = true;
-    aiSend(aiMem() ? 'reading your pages…' : 'reading your page…');
+    // the opening reflection is where the pattern-finding across old pages
+    // happens; that is the one worth the full depth
+    aiSend(aiMem() ? 'reading your pages…' : 'reading your page…', aiMem() ? 'max' : 'high');
   }
 
   /* ====================================================================

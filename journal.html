@@ -1040,9 +1040,12 @@
     if (!text){ whisperCount('write something first'); return; }
     aiThread = threadHead();
     byId('replyRow').hidden = true;
-    // the opening reflection is where the pattern-finding across old pages
-    // happens; that is the one worth the full depth
-    aiSend(aiMem() ? 'reading your pages…' : 'reading your page…', aiMem() ? 'max' : 'high');
+    /* the opening reflection is where the pattern-finding across old pages
+       happens, so it is the one that most wants depth — but "max" here meant a
+       minute of waiting, measured on the gomoku review, and a minute is too
+       long to sit in front of a page you just wrote. It thinks, at the
+       ordinary depth. */
+    aiSend(aiMem() ? 'reading your pages…' : 'reading your page…', 'high');
   }
 
   /* ====================================================================

@@ -1319,6 +1319,17 @@ iframe {
     box-shadow: 0 18px 50px rgba(21, 199, 104, 0.12);
 }
 
+/* A row of its own under the flagship. Taking a whole row rather than half of
+   one keeps every other row exactly full: the three that follow still span 2,
+   and the last two still span 3. */
+.gc-gomoku-card {
+    grid-column: 1 / -1;
+}
+
+.gc-gomoku-card:hover {
+    box-shadow: 0 18px 44px rgba(168, 120, 210, 0.12);
+}
+
 .gc-reading-card:hover {
     box-shadow: 0 18px 44px rgba(69, 215, 186, 0.1);
 }
@@ -1377,6 +1388,31 @@ iframe {
 .gc-life-card:hover .gc-life-visual img {
     filter: saturate(1.12) brightness(1.04);
     transform: scale(1.015);
+}
+
+.gc-gomoku-visual {
+    height: 260px;
+    background: #07060d;
+}
+
+/* Anchored left, not centred: as the card narrows, cover eats the right-hand
+   side first, and the guru and what he is shouting are what must survive. */
+.gc-gomoku-visual img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: left top;
+    filter: saturate(0.95) brightness(0.92);
+    transition: filter 220ms ease, transform 500ms ease;
+}
+
+.gc-gomoku-card:hover .gc-gomoku-visual img {
+    filter: saturate(1.1) brightness(1.03);
+    transform: scale(1.012);
+}
+
+.gc-gomoku-card .gc-icon {
+    color: #b388f0;
 }
 
 .gc-visual-badge {
@@ -2108,6 +2144,12 @@ textarea {
 
     .gc-life-visual {
         height: 210px;
+    }
+
+    /* On a phone the card is a swipe pane, so the banner loses most of its
+       width to cover — shorter here, or it crops down to just his hat. */
+    .gc-gomoku-visual {
+        height: 150px;
     }
 
     .contact-links li {

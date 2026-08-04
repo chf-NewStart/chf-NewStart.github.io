@@ -126,19 +126,59 @@
     .score-u { font-size: 0.62rem; color: #7a7a7a; }
     @media (max-width: 620px) { .score { grid-template-columns: 1fr; } }
 
-    /* ── Flow diagram ── */
-    .flow { width: 100%; margin: 0 0 12px; background: #111; border: 1px solid #1c1c1c; padding: 12px 10px 6px; }
-    .flow svg { width: 100%; height: auto; display: block; }
-    .flow .node   { fill: #0d0d0d; stroke: #2a2a2a; cursor: pointer; transition: stroke 0.15s; }
-    .flow .node:hover, .flow .node.hot { stroke: #1db954; }
-    .flow .ntitle { fill: #d0d0d0; font: 600 12px Consolas, monospace; pointer-events: none; }
-    .flow .nsub   { fill: #8a8a8a; font: 10px Consolas, monospace; pointer-events: none; }
-    .flow .vlab   { font: 11px Consolas, monospace; }
-    .flow .pipe   { fill: none; stroke-linecap: round; }
-    /* dashes march along the pipe; speed is set from the flux in JS */
-    .flow .flowline { fill: none; stroke-linecap: round; stroke-dasharray: 5 11;
-                      animation: march 1s linear infinite; }
+    /* ── The rig: model nodes on all four sides of the result ── */
+    .rig {
+      position: relative; width: 100%; margin-bottom: 12px;
+      background: #111; border: 1px solid #1c1c1c; padding: 14px;
+      display: grid; gap: 12px;
+      grid-template-columns: 190px 1fr 190px;
+      grid-template-rows: auto 1fr auto;
+      grid-template-areas:
+        "ga gb gc"
+        "gd centre ge"
+        "gf gg gh";
+    }
+    .ga{grid-area:ga}.gb{grid-area:gb}.gc{grid-area:gc}
+    /* the middle row is as tall as the chart; the flanking nodes should sit
+       centred at their natural height instead of stretching to match it */
+    .gd{grid-area:gd;align-self:center}.ge{grid-area:ge;align-self:center}
+    .gf{grid-area:gf}.gg{grid-area:gg}.gh{grid-area:gh}
+
+    .rig-wires { position: absolute; inset: 0; width: 100%; height: 100%;
+                 pointer-events: none; z-index: 0; }
+    .wire { fill: none; stroke-width: 2; stroke-linecap: round; }
+    .flowline { stroke-dasharray: 5 11; animation: march 1s linear infinite; }
     @keyframes march { to { stroke-dashoffset: -16; } }
+
+    .rig-node, .rig-centre { position: relative; z-index: 1; }
+    .rig-node {
+      background: #0d0d0d; border: 1px solid #262626; padding: 9px 11px;
+      display: flex; flex-direction: column; justify-content: center; gap: 2px;
+      transition: border-color .15s;
+    }
+    #nd_src, #nd_fruit { cursor: pointer; }
+    #nd_src:hover, #nd_fruit:hover { border-color: #1db954; }
+    .rn-t { font-size: 0.62rem; color: #d0d0d0; letter-spacing: .5px; }
+    .rn-v { font-size: 1rem; color: #1db954; font-variant-numeric: tabular-nums; }
+    .rn-s { font-size: 0.6rem; color: #8a8a8a; line-height: 1.5; }
+    .rn-s.dim, .dim { color: #6a6a6a; }
+    .rig-centre {
+      background: #0d0d0d; border: 1px solid #262626; padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 6px; min-width: 0;
+    }
+    .centre-t { color: #1db954; text-transform: uppercase; }
+    .rig-centre canvas { width: 100%; height: 280px; display: block; }
+
+    @media (max-width: 1000px) {
+      .rig { grid-template-columns: 1fr 1fr; grid-template-rows: auto;
+             grid-template-areas: "ga gb" "gd gc" "centre centre" "gf ge" "gg gh"; }
+      .rig-wires { display: none; }
+      .rig-centre canvas { height: 240px; }
+    }
+    @media (max-width: 560px) {
+      .rig { grid-template-columns: 1fr;
+             grid-template-areas: "ga" "gb" "gd" "gc" "centre" "gf" "ge" "gg" "gh"; }
+    }
 
     /* ── Response curves, side by side ── */
     .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
@@ -243,145 +283,98 @@
   </div>
 
 
-  <!-- The whole coupled loop: root uptake -> xylem/phloem pools -> sink
-       competition -> fruit. Widths and dash speed follow the live fluxes. -->
-  <div class="flow">
-    <svg viewBox="0 0 1000 300" role="img"
-         aria-label="Coupled tomato dFBA: root uptake, source LP, shared transport pools, sink competition, fruit LP">
+  <!-- The model wraps the result: nodes on all four sides, the season in the
+       middle. Connectors are positioned from the real box geometry at runtime. -->
+  <div class="rig" id="rig">
+    <svg class="rig-wires" id="rigWires" aria-hidden="true">
       <defs>
-        <marker id="ag" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+        <marker id="rg" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
           <path d="M0,0 L7,3.5 L0,7 Z" fill="#1db954"/></marker>
-        <marker id="ab" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#2196f3"/></marker>
-        <marker id="ao" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+        <marker id="ro" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
           <path d="M0,0 L7,3.5 L0,7 Z" fill="#ff9800"/></marker>
-        <marker id="am" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#9a9a9a"/></marker>
+        <marker id="rb" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#2196f3"/></marker>
+        <marker id="rm" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#8a8a8a"/></marker>
       </defs>
-
-      <!-- drivers -->
-      <text x="34" y="34" text-anchor="middle" font-size="20">☀</text>
-      <text id="fl_light" x="34" y="54" class="vlab" fill="#ffb300" text-anchor="middle">800</text>
-      <text x="34" y="67" class="nsub" text-anchor="middle">PPFD</text>
-      <path id="fl_photon" class="pipe" d="M54,44 L146,44" stroke="#ffb300" stroke-width="3" marker-end="url(#ag)"/>
-
-      <text x="34" y="196" text-anchor="middle" font-size="15">⚗</text>
-      <text x="34" y="214" class="nsub" text-anchor="middle">soil</text>
-      <text x="34" y="226" class="nsub" text-anchor="middle">NO₃⁻/NH₄⁺</text>
-      <path class="pipe" d="M54,206 L86,206" stroke="#2196f3" stroke-width="2" marker-end="url(#ab)"/>
-
-      <!-- root -->
-      <rect class="node" id="nd_root" x="90" y="176" width="118" height="62" rx="2"
-            onclick="focusPanel('srcPanel')"/>
-      <text x="149" y="199" class="ntitle" text-anchor="middle" font-size="11">ROOT</text>
-      <text x="149" y="214" class="nsub" text-anchor="middle">Michaelis–Menten</text>
-      <text id="fl_rootno3" x="149" y="228" class="nsub" text-anchor="middle" fill="#7cc6f8">–</text>
-
-      <!-- source -->
-      <rect class="node" id="nd_src" x="150" y="16" width="176" height="86" rx="2"
-            onclick="focusPanel('srcPanel')"/>
-      <text x="238" y="42" class="ntitle" text-anchor="middle">SOURCE</text>
-      <text x="238" y="59" class="nsub" text-anchor="middle">stem · leaf · root LP</text>
-      <text x="238" y="73" class="nsub" text-anchor="middle">Sl2183 · 2183 rxn</text>
-      <text x="238" y="90" class="nsub" text-anchor="middle" fill="#6f6f6f">max Suc, then Gln</text>
-
-      <path class="pipe" d="M149,176 L149,110" stroke="#2196f3" stroke-width="1.6" marker-end="url(#ab)"/>
-
-      <!-- transport pools -->
-      <rect class="node" id="nd_pool" x="366" y="16" width="150" height="86" rx="2"/>
-      <text x="441" y="40" class="ntitle" text-anchor="middle" font-size="11">PHLOEM</text>
-      <text id="fl_suc" x="441" y="58" class="nsub" text-anchor="middle" fill="#ffc166">–</text>
-      <text id="fl_gln" x="441" y="72" class="nsub" text-anchor="middle" fill="#ffc166">–</text>
-      <text x="441" y="90" class="nsub" text-anchor="middle" fill="#6f6f6f">shared pool</text>
-
-      <rect class="node" id="nd_xyl" x="366" y="176" width="150" height="62" rx="2"/>
-      <text x="441" y="199" class="ntitle" text-anchor="middle" font-size="11">XYLEM</text>
-      <text id="fl_no3" x="441" y="216" class="nsub" text-anchor="middle" fill="#7cc6f8">–</text>
-      <text x="441" y="230" class="nsub" text-anchor="middle" fill="#6f6f6f">FRAC 0.15 to fruit</text>
-
-      <path id="fl_phloem"   class="pipe"     d="M328,52 L362,52" stroke="#ff9800" stroke-width="3"/>
-      <path id="fl_phloem_a" class="flowline" d="M328,52 L362,52" stroke="#ffc166" stroke-width="3"/>
-      <path id="fl_xylem"    class="pipe"     d="M210,206 L362,206" stroke="#2196f3" stroke-width="2" marker-end="url(#ab)"/>
-      <path id="fl_xylem_a"  class="flowline" d="M210,206 L362,206" stroke="#7cc6f8" stroke-width="2"/>
-
-      <!-- sink competition -->
-      <rect class="node" id="nd_split" x="556" y="16" width="150" height="86" rx="2"/>
-      <text x="631" y="40" class="ntitle" text-anchor="middle" font-size="11">SINK SPLIT</text>
-      <text x="631" y="57" class="nsub" text-anchor="middle" fill="#6f6f6f">two-sink competition
-        <title>f_fruit = N·S_fr / (N·S_fr + s_veg), engine.py _f_fruit_dynamic</title></text>
-      <text id="fl_share" x="631" y="76" class="vlab" text-anchor="middle" fill="#1db954">–</text>
-      <text x="631" y="92" class="nsub" text-anchor="middle" fill="#6f6f6f">to fruit</text>
-
-      <path id="fl_tosplit"   class="pipe"     d="M518,52 L552,52" stroke="#ff9800" stroke-width="3" marker-end="url(#ao)"/>
-
-      <!-- fruit and the competing vegetative sink -->
-      <rect class="node" id="nd_fruit" x="756" y="16" width="180" height="86" rx="2"
-            onclick="focusPanel('sinkPanel')"/>
-      <text x="846" y="42" class="ntitle" text-anchor="middle">FRUIT</text>
-      <text x="846" y="59" class="nsub" text-anchor="middle">FRIM1 · 71 rxn</text>
-      <text id="fl_stage" x="846" y="74" class="nsub" text-anchor="middle">ripening</text>
-      <text id="fl_weight" x="846" y="91" class="nsub" text-anchor="middle" fill="#6f6f6f">–</text>
-
-      <path id="fl_tofruit"   class="pipe"     d="M708,52 L752,52" stroke="#ff9800" stroke-width="3"/>
-      <path id="fl_tofruit_a" class="flowline" d="M708,52 L752,52" stroke="#ffc166" stroke-width="3"/>
-
-      <rect class="node" id="nd_veg" x="756" y="120" width="180" height="52" rx="2"/>
-      <text x="846" y="141" class="ntitle" text-anchor="middle" font-size="11">VEGETATIVE SINK</text>
-      <text id="fl_veg" x="846" y="158" class="nsub" text-anchor="middle" fill="#9a9a9a">–</text>
-      <path id="fl_toveg" class="pipe" d="M631,106 C631,146 700,146 752,146"
-            stroke="#9a9a9a" stroke-width="2" marker-end="url(#am)"/>
-
-      <path id="fl_xtofruit" class="pipe" d="M518,206 C640,206 700,120 800,106"
-            stroke="#2196f3" stroke-width="2" marker-end="url(#ab)"/>
-
-      <g id="fl_bars"></g>
-      <text id="fl_top" x="500" y="288" class="nsub" text-anchor="middle"></text>
+      <path id="w_light"  class="wire" stroke="#ffb300" marker-end="url(#rg)"/>
+      <path id="w_rootsrc" class="wire" stroke="#2196f3" marker-end="url(#rb)"/>
+      <path id="w_rootxyl" class="wire" stroke="#2196f3" marker-end="url(#rb)"/>
+      <path id="w_phl"    class="wire" stroke="#ff9800"/>
+      <path id="w_phl_a"  class="wire flowline" stroke="#ffc166"/>
+      <path id="w_split"  class="wire" stroke="#ff9800" marker-end="url(#ro)"/>
+      <path id="w_fruit"  class="wire" stroke="#ff9800"/>
+      <path id="w_fruit_a" class="wire flowline" stroke="#ffc166"/>
+      <path id="w_veg"    class="wire" stroke="#8a8a8a" marker-end="url(#rm)"/>
+      <path id="w_xyl"    class="wire" stroke="#2196f3" marker-end="url(#rb)"/>
+      <path id="w_xyl_a"  class="wire flowline" stroke="#7cc6f8"/>
     </svg>
+
+    <div class="rig-node ga" id="nd_light">
+      <div class="rn-t">☀ LIGHT</div>
+      <div class="rn-v" id="fl_light">800</div>
+      <div class="rn-s">µmol/m²/s PPFD</div>
+    </div>
+
+    <div class="rig-node gb" id="nd_src" onclick="focusPanel('srcPanel')">
+      <div class="rn-t">SOURCE · stem · leaf · root</div>
+      <div class="rn-s">Sl2183 · 2183 rxn · LP</div>
+      <div class="rn-s">max sucrose, then glutamine</div>
+    </div>
+
+    <div class="rig-node gc" id="nd_pool">
+      <div class="rn-t">PHLOEM</div>
+      <div class="rn-v" id="fl_suc">–</div>
+      <div class="rn-s" id="fl_gln">–</div>
+    </div>
+
+    <div class="rig-node gd" id="nd_root">
+      <div class="rn-t">ROOT</div>
+      <div class="rn-s">Michaelis–Menten</div>
+      <div class="rn-s" id="fl_rootno3">–</div>
+      <div class="rn-s dim">soil NO₃⁻ / NH₄⁺</div>
+    </div>
+
+    <div class="rig-centre">
+      <div class="rn-t centre-t">ONE FRUIT, ONE SEASON
+        <span class="dim">— Gompertz growth, split by what the model builds</span></div>
+      <canvas id="curveSeason" width="900" height="280"></canvas>
+    </div>
+
+    <div class="rig-node ge" id="nd_split">
+      <div class="rn-t">SINK SPLIT</div>
+      <div class="rn-v" id="fl_share">–</div>
+      <div class="rn-s">to fruit
+        <span title="f_fruit = N·S_fr / (N·S_fr + s_veg), engine.py _f_fruit_dynamic">ⓘ</span></div>
+      <div class="rn-s dim">two-sink competition</div>
+    </div>
+
+    <div class="rig-node gf" id="nd_xyl">
+      <div class="rn-t">XYLEM</div>
+      <div class="rn-v" id="fl_no3">–</div>
+      <div class="rn-s dim">FRAC 0.15 to fruit</div>
+    </div>
+
+    <div class="rig-node gg" id="nd_veg">
+      <div class="rn-t">VEGETATIVE SINK</div>
+      <div class="rn-s" id="fl_veg">–</div>
+    </div>
+
+    <div class="rig-node gh" id="nd_fruit" onclick="focusPanel('sinkPanel')">
+      <div class="rn-t">FRUIT · FRIM1 · 71 rxn</div>
+      <div class="rn-s" id="fl_stage">ripening</div>
+      <div class="rn-s" id="fl_weight">–</div>
+    </div>
   </div>
 
-  <div class="charts-grid">
-  <!-- Every supply input on one pair of axes, so they can be compared directly -->
-  <div class="curvewrap">
+  <!-- Kept separate: a different question from the one in the middle -->
+  <div class="curvewrap" style="margin-bottom:12px">
     <div class="pcard-title">// what is limiting the plant?
       <span class="model-tag">all four inputs, each swept across its own full range</span></div>
     <canvas id="curve" width="1060" height="230"></canvas>
     <div class="objnote">Each line holds the other three inputs where your sliders are and sweeps
       one from its minimum to its maximum. Steep means that input is limiting right now; flat means
       the plant already has more than it can use. The dot marks where you are sitting.</div>
-  </div>
-
-  <!-- The fruit's developmental programme, with the three stages marked -->
-  <div class="curvewrap">
-    <div class="pcard-title">// how the fruit changes as it grows
-      <span class="model-tag">sweeping days post anthesis</span></div>
-    <canvas id="curveDev" width="1060" height="230"></canvas>
-    <div class="objnote">The same delivered carbon, spent differently as the fruit develops. The
-      three bands are the stages engine.py switches between — cell division, starch filling, then
-      ripening. Watch the sugars only appear once the fruit crosses into ripening at day 35.</div>
-  </div>
-  </div>
-
-  <!-- One season, day by day: Colombie growth curve partitioned by the FBA -->
-  <div class="curvewrap" style="margin-bottom:12px">
-    <div class="pcard-title">// one fruit, one season
-      <span class="model-tag">Gompertz growth partitioned by what the model builds each day</span></div>
-    <canvas id="curveSeason" width="1060" height="250"></canvas>
-    <div class="objnote">Dry weight from the Colombié Gompertz fit in engine.py
-      (w<sub>max</sub> 5.284 gDW, k 0.0845, t<sub>m</sub> 22.3). Each day's weight gain is split
-      by the composition the FBA solves for that day, so the bands are what the tomato is
-      physically made of as it fills. The dashed line is growth rate, which peaks near day 22
-      and is why the middle of the season decides final size. Move the light slider and the
-      whole season rebuilds.</div>
-    <div class="objchips" style="margin-top:10px">
-      <button class="objchip on" id="cbStarch" onclick="this.classList.toggle('on');onEnvChange()">
-        ripening converts starch → sugar</button>
-    </div>
-    <div class="objnote">engine.py calls this apply_starch_fix and ships it <em>off</em>, with the
-      note "turn on if sweetness is a game metric, else the fruit stays wrongly starch-heavy."
-      Sweetness is a metric here, so it defaults on. engine.py does it through the FBA by opening
-      EX_STARCH to remobilise the stored pool; this chart moves the accumulated mass directly,
-      carbon-conserving, at 8% of fruit dry weight per day. Same effect, approximated rate.
-      Switch it off to see the starch-heavy fruit the research defaults produce.</div>
   </div>
 
   <!-- Results -->
@@ -456,48 +449,6 @@
         correct rather than broken: none of engine.py's stage objectives reward storing them, so
         there is no reason to run those reactions. Ask for them here and they climb to about 29%.</div>
 
-      <div class="comp-section-label">── fruit composition (relative flux) ──</div>
-
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">glucose (vacuole)</span><span class="comp-pct" id="p_glc">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-sugar" id="b_glc"></div></div>
-      </div>
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">fructose (vacuole)</span><span class="comp-pct" id="p_fru">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-sugar" id="b_fru"></div></div>
-      </div>
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">sucrose (vacuole)</span><span class="comp-pct" id="p_suc">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-sugar" id="b_suc"></div></div>
-      </div>
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">malate</span><span class="comp-pct" id="p_mal">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-acid" id="b_mal"></div></div>
-      </div>
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">citrate</span><span class="comp-pct" id="p_cit">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-acid" id="b_cit"></div></div>
-      </div>
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">amino acids (Glu/Asp/Ala/Ser)</span><span class="comp-pct" id="p_aa">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-aa" id="b_aa"></div></div>
-      </div>
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">starch</span><span class="comp-pct" id="p_sta">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-struct" id="b_sta"></div></div>
-      </div>
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">protein</span><span class="comp-pct" id="p_pro">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-struct" id="b_pro"></div></div>
-      </div>
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">lipids (DAG)</span><span class="comp-pct" id="p_lip">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-struct" id="b_lip"></div></div>
-      </div>
-      <div class="comp-row">
-        <div class="comp-meta"><span class="comp-name">cell wall</span><span class="comp-pct" id="p_cw">–</span></div>
-        <div class="comp-bg"><div class="comp-bar bar-struct" id="b_cw"></div></div>
-      </div>
     </div>
 
   </div>
@@ -923,18 +874,13 @@ async function runSim() {
   document.getElementById('f_suc_up').textContent = fx(r.fv['VSuc_up'] || 0);
   document.getElementById('f_gln_up').textContent = fx(r.fv['VGln_up'] || 0);
 
-  COMP_KEYS.forEach(k => {
-    const w = r.total > 0 ? r.comps[k] / r.total * 100 : 0;
-    document.getElementById('b_' + k).style.width = w.toFixed(2) + '%';
-    document.getElementById('p_' + k).textContent = r.total > 0 ? w.toFixed(1) + '%' : '–';
-  });
-
   document.getElementById('readout').innerHTML = describe({
     dpa: env.dpa, photon: r.photon, sucr: r.sucrExp, gln: r.glnExp,
     custom: !!env.weights,
     comps: COMP_KEYS.map(k => ({ name: COMP_LABEL[k], pct: r.total > 0 ? r.comps[k] / r.total * 100 : 0 })),
   });
 
+  lastEnv = env; lastResult = r;
   updateFlow(env, r);
   setStatus('solved ✓', 'ok');
   scheduleSweep(env);
@@ -969,69 +915,87 @@ function customWeights() {
 /* ── Flow diagram ──────────────────────────────────
    Stroke width and dash speed carry the magnitude, so the picture moves
    the way the numbers do. */
-function updateFlow(env, r) {
-  const set = (id, f) => { const e = document.getElementById(id); if (e) f(e); };
-  const W = (v, lo, hi) => Math.max(1.2, Math.min(hi, lo + v * 7));
+/* Connectors are drawn from the boxes' real positions rather than hard-coded
+   coordinates, so the ring survives reflow, font changes and resizing. */
+function wireRig(r, share) {
+  const rig = document.getElementById('rig'), svg = document.getElementById('rigWires');
+  if (!rig || !svg || rig.clientWidth === 0) return;
+  const R = rig.getBoundingClientRect();
+  svg.setAttribute('viewBox', `0 0 ${R.width} ${R.height}`);
 
-  set('fl_light', e => e.textContent = env.light);
-  set('fl_photon', e => e.style.strokeWidth = Math.max(0.6, Math.min(9, r.photon / 16)).toFixed(2));
-  set('fl_stage', e => e.textContent =
-    env.weights ? 'custom objective' : env.dpa <= 15 ? 'cell division' : env.dpa <= 35 ? 'starch filling' : 'ripening');
+  const box = id => {
+    const e = document.getElementById(id); if (!e) return null;
+    const b = e.getBoundingClientRect();
+    return { l: b.left - R.left, t: b.top - R.top, w: b.width, h: b.height,
+             cx: b.left - R.left + b.width / 2, cy: b.top - R.top + b.height / 2 };
+  };
+  const set = (id, d, w) => {
+    const e = document.getElementById(id); if (!e || !d) return;
+    e.setAttribute('d', d);
+    if (w != null) e.style.strokeWidth = w.toFixed(2);
+  };
+  const light = box('nd_light'), src = box('nd_src'), pool = box('nd_pool'),
+        root  = box('nd_root'),  split = box('nd_split'), xyl = box('nd_xyl'),
+        veg   = box('nd_veg'),   fruit = box('nd_fruit');
+  if (!light || !src || !pool || !root || !split || !xyl || !veg || !fruit) return;
 
-  set('fl_rootno3', e => e.textContent = 'NO₃⁻ ' + r.no3Flux.toFixed(3));
-  set('fl_suc', e => e.textContent = 'Suc ' + r.sucrExp.toFixed(3));
-  set('fl_gln', e => e.textContent = 'Gln ' + r.glnExp.toFixed(3));
-  set('fl_no3', e => e.textContent = 'NO₃⁻ ' + r.xylNO3.toFixed(3));
+  const W = (v, hi) => Math.max(1.4, Math.min(hi, 1.4 + v * 7));
+  const sw = W(r.sucrExp, 10), xw = W(r.xylNO3 * 8, 6);
 
-  /* Sink competition, engine.py _f_fruit_dynamic. The fruit does not get the
-     whole phloem load; it wins a share against the lumped vegetative sink. */
-  const share = fruitShare(env.dpa);
-  set('fl_share', e => e.textContent = (share * 100).toFixed(0) + '%');
-  set('fl_veg', e => e.textContent = 'gets ' + ((1 - share) * 100).toFixed(0)
-      + '%  ·  s_veg ' + S_VEG.toFixed(1));
-  set('fl_weight', e => e.textContent = 'W ' + fruitWeight(env.dpa).toFixed(2)
-      + ' gDW  ·  day ' + env.dpa);
+  // top edge, left to right
+  set('w_light', `M${light.l + light.w},${light.cy} L${src.l - 6},${light.cy}`, 2.5);
+  const phl = `M${src.l + src.w},${src.cy} L${pool.l - 6},${src.cy}`;
+  set('w_phl', phl, sw); set('w_phl_a', phl, sw);
+  // right edge downward
+  set('w_split', `M${pool.cx},${pool.t + pool.h} L${pool.cx},${split.t - 6}`, sw);
+  const toFruit = `M${split.cx},${split.t + split.h} L${split.cx},${fruit.t - 6}`;
+  set('w_fruit', toFruit, Math.max(1.4, sw * share));
+  set('w_fruit_a', toFruit, Math.max(1.4, sw * share));
+  // sink split also feeds the vegetative sink, along the bottom
+  set('w_veg', `M${split.l},${split.cy} C${veg.cx + 60},${split.cy} ${veg.cx + 40},${veg.cy} ${veg.l + veg.w + 6},${veg.cy}`,
+      Math.max(1.2, sw * (1 - share)));
+  // left edge: root feeds the shoot and the xylem
+  set('w_rootsrc', `M${root.cx},${root.t} L${root.cx},${src.t + src.h + 6}`, 1.8);
+  set('w_rootxyl', `M${root.cx},${root.t + root.h} L${root.cx},${xyl.t - 6}`, 1.8);
+  // bottom edge: xylem to the fruit, routed under the vegetative box
+  const yb = Math.max(xyl.cy, veg.t + veg.h + 14);
+  const xylPath = `M${xyl.l + xyl.w},${xyl.cy} C${veg.l - 20},${yb} ${veg.l + veg.w + 20},${yb} ${fruit.l - 6},${fruit.cy}`;
+  set('w_xyl', xylPath, xw); set('w_xyl_a', xylPath, xw);
 
-  const sw = W(r.sucrExp, 1.2, 11), xw = W(r.xylNO3 * 8, 1.0, 7);
-  ['fl_phloem', 'fl_phloem_a', 'fl_tosplit'].forEach(id => set(id, e => e.style.strokeWidth = sw.toFixed(2)));
-  ['fl_xylem', 'fl_xylem_a', 'fl_xtofruit'].forEach(id => set(id, e => e.style.strokeWidth = xw.toFixed(2)));
-  // the two sink arms carry their share of the phloem load
-  set('fl_tofruit',   e => e.style.strokeWidth = Math.max(1.2, sw * share).toFixed(2));
-  set('fl_tofruit_a', e => e.style.strokeWidth = Math.max(1.2, sw * share).toFixed(2));
-  set('fl_toveg',     e => e.style.strokeWidth = Math.max(1.0, sw * (1 - share)).toFixed(2));
-
-  // faster dashes = more flux; stopped entirely when nothing flows
   const dur = v => v < 1e-4 ? '0s' : Math.max(0.25, 1.6 / Math.max(0.05, v)).toFixed(2) + 's';
-  [['fl_phloem_a', r.sucrExp], ['fl_tofruit_a', r.sucrExp * share], ['fl_xylem_a', r.xylNO3]]
-    .forEach(([id, v]) => set(id, e => {
+  [['w_phl_a', r.sucrExp], ['w_fruit_a', r.sucrExp * share], ['w_xyl_a', r.xylNO3]]
+    .forEach(([id, v]) => {
+      const e = document.getElementById(id); if (!e) return;
       e.style.animationDuration = dur(v);
       e.style.opacity = v < 1e-4 ? 0.15 : 1;
-    }));
-
-  const COLOR = { glc:'#1db954', fru:'#1db954', suc:'#1db954', mal:'#f44336', cit:'#f44336',
-                  aa:'#c9a227', sta:'#2196f3', pro:'#ff9800', lip:'#9c7bd6', cw:'#9c7bd6' };
-  const g = document.getElementById('fl_bars'); if (!g) return;
-  g.innerHTML = '';
-  if (r.total > 0) {
-    let x = 150, W2 = 786;
-    COMP_KEYS.forEach(k => {
-      const frac = r.comps[k] / r.total; if (frac <= 0) return;
-      const w = frac * W2;
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', x.toFixed(1)); rect.setAttribute('y', '256');
-      rect.setAttribute('width', Math.max(0.6, w).toFixed(1)); rect.setAttribute('height', '11');
-      rect.setAttribute('fill', COLOR[k]); rect.setAttribute('opacity', '0.85');
-      const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      t.textContent = COMP_LABEL[k] + ' ' + (frac * 100).toFixed(1) + '%';
-      rect.appendChild(t); g.appendChild(rect); x += w;
     });
-    const top = COMP_KEYS.map(k => [k, r.comps[k]]).sort((a, b) => b[1] - a[1])[0];
-    set('fl_top', e => e.textContent = 'fruit is building mostly ' + COMP_LABEL[top[0]]
-        + ' (' + (top[1] / r.total * 100).toFixed(0) + '%)');
-  } else {
-    set('fl_top', e => e.textContent = 'nothing reaching the fruit');
-  }
 }
+
+function updateFlow(env, r) {
+  const set = (id, f) => { const e = document.getElementById(id); if (e) f(e); };
+
+  set('fl_light', e => e.textContent = env.light);
+  set('fl_stage', e => e.textContent =
+    env.weights ? 'custom objective' : env.dpa <= 15 ? 'cell division' : env.dpa <= 35 ? 'starch filling' : 'ripening');
+  set('fl_rootno3', e => e.textContent = 'NO₃⁻ uptake ' + r.no3Flux.toFixed(3));
+  set('fl_suc', e => e.textContent = r.sucrExp.toFixed(3) + ' Suc');
+  set('fl_gln', e => e.textContent = r.glnExp.toFixed(3) + ' Gln · mmol/gDW/h');
+  set('fl_no3', e => e.textContent = r.xylNO3.toFixed(3) + ' NO₃⁻');
+
+  const share = fruitShare(env.dpa);
+  set('fl_share', e => e.textContent = (share * 100).toFixed(0) + '%');
+  set('fl_veg', e => e.textContent = 'takes ' + ((1 - share) * 100).toFixed(0) + '% · s_veg ' + S_VEG.toFixed(1));
+  set('fl_weight', e => e.textContent = fruitWeight(env.dpa).toFixed(2) + ' gDW at day ' + env.dpa);
+
+  wireRig(r, share);
+}
+
+let rigResizeTimer = null;
+addEventListener('resize', () => {
+  clearTimeout(rigResizeTimer);
+  rigResizeTimer = setTimeout(() => { if (lastResult) updateFlow(lastEnv, lastResult); }, 120);
+});
+let lastEnv = null, lastResult = null;
 
 function focusPanel(id) {
   const el = document.getElementById(id); if (!el) return;
@@ -1192,27 +1156,6 @@ async function runSweep(env) {
     await new Promise(r2 => setTimeout(r2, 0));
   }
 
-  // ── chart 2: development, composition against days post anthesis
-  const dev = [];
-  const devCache = {};
-  const devX = [];
-  for (let i = 0; i <= N; i++) devX.push(5 + 50 * (i / N));
-  devX.push(15, 15.01, 35, 35.01);            // exact stage boundaries
-  devX.sort((a, b) => a - b);
-  for (let i = 0; i < devX.length; i++) {
-    if (my !== sweepToken) return;
-    const dpa = devX[i];
-    const r = await solveStage(env, dpa, devCache);
-    const row = { dpa };
-    DEV_SERIES.forEach(d => {
-      row[d.key] = (r.ok && r.total > 0)
-        ? d.parts.reduce((a, k) => a + r.comps[k], 0) / r.total * 100 : 0;
-    });
-    dev.push(row);
-    if (i % 3 === 0) { drawDev(dev, env); await new Promise(r2 => setTimeout(r2, 0)); }
-  }
-  if (my === sweepToken) drawDev(dev, env);
-
   await runSeason(env, my);
 }
 
@@ -1308,57 +1251,6 @@ function drawLimits(series, env) {
   drawLegend(ctx, rows);
 }
 
-function drawDev(dev, env) {
-  const c = document.getElementById('curveDev'); if (!c) return;
-  const { ctx, W, H } = fitCanvas(c);
-  const L = 52, R = 12, B = 40;
-  const rows = legendRows(ctx, DEV_SERIES, L, W);
-  const T = 22 + rows.length * 13;
-  axes(ctx, W, H, L, R, T, B, 100, v => v.toFixed(0) + '%');
-
-  const px = d => L + (d - 5) / 50 * (W - L - R);
-  const py = v => H - B - (v / 100) * (H - T - B);
-
-  if (dev.length > 1) {
-    /* Stacked areas: these are shares of one output, so stacking is the
-       honest picture — the bands fill the panel and each one's thickness is
-       its share. */
-    let base = dev.map(() => 0);
-    DEV_SERIES.forEach(d => {
-      ctx.beginPath();
-      dev.forEach((row, j) => {
-        const X = px(row.dpa), Y = py(base[j] + row[d.key]);
-        j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
-      });
-      for (let j = dev.length - 1; j >= 0; j--) ctx.lineTo(px(dev[j].dpa), py(base[j]));
-      ctx.closePath();
-      ctx.globalAlpha = 0.82; ctx.fillStyle = d.color; ctx.fill(); ctx.globalAlpha = 1;
-      base = base.map((b, j) => b + dev[j][d.key]);
-    });
-  }
-
-  // stage boundaries drawn over the areas so they stay visible
-  let from = 5;
-  STAGES.forEach((st, i) => {
-    if (i) {
-      ctx.strokeStyle = '#0b0b0b'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(px(from), T); ctx.lineTo(px(from), H - B); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    ctx.fillStyle = '#9a9a9a'; ctx.font = '10px Consolas, monospace';
-    ctx.fillText(st.name, px(from) + 5, H - B + 14);
-    ctx.fillText('day ' + from, px(from) + 5, H - B + 26);
-    from = st.to;
-  });
-
-  drawLegend(ctx, rows);
-
-  // where the fruit-stage slider sits
-  ctx.strokeStyle = '#fff'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(px(env.dpa), T); ctx.lineTo(px(env.dpa), H - B); ctx.stroke();
-  ctx.setLineDash([]);
-}
-
 function onEnvChange() {
   clearTimeout(solveTimer);
   solveTimer = setTimeout(runSim, 350);
@@ -1367,6 +1259,8 @@ function onEnvChange() {
 /* ── Init ────────────────────────────────────────── */
 async function init() {
   setStatus('loading GLPK…', 'busy');
+  // wire the ring up front so it reads as a connected diagram while loading
+  requestAnimationFrame(() => wireRig({ sucrExp: 0, xylNO3: 0 }, fruitShare(45)));
 
   // glpk.js is vendored locally as dist/index.js (ES module). It embeds the
   // solver wasm and runs it in a Web Worker built from a blob URL, so there is

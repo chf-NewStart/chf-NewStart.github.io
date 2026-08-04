@@ -243,46 +243,99 @@
   </div>
 
 
-  <!-- Live flow diagram: widths and dash speed follow the actual fluxes -->
+  <!-- The whole coupled loop: root uptake -> xylem/phloem pools -> sink
+       competition -> fruit. Widths and dash speed follow the live fluxes. -->
   <div class="flow">
-    <svg viewBox="0 0 900 172" role="img" aria-label="Carbon and nitrogen flow from source tissue to fruit">
+    <svg viewBox="0 0 1000 300" role="img"
+         aria-label="Coupled tomato dFBA: root uptake, source LP, shared transport pools, sink competition, fruit LP">
       <defs>
-        <marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#1db954"/>
-        </marker>
-        <marker id="ahb" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#2196f3"/>
-        </marker>
+        <marker id="ag" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#1db954"/></marker>
+        <marker id="ab" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#2196f3"/></marker>
+        <marker id="ao" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#ff9800"/></marker>
+        <marker id="am" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#9a9a9a"/></marker>
       </defs>
 
-      <text x="40" y="34" class="vlab" fill="#ffb300" text-anchor="middle" font-size="22">☀</text>
-      <text id="fl_light" x="40" y="56" class="vlab" fill="#ffb300" text-anchor="middle">800</text>
-      <text x="40" y="70" class="nsub" text-anchor="middle">PPFD</text>
-      <path id="fl_photon" class="pipe" d="M62,40 L128,40" stroke="#ffb300" stroke-width="3" marker-end="url(#ah)"/>
+      <!-- drivers -->
+      <text x="34" y="34" text-anchor="middle" font-size="20">☀</text>
+      <text id="fl_light" x="34" y="54" class="vlab" fill="#ffb300" text-anchor="middle">800</text>
+      <text x="34" y="67" class="nsub" text-anchor="middle">PPFD</text>
+      <path id="fl_photon" class="pipe" d="M54,44 L146,44" stroke="#ffb300" stroke-width="3" marker-end="url(#ag)"/>
 
-      <rect class="node" id="nd_src" x="132" y="14" width="196" height="86" rx="2"
+      <text x="34" y="196" text-anchor="middle" font-size="15">⚗</text>
+      <text x="34" y="214" class="nsub" text-anchor="middle">soil</text>
+      <text x="34" y="226" class="nsub" text-anchor="middle">NO₃⁻/NH₄⁺</text>
+      <path class="pipe" d="M54,206 L86,206" stroke="#2196f3" stroke-width="2" marker-end="url(#ab)"/>
+
+      <!-- root -->
+      <rect class="node" id="nd_root" x="90" y="176" width="118" height="62" rx="2"
             onclick="focusPanel('srcPanel')"/>
-      <text x="230" y="42" class="ntitle" text-anchor="middle">SOURCE</text>
-      <text x="230" y="60" class="nsub" text-anchor="middle">stem · leaf · root</text>
-      <text x="230" y="76" class="nsub" text-anchor="middle">Sl2183 · 2183 rxn</text>
+      <text x="149" y="199" class="ntitle" text-anchor="middle" font-size="11">ROOT</text>
+      <text x="149" y="214" class="nsub" text-anchor="middle">Michaelis–Menten</text>
+      <text id="fl_rootno3" x="149" y="228" class="nsub" text-anchor="middle" fill="#7cc6f8">–</text>
 
-      <path id="fl_phloem" class="pipe" d="M330,44 C430,44 470,44 566,44" stroke="#ff9800" stroke-width="3"/>
-      <path id="fl_phloem_a" class="flowline" d="M330,44 C430,44 470,44 566,44" stroke="#ffc166" stroke-width="3"/>
-      <text x="448" y="32" class="vlab" fill="#ff9800" text-anchor="middle">phloem</text>
-      <text id="fl_suc" x="448" y="62" class="vlab" fill="#ffc166" text-anchor="middle">–</text>
+      <!-- source -->
+      <rect class="node" id="nd_src" x="150" y="16" width="176" height="86" rx="2"
+            onclick="focusPanel('srcPanel')"/>
+      <text x="238" y="42" class="ntitle" text-anchor="middle">SOURCE</text>
+      <text x="238" y="59" class="nsub" text-anchor="middle">stem · leaf · root LP</text>
+      <text x="238" y="73" class="nsub" text-anchor="middle">Sl2183 · 2183 rxn</text>
+      <text x="238" y="90" class="nsub" text-anchor="middle" fill="#6f6f6f">max Suc, then Gln</text>
 
-      <path id="fl_xylem" class="pipe" d="M330,80 C430,80 470,80 566,80" stroke="#2196f3" stroke-width="2" marker-end="url(#ahb)"/>
-      <path id="fl_xylem_a" class="flowline" d="M330,80 C430,80 470,80 566,80" stroke="#7cc6f8" stroke-width="2"/>
-      <text id="fl_no3" x="448" y="98" class="vlab" fill="#7cc6f8" text-anchor="middle">–</text>
+      <path class="pipe" d="M149,176 L149,110" stroke="#2196f3" stroke-width="1.6" marker-end="url(#ab)"/>
 
-      <rect class="node" id="nd_fruit" x="570" y="14" width="196" height="86" rx="2"
+      <!-- transport pools -->
+      <rect class="node" id="nd_pool" x="366" y="16" width="150" height="86" rx="2"/>
+      <text x="441" y="40" class="ntitle" text-anchor="middle" font-size="11">PHLOEM</text>
+      <text id="fl_suc" x="441" y="58" class="nsub" text-anchor="middle" fill="#ffc166">–</text>
+      <text id="fl_gln" x="441" y="72" class="nsub" text-anchor="middle" fill="#ffc166">–</text>
+      <text x="441" y="90" class="nsub" text-anchor="middle" fill="#6f6f6f">shared pool</text>
+
+      <rect class="node" id="nd_xyl" x="366" y="176" width="150" height="62" rx="2"/>
+      <text x="441" y="199" class="ntitle" text-anchor="middle" font-size="11">XYLEM</text>
+      <text id="fl_no3" x="441" y="216" class="nsub" text-anchor="middle" fill="#7cc6f8">–</text>
+      <text x="441" y="230" class="nsub" text-anchor="middle" fill="#6f6f6f">FRAC 0.15 to fruit</text>
+
+      <path id="fl_phloem"   class="pipe"     d="M328,52 L362,52" stroke="#ff9800" stroke-width="3"/>
+      <path id="fl_phloem_a" class="flowline" d="M328,52 L362,52" stroke="#ffc166" stroke-width="3"/>
+      <path id="fl_xylem"    class="pipe"     d="M210,206 L362,206" stroke="#2196f3" stroke-width="2" marker-end="url(#ab)"/>
+      <path id="fl_xylem_a"  class="flowline" d="M210,206 L362,206" stroke="#7cc6f8" stroke-width="2"/>
+
+      <!-- sink competition -->
+      <rect class="node" id="nd_split" x="556" y="16" width="150" height="86" rx="2"/>
+      <text x="631" y="40" class="ntitle" text-anchor="middle" font-size="11">SINK SPLIT</text>
+      <text x="631" y="57" class="nsub" text-anchor="middle" fill="#6f6f6f">two-sink competition
+        <title>f_fruit = N·S_fr / (N·S_fr + s_veg), engine.py _f_fruit_dynamic</title></text>
+      <text id="fl_share" x="631" y="76" class="vlab" text-anchor="middle" fill="#1db954">–</text>
+      <text x="631" y="92" class="nsub" text-anchor="middle" fill="#6f6f6f">to fruit</text>
+
+      <path id="fl_tosplit"   class="pipe"     d="M518,52 L552,52" stroke="#ff9800" stroke-width="3" marker-end="url(#ao)"/>
+
+      <!-- fruit and the competing vegetative sink -->
+      <rect class="node" id="nd_fruit" x="756" y="16" width="180" height="86" rx="2"
             onclick="focusPanel('sinkPanel')"/>
-      <text x="668" y="42" class="ntitle" text-anchor="middle">FRUIT</text>
-      <text x="668" y="60" class="nsub" text-anchor="middle">FRIM1 · 71 rxn</text>
-      <text id="fl_stage" x="668" y="76" class="nsub" text-anchor="middle">ripening</text>
+      <text x="846" y="42" class="ntitle" text-anchor="middle">FRUIT</text>
+      <text x="846" y="59" class="nsub" text-anchor="middle">FRIM1 · 71 rxn</text>
+      <text id="fl_stage" x="846" y="74" class="nsub" text-anchor="middle">ripening</text>
+      <text id="fl_weight" x="846" y="91" class="nsub" text-anchor="middle" fill="#6f6f6f">–</text>
+
+      <path id="fl_tofruit"   class="pipe"     d="M708,52 L752,52" stroke="#ff9800" stroke-width="3"/>
+      <path id="fl_tofruit_a" class="flowline" d="M708,52 L752,52" stroke="#ffc166" stroke-width="3"/>
+
+      <rect class="node" id="nd_veg" x="756" y="120" width="180" height="52" rx="2"/>
+      <text x="846" y="141" class="ntitle" text-anchor="middle" font-size="11">VEGETATIVE SINK</text>
+      <text id="fl_veg" x="846" y="158" class="nsub" text-anchor="middle" fill="#9a9a9a">–</text>
+      <path id="fl_toveg" class="pipe" d="M631,106 C631,146 700,146 752,146"
+            stroke="#9a9a9a" stroke-width="2" marker-end="url(#am)"/>
+
+      <path id="fl_xtofruit" class="pipe" d="M518,206 C640,206 700,120 800,106"
+            stroke="#2196f3" stroke-width="2" marker-end="url(#ab)"/>
 
       <g id="fl_bars"></g>
-      <text id="fl_top" x="450" y="164" class="nsub" text-anchor="middle"></text>
+      <text id="fl_top" x="500" y="288" class="nsub" text-anchor="middle"></text>
     </svg>
   </div>
 
@@ -917,40 +970,55 @@ function customWeights() {
    Stroke width and dash speed carry the magnitude, so the picture moves
    the way the numbers do. */
 function updateFlow(env, r) {
-  const W = (v, lo, hi) => Math.max(1.2, Math.min(hi, lo + v * 7));
   const set = (id, f) => { const e = document.getElementById(id); if (e) f(e); };
+  const W = (v, lo, hi) => Math.max(1.2, Math.min(hi, lo + v * 7));
 
   set('fl_light', e => e.textContent = env.light);
   set('fl_photon', e => e.style.strokeWidth = Math.max(0.6, Math.min(9, r.photon / 16)).toFixed(2));
   set('fl_stage', e => e.textContent =
     env.weights ? 'custom objective' : env.dpa <= 15 ? 'cell division' : env.dpa <= 35 ? 'starch filling' : 'ripening');
 
-  const sw = W(r.sucrExp, 1.2, 11), xw = W(r.xylNO3, 1.0, 8);
-  ['fl_phloem','fl_phloem_a'].forEach(id => set(id, e => e.style.strokeWidth = sw.toFixed(2)));
-  ['fl_xylem','fl_xylem_a'].forEach(id => set(id, e => e.style.strokeWidth = xw.toFixed(2)));
+  set('fl_rootno3', e => e.textContent = 'NO₃⁻ ' + r.no3Flux.toFixed(3));
+  set('fl_suc', e => e.textContent = 'Suc ' + r.sucrExp.toFixed(3));
+  set('fl_gln', e => e.textContent = 'Gln ' + r.glnExp.toFixed(3));
+  set('fl_no3', e => e.textContent = 'NO₃⁻ ' + r.xylNO3.toFixed(3));
+
+  /* Sink competition, engine.py _f_fruit_dynamic. The fruit does not get the
+     whole phloem load; it wins a share against the lumped vegetative sink. */
+  const share = fruitShare(env.dpa);
+  set('fl_share', e => e.textContent = (share * 100).toFixed(0) + '%');
+  set('fl_veg', e => e.textContent = 'gets ' + ((1 - share) * 100).toFixed(0)
+      + '%  ·  s_veg ' + S_VEG.toFixed(1));
+  set('fl_weight', e => e.textContent = 'W ' + fruitWeight(env.dpa).toFixed(2)
+      + ' gDW  ·  day ' + env.dpa);
+
+  const sw = W(r.sucrExp, 1.2, 11), xw = W(r.xylNO3 * 8, 1.0, 7);
+  ['fl_phloem', 'fl_phloem_a', 'fl_tosplit'].forEach(id => set(id, e => e.style.strokeWidth = sw.toFixed(2)));
+  ['fl_xylem', 'fl_xylem_a', 'fl_xtofruit'].forEach(id => set(id, e => e.style.strokeWidth = xw.toFixed(2)));
+  // the two sink arms carry their share of the phloem load
+  set('fl_tofruit',   e => e.style.strokeWidth = Math.max(1.2, sw * share).toFixed(2));
+  set('fl_tofruit_a', e => e.style.strokeWidth = Math.max(1.2, sw * share).toFixed(2));
+  set('fl_toveg',     e => e.style.strokeWidth = Math.max(1.0, sw * (1 - share)).toFixed(2));
 
   // faster dashes = more flux; stopped entirely when nothing flows
   const dur = v => v < 1e-4 ? '0s' : Math.max(0.25, 1.6 / Math.max(0.05, v)).toFixed(2) + 's';
-  set('fl_phloem_a', e => { e.style.animationDuration = dur(r.sucrExp);
-                            e.style.opacity = r.sucrExp < 1e-4 ? 0.15 : 1; });
-  set('fl_xylem_a',  e => { e.style.animationDuration = dur(r.xylNO3);
-                            e.style.opacity = r.xylNO3 < 1e-4 ? 0.15 : 1; });
+  [['fl_phloem_a', r.sucrExp], ['fl_tofruit_a', r.sucrExp * share], ['fl_xylem_a', r.xylNO3]]
+    .forEach(([id, v]) => set(id, e => {
+      e.style.animationDuration = dur(v);
+      e.style.opacity = v < 1e-4 ? 0.15 : 1;
+    }));
 
-  set('fl_suc', e => e.textContent = r.sucrExp.toFixed(3) + '  Suc  ·  ' + r.glnExp.toFixed(3) + '  Gln');
-  set('fl_no3', e => e.textContent = r.xylNO3.toFixed(3) + '  NO₃⁻');
-
-  // composition strip along the bottom of the diagram
   const COLOR = { glc:'#1db954', fru:'#1db954', suc:'#1db954', mal:'#f44336', cit:'#f44336',
-                  aa:'#ff9800', sta:'#2196f3', pro:'#2196f3', lip:'#2196f3', cw:'#2196f3' };
+                  aa:'#c9a227', sta:'#2196f3', pro:'#ff9800', lip:'#9c7bd6', cw:'#9c7bd6' };
   const g = document.getElementById('fl_bars'); if (!g) return;
   g.innerHTML = '';
   if (r.total > 0) {
-    let x = 132, W2 = 634;
+    let x = 150, W2 = 786;
     COMP_KEYS.forEach(k => {
       const frac = r.comps[k] / r.total; if (frac <= 0) return;
       const w = frac * W2;
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', x.toFixed(1)); rect.setAttribute('y', '126');
+      rect.setAttribute('x', x.toFixed(1)); rect.setAttribute('y', '256');
       rect.setAttribute('width', Math.max(0.6, w).toFixed(1)); rect.setAttribute('height', '11');
       rect.setAttribute('fill', COLOR[k]); rect.setAttribute('opacity', '0.85');
       const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');

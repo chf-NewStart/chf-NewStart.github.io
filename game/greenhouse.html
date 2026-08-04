@@ -384,25 +384,23 @@
     <button class="step-btn" onclick="stepBy(1)">▶</button>
     <span id="stepN" class="dim"></span></div>
 
-  <div class="charts-grid">
-  <div class="curvewrap">
-    <div class="pcard-title">// what is limiting the plant?
-      <span class="model-tag">all four inputs, each swept across its own full range</span></div>
-    <canvas id="curve" width="1060" height="230"></canvas>
-    <div class="objnote">Each line holds the other three inputs where your sliders are and sweeps
-      one from its minimum to its maximum. Steep means that input is limiting right now; flat means
-      the plant already has more than it can use. The dot marks where you are sitting.</div>
+  <!-- Two inputs at once, which no single sweep can show -->
+  <div class="curvewrap" style="margin-bottom:12px">
+    <div class="pcard-title">// the whole operating space
+      <span class="model-tag" id="mapTag">total fruit output across light × nitrogen</span></div>
+    <canvas id="mapCanvas" width="1060" height="330"></canvas>
+    <div class="sweepbtns" style="display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 4px">
+      <button class="step-btn map-btn on" onclick="setMap('total',this)">fruit output</button>
+      <button class="step-btn map-btn" onclick="setMap('brix',this)">sweetness</button>
+      <button class="step-btn map-btn" onclick="setMap('sugar',this)">sugar delivered</button>
+      <button class="step-btn map-btn" onclick="setMap('perPhoton',this)">sugar per photon</button>
+    </div>
+    <div class="objnote" id="mapNote">Every square is its own solve of both models. The sweeps
+      above move one input at a time; this moves two, which is where the interesting behaviour
+      lives — the best sweetness and the best yield are rarely in the same place. The ring marks
+      where your sliders are sitting.</div>
   </div>
 
-  <div class="curvewrap">
-    <div class="pcard-title">// one fruit, one season
-      <span class="model-tag">Gompertz growth, split by what the model builds</span></div>
-    <canvas id="curveSeason" width="1060" height="230"></canvas>
-    <div class="objnote">Every day's weight gain from the Colombié Gompertz fit, split by the
-      composition the FBA solves for that day, so the bands add up to the growth curve itself.
-      The dashed line is growth rate, peaking near day 22.</div>
-  </div>
-  </div>
 
   <!-- Results -->
   <div class="results-grid">
@@ -996,11 +994,12 @@ function wireRig(r, share) {
     const e = document.getElementById(id); if (!e) return;
     e.setAttribute('x', x.toFixed(1)); e.setAttribute('y', y.toFixed(1)); e.textContent = txt;
   };
-  lab('lab_phl',   (src.l + src.w + pool.l) / 2, pool.cy - 9, r.sucrExp.toFixed(2));
-  lab('lab_split', (pool.l + pool.w + split.l) / 2, pool.cy - 9, r.sucrExp.toFixed(2));
-  lab('lab_fruit', (split.l + split.w + fruit.l) / 2, fruit.cy - 9, (share * 100).toFixed(0) + '%');
-  lab('lab_veg',   (split.l + split.w + veg.l) / 2, veg.cy - 9, ((1 - share) * 100).toFixed(0) + '%');
-  lab('lab_xyl',   (xyl.l + xyl.w + fruit.l) / 2, yb + 13, r.xylNO3.toFixed(3) + ' NO₃⁻');
+  lab('lab_phl',   0, -50, '');    // the phloem node already prints Suc and Gln
+  lab('lab_split', 0, -50, '');
+  // only the split, which is not written anywhere else, and sits clear of the line
+  lab('lab_fruit', (split.l + split.w + fruit.l) / 2, fruit.cy - 13, (share * 100).toFixed(0) + '%');
+  lab('lab_veg',   (split.l + split.w + veg.l) / 2, veg.cy - 13, ((1 - share) * 100).toFixed(0) + '%');
+  lab('lab_xyl',   (xyl.l + xyl.w + fruit.l) / 2, yb + 15, r.xylNO3.toFixed(3));
 
   const dur = v => v < 1e-4 ? '0s' : Math.max(0.25, 1.6 / Math.max(0.05, v)).toFixed(2) + 's';
   [['w_phl_a', r.sucrExp], ['w_fruit_a', r.sucrExp * share], ['w_xyl_a', r.xylNO3]]
@@ -1119,9 +1118,8 @@ async function runSeason(env, token) {
     }
     days.push({ dpa, W, rate: sinkStrength(dpa), share: fruitShare(dpa), cum: { ...cum } });
     lastDays = days;
-    if (dpa % 6 === 0) { drawSeason(days, env); drawCentre(); await new Promise(r2 => setTimeout(r2, 0)); }
+    if (dpa % 6 === 0) { drawCentre(); await new Promise(r2 => setTimeout(r2, 0)); }
   }
-  drawSeason(days, env);
   drawCentre();
   return days;
 }
@@ -1292,8 +1290,16 @@ function plotSeries(cv, lines, xLabel, opts) {
     ctx.beginPath(); ctx.moveTo(px(opts.mark), T); ctx.lineTo(px(opts.mark), H - B); ctx.stroke();
     ctx.setLineDash([]);
   }
-  ctx.fillStyle = '#8a8a8a'; ctx.font = '11px Consolas, monospace';
-  ctx.fillText(xLabel, L, H - 12);
+  ctx.fillStyle = '#8a8a8a'; ctx.font = '10px Consolas, monospace';
+  for (let i = 0; i <= 4; i++) {
+    const v = xMin + (xMax - xMin) * i / 4, X = px(v);
+    ctx.strokeStyle = '#1f1f1f'; ctx.beginPath();
+    ctx.moveTo(X, H - B); ctx.lineTo(X, H - B + 4); ctx.stroke();
+    const t = (xMax - xMin) > 20 ? v.toFixed(0) : v.toFixed(1);
+    ctx.fillText(t, X - (i === 4 ? ctx.measureText(t).width : i === 0 ? 0 : ctx.measureText(t).width / 2), H - B + 15);
+  }
+  ctx.font = '11px Consolas, monospace';
+  ctx.fillText(xLabel, L, H - 5);
   drawLegend(ctx, rows);
 }
 
@@ -1423,6 +1429,117 @@ function drawCentre() {
   }
 }
 
+/* ── Operating-space map ───────────────────────────
+   Two inputs varied together. A sweep can only ever show a line through
+   this surface; the surface is where the trade-off actually lives. */
+const MAP_METRICS = {
+  brix:      { label: 'sweetness index', fmt: v => v.toFixed(1),  hue: [29,185,84] },
+  total:     { label: 'total fruit output', fmt: v => v.toFixed(2), hue: [33,150,243] },
+  sugar:     { label: 'sugar delivered', fmt: v => v.toFixed(2),  hue: [255,152,0] },
+  perPhoton: { label: 'sugar per photon', fmt: v => v.toFixed(4), hue: [156,123,214] },
+};
+let mapMetric = 'total', mapCells = null, mapDims = null;
+
+function setMap(k, btn) {
+  mapMetric = k;
+  document.querySelectorAll('.map-btn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  document.getElementById('mapTag').textContent =
+    MAP_METRICS[k].label + ' across light × nitrogen';
+  if (mapCells) drawMap(lastEnv);
+}
+
+async function runMap(env, token) {
+  const NX = 16, NY = 11;
+  mapDims = { NX, NY };
+  const cells = [];
+  for (let j = 0; j < NY; j++) {
+    for (let i = 0; i < NX; i++) {
+      if (token !== sweepToken) return;
+      const light = 2000 * i / (NX - 1);
+      const nit = 5 + 95 * j / (NY - 1);
+      const r = await solveAt({ ...env, light, nit });
+      cells.push({ i, j, light, nit,
+        brix: r.ok ? r.brix : 0, total: r.ok ? r.total : 0,
+        sugar: r.ok ? r.sugar : 0, perPhoton: r.ok ? r.perPhoton : 0 });
+    }
+    mapCells = cells; drawMap(env);
+    await new Promise(r2 => setTimeout(r2, 0));
+  }
+  mapCells = cells; drawMap(env);
+}
+
+function drawMap(env) {
+  const c = document.getElementById('mapCanvas');
+  if (!c || !mapCells || !mapDims || !env) return;
+  const { ctx, W, H } = fitCanvas(c);
+  const { NX, NY } = mapDims, M = MAP_METRICS[mapMetric];
+  const L = 62, R = 96, T = 16, B = 42;
+  ctx.clearRect(0, 0, W, H);
+
+  const vals = mapCells.map(z => z[mapMetric]);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const span = (hi - lo) || 1;
+  const cw = (W - L - R) / NX, ch = (H - T - B) / NY;
+
+  mapCells.forEach(z => {
+    const t = (z[mapMetric] - lo) / span;
+    const [r0, g0, b0] = M.hue;
+    // dark floor to full colour, so the gradient reads on a black page
+    ctx.fillStyle = `rgb(${(r0 * (0.12 + 0.88 * t)) | 0},${(g0 * (0.12 + 0.88 * t)) | 0},${(b0 * (0.12 + 0.88 * t)) | 0})`;
+    ctx.fillRect(L + z.i * cw, H - B - (z.j + 1) * ch, Math.ceil(cw) + 1, Math.ceil(ch) + 1);
+  });
+
+  // where the sliders are
+  const mx = L + (env.light / 2000) * (W - L - R);
+  const my = H - B - ((env.nit - 5) / 95) * (H - T - B);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(mx, my, 6, 0, 7); ctx.stroke();
+
+  ctx.fillStyle = '#8a8a8a'; ctx.font = '10px Consolas, monospace';
+  for (let i = 0; i <= 4; i++) {
+    const v = 2000 * i / 4, X = L + (v / 2000) * (W - L - R);
+    ctx.fillText(String(v), X - (i === 4 ? 26 : i === 0 ? 0 : 13), H - B + 15);
+    const n = 5 + 95 * i / 4, Y = H - B - ((n - 5) / 95) * (H - T - B);
+    ctx.fillText(n.toFixed(0), 26, Y + 4);
+  }
+  ctx.font = '11px Consolas, monospace';
+  ctx.fillText('light (PPFD µmol/m²/s)', L, H - 5);
+  ctx.save(); ctx.translate(11, H - B); ctx.rotate(-Math.PI / 2);
+  ctx.fillText('nitrogen (%)', 0, 0); ctx.restore();
+
+  // colour key
+  const kx = W - R + 18, kh = H - T - B;
+  for (let p = 0; p <= kh; p++) {
+    const t = 1 - p / kh, [r0, g0, b0] = M.hue;
+    ctx.fillStyle = `rgb(${(r0 * (0.12 + 0.88 * t)) | 0},${(g0 * (0.12 + 0.88 * t)) | 0},${(b0 * (0.12 + 0.88 * t)) | 0})`;
+    ctx.fillRect(kx, T + p, 14, 1);
+  }
+  ctx.fillStyle = '#b4b4b4'; ctx.font = '10px Consolas, monospace';
+  ctx.fillText(M.fmt(hi), kx + 19, T + 8);
+  ctx.fillText(M.fmt(lo), kx + 19, T + kh);
+
+  // best square, which is rarely where the best of another metric is
+  const best = mapCells.reduce((a, b) => b[mapMetric] > a[mapMetric] ? b : a);
+  const bx = L + (best.i + 0.5) * cw, by = H - B - (best.j + 0.5) * ch;
+  ctx.strokeStyle = '#fff'; ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+  ctx.strokeRect(L + best.i * cw, H - B - (best.j + 1) * ch, cw, ch);
+  ctx.setLineDash([]);
+
+  const note = document.getElementById('mapNote');
+  if (note) note.innerHTML = 'Every square is its own solve of both models — '
+    + mapCells.length + ' of them. Sweeps move one input at a time; this moves two, which is '
+    + 'where the trade-offs live. <b>Best ' + M.label + ' here: ' + M.fmt(best[mapMetric])
+    + '</b> at ' + best.light.toFixed(0) + ' PPFD and ' + best.nit.toFixed(0)
+    + '% nitrogen (dashed square). The ring is where your sliders are sitting.'
+    + (span / (Math.abs(hi) || 1) < 0.08
+        ? ' <b>This surface is almost flat</b> — over this whole space the metric barely moves, '
+          + 'which is itself the answer. <span class="eq">Sweetness saturates at the ripening '
+          + 'stage because the fruit objective is already spending nearly everything on sugar; '
+          + 'it responds to the fruit stage, not to light or nitrogen. Try fruit output.</span>'
+        : ' <span class="eq">Switch metric to see how far apart the optima sit.</span>');
+}
+
 function scheduleSweep(env) {
   clearTimeout(sweepTimer);
   sweepTimer = setTimeout(() => runSweep(env), 260);
@@ -1441,12 +1558,13 @@ async function runSweep(env) {
       const r = await solveAt({ ...env, [sr.key]: x });
       sr.pts.push({ f: i / N, x, r: r.ok ? r : null });
     }
-    lastSeries = series; drawLimits(series, env);
+    lastSeries = series;
     if (stepView !== 'season') drawCentre();
     await new Promise(r2 => setTimeout(r2, 0));
   }
 
   await runSeason(env, my);
+  await runMap(env, my);
 }
 
 function fitCanvas(c) {

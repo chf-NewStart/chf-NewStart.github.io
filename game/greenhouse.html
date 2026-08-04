@@ -31,20 +31,20 @@
 
     .pg-header { max-width: 1100px; margin: 0 auto 14px; }
     .pg-title  { color: #1db954; font-size: 1.4rem; text-transform: uppercase; letter-spacing: -1px; }
-    .pg-sub    { color: #555; font-size: 0.72rem; margin-top: 3px; line-height: 1.7; }
+    .pg-sub    { color: #8f8f8f; font-size: 0.72rem; margin-top: 3px; line-height: 1.7; }
     .pg-back   { font-size: 0.72rem; color: #1db954; text-decoration: none; margin-top: 5px; display: inline-block; }
     .pg-back:hover { text-decoration: underline; }
 
     .status-bar {
       max-width: 1100px; margin: 0 auto 14px;
       padding: 6px 12px; background: #0d0d0d; border: 1px solid #1a1a1a;
-      font-size: 0.69rem; color: #333; display: flex; align-items: center; gap: 8px;
+      font-size: 0.69rem; color: #8a8a8a; display: flex; align-items: center; gap: 8px;
     }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #444; flex-shrink: 0; }
     .status-dot.ok   { background: #1db954; }
     .status-dot.busy { background: #ff9800; }
     .status-dot.err  { background: #f44336; }
-    #statusText { color: #666; }
+    #statusText { color: #a5a5a5; }
 
     .layout { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 
@@ -56,10 +56,10 @@
 
     /* Environmental controls */
     .env-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; }
-    .env-item label { display: block; font-size: 0.61rem; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .env-item label { display: block; font-size: 0.61rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
     .env-item input[type=range] { width: 100%; accent-color: #1db954; cursor: pointer; }
     .env-val { font-size: 0.88rem; color: #1db954; margin-top: 4px; }
-    .env-unit { color: #333; font-size: 0.7rem; }
+    .env-unit { color: #7a7a7a; font-size: 0.7rem; }
 
     /* Results */
     .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -69,27 +69,27 @@
       padding: 5px 0; border-bottom: 1px solid #141414; font-size: 0.72rem;
     }
     .flux-row:last-child { border-bottom: none; }
-    .flux-label { color: #555; }
+    .flux-label { color: #9a9a9a; }
     .flux-val   { color: #1db954; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
-    .flux-unit  { color: #2a2a2a; font-size: 0.65rem; margin-left: 4px; }
+    .flux-unit  { color: #6f6f6f; font-size: 0.65rem; margin-left: 4px; }
 
     /* Phloem link */
     .phloem-link {
       margin: 0 0 12px; padding: 6px 10px;
       background: #0d0d0d; border: 1px solid #1a1a1a; border-left: 2px solid #1db954;
-      font-size: 0.67rem; color: #333; display: flex; gap: 18px;
+      font-size: 0.67rem; color: #9a9a9a; display: flex; gap: 18px;
     }
     .phloem-link span { color: #1db954; }
 
     /* Fruit composition bars */
     .comp-section-label {
-      font-size: 0.6rem; color: #333; text-transform: uppercase; letter-spacing: 1px;
+      font-size: 0.6rem; color: #8a8a8a; text-transform: uppercase; letter-spacing: 1px;
       margin: 10px 0 6px;
     }
     .comp-row { margin-bottom: 6px; }
     .comp-meta { display: flex; justify-content: space-between; font-size: 0.64rem; margin-bottom: 2px; }
-    .comp-name { color: #555; }
-    .comp-pct  { color: #444; font-variant-numeric: tabular-nums; }
+    .comp-name { color: #9a9a9a; }
+    .comp-pct  { color: #b4b4b4; font-variant-numeric: tabular-nums; }
     .comp-bg   { background: #0d0d0d; height: 7px; border-radius: 0; }
     .comp-bar  { height: 100%; width: 0%; transition: width 0.5s ease; }
     .bar-sugar  { background: #1db954; }
@@ -97,8 +97,27 @@
     .bar-aa     { background: #ff9800; }
     .bar-struct { background: #2196f3; }
 
+    /* Scenario buttons: somewhere to start, instead of five bare sliders. */
+    .scenarios { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .scenario {
+      background: #0d0d0d; border: 1px solid #232323; color: #b4b4b4;
+      font-family: inherit; font-size: 0.68rem; padding: 6px 12px; cursor: pointer;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .scenario:hover { border-color: #1db954; color: #1db954; }
+    .scenario.on   { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.08); }
+
+    /* Plain-language reading of the current solution. */
+    .readout {
+      max-width: 1100px; margin: 0 auto 14px; padding: 12px 15px;
+      background: #0d0d0d; border: 1px solid #1c1c1c; border-left: 2px solid #1db954;
+      font-size: 0.78rem; line-height: 1.85; color: #c0c0c0;
+    }
+    .readout b { color: #1db954; font-weight: normal; }
+    .readout .hint { color: #8a8a8a; }
+
     .model-tag {
-      display: inline-block; font-size: 0.6rem; color: #2a2a2a;
+      display: inline-block; font-size: 0.6rem; color: #7a7a7a;
       border: 1px solid #1c1c1c; padding: 1px 5px; margin-left: 6px; vertical-align: middle;
     }
 
@@ -126,11 +145,20 @@
   <span id="statusText">initializing…</span>
 </div>
 
+<div class="readout" id="readout">Pick a scenario, or move any slider, and this line will explain what the model just did.</div>
+
 <div class="layout">
 
   <!-- Environmental controls -->
   <div class="pcard">
     <div class="pcard-title">// greenhouse environment</div>
+    <div class="scenarios">
+      <button class="scenario" onclick="applyScenario('winter',this)">Dutch winter</button>
+      <button class="scenario" onclick="applyScenario('summer',this)">Summer peak</button>
+      <button class="scenario" onclick="applyScenario('enriched',this)">CO₂ enriched</button>
+      <button class="scenario" onclick="applyScenario('drought',this)">Drought stress</button>
+      <button class="scenario" onclick="applyScenario('night',this)">Night</button>
+    </div>
     <div class="env-grid">
       <div class="env-item">
         <label>☀ Light (PPFD)</label>
@@ -175,10 +203,6 @@
     <div class="pcard">
       <div class="pcard-title">// source <span class="model-tag">Sl2183 · 2183 rxn</span></div>
 
-      <div class="flux-row">
-        <span class="flux-label">biomass production</span>
-        <span class="flux-val"><span id="r_biomass">–</span><span class="flux-unit">mmol/gDW/h</span></span>
-      </div>
       <div class="flux-row">
         <span class="flux-label">photon uptake</span>
         <span class="flux-val"><span id="r_photon">–</span><span class="flux-unit">mmol/gDW/h</span></span>
@@ -280,7 +304,9 @@ function setStatus(text, state) {
   dot.className = 'status-dot' + (state ? ' ' + state : '');
 }
 
-function fx(v) { return (v == null || isNaN(v)) ? '–' : v.toFixed(4); }
+function fx(v) { if (v == null || isNaN(v)) return '–';
+  if (Math.abs(v) < 5e-5) v = 0;   // avoid printing -0.0000
+  return v.toFixed(4); }
 
 /* ── Parse Sl2183 (SBML Level 3 + FBC) ──────────── */
 function parseStemModel(doc) {
@@ -438,6 +464,53 @@ function fruitObjective(dpa) {
   return [['EX_Glc_ac',1.0],['EX_Fru_ac',1.0],['EX_Suc_ac',0.8],['EX_Cit_ac',0.7],['EX_Mal_ac',0.5],['EX_PROTEIN',0.2]];
 }
 
+/* ── Scenarios: real greenhouse situations, so there is somewhere to start ── */
+const SCENARIOS = {
+  winter:   { light: 150,  co2: 400,  water: 85,  n: 70, dpa: 45 },
+  summer:   { light: 1800, co2: 400,  water: 85,  n: 70, dpa: 45 },
+  enriched: { light: 1000, co2: 1000, water: 85,  n: 70, dpa: 45 },
+  drought:  { light: 1000, co2: 400,  water: 20,  n: 70, dpa: 45 },
+  night:    { light: 0,    co2: 400,  water: 85,  n: 70, dpa: 45 },
+};
+
+function applyScenario(name, btn) {
+  const c = SCENARIOS[name]; if (!c) return;
+  document.getElementById('slLight').value = c.light;
+  document.getElementById('slCO2').value   = c.co2;
+  document.getElementById('slWater').value = c.water;
+  document.getElementById('slN').value     = c.n;
+  document.getElementById('slDPA').value   = c.dpa;
+  document.querySelectorAll('.scenario').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  onEnvChange();
+}
+
+/* Say what the solution means. A wall of fluxes tells a visitor nothing
+   unless something reads it back to them. */
+function describe(st) {
+  const stage = st.dpa <= 15 ? 'cell division' : st.dpa <= 35 ? 'starch filling' : 'ripening';
+  if (st.sucr < 1e-4) {
+    return 'No light reaches the canopy, so the leaves export <b>no sucrose</b> and the fruit '
+         + 'has nothing to build with. Every bar below is empty because the whole system is '
+         + 'carbon-starved — which is exactly what the model should say in the dark.';
+  }
+  const top = st.comps.slice().sort((a, b) => b.pct - a.pct)[0];
+  let out = 'The canopy is fixing carbon at <b>' + st.photon.toFixed(0) + '</b> photons and sending '
+    + '<b>' + st.sucr.toFixed(2) + '</b> mmol/gDW/h of sucrose down the phloem, with '
+    + '<b>' + st.gln.toFixed(2) + '</b> of glutamine carrying the nitrogen. ';
+  out += 'At <b>' + st.dpa + ' days</b> after flowering the fruit is in ' + stage + ', so it spends '
+    + 'that carbon mostly on <b>' + top.name + '</b> (' + top.pct.toFixed(0) + '%). ';
+  if (st.dpa <= 35) {
+    out += '<span class="hint">Sugars stay near zero here on purpose — the fruit is banking '
+         + 'starch and protein first, and only converts them to the sugars you taste after about '
+         + 'day 35. Drag the fruit stage past 35 to watch that switch.</span>';
+  } else {
+    out += '<span class="hint">This is why a tomato picked early never sweetens properly: the '
+         + 'sugars come from carbon delivered during ripening, not from sitting on a shelf.</span>';
+  }
+  return out;
+}
+
 /* ── Build GLPK LP from parsed model ────────────── */
 function buildLP(model, objVars, overrides) {
   // Mass balance constraints: for each internal species, sum stoich_ij * v_j = 0
@@ -545,13 +618,11 @@ async function runSim() {
   } catch (e) { /* Gln is secondary; keep the sucrose solution */ }
 
   // Uptakes come back negative; show them as positive rates.
-  const bioFlux  = sv['R_BIOMASS_STEM'] || 0;
   const photon   = -(sv['EX_photon_b'] || 0);
   const co2Flux  = -(sv['EX_co2_b']    || 0);
   const h2oFlux  = -(sv['EX_h2o_b']    || 0);
   const no3Flux  = -(sv['EX_no3_b']    || 0);
 
-  document.getElementById('r_biomass').textContent = fx(bioFlux);
   document.getElementById('r_photon').textContent  = fx(photon);
   document.getElementById('r_co2').textContent     = fx(co2Flux);
   document.getElementById('r_h2o').textContent     = fx(h2oFlux);
@@ -621,6 +692,13 @@ async function runSim() {
     const w = total > 0 ? comps[k] / total * 100 : 0;
     document.getElementById('b_' + k).style.width = w.toFixed(2) + '%';
     document.getElementById('p_' + k).textContent = total > 0 ? w.toFixed(1) + '%' : '–';
+  });
+
+  const LABEL = { glc:'glucose', fru:'fructose', suc:'sucrose', mal:'malate', cit:'citrate',
+                  aa:'amino acids', sta:'starch', pro:'protein', lip:'lipids', cw:'cell wall' };
+  document.getElementById('readout').innerHTML = describe({
+    dpa, photon, sucr: sucrExp, gln: glnExp,
+    comps: keys.map(k => ({ name: LABEL[k], pct: total > 0 ? comps[k] / total * 100 : 0 }))
   });
 
   setStatus('solved ✓', 'ok');

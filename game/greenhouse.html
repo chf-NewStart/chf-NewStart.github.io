@@ -132,7 +132,7 @@
 
     /* ── Response curve ── */
     .curvewrap { width: 100%; margin: 0 0 12px; background: #111; border: 1px solid #1c1c1c; padding: 13px 15px; }
-    .curvewrap canvas { width: 100%; height: 190px; display: block; }
+    .curvewrap canvas { width: 100%; height: 230px; display: block; }
     .sweepbtns { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0 4px; }
     .sweepbtn { background: #0d0d0d; border: 1px solid #232323; color: #b4b4b4; font-family: inherit;
                 font-size: 0.66rem; padding: 5px 11px; cursor: pointer; }
@@ -270,17 +270,24 @@
     </svg>
   </div>
 
-  <!-- Response curve: re-solves across the whole range of one control -->
+  <!-- Every supply input on one pair of axes, so they can be compared directly -->
   <div class="curvewrap">
-    <div class="pcard-title">// response curve <span class="model-tag" id="curveTag">sweeping light</span></div>
-    <canvas id="curve" width="1060" height="190"></canvas>
-    <div class="sweepbtns">
-      <button class="sweepbtn on" onclick="setSweep('light',this)">light</button>
-      <button class="sweepbtn" onclick="setSweep('co2',this)">CO₂</button>
-      <button class="sweepbtn" onclick="setSweep('water',this)">water</button>
-      <button class="sweepbtn" onclick="setSweep('nit',this)">nitrogen</button>
-      <button class="sweepbtn" onclick="setSweep('dpa',this)">fruit stage</button>
-    </div>
+    <div class="pcard-title">// what is limiting the plant?
+      <span class="model-tag">all four inputs, each swept across its own full range</span></div>
+    <canvas id="curve" width="1060" height="230"></canvas>
+    <div class="objnote">Each line holds the other three inputs where your sliders are and sweeps
+      one from its minimum to its maximum. Steep means that input is limiting right now; flat means
+      the plant already has more than it can use. The dot marks where you are sitting.</div>
+  </div>
+
+  <!-- The fruit's developmental programme, with the three stages marked -->
+  <div class="curvewrap">
+    <div class="pcard-title">// how the fruit changes as it grows
+      <span class="model-tag">sweeping days post anthesis</span></div>
+    <canvas id="curveDev" width="1060" height="230"></canvas>
+    <div class="objnote">The same delivered carbon, spent differently as the fruit develops. The
+      three bands are the stages engine.py switches between — cell division, starch filling, then
+      ripening. Watch the sugars only appear once the fruit crosses into ripening at day 35.</div>
   </div>
 
   <!-- Results -->
@@ -893,24 +900,28 @@ function focusPanel(id) {
   setTimeout(() => { el.style.borderColor = ''; }, 1100);
 }
 
-/* ── Response curve ────────────────────────────────
-   Re-solves across the full range of one control. ~25 solves at 66 ms. */
-const SWEEPS = {
-  light: { min: 0, max: 2000, label: 'light (PPFD µmol/m²/s)' },
-  co2:   { min: 200, max: 1200, label: 'CO₂ (ppm)' },
-  water: { min: 10, max: 100, label: 'water availability (%)' },
-  nit:   { min: 5, max: 100, label: 'nitrogen (%)' },
-  dpa:   { min: 5, max: 55, label: 'days post anthesis' },
-};
-let sweepVar = 'light', sweepToken = 0, sweepTimer = null;
-
-function setSweep(v, btn) {
-  sweepVar = v;
-  document.querySelectorAll('.sweepbtn').forEach(b => b.classList.remove('on'));
-  if (btn) btn.classList.add('on');
-  document.getElementById('curveTag').textContent = 'sweeping ' + (v === 'nit' ? 'nitrogen' : v);
-  scheduleSweep(readEnv());
-}
+/* ── Charts ────────────────────────────────────────
+   Two questions, two charts. Which input is limiting (all four supplies on
+   one axis), and how the fruit spends what arrives as it develops. */
+const INPUTS = [
+  { key: 'light', min: 0,   max: 2000, color: '#ffb300', label: 'light' },
+  { key: 'co2',   min: 200, max: 1200, color: '#1db954', label: 'CO₂' },
+  { key: 'water', min: 10,  max: 100,  color: '#2196f3', label: 'water' },
+  { key: 'nit',   min: 5,   max: 100,  color: '#e05fd0', label: 'nitrogen' },
+];
+const DEV_SERIES = [
+  { key: 'sugars', color: '#1db954', label: 'sugars',      parts: ['glc','fru','suc'] },
+  { key: 'starch', color: '#2196f3', label: 'starch',      parts: ['sta'] },
+  { key: 'prot',   color: '#ff9800', label: 'protein',     parts: ['pro'] },
+  { key: 'acids',  color: '#f44336', label: 'acids',       parts: ['mal','cit'] },
+  { key: 'struct', color: '#9c7bd6', label: 'wall+lipid',  parts: ['cw','lip'] },
+];
+const STAGES = [
+  { to: 15, name: 'cell division' },
+  { to: 35, name: 'starch filling' },
+  { to: 55, name: 'ripening' },
+];
+let sweepToken = 0, sweepTimer = null;
 
 function scheduleSweep(env) {
   clearTimeout(sweepTimer);
@@ -918,56 +929,123 @@ function scheduleSweep(env) {
 }
 
 async function runSweep(env) {
-  const spec = SWEEPS[sweepVar]; if (!spec || !glpk) return;
-  const my = ++sweepToken, N = 24, pts = [];
+  if (!glpk) return;
+  const my = ++sweepToken, N = 16;
+
+  // ── chart 1: every supply input, other three pinned where the user left them
+  const series = INPUTS.map(inp => ({ ...inp, pts: [] }));
   for (let i = 0; i <= N; i++) {
-    if (my !== sweepToken) return;                 // a newer sweep superseded us
-    const x = spec.min + (spec.max - spec.min) * (i / N);
-    const r = await solveAt({ ...env, [sweepVar]: x });
-    pts.push({ x, sucr: r.ok ? r.sucrExp : 0, sugar: r.ok ? r.sugar : 0, total: r.ok ? r.total : 0 });
-    if (i % 4 === 0) { drawCurve(pts, spec, env); await new Promise(r2 => setTimeout(r2, 0)); }
+    for (const sr of series) {
+      if (my !== sweepToken) return;
+      const x = sr.min + (sr.max - sr.min) * (i / N);
+      const r = await solveAt({ ...env, [sr.key]: x });
+      sr.pts.push({ f: i / N, x, y: r.ok ? r.sucrExp : 0 });
+    }
+    drawLimits(series, env);
+    await new Promise(r2 => setTimeout(r2, 0));
   }
-  if (my === sweepToken) drawCurve(pts, spec, env);
+
+  // ── chart 2: development, composition against days post anthesis
+  const dev = [];
+  const devX = [];
+  for (let i = 0; i <= N; i++) devX.push(5 + 50 * (i / N));
+  devX.push(15, 15.01, 35, 35.01);            // exact stage boundaries
+  devX.sort((a, b) => a - b);
+  for (let i = 0; i < devX.length; i++) {
+    if (my !== sweepToken) return;
+    const dpa = devX[i];
+    const r = await solveAt({ ...env, dpa, weights: null });
+    const row = { dpa };
+    DEV_SERIES.forEach(d => {
+      row[d.key] = (r.ok && r.total > 0)
+        ? d.parts.reduce((a, k) => a + r.comps[k], 0) / r.total * 100 : 0;
+    });
+    dev.push(row);
+    if (i % 3 === 0) { drawDev(dev, env); await new Promise(r2 => setTimeout(r2, 0)); }
+  }
+  if (my === sweepToken) drawDev(dev, env);
 }
 
-function drawCurve(pts, spec, env) {
-  const c = document.getElementById('curve'); if (!c) return;
-  const ctx = c.getContext('2d'), W = c.width, H = c.height;
-  const L = 62, R = 14, T = 14, B = 34;
+function axes(ctx, W, H, L, R, T, B, yMax, yFmt) {
   ctx.clearRect(0, 0, W, H);
-
-  const maxS = Math.max(1e-6, ...pts.map(p => p.sucr));
-  const maxF = Math.max(1e-6, ...pts.map(p => p.total));
-  const px = v => L + (v - spec.min) / (spec.max - spec.min) * (W - L - R);
-  const py = (v, m) => H - B - (v / m) * (H - T - B);
-
   ctx.strokeStyle = '#1f1f1f'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#8a8a8a'; ctx.font = '11px Consolas, monospace';
   for (let i = 0; i <= 4; i++) {
     const y = T + (H - T - B) * i / 4;
     ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(W - R, y); ctx.stroke();
+    ctx.fillText(yFmt(yMax * (1 - i / 4)), 6, y + 4);
   }
+}
+
+function drawLimits(series, env) {
+  const c = document.getElementById('curve'); if (!c) return;
+  const ctx = c.getContext('2d'), W = c.width, H = c.height;
+  const L = 70, R = 16, T = 34, B = 40;
+  const yMax = Math.max(1e-6, ...series.flatMap(s => s.pts.map(p => p.y)));
+  axes(ctx, W, H, L, R, T, B, yMax, v => v.toFixed(2));
+
+  const px = f => L + f * (W - L - R);
+  const py = v => H - B - (v / yMax) * (H - T - B);
+
   ctx.fillStyle = '#8a8a8a'; ctx.font = '11px Consolas, monospace';
-  ctx.fillText(spec.label, L, H - 10);
-  ctx.fillText(maxS.toFixed(2), 6, T + 10);
-  ctx.fillText('0', 6, H - B);
+  ctx.fillText('0% of range', L, H - 12);
+  ctx.fillText('100%', W - R - 34, H - 12);
 
-  const line = (key, m, color) => {
-    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
-    pts.forEach((p, i) => { const X = px(p.x), Y = py(p[key], m); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
-    ctx.stroke();
-  };
-  line('total', maxF, '#2196f3');
-  line('sucr', maxS, '#1db954');
+  const DASH = [[], [7, 5], [2, 4], [10, 4, 2, 4]];
+  series.forEach((s, i) => {
+    if (!s.pts.length) return;
+    // CO2, water and nitrogen are usually all flat at the same height; without
+    // separate dash patterns only the last one drawn would be visible.
+    ctx.setLineDash(DASH[i % DASH.length]);
+    ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.beginPath();
+    s.pts.forEach((p, j) => { const X = px(p.f), Y = py(p.y); j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+    ctx.stroke(); ctx.setLineDash([]);
 
-  // where the sliders currently sit
-  const cur = env[sweepVar];
-  if (cur >= spec.min && cur <= spec.max) {
-    ctx.strokeStyle = '#666'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(px(cur), T); ctx.lineTo(px(cur), H - B); ctx.stroke();
+    // where this input currently sits
+    const f = Math.max(0, Math.min(1, (env[s.key] - s.min) / (s.max - s.min)));
+    const near = s.pts.reduce((a, b) => Math.abs(b.f - f) < Math.abs(a.f - f) ? b : a);
+    ctx.fillStyle = s.color;
+    ctx.beginPath(); ctx.arc(px(f), py(near.y), 3.5, 0, 7); ctx.fill();
+
+    ctx.fillText('—— ' + s.label, L + 8 + i * 132, 16);
+  });
+}
+
+function drawDev(dev, env) {
+  const c = document.getElementById('curveDev'); if (!c) return;
+  const ctx = c.getContext('2d'), W = c.width, H = c.height;
+  const L = 70, R = 16, T = 34, B = 40;
+  axes(ctx, W, H, L, R, T, B, 100, v => v.toFixed(0) + '%');
+
+  const px = d => L + (d - 5) / 50 * (W - L - R);
+  const py = v => H - B - (v / 100) * (H - T - B);
+
+  // stage bands
+  let from = 5;
+  STAGES.forEach((st, i) => {
+    ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.030)' : 'rgba(255,255,255,0.075)';
+    ctx.fillRect(px(from), T, px(st.to) - px(from), H - T - B);
+    ctx.strokeStyle = '#2e2e2e'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+    if (i) { ctx.beginPath(); ctx.moveTo(px(from), T); ctx.lineTo(px(from), H - B); ctx.stroke(); }
     ctx.setLineDash([]);
-  }
-  ctx.fillStyle = '#1db954'; ctx.fillText('— phloem sucrose', L + 8, T + 12);
-  ctx.fillStyle = '#2196f3'; ctx.fillText('— total fruit output', L + 148, T + 12);
+    ctx.fillStyle = '#9a9a9a'; ctx.font = '10px Consolas, monospace';
+    ctx.fillText(st.name, px(from) + 6, H - B + 14);
+    ctx.fillText('day ' + (i ? from : 5), px(from) + 6, H - B + 26);
+    from = st.to;
+  });
+
+  DEV_SERIES.forEach((d, i) => {
+    if (dev.length < 2) return;
+    ctx.strokeStyle = d.color; ctx.lineWidth = 2; ctx.beginPath();
+    dev.forEach((row, j) => { const X = px(row.dpa), Y = py(row[d.key]); j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+    ctx.stroke();
+    ctx.fillStyle = d.color; ctx.fillText('—— ' + d.label, L + 8 + i * 118, 16);
+  });
+
+  // where the fruit-stage slider sits
+  ctx.strokeStyle = '#7a7a7a'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px(env.dpa), T); ctx.lineTo(px(env.dpa), H - B); ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 function onEnvChange() {

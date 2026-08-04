@@ -910,11 +910,12 @@ const INPUTS = [
   { key: 'nit',   min: 5,   max: 100,  color: '#e05fd0', label: 'nitrogen' },
 ];
 const DEV_SERIES = [
-  { key: 'sugars', color: '#1db954', label: 'sugars',      parts: ['glc','fru','suc'] },
-  { key: 'starch', color: '#2196f3', label: 'starch',      parts: ['sta'] },
-  { key: 'prot',   color: '#ff9800', label: 'protein',     parts: ['pro'] },
-  { key: 'acids',  color: '#f44336', label: 'acids',       parts: ['mal','cit'] },
-  { key: 'struct', color: '#9c7bd6', label: 'wall+lipid',  parts: ['cw','lip'] },
+  { key: 'sugars', color: '#1db954', label: 'sugars',     parts: ['glc','fru','suc'] },
+  { key: 'starch', color: '#2196f3', label: 'starch',     parts: ['sta'] },
+  { key: 'prot',   color: '#ff9800', label: 'protein',    parts: ['pro'] },
+  { key: 'aa',     color: '#c9a227', label: 'amino acids',parts: ['aa'] },
+  { key: 'acids',  color: '#f44336', label: 'acids',      parts: ['mal','cit'] },
+  { key: 'struct', color: '#9c7bd6', label: 'wall+lipid', parts: ['cw','lip'] },
 ];
 const STAGES = [
   { to: 15, name: 'cell division' },
@@ -978,15 +979,27 @@ function fitCanvas(c) {
   return { ctx, W: cssW, H: cssH };
 }
 
-/* Legends have to fit a half-width column now, so space them by what is
-   actually available rather than a fixed stride. */
-function legend(ctx, items, L, W) {
-  const step = (W - L - 10) / items.length;
+/* Legends have to fit a half-width column, and six entries do not fit on one
+   row there, so pack them by measured width and wrap. */
+function legendRows(ctx, items, L, W) {
   ctx.font = '10px Consolas, monospace';
-  items.forEach((it, i) => {
-    ctx.fillStyle = it.color;
-    ctx.fillText('—— ' + it.label, L + 6 + i * step, 15);
+  const rows = [[]];
+  let x = L + 6;
+  items.forEach(it => {
+    const w = ctx.measureText('—— ' + it.label).width + 12;
+    if (x + w > W - 6 && rows[rows.length - 1].length) { rows.push([]); x = L + 6; }
+    rows[rows.length - 1].push({ it, x });
+    x += w;
   });
+  return rows;
+}
+
+function drawLegend(ctx, rows) {
+  ctx.font = '10px Consolas, monospace';
+  rows.forEach((row, r) => row.forEach(e => {
+    ctx.fillStyle = e.it.color;
+    ctx.fillText('—— ' + e.it.label, e.x, 14 + r * 13);
+  }));
 }
 
 function axes(ctx, W, H, L, R, T, B, yMax, yFmt) {
@@ -1003,7 +1016,9 @@ function axes(ctx, W, H, L, R, T, B, yMax, yFmt) {
 function drawLimits(series, env) {
   const c = document.getElementById('curve'); if (!c) return;
   const { ctx, W, H } = fitCanvas(c);
-  const L = 52, R = 12, T = 34, B = 40;
+  const L = 52, R = 12, B = 40;
+  const rows = legendRows(ctx, series, L, W);
+  const T = 22 + rows.length * 13;
   const yMax = Math.max(1e-6, ...series.flatMap(s => s.pts.map(p => p.y)));
   axes(ctx, W, H, L, R, T, B, yMax, v => v.toFixed(2));
 
@@ -1019,6 +1034,16 @@ function drawLimits(series, env) {
     if (!s.pts.length) return;
     // CO2, water and nitrogen are usually all flat at the same height; without
     // separate dash patterns only the last one drawn would be visible.
+    /* Filled to the axis rather than stacked: these are four independent
+       sweeps, not parts of one total, so adding them would invent a quantity
+       the model never computes. Low alpha keeps the overlaps readable. */
+    ctx.beginPath();
+    ctx.moveTo(px(s.pts[0].f), py(0));
+    s.pts.forEach(p => ctx.lineTo(px(p.f), py(p.y)));
+    ctx.lineTo(px(s.pts[s.pts.length - 1].f), py(0));
+    ctx.closePath();
+    ctx.globalAlpha = 0.16; ctx.fillStyle = s.color; ctx.fill(); ctx.globalAlpha = 1;
+
     ctx.setLineDash(DASH[i % DASH.length]);
     ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.beginPath();
     s.pts.forEach((p, j) => { const X = px(p.f), Y = py(p.y); j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
@@ -1031,43 +1056,56 @@ function drawLimits(series, env) {
     ctx.beginPath(); ctx.arc(px(f), py(near.y), 3.5, 0, 7); ctx.fill();
   });
 
-  legend(ctx, series, L, W);
+  drawLegend(ctx, rows);
 }
 
 function drawDev(dev, env) {
   const c = document.getElementById('curveDev'); if (!c) return;
   const { ctx, W, H } = fitCanvas(c);
-  const L = 52, R = 12, T = 34, B = 40;
+  const L = 52, R = 12, B = 40;
+  const rows = legendRows(ctx, DEV_SERIES, L, W);
+  const T = 22 + rows.length * 13;
   axes(ctx, W, H, L, R, T, B, 100, v => v.toFixed(0) + '%');
 
   const px = d => L + (d - 5) / 50 * (W - L - R);
   const py = v => H - B - (v / 100) * (H - T - B);
 
-  // stage bands
+  if (dev.length > 1) {
+    /* Stacked areas: these are shares of one output, so stacking is the
+       honest picture — the bands fill the panel and each one's thickness is
+       its share. */
+    let base = dev.map(() => 0);
+    DEV_SERIES.forEach(d => {
+      ctx.beginPath();
+      dev.forEach((row, j) => {
+        const X = px(row.dpa), Y = py(base[j] + row[d.key]);
+        j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+      });
+      for (let j = dev.length - 1; j >= 0; j--) ctx.lineTo(px(dev[j].dpa), py(base[j]));
+      ctx.closePath();
+      ctx.globalAlpha = 0.82; ctx.fillStyle = d.color; ctx.fill(); ctx.globalAlpha = 1;
+      base = base.map((b, j) => b + dev[j][d.key]);
+    });
+  }
+
+  // stage boundaries drawn over the areas so they stay visible
   let from = 5;
   STAGES.forEach((st, i) => {
-    ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.030)' : 'rgba(255,255,255,0.075)';
-    ctx.fillRect(px(from), T, px(st.to) - px(from), H - T - B);
-    ctx.strokeStyle = '#2e2e2e'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
-    if (i) { ctx.beginPath(); ctx.moveTo(px(from), T); ctx.lineTo(px(from), H - B); ctx.stroke(); }
-    ctx.setLineDash([]);
+    if (i) {
+      ctx.strokeStyle = '#0b0b0b'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(px(from), T); ctx.lineTo(px(from), H - B); ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.fillStyle = '#9a9a9a'; ctx.font = '10px Consolas, monospace';
-    ctx.fillText(st.name, px(from) + 6, H - B + 14);
-    ctx.fillText('day ' + (i ? from : 5), px(from) + 6, H - B + 26);
+    ctx.fillText(st.name, px(from) + 5, H - B + 14);
+    ctx.fillText('day ' + from, px(from) + 5, H - B + 26);
     from = st.to;
   });
 
-  DEV_SERIES.forEach((d, i) => {
-    if (dev.length < 2) return;
-    ctx.strokeStyle = d.color; ctx.lineWidth = 2; ctx.beginPath();
-    dev.forEach((row, j) => { const X = px(row.dpa), Y = py(row[d.key]); j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
-    ctx.stroke();
-  });
-
-  legend(ctx, DEV_SERIES, L, W);
+  drawLegend(ctx, rows);
 
   // where the fruit-stage slider sits
-  ctx.strokeStyle = '#7a7a7a'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+  ctx.strokeStyle = '#fff'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(px(env.dpa), T); ctx.lineTo(px(env.dpa), H - B); ctx.stroke();
   ctx.setLineDash([]);
 }

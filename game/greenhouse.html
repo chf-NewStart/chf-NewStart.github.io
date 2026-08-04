@@ -126,70 +126,65 @@
     .score-u { font-size: 0.62rem; color: #7a7a7a; }
     @media (max-width: 620px) { .score { grid-template-columns: 1fr; } }
 
-    /* ── The rig: model nodes on all four sides of the result ── */
+    /* ── The rig: the model as a left-to-right pipeline, sinks in the middle.
+          Graphs live in a hover card so the diagram stays the whole picture. ── */
     .rig {
       position: relative; width: 100%; margin-bottom: 12px;
-      background: #111; border: 1px solid #1c1c1c; padding: 14px;
-      display: grid; row-gap: 16px; column-gap: 46px;   /* the connectors live in the gap */
-      grid-template-columns: 186px 1fr 186px;
-      grid-template-rows: auto 1fr auto;
+      background: #111; border: 1px solid #1c1c1c; padding: 16px;
+      display: grid; row-gap: 18px; column-gap: 46px;
+      grid-template-columns: repeat(5, 1fr);
       grid-template-areas:
-        "ga gb gc"
-        "gd centre ge"
-        "gf gg gh";
+        "ga gb gc ge gh"
+        "gd gb gf ge gg";
     }
-    .ga{grid-area:ga}.gb{grid-area:gb}.gc{grid-area:gc}
-    /* the middle row is as tall as the chart; the flanking nodes should sit
-       centred at their natural height instead of stretching to match it */
-    .gd{grid-area:gd;align-self:center}.ge{grid-area:ge;align-self:center}
-    .gf{grid-area:gf}.gg{grid-area:gg}.gh{grid-area:gh}
+    .ga{grid-area:ga}.gb{grid-area:gb}.gc{grid-area:gc}.gd{grid-area:gd}
+    .ge{grid-area:ge}.gf{grid-area:gf}.gg{grid-area:gg}.gh{grid-area:gh}
 
     .rig-wires { position: absolute; inset: 0; width: 100%; height: 100%;
                  pointer-events: none; z-index: 0; }
     .wire { fill: none; stroke-width: 2; stroke-linecap: round; }
     .flowline { stroke-dasharray: 5 11; animation: march 1s linear infinite; }
     @keyframes march { to { stroke-dashoffset: -16; } }
-
-    .rig-node, .rig-centre { position: relative; z-index: 1; }
-    .rig-node {
-      background: #0d0d0d; border: 1px solid #262626; padding: 9px 11px;
-      display: flex; flex-direction: column; justify-content: center; gap: 2px;
-      transition: border-color .15s;
-    }
-    .rig-node { cursor: pointer; }
-    .rig-node:hover { border-color: #4a4a4a; }
-    .rig-node.sel { border-color: #1db954; background: rgba(29,185,84,0.07); }
-    .rig-node.sel .rn-t { color: #1db954; }
-
-    .step-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
-    .step-btn { background: #111; border: 1px solid #262626; color: #b4b4b4; font-family: inherit;
-                font-size: 0.64rem; padding: 4px 10px; cursor: pointer; }
-    .step-btn:hover { border-color: #1db954; color: #1db954; }
-    .step-n { font-size: 0.6rem; color: #8a8a8a; margin-left: auto; }
-    .step-cap { font-size: 0.68rem; color: #b4b4b4; line-height: 1.75; min-height: 3.4em; }
-    .step-cap b { color: #1db954; font-weight: normal; }
-    .step-cap .eq { color: #8a8a8a; }
     .wire-lab { font: 10px Consolas, monospace; fill: #9a9a9a; }
-    .rn-t { font-size: 0.62rem; color: #d0d0d0; letter-spacing: .5px; }
-    .rn-v { font-size: 1rem; color: #1db954; font-variant-numeric: tabular-nums; }
-    .rn-s { font-size: 0.6rem; color: #8a8a8a; line-height: 1.5; }
-    .rn-s.dim, .dim { color: #6a6a6a; }
-    .rig-centre {
-      background: #0d0d0d; border: 1px solid #262626; padding: 10px 12px;
-      display: flex; flex-direction: column; gap: 6px; min-width: 0;
-    }
-    .centre-t { color: #1db954; text-transform: uppercase; }
-    .rig-centre canvas { width: 100%; height: 280px; display: block; }
 
-    @media (max-width: 1000px) {
-      .rig { grid-template-columns: 1fr 1fr; grid-template-rows: auto;
-             grid-template-areas: "ga gb" "gd gc" "centre centre" "gf ge" "gg gh"; }
+    .rig-node {
+      position: relative; z-index: 1; cursor: pointer;
+      background: #0d0d0d; border: 1px solid #262626; padding: 10px 12px;
+      display: flex; flex-direction: column; justify-content: center; gap: 3px;
+      transition: border-color .15s, background .15s;
+    }
+    .rig-node:hover, .rig-node.sel { border-color: #1db954; background: rgba(29,185,84,0.07); }
+    .rig-node:hover .rn-t, .rig-node.sel .rn-t { color: #1db954; }
+    .rn-t { font-size: 0.63rem; color: #d0d0d0; letter-spacing: .5px; }
+    .rn-v { font-size: 1.02rem; color: #1db954; font-variant-numeric: tabular-nums; }
+    .rn-s { font-size: 0.6rem; color: #8a8a8a; line-height: 1.55; }
+    .rn-s.dim, .dim { color: #6a6a6a; }
+
+    /* hover card: the stage's own data, next to the stage */
+    .peek {
+      position: absolute; z-index: 5; width: 460px; max-width: calc(100vw - 40px);
+      background: #0b0b0b; border: 1px solid #1db954; padding: 11px 13px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.65); pointer-events: none;
+      opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s;
+    }
+    .peek.on { opacity: 1; transform: translateY(0); }
+    .peek-t { font-size: 0.62rem; color: #1db954; letter-spacing: 1px; margin-bottom: 7px; }
+    .peek canvas { width: 100%; height: 168px; display: block; }
+    .peek-cap { font-size: 0.66rem; color: #b4b4b4; line-height: 1.7; margin-top: 8px; }
+    .peek-cap b { color: #1db954; font-weight: normal; }
+    .peek-cap .eq { color: #8a8a8a; }
+
+    .rig-hint { font-size: 0.63rem; color: #8a8a8a; margin-top: 2px; }
+
+    @media (max-width: 1100px) {
+      .rig { grid-template-columns: repeat(2, 1fr);
+             grid-template-areas: "ga gb" "gd gb" "gc gf" "ge ge" "gh gg"; }
       .rig-wires { display: none; }
-      .rig-centre canvas { height: 240px; }
+      .peek { position: static; width: auto; opacity: 1; transform: none; margin-top: 12px; }
     }
     @media (max-width: 560px) {
       .rig { grid-template-columns: 1fr;
-             grid-template-areas: "ga" "gb" "gd" "gc" "centre" "gf" "ge" "gg" "gh"; }
+             grid-template-areas: "ga" "gd" "gb" "gc" "gf" "ge" "gh" "gg"; }
     }
 
     /* ── Response curves, side by side ── */
@@ -352,17 +347,6 @@
       <div class="rn-s dim">soil NO₃⁻ / NH₄⁺</div>
     </div>
 
-    <div class="rig-centre">
-      <div class="rn-t centre-t" id="centreT">ONE FRUIT, ONE SEASON</div>
-      <canvas id="curveSeason" width="900" height="270"></canvas>
-      <div class="step-cap" id="stepCap"></div>
-      <div class="step-bar">
-        <button class="step-btn" onclick="stepBy(-1)">◀ prev</button>
-        <button class="step-btn" onclick="stepBy(1)">next ▶</button>
-        <button class="step-btn" onclick="selectStep('season')">whole season</button>
-        <span class="step-n" id="stepN"></span>
-      </div>
-    </div>
 
     <div class="rig-node ge" id="nd_split" onclick="selectStep(\'split\')">
       <div class="rn-t">SINK SPLIT</div>
@@ -388,16 +372,36 @@
       <div class="rn-s" id="fl_stage">ripening</div>
       <div class="rn-s" id="fl_weight">–</div>
     </div>
-  </div>
 
-  <!-- Kept separate: a different question from the one in the middle -->
-  <div class="curvewrap" style="margin-bottom:12px">
+    <div class="peek" id="peek">
+      <div class="peek-t" id="peekT"></div>
+      <canvas id="peekCanvas" width="900" height="336"></canvas>
+      <div class="peek-cap" id="peekCap"></div>
+    </div>
+  </div>
+  <div class="rig-hint">Hover any stage to see what it does · click to pin ·
+    <button class="step-btn" onclick="stepBy(-1)">◀</button>
+    <button class="step-btn" onclick="stepBy(1)">▶</button>
+    <span id="stepN" class="dim"></span></div>
+
+  <div class="charts-grid">
+  <div class="curvewrap">
     <div class="pcard-title">// what is limiting the plant?
       <span class="model-tag">all four inputs, each swept across its own full range</span></div>
     <canvas id="curve" width="1060" height="230"></canvas>
     <div class="objnote">Each line holds the other three inputs where your sliders are and sweeps
       one from its minimum to its maximum. Steep means that input is limiting right now; flat means
       the plant already has more than it can use. The dot marks where you are sitting.</div>
+  </div>
+
+  <div class="curvewrap">
+    <div class="pcard-title">// one fruit, one season
+      <span class="model-tag">Gompertz growth, split by what the model builds</span></div>
+    <canvas id="curveSeason" width="1060" height="230"></canvas>
+    <div class="objnote">Every day's weight gain from the Colombié Gompertz fit, split by the
+      composition the FBA solves for that day, so the bands add up to the growth curve itself.
+      The dashed line is growth rate, peaking near day 22.</div>
+  </div>
   </div>
 
   <!-- Results -->
@@ -966,25 +970,25 @@ function wireRig(r, share) {
 
   const W = (v, hi) => Math.max(1.4, Math.min(hi, 1.4 + v * 7));
   const sw = W(r.sucrExp, 10), xw = W(r.xylNO3 * 8, 6);
+  const H = (from, to, y) => `M${from.l + from.w},${y} L${to.l - 7},${y}`;
 
-  // top edge, left to right
-  set('w_light', `M${light.l + light.w},${light.cy} L${src.l - 6},${light.cy}`, 2.5);
-  const phl = `M${src.l + src.w},${src.cy} L${pool.l - 6},${src.cy}`;
+  /* Left to right: drivers into the source, the source loading both transport
+     routes, the phloem through the sink split, and the xylem straight to the
+     fruit. The root sits inside the source model (stem·leaf·root), so it feeds
+     the source rather than the xylem directly. */
+  set('w_light',   H(light, src, light.cy), 2.5);
+  set('w_rootsrc', H(root, src, root.cy), 1.8);
+  const phl = H(src, pool, pool.cy);
   set('w_phl', phl, sw); set('w_phl_a', phl, sw);
-  // right edge downward
-  set('w_split', `M${pool.cx},${pool.t + pool.h} L${pool.cx},${split.t - 6}`, sw);
-  const toFruit = `M${split.cx},${split.t + split.h} L${split.cx},${fruit.t - 6}`;
+  set('w_rootxyl', H(src, xyl, xyl.cy), 1.8);
+  set('w_split',   H(pool, split, pool.cy), sw);
+  const toFruit = H(split, fruit, fruit.cy);
   set('w_fruit', toFruit, Math.max(1.4, sw * share));
   set('w_fruit_a', toFruit, Math.max(1.4, sw * share));
-  // sink split also feeds the vegetative sink, along the bottom
-  set('w_veg', `M${split.l},${split.cy} C${veg.cx + 60},${split.cy} ${veg.cx + 40},${veg.cy} ${veg.l + veg.w + 6},${veg.cy}`,
+  set('w_veg', `M${split.l + split.w},${split.cy} C${veg.l - 30},${split.cy} ${veg.l - 20},${veg.cy} ${veg.l - 7},${veg.cy}`,
       Math.max(1.2, sw * (1 - share)));
-  // left edge: root feeds the shoot and the xylem
-  set('w_rootsrc', `M${root.cx},${root.t} L${root.cx},${src.t + src.h + 6}`, 1.8);
-  set('w_rootxyl', `M${root.cx},${root.t + root.h} L${root.cx},${xyl.t - 6}`, 1.8);
-  // bottom edge: xylem to the fruit, routed under the vegetative box
-  const yb = Math.max(xyl.cy, veg.t + veg.h + 14);
-  const xylPath = `M${xyl.l + xyl.w},${xyl.cy} C${veg.l - 20},${yb} ${veg.l + veg.w + 20},${yb} ${fruit.l - 6},${fruit.cy}`;
+  const yb = Math.max(xyl.t + xyl.h + 16, veg.cy);
+  const xylPath = `M${xyl.l + xyl.w},${xyl.cy} C${(xyl.l + xyl.w + fruit.l) / 2},${yb} ${fruit.l - 60},${fruit.cy} ${fruit.l - 7},${fruit.cy}`;
   set('w_xyl', xylPath, xw); set('w_xyl_a', xylPath, xw);
 
   // every arrow states what it is carrying
@@ -992,11 +996,11 @@ function wireRig(r, share) {
     const e = document.getElementById(id); if (!e) return;
     e.setAttribute('x', x.toFixed(1)); e.setAttribute('y', y.toFixed(1)); e.textContent = txt;
   };
-  lab('lab_phl',   (src.l + src.w + pool.l) / 2, src.cy - 9, r.sucrExp.toFixed(2));
-  lab('lab_split', pool.cx + 26, (pool.t + pool.h + split.t) / 2, r.sucrExp.toFixed(2));
-  lab('lab_fruit', split.cx + 28, (split.t + split.h + fruit.t) / 2, (share * 100).toFixed(0) + '%');
-  lab('lab_veg',   veg.cx + 4, veg.t - 9, ((1 - share) * 100).toFixed(0) + '% to shoot');
-  lab('lab_xyl',   (xyl.l + xyl.w + fruit.l) / 2, yb + 14, r.xylNO3.toFixed(3) + ' NO₃⁻');
+  lab('lab_phl',   (src.l + src.w + pool.l) / 2, pool.cy - 9, r.sucrExp.toFixed(2));
+  lab('lab_split', (pool.l + pool.w + split.l) / 2, pool.cy - 9, r.sucrExp.toFixed(2));
+  lab('lab_fruit', (split.l + split.w + fruit.l) / 2, fruit.cy - 9, (share * 100).toFixed(0) + '%');
+  lab('lab_veg',   (split.l + split.w + veg.l) / 2, veg.cy - 9, ((1 - share) * 100).toFixed(0) + '%');
+  lab('lab_xyl',   (xyl.l + xyl.w + fruit.l) / 2, yb + 13, r.xylNO3.toFixed(3) + ' NO₃⁻');
 
   const dur = v => v < 1e-4 ? '0s' : Math.max(0.25, 1.6 / Math.max(0.05, v)).toFixed(2) + 's';
   [['w_phl_a', r.sucrExp], ['w_fruit_a', r.sucrExp * share], ['w_xyl_a', r.xylNO3]]
@@ -1115,14 +1119,15 @@ async function runSeason(env, token) {
     }
     days.push({ dpa, W, rate: sinkStrength(dpa), share: fruitShare(dpa), cum: { ...cum } });
     lastDays = days;
-    if (dpa % 6 === 0) { drawCentre(); await new Promise(r2 => setTimeout(r2, 0)); }
+    if (dpa % 6 === 0) { drawSeason(days, env); drawCentre(); await new Promise(r2 => setTimeout(r2, 0)); }
   }
+  drawSeason(days, env);
   drawCentre();
   return days;
 }
 
-function drawSeason(days, env) {
-  const c = document.getElementById('curveSeason'); if (!c || days.length < 2) return;
+function drawSeason(days, env, canvasId) {
+  const c = document.getElementById(canvasId || 'curveSeason'); if (!c || days.length < 2) return;
   const { ctx, W: CW, H } = fitCanvas(c);
   const L = 56, R = 14, B = 40;
   const rows = legendRows(ctx, DEV_SERIES, L, CW);
@@ -1195,7 +1200,8 @@ function selectStep(k) {
   document.querySelectorAll('.rig-node').forEach(n => n.classList.remove('sel'));
   const st = STEPS.find(x => x.k === k);
   if (st && st.node) document.getElementById(st.node)?.classList.add('sel');
-  document.getElementById('centreT').textContent = st ? st.title : '';
+  const t = document.getElementById('peekT'); if (t) t.textContent = st ? st.title : '';
+  if (st && st.node) placePeek(st.node);
   const order = ['light','root','source','phloem','xylem','split','fruit'];
   const i = order.indexOf(k === 'veg' ? 'split' : k);
   document.getElementById('stepN').textContent =
@@ -1205,7 +1211,56 @@ function selectStep(k) {
 function stepBy(d) {
   const order = ['light','root','source','phloem','xylem','split','fruit','season'];
   let i = order.indexOf(stepView); if (i < 0) i = order.length - 1;
-  selectStep(order[(i + d + order.length) % order.length]);
+  const k = order[(i + d + order.length) % order.length];
+  pinned = k; selectStep(k);
+}
+
+/* The card sits beside whichever stage you are on, flipping to the other side
+   when it would run off the panel. */
+function placePeek(nodeId) {
+  const peek = document.getElementById('peek'), rig = document.getElementById('rig');
+  const n = document.getElementById(nodeId);
+  if (!peek || !rig || !n || rig.clientWidth === 0) return;
+  const R = rig.getBoundingClientRect(), B = n.getBoundingClientRect();
+  const w = peek.offsetWidth || 460;
+  let left = B.left - R.left + B.width + 14;
+  if (left + w > R.width - 8) left = B.left - R.left - w - 14;
+  if (left < 8) left = Math.max(8, (R.width - w) / 2);
+  let top = B.top - R.top + B.height + 10;
+  const h = peek.offsetHeight || 300;
+  if (top + h > R.height - 4) top = Math.max(8, B.top - R.top - h - 10);
+  peek.style.left = left + 'px';
+  peek.style.top = top + 'px';
+  peek.classList.add('on');
+}
+
+let pinned = null;
+function hoverStep(k, nodeId) {
+  if (pinned) return;
+  stepView = k; drawCentre();
+  document.querySelectorAll('.rig-node').forEach(n => n.classList.remove('sel'));
+  document.getElementById(nodeId)?.classList.add('sel');
+  const st = STEPS.find(x => x.k === k);
+  const t = document.getElementById('peekT'); if (t) t.textContent = st ? st.title : '';
+  placePeek(nodeId);
+}
+function unhover() {
+  if (pinned) return;
+  document.getElementById('peek')?.classList.remove('on');
+  document.querySelectorAll('.rig-node').forEach(n => n.classList.remove('sel'));
+}
+function wireHovers() {
+  STEPS.filter(x => x.node).forEach(st => {
+    const n = document.getElementById(st.node); if (!n) return;
+    n.addEventListener('mouseenter', () => hoverStep(st.k, st.node));
+    n.addEventListener('mouseleave', unhover);
+    n.addEventListener('click', e => {
+      e.stopPropagation();
+      pinned = (pinned === st.k) ? null : st.k;
+      if (pinned) { stepView = st.k; drawCentre(); placePeek(st.node); }
+      else unhover();
+    });
+  });
 }
 
 /* A generic x/y plot so each step can show its own quantities. */
@@ -1248,14 +1303,14 @@ function pick(varKey, field) {
 }
 
 function drawCentre() {
-  const cv = document.getElementById('curveSeason'); if (!cv) return;
+  const cv = document.getElementById('peekCanvas'); if (!cv) return;
   const env = lastEnv, r = lastResult;
-  const cap = document.getElementById('stepCap');
+  const cap = document.getElementById('peekCap');
   const say = h => { if (cap) cap.innerHTML = h; };
   if (!env || !r) return;
 
   if (stepView === 'season' || stepView === 'fruit') {
-    if (lastDays) drawSeason(lastDays, env);
+    if (lastDays) drawSeason(lastDays, env, 'peekCanvas');
     say(stepView === 'fruit'
       ? 'The fruit LP spends whatever arrives. Its objective changes with age, so the same '
         + 'delivered carbon becomes different things: wall and protein while cells divide, '
@@ -1472,7 +1527,7 @@ function onEnvChange() {
 async function init() {
   setStatus('loading GLPK…', 'busy');
   // wire the ring up front so it reads as a connected diagram while loading
-  requestAnimationFrame(() => wireRig({ sucrExp: 0, xylNO3: 0 }, fruitShare(45)));
+  requestAnimationFrame(() => { wireRig({ sucrExp: 0, xylNO3: 0 }, fruitShare(45)); wireHovers(); });
 
   // glpk.js is vendored locally as dist/index.js (ES module). It embeds the
   // solver wasm and runs it in a Web Worker built from a blob URL, so there is

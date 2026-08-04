@@ -176,6 +176,13 @@
 
     .rig-hint { font-size: 0.63rem; color: #8a8a8a; margin-top: 2px; }
 
+    /* these were wiped with the old rig block; the map and step controls use them */
+    .step-btn { background: #0d0d0d; border: 1px solid #262626; color: #b4b4b4;
+                font-family: inherit; font-size: 0.66rem; padding: 5px 11px; cursor: pointer;
+                transition: border-color .12s, color .12s; }
+    .step-btn:hover { border-color: #1db954; color: #1db954; }
+    .step-btn.on { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.10); }
+
     @media (max-width: 1100px) {
       .rig { grid-template-columns: repeat(2, 1fr);
              grid-template-areas: "ga gb" "gd gb" "gc gf" "ge ge" "gh gg"; }
@@ -1478,12 +1485,21 @@ function drawMap(env) {
   ctx.clearRect(0, 0, W, H);
 
   const vals = mapCells.map(z => z[mapMetric]);
-  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const vmin = Math.min(...vals), vmax = Math.max(...vals);
+  /* One degenerate column (no light, nothing grows) stretched the scale so the
+     other 95% of the surface all landed on the same colour. Clip to the 2nd and
+     98th percentile so real structure is visible; the key states the clip. */
+  const sorted = [...vals].sort((a, b) => a - b);
+  const q = f => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(f * (sorted.length - 1))))];
+  let lo = q(0.02), hi = q(0.98);
+  if (hi - lo < 1e-9) { lo = vmin; hi = vmax; }
   const span = (hi - lo) || 1;
+  // saturated = nearly every square already sits at the top of the range
+  const nearTop = vals.filter(v => Math.abs(vmax - v) <= 0.02 * (Math.abs(vmax) || 1)).length / vals.length;
   const cw = (W - L - R) / NX, ch = (H - T - B) / NY;
 
   mapCells.forEach(z => {
-    const t = (z[mapMetric] - lo) / span;
+    const t = Math.max(0, Math.min(1, (z[mapMetric] - lo) / span));
     const [r0, g0, b0] = M.hue;
     // dark floor to full colour, so the gradient reads on a black page
     ctx.fillStyle = `rgb(${(r0 * (0.12 + 0.88 * t)) | 0},${(g0 * (0.12 + 0.88 * t)) | 0},${(b0 * (0.12 + 0.88 * t)) | 0})`;
@@ -1518,6 +1534,11 @@ function drawMap(env) {
   ctx.fillStyle = '#b4b4b4'; ctx.font = '10px Consolas, monospace';
   ctx.fillText(M.fmt(hi), kx + 19, T + 8);
   ctx.fillText(M.fmt(lo), kx + 19, T + kh);
+  if (lo > vmin || hi < vmax) {
+    ctx.fillStyle = '#6a6a6a';
+    ctx.fillText('clipped', kx + 19, T + kh + 14);
+    ctx.fillText(M.fmt(vmin) + '–' + M.fmt(vmax), kx + 19, T + kh + 26);
+  }
 
   // best square, which is rarely where the best of another metric is
   const best = mapCells.reduce((a, b) => b[mapMetric] > a[mapMetric] ? b : a);
@@ -1526,17 +1547,35 @@ function drawMap(env) {
   ctx.strokeRect(L + best.i * cw, H - B - (best.j + 1) * ch, cw, ch);
   ctx.setLineDash([]);
 
+  /* A uniform rectangle reads as a broken render, so when the metric really is
+     saturated the plot says so rather than leaving you to wonder. */
+  if (nearTop > 0.80) {
+    const bh = 44, by = T + (H - T - B) / 2 - bh / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(L, by, W - L - R, bh);
+    ctx.fillStyle = '#fff'; ctx.font = '12px Consolas, monospace'; ctx.textAlign = 'center';
+    ctx.fillText((nearTop * 100).toFixed(0) + '% of this surface is at the maximum — flat by nature, not a rendering fault',
+                 L + (W - L - R) / 2, by + 18);
+    ctx.fillStyle = '#b4b4b4'; ctx.font = '11px Consolas, monospace';
+    ctx.fillText(M.label + ' is set by the fruit stage here, not by light or nitrogen',
+                 L + (W - L - R) / 2, by + 34);
+    ctx.textAlign = 'left';
+  }
+
   const note = document.getElementById('mapNote');
   if (note) note.innerHTML = 'Every square is its own solve of both models — '
     + mapCells.length + ' of them. Sweeps move one input at a time; this moves two, which is '
     + 'where the trade-offs live. <b>Best ' + M.label + ' here: ' + M.fmt(best[mapMetric])
     + '</b> at ' + best.light.toFixed(0) + ' PPFD and ' + best.nit.toFixed(0)
     + '% nitrogen (dashed square). The ring is where your sliders are sitting.'
-    + (span / (Math.abs(hi) || 1) < 0.08
-        ? ' <b>This surface is almost flat</b> — over this whole space the metric barely moves, '
-          + 'which is itself the answer. <span class="eq">Sweetness saturates at the ripening '
-          + 'stage because the fruit objective is already spending nearly everything on sugar; '
-          + 'it responds to the fruit stage, not to light or nitrogen. Try fruit output.</span>'
+    + (nearTop > 0.80
+        ? ' <b>' + (nearTop * 100).toFixed(0) + '% of this surface is already at its maximum</b>, '
+          + 'so the environment barely moves it — which is itself the answer. '
+          + '<span class="eq">Sweetness saturates at the ripening stage: the fruit objective is '
+          + 'already spending nearly everything on sugar, so brix answers to the fruit stage, not '
+          + 'to light or nitrogen. The colour scale is clipped to the 2nd–98th percentile, so what '
+          + 'variation there is shows up rather than being flattened by the dark no-light column. '
+          + 'Try fruit output for a metric the environment does move.</span>'
         : ' <span class="eq">Switch metric to see how far apart the optima sit.</span>');
 }
 

@@ -8,6 +8,19 @@
   <link rel="icon" type="image/png" sizes="32x32" href="../favicon_io/tomato-favicon-32x32.png?v=3">
   <link rel="canonical" href="https://houfu72.com/game/greenhouse.html">
   <title>Greenhouse Digital Twin // houfu72.com</title>
+  <meta name="description" content="Two metabolic models of one tomato — stem, leaf and root feeding the fruit through phloem sugar and xylem nitrate — solved by real flux balance analysis in your browser. Set light, CO2, water, nitrogen and the fruit's ripening stage, and watch the fluxes respond.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://houfu72.com/game/greenhouse.html">
+  <meta property="og:title" content="Greenhouse Digital Twin — source and fruit metabolism, coupled and solved live">
+  <meta property="og:description" content="Two metabolic models of one tomato — stem, leaf and root feeding the fruit through phloem sugar and xylem nitrate — solved by real flux balance analysis in your browser. Set light, CO2, water, nitrogen and the fruit's ripening stage, and watch the fluxes respond.">
+  <meta property="og:image" content="https://houfu72.com/og-v2.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Greenhouse Digital Twin by Houfu Chen">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Greenhouse Digital Twin — source and fruit metabolism, coupled and solved live">
+  <meta name="twitter:description" content="Two metabolic models of one tomato — stem, leaf and root feeding the fruit through phloem sugar and xylem nitrate — solved by real flux balance analysis in your browser. Set light, CO2, water, nitrogen and the fruit's ripening stage, and watch the fluxes respond.">
+  <meta name="twitter:image" content="https://houfu72.com/og-v2.jpg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -42,7 +55,7 @@
     }
 
     /* Environmental controls */
-    .env-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+    .env-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; }
     .env-item label { display: block; font-size: 0.61rem; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
     .env-item input[type=range] { width: 100%; accent-color: #1db954; cursor: pointer; }
     .env-val { font-size: 0.88rem; color: #1db954; margin-top: 4px; }
@@ -138,6 +151,11 @@
         <label>⚗ Nitrogen (NO₃⁻)</label>
         <input type="range" id="slN" min="5" max="100" value="70" step="5" oninput="onEnvChange()">
         <div class="env-val"><span id="vN">70</span> <span class="env-unit">%</span></div>
+      </div>
+      <div class="env-item">
+        <label>🍅 Fruit stage</label>
+        <input type="range" id="slDPA" min="5" max="55" value="45" step="5" oninput="onEnvChange()">
+        <div class="env-val"><span id="vDPA">45</span> <span class="env-unit">DPA · <span id="vStage">ripening</span></span></div>
       </div>
     </div>
   </div>
@@ -280,12 +298,13 @@ function parseStemModel(doc) {
     if (s.getAttribute('compartment') === 'b') boundarySpecies.add(s.getAttribute('id'));
   });
 
-  // Internal species → index (for mass balance constraints)
+  // Every species is mass-balanced, boundary metabolites included. Excluding
+  // them (as this parser used to) turns each one into an unlimited free source,
+  // which is why the environment sliders had no effect on the solution.
   const speciesIdx = {};
   let si = 0;
   Array.from(doc.getElementsByTagName('species')).forEach(s => {
-    const id = s.getAttribute('id');
-    if (!boundarySpecies.has(id)) speciesIdx[id] = si++;
+    speciesIdx[s.getAttribute('id')] = si++;
   });
 
   // Reactions
@@ -300,15 +319,36 @@ function parseStemModel(doc) {
     const pl = rxn.getElementsByTagName('listOfProducts')[0];
     if (rl) Array.from(rl.getElementsByTagName('speciesReference')).forEach(sr => {
       const sp = sr.getAttribute('species');
-      if (!boundarySpecies.has(sp)) stoich[sp] = (stoich[sp] || 0) - +sr.getAttribute('stoichiometry');
+      stoich[sp] = (stoich[sp] || 0) - +sr.getAttribute('stoichiometry');
     });
     if (pl) Array.from(pl.getElementsByTagName('speciesReference')).forEach(sr => {
       const sp = sr.getAttribute('species');
-      if (!boundarySpecies.has(sp)) stoich[sp] = (stoich[sp] || 0) + +sr.getAttribute('stoichiometry');
+      stoich[sp] = (stoich[sp] || 0) + +sr.getAttribute('stoichiometry');
     });
 
     rxnIdx[id] = reactions.length;
     reactions.push({ id, lb: params[lbId] ?? -99999, ub: params[ubId] ?? 99999, stoich });
+  });
+
+  /* The SBML declares boundary metabolites but no exchange reactions for them;
+     cobra synthesises one per boundary metabolite on load ("Adding exchange
+     reaction EX_photon_b ..."). This parser has to do the same or there is
+     nothing to constrain. Bounds then follow setup_veg_model in engine.py:
+     everything shut except eight imports and five pure exports. */
+  const VEG_IMPORTS = ['photon', 'co2', 'h2o', 'no3', 'nh4', 'pi', 'so4', 'k'];
+  const VEG_EXPORTS = ['sucr', 'gln_L', 'asp_L', 'glu_L', 'ala_L', 'co2', 'o2', 'h2o'];
+  const PURE_EXPORT = new Set(['sucr', 'gln_L', 'asp_L', 'glu_L', 'ala_L']);
+  const OPEN = new Set([...VEG_IMPORTS, ...VEG_EXPORTS]);
+  boundarySpecies.forEach(spId => {
+    const base = spId.replace(/^M_/, '').replace(/_b$/, '');
+    const exId = 'EX_' + base + '_b';
+    // cobra convention: the exchange consumes the metabolite, so a negative
+    // flux is uptake and a positive flux is export.
+    let lb = -1000, ub = 1000;
+    if (!OPEN.has(base))          { lb = 0; ub = 0; }
+    else if (PURE_EXPORT.has(base)) { lb = 0; }
+    rxnIdx[exId] = reactions.length;
+    reactions.push({ id: exId, lb, ub, stoich: { [spId]: -1 } });
   });
 
   // Objective (from fbc:listOfObjectives)
@@ -335,11 +375,12 @@ function parseFruitModel(doc) {
     }
   });
 
+  // Boundary metabolites stay mass-balanced here too; the exchanges added
+  // below are what bound them.
   const speciesIdx = {};
   let si = 0;
   Array.from(doc.getElementsByTagName('species')).forEach(s => {
-    const id = s.getAttribute('id');
-    if (!boundarySpecies.has(id)) speciesIdx[id] = si++;
+    speciesIdx[s.getAttribute('id')] = si++;
   });
 
   const reactions = [], rxnIdx = {};
@@ -359,21 +400,42 @@ function parseFruitModel(doc) {
     const pl = rxn.getElementsByTagName('listOfProducts')[0];
     if (rl) Array.from(rl.getElementsByTagName('speciesReference')).forEach(sr => {
       const sp = sr.getAttribute('species');
-      if (!boundarySpecies.has(sp)) stoich[sp] = (stoich[sp] || 0) - +sr.getAttribute('stoichiometry');
+      stoich[sp] = (stoich[sp] || 0) - +sr.getAttribute('stoichiometry');
     });
     if (pl) Array.from(pl.getElementsByTagName('speciesReference')).forEach(sr => {
       const sp = sr.getAttribute('species');
       if (outputSpecies.has(sp)) producesOutput = true;
-      if (!boundarySpecies.has(sp)) stoich[sp] = (stoich[sp] || 0) + +sr.getAttribute('stoichiometry');
+      stoich[sp] = (stoich[sp] || 0) + +sr.getAttribute('stoichiometry');
     });
-
-    if (producesOutput) objectiveVars.push({ name: id, coef: 1 });
 
     rxnIdx[id] = reactions.length;
     reactions.push({ id, lb: reversible ? -1000 : 0, ub: 1000, stoich });
   });
 
+  /* Same story as the source model: cobra synthesises one exchange per
+     boundary metabolite. build_fruit_model in engine.py then makes the
+     phloem/xylem species imports and everything else an export. */
+  const IMPORT_EX = new Set(['Suc_in', 'Gln_in', 'NO3', 'Pi']);
+  boundarySpecies.forEach(spId => {
+    const exId = 'EX_' + spId;
+    if (exId in rxnIdx) return;
+    // exchange consumes the metabolite: negative flux = import, positive = export
+    const lb = IMPORT_EX.has(spId) ? -1000 : 0;
+    const ub = IMPORT_EX.has(spId) ? 0 : 1000;
+    rxnIdx[exId] = reactions.length;
+    reactions.push({ id: exId, lb, ub, stoich: { [spId]: -1 } });
+  });
+
   return { speciesIdx, reactions, rxnIdx, objectiveVars };
+}
+
+/* Stage-dependent fruit objective, ported from engine.py _fruit_objective.
+   Days post anthesis decide whether the fruit is dividing, filling with
+   starch, or ripening into sugars and acids. */
+function fruitObjective(dpa) {
+  if (dpa <= 15) return [['EX_DNA_RNA',1.0],['EX_PROTEIN',1.0],['EX_CW',0.3],['EX_STARCH',0.1],['EX_DAG',0.1]];
+  if (dpa <= 35) return [['EX_STARCH',1.0],['EX_CW',0.8],['EX_PROTEIN',0.5],['EX_DAG',0.3],['EX_DNA_RNA',0.2]];
+  return [['EX_Glc_ac',1.0],['EX_Fru_ac',1.0],['EX_Suc_ac',0.8],['EX_Cit_ac',0.7],['EX_Mal_ac',0.5],['EX_PROTEIN',0.2]];
 }
 
 /* ── Build GLPK LP from parsed model ────────────── */
@@ -416,45 +478,78 @@ async function runSim() {
   const co2   = +document.getElementById('slCO2').value;
   const water = +document.getElementById('slWater').value;
   const nit   = +document.getElementById('slN').value;
+  const dpa   = +document.getElementById('slDPA').value;
 
   document.getElementById('vLight').textContent = light;
   document.getElementById('vCO2').textContent   = co2;
   document.getElementById('vWater').textContent  = water;
   document.getElementById('vN').textContent      = nit;
+  document.getElementById('vDPA').textContent   = dpa;
+  document.getElementById('vStage').textContent =
+    dpa <= 15 ? 'cell division' : dpa <= 35 ? 'starch filling' : 'ripening';
 
   setStatus('solving Sl2183…', 'busy');
   await new Promise(r => requestAnimationFrame(r));
 
-  /* ── 1. Stem / leaf / root FBA ─── */
-  // All key exchanges: positive flux = uptake (boundary → internal)
+  /* ── 1. Stem / leaf / root FBA ───
+     Uptake is a NEGATIVE flux on the boundary exchange, so supply is set
+     through the lower bound. Constraining the upper bound (as this did
+     before) limits only the export direction and leaves uptake unlimited. */
+  const PHOTOPERIOD = 16;    // h of light per day
+  const REF_PPFD    = 200;   // engine.py REF_PPFD
+  const VYTOP_PHOTON = 245;  // Gerlin 2022 Fig 4A daily plant photon uptake
+
   const stemOverrides = {
-    'R_EX_photon_h': { ub: light / 2000 * 500 },         // photon uptake capped by PPFD
-    'R_EX_co2_e':    { ub: co2   / 1200 * 200 },         // CO2 available from air
-    'R_EX_h2o_c':    { ub: water / 100  * 1000 },        // water availability
-    'R_EX_no3_c':    { ub: nit   / 100  * 100 },         // nitrate supply
+    // faithful to engine.py: photon supply scales with PPFD off the VYTOP rate
+    'EX_photon_b': { lb: -(VYTOP_PHOTON / PHOTOPERIOD) * (light / REF_PPFD) },
+    // engine.py holds NO3 to the xylem supply; here it tracks the N slider
+    'EX_no3_b':    { lb: -(nit / 100) * 20 },
+    // engine.py treats CO2 and H2O as non-limiting (-1000). These scale with
+    // the sliders so the controls do something; the ceiling is generous enough
+    // that light stays the binding constraint under normal settings.
+    'EX_co2_b':    { lb: -(co2 / 400) * 1000 },
+    'EX_h2o_b':    { lb: -(water / 100) * 1000 },
   };
 
+  // engine.py maximises phloem export, not biomass (engine.py:334).
   let stemRes;
   try {
     stemRes = await glpk.solve(
-      buildLP(stemModel, [{ name: stemModel.objective, coef: 1 }], stemOverrides),
+      buildLP(stemModel, [{ name: 'EX_sucr_b', coef: 1 }], stemOverrides),
       { msglev: glpk.GLP_MSG_OFF }
     );
   } catch (e) { setStatus('stem LP error: ' + e.message, 'err'); return; }
 
   if (stemRes.result.status !== glpk.GLP_OPT) {
-    setStatus('stem: ' + (stemRes.result.status === glpk.GLP_INFEAS ? 'infeasible' : 'no solution'), 'err');
+    setStatus('source: ' + (stemRes.result.status === glpk.GLP_INFEAS ? 'infeasible' : 'no solution'), 'err');
     return;
   }
 
-  const sv = stemRes.result.vars;
-  const bioFlux  = sv[stemModel.objective] || 0;
-  const photon   = sv['R_EX_photon_h'] || 0;
-  const co2Flux  = sv['R_EX_co2_e']   || 0;
-  const h2oFlux  = sv['R_EX_h2o_c']   || 0;
-  const no3Flux  = sv['R_EX_no3_c']   || 0;
-  const sucrExp  = sv['R_EX_sucr_c']  || 0;
-  const glnExp   = sv['R_EX_gln_L_c'] || 0;
+  const sucrExp = Math.max(0, stemRes.result.vars['EX_sucr_b'] || 0);
+
+  /* Then maximise Gln export with sucrose held at a fraction of its optimum
+     (engine.py:336). c_priority_from_phloem_cn(18) = 0.861: pinning sucrose at
+     the full optimum leaves no capacity for N export, which starves the fruit. */
+  const C_PRIORITY = Math.max(0.5, Math.min(0.95, (2 * 18 - 5) / (2 * 18)));
+  let glnExp = 0, sv = stemRes.result.vars;
+  try {
+    const glnRes = await glpk.solve(
+      buildLP(stemModel, [{ name: 'EX_gln_L_b', coef: 1 }],
+        { ...stemOverrides, 'EX_sucr_b': { lb: sucrExp * C_PRIORITY } }),
+      { msglev: glpk.GLP_MSG_OFF }
+    );
+    if (glnRes.result.status === glpk.GLP_OPT) {
+      glnExp = Math.max(0, glnRes.result.vars['EX_gln_L_b'] || 0);
+      sv = glnRes.result.vars;
+    }
+  } catch (e) { /* Gln is secondary; keep the sucrose solution */ }
+
+  // Uptakes come back negative; show them as positive rates.
+  const bioFlux  = sv['R_BIOMASS_STEM'] || 0;
+  const photon   = -(sv['EX_photon_b'] || 0);
+  const co2Flux  = -(sv['EX_co2_b']    || 0);
+  const h2oFlux  = -(sv['EX_h2o_b']    || 0);
+  const no3Flux  = -(sv['EX_no3_b']    || 0);
 
   document.getElementById('r_biomass').textContent = fx(bioFlux);
   document.getElementById('r_photon').textContent  = fx(photon);
@@ -488,12 +583,21 @@ async function runSim() {
   let fruitRes;
   try {
     fruitRes = await glpk.solve(
-      buildLP(fruitModel, fruitModel.objectiveVars, fruitOverrides),
+      buildLP(fruitModel,
+        fruitObjective(dpa).filter(([r]) => r in fruitModel.rxnIdx).map(([r, c]) => ({ name: r, coef: c })),
+        fruitOverrides),
       { msglev: glpk.GLP_MSG_OFF }
     );
   } catch (e) { setStatus('fruit LP error: ' + e.message, 'err'); return; }
 
-  const fv = fruitRes?.result?.vars || {};
+  // The fruit status used to go unchecked, so an infeasible sink silently
+  // rendered as a page full of zeros.
+  if (fruitRes.result.status !== glpk.GLP_OPT) {
+    setStatus('fruit: ' + (fruitRes.result.status === glpk.GLP_INFEAS ? 'infeasible' : 'no solution'), 'err');
+    return;
+  }
+
+  const fv = fruitRes.result.vars || {};
   document.getElementById('f_suc_up').textContent = fx(fv['VSuc_up'] || 0);
   document.getElementById('f_gln_up').textContent = fx(fv['VGln_up'] || 0);
 

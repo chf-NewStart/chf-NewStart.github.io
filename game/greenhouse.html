@@ -308,6 +308,29 @@
   </div>
   </div>
 
+  <!-- One season, day by day: Colombie growth curve partitioned by the FBA -->
+  <div class="curvewrap" style="margin-bottom:12px">
+    <div class="pcard-title">// one fruit, one season
+      <span class="model-tag">Gompertz growth partitioned by what the model builds each day</span></div>
+    <canvas id="curveSeason" width="1060" height="250"></canvas>
+    <div class="objnote">Dry weight from the Colombié Gompertz fit in engine.py
+      (w<sub>max</sub> 5.284 gDW, k 0.0845, t<sub>m</sub> 22.3). Each day's weight gain is split
+      by the composition the FBA solves for that day, so the bands are what the tomato is
+      physically made of as it fills. The dashed line is growth rate, which peaks near day 22
+      and is why the middle of the season decides final size. Move the light slider and the
+      whole season rebuilds.</div>
+    <div class="objchips" style="margin-top:10px">
+      <button class="objchip on" id="cbStarch" onclick="this.classList.toggle('on');onEnvChange()">
+        ripening converts starch → sugar</button>
+    </div>
+    <div class="objnote">engine.py calls this apply_starch_fix and ships it <em>off</em>, with the
+      note "turn on if sweetness is a game metric, else the fruit stays wrongly starch-heavy."
+      Sweetness is a metric here, so it defaults on. engine.py does it through the FBA by opening
+      EX_STARCH to remobilise the stored pool; this chart moves the accumulated mass directly,
+      carbon-conserving, at 8% of fruit dry weight per day. Same effect, approximated rate.
+      Switch it off to see the starch-heavy fruit the research defaults produce.</div>
+  </div>
+
   <!-- Results -->
   <div class="results-grid">
 
@@ -973,6 +996,112 @@ const STAGES = [
 ];
 let sweepToken = 0, sweepTimer = null;
 
+/* Colombié dry-weight Gompertz from engine.py (fruit_gompertz_dw), with the
+   two-sink share that decides how much of the plant's export a fruit wins. */
+const GOMP = { wmax: 5.284, k: 0.0845, tm: 22.3 };
+const N_FRUITS = 36.0, S_VEG = 3.4;
+
+function fruitWeight(dpa) {
+  return GOMP.wmax * Math.exp(-Math.exp(-GOMP.k * (dpa - GOMP.tm)));
+}
+function sinkStrength(dpa) {              // Gompertz dW/dt, gDW/day
+  const W = fruitWeight(dpa);
+  return (W > 0 && W < GOMP.wmax) ? GOMP.k * W * Math.log(GOMP.wmax / W) : 0;
+}
+function fruitShare(dpa) {                // engine.py _f_fruit_dynamic
+  const nsf = N_FRUITS * sinkStrength(dpa);
+  return nsf > 0 ? nsf / (nsf + S_VEG) : 0;
+}
+
+/* With weights:null the fruit objective depends on dpa only through which of
+   the three stages it falls in, so the season's 55 days and the development
+   sweep's 20 points collapse to three distinct solves. */
+function stageOf(dpa) { return dpa <= 15 ? 0 : dpa <= 35 ? 1 : 2; }
+async function solveStage(env, dpa, cache) {
+  const k = stageOf(dpa);
+  if (!(k in cache)) cache[k] = await solveAt({ ...env, dpa, weights: null });
+  return cache[k];
+}
+
+async function runSeason(env, token) {
+  const days = [];
+  let cum = {}; DEV_SERIES.forEach(d => cum[d.key] = 0);
+  let prevW = fruitWeight(0);
+  const cache = {};
+  for (let dpa = 1; dpa <= 55; dpa++) {
+    if (token !== sweepToken) return null;
+    const W = fruitWeight(dpa), gain = Math.max(0, W - prevW);
+    prevW = W;
+    const r = await solveStage(env, dpa, cache);
+    if (r.ok && r.total > 0) {
+      DEV_SERIES.forEach(d => {
+        const share = d.parts.reduce((a, k) => a + r.comps[k], 0) / r.total;
+        cum[d.key] += gain * share;
+      });
+    }
+    // engine.py:380 -- ripening draws on the starch laid down earlier
+    const remob = document.getElementById('cbStarch');
+    if (remob && remob.classList.contains('on') && dpa > 35 && cum.starch > 1e-9) {
+      const move = Math.min(cum.starch, 0.08 * W);
+      cum.starch -= move; cum.sugars += move;
+    }
+    days.push({ dpa, W, rate: sinkStrength(dpa), share: fruitShare(dpa), cum: { ...cum } });
+    if (dpa % 6 === 0) { drawSeason(days, env); await new Promise(r2 => setTimeout(r2, 0)); }
+  }
+  drawSeason(days, env);
+  return days;
+}
+
+function drawSeason(days, env) {
+  const c = document.getElementById('curveSeason'); if (!c || days.length < 2) return;
+  const { ctx, W: CW, H } = fitCanvas(c);
+  const L = 56, R = 14, B = 40;
+  const rows = legendRows(ctx, DEV_SERIES, L, CW);
+  const T = 22 + rows.length * 13;
+  const yMax = GOMP.wmax;
+  axes(ctx, CW, H, L, R, T, B, yMax, v => v.toFixed(1));
+
+  const px = d => L + (d / 55) * (CW - L - R);
+  const py = v => H - B - (v / yMax) * (H - T - B);
+
+  // cumulative composition, stacked: the bands add up to the growth curve
+  let base = days.map(() => 0);
+  DEV_SERIES.forEach(d => {
+    ctx.beginPath();
+    days.forEach((row, j) => {
+      const X = px(row.dpa), Y = py(base[j] + row.cum[d.key]);
+      j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+    });
+    for (let j = days.length - 1; j >= 0; j--) ctx.lineTo(px(days[j].dpa), py(base[j]));
+    ctx.closePath();
+    ctx.globalAlpha = 0.82; ctx.fillStyle = d.color; ctx.fill(); ctx.globalAlpha = 1;
+    base = base.map((b, j) => b + days[j].cum[d.key]);
+  });
+
+  // growth rate, scaled to the panel so its shape is readable next to the mass
+  const rMax = Math.max(1e-9, ...days.map(r => r.rate));
+  ctx.strokeStyle = '#e6e6e6'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  days.forEach((row, j) => {
+    const X = px(row.dpa), Y = H - B - (row.rate / rMax) * (H - T - B) * 0.92;
+    j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+  });
+  ctx.stroke(); ctx.setLineDash([]);
+
+  ctx.fillStyle = '#8a8a8a'; ctx.font = '10px Consolas, monospace';
+  ctx.fillText('gDW', 6, T - 6);
+  [0, 15, 22, 35, 55].forEach(d => ctx.fillText('day ' + d, px(d) - 12, H - B + 14));
+  ctx.fillStyle = '#e6e6e6';
+  ctx.fillText('- - growth rate (peaks day ' + days.reduce((a, b) => b.rate > a.rate ? b : a).dpa + ')',
+               L + 6, H - B + 28);
+
+  drawLegend(ctx, rows);
+
+  ctx.strokeStyle = '#fff'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px(env.dpa), T); ctx.lineTo(px(env.dpa), H - B); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
 function scheduleSweep(env) {
   clearTimeout(sweepTimer);
   sweepTimer = setTimeout(() => runSweep(env), 260);
@@ -997,6 +1126,7 @@ async function runSweep(env) {
 
   // ── chart 2: development, composition against days post anthesis
   const dev = [];
+  const devCache = {};
   const devX = [];
   for (let i = 0; i <= N; i++) devX.push(5 + 50 * (i / N));
   devX.push(15, 15.01, 35, 35.01);            // exact stage boundaries
@@ -1004,7 +1134,7 @@ async function runSweep(env) {
   for (let i = 0; i < devX.length; i++) {
     if (my !== sweepToken) return;
     const dpa = devX[i];
-    const r = await solveAt({ ...env, dpa, weights: null });
+    const r = await solveStage(env, dpa, devCache);
     const row = { dpa };
     DEV_SERIES.forEach(d => {
       row[d.key] = (r.ok && r.total > 0)
@@ -1014,6 +1144,8 @@ async function runSweep(env) {
     if (i % 3 === 0) { drawDev(dev, env); await new Promise(r2 => setTimeout(r2, 0)); }
   }
   if (my === sweepToken) drawDev(dev, env);
+
+  await runSeason(env, my);
 }
 
 function fitCanvas(c) {

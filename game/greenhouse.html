@@ -130,8 +130,9 @@
                       animation: march 1s linear infinite; }
     @keyframes march { to { stroke-dashoffset: -16; } }
 
-    /* ── Response curve ── */
-    .curvewrap { width: 100%; margin: 0 0 12px; background: #111; border: 1px solid #1c1c1c; padding: 13px 15px; }
+    /* ── Response curves, side by side ── */
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .curvewrap { width: 100%; margin: 0; background: #111; border: 1px solid #1c1c1c; padding: 13px 15px; }
     .curvewrap canvas { width: 100%; height: 230px; display: block; }
     /* ── Objective sandbox ── */
     .objchips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
@@ -146,6 +147,9 @@
       border: 1px solid #1c1c1c; padding: 1px 5px; margin-left: 6px; vertical-align: middle;
     }
 
+    @media (max-width: 900px) {
+      .charts-grid { grid-template-columns: 1fr; }
+    }
     @media (max-width: 760px) {
       .env-grid     { grid-template-columns: 1fr 1fr; }
       .results-grid { grid-template-columns: 1fr; }
@@ -264,6 +268,7 @@
     </svg>
   </div>
 
+  <div class="charts-grid">
   <!-- Every supply input on one pair of axes, so they can be compared directly -->
   <div class="curvewrap">
     <div class="pcard-title">// what is limiting the plant?
@@ -282,6 +287,7 @@
     <div class="objnote">The same delivered carbon, spent differently as the fruit develops. The
       three bands are the stages engine.py switches between — cell division, starch filling, then
       ripening. Watch the sugars only appear once the fruit crosses into ripening at day 35.</div>
+  </div>
   </div>
 
   <!-- Results -->
@@ -960,6 +966,29 @@ async function runSweep(env) {
   if (my === sweepToken) drawDev(dev, env);
 }
 
+function fitCanvas(c) {
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = c.clientWidth || 520, cssH = c.clientHeight || 230;
+  if (c.width !== Math.round(cssW * dpr) || c.height !== Math.round(cssH * dpr)) {
+    c.width  = Math.round(cssW * dpr);
+    c.height = Math.round(cssH * dpr);
+  }
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);   // draw in CSS pixels
+  return { ctx, W: cssW, H: cssH };
+}
+
+/* Legends have to fit a half-width column now, so space them by what is
+   actually available rather than a fixed stride. */
+function legend(ctx, items, L, W) {
+  const step = (W - L - 10) / items.length;
+  ctx.font = '10px Consolas, monospace';
+  items.forEach((it, i) => {
+    ctx.fillStyle = it.color;
+    ctx.fillText('—— ' + it.label, L + 6 + i * step, 15);
+  });
+}
+
 function axes(ctx, W, H, L, R, T, B, yMax, yFmt) {
   ctx.clearRect(0, 0, W, H);
   ctx.strokeStyle = '#1f1f1f'; ctx.lineWidth = 1;
@@ -973,8 +1002,8 @@ function axes(ctx, W, H, L, R, T, B, yMax, yFmt) {
 
 function drawLimits(series, env) {
   const c = document.getElementById('curve'); if (!c) return;
-  const ctx = c.getContext('2d'), W = c.width, H = c.height;
-  const L = 70, R = 16, T = 34, B = 40;
+  const { ctx, W, H } = fitCanvas(c);
+  const L = 52, R = 12, T = 34, B = 40;
   const yMax = Math.max(1e-6, ...series.flatMap(s => s.pts.map(p => p.y)));
   axes(ctx, W, H, L, R, T, B, yMax, v => v.toFixed(2));
 
@@ -1000,15 +1029,15 @@ function drawLimits(series, env) {
     const near = s.pts.reduce((a, b) => Math.abs(b.f - f) < Math.abs(a.f - f) ? b : a);
     ctx.fillStyle = s.color;
     ctx.beginPath(); ctx.arc(px(f), py(near.y), 3.5, 0, 7); ctx.fill();
-
-    ctx.fillText('—— ' + s.label, L + 8 + i * 132, 16);
   });
+
+  legend(ctx, series, L, W);
 }
 
 function drawDev(dev, env) {
   const c = document.getElementById('curveDev'); if (!c) return;
-  const ctx = c.getContext('2d'), W = c.width, H = c.height;
-  const L = 70, R = 16, T = 34, B = 40;
+  const { ctx, W, H } = fitCanvas(c);
+  const L = 52, R = 12, T = 34, B = 40;
   axes(ctx, W, H, L, R, T, B, 100, v => v.toFixed(0) + '%');
 
   const px = d => L + (d - 5) / 50 * (W - L - R);
@@ -1033,8 +1062,9 @@ function drawDev(dev, env) {
     ctx.strokeStyle = d.color; ctx.lineWidth = 2; ctx.beginPath();
     dev.forEach((row, j) => { const X = px(row.dpa), Y = py(row[d.key]); j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
     ctx.stroke();
-    ctx.fillStyle = d.color; ctx.fillText('—— ' + d.label, L + 8 + i * 118, 16);
   });
+
+  legend(ctx, DEV_SERIES, L, W);
 
   // where the fruit-stage slider sits
   ctx.strokeStyle = '#7a7a7a'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;

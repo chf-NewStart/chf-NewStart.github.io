@@ -1384,18 +1384,41 @@ function drawCentre() {
   }
 
   if (stepView === 'split' || stepView === 'veg') {
-    const pts = [], rate = [];
-    for (let d = 1; d <= 55; d++) { pts.push({ x: d, y: fruitShare(d) * 100 }); rate.push({ x: d, y: sinkStrength(d) * 100 }); }
+    /* Both series in gDW/day, so they are directly comparable. The share is a
+       consequence of where these two curves sit, and forcing a percentage onto
+       the same axis (as this did, times one hundred) hid that. */
+    const demand = [], veg = [];
+    for (let d = 1; d <= 55; d++) {
+      demand.push({ x: d, y: N_FRUITS * sinkStrength(d) });
+      veg.push({ x: d, y: S_VEG });
+    }
     plotSeries(cv, [
-      { label: 'fruit share of phloem (%)', color: '#1db954', pts },
-      { label: 'fruit sink strength ×100', color: '#8a8a8a', pts: rate },
-    ], 'days post anthesis', { mark: env.dpa, yFmt: v => v.toFixed(0) });
-    const sh = fruitShare(env.dpa);
-    say('The fruit does not receive the phloem load — it <b>wins a share</b> of it against the '
-      + 'lumped vegetative sink, and that share follows its own growth rate. At day ' + env.dpa
-      + ' the fruit takes <b>' + (sh * 100).toFixed(0) + '%</b> and the vegetative sink takes '
-      + ((1 - sh) * 100).toFixed(0) + '%. <span class="eq">f_fruit = N·S_fr / (N·S_fr + s_veg), '
-      + 'N = 36 fruits, s_veg = 3.4 gDW/day.</span>');
+      { label: '36 fruits demand', color: '#1db954', pts: demand },
+      { label: 'vegetative sink 3.4', color: '#9a9a9a', pts: veg },
+    ], 'days post anthesis', { mark: env.dpa, yFmt: v => v.toFixed(1) });
+
+    // where the fruits overtake the shoot, i.e. where the share passes 50%
+    let cross = null, peak = 1;
+    for (let d = 2; d <= 55; d++) {
+      if (sinkStrength(d) > sinkStrength(peak)) peak = d;
+      if (cross === null && N_FRUITS * sinkStrength(d) >= S_VEG) cross = d;
+    }
+    let ends = null;
+    for (let d = 55; d >= 1; d--) { if (N_FRUITS * sinkStrength(d) >= S_VEG) { ends = d; break; } }
+    const sh = fruitShare(env.dpa), sfr = sinkStrength(env.dpa);
+
+    say('Each fruit pulls at its own growth rate, and there are <b>36</b> of them competing '
+      + 'against one lumped vegetative sink fixed at <b>3.4 gDW/day</b>. The share is just where '
+      + 'those two curves sit relative to each other. Today a single fruit pulls <b>'
+      + sfr.toFixed(3) + '</b> gDW/day, so all 36 together demand <b>'
+      + (N_FRUITS * sfr).toFixed(2) + '</b> against the shoot\'s 3.4 — a <b>'
+      + (sh * 100).toFixed(0) + '%</b> share.'
+      + '<br><span class="eq">The fruits overtake the shoot around day ' + (cross ?? '—')
+      + ', peak at day ' + peak + ', and fall back below it near day ' + (ends ?? '—')
+      + '. Inside that window the fruits collectively out-pull the shoot; outside it, carbon '
+      + 'arriving at the plant mostly goes to vegetative growth instead. It lines up closely '
+      + 'with the starch-filling stage, which is when most of the fruit\'s mass is laid down. '
+      + 'f_fruit = N·S_fr / (N·S_fr + s_veg), S_fr = Gompertz dW/dt.</span>');
     return;
   }
 }

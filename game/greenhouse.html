@@ -116,6 +116,37 @@
     .readout b { color: #1db954; font-weight: normal; }
     .readout .hint { color: #8a8a8a; }
 
+    /* ── Flow diagram ── */
+    .flow { width: 100%; margin: 0 0 12px; background: #111; border: 1px solid #1c1c1c; padding: 12px 10px 6px; }
+    .flow svg { width: 100%; height: auto; display: block; }
+    .flow .node   { fill: #0d0d0d; stroke: #2a2a2a; cursor: pointer; transition: stroke 0.15s; }
+    .flow .node:hover, .flow .node.hot { stroke: #1db954; }
+    .flow .ntitle { fill: #d0d0d0; font: 600 12px Consolas, monospace; pointer-events: none; }
+    .flow .nsub   { fill: #8a8a8a; font: 10px Consolas, monospace; pointer-events: none; }
+    .flow .vlab   { font: 11px Consolas, monospace; }
+    .flow .pipe   { fill: none; stroke-linecap: round; }
+    /* dashes march along the pipe; speed is set from the flux in JS */
+    .flow .flowline { fill: none; stroke-linecap: round; stroke-dasharray: 5 11;
+                      animation: march 1s linear infinite; }
+    @keyframes march { to { stroke-dashoffset: -16; } }
+
+    /* ── Response curve ── */
+    .curvewrap { width: 100%; margin: 0 0 12px; background: #111; border: 1px solid #1c1c1c; padding: 13px 15px; }
+    .curvewrap canvas { width: 100%; height: 190px; display: block; }
+    .sweepbtns { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0 4px; }
+    .sweepbtn { background: #0d0d0d; border: 1px solid #232323; color: #b4b4b4; font-family: inherit;
+                font-size: 0.66rem; padding: 5px 11px; cursor: pointer; }
+    .sweepbtn:hover { border-color: #1db954; color: #1db954; }
+    .sweepbtn.on { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.08); }
+
+    /* ── Objective sandbox ── */
+    .objchips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .objchip { background: #0d0d0d; border: 1px solid #232323; color: #9a9a9a; font-family: inherit;
+               font-size: 0.66rem; padding: 5px 10px; cursor: pointer; }
+    .objchip:hover { border-color: #1db954; color: #1db954; }
+    .objchip.on { border-color: #1db954; color: #1db954; background: rgba(29,185,84,0.10); }
+    .objnote { font-size: 0.66rem; color: #8a8a8a; margin-top: 9px; line-height: 1.7; }
+
     .model-tag {
       display: inline-block; font-size: 0.6rem; color: #7a7a7a;
       border: 1px solid #1c1c1c; padding: 1px 5px; margin-left: 6px; vertical-align: middle;
@@ -196,11 +227,67 @@
     xylem&nbsp;→&nbsp;NO₃⁻: <span id="pl_no3">–</span>&nbsp;mmol/gDW/h
   </div>
 
+  <!-- Live flow diagram: widths and dash speed follow the actual fluxes -->
+  <div class="flow">
+    <svg viewBox="0 0 900 172" role="img" aria-label="Carbon and nitrogen flow from source tissue to fruit">
+      <defs>
+        <marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#1db954"/>
+        </marker>
+        <marker id="ahb" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#2196f3"/>
+        </marker>
+      </defs>
+
+      <text x="40" y="34" class="vlab" fill="#ffb300" text-anchor="middle" font-size="22">☀</text>
+      <text id="fl_light" x="40" y="56" class="vlab" fill="#ffb300" text-anchor="middle">800</text>
+      <text x="40" y="70" class="nsub" text-anchor="middle">PPFD</text>
+      <path id="fl_photon" class="pipe" d="M62,40 L128,40" stroke="#ffb300" stroke-width="3" marker-end="url(#ah)"/>
+
+      <rect class="node" id="nd_src" x="132" y="14" width="196" height="86" rx="2"
+            onclick="focusPanel('srcPanel')"/>
+      <text x="230" y="42" class="ntitle" text-anchor="middle">SOURCE</text>
+      <text x="230" y="60" class="nsub" text-anchor="middle">stem · leaf · root</text>
+      <text x="230" y="76" class="nsub" text-anchor="middle">Sl2183 · 2183 rxn</text>
+
+      <path id="fl_phloem" class="pipe" d="M330,44 C430,44 470,44 566,44" stroke="#ff9800" stroke-width="3"/>
+      <path id="fl_phloem_a" class="flowline" d="M330,44 C430,44 470,44 566,44" stroke="#ffc166" stroke-width="3"/>
+      <text x="448" y="32" class="vlab" fill="#ff9800" text-anchor="middle">phloem</text>
+      <text id="fl_suc" x="448" y="62" class="vlab" fill="#ffc166" text-anchor="middle">–</text>
+
+      <path id="fl_xylem" class="pipe" d="M330,80 C430,80 470,80 566,80" stroke="#2196f3" stroke-width="2" marker-end="url(#ahb)"/>
+      <path id="fl_xylem_a" class="flowline" d="M330,80 C430,80 470,80 566,80" stroke="#7cc6f8" stroke-width="2"/>
+      <text id="fl_no3" x="448" y="98" class="vlab" fill="#7cc6f8" text-anchor="middle">–</text>
+
+      <rect class="node" id="nd_fruit" x="570" y="14" width="196" height="86" rx="2"
+            onclick="focusPanel('sinkPanel')"/>
+      <text x="668" y="42" class="ntitle" text-anchor="middle">FRUIT</text>
+      <text x="668" y="60" class="nsub" text-anchor="middle">FRIM1 · 71 rxn</text>
+      <text id="fl_stage" x="668" y="76" class="nsub" text-anchor="middle">ripening</text>
+
+      <g id="fl_bars"></g>
+      <text id="fl_top" x="450" y="164" class="nsub" text-anchor="middle"></text>
+    </svg>
+  </div>
+
+  <!-- Response curve: re-solves across the whole range of one control -->
+  <div class="curvewrap">
+    <div class="pcard-title">// response curve <span class="model-tag" id="curveTag">sweeping light</span></div>
+    <canvas id="curve" width="1060" height="190"></canvas>
+    <div class="sweepbtns">
+      <button class="sweepbtn on" onclick="setSweep('light',this)">light</button>
+      <button class="sweepbtn" onclick="setSweep('co2',this)">CO₂</button>
+      <button class="sweepbtn" onclick="setSweep('water',this)">water</button>
+      <button class="sweepbtn" onclick="setSweep('nit',this)">nitrogen</button>
+      <button class="sweepbtn" onclick="setSweep('dpa',this)">fruit stage</button>
+    </div>
+  </div>
+
   <!-- Results -->
   <div class="results-grid">
 
     <!-- Source model -->
-    <div class="pcard">
+    <div class="pcard" id="srcPanel">
       <div class="pcard-title">// source <span class="model-tag">Sl2183 · 2183 rxn</span></div>
 
       <div class="flux-row">
@@ -234,7 +321,7 @@
     </div>
 
     <!-- Sink model -->
-    <div class="pcard">
+    <div class="pcard" id="sinkPanel">
       <div class="pcard-title">// sink <span class="model-tag">FRIM1 · 71 rxn</span></div>
 
       <div class="flux-row">
@@ -245,6 +332,23 @@
         <span class="flux-label">glutamine uptake (phloem)</span>
         <span class="flux-val" style="color:#ff9800"><span id="f_gln_up">–</span><span class="flux-unit">mmol/gDW/h</span></span>
       </div>
+
+      <div class="comp-section-label">── what should the fruit maximise? ──</div>
+      <div class="objchips" id="objChips">
+        <button class="objchip on" data-rxn="" onclick="toggleObj(this)">follow stage</button>
+        <button class="objchip" data-rxn="EX_Glc_ac"  onclick="toggleObj(this)">glucose</button>
+        <button class="objchip" data-rxn="EX_Fru_ac"  onclick="toggleObj(this)">fructose</button>
+        <button class="objchip" data-rxn="EX_Suc_ac"  onclick="toggleObj(this)">sucrose</button>
+        <button class="objchip" data-rxn="EX_Cit_ac"  onclick="toggleObj(this)">citrate</button>
+        <button class="objchip" data-rxn="EX_Mal_ac"  onclick="toggleObj(this)">malate</button>
+        <button class="objchip" data-rxn="EX_STARCH"  onclick="toggleObj(this)">starch</button>
+        <button class="objchip" data-rxn="EX_PROTEIN" onclick="toggleObj(this)">protein</button>
+        <button class="objchip" data-rxn="EX_CW"      onclick="toggleObj(this)">cell wall</button>
+        <button class="objchip" data-rxn="EX_DAG"     onclick="toggleObj(this)">lipids</button>
+      </div>
+      <div class="objnote">This is the objective function. FBA finds the flux distribution that
+        maximises whatever you pick here, subject to the carbon and nitrogen the source can
+        deliver. Pick two things that compete and watch one starve the other.</div>
 
       <div class="comp-section-label">── fruit composition (relative flux) ──</div>
 
@@ -489,6 +593,15 @@ function applyScenario(name, btn) {
    unless something reads it back to them. */
 function describe(st) {
   const stage = st.dpa <= 15 ? 'cell division' : st.dpa <= 35 ? 'starch filling' : 'ripening';
+  if (st.custom && st.sucr >= 1e-4) {
+    const t = st.comps.slice().sort((a, b) => b.pct - a.pct)[0];
+    return 'You are driving the objective yourself. With <b>' + st.sucr.toFixed(2) + '</b> mmol/gDW/h '
+         + 'of sucrose arriving, the fruit puts most of it into <b>' + t.name + '</b> ('
+         + t.pct.toFixed(0) + '%). <span class="hint">That is all flux balance analysis is: the '
+         + 'stoichiometry fixes what is possible, and the objective picks which corner of that '
+         + 'space you land in. Select two products that compete for the same carbon and one will '
+         + 'take it from the other.</span>';
+  }
   if (st.sucr < 1e-4) {
     return 'No light reaches the canopy, so the leaves export <b>no sucrose</b> and the fruit '
          + 'has nothing to build with. Every bar below is empty because the whole system is '
@@ -544,135 +657,83 @@ function buildLP(model, objVars, overrides) {
 }
 
 /* ── Main solve ──────────────────────────────────── */
-async function runSim() {
-  if (!glpk || !stemModel || !fruitModel) return;
+/* ── One solve, no DOM touching. Reused by the page, the response-curve
+      sweeps and the custom objective sandbox. 64 ms for the 2183-reaction
+      source LP, 2 ms for the fruit, so sweeping a slider is cheap. ── */
+const PHOTOPERIOD = 16;     // h of light per day
+const REF_PPFD    = 200;    // engine.py REF_PPFD
+const VYTOP_PHOTON = 245;   // Gerlin 2022 Fig 4A daily plant photon uptake
+const C_PRIORITY  = Math.max(0.5, Math.min(0.95, (2 * 18 - 5) / (2 * 18)));
+const COMP_KEYS   = ['glc','fru','suc','mal','cit','aa','sta','pro','lip','cw'];
+const COMP_LABEL  = { glc:'glucose', fru:'fructose', suc:'sucrose', mal:'malate',
+                      cit:'citrate', aa:'amino acids', sta:'starch', pro:'protein',
+                      lip:'lipids', cw:'cell wall' };
 
-  const light = +document.getElementById('slLight').value;
-  const co2   = +document.getElementById('slCO2').value;
-  const water = +document.getElementById('slWater').value;
-  const nit   = +document.getElementById('slN').value;
-  const dpa   = +document.getElementById('slDPA').value;
-
-  document.getElementById('vLight').textContent = light;
-  document.getElementById('vCO2').textContent   = co2;
-  document.getElementById('vWater').textContent  = water;
-  document.getElementById('vN').textContent      = nit;
-  document.getElementById('vDPA').textContent   = dpa;
-  document.getElementById('vStage').textContent =
-    dpa <= 15 ? 'cell division' : dpa <= 35 ? 'starch filling' : 'ripening';
-
-  setStatus('solving Sl2183…', 'busy');
-  await new Promise(r => requestAnimationFrame(r));
-
-  /* ── 1. Stem / leaf / root FBA ───
-     Uptake is a NEGATIVE flux on the boundary exchange, so supply is set
-     through the lower bound. Constraining the upper bound (as this did
-     before) limits only the export direction and leaves uptake unlimited. */
-  const PHOTOPERIOD = 16;    // h of light per day
-  const REF_PPFD    = 200;   // engine.py REF_PPFD
-  const VYTOP_PHOTON = 245;  // Gerlin 2022 Fig 4A daily plant photon uptake
-
-  const stemOverrides = {
+function stemBounds(env) {
+  return {
     // faithful to engine.py: photon supply scales with PPFD off the VYTOP rate
-    'EX_photon_b': { lb: -(VYTOP_PHOTON / PHOTOPERIOD) * (light / REF_PPFD) },
+    'EX_photon_b': { lb: -(VYTOP_PHOTON / PHOTOPERIOD) * (env.light / REF_PPFD) },
     // engine.py holds NO3 to the xylem supply; here it tracks the N slider
-    'EX_no3_b':    { lb: -(nit / 100) * 20 },
+    'EX_no3_b':    { lb: -(env.nit / 100) * 20 },
     // engine.py treats CO2 and H2O as non-limiting (-1000). These scale with
-    // the sliders so the controls do something; the ceiling is generous enough
-    // that light stays the binding constraint under normal settings.
-    'EX_co2_b':    { lb: -(co2 / 400) * 1000 },
-    'EX_h2o_b':    { lb: -(water / 100) * 1000 },
+    // the sliders so the controls do something.
+    'EX_co2_b':    { lb: -(env.co2 / 400) * 1000 },
+    'EX_h2o_b':    { lb: -(env.water / 100) * 1000 },
   };
+}
 
-  // engine.py maximises phloem export, not biomass (engine.py:334).
+async function solveAt(env) {
+  const so = stemBounds(env);
+
   let stemRes;
   try {
-    stemRes = await glpk.solve(
-      buildLP(stemModel, [{ name: 'EX_sucr_b', coef: 1 }], stemOverrides),
-      { msglev: glpk.GLP_MSG_OFF }
-    );
-  } catch (e) { setStatus('stem LP error: ' + e.message, 'err'); return; }
-
+    stemRes = await glpk.solve(buildLP(stemModel, [{ name: 'EX_sucr_b', coef: 1 }], so),
+                               { msglev: glpk.GLP_MSG_OFF });
+  } catch (e) { return { ok: false, err: 'source LP error: ' + e.message }; }
   if (stemRes.result.status !== glpk.GLP_OPT) {
-    setStatus('source: ' + (stemRes.result.status === glpk.GLP_INFEAS ? 'infeasible' : 'no solution'), 'err');
-    return;
+    return { ok: false, err: 'source: ' + (stemRes.result.status === glpk.GLP_INFEAS ? 'infeasible' : 'no solution') };
   }
-
   const sucrExp = Math.max(0, stemRes.result.vars['EX_sucr_b'] || 0);
 
-  /* Then maximise Gln export with sucrose held at a fraction of its optimum
-     (engine.py:336). c_priority_from_phloem_cn(18) = 0.861: pinning sucrose at
-     the full optimum leaves no capacity for N export, which starves the fruit. */
-  const C_PRIORITY = Math.max(0.5, Math.min(0.95, (2 * 18 - 5) / (2 * 18)));
+  /* Maximise Gln with sucrose held at c_priority of its optimum (engine.py:336).
+     Pinning sucrose at the full optimum leaves no capacity for N export. */
   let glnExp = 0, sv = stemRes.result.vars;
   try {
-    const glnRes = await glpk.solve(
+    const g = await glpk.solve(
       buildLP(stemModel, [{ name: 'EX_gln_L_b', coef: 1 }],
-        { ...stemOverrides, 'EX_sucr_b': { lb: sucrExp * C_PRIORITY } }),
-      { msglev: glpk.GLP_MSG_OFF }
-    );
-    if (glnRes.result.status === glpk.GLP_OPT) {
-      glnExp = Math.max(0, glnRes.result.vars['EX_gln_L_b'] || 0);
-      sv = glnRes.result.vars;
+        { ...so, 'EX_sucr_b': { lb: sucrExp * C_PRIORITY } }), { msglev: glpk.GLP_MSG_OFF });
+    if (g.result.status === glpk.GLP_OPT) {
+      glnExp = Math.max(0, g.result.vars['EX_gln_L_b'] || 0);
+      sv = g.result.vars;
     }
   } catch (e) { /* Gln is secondary; keep the sucrose solution */ }
 
-  // Uptakes come back negative; show them as positive rates.
-  const photon   = -(sv['EX_photon_b'] || 0);
-  const co2Flux  = -(sv['EX_co2_b']    || 0);
-  const h2oFlux  = -(sv['EX_h2o_b']    || 0);
-  const no3Flux  = -(sv['EX_no3_b']    || 0);
+  const photon  = -(sv['EX_photon_b'] || 0);
+  const co2Flux = -(sv['EX_co2_b']    || 0);
+  const h2oFlux = -(sv['EX_h2o_b']    || 0);
+  const no3Flux = -(sv['EX_no3_b']    || 0);
+  // each Gln carries 2 N, NO3 carries 1
+  const xylNO3  = Math.max(0, no3Flux - glnExp * 2);
 
-  document.getElementById('r_photon').textContent  = fx(photon);
-  document.getElementById('r_co2').textContent     = fx(co2Flux);
-  document.getElementById('r_h2o').textContent     = fx(h2oFlux);
-  document.getElementById('r_no3').textContent     = fx(no3Flux);
-  document.getElementById('r_sucr').textContent    = fx(sucrExp);
-  document.getElementById('r_gln').textContent     = fx(glnExp);
-
-  // Phloem link indicator
-  // Xylem NO3 to fruit = total soil uptake minus N exported as Gln via phloem
-  // (each Gln carries 2N; NO3 carries 1N — approximate: xylem_NO3 ≈ no3Flux - glnExp*2)
-  const xylNO3 = Math.max(0, no3Flux - glnExp * 2);
-
-  document.getElementById('pl_sucr').textContent = fx(sucrExp);
-  document.getElementById('pl_gln').textContent  = fx(glnExp);
-  document.getElementById('pl_no3').textContent  = fx(xylNO3);
-  document.getElementById('r_xno3').textContent  = fx(xylNO3);
-  document.getElementById('phloemLink').style.display = '';
-
-  /* ── 2. Fruit FBA (FRIM1) ─── */
-  setStatus('solving FRIM1…', 'busy');
-  await new Promise(r => requestAnimationFrame(r));
-
-  const fruitOverrides = {
+  const fo = {
     'VSuc_up': { ub: Math.max(0, sucrExp) },
     'VGln_up': { ub: Math.max(0, glnExp)  },
-    'Vnr':     { ub: xylNO3 },             // xylem NO3 → nitrate reductase in fruit
+    'Vnr':     { ub: xylNO3 },
   };
+  const obj = (env.weights || fruitObjective(env.dpa))
+    .filter(([r, c]) => c > 0 && r in fruitModel.rxnIdx)
+    .map(([r, c]) => ({ name: r, coef: c }));
+  if (!obj.length) return { ok: false, err: 'objective is empty — pick at least one product' };
 
   let fruitRes;
   try {
-    fruitRes = await glpk.solve(
-      buildLP(fruitModel,
-        fruitObjective(dpa).filter(([r]) => r in fruitModel.rxnIdx).map(([r, c]) => ({ name: r, coef: c })),
-        fruitOverrides),
-      { msglev: glpk.GLP_MSG_OFF }
-    );
-  } catch (e) { setStatus('fruit LP error: ' + e.message, 'err'); return; }
-
-  // The fruit status used to go unchecked, so an infeasible sink silently
-  // rendered as a page full of zeros.
+    fruitRes = await glpk.solve(buildLP(fruitModel, obj, fo), { msglev: glpk.GLP_MSG_OFF });
+  } catch (e) { return { ok: false, err: 'fruit LP error: ' + e.message }; }
   if (fruitRes.result.status !== glpk.GLP_OPT) {
-    setStatus('fruit: ' + (fruitRes.result.status === glpk.GLP_INFEAS ? 'infeasible' : 'no solution'), 'err');
-    return;
+    return { ok: false, err: 'fruit: ' + (fruitRes.result.status === glpk.GLP_INFEAS ? 'infeasible' : 'no solution') };
   }
 
   const fv = fruitRes.result.vars || {};
-  document.getElementById('f_suc_up').textContent = fx(fv['VSuc_up'] || 0);
-  document.getElementById('f_gln_up').textContent = fx(fv['VGln_up'] || 0);
-
-  // Fruit composition
   const comps = {
     glc: Math.max(0, fv['Vac_glc'] || 0),
     fru: Math.max(0, fv['Vac_fru'] || 0),
@@ -685,23 +746,228 @@ async function runSim() {
     lip: Math.max(0, fv['Vdag']     || fv['Vfas'] || 0),
     cw:  Math.max(0, fv['Vcw']      || 0),
   };
-
   const total = Object.values(comps).reduce((a, b) => a + b, 0);
-  const keys  = ['glc','fru','suc','mal','cit','aa','sta','pro','lip','cw'];
-  keys.forEach(k => {
-    const w = total > 0 ? comps[k] / total * 100 : 0;
+  const sugar = comps.glc + comps.fru + comps.suc;
+
+  return { ok: true, photon, co2Flux, h2oFlux, no3Flux, sucrExp, glnExp, xylNO3, fv, comps, total, sugar };
+}
+
+function readEnv() {
+  return {
+    light: +document.getElementById('slLight').value,
+    co2:   +document.getElementById('slCO2').value,
+    water: +document.getElementById('slWater').value,
+    nit:   +document.getElementById('slN').value,
+    dpa:   +document.getElementById('slDPA').value,
+    weights: customWeights(),
+  };
+}
+
+async function runSim() {
+  if (!glpk || !stemModel || !fruitModel) return;
+  const env = readEnv();
+
+  document.getElementById('vLight').textContent = env.light;
+  document.getElementById('vCO2').textContent   = env.co2;
+  document.getElementById('vWater').textContent = env.water;
+  document.getElementById('vN').textContent     = env.nit;
+  document.getElementById('vDPA').textContent   = env.dpa;
+  document.getElementById('vStage').textContent =
+    env.dpa <= 15 ? 'cell division' : env.dpa <= 35 ? 'starch filling' : 'ripening';
+
+  setStatus('solving…', 'busy');
+  await new Promise(r => requestAnimationFrame(r));
+
+  const r = await solveAt(env);
+  if (!r.ok) { setStatus(r.err, 'err'); return; }
+
+  document.getElementById('r_photon').textContent = fx(r.photon);
+  document.getElementById('r_co2').textContent    = fx(r.co2Flux);
+  document.getElementById('r_h2o').textContent    = fx(r.h2oFlux);
+  document.getElementById('r_no3').textContent    = fx(r.no3Flux);
+  document.getElementById('r_sucr').textContent   = fx(r.sucrExp);
+  document.getElementById('r_gln').textContent    = fx(r.glnExp);
+  document.getElementById('pl_sucr').textContent  = fx(r.sucrExp);
+  document.getElementById('pl_gln').textContent   = fx(r.glnExp);
+  document.getElementById('pl_no3').textContent   = fx(r.xylNO3);
+  document.getElementById('r_xno3').textContent   = fx(r.xylNO3);
+  document.getElementById('phloemLink').style.display = '';
+  document.getElementById('f_suc_up').textContent = fx(r.fv['VSuc_up'] || 0);
+  document.getElementById('f_gln_up').textContent = fx(r.fv['VGln_up'] || 0);
+
+  COMP_KEYS.forEach(k => {
+    const w = r.total > 0 ? r.comps[k] / r.total * 100 : 0;
     document.getElementById('b_' + k).style.width = w.toFixed(2) + '%';
-    document.getElementById('p_' + k).textContent = total > 0 ? w.toFixed(1) + '%' : '–';
+    document.getElementById('p_' + k).textContent = r.total > 0 ? w.toFixed(1) + '%' : '–';
   });
 
-  const LABEL = { glc:'glucose', fru:'fructose', suc:'sucrose', mal:'malate', cit:'citrate',
-                  aa:'amino acids', sta:'starch', pro:'protein', lip:'lipids', cw:'cell wall' };
   document.getElementById('readout').innerHTML = describe({
-    dpa, photon, sucr: sucrExp, gln: glnExp,
-    comps: keys.map(k => ({ name: LABEL[k], pct: total > 0 ? comps[k] / total * 100 : 0 }))
+    dpa: env.dpa, photon: r.photon, sucr: r.sucrExp, gln: r.glnExp,
+    custom: !!env.weights,
+    comps: COMP_KEYS.map(k => ({ name: COMP_LABEL[k], pct: r.total > 0 ? r.comps[k] / r.total * 100 : 0 })),
   });
 
+  updateFlow(env, r);
   setStatus('solved ✓', 'ok');
+  scheduleSweep(env);
+}
+
+/* ── Custom objective ──────────────────────────────
+   "follow stage" reproduces engine.py's _fruit_objective. Any other chip
+   switches to a hand-built objective with equal weights. */
+function toggleObj(btn) {
+  const chips = [...document.querySelectorAll('.objchip')];
+  const stageChip = chips.find(c => !c.dataset.rxn);
+  if (!btn.dataset.rxn) {
+    chips.forEach(c => c.classList.toggle('on', c === stageChip));
+  } else {
+    btn.classList.toggle('on');
+    stageChip.classList.remove('on');
+    if (!chips.some(c => c.dataset.rxn && c.classList.contains('on'))) stageChip.classList.add('on');
+  }
+  onEnvChange();
+}
+
+function customWeights() {
+  const picked = [...document.querySelectorAll('.objchip.on')]
+    .filter(c => c.dataset.rxn).map(c => [c.dataset.rxn, 1.0]);
+  return picked.length ? picked : null;   // null = follow the stage preset
+}
+
+/* ── Flow diagram ──────────────────────────────────
+   Stroke width and dash speed carry the magnitude, so the picture moves
+   the way the numbers do. */
+function updateFlow(env, r) {
+  const W = (v, lo, hi) => Math.max(1.2, Math.min(hi, lo + v * 7));
+  const set = (id, f) => { const e = document.getElementById(id); if (e) f(e); };
+
+  set('fl_light', e => e.textContent = env.light);
+  set('fl_photon', e => e.style.strokeWidth = Math.max(0.6, Math.min(9, r.photon / 16)).toFixed(2));
+  set('fl_stage', e => e.textContent =
+    env.weights ? 'custom objective' : env.dpa <= 15 ? 'cell division' : env.dpa <= 35 ? 'starch filling' : 'ripening');
+
+  const sw = W(r.sucrExp, 1.2, 11), xw = W(r.xylNO3, 1.0, 8);
+  ['fl_phloem','fl_phloem_a'].forEach(id => set(id, e => e.style.strokeWidth = sw.toFixed(2)));
+  ['fl_xylem','fl_xylem_a'].forEach(id => set(id, e => e.style.strokeWidth = xw.toFixed(2)));
+
+  // faster dashes = more flux; stopped entirely when nothing flows
+  const dur = v => v < 1e-4 ? '0s' : Math.max(0.25, 1.6 / Math.max(0.05, v)).toFixed(2) + 's';
+  set('fl_phloem_a', e => { e.style.animationDuration = dur(r.sucrExp);
+                            e.style.opacity = r.sucrExp < 1e-4 ? 0.15 : 1; });
+  set('fl_xylem_a',  e => { e.style.animationDuration = dur(r.xylNO3);
+                            e.style.opacity = r.xylNO3 < 1e-4 ? 0.15 : 1; });
+
+  set('fl_suc', e => e.textContent = r.sucrExp.toFixed(3) + '  Suc  ·  ' + r.glnExp.toFixed(3) + '  Gln');
+  set('fl_no3', e => e.textContent = r.xylNO3.toFixed(3) + '  NO₃⁻');
+
+  // composition strip along the bottom of the diagram
+  const COLOR = { glc:'#1db954', fru:'#1db954', suc:'#1db954', mal:'#f44336', cit:'#f44336',
+                  aa:'#ff9800', sta:'#2196f3', pro:'#2196f3', lip:'#2196f3', cw:'#2196f3' };
+  const g = document.getElementById('fl_bars'); if (!g) return;
+  g.innerHTML = '';
+  if (r.total > 0) {
+    let x = 132, W2 = 634;
+    COMP_KEYS.forEach(k => {
+      const frac = r.comps[k] / r.total; if (frac <= 0) return;
+      const w = frac * W2;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x.toFixed(1)); rect.setAttribute('y', '126');
+      rect.setAttribute('width', Math.max(0.6, w).toFixed(1)); rect.setAttribute('height', '11');
+      rect.setAttribute('fill', COLOR[k]); rect.setAttribute('opacity', '0.85');
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      t.textContent = COMP_LABEL[k] + ' ' + (frac * 100).toFixed(1) + '%';
+      rect.appendChild(t); g.appendChild(rect); x += w;
+    });
+    const top = COMP_KEYS.map(k => [k, r.comps[k]]).sort((a, b) => b[1] - a[1])[0];
+    set('fl_top', e => e.textContent = 'fruit is building mostly ' + COMP_LABEL[top[0]]
+        + ' (' + (top[1] / r.total * 100).toFixed(0) + '%)');
+  } else {
+    set('fl_top', e => e.textContent = 'nothing reaching the fruit');
+  }
+}
+
+function focusPanel(id) {
+  const el = document.getElementById(id); if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.style.transition = 'border-color 0.2s'; el.style.borderColor = '#1db954';
+  setTimeout(() => { el.style.borderColor = ''; }, 1100);
+}
+
+/* ── Response curve ────────────────────────────────
+   Re-solves across the full range of one control. ~25 solves at 66 ms. */
+const SWEEPS = {
+  light: { min: 0, max: 2000, label: 'light (PPFD µmol/m²/s)' },
+  co2:   { min: 200, max: 1200, label: 'CO₂ (ppm)' },
+  water: { min: 10, max: 100, label: 'water availability (%)' },
+  nit:   { min: 5, max: 100, label: 'nitrogen (%)' },
+  dpa:   { min: 5, max: 55, label: 'days post anthesis' },
+};
+let sweepVar = 'light', sweepToken = 0, sweepTimer = null;
+
+function setSweep(v, btn) {
+  sweepVar = v;
+  document.querySelectorAll('.sweepbtn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  document.getElementById('curveTag').textContent = 'sweeping ' + (v === 'nit' ? 'nitrogen' : v);
+  scheduleSweep(readEnv());
+}
+
+function scheduleSweep(env) {
+  clearTimeout(sweepTimer);
+  sweepTimer = setTimeout(() => runSweep(env), 260);
+}
+
+async function runSweep(env) {
+  const spec = SWEEPS[sweepVar]; if (!spec || !glpk) return;
+  const my = ++sweepToken, N = 24, pts = [];
+  for (let i = 0; i <= N; i++) {
+    if (my !== sweepToken) return;                 // a newer sweep superseded us
+    const x = spec.min + (spec.max - spec.min) * (i / N);
+    const r = await solveAt({ ...env, [sweepVar]: x });
+    pts.push({ x, sucr: r.ok ? r.sucrExp : 0, sugar: r.ok ? r.sugar : 0, total: r.ok ? r.total : 0 });
+    if (i % 4 === 0) { drawCurve(pts, spec, env); await new Promise(r2 => setTimeout(r2, 0)); }
+  }
+  if (my === sweepToken) drawCurve(pts, spec, env);
+}
+
+function drawCurve(pts, spec, env) {
+  const c = document.getElementById('curve'); if (!c) return;
+  const ctx = c.getContext('2d'), W = c.width, H = c.height;
+  const L = 62, R = 14, T = 14, B = 34;
+  ctx.clearRect(0, 0, W, H);
+
+  const maxS = Math.max(1e-6, ...pts.map(p => p.sucr));
+  const maxF = Math.max(1e-6, ...pts.map(p => p.total));
+  const px = v => L + (v - spec.min) / (spec.max - spec.min) * (W - L - R);
+  const py = (v, m) => H - B - (v / m) * (H - T - B);
+
+  ctx.strokeStyle = '#1f1f1f'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = T + (H - T - B) * i / 4;
+    ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(W - R, y); ctx.stroke();
+  }
+  ctx.fillStyle = '#8a8a8a'; ctx.font = '11px Consolas, monospace';
+  ctx.fillText(spec.label, L, H - 10);
+  ctx.fillText(maxS.toFixed(2), 6, T + 10);
+  ctx.fillText('0', 6, H - B);
+
+  const line = (key, m, color) => {
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+    pts.forEach((p, i) => { const X = px(p.x), Y = py(p[key], m); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+    ctx.stroke();
+  };
+  line('total', maxF, '#2196f3');
+  line('sucr', maxS, '#1db954');
+
+  // where the sliders currently sit
+  const cur = env[sweepVar];
+  if (cur >= spec.min && cur <= spec.max) {
+    ctx.strokeStyle = '#666'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px(cur), T); ctx.lineTo(px(cur), H - B); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.fillStyle = '#1db954'; ctx.fillText('— phloem sucrose', L + 8, T + 12);
+  ctx.fillStyle = '#2196f3'; ctx.fillText('— total fruit output', L + 148, T + 12);
 }
 
 function onEnvChange() {

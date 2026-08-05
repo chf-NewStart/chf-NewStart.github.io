@@ -1554,14 +1554,23 @@ function drawMap(env) {
   // where the sliders are
   const mx = L + (env.light / 2000) * (W - L - R);
   const my = H - B - ((env.dpa - 5) / 50) * (H - T - B);
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(mx, my, 6, 0, 7); ctx.stroke();
-  // an unlabelled ring is just a mystery, so say what it is
-  ctx.fillStyle = '#fff'; ctx.font = '10px Consolas, monospace';
-  const tag = 'your settings';
+  /* A bare ring floating in a flat colour field does not read as a coordinate,
+     so drop guides to both axes and print the values it stands for. */
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx, H - B); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(L, my); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(mx, my, 3.5, 0, 7); ctx.fill();
+
+  ctx.font = '10px Consolas, monospace';
+  const tag = env.light.toFixed(0) + ' PPFD · day ' + env.dpa;
   const tw = ctx.measureText(tag).width;
-  const tagLeft = mx + 10 + tw < W - R ? mx + 10 : mx - 10 - tw;
-  ctx.fillText(tag, tagLeft, my + 3.5);
+  const tx = (mx + 10 + tw < W - R) ? mx + 10 : mx - 10 - tw;
+  ctx.fillStyle = 'rgba(0,0,0,0.78)';
+  ctx.fillRect(tx - 4, my - 16, tw + 8, 14);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(tag, tx, my - 6);
 
   ctx.fillStyle = '#8a8a8a'; ctx.font = '10px Consolas, monospace';
   for (let i = 0; i <= 4; i++) {

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; child-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Read-aloud room // houfu72.com</title>
   <meta name="description" content="Drop in a text you own and have it read aloud, sentence by sentence, entirely in your browser. Nothing is uploaded.">
@@ -100,16 +100,18 @@
   <header>
     <a class="back" href="/">← back to portfolio</a>
     <h1>Read-aloud room 🍅</h1>
-    <p class="sub">Drop in a text you own and it reads aloud, one sentence at a time, highlighting as it
-      goes. It runs entirely in your browser with the voices already on your device —
-      <b>nothing is uploaded, nothing is stored anywhere but here</b>.</p>
+    <p class="sub">Drop in a <b>.txt or .pdf</b> you own and it reads aloud, one sentence at a time,
+      highlighting as it goes. The file itself never leaves your device. <b>One caveat, stated
+      plainly:</b> the best-sounding voices are your browser's <i>online</i> voices, and those send
+      the sentences to the voice provider (e.g. Google) to be spoken. Pick an on-device voice and
+      nothing leaves at all — it just sounds more robotic.</p>
   </header>
 
   <div class="panel" id="inputPanel">
-    <textarea id="src" placeholder="Paste a chapter here, or drop a .txt file anywhere on this box…" spellcheck="false"></textarea>
+    <textarea id="src" placeholder="Paste a chapter here, or drop a .txt or .pdf anywhere on this box…" spellcheck="false"></textarea>
     <div class="row">
-      <button onclick="document.getElementById('file').click()">Open a .txt file</button>
-      <input type="file" id="file" accept=".txt,text/plain" hidden>
+      <button onclick="document.getElementById('file').click()">Open a .txt or .pdf</button>
+      <input type="file" id="file" accept=".txt,.pdf,text/plain,application/pdf" hidden>
       <button id="loadBtn" class="primary" onclick="loadText()">Read this →</button>
       <button id="clearBtn" onclick="clearAll()" style="display:none">Clear</button>
     </div>
@@ -121,6 +123,7 @@
       <label class="ctl">Voice
         <select id="voice" onchange="onVoiceChange()"></select>
       </label>
+      <label class="ctl"><input type="checkbox" id="allVoices" onchange="loadVoices()"> show all (incl. robotic)</label>
       <label class="ctl">Speed
         <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1" oninput="onRateChange()">
         <span id="rateVal">1.0×</span>
@@ -133,9 +136,11 @@
   <div id="reader"></div>
 
   <p class="note" id="privacyNote">
-    The reading itself uses your browser's built-in speech (the Web Speech API). Which voices you get
-    depends on your device. A cloned version of a specific person's voice isn't something that can run
-    free and offline in a browser, so that isn't offered here — these are the system voices only.
+    The reading uses your browser's built-in speech (the Web Speech API) and PDF text is pulled out
+    locally with a copy of pdf.js served from this site. Voices marked <b>online</b> are neural and
+    sound natural, but the browser sends each sentence to that provider to be spoken; voices without
+    that mark run fully on your device and leak nothing, at the cost of sounding robotic. A cloned
+    version of one specific person's voice can't run free and offline in a browser, so it isn't here.
   </p>
 </div>
 
@@ -298,35 +303,47 @@ function stopReading() {
 function setState(s) { $('tstate').textContent = s; }
 function setPlayIcon(s) { $('playBtn').textContent = s; }
 
-/* ---- voices ---- */
+/* ---- voices ----
+   The device's legacy voices (Alice, Fred, …) sound robotic. The good ones are
+   either the browser's online neural voices or Apple's "Enhanced/Premium"
+   voices, so those are shown by default and the rest hidden behind a toggle. */
+function isGoodVoice(v) {
+  return !v.localService || /(enhanced|premium|neural|natural|siri)/i.test(v.name);
+}
+function voiceNoteFor(v) {
+  if (!v) return '';
+  return v.localService ? 'on-device · nothing leaves' : 'online · sends text to the provider';
+}
 function loadVoices() {
   voices = synth.getVoices();
   const sel = $('voice');
   const saved = localStorage.getItem(K.voice);
+  const showAll = $('allVoices') && $('allVoices').checked;
   sel.innerHTML = '';
   if (!voices.length) {
     sel.innerHTML = '<option>no voices found on this device</option>';
     $('voiceNote').textContent = '';
     return;
   }
-  // English and local voices first, then the rest
-  voices.slice().sort((a, b) =>
+  let list = voices.filter(v => showAll || isGoodVoice(v));
+  if (!list.length) list = voices.slice();          // nothing curated → show them all
+  list.sort((a, b) =>
     (b.lang.startsWith('en') - a.lang.startsWith('en')) ||
-    (b.localService - a.localService) || a.name.localeCompare(b.name)
-  ).forEach(v => {
+    (isGoodVoice(b) - isGoodVoice(a)) || a.name.localeCompare(b.name)
+  );
+  list.forEach(v => {
     const o = document.createElement('option');
     o.value = v.name;
-    o.textContent = v.name + ' · ' + v.lang + (v.localService ? '' : ' (online)');
+    o.textContent = v.name + ' · ' + v.lang + (v.localService ? '' : ' · online');
     if (v.name === saved) o.selected = true;
     sel.appendChild(o);
   });
-  const v = chosenVoice();
-  $('voiceNote').textContent = v && !v.localService ? 'this voice may use the network' : 'on-device voice';
+  if (!list.some(v => v.name === saved)) sel.value = list[0].name;   // saved one was hidden
+  $('voiceNote').textContent = voiceNoteFor(chosenVoice());
 }
 function onVoiceChange() {
   try { localStorage.setItem(K.voice, $('voice').value); } catch (e) {}
-  const v = chosenVoice();
-  $('voiceNote').textContent = v && !v.localService ? 'this voice may use the network' : 'on-device voice';
+  $('voiceNote').textContent = voiceNoteFor(chosenVoice());
   if (playing) speakFrom(idx);
 }
 function onRateChange() {
@@ -363,9 +380,42 @@ function clearAll() {
   [K.text, K.idx].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
 }
 
+/* ---- PDF text extraction (pdf.js vendored locally) ----
+   Line breaks and page wrapping are dropped and the text joined into a flat
+   stream; the sentence splitter then does the real chunking off punctuation,
+   which reads far better aloud than honouring PDF line wraps would. */
+async function extractPdf(file) {
+  const pdfjs = await import('/vendor/pdfjs/pdf.min.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs';
+  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pages = [];
+  for (let n = 1; n <= doc.numPages; n++) {
+    $('src').placeholder = 'reading PDF… page ' + n + ' of ' + doc.numPages;
+    const content = await (await doc.getPage(n)).getTextContent();
+    let text = content.items.map(i => ('str' in i ? i.str : '')).join(' ')
+      // close the gap at a line-break hyphen but keep the hyphen: "genome-\nscale"
+      // → "genome-scale", not "genomescale", since scientific text is full of real
+      // hyphenated compounds and can't be told apart from a wrapped word.
+      .replace(/(\w)-\s+(\w)/g, '$1-$2')
+      .replace(/\s+/g, ' ').trim();
+    if (text) pages.push(text);
+  }
+  return pages.join('\n\n');
+}
+
 /* ---- file + drag/drop ---- */
+function isPdf(f) { return /\.pdf$|application\/pdf/.test((f.name || '') + (f.type || '')); }
 function readFile(f) {
   if (!f) return;
+  if (isPdf(f)) {
+    const hold = $('src').placeholder;
+    $('src').value = ''; $('src').placeholder = 'reading PDF…';
+    extractPdf(f)
+      .then(txt => { $('src').placeholder = hold; if (txt.trim()) { $('src').value = txt; loadText(); }
+                     else $('src').placeholder = 'no selectable text in that PDF (it may be scanned images).'; })
+      .catch(err => { $('src').placeholder = 'could not read that PDF — ' + err.message; });
+    return;
+  }
   const rd = new FileReader();
   rd.onload = () => { $('src').value = rd.result; loadText(); };
   rd.readAsText(f);
@@ -379,7 +429,7 @@ const dz = $('inputPanel');
   e.preventDefault(); if (ev === 'drop' || e.target === dz) dz.classList.remove('drag');
 }));
 dz.addEventListener('drop', e => {
-  const f = [...(e.dataTransfer.files || [])].find(f => /\.txt$|text\/plain/.test(f.name + f.type));
+  const f = [...(e.dataTransfer.files || [])].find(f => isPdf(f) || /\.txt$|text\/plain/.test(f.name + f.type));
   if (f) readFile(f);
 });
 

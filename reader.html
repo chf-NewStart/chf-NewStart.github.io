@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Read-aloud room // houfu72.com</title>
+  <meta name="description" content="Drop in a text you own and have it read aloud, sentence by sentence, entirely in your browser. Nothing is uploaded.">
+  <meta name="robots" content="noindex">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/tomato-apple-touch-icon.png?v=3">
+  <link rel="icon" href="/favicon_io/tomato-favicon.ico?v=3" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/tomato-favicon-32x32.png?v=3">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png?v=3">
+  <link rel="manifest" href="/site.webmanifest?v=3">
+  <meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14120f" media="(prefers-color-scheme: dark)">
+  <style>
+    :root {
+      --paper: #f4efe6; --ink: #2b2620; --ink-soft: #6b6257; --line: #ddd4c4;
+      --card: #faf6ee; --accent: #7a5c2e; --hl: #f3e4c4; --hl-word: #e7c98b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #14120f; --ink: #d8d2c6; --ink-soft: #8a8378; --line: #2b2820;
+        --card: #1b1814; --accent: #c9a35e; --hl: #2e2716; --hl-word: #4a3d1d;
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: var(--paper); color: var(--ink);
+      min-height: 100vh; line-height: 1.6; padding: 22px 18px 120px;
+      -webkit-text-size-adjust: 100%;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; }
+
+    header { margin-bottom: 20px; }
+    .back { font-size: 0.82rem; color: var(--accent); text-decoration: none; }
+    .back:hover { text-decoration: underline; }
+    h1 { font-size: 1.5rem; font-weight: normal; letter-spacing: -0.3px; margin: 10px 0 4px; }
+    .sub { font-size: 0.86rem; color: var(--ink-soft); line-height: 1.5; }
+    .sub b { color: var(--accent); font-weight: normal; }
+
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+             padding: 16px; margin-top: 16px; }
+
+    textarea {
+      width: 100%; min-height: 150px; resize: vertical; font: inherit; font-size: 0.95rem;
+      background: var(--paper); color: var(--ink); border: 1px solid var(--line);
+      border-radius: 6px; padding: 12px; line-height: 1.65;
+    }
+    textarea:focus { outline: 1px solid var(--accent); }
+    .drop-hint { font-size: 0.78rem; color: var(--ink-soft); margin-top: 8px; }
+    .panel.drag { border-color: var(--accent); box-shadow: 0 0 0 2px var(--hl-word) inset; }
+
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+    button, select {
+      font: inherit; font-size: 0.86rem; color: var(--ink); background: var(--paper);
+      border: 1px solid var(--line); border-radius: 6px; padding: 8px 13px; cursor: pointer;
+      transition: border-color .12s, background .12s;
+    }
+    button:hover, select:hover { border-color: var(--accent); }
+    button:disabled { opacity: 0.4; cursor: default; }
+    button.primary { background: var(--accent); color: var(--paper); border-color: var(--accent); font-weight: bold; }
+    button.primary:hover { filter: brightness(1.08); }
+    label.ctl { font-size: 0.78rem; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 7px; }
+    input[type=range] { accent-color: var(--accent); cursor: pointer; }
+    select { max-width: 210px; }
+
+    .bar { height: 4px; background: var(--line); border-radius: 3px; margin-top: 14px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+    .meta { font-size: 0.76rem; color: var(--ink-soft); margin-top: 7px; display: flex; justify-content: space-between; }
+
+    #reader { margin-top: 18px; font-size: 1.12rem; line-height: 1.9; display: none; }
+    #reader.on { display: block; }
+    .stc { cursor: pointer; border-radius: 3px; padding: 1px 0; transition: background .15s; }
+    .stc:hover { background: var(--hl); }
+    .stc.cur { background: var(--hl); }
+    .stc .wd.on { background: var(--hl-word); border-radius: 3px; }
+    .para { margin-bottom: 1.1em; }
+
+    .note { font-size: 0.76rem; color: var(--ink-soft); margin-top: 16px; line-height: 1.65; }
+    .note code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em;
+                 background: var(--card); padding: 1px 5px; border-radius: 4px; }
+
+    /* sticky transport when a text is loaded */
+    .transport {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+      background: var(--card); border-top: 1px solid var(--line);
+      padding: 10px 16px; display: none;
+    }
+    .transport.on { display: block; }
+    .transport .inner { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+    .tbtn { font-size: 1rem; padding: 9px 14px; min-width: 46px; }
+    .tstate { font-size: 0.76rem; color: var(--ink-soft); margin-left: auto; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="/">← back to portfolio</a>
+    <h1>Read-aloud room 🍅</h1>
+    <p class="sub">Drop in a text you own and it reads aloud, one sentence at a time, highlighting as it
+      goes. It runs entirely in your browser with the voices already on your device —
+      <b>nothing is uploaded, nothing is stored anywhere but here</b>.</p>
+  </header>
+
+  <div class="panel" id="inputPanel">
+    <textarea id="src" placeholder="Paste a chapter here, or drop a .txt file anywhere on this box…" spellcheck="false"></textarea>
+    <div class="row">
+      <button onclick="document.getElementById('file').click()">Open a .txt file</button>
+      <input type="file" id="file" accept=".txt,text/plain" hidden>
+      <button id="loadBtn" class="primary" onclick="loadText()">Read this →</button>
+      <button id="clearBtn" onclick="clearAll()" style="display:none">Clear</button>
+    </div>
+    <div class="drop-hint">Your text stays on this device. Reload and it's still here until you clear it.</div>
+  </div>
+
+  <div class="panel" id="voicePanel" style="display:none">
+    <div class="row">
+      <label class="ctl">Voice
+        <select id="voice" onchange="onVoiceChange()"></select>
+      </label>
+      <label class="ctl">Speed
+        <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1" oninput="onRateChange()">
+        <span id="rateVal">1.0×</span>
+      </label>
+    </div>
+    <div class="bar"><i id="progFill"></i></div>
+    <div class="meta"><span id="progText">–</span><span id="voiceNote"></span></div>
+  </div>
+
+  <div id="reader"></div>
+
+  <p class="note" id="privacyNote">
+    The reading itself uses your browser's built-in speech (the Web Speech API). Which voices you get
+    depends on your device. A cloned version of a specific person's voice isn't something that can run
+    free and offline in a browser, so that isn't offered here — these are the system voices only.
+  </p>
+</div>
+
+<div class="transport" id="transport">
+  <div class="inner">
+    <button class="tbtn" id="prevBtn" onclick="jump(-1)" title="Previous sentence">⏮</button>
+    <button class="tbtn primary" id="playBtn" onclick="togglePlay()" title="Play / pause">▶</button>
+    <button class="tbtn" id="nextBtn" onclick="jump(1)" title="Next sentence">⏭</button>
+    <button class="tbtn" id="stopBtn" onclick="stopReading()" title="Stop">■</button>
+    <span class="tstate" id="tstate">ready</span>
+  </div>
+</div>
+
+<script>
+'use strict';
+const synth = window.speechSynthesis;
+const K = { text: 'reader.text.v1', idx: 'reader.idx.v1', voice: 'reader.voice.v1', rate: 'reader.rate.v1' };
+
+let sentences = [];   // { text, para }  para = paragraph index for layout
+let idx = 0;
+let voices = [];
+let playing = false;
+let paused = false;
+const supported = 'speechSynthesis' in window;
+
+const $ = id => document.getElementById(id);
+
+/* ---- text → sentences, grouped into paragraphs ----
+   Periods that do not end a sentence (decimals, initials, "e.g.", "Dr.") are
+   swapped for a placeholder before splitting, then restored, so the reader
+   never speaks "Dr." or "3." as a fragment. */
+const DOT = '\u0001';
+const ABBR = /\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|cf|al|Fig|No|Vol|pp|approx|Dept|Inc|Ltd|Co)\./gi;
+function splitSentences(text) {
+  const out = [];
+  const paras = text.replace(/\r/g, '').split(/\n{2,}/);
+  paras.forEach((p, pi) => {
+    let line = p.trim();
+    if (!line) return;
+    line = line
+      .replace(/(\d)\.(\d)/g, '$1' + DOT + '$2')       // 3.5
+      .replace(/\b([A-Za-z])\./g, '$1' + DOT)          // J. initials, e.g., i.e.
+      .replace(ABBR, m => m.slice(0, -1) + DOT);       // Dr. Prof. etc.
+    line.split(/(?<=[.!?…。！？])\s+/).forEach(c => {
+      const t = c.split(DOT).join('.').trim();
+      if (t) out.push({ text: t, para: pi });
+    });
+  });
+  return out;
+}
+
+/* ---- render, one clickable span per sentence ---- */
+function render() {
+  const r = $('reader');
+  r.innerHTML = '';
+  let curPara = -1, pEl = null;
+  sentences.forEach((s, i) => {
+    if (s.para !== curPara) {
+      pEl = document.createElement('div');
+      pEl.className = 'para';
+      r.appendChild(pEl);
+      curPara = s.para;
+    }
+    const span = document.createElement('span');
+    span.className = 'stc';
+    span.id = 'stc-' + i;
+    span.textContent = s.text + ' ';
+    span.onclick = () => { setIdx(i); if (playing) speakFrom(i); };
+    pEl.appendChild(span);
+  });
+  r.classList.add('on');
+}
+
+function highlight(withWords) {
+  document.querySelectorAll('.stc.cur').forEach(e => e.classList.remove('cur'));
+  const el = $('stc-' + idx);
+  if (!el) return;
+  el.classList.add('cur');
+  if (withWords) {
+    // re-render current sentence as words so onboundary can mark them
+    el.innerHTML = '';
+    sentences[idx].text.split(/(\s+)/).forEach(tok => {
+      if (/^\s+$/.test(tok)) { el.appendChild(document.createTextNode(tok)); return; }
+      const w = document.createElement('span'); w.className = 'wd'; w.textContent = tok;
+      el.appendChild(w);
+    });
+    el.appendChild(document.createTextNode(' '));
+  }
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function markWord(charIndex) {
+  const el = $('stc-' + idx); if (!el) return;
+  const words = el.querySelectorAll('.wd'); if (!words.length) return;
+  let acc = 0, target = null;
+  const raw = sentences[idx].text;
+  for (const w of words) {
+    const at = raw.indexOf(w.textContent, acc);
+    if (at <= charIndex) { target = w; acc = at + w.textContent.length; } else break;
+  }
+  words.forEach(w => w.classList.remove('on'));
+  if (target) target.classList.add('on');
+}
+
+/* ---- progress ---- */
+function updateProgress() {
+  const pct = sentences.length ? (idx / sentences.length) * 100 : 0;
+  $('progFill').style.width = pct.toFixed(1) + '%';
+  $('progText').textContent = sentences.length
+    ? 'sentence ' + (idx + 1) + ' of ' + sentences.length : '–';
+}
+function setIdx(i) {
+  idx = Math.max(0, Math.min(sentences.length - 1, i));
+  try { localStorage.setItem(K.idx, String(idx)); } catch (e) {}
+  highlight(false);
+  updateProgress();
+}
+
+/* ---- speech ---- */
+function chosenVoice() {
+  const want = $('voice').value;
+  return voices.find(v => v.name === want) || voices[0] || null;
+}
+function speakFrom(i) {
+  if (!supported) return;
+  synth.cancel();
+  setIdx(i);
+  playing = true; paused = false;
+  const u = new SpeechSynthesisUtterance(sentences[idx].text);
+  const v = chosenVoice();
+  if (v) { u.voice = v; u.lang = v.lang; }
+  u.rate = parseFloat($('rate').value) || 1;
+  highlight(true);
+  u.onboundary = e => { if (e.name === 'word' || e.charIndex != null) markWord(e.charIndex); };
+  u.onend = () => {
+    if (!playing) return;
+    if (idx + 1 < sentences.length) speakFrom(idx + 1);
+    else { playing = false; setState('finished'); setPlayIcon('▶'); }
+  };
+  u.onerror = () => { /* interrupted by cancel/next; ignore */ };
+  synth.speak(u);
+  setState('reading');
+  setPlayIcon('❚❚');
+}
+function togglePlay() {
+  if (!supported) { setState('speech not supported here'); return; }
+  if (!playing) { speakFrom(idx); return; }
+  if (paused) { synth.resume(); paused = false; setState('reading'); setPlayIcon('❚❚'); }
+  else { synth.pause(); paused = true; setState('paused'); setPlayIcon('▶'); }
+}
+function jump(d) {
+  const ni = Math.max(0, Math.min(sentences.length - 1, idx + d));
+  if (playing) speakFrom(ni); else setIdx(ni);
+}
+function stopReading() {
+  synth.cancel(); playing = false; paused = false;
+  setState('stopped'); setPlayIcon('▶');
+  document.querySelectorAll('.stc.cur .wd.on').forEach(w => w.classList.remove('on'));
+}
+function setState(s) { $('tstate').textContent = s; }
+function setPlayIcon(s) { $('playBtn').textContent = s; }
+
+/* ---- voices ---- */
+function loadVoices() {
+  voices = synth.getVoices();
+  const sel = $('voice');
+  const saved = localStorage.getItem(K.voice);
+  sel.innerHTML = '';
+  if (!voices.length) {
+    sel.innerHTML = '<option>no voices found on this device</option>';
+    $('voiceNote').textContent = '';
+    return;
+  }
+  // English and local voices first, then the rest
+  voices.slice().sort((a, b) =>
+    (b.lang.startsWith('en') - a.lang.startsWith('en')) ||
+    (b.localService - a.localService) || a.name.localeCompare(b.name)
+  ).forEach(v => {
+    const o = document.createElement('option');
+    o.value = v.name;
+    o.textContent = v.name + ' · ' + v.lang + (v.localService ? '' : ' (online)');
+    if (v.name === saved) o.selected = true;
+    sel.appendChild(o);
+  });
+  const v = chosenVoice();
+  $('voiceNote').textContent = v && !v.localService ? 'this voice may use the network' : 'on-device voice';
+}
+function onVoiceChange() {
+  try { localStorage.setItem(K.voice, $('voice').value); } catch (e) {}
+  const v = chosenVoice();
+  $('voiceNote').textContent = v && !v.localService ? 'this voice may use the network' : 'on-device voice';
+  if (playing) speakFrom(idx);
+}
+function onRateChange() {
+  const r = parseFloat($('rate').value);
+  $('rateVal').textContent = r.toFixed(1) + '×';
+  try { localStorage.setItem(K.rate, String(r)); } catch (e) {}
+  if (playing) speakFrom(idx);
+}
+
+/* ---- load / clear ---- */
+function loadText() {
+  const text = $('src').value.trim();
+  if (!text) { $('src').focus(); return; }
+  sentences = splitSentences(text);
+  if (!sentences.length) return;
+  try { localStorage.setItem(K.text, text); } catch (e) {}
+  const savedIdx = parseInt(localStorage.getItem(K.idx) || '0', 10);
+  idx = (localStorage.getItem(K.text) === text && savedIdx < sentences.length) ? savedIdx : 0;
+  render();
+  $('voicePanel').style.display = '';
+  $('transport').classList.add('on');
+  $('clearBtn').style.display = '';
+  setIdx(idx);
+  setState('ready — press play');
+}
+function clearAll() {
+  stopReading();
+  sentences = []; idx = 0;
+  $('src').value = '';
+  $('reader').classList.remove('on'); $('reader').innerHTML = '';
+  $('voicePanel').style.display = 'none';
+  $('transport').classList.remove('on');
+  $('clearBtn').style.display = 'none';
+  [K.text, K.idx].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+}
+
+/* ---- file + drag/drop ---- */
+function readFile(f) {
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { $('src').value = rd.result; loadText(); };
+  rd.readAsText(f);
+}
+$('file').addEventListener('change', e => readFile(e.target.files[0]));
+const dz = $('inputPanel');
+['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => {
+  e.preventDefault(); dz.classList.add('drag');
+}));
+['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => {
+  e.preventDefault(); if (ev === 'drop' || e.target === dz) dz.classList.remove('drag');
+}));
+dz.addEventListener('drop', e => {
+  const f = [...(e.dataTransfer.files || [])].find(f => /\.txt$|text\/plain/.test(f.name + f.type));
+  if (f) readFile(f);
+});
+
+/* ---- keyboard ---- */
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA' || !sentences.length) return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  else if (e.code === 'ArrowRight') jump(1);
+  else if (e.code === 'ArrowLeft') jump(-1);
+});
+
+/* Chrome pauses long speech after ~15s; a periodic resume keeps it alive. */
+setInterval(() => { if (playing && !paused && synth.paused) synth.resume(); }, 10000);
+window.addEventListener('beforeunload', () => synth.cancel());
+
+/* ---- init ---- */
+(function init() {
+  if (!supported) {
+    $('privacyNote').innerHTML = 'This browser does not support the Web Speech API, so read-aloud '
+      + 'is unavailable here. Everything else still works — try Chrome, Edge or Safari.';
+  }
+  const r = parseFloat(localStorage.getItem(K.rate) || '1');
+  $('rate').value = r; $('rateVal').textContent = r.toFixed(1) + '×';
+  loadVoices();
+  if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+  const saved = localStorage.getItem(K.text);
+  if (saved) { $('src').value = saved; loadText(); }
+})();
+</script>
+</body>
+</html>

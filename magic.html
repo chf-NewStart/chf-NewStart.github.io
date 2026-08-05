@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob:; worker-src 'self' blob:; child-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sleight // houfu72.com</title>
+  <meta name="description" content="Hand-tracking magic in your browser — pinch the air and a tomato appears in your hand. Runs on-device; the camera never leaves your machine.">
+  <meta name="robots" content="noindex">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/tomato-apple-touch-icon.png?v=3">
+  <link rel="icon" href="/favicon_io/tomato-favicon.ico?v=3" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/tomato-favicon-32x32.png?v=3">
+  <link rel="manifest" href="/site.webmanifest?v=3">
+  <meta name="theme-color" content="#0a0a0a">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Consolas, 'Courier New', monospace;
+      background: #0a0a0a; color: #ddd; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; padding: 16px;
+      -webkit-text-size-adjust: 100%;
+    }
+    .top { width: 100%; max-width: 900px; display: flex; align-items: baseline; gap: 14px; margin-bottom: 12px; }
+    h1 { font-size: 1.1rem; font-weight: normal; letter-spacing: 2px; color: #e6b422; text-transform: uppercase; }
+    .back { font-size: 0.75rem; color: #666; text-decoration: none; margin-left: auto; }
+    .back:hover { color: #e6b422; }
+    .sub { width: 100%; max-width: 900px; font-size: 0.76rem; color: #777; line-height: 1.6; margin-bottom: 12px; }
+
+    .stage {
+      position: relative; width: 100%; max-width: 900px; aspect-ratio: 4 / 3;
+      background: #060606; border: 1px solid #1c1c1c; border-radius: 10px; overflow: hidden;
+    }
+    #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    video { display: none; }
+
+    .curtain {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px; text-align: center;
+      background: radial-gradient(60% 60% at 50% 40%, #14110a 0%, #060606 80%); padding: 24px;
+    }
+    .curtain.gone { display: none; }
+    .curtain p { font-size: 0.8rem; color: #888; max-width: 46ch; line-height: 1.7; }
+    .go {
+      font-family: inherit; font-size: 0.95rem; letter-spacing: 1px; cursor: pointer;
+      color: #0a0a0a; background: #e6b422; border: none; border-radius: 8px; padding: 13px 26px;
+      text-transform: uppercase; font-weight: bold; transition: filter .12s;
+    }
+    .go:hover { filter: brightness(1.1); }
+    .go:disabled { opacity: 0.5; cursor: default; }
+    .loadbar { width: 220px; height: 4px; background: #1c1c1c; border-radius: 3px; overflow: hidden; display: none; }
+    .loadbar.on { display: block; }
+    .loadbar > i { display: block; height: 100%; width: 30%; background: #e6b422;
+                   animation: slide 1.1s ease-in-out infinite; }
+    @keyframes slide { 0%{margin-left:-30%} 100%{margin-left:100%} }
+
+    .hud {
+      position: absolute; left: 12px; bottom: 12px; font-size: 0.7rem; color: #9a9a9a;
+      background: rgba(0,0,0,0.4); padding: 5px 9px; border-radius: 6px; pointer-events: none;
+    }
+    .tray { width: 100%; max-width: 900px; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+    .charm {
+      font-family: inherit; font-size: 1.1rem; background: #111; border: 1px solid #262626;
+      border-radius: 8px; padding: 7px 12px; cursor: pointer; transition: border-color .12s;
+    }
+    .charm.on { border-color: #e6b422; background: rgba(230,180,34,0.1); }
+    .charm:hover { border-color: #e6b422; }
+    .tray .label { font-size: 0.72rem; color: #666; margin-right: 4px; }
+    .tray .spacer { margin-left: auto; }
+    .ghost { font-family: inherit; font-size: 0.74rem; color: #999; background: #111;
+             border: 1px solid #262626; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+    .ghost:hover { border-color: #e6b422; color: #e6b422; }
+
+    .note { width: 100%; max-width: 900px; font-size: 0.72rem; color: #5a5a5a; line-height: 1.65; margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <h1>Sleight</h1>
+    <a class="back" href="/">← houfu72.com</a>
+  </div>
+  <p class="sub">Pinch your thumb and finger together in the air and something appears in your hand. Open your
+    hand to let it drop. It all runs on your device — the camera feed never leaves this browser.</p>
+
+  <div class="stage">
+    <video id="cam" playsinline muted></video>
+    <canvas id="view"></canvas>
+    <div class="hud" id="hud" style="display:none"></div>
+    <div class="curtain" id="curtain">
+      <button class="go" id="goBtn">✋ start the camera</button>
+      <div class="loadbar" id="loadbar"><i></i></div>
+      <p id="curtainMsg">Your camera turns on only after you press start, and the video is processed
+        entirely on your device. Nothing is recorded or sent anywhere.</p>
+    </div>
+  </div>
+
+  <div class="tray" id="tray" style="display:none">
+    <span class="label">pinch to conjure:</span>
+    <button class="charm on" data-emoji="🍅" onclick="pick(this)">🍅</button>
+    <button class="charm" data-emoji="💰" onclick="pick(this)">💰</button>
+    <button class="charm" data-emoji="🐇" onclick="pick(this)">🐇</button>
+    <button class="charm" data-emoji="⭐" onclick="pick(this)">⭐</button>
+    <button class="charm" data-emoji="🍄" onclick="pick(this)">🍄</button>
+    <span class="spacer"></span>
+    <button class="ghost" id="clearBtn" onclick="clearObjects()">sweep the stage</button>
+    <button class="ghost" id="skelBtn" onclick="toggleSkeleton()">hide hand outline</button>
+  </div>
+
+  <p class="note" id="note">
+    Hand tracking runs on a copy of Google's MediaPipe model served from this site (~17 MB, loaded once
+    and cached). It needs a browser with a camera and WebAssembly. On a phone this is a big first load.
+  </p>
+
+<script>
+'use strict';
+const cam = document.getElementById('cam');
+const canvas = document.getElementById('view');
+const ctx = canvas.getContext('2d');
+const hud = document.getElementById('hud');
+
+let landmarker = null, running = false, lastVideoTime = -1;
+let heldEmoji = '🍅';
+let showSkeleton = true;
+const objects = [];               // free-falling conjured things
+const hands = {};                 // per-hand state: { holding, obj, hist:[] }
+
+/* ---- charm selection ---- */
+function pick(btn) {
+  document.querySelectorAll('.charm').forEach(c => c.classList.remove('on'));
+  btn.classList.add('on');
+  heldEmoji = btn.dataset.emoji;
+}
+function clearObjects() { objects.length = 0; }
+function toggleSkeleton() {
+  showSkeleton = !showSkeleton;
+  document.getElementById('skelBtn').textContent = showSkeleton ? 'hide hand outline' : 'show hand outline';
+}
+
+/* ---- geometry helpers (landmarks are normalised 0..1) ---- */
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+// mirror X so it reads like a mirror (selfie view)
+function toCanvas(lm) { return { x: (1 - lm.x) * canvas.width, y: lm.y * canvas.height }; }
+
+/* ---- the magic: pinch detection + spawn ---- */
+function handleHand(key, lm) {
+  const h = hands[key] || (hands[key] = { holding: false, obj: null, hist: [] });
+  const thumb = lm[4], index = lm[8];
+  const palmSpan = dist(lm[0], lm[9]) || 0.001;         // wrist→middle-base, a scale for the hand
+  const pinch = dist(thumb, index) / palmSpan;          // scale-invariant pinch amount
+  const mid = toCanvas({ x: (thumb.x + index.x) / 2, y: (thumb.y + index.y) / 2 });
+
+  // track recent pinch-point positions for throw velocity
+  h.hist.push({ x: mid.x, y: mid.y }); if (h.hist.length > 5) h.hist.shift();
+
+  const PINCH_ON = 0.55, PINCH_OFF = 0.9;               // hysteresis so it doesn't flicker
+  if (!h.holding && pinch < PINCH_ON) {
+    h.holding = true;
+    h.obj = { emoji: heldEmoji, x: mid.x, y: mid.y, vx: 0, vy: 0, r: canvas.width * 0.055, born: perfNow(), held: true };
+    objects.push(h.obj);
+    spawnBurst(mid.x, mid.y);
+  } else if (h.holding && pinch > PINCH_OFF) {
+    h.holding = false;
+    if (h.obj) {                                        // release with the hand's recent velocity
+      const v = handVelocity(h.hist);
+      h.obj.vx = v.x; h.obj.vy = v.y; h.obj.held = false; h.obj = null;
+    }
+  }
+  if (h.holding && h.obj) { h.obj.x = mid.x; h.obj.y = mid.y; }
+  return { mid, pinch, holding: h.holding };
+}
+function handVelocity(hist) {
+  if (hist.length < 2) return { x: 0, y: 0 };
+  const a = hist[0], b = hist[hist.length - 1];
+  return { x: (b.x - a.x) / hist.length * 1.4, y: (b.y - a.y) / hist.length * 1.4 };
+}
+function forgetHand(key) {                              // hand left the frame
+  const h = hands[key];
+  if (h && h.obj) { h.obj.held = false; }               // drop whatever it held
+  delete hands[key];
+}
+
+/* ---- sparkle burst on conjure ---- */
+const bursts = [];
+function spawnBurst(x, y) { bursts.push({ x, y, t: 0 }); }
+
+/* ---- physics + drawing ---- */
+function step() {
+  const W = canvas.width, H = canvas.height, floor = H - canvas.width * 0.02;
+  for (const o of objects) {
+    if (o.held) continue;
+    o.vy += W * 0.0009;                                 // gravity scaled to canvas
+    o.x += o.vx; o.y += o.vy;
+    if (o.y > floor) { o.y = floor; o.vy *= -0.45; o.vx *= 0.7; if (Math.abs(o.vy) < W * 0.002) o.vy = 0; }
+    if (o.x < o.r) { o.x = o.r; o.vx *= -0.5; }
+    if (o.x > W - o.r) { o.x = W - o.r; o.vx *= -0.5; }
+  }
+  // retire things that have been still on the floor for a while
+  for (let i = objects.length - 1; i >= 0; i--) {
+    const o = objects[i];
+    if (!o.held && o.y >= floor - 1 && Math.abs(o.vx) < 0.2 && Math.abs(o.vy) < 0.2) {
+      o.rest = (o.rest || 0) + 1; if (o.rest > 240) objects.splice(i, 1);
+    } else o.rest = 0;
+  }
+}
+function drawObjects() {
+  for (const o of objects) {
+    ctx.save();
+    ctx.font = (o.r * 2).toFixed(0) + 'px serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (o.held) {                                       // a gentle glow while held
+      ctx.shadowColor = 'rgba(230,180,34,0.9)'; ctx.shadowBlur = 22;
+    }
+    ctx.fillText(o.emoji, o.x, o.y);
+    ctx.restore();
+  }
+}
+function drawBursts() {
+  for (let i = bursts.length - 1; i >= 0; i--) {
+    const b = bursts[i]; b.t += 1;
+    const p = b.t / 22; if (p >= 1) { bursts.splice(i, 1); continue; }
+    ctx.save();
+    ctx.globalAlpha = 1 - p;
+    ctx.strokeStyle = '#ffd75e'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(b.x, b.y, canvas.width * 0.02 + p * canvas.width * 0.08, 0, 7); ctx.stroke();
+    for (let k = 0; k < 8; k++) {
+      const a = k / 8 * Math.PI * 2, rr = p * canvas.width * 0.11;
+      ctx.fillStyle = '#fff3c4';
+      ctx.beginPath(); ctx.arc(b.x + Math.cos(a) * rr, b.y + Math.sin(a) * rr, 2.5 * (1 - p), 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+function drawSkeleton(lm, holding) {
+  const pts = lm.map(toCanvas);
+  const bones = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
+                 [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  ctx.save();
+  ctx.strokeStyle = holding ? 'rgba(230,180,34,0.7)' : 'rgba(255,255,255,0.28)';
+  ctx.lineWidth = 2;
+  bones.forEach(([a, b]) => { ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke(); });
+  // thumb + index tips marked, so the pinch point is obvious
+  [4, 8].forEach(i => { ctx.fillStyle = holding ? '#e6b422' : '#fff'; ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, 5, 0, 7); ctx.fill(); });
+  ctx.restore();
+}
+
+/* perf.now without tripping the no-Date sandbox in tests */
+function perfNow() { return performance.now(); }
+
+/* ---- main loop ---- */
+function loop() {
+  if (!running) return;
+  const W = canvas.width, H = canvas.height;
+  // draw the mirrored camera as the backdrop
+  ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cam, -W, 0, W, H); ctx.restore();
+
+  let anyHand = false;
+  if (landmarker && cam.currentTime !== lastVideoTime) {
+    lastVideoTime = cam.currentTime;
+    let res = null;
+    try { res = landmarker.detectForVideo(cam, perfNow()); } catch (e) {}
+    const seen = new Set();
+    if (res && res.landmarks) {
+      res.landmarks.forEach((lm, i) => {
+        anyHand = true;
+        const key = (res.handedness && res.handedness[i] && res.handedness[i][0] && res.handedness[i][0].categoryName) || ('h' + i);
+        seen.add(key);
+        const info = handleHand(key, lm);
+        if (showSkeleton) drawSkeleton(lm, info.holding);
+      });
+    }
+    Object.keys(hands).forEach(k => { if (!seen.has(k)) forgetHand(k); });
+  }
+
+  step();
+  drawObjects();
+  drawBursts();
+
+  hud.textContent = anyHand ? 'hand found — pinch to conjure' : 'show me a hand ✋';
+  requestAnimationFrame(loop);
+}
+
+/* ---- start: permission, lazy-load model, run ---- */
+async function start() {
+  const btn = document.getElementById('goBtn');
+  const bar = document.getElementById('loadbar');
+  const msg = document.getElementById('curtainMsg');
+  btn.disabled = true; bar.classList.add('on');
+  try {
+    msg.textContent = 'asking for the camera…';
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 960, height: 720 }, audio: false });
+    cam.srcObject = stream;
+    await cam.play();
+    canvas.width = cam.videoWidth || 960;
+    canvas.height = cam.videoHeight || 720;
+
+    msg.textContent = 'loading the magic (one-time, ~17 MB)…';
+    const vision = await import('/vendor/mediapipe/vision_bundle.mjs');
+    const fileset = await vision.FilesetResolver.forVisionTasks('/vendor/mediapipe/wasm');
+    landmarker = await vision.HandLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: '/vendor/mediapipe/models/hand_landmarker.task' },
+      runningMode: 'VIDEO', numHands: 2
+    });
+
+    document.getElementById('curtain').classList.add('gone');
+    document.getElementById('tray').style.display = 'flex';
+    hud.style.display = '';
+    running = true;
+    loop();
+  } catch (e) {
+    bar.classList.remove('on'); btn.disabled = false;
+    msg.textContent = (e && e.name === 'NotAllowedError')
+      ? 'camera permission was denied — allow it and press start again.'
+      : 'could not start: ' + (e && e.message || e);
+  }
+}
+document.getElementById('goBtn').addEventListener('click', start);
+window.addEventListener('pagehide', () => {
+  running = false;
+  if (cam.srcObject) cam.srcObject.getTracks().forEach(t => t.stop());
+});
+</script>
+</body>
+</html>

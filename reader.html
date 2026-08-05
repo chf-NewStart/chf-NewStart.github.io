@@ -161,6 +161,7 @@ const K = { text: 'reader.text.v1', idx: 'reader.idx.v1', voice: 'reader.voice.v
 
 let sentences = [];   // { text, para }  para = paragraph index for layout
 let idx = 0;
+let textPersisted = false;   // was the current text small enough to save?
 let voices = [];
 let playing = false;
 let paused = false;
@@ -192,27 +193,39 @@ function splitSentences(text) {
   return out;
 }
 
-/* ---- render, one clickable span per sentence ---- */
+/* ---- render, one clickable span per sentence ----
+   Built into a fragment for a single reflow, with click handled by one
+   delegated listener on the container instead of a closure per span. A
+   textbook is ~9,000 sentences; per-span handlers and repeated reflow would
+   freeze a phone. */
 function render() {
   const r = $('reader');
   r.innerHTML = '';
+  const frag = document.createDocumentFragment();
   let curPara = -1, pEl = null;
   sentences.forEach((s, i) => {
     if (s.para !== curPara) {
       pEl = document.createElement('div');
       pEl.className = 'para';
-      r.appendChild(pEl);
+      frag.appendChild(pEl);
       curPara = s.para;
     }
     const span = document.createElement('span');
     span.className = 'stc';
     span.id = 'stc-' + i;
+    span.dataset.i = i;
     span.textContent = s.text + ' ';
-    span.onclick = () => { setIdx(i); if (playing) speakFrom(i); };
     pEl.appendChild(span);
   });
+  r.appendChild(frag);
   r.classList.add('on');
 }
+// one listener for every sentence, now and after any re-render
+$('reader').addEventListener('click', e => {
+  const el = e.target.closest('.stc'); if (!el) return;
+  const i = +el.dataset.i;
+  setIdx(i); if (playing) speakFrom(i);
+});
 
 function highlight(withWords) {
   document.querySelectorAll('.stc.cur').forEach(e => e.classList.remove('cur'));
@@ -254,7 +267,9 @@ function updateProgress() {
 }
 function setIdx(i) {
   idx = Math.max(0, Math.min(sentences.length - 1, i));
-  try { localStorage.setItem(K.idx, String(idx)); } catch (e) {}
+  // only remember the place if the text itself was saved, or a later, smaller
+  // document could wrongly resume at this index
+  if (textPersisted) { try { localStorage.setItem(K.idx, String(idx)); } catch (e) {} }
   highlight(false);
   updateProgress();
 }
@@ -354,24 +369,38 @@ function onRateChange() {
 }
 
 /* ---- load / clear ---- */
+// A whole textbook is well over a megabyte; localStorage tops out near 5 MB and
+// throws when full. Persist only reasonably sized texts, and say plainly when a
+// text is too big to be remembered, rather than letting the save fail in silence.
+const MAX_PERSIST = 600000;   // ~0.6 MB of text
+function persistText(text) {
+  try {
+    if (text.length > MAX_PERSIST) { localStorage.removeItem(K.text); localStorage.removeItem(K.idx); return false; }
+    localStorage.setItem(K.text, text);
+    return true;
+  } catch (e) { return false; }   // quota exceeded → just don't remember it
+}
 function loadText() {
   const text = $('src').value.trim();
   if (!text) { $('src').focus(); return; }
   sentences = splitSentences(text);
   if (!sentences.length) return;
-  try { localStorage.setItem(K.text, text); } catch (e) {}
+  const remembered = persistText(text);
+  textPersisted = remembered;
   const savedIdx = parseInt(localStorage.getItem(K.idx) || '0', 10);
-  idx = (localStorage.getItem(K.text) === text && savedIdx < sentences.length) ? savedIdx : 0;
+  idx = (remembered && localStorage.getItem(K.text) === text && savedIdx < sentences.length) ? savedIdx : 0;
   render();
   $('voicePanel').style.display = '';
   $('transport').classList.add('on');
   $('clearBtn').style.display = '';
   setIdx(idx);
-  setState('ready — press play');
+  setState(sentences.length > 2000
+    ? sentences.length.toLocaleString() + ' sentences' + (remembered ? '' : ' — too long to save your place')
+    : 'ready — press play');
 }
 function clearAll() {
   stopReading();
-  sentences = []; idx = 0;
+  sentences = []; idx = 0; textPersisted = false;
   $('src').value = '';
   $('reader').classList.remove('on'); $('reader').innerHTML = '';
   $('voicePanel').style.display = 'none';
@@ -400,6 +429,7 @@ async function extractPdf(file) {
       .replace(/\s+/g, ' ').trim();
     if (text) pages.push(text);
   }
+  await doc.destroy();   // free pdf.js memory; a 114 MB textbook must not linger
   return pages.join('\n\n');
 }
 

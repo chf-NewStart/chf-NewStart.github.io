@@ -101,6 +101,7 @@
     <button class="charm" data-emoji="⭐" onclick="pick(this)">⭐</button>
     <button class="charm" data-emoji="🍄" onclick="pick(this)">🍄</button>
     <span class="spacer"></span>
+    <button class="ghost" id="portalBtn" onclick="togglePortals()">portals: on</button>
     <button class="ghost" id="clearBtn" onclick="clearObjects()">sweep the stage</button>
     <button class="ghost" id="skelBtn" onclick="toggleSkeleton()">hide hand outline</button>
   </div>
@@ -117,11 +118,12 @@ const canvas = document.getElementById('view');
 const ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
 
-let landmarker = null, running = false, lastVideoTime = -1;
+let landmarker = null, running = false, lastVideoTime = -1, lastLoopT = 0;
 let heldEmoji = '🍅';
 let showSkeleton = true;
+const THROW_BOOST = 1.35;          // a released flick flies a bit faster than the hand
 const objects = [];               // free-falling conjured things
-const hands = {};                 // per-hand state: { holding, obj, hist:[] }
+const hands = {};                 // per-hand state: { holding, obj, lastT }
 
 /* ---- charm selection ---- */
 function pick(btn) {
@@ -134,6 +136,10 @@ function toggleSkeleton() {
   showSkeleton = !showSkeleton;
   document.getElementById('skelBtn').textContent = showSkeleton ? 'hide hand outline' : 'show hand outline';
 }
+function togglePortals() {
+  portalsOn = !portalsOn;
+  document.getElementById('portalBtn').textContent = 'portals: ' + (portalsOn ? 'on' : 'off');
+}
 
 /* ---- geometry helpers (landmarks are normalised 0..1) ---- */
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
@@ -142,35 +148,35 @@ function toCanvas(lm) { return { x: (1 - lm.x) * canvas.width, y: lm.y * canvas.
 
 /* ---- the magic: pinch detection + spawn ---- */
 function handleHand(key, lm) {
-  const h = hands[key] || (hands[key] = { holding: false, obj: null, hist: [] });
+  const h = hands[key] || (hands[key] = { holding: false, obj: null, lastT: 0 });
   const thumb = lm[4], index = lm[8];
   const palmSpan = dist(lm[0], lm[9]) || 0.001;         // wrist→middle-base, a scale for the hand
   const pinch = dist(thumb, index) / palmSpan;          // scale-invariant pinch amount
   const mid = toCanvas({ x: (thumb.x + index.x) / 2, y: (thumb.y + index.y) / 2 });
-
-  // track recent pinch-point positions for throw velocity
-  h.hist.push({ x: mid.x, y: mid.y }); if (h.hist.length > 5) h.hist.shift();
+  const now = perfNow();
+  const dt = h.lastT ? Math.min(0.05, Math.max(0.001, (now - h.lastT) / 1000)) : 0.016;
 
   const PINCH_ON = 0.55, PINCH_OFF = 0.9;               // hysteresis so it doesn't flicker
   if (!h.holding && pinch < PINCH_ON) {
     h.holding = true;
-    h.obj = { emoji: heldEmoji, x: mid.x, y: mid.y, vx: 0, vy: 0, r: canvas.width * 0.055, born: perfNow(), held: true };
+    h.obj = { emoji: heldEmoji, x: mid.x, y: mid.y, vx: 0, vy: 0, r: canvas.width * 0.055, held: true };
     objects.push(h.obj);
     spawnBurst(mid.x, mid.y);
   } else if (h.holding && pinch > PINCH_OFF) {
     h.holding = false;
-    if (h.obj) {                                        // release with the hand's recent velocity
-      const v = handVelocity(h.hist);
-      h.obj.vx = v.x; h.obj.vy = v.y; h.obj.held = false; h.obj = null;
-    }
+    // keep the momentum built up while holding — the hand often stops on release,
+    // so sampling velocity only at that instant would (and did) just drop it
+    if (h.obj) { h.obj.vx *= THROW_BOOST; h.obj.vy *= THROW_BOOST; h.obj.held = false; h.obj = null; }
   }
-  if (h.holding && h.obj) { h.obj.x = mid.x; h.obj.y = mid.y; }
+  if (h.holding && h.obj) {
+    // follow the hand and track a smoothed velocity in px/second
+    const ivx = (mid.x - h.obj.x) / dt, ivy = (mid.y - h.obj.y) / dt;
+    h.obj.vx = h.obj.vx * 0.55 + ivx * 0.45;
+    h.obj.vy = h.obj.vy * 0.55 + ivy * 0.45;
+    h.obj.x = mid.x; h.obj.y = mid.y;
+  }
+  h.lastT = now;
   return { mid, pinch, holding: h.holding };
-}
-function handVelocity(hist) {
-  if (hist.length < 2) return { x: 0, y: 0 };
-  const a = hist[0], b = hist[hist.length - 1];
-  return { x: (b.x - a.x) / hist.length * 1.4, y: (b.y - a.y) / hist.length * 1.4 };
 }
 function forgetHand(key) {                              // hand left the frame
   const h = hands[key];
@@ -182,22 +188,68 @@ function forgetHand(key) {                              // hand left the frame
 const bursts = [];
 function spawnBurst(x, y) { bursts.push({ x, y, t: 0 }); }
 
-/* ---- physics + drawing ---- */
-function step() {
-  const W = canvas.width, H = canvas.height, floor = H - canvas.width * 0.02;
+/* ---- portals: throw a thing into one, it flies out the other ---- */
+let portalsOn = true;
+let spin = 0;
+function portalDefs() {
+  const W = canvas.width, H = canvas.height, r = Math.min(W, H) * 0.11;
+  return [
+    { x: W * 0.2, y: H * 0.5, r, hue: '#ff8a3d' },   // A — warm
+    { x: W * 0.8, y: H * 0.5, r, hue: '#4db6ff' },   // B — cool
+  ];
+}
+function portalTeleport(dt) {
+  if (!portalsOn) return;
+  const P = portalDefs();
   for (const o of objects) {
     if (o.held) continue;
-    o.vy += W * 0.0009;                                 // gravity scaled to canvas
-    o.x += o.vx; o.y += o.vy;
-    if (o.y > floor) { o.y = floor; o.vy *= -0.45; o.vx *= 0.7; if (Math.abs(o.vy) < W * 0.002) o.vy = 0; }
+    o.cool = Math.max(0, (o.cool || 0) - dt);
+    if (o.cool > 0) continue;
+    for (let i = 0; i < 2; i++) {
+      if (Math.hypot(o.x - P[i].x, o.y - P[i].y) < P[i].r * 0.8) {
+        const exit = P[1 - i];
+        o.x = exit.x; o.y = exit.y;                    // out the other side, same velocity
+        o.cool = 0.5;                                  // don't immediately re-enter
+        spawnBurst(exit.x, exit.y);
+        break;
+      }
+    }
+  }
+}
+function drawPortals() {
+  if (!portalsOn) return;
+  spin += 0.05;
+  for (const p of portalDefs()) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    for (let k = 0; k < 3; k++) {
+      ctx.rotate(spin * (k % 2 ? -1 : 1) * (1 + k * 0.3));
+      ctx.strokeStyle = p.hue;
+      ctx.globalAlpha = 0.5 - k * 0.12;
+      ctx.lineWidth = 4 - k;
+      ctx.beginPath(); ctx.ellipse(0, 0, p.r - k * 6, (p.r - k * 6) * 0.9, 0, 0.4, Math.PI * 2 - 0.4); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+/* ---- physics + drawing ---- */
+function step(dt) {
+  const W = canvas.width, H = canvas.height, floor = H - W * 0.02;
+  const G = H * 2.2;                                    // gravity, px/second²
+  for (const o of objects) {
+    if (o.held) continue;
+    o.vy += G * dt;
+    o.x += o.vx * dt; o.y += o.vy * dt;
+    if (o.y > floor) { o.y = floor; o.vy *= -0.45; o.vx *= 0.7; if (Math.abs(o.vy) < H * 0.25) o.vy = 0; }
     if (o.x < o.r) { o.x = o.r; o.vx *= -0.5; }
     if (o.x > W - o.r) { o.x = W - o.r; o.vx *= -0.5; }
   }
-  // retire things that have been still on the floor for a while
+  // retire things that have rested on the floor a few seconds
   for (let i = objects.length - 1; i >= 0; i--) {
     const o = objects[i];
-    if (!o.held && o.y >= floor - 1 && Math.abs(o.vx) < 0.2 && Math.abs(o.vy) < 0.2) {
-      o.rest = (o.rest || 0) + 1; if (o.rest > 240) objects.splice(i, 1);
+    if (!o.held && o.y >= floor - 1 && Math.abs(o.vx) < W * 0.05 && Math.abs(o.vy) < H * 0.05) {
+      o.rest = (o.rest || 0) + dt; if (o.rest > 4) objects.splice(i, 1);
     } else o.rest = 0;
   }
 }
@@ -249,8 +301,12 @@ function perfNow() { return performance.now(); }
 function loop() {
   if (!running) return;
   const W = canvas.width, H = canvas.height;
+  const now = perfNow();
+  const dt = lastLoopT ? Math.min(0.05, (now - lastLoopT) / 1000) : 0.016;
+  lastLoopT = now;
   // draw the mirrored camera as the backdrop
   ctx.save(); ctx.scale(-1, 1); ctx.drawImage(cam, -W, 0, W, H); ctx.restore();
+  drawPortals();
 
   let anyHand = false;
   if (landmarker && cam.currentTime !== lastVideoTime) {
@@ -270,11 +326,12 @@ function loop() {
     Object.keys(hands).forEach(k => { if (!seen.has(k)) forgetHand(k); });
   }
 
-  step();
+  step(dt);
+  portalTeleport(dt);
   drawObjects();
   drawBursts();
 
-  hud.textContent = anyHand ? 'hand found — pinch to conjure' : 'show me a hand ✋';
+  hud.textContent = anyHand ? 'hand found — pinch to conjure, toss it through a portal' : 'show me a hand ✋';
   requestAnimationFrame(loop);
 }
 

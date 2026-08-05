@@ -130,7 +130,8 @@
           Graphs live in a hover card so the diagram stays the whole picture. ── */
     .rig {
       position: relative; width: 100%; margin-bottom: 12px;
-      background: #111; border: 1px solid #1c1c1c; padding: 16px;
+      background: radial-gradient(120% 140% at 20% 0%, #151515 0%, #0e0e0e 70%);
+      border: 1px solid #202020; border-radius: 4px; padding: 20px 18px;
       display: grid; row-gap: 18px; column-gap: 46px;
       grid-template-columns: repeat(5, 1fr);
       grid-template-areas:
@@ -142,22 +143,46 @@
 
     .rig-wires { position: absolute; inset: 0; width: 100%; height: 100%;
                  pointer-events: none; z-index: 0; }
-    .wire { fill: none; stroke-width: 2; stroke-linecap: round; }
+    .wire { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+            opacity: .92; }
     .flowline { stroke-dasharray: 5 11; animation: march 1s linear infinite; }
     @keyframes march { to { stroke-dashoffset: -16; } }
-    .wire-lab { font: 10px Consolas, monospace; fill: #9a9a9a; }
+    .wire-lab { font: 600 10px Consolas, monospace; fill: #cfcfcf;
+                paint-order: stroke; stroke: #111; stroke-width: 3px; }
 
     .rig-node {
       position: relative; z-index: 1; cursor: pointer;
-      background: #0d0d0d; border: 1px solid #262626; padding: 10px 12px;
+      background: linear-gradient(180deg, #131313 0%, #0c0c0c 100%);
+      border: 1px solid #232323; border-radius: 3px;
+      padding: 11px 13px 11px 15px; min-height: 84px;
       display: flex; flex-direction: column; justify-content: center; gap: 3px;
-      transition: border-color .15s, background .15s;
+      transition: border-color .16s, box-shadow .16s, transform .16s;
     }
-    .rig-node:hover, .rig-node.sel { border-color: #1db954; background: rgba(29,185,84,0.07); }
-    .rig-node:hover .rn-t, .rig-node.sel .rn-t { color: #1db954; }
-    .rn-t { font-size: 0.63rem; color: #d0d0d0; letter-spacing: .5px; }
-    .rn-v { font-size: 1.02rem; color: #1db954; font-variant-numeric: tabular-nums; }
-    .rn-s { font-size: 0.6rem; color: #8a8a8a; line-height: 1.55; }
+    /* a colour bar per role, so the eye groups drivers, transport and sinks */
+    .rig-node::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--role, #2f2f2f); border-radius: 3px 0 0 3px;
+    }
+    #nd_light { --role: #ffb300; }
+    #nd_root  { --role: #2196f3; }
+    #nd_src   { --role: #1db954; }
+    #nd_pool  { --role: #ff9800; }
+    #nd_xyl   { --role: #2196f3; }
+    #nd_split { --role: #e05fd0; }
+    #nd_fruit { --role: #f4552f; }
+    #nd_veg   { --role: #8a8a8a; }
+    .rig-node:hover, .rig-node.sel {
+      border-color: var(--role, #1db954);
+      box-shadow: 0 0 0 1px var(--role, #1db954) inset, 0 8px 22px rgba(0,0,0,.5);
+      transform: translateY(-2px);
+    }
+    .rn-t {
+      font-size: 0.6rem; color: #eaeaea; letter-spacing: 1.2px; text-transform: uppercase;
+      font-weight: 600;
+    }
+    .rn-v { font-size: 1.12rem; color: var(--role, #1db954); font-variant-numeric: tabular-nums;
+            line-height: 1.25; }
+    .rn-s { font-size: 0.6rem; color: #8f8f8f; line-height: 1.55; }
     .rn-s.dim, .dim { color: #6a6a6a; }
 
     /* hover card: the stage's own data, next to the stage */
@@ -302,14 +327,14 @@
   <div class="rig" id="rig">
     <svg class="rig-wires" id="rigWires" aria-hidden="true">
       <defs>
-        <marker id="rg" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#1db954"/></marker>
-        <marker id="ro" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#ff9800"/></marker>
-        <marker id="rb" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#2196f3"/></marker>
-        <marker id="rm" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#8a8a8a"/></marker>
+        <marker id="rg" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#1db954"/></marker>
+        <marker id="ro" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#ff9800"/></marker>
+        <marker id="rb" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#2196f3"/></marker>
+        <marker id="rm" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#8a8a8a"/></marker>
       </defs>
       <path id="w_light"  class="wire" stroke="#ffb300" marker-end="url(#rg)"/>
       <path id="w_rootsrc" class="wire" stroke="#2196f3" marker-end="url(#rb)"/>
@@ -336,7 +361,8 @@
     </div>
 
     <div class="rig-node gb" id="nd_src" onclick="selectStep(\'source\')">
-      <div class="rn-t">SOURCE · stem · leaf · root</div>
+      <div class="rn-t">SOURCE</div>
+      <div class="rn-s">stem · leaf · root</div>
       <div class="rn-s">Sl2183 · 2183 rxn · LP</div>
       <div class="rn-s">max sucrose, then glutamine</div>
     </div>
@@ -375,7 +401,8 @@
     </div>
 
     <div class="rig-node gh" id="nd_fruit" onclick="selectStep(\'fruit\')">
-      <div class="rn-t">FRUIT · FRIM1 · 71 rxn</div>
+      <div class="rn-t">FRUIT</div>
+      <div class="rn-s">FRIM1 · 71 rxn</div>
       <div class="rn-s" id="fl_stage">ripening</div>
       <div class="rn-s" id="fl_weight">–</div>
     </div>
@@ -394,12 +421,12 @@
   <!-- Two inputs at once, which no single sweep can show -->
   <div class="curvewrap" style="margin-bottom:12px">
     <div class="pcard-title">// the whole operating space
-      <span class="model-tag" id="mapTag">total fruit output across light × nitrogen</span></div>
+      <span class="model-tag" id="mapTag">sugar delivered across light × fruit stage</span></div>
     <canvas id="mapCanvas" width="1060" height="330"></canvas>
     <div class="sweepbtns" style="display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 4px">
-      <button class="step-btn map-btn on" onclick="setMap('total',this)">fruit output</button>
+      <button class="step-btn map-btn on" onclick="setMap('sugar',this)">sugar delivered</button>
+      <button class="step-btn map-btn" onclick="setMap('total',this)">fruit output</button>
       <button class="step-btn map-btn" onclick="setMap('brix',this)">sweetness</button>
-      <button class="step-btn map-btn" onclick="setMap('sugar',this)">sugar delivered</button>
       <button class="step-btn map-btn" onclick="setMap('perPhoton',this)">sugar per photon</button>
     </div>
     <div class="objnote" id="mapNote">Every square is its own solve of both models. The sweeps
@@ -1445,28 +1472,28 @@ const MAP_METRICS = {
   sugar:     { label: 'sugar delivered', fmt: v => v.toFixed(2),  hue: [255,152,0] },
   perPhoton: { label: 'sugar per photon', fmt: v => v.toFixed(4), hue: [156,123,214] },
 };
-let mapMetric = 'total', mapCells = null, mapDims = null;
+let mapMetric = 'sugar', mapCells = null, mapDims = null;
 
 function setMap(k, btn) {
   mapMetric = k;
   document.querySelectorAll('.map-btn').forEach(b => b.classList.remove('on'));
   if (btn) btn.classList.add('on');
   document.getElementById('mapTag').textContent =
-    MAP_METRICS[k].label + ' across light × nitrogen';
+    MAP_METRICS[k].label + ' across light × fruit stage';
   if (mapCells) drawMap(lastEnv);
 }
 
 async function runMap(env, token) {
-  const NX = 16, NY = 11;
+  const NX = 16, NY = 13;
   mapDims = { NX, NY };
   const cells = [];
   for (let j = 0; j < NY; j++) {
     for (let i = 0; i < NX; i++) {
       if (token !== sweepToken) return;
       const light = 2000 * i / (NX - 1);
-      const nit = 5 + 95 * j / (NY - 1);
-      const r = await solveAt({ ...env, light, nit });
-      cells.push({ i, j, light, nit,
+      const dpa = 5 + 50 * j / (NY - 1);
+      const r = await solveAt({ ...env, light, dpa, weights: null });
+      cells.push({ i, j, light, dpa,
         brix: r.ok ? r.brix : 0, total: r.ok ? r.total : 0,
         sugar: r.ok ? r.sugar : 0, perPhoton: r.ok ? r.perPhoton : 0 });
     }
@@ -1506,9 +1533,21 @@ function drawMap(env) {
     ctx.fillRect(L + z.i * cw, H - B - (z.j + 1) * ch, Math.ceil(cw) + 1, Math.ceil(ch) + 1);
   });
 
+  // stage boundaries: the horizontal structure comes from these
+  ctx.strokeStyle = 'rgba(255,255,255,0.42)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+  [15, 35].forEach(d => {
+    const Y = H - B - ((d - 5) / 50) * (H - T - B);
+    ctx.beginPath(); ctx.moveTo(L, Y); ctx.lineTo(W - R, Y); ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#d0d0d0'; ctx.font = '10px Consolas, monospace';
+  ctx.fillText('ripening', L + 6, H - B - ((45 - 5) / 50) * (H - T - B) + 4);
+  ctx.fillText('starch filling', L + 6, H - B - ((25 - 5) / 50) * (H - T - B) + 4);
+  ctx.fillText('cell division', L + 6, H - B - ((10 - 5) / 50) * (H - T - B) + 4);
+
   // where the sliders are
   const mx = L + (env.light / 2000) * (W - L - R);
-  const my = H - B - ((env.nit - 5) / 95) * (H - T - B);
+  const my = H - B - ((env.dpa - 5) / 50) * (H - T - B);
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(mx, my, 6, 0, 7); ctx.stroke();
 
@@ -1516,13 +1555,13 @@ function drawMap(env) {
   for (let i = 0; i <= 4; i++) {
     const v = 2000 * i / 4, X = L + (v / 2000) * (W - L - R);
     ctx.fillText(String(v), X - (i === 4 ? 26 : i === 0 ? 0 : 13), H - B + 15);
-    const n = 5 + 95 * i / 4, Y = H - B - ((n - 5) / 95) * (H - T - B);
+    const n = 5 + 50 * i / 4, Y = H - B - ((n - 5) / 50) * (H - T - B);
     ctx.fillText(n.toFixed(0), 26, Y + 4);
   }
   ctx.font = '11px Consolas, monospace';
   ctx.fillText('light (PPFD µmol/m²/s)', L, H - 5);
   ctx.save(); ctx.translate(11, H - B); ctx.rotate(-Math.PI / 2);
-  ctx.fillText('nitrogen (%)', 0, 0); ctx.restore();
+  ctx.fillText('days post anthesis', 0, 0); ctx.restore();
 
   // colour key
   const kx = W - R + 18, kh = H - T - B;
@@ -1566,8 +1605,8 @@ function drawMap(env) {
   if (note) note.innerHTML = 'Every square is its own solve of both models — '
     + mapCells.length + ' of them. Sweeps move one input at a time; this moves two, which is '
     + 'where the trade-offs live. <b>Best ' + M.label + ' here: ' + M.fmt(best[mapMetric])
-    + '</b> at ' + best.light.toFixed(0) + ' PPFD and ' + best.nit.toFixed(0)
-    + '% nitrogen (dashed square). The ring is where your sliders are sitting.'
+    + '</b> at ' + best.light.toFixed(0) + ' PPFD and ' + best.dpa.toFixed(0)
+    + ' days post anthesis (dashed square). The ring is where your sliders are sitting.'
     + (nearTop > 0.80
         ? ' <b>' + (nearTop * 100).toFixed(0) + '% of this surface is already at its maximum</b>, '
           + 'so the environment barely moves it — which is itself the answer. '

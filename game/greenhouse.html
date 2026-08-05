@@ -186,16 +186,19 @@
     .rn-s.dim, .dim { color: #6a6a6a; }
 
     /* hover card: the stage's own data, next to the stage */
+    /* Fixed panel under the diagram rather than a floating card: hovering a
+       stage should not hide the stages next to it. */
     .peek {
-      position: absolute; z-index: 5; width: 460px; max-width: calc(100vw - 40px);
-      background: #0b0b0b; border: 1px solid #1db954; padding: 11px 13px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.65); pointer-events: none;
-      opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s;
+      width: 100%; margin-bottom: 12px;
+      background: #0d0d0d; border: 1px solid #232323; border-left: 3px solid #1db954;
+      padding: 13px 16px; display: grid; gap: 14px;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start;
     }
-    .peek.on { opacity: 1; transform: translateY(0); }
-    .peek-t { font-size: 0.62rem; color: #1db954; letter-spacing: 1px; margin-bottom: 7px; }
-    .peek canvas { width: 100%; height: 168px; display: block; }
-    .peek-cap { font-size: 0.66rem; color: #b4b4b4; line-height: 1.7; margin-top: 8px; }
+    @media (max-width: 900px) { .peek { grid-template-columns: 1fr; } }
+    .peek-t { font-size: 0.62rem; color: #1db954; letter-spacing: 1.2px; margin-bottom: 8px;
+              text-transform: uppercase; grid-column: 1 / -1; }
+    .peek canvas { width: 100%; height: 210px; display: block; }
+    .peek-cap { font-size: 0.7rem; color: #c0c0c0; line-height: 1.85; margin-top: 0; }
     .peek-cap b { color: #1db954; font-weight: normal; }
     .peek-cap .eq { color: #8a8a8a; }
 
@@ -263,77 +266,22 @@
   <span id="statusText">initializing…</span>
 </div>
 
-<div class="score">
-  <div class="score-cell lead">
-    <div class="score-k">sweetness index</div>
-    <div class="score-v"><span id="sc_brix">–</span> <span class="score-u">of 12</span></div>
-  </div>
-  <div class="score-cell">
-    <div class="score-k">sugar share of fruit</div>
-    <div class="score-v"><span id="sc_sugar">–</span> <span class="score-u">%</span></div>
-  </div>
-  <div class="score-cell">
-    <div class="score-k">sugar per photon</div>
-    <div class="score-v"><span id="sc_eff">–</span> <span class="score-u">mmol/mmol</span></div>
-  </div>
-</div>
 
-<div class="readout" id="readout">Pick a scenario, or move any slider, and this line will explain what the model just did.</div>
 
 <div class="layout">
-
-  <!-- Environmental controls -->
-  <div class="pcard">
-    <div class="pcard-title">// greenhouse environment</div>
-    <div class="scenarios">
-      <button class="scenario" onclick="applyScenario('winter',this)">Dutch winter</button>
-      <button class="scenario" onclick="applyScenario('summer',this)">Summer peak</button>
-      <button class="scenario" onclick="applyScenario('enriched',this)">CO₂ enriched</button>
-      <button class="scenario" onclick="applyScenario('drought',this)">Drought stress</button>
-      <button class="scenario" onclick="applyScenario('night',this)">Night</button>
-    </div>
-    <div class="env-grid">
-      <div class="env-item">
-        <label>☀ Light (PPFD)</label>
-        <input type="range" id="slLight" min="0" max="2000" value="800" step="50" oninput="onEnvChange()">
-        <div class="env-val"><span id="vLight">800</span> <span class="env-unit">µmol/m²/s</span></div>
-      </div>
-      <div class="env-item">
-        <label>💨 CO₂</label>
-        <input type="range" id="slCO2" min="200" max="1200" value="400" step="50" oninput="onEnvChange()">
-        <div class="env-val"><span id="vCO2">400</span> <span class="env-unit">ppm</span></div>
-      </div>
-      <div class="env-item">
-        <label>💧 Water availability</label>
-        <input type="range" id="slWater" min="10" max="100" value="85" step="5" oninput="onEnvChange()">
-        <div class="env-val"><span id="vWater">85</span> <span class="env-unit">%</span></div>
-      </div>
-      <div class="env-item">
-        <label>⚗ Nitrogen (NO₃⁻)</label>
-        <input type="range" id="slN" min="5" max="100" value="70" step="5" oninput="onEnvChange()">
-        <div class="env-val"><span id="vN">70</span> <span class="env-unit">%</span></div>
-      </div>
-      <div class="env-item">
-        <label>🍅 Fruit stage</label>
-        <input type="range" id="slDPA" min="5" max="55" value="45" step="5" oninput="onEnvChange()">
-        <div class="env-val"><span id="vDPA">45</span> <span class="env-unit">DPA · <span id="vStage">ripening</span></span></div>
-      </div>
-    </div>
-  </div>
-
 
   <!-- The model wraps the result: nodes on all four sides, the season in the
        middle. Connectors are positioned from the real box geometry at runtime. -->
   <div class="rig" id="rig">
     <svg class="rig-wires" id="rigWires" aria-hidden="true">
       <defs>
-        <marker id="rg" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+        <marker id="rg" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
           <path d="M0,0 L9,4.5 L0,9 Z" fill="#1db954"/></marker>
-        <marker id="ro" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+        <marker id="ro" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
           <path d="M0,0 L9,4.5 L0,9 Z" fill="#ff9800"/></marker>
-        <marker id="rb" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+        <marker id="rb" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
           <path d="M0,0 L9,4.5 L0,9 Z" fill="#2196f3"/></marker>
-        <marker id="rm" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+        <marker id="rm" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
           <path d="M0,0 L9,4.5 L0,9 Z" fill="#8a8a8a"/></marker>
       </defs>
       <path id="w_light"  class="wire" stroke="#ffb300" marker-end="url(#rg)"/>
@@ -407,16 +355,75 @@
       <div class="rn-s" id="fl_weight">–</div>
     </div>
 
-    <div class="peek" id="peek">
-      <div class="peek-t" id="peekT"></div>
-      <canvas id="peekCanvas" width="900" height="336"></canvas>
-      <div class="peek-cap" id="peekCap"></div>
-    </div>
+  </div>
+  <div class="peek" id="peek" style="display:none">
+    <div class="peek-t" id="peekT"></div>
+    <canvas id="peekCanvas" width="900" height="336"></canvas>
+    <div class="peek-cap" id="peekCap"></div>
   </div>
   <div class="rig-hint">Hover any stage to see what it does · click to pin ·
     <button class="step-btn" onclick="stepBy(-1)">◀</button>
     <button class="step-btn" onclick="stepBy(1)">▶</button>
     <span id="stepN" class="dim"></span></div>
+
+  <!-- Environmental controls -->
+  <div class="pcard">
+    <div class="pcard-title">// greenhouse environment</div>
+    <div class="scenarios">
+      <button class="scenario" onclick="applyScenario('winter',this)">Dutch winter</button>
+      <button class="scenario" onclick="applyScenario('summer',this)">Summer peak</button>
+      <button class="scenario" onclick="applyScenario('enriched',this)">CO₂ enriched</button>
+      <button class="scenario" onclick="applyScenario('drought',this)">Drought stress</button>
+      <button class="scenario" onclick="applyScenario('night',this)">Night</button>
+    </div>
+    <div class="env-grid">
+      <div class="env-item">
+        <label>☀ Light (PPFD)</label>
+        <input type="range" id="slLight" min="0" max="2000" value="800" step="50" oninput="onEnvChange()">
+        <div class="env-val"><span id="vLight">800</span> <span class="env-unit">µmol/m²/s</span></div>
+      </div>
+      <div class="env-item">
+        <label>💨 CO₂</label>
+        <input type="range" id="slCO2" min="200" max="1200" value="400" step="50" oninput="onEnvChange()">
+        <div class="env-val"><span id="vCO2">400</span> <span class="env-unit">ppm</span></div>
+      </div>
+      <div class="env-item">
+        <label>💧 Water availability</label>
+        <input type="range" id="slWater" min="10" max="100" value="85" step="5" oninput="onEnvChange()">
+        <div class="env-val"><span id="vWater">85</span> <span class="env-unit">%</span></div>
+      </div>
+      <div class="env-item">
+        <label>⚗ Nitrogen (NO₃⁻)</label>
+        <input type="range" id="slN" min="5" max="100" value="70" step="5" oninput="onEnvChange()">
+        <div class="env-val"><span id="vN">70</span> <span class="env-unit">%</span></div>
+      </div>
+      <div class="env-item">
+        <label>🍅 Fruit stage</label>
+        <input type="range" id="slDPA" min="5" max="55" value="45" step="5" oninput="onEnvChange()">
+        <div class="env-val"><span id="vDPA">45</span> <span class="env-unit">DPA · <span id="vStage">ripening</span></span></div>
+      </div>
+    </div>
+  </div>
+
+<div class="score">
+  <div class="score-cell lead">
+    <div class="score-k">sweetness index</div>
+    <div class="score-v"><span id="sc_brix">–</span> <span class="score-u">of 12</span></div>
+  </div>
+  <div class="score-cell">
+    <div class="score-k">sugar share of fruit</div>
+    <div class="score-v"><span id="sc_sugar">–</span> <span class="score-u">%</span></div>
+  </div>
+  <div class="score-cell">
+    <div class="score-k">sugar per photon</div>
+    <div class="score-v"><span id="sc_eff">–</span> <span class="score-u">mmol/mmol</span></div>
+  </div>
+</div>
+<div class="readout" id="readout">Pick a scenario, or move any slider, and this line will explain what the model just did.</div>
+
+
+
+
 
   <!-- Two inputs at once, which no single sweep can show -->
   <div class="curvewrap" style="margin-bottom:12px">
@@ -1250,20 +1257,10 @@ function stepBy(d) {
 /* The card sits beside whichever stage you are on, flipping to the other side
    when it would run off the panel. */
 function placePeek(nodeId) {
-  const peek = document.getElementById('peek'), rig = document.getElementById('rig');
-  const n = document.getElementById(nodeId);
-  if (!peek || !rig || !n || rig.clientWidth === 0) return;
-  const R = rig.getBoundingClientRect(), B = n.getBoundingClientRect();
-  const w = peek.offsetWidth || 460;
-  let left = B.left - R.left + B.width + 14;
-  if (left + w > R.width - 8) left = B.left - R.left - w - 14;
-  if (left < 8) left = Math.max(8, (R.width - w) / 2);
-  let top = B.top - R.top + B.height + 10;
-  const h = peek.offsetHeight || 300;
-  if (top + h > R.height - 4) top = Math.max(8, B.top - R.top - h - 10);
-  peek.style.left = left + 'px';
-  peek.style.top = top + 'px';
-  peek.classList.add('on');
+  // The panel is in the flow of the page now; the accent just follows the role.
+  const peek = document.getElementById('peek'), n = document.getElementById(nodeId);
+  if (!peek || !n) return;
+  peek.style.borderLeftColor = getComputedStyle(n).getPropertyValue('--role').trim() || '#1db954';
 }
 
 let pinned = null;
@@ -1277,9 +1274,8 @@ function hoverStep(k, nodeId) {
   placePeek(nodeId);
 }
 function unhover() {
-  if (pinned) return;
-  document.getElementById('peek')?.classList.remove('on');
-  document.querySelectorAll('.rig-node').forEach(n => n.classList.remove('sel'));
+  // Deliberately leaves the panel showing the last stage: blanking it on every
+  // mouseout made the page flicker as the pointer crossed the diagram.
 }
 function wireHovers() {
   STEPS.filter(x => x.node).forEach(st => {
@@ -1308,16 +1304,23 @@ function plotSeries(cv, lines, xLabel, opts) {
   const xMin = Math.min(...xs), xMax = Math.max(...xs);
   const px = x => L + (xMax > xMin ? (x - xMin) / (xMax - xMin) : 0) * (W - L - R);
   const py = v => H - B - (v / yMax) * (H - T - B);
-  lines.forEach(l => {
-    ctx.beginPath();
-    ctx.moveTo(px(l.pts[0].x), py(0));
-    l.pts.forEach(p => ctx.lineTo(px(p.x), py(p.y)));
-    ctx.lineTo(px(l.pts[l.pts.length - 1].x), py(0));
-    ctx.closePath();
-    ctx.globalAlpha = 0.16; ctx.fillStyle = l.color; ctx.fill(); ctx.globalAlpha = 1;
-    ctx.strokeStyle = l.color; ctx.lineWidth = 2; ctx.beginPath();
+  // Fill only when there is a single series. Four overlapping fills stack into
+  // grey and hide the very lines they are meant to emphasise.
+  const solo = lines.length === 1;
+  const DASH = [[], [7, 5], [2, 4], [10, 4, 2, 4]];
+  lines.forEach((l, i) => {
+    if (solo) {
+      ctx.beginPath();
+      ctx.moveTo(px(l.pts[0].x), py(0));
+      l.pts.forEach(p => ctx.lineTo(px(p.x), py(p.y)));
+      ctx.lineTo(px(l.pts[l.pts.length - 1].x), py(0));
+      ctx.closePath();
+      ctx.globalAlpha = 0.16; ctx.fillStyle = l.color; ctx.fill(); ctx.globalAlpha = 1;
+    }
+    ctx.setLineDash(solo ? [] : DASH[i % DASH.length]);
+    ctx.strokeStyle = l.color; ctx.lineWidth = solo ? 2 : 2.2; ctx.beginPath();
     l.pts.forEach((p, j) => { const X = px(p.x), Y = py(p.y); j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
-    ctx.stroke();
+    ctx.stroke(); ctx.setLineDash([]);
   });
   if (opts?.mark != null) {
     ctx.strokeStyle = '#fff'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
@@ -1344,6 +1347,9 @@ function pick(varKey, field) {
 
 function drawCentre() {
   const cv = document.getElementById('peekCanvas'); if (!cv) return;
+  // stays hidden until there is something in it, rather than reserving a void
+  const panel = document.getElementById('peek');
+  if (panel && panel.style.display === 'none') panel.style.display = 'grid';
   const env = lastEnv, r = lastResult;
   const cap = document.getElementById('peekCap');
   const say = h => { if (cap) cap.innerHTML = h; };
@@ -1550,6 +1556,12 @@ function drawMap(env) {
   const my = H - B - ((env.dpa - 5) / 50) * (H - T - B);
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(mx, my, 6, 0, 7); ctx.stroke();
+  // an unlabelled ring is just a mystery, so say what it is
+  ctx.fillStyle = '#fff'; ctx.font = '10px Consolas, monospace';
+  const tag = 'your settings';
+  const tw = ctx.measureText(tag).width;
+  const tagLeft = mx + 10 + tw < W - R ? mx + 10 : mx - 10 - tw;
+  ctx.fillText(tag, tagLeft, my + 3.5);
 
   ctx.fillStyle = '#8a8a8a'; ctx.font = '10px Consolas, monospace';
   for (let i = 0; i <= 4; i++) {

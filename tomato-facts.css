@@ -1,0 +1,137 @@
+.tomato-fact-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.76);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.tomato-fact-backdrop[hidden] { display: none; }
+
+.tomato-fact-dialog {
+    position: relative;
+    width: min(620px, calc(100vw - 40px));
+    box-sizing: border-box;
+    border: 2px solid #ff5f56;
+    border-radius: 0;
+    padding: 26px 28px 24px;
+    background: #0d0d0d;
+    color: #dcdcdc;
+    box-shadow: 9px 9px 0 rgba(255, 95, 86, 0.22);
+    font-family: Consolas, 'Courier New', monospace;
+}
+
+.tomato-fact-kicker {
+    margin: 0 42px 16px 0;
+    color: #666;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.tomato-fact-evidence {
+    display: inline-block;
+    margin-bottom: 13px;
+    border: 1px solid rgba(29, 185, 84, 0.55);
+    padding: 3px 8px;
+    color: #1db954;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+}
+
+.tomato-fact-title {
+    margin: 0 0 14px;
+    color: #ff5f56;
+    font-size: clamp(1.25rem, 4vw, 1.75rem);
+    line-height: 1.18;
+    text-transform: none;
+    letter-spacing: -0.02em;
+}
+
+.tomato-fact-text {
+    margin: 0;
+    color: #eee;
+    font-size: clamp(0.95rem, 2.5vw, 1.08rem);
+    line-height: 1.65;
+}
+
+.tomato-fact-project {
+    margin: 18px 0;
+    border-left: 2px solid #1db954;
+    padding: 9px 0 9px 13px;
+    color: #aaa;
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+.tomato-fact-project strong { color: #1db954; }
+
+.tomato-fact-paper {
+    display: inline-block;
+    color: #ff8c86;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    text-decoration: none;
+}
+
+.tomato-fact-paper:hover { color: #fff; }
+
+.tomato-fact-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.tomato-fact-button,
+.tomato-fact-close {
+    border: 1px solid #333;
+    border-radius: 0;
+    background: transparent;
+    color: #aaa;
+    cursor: pointer;
+    font: inherit;
+}
+
+.tomato-fact-button {
+    padding: 8px 13px;
+    font-size: 0.74rem;
+}
+
+.tomato-fact-button.primary {
+    border-color: #1db954;
+    color: #1db954;
+}
+
+.tomato-fact-button:hover,
+.tomato-fact-close:hover {
+    border-color: #ff5f56;
+    color: #ff5f56;
+}
+
+.tomato-fact-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+}
+
+@media (max-width: 520px) {
+    .tomato-fact-dialog { padding: 22px 20px 20px; }
+    .tomato-fact-actions { align-items: stretch; flex-direction: column-reverse; }
+    .tomato-fact-button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .tomato-fact-dialog { animation: tomato-fact-in 180ms ease-out; }
+    @keyframes tomato-fact-in {
+        from { opacity: 0; transform: translateY(12px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+}

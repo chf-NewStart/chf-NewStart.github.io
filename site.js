@@ -520,10 +520,11 @@
 
     function updateRainLabel() {
         if (!tomatoToggle) return;
-        // Tap and hold do different things, so the label has to teach both.
+        // A normal click opens the daily research fact; Shift-click controls
+        // the existing tomato-rain easter egg.
         const label = currentLanguage === 'zh'
-            ? (rainOn ? '停止番茄雨（长按可持续倾泻）' : '来一场番茄雨（长按持续倾泻）')
-            : (rainOn ? 'Stop the tomato rain (hold to pour more)' : 'Make it rain tomatoes (hold to pour)');
+            ? (rainOn ? '今日番茄知识（Shift 点击停止番茄雨）' : '今日番茄知识（Shift 点击开启番茄雨）')
+            : (rainOn ? "Today's tomato fact (Shift-click: stop tomato rain)" : "Today's tomato fact (Shift-click: tomato rain)");
         tomatoToggle.setAttribute('aria-label', label);
         tomatoToggle.title = label;
     }
@@ -568,7 +569,8 @@
         if (rainW) spawnAt(rainW * (0.06 + 0.88 * Math.random()), -25 - Math.random() * 60);
     }
 
-    function beginRainHold() {
+    function beginRainHold(event) {
+        if (!event.shiftKey) return;
         rainPoured = false;
         window.clearTimeout(rainHoldTimer);
         rainHoldTimer = window.setTimeout(() => {
@@ -593,7 +595,8 @@
     // A long press must not raise the iOS callout or start a selection.
     tomatoToggle?.addEventListener('contextmenu', (e) => { if (rainPoured) e.preventDefault(); });
 
-    tomatoToggle?.addEventListener('click', () => {
+    tomatoToggle?.addEventListener('click', (event) => {
+        if (!event.shiftKey) return;
         setMenu(false);
         if (rainPoured) { rainPoured = false; return; }  // that was a pour, not a tap
         setRain(!rainOn);

@@ -492,7 +492,6 @@
     );
 
     const LAST_INDEX_KEY = 'tomatoFunFactLastIndex';
-    const LAST_AUTO_KEY = 'tomatoFactLastAuto';
     const NEWEST_SEEN_KEY = 'tomatoFunFactNewestSeen';
     let currentIndex = -1;
     let lastFocusedElement = null;
@@ -564,13 +563,6 @@
                 term.setAttribute('aria-expanded', 'false');
             }
         });
-    }
-
-    function localDateKey(date = new Date()) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
     }
 
     function buildDialog() {
@@ -875,7 +867,7 @@
         backdrop.querySelector('[data-ai="deepseek"]').textContent = 'ask DeepSeek here';
     }
 
-    function openDialog({ automatic = false } = {}) {
+    function openDialog() {
         const backdrop = document.getElementById('tomatoFactBackdrop') || buildDialog();
         // The freshest fact (facts[0]) gets first billing, once per visitor;
         // after that the rotation is random as usual.
@@ -889,7 +881,6 @@
         backdrop.hidden = false;
         document.body.style.overflow = 'hidden';
         backdrop.querySelector('.tomato-fact-close').focus();
-        if (automatic) localStorage.setItem(LAST_AUTO_KEY, localDateKey());
     }
 
     function closeDialog() {
@@ -909,8 +900,7 @@
             });
         }
 
-        if (localStorage.getItem(LAST_AUTO_KEY) !== localDateKey()) {
-            window.setTimeout(() => openDialog({ automatic: true }), 1200);
-        }
+        // A fact card greets every visit, not just the first of the day.
+        window.setTimeout(openDialog, 1200);
     });
 })();

@@ -1,0 +1,259 @@
+[
+  {
+    "fact": {
+      "tag": "HISTORY",
+      "title": "Carrots weren’t originally orange",
+      "fact": "The carrot’s early domesticated forms in Central Asia were purple, yellow, and white. Orange carrots only came to dominate after Dutch growers in the 16th–17th centuries bred and popularized them across Europe.",
+      "detail": "The story that the Dutch bred them orange to honor the House of Orange is charming but undocumented — historians treat it as legend. Purple “heritage” carrots in fancy groceries are actually the throwback originals."
+    }
+  },
+  {
+    "fact": {
+      "tag": "AGRICULTURE",
+      "title": "Saffron costs more than silver for a reason",
+      "fact": "Saffron is the hand-picked stigmas of a crocus flower — three tiny threads per bloom. It takes on the order of 150,000 flowers, all harvested by hand at dawn, to make a single kilogram of the world’s most expensive spice.",
+      "detail": "The saffron crocus is also sterile — a triploid that can’t set seed — so every plant on Earth is propagated by hand from corms, making the whole crop one enormous clone lineage."
+    },
+    "glossary": {
+      "stigma": "the pollen-receiving tip of a flower’s female organ",
+      "corm": "a swollen underground stem base a plant regrows from, like a bulb"
+    }
+  },
+  {
+    "fact": {
+      "tag": "KITCHEN SCIENCE",
+      "title": "You’ve probably never eaten real wasabi",
+      "fact": "Most “wasabi” served outside Japan — and plenty inside — is horseradish paste with mustard and green coloring. Real wasabi is a finicky semi-aquatic plant, and its freshly grated heat starts fading within about 15 minutes.",
+      "detail": "That evaporating punch is why real wasabi is grated to order on sharkskin-textured graters at high-end sushi counters. The plant demands cool, running water and years of patience, making it one of the hardest crops to farm."
+    }
+  },
+  {
+    "fact": {
+      "tag": "BOTANY",
+      "title": "A coffee bean is the pit of a fruit",
+      "fact": "Coffee “beans” are the seeds of a small red fruit called a coffee cherry — normally two seeds per cherry, facing each other flat side to flat side. Coffee is, botanically speaking, a fruit-pit beverage.",
+      "detail": "When only one seed develops it grows rounder and is sold as a “peaberry,” prized by some roasters. The cherry’s thin, sweet pulp is edible too, and is dried into a tea-like drink called cascara."
+    }
+  },
+  {
+    "fact": {
+      "tag": "BOTANY",
+      "title": "Chocolate grows straight out of tree trunks",
+      "fact": "Cacao pods sprout directly from the trunk and thick branches of the cacao tree — the same trunk-fruiting habit (cauliflory) as jackfruit. The Aztecs valued the beans enough to use them as actual currency.",
+      "detail": "The flowers are pollinated not by bees but by midges only a couple of millimeters long, which breed in the damp leaf litter of shaded plantations. No midges, no chocolate."
+    }
+  },
+  {
+    "fact": {
+      "tag": "BOTANY",
+      "title": "Nutmeg and mace come from the same fruit",
+      "fact": "Crack open a nutmeg fruit and you get two spices at once: the nutmeg is the seed, and mace is the lacy scarlet aril wrapped around it. One harvest, two jars on the spice rack.",
+      "detail": "In large doses nutmeg’s myristicin is genuinely toxic, which is one reason it stays a pinch-at-a-time spice. Historically, control of the tiny nutmeg-growing Banda Islands was contested by entire empires."
+    },
+    "glossary": {
+      "aril": "a fleshy extra coat that grows around some seeds"
+    }
+  },
+  {
+    "fact": {
+      "tag": "KITCHEN SCIENCE",
+      "title": "Black, white, and green pepper are the same berry",
+      "fact": "All three come from the same vine, Piper nigrum. Green peppercorns are picked unripe, black ones are unripe and sun-dried until the skin darkens and wrinkles, and white ones are ripened and soaked to strip the skin off.",
+      "detail": "Pink “peppercorns” are the impostor at the party — they’re berries of an unrelated South American tree that happen to look the part."
+    }
+  },
+  {
+    "fact": {
+      "tag": "PHYSICS",
+      "title": "Pistachios can set themselves on fire",
+      "fact": "Packed in bulk, oily pistachios can self-heat: fat oxidation releases warmth, the pile insulates itself, and the temperature can climb toward spontaneous combustion. Maritime cargo rules treat them as a self-heating hazard.",
+      "detail": "That’s why international shipping codes set limits on how pistachios are stowed and ventilated at sea. The same self-heating chemistry is behind hay-barn fires and oily-rag fires in workshops."
+    }
+  },
+  {
+    "fact": {
+      "tag": "BOTANY",
+      "title": "Every true tea comes from one species",
+      "fact": "Green, black, oolong, white, and pu-erh tea are all leaves of a single plant, Camellia sinensis. The differences come from processing — mainly how far the leaves are allowed to oxidize before drying.",
+      "detail": "Herbal “teas” like chamomile, peppermint, and rooibos contain no tea plant at all; strictly speaking they’re infusions, or tisanes. Green tea skips oxidation almost entirely; black tea embraces it fully."
+    }
+  },
+  {
+    "fact": {
+      "tag": "HISTORY",
+      "title": "Baby carrots were invented to rescue ugly ones",
+      "fact": "In 1986, California farmer Mike Yurosek got tired of discarding truckloads of broken and crooked carrots, so he whittled them into smooth little snack-size pieces. The “baby carrot” was born from waste-cutting, not breeding.",
+      "detail": "The invention roughly doubled American carrot consumption within a decade — a marketing lesson carved directly into a vegetable."
+    }
+  },
+  {
+    "fact": {
+      "tag": "CHEMISTRY",
+      "title": "Onions make you cry with a purpose-built gas",
+      "fact": "Slicing an onion breaks cells and mixes enzymes with sulfur compounds, producing a volatile gas that drifts up and stings your eyes into watering. It’s a chemical defense — you’re being maced by a bulb.",
+      "detail": "The tear-maker is called syn-propanethial S-oxide. Chilling the onion first slows the enzymes, and a sharp knife crushes fewer cells — both genuinely reduce the crying."
+    }
+  },
+  {
+    "fact": {
+      "tag": "CHEMISTRY",
+      "title": "Garlic breath comes from your lungs, not your mouth",
+      "fact": "One garlic compound — allyl methyl sulfide — isn’t broken down by digestion. It rides your bloodstream to the lungs and exhales itself for hours, which is why brushing, mouthwash, and gum never fully fix garlic breath.",
+      "detail": "The same bloodstream route is why heavy garlic can scent sweat and even breast milk. Studies suggest raw apple or mint leaves help degrade the sulfides — the folk remedies had a point."
+    }
+  },
+  {
+    "fact": {
+      "tag": "PHYSICS",
+      "title": "A popcorn kernel is a tiny pressure cooker",
+      "fact": "Each kernel is a sealed caryopsis with a moist starchy core. Heat superheats that moisture well past boiling until, around 180 °C, the hull fails and the starch flash-expands into foam — the pop is a miniature steam explosion.",
+      "detail": "Moisture is everything: kernels pop best near 14% water content. Too dry and there’s no steam to burst the hull; too wet and it fails early into a dense, chewy pop. The leftover “old maids” at the bowl’s bottom are usually kernels with cracked hulls that leaked their pressure."
+    }
+  },
+  {
+    "fact": {
+      "tag": "BOTANY",
+      "title": "Corn cobs almost always have an even number of rows",
+      "fact": "Count the rows on an ear of corn: 12, 14, 16 — almost always even. The kernel rows arise from paired flower spikelets, so they’re laid down two at a time from the start.",
+      "detail": "Row number is largely genetic, and breeders track it as a yield trait. Odd-rowed ears exist but are rare enough that finding one is corn-maze-trivia territory."
+    }
+  },
+  {
+    "fact": {
+      "tag": "GENOMICS",
+      "title": "Bell peppers are chilies with a broken heat switch",
+      "fact": "Sweet bell peppers are the same species as many hot chilies — they just carry a recessive mutation that disables capsaicin production entirely. Zero heat, by genetics rather than by breeding out flavor.",
+      "detail": "The Scoville scale that ranks chili heat began in 1912 as a human taste test: how much sugar water it took to dilute an extract until tasters felt no burn. Bell peppers score an honest zero."
+    }
+  },
+  {
+    "fact": {
+      "tag": "BIOLOGY",
+      "title": "Mushrooms are closer kin to you than to plants",
+      "fact": "On the tree of life, fungi and animals share a more recent common ancestor than either does with plants. Fungi don’t photosynthesize, they digest; and their cell walls are built of chitin — the same material as insect shells.",
+      "detail": "That kinship is why fungal infections are hard to treat: drugs that hurt fungal cells often hurt ours too. Plants split off earlier and went the sunlight route; fungi, like us, eat."
+    },
+    "glossary": {
+      "chitin": "the tough material that builds fungal cell walls and insect shells"
+    }
+  },
+  {
+    "fact": {
+      "tag": "RECORDS",
+      "title": "One of Earth’s largest organisms is a fungus",
+      "fact": "A single honey fungus (Armillaria) in Oregon’s Blue Mountains spreads through roughly nine square kilometers of forest soil — one genetic individual, likely thousands of years old, quietly eating tree roots.",
+      "detail": "It was mapped by sampling and genotyping across the Malheur National Forest: the far-flung samples kept coming back as the same individual. Most of the organism is underground filaments; the mushrooms you’d see are just its fruit."
+    }
+  },
+  {
+    "fact": {
+      "tag": "BIOLOGY",
+      "title": "Lichens have survived open space",
+      "fact": "Lichens — a working partnership between a fungus and an alga — were strapped to the outside of a space capsule in European Space Agency experiments, exposed to vacuum, radiation, and temperature swings, and revived on return to Earth.",
+      "detail": "The trick is their talent for total shutdown: dried out, metabolism near zero, they simply wait. The same toughness lets lichens live on bare rock from Antarctica to desert mountaintops, slowly making soil for everything else."
+    }
+  },
+  {
+    "fact": {
+      "tag": "RECORDS",
+      "title": "The biggest tree weighs more than a fleet of blue whales",
+      "fact": "General Sherman, a giant sequoia in California, is the largest single-stemmed tree on Earth by volume — a trunk of roughly 1,500 cubic meters, still adding wood every year after some 2,000+ years.",
+      "detail": "Sequoias are fire-adapted: their thick spongy bark shrugs off flames, and heat helps open their cones. The species survives natural burns that kill the competition around it."
+    }
+  },
+  {
+    "fact": {
+      "tag": "EARTH",
+      "title": "The Sahara fertilizes the Amazon",
+      "fact": "Satellites tracking dust plumes show tens of millions of tonnes of Saharan dust crossing the Atlantic every year — and the phosphorus riding along helps replenish what Amazon rains keep washing out of the soil.",
+      "detail": "Much of the richest dust comes from the Bodélé Depression in Chad, an ancient dried lakebed of ground-up mineral sediment. One continent’s dead lake feeds another continent’s rainforest."
+    }
+  },
+  {
+    "fact": {
+      "tag": "BOTANY",
+      "title": "Bananas curve because they grow against gravity",
+      "fact": "Banana fruit start out pointing down, then bend upward as they grow, reaching for light past the plant’s huge leaves. The curve is negative gravitropism — growth steered against gravity — frozen into the fruit’s shape.",
+      "detail": "The whole hand of bananas does it together, which is why they fan upward around the stalk. Straight bananas mostly mean the fruit grew unobstructed toward light from the start."
+    },
+    "glossary": {
+      "gravitropism": "growth steered by gravity — roots grow with it, shoots against it"
+    }
+  },
+  {
+    "fact": {
+      "tag": "BOTANY",
+      "title": "A sunflower is hundreds of flowers in a trench coat",
+      "fact": "The big “flower” is an inflorescence: the outer petals are individual ray florets, and the dark center is packed with hundreds of tiny disc florets, each one a complete flower that becomes a single seed.",
+      "detail": "The florets are laid down in interlocking spirals whose counts land on Fibonacci numbers — commonly 34 and 55, or 55 and 89 — the packing pattern that fits the most florets into the disc."
+    },
+    "glossary": {
+      "floret": "one tiny complete flower inside a larger composite flower head",
+      "inflorescence": "a cluster of flowers arranged on one stem, acting as a unit"
+    }
+  },
+  {
+    "fact": {
+      "tag": "MATH · BOTANY",
+      "title": "Romanesco is a vegetable-shaped fractal",
+      "fact": "Romanesco’s spiraling cones repeat themselves at smaller and smaller scales — a natural fractal you can buy at a market. It’s a cultivar of the same species as broccoli and cauliflower, Brassica oleracea.",
+      "detail": "Researchers modeling its genetics showed the spirals come from buds that try to become flowers, fail, and instead spawn more bud-making shoots — a growth program stuck in a loop, printing cones of cones of cones.",
+      "source": "Azpeitia et al., Science (2021)"
+    },
+    "glossary": {
+      "fractal": "a shape whose parts repeat the whole pattern at smaller and smaller scales"
+    }
+  },
+  {
+    "fact": {
+      "tag": "RECORDS",
+      "title": "A 400-year-old grapevine still produces a harvest",
+      "fact": "The Old Vine in Maribor, Slovenia, has been growing against the same house for more than four centuries — through sieges, fires, and phylloxera — and its grapes are still picked each year at a city festival.",
+      "detail": "The wine, a dark local variety, is bottled in tiny amounts and given as a protocol gift. Guinness certifies it as the world’s oldest fruit-bearing grapevine."
+    }
+  },
+  {
+    "fact": {
+      "tag": "FOOD SCIENCE",
+      "title": "White chocolate contains no cocoa solids",
+      "fact": "White chocolate is cocoa butter, sugar, and milk — all of the cacao bean’s fat, none of its dark solids. That’s why it’s ivory-colored and why it tastes of dairy and vanilla rather than of chocolate itself.",
+      "detail": "Regulations in many countries set minimums (around 20% cocoa butter) before the label “white chocolate” is allowed. The brown flavor compounds live in the roasted solids, which white chocolate leaves out entirely."
+    }
+  },
+  {
+    "fact": {
+      "tag": "HISTORY",
+      "title": "Ancient athletes were crowned with celery",
+      "fact": "Winners at the ancient Nemean Games in Greece received wreaths of wild celery — a plant with funerary associations, worn as a crown of victory. Olympia had olive, Delphi had laurel, Nemea had celery.",
+      "detail": "The Isthmian Games near Corinth also used celery crowns before switching to pine. A vegetable crown sounds comic now, but these garlands outranked any prize money in prestige."
+    }
+  },
+  {
+    "fact": {
+      "tag": "KITCHEN SCIENCE",
+      "title": "Kiwifruit dissolves meat, gelatin, and your tongue’s patience",
+      "fact": "Kiwis carry actinidin, a protein-digesting enzyme in the same job family as pineapple’s bromelain. It tenderizes meat in marinades, keeps gelatin from setting, and gives your tongue that prickly feeling after a few too many.",
+      "detail": "Cooks exploit it deliberately: a little puréed kiwi is a classic fast tenderizer for tough cuts. Heat denatures the enzyme, which is why cooked or canned kiwi behaves itself in desserts."
+    }
+  },
+  {
+    "fact": {
+      "tag": "PHYSICS",
+      "title": "Dandelion seeds fly on a ring of air",
+      "fact": "A dandelion seed’s fluffy parachute is mostly empty space — over 90% air gaps — yet it flies farther than a solid disc would. The bristles conjure a stable ring of swirling air just above the parachute that boosts its drag.",
+      "detail": "Researchers filming seeds in a wind tunnel found this “separated vortex ring” hovering above the pappus, a flight mechanism unknown in engineering until a weed demonstrated it. It helps seeds ride the wind for kilometers.",
+      "source": "Cummins et al., Nature (2018)"
+    },
+    "glossary": {
+      "pappus": "the parachute of fine bristles on a dandelion-type seed"
+    }
+  },
+  {
+    "fact": {
+      "tag": "RECORDS",
+      "title": "Champion pumpkins gain a bowling ball of weight per day",
+      "fact": "Record-chasing giant pumpkins put on 15–20+ kilograms per day at their peak — you can practically watch them inflate. The world record has blown past 1,200 kg: a single fruit heavier than a small car.",
+      "detail": "Growers pamper a single pumpkin per vine with pruning, buried vines for extra roots, and shade to keep the skin from hardening too fast. Grow too quickly, though, and the fruit can literally split open overnight."
+    }
+  }
+]

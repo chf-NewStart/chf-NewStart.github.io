@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "FOOD SCIENCE",
+            title: "Honey never spoils",
+            fact: "Archaeologists have opened pots of honey thousands of years old — including from Egyptian tombs — and found it still edible. Honey is too dry, too acidic, and too peroxide-laced for microbes to survive in it.",
+            detail: "Bees engineer this on purpose: they fan nectar with their wings until it drops to roughly 17–18% water, and an enzyme they add produces small amounts of hydrogen peroxide. Sealed against moisture, honey is effectively a preserved food forever."
+        },
+        {
             tag: 'EVOLUTION',
             title: 'Fruit is a bribe',
             fact: 'Plants can’t walk, so they pay couriers. Sweet, colorful fruit evolved to lure animals into swallowing seeds and dropping them somewhere new—fertilizer included. Darwin ran the experiments himself, germinating seeds that had passed through birds to prove they survive the trip.',
@@ -433,6 +439,58 @@
         }
     ];
 
+    // Plain-language definitions for the jargon that sneaks into the facts.
+    // Matching terms get a dotted underline; hover, tap, or focus shows the
+    // definition in a small bubble. Keys must be lowercase; plurals are
+    // matched automatically. The daily fact-hunter job adds entries here
+    // whenever a new fact introduces a strange word.
+    const GLOSSARY = {
+        'achene': 'a tiny dry one-seeded fruit that looks like a seed itself',
+        'drupe': 'a fleshy fruit with a single stone around its seed, like a peach or cherry',
+        'parthenocarpic': 'setting fruit without any pollination, so the fruit is seedless',
+        'geocarpy': 'ripening fruit underground',
+        'octoploid': 'carrying eight copies of every chromosome set (humans carry two)',
+        'caryopsis': 'a grass fruit in which the seed and fruit wall are fused into one grain',
+        'cauliflory': 'flowering and fruiting straight from the trunk instead of the branches',
+        'trpv1': 'the nerve receptor that senses burning heat — and chili spice',
+        'megafauna': 'the giant animals of the last ice age, like mammoths and ground sloths',
+        'phloem': 'the plant’s sugar pipeline, carrying sap from leaves to fruit and roots',
+        'xylem': 'the plant’s water pipeline, carrying water and minerals up from the roots',
+        'stylectomy': 'severing a feeding aphid’s mouthpart to tap the sap flowing through it',
+        'amygdalin': 'a plant defense compound that releases cyanide when broken down',
+        'bromelain': 'a pineapple enzyme that digests protein',
+        'miraculin': 'the miracle-fruit protein that makes sour foods taste sweet',
+        'capsaicin': 'the molecule that makes chilies feel hot',
+        'ethylene': 'a gas that fruit release as a ripening hormone',
+        'mutualism': 'a partnership between species where both sides benefit',
+        'receptacle': 'the base of a flower, which can swell into what we eat as “fruit”',
+        'accessory fruit': 'fruit flesh built from flower parts other than the seed-holding ovary',
+        'gregarious flowering': 'an entire species flowering in sync, then dying back together',
+        'circadian': 'run by a built-in clock that cycles roughly every 24 hours',
+        'apoplast': 'the network of cell walls and spaces outside the cells themselves',
+        'turgid': 'swollen firm with internal water pressure',
+        'hexose': 'a six-carbon sugar unit, like glucose or fructose',
+        'atp': 'the small molecule cells use as their energy currency',
+        'constraint-based': 'a modeling approach that maps which reaction rates are even feasible, given the network’s limits',
+        'metabolomics': 'measuring all the small molecules in a sample at once',
+        'volatile': 'a small airborne molecule — the kind your nose picks up as aroma',
+        'flux': 'the rate at which material flows through a reaction or pathway',
+        'plastid': 'a plant cell compartment; chloroplasts are the famous kind',
+        'cytosol': 'the fluid filling the inside of a cell',
+        'rootstock': 'the root-and-stem base that a fruit variety is grafted onto',
+        'pith': 'the spongy white layer under a citrus peel',
+        'truss': 'one stalk-full of tomato flowers or fruit, borne as a cluster',
+        'dry matter': 'what remains of plant material once all the water is removed'
+    };
+
+    const termPattern = new RegExp(
+        '\\b(' + Object.keys(GLOSSARY)
+            .sort((a, b) => b.length - a.length)
+            .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+            .join('|') + ')(e?s)?\\b',
+        'gi'
+    );
+
     const LAST_INDEX_KEY = 'tomatoFunFactLastIndex';
     const LAST_AUTO_KEY = 'tomatoFactLastAuto';
     const NEWEST_SEEN_KEY = 'tomatoFunFactNewestSeen';
@@ -459,6 +517,53 @@
             if (index !== avoid || facts.length === 1) return index;
         }
         return shuffledOrder[shufflePosition - 1];
+    }
+
+    // Writes `text` into `element`, wrapping glossary terms in tappable
+    // buttons that carry their definition bubble.
+    function renderAnnotated(element, text) {
+        element.textContent = '';
+        let last = 0;
+        text.replace(termPattern, (match, base, _suffix, offset) => {
+            const definition = GLOSSARY[base.toLowerCase()];
+            if (!definition) return match;
+            element.appendChild(document.createTextNode(text.slice(last, offset)));
+            const term = document.createElement('button');
+            term.type = 'button';
+            term.className = 'tomato-fact-term';
+            term.setAttribute('aria-expanded', 'false');
+            term.appendChild(document.createTextNode(match));
+            const bubble = document.createElement('span');
+            bubble.className = 'tomato-fact-term-def';
+            bubble.setAttribute('role', 'tooltip');
+            bubble.textContent = definition;
+            term.appendChild(bubble);
+            element.appendChild(term);
+            last = offset + match.length;
+            return match;
+        });
+        element.appendChild(document.createTextNode(text.slice(last)));
+    }
+
+    // Keeps a definition bubble inside the dialog instead of clipping at
+    // its right edge.
+    function clampBubble(term, dialog) {
+        const bubble = term.querySelector('.tomato-fact-term-def');
+        if (!bubble) return;
+        bubble.style.left = '0px';
+        const bubbleRect = bubble.getBoundingClientRect();
+        if (!bubbleRect.width) return;
+        const overflow = bubbleRect.right - (dialog.getBoundingClientRect().right - 14);
+        if (overflow > 0) bubble.style.left = `${-overflow}px`;
+    }
+
+    function closeOpenTerms(dialog, except) {
+        dialog.querySelectorAll('.tomato-fact-term.open').forEach((term) => {
+            if (term !== except) {
+                term.classList.remove('open');
+                term.setAttribute('aria-expanded', 'false');
+            }
+        });
     }
 
     function localDateKey(date = new Date()) {
@@ -507,6 +612,22 @@
         backdrop.addEventListener('click', (event) => {
             if (event.target === backdrop) closeDialog();
         });
+
+        // Glossary terms: tap toggles the definition bubble (hover and
+        // keyboard focus are handled purely in CSS).
+        const dialog = backdrop.querySelector('.tomato-fact-dialog');
+        dialog.addEventListener('click', (event) => {
+            const term = event.target.closest('.tomato-fact-term');
+            closeOpenTerms(dialog, term);
+            if (!term) return;
+            const open = term.classList.toggle('open');
+            term.setAttribute('aria-expanded', String(open));
+            if (open) clampBubble(term, dialog);
+        });
+        dialog.addEventListener('mouseover', (event) => {
+            const term = event.target.closest('.tomato-fact-term');
+            if (term) clampBubble(term, dialog);
+        });
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && !backdrop.hidden) closeDialog();
         });
@@ -539,7 +660,7 @@
         tagEl.textContent = fact.tag || '';
 
         backdrop.querySelector('.tomato-fact-title').textContent = fact.title;
-        backdrop.querySelector('.tomato-fact-text').textContent = fact.fact;
+        renderAnnotated(backdrop.querySelector('.tomato-fact-text'), fact.fact);
 
         const quoteEl = backdrop.querySelector('.tomato-fact-quote');
         quoteEl.hidden = !fact.quote;
@@ -547,7 +668,7 @@
 
         const detailEl = backdrop.querySelector('.tomato-fact-detail');
         detailEl.hidden = !fact.detail;
-        detailEl.textContent = fact.detail || '';
+        renderAnnotated(detailEl, fact.detail || '');
 
         const noteEl = backdrop.querySelector('.tomato-fact-project');
         noteEl.hidden = !fact.note;

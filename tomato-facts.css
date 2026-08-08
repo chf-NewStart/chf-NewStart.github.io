@@ -64,6 +64,54 @@
     line-height: 1.65;
 }
 
+.tomato-fact-term {
+    display: inline;
+    position: relative;
+    margin: 0;
+    border: none;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: help;
+    text-decoration: underline dotted #1db954;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+}
+
+.tomato-fact-term:hover,
+.tomato-fact-term.open { text-decoration-color: #ff5f56; }
+
+.tomato-fact-term-def {
+    display: none;
+    pointer-events: none;
+    position: absolute;
+    top: calc(100% + 7px);
+    left: 0;
+    z-index: 12;
+    width: max-content;
+    max-width: min(250px, 72vw);
+    border: 1px solid #1db954;
+    padding: 8px 10px;
+    background: #0d0d0d;
+    color: #ccc;
+    font-size: 0.72rem;
+    font-style: normal;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    box-shadow: 5px 5px 0 rgba(29, 185, 84, 0.18);
+}
+
+.tomato-fact-term:focus-visible .tomato-fact-term-def,
+.tomato-fact-term.open .tomato-fact-term-def { display: block; }
+
+/* Hover reveals only on devices that can actually hover, so bubbles
+   don't stick open after a tap on touch screens. */
+@media (hover: hover) {
+    .tomato-fact-term:hover .tomato-fact-term-def { display: block; }
+}
+
 .tomato-fact-details {
     margin-top: 16px;
     border-top: 1px dashed #333;

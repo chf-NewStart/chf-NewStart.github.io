@@ -593,8 +593,9 @@
                     <a class="tomato-fact-paper" target="_blank" rel="noopener noreferrer" hidden></a>
                 </div>
                 <div class="tomato-fact-ask" id="tomatoFactAsk" hidden>
-                    <p class="tomato-fact-ask-hint">AI answers can be confidently wrong — the prompt asks for
-                        sources, but double-check anything that matters.</p>
+                    <p class="tomato-fact-ask-hint">Sends this fact to an AI and asks how it works and how solid
+                        the evidence is. AI answers can be confidently wrong — the prompt asks for sources, but
+                        double-check anything that matters.</p>
                     <div class="tomato-fact-thread" aria-live="polite" hidden></div>
                     <input class="tomato-fact-ask-input" type="text" maxlength="300"
                            placeholder="Your question — e.g. how does it tell an insect from a raindrop?"
@@ -603,13 +604,13 @@
                         <button class="tomato-fact-button primary" type="button" data-ai="deepseek">ask DeepSeek here</button>
                         <button class="tomato-fact-button" type="button" data-ai="claude">Claude ↗</button>
                         <button class="tomato-fact-button" type="button" data-ai="chatgpt">ChatGPT ↗</button>
-                        <button class="tomato-fact-button" type="button" data-ai="perplexity">Perplexity ↗</button>
+                        <button class="tomato-fact-button" type="button" data-ai="gemini">Gemini ↗</button>
                         <button class="tomato-fact-button" type="button" data-ai="copy">copy prompt</button>
                     </div>
                 </div>
                 <div class="tomato-fact-actions">
                     <button class="tomato-fact-button" type="button" data-action="ask"
-                            aria-expanded="false" aria-controls="tomatoFactAsk">ask an AI</button>
+                            aria-expanded="false" aria-controls="tomatoFactAsk">check with AI</button>
                     <button class="tomato-fact-button" type="button" data-action="details"
                             aria-expanded="false" aria-controls="tomatoFactDetails">details</button>
                     <button class="tomato-fact-button" type="button" data-action="another">show another</button>
@@ -631,6 +632,7 @@
         });
         const deepseekButton = backdrop.querySelector('[data-ai="deepseek"]');
         deepseekButton.hidden = !deepseekEnabled;
+        backdrop.querySelector('.tomato-fact-ask-input').hidden = !deepseekEnabled;
         backdrop.querySelector('.tomato-fact-ask-input').addEventListener('keydown', (event) => {
             if (event.key === 'Enter' && deepseekEnabled) {
                 event.preventDefault();
@@ -694,10 +696,12 @@
     // Chat services that accept a prefilled first message via URL.
     // (DeepSeek's web chat has no prefill parameter — it gets the in-page
     // thread below instead, plus the "copy prompt" fallback.)
+    // Gemini's chat app has no prefill link either, so its button goes
+    // through Google's Gemini-powered AI Mode, which does.
     const AI_LINKS = {
         claude: 'https://claude.ai/new?q=',
         chatgpt: 'https://chatgpt.com/?q=',
-        perplexity: 'https://www.perplexity.ai/search?q='
+        gemini: 'https://www.google.com/search?udm=50&q='
     };
 
     // In-page DeepSeek answers, configured in deepseek-config.js — either
@@ -791,9 +795,11 @@
     function setAskOpen(backdrop, open) {
         backdrop.querySelector('.tomato-fact-ask').hidden = !open;
         const button = backdrop.querySelector('[data-action="ask"]');
-        button.textContent = open ? 'never mind' : 'ask an AI';
+        button.textContent = open ? 'never mind' : 'check with AI';
         button.setAttribute('aria-expanded', String(open));
-        if (open) backdrop.querySelector('.tomato-fact-ask-input').focus();
+        // The input is the DeepSeek thread's question box; without an
+        // in-page thread the buttons carry the default prompt on their own.
+        if (open && deepseekEnabled) backdrop.querySelector('.tomato-fact-ask-input').focus();
     }
 
     function setDetailsOpen(backdrop, open) {

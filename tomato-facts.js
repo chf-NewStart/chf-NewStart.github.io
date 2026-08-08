@@ -592,7 +592,22 @@
                     <p class="tomato-fact-project" hidden><strong>Why I care:</strong> <span></span></p>
                     <a class="tomato-fact-paper" target="_blank" rel="noopener noreferrer" hidden></a>
                 </div>
+                <div class="tomato-fact-ask" id="tomatoFactAsk" hidden>
+                    <p class="tomato-fact-ask-hint">Opens an AI chat in a new tab with this fact preloaded.
+                        Chatbots can be confidently wrong — the prompt asks for sources, but double-check anything that matters.</p>
+                    <input class="tomato-fact-ask-input" type="text" maxlength="300"
+                           placeholder="Your question — e.g. how does it tell an insect from a raindrop?"
+                           aria-label="Your follow-up question about this fact">
+                    <div class="tomato-fact-ask-buttons">
+                        <button class="tomato-fact-button" type="button" data-ai="claude">ask Claude</button>
+                        <button class="tomato-fact-button" type="button" data-ai="chatgpt">ask ChatGPT</button>
+                        <button class="tomato-fact-button" type="button" data-ai="perplexity">ask Perplexity</button>
+                        <button class="tomato-fact-button" type="button" data-ai="copy">copy prompt</button>
+                    </div>
+                </div>
                 <div class="tomato-fact-actions">
+                    <button class="tomato-fact-button" type="button" data-action="ask"
+                            aria-expanded="false" aria-controls="tomatoFactAsk">ask an AI</button>
                     <button class="tomato-fact-button" type="button" data-action="details"
                             aria-expanded="false" aria-controls="tomatoFactDetails">details</button>
                     <button class="tomato-fact-button" type="button" data-action="another">show another</button>
@@ -608,6 +623,34 @@
         });
         backdrop.querySelector('[data-action="details"]').addEventListener('click', () => {
             setDetailsOpen(backdrop, backdrop.querySelector('.tomato-fact-details').hidden);
+        });
+        backdrop.querySelector('[data-action="ask"]').addEventListener('click', () => {
+            setAskOpen(backdrop, backdrop.querySelector('.tomato-fact-ask').hidden);
+        });
+        backdrop.querySelectorAll('.tomato-fact-ask-buttons [data-ai]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const question = backdrop.querySelector('.tomato-fact-ask-input').value.trim();
+                const prompt = buildAskPrompt(facts[currentIndex], question);
+                if (button.dataset.ai === 'copy') {
+                    const done = () => {
+                        button.textContent = 'copied!';
+                        window.setTimeout(() => { button.textContent = 'copy prompt'; }, 1600);
+                    };
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(prompt).then(done, done);
+                    } else {
+                        const scratch = document.createElement('textarea');
+                        scratch.value = prompt;
+                        document.body.appendChild(scratch);
+                        scratch.select();
+                        document.execCommand('copy');
+                        scratch.remove();
+                        done();
+                    }
+                    return;
+                }
+                window.open(AI_LINKS[button.dataset.ai] + encodeURIComponent(prompt), '_blank', 'noopener');
+            });
         });
         backdrop.addEventListener('click', (event) => {
             if (event.target === backdrop) closeDialog();
@@ -632,6 +675,35 @@
             if (event.key === 'Escape' && !backdrop.hidden) closeDialog();
         });
         return backdrop;
+    }
+
+    // Chat services that accept a prefilled first message via URL.
+    // (DeepSeek's web chat has no prefill parameter — that's what the
+    // "copy prompt" button is for.)
+    const AI_LINKS = {
+        claude: 'https://claude.ai/new?q=',
+        chatgpt: 'https://chatgpt.com/?q=',
+        perplexity: 'https://www.perplexity.ai/search?q='
+    };
+
+    function buildAskPrompt(fact, question) {
+        const parts = [
+            `I'm reading a fun fact on ${location.hostname || 'a website'}:`,
+            `"${fact.title}" — ${fact.fact}`
+        ];
+        if (fact.detail) parts.push(`More context: ${fact.detail}`);
+        if (fact.source) parts.push(`Source: ${fact.source}`);
+        parts.push(`My question: ${question || 'Tell me more — what is the mechanism behind this, and how solid is the evidence?'}`);
+        parts.push('Please answer accurately, cite reliable sources where you can, and say clearly when you are unsure.');
+        return parts.join('\n\n');
+    }
+
+    function setAskOpen(backdrop, open) {
+        backdrop.querySelector('.tomato-fact-ask').hidden = !open;
+        const button = backdrop.querySelector('[data-action="ask"]');
+        button.textContent = open ? 'never mind' : 'ask an AI';
+        button.setAttribute('aria-expanded', String(open));
+        if (open) backdrop.querySelector('.tomato-fact-ask-input').focus();
     }
 
     function setDetailsOpen(backdrop, open) {
@@ -690,6 +762,8 @@
         setDetailsOpen(backdrop, false);
         backdrop.querySelector('[data-action="details"]').hidden =
             !(fact.quote || fact.detail || fact.note || fact.source);
+        setAskOpen(backdrop, false);
+        backdrop.querySelector('.tomato-fact-ask-input').value = '';
     }
 
     function openDialog({ automatic = false } = {}) {

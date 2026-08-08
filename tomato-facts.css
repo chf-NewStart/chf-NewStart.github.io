@@ -158,8 +158,48 @@
 
 .tomato-fact-paper:hover { color: #fff; }
 
+.tomato-fact-ask {
+    margin-top: 16px;
+    border-top: 1px dashed #333;
+    padding-top: 14px;
+}
+
+.tomato-fact-ask[hidden] { display: none; }
+
+.tomato-fact-ask-hint {
+    margin: 0 0 10px;
+    color: #666;
+    font-size: 0.72rem;
+    line-height: 1.55;
+}
+
+.tomato-fact-ask-input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    border: 1px solid #333;
+    border-radius: 0;
+    padding: 9px 11px;
+    background: #111;
+    color: #eee;
+    font: inherit;
+    font-size: 0.8rem;
+}
+
+.tomato-fact-ask-input:focus {
+    outline: none;
+    border-color: #1db954;
+}
+
+.tomato-fact-ask-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .tomato-fact-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     gap: 12px;
     margin-top: 24px;

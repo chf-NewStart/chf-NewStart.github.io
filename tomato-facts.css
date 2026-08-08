@@ -202,24 +202,6 @@
 
 .tomato-fact-msg.error { border-color: #ff5f56; color: #ff8c86; }
 
-.tomato-fact-ask-input {
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 10px;
-    border: 1px solid #333;
-    border-radius: 0;
-    padding: 9px 11px;
-    background: #111;
-    color: #eee;
-    font: inherit;
-    font-size: 0.8rem;
-}
-
-.tomato-fact-ask-input:focus {
-    outline: none;
-    border-color: #1db954;
-}
-
 .tomato-fact-ask-buttons {
     display: flex;
     flex-wrap: wrap;

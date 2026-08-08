@@ -597,9 +597,6 @@
                         the evidence is. AI answers can be confidently wrong — the prompt asks for sources, but
                         double-check anything that matters.</p>
                     <div class="tomato-fact-thread" aria-live="polite" hidden></div>
-                    <input class="tomato-fact-ask-input" type="text" maxlength="300"
-                           placeholder="Your question — e.g. how does it tell an insect from a raindrop?"
-                           aria-label="Your follow-up question about this fact">
                     <div class="tomato-fact-ask-buttons">
                         <button class="tomato-fact-button primary" type="button" data-ai="deepseek">ask DeepSeek here</button>
                         <button class="tomato-fact-button" type="button" data-ai="claude">Claude ↗</button>
@@ -630,23 +627,14 @@
         backdrop.querySelector('[data-action="ask"]').addEventListener('click', () => {
             setAskOpen(backdrop, backdrop.querySelector('.tomato-fact-ask').hidden);
         });
-        const deepseekButton = backdrop.querySelector('[data-ai="deepseek"]');
-        deepseekButton.hidden = !deepseekEnabled;
-        backdrop.querySelector('.tomato-fact-ask-input').hidden = !deepseekEnabled;
-        backdrop.querySelector('.tomato-fact-ask-input').addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' && deepseekEnabled) {
-                event.preventDefault();
-                askDeepSeek(backdrop);
-            }
-        });
+        backdrop.querySelector('[data-ai="deepseek"]').hidden = !deepseekEnabled;
         backdrop.querySelectorAll('.tomato-fact-ask-buttons [data-ai]').forEach((button) => {
             button.addEventListener('click', () => {
                 if (button.dataset.ai === 'deepseek') {
                     askDeepSeek(backdrop);
                     return;
                 }
-                const question = backdrop.querySelector('.tomato-fact-ask-input').value.trim();
-                const prompt = buildAskPrompt(facts[currentIndex], question);
+                const prompt = buildAskPrompt(facts[currentIndex], '');
                 if (button.dataset.ai === 'copy') {
                     const done = () => {
                         button.textContent = 'copied!';
@@ -724,11 +712,13 @@
 
     async function askDeepSeek(backdrop) {
         if (deepseekPending) return;
-        const input = backdrop.querySelector('.tomato-fact-ask-input');
         const threadEl = backdrop.querySelector('.tomato-fact-thread');
         const button = backdrop.querySelector('[data-ai="deepseek"]');
-        const question = input.value.trim()
-            || 'Tell me more — what is the mechanism behind this, and how solid is the evidence?';
+        // First tap asks the standard mechanism-and-evidence question;
+        // further taps dig deeper on the same thread.
+        const question = deepseekThread.length === 0
+            ? 'Tell me more — what is the mechanism behind this, and how solid is the evidence?'
+            : 'Go deeper — explain further, or add another interesting angle on this.';
 
         threadEl.hidden = false;
         appendThreadMessage(threadEl, 'user', question);
@@ -741,7 +731,6 @@
         } else {
             deepseekThread.push({ role: 'user', content: question });
         }
-        input.value = '';
         const pendingEl = appendThreadMessage(threadEl, 'ai pending', 'thinking…');
         deepseekPending = true;
         button.disabled = true;
@@ -770,6 +759,7 @@
             deepseekThread.push({ role: 'assistant', content: answer.trim() });
             pendingEl.className = 'tomato-fact-msg ai';
             pendingEl.textContent = answer.trim();
+            button.textContent = 'go deeper';
         } catch (error) {
             deepseekThread.pop(); // let the user retry the same question
             pendingEl.className = 'tomato-fact-msg error';
@@ -797,9 +787,6 @@
         const button = backdrop.querySelector('[data-action="ask"]');
         button.textContent = open ? 'never mind' : 'check with AI';
         button.setAttribute('aria-expanded', String(open));
-        // The input is the DeepSeek thread's question box; without an
-        // in-page thread the buttons carry the default prompt on their own.
-        if (open && deepseekEnabled) backdrop.querySelector('.tomato-fact-ask-input').focus();
     }
 
     function setDetailsOpen(backdrop, open) {
@@ -859,11 +846,11 @@
         backdrop.querySelector('[data-action="details"]').hidden =
             !(fact.quote || fact.detail || fact.note || fact.source);
         setAskOpen(backdrop, false);
-        backdrop.querySelector('.tomato-fact-ask-input').value = '';
         deepseekThread = [];
         const threadEl = backdrop.querySelector('.tomato-fact-thread');
         threadEl.hidden = true;
         threadEl.textContent = '';
+        backdrop.querySelector('[data-ai="deepseek"]').textContent = 'ask DeepSeek here';
     }
 
     function openDialog({ automatic = false } = {}) {

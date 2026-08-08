@@ -594,11 +594,13 @@
                 </div>
                 <div class="tomato-fact-ask" id="tomatoFactAsk" hidden>
                     <p class="tomato-fact-ask-hint">Sends this fact to an AI and asks how it works and how solid
-                        the evidence is. AI answers can be confidently wrong — the prompt asks for sources, but
-                        double-check anything that matters.</p>
+                        the evidence is, in bullet points. DeepSeek has no prefill link, so its button copies the
+                        prompt and opens the app — just paste. AI answers can be confidently wrong; double-check
+                        anything that matters.</p>
                     <div class="tomato-fact-thread" aria-live="polite" hidden></div>
                     <div class="tomato-fact-ask-buttons">
                         <button class="tomato-fact-button primary" type="button" data-ai="deepseek">ask DeepSeek here</button>
+                        <button class="tomato-fact-button" type="button" data-ai="deepseek-app">DeepSeek ↗</button>
                         <button class="tomato-fact-button" type="button" data-ai="claude">Claude ↗</button>
                         <button class="tomato-fact-button" type="button" data-ai="chatgpt">ChatGPT ↗</button>
                         <button class="tomato-fact-button" type="button" data-ai="gemini">Gemini ↗</button>
@@ -636,21 +638,16 @@
                 }
                 const prompt = buildAskPrompt(facts[currentIndex], '');
                 if (button.dataset.ai === 'copy') {
-                    const done = () => {
-                        button.textContent = 'copied!';
-                        window.setTimeout(() => { button.textContent = 'copy prompt'; }, 1600);
-                    };
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(prompt).then(done, done);
-                    } else {
-                        const scratch = document.createElement('textarea');
-                        scratch.value = prompt;
-                        document.body.appendChild(scratch);
-                        scratch.select();
-                        document.execCommand('copy');
-                        scratch.remove();
-                        done();
-                    }
+                    copyText(prompt).then(
+                        () => flashButtonLabel(button, 'copied!', 'copy prompt'),
+                        () => flashButtonLabel(button, 'copy failed', 'copy prompt')
+                    );
+                    return;
+                }
+                if (button.dataset.ai === 'deepseek-app') {
+                    copyText(prompt);
+                    window.open('https://chat.deepseek.com/', '_blank', 'noopener');
+                    flashButtonLabel(button, 'copied — paste it there', 'DeepSeek ↗');
                     return;
                 }
                 window.open(AI_LINKS[button.dataset.ai] + encodeURIComponent(prompt), '_blank', 'noopener');
@@ -725,7 +722,7 @@
         if (deepseekThread.length === 0) {
             deepseekThread.push({
                 role: 'system',
-                content: 'You answer follow-up questions about a fun fact shown on a personal science website. Be accurate and concise (under 200 words), name reliable sources where you can, and say clearly when you are unsure. Plain text only — no markdown.'
+                content: 'You answer follow-up questions about a fun fact shown on a personal science website. Be accurate and concise (under 200 words), name reliable sources where you can, and say clearly when you are unsure. Format every answer as short bullet points, each line starting with "• ". Plain text — no other markdown.'
             });
             deepseekThread.push({ role: 'user', content: buildAskPrompt(facts[currentIndex], question) });
         } else {
@@ -778,8 +775,33 @@
         if (fact.detail) parts.push(`More context: ${fact.detail}`);
         if (fact.source) parts.push(`Source: ${fact.source}`);
         parts.push(`My question: ${question || 'Tell me more — what is the mechanism behind this, and how solid is the evidence?'}`);
-        parts.push('Please answer accurately, cite reliable sources where you can, and say clearly when you are unsure.');
+        parts.push('Please answer accurately, cite reliable sources where you can, and say clearly when you are unsure. Format the answer as short, easy-to-scan bullet points.');
         return parts.join('\n\n');
+    }
+
+    // Synchronous-first copy, so a tab we open right afterwards can't
+    // steal focus before the clipboard write lands.
+    function copyText(text) {
+        try {
+            const scratch = document.createElement('textarea');
+            scratch.value = text;
+            scratch.setAttribute('readonly', '');
+            scratch.style.position = 'fixed';
+            scratch.style.opacity = '0';
+            document.body.appendChild(scratch);
+            scratch.select();
+            const ok = document.execCommand('copy');
+            scratch.remove();
+            if (ok) return Promise.resolve();
+        } catch (error) { /* fall through to the async API */ }
+        return navigator.clipboard && navigator.clipboard.writeText
+            ? navigator.clipboard.writeText(text)
+            : Promise.reject(new Error('clipboard unavailable'));
+    }
+
+    function flashButtonLabel(button, label, restore) {
+        button.textContent = label;
+        window.setTimeout(() => { button.textContent = restore; }, 1800);
     }
 
     function setAskOpen(backdrop, open) {

@@ -9,6 +9,11 @@
     //   detail  extra context, shown in the details panel
     //   note    personal "why I care" line, shown in the details panel
     //   source  citation text; url makes it a link
+    //
+    // NEWEST FIRST: facts[0] is the featured fact — each visitor sees it
+    // once, the first time they open the popup after it lands, before the
+    // rotation goes random. The daily fact-hunter job prepends exactly one
+    // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
             tag: 'EVOLUTION',
@@ -430,6 +435,7 @@
 
     const LAST_INDEX_KEY = 'tomatoFunFactLastIndex';
     const LAST_AUTO_KEY = 'tomatoFactLastAuto';
+    const NEWEST_SEEN_KEY = 'tomatoFunFactNewestSeen';
     let currentIndex = -1;
     let lastFocusedElement = null;
     let shuffledOrder = [];
@@ -518,12 +524,15 @@
         const avoid = currentIndex >= 0
             ? currentIndex
             : Number(localStorage.getItem(LAST_INDEX_KEY));
-        currentIndex = nextRandomIndex(avoid);
-        localStorage.setItem(LAST_INDEX_KEY, String(currentIndex));
+        renderFact(backdrop, nextRandomIndex(avoid), bonus ? 'another fun fact' : 'fun fact');
+    }
 
-        const fact = facts[currentIndex];
-        backdrop.querySelector('.tomato-fact-kicker').textContent =
-            bonus ? 'another fun fact' : 'fun fact';
+    function renderFact(backdrop, index, kicker) {
+        currentIndex = index;
+        localStorage.setItem(LAST_INDEX_KEY, String(index));
+
+        const fact = facts[index];
+        backdrop.querySelector('.tomato-fact-kicker').textContent = kicker;
 
         const tagEl = backdrop.querySelector('.tomato-fact-evidence');
         tagEl.hidden = !fact.tag;
@@ -564,7 +573,14 @@
 
     function openDialog({ automatic = false } = {}) {
         const backdrop = document.getElementById('tomatoFactBackdrop') || buildDialog();
-        showRandomFact(backdrop);
+        // The freshest fact (facts[0]) gets first billing, once per visitor;
+        // after that the rotation is random as usual.
+        if (facts.length && localStorage.getItem(NEWEST_SEEN_KEY) !== facts[0].title) {
+            localStorage.setItem(NEWEST_SEEN_KEY, facts[0].title);
+            renderFact(backdrop, 0, 'the newest fun fact');
+        } else {
+            showRandomFact(backdrop);
+        }
         lastFocusedElement = document.activeElement;
         backdrop.hidden = false;
         document.body.style.overflow = 'hidden';

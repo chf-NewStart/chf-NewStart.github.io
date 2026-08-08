@@ -10,7 +10,9 @@
     -webkit-backdrop-filter: blur(6px);
 }
 
-.tomato-fact-backdrop[hidden] { display: none; }
+.tomato-fact-backdrop[hidden],
+.tomato-fact-evidence[hidden],
+.tomato-fact-paper[hidden] { display: none; }
 
 .tomato-fact-dialog {
     position: relative;

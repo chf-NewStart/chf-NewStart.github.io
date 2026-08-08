@@ -520,11 +520,11 @@
 
     function updateRainLabel() {
         if (!tomatoToggle) return;
-        // A normal click opens the daily research fact; Shift-click controls
+        // A normal click opens a random fun fact; Shift-click controls
         // the existing tomato-rain easter egg.
         const label = currentLanguage === 'zh'
-            ? (rainOn ? '今日番茄知识（Shift 点击停止番茄雨）' : '今日番茄知识（Shift 点击开启番茄雨）')
-            : (rainOn ? "Today's tomato fact (Shift-click: stop tomato rain)" : "Today's tomato fact (Shift-click: tomato rain)");
+            ? (rainOn ? '随机番茄冷知识（Shift 点击停止番茄雨）' : '随机番茄冷知识（Shift 点击开启番茄雨）')
+            : (rainOn ? 'Random tomato fun fact (Shift-click: stop tomato rain)' : 'Random tomato fun fact (Shift-click: tomato rain)');
         tomatoToggle.setAttribute('aria-label', label);
         tomatoToggle.title = label;
     }

@@ -1,10 +1,238 @@
 (() => {
     'use strict';
 
-    // Random tomato fun facts. A mix of general tomato trivia and the
-    // more surprising corners of the tomato digital-twin research.
-    // `tag`, `note`, `source`, and `url` are all optional per fact.
+    // Random fun facts — fruit, plants, and the odd corner of the tomato
+    // digital-twin research. Everything here is verified; hypotheses are
+    // labeled as such. `tag`, `note`, `source`, and `url` are optional.
     const facts = [
+        {
+            tag: 'EVOLUTION',
+            title: 'Fruit is a bribe',
+            fact: 'Plants can’t walk, so they pay couriers. Sweet, colorful fruit evolved to lure animals into swallowing seeds and dropping them somewhere new—fertilizer included. Darwin ran the experiments himself, germinating seeds that had passed through birds to prove they survive the trip.',
+            source: 'Darwin, On the Origin of Species (1859), ch. on dispersal'
+        },
+        {
+            tag: 'EVOLUTION',
+            title: 'Chilies are spicy on purpose—but not for birds',
+            fact: 'Capsaicin fires the heat sensor in mammal mouths, but birds’ version of the receptor doesn’t respond at all. That’s the point: mammals grind seeds with their teeth, while birds swallow them whole and fly them far away. The chili picked its courier.',
+            source: 'Tewksbury & Nabhan, Nature (2001)'
+        },
+        {
+            tag: 'HYPOTHESIS',
+            title: 'Avocados may be haunted by extinct giants',
+            fact: 'A fruit with a giant seed wants a giant mouth. One long-standing hypothesis says avocados evolved for megafauna like giant ground sloths that swallowed them whole—animals that vanished about 10,000 years ago, leaving the avocado waiting for a partner that no longer exists.',
+            source: 'Janzen & Martin, Science (1982)'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Bananas are berries. Strawberries are not.',
+            fact: 'Botanically, a berry grows from a single ovary with seeds inside—so bananas, grapes, kiwis, and even watermelons qualify. Strawberries and raspberries fail the test: a strawberry is a swollen stem tip wearing its real fruits on the outside, and a raspberry is a cluster of tiny fruits holding hands.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Every strawberry “seed” is a complete fruit',
+            fact: 'Those little specks on a strawberry’s skin are achenes—each one a full, self-contained dry fruit with a seed inside. The red juicy part is technically the plant’s swollen flower base, along for the ride.'
+        },
+        {
+            tag: 'GENOMICS',
+            title: 'Strawberries carry eight copies of their genome',
+            fact: 'You have two copies of your genome. The cultivated strawberry has eight—it’s an octoploid mashup of four wild species, which is part of why breeding it is such a puzzle.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'A fig is a flower turned inside out',
+            fact: 'A fig isn’t a simple fruit—it’s a garden of tiny flowers blooming inside a closed pouch. Each fig species partners with its own wasp species to pollinate them. And no, the crunch isn’t wasps: the fig’s enzyme ficin dissolves its visitors completely. The crunch is seeds.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Peanuts fruit underground',
+            fact: 'A peanut isn’t a nut—it’s a legume with a strange habit. After pollination, the flower stalk bends down, drills into the soil, and the pod matures in the dark. Botanists call it geocarpy: fruiting by burial.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Cashews grow dangling under a fake apple',
+            fact: 'Each cashew hangs beneath a swollen, juicy “cashew apple.” The nut’s shell is filled with a caustic oil chemically related to poison ivy’s—which is why you will never find cashews sold in their shells.'
+        },
+        {
+            tag: 'DISPERSAL',
+            title: 'Coconuts are ocean-going seed pods',
+            fact: 'A coconut’s husk is a buoyant, waterproof life raft. Coconuts can drift on ocean currents for months and still sprout on the beach where they wash up—one reason they ring tropical coastlines around the world.'
+        },
+        {
+            tag: 'CULTURE · SINGAPORE',
+            title: 'Durian is banned on the subway',
+            fact: 'The durian smells so intensely that Singapore’s mass transit system explicitly bans it—there’s a durian icon right on the “no smoking, no flammables” signs. Fans call the taste heaven; the smell has been compared to gym socks and onions.'
+        },
+        {
+            tag: 'HISTORY · NEW ZEALAND',
+            title: 'The kiwifruit is a marketing rebrand',
+            fact: 'It was known as the Chinese gooseberry until New Zealand exporters renamed it around 1959 after their national bird—small, brown, and fuzzy. The rebrand worked so well most people assume the fruit is a native Kiwi.'
+        },
+        {
+            tag: 'AGRICULTURE',
+            title: 'A pineapple takes about two years',
+            fact: 'A pineapple plant grows for roughly 18 to 24 months before producing its first fruit—and it makes exactly one pineapple at a time. Every pineapple you’ve eaten was the plant’s entire seasonal output.'
+        },
+        {
+            tag: 'KITCHEN SCIENCE',
+            title: 'Fresh pineapple eats you back',
+            fact: 'Pineapple is packed with bromelain, an enzyme that digests protein—it’s why your tongue tingles, why it tenderizes meat, and why fresh pineapple wrecks gelatin desserts. Canned pineapple is safe: heat kills the enzyme.'
+        },
+        {
+            tag: 'PHYSICS',
+            title: 'Apples float because they’re a quarter air',
+            fact: 'About 25% of an apple’s volume is air pockets between cells—which is why apples bob for the bobbing, while denser fruit like pears mostly sink.'
+        },
+        {
+            tag: 'PHYSICS',
+            title: 'Grapes make plasma in the microwave',
+            fact: 'Two grapes touching in a microwave can spark a glowing blob of plasma. Physicists took it seriously and showed a grape is coincidentally the right size to trap and concentrate microwave energy at the point where the two grapes meet. Spectacular—and genuinely dangerous for your microwave.',
+            source: 'Khattak et al., PNAS (2019)'
+        },
+        {
+            tag: 'PHYSICS',
+            title: 'Bananas are measurably radioactive',
+            fact: 'Bananas are rich in potassium, and a sliver of natural potassium is the radioactive isotope potassium-40. The dose is so tiny that radiation safety folks jokingly use the “banana equivalent dose” to put scarier numbers in perspective.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'A banana plant is a giant herb, and every Cavendish is a clone',
+            fact: 'Banana “trees” have no wood—the trunk is tightly rolled leaf bases, making the banana one of the largest herbs on Earth. And the supermarket Cavendish is seedless and sterile, so every one is propagated as a genetic copy of the same plant.'
+        },
+        {
+            tag: 'LANGUAGE',
+            title: 'The fruit named the color orange',
+            fact: 'English had the fruit before it had the word for the color. “Orange” traveled from Sanskrit through Persian and Arabic with the fruit itself; before it arrived, English speakers made do with “yellow-red” (ġeolurēad).'
+        },
+        {
+            tag: 'GENOMICS',
+            title: 'Almost every citrus you know is a hybrid',
+            fact: 'Genome studies show most familiar citrus descends from a few wild ancestors—mainly the mandarin, the pomelo, and the citron. The sweet orange is a mandarin–pomelo cross; the lemon traces back to citron crossed with sour orange. Citrus is one big family remix.'
+        },
+        {
+            tag: 'CHEMISTRY',
+            title: 'One bad apple really does spoil the bunch',
+            fact: 'Ripening fruit releases ethylene gas, and ethylene tells nearby fruit to ripen too—so one overripe apple genuinely pushes its neighbors over the edge. The same trick works for you: bag a hard avocado with a banana and it ripens faster.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Every corn kernel is a fruit',
+            fact: 'Corn is a giant grass, and each kernel on the cob is botanically a complete fruit called a caryopsis—fruit wall and seed fused into one package. An ear of corn is hundreds of fruits arranged in rows.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Broccoli, kale, and cabbage are the same species',
+            fact: 'Broccoli, cauliflower, kale, cabbage, Brussels sprouts, and kohlrabi are all Brassica oleracea—one wild Mediterranean plant sculpted by humans into wildly different vegetables by exaggerating flowers, leaves, buds, or stems.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Apples and peaches are roses',
+            fact: 'Apples, pears, peaches, cherries, plums, apricots, strawberries, raspberries, and almonds all belong to the rose family, Rosaceae. Most of the fruit bowl is one botanical family reunion.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Almonds are peach pits’ cousins',
+            fact: 'The almond is essentially a peach relative where we eat the seed and discard the flesh—both are in the genus Prunus. Wild bitter almonds are laced with amygdalin, which releases cyanide; domestication hinged on finding sweet mutants that were safe to eat.'
+        },
+        {
+            tag: 'HISTORY · RÉUNION',
+            title: 'A 12-year-old invented vanilla farming',
+            fact: 'Vanilla is the fruit of an orchid, and outside Mexico its natural pollinator is missing. In 1841, Edmond Albius—a 12-year-old enslaved boy on Réunion—invented the quick hand-pollination technique still used on virtually every vanilla farm today.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Orchid seeds are dust that needs a fungus',
+            fact: 'A single orchid seed pod can hold hundreds of thousands to millions of seeds, each nearly weightless and carrying no food reserves at all. To germinate, an orchid seed must be adopted by a soil fungus that feeds it.'
+        },
+        {
+            tag: 'RECORDS',
+            title: 'A 2,000-year-old seed grew into a tree',
+            fact: 'A Judean date palm seed recovered from Masada—roughly two millennia old—was planted in 2005 and germinated. The tree was nicknamed Methuselah, and it’s alive and well.',
+            source: 'Sallon et al., Science (2008)'
+        },
+        {
+            tag: 'RECORDS',
+            title: 'The smallest fruit would fit on a pinhead',
+            fact: 'Watermeal (Wolffia) is the world’s smallest flowering plant—an entire plant is the size of a candy sprinkle, and a “bouquet” fits on a fingertip. It also produces the world’s smallest fruit.'
+        },
+        {
+            tag: 'RECORDS',
+            title: 'Jackfruit is the heavyweight of tree fruit',
+            fact: 'The jackfruit is the largest fruit that grows on a tree—big specimens weigh more than 30 kg. The trees can’t hold them on branches, so the fruit sprouts straight from the trunk.'
+        },
+        {
+            tag: 'RECORDS',
+            title: 'Bamboo can grow almost a meter a day',
+            fact: 'Some bamboo species grow around 90 cm in 24 hours—the fastest-growing plants on record. Sit next to one on a good day and it will visibly outgrow the afternoon.'
+        },
+        {
+            tag: 'RECORDS',
+            title: 'The oldest known tree predates the pyramids',
+            fact: 'A Great Basin bristlecone pine in California is over 4,850 years old—it was already growing before the Great Pyramid of Giza was built, and it’s still adding rings.'
+        },
+        {
+            tag: 'RECORDS',
+            title: 'A forest in Utah is one single tree',
+            fact: 'Pando is a quaking aspen clone with tens of thousands of trunks sharing one root system—genetically a single tree spread over about 40 hectares, weighing on the order of 6,000 tonnes. It’s one of the heaviest organisms known.'
+        },
+        {
+            tag: 'BEHAVIOR',
+            title: 'Venus flytraps can count',
+            fact: 'A flytrap doesn’t snap on the first touch. It waits for a second trigger-hair signal within about 20 seconds before closing, and only starts pumping digestive juices after roughly five—counting to avoid wasting energy on raindrops.',
+            source: 'Böhm et al., Current Biology (2016)'
+        },
+        {
+            tag: 'BEHAVIOR',
+            title: 'Grown-up sunflowers all face east',
+            fact: 'Young sunflowers track the sun across the sky, swinging east to west and back overnight. Mature flowers stop and lock facing east—the morning sun warms them faster, and warm flowers attract measurably more pollinators.',
+            source: 'Atamian et al., Science (2016)'
+        },
+        {
+            tag: 'CHEMISTRY',
+            title: 'Coffee plants drug their pollinators',
+            fact: 'Caffeine is a natural insecticide—but coffee and citrus flowers also lace their nectar with tiny doses of it. At those levels caffeine boosts a bee’s memory of the flower’s scent, making the bee more likely to come back. Loyalty, chemically induced.',
+            source: 'Wright et al., Science (2013)'
+        },
+        {
+            tag: 'CHEMISTRY',
+            title: 'One berry can make lemons taste sweet',
+            fact: 'The West African miracle fruit contains miraculin, a protein that latches onto your sweet receptors and flips them on in the presence of acid. For the next hour or so, lemon juice tastes like lemonade.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'Dragon fruit comes from a night-blooming cactus',
+            fact: 'Dragon fruit grows on a sprawling climbing cactus whose huge flowers open for a single night and wilt by morning—pollinated in the dark by moths and bats.'
+        },
+        {
+            tag: 'KITCHEN SCIENCE',
+            title: 'Ripe cranberries bounce',
+            fact: 'Good cranberries have air chambers inside—so growers literally sort them by bouncing. Fruit that clears the barrier boards is firm and ripe; fruit that goes splat gets rejected. The air pockets are also why cranberries float in flooded bogs at harvest.'
+        },
+        {
+            tag: 'AGRICULTURE · YORKSHIRE',
+            title: 'Forced rhubarb grows fast enough to hear',
+            fact: 'In Yorkshire’s “Rhubarb Triangle,” rhubarb is grown in pitch-dark heated sheds and harvested by candlelight. Starved of light, the stalks shoot up so quickly that the sheds fill with soft pops and creaks—the sound of rhubarb growing.'
+        },
+        {
+            tag: 'KITCHEN SCIENCE',
+            title: 'Lemons float. Limes sink.',
+            fact: 'Drop them in water: lemons bob, limes go down. Limes are slightly denser than water and lemons slightly less—an easy bar bet you can win with a glass of water.'
+        },
+        {
+            tag: 'AGRICULTURE',
+            title: 'You can’t taste every apple in one lifetime of snacking',
+            fact: 'Around 7,500 apple varieties are grown worldwide. Trying a new one every single day would take you more than 20 years.'
+        },
+        {
+            tag: 'AGRICULTURE',
+            title: 'One plant can grow tomatoes on top and potatoes below',
+            fact: 'Tomatoes and potatoes are close nightshade relatives, so a tomato stem grafts cleanly onto a potato root. The result—sold as the “TomTato”—yields cherry tomatoes above the soil and potatoes beneath it, on a single plant.'
+        },
+        {
+            tag: 'BOTANY',
+            title: 'The corpse flower fakes a crime scene',
+            fact: 'The titan arum blooms rarely—often years apart—and when it does, it heats itself up and pumps out the smell of rotting flesh to recruit carrion beetles and flesh flies as pollinators. Botanical gardens sell out tickets for the stench.'
+        },
         {
             tag: 'LAW · USA',
             title: 'The US Supreme Court ruled the tomato is a vegetable',
@@ -210,7 +438,7 @@
 
         const fact = facts[currentIndex];
         backdrop.querySelector('.tomato-fact-kicker').textContent =
-            bonus ? 'another tomato fun fact' : 'tomato fun fact';
+            bonus ? 'another fun fact' : 'fun fact';
 
         const tagEl = backdrop.querySelector('.tomato-fact-evidence');
         tagEl.hidden = !fact.tag;
@@ -224,10 +452,14 @@
         noteEl.querySelector('span').textContent = fact.note || '';
 
         const paperLink = backdrop.querySelector('.tomato-fact-paper');
-        paperLink.hidden = !fact.url;
-        if (fact.url) {
-            paperLink.href = fact.url;
+        paperLink.hidden = !fact.source;
+        if (fact.source) {
             paperLink.textContent = `source → ${fact.source}`;
+            if (fact.url) {
+                paperLink.href = fact.url;
+            } else {
+                paperLink.removeAttribute('href');
+            }
         }
     }
 

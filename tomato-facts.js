@@ -593,15 +593,17 @@
                     <a class="tomato-fact-paper" target="_blank" rel="noopener noreferrer" hidden></a>
                 </div>
                 <div class="tomato-fact-ask" id="tomatoFactAsk" hidden>
-                    <p class="tomato-fact-ask-hint">Opens an AI chat in a new tab with this fact preloaded.
-                        Chatbots can be confidently wrong — the prompt asks for sources, but double-check anything that matters.</p>
+                    <p class="tomato-fact-ask-hint">AI answers can be confidently wrong — the prompt asks for
+                        sources, but double-check anything that matters.</p>
+                    <div class="tomato-fact-thread" aria-live="polite" hidden></div>
                     <input class="tomato-fact-ask-input" type="text" maxlength="300"
                            placeholder="Your question — e.g. how does it tell an insect from a raindrop?"
                            aria-label="Your follow-up question about this fact">
                     <div class="tomato-fact-ask-buttons">
-                        <button class="tomato-fact-button" type="button" data-ai="claude">ask Claude</button>
-                        <button class="tomato-fact-button" type="button" data-ai="chatgpt">ask ChatGPT</button>
-                        <button class="tomato-fact-button" type="button" data-ai="perplexity">ask Perplexity</button>
+                        <button class="tomato-fact-button primary" type="button" data-ai="deepseek">ask DeepSeek here</button>
+                        <button class="tomato-fact-button" type="button" data-ai="claude">Claude ↗</button>
+                        <button class="tomato-fact-button" type="button" data-ai="chatgpt">ChatGPT ↗</button>
+                        <button class="tomato-fact-button" type="button" data-ai="perplexity">Perplexity ↗</button>
                         <button class="tomato-fact-button" type="button" data-ai="copy">copy prompt</button>
                     </div>
                 </div>
@@ -627,8 +629,20 @@
         backdrop.querySelector('[data-action="ask"]').addEventListener('click', () => {
             setAskOpen(backdrop, backdrop.querySelector('.tomato-fact-ask').hidden);
         });
+        const deepseekButton = backdrop.querySelector('[data-ai="deepseek"]');
+        deepseekButton.hidden = !deepseekEnabled;
+        backdrop.querySelector('.tomato-fact-ask-input').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && deepseekEnabled) {
+                event.preventDefault();
+                askDeepSeek(backdrop);
+            }
+        });
         backdrop.querySelectorAll('.tomato-fact-ask-buttons [data-ai]').forEach((button) => {
             button.addEventListener('click', () => {
+                if (button.dataset.ai === 'deepseek') {
+                    askDeepSeek(backdrop);
+                    return;
+                }
                 const question = backdrop.querySelector('.tomato-fact-ask-input').value.trim();
                 const prompt = buildAskPrompt(facts[currentIndex], question);
                 if (button.dataset.ai === 'copy') {
@@ -678,13 +692,89 @@
     }
 
     // Chat services that accept a prefilled first message via URL.
-    // (DeepSeek's web chat has no prefill parameter — that's what the
-    // "copy prompt" button is for.)
+    // (DeepSeek's web chat has no prefill parameter — it gets the in-page
+    // thread below instead, plus the "copy prompt" fallback.)
     const AI_LINKS = {
         claude: 'https://claude.ai/new?q=',
         chatgpt: 'https://chatgpt.com/?q=',
         perplexity: 'https://www.perplexity.ai/search?q='
     };
+
+    // In-page DeepSeek answers, configured in deepseek-config.js — either
+    // a proxy endpoint (recommended; key stays server-side) or a direct
+    // apiKey (public!). Unconfigured → the button hides itself.
+    const DEEPSEEK = window.DEEPSEEK_CONFIG || {};
+    const deepseekEnabled =
+        Boolean(String(DEEPSEEK.endpoint || '').trim() || String(DEEPSEEK.apiKey || '').trim());
+    let deepseekThread = [];
+    let deepseekPending = false;
+
+    function appendThreadMessage(threadEl, kind, text) {
+        const message = document.createElement('div');
+        message.className = `tomato-fact-msg ${kind}`;
+        message.textContent = text;
+        threadEl.appendChild(message);
+        message.scrollIntoView({ block: 'nearest' });
+        return message;
+    }
+
+    async function askDeepSeek(backdrop) {
+        if (deepseekPending) return;
+        const input = backdrop.querySelector('.tomato-fact-ask-input');
+        const threadEl = backdrop.querySelector('.tomato-fact-thread');
+        const button = backdrop.querySelector('[data-ai="deepseek"]');
+        const question = input.value.trim()
+            || 'Tell me more — what is the mechanism behind this, and how solid is the evidence?';
+
+        threadEl.hidden = false;
+        appendThreadMessage(threadEl, 'user', question);
+        if (deepseekThread.length === 0) {
+            deepseekThread.push({
+                role: 'system',
+                content: 'You answer follow-up questions about a fun fact shown on a personal science website. Be accurate and concise (under 200 words), name reliable sources where you can, and say clearly when you are unsure. Plain text only — no markdown.'
+            });
+            deepseekThread.push({ role: 'user', content: buildAskPrompt(facts[currentIndex], question) });
+        } else {
+            deepseekThread.push({ role: 'user', content: question });
+        }
+        input.value = '';
+        const pendingEl = appendThreadMessage(threadEl, 'ai pending', 'thinking…');
+        deepseekPending = true;
+        button.disabled = true;
+
+        try {
+            const endpoint = String(DEEPSEEK.endpoint || '').trim()
+                || 'https://api.deepseek.com/chat/completions';
+            const headers = { 'Content-Type': 'application/json' };
+            const directKey = String(DEEPSEEK.apiKey || '').trim();
+            if (directKey) headers.Authorization = `Bearer ${directKey}`;
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    model: DEEPSEEK.model || 'deepseek-chat',
+                    messages: deepseekThread,
+                    max_tokens: 600,
+                    temperature: 0.3
+                })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            const answer = data && data.choices && data.choices[0]
+                && data.choices[0].message && data.choices[0].message.content;
+            if (!answer) throw new Error('empty response');
+            deepseekThread.push({ role: 'assistant', content: answer.trim() });
+            pendingEl.className = 'tomato-fact-msg ai';
+            pendingEl.textContent = answer.trim();
+        } catch (error) {
+            deepseekThread.pop(); // let the user retry the same question
+            pendingEl.className = 'tomato-fact-msg error';
+            pendingEl.textContent = `DeepSeek request failed (${error.message}). Try again, or use the link buttons.`;
+        } finally {
+            deepseekPending = false;
+            button.disabled = false;
+        }
+    }
 
     function buildAskPrompt(fact, question) {
         const parts = [
@@ -764,6 +854,10 @@
             !(fact.quote || fact.detail || fact.note || fact.source);
         setAskOpen(backdrop, false);
         backdrop.querySelector('.tomato-fact-ask-input').value = '';
+        deepseekThread = [];
+        const threadEl = backdrop.querySelector('.tomato-fact-thread');
+        threadEl.hidden = true;
+        threadEl.textContent = '';
     }
 
     function openDialog({ automatic = false } = {}) {

@@ -173,6 +173,35 @@
     line-height: 1.55;
 }
 
+.tomato-fact-thread {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.tomato-fact-thread[hidden] { display: none; }
+
+.tomato-fact-msg {
+    border: 1px solid #222;
+    padding: 8px 11px;
+    color: #ccc;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.tomato-fact-msg.user {
+    border-color: rgba(29, 185, 84, 0.45);
+    color: #9adfb5;
+}
+
+.tomato-fact-msg.pending { color: #666; font-style: italic; }
+
+.tomato-fact-msg.error { border-color: #ff5f56; color: #ff8c86; }
+
 .tomato-fact-ask-input {
     width: 100%;
     box-sizing: border-box;

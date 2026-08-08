@@ -492,7 +492,15 @@
     );
 
     const LAST_INDEX_KEY = 'tomatoFunFactLastIndex';
+    const LAST_AUTO_KEY = 'tomatoFactLastAuto';
     const NEWEST_SEEN_KEY = 'tomatoFunFactNewestSeen';
+
+    function localDateKey(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
     let currentIndex = -1;
     let lastFocusedElement = null;
     let shuffledOrder = [];
@@ -867,8 +875,9 @@
         backdrop.querySelector('[data-ai="deepseek"]').textContent = 'ask DeepSeek here';
     }
 
-    function openDialog() {
+    function openDialog({ automatic = false } = {}) {
         const backdrop = document.getElementById('tomatoFactBackdrop') || buildDialog();
+        if (automatic) localStorage.setItem(LAST_AUTO_KEY, localDateKey());
         // The freshest fact (facts[0]) gets first billing, once per visitor;
         // after that the rotation is random as usual.
         if (facts.length && localStorage.getItem(NEWEST_SEEN_KEY) !== facts[0].title) {
@@ -900,7 +909,10 @@
             });
         }
 
-        // A fact card greets every visit, not just the first of the day.
-        window.setTimeout(openDialog, 1200);
+        // A fact card greets the first visit of each day; the tomato
+        // button opens one any time.
+        if (localStorage.getItem(LAST_AUTO_KEY) !== localDateKey()) {
+            window.setTimeout(() => openDialog({ automatic: true }), 1200);
+        }
     });
 })();

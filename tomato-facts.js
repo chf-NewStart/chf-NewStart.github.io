@@ -500,6 +500,29 @@
     const LAST_INDEX_KEY = 'tomatoFunFactLastIndex';
     const LAST_AUTO_KEY = 'tomatoFactLastAuto';
     const NEWEST_SEEN_KEY = 'tomatoFunFactNewestSeen';
+    const SEEN_COUNTS_KEY = 'tomatoFunFactSeenCounts';
+    const SEEN_COUNT_CAP = 9;
+
+    function loadSeenCounts() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(SEEN_COUNTS_KEY));
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch (_) { /* corrupt storage reads as "nothing seen yet" */ }
+        return {};
+    }
+
+    function recordSeen(fact) {
+        const counts = loadSeenCounts();
+        counts[fact.title] = Math.min(SEEN_COUNT_CAP, (counts[fact.title] || 0) + 1);
+        // Drop titles that no longer exist so the record can't grow forever.
+        const titles = new Set(facts.map((f) => f.title));
+        for (const title of Object.keys(counts)) {
+            if (!titles.has(title)) delete counts[title];
+        }
+        try {
+            localStorage.setItem(SEEN_COUNTS_KEY, JSON.stringify(counts));
+        } catch (_) { /* private mode etc. — weighting just stays off */ }
+    }
 
     function localDateKey(date = new Date()) {
         const year = date.getFullYear();
@@ -512,12 +535,18 @@
     let shuffledOrder = [];
     let shufflePosition = 0;
 
+    // Weighted shuffle (Efraimidis–Spirakis): facts the visitor has already
+    // seen get weight 1/(1 + 2·views), so unseen facts tend to surface first
+    // while every fact still appears once before any repeats.
     function reshuffle() {
-        shuffledOrder = facts.map((_, i) => i);
-        for (let i = shuffledOrder.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledOrder[i], shuffledOrder[j]] = [shuffledOrder[j], shuffledOrder[i]];
-        }
+        const counts = loadSeenCounts();
+        shuffledOrder = facts
+            .map((fact, i) => {
+                const weight = 1 / (1 + 2 * (counts[fact.title] || 0));
+                return { i, key: Math.pow(Math.random(), 1 / weight) };
+            })
+            .sort((a, b) => b.key - a.key)
+            .map((entry) => entry.i);
         shufflePosition = 0;
     }
 
@@ -836,6 +865,7 @@
         localStorage.setItem(LAST_INDEX_KEY, String(index));
 
         const fact = facts[index];
+        recordSeen(fact);
         backdrop.querySelector('.tomato-fact-kicker').textContent = kicker;
 
         const tagEl = backdrop.querySelector('.tomato-fact-evidence');

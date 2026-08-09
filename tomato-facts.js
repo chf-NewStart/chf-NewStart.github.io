@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "HISTORY",
+            title: "Carrots weren’t originally orange",
+            fact: "The carrot’s early domesticated forms in Central Asia were purple, yellow, and white. Orange carrots only came to dominate after Dutch growers in the 16th–17th centuries bred and popularized them across Europe.",
+            detail: "The story that the Dutch bred them orange to honor the House of Orange is charming but undocumented — historians treat it as legend. Purple “heritage” carrots in fancy groceries are actually the throwback originals."
+        },
+        {
             tag: "FOOD SCIENCE",
             title: "Honey never spoils",
             fact: "Archaeologists have opened pots of honey thousands of years old — including from Egyptian tombs — and found it still edible. Honey is too dry, too acidic, and too peroxide-laced for microbes to survive in it.",

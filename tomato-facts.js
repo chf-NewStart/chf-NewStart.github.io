@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "AGRICULTURE",
+            title: "Saffron costs more than silver for a reason",
+            fact: "Saffron is the hand-picked stigmas of a crocus flower — three tiny threads per bloom. It takes on the order of 150,000 flowers, all harvested by hand at dawn, to make a single kilogram of the world’s most expensive spice.",
+            detail: "The saffron crocus is also sterile — a triploid that can’t set seed — so every plant on Earth is propagated by hand from corms, making the whole crop one enormous clone lineage."
+        },
+        {
             tag: "HISTORY",
             title: "Carrots weren’t originally orange",
             fact: "The carrot’s early domesticated forms in Central Asia were purple, yellow, and white. Orange carrots only came to dominate after Dutch growers in the 16th–17th centuries bred and popularized them across Europe.",
@@ -451,6 +457,8 @@
     // matched automatically. The daily fact-hunter job adds entries here
     // whenever a new fact introduces a strange word.
     const GLOSSARY = {
+        "corm": "a swollen underground stem base a plant regrows from, like a bulb",
+        "stigma": "the pollen-receiving tip of a flower’s female organ",
         'achene': 'a tiny dry one-seeded fruit that looks like a seed itself',
         'drupe': 'a fleshy fruit with a single stone around its seed, like a peach or cherry',
         'parthenocarpic': 'setting fruit without any pollination, so the fruit is seedless',

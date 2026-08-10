@@ -1,18 +1,6 @@
 [
   {
     "fact": {
-      "tag": "AGRICULTURE",
-      "title": "Saffron costs more than silver for a reason",
-      "fact": "Saffron is the hand-picked stigmas of a crocus flower — three tiny threads per bloom. It takes on the order of 150,000 flowers, all harvested by hand at dawn, to make a single kilogram of the world’s most expensive spice.",
-      "detail": "The saffron crocus is also sterile — a triploid that can’t set seed — so every plant on Earth is propagated by hand from corms, making the whole crop one enormous clone lineage."
-    },
-    "glossary": {
-      "stigma": "the pollen-receiving tip of a flower’s female organ",
-      "corm": "a swollen underground stem base a plant regrows from, like a bulb"
-    }
-  },
-  {
-    "fact": {
       "tag": "KITCHEN SCIENCE",
       "title": "You’ve probably never eaten real wasabi",
       "fact": "Most “wasabi” served outside Japan — and plenty inside — is horseradish paste with mustard and green coloring. Real wasabi is a finicky semi-aquatic plant, and its freshly grated heat starts fading within about 15 minutes.",

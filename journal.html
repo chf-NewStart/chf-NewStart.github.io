@@ -212,15 +212,50 @@
     .reflection .cap { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 6px; display: flex; gap: 14px; align-items: baseline; }
     .reflection .rtxt { font-size: 1.18rem; white-space: pre-wrap; word-break: break-word; }
     .reflection .rtxt.waiting { color: var(--ink-soft); font-style: italic; }
-    .rturn { font-size: 1.18rem; white-space: pre-wrap; word-break: break-word; margin-bottom: 12px; }
-    .rturn.you { color: var(--ink-soft); font-size: 1.05rem; padding-left: 14px; border-left: 1px solid var(--line); }
-    .reply-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
-    .reply-row input {
-      flex: 1; min-width: 0; font-family: inherit; font-size: 1.02rem; color: var(--ink);
+    /* The reflection is not you, and it should not look like you. Everything
+       on this page is set in a hand — the loopy one for your ink, Caveat for
+       the chrome — so leaving the reply in a hand too made the two voices read
+       as one. The AI gets a plain face it can never be mistaken in; your own
+       replies move the other way, into the same hand as the page above. */
+    .rturn {
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                   'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      font-size: 1rem; line-height: 1.62; word-spacing: normal;
+      white-space: pre-wrap; word-break: break-word; margin-bottom: 14px;
+    }
+    .rturn.you {
+      font-family: 'Houfu Hand', 'Homemade Apple', 'Caveat', 'Long Cang', 'Kaiti SC',
+                   'STKaiti', 'KaiTi', cursive, Georgia, serif;
+      word-spacing: 0.22em;
+      font-size: 1.18rem; line-height: 1.5;
+      padding-left: 14px; border-left: 1px solid var(--accent);
+      margin-bottom: 16px;
+    }
+    /* Mono mode is a whole terminal skin; a sans face would break it, so there
+       the two voices separate on the border and the indent alone. */
+    html[data-font="mono"] .rturn,
+    html[data-font="mono"] .rturn.you { font-family: Consolas, 'Courier New', monospace; word-spacing: normal; }
+    .reply-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 12px; }
+    /* A textarea, not a one-line input. On one line everything but the last
+       few words scrolled out of sight, so you could not re-read a long reply
+       while writing it. This grows with the text and only starts scrolling
+       once it has taken about eight lines. Set in the same hand as the replies
+       above it, so what you are typing already looks like what you said. */
+    .reply-row textarea {
+      flex: 1; min-width: 0;
+      font-family: 'Houfu Hand', 'Homemade Apple', 'Caveat', 'Long Cang', 'Kaiti SC',
+                   'STKaiti', 'KaiTi', cursive, Georgia, serif;
+      word-spacing: 0.22em;
+      font-size: 1.18rem; line-height: 1.5; color: var(--ink);
       background: transparent; border: none; border-bottom: 1px solid var(--line);
       padding: 4px 2px; caret-color: var(--accent);
+      resize: none; overflow-y: auto; max-height: 12em;
     }
-    .reply-row input:focus { outline: none; border-bottom-color: var(--accent); }
+    .reply-row textarea:focus { outline: none; border-bottom-color: var(--accent); }
+    html[data-font="mono"] .reply-row textarea {
+      font-family: Consolas, 'Courier New', monospace; word-spacing: normal;
+    }
+    .reply-row .linkish { padding-bottom: 6px; }
 
     .sync { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
     .sync .cap { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 1px; margin-bottom: 12px; }
@@ -248,7 +283,7 @@
       <a class="btn quiet" href="/">← houfu72.com</a>
     </div>
   </div>
-  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage) — nothing leaves this device unless you turn on encrypted sync to your own private repo below — or tap “a reflection”, which sends that one page to DeepSeek — and, only if you switch memory on, your earlier pages with it.</p>
+  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage), and leaves it in only two ways — both yours to switch off. Encrypted sync to your own private repo, set up below. And the reflection, which sends the open page to DeepSeek along with your last two weeks and the short note it keeps about you. That one now arrives on its own after you have been writing a while: “auto: off” stops it, and “memory…” lets you read, edit or erase the note.</p>
 
   <div class="day">
     <h2 id="dayTitle"></h2><span id="dayCursor" aria-hidden="true">▋</span>
@@ -266,7 +301,7 @@
     <div class="cap">A REFLECTION <button class="linkish quiet" id="reflectionClear" type="button">let it fade</button></div>
     <div id="reflectionText"></div>
     <div class="reply-row" id="replyRow" hidden>
-      <input id="replyInput" placeholder="say something back…" autocomplete="off" spellcheck="false">
+      <textarea id="replyInput" rows="1" placeholder="say something back…" autocomplete="off" spellcheck="false"></textarea>
       <button class="linkish" id="replySend" type="button">send</button>
     </div>
   </div>
@@ -296,15 +331,27 @@
   <div class="toolsrow fade">
     <button class="btn quiet" id="holdBtn">hold a thought (24h)</button>
     <button class="btn quiet" id="aiBtn" title="sends this page to DeepSeek for a short reflection">a reflection…</button>
-    <button class="btn quiet" id="aiMemBtn" title="off: only the open page is sent. on: your past pages go too, so the reflection can see patterns across time.">memory: off</button>
+    <button class="btn quiet" id="autoReflectBtn" title="on: a reflection arrives on its own once you have written enough. off: only when you tap.">auto: on</button>
+    <button class="btn quiet" id="memViewBtn" title="read, edit or erase what the reflection remembers about you">memory…</button>
     <button class="btn quiet hidden" id="exportBtn">export everything (.md)</button>
     <button class="btn quiet hidden" id="backupBtn">back up (.json)</button>
     <button class="btn quiet" id="restoreBtn">restore a backup…</button>
     <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
   </div>
 
+  <div class="sync-form hidden fade" id="memPanel">
+    <label>What it remembers about you — rewritten after each reflection. Edit it freely; whatever is here is what travels with the next one.
+      <textarea id="memText" rows="8" spellcheck="false" placeholder="Nothing yet. Write a page and ask for a reflection, and a note starts building itself here."></textarea></label>
+    <p class="sub fade" id="memMeta" style="margin:0"></p>
+    <div class="toolsrow" style="margin-top:0">
+      <button class="btn" id="memSaveBtn">save the note</button>
+      <button class="btn quiet" id="memForgetBtn">forget everything</button>
+      <button class="btn quiet" id="memCloseBtn">close</button>
+    </div>
+  </div>
+
   <div class="sync-form hidden fade" id="aiKeyForm">
-    <label>DeepSeek API key — a reflection sends the open page (only when you tap) to DeepSeek; the key stays in this browser
+    <label>DeepSeek API key — a reflection sends the open page to DeepSeek; the key stays in this browser
       <input id="aiKeyInput" type="password" autocomplete="off"></label>
     <div class="toolsrow" style="margin-top:0">
       <button class="btn" id="aiKeySaveBtn">save &amp; reflect</button>
@@ -345,9 +392,9 @@
   function load(){
     try {
       var s = JSON.parse(localStorage.getItem(KEY));
-      if (s && s.entries) { if (!s.held) s.held = []; if (!s.wx) s.wx = {}; if (!s.reflections) s.reflections = {}; return s; }
+      if (s && s.entries) { if (!s.held) s.held = []; if (!s.wx) s.wx = {}; if (!s.reflections) s.reflections = {}; if (!s.memory) s.memory = {}; return s; }
     } catch(e){}
-    return { entries: {}, held: [], wx: {}, reflections: {} };
+    return { entries: {}, held: [], wx: {}, reflections: {}, memory: {} };
   }
   function persist(){
     try {
@@ -820,44 +867,113 @@
     }).catch(function(){ alert('Invalid backup file.'); });
   };
 
-  /* ---- a reflection: on request only, the open page goes to DeepSeek ---- */
+  /* ---- a reflection ---- */
   var AI_KEY = 'deepseek.apiKey';
-  var AI_MEM = 'journal.aiMemory';
   var aiBusy = false;
   function aiKey(){ return localStorage.getItem(AI_KEY) || ''; }
-  function aiMem(){ return localStorage.getItem(AI_MEM) === '1'; }
 
-  function renderMemBtn(){
-    byId('aiMemBtn').textContent = 'memory: ' + (aiMem() ? 'on' : 'off');
-  }
-  byId('aiMemBtn').onclick = function(){
-    var on = !aiMem();
-    localStorage.setItem(AI_MEM, on ? '1' : '0');
-    renderMemBtn();
-    whisperCount(on ? 'memory on — past pages travel with the next reflection'
-                    : 'memory off — only the open page is sent');
-  };
-  renderMemBtn();
+  /* Memory is a short written profile, not the archive.
+     It used to be a toggle that shipped every page you had ever written —
+     up to 400k characters, well over 100k tokens — oldest-first so the bulk
+     of it landed on DeepSeek's prompt cache. That worked, but it grew without
+     end and made the model wade through a year to answer about a Tuesday.
+     Now it keeps what a person keeps: a few hundred words about who you are
+     and what keeps coming back, rewritten after each exchange, plus the last
+     couple of weeks raw because recent days are the ones that need no summary.
+     Roughly fifteen times smaller, and it reads you better. */
+  var MEM_RECENT_DAYS = 14;
+  var MEM_RECENT_CHARS = 24000;
+  var MEM_PROFILE_CHARS = 2600;
 
-  /* Earlier pages, oldest first. Oldest-first matters: the history becomes a
-     stable prompt prefix, which DeepSeek bills at the cache-hit rate instead
-     of re-charging for the whole journal on every reflection. */
-  var MEM_CHARS = 400000;
-  function memoryText(){
+  function memProfile(){ return (state.memory && state.memory.profile || '').trim(); }
+
+  /* Recent pages, oldest first — the ordering is still deliberate: it keeps
+     the long tail of the prompt byte-identical between reflections on the same
+     day, so the cache discount survives the rewrite. */
+  function recentPages(){
     var keys = Object.keys(state.entries).filter(function(k){ return k !== openDay; }).sort();
     var chosen = [], total = 0;
-    for (var i = keys.length - 1; i >= 0; i--){          /* newest first while trimming… */
+    for (var i = keys.length - 1; i >= 0 && chosen.length < MEM_RECENT_DAYS; i--){
       var txt = (state.entries[keys[i]].text || '').trim();
       if (!txt) continue;
-      if (total + txt.length > MEM_CHARS) break;          /* …so the oldest fall off, not the recent */
+      if (total + txt.length > MEM_RECENT_CHARS) break;
       total += txt.length;
       chosen.push(keys[i]);
     }
-    chosen.sort();                                        /* …then back to oldest-first for the prefix */
+    chosen.sort();
     return chosen.map(function(k){
       return prettyDate(k) + '\n' + state.entries[k].text.trim();
     }).join('\n\n— — —\n\n');
   }
+
+  /* ---- the standing note, on screen ---- */
+  function renderMemory(){
+    var t = byId('memText');
+    if (!t) return;
+    /* never overwrite what is being typed into it */
+    if (document.activeElement !== t) t.value = memProfile();
+    var m = state.memory || {};
+    byId('memMeta').textContent = m.updatedAt
+      ? 'last rewritten ' + new Date(m.updatedAt).toLocaleString()
+        + (m.through ? ' · through ' + prettyDate(m.through) : '')
+      : 'nothing written down yet';
+  }
+  byId('memViewBtn').onclick = function(){
+    var p = byId('memPanel');
+    p.classList.toggle('hidden');
+    if (!p.classList.contains('hidden')) renderMemory();
+  };
+  byId('memCloseBtn').onclick = function(){ byId('memPanel').classList.add('hidden'); };
+  byId('memSaveBtn').onclick = function(){
+    if (!state.memory) state.memory = {};
+    state.memory.profile = byId('memText').value.trim().slice(0, MEM_PROFILE_CHARS);
+    state.memory.updatedAt = Date.now();
+    persist();
+    renderMemory();
+    whisperCount('note saved — it travels with the next reflection');
+  };
+  byId('memForgetBtn').onclick = function(){
+    if (!confirm('Forget everything it has learned about you?\n\nYour pages stay exactly as they are — only the note goes.')) return;
+    state.memory = {};
+    persist();
+    renderMemory();
+    whisperCount('the note is blank again');
+  };
+  renderMemory();
+
+  /* ---- a reflection arriving on its own ---- */
+  /* On by default. This is the one place the journal reaches out without being
+     asked, so the guards carry the weight: it needs a key, a page with real
+     writing on it, and a day nothing has been said about yet. It waits for a
+     pause rather than firing per keystroke, or it would interrupt a sentence. */
+  var AUTO_KEY = 'journal.autoReflect';
+  var AUTO_IDLE_MS = 12000;
+  var AUTO_MIN_CHARS = 120;
+  var autoTimer = null;
+
+  function autoOn(){ return localStorage.getItem(AUTO_KEY) !== '0'; }
+  function renderAutoBtn(){ byId('autoReflectBtn').textContent = 'auto: ' + (autoOn() ? 'on' : 'off'); }
+  byId('autoReflectBtn').onclick = function(){
+    var on = !autoOn();
+    localStorage.setItem(AUTO_KEY, on ? '1' : '0');
+    renderAutoBtn();
+    whisperCount(on ? 'a reflection will come on its own once you have written a while'
+                    : 'reflections only when you ask for one');
+    if (on) armAuto(); else clearTimeout(autoTimer);
+  };
+  renderAutoBtn();
+
+  function autoEligible(){
+    var already = state.reflections && state.reflections[openDay] && state.reflections[openDay].length;
+    return autoOn() && !aiBusy && !!aiKey() && !already
+      && page.value.trim().length >= AUTO_MIN_CHARS;
+  }
+  function armAuto(){
+    clearTimeout(autoTimer);
+    if (!autoEligible()) return;
+    autoTimer = setTimeout(function(){ if (autoEligible()) askReflection(); }, AUTO_IDLE_MS);
+  }
+  page.addEventListener('input', armAuto);
 
   byId('aiBtn').onclick = function(){
     if (aiBusy) return;
@@ -902,6 +1018,9 @@
     byId('replyRow').hidden = !turns;
     byId('reflectionText').innerHTML = '';
     if (turns) renderTurns(turns);
+    /* Opening a day you already filled in should offer a reflection too, not
+       only a day you are typing into right now. */
+    if (typeof armAuto === 'function') armAuto();
   }
 
   /* the whole exchange for the open page: system, the page, then the
@@ -930,14 +1049,54 @@
   /* system + the page as it stands right now; the saved turns hang off this */
   function threadHead(){
     var text = page.value.trim();
-    var mem = aiMem() ? memoryText() : '';
+    var prof = memProfile();
+    var recent = recentPages();
     var sys = 'You are a quiet, kind companion reading a friend\'s private diary page. Reply in the language the page is mostly written in (English or Chinese). In 2 to 4 sentences: gently reflect back what you notice — feelings, patterns, what seems to matter — then offer one small, practical piece of advice or one question worth sitting with. Warm and specific, never preachy. Plain sentences only: no lists, no headings, no emoji.';
-    if (mem) sys += ' You are also given this person\'s earlier pages, oldest first, each under its date. Use them for continuity: notice what keeps coming back, what has shifted since, what they said they would do. Refer to a past day only when it genuinely illuminates today, and name it plainly ("three Thursdays running", "back in March"). Never recite the archive back at them.';
+    if (prof) sys += ' You are given a short standing note on who this person is and what keeps returning for them. Treat it as things you already know, not as material to quote — never read it back to them, and never open by summarising them to themselves.';
+    if (recent) sys += ' You are also given their last couple of weeks of pages, oldest first, each under its date. Use them for continuity: what keeps coming back, what has shifted, what they said they would do. Name a past day only when it genuinely illuminates today, and name it plainly ("three Thursdays running", "back in March").';
     sys += ' If they write back afterwards, keep talking with them in the same voice — brief, warm, plain. They are not looking for a therapist or a cheerleader, just someone thinking alongside them.';
-    var user = mem
-      ? 'EARLIER PAGES (oldest first)\n\n' + mem + '\n\n=== TODAY\'S PAGE — reflect on this one ===\n\n' + prettyDate(openDay) + '\n\n' + text
-      : prettyDate(openDay) + '\n\n' + text;
-    return [{ role: 'system', content: sys }, { role: 'user', content: user }];
+
+    var parts = [];
+    if (prof) parts.push('WHAT YOU ALREADY KNOW ABOUT THEM\n\n' + prof);
+    if (recent) parts.push('THEIR RECENT PAGES (oldest first)\n\n' + recent);
+    parts.push('=== TODAY\'S PAGE — reflect on this one ===\n\n' + prettyDate(openDay) + '\n\n' + text);
+    return [{ role: 'system', content: sys }, { role: 'user', content: parts.join('\n\n') }];
+  }
+
+  /* Rewritten after each exchange, from the standing note plus what just
+     happened — including what they said back, which is often franker than the
+     page itself. Its own call, on the cheapest rung with thinking off: it is
+     bookkeeping, not insight, and it must never delay the reply on screen. */
+  function updateMemory(){
+    var text = page.value.trim();
+    if (!aiKey() || text.length < 40) return;
+    var said = ((state.reflections && state.reflections[openDay]) || [])
+      .filter(function(m){ return m.role === 'user'; })
+      .map(function(m){ return m.content; }).join('\n');
+
+    var sys = 'You keep a short standing note about one person, for a companion who reads their diary. Rewrite the note so it takes in the new material. Keep what still holds, drop what has clearly passed, and fold repeats into one line that says how long it has been going. Write plain sentences in the second person ("You are…", "You keep…"), under 250 words, no headings, no bullets, no dates unless a date is the point. Record who they are, what they are working on, the people who recur, what they struggle with, and what they have said they want. Do not record anything they would be unsettled to find written down about themselves. Output only the note.';
+    var user = (memProfile() ? 'CURRENT NOTE\n\n' + memProfile() + '\n\n' : 'There is no note yet; write the first one.\n\n')
+      + 'NEW MATERIAL — their page for ' + prettyDate(openDay) + '\n\n' + text
+      + (said ? '\n\nWHAT THEY SAID BACK IN THE CONVERSATION\n\n' + said : '');
+
+    return fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiKey() },
+      body: JSON.stringify({
+        model: 'deepseek-v4-flash', thinking: { type: 'disabled' }, max_tokens: 900,
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: user }]
+      })
+    }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+      var out = j && j.choices && j.choices[0] && j.choices[0].message
+        && (j.choices[0].message.content || '').trim();
+      if (!out) return;
+      if (!state.memory) state.memory = {};
+      state.memory.profile = out.slice(0, MEM_PROFILE_CHARS);
+      state.memory.updatedAt = Date.now();
+      state.memory.through = openDay;
+      persist();
+      renderMemory();
+    }).catch(function(){ /* the note can wait for the next exchange */ });
   }
 
   /* Thinking used to be off here, and the note said why: it would spend the
@@ -1006,6 +1165,7 @@
       renderThread();
       byId('replyRow').hidden = false;
       saveReflection();
+      updateMemory();                  /* not awaited — the reply is already on screen */
     }).catch(function(e){
       clearTimeout(slow);
       renderThread('no reflection today — ' + (e && e.message ? e.message : 'network hiccup') + '.');
@@ -1014,15 +1174,24 @@
   }
 
   byId('replySend').onclick = function(){ sendReply(); };
+  /* Enter still sends, so the one-line habit survives; Shift-Enter (and the
+     phone's own return key, which never reports shiftKey) starts a new line. */
   byId('replyInput').addEventListener('keydown', function(e){
-    if (e.key === 'Enter'){ e.preventDefault(); sendReply(); }
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); sendReply(); }
   });
+  function growReply(){
+    var el = byId('replyInput');
+    el.style.height = 'auto';                 /* shrink first, or it only ever grows */
+    el.style.height = el.scrollHeight + 'px';
+  }
+  byId('replyInput').addEventListener('input', growReply);
   function sendReply(){
     if (aiBusy) return;
     var said = byId('replyInput').value.trim();
     if (!said) return;
     if (!aiKey()){ byId('aiKeyForm').classList.remove('hidden'); return; }
     byId('replyInput').value = '';
+    growReply();                              /* back to one line after sending */
     /* coming back to an old day: rebuild the conversation on top of a fresh
        head, so the reply is answered against the page as it reads today */
     if (!aiThread){
@@ -1045,7 +1214,7 @@
        minute of waiting, measured on the gomoku review, and a minute is too
        long to sit in front of a page you just wrote. It thinks, at the
        ordinary depth. */
-    aiSend(aiMem() ? 'reading your pages…' : 'reading your page…', 'high');
+    aiSend(recentPages() ? 'reading back through your pages…' : 'reading your page…', 'high');
   }
 
   /* ====================================================================
@@ -1165,6 +1334,17 @@
     Object.keys(inc.wx || {}).forEach(function(k){
       if (!state.wx[k]){ state.wx[k] = inc.wx[k]; changed = true; }
     });
+    /* Last writer wins, which is right for a note that is rewritten whole
+       rather than accumulated: merging two versions of the same prose would
+       produce something neither device wrote. Everything else here merges by
+       key, so the note is the one place a stale device can lose an edit —
+       acceptable, since the next exchange rewrites it from the pages anyway. */
+    if (inc.memory && inc.memory.profile){
+      var mine = state.memory || {};
+      if (!mine.updatedAt || (inc.memory.updatedAt || 0) > mine.updatedAt){
+        state.memory = inc.memory; changed = true;
+      }
+    }
     return changed;
   }
 
@@ -1190,7 +1370,12 @@
         if (document.activeElement !== page) openEntry(openDay); else renderArchive();
         renderHeld();
       }
-      return encryptState(syncCfg.pass, { entries: state.entries, held: state.held, wx: state.wx })
+      /* The memory travels, unlike the reflections. A reflection belongs to the
+         day it was written and is cheap to ask for again; the standing note is
+         built up over months and would have to be earned back page by page on a
+         new machine. It is inside the same AES-GCM blob as the entries, so the
+         repo still only ever sees ciphertext. */
+      return encryptState(syncCfg.pass, { entries: state.entries, held: state.held, wx: state.wx, memory: state.memory })
         .then(function(enc){
           var body = { message: 'journal sync', content: btoa(enc) };
           if (got.sha) body.sha = got.sha;

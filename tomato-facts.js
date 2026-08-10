@@ -16,6 +16,15 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: 'RESEARCH · PLANT PLUMBING',
+            title: 'Scientists measured the pressure behind phloem flow',
+            fact: 'In intact morning-glory vines, source phloem pressure averaged 1.08 MPa while pressure near the root sink averaged 0.59 MPa. Sap moved at about 0.44 metres per hour—the pressure difference was sufficient to drive it.',
+            detail: 'The experiment combined aphid-stylet pressure measurements, fluorescent tracers, and anatomical measurements. Longer vines also built more conductive sieve tubes, helping preserve transport over distance.',
+            note: 'This supports the pressure-driven xylem–phloem coupling in my model and the form J_suc = Q_p·C_p, but it does not give a tomato-fruit Q_p.',
+            source: 'Knoblauch et al. (2016)',
+            url: 'https://doi.org/10.7554/eLife.15341'
+        },
+        {
             tag: "AGRICULTURE",
             title: "Saffron costs more than silver for a reason",
             fact: "Saffron is the hand-picked stigmas of a crocus flower — three tiny threads per bloom. It takes on the order of 150,000 flowers, all harvested by hand at dawn, to make a single kilogram of the world’s most expensive spice.",

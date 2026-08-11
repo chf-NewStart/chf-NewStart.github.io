@@ -1520,12 +1520,17 @@ footer {
 /* Dedicated Monet gallery — quiet museum wall outside, concentrated color inside. */
 .monet-page-body {
     color: #403426;
+    font-family: var(--display);
     background:
         radial-gradient(circle at 16% 7%, rgba(255, 248, 224, 0.6), transparent 38rem),
         radial-gradient(circle at 88% 48%, rgba(132, 92, 47, 0.12), transparent 42rem),
         repeating-linear-gradient(97deg, rgba(255, 255, 255, 0.026) 0 1px, rgba(81, 53, 27, 0.018) 1px 2px, transparent 2px 6px),
         #d7bd91;
     background-attachment: fixed;
+}
+
+.monet-page-body :where(*) {
+    font-family: var(--display);
 }
 
 body.monet-page-body::before {
@@ -1635,6 +1640,35 @@ body.monet-page-body::before {
 
 .monet-page-feature .monet-philosophy footer {
     color: #80572c;
+}
+
+.monet-page-feature .monet-feature-rules {
+    display: flex;
+    align-self: stretch;
+    flex-direction: column;
+}
+
+.monet-signature {
+    display: block;
+    width: min(76%, 430px);
+    margin: auto auto clamp(24px, 3vw, 46px);
+    padding-top: clamp(72px, 9vw, 150px);
+    color: inherit;
+    transform: rotate(-3deg);
+}
+
+.monet-signature img {
+    display: block;
+    width: 100%;
+    height: auto;
+    opacity: 0.46;
+    mix-blend-mode: multiply;
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.monet-signature:hover img {
+    opacity: 0.64;
+    transform: translateY(-2px);
 }
 
 .monet-page-feature .monet-feature-request {
@@ -2561,6 +2595,16 @@ textarea {
     .monet-feature h1,
     .monet-feature h3 {
         max-width: 18ch;
+    }
+
+    .monet-page-feature .monet-feature-rules {
+        min-height: 0;
+    }
+
+    .monet-signature {
+        width: min(72%, 340px);
+        margin: 38px auto 6px;
+        padding-top: 0;
     }
 
     .monet-gallery {

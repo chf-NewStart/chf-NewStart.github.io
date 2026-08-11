@@ -480,9 +480,13 @@ h4 {
     z-index: 1;
     pointer-events: none;
     content: '';
+    /* The WebGL backdrop already caps highlights behind .hero-copy. Keep this
+       veil local to the copy and the floor instead of dimming the full image a
+       second time. The launcher side is intentionally left almost untouched so
+       the living tissue remains visible as the hero artwork. */
     background:
-        linear-gradient(90deg, rgba(3, 8, 6, 0.62) 0%, rgba(3, 8, 6, 0.34) 42%, rgba(3, 8, 6, 0.1) 72%, rgba(3, 8, 6, 0.3) 100%),
-        linear-gradient(0deg, rgba(7, 16, 14, 0.85) 1%, transparent 40%);
+        linear-gradient(90deg, rgba(3, 8, 6, 0.34) 0%, rgba(3, 8, 6, 0.16) 38%, transparent 64%),
+        linear-gradient(0deg, rgba(7, 16, 14, 0.48) 0%, transparent 25%);
 }
 
 .hero-section .container {

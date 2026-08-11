@@ -1650,16 +1650,25 @@ body.monet-page-body::before {
 
 .monet-signature {
     display: block;
-    width: min(78%, 440px);
-    margin: auto auto clamp(24px, 3vw, 46px);
-    padding-top: clamp(72px, 9vw, 150px);
+    width: min(64%, 340px);
+    margin: clamp(30px, 4vw, 52px) auto 0;
 }
 
 .monet-signature img {
     display: block;
     width: 100%;
     height: auto;
-    opacity: 0.78;
+    opacity: 0.88;
+}
+
+.monet-signature figcaption {
+    margin-top: 12px;
+    color: rgba(58, 44, 31, 0.68);
+    font-size: clamp(0.56rem, 0.72vw, 0.66rem);
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    line-height: 1.5;
+    text-align: center;
 }
 
 .monet-page-feature .monet-feature-request {
@@ -2593,9 +2602,8 @@ textarea {
     }
 
     .monet-signature {
-        width: min(82%, 360px);
-        margin: 38px auto 6px;
-        padding-top: 0;
+        width: min(72%, 290px);
+        margin: 32px auto 6px;
     }
 
     .monet-gallery {

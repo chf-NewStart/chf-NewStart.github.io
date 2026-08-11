@@ -522,6 +522,9 @@
 
     const LAST_INDEX_KEY = 'tomatoFunFactLastIndex';
     const LAST_AUTO_KEY = 'tomatoFactLastAuto';
+    // Paused while Monet Light & Strokes is the primary visitor journey.
+    // Keep the manual tomato-button experience available for curious visitors.
+    const AUTO_OPEN_ENABLED = false;
     const NEWEST_SEEN_KEY = 'tomatoFunFactNewestSeen';
     const SEEN_COUNTS_KEY = 'tomatoFunFactSeenCounts';
     const SEEN_COUNT_CAP = 9;
@@ -968,9 +971,9 @@
             });
         }
 
-        // A fact card greets the first visit of each day; the tomato
-        // button opens one any time.
-        if (localStorage.getItem(LAST_AUTO_KEY) !== localDateKey()) {
+        // Automatic daily greeting is intentionally paused. The tomato button
+        // above continues to open a fact on demand.
+        if (AUTO_OPEN_ENABLED && localStorage.getItem(LAST_AUTO_KEY) !== localDateKey()) {
             window.setTimeout(() => openDialog({ automatic: true }), 1200);
         }
     });

@@ -1650,25 +1650,17 @@ body.monet-page-body::before {
 
 .monet-signature {
     display: block;
-    width: min(76%, 430px);
+    width: min(78%, 440px);
     margin: auto auto clamp(24px, 3vw, 46px);
     padding-top: clamp(72px, 9vw, 150px);
-    color: inherit;
-    transform: rotate(-3deg);
 }
 
 .monet-signature img {
     display: block;
     width: 100%;
     height: auto;
-    opacity: 0.46;
+    opacity: 0.62;
     mix-blend-mode: multiply;
-    transition: opacity 220ms ease, transform 220ms ease;
-}
-
-.monet-signature:hover img {
-    opacity: 0.64;
-    transform: translateY(-2px);
 }
 
 .monet-page-feature .monet-feature-request {
@@ -2602,7 +2594,7 @@ textarea {
     }
 
     .monet-signature {
-        width: min(72%, 340px);
+        width: min(82%, 360px);
         margin: 38px auto 6px;
         padding-top: 0;
     }

@@ -634,6 +634,25 @@ footer {
     text-shadow: 0 0 10px rgba(118, 247, 165, 0.5);
 }
 
+.launcher-row-monet {
+    background: linear-gradient(90deg, rgba(231, 183, 104, 0.1), transparent 72%);
+}
+
+.launcher-row-monet code,
+.launcher-row-monet i {
+    color: #e7b768;
+}
+
+.launcher-row-monet:hover,
+.launcher-row-monet:focus-visible {
+    background: linear-gradient(90deg, rgba(231, 183, 104, 0.16), transparent 78%);
+}
+
+.launcher-row-monet:hover code,
+.launcher-row-monet:focus-visible code {
+    text-shadow: 0 0 10px rgba(231, 183, 104, 0.5);
+}
+
 .launcher-row:hover i,
 .launcher-row:focus-visible i {
     color: var(--accent);
@@ -1148,13 +1167,15 @@ footer {
     align-items: center;
 }
 
-.monet-repo-link {
+.monet-repo-link,
+.monet-request-link {
     border-color: var(--monet-gold);
     color: #15110a;
     background: var(--monet-gold);
 }
 
-.monet-repo-link:hover {
+.monet-repo-link:hover,
+.monet-request-link:hover {
     border-color: #f3cf8b;
     color: #15110a;
     background: #f3cf8b;

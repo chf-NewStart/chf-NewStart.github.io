@@ -85,6 +85,10 @@ html {
     background: var(--bg-deep);
 }
 
+html.monet-page-root {
+    background: #d7bd91;
+}
+
 /* No min-width floor: anything below it is a guaranteed horizontal scrollbar,
    and a folding phone's 280px cover screen is a real viewport. The layout is
    fluid down to there; keep it that way rather than re-adding a floor. */
@@ -1298,6 +1302,7 @@ footer {
     letter-spacing: 0.12em;
 }
 
+.monet-feature h1,
 .monet-feature h3 {
     max-width: 16ch;
     margin: 0;
@@ -1334,7 +1339,10 @@ footer {
 .monet-philosophy footer {
     max-width: 32ch;
     margin-top: clamp(20px, 3vw, 32px);
+    padding: 0;
+    border: 0;
     color: var(--monet-gold);
+    background: none;
     font-family: var(--mono);
     font-size: clamp(0.72rem, 1.1vw, 0.9rem);
     letter-spacing: 0.02em;
@@ -1507,6 +1515,97 @@ footer {
         transform: scale(1.025);
         transition: transform 550ms cubic-bezier(0.2, 0.72, 0.25, 1);
     }
+}
+
+/* Dedicated Monet gallery — quiet museum wall outside, concentrated color inside. */
+.monet-page-body {
+    color: #403426;
+    background:
+        radial-gradient(circle at 16% 7%, rgba(255, 248, 224, 0.6), transparent 38rem),
+        radial-gradient(circle at 88% 48%, rgba(132, 92, 47, 0.12), transparent 42rem),
+        repeating-linear-gradient(97deg, rgba(255, 255, 255, 0.026) 0 1px, rgba(81, 53, 27, 0.018) 1px 2px, transparent 2px 6px),
+        #d7bd91;
+    background-attachment: fixed;
+}
+
+body.monet-page-body::before {
+    background-image:
+        repeating-linear-gradient(6deg, transparent 0 3px, rgba(76, 51, 27, 0.018) 3px 4px),
+        repeating-linear-gradient(94deg, transparent 0 5px, rgba(255, 249, 230, 0.026) 5px 6px);
+    background-size: auto;
+    mask-image: none;
+}
+
+.monet-page-body .scroll-progress span {
+    background: linear-gradient(90deg, #8b5e2d, #d09b55);
+    box-shadow: 0 0 10px rgba(139, 94, 45, 0.28);
+}
+
+.monet-page-body .sticky-nav {
+    border-bottom-color: rgba(52, 38, 22, 0.12);
+    background: rgba(215, 189, 145, 0.84);
+}
+
+.monet-page-body .sticky-nav.is-scrolled {
+    border-color: rgba(52, 38, 22, 0.2);
+    background: rgba(215, 189, 145, 0.95);
+}
+
+.monet-page-body .logo,
+.monet-page-body .logo:hover,
+.monet-page-body .nav-links > a,
+.monet-page-body .nav-links > a:hover,
+.monet-page-body .nav-links > a.active-nav {
+    color: #2d251c;
+}
+
+.monet-page-body .logo-copy small {
+    color: rgba(45, 37, 28, 0.58);
+}
+
+.monet-logo-mark {
+    border-color: rgba(94, 63, 29, 0.3);
+    background: rgba(255, 248, 229, 0.3);
+}
+
+.monet-page-body .nav-links > a::after {
+    background: #8b5e2d;
+}
+
+.monet-page-body .language-toggle,
+.monet-page-body .hamburger {
+    border-color: rgba(52, 38, 22, 0.2);
+    color: #4e3d2c;
+    background: rgba(255, 248, 229, 0.22);
+}
+
+.monet-page-body .language-toggle:hover,
+.monet-page-body .hamburger:hover {
+    border-color: rgba(94, 63, 29, 0.5);
+    color: #2d251c;
+    background: rgba(255, 248, 229, 0.42);
+}
+
+.monet-page-main {
+    min-height: 100vh;
+    padding: calc(var(--nav-height) + clamp(30px, 5vw, 68px)) 0 clamp(56px, 8vw, 110px);
+}
+
+.monet-page-section {
+    padding: 0;
+}
+
+.monet-page-feature {
+    margin-bottom: 0;
+}
+
+.monet-page-footer {
+    border-color: rgba(58, 40, 23, 0.28);
+    background: rgba(48, 34, 21, 0.92);
+}
+
+.monet-page-footer p {
+    color: rgba(255, 244, 219, 0.62);
 }
 
 .project-archive {
@@ -2264,6 +2363,16 @@ textarea {
         flex-direction: column;
     }
 
+    .monet-page-body .nav-content .nav-links {
+        border-bottom-color: rgba(52, 38, 22, 0.18);
+        background: rgba(215, 189, 145, 0.98);
+        box-shadow: 0 24px 50px rgba(77, 54, 29, 0.2);
+    }
+
+    .monet-page-body .nav-content .nav-links > a {
+        border-bottom-color: rgba(52, 38, 22, 0.14);
+    }
+
     .nav-content .nav-links > a {
         width: 100%;
         padding: 15px 0;
@@ -2368,6 +2477,7 @@ textarea {
         gap: 24px;
     }
 
+    .monet-feature h1,
     .monet-feature h3 {
         max-width: 18ch;
     }
@@ -2556,8 +2666,23 @@ textarea {
         padding-top: 26px;
     }
 
+    .monet-feature h1,
     .monet-feature h3 {
         font-size: clamp(2rem, 10vw, 2.8rem);
+    }
+
+    .monet-page-main {
+        padding-top: calc(var(--nav-height) + 30px);
+    }
+
+    .monet-page-body .monet-feature {
+        margin-inline: 0;
+    }
+
+    .monet-page-footer p {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
     }
 
     .monet-feature-actions {

@@ -723,6 +723,19 @@ footer {
     text-shadow: 0 0 10px rgba(231, 183, 104, 0.5);
 }
 
+.launcher-row-arcade {
+    background: linear-gradient(90deg, rgba(118, 247, 165, 0.08), transparent 72%);
+}
+
+.launcher-row-arcade i {
+    color: var(--accent);
+}
+
+.launcher-row-arcade:hover,
+.launcher-row-arcade:focus-visible {
+    background: linear-gradient(90deg, rgba(118, 247, 165, 0.14), transparent 78%);
+}
+
 .launcher-row:hover i,
 .launcher-row:focus-visible i {
     color: var(--accent);

@@ -1597,6 +1597,87 @@ body.monet-page-body::before {
 
 .monet-page-feature {
     margin-bottom: 0;
+    padding: clamp(18px, 2vw, 28px) 0 0;
+    border: 0;
+    overflow: visible;
+    background: transparent;
+    box-shadow: none;
+}
+
+.monet-page-feature::before {
+    display: none;
+}
+
+.monet-page-feature .monet-feature-intro {
+    border-bottom-color: rgba(64, 45, 25, 0.22);
+}
+
+.monet-page-feature .monet-feature-kicker {
+    color: #80572c;
+}
+
+.monet-page-feature h1 {
+    color: #2b2117;
+}
+
+.monet-page-feature .monet-feature-lede {
+    color: rgba(53, 40, 27, 0.76);
+}
+
+.monet-page-feature .monet-philosophy {
+    border-top-color: rgba(64, 45, 25, 0.24);
+    border-bottom-color: rgba(64, 45, 25, 0.18);
+}
+
+.monet-page-feature .monet-philosophy p {
+    color: #2b2117;
+}
+
+.monet-page-feature .monet-philosophy footer {
+    color: #80572c;
+}
+
+.monet-page-feature .monet-feature-request {
+    border-top-color: rgba(64, 45, 25, 0.22);
+}
+
+.monet-page-feature .monet-request-link {
+    border-color: #4a3521;
+    color: #fff7e7;
+    background: #4a3521;
+}
+
+.monet-page-feature .monet-request-link:hover {
+    border-color: #2d2115;
+    color: #fff7e7;
+    background: #2d2115;
+}
+
+.monet-page-feature .monet-request-meta {
+    color: rgba(53, 40, 27, 0.6);
+}
+
+.monet-page-feature .text-link {
+    color: #5d4024;
+    text-decoration-color: rgba(93, 64, 36, 0.35);
+}
+
+.monet-page-feature .text-link:hover {
+    color: #2b2117;
+}
+
+.monet-page-feature .monet-feature-note {
+    color: rgba(53, 40, 27, 0.68);
+}
+
+.monet-page-feature .monet-feature-note > span:first-child {
+    background: #9a6730;
+    box-shadow: 0 0 12px rgba(154, 103, 48, 0.3);
+}
+
+.monet-page-feature .monet-shot figure {
+    border-color: rgba(64, 45, 25, 0.24);
+    box-shadow: 0 18px 44px rgba(70, 45, 20, 0.16);
 }
 
 .monet-page-footer {
@@ -2677,6 +2758,7 @@ textarea {
 
     .monet-page-body .monet-feature {
         margin-inline: 0;
+        padding: 14px 0 0;
     }
 
     .monet-page-footer p {

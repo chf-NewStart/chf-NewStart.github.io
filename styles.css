@@ -435,6 +435,73 @@ h4 {
     image-rendering: pixelated;
 }
 
+.monet-icon-button {
+    border-color: rgba(231, 183, 104, 0.48);
+    background: rgba(231, 183, 104, 0.08);
+}
+
+.pixel-palette {
+    display: block;
+    position: relative;
+    width: 18px;
+    height: 18px;
+}
+
+.pixel-palette::before,
+.pixel-palette::after {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    content: '';
+}
+
+.pixel-palette::before {
+    top: 0;
+    left: 6px;
+    background: #e7b768;
+    box-shadow:
+        3px 0 #e7b768,
+        6px 0 #e7b768,
+        -3px 3px #e7b768,
+        0 3px #e7b768,
+        3px 3px #e7b768,
+        6px 3px #e7b768,
+        9px 3px #e7b768,
+        -6px 6px #e7b768,
+        -3px 6px #e7b768,
+        0 6px #e7b768,
+        3px 6px #e7b768,
+        6px 6px #e7b768,
+        9px 6px #e7b768,
+        -6px 9px #e7b768,
+        -3px 9px #e7b768,
+        0 9px #e7b768,
+        6px 9px #e7b768,
+        9px 9px #e7b768,
+        -3px 12px #e7b768,
+        0 12px #e7b768,
+        3px 12px #e7b768,
+        6px 12px #e7b768,
+        0 15px #e7b768,
+        3px 15px #e7b768;
+}
+
+.pixel-palette::after {
+    top: 6px;
+    left: 3px;
+    background: #ff765f;
+    box-shadow:
+        6px -3px #76f7a5,
+        3px 6px #f5dd6c,
+        9px 6px #79a7ff;
+}
+
+.icon-button.monet-icon-button:hover,
+.icon-button.monet-icon-button:focus-visible {
+    border-color: #e7b768;
+    background: rgba(231, 183, 104, 0.14);
+}
+
 .icon-button[aria-pressed="true"] {
     border-color: var(--line-strong);
     background: rgba(255, 118, 95, 0.12);

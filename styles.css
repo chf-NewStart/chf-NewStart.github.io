@@ -1144,9 +1144,13 @@ footer {
     --monet-gold-soft: rgba(231, 183, 104, 0.13);
     display: grid;
     position: relative;
-    grid-template-columns: minmax(280px, 0.78fr) minmax(420px, 1.22fr);
-    gap: clamp(32px, 5vw, 72px);
-    align-items: center;
+    grid-template-columns: minmax(280px, 0.74fr) minmax(520px, 1.26fr);
+    grid-template-areas:
+        "intro intro"
+        "rules gallery"
+        "request request";
+    gap: clamp(30px, 4vw, 58px) clamp(32px, 5vw, 72px);
+    align-items: start;
     overflow: hidden;
     margin-bottom: 34px;
     padding: clamp(28px, 4vw, 56px);
@@ -1165,9 +1169,40 @@ footer {
     background: linear-gradient(180deg, transparent, var(--monet-gold) 25%, #be7653 72%, transparent);
 }
 
-.monet-feature-copy {
+.monet-feature-intro,
+.monet-feature-rules,
+.monet-feature-request {
     position: relative;
     z-index: 1;
+}
+
+.monet-feature-intro {
+    display: grid;
+    grid-area: intro;
+    grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+    gap: clamp(32px, 6vw, 92px);
+    align-items: end;
+    padding-bottom: clamp(24px, 3vw, 38px);
+    border-bottom: 1px solid rgba(231, 183, 104, 0.16);
+}
+
+.monet-feature-heading,
+.monet-feature-rules {
+    min-width: 0;
+}
+
+.monet-feature-rules {
+    grid-area: rules;
+}
+
+.monet-feature-request {
+    display: grid;
+    grid-area: request;
+    grid-template-columns: minmax(420px, 1.18fr) minmax(280px, 0.82fr);
+    gap: clamp(28px, 5vw, 72px);
+    align-items: start;
+    padding-top: clamp(24px, 3vw, 36px);
+    border-top: 1px solid rgba(231, 183, 104, 0.16);
 }
 
 .monet-feature-kicker {
@@ -1181,7 +1216,7 @@ footer {
 
 .monet-feature h3 {
     max-width: 16ch;
-    margin-bottom: 22px;
+    margin: 0;
     color: #fff8ea;
     font-size: clamp(2rem, 3.5vw, 3.8rem);
     font-weight: 600;
@@ -1190,7 +1225,7 @@ footer {
 
 .monet-feature-lede {
     max-width: 58ch;
-    margin-bottom: 24px;
+    margin: 0 0 4px;
     color: #c9c8bc;
     line-height: 1.75;
 }
@@ -1206,7 +1241,7 @@ footer {
 .monet-principles {
     display: grid;
     gap: 0;
-    margin: 0 0 28px;
+    margin: 0;
     padding: 0;
     border-top: 1px solid rgba(231, 183, 104, 0.2);
     list-style: none;
@@ -1286,7 +1321,7 @@ footer {
     display: flex;
     gap: 10px;
     align-items: flex-start;
-    margin: 22px 0 0;
+    margin: 2px 0 0;
     color: #9c9d92;
     font-family: var(--mono);
     font-size: 0.65rem;
@@ -1307,6 +1342,7 @@ footer {
     display: grid;
     position: relative;
     z-index: 1;
+    grid-area: gallery;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
 }
@@ -2255,6 +2291,17 @@ textarea {
 
     .monet-feature {
         grid-template-columns: 1fr;
+        grid-template-areas:
+            "intro"
+            "gallery"
+            "rules"
+            "request";
+    }
+
+    .monet-feature-intro,
+    .monet-feature-request {
+        grid-template-columns: 1fr;
+        gap: 24px;
     }
 
     .monet-feature h3 {
@@ -2262,7 +2309,7 @@ textarea {
     }
 
     .monet-gallery {
-        width: min(100%, 720px);
+        width: 100%;
     }
 
     .profile-text {
@@ -2430,8 +2477,19 @@ textarea {
     }
 
     .monet-feature {
+        row-gap: 34px;
         margin-inline: -2px;
         padding: 26px 20px 22px;
+    }
+
+    .monet-feature-intro {
+        gap: 20px;
+        padding-bottom: 26px;
+    }
+
+    .monet-feature-request {
+        gap: 24px;
+        padding-top: 26px;
     }
 
     .monet-feature h3 {

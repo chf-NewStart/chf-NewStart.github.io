@@ -1659,8 +1659,7 @@ body.monet-page-body::before {
     display: block;
     width: 100%;
     height: auto;
-    opacity: 0.62;
-    mix-blend-mode: multiply;
+    opacity: 0.78;
 }
 
 .monet-page-feature .monet-feature-request {

@@ -1195,6 +1195,14 @@ footer {
     line-height: 1.75;
 }
 
+.monet-rules-label {
+    margin: 0 0 9px;
+    color: rgba(231, 183, 104, 0.72);
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+}
+
 .monet-principles {
     display: grid;
     gap: 0;
@@ -1208,8 +1216,8 @@ footer {
     display: grid;
     grid-template-columns: 32px 1fr;
     gap: 12px;
-    align-items: baseline;
-    padding: 11px 0;
+    align-items: start;
+    padding: 12px 0;
     border-bottom: 1px solid rgba(231, 183, 104, 0.14);
 }
 
@@ -1220,9 +1228,18 @@ footer {
 }
 
 .monet-principles strong {
+    display: block;
     color: #ece5d3;
     font-size: 0.9rem;
     font-weight: 500;
+}
+
+.monet-principles small {
+    display: block;
+    margin-top: 4px;
+    color: #999b91;
+    font-size: 0.68rem;
+    line-height: 1.5;
 }
 
 .monet-feature-actions {
@@ -1230,6 +1247,20 @@ footer {
     flex-wrap: wrap;
     gap: 18px;
     align-items: center;
+}
+
+.monet-request-action {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.monet-request-meta {
+    color: rgba(255, 248, 234, 0.58);
+    font-family: var(--mono);
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
 }
 
 .monet-repo-link,

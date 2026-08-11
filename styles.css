@@ -1054,6 +1054,203 @@ footer {
     margin-top: 22px;
 }
 
+/* Monet Light & Strokes — a warm gallery inside the cooler systems portfolio. */
+.monet-feature {
+    --monet-gold: #e7b768;
+    --monet-gold-soft: rgba(231, 183, 104, 0.13);
+    display: grid;
+    position: relative;
+    grid-template-columns: minmax(280px, 0.78fr) minmax(420px, 1.22fr);
+    gap: clamp(32px, 5vw, 72px);
+    align-items: center;
+    overflow: hidden;
+    margin-bottom: 34px;
+    padding: clamp(28px, 4vw, 56px);
+    border: 1px solid rgba(231, 183, 104, 0.24);
+    background:
+        radial-gradient(circle at 86% 12%, rgba(231, 183, 104, 0.13), transparent 34%),
+        linear-gradient(135deg, rgba(22, 27, 23, 0.96), rgba(8, 14, 12, 0.96));
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.24);
+}
+
+.monet-feature::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    content: '';
+    background: linear-gradient(180deg, transparent, var(--monet-gold) 25%, #be7653 72%, transparent);
+}
+
+.monet-feature-copy {
+    position: relative;
+    z-index: 1;
+}
+
+.monet-feature-kicker {
+    margin-bottom: 16px;
+    color: var(--monet-gold);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+}
+
+.monet-feature h3 {
+    max-width: 16ch;
+    margin-bottom: 22px;
+    color: #fff8ea;
+    font-size: clamp(2rem, 3.5vw, 3.8rem);
+    font-weight: 600;
+    letter-spacing: -0.05em;
+}
+
+.monet-feature-lede {
+    max-width: 58ch;
+    margin-bottom: 24px;
+    color: #c9c8bc;
+    line-height: 1.75;
+}
+
+.monet-principles {
+    display: grid;
+    gap: 0;
+    margin: 0 0 28px;
+    padding: 0;
+    border-top: 1px solid rgba(231, 183, 104, 0.2);
+    list-style: none;
+}
+
+.monet-principles li {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 12px;
+    align-items: baseline;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(231, 183, 104, 0.14);
+}
+
+.monet-principles span {
+    color: #9f7950;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+}
+
+.monet-principles strong {
+    color: #ece5d3;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.monet-feature-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: center;
+}
+
+.monet-repo-link {
+    border-color: var(--monet-gold);
+    color: #15110a;
+    background: var(--monet-gold);
+}
+
+.monet-repo-link:hover {
+    border-color: #f3cf8b;
+    color: #15110a;
+    background: #f3cf8b;
+}
+
+.monet-feature .text-link {
+    color: #e9d4ad;
+    text-decoration-color: rgba(231, 183, 104, 0.4);
+}
+
+.monet-feature-note {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 22px 0 0;
+    color: #9c9d92;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    line-height: 1.6;
+}
+
+.monet-feature-note > span:first-child {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    margin-top: 0.42em;
+    border-radius: 50%;
+    background: var(--monet-gold);
+    box-shadow: 0 0 14px rgba(231, 183, 104, 0.55);
+}
+
+.monet-gallery {
+    display: grid;
+    position: relative;
+    z-index: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.monet-shot {
+    min-width: 0;
+    color: inherit;
+    text-decoration: none;
+}
+
+.monet-shot figure {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    margin: 0;
+    border: 1px solid rgba(255, 244, 218, 0.16);
+    background: #090c0b;
+}
+
+.monet-shot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: filter 350ms ease, transform 550ms cubic-bezier(0.2, 0.72, 0.25, 1);
+}
+
+.monet-shot figcaption {
+    display: flex;
+    position: absolute;
+    inset: auto 0 0;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 34px 14px 13px;
+    color: #fff8ea;
+    background: linear-gradient(transparent, rgba(5, 7, 6, 0.9));
+}
+
+.monet-shot figcaption span {
+    color: #d0ad70;
+    font-family: var(--mono);
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
+}
+
+.monet-shot figcaption strong {
+    max-width: 16ch;
+    color: #fff8ea;
+    font-size: 0.73rem;
+    font-weight: 500;
+    line-height: 1.35;
+    text-align: right;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .monet-shot:hover img {
+        filter: saturate(1.06) contrast(1.02);
+        transform: scale(1.035);
+    }
+}
+
 .project-archive {
     margin-top: 30px;
     padding-top: 28px;
@@ -1895,6 +2092,18 @@ textarea {
         max-width: 62ch;
     }
 
+    .monet-feature {
+        grid-template-columns: 1fr;
+    }
+
+    .monet-feature h3 {
+        max-width: 18ch;
+    }
+
+    .monet-gallery {
+        width: min(100%, 720px);
+    }
+
     .profile-text {
         gap: 24px;
     }
@@ -2057,6 +2266,36 @@ textarea {
 
     .section-title {
         font-size: clamp(2.45rem, 12vw, 3.5rem);
+    }
+
+    .monet-feature {
+        margin-inline: -2px;
+        padding: 26px 20px 22px;
+    }
+
+    .monet-feature h3 {
+        font-size: clamp(2rem, 10vw, 2.8rem);
+    }
+
+    .monet-feature-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .monet-gallery {
+        display: flex;
+        width: calc(100% + 20px);
+        gap: 10px;
+        padding: 0 20px 10px 0;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: thin;
+    }
+
+    .monet-shot {
+        flex: 0 0 min(82vw, 330px);
+        scroll-snap-align: start;
     }
 
     .explorer-menu {

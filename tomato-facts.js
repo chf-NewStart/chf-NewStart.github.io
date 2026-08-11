@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "KITCHEN SCIENCE",
+            title: "You’ve probably never eaten real wasabi",
+            fact: "Most “wasabi” served outside Japan — and plenty inside — is horseradish paste with mustard and green coloring. Real wasabi is a finicky semi-aquatic plant, and its freshly grated heat starts fading within about 15 minutes.",
+            detail: "That evaporating punch is why real wasabi is grated to order on sharkskin-textured graters at high-end sushi counters. The plant demands cool, running water and years of patience, making it one of the hardest crops to farm."
+        },
+        {
             tag: 'RESEARCH · PLANT PLUMBING',
             title: 'Scientists measured the pressure behind phloem flow',
             fact: 'In intact morning-glory vines, source phloem pressure averaged 1.08 MPa while pressure near the root sink averaged 0.59 MPa. Sap moved at about 0.44 metres per hour—the pressure difference was sufficient to drive it.',

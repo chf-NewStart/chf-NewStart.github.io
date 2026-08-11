@@ -1,3 +1,50 @@
+/* Self-hosted rather than fetched from Google. The old setup loaded the font CSS
+   with media="print", which drops it to Lowest priority, so the faces could not
+   even start downloading until that request landed — the swap routinely arrived
+   after first paint. Serving them from this origin removes two DNS/TLS
+   handshakes and lets the preload in the head start the primary face immediately.
+   Latin subset only, matching the ranges Google itself ships: every other glyph
+   on the page (the arrows, alpha/beta, all CJK) falls outside these ranges and
+   already resolved to a system face before this change. Both families are
+   SIL OFL 1.1, which permits redistribution. */
+@font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('fonts/dm-sans-var-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('fonts/ibm-plex-mono-400-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* 500 stays: .section-kicker and .case-study-grid strong both ask for it on
+   mono text, so dropping the weight would restyle every section label. */
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('fonts/ibm-plex-mono-500-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('fonts/ibm-plex-mono-600-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
     --bg: #07100e;
     --bg-deep: #030806;
@@ -15,8 +62,15 @@
     --accent-soft: rgba(118, 247, 165, 0.1);
     --tomato: #ff765f;
     --blue: #6ed6e8;
-    --display: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    /* The CJK faces trail the Latin ones and are never first: neither DM Sans
+       nor IBM Plex Mono carries Han glyphs, so only those codepoints fall
+       through. Without the list the generic lands on whatever the platform
+       picks for Chinese — usually SimSun on Windows, a serif that reads as a
+       different site. --mono gets the same faces even though none of them is
+       monospaced: Han is full-width in all of them so the column rhythm
+       survives, and the terminal texture comes from the Latin face anyway. */
+    --display: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC', sans-serif;
+    --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC', monospace;
     --shadow: 0 24px 80px rgba(0, 0, 0, 0.26);
     --nav-height: 76px;
 }
@@ -31,8 +85,10 @@ html {
     background: var(--bg-deep);
 }
 
+/* No min-width floor: anything below it is a guaranteed horizontal scrollbar,
+   and a folding phone's 280px cover screen is a real viewport. The layout is
+   fluid down to there; keep it that way rather than re-adding a floor. */
 body {
-    min-width: 320px;
     margin: 0;
     overflow-x: hidden;
     color: var(--ink-soft);
@@ -143,6 +199,16 @@ a:hover {
 :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 4px;
+}
+
+/* Ring drawn inward instead of outward. Both of these reach the padding edge
+   of a parent that has to keep overflow: hidden — .explorer-menu is a
+   horizontal scroller on phones, .hero-signal holds the scanline overlay — so
+   an outward ring is clipped away and a keyboard user is left with no visible
+   position at all. A negative offset keeps the clip and the indicator. */
+.explorer-btn:focus-visible,
+.launcher-row:focus-visible {
+    outline-offset: -3px;
 }
 
 h1,
@@ -999,7 +1065,6 @@ footer {
     font-family: var(--mono);
     font-size: 0.72rem;
     text-align: left;
-    cursor: not-allowed;
 }
 
 .locked-repo {
@@ -1828,14 +1893,17 @@ iframe {
     letter-spacing: 0.08em;
 }
 
+/* No nowrap + ellipsis here: the middle column shrinks below the address on a
+   narrow screen and an ellipsised email is content the visitor cannot get
+   back. Breaking anywhere also drops the min-content contribution to a single
+   glyph, so the row can never force the grid wider than the viewport — which
+   is what the clip was standing in for. */
 .contact-links a {
-    overflow: hidden;
     color: var(--ink-soft);
     font-size: 0.9rem;
     font-weight: 600;
     text-decoration: none;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
 .contact-links a:hover {
@@ -2425,8 +2493,13 @@ textarea {
         min-height: 96px;
     }
 
+    /* The .exe names are unbreakable tokens wider than a two-up track once the
+       panel gets narrow, and the tracks are minmax(0, 1fr) so they do not grow
+       to fit: without this the text spills across the panel border and, on a
+       280px screen, past the edge of the page. */
     .game-index {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        overflow-wrap: anywhere;
     }
 
     .snapshots {
@@ -2481,6 +2554,23 @@ textarea {
 
     .contact-links li > span {
         grid-column: 1 / -1;
+    }
+}
+
+/* ---- touch: these read fine under a cursor but land under 44px, and a
+        finger has no hover to correct an aim with. Height only — the padding
+        and the type are untouched, so the pointer layout is unchanged. ---- */
+@media (hover: none), (pointer: coarse) {
+    .arcade-cta a,
+    .gc-play,
+    .gc-soon-badge {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+    }
+
+    .copy-button {
+        min-height: 44px;
     }
 }
 

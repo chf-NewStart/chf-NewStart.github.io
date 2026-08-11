@@ -15,7 +15,7 @@ gate — check your change locally before you push.
 ## Layout
 
 - `index.html` — the portfolio page itself; `styles.css` and `site.js` belong to it.
-- `bio-bg.js` / `cell-bg.js` — the two backdrop engines (see below).
+- `bio-bg.js` — the animated backdrop (see below).
 - `journal.html`, `reading.html`, `moneymanage/`, `msg/`, `personality/`, `game/` —
   standalone tools and games, each self-contained.
 - `sprites/` — pixel art for the tomato rain (goose, raccoon, glider, block, blinker).
@@ -26,25 +26,15 @@ gate — check your change locally before you push.
 - `robots.txt` / `sitemap.xml` — indexing; resumes and the personality PDFs are
   excluded from crawling.
 
-## The two backdrop engines
+## The backdrop engine
 
-The animated background behind `index.html` has two implementations, and a visitor
-picks one with the microscope button in the nav:
+The animated background behind `index.html` is `bio-bg.js`, a WebGL2 single-pass
+fragment shader on `#bioBg`: procedural leaf tissue (Voronoi cells, chloroplast
+granules) advected by curl-noise flow. Scrolling stirs it — an energy envelope
+derived from scroll velocity speeds up the streaming and lifts the exposure.
 
-- **`bio-bg.js` ("flow")** — a WebGL2 single-pass fragment shader on `#bioBg`:
-  procedural leaf tissue (Voronoi cells, chloroplast granules) advected by
-  curl-noise flow. Scrolling stirs it: an energy envelope derived from scroll
-  velocity speeds up the streaming and lifts the exposure.
-- **`cell-bg.js` ("tissue")** — a Canvas2D dark-field micrograph on `#tissueBg`:
-  a precomputed Voronoi cell field with sprite-stamped chloroplasts creeping along
-  the cell walls, redrawn at a capped frame rate, with a cross-fade when the field
-  reseeds.
-
-They own **separate canvases** because one canvas element cannot hand out both a
-`webgl2` and a `2d` context. A manager in `site.js` chooses the engine, persists the
-choice in `localStorage` (`backdropMode`), and lazy-loads `cell-bg.js` only if it is
-ever selected. Both engines respect `prefers-reduced-motion` (they render one static
-frame) and pause when the tab is hidden.
+It respects `prefers-reduced-motion` (rendering one static frame) and pauses when
+the tab is hidden, so a backgrounded tab costs nothing.
 
 ## The bilingual system — read this before editing `index.html`
 
@@ -61,7 +51,7 @@ on the same element. The rules that keep it working:
 - A good check after editing: toggle EN → 中文 → EN and confirm
   `document.body.textContent` is unchanged.
 
-Labels that depend on state (the backdrop/rain buttons) are rebuilt in JS instead of
+Labels that depend on state (the tomato-rain button) are rebuilt in JS instead of
 using attribute pairs.
 
 ## The tomato rain
@@ -88,11 +78,11 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `msg/` — terminal-style message box; the one page that sends data out (Formspree,
   with a mailto fallback).
 - `personality/` — attachment-style quiz with scored results.
-- `game/` — the greenhouse digital-twin demo (two coupled genome-scale metabolic
-  models solved live in the browser via GLPK/WASM) and its SBML models. The
-  browser games (Conway's Life, gomoku, escape-grid, the RL hunter) now live at
-  lifegameproject.com; the pages left here are thin redirects to that arcade so
-  old links don't 404.
+- `game/` — thin redirect stubs. The browser games (Conway's Life, gomoku,
+  escape-grid, the RL hunter) now live at lifegameproject.com; the pages left here
+  point at that arcade so old links don't 404, and each carries a `canonical` to
+  its replacement there. The life/gomoku card art stays here because the arcade
+  section of `index.html` loads it — don't clear the folder out.
 
 ## Local development
 
@@ -103,5 +93,5 @@ python3 -m http.server
 ```
 
 then open `http://localhost:8000/`. Quick sanity checks before pushing:
-`node --check` on each of `site.js`, `bio-bg.js` and `cell-bg.js`, equal counts of
-`data-en="` and `data-zh="` in `index.html`, and the EN → 中文 → EN round-trip above.
+`node --check` on each of `site.js` and `bio-bg.js`, equal counts of `data-en="`
+and `data-zh="` in `index.html`, and the EN → 中文 → EN round-trip above.

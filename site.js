@@ -64,14 +64,76 @@
         // State-dependent label, rebuilt in JS rather than swapped from a static
         // data-en/data-zh pair like the rest of the page copy.
         if (typeof updateRainLabel === 'function') updateRainLabel();
+        // Same reason, different cause: an aria-label is an attribute, so the
+        // textContent swap above cannot reach it.
+        if (typeof updateExplorerLabels === 'function') updateExplorerLabels();
     }
 
     languageToggle?.addEventListener('click', () => {
         applyLanguage(currentLanguage === 'en' ? 'zh' : 'en');
     });
 
+    // --- Mobile menu ------------------------------------------------------
+    // Below 1120px the nav-links panel is a full-width fixed overlay, i.e. a
+    // dialog in all but name: Tab has to stay inside it, assistive tech must
+    // not see the page underneath, and the page must not scroll behind it.
+    // aria-hidden rather than inert for the backdrop, because inert also
+    // swallows the click that tap-outside-to-close depends on.
+    const MENU_FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const menuHidden = [];
+
+    function menuIsOpen() {
+        return navMenu?.classList.contains('nav-open') === true;
+    }
+
+    // The hamburger turns into the overlay's ✕, so it is part of the cycle even
+    // though it sits outside the panel in the DOM. getClientRects() is the
+    // check that survives display:none on a fixed-position element.
+    function menuFocusables() {
+        return [hamburger, ...navMenu.querySelectorAll(MENU_FOCUSABLE)]
+            .filter((element) => element?.getClientRects().length);
+    }
+
+    function setPageHidden(hidden) {
+        if (!hidden) {
+            menuHidden.forEach((element) => element.removeAttribute('aria-hidden'));
+            menuHidden.length = 0;
+            return;
+        }
+
+        [...body.children].forEach((element) => {
+            if (element.contains(hamburger)) return;
+            // Already-hidden nodes (the canvases, the progress bar) and the
+            // unrendered ones are left alone so the restore stays exact.
+            if (element.hasAttribute('aria-hidden') || !element.getClientRects().length) return;
+            element.setAttribute('aria-hidden', 'true');
+            menuHidden.push(element);
+        });
+    }
+
+    // Killing the scrollbar widens the viewport, which would slide the centred
+    // container and the fixed nav sideways. Handing both the reclaimed width
+    // back as padding keeps the frame still. On a touch device the gutter is
+    // zero and none of this applies.
+    function setScrollLock(locked) {
+        if (!locked) {
+            body.style.overflowY = '';
+            body.style.paddingRight = '';
+            if (nav) nav.style.paddingRight = '';
+            return;
+        }
+
+        const gutter = window.innerWidth - root.clientWidth;
+        if (gutter > 0) {
+            body.style.paddingRight = `${gutter}px`;
+            if (nav) nav.style.paddingRight = `${gutter}px`;
+        }
+        body.style.overflowY = 'hidden';
+    }
+
     function setMenu(open) {
         if (!hamburger || !navMenu) return;
+        const changed = open !== menuIsOpen();
         navMenu.classList.toggle('nav-open', open);
         hamburger.setAttribute('aria-expanded', String(open));
         hamburger.textContent = open ? '✕' : '☰';
@@ -81,6 +143,22 @@
                 ? (open ? '关闭菜单' : '打开菜单')
                 : (open ? 'Close menu' : 'Open menu')
         );
+        // setMenu(false) is fired from half a dozen places that do not know
+        // whether it was ever open; only a real transition may move focus.
+        if (!changed) return;
+
+        setPageHidden(open);
+        setScrollLock(open);
+
+        if (open) {
+            navMenu.querySelector(MENU_FOCUSABLE)?.focus({ preventScroll: true });
+        } else if (nav?.contains(document.activeElement) || document.activeElement === body) {
+            // Whichever route closed it, focus goes back to the control that
+            // opened it instead of being orphaned onto <body> by display:none.
+            // Above the breakpoint the hamburger is gone and there is nothing
+            // to return to.
+            if (hamburger.getClientRects().length) hamburger.focus({ preventScroll: true });
+        }
     }
 
     hamburger?.addEventListener('click', () => {
@@ -92,22 +170,63 @@
     });
 
     document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Tab' || !menuIsOpen()) return;
+        const items = menuFocusables();
+        if (!items.length) return;
+
+        const active = document.activeElement;
+        const inside = active === hamburger || navMenu.contains(active);
+        const edge = event.shiftKey ? items[0] : items[items.length - 1];
+        if (inside && active !== edge) return;
+
+        event.preventDefault();
+        (event.shiftKey ? items[items.length - 1] : items[0]).focus({ preventScroll: true });
+    });
+
+    // One press dismisses one thing. Both branches used to run, so dismissing
+    // the menu killed the rain along with it.
+    document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
-        setMenu(false);
+        if (menuIsOpen()) { setMenu(false); return; }
         if (rainOn) setRain(false);
     });
 
     document.addEventListener('click', (event) => {
-        if (!navMenu?.classList.contains('nav-open')) return;
+        if (!menuIsOpen()) return;
         if (!nav?.contains(event.target)) setMenu(false);
     });
 
+    // Crossing back above the breakpoint turns the overlay into a plain inline
+    // list, so the trap and the lock have to come off with it.
+    window.addEventListener('resize', () => {
+        if (menuIsOpen() && !hamburger?.getClientRects().length) setMenu(false);
+    }, { passive: true });
+    // ---------------------------------------------------------------------
+
+    // scrollHeight is a layout-forcing read, and doing it inside the scroll rAF
+    // flushed layout in the same frame the WebGL backdrop draws in. It moves out
+    // to the moments the page actually changes height instead.
+    let scrollRange = 0;
+
     function updateScrollUI() {
-        const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-        const progress = scrollable > 0 ? Math.min(window.scrollY / scrollable, 1) : 0;
+        const progress = scrollRange > 0 ? Math.min(window.scrollY / scrollRange, 1) : 0;
         if (scrollProgress) scrollProgress.style.width = `${progress * 100}%`;
         nav?.classList.toggle('is-scrolled', window.scrollY > 12);
     }
+
+    function refreshScrollRange() {
+        scrollRange = root.scrollHeight - window.innerHeight;
+        updateScrollUI();
+    }
+
+    // innerHeight is not part of any observed box, so resize needs its own
+    // listener. Everything that reflows the document comes through the observer:
+    // late images, the web fonts swapping in after load, the alumni disclosure
+    // expanding on hover — none of which fire an event we could hang this on.
+    // Guarded like bio-bg.js's: this runs at module scope, so a throw here
+    // would take the rain, the tabs and the backdrop start down with it.
+    window.addEventListener('resize', refreshScrollRange, { passive: true });
+    if (typeof ResizeObserver === 'function') new ResizeObserver(refreshScrollRange).observe(body);
 
     let scrollFrame = null;
     window.addEventListener('scroll', () => {
@@ -135,27 +254,52 @@
 
     document.querySelectorAll('main section[id]').forEach((section) => sectionObserver.observe(section));
 
-    function switchPanel(sectionId, panelId, button) {
-        const section = document.getElementById(sectionId);
+    // Scoped to the explorer, not to the enclosing section: a second explorer
+    // dropped into the same section would otherwise cross-wire the two.
+    function switchPanel(explorer, panelId, button) {
         const panel = document.getElementById(panelId);
-        if (!section || !panel || !button) return;
+        if (!explorer || !panel || !button) return;
 
-        section.querySelectorAll('.explorer-btn').forEach((item) => {
+        explorer.querySelectorAll('.explorer-btn').forEach((item) => {
             const selected = item === button;
             item.classList.toggle('active', selected);
             item.setAttribute('aria-selected', String(selected));
             item.tabIndex = selected ? 0 : -1;
         });
 
-        section.querySelectorAll('.explorer-content .highlight-card').forEach((card) => {
+        explorer.querySelectorAll('.explorer-content .highlight-card').forEach((card) => {
             const selected = card === panel;
             card.classList.toggle('active-card', selected);
             card.hidden = !selected;
         });
 
         if (window.matchMedia('(max-width: 640px)').matches) {
-            button.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            // A scripted behavior:'smooth' is not overridden by the reduced-
+            // motion scroll-behavior rule in the stylesheet; it has to be
+            // opted out of here.
+            button.scrollIntoView({
+                behavior: reducedMotionQuery.matches ? 'auto' : 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
         }
+    }
+
+    // The tablist's name is an aria-label, which the data-en/data-zh text swap
+    // cannot reach, so it is rebuilt in JS from the section the explorer sits
+    // in — informative, and translated, unlike the old "Content selector N".
+    const explorerTablists = [];
+
+    function updateExplorerLabels() {
+        explorerTablists.forEach(({ menu, heading, index }) => {
+            const name = heading ? (heading.dataset[currentLanguage] || heading.textContent.trim()) : '';
+            menu.setAttribute(
+                'aria-label',
+                currentLanguage === 'zh'
+                    ? (name ? `内容选择器：${name}` : `内容选择器 ${index + 1}`)
+                    : (name ? `Content selector: ${name}` : `Content selector ${index + 1}`)
+            );
+        });
     }
 
     document.querySelectorAll('.about-explorer').forEach((explorer, explorerIndex) => {
@@ -166,7 +310,11 @@
         if (!section || !menu || !buttons.length) return;
 
         menu.setAttribute('role', 'tablist');
-        menu.setAttribute('aria-label', `Content selector ${explorerIndex + 1}`);
+        explorerTablists.push({
+            menu,
+            heading: section.querySelector('.section-heading .section-title'),
+            index: explorerIndex
+        });
 
         buttons.forEach((button, index) => {
             const panelId = button.dataset.panel || panels[index]?.id;
@@ -189,7 +337,7 @@
                 panel.hidden = !active;
             }
 
-            button.addEventListener('click', () => switchPanel(section.id, panelId, button));
+            button.addEventListener('click', () => switchPanel(explorer, panelId, button));
 
             button.addEventListener('keydown', (event) => {
                 const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
@@ -207,6 +355,8 @@
             });
         });
     });
+
+    updateExplorerLabels();
 
     function showNotice(message) {
         document.querySelector('.terminal-alert')?.remove();
@@ -832,5 +982,5 @@
         document.fonts.ready.then(() => { if (rainOn) { ensureLayer(); } });
     }
     applyLanguage(currentLanguage);
-    updateScrollUI();
+    refreshScrollRange();
 })();

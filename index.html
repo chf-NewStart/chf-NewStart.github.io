@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Houfu Chen builds small, working worlds — living digital twins that make complex systems tangible, testable, and understandable.">
     <meta name="keywords" content="Digital Twins, Machine Learning, Systems Modeling, Computational Modeling, Houfu Chen, University of Waterloo">
@@ -27,10 +27,11 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/tomato-favicon-32x32.png?v=3">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png?v=3">
     <link rel="manifest" href="/site.webmanifest?v=3">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"></noscript>
+    <!-- crossorigin is required even same-origin: fonts always fetch in CORS mode,
+         and without it the preload is discarded and fetched a second time. Only the
+         display face is preloaded — the mono weights dress small chrome and can wait
+         for the stylesheet. -->
+    <link rel="preload" href="fonts/dm-sans-var-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="tomato-facts.css">
     <script src="deepseek-config.js" defer></script>
@@ -41,11 +42,23 @@
             "@type": "Person",
             "name": "Houfu Chen",
             "url": "https://houfu72.com/",
+            "image": "https://houfu72.com/og-v2.jpg",
+            "email": "h534chen@uwaterloo.ca",
             "jobTitle": "PhD Researcher and Engineer",
             "affiliation": {
                 "@type": "CollegeOrUniversity",
                 "name": "University of Waterloo"
             },
+            "alumniOf": [
+                {
+                    "@type": "CollegeOrUniversity",
+                    "name": "University of Toronto"
+                },
+                {
+                    "@type": "CollegeOrUniversity",
+                    "name": "University of Waterloo"
+                }
+            ],
             "knowsAbout": [
                 "Digital twins",
                 "Mechanistic modeling",
@@ -58,11 +71,11 @@
             ]
         }
     </script>
-    <title>Houfu Chen — Digital Twin Researcher &amp; Engineer</title>
+    <title data-en="Houfu Chen — Digital Twin Researcher &amp; Engineer" data-zh="陈厚孚 — 数字孪生研究员与工程师">Houfu Chen — Digital Twin Researcher &amp; Engineer</title>
 </head>
 <body class="has-bio-bg">
         <canvas class="bio-bg" id="bioBg" aria-hidden="true"></canvas>
-        <a class="skip-link" href="#main-content">Skip to main content</a>
+        <a class="skip-link" href="#main-content" data-en="Skip to main content" data-zh="跳到主要内容">Skip to main content</a>
         <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
         <!-- Sticky Navigation -->
         <nav class="sticky-nav" aria-label="Primary navigation">
@@ -70,7 +83,7 @@
                 <div class="nav-content">
                     <a class="logo" href="#hero-section" aria-label="Houfu Chen, home">
                         <span class="logo-mark">HC</span>
-                        <span class="logo-copy"><strong>Houfu Chen</strong><small>research / systems / play</small></span>
+                        <span class="logo-copy"><strong>Houfu Chen</strong><small data-en="research / systems / play" data-zh="研究 / 系统 / 玩">research / systems / play</small></span>
                     </a>
                     <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">☰</button>
                     <div class="nav-links" id="navLinks">
@@ -119,17 +132,17 @@
                                     <i aria-hidden="true">↓</i>
                                 </a>
                                 <a class="launcher-row" href="https://lifegameproject.com/" target="_blank" rel="noopener noreferrer">
-                                    <code>arcade.exe</code>
+                                    <code data-en="arcade.exe" data-zh="游戏厅.exe">arcade.exe</code>
                                     <span data-en="nine games, leaderboards, playable now" data-zh="九款游戏、排行榜，即刻可玩">nine games, leaderboards, playable now</span>
                                     <i aria-hidden="true">↗</i>
                                 </a>
                                 <a class="launcher-row" href="/journal.html">
-                                    <code>journal.exe</code>
+                                    <code data-en="journal.exe" data-zh="即时日记.exe">journal.exe</code>
                                     <span data-en="journal with encrypted sync to your own repo" data-zh="日记，加密同步到你自己的仓库">journal with encrypted sync to your own repo</span>
                                     <i aria-hidden="true">→</i>
                                 </a>
                                 <a class="launcher-row" href="/msg/">
-                                    <code>msgbox.exe</code>
+                                    <code data-en="msgbox.exe" data-zh="匿名留言箱.exe">msgbox.exe</code>
                                     <span data-en="leave me a note, no login" data-zh="给我留言，无需登录">leave me a note, no login</span>
                                     <i aria-hidden="true">→</i>
                                 </a>
@@ -138,7 +151,7 @@
                         </aside>
                     </div>
                 </div>
-                <a class="scroll-cue" href="#about-section" aria-label="Scroll to about section"><span></span><small>SCROLL</small></a>
+                <a class="scroll-cue" href="#about-section" aria-label="Scroll to about section"><span></span><small data-en="SCROLL" data-zh="向下滚动">SCROLL</small></a>
             </section>
 
 
@@ -146,7 +159,7 @@
             <section id="about-section" class="scroll-section about-section">
             <div class="container">
                             <div class="section-heading reveal-content">
-                                <div><p class="section-kicker">01 / PROFILE</p><h2 class="section-title" data-en="Engineer by training. Builder by instinct." data-zh="工程训练，建造本能。">Engineer by training. Builder by instinct.</h2></div>
+                                <div><p class="section-kicker" data-en="01 / PROFILE" data-zh="01 / 简介">01 / PROFILE</p><h2 class="section-title" data-en="Engineer by training. Builder by instinct." data-zh="工程训练，建造本能。">Engineer by training. Builder by instinct.</h2></div>
                                 <p class="section-summary" data-en="I work where models meet reality: noisy signals, heterogeneous environments, and systems that need to stay useful outside a notebook." data-zh="我的工作位于模型与现实的交界处：含噪信号、异构环境，以及需要走出笔记本仍然有用的系统。">I work where models meet reality: noisy signals, heterogeneous environments, and systems that need to stay useful outside a notebook.</p>
                             </div>
                             <div class="about-content">
@@ -181,7 +194,7 @@
 
                         <div class="about-explorer reveal-content">
                             <div class="explorer-menu">
-                                <div class="explorer-header">~/about_me $ ls</div>
+                                <div class="explorer-header" data-en="~/about_me $ ls" data-zh="~/关于我 $ ls">~/about_me $ ls</div>
                                 <button type="button" class="explorer-btn active" data-panel="card-edu">
                                     <span class="highlight-icon">[::]</span> <span data-en="Education.log" data-zh="教育背景.log">Education.log</span>
                                 </button>
@@ -209,12 +222,12 @@
                                     <ul class="highlight-list">
                                         <li>
                                             <span class="highlight-item-title" data-en="MEng in Electrical and Computer Engineering" data-zh="电气与计算机工程硕士">MEng in Electrical and Computer Engineering</span>
-                                            <span class="university-name">University of Toronto</span>
+                                            <span class="university-name" data-en="University of Toronto" data-zh="多伦多大学">University of Toronto</span>
                                             <em class="date-range" data-en="(Graduated March 2025)" data-zh="(2025年3月毕业)">(Graduated March 2025)</em>
                                         </li>
                                         <li>
                                             <span class="highlight-item-title" data-en="BASc in Nanotechnology Engineering" data-zh="纳米技术工程学士">BASc in Nanotechnology Engineering</span>
-                                            <span class="university-name">University of Waterloo</span>
+                                            <span class="university-name" data-en="University of Waterloo" data-zh="滑铁卢大学">University of Waterloo</span>
                                             <em class="date-range" data-en="(Graduated June 2023, Honours)" data-zh="(2023年6月毕业，荣誉学位)">(Graduated June 2023, Honours)</em>
                                             <em class="date-range" data-en="President’s Scholarship of Distinction · President’s Research Award" data-zh="校长杰出奖学金 · 校长研究奖">President’s Scholarship of Distinction · President’s Research Award</em>
                                         </li>
@@ -270,11 +283,11 @@
                                     <ul class="highlight-list">
                                         <li>
                                             <span class="highlight-item-title" data-en="Teaching Assistant" data-zh="助教">Teaching Assistant</span>
-                                            <span class="course-link" data-en="Machine Learning &amp; Python" data-zh="机器学习与Python">Machine Learning &amp; Python</span> <span data-en="at" data-zh="在">at</span> <span class="university-name">University of Toronto</span>
+                                            <span class="course-link" data-en="Machine Learning &amp; Python" data-zh="机器学习与Python">Machine Learning &amp; Python</span> <span data-en="at" data-zh="在">at</span> <span class="university-name" data-en="University of Toronto" data-zh="多伦多大学">University of Toronto</span>
                                         </li>
                                         <li>
                                             <span class="highlight-item-title" data-en="Research Assistant" data-zh="研究助理">Research Assistant</span>
-                                            <span class="research-link" data-en="Polymer Semiconductors &amp; Organic Thin-Film Electronics" data-zh="高分子半导体与有机薄膜电子">Polymer Semiconductors &amp; Organic Thin-Film Electronics</span> <span data-en="at" data-zh="在">at</span> <span class="university-name">University of Waterloo</span>
+                                            <span class="research-link" data-en="Polymer Semiconductors &amp; Organic Thin-Film Electronics" data-zh="高分子半导体与有机薄膜电子">Polymer Semiconductors &amp; Organic Thin-Film Electronics</span> <span data-en="at" data-zh="在">at</span> <span class="university-name" data-en="University of Waterloo" data-zh="滑铁卢大学">University of Waterloo</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -321,9 +334,7 @@
                                     </ul>
 
                                     <div class="locked-repo">
-                                        <button class="locked-repo-btn" type="button" disabled>
-                                            <span data-en="[🔒 Private research repository · active work]" data-zh="[🔒 私有研究仓库 · 持续开发中]">[🔒 Private research repository · active work]</span>
-                                        </button>
+                                        <div class="locked-repo-btn" data-en="[🔒 Private research repository · active work]" data-zh="[🔒 私有研究仓库 · 持续开发中]">[🔒 Private research repository · active work]</div>
                                     </div>
                                 </div>
                                 <div id="card-skills" class="highlight-card">
@@ -364,13 +375,13 @@
         <section id="experience-section" class="scroll-section experience-section">
             <div class="container">
                 <div class="section-heading reveal-content">
-                    <div><p class="section-kicker">02 / EXPERIENCE</p><h2 class="section-title" data-en="Research is the thread. Range is the toolkit." data-zh="研究是主线，跨界是工具。">Research is the thread. Range is the toolkit.</h2></div>
+                    <div><p class="section-kicker" data-en="02 / EXPERIENCE" data-zh="02 / 经历">02 / EXPERIENCE</p><h2 class="section-title" data-en="Research is the thread. Range is the toolkit." data-zh="研究是主线，跨界是工具。">Research is the thread. Range is the toolkit.</h2></div>
                     <p class="section-summary" data-en="My current PhD work leads the story; teaching, product engineering, and consulting give me the range to carry ideas into real systems." data-zh="博士研究是我的当前主线；教学、产品工程与咨询经验，则让我能把想法带入真实系统。">My current PhD work leads the story; teaching, product engineering, and consulting give me the range to carry ideas into real systems.</p>
                 </div>
 
                 <div class="about-explorer reveal-content">
                     <div class="explorer-menu">
-                        <div class="explorer-header">~/experience $ ls -l</div>
+                        <div class="explorer-header" data-en="~/experience $ ls -l" data-zh="~/经历 $ ls -l">~/experience $ ls -l</div>
 
                         <button type="button" class="explorer-btn active" data-panel="exp-research">
                             <span class="highlight-icon">[::]</span> <span data-en="Research" data-zh="研究">Research</span>
@@ -502,7 +513,7 @@
         <section id="projects-section" class="scroll-section projects-section">
             <div class="container">
                 <div class="section-heading reveal-content">
-                    <div><p class="section-kicker">03 / SELECTED WORK</p><h2 class="section-title" data-en="Proof lives in the prototype." data-zh="原型就是最好的证明。">Proof lives in the prototype.</h2></div>
+                    <div><p class="section-kicker" data-en="03 / SELECTED WORK" data-zh="03 / 精选项目">03 / SELECTED WORK</p><h2 class="section-title" data-en="Proof lives in the prototype." data-zh="原型就是最好的证明。">Proof lives in the prototype.</h2></div>
                     <p class="section-summary" data-en="Research systems and visual experiments share the same instinct: build a working method, test it against reality, and keep the evidence visible." data-zh="研究系统与视觉实验共享同一种本能：构建可运行的方法，以现实检验它，并让证据始终可见。">Research systems and visual experiments share the same instinct: build a working method, test it against reality, and keep the evidence visible.</p>
                 </div>
 
@@ -578,7 +589,7 @@
 
                 <div class="about-explorer reveal-content">
                     <div class="explorer-menu">
-                        <div class="explorer-header">~/selected-systems $ inspect</div>
+                        <div class="explorer-header" data-en="~/selected-systems $ inspect" data-zh="~/精选项目 $ inspect">~/selected-systems $ inspect</div>
                         <button type="button" class="explorer-btn active" data-panel="proj-twin">
                             <span class="highlight-icon">[::]</span> <span data-en="Greenhouse_Twin" data-zh="温室数字孪生">Greenhouse_Twin</span>
                         </button>
@@ -617,7 +628,7 @@
                             </ul>
                             <div class="case-study-links">
                                 <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/git_Density_based%5BD%5D_large_scale_Dij%5BD%5D_Ant%5BD%5D_LLM%5BD%5D_ROUTE.ipynb" target="_blank" rel="noopener noreferrer" class="highlight-link">GitHub ↗</a>
-                                <a href="https://medium.com/@houfuchen0702/building-smart-evacuation-maps-integrating-dijkstra-aco-inspired-routing-and-llm-decision-making-8885dfbec49e" target="_blank" rel="noopener noreferrer">Build note ↗</a>
+                                <a href="https://medium.com/@houfuchen0702/building-smart-evacuation-maps-integrating-dijkstra-aco-inspired-routing-and-llm-decision-making-8885dfbec49e" target="_blank" rel="noopener noreferrer" data-en="Build note ↗" data-zh="构建笔记 ↗">Build note ↗</a>
                             </div>
                         </div>
 
@@ -641,7 +652,7 @@
 
                 <div class="project-archive reveal-content">
                     <div class="archive-heading">
-                        <p class="section-console">~/experiments $ ls --compact</p>
+                        <p class="section-console" data-en="~/experiments $ ls --compact" data-zh="~/实验存档 $ ls --compact">~/experiments $ ls --compact</p>
                         <p data-en="Older experiments stay available without competing with the research story." data-zh="旧实验继续保留，但不再与研究主线争夺注意力。">Older experiments stay available without competing with the research story.</p>
                     </div>
                     <div class="archive-grid">
@@ -657,18 +668,18 @@
         <section id="games-section" class="scroll-section projects-section">
             <div class="container">
                 <div class="section-heading reveal-content">
-                    <div><p class="section-kicker">04 / LIVE LAB</p><h2 class="section-title" data-en="Useful tools, built in public." data-zh="公开构建，真正有用。">Useful tools, built in public.</h2></div>
+                    <div><p class="section-kicker" data-en="04 / LIVE LAB" data-zh="04 / 在线实验室">04 / LIVE LAB</p><h2 class="section-title" data-en="Useful tools, built in public." data-zh="公开构建，真正有用。">Useful tools, built in public.</h2></div>
                     <p class="section-summary" data-en="A growing shelf of focused browser tools: read, reflect, track, play, and leave a signal." data-zh="一组持续生长的浏览器工具：阅读、记录、追踪、游戏，也可以留下讯息。">A growing shelf of focused browser tools: read, reflect, track, play, and leave a signal.</p>
                 </div>
 
                 <div class="reveal-content">
-                    <div class="section-console">~/live-lab $ ls --available</div>
+                    <div class="section-console" data-en="~/live-lab $ ls --available" data-zh="~/在线实验室 $ ls --available">~/live-lab $ ls --available</div>
                     <p class="lab-swipe-hint" data-en="SWIPE TO BROWSE →" data-zh="滑动浏览 →">SWIPE TO BROWSE →</p>
 
                     <section class="arcade-grid" tabindex="0" aria-label="Live tools; swipe or scroll to browse">
                         <div class="gc-card gc-featured gc-life-card">
                             <div class="gc-visual gc-life-visual">
-                                <img src="game/life-card.png" alt="A neon cellular butterfly from Conway’s Game of Life" width="710" height="490" loading="lazy" decoding="async">
+                                <img src="game/life-card.webp" alt="A neon cellular butterfly from Conway’s Game of Life" width="2130" height="1470" loading="lazy" decoding="async">
                                 <span class="gc-visual-badge" data-en="FLAGSHIP · LIVE" data-zh="旗舰 · 在线">FLAGSHIP · LIVE</span>
                             </div>
                             <div class="gc-icon">[##]</div>
@@ -688,7 +699,7 @@
 
                         <div class="gc-card gc-gomoku-card">
                             <div class="gc-visual gc-gomoku-visual">
-                                <img src="game/gomoku-card.png" alt="An old fisherman shouting 好棋 — good move — as a golden fish rises on his line" width="1896" height="482" loading="lazy" decoding="async">
+                                <img src="game/gomoku-card.webp" alt="An old fisherman with a golden fish rising on his line, beside the game’s verdict — 妙手, a brilliancy" width="1896" height="482" loading="lazy" decoding="async">
                                 <span class="gc-visual-badge" data-en="NEW · LIVE" data-zh="新 · 在线">NEW · LIVE</span>
                             </div>
                             <div class="gc-icon">[⬡]</div>
@@ -788,13 +799,13 @@
         <section id="personal-section" class="scroll-section projects-section">
             <div class="container">
                 <div class="section-heading reveal-content">
-                    <div><p class="section-kicker">05 / NOTES &amp; LIFE</p><h2 class="section-title" data-en="There’s more than one mode." data-zh="不止一种运行模式。">There’s more than one mode.</h2></div>
+                    <div><p class="section-kicker" data-en="05 / NOTES &amp; LIFE" data-zh="05 / 笔记与生活">05 / NOTES &amp; LIFE</p><h2 class="section-title" data-en="There’s more than one mode." data-zh="不止一种运行模式。">There’s more than one mode.</h2></div>
                     <p class="section-summary" data-en="Notes from the PhD journey, private-by-design experiments, and ideas I’m still turning over." data-zh="博士旅程笔记、注重隐私的个人实验，以及仍在不断推敲的想法。">Notes from the PhD journey, private-by-design experiments, and ideas I’m still turning over.</p>
                 </div>
 
                 <div class="about-explorer reveal-content">
                     <div class="explorer-menu">
-                        <div class="explorer-header">~/personal_logs $ ls -a</div>
+                        <div class="explorer-header" data-en="~/personal_logs $ ls -a" data-zh="~/个人日志 $ ls -a">~/personal_logs $ ls -a</div>
 
                         <button type="button" class="explorer-btn active" data-panel="pers-phd">
                             <span class="highlight-icon">[::]</span> <span data-en="PhD" data-zh="博士">PhD</span>
@@ -853,7 +864,7 @@
 
                         <div id="pers-game" class="highlight-card">
                             <div class="vertical-accent"></div>
-                            <p class="panel-command">~/life $ ./game_life --launch</p>
+                            <p class="panel-command" data-en="~/life $ ./game_life --launch" data-zh="~/人生 $ ./game_life --launch">~/life $ ./game_life --launch</p>
                             <div class="panel-title-row">
                                 <h3 data-en="Game Life" data-zh="游戏人生">Game Life</h3>
                                 <span class="status-badge" data-en="9 games · 3 co-op" data-zh="9 款游戏 · 3 款双人">9 games · 3 co-op</span>
@@ -890,17 +901,17 @@
                     <div class="container">
                         <div class="contact-shell reveal-content">
                             <div class="contact-copy">
-                                <p class="section-kicker">06 / CONTACT</p>
+                                <p class="section-kicker" data-en="06 / CONTACT" data-zh="06 / 联系">06 / CONTACT</p>
                                 <h2 class="section-title" data-en="Let’s make something useful." data-zh="一起做点真正有用的事。">Let’s make something useful.</h2>
                                 <p data-en="I’m open to research collaborations, technical conversations, and ambitious systems problems — especially where modeling, sensing, and machine learning overlap." data-zh="我欢迎研究合作、技术交流与有挑战性的系统问题——尤其是建模、传感和机器学习的交汇处。">I’m open to research collaborations, technical conversations, and ambitious systems problems — especially where modeling, sensing, and machine learning overlap.</p>
                                 <a class="cta-button" href="mailto:h534chen@uwaterloo.ca" data-en="Email Houfu" data-zh="给厚孚发邮件">Email Houfu</a>
                             </div>
                             <ul class="contact-links" aria-label="Contact links">
-                                <li><span>EMAIL</span><a href="mailto:h534chen@uwaterloo.ca">h534chen@uwaterloo.ca</a><button class="copy-button" id="copyEmail" type="button" data-copy="h534chen@uwaterloo.ca" data-en="Copy" data-zh="复制">Copy</button></li>
+                                <li><span data-en="EMAIL" data-zh="邮箱">EMAIL</span><a href="mailto:h534chen@uwaterloo.ca">h534chen@uwaterloo.ca</a><button class="copy-button" id="copyEmail" type="button" data-copy="h534chen@uwaterloo.ca" data-en="Copy" data-zh="复制">Copy</button></li>
                                 <li><span>GITHUB</span><a href="https://github.com/chf-NewStart" target="_blank" rel="noopener noreferrer">chf-NewStart ↗</a></li>
-                                <li><span>LINKEDIN</span><a href="https://linkedin.com/in/houfuchen" target="_blank" rel="noopener noreferrer">houfuchen ↗</a></li>
-                                <li><span>RESUME</span><a href="resumes/Houfu_Chen_Resume_2026.pdf" download="Houfu-Chen-CV-2026.pdf" data-en="Download CV ↓" data-zh="下载简历 ↓">Download CV ↓</a></li>
-                                <li><span>MSGBOX</span><a href="/msg/" data-en="Leave a note ↗" data-zh="给我留言 ↗">Leave a note ↗</a></li>
+                                <li><span data-en="LINKEDIN" data-zh="领英">LINKEDIN</span><a href="https://linkedin.com/in/houfuchen" target="_blank" rel="noopener noreferrer">houfuchen ↗</a></li>
+                                <li><span data-en="RESUME" data-zh="简历">RESUME</span><a href="resumes/Houfu_Chen_Resume_2026.pdf" download="Houfu-Chen-CV-2026.pdf" data-en="Download CV ↓" data-zh="下载简历 ↓">Download CV ↓</a></li>
+                                <li><span data-en="MSGBOX" data-zh="留言箱">MSGBOX</span><a href="/msg/" data-en="Leave a note ↗" data-zh="给我留言 ↗">Leave a note ↗</a></li>
                             </ul>
                         </div>
                     </div>
@@ -909,8 +920,8 @@
     </main>
     <footer>
         <p>
-            <span>HC / SYSTEMS &amp; RESEARCH</span>
-            <span class="footer-affiliation"><strong>UNIVERSITY OF WATERLOO</strong><span>Houfu Chen · PhD Researcher · Chemical Engineering · E6-3018</span></span>
+            <span data-en="HC / SYSTEMS &amp; RESEARCH" data-zh="HC / 系统与研究">HC / SYSTEMS &amp; RESEARCH</span>
+            <span class="footer-affiliation"><strong data-en="UNIVERSITY OF WATERLOO" data-zh="滑铁卢大学">UNIVERSITY OF WATERLOO</strong><span data-en="Houfu Chen · PhD Researcher · Chemical Engineering · E6-3018" data-zh="陈厚孚 · 博士研究员 · 化学工程系 · E6-3018">Houfu Chen · PhD Researcher · Chemical Engineering · E6-3018</span></span>
             <span>&copy; <span id="currentYear">2026</span> Houfu Chen</span>
             <span data-en="Built with curiosity in Waterloo" data-zh="在滑铁卢，以好奇心构建">Built with curiosity in Waterloo</span>
             <span data-en="Backdrop: live leaf tissue" data-zh="背景：实时叶片组织">Backdrop: live leaf tissue</span>

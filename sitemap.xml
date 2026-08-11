@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Only indexable pages belong here. journal.html, reading.html, msg/ and
+     moneymanage/ all carry a robots noindex meta, and the game/ stubs set their
+     canonical to lifegameproject.com — listing any of them would contradict the
+     page's own tag. /trainer/ was deliberately unlinked from the homepage. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://houfu72.com/</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>

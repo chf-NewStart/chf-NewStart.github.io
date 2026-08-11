@@ -15,9 +15,13 @@
 
     const CANVAS_ID = 'bioBg';
 
-    // --- hero legibility ------------------------------------------------
-    // Body text in the hero sits directly on this backdrop, so a rounded,
-    // softly feathered rectangle around it is dimmed by a measured gain.
+    // --- text legibility -------------------------------------------------
+    // The canvas is position:fixed behind the WHOLE page (styles.css pins it at
+    // inset 0 / z-index -2 and body.has-bio-bg drops the opaque page
+    // background), so every word on the page sits on live tissue, not just the
+    // hero. Two regions cover all of it: the hero copy, an island in an
+    // otherwise empty first screen, and the single 1180px column that every
+    // section, explorer panel and the footer share below the fold.
     const SAFE_SELECTOR = '.hero-copy';
     const SAFE_PAD = 24;                  // CSS px grown around the element
     const SAFE_FALLBACK = [0, 0, 640, 420];
@@ -36,9 +40,36 @@
         { seconds: 23.5, flow: 1.31 },
     ];
 
+    // Below the fold the page is one content column and it is dense: the
+    // section headings sit straight on the shader, and the explorer panels are
+    // only 72% opaque over it. The union of every text rect down there IS that
+    // column, so it ships as ONE open-ended band (left, right, top in DOCUMENT
+    // px) instead of an array of rects the fragment shader would have to loop
+    // over — see columnMask() for why that matters.
+    const BAND_SELECTOR = '#main-content > section:not(#hero-section) > .container, footer p';
+    const BAND_DISABLED = [0, 0, 0];      // right <= left switches it off
+    // A reduced-motion visitor gets one frame that is never redrawn, so a band
+    // anchored to the document would end up painted in the wrong place the
+    // moment they scroll. That frame protects the whole field instead.
+    const BAND_EVERYWHERE = [-1e6, 1e6, -1e6];
+
     const MIN_FRAME_MS = 15;              // ~60Hz cap; motion is dt-based
+    // Coarse pointers are phones and tablets: on battery, and one flow cycle
+    // takes ~3.3s, so 30Hz is indistinguishable from 60Hz here. 32ms lands on
+    // every second frame of a 60Hz panel and every fourth of a 120Hz one.
+    const COARSE_FRAME_MS = 32;
+    // Idle wind-down. The fragment shader spends 150-200 noise evaluations per
+    // pixel per frame and the canvas is fixed, so it is never scrolled out of
+    // view: left alone the loop draws for the entire session. After this long
+    // with no input it stops and the last developed frame simply stays on
+    // screen. 20s is longer than any gap inside real use — scrolling a section,
+    // reading a card, switching an explorer tab all land well inside it — so an
+    // engaged visitor never sees it stop, while a parked tab stops paying.
+    const IDLE_MS = 20000;
+    const INPUT_EVENTS = ['scroll', 'wheel', 'pointerdown', 'pointermove', 'keydown', 'touchstart', 'focus'];
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const coarsePointer = window.matchMedia('(pointer: coarse)');
 
     const VERT = `#version 300 es
     in vec2 p;
@@ -53,8 +84,9 @@
     uniform float uEnergy; // 0..1 stir intensity from recent scrolling
     uniform float uScroll; // page scroll offset in CSS px (parallax)
     uniform float uDir;    // smoothed scroll direction, -1..1
-    uniform vec4 uSafe;    // hero text rect: x, y, w, h in CSS px, y from TOP
-    uniform float uSafeGain; // brightness multiplier inside that rect
+    uniform vec4 uSafe;    // hero text rect: x, y, w, h in PAGE px, y from TOP
+    uniform vec3 uBand;    // below-fold text column: left, right, top in PAGE px
+    uniform float uSafeGain; // brightness multiplier inside those regions
     uniform float uDpr;    // device px per CSS px
     // Height in device px the field normalises against. Deliberately NOT
     // uRes.y: the backing store follows every change of the canvas box so the
@@ -64,6 +96,21 @@
     out vec4 o;
 
     const float SAFE_FEATHER = 80.0;      // CSS px of smooth falloff
+    const float BAND_FEATHER_X = 120.0;   // the column's sides
+    // The column's top edge runs the full width of the screen, so it needs a
+    // much longer ramp than the sides before it stops reading as an edge. It
+    // lands in the ~200px of empty section padding between the hero and the
+    // first heading, where there is nothing for it to cut across.
+    const float BAND_FEATHER_Y = 200.0;
+
+    // Highlight ceiling under text, as squared-channel (near enough linear)
+    // luminance. Solved, not eyeballed: the muted body token #8ca198 has
+    // relative luminance 0.325, so WCAG 4.5:1 needs the backdrop beneath it at
+    // or below (0.325 + 0.05) / 4.5 - 0.05 = 0.033. Capping at 0.040 here puts
+    // a neutral, a lime granule and a carotenoid orange all within a hair of
+    // 4.5:1 once the gamma-2.0 shortcut is accounted for.
+    const float SAFE_CEIL = 0.040;
+    const float SAFE_KNEE = 0.014;        // below this the field is untouched
 
     float hash1(vec2 p) {
         return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -190,18 +237,51 @@
         return md;
     }
 
-    // Brightness multiplier for the hero safe rectangle: uSafeGain inside,
-    // 1.0 outside, with a rounded, C1-continuous falloff so no rectangular
-    // seam is visible on screen.
-    float safeFactor() {
-        if (uSafe.z <= 0.0 || uSafe.w <= 0.0 || uSafeGain >= 0.999) return 1.0;
-        // Fragment position in CSS px with the origin at the TOP-left corner.
-        vec2 fragCss = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / max(uDpr, 0.001);
+    // Both regions are tested in DOCUMENT space, so each one travels with the
+    // copy it protects. That is also what keeps the JS side cheap: a
+    // document-anchored region cannot be invalidated by scrolling, so nothing
+    // has to be re-measured while a gesture is running.
+
+    // 1 inside the hero copy, 0 well outside it, with a rounded, C1-continuous
+    // falloff so no rectangular seam is visible on screen.
+    float heroMask(vec2 fragPage) {
+        if (uSafe.z <= 0.0 || uSafe.w <= 0.0) return 0.0;
         vec2 hs = uSafe.zw * 0.5;            // 'half' is a reserved word in ESSL
-        vec2 d = abs(fragCss - (uSafe.xy + hs)) - hs;
+        vec2 d = abs(fragPage - (uSafe.xy + hs)) - hs;
         // Euclidean distance to the rect: 0 inside, rounded at the corners.
         float outside = length(max(d, vec2(0.0)));
-        return mix(uSafeGain, 1.0, smoothstep(0.0, SAFE_FEATHER, outside));
+        return 1.0 - smoothstep(0.0, SAFE_FEATHER, outside);
+    }
+
+    // 1 inside the below-the-fold content column, open-ended downward because
+    // that column runs to the end of the document. Separable rather than a
+    // rounded rect, so the long top ramp and the short side ramps stay
+    // independent — and it is cheaper than a length() as well. A loop over
+    // per-element rects is what this replaces: it would have to run on top of
+    // the 150-200 noise evaluations each pixel already pays.
+    float columnMask(vec2 fragPage) {
+        if (uBand.y <= uBand.x) return 0.0;
+        float dx = max(uBand.x - fragPage.x, fragPage.x - uBand.y);
+        float dy = uBand.z - fragPage.y;
+        return (1.0 - smoothstep(0.0, BAND_FEATHER_X, dx))
+             * (1.0 - smoothstep(0.0, BAND_FEATHER_Y, dy));
+    }
+
+    // Roll the highlights down to a ceiling wherever text lands. A flat dim
+    // cannot do this job: the brightest granules run ~20x over the ceiling, so
+    // the gain would have to fall to ~0.23 and would drag the cell walls,
+    // vacuole and medium into the noise floor along with them. Capping only the
+    // top end leaves everything below the knee exactly as drawn, so the tissue
+    // still reads as tissue while the pixels that actually break contrast come
+    // down. Cost is a dot, an exp and a sqrt — no extra noise samples.
+    vec3 capHighlights(vec3 col, float amount) {
+        float lum = dot(col * col, vec3(0.2126, 0.7152, 0.0722));
+        float span = SAFE_CEIL - SAFE_KNEE;
+        // Identity below the knee, asymptotic to SAFE_CEIL above it, and C1 at
+        // the join so the rolloff cannot show up as a contour in the field.
+        float rolled = min(lum, SAFE_KNEE)
+            + span * (1.0 - exp(-max(lum - SAFE_KNEE, 0.0) / span));
+        return col * mix(1.0, sqrt(rolled / max(lum, 1e-5)), amount);
     }
 
     void main() {
@@ -335,8 +415,15 @@
         float vig = smoothstep(1.40, 0.20, length(p));
         col *= mix(0.46, 1.0, vig) * (1.45 + uEnergy * 0.05);
 
-        // Guaranteed contrast where body text lands (measured, see calibrate()).
-        col *= safeFactor();
+        // Guaranteed contrast where body text lands. The two regions share one
+        // mask, so the gentle gain cannot show up as a differential rectangle
+        // where the hero rect and the content column overlap.
+        // Fragment position in CSS px, origin at the TOP-left of the document.
+        vec2 fragPage = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / max(uDpr, 0.001);
+        fragPage.y += uScroll;
+        float prot = max(heroMask(fragPage), columnMask(fragPage));
+        col *= mix(1.0, uSafeGain, prot);
+        col = capHighlights(col, prot);
 
         o = vec4(col, 1.0);
     }`;
@@ -347,7 +434,7 @@
     let prog = null;
     let vao = null;
     let buffer = null;
-    let uRes, uTime, uFlow, uEnergy, uScroll, uDir, uSafe, uSafeGain, uDpr, uRefH;
+    let uRes, uTime, uFlow, uEnergy, uScroll, uDir, uSafe, uBand, uSafeGain, uDpr, uRefH;
 
     let initTried = false;
     let initOk = false;
@@ -357,6 +444,8 @@
     let raf = null;
     let live = false;
     let lastDraw = 0;
+    let lastInput = performance.now();        // last scroll/pointer/key activity
+    let frameCapMs = MIN_FRAME_MS;
     let refreshTimer = null;
 
     let dpr = 1;
@@ -400,10 +489,13 @@
     let scrollY = window.scrollY || window.pageYOffset || 0;
     let prevScroll = scrollY;
     let lastT = performance.now();
-    const startTime = performance.now();
+    // Not const: resume() carries it forward across a stop so uTime stays
+    // continuous — see there.
+    let startTime = performance.now();
 
-    // Hero safe-rect state.
+    // Text-protection state.
     let safeRect = SAFE_FALLBACK.slice();
+    let bandRect = BAND_DISABLED.slice();
     let safeGain = 1.0;
     let safeStats = { before: null, after: null };
 
@@ -515,6 +607,7 @@
         uScroll = gl.getUniformLocation(prog, 'uScroll');
         uDir = gl.getUniformLocation(prog, 'uDir');
         uSafe = gl.getUniformLocation(prog, 'uSafe');
+        uBand = gl.getUniformLocation(prog, 'uBand');
         uSafeGain = gl.getUniformLocation(prog, 'uSafeGain');
         uDpr = gl.getUniformLocation(prog, 'uDpr');
         uRefH = gl.getUniformLocation(prog, 'uRefH');
@@ -562,6 +655,8 @@
         gl.uniform1f(uScroll, scrollV);
         gl.uniform1f(uDir, dirV);
         gl.uniform4f(uSafe, safeRect[0], safeRect[1], safeRect[2], safeRect[3]);
+        const band = reduceMotion.matches ? BAND_EVERYWHERE : bandRect;
+        gl.uniform3f(uBand, band[0], band[1], band[2]);
         gl.uniform1f(uSafeGain, gainV);
         gl.uniform1f(uDpr, dpr);
         gl.uniform1f(uRefH, refH || outH);
@@ -603,13 +698,22 @@
         }
     }
 
-    // Capped at ~60Hz: a 120Hz display would otherwise pay double the GPU cost
-    // for identical motion. The rAF is rescheduled first and the skipped time
-    // simply accumulates into the next dt, so flow advances by the same amount.
+    // Capped at ~60Hz (30Hz on a coarse pointer): a 120Hz display would
+    // otherwise pay double the GPU cost for identical motion. The rAF is
+    // rescheduled first and the skipped time simply accumulates into the next
+    // dt, so flow advances by the same amount.
     function frame() {
-        raf = window.requestAnimationFrame(frame);
         const now = performance.now();
-        if (now - lastDraw < MIN_FRAME_MS) return;
+        // Nothing has moved for IDLE_MS: stop drawing and leave the developed
+        // frame on screen. Not a blank canvas, and not a visible stop either —
+        // the stir energy decayed to zero long before this (release tau 0.36s),
+        // so the field is already at its calm baseline when it freezes.
+        if (now - lastInput >= IDLE_MS) {
+            raf = null;
+            return;
+        }
+        raf = window.requestAnimationFrame(frame);
+        if (now - lastDraw < frameCapMs) return;
         lastDraw = now;
         integrate(now);
         draw((now - startTime) / 1000);
@@ -621,7 +725,17 @@
         if (document.hidden || reduceMotion.matches) return;
         // Prime timers so a resume doesn't register a huge dt or a scroll jump.
         lastT = performance.now();
+        // flow survives a stop because it is dt-accumulated, but uTime is
+        // wall-clock and it drives the cell lattice (0.020 q/s, i.e. 7.7% of
+        // the viewport height per 20s) and the granule stutter (0.7/s). Left
+        // alone, waking up would replay the whole stopped duration in a single
+        // frame and the tissue would visibly snap. Carry the clock over so the
+        // picture continues exactly where it froze.
+        if (lastDraw) startTime += lastT - lastDraw;
         lastDraw = 0;
+        // Every resume re-arms the idle window, so coming back to a tab that
+        // was left for an hour does not immediately wind down again.
+        lastInput = lastT;
         prevScroll = window.scrollY || window.pageYOffset || 0;
         raf = window.requestAnimationFrame(frame);
     }
@@ -643,7 +757,7 @@
         markLive();
     }
 
-    // ------------------------------------------------- hero-safe-rect logic
+    // ----------------------------------------------- text-protection logic
     function readSafeRect() {
         const c = el();
         const attr = c && c.getAttribute('data-safe-rect');
@@ -657,8 +771,8 @@
         if (target) {
             const r = target.getBoundingClientRect();
             if (r.width > 0 && r.height > 0) {
-                // Viewport position the copy occupies at the top of the page:
-                // the rect lives in fixed viewport space, the copy does not.
+                // DOCUMENT position of the copy, so the measurement is the same
+                // whatever the page is scrolled to when it is taken.
                 const sy = window.scrollY || window.pageYOffset || 0;
                 const sx = window.scrollX || window.pageXOffset || 0;
                 return [
@@ -670,6 +784,29 @@
             }
         }
         return SAFE_FALLBACK.slice();
+    }
+
+    // Left, right and top edge of the below-the-fold content column, in
+    // DOCUMENT px. Every rect is read in one pass with no writes in between,
+    // so the whole measurement costs a single layout — and because the result
+    // is document-anchored and open-ended downward, scrolling and the tab
+    // switches that change a panel's height cannot invalidate it.
+    function readBandRect() {
+        const nodes = document.querySelectorAll(BAND_SELECTOR);
+        let left = Infinity;
+        let right = -Infinity;
+        let top = Infinity;
+        for (let i = 0; i < nodes.length; i++) {
+            const r = nodes[i].getBoundingClientRect();
+            if (r.width <= 0 || r.height <= 0) continue;
+            if (r.left < left) left = r.left;
+            if (r.right > right) right = r.right;
+            if (r.top < top) top = r.top;
+        }
+        if (!(right > left) || !isFinite(top)) return BAND_DISABLED.slice();
+        const sx = window.scrollX || window.pageXOffset || 0;
+        const sy = window.scrollY || window.pageYOffset || 0;
+        return [left + sx - SAFE_PAD, right + sx + SAFE_PAD, top + sy - SAFE_PAD];
     }
 
     // Mean and 99th-percentile relative luminance (0..255) of the safe region,
@@ -733,6 +870,7 @@
     function calibrate() {
         if (!initOk || outW === 0) return;
         safeRect = readSafeRect();
+        bandRect = readBandRect();
 
         // Measurement is disabled. It read pixels back from the DEFAULT
         // framebuffer, whose contents are undefined once the compositor has
@@ -792,15 +930,18 @@
 
     function refresh() {
         // Re-measure once after layout settles (reveal animation, web fonts),
-        // but only if the hero actually moved — calibration reads pixels back.
+        // but only if a protected region actually moved — calibration reads
+        // pixels back.
         if (!active || !initOk) return;
         // Belt and braces for viewports that resize without telling anyone:
         // some in-app browsers (Instagram, Messenger) finish opening after the
         // page has already painted and fire no resize event at all.
         syncSize();
-        const next = readSafeRect();
+        const nextSafe = readSafeRect();
+        const nextBand = readBandRect();
         let moved = false;
-        for (let i = 0; i < 4; i++) if (Math.abs(next[i] - safeRect[i]) > 2) moved = true;
+        for (let i = 0; i < 4; i++) if (Math.abs(nextSafe[i] - safeRect[i]) > 2) moved = true;
+        for (let i = 0; i < 3; i++) if (Math.abs(nextBand[i] - bandRect[i]) > 2) moved = true;
         if (!moved) return;
         calibrate();
         if (reduceMotion.matches) renderStatic();
@@ -814,6 +955,7 @@
         if (!init()) return;                 // fallback class already applied
         if (sizeStale()) applySize();
         observeBox(c);
+        observeContent();
         if (reduceMotion.matches) {
             renderStatic();
         } else {
@@ -863,6 +1005,41 @@
         boxObserved = c;
     }
 
+    // The content column also has to be re-measured when the PAGE reflows
+    // without the canvas box changing: switching an explorer tab swaps in a
+    // panel of a different height, and the reveal animations, late web fonts
+    // and lazy images all settle after first paint. One ResizeObserver on
+    // <main> catches every one of those without coupling to the tab code that
+    // owns the panels, and without measuring anything per frame.
+    let contentTimer = null;
+    let contentObserver = null;
+    let contentObserved = null;
+
+    function onContentChange() {
+        window.clearTimeout(contentTimer);
+        contentTimer = window.setTimeout(() => {
+            if (!active || !initOk) return;
+            const next = readBandRect();
+            let moved = false;
+            for (let i = 0; i < 3; i++) if (Math.abs(next[i] - bandRect[i]) > 2) moved = true;
+            if (!moved) return;
+            bandRect = next;
+            // The loop may have wound down since; a reflow with nobody touching
+            // the page (a lazy image landing) still has to reach the screen.
+            if (reduceMotion.matches) renderStatic();
+            else resume();
+        }, 150);
+    }
+
+    function observeContent() {
+        const main = document.getElementById('main-content');
+        if (typeof ResizeObserver !== 'function' || !main || contentObserved === main) return;
+        if (!contentObserver) contentObserver = new ResizeObserver(onContentChange);
+        else contentObserver.disconnect();
+        contentObserver.observe(main);
+        contentObserved = main;
+    }
+
     // Fallback for browsers without ResizeObserver, and a nudge for the ones
     // that report the new box only after the orientation change has settled.
     window.addEventListener('resize', onBoxChange, { passive: true });
@@ -886,14 +1063,35 @@
         else resume();
     });
 
+    // Any of these means the visitor is still here: keep drawing, and restart
+    // if the idle wind-down already stopped us. resume() is a no-op while the
+    // loop runs and re-checks every guard when it is not, so the handler costs
+    // one timestamp write in the common case.
+    function noteInput() {
+        lastInput = performance.now();
+        if (raf === null) resume();
+    }
+
+    for (let i = 0; i < INPUT_EVENTS.length; i++) {
+        window.addEventListener(INPUT_EVENTS[i], noteInput, { passive: true });
+    }
+
+    function syncFrameCap() {
+        frameCapMs = coarsePointer.matches ? COARSE_FRAME_MS : MIN_FRAME_MS;
+    }
+
+    syncFrameCap();
+    coarsePointer.addEventListener?.('change', syncFrameCap);
+
     window.BIO_BG = {
         start,
         stop,
         isSupported,
-        // Diagnostics for the hero-legibility calibration (not used at runtime).
+        // Diagnostics for the legibility calibration (not used at runtime).
         safeMetrics() {
             return {
                 rect: safeRect.slice(),
+                band: bandRect.slice(),
                 gain: safeGain,
                 before: safeStats.before,
                 after: safeStats.after,

@@ -13,3 +13,6 @@ moneymanage/*.qfx
 !.env.example
 __pycache__/
 *.py[cod]
+
+# Local generation scratch space and standalone working clones
+tmp/

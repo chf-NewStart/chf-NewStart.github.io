@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "BOTANY",
+            title: "A coffee bean is the pit of a fruit",
+            fact: "Coffee “beans” are the seeds of a small red fruit called a coffee cherry — normally two seeds per cherry, facing each other flat side to flat side. Coffee is, botanically speaking, a fruit-pit beverage.",
+            detail: "When only one seed develops it grows rounder and is sold as a “peaberry,” prized by some roasters. The cherry’s thin, sweet pulp is edible too, and is dried into a tea-like drink called cascara."
+        },
+        {
             tag: "KITCHEN SCIENCE",
             title: "You’ve probably never eaten real wasabi",
             fact: "Most “wasabi” served outside Japan — and plenty inside — is horseradish paste with mustard and green coloring. Real wasabi is a finicky semi-aquatic plant, and its freshly grated heat starts fading within about 15 minutes.",

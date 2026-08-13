@@ -1645,7 +1645,6 @@ footer {
 
 .monet-art-frame {
     position: relative;
-    overflow: hidden;
     padding: clamp(7px, 0.9vw, 12px);
     border: clamp(6px, 0.8vw, 11px) solid #3b2c20;
     background: #9d7446;
@@ -1653,6 +1652,9 @@ footer {
         0 2px 0 #c99e61,
         0 0 0 2px #19130f,
         0 18px 34px rgba(0, 7, 9, 0.42);
+    transform-origin: 50% 50%;
+    transform-style: preserve-3d;
+    transition: transform 680ms cubic-bezier(0.2, 0.72, 0.2, 1), box-shadow 420ms ease;
 }
 
 .monet-art-frame::before {
@@ -1662,6 +1664,7 @@ footer {
     border: 1px solid rgba(239, 203, 140, 0.62);
     content: '';
     pointer-events: none;
+    backface-visibility: hidden;
 }
 
 .monet-art-frame img {
@@ -1670,6 +1673,58 @@ footer {
     height: auto;
     border: 1px solid rgba(16, 12, 8, 0.74);
     transition: transform 700ms cubic-bezier(0.2, 0.72, 0.25, 1);
+    backface-visibility: hidden;
+}
+
+.monet-art-frame::after {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border: 11px solid #3b2c20;
+    border-radius: inherit;
+    background:
+        var(--source-photo) center / cover no-repeat,
+        #806c52;
+    box-shadow:
+        inset 0 0 0 10px #9d7446,
+        inset 0 0 0 12px rgba(239, 203, 140, 0.58),
+        inset 0 0 28px rgba(20, 13, 8, 0.42);
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    transform: rotateY(180deg);
+    backface-visibility: hidden;
+}
+
+.monet-shot figure {
+    position: relative;
+}
+
+.monet-shot figure::before,
+.monet-shot figure::after {
+    position: absolute;
+    z-index: 6;
+    width: 34%;
+    height: 12%;
+    border: 1px solid rgba(119, 96, 61, 0.2);
+    background: rgba(231, 214, 170, 0.72);
+    box-shadow: 0 2px 4px rgba(22, 15, 9, 0.22);
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease 250ms;
+}
+
+.monet-shot figure::before {
+    top: 4%;
+    left: 5%;
+    transform: rotate(-5deg);
+}
+
+.monet-shot figure::after {
+    right: 5%;
+    bottom: 14%;
+    transform: rotate(4deg);
 }
 
 .monet-shot figcaption {
@@ -1698,8 +1753,33 @@ footer {
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .monet-shot:hover .monet-art-frame img {
-        transform: scale(1.012);
+    .monet-shot:hover,
+    .monet-shot:focus-visible {
+        z-index: 4;
+    }
+
+    .monet-shot:hover .monet-art-frame,
+    .monet-shot:focus-visible .monet-art-frame {
+        box-shadow: 0 30px 54px rgba(0, 7, 9, 0.58);
+        transform: perspective(1000px) rotateY(180deg) rotateZ(-0.7deg) scale(1.035);
+    }
+
+    .monet-shot:hover .monet-art-frame::after,
+    .monet-shot:focus-visible .monet-art-frame::after {
+        opacity: 1;
+    }
+
+    .monet-shot:hover figure::before,
+    .monet-shot:hover figure::after,
+    .monet-shot:focus-visible figure::before,
+    .monet-shot:focus-visible figure::after {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .monet-art-frame {
+        transition-duration: 1ms;
     }
 }
 

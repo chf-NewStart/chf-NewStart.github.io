@@ -75,7 +75,8 @@ Each page is self-contained and keeps its data in the visitor's own browser
   in one continuous vertical scroll (pages render lazily and far-away pages are
   freed so long papers stay light on phone memory), a draggable notes panel, a
   reflowed Reader view, and browser read-aloud that omit repeated headers and
-  footers; a direct four-color marker with persistent highlights; page and
+  footers; a direct four-color marker with persistent highlights; selection
+  lookups with a Wikipedia definition and sourced Wikimedia image; page and
   paragraph notes; screenshot OCR with optional AI questions; sketch notes; a
   tag-based connection map; and optional AES-GCM encrypted GitHub sync. Papers
   can be removed directly from the library without deleting their original

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://api.deepseek.com; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https://api.github.com https://api.deepseek.com https://en.wikipedia.org https://commons.wikimedia.org; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Margin — a private paper desk</title>
   <meta name="description" content="A local-first paper reader with notes, screenshot questions, sketches, connections, and optional encrypted GitHub sync.">
@@ -171,6 +171,22 @@
     .marker-swatch[data-highlight-color="coral"] { background: #ff7e69; }
     .marker-swatch[data-highlight-color="blue"] { background: #5ba9ff; }
     .reader-toast { position: fixed; z-index: 40; left: 22px; bottom: 22px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--ink); color: var(--surface); box-shadow: var(--shadow); font-size: .72rem; font-weight: 650; pointer-events: none; }
+    .lookup-card { position: fixed; z-index: 44; width: min(370px, calc(100vw - 24px)); max-height: min(540px, calc(100dvh - 24px)); overflow-y: auto; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 22px 70px rgba(20,24,25,.26); backdrop-filter: blur(18px); }
+    .lookup-head { display: flex; align-items: flex-start; gap: 12px; padding: 13px 13px 11px 16px; border-bottom: 1px solid var(--line); }
+    .lookup-head > div { min-width: 0; flex: 1; }
+    .lookup-eyebrow { display: block; margin-bottom: 3px; color: var(--accent); font-size: .58rem; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    .lookup-selection { display: block; overflow: hidden; color: var(--muted); font: italic .78rem/1.3 var(--serif); text-overflow: ellipsis; white-space: nowrap; }
+    .lookup-close { flex: 0 0 auto; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); }
+    .lookup-close:hover { color: var(--ink); }
+    .lookup-photo-link { display: block; height: 170px; overflow: hidden; background: var(--surface-2); }
+    .lookup-photo { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .lookup-body { padding: 15px 16px 16px; }
+    .lookup-body h3 { margin: 0 0 7px; font: 500 1.32rem/1.15 var(--serif); }
+    .lookup-definition { margin: 0; color: var(--ink); font: .88rem/1.55 var(--serif); }
+    .lookup-definition.loading { color: var(--muted); }
+    .lookup-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+    .lookup-links a { color: var(--blue); font-size: .67rem; font-weight: 650; text-decoration: none; }
+    .lookup-links a:hover { text-decoration: underline; }
     .missing-file { align-self: start; width: min(620px, 100%); margin-top: 15vh; padding: 34px; border-radius: 14px; background: var(--surface); color: var(--ink); text-align: center; }
     .missing-file p { color: var(--muted); }
     .text-document { --read-size: 1.02rem; --read-leading: 1.72; --read-measure: 780px; --read-spacing: normal;
@@ -315,6 +331,8 @@
       .comfort-bar .spacer { display: none; }
       .document-pane { height: 100%; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
       .pane-spotlight { inset: 0; --bulb-r: clamp(165px, 46vw, 195px); }
+      .lookup-card { left: 12px !important; right: 12px; top: auto !important; bottom: calc(72px + env(safe-area-inset-bottom)); width: auto; max-height: min(48dvh, 410px); }
+      .lookup-photo-link { height: 126px; }
       .pdf-frame { min-width: 100%; margin: 0 auto; padding: 8px 0 30px; gap: 10px; }
       .text-document { width: calc(100% - 16px); margin: 8px auto; padding: 28px 22px; }
       .mobile-bar { display: flex; }
@@ -454,7 +472,7 @@
           </div>
           <div class="tab-panel" id="notesPanel" role="tabpanel">
             <h3 id="noteHeading">Page note</h3>
-            <p class="hint">Saved as you type. Turn Marker on, choose a color, and drag across words—the stroke saves when you release. ⌘Z / Ctrl+Z undoes the last stroke; Esc turns Marker off.</p>
+            <p class="hint">Saved as you type. Select a short term anytime for a definition and image. Turn Marker on to save the stroke; ⌘Z / Ctrl+Z undoes it, and Esc turns Marker off.</p>
             <textarea class="note-area" id="pageNote" placeholder="What is the claim? What do you doubt? What should you use later?"></textarea>
             <label class="field-label" for="paperTags">Connections / tags</label>
             <input class="field" id="paperTags" placeholder="method, metabolism, revisit">
@@ -494,6 +512,18 @@
         <button id="mNotes" type="button" aria-expanded="false">✎ Notes</button>
         <button id="mMore" type="button" aria-expanded="false" aria-label="More tools">⋯</button>
       </div>
+      <aside class="lookup-card hidden" id="lookupCard" aria-label="Definition for selected text">
+        <div class="lookup-head">
+          <div><span class="lookup-eyebrow">Selected term</span><span class="lookup-selection" id="lookupSelection"></span></div>
+          <button class="lookup-close" id="lookupClose" type="button" aria-label="Close definition">×</button>
+        </div>
+        <a class="lookup-photo-link hidden" id="lookupPhotoLink" href="#" target="_blank" rel="noopener noreferrer"><img class="lookup-photo" id="lookupPhoto" alt="" decoding="async"></a>
+        <div class="lookup-body">
+          <h3 id="lookupTitle">Looking up…</h3>
+          <p class="lookup-definition loading" id="lookupDefinition" role="status" aria-live="polite">Finding a useful explanation and image.</p>
+          <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a></div>
+        </div>
+      </aside>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
     </section>
   </main>
@@ -584,6 +614,7 @@
   var state = loadState();
   var currentId = null, currentPage = 1, pdfDoc = null, pdfLib = null, pdfRendering = false, pdfRenderPending = false;
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, speechChunks = [], speechIndex = 0, speechUtterance = null, speechActive = false, speechPaused = false, pendingSelection = null, lastSpeechSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null;
+  var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
   var readerMode = 'pdf', editingId = null, aiContext = null, syncCfg = null, syncing = false, syncTimer = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
 
@@ -632,6 +663,79 @@
   function showError(message){ byId('errorMessage').textContent=message; if(!byId('errorDialog').open) byId('errorDialog').showModal(); }
   function showReaderToast(message){var toast=byId('readerToast');clearTimeout(readerToastTimer);toast.textContent=message;toast.classList.remove('hidden');readerToastTimer=setTimeout(function(){toast.classList.add('hidden');},1800);}
 
+  /* A selection stays on the paper while this small, source-labelled reference card
+     looks up an encyclopedic definition and a freely hosted image. */
+  function hideLookup(){clearTimeout(lookupTimer);lookupSerial++;lookupAnchor=null;byId('lookupCard').classList.add('hidden');}
+  function placeLookupCard(rect){
+    if(rect)lookupAnchor={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
+    var card=byId('lookupCard');if(!lookupAnchor||card.classList.contains('hidden'))return;
+    if(innerWidth<=720){card.style.left='';card.style.top='';return;}
+    requestAnimationFrame(function(){
+      if(card.classList.contains('hidden')||!lookupAnchor)return;
+      var box=card.getBoundingClientRect(),gap=12,left=lookupAnchor.right+gap;
+      if(left+box.width>innerWidth-gap)left=lookupAnchor.left-box.width-gap;
+      left=Math.max(gap,Math.min(left,innerWidth-box.width-gap));
+      var top=Math.max(gap,Math.min(lookupAnchor.top-18,innerHeight-box.height-gap));
+      card.style.left=Math.round(left)+'px';card.style.top=Math.round(top)+'px';
+    });
+  }
+  function prepareLookup(term,rect){
+    var card=byId('lookupCard');byId('lookupSelection').textContent='“'+term+'”';byId('lookupTitle').textContent='Looking up…';
+    var definition=byId('lookupDefinition');definition.textContent='Finding a useful explanation and image.';definition.classList.add('loading');
+    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');
+    card.classList.remove('hidden');placeLookupCard(rect);
+  }
+  function showLookupProblem(term,message){
+    byId('lookupTitle').textContent=term;var definition=byId('lookupDefinition');definition.textContent=message;definition.classList.remove('loading');
+    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');placeLookupCard();
+  }
+  function conciseExtract(text){
+    text=String(text||'').replace(/\s+/g,' ').trim();if(text.length<=560)return text;
+    var cut=text.slice(0,560),stop=Math.max(cut.lastIndexOf('. '),cut.lastIndexOf('? '),cut.lastIndexOf('! '));
+    return (stop>260?cut.slice(0,stop+1):cut.trimEnd())+'…';
+  }
+  function renderLookup(term,result){
+    byId('lookupTitle').textContent=result.title||term;var definition=byId('lookupDefinition');definition.textContent=conciseExtract(result.extract)||'No concise explanation was available for this entry.';definition.classList.remove('loading');
+    var article=byId('lookupArticle');article.href=result.url||'#';article.classList.toggle('hidden',!result.url);
+    var photoLink=byId('lookupPhotoLink'),photo=byId('lookupPhoto'),imageSource=byId('lookupImageSource');
+    if(result.image){photo.src=result.image;photo.alt='Image for '+(result.title||term);photoLink.href=result.imagePage||result.url||result.image;photoLink.classList.remove('hidden');imageSource.href=result.imagePage||result.url||result.image;imageSource.classList.remove('hidden');}
+    else{photo.removeAttribute('src');photo.alt='';photoLink.classList.add('hidden');imageSource.classList.add('hidden');}
+    placeLookupCard();
+  }
+  async function lookupJson(base,params){
+    var response=await fetch(base+'?'+new URLSearchParams(params).toString(),{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('Lookup failed');return response.json();
+  }
+  async function wikipediaEntry(term){
+    var data=await lookupJson('https://en.wikipedia.org/w/api.php',{action:'query',format:'json',formatversion:'2',origin:'*',generator:'search',gsrsearch:term,gsrnamespace:'0',gsrlimit:'1',prop:'extracts|pageimages|info',exintro:'1',explaintext:'1',exchars:'700',piprop:'thumbnail|name',pithumbsize:'720',pilicense:'free',inprop:'url'});
+    var page=data&&data.query&&data.query.pages&&data.query.pages[0];if(!page||page.missing||!page.extract)return null;
+    return{title:page.title,extract:page.extract,url:page.fullurl||'',image:page.thumbnail&&page.thumbnail.source||'',imagePage:page.pageimage?'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(page.pageimage.replace(/ /g,'_')):page.fullurl||''};
+  }
+  async function commonsImage(term){
+    var data=await lookupJson('https://commons.wikimedia.org/w/api.php',{action:'query',format:'json',formatversion:'2',origin:'*',generator:'search',gsrsearch:term+' filetype:bitmap',gsrnamespace:'6',gsrlimit:'1',prop:'imageinfo',iiprop:'url|mime',iiurlwidth:'720'});
+    var page=data&&data.query&&data.query.pages&&data.query.pages[0],info=page&&page.imageinfo&&page.imageinfo[0];
+    if(!info||!info.thumburl||String(info.mime||'').indexOf('image/')!==0)return null;
+    return{url:info.thumburl,page:info.descriptionurl||''};
+  }
+  async function loadLookup(term,serial){
+    var key=term.toLocaleLowerCase();
+    try{
+      var cached=Object.prototype.hasOwnProperty.call(lookupCache,key),result=cached?lookupCache[key]:await wikipediaEntry(term);
+      if(serial!==lookupSerial)return;if(!result){lookupCache[key]=null;showLookupProblem(term,'I could not find a clean entry for that selection. Try one specific word or phrase.');return;}
+      lookupCache[key]=result;renderLookup(term,result);
+      if(!result.image){var image=await commonsImage(result.title||term);if(serial!==lookupSerial)return;if(image){result.image=image.url;result.imagePage=image.page;lookupCache[key]=result;renderLookup(term,result);}}
+    }catch(e){if(serial===lookupSerial)showLookupProblem(term,'The reference lookup could not connect. Your highlight is still safe—try again when you are online.');}
+  }
+  function queueLookup(text,rect){
+    var term=String(text||'').replace(/\s+/g,' ').replace(/^[\s"'“”‘’.,;:!?]+|[\s"'“”‘’.,;:!?]+$/g,'').trim();if(term.length<2)return;
+    clearTimeout(lookupTimer);var serial=++lookupSerial;prepareLookup(term,rect);
+    if(term.length>140||term.split(/\s+/).length>14){showLookupProblem(term,'Select a word or short phrase for a clearer definition and a more relevant image.');return;}
+    lookupTimer=setTimeout(function(){loadLookup(term,serial);},220);
+  }
+  byId('lookupClose').onclick=hideLookup;
+  byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
+  window.addEventListener('resize',function(){placeLookupCard();});
+
   /* One theme for everything: the app chrome, the PDF paper, and the phone status bar
      all follow the same light/dark switch. */
   function applyTheme(dark){
@@ -651,7 +755,7 @@
   function showPage(id){
     ['libraryPage','connectionsPage','readerPage'].forEach(function(v){ byId(v).classList.toggle('hidden', v !== id); });
     document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view === id); });
-    if (id !== 'readerPage') toggleSheet(false);
+    if (id !== 'readerPage') { toggleSheet(false); hideLookup(); }
     if (id === 'libraryPage') renderShelf();
     if (id === 'connectionsPage') renderConnections();
     window.scrollTo(0, 0);
@@ -1035,7 +1139,7 @@
 
   /* reader */
   async function openReader(id,preparedDoc){
-    var ch=find(id); if(!ch) return; stopReadAloud(true); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfFit=true; pdfZoom=1; setHighlightMode(false); clearPendingSelection(); toggleFindBar(false);
+    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup(); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfFit=true; pdfZoom=1; setHighlightMode(false); clearPendingSelection(); toggleFindBar(false);
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
@@ -1073,7 +1177,7 @@
     if(!pdf&&ch) renderText(ch);applyFocus();updateReadAloudUi();loadPageNote();updateProgress();
   }
   byId('viewToggle').onclick=async function(){
-    clearPendingSelection();var ch=find(currentId);readerMode=readerMode==='pdf'?'text':'pdf';updateReaderMode();
+    clearPendingSelection();hideLookup();var ch=find(currentId);readerMode=readerMode==='pdf'?'text':'pdf';updateReaderMode();
     if(readerMode==='pdf'&&pdfDoc){Promise.resolve(renderPdfPage()).then(function(){scrollToPdfPage(currentPage,'auto');});return;}
     if(readerMode==='text'&&ch&&ch.kind==='pdf'&&(!ch.readerText||!ch.pageParagraphs||ch.readerV!==READER_V)&&pdfDoc){
       this.disabled=true;this.textContent='Preparing reader…';
@@ -1254,7 +1358,7 @@
   byId('documentPane').addEventListener('wheel',function(e){if(readerMode==='pdf'&&(e.ctrlKey||e.metaKey)){e.preventDefault();setZoom(pdfFit ? (e.deltaY<0 ? 1.15 : .85) : pdfZoom+(e.deltaY<0 ? .1 : -.1));}},{passive:false});
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;
-    if(e.key==='Escape'&&highlightMode){e.preventDefault();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
+    if(e.key==='Escape'&&(!byId('lookupCard').classList.contains('hidden')||highlightMode)){e.preventDefault();hideLookup();if(highlightMode){clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');}return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
     if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undoLastHighlight();return;}
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
@@ -1351,17 +1455,17 @@
   function captureSelection(){
     if(byId('readerPage').classList.contains('hidden'))return;
     var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
-    var range=selection.getRangeAt(0),text=selection.toString().replace(/\s+/g,' ').trim();if(!text)return;
+    var range=selection.getRangeAt(0),text=selection.toString().replace(/\s+/g,' ').trim(),selectionRect=range.getBoundingClientRect();if(!text)return;
     if(readerMode==='pdf'){
       var host=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;
       var page=host&&host.closest?host.closest('.pdf-page'):null;if(!page||!byId('pdfFrame').contains(page)||!page.querySelector('.text-layer').contains(range.commonAncestorContainer))return;
       var base=page.getBoundingClientRect(),rects=Array.from(range.getClientRects()).filter(function(r){return r.width>1&&r.height>1;}).map(function(r){var x=Math.max(0,(r.left-base.left-1.5)/base.width),y=Math.max(0,(r.top-base.top+r.height*.12)/base.height);return{x:x,y:y,w:Math.min(1-x,(r.width+3)/base.width),h:Math.min(1-y,(r.height*.76)/base.height)};}).filter(function(r){return r.x<1&&r.y<1;});rects=mergeHighlightRects(rects);
-      if(rects.length)setPendingSelection({kind:'pdf',page:+page.dataset.page||currentPage,text:text,rects:rects});
+      if(rects.length){setPendingSelection({kind:'pdf',page:+page.dataset.page||currentPage,text:text,rects:rects});queueLookup(text,selectionRect);}
     }else{
       var original=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;original=original&&original.closest('.original');if(!original||!byId('textDocument').contains(original))return;
       var startOwner=range.startContainer.nodeType===1?range.startContainer:range.startContainer.parentElement,endOwner=range.endContainer.nodeType===1?range.endContainer:range.endContainer.parentElement;if(!original.contains(startOwner)||!original.contains(endOwner))return;
       var before=document.createRange();before.selectNodeContents(original);before.setEnd(range.startContainer,range.startOffset);var through=document.createRange();through.selectNodeContents(original);through.setEnd(range.endContainer,range.endOffset);
-      var ch=find(currentId);setPendingSelection({kind:ch&&ch.kind==='pdf'?'reader':'text',para:+original.dataset.paraIndex,start:before.toString().length,end:through.toString().length,text:text});
+      var ch=find(currentId);setPendingSelection({kind:ch&&ch.kind==='pdf'?'reader':'text',para:+original.dataset.paraIndex,start:before.toString().length,end:through.toString().length,text:text});queueLookup(text,selectionRect);
     }
   }
   document.addEventListener('selectionchange',captureSelection);

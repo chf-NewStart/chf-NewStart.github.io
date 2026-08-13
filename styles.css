@@ -86,7 +86,7 @@ html {
 }
 
 html.monet-page-root {
-    background: #d7bd91;
+    background: #17262a;
 }
 
 /* No min-width floor: anything below it is a guaranteed horizontal scrollbar,
@@ -1470,6 +1470,18 @@ footer {
     padding-top: clamp(44px, 8vw, 118px);
 }
 
+.monet-shot-panorama {
+    display: block;
+    width: min(88%, 1040px);
+    margin: clamp(62px, 9vw, 128px) auto 0;
+}
+
+.monet-shot-nocturne {
+    display: block;
+    width: min(54%, 620px);
+    margin: clamp(54px, 8vw, 108px) 4% 0 auto;
+}
+
 .monet-shot {
     min-width: 0;
     color: inherit;
@@ -1527,13 +1539,14 @@ footer {
 
 /* Dedicated Monet gallery — quiet museum wall outside, concentrated color inside. */
 .monet-page-body {
-    color: #403426;
+    color: #e9e1cf;
     font-family: var(--display);
     background:
-        radial-gradient(circle at 16% 7%, rgba(255, 248, 224, 0.6), transparent 38rem),
-        radial-gradient(circle at 88% 48%, rgba(132, 92, 47, 0.12), transparent 42rem),
-        repeating-linear-gradient(97deg, rgba(255, 255, 255, 0.026) 0 1px, rgba(81, 53, 27, 0.018) 1px 2px, transparent 2px 6px),
-        #d7bd91;
+        radial-gradient(circle at 16% 5%, rgba(91, 133, 137, 0.34), transparent 34rem),
+        radial-gradient(circle at 86% 42%, rgba(109, 69, 49, 0.2), transparent 40rem),
+        radial-gradient(circle at 44% 78%, rgba(37, 93, 91, 0.2), transparent 42rem),
+        repeating-linear-gradient(97deg, rgba(255, 255, 255, 0.018) 0 1px, rgba(0, 0, 0, 0.025) 1px 2px, transparent 2px 7px),
+        #17262a;
     background-attachment: fixed;
 }
 
@@ -1543,25 +1556,25 @@ footer {
 
 body.monet-page-body::before {
     background-image:
-        repeating-linear-gradient(6deg, transparent 0 3px, rgba(76, 51, 27, 0.018) 3px 4px),
-        repeating-linear-gradient(94deg, transparent 0 5px, rgba(255, 249, 230, 0.026) 5px 6px);
+        repeating-linear-gradient(6deg, transparent 0 3px, rgba(255, 244, 220, 0.016) 3px 4px),
+        repeating-linear-gradient(94deg, transparent 0 5px, rgba(0, 0, 0, 0.024) 5px 6px);
     background-size: auto;
     mask-image: none;
 }
 
 .monet-page-body .scroll-progress span {
-    background: linear-gradient(90deg, #8b5e2d, #d09b55);
-    box-shadow: 0 0 10px rgba(139, 94, 45, 0.28);
+    background: linear-gradient(90deg, #a6784d, #e2c08c);
+    box-shadow: 0 0 10px rgba(226, 192, 140, 0.26);
 }
 
 .monet-page-body .sticky-nav {
-    border-bottom-color: rgba(52, 38, 22, 0.12);
-    background: rgba(215, 189, 145, 0.84);
+    border-bottom-color: rgba(227, 215, 190, 0.12);
+    background: rgba(23, 38, 42, 0.84);
 }
 
 .monet-page-body .sticky-nav.is-scrolled {
-    border-color: rgba(52, 38, 22, 0.2);
-    background: rgba(215, 189, 145, 0.95);
+    border-color: rgba(227, 215, 190, 0.18);
+    background: rgba(23, 38, 42, 0.96);
 }
 
 .monet-page-body .logo,
@@ -1569,34 +1582,34 @@ body.monet-page-body::before {
 .monet-page-body .nav-links > a,
 .monet-page-body .nav-links > a:hover,
 .monet-page-body .nav-links > a.active-nav {
-    color: #2d251c;
+    color: #f4ead6;
 }
 
 .monet-page-body .logo-copy small {
-    color: rgba(45, 37, 28, 0.58);
+    color: rgba(244, 234, 214, 0.58);
 }
 
 .monet-logo-mark {
-    border-color: rgba(94, 63, 29, 0.3);
-    background: rgba(255, 248, 229, 0.3);
+    border-color: rgba(226, 192, 140, 0.32);
+    background: rgba(226, 192, 140, 0.08);
 }
 
 .monet-page-body .nav-links > a::after {
-    background: #8b5e2d;
+    background: #d8ad72;
 }
 
 .monet-page-body .language-toggle,
 .monet-page-body .hamburger {
-    border-color: rgba(52, 38, 22, 0.2);
-    color: #4e3d2c;
-    background: rgba(255, 248, 229, 0.22);
+    border-color: rgba(244, 234, 214, 0.2);
+    color: #eadfc9;
+    background: rgba(244, 234, 214, 0.06);
 }
 
 .monet-page-body .language-toggle:hover,
 .monet-page-body .hamburger:hover {
-    border-color: rgba(94, 63, 29, 0.5);
-    color: #2d251c;
-    background: rgba(255, 248, 229, 0.42);
+    border-color: rgba(226, 192, 140, 0.5);
+    color: #fff5df;
+    background: rgba(226, 192, 140, 0.12);
 }
 
 .monet-page-main {
@@ -1622,50 +1635,50 @@ body.monet-page-body::before {
 }
 
 .monet-page-feature .monet-feature-intro {
-    border-bottom-color: rgba(64, 45, 25, 0.22);
+    border-bottom-color: rgba(231, 218, 192, 0.16);
 }
 
 .monet-page-feature .monet-feature-kicker {
-    color: #80572c;
+    color: #d6ad76;
     font-family: var(--mono);
 }
 
 .monet-page-feature h1 {
-    color: #2b2117;
+    color: #f5ead5;
 }
 
 .monet-page-feature .monet-feature-lede {
-    color: rgba(53, 40, 27, 0.76);
+    color: rgba(233, 225, 207, 0.72);
 }
 
 .monet-page-feature .monet-gallery {
-    border-bottom-color: rgba(64, 45, 25, 0.22);
+    border-bottom-color: rgba(231, 218, 192, 0.16);
 }
 
 .monet-page-feature .monet-gallery-kicker {
-    color: #80572c;
+    color: #d6ad76;
     font-family: var(--mono);
 }
 
 .monet-page-feature .monet-gallery-heading h2 {
-    color: #2b2117;
+    color: #f5ead5;
 }
 
 .monet-page-feature .monet-gallery-heading div > p {
-    color: rgba(53, 40, 27, 0.76);
+    color: rgba(233, 225, 207, 0.72);
 }
 
 .monet-page-feature .monet-philosophy {
-    border-top-color: rgba(64, 45, 25, 0.24);
-    border-bottom-color: rgba(64, 45, 25, 0.18);
+    border-top-color: rgba(231, 218, 192, 0.18);
+    border-bottom-color: rgba(231, 218, 192, 0.14);
 }
 
 .monet-page-feature .monet-philosophy p {
-    color: #2b2117;
+    color: #f5ead5;
 }
 
 .monet-page-feature .monet-philosophy footer {
-    color: #80572c;
+    color: #d6ad76;
 }
 
 .monet-page-feature .monet-feature-rules {
@@ -1689,7 +1702,7 @@ body.monet-page-body::before {
 
 .monet-signature figcaption {
     margin-top: 12px;
-    color: rgba(58, 44, 31, 0.68);
+    color: rgba(233, 225, 207, 0.58);
     font-size: clamp(0.56rem, 0.72vw, 0.66rem);
     font-weight: 600;
     letter-spacing: 0.13em;
@@ -1698,59 +1711,59 @@ body.monet-page-body::before {
 }
 
 .monet-page-feature .monet-feature-request {
-    border-top-color: rgba(64, 45, 25, 0.22);
+    border-top-color: rgba(231, 218, 192, 0.16);
 }
 
 .monet-page-feature .monet-request-link {
-    border-color: #4a3521;
-    color: #fff7e7;
-    background: #4a3521;
+    border-color: #d4aa73;
+    color: #17262a;
+    background: #d4aa73;
 }
 
 .monet-page-feature .monet-request-link:hover {
-    border-color: #2d2115;
-    color: #fff7e7;
-    background: #2d2115;
+    border-color: #ecd09f;
+    color: #17262a;
+    background: #ecd09f;
 }
 
 .monet-page-feature .monet-request-meta {
-    color: rgba(53, 40, 27, 0.6);
+    color: rgba(233, 225, 207, 0.54);
 }
 
 .monet-page-feature .text-link {
-    color: #5d4024;
-    text-decoration-color: rgba(93, 64, 36, 0.35);
+    color: #e2c08c;
+    text-decoration-color: rgba(226, 192, 140, 0.36);
 }
 
 .monet-page-feature .text-link:hover {
-    color: #2b2117;
+    color: #fff0d2;
 }
 
 .monet-page-feature .monet-feature-note {
-    color: rgba(53, 40, 27, 0.68);
+    color: rgba(233, 225, 207, 0.62);
 }
 
 .monet-page-feature .monet-feature-note > span:first-child {
-    background: #9a6730;
-    box-shadow: 0 0 12px rgba(154, 103, 48, 0.3);
+    background: #d4aa73;
+    box-shadow: 0 0 12px rgba(212, 170, 115, 0.3);
 }
 
 .monet-page-feature .monet-art-frame {
-    border: 1px solid rgba(64, 45, 25, 0.24);
-    box-shadow: 0 18px 44px rgba(70, 45, 20, 0.16);
+    border: 1px solid rgba(234, 220, 190, 0.18);
+    box-shadow: 0 24px 60px rgba(0, 8, 11, 0.35);
 }
 
 .monet-page-feature .monet-shot figcaption span {
-    color: rgba(53, 40, 27, 0.58);
+    color: rgba(233, 225, 207, 0.5);
 }
 
 .monet-page-feature .monet-shot figcaption strong {
-    color: #3b2b1c;
+    color: #ece1cb;
 }
 
 .monet-page-footer {
-    border-color: rgba(58, 40, 23, 0.28);
-    background: rgba(48, 34, 21, 0.92);
+    border-color: rgba(234, 220, 190, 0.16);
+    background: rgba(10, 21, 24, 0.94);
 }
 
 .monet-page-footer p {
@@ -2513,13 +2526,13 @@ textarea {
     }
 
     .monet-page-body .nav-content .nav-links {
-        border-bottom-color: rgba(52, 38, 22, 0.18);
-        background: rgba(215, 189, 145, 0.98);
-        box-shadow: 0 24px 50px rgba(77, 54, 29, 0.2);
+        border-bottom-color: rgba(234, 220, 190, 0.16);
+        background: rgba(15, 29, 33, 0.98);
+        box-shadow: 0 24px 50px rgba(0, 7, 9, 0.34);
     }
 
     .monet-page-body .nav-content .nav-links > a {
-        border-bottom-color: rgba(52, 38, 22, 0.14);
+        border-bottom-color: rgba(234, 220, 190, 0.12);
     }
 
     .nav-content .nav-links > a {
@@ -2879,6 +2892,12 @@ textarea {
 
     .monet-gallery-column-secondary {
         padding-top: 0;
+    }
+
+    .monet-shot-panorama,
+    .monet-shot-nocturne {
+        width: 100%;
+        margin: 42px 0 0;
     }
 
     .monet-shot {

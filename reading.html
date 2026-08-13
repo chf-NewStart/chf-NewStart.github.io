@@ -612,6 +612,7 @@
   var SYNC_KEY = 'readingRoom.sync.v1';
   var AI_KEY = 'readingRoom.ai.v1';
   var SYNC_FILE = 'reading-room.enc.json';
+  var LOOKUP_DELAY = 900;
   var CARD_COLORS = ['#e85d3f', '#295b71', '#8c6e3f', '#657d5c', '#8a5a83'];
   var state = loadState();
   var currentId = null, currentPage = 1, pdfDoc = null, pdfLib = null, pdfRendering = false, pdfRenderPending = false;
@@ -735,10 +736,11 @@
       if(serial!==lookupSerial||selectionPointerDown)return;prepareLookup(term,rect);
       if(term.length>140||term.split(/\s+/).length>14){showLookupProblem(term,'Select a word or short phrase for a clearer definition and a more relevant image.');return;}
       loadLookup(term,serial);
-    },280);
+    },LOOKUP_DELAY);
   }
   byId('lookupClose').onclick=hideLookup;
   byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
+  document.addEventListener('pointerdown',function(e){if(!e.target.closest('#lookupCard'))hideLookup();},true);
   window.addEventListener('resize',function(){placeLookupCard();});
 
   /* One theme for everything: the app chrome, the PDF paper, and the phone status bar
@@ -1475,7 +1477,7 @@
   }
   document.addEventListener('selectionchange',captureSelection);
   byId('documentPane').addEventListener('pointerdown',function(e){
-    hideLookup();if(!e.target.closest('.text-layer,.original'))return;
+    if(!e.target.closest('.text-layer,.original'))return;
     selectionPointerDown=true;document.body.classList.add('selecting-paper');
     if(highlightMode){markerPointerDown=true;clearTimeout(highlightCommitTimer);}
   });

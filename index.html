@@ -119,6 +119,7 @@
                             <p class="hero-lede" data-en="I’m Houfu Chen — a digital twin researcher and engineer connecting mechanistic models, noisy sensor data, and machine learning to make complex systems tangible, testable, and understandable." data-zh="我是陈厚孚，一名数字孪生研究员与工程师。我将机制模型、含噪传感器数据与机器学习连接起来，让复杂系统变得可触达、可测试、可理解。">I’m Houfu Chen — a digital twin researcher and engineer connecting mechanistic models, noisy sensor data, and machine learning to make complex systems tangible, testable, and understandable.</p>
                             <div class="hero-actions">
                                 <a href="#projects-section" class="cta-button" data-en="Explore selected work" data-zh="查看精选项目">Explore selected work</a>
+                                <a href="/pose-loop/" class="cta-button cta-button-unclench" data-en="[◉] Try Unclench" data-zh="[◉] 体验肩颈松弛">[◉] Try Unclench</a>
                                 <a href="mailto:h534chen@uwaterloo.ca" class="text-link" data-en="Start a conversation ↗" data-zh="发起交流 ↗">Start a conversation ↗</a>
                             </div>
                             <ul class="hero-stack" aria-label="Core tools">
@@ -128,6 +129,11 @@
                         <aside class="hero-signal" aria-label="Playground launcher">
                             <div class="signal-topline"><span data-en="~/LIVE" data-zh="~/在线">~/LIVE</span><span class="signal-pulse">●</span></div>
                             <nav class="launcher" aria-label="Featured work you can open now">
+                                <a class="launcher-row launcher-row-unclench" href="/pose-loop/">
+                                    <code data-en="unclench.cam" data-zh="肩颈松弛.cam">unclench.cam</code>
+                                    <span data-en="camera-guided shoulder targets, playable now" data-zh="摄像头引导肩颈目标，即刻体验">camera-guided shoulder targets, playable now</span>
+                                    <i aria-hidden="true">→</i>
+                                </a>
                                 <a class="launcher-row launcher-row-monet" href="/monet/">
                                     <code data-en="monet_light.skill" data-zh="莫奈光影.skill">monet_light.skill</code>
                                     <span data-en="photo-to-painting requests are open" data-zh="照片转油画，现已开放委托">photo-to-painting requests are open</span>
@@ -601,7 +607,7 @@
             <div class="container">
                 <div class="section-heading reveal-content">
                     <div><p class="section-kicker" data-en="04 / LIVE LAB" data-zh="04 / 在线实验室">04 / LIVE LAB</p><h2 class="section-title" data-en="Useful tools, built in public." data-zh="公开构建，真正有用。">Useful tools, built in public.</h2></div>
-                    <p class="section-summary" data-en="A growing shelf of focused browser tools: read, reflect, track, play, and leave a signal." data-zh="一组持续生长的浏览器工具：阅读、记录、追踪、游戏，也可以留下讯息。">A growing shelf of focused browser tools: read, reflect, track, play, and leave a signal.</p>
+                    <p class="section-summary" data-en="A growing shelf of focused browser tools: move, read, reflect, track, play, and leave a signal." data-zh="一组持续生长的浏览器工具：活动、阅读、记录、追踪、游戏，也可以留下讯息。">A growing shelf of focused browser tools: move, read, reflect, track, play, and leave a signal.</p>
                 </div>
 
                 <div class="reveal-content">
@@ -626,6 +632,34 @@
                             <div class="gc-footer">
                                 <span class="gc-meta">JS · PWA · leaderboard</span>
                                 <a class="gc-play" href="https://lifegameproject.com/life.html" target="_blank" rel="noopener noreferrer" data-en="→ play ↗" data-zh="→ 游玩 ↗">→ play ↗</a>
+                            </div>
+                        </div>
+
+                        <div class="gc-card gc-featured gc-pose-loop-card">
+                            <div class="gc-visual gc-unclench-visual" aria-hidden="true">
+                                <span class="gc-visual-badge">FEATURED · CAMERA</span>
+                                <div class="unclench-preview-status"><strong>02 / 16</strong><span>SHOULDER TARGET</span></div>
+                                <div class="unclench-preview-body">
+                                    <span class="unclench-head"></span>
+                                    <span class="unclench-shoulder-line"></span>
+                                    <span class="unclench-dot unclench-dot-left"></span>
+                                    <span class="unclench-dot unclench-dot-right"></span>
+                                    <span class="unclench-ring unclench-ring-left"></span>
+                                    <span class="unclench-ring unclench-ring-right"></span>
+                                </div>
+                                <div class="unclench-preview-instruction">MATCH <span>→</span> HOLD <span>→</span> POP</div>
+                            </div>
+                            <div class="gc-icon">[◉]</div>
+                            <div class="gc-title" data-en="unclench.lab" data-zh="肩颈松弛.lab">unclench.lab</div>
+                            <div class="gc-desc" data-en="A private camera-guided target game for desk-bound necks and shoulders. Match live body dots through two glowing rounds—no posture score and no uploaded video." data-zh="为久坐办公的肩颈设计的私密摄像头目标游戏。让实时身体点位完成两轮发光目标——不做姿势评分，也不上传视频。">A private camera-guided target game for desk-bound necks and shoulders. Match live body dots through two glowing rounds—no posture score and no uploaded video.</div>
+                            <div class="gc-tags">
+                                <span class="gc-tag green" data-en="new prototype" data-zh="新原型">new prototype</span>
+                                <span class="gc-tag" data-en="pose tracking" data-zh="姿态追踪">pose tracking</span>
+                                <span class="gc-tag" data-en="movement break" data-zh="活动休息">movement break</span>
+                            </div>
+                            <div class="gc-footer">
+                                <span class="gc-meta">CV · local · 2 rounds</span>
+                                <a class="gc-play gc-play-unclench" href="/pose-loop/" data-en="START CAMERA RESET →" data-zh="开始摄像头放松 →">START CAMERA RESET →</a>
                             </div>
                         </div>
 

@@ -1226,7 +1226,7 @@ footer {
     margin-top: 22px;
 }
 
-/* Monet Light & Strokes — a warm gallery inside the cooler systems portfolio. */
+/* Monet Light & Strokes — a museum salon inside the systems portfolio. */
 .monet-feature {
     --monet-gold: #e7b768;
     --monet-gold-soft: rgba(231, 183, 104, 0.13);
@@ -1235,8 +1235,7 @@ footer {
     grid-template-columns: minmax(280px, 0.74fr) minmax(520px, 1.26fr);
     grid-template-areas:
         "intro intro"
-        "gallery gallery"
-        "rules request";
+        "gallery gallery";
     gap: clamp(30px, 4vw, 58px) clamp(32px, 5vw, 72px);
     align-items: start;
     overflow: hidden;
@@ -1414,8 +1413,7 @@ footer {
     position: relative;
     z-index: 1;
     grid-area: gallery;
-    padding-bottom: clamp(36px, 5vw, 64px);
-    border-bottom: 1px solid rgba(231, 183, 104, 0.16);
+    padding-bottom: clamp(16px, 2vw, 28px);
 }
 
 .monet-gallery-heading {
@@ -1452,34 +1450,146 @@ footer {
     line-height: 1.7;
 }
 
-.monet-gallery-columns {
+.monet-salon {
     display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
-    gap: clamp(22px, 4vw, 58px);
-    align-items: start;
+    position: relative;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-rows: repeat(12, minmax(0, 1fr));
+    gap: clamp(12px, 1.7vw, 24px);
+    height: clamp(900px, 88vw, 1120px);
+    padding: clamp(18px, 3vw, 42px);
+    border: 1px solid rgba(226, 192, 140, 0.15);
+    background:
+        radial-gradient(ellipse at center, rgba(226, 192, 140, 0.07), transparent 38%),
+        linear-gradient(rgba(255, 255, 255, 0.012), rgba(0, 0, 0, 0.035));
+    box-shadow: inset 0 0 100px rgba(2, 12, 14, 0.22);
 }
 
-.monet-gallery-column {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: clamp(34px, 6vw, 76px);
+.monet-salon::before {
+    position: absolute;
+    inset: 9% 8%;
+    border: 1px solid rgba(226, 192, 140, 0.1);
+    border-radius: 50%;
+    content: '';
+    pointer-events: none;
 }
 
-.monet-gallery-column-secondary {
-    padding-top: clamp(44px, 8vw, 118px);
+.monet-salon-piece {
+    position: relative;
+    z-index: 1;
+    align-self: center;
 }
 
-.monet-shot-panorama {
-    display: block;
-    width: min(88%, 1040px);
-    margin: clamp(62px, 9vw, 128px) auto 0;
+.monet-salon-piece-trees {
+    grid-area: 1 / 1 / 7 / 4;
 }
 
-.monet-shot-nocturne {
-    display: block;
-    width: min(54%, 620px);
-    margin: clamp(54px, 8vw, 108px) 4% 0 auto;
+.monet-salon-piece-duck {
+    grid-area: 1 / 5 / 5 / 9;
+}
+
+.monet-salon-piece-cactus {
+    grid-area: 1 / 10 / 7 / 13;
+}
+
+.monet-salon-piece-nocturne {
+    grid-area: 7 / 1 / 13 / 4;
+}
+
+.monet-salon-piece-flower {
+    grid-area: 7 / 10 / 13 / 13;
+}
+
+.monet-salon-piece-seabird {
+    grid-area: 9 / 5 / 13 / 9;
+    justify-self: center;
+    width: 85%;
+}
+
+.monet-salon-center {
+    position: relative;
+    z-index: 2;
+    grid-area: 5 / 4 / 10 / 10;
+    align-self: center;
+    justify-self: center;
+    width: min(100%, 560px);
+    padding: clamp(22px, 3vw, 38px);
+    border: 1px solid rgba(92, 71, 43, 0.28);
+    color: #3b3024;
+    background:
+        linear-gradient(90deg, rgba(106, 75, 38, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(106, 75, 38, 0.026) 1px, transparent 1px),
+        #d8ccb2;
+    background-size: 7px 7px;
+    box-shadow: 0 28px 64px rgba(0, 7, 9, 0.34), inset 0 0 0 5px rgba(255, 250, 234, 0.28);
+}
+
+.monet-salon-center .monet-philosophy {
+    padding: 0 0 clamp(18px, 2.5vw, 28px);
+    border-top: 0;
+    border-bottom-color: rgba(68, 49, 28, 0.2);
+}
+
+.monet-salon-center .monet-philosophy p {
+    max-width: 17ch;
+    color: #30251b;
+    font-size: clamp(1.35rem, 2.35vw, 2.15rem);
+}
+
+.monet-salon-center .monet-philosophy footer {
+    margin-top: 14px;
+    color: #78542f;
+    font-size: clamp(0.64rem, 0.9vw, 0.78rem);
+}
+
+.monet-salon-center .monet-feature-request {
+    gap: 18px;
+    padding-top: clamp(18px, 2.5vw, 26px);
+    border-top: 0;
+}
+
+.monet-salon-center .monet-feature-actions {
+    gap: 13px 18px;
+}
+
+.monet-salon-center .monet-request-link {
+    border-color: #3d3022;
+    color: #f7ecd8;
+    background: #3d3022;
+}
+
+.monet-salon-center .monet-request-link:hover {
+    border-color: #1f1912;
+    color: #fff7e7;
+    background: #1f1912;
+}
+
+.monet-salon-center .monet-request-meta,
+.monet-salon-center .monet-feature-note {
+    color: rgba(57, 43, 29, 0.62);
+}
+
+.monet-salon-center .text-link {
+    color: #654522;
+    text-decoration-color: rgba(101, 69, 34, 0.34);
+}
+
+.monet-salon-center .text-link:hover {
+    color: #281d13;
+}
+
+.monet-salon-center .monet-feature-note > span:first-child {
+    background: #916536;
+    box-shadow: none;
+}
+
+.monet-salon-center .monet-signature {
+    width: min(48%, 220px);
+    margin: 22px auto 0;
+}
+
+.monet-salon-center .monet-signature figcaption {
+    color: rgba(57, 43, 29, 0.56);
 }
 
 .monet-shot {
@@ -1495,14 +1605,29 @@ footer {
 .monet-art-frame {
     position: relative;
     overflow: hidden;
-    background: #090c0b;
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
+    padding: clamp(7px, 0.9vw, 12px);
+    border: clamp(6px, 0.8vw, 11px) solid #3b2c20;
+    background: #9d7446;
+    box-shadow:
+        0 2px 0 #c99e61,
+        0 0 0 2px #19130f,
+        0 18px 34px rgba(0, 7, 9, 0.42);
+}
+
+.monet-art-frame::before {
+    position: absolute;
+    inset: 3px;
+    z-index: 1;
+    border: 1px solid rgba(239, 203, 140, 0.62);
+    content: '';
+    pointer-events: none;
 }
 
 .monet-art-frame img {
     display: block;
     width: 100%;
     height: auto;
+    border: 1px solid rgba(16, 12, 8, 0.74);
     transition: transform 700ms cubic-bezier(0.2, 0.72, 0.25, 1);
 }
 
@@ -1511,7 +1636,7 @@ footer {
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    padding: 14px 2px 0;
+    padding: 11px 1px 0;
     color: #c9c8bc;
 }
 
@@ -1525,7 +1650,7 @@ footer {
 .monet-shot figcaption strong {
     max-width: 20ch;
     color: #fff8ea;
-    font-size: clamp(0.78rem, 1.1vw, 0.92rem);
+    font-size: clamp(0.68rem, 0.9vw, 0.84rem);
     font-weight: 500;
     line-height: 1.35;
     text-align: right;
@@ -1652,7 +1777,7 @@ body.monet-page-body::before {
 }
 
 .monet-page-feature .monet-gallery {
-    border-bottom-color: rgba(231, 218, 192, 0.16);
+    border-bottom: 0;
 }
 
 .monet-page-feature .monet-gallery-kicker {
@@ -1681,12 +1806,6 @@ body.monet-page-body::before {
     color: #d6ad76;
 }
 
-.monet-page-feature .monet-feature-rules {
-    display: flex;
-    align-self: stretch;
-    flex-direction: column;
-}
-
 .monet-signature {
     display: block;
     width: min(64%, 340px);
@@ -1708,10 +1827,6 @@ body.monet-page-body::before {
     letter-spacing: 0.13em;
     line-height: 1.5;
     text-align: center;
-}
-
-.monet-page-feature .monet-feature-request {
-    border-top-color: rgba(231, 218, 192, 0.16);
 }
 
 .monet-page-feature .monet-request-link {
@@ -1749,8 +1864,10 @@ body.monet-page-body::before {
 }
 
 .monet-page-feature .monet-art-frame {
-    border: 1px solid rgba(234, 220, 190, 0.18);
-    box-shadow: 0 24px 60px rgba(0, 8, 11, 0.35);
+    box-shadow:
+        0 2px 0 #c99e61,
+        0 0 0 2px #19130f,
+        0 24px 54px rgba(0, 8, 11, 0.42);
 }
 
 .monet-page-feature .monet-shot figcaption span {
@@ -1759,6 +1876,46 @@ body.monet-page-body::before {
 
 .monet-page-feature .monet-shot figcaption strong {
     color: #ece1cb;
+}
+
+.monet-page-feature .monet-salon-center .monet-philosophy p {
+    color: #30251b;
+}
+
+.monet-page-feature .monet-salon-center .monet-philosophy footer {
+    color: #78542f;
+}
+
+.monet-page-feature .monet-salon-center .monet-request-link {
+    border-color: #3d3022;
+    color: #f7ecd8;
+    background: #3d3022;
+}
+
+.monet-page-feature .monet-salon-center .monet-request-link:hover {
+    border-color: #1f1912;
+    color: #fff7e7;
+    background: #1f1912;
+}
+
+.monet-page-feature .monet-salon-center .monet-request-meta,
+.monet-page-feature .monet-salon-center .monet-feature-note,
+.monet-page-feature .monet-salon-center .monet-signature figcaption {
+    color: rgba(57, 43, 29, 0.62);
+}
+
+.monet-page-feature .monet-salon-center .text-link {
+    color: #654522;
+    text-decoration-color: rgba(101, 69, 34, 0.34);
+}
+
+.monet-page-feature .monet-salon-center .text-link:hover {
+    color: #281d13;
+}
+
+.monet-page-feature .monet-salon-center .monet-feature-note > span:first-child {
+    background: #916536;
+    box-shadow: none;
 }
 
 .monet-page-footer {
@@ -2628,9 +2785,7 @@ textarea {
         grid-template-columns: 1fr;
         grid-template-areas:
             "intro"
-            "gallery"
-            "rules"
-            "request";
+            "gallery";
     }
 
     .monet-feature-intro,
@@ -2657,8 +2812,14 @@ textarea {
         width: 100%;
     }
 
-    .monet-gallery-column-secondary {
-        padding-top: 48px;
+    .monet-salon {
+        grid-template-rows: repeat(12, minmax(0, 1fr));
+        height: 920px;
+        padding: 24px;
+    }
+
+    .monet-salon-center {
+        grid-area: 5 / 4 / 10 / 10;
     }
 
     .profile-text {
@@ -2871,8 +3032,7 @@ textarea {
         padding-bottom: 34px;
     }
 
-    .monet-gallery-heading,
-    .monet-gallery-columns {
+    .monet-gallery-heading {
         grid-template-columns: 1fr;
     }
 
@@ -2885,19 +3045,43 @@ textarea {
         margin-top: 12px;
     }
 
-    .monet-gallery-columns,
-    .monet-gallery-column {
-        gap: 36px;
+    .monet-salon {
+        display: flex;
+        height: auto;
+        min-height: 0;
+        flex-direction: column;
+        gap: 38px;
+        padding: 18px;
     }
 
-    .monet-gallery-column-secondary {
-        padding-top: 0;
+    .monet-salon::before {
+        display: none;
     }
 
-    .monet-shot-panorama,
-    .monet-shot-nocturne {
+    .monet-salon-center {
+        order: -1;
         width: 100%;
-        margin: 42px 0 0;
+    }
+
+    .monet-salon-piece-duck,
+    .monet-salon-piece-seabird {
+        width: 100%;
+    }
+
+    .monet-salon-piece-trees,
+    .monet-salon-piece-cactus,
+    .monet-salon-piece-nocturne,
+    .monet-salon-piece-flower {
+        width: min(88%, 440px);
+    }
+
+    .monet-salon-piece-cactus,
+    .monet-salon-piece-flower {
+        align-self: flex-end;
+    }
+
+    .monet-salon-center .monet-feature-actions {
+        align-items: stretch;
     }
 
     .monet-shot {

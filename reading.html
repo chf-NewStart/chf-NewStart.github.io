@@ -1469,13 +1469,35 @@
     var c=text.charAt(index);if(/[\p{L}\p{N}_]/u.test(c))return true;
     return /['’\-]/.test(c)&&index>0&&index<text.length-1&&/[\p{L}\p{N}]/u.test(text.charAt(index-1))&&/[\p{L}\p{N}]/u.test(text.charAt(index+1));
   }
+  function adjacentTextNode(node,root,direction){
+    var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);walker.currentNode=node;var next;
+    while((next=direction<0?walker.previousNode():walker.nextNode())){if((next.nodeValue||'').length)return next;}return null;
+  }
+  function textNodesTouch(left,right){
+    var a=document.createRange(),b=document.createRange();a.selectNodeContents(left);b.selectNodeContents(right);
+    var ar=a.getBoundingClientRect(),br=b.getBoundingClientRect(),height=Math.min(ar.height,br.height);
+    if(!ar.width||!br.width||!height)return false;
+    var sameLine=Math.abs((ar.top+ar.bottom)/2-(br.top+br.bottom)/2)<=Math.max(ar.height,br.height)*.38,gap=br.left-ar.right;
+    return sameLine&&br.left>=ar.left-1&&gap>=-Math.max(2,height*.08)&&gap<=Math.max(2,height*.13);
+  }
   function snapSelectionToWords(selection){
     if(snappingSelection||!selection||selection.isCollapsed||!selection.rangeCount)return;
     var range=selection.getRangeAt(0).cloneRange(),startNode=range.startContainer,endNode=range.endContainer;
     if(startNode.nodeType!==3||endNode.nodeType!==3)return;
-    var start=range.startOffset,end=range.endOffset,startText=startNode.nodeValue||'',endText=endNode.nodeValue||'',changed=false;
+    var startRoot=startNode.parentElement&&startNode.parentElement.closest('.text-layer,.original'),endRoot=endNode.parentElement&&endNode.parentElement.closest('.text-layer,.original');if(!startRoot||startRoot!==endRoot)return;
+    var start=range.startOffset,end=range.endOffset,startText=startNode.nodeValue||'',endText=endNode.nodeValue||'',changed=false,neighbor,neighborText;
     while(start>0&&isWordPart(startText,start-1)){start--;changed=true;}
     while(end<endText.length&&isWordPart(endText,end)){end++;changed=true;}
+    while(start===0&&startText.length&&isWordPart(startText,0)){
+      neighbor=adjacentTextNode(startNode,startRoot,-1);neighborText=neighbor&&neighbor.nodeValue||'';
+      if(!neighbor||!neighborText.length||!isWordPart(neighborText,neighborText.length-1)||!textNodesTouch(neighbor,startNode))break;
+      startNode=neighbor;startText=neighborText;start=startText.length;while(start>0&&isWordPart(startText,start-1))start--;changed=true;
+    }
+    while(end===endText.length&&endText.length&&isWordPart(endText,endText.length-1)){
+      neighbor=adjacentTextNode(endNode,endRoot,1);neighborText=neighbor&&neighbor.nodeValue||'';
+      if(!neighbor||!neighborText.length||!isWordPart(neighborText,0)||!textNodesTouch(endNode,neighbor))break;
+      endNode=neighbor;endText=neighborText;end=0;while(end<endText.length&&isWordPart(endText,end))end++;changed=true;
+    }
     if(!changed)return;range.setStart(startNode,start);range.setEnd(endNode,end);snappingSelection=true;selection.removeAllRanges();selection.addRange(range);snappingSelection=false;
   }
   function captureSelection(){

@@ -182,10 +182,12 @@
     .lookup-photo { width: 100%; height: 100%; display: block; object-fit: cover; }
     .lookup-body { padding: 15px 16px 16px; }
     .lookup-body h3 { margin: 0 0 7px; font: 500 1.32rem/1.15 var(--serif); }
+    .lookup-source { display: inline-flex; margin: 0 0 9px; padding: 3px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .58rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+    .lookup-source.ai { background: var(--accent-soft); color: var(--accent); }
     .lookup-definition { margin: 0; color: var(--ink); font: .88rem/1.55 var(--serif); }
     .lookup-definition.loading { color: var(--muted); }
     .lookup-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
-    .lookup-links a { color: var(--blue); font-size: .67rem; font-weight: 650; text-decoration: none; }
+    .lookup-links a, .lookup-links button { color: var(--blue); font-size: .67rem; font-weight: 650; text-decoration: none; }
     .lookup-links a:hover { text-decoration: underline; }
     .missing-file { align-self: start; width: min(620px, 100%); margin-top: 15vh; padding: 34px; border-radius: 14px; background: var(--surface); color: var(--ink); text-align: center; }
     .missing-file p { color: var(--muted); }
@@ -522,8 +524,9 @@
         <a class="lookup-photo-link hidden" id="lookupPhotoLink" href="#" target="_blank" rel="noopener noreferrer"><img class="lookup-photo" id="lookupPhoto" alt="" decoding="async"></a>
         <div class="lookup-body">
           <h3 id="lookupTitle">Looking up…</h3>
+          <span class="lookup-source hidden" id="lookupSource"></span>
           <p class="lookup-definition loading" id="lookupDefinition" role="status" aria-live="polite">Finding a useful explanation and image.</p>
-          <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a></div>
+          <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up DeepSeek →</button></div>
         </div>
       </aside>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
@@ -566,8 +569,8 @@
         <div class="status" id="syncStatus"></div>
       </section>
       <section>
-        <h3>Screenshot questions</h3>
-        <p>Margin sends extracted screenshot or page text—not the image—to DeepSeek. The API key stays in local storage on this device and is never included in sync.</p>
+        <h3>DeepSeek assistant</h3>
+        <p>Margin sends extracted screenshot or page text—not the image—to DeepSeek. Technical-term lookup sends the selected phrase and a short nearby excerpt. The API key stays in local storage on this device and is never included in sync.</p>
         <div class="form-grid"><input class="field" id="aiKey" type="password" placeholder="DeepSeek API key" autocomplete="off"><div><button class="soft-button" id="aiKeySave">Save key</button></div></div>
         <div class="status" id="aiKeyStatus"></div>
       </section>
@@ -685,12 +688,12 @@
   function prepareLookup(term,rect){
     var card=byId('lookupCard');byId('lookupSelection').textContent='“'+term+'”';byId('lookupTitle').textContent='Looking up…';
     var definition=byId('lookupDefinition');definition.textContent='Finding a useful explanation and image.';definition.classList.add('loading');
-    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');
+    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');byId('lookupSource').classList.add('hidden');byId('lookupAiSetup').classList.add('hidden');
     card.classList.remove('hidden');placeLookupCard(rect);
   }
   function showLookupProblem(term,message){
     byId('lookupTitle').textContent=term;var definition=byId('lookupDefinition');definition.textContent=message;definition.classList.remove('loading');
-    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');placeLookupCard();
+    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');byId('lookupSource').classList.add('hidden');placeLookupCard();
   }
   function conciseExtract(text){
     text=String(text||'').replace(/\s+/g,' ').trim();if(text.length<=560)return text;
@@ -699,6 +702,7 @@
   }
   function renderLookup(term,result){
     byId('lookupTitle').textContent=result.title||term;var definition=byId('lookupDefinition');definition.textContent=conciseExtract(result.extract)||'No concise explanation was available for this entry.';definition.classList.remove('loading');
+    var source=byId('lookupSource'),isAi=result.source==='ai';source.textContent=isAi?'AI explanation · verify':'Wikipedia';source.classList.toggle('ai',isAi);source.classList.remove('hidden');byId('lookupAiSetup').classList.add('hidden');
     var article=byId('lookupArticle');article.href=result.url||'#';article.classList.toggle('hidden',!result.url);
     var photoLink=byId('lookupPhotoLink'),photo=byId('lookupPhoto'),imageSource=byId('lookupImageSource');
     if(result.image){photo.src=result.image;photo.alt='Image for '+(result.title||term);photoLink.href=result.imagePage||result.url||result.image;photoLink.classList.remove('hidden');imageSource.href=result.imagePage||result.url||result.image;imageSource.classList.remove('hidden');}
@@ -726,25 +730,45 @@
     if(!info||!info.thumburl||String(info.mime||'').indexOf('image/')!==0)return null;
     return{url:info.thumburl,page:info.descriptionurl||''};
   }
-  async function loadLookup(term,serial){
-    var key=term.toLocaleLowerCase();
+  function lookupPaperContext(selection){
+    var ch=find(currentId);if(!ch||!selection)return'';var source='';
+    if(selection.kind==='pdf')source=(ch.pageTexts||[])[Math.max(0,(selection.page||1)-1)]||'';
+    else{var text=selection.kind==='reader'?(ch.readerText||readerSourceText(ch)):(ch.fr||''),paragraphs=paras(text);source=paragraphs[Math.max(0,selection.para||0)]||'';}
+    source=String(source).replace(/\s+/g,' ').trim();var needle=String(selection.text||'').replace(/\s+/g,' ').trim(),at=source.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase());
+    if(at<0)return source.slice(0,1400);return source.slice(Math.max(0,at-600),Math.min(source.length,at+needle.length+800));
+  }
+  async function deepseekEntry(term,context){
+    var key=localStorage.getItem(AI_KEY)||'';if(!key)return null;
+    byId('lookupTitle').textContent='Asking DeepSeek…';byId('lookupDefinition').textContent='Wikipedia has no clean entry, so I’m reading this term in the paper’s context.';
+    var ch=find(currentId),res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:360,messages:[{role:'system',content:'You write careful glossary notes for scientific-paper readers. Define the selected term as used in the supplied excerpt. Be concise, concrete, and honest about ambiguity. Return only valid JSON with string fields title, definition, and image_query. The definition must be 2-3 sentences with no markdown. image_query must name one concrete scientific object, organism, process diagram, or instrument suitable for a Wikimedia Commons search; leave it empty if no honest visual exists.'},{role:'user',content:'Paper: '+(ch&&ch.title||'Untitled')+'\nSelected term: '+term+'\nNearby excerpt: '+String(context||'No nearby excerpt available.').slice(0,1800)}]})});
+    if(!res.ok)throw new Error('DeepSeek returned '+res.status);var data=await res.json(),answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'',match=answer.match(/\{[\s\S]*\}/),parsed=match&&JSON.parse(match[0]);
+    if(!parsed||!String(parsed.definition||'').trim())throw new Error('DeepSeek returned no definition');
+    return{title:String(parsed.title||term).trim().slice(0,100),extract:String(parsed.definition).trim(),url:'',image:'',imagePage:'',imageQuery:String(parsed.image_query||'').trim().slice(0,100),source:'ai'};
+  }
+  async function loadLookup(term,serial,context){
+    var key=String(currentId||'')+'|'+term.toLocaleLowerCase();
     try{
       var cached=Object.prototype.hasOwnProperty.call(lookupCache,key),result=cached?lookupCache[key]:await wikipediaEntry(term);
-      if(serial!==lookupSerial)return;if(!result){lookupCache[key]=null;showLookupProblem(term,'I could not find a clean entry for that selection. Try one specific word or phrase.');return;}
+      if(serial!==lookupSerial)return;
+      if(!result){
+        if(!localStorage.getItem(AI_KEY)){lookupCache[key]=null;showLookupProblem(term,'Wikipedia has no clean entry for this phrase. Add a DeepSeek key to explain technical terms from the nearby paper context.');byId('lookupAiSetup').classList.remove('hidden');return;}
+        result=await deepseekEntry(term,context);if(serial!==lookupSerial)return;
+      }
       lookupCache[key]=result;renderLookup(term,result);
-      if(!result.image){var image=await commonsImage(result.title||term);if(serial!==lookupSerial)return;if(image){result.image=image.url;result.imagePage=image.page;lookupCache[key]=result;renderLookup(term,result);}}
-    }catch(e){if(serial===lookupSerial)showLookupProblem(term,'The reference lookup could not connect. Your highlight is still safe—try again when you are online.');}
+      if(!result.image){var image=await commonsImage(result.imageQuery||result.title||term);if(serial!==lookupSerial)return;if(image){result.image=image.url;result.imagePage=image.page;lookupCache[key]=result;renderLookup(term,result);}}
+    }catch(e){if(serial===lookupSerial)showLookupProblem(term,'The reference lookup could not finish. Your highlight is still safe—try again when you are online.');}
   }
-  function queueLookup(text,rect){
+  function queueLookup(text,rect,selection){
     var term=String(text||'').replace(/\s+/g,' ').replace(/^[\s"'“”‘’.,;:!?]+|[\s"'“”‘’.,;:!?]+$/g,'').trim();if(term.length<2)return;
-    clearTimeout(lookupTimer);var serial=++lookupSerial;
+    clearTimeout(lookupTimer);var serial=++lookupSerial,context=lookupPaperContext(selection);
     lookupTimer=setTimeout(function(){
       if(serial!==lookupSerial||selectionPointerDown)return;prepareLookup(term,rect);
       if(term.length>140||term.split(/\s+/).length>14){showLookupProblem(term,'Select a word or short phrase for a clearer definition and a more relevant image.');return;}
-      loadLookup(term,serial);
+      loadLookup(term,serial,context);
     },LOOKUP_DELAY);
   }
   byId('lookupClose').onclick=hideLookup;
+  byId('lookupAiSetup').onclick=function(){hideLookup();fillSettings();byId('settingsDialog').showModal();};
   byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
   document.addEventListener('pointerdown',function(e){if(!e.target.closest('#lookupCard'))hideLookup();},true);
   window.addEventListener('resize',function(){placeLookupCard();});
@@ -1508,12 +1532,12 @@
       var host=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;
       var page=host&&host.closest?host.closest('.pdf-page'):null;if(!page||!byId('pdfFrame').contains(page)||!page.querySelector('.text-layer').contains(range.commonAncestorContainer))return;
       var base=page.getBoundingClientRect(),rects=Array.from(range.getClientRects()).filter(function(r){return r.width>1&&r.height>1;}).map(function(r){var x=Math.max(0,(r.left-base.left-1.5)/base.width),y=Math.max(0,(r.top-base.top+r.height*.12)/base.height);return{x:x,y:y,w:Math.min(1-x,(r.width+3)/base.width),h:Math.min(1-y,(r.height*.76)/base.height)};}).filter(function(r){return r.x<1&&r.y<1;});rects=mergeHighlightRects(rects);
-      if(rects.length){setPendingSelection({kind:'pdf',page:+page.dataset.page||currentPage,text:text,rects:rects});if(!selectionPointerDown)queueLookup(text,selectionRect);}
+      if(rects.length){var pdfSelection={kind:'pdf',page:+page.dataset.page||currentPage,text:text,rects:rects};setPendingSelection(pdfSelection);if(!selectionPointerDown)queueLookup(text,selectionRect,pdfSelection);}
     }else{
       var original=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;original=original&&original.closest('.original');if(!original||!byId('textDocument').contains(original))return;
       var startOwner=range.startContainer.nodeType===1?range.startContainer:range.startContainer.parentElement,endOwner=range.endContainer.nodeType===1?range.endContainer:range.endContainer.parentElement;if(!original.contains(startOwner)||!original.contains(endOwner))return;
       var before=document.createRange();before.selectNodeContents(original);before.setEnd(range.startContainer,range.startOffset);var through=document.createRange();through.selectNodeContents(original);through.setEnd(range.endContainer,range.endOffset);
-      var ch=find(currentId);setPendingSelection({kind:ch&&ch.kind==='pdf'?'reader':'text',para:+original.dataset.paraIndex,start:before.toString().length,end:through.toString().length,text:text});if(!selectionPointerDown)queueLookup(text,selectionRect);
+      var ch=find(currentId),textSelection={kind:ch&&ch.kind==='pdf'?'reader':'text',para:+original.dataset.paraIndex,start:before.toString().length,end:through.toString().length,text:text};setPendingSelection(textSelection);if(!selectionPointerDown)queueLookup(text,selectionRect,textSelection);
     }
   }
   document.addEventListener('selectionchange',captureSelection);

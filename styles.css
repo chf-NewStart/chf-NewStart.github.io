@@ -789,6 +789,25 @@ footer {
     text-shadow: 0 0 10px rgba(118, 247, 165, 0.5);
 }
 
+.launcher-row-margin {
+    background: linear-gradient(90deg, rgba(255, 121, 94, 0.13), transparent 76%);
+}
+
+.launcher-row-margin code,
+.launcher-row-margin i {
+    color: #ff795e;
+}
+
+.launcher-row-margin:hover,
+.launcher-row-margin:focus-visible {
+    background: linear-gradient(90deg, rgba(255, 121, 94, 0.22), transparent 82%);
+}
+
+.launcher-row-margin:hover code,
+.launcher-row-margin:focus-visible code {
+    text-shadow: 0 0 11px rgba(255, 121, 94, 0.55);
+}
+
 .launcher-row-unclench {
     background: linear-gradient(90deg, rgba(85, 227, 255, 0.11), transparent 74%);
 }

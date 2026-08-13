@@ -125,11 +125,11 @@
     .comfort-bar .toggle { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: .72rem; font-weight: 650; }
     .comfort-bar .toggle[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
     .comfort-bar .spacer { flex: 1 1 auto; }
-    .reader-layout { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; }
+    .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
     #focusBtn.active, #comfortBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; }
     html[data-theme="dark"] .document-pane { background: #111516; }
-    .pdf-frame { width: max-content; min-width: calc(100% - 36px); min-height: calc(100% - 36px); margin: 18px auto; display: grid; place-items: start center; }
+    .pdf-frame { width: max-content; min-width: 100%; min-height: 100%; margin: 0 auto; display: grid; place-items: start center; }
     .pdf-page { position: relative; flex: 0 0 auto; background: white; box-shadow: 0 10px 45px rgba(0,0,0,.18); }
     #pdfCanvas { display: block; height: auto; background: white; }
     .pdf-page.dark-paper { background: #171717; }
@@ -197,6 +197,11 @@
     .para-action + .para-action { margin-left: 14px; }
 
     .notebook { min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--surface); }
+    .notebook-resizer { position: absolute; z-index: 8; top: 0; right: calc(var(--notebook-width) - 5px); bottom: 0; width: 10px; cursor: col-resize; touch-action: none; }
+    .notebook-resizer::before { position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; content: ""; background: var(--line); transition: width .15s ease, left .15s ease, background .15s ease; }
+    .notebook-resizer:hover::before, .notebook-resizer:focus-visible::before, body.resizing-notebook .notebook-resizer::before { left: 3px; width: 4px; background: var(--accent); }
+    .notebook-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    body.resizing-notebook { cursor: col-resize; user-select: none; }
     .tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
     .tab { border: 0; border-bottom: 2px solid transparent; padding: 14px 5px 11px; background: transparent; color: var(--muted); font-size: .72rem; font-weight: 650; }
     .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
@@ -272,7 +277,7 @@
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; }
       .hero-card { display: none; }
-      .reader-layout { grid-template-columns: minmax(0, 1fr) 320px; }
+      .reader-layout { --notebook-width: 320px; }
       .connections-intro { grid-template-columns: 1fr; }
     }
     @media (max-width: 720px) {
@@ -291,10 +296,11 @@
       .reader-tools .title strong { max-width: 35vw; }
       .reader-tools .soft-button .wide { display: none; }
       .reader-layout { display: block; overflow-y: auto; }
+      .notebook-resizer { display: none; }
       .comfort-bar { padding: 9px 10px; gap: 7px 10px; }
       .comfort-bar .spacer { display: none; }
       .document-pane { height: min(66vh, 720px); height: min(66dvh, 720px); overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-      .pdf-frame { min-width: calc(100% - 16px); margin: 8px auto; }
+      .pdf-frame { min-width: 100%; margin: 0 auto; }
       .text-document { width: calc(100% - 16px); margin: 8px auto; padding: 28px 22px; }
       .notebook { min-height: 52vh; border-left: 0; border-top: 1px solid var(--line); }
       .tab-panel { overflow: visible; }
@@ -412,12 +418,13 @@
         <button class="step-btn" id="findNext" type="button" aria-label="Next match">↓</button>
       </div>
       <div class="progress-rail" id="progressRail" role="progressbar" aria-label="Reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="progressFill"></i></div>
-      <div class="reader-layout">
+      <div class="reader-layout" id="readerLayout">
         <div class="document-pane" id="documentPane">
           <div class="pdf-frame" id="pdfFrame"><div class="pdf-page" id="pdfPage"><canvas id="pdfCanvas"></canvas><div class="highlight-layer" id="highlightLayer"></div><div class="text-layer" id="textLayer"></div><div class="pdf-focus-layer" id="pdfFocusLayer"><div class="pdf-focus-band"></div></div></div></div>
           <article class="text-document hidden" id="textDocument"></article>
         </div>
-        <aside class="notebook">
+        <div class="notebook-resizer" id="notebookResizer" role="separator" aria-label="Resize notes panel" aria-controls="notebook" aria-orientation="vertical" aria-valuemin="280" aria-valuemax="620" aria-valuenow="360" title="Drag to resize notes · double-click to reset" tabindex="0"></div>
+        <aside class="notebook" id="notebook">
           <div class="tabs" role="tablist">
             <button class="tab active" data-tab="notesPanel" role="tab" aria-selected="true" aria-controls="notesPanel">Notes</button>
             <button class="tab" data-tab="aiPanel" role="tab" aria-selected="false" aria-controls="aiPanel">Ask AI</button>
@@ -864,6 +871,32 @@
   byId('documentPane').addEventListener('click',function(e){
     if(!comfort.focus||readerMode!=='pdf'||matchMedia('(hover: hover)').matches)return;var page=byId('pdfPage'),selection=window.getSelection&&window.getSelection();if(page&&page.contains(e.target)&&(!selection||selection.isCollapsed))setPdfFocusFromPoint(e.clientY,true);
   });
+  var NOTEBOOK_WIDTH_KEY='readingRoom.notebookWidth.v1',notebookWidth=innerWidth<=900?320:360;
+  try{notebookWidth=+localStorage.getItem(NOTEBOOK_WIDTH_KEY)||notebookWidth;}catch(e){}
+  function setNotebookWidth(value,save){
+    var layout=byId('readerLayout'),resizer=byId('notebookResizer');if(innerWidth<=720){layout.style.removeProperty('--notebook-width');return;}
+    var available=layout.clientWidth||innerWidth,max=Math.max(280,Math.min(620,available-340));
+    notebookWidth=Math.round(Math.max(280,Math.min(max,+value||360)));layout.style.setProperty('--notebook-width',notebookWidth+'px');
+    resizer.setAttribute('aria-valuemax',String(Math.round(max)));resizer.setAttribute('aria-valuenow',String(notebookWidth));resizer.setAttribute('aria-valuetext',notebookWidth+' pixels wide');
+    if(save)try{localStorage.setItem(NOTEBOOK_WIDTH_KEY,String(notebookWidth));}catch(e){}
+  }
+  setNotebookWidth(notebookWidth,false);
+  var notebookDrag=false;
+  byId('notebookResizer').onpointerdown=function(e){
+    if(innerWidth<=720)return;notebookDrag=true;this.setPointerCapture(e.pointerId);document.body.classList.add('resizing-notebook');e.preventDefault();
+  };
+  byId('notebookResizer').onpointermove=function(e){
+    if(!notebookDrag)return;var rect=byId('readerLayout').getBoundingClientRect();setNotebookWidth(rect.right-e.clientX,false);
+  };
+  function finishNotebookResize(e){
+    if(!notebookDrag)return;notebookDrag=false;document.body.classList.remove('resizing-notebook');setNotebookWidth(notebookWidth,true);if(e&&byId('notebookResizer').hasPointerCapture(e.pointerId))byId('notebookResizer').releasePointerCapture(e.pointerId);if(readerMode==='pdf'&&pdfDoc&&pdfFit)renderPdfPage();
+  }
+  byId('notebookResizer').onpointerup=finishNotebookResize;
+  byId('notebookResizer').onpointercancel=finishNotebookResize;
+  byId('notebookResizer').ondblclick=function(){setNotebookWidth(360,true);if(readerMode==='pdf'&&pdfDoc&&pdfFit)renderPdfPage();showReaderToast('Notes panel reset');};
+  byId('notebookResizer').onkeydown=function(e){
+    if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'){e.preventDefault();e.stopPropagation();setNotebookWidth(e.key==='Home'?360:notebookWidth+(e.key==='ArrowLeft'?24:-24),true);if(readerMode==='pdf'&&pdfDoc&&pdfFit)renderPdfPage();}
+  };
   function updateProgress(){
     var ch=find(currentId),pct=0;
     if(ch){
@@ -1087,8 +1120,8 @@
     pdfRendering=true;pdfRenderPending=false;
     try{
       var pageNumber=currentPage,page=await pdfDoc.getPage(pageNumber),layers=ensurePdfLayers(),pane=byId('documentPane');
-      var natural=page.getViewport({scale:1}),max=Math.max(280,Math.min(920,(pane.clientWidth||800)-36));
-      var scale=pdfFit?Math.min(1.7,max/natural.width):(4/3)*pdfZoom;
+      var natural=page.getViewport({scale:1}),fitWidth=Math.max(280,(pane.clientWidth||800)-1);
+      var scale=pdfFit?fitWidth/natural.width:(4/3)*pdfZoom;
       /* A slightly lower pixel ratio on narrow phones prevents large journal pages from
          exhausting Safari's canvas memory while keeping type comfortably sharp. */
       var viewport=page.getViewport({scale:scale}),ratio=Math.min(devicePixelRatio||1,innerWidth<=720?1.5:2),ctx=layers.canvas.getContext('2d');
@@ -1130,6 +1163,7 @@
   var refitTimer=null;
   addEventListener('resize',function(){
     if(byId('readerPage').classList.contains('hidden'))return;
+    setNotebookWidth(notebookWidth,false);
     clearTimeout(refitTimer);refitTimer=setTimeout(function(){if(readerMode==='pdf'&&pdfDoc&&pdfFit)renderPdfPage();},220);
   });
   /* Map each Reader paragraph back to its PDF page, so "where was this?" is one click. */

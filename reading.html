@@ -149,10 +149,10 @@
     .text-layer ::selection, .original ::selection { background: rgba(64, 137, 174, .34); }
     /* Reading spotlight: a warm bulb of light around the pointer (or last tap), dimming
        everything else — including the other column of a two-column paper. */
-    .pane-spotlight { position: absolute; z-index: 6; inset: 0 var(--notebook-width, 360px) 0 0; pointer-events: none; opacity: 0; transition: opacity .2s ease;
-      background: radial-gradient(circle var(--bulb-r, 175px) at var(--fx, 50%) var(--fy, 40%), rgba(16,20,21,0) 0 58%, rgba(16,20,21,.4) 86%, rgba(16,20,21,.5) 100%); }
+    .pane-spotlight { --bulb-r: clamp(215px, 20vw, 275px); position: absolute; z-index: 6; inset: 0 var(--notebook-width, 360px) 0 0; pointer-events: none; opacity: 0; transition: opacity .2s ease;
+      background: radial-gradient(circle var(--bulb-r) at var(--fx, 50%) var(--fy, 40%), rgba(16,20,21,0) 0 58%, rgba(16,20,21,.4) 86%, rgba(16,20,21,.5) 100%); }
     .pane-spotlight.on { opacity: 1; }
-    html[data-theme="dark"] .pane-spotlight { background: radial-gradient(circle var(--bulb-r, 175px) at var(--fx, 50%) var(--fy, 40%), rgba(0,0,0,0) 0 58%, rgba(0,0,0,.55) 88%, rgba(0,0,0,.64) 100%); }
+    html[data-theme="dark"] .pane-spotlight { background: radial-gradient(circle var(--bulb-r) at var(--fx, 50%) var(--fy, 40%), rgba(0,0,0,0) 0 58%, rgba(0,0,0,.55) 88%, rgba(0,0,0,.64) 100%); }
     .zoom-tools { display: flex; align-items: center; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
     .zoom-tools button { min-width: 34px; height: 36px; padding: 0 9px; border: 0; border-right: 1px solid var(--line); background: transparent; font-size: .75rem; }
     .zoom-tools button:last-child { border-right: 0; }
@@ -314,7 +314,7 @@
       .comfort-bar { padding: 9px 10px; gap: 7px 10px; }
       .comfort-bar .spacer { display: none; }
       .document-pane { height: 100%; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-      .pane-spotlight { inset: 0; --bulb-r: 130px; }
+      .pane-spotlight { inset: 0; --bulb-r: clamp(165px, 46vw, 195px); }
       .pdf-frame { min-width: 100%; margin: 0 auto; padding: 8px 0 30px; gap: 10px; }
       .text-document { width: calc(100% - 16px); margin: 8px auto; padding: 28px 22px; }
       .mobile-bar { display: flex; }

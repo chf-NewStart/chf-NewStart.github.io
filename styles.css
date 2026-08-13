@@ -1754,23 +1754,28 @@ footer {
 
 @media (hover: hover) and (pointer: fine) {
     .monet-shot:hover,
+    .monet-shot:focus,
     .monet-shot:focus-visible {
         z-index: 4;
     }
 
     .monet-shot:hover .monet-art-frame,
+    .monet-shot:focus .monet-art-frame,
     .monet-shot:focus-visible .monet-art-frame {
         box-shadow: 0 30px 54px rgba(0, 7, 9, 0.58);
         transform: perspective(1000px) rotateY(180deg) rotateZ(-0.7deg) scale(1.035);
     }
 
     .monet-shot:hover .monet-art-frame::after,
+    .monet-shot:focus .monet-art-frame::after,
     .monet-shot:focus-visible .monet-art-frame::after {
         opacity: 1;
     }
 
     .monet-shot:hover figure::before,
     .monet-shot:hover figure::after,
+    .monet-shot:focus figure::before,
+    .monet-shot:focus figure::after,
     .monet-shot:focus-visible figure::before,
     .monet-shot:focus-visible figure::after {
         opacity: 1;

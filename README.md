@@ -78,13 +78,14 @@ Each page is self-contained and keeps its data in the visitor's own browser
   optional AI questions; sketch notes; a tag-based connection map; and optional
   AES-GCM encrypted GitHub sync. Papers can be removed directly from the
   library without deleting their original `papers/` copy in GitHub.
-  Built to be easy to stay inside: a focus mode that dims everything but the
-  current paragraph (arrows / space to move), read-aloud that highlights and
-  follows the paragraph being spoken, an `Aa` panel for text size, column
+  Built to be easy to stay inside: optional focus that gently dims the
+  surrounding text while you hover on desktop or tap on a phone, read-aloud that
+  highlights and follows the paragraph being spoken, an `Aa` panel for text size, column
   width, and line spacing, a whole-paper find bar (`/`), a reading progress
   rail, and each paper reopens where you left off. Reader-view paragraphs link
   back to their PDF page, and notes and highlights in the side index jump back
-  to their spot.
+  to their spot. On phones, the first PDF page opens before whole-paper Reader
+  indexing, and compatibility shims cover older iPhone Safari PDF.js gaps.
   PDF files live in IndexedDB on each device; a connected private repo can also
   provide a `papers/` folder — including subfolders — to browse and pick them
   from on Mac or phone.

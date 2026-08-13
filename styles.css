@@ -1692,8 +1692,7 @@ footer {
     content: '';
     opacity: 0;
     pointer-events: none;
-    transform: rotateY(180deg);
-    backface-visibility: hidden;
+    transition: opacity 360ms ease;
 }
 
 .monet-shot figure {
@@ -1765,7 +1764,7 @@ footer {
     .monet-shot:focus-within .monet-art-frame,
     .monet-shot:focus-visible .monet-art-frame {
         box-shadow: 0 30px 54px rgba(0, 7, 9, 0.58);
-        transform: perspective(1000px) rotateY(180deg) rotateZ(-0.7deg) scale(1.035);
+        transform: perspective(1000px) rotateY(7deg) rotateZ(-0.7deg) translateY(-5px) scale(1.035);
     }
 
     .monet-shot:hover .monet-art-frame::after,
@@ -1797,12 +1796,12 @@ footer {
 
 .monet-shot:focus .monet-art-frame {
     box-shadow: 0 30px 54px rgba(0, 7, 9, 0.58);
-    transform: perspective(1000px) rotateY(180deg) rotateZ(-0.7deg) scale(1.035);
+    transform: perspective(1000px) rotateY(7deg) rotateZ(-0.7deg) translateY(-5px) scale(1.035);
 }
 
 .monet-shot:focus-within .monet-art-frame {
     box-shadow: 0 30px 54px rgba(0, 7, 9, 0.58);
-    transform: perspective(1000px) rotateY(180deg) rotateZ(-0.7deg) scale(1.035);
+    transform: perspective(1000px) rotateY(7deg) rotateZ(-0.7deg) translateY(-5px) scale(1.035);
 }
 
 .monet-shot:focus .monet-art-frame::after,

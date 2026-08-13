@@ -103,8 +103,7 @@
 
     /* Reader */
     #readerPage { height: calc(100vh - 68px); overflow: hidden; display: flex; flex-direction: column; }
-    .reader-tools { flex: 0 0 auto; height: 54px; padding: 7px 18px; display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); background: var(--surface); }
-    .reader-tools::-webkit-scrollbar { display: none; }
+    .reader-tools { flex: 0 0 auto; min-height: 54px; padding: 7px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; border-bottom: 1px solid var(--line); background: var(--surface); }
     .reader-tools .title { min-width: 0; margin-right: auto; }
     .reader-tools .title strong { display: block; max-width: min(38vw, 520px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 .9rem var(--serif); }
     .reader-tools .title span { display: block; color: var(--muted); font-size: .63rem; }
@@ -178,9 +177,12 @@
     .para .original { font: var(--read-size)/var(--read-leading) var(--serif); word-spacing: var(--read-spacing); white-space: pre-wrap; }
     .para.current::before { content: ""; position: absolute; left: -16px; top: 12px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--accent); }
     .para.speaking { background: color-mix(in srgb, var(--yellow) 34%, transparent); }
-    .text-document.focus-mode .para { opacity: .26; }
+    .text-document.focus-mode .para { opacity: .15; border-top-color: transparent; }
     .text-document.focus-mode .para.current, .text-document.focus-mode .para.speaking { opacity: 1; }
-    .text-document.focus-mode .para:hover { opacity: .7; }
+    .text-document.focus-mode .para.current { background: color-mix(in srgb, var(--yellow) 30%, var(--surface)); padding: 18px 20px 14px; margin: 6px -20px; border-radius: 12px; box-shadow: 0 6px 26px rgba(45,48,43,.09); }
+    html[data-theme="dark"] .text-document.focus-mode .para.current { box-shadow: 0 6px 26px rgba(0,0,0,.3); }
+    .text-document.focus-mode .para.current::before { display: none; }
+    .text-document.focus-mode .para:hover { opacity: .55; }
     .text-document.focus-mode .para.current:hover { opacity: 1; }
     .page-marker { display: flex; align-items: center; gap: 10px; margin: 24px 0 2px; color: var(--muted); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; }
     .page-marker::after { content: ""; flex: 1; height: 1px; background: var(--line); }
@@ -666,22 +668,37 @@
     function noise(line,index,total){var key=boundaryKey(line);return /^\s*(?:\d+|[ivxlcdm]+)\s*$/i.test(line)||/^(?:doi\s*:|https?:\/\/doi\.)/i.test(line)||/(?:copyright|all rights reserved|downloaded from|terms of use)/i.test(line)||((index<3||index>=total-3)&&(counts[key]||0)>=2);}
     var cleaned=(pageLines||[]).map(function(lines){return lines.filter(function(line,i){return line&&!noise(line,i,lines.length);});});
     return cleaned.map(function(lines){
+      /* A paragraph's last line is usually visibly shorter than the column, so compare each
+         line against this page's median width instead of splitting at every sentence end. */
+      var lengths=lines.map(function(l){return l.length;}).sort(function(a,b){return a-b;});
+      var median=lengths.length?lengths[Math.floor(lengths.length/2)]:0;
+      var breakBelow=Math.max(40,median*.82);
       var out=[],current='';
-      lines.forEach(function(line,i){
-        var next=lines[i+1]||'',heading=line.length<90&&(/^[A-Z][A-Z\s\d:.-]{4,}$/.test(line)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(line));
+      lines.forEach(function(line){
+        var heading=line.length<90&&(/^[A-Z][A-Z\s\d:.-]{4,}$/.test(line)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(line));
         if(heading){if(current){out.push(current);current='';}out.push(line);return;}
         if(current)current=/[-­]$/.test(current)?current.replace(/[-­]$/,'')+line:current+' '+line;else current=line;
-        var sentence=/[.!?][”"')\]]?$/.test(line),short=line.length<65,nextStarts=/^[A-ZÀ-ÖØ-Þ\d]/.test(next);
-        if(sentence&&(short||nextStarts)){out.push(current);current='';}
+        var sentence=/[.!?][”"')\]]?$/.test(line),short=line.length<breakBelow;
+        if(sentence&&(short||current.length>700)){out.push(current);current='';}
       });
       if(current)out.push(current);return out.join('\n\n');
     });
   }
   function readerTextFromPages(pageLines){return readerPagesFromLines(pageLines).filter(Boolean).join('\n\n');}
+  /* Bump when the segmentation heuristic changes; cached reader text is rebuilt on open
+     unless the paper already has paragraph-anchored notes or highlights to protect. */
+  var READER_V=2;
+  function refreshReaderSegmentation(ch){
+    if(!ch||ch.kind!=='pdf'||!ch.pageLines||ch.readerV===READER_V)return;
+    if(Object.keys(ch.readerNotes||{}).length||(ch.readerHighlights||[]).length){ch.readerV=READER_V;persist(false);return;}
+    var rebuilt=readerTextFromPages(ch.pageLines);
+    if(rebuilt)ch.readerText=rebuilt;
+    ch.readerV=READER_V;ch.focusPara=null;delete ch.readerScroll;persist(false);
+  }
   function readerSourceText(ch){return !ch?'':ch.kind==='pdf'?(ch.readerText||readerTextFromPages(ch.pageLines||[])||ch.fr||''):(ch.fr||'');}
   async function ensureReaderData(doc,ch){
     if(ch.readerText&&ch.pageLines)return ch.readerText;if(readerBuildPromises[ch.id])return readerBuildPromises[ch.id];
-    readerBuildPromises[ch.id]=(async function(){var lines=[],pages=[];for(var p=1;p<=doc.numPages;p++){var content=await (await doc.getPage(p)).getTextContent();var pageLines=contentToLines(content);lines.push(pageLines);pages.push(pageLines.join(' '));}ch.pageLines=lines;ch.pageTexts=pages;ch.readerText=readerTextFromPages(lines)||pages.join('\n\n');ch.fr=pages.join('\n\n');ch.updatedAt=now();persist();return ch.readerText;})().finally(function(){delete readerBuildPromises[ch.id];});
+    readerBuildPromises[ch.id]=(async function(){var lines=[],pages=[];for(var p=1;p<=doc.numPages;p++){var content=await (await doc.getPage(p)).getTextContent();var pageLines=contentToLines(content);lines.push(pageLines);pages.push(pageLines.join(' '));}ch.pageLines=lines;ch.pageTexts=pages;ch.readerText=readerTextFromPages(lines)||pages.join('\n\n');ch.readerV=READER_V;ch.fr=pages.join('\n\n');ch.updatedAt=now();persist();return ch.readerText;})().finally(function(){delete readerBuildPromises[ch.id];});
     return readerBuildPromises[ch.id];
   }
   async function importPdf(file, sourcePath){
@@ -697,7 +714,7 @@
       var id=existing?existing.id:uid('p'); await putPdf(id, new Blob([bytes],{type:'application/pdf'}));
       var title=file.name.replace(/\.pdf$/i,'').replace(/[_-]+/g,' ');
       var ch=existing||normalize({id:id,title:title,authors:'',kind:'pdf',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now(),readPage:1});
-      ch.sourceName=file.name; ch.sourcePath=sourcePath||ch.sourcePath||''; ch.pageLines=pageLines;ch.pageTexts=pages;ch.readerText=readerTextFromPages(pageLines)||pages.join('\n\n');ch.fr=pages.join('\n\n'); ch.pageCount=doc.numPages; ch.updatedAt=now();
+      ch.sourceName=file.name; ch.sourcePath=sourcePath||ch.sourcePath||''; ch.pageLines=pageLines;ch.pageTexts=pages;ch.readerText=readerTextFromPages(pageLines)||pages.join('\n\n');ch.readerV=READER_V;ch.fr=pages.join('\n\n'); ch.pageCount=doc.numPages; ch.updatedAt=now();
       if(!existing)state.chapters.push(ch); persist(); renderShelf(); openReader(id);
     } catch(e){ showError(e.message||'The PDF reader could not open this file.'); }
     finally { btn.disabled=false; btn.textContent=old; }
@@ -873,6 +890,7 @@
   /* reader */
   async function openReader(id){
     var ch=find(id); if(!ch) return; stopReadAloud(true); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfFit=true; pdfZoom=1; setHighlightMode(false); clearPendingSelection(); toggleFindBar(false);
+    refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
     byId('paperTags').value=(ch.tags||[]).join(', '); renderQa(); renderNoteIndex();

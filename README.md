@@ -71,22 +71,27 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `journal.html` — one page per day. Optional sync pushes an **AES-GCM encrypted
   blob** to a private GitHub repo the visitor owns (fine-grained token; the repo
   only ever sees ciphertext).
-- `reading.html` — Margin, a local-first paper desk: selectable and true-width
-  fitting PDF rendering, a draggable notes panel, a dark-paper option, a reflowed
-  Reader view, and browser
-  read-aloud that omit repeated headers and footers; a direct four-color marker
-  with persistent highlights; page and paragraph notes; screenshot OCR with
-  optional AI questions; sketch notes; a tag-based connection map; and optional
-  AES-GCM encrypted GitHub sync. Papers can be removed directly from the
-  library without deleting their original `papers/` copy in GitHub.
-  Built to be easy to stay inside: an optional PDF-native reading spotlight
-  that follows the pointer or a phone tap and dims the page outside a narrow
-  reading band, read-aloud that highlights and follows the text being spoken, an `Aa` panel for text size, column
-  width, and line spacing, a whole-paper find bar (`/`), a reading progress
-  rail, and each paper reopens where you left off. Reader-view paragraphs link
-  back to their PDF page, and notes and highlights in the side index jump back
-  to their spot. On phones, the first PDF page opens before whole-paper Reader
-  indexing, and compatibility shims cover older iPhone Safari PDF.js gaps.
+- `reading.html` — Margin, a local-first paper desk: selectable PDF rendering
+  in one continuous vertical scroll (pages render lazily and far-away pages are
+  freed so long papers stay light on phone memory), a draggable notes panel, a
+  reflowed Reader view, and browser read-aloud that omit repeated headers and
+  footers; a direct four-color marker with persistent highlights; page and
+  paragraph notes; screenshot OCR with optional AI questions; sketch notes; a
+  tag-based connection map; and optional AES-GCM encrypted GitHub sync. Papers
+  can be removed directly from the library without deleting their original
+  `papers/` copy in GitHub.
+  Built to be easy to stay inside: an optional reading spotlight — a bulb of
+  light around the pointer (or last tap) that dims everything else, including
+  the other column of a two-column paper — read-aloud that highlights and
+  follows the text being spoken, an `Aa` panel for text size, column width,
+  and line spacing, a whole-paper find bar (`/`), a reading progress rail, and
+  each paper reopens where you left off. Reader-view paragraphs link back to
+  their PDF page, and notes and highlights in the side index jump back to
+  their spot. One theme toggle drives the app chrome, the PDF paper, and the
+  phone status bar together. On phones the document gets the whole screen: a
+  thumb-height bottom bar handles paging, Reader/PDF, and notes, the notebook
+  rises as a bottom sheet, the top bar keeps only back + title until ⋯ reveals
+  the rest, and compatibility shims cover older iPhone Safari PDF.js gaps.
   PDF files live in IndexedDB on each device; a connected private repo can also
   provide a `papers/` folder — including subfolders — to browse and pick them
   from on Mac or phone.

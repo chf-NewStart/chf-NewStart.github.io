@@ -16,7 +16,7 @@ gate — check your change locally before you push.
 
 - `index.html` — the portfolio page itself; `styles.css` and `site.js` belong to it.
 - `bio-bg.js` — the animated backdrop (see below).
-- `journal.html`, `reading.html`, `moneymanage/`, `msg/`, `personality/`, `game/` —
+- `journal.html`, `reading.html`, `moneymanage/`, `msg/`, `personality/`, `pose-loop/`, `game/` —
   standalone tools and games, each self-contained.
 - `sprites/` — pixel art for the tomato rain (goose, raccoon, glider, block, blinker).
 - `vendor/` — vendored libraries for the reading room (pdf.js, Tesseract language data).
@@ -78,6 +78,11 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `msg/` — terminal-style message box; the one page that sends data out (Formspree,
   with a mailto fallback).
 - `personality/` — attachment-style quiz with scored results.
+- `pose-loop/` — Unclench, a local camera-guided neck-and-shoulder target game.
+  MediaPipe extracts body landmarks in the browser so live shoulder and head dots
+  can complete two glowing rounds and a final release with hold progress and burst feedback. The earlier desk and
+  full-body temporal Echo Puzzle remains available as a secondary experiment;
+  camera frames are not uploaded or stored.
 - `game/` — thin redirect stubs. The browser games (Conway's Life, gomoku,
   escape-grid, the RL hunter) now live at lifegameproject.com; the pages left here
   point at that arcade so old links don't 404, and each carries a `canonical` to

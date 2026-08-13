@@ -1235,8 +1235,8 @@ footer {
     grid-template-columns: minmax(280px, 0.74fr) minmax(520px, 1.26fr);
     grid-template-areas:
         "intro intro"
-        "rules gallery"
-        "request request";
+        "gallery gallery"
+        "rules request";
     gap: clamp(30px, 4vw, 58px) clamp(32px, 5vw, 72px);
     align-items: start;
     overflow: hidden;
@@ -1286,8 +1286,8 @@ footer {
 .monet-feature-request {
     display: grid;
     grid-area: request;
-    grid-template-columns: minmax(420px, 1.18fr) minmax(280px, 0.82fr);
-    gap: clamp(28px, 5vw, 72px);
+    grid-template-columns: 1fr;
+    gap: clamp(24px, 3vw, 36px);
     align-items: start;
     padding-top: clamp(24px, 3vw, 36px);
     border-top: 1px solid rgba(231, 183, 104, 0.16);
@@ -1411,12 +1411,63 @@ footer {
 }
 
 .monet-gallery {
-    display: grid;
     position: relative;
     z-index: 1;
     grid-area: gallery;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    padding-bottom: clamp(36px, 5vw, 64px);
+    border-bottom: 1px solid rgba(231, 183, 104, 0.16);
+}
+
+.monet-gallery-heading {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.56fr) minmax(360px, 1.44fr);
+    gap: clamp(26px, 5vw, 72px);
+    align-items: end;
+    margin-bottom: clamp(28px, 5vw, 64px);
+}
+
+.monet-gallery-kicker {
+    margin: 0;
+    color: var(--monet-gold);
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+}
+
+.monet-gallery-heading h2 {
+    max-width: 15ch;
+    margin: 0;
+    color: #fff8ea;
+    font-size: clamp(1.8rem, 3.5vw, 3.6rem);
+    font-weight: 500;
+    letter-spacing: -0.045em;
+    line-height: 1.03;
+}
+
+.monet-gallery-heading div > p {
+    max-width: 52ch;
+    margin: 18px 0 0;
+    color: #c9c8bc;
+    line-height: 1.7;
+}
+
+.monet-gallery-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    gap: clamp(22px, 4vw, 58px);
+    align-items: start;
+}
+
+.monet-gallery-column {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: clamp(34px, 6vw, 76px);
+}
+
+.monet-gallery-column-secondary {
+    padding-top: clamp(44px, 8vw, 118px);
 }
 
 .monet-shot {
@@ -1425,73 +1476,31 @@ footer {
     text-decoration: none;
 }
 
-.monet-shot-hero {
-    grid-column: 1 / -1;
-}
-
 .monet-shot figure {
-    position: relative;
-    overflow: hidden;
     margin: 0;
-    border: 1px solid rgba(255, 244, 218, 0.16);
-    background: #090c0b;
 }
 
-.monet-pair-images {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    aspect-ratio: 3 / 2;
-}
-
-.monet-shot-hero .monet-pair-images {
-    aspect-ratio: 2 / 1;
-}
-
-.monet-pair-frame {
+.monet-art-frame {
     position: relative;
-    min-width: 0;
     overflow: hidden;
     background: #090c0b;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
 }
 
-.monet-pair-frame + .monet-pair-frame {
-    border-left: 1px solid rgba(255, 244, 218, 0.38);
-}
-
-.monet-pair-frame img {
+.monet-art-frame img {
+    display: block;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.monet-pair-tag {
-    position: absolute;
-    inset: 10px auto auto 10px;
-    padding: 4px 6px;
-    border: 0;
-    color: rgba(255, 255, 255, 0.76);
-    background: rgba(5, 7, 6, 0.48);
-    font-family: var(--mono);
-    font-size: 0.5rem;
-    font-weight: 500;
-    letter-spacing: 0.07em;
-    line-height: 1;
-}
-
-.monet-pair-tag-painted {
-    color: rgba(255, 255, 255, 0.76);
+    height: auto;
+    transition: transform 700ms cubic-bezier(0.2, 0.72, 0.25, 1);
 }
 
 .monet-shot figcaption {
     display: flex;
-    position: absolute;
-    inset: auto 0 0;
-    align-items: end;
+    align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    padding: 34px 14px 13px;
-    color: #fff8ea;
-    background: linear-gradient(transparent, rgba(5, 7, 6, 0.9));
+    padding: 14px 2px 0;
+    color: #c9c8bc;
 }
 
 .monet-shot figcaption span {
@@ -1502,18 +1511,17 @@ footer {
 }
 
 .monet-shot figcaption strong {
-    max-width: 16ch;
+    max-width: 20ch;
     color: #fff8ea;
-    font-size: 0.73rem;
+    font-size: clamp(0.78rem, 1.1vw, 0.92rem);
     font-weight: 500;
     line-height: 1.35;
     text-align: right;
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .monet-shot:hover .monet-pair-frame img {
-        transform: scale(1.025);
-        transition: transform 550ms cubic-bezier(0.2, 0.72, 0.25, 1);
+    .monet-shot:hover .monet-art-frame img {
+        transform: scale(1.012);
     }
 }
 
@@ -1619,6 +1627,7 @@ body.monet-page-body::before {
 
 .monet-page-feature .monet-feature-kicker {
     color: #80572c;
+    font-family: var(--mono);
 }
 
 .monet-page-feature h1 {
@@ -1626,6 +1635,23 @@ body.monet-page-body::before {
 }
 
 .monet-page-feature .monet-feature-lede {
+    color: rgba(53, 40, 27, 0.76);
+}
+
+.monet-page-feature .monet-gallery {
+    border-bottom-color: rgba(64, 45, 25, 0.22);
+}
+
+.monet-page-feature .monet-gallery-kicker {
+    color: #80572c;
+    font-family: var(--mono);
+}
+
+.monet-page-feature .monet-gallery-heading h2 {
+    color: #2b2117;
+}
+
+.monet-page-feature .monet-gallery-heading div > p {
     color: rgba(53, 40, 27, 0.76);
 }
 
@@ -1709,9 +1735,17 @@ body.monet-page-body::before {
     box-shadow: 0 0 12px rgba(154, 103, 48, 0.3);
 }
 
-.monet-page-feature .monet-shot figure {
-    border-color: rgba(64, 45, 25, 0.24);
+.monet-page-feature .monet-art-frame {
+    border: 1px solid rgba(64, 45, 25, 0.24);
     box-shadow: 0 18px 44px rgba(70, 45, 20, 0.16);
+}
+
+.monet-page-feature .monet-shot figcaption span {
+    color: rgba(53, 40, 27, 0.58);
+}
+
+.monet-page-feature .monet-shot figcaption strong {
+    color: #3b2b1c;
 }
 
 .monet-page-footer {
@@ -2610,6 +2644,10 @@ textarea {
         width: 100%;
     }
 
+    .monet-gallery-column-secondary {
+        padding-top: 48px;
+    }
+
     .profile-text {
         gap: 24px;
     }
@@ -2816,18 +2854,39 @@ textarea {
     }
 
     .monet-gallery {
-        display: grid;
         width: 100%;
+        padding-bottom: 34px;
+    }
+
+    .monet-gallery-heading,
+    .monet-gallery-columns {
         grid-template-columns: 1fr;
-        gap: 10px;
+    }
+
+    .monet-gallery-heading {
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+
+    .monet-gallery-heading div > p {
+        margin-top: 12px;
+    }
+
+    .monet-gallery-columns,
+    .monet-gallery-column {
+        gap: 36px;
+    }
+
+    .monet-gallery-column-secondary {
+        padding-top: 0;
     }
 
     .monet-shot {
         width: 100%;
     }
 
-    .monet-shot-hero {
-        grid-column: auto;
+    .monet-shot figcaption {
+        padding-top: 11px;
     }
 
     .explorer-menu {

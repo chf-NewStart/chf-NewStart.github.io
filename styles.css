@@ -1782,6 +1782,21 @@ footer {
     }
 }
 
+.monet-shot:focus {
+    z-index: 4;
+}
+
+.monet-shot:focus .monet-art-frame {
+    box-shadow: 0 30px 54px rgba(0, 7, 9, 0.58);
+    transform: perspective(1000px) rotateY(180deg) rotateZ(-0.7deg) scale(1.035);
+}
+
+.monet-shot:focus .monet-art-frame::after,
+.monet-shot:focus figure::before,
+.monet-shot:focus figure::after {
+    opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .monet-art-frame {
         transition-duration: 1ms;

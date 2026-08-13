@@ -71,8 +71,15 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `journal.html` — one page per day. Optional sync pushes an **AES-GCM encrypted
   blob** to a private GitHub repo the visitor owns (fine-grained token; the repo
   only ever sees ciphertext).
-- `reading.html` — bilingual reading room: paste text or a screenshot; OCR runs
-  locally in the browser (Tesseract), nothing is uploaded.
+- `reading.html` — Margin, a local-first paper desk: selectable and zoomable PDF
+  rendering with a dark-paper option, a reflowed Reader view, and browser
+  read-aloud that omit repeated headers and footers; a direct four-color marker
+  with persistent highlights; page and paragraph notes; screenshot OCR with
+  optional AI questions; sketch notes; a tag-based connection map; and optional
+  AES-GCM encrypted GitHub sync. Papers can be removed directly from the
+  library without deleting their original `papers/` copy in GitHub.
+  PDF files live in IndexedDB on each device; a connected private repo can also
+  provide a `papers/` folder to pick them from on Mac or phone.
 - `moneymanage/` — local-first personal finance tracker (OFX/QFX import, learned
   categorisation rules, optional AI key — all stored locally).
 - `msg/` — terminal-style message box; the one page that sends data out (Formspree,

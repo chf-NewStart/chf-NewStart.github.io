@@ -1485,7 +1485,7 @@ footer {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     grid-template-rows: repeat(12, minmax(0, 1fr));
     gap: clamp(12px, 1.7vw, 24px);
-    height: clamp(980px, 92vw, 1180px);
+    height: clamp(1100px, 100vw, 1280px);
     padding: clamp(10px, 1.5vw, 22px) 0;
 }
 
@@ -1538,7 +1538,7 @@ footer {
     align-self: center;
     align-items: center;
     justify-self: center;
-    width: min(100%, 610px);
+    width: min(100%, 560px);
     flex-direction: column;
     padding: clamp(14px, 2vw, 26px);
     color: #e9e1cf;
@@ -1559,21 +1559,21 @@ footer {
 }
 
 .monet-salon-center h1 {
-    max-width: 14ch;
-    font-size: clamp(2rem, 3.65vw, 3.5rem);
-    line-height: 1.03;
+    max-width: 16ch;
+    font-size: clamp(1.9rem, 2.75vw, 2.75rem);
+    line-height: 1.05;
 }
 
 .monet-salon-center .monet-feature-lede {
-    max-width: 50ch;
-    margin-top: 18px;
-    font-size: clamp(0.78rem, 1.15vw, 0.95rem);
-    line-height: 1.65;
+    max-width: 46ch;
+    margin-top: 14px;
+    font-size: clamp(0.75rem, 1vw, 0.88rem);
+    line-height: 1.55;
 }
 
 .monet-salon-center .monet-philosophy {
-    margin-top: clamp(16px, 2vw, 24px);
-    padding: clamp(16px, 2vw, 24px) clamp(8px, 2vw, 20px);
+    margin-top: clamp(12px, 1.5vw, 18px);
+    padding: clamp(12px, 1.5vw, 18px) clamp(8px, 2vw, 20px);
     border-top-color: rgba(231, 218, 192, 0.16);
     border-bottom-color: rgba(231, 218, 192, 0.12);
 }
@@ -1581,7 +1581,7 @@ footer {
 .monet-salon-center .monet-philosophy p {
     max-width: 24ch;
     color: #f5ead5;
-    font-size: clamp(1.1rem, 1.7vw, 1.55rem);
+    font-size: clamp(1rem, 1.45vw, 1.3rem);
     line-height: 1.18;
 }
 
@@ -1593,7 +1593,7 @@ footer {
 
 .monet-salon-center .monet-feature-request {
     gap: 0;
-    padding-top: clamp(16px, 2vw, 22px);
+    padding-top: clamp(12px, 1.5vw, 18px);
     border-top: 0;
 }
 
@@ -1631,17 +1631,6 @@ footer {
 .monet-salon-center .monet-feature-note > span:first-child {
     background: #d4aa73;
     box-shadow: 0 0 12px rgba(212, 170, 115, 0.3);
-}
-
-.monet-salon-center .monet-signature {
-    width: min(34%, 150px);
-    margin: 16px auto 0;
-}
-
-.monet-salon-center .monet-signature figcaption {
-    margin-top: 6px;
-    color: rgba(233, 225, 207, 0.48);
-    font-size: 0.5rem;
 }
 
 .monet-shot {
@@ -2988,13 +2977,17 @@ textarea {
 
     .monet-salon {
         grid-template-rows: repeat(12, minmax(0, 1fr));
-        height: 980px;
+        height: 1120px;
         padding: 12px 0;
     }
 
     .monet-salon-center {
         grid-area: 4 / 4 / 10 / 10;
         padding-inline: 12px;
+    }
+
+    .monet-salon-center h1 {
+        font-size: clamp(1.85rem, 4vw, 2.4rem);
     }
 
     .profile-text {

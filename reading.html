@@ -710,8 +710,14 @@
     if(!response.ok)throw new Error('Lookup failed');return response.json();
   }
   async function wikipediaEntry(term){
-    var data=await lookupJson('https://en.wikipedia.org/w/api.php',{action:'query',format:'json',formatversion:'2',origin:'*',generator:'search',gsrsearch:term,gsrnamespace:'0',gsrlimit:'1',prop:'extracts|pageimages|info',exintro:'1',explaintext:'1',exchars:'700',piprop:'thumbnail|name',pithumbsize:'720',pilicense:'free',inprop:'url'});
-    var page=data&&data.query&&data.query.pages&&data.query.pages[0];if(!page||page.missing||!page.extract)return null;
+    var data=await lookupJson('https://en.wikipedia.org/w/api.php',{action:'query',format:'json',formatversion:'2',origin:'*',generator:'search',gsrsearch:term,gsrnamespace:'0',gsrlimit:'6',prop:'extracts|pageimages|info',exintro:'1',explaintext:'1',exchars:'700',piprop:'thumbnail|name',pithumbsize:'720',pilicense:'free',inprop:'url'});
+    var normalized=term.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim(),tokens=normalized.split(/\s+/).filter(function(t){return t.length>2;}),pages=data&&data.query&&data.query.pages||[];
+    var ranked=pages.filter(function(page){return page&&!page.missing&&page.extract;}).map(function(page){
+      var title=String(page.title||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim(),body=(title+' '+String(page.extract||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ')),covered=tokens.filter(function(t){return body.split(/\s+/).some(function(word){return word===t;});}).length,titleCovered=tokens.filter(function(t){return title.split(/\s+/).some(function(word){return word===t;});}).length;
+      var allCovered=!tokens.length||covered===tokens.length,phraseMatch=body.indexOf(normalized)>=0,titleMatch=title===normalized||title.indexOf(normalized)>=0||normalized.indexOf(title)>=0;
+      return{page:page,valid:allCovered&&(phraseMatch||titleMatch||titleCovered>=Math.max(1,Math.ceil(tokens.length*.66))),score:(title===normalized?20:titleMatch?10:0)+(phraseMatch?7:0)+titleCovered*3+covered-(page.index||20)*.01};
+    }).filter(function(item){return item.valid;}).sort(function(a,b){return b.score-a.score;});
+    var page=ranked[0]&&ranked[0].page;if(!page)return null;
     return{title:page.title,extract:page.extract,url:page.fullurl||'',image:page.thumbnail&&page.thumbnail.source||'',imagePage:page.pageimage?'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(page.pageimage.replace(/ /g,'_')):page.fullurl||''};
   }
   async function commonsImage(term){
@@ -1446,7 +1452,7 @@
   }
 
   /* Selectable PDF/text layers and a direct, color marker interaction. */
-  var markerPointerDown=false,selectionPointerDown=false;
+  var markerPointerDown=false,selectionPointerDown=false,snappingSelection=false;
   function clearPendingSelection(){clearTimeout(highlightCommitTimer);pendingSelection=null;lastSpeechSelection=null;byId('highlightBtn').classList.remove('ready');updateReadAloudUi();var s=window.getSelection&&window.getSelection();if(s)s.removeAllRanges();}
   function scheduleHighlightCommit(delay){clearTimeout(highlightCommitTimer);highlightCommitTimer=setTimeout(function(){if(highlightMode)commitPendingHighlight();},delay);}
   function setPendingSelection(selection){pendingSelection=selection;lastSpeechSelection=selection;byId('highlightBtn').classList.add('ready');updateReadAloudUi();if(highlightMode&&!markerPointerDown)scheduleHighlightCommit(550);}
@@ -1459,8 +1465,21 @@
     sorted.forEach(function(r){var last=out[out.length-1];if(last){var sameLine=Math.abs((r.y+r.h/2)-(last.y+last.h/2))<Math.max(r.h,last.h)*.58,gap=r.x-(last.x+last.w);if(sameLine&&gap<Math.max(.008,Math.max(r.h,last.h)*.72)){var right=Math.max(last.x+last.w,r.x+r.w),bottom=Math.max(last.y+last.h,r.y+r.h);last.x=Math.min(last.x,r.x);last.y=Math.min(last.y,r.y);last.w=right-last.x;last.h=bottom-last.y;return;}}out.push({x:r.x,y:r.y,w:r.w,h:r.h});});
     return out;
   }
+  function isWordPart(text,index){
+    var c=text.charAt(index);if(/[\p{L}\p{N}_]/u.test(c))return true;
+    return /['’\-]/.test(c)&&index>0&&index<text.length-1&&/[\p{L}\p{N}]/u.test(text.charAt(index-1))&&/[\p{L}\p{N}]/u.test(text.charAt(index+1));
+  }
+  function snapSelectionToWords(selection){
+    if(snappingSelection||!selection||selection.isCollapsed||!selection.rangeCount)return;
+    var range=selection.getRangeAt(0).cloneRange(),startNode=range.startContainer,endNode=range.endContainer;
+    if(startNode.nodeType!==3||endNode.nodeType!==3)return;
+    var start=range.startOffset,end=range.endOffset,startText=startNode.nodeValue||'',endText=endNode.nodeValue||'',changed=false;
+    while(start>0&&isWordPart(startText,start-1)){start--;changed=true;}
+    while(end<endText.length&&isWordPart(endText,end)){end++;changed=true;}
+    if(!changed)return;range.setStart(startNode,start);range.setEnd(endNode,end);snappingSelection=true;selection.removeAllRanges();selection.addRange(range);snappingSelection=false;
+  }
   function captureSelection(){
-    if(byId('readerPage').classList.contains('hidden'))return;
+    if(snappingSelection||byId('readerPage').classList.contains('hidden'))return;
     var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
     var range=selection.getRangeAt(0),text=selection.toString().replace(/\s+/g,' ').trim(),selectionRect=range.getBoundingClientRect();if(!text)return;
     if(readerMode==='pdf'){
@@ -1484,7 +1503,7 @@
   function finishPaperSelection(cancelled){
     if(!selectionPointerDown&&!markerPointerDown)return;var commit=highlightMode&&markerPointerDown;
     selectionPointerDown=false;markerPointerDown=false;document.body.classList.remove('selecting-paper');
-    if(cancelled)return;setTimeout(function(){captureSelection();if(commit)scheduleHighlightCommit(60);},0);
+    if(cancelled)return;setTimeout(function(){var selection=window.getSelection&&window.getSelection();snapSelectionToWords(selection);captureSelection();if(commit)scheduleHighlightCommit(60);},0);
   }
   document.addEventListener('pointerup',function(){finishPaperSelection(false);});
   document.addEventListener('pointercancel',function(){finishPaperSelection(true);});

@@ -6,7 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Carrel — Breathe, Focus, Read</title>
   <meta name="description" content="Breathe, Focus, Read — a calm desk that makes academic papers easier to focus on: reading guides for wandering eyes, notes beside the page, and spaced review that keeps what you read.">
-  <meta name="robots" content="noindex">
+  <meta property="og:title" content="Carrel — Breathe, Focus, Read">
+  <meta property="og:description" content="A calm, free reading desk that makes academic papers easier to focus on: reading guides, notes beside the page, and spaced review that keeps what you read.">
+  <meta property="og:image" content="https://houfu72.com/assets/carrel-og.png">
+  <meta property="og:url" content="https://houfu72.com/reading.html">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/carrel-apple-touch-icon.png">
   <link rel="icon" href="/favicon_io/carrel-favicon.ico" sizes="any">
   <link rel="manifest" href="/carrel.webmanifest">
@@ -539,7 +544,7 @@
         <input class="search" id="librarySearch" type="search" placeholder="Search titles, authors, tags…" aria-label="Search library">
       </div>
       <div class="shelf" id="shelf"></div>
-      <p class="support-line hidden" id="supportLine">Carrel is free, and built to make papers easier to focus on. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">buy me a coffee ☕</a></p>
+      <p class="support-line hidden" id="supportLine">Carrel is free, and built to make papers easier to focus on. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">a coffee is always appreciated ☕</a></p>
     </section>
 
     <section id="connectionsPage" class="page hidden">
@@ -1549,7 +1554,7 @@
   });
   var guideDragging=false;
   byId('guideGrip').addEventListener('pointerdown',function(e){
-    guideDragging=true;byId('paneSpotlight').classList.add('dragging');this.setPointerCapture(e.pointerId);e.preventDefault();e.stopPropagation();
+    guideDragging=true;byId('paneSpotlight').classList.add('dragging');try{this.setPointerCapture(e.pointerId);}catch(err){}e.preventDefault();e.stopPropagation();
   });
   byId('guideGrip').addEventListener('pointermove',function(e){
     if(!guideDragging)return;setReadingGuide(e.clientX,e.clientY,null);
@@ -1680,7 +1685,7 @@
   setNotebookCollapsed(notebookCollapsed,false);
   var notebookDrag=false;
   byId('notebookResizer').onpointerdown=function(e){
-    if(innerWidth<=720)return;notebookDrag=true;this.setPointerCapture(e.pointerId);document.body.classList.add('resizing-notebook');e.preventDefault();
+    if(innerWidth<=720)return;notebookDrag=true;try{this.setPointerCapture(e.pointerId);}catch(err){}document.body.classList.add('resizing-notebook');e.preventDefault();
   };
   byId('notebookResizer').onpointermove=function(e){
     if(!notebookDrag)return;var rect=byId('readerLayout').getBoundingClientRect(),want=rect.right-e.clientX;

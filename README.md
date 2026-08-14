@@ -86,7 +86,8 @@ Each page is self-contained and keeps its data in the visitor's own browser
   `papers/` copy in GitHub.
   Built to be easy to stay inside: an optional translucent reading ruler with
   yellow, green, and blue tints that follows the pointer (or last tap) and
-  stops at the active PDF column,
+  switches between full-page width for abstracts and column width for dense
+  two-column sections,
   read-aloud that highlights and
   follows the text being spoken, an `Aa` panel for text size, column width,
   and line spacing, a whole-paper find bar (`/`), a reading progress rail, and

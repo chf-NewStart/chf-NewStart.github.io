@@ -130,6 +130,7 @@
     .guide-color[data-guide-color="green"] { --guide-swatch: #67ad72; }
     .guide-color[data-guide-color="blue"] { --guide-swatch: #65a9c3; }
     .guide-color[aria-pressed="true"] { border-color: var(--guide-swatch); color: var(--ink); box-shadow: inset 0 0 0 1px var(--guide-swatch); }
+    .guide-scope { display: flex; align-items: center; gap: 5px; }
     .comfort-bar .spacer { flex: 1 1 auto; }
     .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
     #focusBtn.active, #comfortBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
@@ -445,7 +446,7 @@
         </div>
         <button class="soft-button" id="readAloudBtn" type="button" aria-pressed="false">▷ Listen</button>
         <button class="soft-button hidden" id="stopReadAloudBtn" type="button" aria-label="Stop reading aloud">■</button>
-        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" title="Reading ruler for the active PDF column">▰ <span class="wide">Guide</span></button>
+        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" title="Reading ruler · choose column or full-page width in Aa">▰ <span class="wide">Guide</span></button>
         <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar">Aa</button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar">⌕ <span class="wide">Find</span></button>
         <div class="marker-tools">
@@ -482,6 +483,12 @@
             <button class="guide-color" type="button" data-guide-color="yellow" aria-pressed="true">Yellow</button>
             <button class="guide-color" type="button" data-guide-color="green" aria-pressed="false">Green</button>
             <button class="guide-color" type="button" data-guide-color="blue" aria-pressed="false">Blue</button>
+          </div>
+        </div>
+        <div class="group"><span>Guide width</span>
+          <div class="guide-scope" role="group" aria-label="Reading guide width">
+            <button class="toggle" type="button" data-guide-scope="column" aria-pressed="false">Column</button>
+            <button class="toggle" type="button" data-guide-scope="page" aria-pressed="true">Full page</button>
           </div>
         </div>
         <span class="spacer"></span>
@@ -1026,13 +1033,14 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow'};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page'};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
   comfort.leading=Math.max(1.2,Math.min(2.6,+comfort.leading||1.7));
   if(['yellow','green','blue'].indexOf(comfort.guide)<0)comfort.guide='yellow';
-  var focusPara=null, pageStartCache={};
+  if(['column','page'].indexOf(comfort.guideScope)<0)comfort.guideScope='page';
+  var focusPara=null, pageStartCache={}, lastGuidePoint=null;
   function paraSections(){ return byId('textDocument').querySelectorAll('.para'); }
   function applyComfort(){
     var doc=byId('textDocument');
@@ -1046,6 +1054,7 @@
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
     byId('paneSpotlight').dataset.guideColor=comfort.guide;
     document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
+    document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideScope===comfort.guideScope));});
     applyFocus();
     try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}
   }
@@ -1060,7 +1069,8 @@
   byId('leadLoose').onclick=function(){stepComfort('leading',0.1,1.2,2.6,1);};
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
   document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.textContent+' reading guide');};});
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';applyComfort();showReaderToast('Reading settings reset');};
+  document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();if(lastGuidePoint)setReadingGuide(lastGuidePoint.x,lastGuidePoint.y,document.elementFromPoint(lastGuidePoint.x,lastGuidePoint.y));showReaderToast(btn.textContent+' guide');};});
+  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';applyComfort();showReaderToast('Reading settings reset');};
   byId('comfortBtn').onclick=function(){
     var bar=byId('comfortBar'),open=bar.classList.contains('hidden');
     bar.classList.toggle('hidden',!open);this.classList.toggle('active',open);this.setAttribute('aria-expanded',String(open));
@@ -1089,8 +1099,9 @@
     var overlay=byId('paneSpotlight'),rect=overlay.getBoundingClientRect();
     var surface=focusSurfaceAt(clientX,clientY,target),surfaceRect=surface&&surface.getBoundingClientRect();
     if(!surfaceRect||!surfaceRect.width)return;
+    lastGuidePoint={x:clientX,y:clientY};
     var left=surfaceRect.left,right=surfaceRect.right;
-    if(readerMode==='pdf'&&innerWidth>720){
+    if(readerMode==='pdf'&&comfort.guideScope==='column'){
       var middle=surfaceRect.left+surfaceRect.width/2;
       if(clientX<middle)right=middle;else left=middle;
     }

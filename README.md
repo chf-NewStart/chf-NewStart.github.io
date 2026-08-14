@@ -85,8 +85,8 @@ Each page is self-contained and keeps its data in the visitor's own browser
   can be removed directly from the library without deleting their original
   `papers/` copy in GitHub.
   Built to be easy to stay inside: an optional reading spotlight — a bulb of
-  light around the pointer (or last tap) that dims everything else, including
-  the other column of a two-column paper — read-aloud that highlights and
+  light around the pointer (or last tap) plus a translucent reading ruler that
+  stops at the active PDF column — read-aloud that highlights and
   follows the text being spoken, an `Aa` panel for text size, column width,
   and line spacing, a whole-paper find bar (`/`), a reading progress rail, and
   each paper reopens where you left off. Reader-view paragraphs link back to

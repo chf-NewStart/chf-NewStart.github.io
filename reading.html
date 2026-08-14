@@ -408,7 +408,7 @@
       /* The top bar keeps only back + title; everything else waits behind the ⋯ button
          in the bottom bar, so the page itself gets the screen. */
       .reader-tools > :not(#readerBack):not(.title) { display: none; }
-      #readerPage.show-tools .reader-tools > :not(.hidden):not(#prevPage):not(#nextPage):not(#pageNumber):not(#viewToggle) { display: inline-flex; }
+      #readerPage.show-tools .reader-tools > :not(.hidden):not(#prevPage):not(#nextPage):not(#pageNumber) { display: inline-flex; }
       .reader-layout { display: block; }
       .notebook-resizer { display: none; }
       /* One swipeable row instead of a stack that eats half the screen. */
@@ -508,7 +508,7 @@
           <button id="zoomLabel" aria-label="Fit PDF to width">Fit</button>
           <button id="zoomIn" aria-label="Zoom in">＋</button>
         </div>
-        <button class="soft-button" id="readAloudBtn" type="button" aria-pressed="false">▷ Listen</button>
+        <button class="soft-button" id="readAloudBtn" type="button" aria-pressed="false" aria-label="Listen from this page" title="Listen from this page">▷</button>
         <button class="soft-button hidden" id="stopReadAloudBtn" type="button" aria-label="Stop reading aloud">■</button>
         <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" title="Reading ruler · drag its ≡ handle or tap the page to move it; color, width, style and height live in Display">▰ <span class="wide">Guide</span></button>
         <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" title="Reading display · guide style, text size, auto-scroll, paper tone">Aa</button>
@@ -523,8 +523,7 @@
             <button class="marker-swatch" data-highlight-color="blue" aria-label="Blue highlight"></button>
           </div>
         </div>
-        <button class="soft-button" id="viewToggle">Reader</button>
-        <button class="button" id="askPageBtn">Ask page</button>
+
       </div>
       <div class="comfort-bar hidden" id="comfortBar">
         <div class="group text-only"><span>Text</span>
@@ -650,7 +649,6 @@
         <button id="mPrev" type="button" aria-label="Previous page">←</button>
         <span class="m-page" id="mPageLabel" title="Jump to a page"></span>
         <button id="mNext" type="button" aria-label="Next page">→</button>
-        <button id="mView" type="button">Reader</button>
         <button id="mNotes" type="button" aria-expanded="false">✎ Notes</button>
         <button id="mMore" type="button" aria-expanded="false" aria-label="More tools">⋯</button>
       </div>
@@ -1455,7 +1453,6 @@
   };
   byId('mPrev').onclick=function(){byId('prevPage').click();};
   byId('mNext').onclick=function(){byId('nextPage').click();};
-  byId('mView').onclick=function(){byId('viewToggle').click();};
   function updateProgress(){
     var ch=find(currentId),pct=0;
     if(ch){
@@ -1581,6 +1578,14 @@
   function jumpToParagraph(index){
     var ch=find(currentId);if(!ch)return;
     if(innerWidth<=720)toggleSheet(false);
+    /* With the Reader view retired from the toolbar, notes on a PDF jump to the page
+       their paragraph came from instead of switching views. */
+    if(ch.kind==='pdf'&&readerMode==='pdf'){
+      var starts=paraPageStarts(ch),page=null;
+      (starts||[]).forEach(function(st){if(st.para<=index)page=st.page;});
+      if(page)gotoPdfPage(page);else showReaderToast('Could not find that spot in the PDF');
+      return;
+    }
     if(readerMode!=='text'){readerMode='text';updateReaderMode();}
     setFocusPara(index);
   }
@@ -1618,24 +1623,10 @@
     byId('prevPage').classList.toggle('hidden',!pdf); byId('nextPage').classList.toggle('hidden',!pdf); byId('pageNumber').classList.toggle('hidden',!pdf);
     byId('zoomTools').classList.toggle('hidden',!pdf);
     byId('tocBtn').classList.toggle('hidden',!pdf||!(pdfOutline&&pdfOutline.length));
-    byId('viewToggle').classList.toggle('hidden',!isPdf); byId('viewToggle').textContent=pdf?'Reader':'PDF';
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
-    byId('mView').classList.toggle('hidden',!isPdf); byId('mView').textContent=pdf?'Reader':'PDF';
-    byId('askPageBtn').textContent=pdf?'Ask page':(isPdf?'Ask Reader':'Ask text');
     byId('comfortBar').classList.toggle('pdf-mode',pdf);
     if(!pdf&&ch) renderText(ch);applyFocus();updateReadAloudUi();loadPageNote();updateProgress();
   }
-  byId('viewToggle').onclick=async function(){
-    clearPendingSelection();hideLookup();var ch=find(currentId);readerMode=readerMode==='pdf'?'text':'pdf';updateReaderMode();
-    if(readerMode==='pdf'&&pdfDoc){Promise.resolve(renderPdfPage()).then(function(){scrollToPdfPage(currentPage,'auto');});return;}
-    if(readerMode==='text'&&ch&&ch.kind==='pdf'&&(!ch.readerText||!ch.pageParagraphs||ch.readerV!==READER_V)&&pdfDoc){
-      this.disabled=true;this.textContent='Preparing reader…';
-      try{await ensureReaderData(pdfDoc,ch);pageStartCache={};renderText(ch);showReaderToast('Reader paragraphs rebuilt from the PDF layout');}
-      catch(e){showReaderToast('Could not clean this paper');}
-      finally{this.disabled=false;this.textContent='PDF';}
-    }
-    if(readerMode==='text')restoreReaderPosition(ch,false);
-  };
   function showMissingPdf(ch){
     pdfViews=[];pdfBuildKey='';
     var action=ch.sourceUrl?'<button class="button" id="missingSource">Download original link</button>':'<button class="button" id="missingPick">Pick from GitHub</button>';
@@ -1687,7 +1678,11 @@
     return full;
   }
   function updateReadAloudUi(){
-    var btn=byId('readAloudBtn'),idle=lastSpeechSelection?'▷ Listen from selection':readerMode==='pdf'?'▷ Listen from page':'▷ Listen';btn.classList.toggle('active',speechActive);btn.setAttribute('aria-pressed',String(speechActive&&!speechPaused));btn.textContent=speechActive?(speechPaused?'▷ Resume':'Ⅱ Pause'):idle;byId('stopReadAloudBtn').classList.toggle('hidden',!speechActive);
+    var btn=byId('readAloudBtn'),idle=lastSpeechSelection?'Listen from your selection':readerMode==='pdf'?'Listen from this page':'Listen from the beginning';
+    btn.classList.toggle('active',speechActive);btn.setAttribute('aria-pressed',String(speechActive&&!speechPaused));
+    btn.textContent=speechActive?(speechPaused?'▷':'Ⅱ'):'▷';
+    btn.title=speechActive?(speechPaused?'Resume':'Pause'):idle;btn.setAttribute('aria-label',btn.title);
+    byId('stopReadAloudBtn').classList.toggle('hidden',!speechActive);
   }
   function stopReadAloud(silent){
     if('speechSynthesis' in window)window.speechSynthesis.cancel();speechChunks=[];speechIndex=0;speechUtterance=null;speechActive=false;speechPaused=false;markSpeakingPara(null);updateReadAloudUi();if(!silent)showReaderToast('Reading stopped');
@@ -1699,7 +1694,7 @@
   }
   async function beginReadAloud(startParagraph){
     if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance){showReaderToast('Read aloud is not supported here');return;}
-    var ch=find(currentId),btn=byId('readAloudBtn'),selection=Number.isInteger(startParagraph)?null:lastSpeechSelection;if(!ch)return;stopReadAloud(true);btn.disabled=true;btn.textContent='Preparing…';
+    var ch=find(currentId),btn=byId('readAloudBtn'),selection=Number.isInteger(startParagraph)?null:lastSpeechSelection;if(!ch)return;stopReadAloud(true);btn.disabled=true;btn.textContent='…';
     try{if(ch.kind==='pdf'&&(!ch.readerText||!ch.pageLines)&&pdfDoc)await ensureReaderData(pdfDoc,ch);var text=speechTextFrom(ch,startParagraph,selection);
       var basePara=Number.isInteger(startParagraph)?startParagraph:selection&&(selection.kind==='reader'||selection.kind==='text')?Math.max(0,selection.para||0):ch.kind==='pdf'&&readerMode==='pdf'?null:0;
       speechChunks=speechChunksFrom(text,basePara);if(!speechChunks.length)throw new Error('No readable text was found');speechIndex=0;speechActive=true;speechPaused=false;lastSpeechSelection=null;updateReadAloudUi();speakNextChunk();showReaderToast(selection?'Reading from your selection':Number.isInteger(startParagraph)?'Reading from paragraph '+(startParagraph+1):ch.kind==='pdf'&&readerMode==='pdf'?'Reading from page '+currentPage:'Reading from the beginning');}
@@ -2167,12 +2162,13 @@
   document.querySelectorAll('.tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.tab); }; });
 
   /* Screenshot OCR -> text AI context, plus current-page questions. */
-  byId('askPageBtn').onclick=function(){
-    var ch=find(currentId), text=readerMode==='pdf'?(ch.pageTexts||[])[currentPage-1]:(ch.kind==='pdf'?(ch.readerText||ch.fr):ch.fr), thumb='';
+  byId('aiUseCurrent').onclick=function(){
+    var ch=find(currentId);if(!ch)return;
+    var text=readerMode==='pdf'?(ch.pageTexts||[])[currentPage-1]:(ch.kind==='pdf'?(ch.readerText||ch.fr):ch.fr), thumb='';
     var view=pdfViews[currentPage-1],c=view&&view.canvas; if(readerMode==='pdf'&&c&&c.width) try{thumb=makeThumb(c);}catch(e){}
-    setAiContext(text||'',thumb,readerMode==='pdf'?'Page '+currentPage:(ch.kind==='pdf'?'Reader text':'Paper text')); switchTab('aiPanel'); if(innerWidth<=720)toggleSheet(true); byId('aiQuestion').focus({preventScroll:true});
+    setAiContext(text||'',thumb,readerMode==='pdf'?'Page '+currentPage:(ch.kind==='pdf'?'Reader text':'Paper text'));
+    byId('aiQuestion').focus({preventScroll:true});
   };
-  byId('aiUseCurrent').onclick=function(){byId('askPageBtn').click();};
   /* Selection as context: the passage's exact text from the PDF's own text layer (no OCR
      round-trip) plus surrounding page text for grounding, and a snapshot of the actual
      spot cropped from the rendered page as the visual record. */

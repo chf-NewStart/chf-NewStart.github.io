@@ -649,7 +649,7 @@
         </div>
         <div class="group"><span>Auto-scroll</span>
           <button class="toggle" id="driftBtn" type="button" aria-pressed="false">Off</button>
-          <input class="drift-range" id="driftRange" type="range" min="0.5" max="10" step="0.5" value="4" aria-label="Auto-scroll speed in pixels per second">
+          <input class="drift-range" id="driftRange" type="range" min="0.5" max="20" step="0.5" value="4" aria-label="Auto-scroll speed in pixels per second">
           <span class="value" id="driftValue">4 px/s</span>
         </div>
         <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream paper</button>
@@ -1474,7 +1474,7 @@
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
   if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone='white';
-  comfort.driftSpeed=Math.max(.5,Math.min(10,+comfort.driftSpeed||4));
+  comfort.driftSpeed=Math.max(.5,Math.min(20,+comfort.driftSpeed||4));
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
   /* The guide anchors to the pane, not the screen: zen mode and bar toggles move the
@@ -1680,7 +1680,7 @@
     showReaderToast(turningOff?'Auto-scroll off':'Auto-scroll · touching the page pauses it');
   };
   byId('driftRange').oninput=function(){
-    comfort.driftSpeed=Math.max(.5,Math.min(10,+this.value||4));
+    comfort.driftSpeed=Math.max(.5,Math.min(20,+this.value||4));
     byId('driftValue').textContent=driftLabel();
     saveComfortSoon();
     if(driftSpeed)driftSpeed=comfort.driftSpeed;else setDrift(comfort.driftSpeed);
@@ -2291,7 +2291,7 @@
     /* While the crawl is running, ← → retune its speed in either view. */
     if(driftSpeed&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){
       e.preventDefault();
-      comfort.driftSpeed=Math.max(.5,Math.min(10,+(comfort.driftSpeed+(e.key==='ArrowRight'?.5:-.5)).toFixed(1)));
+      comfort.driftSpeed=Math.max(.5,Math.min(20,+(comfort.driftSpeed+(e.key==='ArrowRight'?.5:-.5)).toFixed(1)));
       applyComfort();setDrift(comfort.driftSpeed);
       showReaderToast('Auto-scroll · '+driftLabel());
       return;

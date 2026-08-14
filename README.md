@@ -89,7 +89,7 @@ Each page is self-contained and keeps its data in the visitor's own browser
   S/M/L height) that tints or — in Line focus — masks everything except the lines
   under it, draggable by its ≡ handle and anchored to the pane so layout changes
   never move it off your line; ⛶ Zen mode strips every bar and panel (F to
-  toggle); auto-scroll drifts the page at a tunable 0.5–10 px/s crawl that pauses
+  toggle); auto-scroll drifts the page at a tunable 0.5–20 px/s crawl that pauses
   when you touch the paper; cream paper warms the page in light mode and removes
   the blue cast in dark mode.
 

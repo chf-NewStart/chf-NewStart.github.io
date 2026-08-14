@@ -1632,6 +1632,17 @@
     setReadingGuide(e.clientX,e.clientY,e.target);
     showReaderToast(comfort.guideScope==='column'?'Guide hugs one column · double-click to widen':'Guide spans the page · double-click for one column');
   });
+  /* Keyboard scope control: place the guide as full-page or hugging one column,
+     keeping its current line. */
+  function placeGuideScoped(scope,half){
+    comfort.focus=true;comfort.guideScope=scope;applyComfort();
+    var overlay=byId('paneSpotlight'),rect=byId('documentPane').getBoundingClientRect();
+    if(!rect.width)return;
+    var bandY=(parseFloat(overlay.style.getPropertyValue('--guide-y'))||rect.height*.38)+((parseFloat(overlay.style.getPropertyValue('--guide-h'))||110)/2);
+    var y=Math.max(rect.top+16,Math.min(rect.bottom-30,rect.top+bandY));
+    var x=rect.left+rect.width*(scope==='column'?(half==='left'?.25:.75):.5);
+    setReadingGuide(x,y,document.elementFromPoint(x,y));
+  }
   var guideLockClickTimer=null;
   var guideDragging=false;
   byId('guideGrip').addEventListener('pointerdown',function(e){
@@ -2317,7 +2328,7 @@
       return;
     }
     /* While the crawl is running, ← → retune its speed in either view. */
-    if(driftSpeed&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){
+    if(driftSpeed&&!e.shiftKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){
       e.preventDefault();
       comfort.driftSpeed=Math.max(.5,Math.min(20,+(comfort.driftSpeed+(e.key==='ArrowRight'?.5:-.5)).toFixed(1)));
       applyComfort();setDrift(comfort.driftSpeed);
@@ -2333,6 +2344,9 @@
     else if(e.key==='ArrowUp'){e.preventDefault();pane.scrollBy({top:-74});}
     else if(e.key==='PageDown'||(e.key===' '&&e.shiftKey)){e.preventDefault();pane.scrollBy({top:pane.clientHeight*.85,behavior:'smooth'});}
     else if(e.key==='PageUp'){e.preventDefault();pane.scrollBy({top:-pane.clientHeight*.85,behavior:'smooth'});}
+    else if(e.shiftKey&&e.key==='ArrowLeft'){e.preventDefault();placeGuideScoped('column','left');showReaderToast('Guide hugs the left column · Shift+Enter for full page');}
+    else if(e.shiftKey&&e.key==='ArrowRight'){e.preventDefault();placeGuideScoped('column','right');showReaderToast('Guide hugs the right column · Shift+Enter for full page');}
+    else if(e.shiftKey&&e.key==='Enter'){e.preventDefault();placeGuideScoped('page');showReaderToast('Guide spans the full page');}
     else if(e.key==='ArrowRight'){e.preventDefault();byId('nextPage').click();}
     else if(e.key==='ArrowLeft'){e.preventDefault();byId('prevPage').click();}
   });

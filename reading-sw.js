@@ -2,7 +2,7 @@
    already stored on this device open with no network (subway mode). Every other path on
    the site is left completely untouched. Served stale-while-revalidate: instant loads
    from cache, refreshed in the background for the next visit. */
-var CACHE = 'carrel-shell-v2';
+var CACHE = 'carrel-shell-v3';
 /* The app itself is network-first: online opens always get the newest deploy, the cache
    only answers when the network can't. Libraries and fonts stay stale-while-revalidate. */
 var NETWORK_FIRST = ['/reading.html', '/carrel.webmanifest'];
@@ -41,7 +41,9 @@ self.addEventListener('fetch', function (e) {
   var path = url.pathname;
   if (NETWORK_FIRST.indexOf(path) >= 0) {
     e.respondWith(
-      fetch(e.request).then(function (res) {
+      /* no-cache: revalidate with the server every open — GitHub Pages' max-age=600
+         otherwise lets the browser serve a stale app for up to ten minutes. */
+      fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (res) {
         if (res && res.ok) caches.open(CACHE).then(function (c) { c.put(path, res.clone()); });
         return res;
       }).catch(function () { return caches.match(path); })

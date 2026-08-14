@@ -696,7 +696,7 @@
               <button class="ask-chip" type="button" id="evidenceBtn" title="One tap: searches real indexed papers about this claim on Semantic Scholar">Find evidence</button>
             </div>
             <div class="ask-row">
-              <textarea class="field" id="aiQuestion" rows="1" placeholder="What does this mean? Enter sends · Shift+Enter for a new line"></textarea>
+              <textarea class="field" id="aiQuestion" rows="1" placeholder="What does this mean?" title="Enter sends · Shift+Enter for a new line"></textarea>
               <button class="button" id="aiAskBtn">Ask</button>
             </div>
             <div class="status" id="aiStatus" role="status"></div>
@@ -762,6 +762,7 @@
           <input class="field" id="syncToken" type="password" placeholder="fine-grained token: contents read/write" autocomplete="off">
           <input class="field" id="syncPass" type="password" placeholder="encryption passphrase" autocomplete="off">
           <div><button class="button" id="syncSaveBtn">Save & sync</button> <button class="soft-button hidden" id="syncNowBtn">Sync now</button> <button class="soft-button hidden" id="syncLinkBtn">Copy device link</button> <button class="soft-button hidden" id="syncOffBtn">Turn off</button></div>
+          <button class="soft-button hidden" id="syncForceBtn">Replace the cloud copy with this device’s library</button>
         </div>
         <div class="status" id="syncStatus"></div>
       </section>
@@ -809,6 +810,14 @@
   <dialog id="tocDialog">
     <div class="dialog-head"><h2>Contents</h2><button class="icon-btn" data-close="tocDialog">×</button></div>
     <div class="dialog-body"><div class="toc-list" id="tocList"></div></div>
+  </dialog>
+
+  <dialog id="installDialog">
+    <div class="dialog-head"><h2>Install Carrel</h2><button class="icon-btn" data-close="installDialog">×</button></div>
+    <div class="dialog-body">
+      <p id="installDialogHint"></p>
+      <button class="button hidden" id="installDialogBtn">Install now</button>
+    </div>
   </dialog>
 
   <dialog id="errorDialog">
@@ -2597,7 +2606,11 @@
   function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(on?'☁ '+syncCfg.repo:'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}
   byId('syncSaveBtn').onclick=function(){var repo=byId('syncRepo').value.trim(),token=byId('syncToken').value.trim(),pass=byId('syncPass').value;if(!/^[^\/\s]+\/[^\/\s]+$/.test(repo)||!token||!pass){byId('syncStatus').textContent='Add the repo as owner/name, its fine-grained token, and a passphrase.';return;}syncCfg={repo:repo,token:token,pass:pass};localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg));fillSettings();doSync();};
   byId('syncOffBtn').onclick=function(){if(!confirm('Turn off GitHub sync on this device? Local notes stay here.'))return;localStorage.removeItem(SYNC_KEY);syncCfg=null;fillSettings();};
-  byId('syncNowBtn').onclick=doSync;
+  byId('syncNowBtn').onclick=function(){doSync();};
+  byId('syncForceBtn').onclick=function(){
+    if(!confirm('Replace the cloud copy with this device’s library?\n\nThe unreadable file in '+(syncCfg?syncCfg.repo:'the repo')+' will be overwritten using THIS device’s passphrase. Your other devices will then need this passphrase (easiest: copy a device link from here afterwards).'))return;
+    doSync(true);
+  };
   function b64(buf){var s='';new Uint8Array(buf).forEach(function(b){s+=String.fromCharCode(b);});return btoa(s);}function unb64(str){var bin=atob(str),a=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return a;}
   function deriveKey(pass,salt){return crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']).then(function(k){return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:310000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);});}
   function encryptState(pass,obj){var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));return deriveKey(pass,salt).then(function(k){return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},k,new TextEncoder().encode(JSON.stringify(obj)));}).then(function(ct){return JSON.stringify({v:1,salt:b64(salt),iv:b64(iv),data:b64(ct)});});}
@@ -2610,7 +2623,9 @@
     (inc.chapters||[]).forEach(function(remote){if(!remote||!remote.id||state.deleted[remote.id])return;normalize(remote);var local=find(remote.id);if(!local){state.chapters.push(remote);if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;}else if((remote.updatedAt||0)>(local.updatedAt||0)){state.chapters[state.chapters.indexOf(local)]=remote;if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;}else if(remote.kind==='pdf'&&mergeDerivedInto(local,derivedData(remote))){saveDerivedSoon(local);}});
     if(currentId&&state.deleted[currentId]){currentId=null;pdfDoc=null;if(!byId('readerPage').classList.contains('hidden'))showPage('libraryPage');}return changed;
   }
-  async function doSync(){
+  var syncDecryptBlocked=false;
+  async function doSync(force){
+    force=force===true;
     if(!syncCfg||syncing)return;syncing=true;syncUi('☁ syncing…');
     try{
       /* Two devices reading at once constantly race each other's pushes: a stale sha
@@ -2630,10 +2645,13 @@
             enc=await raw.text();
           }
           if(enc){
-            var remote;
+            var remote=null;
             try{remote=await decryptState(syncCfg.pass,enc);}
-            catch(decryptError){throw new Error('Could not decrypt the sync file — is the passphrase exactly the same as on your other device?');}
-            if(mergeState(remote)){persist(false);renderShelf();}
+            catch(decryptError){
+              if(!force){syncDecryptBlocked=true;byId('syncForceBtn').classList.remove('hidden');throw new Error('Could not decrypt the sync file — is the passphrase exactly the same as on your other device? Use a device link from a working device, or replace the cloud copy below.');}
+              /* forced: the unreadable cloud copy is being replaced with this library */
+            }
+            if(remote&&mergeState(remote)){persist(false);renderShelf();}
           }
         }
         var syncChapters=await chaptersForSync(),payload=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{}}),body={message:'Carrel reading notes sync',content:btoa(payload)};if(sha)body.sha=sha;
@@ -2642,6 +2660,7 @@
         if((put.status===409||put.status===422)&&attempt<2)continue;
         throw new Error('GitHub upload failed ('+put.status+')');
       }
+      syncDecryptBlocked=false;byId('syncForceBtn').classList.add('hidden');
       syncUi('☁ synced '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncStatus').textContent='Synced to '+syncCfg.repo+'.';byId('syncSignal').title='';
     }catch(e){
       var reason=e.message||'Sync failed';
@@ -2741,9 +2760,14 @@
      offers a prompt, and opens the how-to (with iOS steps) everywhere else. */
   byId('installNav').onclick=function(){
     if(installPrompt&&!isStandalone()){promptInstall();return;}
-    fillSettings();byId('settingsDialog').showModal();
-    var hint=byId('installHint');if(hint&&hint.scrollIntoView)hint.scrollIntoView({block:'center'});
+    var hint=byId('installDialogHint'),btn=byId('installDialogBtn');
+    btn.classList.add('hidden');
+    if(isStandalone())hint.textContent='Carrel is already installed — you are reading in the app right now.';
+    else if(isIos())hint.textContent='On iPhone or iPad: open this page in Safari, tap Share, then “Add to Home Screen”. Carrel gets its own icon and works offline for papers already on this device.';
+    else hint.textContent='Your browser has not offered an install prompt on this visit. In Chrome or Edge, look for the small install icon at the right end of the address bar. Once installed, Carrel opens in its own window and works offline.';
+    byId('installDialog').showModal();
   };
+  byId('installDialogBtn').onclick=function(){byId('installDialog').close();promptInstall();};
   /* In the installed window, the portfolio link opens in a real browser tab. */
   if(isStandalone()){byId('homeLink').target='_blank';document.title='Carrel';}
   refreshInstallUi();

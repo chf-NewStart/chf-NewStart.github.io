@@ -244,7 +244,6 @@
     .zoom-tools button:last-child { border-right: 0; }
     .zoom-tools button:hover { background: var(--surface-2); }
     #zoomLabel { min-width: 50px; }
-    #readAloudBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     .marker-tools { position: relative; display: flex; align-items: center; flex: 0 0 auto; }
     #highlightBtn { transition: background .16s, border-color .16s, transform .16s; }
     #highlightBtn.active { border-color: #c49b14; background: #ffd83d; color: #30270b; box-shadow: 0 0 0 3px rgba(255,216,61,.18); }
@@ -257,12 +256,6 @@
     .marker-swatch[data-highlight-color="coral"] { background: #ff7e69; }
     .marker-swatch[data-highlight-color="blue"] { background: #5ba9ff; }
     .reader-toast { position: fixed; z-index: 40; left: 22px; bottom: 22px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--ink); color: var(--surface); box-shadow: var(--shadow); font-size: .72rem; font-weight: 650; pointer-events: none; }
-    /* While reading aloud, the controls stay on screen — pause, stop, and speed never
-       hide behind a menu. */
-    .voice-bar { position: fixed; z-index: 39; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); box-shadow: var(--shadow); }
-    .voice-bar button { min-width: 42px; height: 42px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink); font-weight: 650; font-size: .8rem; }
-    .voice-bar button:hover { border-color: var(--accent); }
-    body.zen .voice-bar { z-index: 60; }
     .lookup-card { position: fixed; z-index: 44; width: min(370px, calc(100vw - 24px)); max-height: min(540px, calc(100dvh - 24px)); overflow-y: auto; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 22px 70px rgba(20,24,25,.26); backdrop-filter: blur(18px); }
     .lookup-head { display: flex; align-items: flex-start; gap: 12px; padding: 13px 13px 11px 16px; border-bottom: 1px solid var(--line); }
     .lookup-head > div { min-width: 0; flex: 1; }
@@ -295,7 +288,6 @@
     .para.reader-heading { margin-top: 2.4em; padding-top: 1.15em; border-top: 1px solid var(--line); }
     .para.reader-heading .original { font-family: var(--sans); font-size: calc(var(--read-size) * .88); font-weight: 750; letter-spacing: .08em; line-height: 1.35; text-transform: uppercase; }
     .para.current::before { content: ""; position: absolute; left: -16px; top: 12px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--accent); }
-    .para.speaking { background: color-mix(in srgb, var(--yellow) 34%, transparent); }
     .page-marker { display: flex; align-items: center; gap: 10px; margin: 24px 0 2px; color: var(--muted); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; }
     .page-marker::after { content: ""; flex: 1; height: 1px; background: var(--line); }
     .page-marker button { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font: inherit; letter-spacing: inherit; }
@@ -371,11 +363,6 @@
     .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px; }
     .ask-chip { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 650; }
     .ask-chip:hover { border-color: var(--accent); color: var(--ink); }
-    /* One-tap actions look different from starters that only fill the question box —
-       blue like the app's other "this does something" links, not alarm-red. */
-    .ask-chip.act { border-color: var(--blue); color: var(--blue); background: color-mix(in srgb, var(--blue) 8%, var(--surface)); }
-    .ask-chip.act:hover { background: color-mix(in srgb, var(--blue) 16%, var(--surface)); color: var(--ink); }
-    .ask-chip.act:disabled { opacity: .55; }
     .ask-row { display: flex; gap: 7px; }
     .ask-row .field { flex: 1; }
     #aiQuestion { resize: none; overflow-y: auto; max-height: 128px; line-height: 1.45; font: inherit; }
@@ -490,7 +477,6 @@
       .pdf-frame { min-width: 100%; margin: 0 auto; padding: 8px 0 30px; gap: 10px; }
       .text-document { width: calc(100% - 16px); margin: 8px auto; padding: 28px 22px; }
       .mobile-bar { display: flex; }
-      .voice-bar { right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); }
       .notebook { position: fixed; z-index: 46; inset: auto 0 var(--kb-inset, 0px) 0; height: min(78dvh, 640px); max-height: calc(100dvh - var(--kb-inset, 0px) - 16px); border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: 0 -18px 60px rgba(0,0,0,.28); transform: translateY(104%); transition: transform .28s ease; }
       .notebook.sheet-open { transform: none; }
       .notebook::before { content: ""; position: absolute; z-index: 3; top: 7px; left: 50%; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: var(--line); }
@@ -585,8 +571,6 @@
           <button id="zoomLabel" aria-label="Fit PDF to width">Fit</button>
           <button id="zoomIn" aria-label="Zoom in">＋</button>
         </div>
-        <button class="soft-button" id="readAloudBtn" type="button" aria-pressed="false" aria-label="Listen from this page" title="Listen from this page">▷</button>
-        <button class="soft-button hidden" id="stopReadAloudBtn" type="button" aria-label="Stop reading aloud">■</button>
         <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" title="Reading ruler · drag its ≡ handle or tap the page to move it; color, width, style and height live in Display">▰ <span class="wide">Guide</span></button>
         <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" title="Reading display · guide style, text size, auto-scroll, paper tone">Aa</button>
         <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" title="Zen reading · hide everything but the paper (F)">⛶ <span class="wide">Zen</span></button>
@@ -696,7 +680,7 @@
             <div class="mini-list" id="noteIndex"></div>
           </div>
           <div class="tab-panel" id="aiPanel" role="tabpanel">
-            <p class="hint">Pick what to ask about — only text ever leaves this device. Grey chips just fill the question box; the outlined one runs right away.</p>
+            <p class="hint">Pick what to ask about — only text ever leaves this device.</p>
             <div class="context-row">
               <button class="soft-button context-btn" id="aiUseCurrent" type="button">⌖ Page</button>
               <button class="soft-button context-btn" id="aiUseSelection" type="button">✂ Selection</button>
@@ -711,7 +695,7 @@
               <button class="ask-chip" type="button" data-ask-stem="How ">How…</button>
               <button class="ask-chip" type="button" data-ask-full="Explain this in plain, simple words.">Explain simply</button>
               <button class="ask-chip" type="button" data-ask-full="Summarize the key points of this context in a few sentences.">Summarize</button>
-              <button class="ask-chip act" type="button" id="evidenceBtn" title="One tap: searches real indexed papers about this claim on Semantic Scholar">Find evidence</button>
+              <button class="ask-chip" type="button" id="evidenceBtn" title="One tap: searches real indexed papers about this claim on Semantic Scholar">Find evidence</button>
             </div>
             <div class="ask-row">
               <textarea class="field" id="aiQuestion" rows="1" placeholder="What does this mean? Enter sends · Shift+Enter for a new line"></textarea>
@@ -744,11 +728,6 @@
         </div>
       </aside>
       <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading">✕</button>
-      <div class="voice-bar hidden" id="voiceBar" role="group" aria-label="Read aloud controls">
-        <button id="voicePause" type="button" aria-label="Pause reading">Ⅱ</button>
-        <button id="voiceStop" type="button" aria-label="Stop reading">■</button>
-        <button id="voiceRate" type="button" aria-label="Reading speed" title="Reading speed">1×</button>
-      </div>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
     </section>
   </main>
@@ -853,7 +832,7 @@
   var CARD_COLORS = ['#e85d3f', '#295b71', '#8c6e3f', '#657d5c', '#8a5a83'];
   var state = loadState();
   var currentId = null, currentPage = 1, pdfDoc = null, pdfLib = null, pdfRendering = false, pdfRenderPending = false;
-  var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, speechChunks = [], speechIndex = 0, speechUtterance = null, speechActive = false, speechPaused = false, pendingSelection = null, lastSpeechSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
+  var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
   var readerMode = 'pdf', editingId = null, aiContext = null, syncCfg = null, syncing = false, syncTimer = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
@@ -1060,7 +1039,7 @@
   }
   document.querySelectorAll('.nav-btn').forEach(function(b){ b.onclick = function(){ showPage(b.dataset.view); }; });
   byId('brandBtn').onclick = function(){ showPage('libraryPage'); };
-  byId('readerBack').onclick = function(){ stopReadAloud(true); pdfDoc = null; showPage('libraryPage'); };
+  byId('readerBack').onclick = function(){ pdfDoc = null; showPage('libraryPage'); };
 
   /* modal helpers */
   document.querySelectorAll('[data-close]').forEach(function(b){ b.onclick = function(){ byId(b.dataset.close).close(); }; });
@@ -1813,7 +1792,7 @@
 
   /* reader */
   async function openReader(id,preparedDoc){
-    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); lastAskSelection=null; toggleFindBar(false);
+    var ch=find(id); if(!ch) return; hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); lastAskSelection=null; toggleFindBar(false);
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
@@ -1847,7 +1826,7 @@
     byId('tocBtn').classList.toggle('hidden',!pdf||!(pdfOutline&&pdfOutline.length));
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('comfortBar').classList.toggle('pdf-mode',pdf);
-    if(!pdf&&ch) renderText(ch);applyFocus();updateReadAloudUi();loadPageNote();updateProgress();
+    if(!pdf&&ch) renderText(ch);applyFocus();loadPageNote();updateProgress();
   }
   function showMissingPdf(ch){
     pdfViews=[];pdfBuildKey='';
@@ -1861,95 +1840,6 @@
   function applyDarkPdf(){
     var frame=byId('pdfFrame');if(frame)frame.classList.toggle('dark-paper',darkPdf);
   }
-  /* Short, sentence-shaped utterances: Chrome's speech engine silently dies on long ones,
-     and small chunks make pause/resume land where a listener expects. */
-  function speechTextChunks(text){
-    var chunks=[],part='';
-    (String(text||'').replace(/\s+/g,' ').trim().match(/[^.!?]+[.!?]+[”"')\]]*\s*|[^.!?]+$/g)||[]).forEach(function(sentence){
-      sentence=sentence.trim();if(!sentence)return;
-      if(part&&part.length+sentence.length+1>240){chunks.push(part);part=sentence;}else part+=(part?' ':'')+sentence;
-      while(part.length>420){var cut=part.lastIndexOf(' ',420);if(cut<80)cut=420;chunks.push(part.slice(0,cut));part=part.slice(cut).trim();}
-    });
-    if(part)chunks.push(part);return chunks;
-  }
-  function speechChunksFrom(text,basePara){
-    var chunks=[];
-    paras(text).forEach(function(p,i){speechTextChunks(p).forEach(function(piece){chunks.push({text:piece,para:basePara===null?null:basePara+i});});});
-    return chunks;
-  }
-  var speakingPara=null;
-  function markSpeakingPara(para){
-    if(para===speakingPara)return;
-    var list=paraSections();
-    if(speakingPara!==null&&list[speakingPara])list[speakingPara].classList.remove('speaking');
-    speakingPara=para;
-    if(para===null)return;
-    var section=list[para];if(!section||readerMode==='pdf')return;
-    section.classList.add('speaking');
-    section.scrollIntoView({block:'center',behavior:'smooth'});
-  }
-  function speechTextFrom(ch,startParagraph,selection){
-    var full=ch.kind==='pdf'?(ch.readerText||readerTextFromPages(ch.pageLines||[],ch.pageParagraphs||[])||ch.fr):ch.fr,paragraphs=paras(full);
-    if(Number.isInteger(startParagraph)){var start=Math.max(0,Math.min(paragraphs.length-1,startParagraph));return paragraphs.slice(start).join('\n\n');}
-    if(selection&&(selection.kind==='reader'||selection.kind==='text')){var para=Math.max(0,Math.min(paragraphs.length-1,selection.para||0)),first=paragraphs[para]||'';return first.slice(Math.max(0,selection.start||0))+'\n\n'+paragraphs.slice(para+1).join('\n\n');}
-    if(ch.kind==='pdf'&&readerMode==='pdf'){
-      var pages=readerPagesFromLines(ch.pageLines||[],ch.pageParagraphs||[]),pageIndex=Math.max(0,(selection&&selection.kind==='pdf'?selection.page:currentPage)-1),page=pages[pageIndex]||((ch.pageTexts||[])[pageIndex]||''),later=pages.slice(pageIndex+1).filter(Boolean).join('\n\n');
-      if(selection&&selection.kind==='pdf'){var needle=String(selection.text||'').replace(/\s+/g,' ').trim(),at=page.toLowerCase().indexOf(needle.toLowerCase());if(at<0&&needle.length>35)at=page.toLowerCase().indexOf(needle.slice(0,35).toLowerCase());return at>=0?page.slice(at)+(later?'\n\n'+later:''):needle+(later?'\n\n'+later:'');}
-      return page+(later?'\n\n'+later:'');
-    }
-    return full;
-  }
-  /* Speed is remembered; changing it mid-read re-speaks the current sentence at the
-     new rate instead of waiting for the next one. */
-  var VOICE_RATES=[0.8,1,1.25,1.5,1.75,2],voiceRate=1;
-  try{var savedRate=+JSON.parse(localStorage.getItem('readingRoom.voice.v1')||'{}').rate;if(VOICE_RATES.indexOf(savedRate)>=0)voiceRate=savedRate;}catch(e){}
-  function rateLabel(){return String(voiceRate).replace(/(\.\d)0$/,'$1')+'×';}
-  function updateReadAloudUi(){
-    var btn=byId('readAloudBtn'),idle=lastSpeechSelection?'Listen from your selection':readerMode==='pdf'?'Listen from this page':'Listen from the beginning';
-    btn.classList.toggle('active',speechActive);btn.setAttribute('aria-pressed',String(speechActive&&!speechPaused));
-    btn.textContent=speechActive?(speechPaused?'▷':'Ⅱ'):'▷';
-    btn.title=speechActive?(speechPaused?'Resume':'Pause'):idle;btn.setAttribute('aria-label',btn.title);
-    byId('stopReadAloudBtn').classList.toggle('hidden',!speechActive);
-    byId('voiceBar').classList.toggle('hidden',!speechActive);
-    byId('voicePause').textContent=speechPaused?'▷':'Ⅱ';
-    byId('voicePause').setAttribute('aria-label',speechPaused?'Resume reading':'Pause reading');
-    byId('voiceRate').textContent=rateLabel();
-  }
-  function stopReadAloud(silent){
-    if('speechSynthesis' in window)window.speechSynthesis.cancel();speechChunks=[];speechIndex=0;speechUtterance=null;speechActive=false;speechPaused=false;markSpeakingPara(null);updateReadAloudUi();if(!silent)showReaderToast('Reading stopped');
-  }
-  function speakNextChunk(){
-    if(!speechActive||speechPaused)return;if(speechIndex>=speechChunks.length){stopReadAloud(true);showReaderToast('Finished reading');return;}
-    var chunk=speechChunks[speechIndex];markSpeakingPara(chunk.para);
-    var utterance=new SpeechSynthesisUtterance(chunk.text);utterance.rate=voiceRate;utterance.onend=function(){if(!speechActive||speechUtterance!==utterance)return;speechIndex++;speakNextChunk();};utterance.onerror=function(e){if(e.error==='canceled'||e.error==='interrupted')return;stopReadAloud(true);showReaderToast('Read aloud stopped');};speechUtterance=utterance;window.speechSynthesis.speak(utterance);
-  }
-  function toggleSpeechPause(){
-    if(!speechActive)return;
-    if(speechPaused){speechPaused=false;window.speechSynthesis.resume();if(!window.speechSynthesis.speaking)speakNextChunk();}
-    else{speechPaused=true;window.speechSynthesis.pause();}
-    updateReadAloudUi();
-  }
-  byId('voicePause').onclick=toggleSpeechPause;
-  byId('voiceStop').onclick=function(){stopReadAloud(false);};
-  byId('voiceRate').onclick=function(){
-    voiceRate=VOICE_RATES[(VOICE_RATES.indexOf(voiceRate)+1)%VOICE_RATES.length];
-    try{localStorage.setItem('readingRoom.voice.v1',JSON.stringify({rate:voiceRate}));}catch(e){}
-    updateReadAloudUi();
-    if(speechActive&&!speechPaused){speechUtterance=null;window.speechSynthesis.cancel();speakNextChunk();}
-  };
-  async function beginReadAloud(startParagraph){
-    if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance){showReaderToast('Read aloud is not supported here');return;}
-    var ch=find(currentId),btn=byId('readAloudBtn'),selection=Number.isInteger(startParagraph)?null:lastSpeechSelection;if(!ch)return;stopReadAloud(true);btn.disabled=true;btn.textContent='…';
-    try{if(ch.kind==='pdf'&&(!ch.readerText||!ch.pageLines)&&pdfDoc)await ensureReaderData(pdfDoc,ch);var text=speechTextFrom(ch,startParagraph,selection);
-      var basePara=Number.isInteger(startParagraph)?startParagraph:selection&&(selection.kind==='reader'||selection.kind==='text')?Math.max(0,selection.para||0):ch.kind==='pdf'&&readerMode==='pdf'?null:0;
-      speechChunks=speechChunksFrom(text,basePara);if(!speechChunks.length)throw new Error('No readable text was found');speechIndex=0;speechActive=true;speechPaused=false;lastSpeechSelection=null;updateReadAloudUi();speakNextChunk();showReaderToast(selection?'Reading from your selection':Number.isInteger(startParagraph)?'Reading from paragraph '+(startParagraph+1):ch.kind==='pdf'&&readerMode==='pdf'?'Reading from page '+currentPage:'Reading from the beginning');}
-    catch(e){stopReadAloud(true);showReaderToast(e.message||'Could not start read aloud');}
-    finally{btn.disabled=false;updateReadAloudUi();}
-  }
-  byId('readAloudBtn').onclick=function(){
-    if(speechActive){if(speechPaused){speechPaused=false;window.speechSynthesis.resume();}else{speechPaused=true;window.speechSynthesis.pause();}updateReadAloudUi();return;}beginReadAloud(null);
-  };
-  byId('stopReadAloudBtn').onclick=function(){stopReadAloud(false);};
   /* Continuous vertical scroll: every page has a placeholder box up front, and real
      pixels arrive lazily as pages approach the viewport. Far-away canvases are freed
      again so long papers cannot exhaust a phone's canvas memory. */
@@ -2253,11 +2143,10 @@
     var isPdfReader=ch.kind==='pdf'&&readerMode==='text',source=isPdfReader?(ch.readerText||readerTextFromPages(ch.pageLines||[],ch.pageParagraphs||[])||ch.fr):ch.fr;
     var fr=paras(source),en=isPdfReader?[]:paras(ch.en||''),noteMap=isPdfReader?ch.readerNotes:ch.notes,marks=isPdfReader?ch.readerHighlights:ch.textHighlights,scope=isPdfReader?'reader':'text';
     var starts=isPdfReader?paraPageStarts(ch):null,startAt={};(starts||[]).forEach(function(s){startAt[s.para]=s.page;});
-    var out=(isPdfReader?'<div class="reader-kicker">Reader view · headers and footers removed · select text, then Listen</div>':'')+'<h1>'+esc(ch.title||'Untitled')+'</h1><div class="byline">'+esc(ch.authors||ch.sourceName||'')+'</div>';
-    fr.forEach(function(p,i){ var n=noteMap[i]||'',heading=p.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(p)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(p)); if(startAt[i])out+='<div class="page-marker">Page '+startAt[i]+'<button type="button" data-goto-page="'+startAt[i]+'">view page</button></div>'; out+='<section class="para'+(heading?' reader-heading':'')+'"><div class="original" data-para-index="'+i+'">'+highlightedTextHtml(p,marks,i)+'</div>'+(en[i]?'<div class="translation">'+esc(en[i])+'</div>':'')+'<button class="para-action" data-note="'+i+'">'+(n?'Edit margin note •':'Add margin note')+'</button><button class="para-action" data-listen-from="'+i+'">▷ Listen from here</button><textarea class="inline-note '+(n?'':'hidden')+'" data-note-area="'+i+'" data-note-scope="'+scope+'" placeholder="Note on this paragraph…">'+esc(n)+'</textarea></section>'; });
+    var out=(isPdfReader?'<div class="reader-kicker">Reader view · headers and footers removed</div>':'')+'<h1>'+esc(ch.title||'Untitled')+'</h1><div class="byline">'+esc(ch.authors||ch.sourceName||'')+'</div>';
+    fr.forEach(function(p,i){ var n=noteMap[i]||'',heading=p.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(p)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(p)); if(startAt[i])out+='<div class="page-marker">Page '+startAt[i]+'<button type="button" data-goto-page="'+startAt[i]+'">view page</button></div>'; out+='<section class="para'+(heading?' reader-heading':'')+'"><div class="original" data-para-index="'+i+'">'+highlightedTextHtml(p,marks,i)+'</div>'+(en[i]?'<div class="translation">'+esc(en[i])+'</div>':'')+'<button class="para-action" data-note="'+i+'">'+(n?'Edit margin note •':'Add margin note')+'</button><textarea class="inline-note '+(n?'':'hidden')+'" data-note-area="'+i+'" data-note-scope="'+scope+'" placeholder="Note on this paragraph…">'+esc(n)+'</textarea></section>'; });
     byId('textDocument').classList.toggle('reader-document',isPdfReader);byId('textDocument').innerHTML=out;
     byId('textDocument').querySelectorAll('[data-note]').forEach(function(b){ b.onclick=function(){ var ta=byId('textDocument').querySelector('[data-note-area="'+b.dataset.note+'"]'); ta.classList.toggle('hidden'); if(!ta.classList.contains('hidden')) ta.focus(); }; });
-    byId('textDocument').querySelectorAll('[data-listen-from]').forEach(function(b){b.onclick=function(){beginReadAloud(+b.dataset.listenFrom);};});
     byId('textDocument').querySelectorAll('[data-goto-page]').forEach(function(b){b.onclick=function(){gotoPdfPage(+b.dataset.gotoPage);};});
     byId('textDocument').querySelectorAll('[data-note-area]').forEach(function(ta){ ta.oninput=function(){ var c=find(currentId),i=ta.dataset.noteArea,map=ta.dataset.noteScope==='reader'?c.readerNotes:c.notes;if(ta.value.trim())map[i]=ta.value;else delete map[i];touch(c);renderNoteIndex(); }; });
   }
@@ -2276,7 +2165,7 @@
     if(!ch)return false;var githubCopy=ch.sourcePath?' The PDF in your GitHub papers/ folder will stay there.':'';
     if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Carrel? Its notes, highlights, Q&A, and local PDF will be removed.'+githubCopy))return false;
     state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);persist();
-    if(currentId===ch.id){stopReadAloud(true);currentId=null;pdfDoc=null;}renderShelf();if(leaveReader)showPage('libraryPage');return true;
+    if(currentId===ch.id){currentId=null;pdfDoc=null;}renderShelf();if(leaveReader)showPage('libraryPage');return true;
   }
   byId('deletePaperBtn').onclick=function(){removePaper(find(currentId),true);};
   function renderNoteIndex(){
@@ -2303,9 +2192,9 @@
   /* The last real selection survives page turns and sheet-opening taps, so "My selection"
      in Ask AI still works after the on-screen selection has collapsed. */
   var lastAskSelection=null;
-  function clearPendingSelection(){clearTimeout(highlightCommitTimer);pendingSelection=null;lastSpeechSelection=null;byId('highlightBtn').classList.remove('ready');updateReadAloudUi();var s=window.getSelection&&window.getSelection();if(s)s.removeAllRanges();}
+  function clearPendingSelection(){clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');var s=window.getSelection&&window.getSelection();if(s)s.removeAllRanges();}
   function scheduleHighlightCommit(delay){clearTimeout(highlightCommitTimer);highlightCommitTimer=setTimeout(function(){if(highlightMode)commitPendingHighlight();},delay);}
-  function setPendingSelection(selection){pendingSelection=selection;lastSpeechSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');updateReadAloudUi();if(highlightMode&&!markerPointerDown)scheduleHighlightCommit(550);}
+  function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');if(highlightMode&&!markerPointerDown)scheduleHighlightCommit(550);}
   function setHighlightMode(on){
     highlightMode=!!on;var btn=byId('highlightBtn');if(!btn)return;
     btn.classList.toggle('active',highlightMode);btn.setAttribute('aria-pressed',String(highlightMode));btn.textContent=highlightMode?'✦ Marker on':'✦ Marker';byId('highlightPalette').classList.toggle('hidden',!highlightMode);
@@ -2387,7 +2276,7 @@
     clearTimeout(highlightCommitTimer);var ch=find(currentId),h=pendingSelection;if(!ch||!h)return;
     if(h.kind==='pdf'){var page=String(h.page);if(!ch.highlights[page])ch.highlights[page]=[];ch.highlights[page].push({id:uid('h'),text:h.text,rects:h.rects,color:highlightColor,at:now()});touch(ch);renderPdfHighlights(+page);}
     else{var target=h.kind==='reader'?ch.readerHighlights:ch.textHighlights;target.push({id:uid('h'),para:h.para,start:h.start,end:h.end,text:h.text,color:highlightColor,at:now()});touch(ch);renderText(ch);}
-    clearPendingSelection();lastSpeechSelection=h;updateReadAloudUi();renderNoteIndex();
+    clearPendingSelection();renderNoteIndex();
   }
   function undoLastHighlight(){
     var ch=find(currentId),latest=null;if(!ch)return;
@@ -2653,7 +2542,7 @@
     var changed=false;state.deleted=state.deleted||{};Object.keys(inc.deleted||{}).forEach(function(id){if((inc.deleted[id]||0)>(state.deleted[id]||0)){state.deleted[id]=inc.deleted[id];changed=true;}});
     var kept=state.chapters.filter(function(ch){if(state.deleted[ch.id]){deletePdf(ch.id);changed=true;return false;}return true;});if(kept.length!==state.chapters.length)state.chapters=kept;
     (inc.chapters||[]).forEach(function(remote){if(!remote||!remote.id||state.deleted[remote.id])return;normalize(remote);var local=find(remote.id);if(!local){state.chapters.push(remote);if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;}else if((remote.updatedAt||0)>(local.updatedAt||0)){state.chapters[state.chapters.indexOf(local)]=remote;if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;}else if(remote.kind==='pdf'&&mergeDerivedInto(local,derivedData(remote))){saveDerivedSoon(local);}});
-    if(currentId&&state.deleted[currentId]){stopReadAloud(true);currentId=null;pdfDoc=null;if(!byId('readerPage').classList.contains('hidden'))showPage('libraryPage');}return changed;
+    if(currentId&&state.deleted[currentId]){currentId=null;pdfDoc=null;if(!byId('readerPage').classList.contains('hidden'))showPage('libraryPage');}return changed;
   }
   async function doSync(){
     if(!syncCfg||syncing)return;syncing=true;syncUi('☁ syncing…');

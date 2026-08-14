@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <title>Carrel — a private paper desk</title>
-  <meta name="description" content="A local-first paper reader with notes, AI questions, connections, and optional encrypted GitHub sync.">
+  <title>Carrel — Breathe, Focus, Read</title>
+  <meta name="description" content="Breathe, Focus, Read — a local-first desk for academic papers: highlights, notes, spaced review, AI questions, and encrypted sync you own.">
   <meta name="robots" content="noindex">
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/carrel-apple-touch-icon.png">
   <link rel="icon" href="/favicon_io/carrel-favicon.ico" sizes="any">
@@ -488,7 +488,7 @@
 </head>
 <body>
   <header class="masthead">
-    <button class="brand" id="brandBtn" aria-label="Open library"><strong>Carrel</strong><span>private paper desk</span></button>
+    <button class="brand" id="brandBtn" aria-label="Open library"><strong>Carrel</strong><span>Breathe · Focus · Read</span></button>
     <nav class="nav" aria-label="Main navigation">
       <button class="nav-btn active" data-view="libraryPage">Library</button>
       <button class="nav-btn" data-view="reviewPage">Review</button>
@@ -507,7 +507,7 @@
     <section id="libraryPage" class="page">
       <div class="hero">
         <div>
-          <div class="eyebrow">Read slowly. Keep what matters.</div>
+          <div class="eyebrow">Breathe · Focus · Read</div>
           <h1>A quiet desk of your <em>own.</em></h1>
           <p>Read the real PDF, write beside the page, ask a screenshot a question, and let ideas become connected over time. Your desk is local first; encrypted GitHub sync is optional.</p>
         </div>
@@ -2745,7 +2745,7 @@
     var hint=byId('installHint');if(hint&&hint.scrollIntoView)hint.scrollIntoView({block:'center'});
   };
   /* In the installed window, the portfolio link opens in a real browser tab. */
-  if(isStandalone())byId('homeLink').target='_blank';
+  if(isStandalone()){byId('homeLink').target='_blank';document.title='Carrel';}
   refreshInstallUi();
   if(SUPPORT_URL){byId('supportLink').href=SUPPORT_URL;byId('supportLine').classList.remove('hidden');}
   /* Nothing is lost without an account: papers and notes live in this browser's own

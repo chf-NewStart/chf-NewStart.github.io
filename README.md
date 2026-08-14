@@ -72,7 +72,8 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `journal.html` — one page per day. Optional sync pushes an **AES-GCM encrypted
   blob** to a private GitHub repo the visitor owns (fine-grained token; the repo
   only ever sees ciphertext).
-- `reading.html` — **Carrel**, a local-first paper desk (named for a library study carrel) for slow, focused reading.
+- `reading.html` — **Carrel** ("Breathe, Focus, Read"), a local-first paper desk
+  (named for a library study carrel) for slow, focused reading.
   Single hand-written file, no framework; PDFs render with vendored pdf.js in one
   continuous scroll (lazy rendering, canvas memory capped, far pages freed so a
   675-page textbook stays light on a phone).

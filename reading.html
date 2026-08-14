@@ -632,7 +632,7 @@
   function normalize(ch){
     ch.notes = ch.notes || {}; ch.pageNotes = ch.pageNotes || {}; ch.tags = ch.tags || [];
     ch.questions = ch.questions || []; ch.highlights = ch.highlights || {}; ch.textHighlights = ch.textHighlights || [];
-    ch.readerHighlights = ch.readerHighlights || []; ch.readerNotes = ch.readerNotes || {};
+    ch.readerHighlights = ch.readerHighlights || []; ch.readerNotes = ch.readerNotes || {}; ch.termLookups = ch.termLookups || {};
     ch.addedAt = ch.addedAt || now(); ch.updatedAt = ch.updatedAt || ch.addedAt;
     ch.readPage = ch.readPage || 1; ch.kind = ch.kind || (ch.pageTexts ? 'pdf' : 'text');
     return ch;
@@ -644,7 +644,7 @@
   /* localStorage is deliberately only for small, frequently edited state. Rebuildable PDF
      text lives beside the PDFs in IndexedDB, while encrypted sync may still carry it. */
   var storageWarned = false;
-  var DERIVED_FIELDS=['pageLines','pageParagraphs','pageTexts','readerText','readerV','fr'];
+  var DERIVED_FIELDS=['pageLines','pageParagraphs','pageTexts','readerText','readerV','fr','termLookups'];
   function localState(){
     var copy=Object.assign({},state);copy.chapters=state.chapters.map(function(ch){var item=Object.assign({},ch);if(item.kind==='pdf')DERIVED_FIELDS.forEach(function(field){delete item[field];});return item;});return copy;
   }
@@ -716,7 +716,7 @@
       return{page:page,valid:allCovered&&(phraseMatch||titleMatch||titleCovered>=Math.max(1,Math.ceil(tokens.length*.66))),score:(title===normalized?20:titleMatch?10:0)+(phraseMatch?7:0)+titleCovered*3+covered-(page.index||20)*.01};
     }).filter(function(item){return item.valid;}).sort(function(a,b){return b.score-a.score;});
     var page=ranked[0]&&ranked[0].page;if(!page)return null;
-    return{title:page.title,extract:page.extract,url:page.fullurl||'',image:page.thumbnail&&page.thumbnail.source||'',imagePage:page.pageimage?'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(page.pageimage.replace(/ /g,'_')):page.fullurl||''};
+    return{title:page.title,extract:page.extract,url:page.fullurl||'',image:page.thumbnail&&page.thumbnail.source||'',imagePage:page.pageimage?'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(page.pageimage.replace(/ /g,'_')):page.fullurl||'',source:'wikipedia'};
   }
   async function commonsImage(term){
     var data=await lookupJson('https://commons.wikimedia.org/w/api.php',{action:'query',format:'json',formatversion:'2',origin:'*',generator:'search',gsrsearch:term+' filetype:bitmap',gsrnamespace:'6',gsrlimit:'1',prop:'imageinfo',iiprop:'url|mime',iiurlwidth:'720'});
@@ -739,17 +739,23 @@
     if(!parsed||!String(parsed.definition||'').trim())throw new Error('DeepSeek returned no definition');
     return{title:String(parsed.title||term).trim().slice(0,100),extract:String(parsed.definition).trim(),url:'',image:'',imagePage:'',imageQuery:String(parsed.image_query||'').trim().slice(0,100),source:'ai'};
   }
+  function rememberLookup(ch,termKey,result){
+    if(!ch||!result)return;result=Object.assign({},result,{cachedAt:now()});ch.termLookups=ch.termLookups||{};ch.termLookups[termKey]=result;
+    var keys=Object.keys(ch.termLookups);if(keys.length>120)keys.sort(function(a,b){return(ch.termLookups[b].cachedAt||0)-(ch.termLookups[a].cachedAt||0);}).slice(120).forEach(function(key){delete ch.termLookups[key];});
+    ch.updatedAt=now();if(ch.kind==='pdf')saveDerivedSoon(ch);persist();
+  }
   async function loadLookup(term,serial,context){
-    var key=String(currentId||'')+'|'+term.toLocaleLowerCase();
+    var ch=find(currentId),termKey=term.toLocaleLowerCase(),key=String(currentId||'')+'|'+termKey;
     try{
-      var cached=Object.prototype.hasOwnProperty.call(lookupCache,key),result=cached?lookupCache[key]:await wikipediaEntry(term);
+      var memoryHit=Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)),result=memoryHit?lookupCache[key]:paperHit?ch.termLookups[termKey]:await wikipediaEntry(term);
       if(serial!==lookupSerial)return;
       if(!result){
         if(!localStorage.getItem(AI_KEY)){lookupCache[key]=null;showLookupProblem(term,'Wikipedia has no clean entry for this phrase. Add a DeepSeek key to explain technical terms from the nearby paper context.');byId('lookupAiSetup').classList.remove('hidden');return;}
         result=await deepseekEntry(term,context);if(serial!==lookupSerial)return;
       }
       lookupCache[key]=result;renderLookup(term,result);
-      if(!result.image){var image=await commonsImage(result.imageQuery||result.title||term);if(serial!==lookupSerial)return;if(image){result.image=image.url;result.imagePage=image.page;lookupCache[key]=result;renderLookup(term,result);}}
+      if(!result.image&&!result.imageChecked){var image=null;try{image=await commonsImage(result.imageQuery||result.title||term);}catch(imageError){}if(serial!==lookupSerial)return;result=Object.assign({},result,{imageChecked:true});if(image){result.image=image.url;result.imagePage=image.page;}lookupCache[key]=result;renderLookup(term,result);}
+      if(ch&&(!paperHit||ch.termLookups[termKey]!==result))rememberLookup(ch,termKey,result);
     }catch(e){if(serial===lookupSerial)showLookupProblem(term,'The reference lookup could not finish. Your highlight is still safe—try again when you are online.');}
   }
   function queueLookup(text,rect,selection){
@@ -828,7 +834,7 @@
     try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('derived').objectStore('derived').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
     return memoryDerived[id]||null;
   }
-  function mergeDerivedInto(ch,saved){var changed=false;if(!ch||!saved)return changed;DERIVED_FIELDS.forEach(function(field){var incoming=saved[field],current=ch[field];if(incoming===undefined)return;if(current===undefined||current===null||(Array.isArray(incoming)&&(!Array.isArray(current)||incoming.length>current.length))){ch[field]=incoming;changed=true;}});return changed;}
+  function mergeDerivedInto(ch,saved){var changed=false;if(!ch||!saved)return changed;DERIVED_FIELDS.forEach(function(field){var incoming=saved[field],current=ch[field];if(incoming===undefined)return;if(field==='termLookups'&&incoming&&typeof incoming==='object'){var merged=Object.assign({},incoming,current||{});if(Object.keys(merged).length!==Object.keys(current||{}).length){ch[field]=merged;changed=true;}return;}if(current===undefined||current===null||(Array.isArray(incoming)&&(!Array.isArray(current)||incoming.length>current.length))){ch[field]=incoming;changed=true;}});return changed;}
   async function hydrateDerived(ch){
     if(!ch||ch.kind!=='pdf')return ch;var saved=await getDerived(ch.id);if(!saved)return ch;
     mergeDerivedInto(ch,saved);return ch;

@@ -77,7 +77,9 @@ Each page is self-contained and keeps its data in the visitor's own browser
   reflowed Reader view, and browser read-aloud that omit repeated headers and
   footers; a direct four-color marker with persistent highlights; selection
   lookups with a Wikipedia definition and sourced Wikimedia image, plus an
-  explicitly labelled DeepSeek fallback for technical phrases; page and
+  explicitly labelled DeepSeek fallback for technical phrases. Glossary
+  results are cached per paper (up to 120 terms) locally and in encrypted sync,
+  so selecting the same term again does not spend another AI call; page and
   paragraph notes; screenshot OCR with optional AI questions; sketch notes; a
   tag-based connection map; and optional AES-GCM encrypted GitHub sync. Papers
   can be removed directly from the library without deleting their original

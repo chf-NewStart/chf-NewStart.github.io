@@ -2269,14 +2269,40 @@
     if(!syncCfg||syncing)return;syncing=true;syncUi('☁ syncing…');
     try{
       var get=await fetch(ghUrl(SYNC_FILE),{headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json'}}),sha=null;
-      if(get.status!==404){if(!get.ok)throw new Error(get.status===401||get.status===403?'Token cannot access this repo':'GitHub returned '+get.status);var j=await get.json();sha=j.sha;var remote=await decryptState(syncCfg.pass,atob((j.content||'').replace(/\n/g,'')));if(mergeState(remote)){persist(false);renderShelf();}}
+      if(get.status!==404){
+        if(!get.ok)throw new Error(get.status===401||get.status===403?'Token cannot access this repo':'GitHub returned '+get.status);
+        var j=await get.json();sha=j.sha;
+        var enc=atob((j.content||'').replace(/\n/g,''));
+        /* GitHub's contents API sends an empty content field for files over 1MB — a full
+           textbook's extracted text gets there easily. Fetch the raw bytes instead. */
+        if(!enc&&j.size>0){
+          var raw=await fetch(ghUrl(SYNC_FILE),{headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github.raw+json'}});
+          if(!raw.ok)throw new Error('Could not download the sync file ('+raw.status+')');
+          enc=await raw.text();
+        }
+        if(enc){
+          var remote;
+          try{remote=await decryptState(syncCfg.pass,enc);}
+          catch(decryptError){throw new Error('Could not decrypt the sync file — is the passphrase exactly the same as on your other device?');}
+          if(mergeState(remote)){persist(false);renderShelf();}
+        }
+      }
       var syncChapters=await chaptersForSync(),enc=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{}}),body={message:'Margin reading notes sync',content:btoa(enc)};if(sha)body.sha=sha;
       var put=await fetch(ghUrl(SYNC_FILE),{method:'PUT',headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)});if(!put.ok)throw new Error('GitHub upload failed ('+put.status+')');syncUi('☁ synced '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncStatus').textContent='Synced to '+syncCfg.repo+'.';
     }catch(e){syncUi('☁ sync needs attention');byId('syncStatus').textContent=e.message||'Sync failed';}syncing=false;
   }
   function scheduleSync(){if(!syncCfg)return;clearTimeout(syncTimer);syncTimer=setTimeout(doSync,4000);}
-  byId('syncLinkBtn').onclick=function(){if(!syncCfg)return;var link=location.href.split('#')[0]+'#margin-setup='+btoa(unescape(encodeURIComponent(JSON.stringify(syncCfg))));navigator.clipboard.writeText(link).then(function(){byId('syncStatus').textContent='Device link copied. AirDrop it to yourself; it contains your token and passphrase.';});};
-  (function importSetup(){var m=location.hash.match(/^#margin-setup=(.+)$/);if(!m)return;history.replaceState(null,'',location.pathname+location.search);try{var cfg=JSON.parse(decodeURIComponent(escape(atob(m[1]))));if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Margin to '+cfg.repo+'? Only continue if you made this link yourself.')){syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));}}catch(e){}})();
+  /* The device link is a direct device-to-device hand-off (it already carries the GitHub
+     token and passphrase), so the AI key rides along too — unlike the synced file, which
+     deliberately never contains it. */
+  byId('syncLinkBtn').onclick=function(){
+    if(!syncCfg)return;
+    var payload=Object.assign({},syncCfg),aiKey=localStorage.getItem(AI_KEY)||'';
+    if(aiKey)payload.ai=aiKey;
+    var link=location.href.split('#')[0]+'#margin-setup='+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    navigator.clipboard.writeText(link).then(function(){byId('syncStatus').textContent='Device link copied. AirDrop it to yourself; it contains your token, passphrase'+(aiKey?' and AI key':'')+'.';});
+  };
+  (function importSetup(){var m=location.hash.match(/^#margin-setup=(.+)$/);if(!m)return;history.replaceState(null,'',location.pathname+location.search);try{var cfg=JSON.parse(decodeURIComponent(escape(atob(m[1]))));if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Margin to '+cfg.repo+'? Only continue if you made this link yourself.')){if(cfg.ai){try{localStorage.setItem(AI_KEY,cfg.ai);}catch(e){}}delete cfg.ai;syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));}}catch(e){}})();
 
   var githubPath='papers';
   byId('githubPickBtn').onclick=openGithubPicker;byId('githubRefresh').onclick=function(){listGithubPapers(githubPath);};

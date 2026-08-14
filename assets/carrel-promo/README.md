@@ -2,6 +2,7 @@
 
 Made from the installed-app screen recording captured on 2026-08-14.
 
+- `carrel-app-screen-recording-original.mov` — untouched 85.5-second installed-app capture, stored with Git LFS.
 - `carrel-app-demo.mp4` — 33.6-second minimal demo with an original chill-piano score; H.264/AAC, 1920×1200, web-optimized fast start.
 - `carrel-app-overview.jpg` — installed app, paper, notes, and AI together.
 - `carrel-guide-ai.jpg` — reading guide feeding a focused AI question.

@@ -532,7 +532,6 @@
 
       <div class="command-bar">
         <button class="button primary" id="importPdfBtn">＋ Add a paper from this device</button>
-        <button class="soft-button" id="gdriveBarBtn">◈ Google Drive</button>
         <button class="soft-button" id="githubPickBtn">⌘ Pick from GitHub</button>
         <button class="soft-button" id="newTextBtn">✎ Paste text</button>
         <button class="soft-button" id="reviewShortcut">↻ Review</button>
@@ -761,7 +760,7 @@
     <div class="dialog-head"><h2>Desk settings</h2><button class="icon-btn" data-close="settingsDialog">×</button></div>
     <div class="dialog-body">
       <section>
-        <h3>Google Drive sync — the simple one</h3>
+        <h3>Sync with Google Drive</h3>
         <p>One tap connects your own Google Drive. Notes and the library live in a hidden app folder only this app can see — and your PDFs (up to 30 MB each) ride along, so a paper added on one device opens on the others. No tokens, no repos, no passphrase.</p>
         <div><button class="button" id="gdriveConnectBtn">Connect Google Drive</button> <button class="soft-button hidden" id="gdriveSyncBtn">Sync now</button> <button class="soft-button hidden" id="gdriveOffBtn">Turn off</button></div>
         <div class="status" id="gdriveStatus"></div>
@@ -2731,10 +2730,6 @@
     }
     gdriveSyncing=false;
   }
-  byId('gdriveBarBtn').onclick=function(){
-    if(!gdriveOn()){fillSettings();byId('settingsDialog').showModal();byId('gdriveStatus').textContent='Connect here — papers and notes then follow you between devices.';return;}
-    gdriveSync(true);showReaderToast('Your papers and notes sync with Google Drive automatically');
-  };
   byId('gdriveConnectBtn').onclick=async function(){
     var btn=this;btn.disabled=true;byId('gdriveStatus').textContent='Waiting for Google sign-in…';
     try{

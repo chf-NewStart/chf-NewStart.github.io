@@ -124,6 +124,12 @@
     .comfort-bar .value { min-width: 34px; color: var(--muted); font-size: .72rem; text-align: center; }
     .comfort-bar .toggle { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: .72rem; font-weight: 650; }
     .comfort-bar .toggle[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+    .guide-palette { display: flex; align-items: center; gap: 5px; }
+    .guide-color { --guide-swatch: #e0b737; min-height: 30px; padding: 4px 9px 4px 7px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: .7rem; font-weight: 650; }
+    .guide-color::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--guide-swatch); box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
+    .guide-color[data-guide-color="green"] { --guide-swatch: #67ad72; }
+    .guide-color[data-guide-color="blue"] { --guide-swatch: #65a9c3; }
+    .guide-color[aria-pressed="true"] { border-color: var(--guide-swatch); color: var(--ink); box-shadow: inset 0 0 0 1px var(--guide-swatch); }
     .comfort-bar .spacer { flex: 1 1 auto; }
     .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
     #focusBtn.active, #comfortBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
@@ -153,8 +159,12 @@
     .pane-spotlight::after { content: ""; position: absolute; left: var(--guide-x, 12%); top: var(--guide-y, 34%); width: var(--guide-w, 38%); height: var(--guide-h, 118px); border-radius: 7px;
       background: linear-gradient(90deg, rgba(244,166,56,.14), rgba(255,191,65,.27) 12%, rgba(255,191,65,.27) 88%, rgba(244,166,56,.14));
       box-shadow: inset 0 1px rgba(255,213,126,.3), inset 0 -1px rgba(182,103,21,.2); transition: left .08s linear, top .08s linear, width .12s ease, height .12s ease; }
+    .pane-spotlight[data-guide-color="green"]::after { background: linear-gradient(90deg, rgba(78,164,91,.11), rgba(96,188,111,.23) 12%, rgba(96,188,111,.23) 88%, rgba(78,164,91,.11)); box-shadow: inset 0 1px rgba(164,224,170,.25), inset 0 -1px rgba(43,125,57,.2); }
+    .pane-spotlight[data-guide-color="blue"]::after { background: linear-gradient(90deg, rgba(67,145,177,.1), rgba(83,166,199,.22) 12%, rgba(83,166,199,.22) 88%, rgba(67,145,177,.1)); box-shadow: inset 0 1px rgba(153,213,234,.24), inset 0 -1px rgba(41,113,143,.2); }
     .pane-spotlight.on { opacity: 1; }
-    html[data-theme="dark"] .pane-spotlight::after { background: linear-gradient(90deg, rgba(70,158,168,.06), rgba(93,185,194,.15) 12%, rgba(93,185,194,.15) 88%, rgba(70,158,168,.06)); box-shadow: inset 0 1px rgba(143,219,224,.18), inset 0 -1px rgba(38,119,130,.24); }
+    html[data-theme="dark"] .pane-spotlight::after { background: linear-gradient(90deg, rgba(190,150,43,.05), rgba(220,177,58,.13) 12%, rgba(220,177,58,.13) 88%, rgba(190,150,43,.05)); box-shadow: inset 0 1px rgba(244,210,111,.16), inset 0 -1px rgba(137,98,19,.22); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-color="green"]::after { background: linear-gradient(90deg, rgba(62,145,87,.05), rgba(78,171,102,.13) 12%, rgba(78,171,102,.13) 88%, rgba(62,145,87,.05)); box-shadow: inset 0 1px rgba(135,211,151,.16), inset 0 -1px rgba(31,104,52,.22); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-color="blue"]::after { background: linear-gradient(90deg, rgba(58,137,167,.05), rgba(77,163,194,.14) 12%, rgba(77,163,194,.14) 88%, rgba(58,137,167,.05)); box-shadow: inset 0 1px rgba(139,207,228,.17), inset 0 -1px rgba(32,102,130,.23); }
     .zoom-tools { display: flex; align-items: center; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
     .zoom-tools button { min-width: 34px; height: 36px; padding: 0 9px; border: 0; border-right: 1px solid var(--line); background: transparent; font-size: .75rem; }
     .zoom-tools button:last-child { border-right: 0; }
@@ -452,6 +462,13 @@
           <button class="step-btn" id="leadLoose" type="button" aria-label="Looser lines">☰</button>
         </div>
         <button class="toggle" id="airyBtn" type="button" aria-pressed="false">Relaxed letters</button>
+        <div class="group"><span>Guide color</span>
+          <div class="guide-palette" role="group" aria-label="Reading guide color">
+            <button class="guide-color" type="button" data-guide-color="yellow" aria-pressed="true">Yellow</button>
+            <button class="guide-color" type="button" data-guide-color="green" aria-pressed="false">Green</button>
+            <button class="guide-color" type="button" data-guide-color="blue" aria-pressed="false">Blue</button>
+          </div>
+        </div>
         <span class="spacer"></span>
         <button class="toggle" id="comfortReset" type="button">Reset</button>
       </div>
@@ -992,11 +1009,12 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow'};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
   comfort.leading=Math.max(1.2,Math.min(2.6,+comfort.leading||1.7));
+  if(['yellow','green','blue'].indexOf(comfort.guide)<0)comfort.guide='yellow';
   var focusPara=null, pageStartCache={};
   function paraSections(){ return byId('textDocument').querySelectorAll('.para'); }
   function applyComfort(){
@@ -1009,6 +1027,8 @@
     byId('widthValue').textContent=String(comfort.measure);
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
+    byId('paneSpotlight').dataset.guideColor=comfort.guide;
+    document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
     applyFocus();
     try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}
   }
@@ -1022,7 +1042,8 @@
   byId('leadTight').onclick=function(){stepComfort('leading',-0.1,1.2,2.6,1);};
   byId('leadLoose').onclick=function(){stepComfort('leading',0.1,1.2,2.6,1);};
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;applyComfort();showReaderToast('Reading settings reset');};
+  document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.textContent+' reading guide');};});
+  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';applyComfort();showReaderToast('Reading settings reset');};
   byId('comfortBtn').onclick=function(){
     var bar=byId('comfortBar'),open=bar.classList.contains('hidden');
     bar.classList.toggle('hidden',!open);this.classList.toggle('active',open);this.setAttribute('aria-expanded',String(open));

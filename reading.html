@@ -35,6 +35,7 @@
     button { cursor: pointer; }
     a { color: inherit; }
     .hidden { display: none !important; }
+    body.reading { overflow: hidden; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
     .masthead {
@@ -921,11 +922,17 @@
   function showPage(id){
     ['libraryPage','connectionsPage','readerPage'].forEach(function(v){ byId(v).classList.toggle('hidden', v !== id); });
     document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view === id); });
+    /* The reader is an app screen, not a document: while it is open the page itself must
+       never scroll, or the toolbar slides under the sticky masthead. */
+    document.body.classList.toggle('reading', id === 'readerPage');
     if (id !== 'readerPage') { toggleSheet(false); hideLookup(); }
     if (id === 'libraryPage') renderShelf();
     if (id === 'connectionsPage') renderConnections();
     window.scrollTo(0, 0);
   }
+  addEventListener('scroll', function(){
+    if (document.body.classList.contains('reading') && (scrollY || scrollX)) scrollTo(0, 0);
+  }, { passive: true });
   document.querySelectorAll('.nav-btn').forEach(function(b){ b.onclick = function(){ showPage(b.dataset.view); }; });
   byId('brandBtn').onclick = function(){ showPage('libraryPage'); };
   byId('readerBack').onclick = function(){ stopReadAloud(true); pdfDoc = null; showPage('libraryPage'); };
@@ -1455,7 +1462,7 @@
     var bar=byId('findBar'),willOpen=open!==undefined?open:bar.classList.contains('hidden');
     bar.classList.toggle('hidden',!willOpen);
     byId('findBtn').classList.toggle('active',willOpen);byId('findBtn').setAttribute('aria-expanded',String(willOpen));
-    if(willOpen){byId('findInput').focus();byId('findInput').select();}
+    if(willOpen){byId('findInput').focus({preventScroll:true});byId('findInput').select();}
     else{findMatches=[];findIndex=-1;byId('findCount').textContent='';}
   }
   byId('findBtn').onclick=function(){toggleFindBar();};
@@ -2079,7 +2086,7 @@
   /* notebook tabs + sketch */
   function setRecall(on){
     recallActive=!!on;byId('recallShield').classList.toggle('hidden',!recallActive);byId('recallShield').setAttribute('aria-hidden',String(!recallActive));byId('recallPrompt').classList.toggle('hidden',!recallActive);byId('recallBtn').setAttribute('aria-pressed',String(recallActive));byId('recallBtn').textContent=recallActive?'Show paper':'↻ Recall';
-    if(recallActive){if(innerWidth<=720)toggleSheet(true);requestAnimationFrame(function(){var note=byId('pageNote');note.focus();note.setSelectionRange(note.value.length,note.value.length);});}
+    if(recallActive){if(innerWidth<=720)toggleSheet(true);requestAnimationFrame(function(){var note=byId('pageNote');note.focus({preventScroll:true});note.setSelectionRange(note.value.length,note.value.length);});}
   }
   byId('recallBtn').onclick=function(){setRecall(!recallActive);};
   byId('recallDone').onclick=function(){setRecall(false);};
@@ -2102,7 +2109,7 @@
   byId('askPageBtn').onclick=function(){
     var ch=find(currentId), text=readerMode==='pdf'?(ch.pageTexts||[])[currentPage-1]:(ch.kind==='pdf'?(ch.readerText||ch.fr):ch.fr), thumb='';
     var view=pdfViews[currentPage-1],c=view&&view.canvas; if(readerMode==='pdf'&&c&&c.width) try{thumb=makeThumb(c);}catch(e){}
-    setAiContext(text||'',thumb,readerMode==='pdf'?'Page '+currentPage:(ch.kind==='pdf'?'Reader text':'Paper text')); switchTab('aiPanel'); if(innerWidth<=720)toggleSheet(true); byId('aiQuestion').focus();
+    setAiContext(text||'',thumb,readerMode==='pdf'?'Page '+currentPage:(ch.kind==='pdf'?'Reader text':'Paper text')); switchTab('aiPanel'); if(innerWidth<=720)toggleSheet(true); byId('aiQuestion').focus({preventScroll:true});
   };
   byId('aiUseCurrent').onclick=function(){byId('askPageBtn').click();};
   /* Selection as context: the passage's exact text from the PDF's own text layer (no OCR
@@ -2126,7 +2133,7 @@
     }
     setAiContext('Selected passage:\n“'+sel.text+'”'+(around?'\n\nSurrounding text:\n'+around:''),thumb,label);
     byId('aiStatus').textContent='Context is that passage. Ask away.';
-    byId('aiQuestion').focus();
+    byId('aiQuestion').focus({preventScroll:true});
   };
   /* Guide area as context: whatever lines the reading band is sitting on right now.
      Text comes from the PDF's own text layer (spans whose line center falls inside the
@@ -2178,7 +2185,7 @@
     if(!text){byId('aiStatus').textContent='No text sits under the guide right now — move it over a passage.';return;}
     setAiContext(text,thumb,label);
     byId('aiStatus').textContent='Context is what sits under the guide. Ask away.';
-    byId('aiQuestion').focus();
+    byId('aiQuestion').focus({preventScroll:true});
   };
   function makeRegionThumb(canvas,rects){
     var x0=1,y0=1,x1=0,y1=0;
@@ -2209,7 +2216,7 @@
       var bmp=await createImageBitmap(file), scale=Math.min(1,1600/bmp.width), canvas=document.createElement('canvas');canvas.width=bmp.width*scale;canvas.height=bmp.height*scale;canvas.getContext('2d').drawImage(bmp,0,0,canvas.width,canvas.height);
       var worker=await Tesseract.createWorker('eng',1,{workerPath:'/vendor/tesseract/worker.min.js',corePath:'/vendor/tesseract/',langPath:'/vendor/tesseract',logger:function(m){if(m.status==='recognizing text')st.textContent='Reading screenshot… '+Math.round(m.progress*100)+'%';}});
       var result=await worker.recognize(canvas);await worker.terminate();var text=(result.data.text||'').trim();if(!text)throw new Error('No text found in this screenshot');
-      setAiContext(text,makeThumb(canvas),'Pasted screenshot');st.textContent='Screenshot is ready. Ask something about it.';byId('aiQuestion').focus();
+      setAiContext(text,makeThumb(canvas),'Pasted screenshot');st.textContent='Screenshot is ready. Ask something about it.';byId('aiQuestion').focus({preventScroll:true});
     }catch(e){st.textContent=e.message||'OCR failed';}
   }
   byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;

@@ -351,6 +351,17 @@
     .qa .a { margin-top: 6px; white-space: pre-wrap; font: .78rem/1.48 var(--serif); color: var(--muted); }
     .qa .meta { margin-top: 6px; color: var(--muted); font-size: .61rem; }
 
+    /* Review */
+    .review-card { max-width: 640px; padding: 26px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+    .review-eyebrow { display: block; margin-bottom: 14px; color: var(--accent); font-size: .62rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .review-quote { margin: 0 0 12px; padding-left: 14px; border-left: 3px solid var(--yellow); font: 1.05rem/1.6 var(--serif); }
+    .review-prompt { margin: 0 0 6px; color: var(--muted); font-size: .8rem; }
+    .review-q { margin-bottom: 12px; font: 600 1.02rem/1.5 var(--sans); }
+    .review-a { margin: 12px 0 4px; white-space: pre-wrap; color: var(--muted); font: .9rem/1.55 var(--serif); }
+    .review-actions { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+    .review-actions .spacer { flex: 1; }
+    #reviewCard .empty { max-width: 640px; border: 1px dashed var(--line); border-radius: 14px; padding: 40px 22px; text-align: center; color: var(--muted); }
+
     /* Connections */
     .connections-intro { display: grid; grid-template-columns: 1fr .65fr; gap: 38px; align-items: end; margin-bottom: 26px; }
     .connections-intro h1 { margin: 7px 0 0; font: 500 clamp(2.5rem, 6vw, 5rem)/1 var(--serif); letter-spacing: -.05em; }
@@ -452,6 +463,7 @@
     <button class="brand" id="brandBtn" aria-label="Open library"><strong>Margin</strong><span>private paper desk</span></button>
     <nav class="nav" aria-label="Main navigation">
       <button class="nav-btn active" data-view="libraryPage">Library</button>
+      <button class="nav-btn" data-view="reviewPage">Review</button>
       <button class="nav-btn" data-view="connectionsPage">Connections</button>
     </nav>
     <div class="head-actions">
@@ -488,6 +500,7 @@
         <button class="button primary" id="importPdfBtn">＋ Add a paper from this device</button>
         <button class="soft-button" id="githubPickBtn">⌘ Pick from GitHub</button>
         <button class="soft-button" id="newTextBtn">✎ Paste text</button>
+        <button class="soft-button" id="reviewShortcut">↻ Review</button>
         <input class="hidden" type="file" id="pdfFile" accept=".pdf,application/pdf">
       </div>
 
@@ -505,6 +518,12 @@
       </div>
       <div class="network-card"><canvas id="networkCanvas" aria-label="Network of papers and tags"></canvas></div>
       <div class="connection-list" id="connectionList"></div>
+    </section>
+
+    <section id="reviewPage" class="page hidden">
+      <div class="section-head"><h2>Review</h2><span class="count" id="reviewCount"></span></div>
+      <p class="hint" id="reviewHint" style="max-width:640px">Highlights, notes and saved questions ripen into cards a day after you make them, then return on a spacing schedule. Explain each one from memory before grading yourself.</p>
+      <div id="reviewCard"></div>
     </section>
 
     <section id="readerPage" class="hidden">
@@ -785,7 +804,7 @@
   function normalize(ch){
     ch.notes = ch.notes || {}; ch.pageNotes = ch.pageNotes || {}; ch.tags = ch.tags || [];
     ch.questions = ch.questions || []; ch.highlights = ch.highlights || {}; ch.textHighlights = ch.textHighlights || [];
-    ch.readerHighlights = ch.readerHighlights || []; ch.readerNotes = ch.readerNotes || {}; ch.termLookups = ch.termLookups || {};
+    ch.readerHighlights = ch.readerHighlights || []; ch.readerNotes = ch.readerNotes || {}; ch.termLookups = ch.termLookups || {}; ch.reviews = ch.reviews || {};
     ch.addedAt = ch.addedAt || now(); ch.updatedAt = ch.updatedAt || ch.addedAt;
     ch.readPage = ch.readPage || 1; ch.kind = ch.kind || (ch.pageTexts ? 'pdf' : 'text');
     return ch;
@@ -943,13 +962,14 @@
     applyTheme(dark);
   };
   function showPage(id){
-    ['libraryPage','connectionsPage','readerPage'].forEach(function(v){ byId(v).classList.toggle('hidden', v !== id); });
+    ['libraryPage','reviewPage','connectionsPage','readerPage'].forEach(function(v){ byId(v).classList.toggle('hidden', v !== id); });
     document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view === id); });
     /* The reader is an app screen, not a document: while it is open the page itself must
        never scroll, or the toolbar slides under the sticky masthead. */
     document.body.classList.toggle('reading', id === 'readerPage');
     if (id !== 'readerPage') { toggleSheet(false); hideLookup(); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){} }
     if (id === 'libraryPage') renderShelf();
+    if (id === 'reviewPage') renderReview();
     if (id === 'connectionsPage') renderConnections();
     window.scrollTo(0, 0);
   }
@@ -1044,6 +1064,74 @@
     });
   }
   byId('librarySearch').oninput = renderShelf;
+
+  /* Review: everything you marked comes back for a self-test on a spacing schedule.
+     Grading yourself honestly is the whole trick — recall beats rereading. */
+  var REVIEW_STEPS=[1,3,7,14,30,60], reviewQueue=[], reviewIndex=0;
+  function reviewItemList(){
+    var items=[];
+    state.chapters.forEach(function(ch){
+      var rev=ch.reviews||{};
+      function push(key,kind,content,extra){
+        if(!content||!String(content).trim())return;
+        var r=rev[key];extra=extra||{};
+        items.push({ch:ch,key:key,kind:kind,content:content,page:extra.page||null,answer:extra.answer||'',due:r?r.due:0,created:extra.at||ch.addedAt||0});
+      }
+      Object.keys(ch.highlights||{}).forEach(function(pg){(ch.highlights[pg]||[]).forEach(function(h){push('h:'+h.id,'highlight',h.text,{page:+pg,at:h.at});});});
+      (ch.textHighlights||[]).concat(ch.readerHighlights||[]).forEach(function(h){push('h:'+h.id,'highlight',h.text,{at:h.at});});
+      Object.keys(ch.pageNotes||{}).forEach(function(k){push('pn:'+k,'note',ch.pageNotes[k],{page:+k||null});});
+      Object.keys(ch.notes||{}).forEach(function(k){push('n:'+k,'note',ch.notes[k],{});});
+      Object.keys(ch.readerNotes||{}).forEach(function(k){push('rn:'+k,'note',ch.readerNotes[k],{});});
+      (ch.questions||[]).forEach(function(q){push('q:'+q.id,'qa',q.question,{answer:q.answer,at:q.at});});
+    });
+    return items;
+  }
+  function dueReviewList(){
+    var ts=now(),day=864e5;
+    return reviewItemList().filter(function(it){
+      return it.due?it.due<=ts:(it.created||0)<ts-day;
+    }).sort(function(a,b){return (a.due||a.created)-(b.due||b.created);});
+  }
+  function gradeReview(item,good){
+    var ch=item.ch;ch.reviews=ch.reviews||{};
+    var rec=ch.reviews[item.key]||{streak:0};
+    if(good){rec.streak=(rec.streak||0)+1;rec.due=now()+REVIEW_STEPS[Math.min(rec.streak-1,REVIEW_STEPS.length-1)]*864e5;}
+    else{rec.streak=0;rec.due=now()+864e5;}
+    rec.last=now();ch.reviews[item.key]=rec;touch(ch);
+  }
+  function updateReviewBadge(){
+    var n=dueReviewList().length,label='Review'+(n?' · '+(n>20?'20+':n):'');
+    document.querySelectorAll('[data-view="reviewPage"]').forEach(function(b){b.textContent=label;});
+    byId('reviewShortcut').textContent='↻ '+label;
+  }
+  function renderReview(){
+    reviewQueue=dueReviewList().slice(0,20);reviewIndex=0;updateReviewBadge();showReviewCard();
+  }
+  function showReviewCard(){
+    var box=byId('reviewCard'),item=reviewQueue[reviewIndex];
+    byId('reviewCount').textContent=item?((reviewIndex+1)+' / '+reviewQueue.length+' due'):'';
+    if(!item){box.innerHTML='<div class="empty">Nothing to review right now. Highlights, notes and saved questions ripen into cards a day after you make them.</div>';return;}
+    var where=esc(item.ch.title||'Untitled')+(item.page?' · p. '+item.page:'');
+    var body=item.kind==='qa'
+      ?'<div class="review-q">'+esc(item.content)+'</div><button class="soft-button" id="reviewReveal" type="button">Show the saved answer</button><div class="review-a hidden" id="reviewAnswer">'+esc(item.answer)+'</div>'
+      :'<blockquote class="review-quote">'+esc(item.content)+'</blockquote><p class="review-prompt">'+(item.kind==='highlight'?'Why did you mark this? Explain it from memory first.':'Your note — say it back from memory before peeking at the paper.')+'</p>';
+    box.innerHTML='<article class="review-card"><span class="review-eyebrow">'+(item.kind==='qa'?'Saved question':item.kind==='highlight'?'Highlight':'Note')+' · '+where+'</span>'+body+
+      '<div class="review-actions"><button class="text-button" id="reviewOpen" type="button">Show in paper</button><span class="spacer"></span><button class="soft-button" id="reviewAgain" type="button">Fuzzy · tomorrow</button><button class="button" id="reviewGood" type="button">Got it</button></div></article>';
+    var reveal=byId('reviewReveal');
+    if(reveal)reveal.onclick=function(){byId('reviewAnswer').classList.remove('hidden');this.classList.add('hidden');};
+    byId('reviewOpen').onclick=function(){openReader(item.ch.id).then(function(){if(item.page)gotoPdfPage(item.page);});};
+    byId('reviewAgain').onclick=function(){gradeReview(item,false);nextReviewCard();};
+    byId('reviewGood').onclick=function(){gradeReview(item,true);nextReviewCard();};
+  }
+  function nextReviewCard(){
+    reviewIndex++;
+    if(reviewIndex>=reviewQueue.length){
+      byId('reviewCard').innerHTML='<div class="empty">Done — '+reviewQueue.length+' reviewed. Come back tomorrow; spacing is the point.</div>';
+      byId('reviewCount').textContent='';updateReviewBadge();return;
+    }
+    showReviewCard();
+  }
+  byId('reviewShortcut').onclick=function(){showPage('reviewPage');};
   byId('importPdfBtn').onclick = function(){ if(location.protocol==='file:'){ byId('launchDialog').showModal(); return; } byId('pdfFile').click(); };
   byId('pdfFile').onchange = function(){ var f=this.files[0]; this.value=''; if(f) importPdf(f); };
 
@@ -2482,7 +2570,7 @@
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
 
   if('serviceWorker' in navigator&&location.protocol!=='file:'){try{navigator.serviceWorker.register('/reading-sw.js').catch(function(){});}catch(e){}}
-  syncUi();renderShelf();
+  syncUi();renderShelf();updateReviewBadge();
   /* A refresh drops you back into the paper you were reading, not the library. */
   try{var lastOpen=localStorage.getItem(LAST_OPEN_KEY);if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
   if(location.protocol==='file:') byId('launchDialog').showModal();

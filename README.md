@@ -16,7 +16,8 @@ gate — check your change locally before you push.
 
 - `index.html` — the portfolio page itself; `styles.css` and `site.js` belong to it.
 - `bio-bg.js` — the animated backdrop (see below).
-- `journal.html`, `reading.html`, `moneymanage/`, `msg/`, `personality/`, `pose-loop/`, `game/` —
+- `journal.html`, `reading.html` (+ `reading-sw.js`, its offline service worker),
+  `moneymanage/`, `msg/`, `personality/`, `pose-loop/`, `game/` —
   standalone tools and games, each self-contained.
 - `sprites/` — pixel art for the tomato rain (goose, raccoon, glider, block, blinker).
 - `vendor/` — vendored libraries for the reading room (pdf.js, Tesseract language data).
@@ -71,41 +72,53 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `journal.html` — one page per day. Optional sync pushes an **AES-GCM encrypted
   blob** to a private GitHub repo the visitor owns (fine-grained token; the repo
   only ever sees ciphertext).
-- `reading.html` — Margin, a local-first paper desk: paste or drop a direct PDF
-  link to download one local copy without a GitHub commit (or drop the PDF file
-  when a publisher blocks browser downloads); selectable PDF rendering
-  in one continuous vertical scroll (pages render lazily and far-away pages are
-  freed so long papers stay light on phone memory), a draggable notes panel, a
-  reflowed Reader view, and browser read-aloud that omit repeated headers and
-  footers; a direct four-color marker with persistent highlights; selection
-  lookups with a Wikipedia definition and sourced Wikimedia image, plus an
-  explicitly labelled DeepSeek fallback for technical phrases. Glossary
-  results are cached per paper (up to 120 terms) locally and in encrypted sync,
-  so selecting the same term again does not spend another AI call; page and
-  paragraph notes; screenshot OCR with optional AI questions; sketch notes; a
-  tag-based connection map; and optional AES-GCM encrypted GitHub sync. Papers
-  can be removed directly from the library without deleting their original
-  `papers/` copy in GitHub.
-  Built to be easy to stay inside: an optional translucent reading ruler with
-  yellow, green, and blue tints that follows the pointer (or last tap) and
-  switches between full-page width for abstracts and column width for dense
-  two-column sections,
-  read-aloud that highlights and
-  follows the text being spoken, an `Aa` panel for text size, column width,
-  and line spacing, a whole-paper find bar (`/`), a reading progress rail, and
-  a voluntary recall check that hides the paper while you explain it from
-  memory. Each paper reopens where you left off. Reader-view paragraphs link back to
-  their PDF page, and notes and highlights in the side index jump back to
-  their spot. One theme toggle drives the app chrome, the PDF paper, and the
-  phone status bar together. On phones the document gets the whole screen: a
-  thumb-height bottom bar handles paging, Reader/PDF, and notes, the notebook
-  rises as a bottom sheet, the top bar keeps only back + title until ⋯ reveals
-  the rest, and compatibility shims cover older iPhone Safari PDF.js gaps.
-  PDF files and their rebuildable extracted text live in IndexedDB on each
-  device instead of the browser's small note store; oversized older records
-  migrate there automatically. A connected private repo can also provide a
-  `papers/` folder — including subfolders — to browse and pick them from on Mac
-  or phone.
+- `reading.html` — **Margin**, a local-first paper desk for slow, focused reading.
+  Single hand-written file, no framework; PDFs render with vendored pdf.js in one
+  continuous scroll (lazy rendering, canvas memory capped, far pages freed so a
+  675-page textbook stays light on a phone).
+
+  **Reading.** Pinch to zoom with a live preview re-rendered crisply under your
+  fingers; double-tap between Fit and 160%; one-finger panning locks to its
+  dominant axis so zoomed scrolling never drifts sideways (with its own momentum
+  fling); tap the page counter to jump anywhere; ☰ Contents opens the PDF's own
+  chapter outline; zoom, page, scroll position and the open paper itself all
+  survive a refresh.
+
+  **Focus.** A reading guide band (yellow/green/blue, full-page or column width,
+  S/M/L height) that tints or — in Line focus — masks everything except the lines
+  under it, draggable by its ≡ handle and anchored to the pane so layout changes
+  never move it off your line; ⛶ Zen mode strips every bar and panel (F to
+  toggle); auto-scroll drifts the page at a tunable 0.5–10 px/s crawl that pauses
+  when you touch the paper; cream paper warms the page in light mode and removes
+  the blue cast in dark mode.
+
+  **Marks.** A four-color marker with persistent highlights, page and paragraph
+  notes, a whole-paper find bar (`/`), read-aloud, selection lookups (Wikipedia
+  definition + image, cached per paper), and a recall check that hides the paper
+  while you explain it from memory.
+
+  **Ask AI.** Three one-tap contexts — current page, your selection, or whatever
+  sits under the guide band — send exact text-layer text (never OCR of what the
+  PDF already knows) plus a cropped snapshot of the spot for the record; question
+  chips (What is… / Why… / How…) and keyboard-free Summarize / Explain simply;
+  answers come back as short bullets. Screenshot OCR runs on-device via vendored
+  Tesseract; only text is ever sent, and the DeepSeek key never leaves the device
+  except inside the hand-carried device link.
+
+  **Review.** Highlights, notes and saved questions ripen into spaced self-test
+  cards (1 → 3 → 7 → 14 → 30 → 60 days, honest self-grading), each able to jump
+  back to its spot in the paper.
+
+  **Storage & sync.** Papers and their extracted text live in IndexedDB on each
+  device; a small service worker (`reading-sw.js`) caches the reader shell so
+  already-imported papers open fully offline; optional AES-GCM encrypted sync to
+  a private GitHub repo (fine-grained token, ciphertext only, files over the
+  contents-API 1 MB limit fetched raw), a `papers/` folder picker, and a device
+  link that hand-carries token, passphrase and AI key to a new device.
+
+  On phones the paper gets the whole screen: a thumb-height bottom bar, the
+  notebook as a bottom sheet, ⋯ revealing the full toolbar, and the layout
+  tracking the visual viewport so the on-screen keyboard never covers the input.
 - `moneymanage/` — local-first personal finance tracker (OFX/QFX import, learned
   categorisation rules, optional AI key — all stored locally).
 - `msg/` — terminal-style message box; the one page that sends data out (Formspree,
@@ -133,3 +146,13 @@ python3 -m http.server
 then open `http://localhost:8000/`. Quick sanity checks before pushing:
 `node --check` on each of `site.js` and `bio-bg.js`, equal counts of `data-en="`
 and `data-zh="` in `index.html`, and the EN → 中文 → EN round-trip above.
+
+## License
+
+The code in this repository is released under the [MIT License](LICENSE) — take
+Margin or any of the tools apart, reuse them, learn from them. Personal content
+is **not** covered by that license and remains all rights reserved: photos and
+images (`emo/`, `food/`, `matrix/`, `money/`, `monet/`, `robo1/`, `swim/`, the
+sprite and card art), resume files (`resumes/`), and the handwriting font
+(`fonts/houfu-hand.woff2`). The other vendored fonts and libraries (`fonts/`,
+`vendor/`) keep their own upstream licenses.

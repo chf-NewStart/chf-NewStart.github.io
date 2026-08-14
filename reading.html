@@ -723,8 +723,8 @@
               <button class="button" id="aiAskBtn">Ask</button>
             </div>
             <div class="status" id="aiStatus" role="status"></div>
-            <div class="evidence-list hidden" id="evidenceList"></div>
             <div class="qa-list" id="qaList"></div>
+            <div class="evidence-list hidden" id="evidenceList"></div>
           </div>
         </aside>
       </div>
@@ -2653,7 +2653,7 @@
     try{
       var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:900,messages:[{role:'system',content:'You are a concise research reading partner. Answer from the supplied excerpt. Distinguish what the excerpt says from your inference. If context is insufficient, say so. Format the answer as short bullet points, each line starting with \u2022 and one idea per line; only skip bullets when the whole answer is a single short sentence. Plain text only, no markdown symbols.'},{role:'user',content:'Paper: '+(ch.title||'Untitled')+'\nContext ('+aiContext.label+'):\n'+aiContext.text.slice(0,24000)+'\n\nQuestion: '+q}]})});
       if(!res.ok)throw new Error('AI returned '+res.status);var data=await res.json(), answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
-      ch.questions.unshift({id:uid('q'),question:q,answer:answer,contextLabel:aiContext.label,excerpt:aiContext.text.slice(0,1200),thumb:aiContext.thumb||'',at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiQuestion').value='';growQuestionBox();byId('aiStatus').textContent='Saved with this paper.';renderQa();
+      ch.questions.unshift({id:uid('q'),question:q,answer:answer,contextLabel:aiContext.label,excerpt:aiContext.text.slice(0,1200),thumb:aiContext.thumb||'',at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiQuestion').value='';growQuestionBox();byId('aiStatus').textContent='Saved with this paper.';renderQa();var firstQa=byId('qaList').firstElementChild;if(firstQa)firstQa.scrollIntoView({block:'nearest',behavior:'smooth'});
     }catch(e){byId('aiStatus').textContent=e.message||'AI request failed';}btn.disabled=false;
   }
   function renderQa(){var ch=find(currentId);if(!ch)return;byId('qaList').innerHTML=(ch.questions||[]).map(function(x){return '<article class="qa"><div class="q">'+esc(x.question)+'</div><div class="a">'+esc(x.answer)+'</div><div class="meta">'+esc(x.contextLabel||'context')+' · '+new Date(x.at).toLocaleDateString()+'</div></article>';}).join('');}
@@ -2682,12 +2682,31 @@
       return '<a class="evidence-card" href="'+esc(link)+'" target="_blank" rel="noopener"><b>'+esc(p.title||'Untitled')+'</b><span class="ev-meta">'+esc(authors)+(p.year?' · '+p.year:'')+(p.venue?' · '+esc(p.venue):'')+' · cited '+(p.citationCount||0)+'×</span>'+tldr+'</a>';
     }).join(''):'<div class="ev-meta" style="padding:6px 0">Nothing indexed matched. Try a narrower selection around one specific claim.</div>');
     box.classList.remove('hidden');
+    box.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+  /* Semantic Scholar's free pool rate-limits hard, and its rejections often arrive
+     without CORS headers — the browser then reports a bare "Failed to fetch". Retry
+     once with a pause; if it still will not answer, the distilled query is not wasted:
+     the same search opens on Google Scholar. */
+  async function s2Search(query){
+    var url='https://api.semanticscholar.org/graph/v1/paper/search?query='+encodeURIComponent(query)+'&limit=6&fields=title,year,authors,venue,citationCount,externalIds,url,tldr';
+    for(var attempt=0;;attempt++){
+      try{
+        var r=await fetch(url);
+        if(r.status===429)throw new Error('rate-limited');
+        if(!r.ok)throw new Error('Paper search failed ('+r.status+')');
+        return ((await r.json()).data)||[];
+      }catch(e){
+        if(attempt===0){await new Promise(function(res){setTimeout(res,1800);});continue;}
+        throw e;
+      }
+    }
   }
   async function findEvidence(){
     if(!aiContext||!aiContext.text){if(!setCurrentPageContext()){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}}
-    var btn=byId('evidenceBtn'),st=byId('aiStatus');btn.disabled=true;
+    var btn=byId('evidenceBtn'),st=byId('aiStatus'),query='';btn.disabled=true;
     try{
-      var query='',key=localStorage.getItem(AI_KEY)||'';
+      var key=localStorage.getItem(AI_KEY)||'';
       if(key){
         st.textContent='Distilling the claim…';
         try{
@@ -2698,12 +2717,17 @@
       if(!query)query=keywordQuery(aiContext.text);
       if(!query)throw new Error('Could not build a search query from this context');
       st.textContent='Searching Semantic Scholar…';
-      var r=await fetch('https://api.semanticscholar.org/graph/v1/paper/search?query='+encodeURIComponent(query)+'&limit=6&fields=title,year,authors,venue,citationCount,externalIds,url,tldr');
-      if(!r.ok)throw new Error(r.status===429?'Semantic Scholar is rate-limiting; try again in a minute.':'Paper search failed ('+r.status+')');
-      var found=((await r.json()).data)||[];
+      var found=await s2Search(query);
       renderEvidence(query,found);
       st.textContent=found.length?'Every result is a real indexed paper — the links go to the source.':'No matches for “'+query+'”.';
-    }catch(e){st.textContent=e.message||'Evidence search failed';}
+    }catch(e){
+      if(query){
+        var box=byId('evidenceList');
+        box.innerHTML='<div class="evidence-head">Semantic Scholar didn’t answer — its free pool rate-limits hard, and ad-blockers sometimes block it. Your search still works: <a href="https://scholar.google.com/scholar?q='+encodeURIComponent(query)+'" target="_blank" rel="noopener">open “'+esc(query)+'” on Google Scholar ↗</a></div>';
+        box.classList.remove('hidden');
+        st.textContent='Semantic Scholar unreachable — use the Google Scholar link above, or try again in a minute.';
+      }else st.textContent=e.message||'Evidence search failed';
+    }
     btn.disabled=false;
   }
   byId('evidenceBtn').onclick=findEvidence;

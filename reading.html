@@ -338,6 +338,8 @@
     .context-card b { display: block; margin-bottom: 3px; }
     .context-card span { color: var(--muted); }
     .drift-range { width: 130px; height: 30px; margin: 0; accent-color: var(--accent); touch-action: none; }
+    .context-row { display: flex; gap: 6px; margin: 0 0 10px; }
+    .context-btn { flex: 1; min-height: 32px; padding: 5px 8px; justify-content: center; font-size: .72rem; white-space: nowrap; }
     .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
     .ask-chip { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 650; }
     .ask-chip:hover { border-color: var(--accent); color: var(--ink); }
@@ -628,12 +630,11 @@
             <div class="mini-list" id="noteIndex"></div>
           </div>
           <div class="tab-panel" id="aiPanel" role="tabpanel">
-            <h3>Ask the page</h3>
-            <p class="hint">Ask about the whole page, a selected passage, or whatever sits under the reading guide right now — the exact text plus a snapshot of the spot become the context. Screenshots also work; OCR happens on this device, and only text is ever sent to your chosen AI.</p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-              <button class="soft-button" id="aiUseCurrent" type="button">⌖ Current page</button>
-              <button class="soft-button" id="aiUseSelection" type="button">✂ My selection</button>
-              <button class="soft-button" id="aiUseGuide" type="button">▰ Guide area</button>
+            <p class="hint">Pick what to ask about — only text ever leaves this device.</p>
+            <div class="context-row">
+              <button class="soft-button context-btn" id="aiUseCurrent" type="button">⌖ Page</button>
+              <button class="soft-button context-btn" id="aiUseSelection" type="button">✂ Selection</button>
+              <button class="soft-button context-btn" id="aiUseGuide" type="button">▰ Guide</button>
             </div>
             <div class="ai-drop" id="aiDrop" tabindex="0">Paste or drop a screenshot<br><button class="text-button" id="aiFileBtn" type="button">or choose an image</button></div>
             <input class="hidden" type="file" id="aiFile" accept="image/*">
@@ -1859,7 +1860,22 @@
   }
   async function renderPdfPage(){
     if(!pdfDoc)return;
-    if(pdfBuildKey!==currentBuildKey()||!pdfViews.length){try{await buildPdfScroll();}catch(e){showError(e.message||'This PDF could not be laid out.');return;}scrollToPdfPage(currentPage,'auto');}
+    if(pdfBuildKey!==currentBuildKey()||!pdfViews.length){
+      /* A rebuild from a layout change (zen, notebook resize, rotation) must not lose the
+         reading spot: remember where we are inside the current page and land back there. */
+      var pane=byId('documentPane'),hadViews=pdfViews.length>0,frac=0,xfrac=.5;
+      if(hadViews){
+        var view=pdfViews[currentPage-1];
+        if(view){var pr=view.holder.getBoundingClientRect(),pane0=pane.getBoundingClientRect();if(pr.height)frac=(pane0.top-pr.top)/pr.height;}
+        if(pane.scrollWidth>0)xfrac=(pane.scrollLeft+pane.clientWidth/2)/pane.scrollWidth;
+      }
+      try{await buildPdfScroll();}catch(e){showError(e.message||'This PDF could not be laid out.');return;}
+      if(hadViews){
+        var nv=pdfViews[currentPage-1];
+        if(nv)pane.scrollTop=Math.max(0,nv.holder.offsetTop+frac*nv.holder.offsetHeight);
+        pane.scrollLeft=Math.max(0,xfrac*pane.scrollWidth-pane.clientWidth/2);
+      }else scrollToPdfPage(currentPage,'auto');
+    }
     else updatePageChrome();
   }
   byId('prevPage').onclick=function(){ if(currentPage>1){ clearPendingSelection();scrollToPdfPage(currentPage-1); } };

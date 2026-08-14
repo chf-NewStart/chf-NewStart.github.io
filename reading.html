@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https://api.github.com https://api.deepseek.com https://en.wikipedia.org https://commons.wikimedia.org; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Margin — a private paper desk</title>
   <meta name="description" content="A local-first paper reader with notes, screenshot questions, sketches, connections, and optional encrypted GitHub sync.">
@@ -75,6 +75,16 @@
     .hero-card .step { display: grid; grid-template-columns: 26px 1fr; gap: 8px; font-size: .8rem; line-height: 1.4; }
     .hero-card .step b { color: var(--accent); }
 
+    .link-import { display: grid; grid-template-columns: minmax(180px, .72fr) minmax(260px, 1.28fr) auto; gap: 10px; align-items: center; margin-bottom: 10px; padding: 12px; border: 1px dashed var(--line); border-radius: 18px; background: color-mix(in srgb, var(--surface) 84%, transparent); transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+    .link-import.drag { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
+    .link-copy { min-width: 0; }
+    .link-copy b, .link-copy span { display: block; }
+    .link-copy b { margin-bottom: 3px; font: 650 .84rem var(--sans); }
+    .link-copy span { color: var(--muted); font-size: .68rem; line-height: 1.4; }
+    .link-import .field { min-width: 0; min-height: 44px; border-radius: 11px; background: var(--bg); }
+    .link-import .button { min-height: 44px; border-radius: 11px; white-space: nowrap; }
+    .link-status { grid-column: 1 / -1; min-height: 0; color: var(--muted); font-size: .7rem; }
+    .link-status:not(:empty) { padding: 1px 3px 2px; }
     .command-bar { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 12px; box-shadow: var(--shadow); display: flex; gap: 9px; margin-bottom: 38px; }
     .command-bar .button, .command-bar .soft-button { min-height: 44px; border-radius: 11px; }
     .command-bar .primary { flex: 1; justify-content: flex-start; font-size: .9rem; }
@@ -344,6 +354,8 @@
       .page { padding: 30px 14px 70px; }
       .hero { margin-bottom: 28px; }
       .hero h1 { font-size: clamp(2.7rem, 14vw, 4.2rem); }
+      .link-import { grid-template-columns: 1fr auto; }
+      .link-copy { grid-column: 1 / -1; }
       .command-bar { flex-wrap: wrap; }
       .command-bar .primary { flex-basis: 100%; }
       .command-bar .soft-button { flex: 1; }
@@ -403,10 +415,17 @@
           <p>Read the real PDF, write beside the page, ask a screenshot a question, and let ideas become connected over time. Your desk is local first; encrypted GitHub sync is optional.</p>
         </div>
         <div class="hero-card" aria-label="How Margin works">
-          <div class="step"><b>01</b><span>Import a PDF here, or pick one from a private GitHub folder.</span></div>
+          <div class="step"><b>01</b><span>Paste a PDF link, drop a file, or pick one from a private GitHub folder.</span></div>
           <div class="step"><b>02</b><span>Page notes, questions, and sketches stay attached to the paper.</span></div>
           <div class="step"><b>03</b><span>Shared tags reveal a small network instead of another filing cabinet.</span></div>
         </div>
+      </div>
+
+      <div class="link-import" id="pdfLinkDrop">
+        <div class="link-copy"><b>Paste or drop a PDF link</b><span>Margin downloads one local copy. No commit needed.</span></div>
+        <input class="field" id="pdfUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/paper.pdf" aria-label="Direct PDF link">
+        <button class="button" id="pdfUrlBtn" type="button">Add link</button>
+        <div class="link-status" id="pdfUrlStatus" role="status" aria-live="polite"></div>
       </div>
 
       <div class="command-bar">
@@ -888,13 +907,13 @@
   }
 
   /* library */
-  function paperHaystack(ch){ return [ch.title,ch.authors,(ch.tags||[]).join(' '),ch.sourceName].join(' ').toLowerCase(); }
+  function paperHaystack(ch){ return [ch.title,ch.authors,(ch.tags||[]).join(' '),ch.sourceName,ch.sourceUrl].join(' ').toLowerCase(); }
   function renderShelf(){
     var q = byId('librarySearch').value.trim().toLowerCase();
     var list = state.chapters.filter(function(ch){ return !q || paperHaystack(ch).includes(q); }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
     byId('libraryCount').textContent = state.chapters.length + (state.chapters.length === 1 ? ' paper' : ' papers');
     var shelf = byId('shelf'); shelf.innerHTML = '';
-    if (!list.length){ shelf.innerHTML = '<div class="empty">' + (state.chapters.length ? 'Nothing matches that search.' : 'Your first paper can start here. Add a PDF from this device, or connect a private GitHub repo.') + '</div>'; return; }
+    if (!list.length){ shelf.innerHTML = '<div class="empty">' + (state.chapters.length ? 'Nothing matches that search.' : 'Your first paper can start here. Paste a PDF link above, drop in a file, or connect a private GitHub repo.') + '</div>'; return; }
     list.forEach(function(ch, idx){
       var highlights = Object.keys(ch.highlights||{}).reduce(function(n,k){return n+(ch.highlights[k]||[]).length;},0)+(ch.textHighlights||[]).length+(ch.readerHighlights||[]).length;
       var notes = Object.keys(ch.notes||{}).length + Object.keys(ch.readerNotes||{}).length + Object.keys(ch.pageNotes||{}).filter(function(k){ return ch.pageNotes[k]; }).length + highlights;
@@ -909,6 +928,52 @@
   byId('librarySearch').oninput = renderShelf;
   byId('importPdfBtn').onclick = function(){ if(location.protocol==='file:'){ byId('launchDialog').showModal(); return; } byId('pdfFile').click(); };
   byId('pdfFile').onchange = function(){ var f=this.files[0]; this.value=''; if(f) importPdf(f); };
+
+  function cleanPdfUrl(value){
+    var match=String(value||'').trim().match(/https?:\/\/[^\s]+/i);if(!match)return '';
+    try{var url=new URL(match[0]);return /^https?:$/.test(url.protocol)?url.href:'';}catch(e){return '';}
+  }
+  function pdfNameFromResponse(url,response){
+    var disposition=response.headers.get('content-disposition')||'',match=disposition.match(/filename\*=UTF-8''([^;]+)/i)||disposition.match(/filename="?([^";]+)"?/i),name='';
+    if(match)try{name=decodeURIComponent(match[1]);}catch(e){name=match[1];}
+    if(!name)try{name=decodeURIComponent(new URL(response.url||url).pathname.split('/').filter(Boolean).pop()||'paper.pdf');}catch(e){name='paper.pdf';}
+    name=name.replace(/[\\/:*?"<>|]+/g,'-').trim()||'paper.pdf';if(!/\.pdf$/i.test(name))name+='.pdf';return name;
+  }
+  function looksLikePdf(bytes){
+    var head=new Uint8Array(bytes,0,Math.min(1024,bytes.byteLength)),text='';for(var i=0;i<head.length;i++)text+=String.fromCharCode(head[i]);return text.indexOf('%PDF-')>=0;
+  }
+  async function importPdfUrl(value){
+    var url=cleanPdfUrl(value),input=byId('pdfUrl'),btn=byId('pdfUrlBtn'),status=byId('pdfUrlStatus');
+    if(!url){status.textContent='Paste a complete http:// or https:// link.';input.focus();return false;}
+    if(location.protocol==='file:'){byId('launchDialog').showModal();return false;}
+    var old=btn.textContent;btn.disabled=true;input.disabled=true;status.textContent='Downloading the PDF once…';
+    try{
+      var response=await fetch(url,{redirect:'follow'});if(!response.ok)throw new Error('That link returned '+response.status+'.');
+      var bytes=await response.arrayBuffer();if(!looksLikePdf(bytes))throw new Error('That link opened a web page instead of a PDF. Copy the site’s “Download PDF” link.');
+      var name=pdfNameFromResponse(url,response);status.textContent='Adding '+name+' to this device…';
+      var added=await importPdf(new File([bytes],name,{type:'application/pdf'}),'',url,btn);if(!added)return false;
+      input.value='';status.textContent='Saved locally. You will not need that link again on this device.';return true;
+    }catch(e){
+      status.textContent=e instanceof TypeError?'That site blocked direct importing. Download the PDF there, then drop the file here.':(e.message||'Could not import that PDF link.');return false;
+    }finally{btn.disabled=false;input.disabled=false;btn.textContent=old;}
+  }
+  byId('pdfUrlBtn').onclick=function(){importPdfUrl(byId('pdfUrl').value);};
+  byId('pdfUrl').onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();importPdfUrl(this.value);}};
+  byId('pdfUrl').onpaste=function(e){var text=e.clipboardData&&e.clipboardData.getData('text/plain'),url=cleanPdfUrl(text);if(!url)return;e.preventDefault();this.value=url;importPdfUrl(url);};
+  (function setupLibraryDrop(){
+    var drop=byId('pdfLinkDrop');
+    drop.ondragover=function(e){e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';drop.classList.add('drag');};
+    drop.ondragleave=function(e){if(!drop.contains(e.relatedTarget))drop.classList.remove('drag');};
+    drop.ondrop=function(e){
+      e.preventDefault();drop.classList.remove('drag');var transfer=e.dataTransfer,file=transfer&&transfer.files&&transfer.files[0];
+      if(file){if(file.type==='application/pdf'||/\.pdf$/i.test(file.name))importPdf(file);else byId('pdfUrlStatus').textContent='Drop a PDF file or a direct PDF link here.';return;}
+      var value=transfer&&(transfer.getData('text/uri-list')||transfer.getData('text/plain'));byId('pdfUrl').value=cleanPdfUrl(value)||value||'';importPdfUrl(value);
+    };
+  })();
+  document.addEventListener('paste',function(e){
+    if(byId('libraryPage').classList.contains('hidden')||!e.clipboardData||e.target===byId('pdfUrl')||/^(INPUT|TEXTAREA)$/.test(e.target.tagName)||e.target.isContentEditable)return;
+    var url=cleanPdfUrl(e.clipboardData.getData('text/plain'));if(!url)return;e.preventDefault();byId('pdfUrl').value=url;importPdfUrl(url);
+  });
 
   function preparePdfCompatibility(){
     if(!Promise.withResolvers)Promise.withResolvers=function(){var resolve,reject,promise=new Promise(function(ok,no){resolve=ok;reject=no;});return{promise:promise,resolve:resolve,reject:reject};};
@@ -1007,19 +1072,20 @@
     readerBuildPromises[ch.id]=(async function(){var oldText=ch.readerText||'',lines=[],paragraphs=[],pages=[];for(var p=1;p<=doc.numPages;p++){var content=await (await doc.getPage(p)).getTextContent(),layout=contentLayout(content),pageLines=layout.map(function(line){return line.text;});lines.push(pageLines);paragraphs.push(layoutToParagraphs(layout));pages.push(pageLines.join(' '));}var rebuilt=readerTextFromPages(lines,paragraphs)||pages.join('\n\n');migrateReaderAnchors(ch,oldText,rebuilt);ch.pageLines=lines;ch.pageParagraphs=paragraphs;ch.pageTexts=pages;ch.readerText=rebuilt;ch.readerV=READER_V;ch.fr=pages.join('\n\n');ch.focusPara=null;delete ch.readerScroll;ch.updatedAt=now();saveDerivedSoon(ch);persist();return ch.readerText;})().finally(function(){delete readerBuildPromises[ch.id];});
     return readerBuildPromises[ch.id];
   }
-  async function importPdf(file, sourcePath){
-    var btn=byId('importPdfBtn'), old=btn.textContent; btn.disabled=true; btn.textContent='Reading PDF…';
+  async function importPdf(file, sourcePath, sourceUrl, progressBtn){
+    var btn=progressBtn||byId('importPdfBtn'), old=btn.textContent, imported=false; btn.disabled=true; btn.textContent='Reading PDF…';
     try {
       var bytes=await file.arrayBuffer(),lib=await loadPdfLib();btn.textContent='Opening PDF…';
       var doc=await lib.getDocument({data:bytes.slice(0)}).promise;
-      var existing=state.chapters.find(function(c){ return c.kind==='pdf' && ((sourcePath&&c.sourcePath===sourcePath)||(!sourcePath&&c.sourceName===file.name)); });
+      var existing=state.chapters.find(function(c){ return c.kind==='pdf' && ((sourceUrl&&c.sourceUrl===sourceUrl)||(sourcePath&&c.sourcePath===sourcePath)||(!sourcePath&&!sourceUrl&&c.sourceName===file.name)); });
       var id=existing?existing.id:uid('p'),keepPromise=putPdf(id,bytes);
       var title=file.name.replace(/\.pdf$/i,'').replace(/[_-]+/g,' ');
       var ch=existing||normalize({id:id,title:title,authors:'',kind:'pdf',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now(),readPage:1});
-      ch.sourceName=file.name;ch.sourcePath=sourcePath||ch.sourcePath||'';ch.pageCount=doc.numPages;ch.updatedAt=now();
-      if(!existing)state.chapters.push(ch);persist();renderShelf();await openReader(id,doc);if(!await keepPromise)showReaderToast('PDF opened, but this browser may not keep it after closing the tab.');
+      ch.sourceName=file.name;ch.sourcePath=sourcePath||ch.sourcePath||'';ch.sourceUrl=sourceUrl||ch.sourceUrl||'';ch.pageCount=doc.numPages;ch.updatedAt=now();
+      if(!existing)state.chapters.push(ch);persist();renderShelf();await openReader(id,doc);if(!await keepPromise)showReaderToast('PDF opened, but this browser may not keep it after closing the tab.');imported=true;
     } catch(e){ showError(e.message||'The PDF reader could not open this file.'); }
     finally { btn.disabled=false; btn.textContent=old; }
+    return imported;
   }
 
   /* text import and edit */
@@ -1324,8 +1390,10 @@
   };
   function showMissingPdf(ch){
     pdfViews=[];pdfBuildKey='';
-    byId('pdfFrame').innerHTML='<div class="missing-file"><h2>The PDF is not on this device yet.</h2><p>Your notes and extracted text synced safely. Pick <b>' + esc(ch.sourceName||'the same PDF') + '</b> from GitHub or import it again to restore the page view here.</p><button class="button" id="missingPick">Pick from GitHub</button> <button class="soft-button" id="missingText">Read extracted text</button></div>';
-    byId('missingPick').onclick=openGithubPicker; byId('missingText').onclick=function(){ readerMode='text'; updateReaderMode(); };
+    var action=ch.sourceUrl?'<button class="button" id="missingSource">Download original link</button>':'<button class="button" id="missingPick">Pick from GitHub</button>';
+    var help=ch.sourceUrl?'Margin can download another local copy from its original link.':'Pick <b>'+esc(ch.sourceName||'the same PDF')+'</b> from GitHub or import it again to restore the page view here.';
+    byId('pdfFrame').innerHTML='<div class="missing-file"><h2>The PDF is not on this device yet.</h2><p>Your notes and extracted text synced safely. '+help+'</p>'+action+' <button class="soft-button" id="missingText">Read extracted text</button></div>';
+    var source=byId('missingSource'),pick=byId('missingPick');if(source)source.onclick=async function(){var ok=await importPdfUrl(ch.sourceUrl);if(!ok)showError(byId('pdfUrlStatus').textContent||'The original link is no longer available.','Could not download that PDF');};if(pick)pick.onclick=openGithubPicker;byId('missingText').onclick=function(){ readerMode='text'; updateReaderMode(); };
     byId('prevPage').classList.add('hidden'); byId('nextPage').classList.add('hidden'); byId('zoomTools').classList.add('hidden'); byId('pageNumber').textContent='';
     byId('mPrev').classList.add('hidden');byId('mNext').classList.add('hidden');byId('mPageLabel').classList.add('hidden');
   }

@@ -71,7 +71,9 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `journal.html` — one page per day. Optional sync pushes an **AES-GCM encrypted
   blob** to a private GitHub repo the visitor owns (fine-grained token; the repo
   only ever sees ciphertext).
-- `reading.html` — Margin, a local-first paper desk: selectable PDF rendering
+- `reading.html` — Margin, a local-first paper desk: paste or drop a direct PDF
+  link to download one local copy without a GitHub commit (or drop the PDF file
+  when a publisher blocks browser downloads); selectable PDF rendering
   in one continuous vertical scroll (pages render lazily and far-away pages are
   freed so long papers stay light on phone memory), a draggable notes panel, a
   reflowed Reader view, and browser read-aloud that omit repeated headers and

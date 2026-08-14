@@ -527,6 +527,7 @@
 
       <div class="command-bar">
         <button class="button primary" id="importPdfBtn">＋ Add a paper from this device</button>
+        <button class="soft-button" id="gdriveBarBtn">◈ Google Drive</button>
         <button class="soft-button" id="githubPickBtn">⌘ Pick from GitHub</button>
         <button class="soft-button" id="newTextBtn">✎ Paste text</button>
         <button class="soft-button" id="reviewShortcut">↻ Review</button>
@@ -756,7 +757,7 @@
     <div class="dialog-body">
       <section>
         <h3>Google Drive sync — the simple one</h3>
-        <p>One tap connects your own Google Drive. Carrel keeps its library file in a hidden app folder that only this app can see; PDFs stay on each device. No tokens, no repos, no passphrase.</p>
+        <p>One tap connects your own Google Drive. Notes and the library live in a hidden app folder only this app can see — and your PDFs (up to 30 MB each) ride along, so a paper added on one device opens on the others. No tokens, no repos, no passphrase.</p>
         <div><button class="button" id="gdriveConnectBtn">Connect Google Drive</button> <button class="soft-button hidden" id="gdriveSyncBtn">Sync now</button> <button class="soft-button hidden" id="gdriveOffBtn">Turn off</button></div>
         <div class="status" id="gdriveStatus"></div>
       </section>
@@ -1867,7 +1868,12 @@
     if(ch.kind==='pdf'){
       try{
         if(preparedDoc)pdfDoc=preparedDoc;
-        else{var stored=await getPdf(ch.id);if(!stored){showMissingPdf(ch);restoreReaderPosition(ch,true);loadPageNote();updateProgress();return;}var lib=await loadPdfLib();pdfDoc=await lib.getDocument({data:await pdfBytes(stored)}).promise;}
+        else{
+          var stored=await getPdf(ch.id);
+          if(!stored&&gdriveOn()){showReaderToast('Fetching the PDF from your Google Drive…');stored=await gdriveFetchPdf(ch.id);}
+          if(!stored){showMissingPdf(ch);restoreReaderPosition(ch,true);loadPageNote();updateProgress();return;}
+          var lib=await loadPdfLib();pdfDoc=await lib.getDocument({data:await pdfBytes(stored)}).promise;
+        }
         currentPage=Math.min(currentPage,pdfDoc.numPages);
         loadPdfOutline();
         /* Papers still wearing their filename get their real title from the PDF itself,
@@ -2257,7 +2263,7 @@
   async function removePaper(ch,leaveReader){
     if(!ch)return false;var githubCopy=ch.sourcePath?' The PDF in your GitHub papers/ folder will stay there.':'';
     if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Carrel? Its notes, highlights, Q&A, and local PDF will be removed.'+githubCopy))return false;
-    state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);persist();
+    state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);gdriveDeletePdf(ch.id);persist();
     if(currentId===ch.id){currentId=null;pdfDoc=null;}renderShelf();if(leaveReader)showPage('libraryPage');return true;
   }
   byId('deletePaperBtn').onclick=function(){removePaper(find(currentId),true);};
@@ -2646,14 +2652,57 @@
       });
     });
   }
+  async function gdriveListAll(token){
+    var r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size)',{headers:{Authorization:'Bearer '+token}});
+    if(r.status===401){gdriveToken=null;throw new Error('Google session expired — open settings and tap Sync now to sign in again.');}
+    if(!r.ok)throw new Error('Drive list failed ('+r.status+')');
+    return ((await r.json()).files)||[];
+  }
+  /* Papers ride along in the same hidden folder: any local PDF not yet in Drive is
+     uploaded quietly after each sync (up to 30 MB each), and a device that lacks the
+     file pulls it down when the paper is opened. */
+  var GDRIVE_PDF_LIMIT=30*1024*1024,gdriveRoaming=false;
+  async function gdriveRoamPdfs(token,files){
+    if(gdriveRoaming)return;gdriveRoaming=true;
+    try{
+      var have={};files.forEach(function(f){have[f.name]=true;});
+      for(var i=0;i<state.chapters.length;i++){
+        var ch=state.chapters[i];if(ch.kind!=='pdf'||have['pdf-'+ch.id+'.pdf'])continue;
+        var stored=await getPdf(ch.id);if(!stored)continue;
+        var bytes=stored instanceof ArrayBuffer?stored:await pdfBytes(stored);
+        if(bytes.byteLength>GDRIVE_PDF_LIMIT)continue;
+        var boundary='carrel'+now()+i;
+        var head='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:'pdf-'+ch.id+'.pdf',parents:['appDataFolder']})+'\r\n--'+boundary+'\r\nContent-Type: application/pdf\r\n\r\n';
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:new Blob([head,bytes,'\r\n--'+boundary+'--'])});
+      }
+    }catch(e){}
+    gdriveRoaming=false;
+  }
+  async function gdriveFetchPdf(id){
+    if(!gdriveOn())return null;
+    try{
+      var token=await gdriveGetToken(false),files=await gdriveListAll(token),hit=null,name='pdf-'+id+'.pdf';
+      files.some(function(f){if(f.name===name){hit=f;return true;}return false;});
+      if(!hit)return null;
+      var r=await fetch('https://www.googleapis.com/drive/v3/files/'+hit.id+'?alt=media',{headers:{Authorization:'Bearer '+token}});
+      if(!r.ok)return null;
+      var bytes=await r.arrayBuffer();if(!bytes||bytes.byteLength<100)return null;
+      await putPdf(id,bytes);return bytes;
+    }catch(e){return null;}
+  }
+  async function gdriveDeletePdf(id){
+    if(!gdriveOn())return;
+    try{
+      var token=await gdriveGetToken(false),files=await gdriveListAll(token),name='pdf-'+id+'.pdf';
+      for(var i=0;i<files.length;i++)if(files[i].name===name)await fetch('https://www.googleapis.com/drive/v3/files/'+files[i].id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
+    }catch(e){}
+  }
   async function gdriveSync(interactive){
     if(!gdriveOn()||gdriveSyncing)return;gdriveSyncing=true;syncUi('☁ syncing…');
     try{
       var token=await gdriveGetToken(interactive===true);
-      var list=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&q='+encodeURIComponent("name='"+GDRIVE_FILE+"'"),{headers:{Authorization:'Bearer '+token}});
-      if(list.status===401){gdriveToken=null;throw new Error('Google session expired — open settings and tap Sync now to sign in again.');}
-      if(!list.ok)throw new Error('Drive list failed ('+list.status+')');
-      var files=((await list.json()).files)||[],fileId=files.length?files[0].id:null;
+      var files=await gdriveListAll(token),fileId=null;
+      files.some(function(f){if(f.name===GDRIVE_FILE){fileId=f.id;return true;}return false;});
       if(fileId){
         var got=await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',{headers:{Authorization:'Bearer '+token}});
         if(got.ok){try{var remote=await got.json();if(remote&&Array.isArray(remote.chapters)&&mergeState(remote)){persist(false);renderShelf();}}catch(parseError){}}
@@ -2667,6 +2716,7 @@
         up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:body});
       }
       if(!up.ok)throw new Error('Drive upload failed ('+up.status+')');
+      gdriveRoamPdfs(token,files);
       byId('gdriveStatus').textContent='Synced with your Google Drive.';
       syncUi('☁ Drive · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncSignal').title='';
     }catch(e){
@@ -2676,6 +2726,10 @@
     }
     gdriveSyncing=false;
   }
+  byId('gdriveBarBtn').onclick=function(){
+    if(!gdriveOn()){fillSettings();byId('settingsDialog').showModal();byId('gdriveStatus').textContent='Connect here — papers and notes then follow you between devices.';return;}
+    gdriveSync(true);showReaderToast('Your papers and notes sync with Google Drive automatically');
+  };
   byId('gdriveConnectBtn').onclick=async function(){
     var btn=this;btn.disabled=true;byId('gdriveStatus').textContent='Waiting for Google sign-in…';
     try{

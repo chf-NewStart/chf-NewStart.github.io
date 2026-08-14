@@ -118,7 +118,8 @@ Each page is self-contained and keeps its data in the visitor's own browser
   instructions, and the installed window opens portfolio links in a real
   browser tab. One-tap Google Drive sync stores the library file in the
   account's hidden per-app folder (`drive.appdata` — Carrel can see only its
-  own file, never the user's real Drive). Power users keep the optional
+  own file, never the user's real Drive), and PDFs up to 30 MB ride along so
+  a paper added on one device opens on the others. Power users keep the optional
   AES-GCM encrypted sync to
   a private GitHub repo (fine-grained token, ciphertext only, files over the
   contents-API 1 MB limit fetched raw), a `papers/` folder picker, and a device

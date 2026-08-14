@@ -580,8 +580,8 @@
         </div>
         <div class="group"><span>Auto-scroll</span>
           <button class="toggle" id="driftBtn" type="button" aria-pressed="false">Off</button>
-          <input class="drift-range" id="driftRange" type="range" min="1" max="240" step="1" value="10" aria-label="Auto-scroll speed in pixels per second">
-          <span class="value" id="driftValue">10 px/s</span>
+          <input class="drift-range" id="driftRange" type="range" min="0.5" max="10" step="0.5" value="4" aria-label="Auto-scroll speed in pixels per second">
+          <span class="value" id="driftValue">4 px/s</span>
         </div>
         <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream paper</button>
         <span class="spacer"></span>
@@ -1227,8 +1227,7 @@
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
   if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone='white';
-  comfort.driftSpeed=Math.max(1,Math.min(240,+comfort.driftSpeed||10));
-  if(comfort.driftSpeed===120)comfort.driftSpeed=10; /* one-time step off the old too-fast default */
+  comfort.driftSpeed=Math.max(.5,Math.min(10,+comfort.driftSpeed||4));
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
   /* The guide anchors to the pane, not the screen: zen mode and bar toggles move the
@@ -1245,7 +1244,7 @@
     byId('widthValue').textContent=String(comfort.measure);
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
-    byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=comfort.driftSpeed+' px/s';
+    byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=driftLabel();
     byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');
     byId('creamBtn').setAttribute('aria-pressed',String(comfort.tone==='cream'));
     byId('paneSpotlight').dataset.guideColor=comfort.guide;
@@ -1272,7 +1271,7 @@
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.onclick=function(){comfort.guideStyle=btn.dataset.guideStyle;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideStyle==='dim'?'Line focus · the rest of the page steps back':'Tint guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;comfort.tone='white';comfort.driftSpeed=10;if(driftSpeed)driftSpeed=10;applyComfort();showReaderToast('Reading settings reset');};
+  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;comfort.tone='white';comfort.driftSpeed=4;if(driftSpeed)driftSpeed=4;applyComfort();showReaderToast('Reading settings reset');};
   byId('comfortBtn').onclick=function(){
     var bar=byId('comfortBar'),open=bar.classList.contains('hidden');
     bar.classList.toggle('hidden',!open);this.classList.toggle('active',open);this.setAttribute('aria-expanded',String(open));
@@ -1391,32 +1390,32 @@
   });
   /* Auto-scroll: the paper drifts up at a steady pace, which quietly enforces a reading
      rhythm. Touching or wheeling the page pauses the drift, then it resumes. */
-  var driftSpeed=0,driftRaf=null,driftLast=0,driftHold=false,driftRemainder=0,driftResume=null;
+  var driftSpeed=0,driftRaf=null,driftLast=0,driftHold=false,driftPos=null,driftResume=null;
+  function driftLabel(){return (+comfort.driftSpeed).toFixed(1).replace(/\.0$/,'')+' px/s';}
   function driftTick(ts){
     if(!driftSpeed){driftRaf=null;return;}
     if(!driftLast)driftLast=ts;
     var dt=Math.min(80,ts-driftLast);driftLast=ts;
     if(!driftHold&&!byId('readerPage').classList.contains('hidden')&&!recallActive){
       var pane=byId('documentPane');
-      driftRemainder+=driftSpeed*dt/1000;
-      var step=Math.floor(driftRemainder);
-      if(step>0){
-        driftRemainder-=step;
-        var before=pane.scrollTop;pane.scrollTop=before+step;
-        if(pane.scrollTop===before&&before>0){setDrift(0);showReaderToast('End of the paper · auto-scroll off');}
-      }
+      /* Fractional accumulation: at crawl speeds whole-pixel steps read as ticking. */
+      if(driftPos===null||Math.abs(driftPos-pane.scrollTop)>2)driftPos=pane.scrollTop;
+      driftPos+=driftSpeed*dt/1000;
+      var limit=pane.scrollHeight-pane.clientHeight;
+      if(driftPos>=limit-1&&limit>0){pane.scrollTop=limit;setDrift(0);showReaderToast('End of the paper · auto-scroll off');}
+      else pane.scrollTop=driftPos;
     }
     driftRaf=requestAnimationFrame(driftTick);
   }
   function setDrift(speed){
-    driftSpeed=+speed||0;driftLast=0;driftRemainder=0;driftHold=false;clearTimeout(driftResume);
+    driftSpeed=+speed||0;driftLast=0;driftPos=null;driftHold=false;clearTimeout(driftResume);
     byId('driftBtn').textContent=driftSpeed?'On':'Off';
     byId('driftBtn').setAttribute('aria-pressed',String(!!driftSpeed));
     if(driftSpeed&&!driftRaf)driftRaf=requestAnimationFrame(driftTick);
   }
   function holdDrift(ms){
     if(!driftSpeed)return;driftHold=true;clearTimeout(driftResume);
-    driftResume=setTimeout(function(){driftHold=false;driftLast=0;},ms);
+    driftResume=setTimeout(function(){driftHold=false;driftLast=0;driftPos=null;},ms);
   }
   byId('driftBtn').onclick=function(){
     var turningOff=driftSpeed>0;
@@ -1424,8 +1423,8 @@
     showReaderToast(turningOff?'Auto-scroll off':'Auto-scroll · touching the page pauses it');
   };
   byId('driftRange').oninput=function(){
-    comfort.driftSpeed=Math.max(1,Math.min(240,+this.value||10));
-    byId('driftValue').textContent=comfort.driftSpeed+' px/s';
+    comfort.driftSpeed=Math.max(.5,Math.min(10,+this.value||4));
+    byId('driftValue').textContent=driftLabel();
     saveComfortSoon();
     if(driftSpeed)driftSpeed=comfort.driftSpeed;else setDrift(comfort.driftSpeed);
   };

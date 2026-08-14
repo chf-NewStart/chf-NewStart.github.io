@@ -1606,29 +1606,33 @@
     var selection=window.getSelection&&window.getSelection();if(selection&&!selection.isCollapsed)return;
     if(!matchMedia('(hover: hover)').matches){setReadingGuide(e.clientX,e.clientY,e.target);return;}
     /* Laptop: a click pins the guide to its line so trips to the notebook or toolbar
-       don't drag it away; the next click on the paper releases it. */
+       don't drag it away; the next click releases it. The toggle waits a beat so a
+       double-click can cancel it and flip the guide's width instead. */
     if(highlightMode)return;
-    comfort.guideLock=!comfort.guideLock;
-    if(!comfort.guideLock)setReadingGuide(e.clientX,e.clientY,e.target);
-    byId('paneSpotlight').classList.toggle('locked',comfort.guideLock);
-    saveComfortSoon();
-    showReaderToast(comfort.guideLock?'Guide pinned to this line · click the paper to release':'Guide follows your pointer');
+    clearTimeout(guideLockClickTimer);
+    var lockX=e.clientX,lockY=e.clientY,lockTarget=e.target;
+    guideLockClickTimer=setTimeout(function(){
+      comfort.guideLock=!comfort.guideLock;
+      if(!comfort.guideLock)setReadingGuide(lockX,lockY,lockTarget);
+      byId('paneSpotlight').classList.toggle('locked',comfort.guideLock);
+      saveComfortSoon();
+      showReaderToast(comfort.guideLock?'Guide pinned to this line · click the paper to release':'Guide follows your pointer');
+    },260);
   });
-  /* Double-click inside the band, on a wordless spot, flips it between full-page and
-     one-column width. Double-clicking a word still just selects the word. */
+  /* A wordless double-click anywhere on the paper flips the guide between full-page
+     and one-column width, right where you clicked. Double-clicking a word still just
+     selects the word. */
   byId('documentPane').addEventListener('dblclick',function(e){
     if(!comfort.focus||readerMode!=='pdf'||!matchMedia('(hover: hover)').matches)return;
+    clearTimeout(guideLockClickTimer);
     var selection=window.getSelection&&window.getSelection();
     if(selection&&!selection.isCollapsed)return;
-    var overlay=byId('paneSpotlight'),rect=overlay.getBoundingClientRect();
-    var top=rect.top+(parseFloat(overlay.style.getPropertyValue('--guide-y'))||0);
-    var bottom=top+(parseFloat(overlay.style.getPropertyValue('--guide-h'))||0);
-    if(e.clientY<top||e.clientY>bottom)return;
     comfort.guideScope=comfort.guideScope==='page'?'column':'page';
     applyComfort();
     setReadingGuide(e.clientX,e.clientY,e.target);
     showReaderToast(comfort.guideScope==='column'?'Guide hugs one column · double-click to widen':'Guide spans the page · double-click for one column');
   });
+  var guideLockClickTimer=null;
   var guideDragging=false;
   byId('guideGrip').addEventListener('pointerdown',function(e){
     guideDragging=true;byId('paneSpotlight').classList.add('dragging');try{this.setPointerCapture(e.pointerId);}catch(err){}e.preventDefault();e.stopPropagation();

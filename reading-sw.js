@@ -2,16 +2,19 @@
    already stored on this device open with no network (subway mode). Every other path on
    the site is left completely untouched. Served stale-while-revalidate: instant loads
    from cache, refreshed in the background for the next visit. */
-var CACHE = 'margin-shell-v1';
+var CACHE = 'margin-shell-v2';
 var SHELL = [
   '/reading.html',
+  '/margin.webmanifest',
   '/vendor/pdfjs/pdf.min.js',
   '/vendor/pdfjs/pdf.worker.compat.js',
   '/vendor/pdfjs/pdf.worker.min.js',
   '/fonts/dm-sans-var-latin.woff2',
   '/fonts/houfu-hand.woff2',
   '/favicon_io/tomato-favicon.ico',
-  '/favicon_io/tomato-apple-touch-icon.png'
+  '/favicon_io/margin-apple-touch-icon.png',
+  '/favicon_io/margin-icon-192.png',
+  '/favicon_io/margin-icon-512.png'
 ];
 
 self.addEventListener('install', function (e) {

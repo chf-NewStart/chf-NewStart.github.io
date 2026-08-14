@@ -111,7 +111,11 @@ Each page is self-contained and keeps its data in the visitor's own browser
 
   **Storage & sync.** Papers and their extracted text live in IndexedDB on each
   device; a small service worker (`reading-sw.js`) caches the reader shell so
-  already-imported papers open fully offline; optional AES-GCM encrypted sync to
+  already-imported papers open fully offline. Margin is an installable PWA
+  (`margin.webmanifest`, its own icon): browsers that fire an install prompt get
+  a ⭳ button in the masthead and in settings, iOS gets Add-to-Home-Screen
+  instructions, and the installed window opens portfolio links in a real
+  browser tab. Optional AES-GCM encrypted sync to
   a private GitHub repo (fine-grained token, ciphertext only, files over the
   contents-API 1 MB limit fetched raw), a `papers/` folder picker, and a device
   link that hand-carries token, passphrase and AI key to a new device.

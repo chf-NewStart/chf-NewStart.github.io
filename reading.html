@@ -7,8 +7,13 @@
   <title>Margin — a private paper desk</title>
   <meta name="description" content="A local-first paper reader with notes, AI questions, connections, and optional encrypted GitHub sync.">
   <meta name="robots" content="noindex">
-  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/tomato-apple-touch-icon.png?v=3">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/margin-apple-touch-icon.png">
   <link rel="icon" href="/favicon_io/tomato-favicon.ico?v=3" sizes="any">
+  <link rel="manifest" href="/margin.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Margin">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
   <style>
@@ -468,9 +473,10 @@
     </nav>
     <div class="head-actions">
       <span class="cloud" id="syncSignal">this device</span>
+      <button class="icon-btn hidden" id="installBtn" aria-label="Install Margin as an app" title="Install Margin">⭳</button>
       <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
-      <a class="icon-btn" href="/" aria-label="Back to houfu72.com">↗</a>
+      <a class="icon-btn" id="homeLink" href="/" aria-label="Back to houfu72.com">↗</a>
     </div>
   </header>
 
@@ -739,6 +745,11 @@
         <p>Margin sends extracted screenshot or page text—not the image—to DeepSeek. Technical-term lookup sends the selected phrase and a short nearby excerpt. The API key stays in local storage on this device and is never included in sync.</p>
         <div class="form-grid"><input class="field" id="aiKey" type="password" placeholder="DeepSeek API key" autocomplete="off"><div><button class="soft-button" id="aiKeySave">Save key</button></div></div>
         <div class="status" id="aiKeyStatus"></div>
+      </section>
+      <section>
+        <h3>Install as an app</h3>
+        <p id="installHint">Margin works offline once installed — papers already on this device open with no network.</p>
+        <button class="soft-button hidden" id="installBtn2">⭳ Install Margin</button>
       </section>
       <section>
         <h3>Library backup</h3>
@@ -2475,7 +2486,7 @@
 
   /* encrypted GitHub state sync + PDF picker */
   function fillSettings(){
-    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncLinkBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);byId('aiKey').value=localStorage.getItem(AI_KEY)||'';syncUi();
+    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncLinkBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);byId('aiKey').value=localStorage.getItem(AI_KEY)||'';syncUi();refreshInstallUi();
   }
   function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(on?'☁ '+syncCfg.repo:'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}
   byId('syncSaveBtn').onclick=function(){var repo=byId('syncRepo').value.trim(),token=byId('syncToken').value.trim(),pass=byId('syncPass').value;if(!/^[^\/\s]+\/[^\/\s]+$/.test(repo)||!token||!pass){byId('syncStatus').textContent='Add the repo as owner/name, its fine-grained token, and a passphrase.';return;}syncCfg={repo:repo,token:token,pass:pass};localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg));fillSettings();doSync();};
@@ -2568,6 +2579,34 @@
   byId('aiKeySave').onclick=function(){var k=byId('aiKey').value.trim();if(k)localStorage.setItem(AI_KEY,k);else localStorage.removeItem(AI_KEY);byId('aiKeyStatus').textContent=k?'Saved on this device.':'Key removed.';};
   byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='margin-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
+
+  /* Installable app: capture the browser's install prompt where one exists, and explain
+     the Share-sheet path on iOS, which never fires one. */
+  var installPrompt=null;
+  function isStandalone(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}
+  function isIos(){return /iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+  function refreshInstallUi(){
+    var canPrompt=!!installPrompt&&!isStandalone();
+    byId('installBtn').classList.toggle('hidden',!canPrompt);
+    byId('installBtn2').classList.toggle('hidden',!canPrompt);
+    byId('installHint').textContent=isStandalone()
+      ?'Installed — you are reading in the app. Papers already on this device open offline.'
+      :isIos()
+        ?'On iPhone or iPad: open Margin in Safari, tap Share, then “Add to Home Screen”. It gets its own icon and works offline for papers already on this device.'
+        :canPrompt
+          ?'Margin gets its own window and icon, and papers already on this device open with no network.'
+          :'If your browser offers “Install app” in its menu, Margin installs like a normal app and works offline for papers already on this device.';
+  }
+  function promptInstall(){
+    if(!installPrompt)return;var p=installPrompt;installPrompt=null;
+    p.prompt();p.userChoice.then(refreshInstallUi,refreshInstallUi);
+  }
+  addEventListener('beforeinstallprompt',function(e){e.preventDefault();installPrompt=e;refreshInstallUi();});
+  addEventListener('appinstalled',function(){installPrompt=null;refreshInstallUi();});
+  byId('installBtn').onclick=promptInstall;byId('installBtn2').onclick=promptInstall;
+  /* In the installed window, the portfolio link opens in a real browser tab. */
+  if(isStandalone())byId('homeLink').target='_blank';
+  refreshInstallUi();
 
   if('serviceWorker' in navigator&&location.protocol!=='file:'){try{navigator.serviceWorker.register('/reading-sw.js').catch(function(){});}catch(e){}}
   syncUi();renderShelf();updateReviewBadge();

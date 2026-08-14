@@ -2,7 +2,7 @@
    already stored on this device open with no network (subway mode). Every other path on
    the site is left completely untouched. Served stale-while-revalidate: instant loads
    from cache, refreshed in the background for the next visit. */
-var CACHE = 'carrel-shell-v1';
+var CACHE = 'carrel-shell-v2';
 /* The app itself is network-first: online opens always get the newest deploy, the cache
    only answers when the network can't. Libraries and fonts stay stale-while-revalidate. */
 var NETWORK_FIRST = ['/reading.html', '/carrel.webmanifest'];
@@ -14,7 +14,7 @@ var SHELL = [
   '/vendor/pdfjs/pdf.worker.min.js',
   '/fonts/dm-sans-var-latin.woff2',
   '/fonts/houfu-hand.woff2',
-  '/favicon_io/tomato-favicon.ico',
+  '/favicon_io/carrel-favicon.ico',
   '/favicon_io/carrel-apple-touch-icon.png',
   '/favicon_io/carrel-icon-192.png',
   '/favicon_io/carrel-icon-512.png'

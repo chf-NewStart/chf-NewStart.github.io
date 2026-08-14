@@ -8,7 +8,7 @@
   <meta name="description" content="A local-first paper reader with notes, AI questions, connections, and optional encrypted GitHub sync.">
   <meta name="robots" content="noindex">
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/carrel-apple-touch-icon.png">
-  <link rel="icon" href="/favicon_io/tomato-favicon.ico?v=3" sizes="any">
+  <link rel="icon" href="/favicon_io/carrel-favicon.ico" sizes="any">
   <link rel="manifest" href="/carrel.webmanifest">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -55,8 +55,6 @@
     .nav-btn { padding: 8px 11px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-size: .85rem; }
     .nav-btn:hover, .nav-btn.active { background: var(--surface-2); color: var(--ink); }
     .head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-    .install-btn { border-color: var(--accent); color: var(--accent); }
-    .install-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
     #installBtn2 svg { flex: 0 0 auto; }
     .cloud { font-size: .72rem; color: var(--muted); white-space: nowrap; border: 0; background: none; padding: 4px 2px; cursor: pointer; }
     .cloud:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
@@ -495,10 +493,10 @@
       <button class="nav-btn active" data-view="libraryPage">Library</button>
       <button class="nav-btn" data-view="reviewPage">Review</button>
       <button class="nav-btn" data-view="connectionsPage">Connections</button>
+      <button class="nav-btn" id="installNav">Install app</button>
     </nav>
     <div class="head-actions">
       <button class="cloud" id="syncSignal" type="button" title="Open sync settings">this device</button>
-      <button class="icon-btn install-btn hidden" id="installBtn" aria-label="Install Carrel as an app" title="Install Carrel as an app"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg></button>
       <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
       <a class="icon-btn" id="homeLink" href="/" aria-label="Back to houfu72.com">↗</a>
@@ -781,6 +779,7 @@
       <section>
         <h3>Library backup</h3>
         <p>Portable JSON contains notes and metadata, but not local PDF files or your API credentials.</p>
+        <div class="status" id="storageNote"></div>
         <button class="soft-button" id="backupBtn">Download backup</button> <button class="soft-button" id="restoreBtn">Restore backup</button>
         <input class="hidden" type="file" id="restoreFile" accept=".json,application/json">
       </section>
@@ -1004,7 +1003,7 @@
   };
   function showPage(id){
     ['libraryPage','reviewPage','connectionsPage','readerPage'].forEach(function(v){ byId(v).classList.toggle('hidden', v !== id); });
-    document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view === id); });
+    document.querySelectorAll('.nav-btn[data-view]').forEach(function(b){ b.classList.toggle('active', b.dataset.view === id); });
     /* The reader is an app screen, not a document: while it is open the page itself must
        never scroll, or the toolbar slides under the sticky masthead. */
     document.body.classList.toggle('reading', id === 'readerPage');
@@ -1037,7 +1036,7 @@
       window.visualViewport.addEventListener(name, function(){ if (!kbRaf) kbRaf = requestAnimationFrame(syncKeyboardInset); });
     });
   }
-  document.querySelectorAll('.nav-btn').forEach(function(b){ b.onclick = function(){ showPage(b.dataset.view); }; });
+  document.querySelectorAll('.nav-btn[data-view]').forEach(function(b){ b.onclick = function(){ showPage(b.dataset.view); }; });
   byId('brandBtn').onclick = function(){ showPage('libraryPage'); };
   byId('readerBack').onclick = function(){ pdfDoc = null; showPage('libraryPage'); };
 
@@ -1605,7 +1604,12 @@
      the screen edge brings it back. */
   function setNotebookCollapsed(on,save){
     notebookCollapsed=!!on&&innerWidth>720;
-    byId('readerLayout').classList.toggle('notebook-collapsed',notebookCollapsed);
+    var layout=byId('readerLayout');
+    layout.classList.toggle('notebook-collapsed',notebookCollapsed);
+    /* The width lives as an inline CSS variable, which would silently override the
+       collapsed class's 0 — clear it while tucked away, restore it on reopen. */
+    if(notebookCollapsed)layout.style.setProperty('--notebook-width','0px');
+    else setNotebookWidth(notebookWidth,false);
     byId('notebookReopen').setAttribute('aria-expanded',String(!notebookCollapsed));
     if(save)try{localStorage.setItem(NOTEBOOK_COLLAPSED_KEY,notebookCollapsed?'1':'0');}catch(e){}
   }
@@ -2130,6 +2134,22 @@
     setNotebookWidth(notebookWidth,false);
     clearTimeout(refitTimer);refitTimer=setTimeout(function(){if(readerMode==='pdf'&&pdfDoc)renderPdfPage();},220);
   });
+  /* The pane itself is the source of truth for fit width: whenever anything changes its
+     size — tucking the notebook away, bringing it back, zen mode, a drag of the divider —
+     the paper re-fits. No individual code path has to remember to ask. */
+  if(window.ResizeObserver){
+    var paneRefitTimer=null,paneLastWidth=0;
+    new ResizeObserver(function(entries){
+      var width=Math.round(entries[0].contentRect.width);
+      if(Math.abs(width-paneLastWidth)<2)return;
+      paneLastWidth=width;
+      clearTimeout(paneRefitTimer);
+      paneRefitTimer=setTimeout(function(){
+        if(byId('readerPage').classList.contains('hidden'))return;
+        if(readerMode==='pdf'&&pdfDoc)renderPdfPage();
+      },140);
+    }).observe(byId('documentPane'));
+  }
   /* Map each Reader paragraph back to its PDF page, so "where was this?" is one click. */
   function paraPageStarts(ch){
     if(!ch||ch.kind!=='pdf'||!ch.pageLines)return null;
@@ -2577,7 +2597,11 @@
         throw new Error('GitHub upload failed ('+put.status+')');
       }
       syncUi('☁ synced '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncStatus').textContent='Synced to '+syncCfg.repo+'.';byId('syncSignal').title='';
-    }catch(e){syncUi('☁ sync needs attention');byId('syncSignal').title=e.message||'Sync failed';byId('syncStatus').textContent=e.message||'Sync failed';}syncing=false;
+    }catch(e){
+      var reason=e.message||'Sync failed';
+      syncUi('☁ sync needs attention');byId('syncSignal').title=reason;byId('syncStatus').textContent=reason;
+      if(reason!==lastSyncToast&&!byId('readerPage').classList.contains('hidden')){lastSyncToast=reason;showReaderToast('Sync: '+reason.slice(0,80));}
+    }syncing=false;
   }
   function scheduleSync(){if(!syncCfg)return;clearTimeout(syncTimer);syncTimer=setTimeout(doSync,4000);}
   /* The device link is a direct device-to-device hand-off (it already carries the GitHub
@@ -2606,6 +2630,7 @@
   addEventListener('hashchange',importSetup);
   byId('syncSignal').onclick=function(){fillSettings();byId('settingsDialog').showModal();};
 
+  var lastSyncToast='';
   var githubPath='papers';
   byId('githubPickBtn').onclick=openGithubPicker;byId('githubRefresh').onclick=function(){listGithubPapers(githubPath);};
   function openGithubPicker(){if(!syncCfg){fillSettings();byId('settingsDialog').showModal();byId('syncStatus').textContent='Connect GitHub first, then Carrel can show PDFs from papers/.';return;}byId('githubDialog').showModal();listGithubPapers(githubPath);}
@@ -2650,7 +2675,6 @@
   function isIos(){return /iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
   function refreshInstallUi(){
     var canPrompt=!!installPrompt&&!isStandalone();
-    byId('installBtn').classList.toggle('hidden',!canPrompt);
     byId('installBtn2').classList.toggle('hidden',!canPrompt);
     byId('installHint').textContent=isStandalone()
       ?'Installed — you are reading in the app. Papers already on this device open offline.'
@@ -2666,11 +2690,30 @@
   }
   addEventListener('beforeinstallprompt',function(e){e.preventDefault();installPrompt=e;refreshInstallUi();});
   addEventListener('appinstalled',function(){installPrompt=null;refreshInstallUi();});
-  byId('installBtn').onclick=promptInstall;byId('installBtn2').onclick=promptInstall;
+  byId('installBtn2').onclick=promptInstall;
+  /* The nav's Install entry is always there: one click installs where the browser
+     offers a prompt, and opens the how-to (with iOS steps) everywhere else. */
+  byId('installNav').onclick=function(){
+    if(installPrompt&&!isStandalone()){promptInstall();return;}
+    fillSettings();byId('settingsDialog').showModal();
+    var hint=byId('installHint');if(hint&&hint.scrollIntoView)hint.scrollIntoView({block:'center'});
+  };
   /* In the installed window, the portfolio link opens in a real browser tab. */
   if(isStandalone())byId('homeLink').target='_blank';
   refreshInstallUi();
   if(SUPPORT_URL){byId('supportLink').href=SUPPORT_URL;byId('supportLine').classList.remove('hidden');}
+  /* Nothing is lost without an account: papers and notes live in this browser's own
+     storage. Asking for persistence stops the browser from quietly evicting them when
+     disk runs low; the settings line reports what the browser promised. */
+  if(navigator.storage&&navigator.storage.persist){
+    navigator.storage.persist().catch(function(){}).then(function(){
+      if(navigator.storage.persisted)navigator.storage.persisted().then(function(granted){
+        byId('storageNote').textContent=granted
+          ?'This browser has agreed to keep Carrel’s local data safe from automatic cleanup.'
+          :'Storage here is best-effort — a browser cleanup could remove local data. Installing the app and keeping a backup (or sync) protects you.';
+      },function(){});
+    });
+  }
 
   if('serviceWorker' in navigator&&location.protocol!=='file:'){try{navigator.serviceWorker.register('/reading-sw.js').catch(function(){});}catch(e){}}
   syncUi();renderShelf();updateReviewBadge();

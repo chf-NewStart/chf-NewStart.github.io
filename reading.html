@@ -1220,7 +1220,9 @@
   if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone='white';
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
-  var focusPara=null, pageStartCache={}, lastGuidePoint=null;
+  /* The guide anchors to the pane, not the screen: zen mode and bar toggles move the
+     pane, and a pane-relative anchor keeps the band over the same line of text. */
+  var focusPara=null, pageStartCache={}, guideOffset=null;
   function paraSections(){ return byId('textDocument').querySelectorAll('.para'); }
   function applyComfort(){
     var doc=byId('textDocument');
@@ -1288,7 +1290,8 @@
     if(!rect.width||!rect.height)return false;
     var surface=focusSurfaceAt(clientX,clientY,target),surfaceRect=surface&&surface.getBoundingClientRect();
     if(!surfaceRect||!surfaceRect.width)return false;
-    lastGuidePoint={x:clientX,y:clientY};
+    var paneRect=byId('documentPane').getBoundingClientRect();
+    if(paneRect.width)guideOffset={x:clientX-paneRect.left,y:clientY-paneRect.top};
     var left=surfaceRect.left,right=surfaceRect.right;
     if(readerMode==='pdf'&&comfort.guideScope==='column'){
       var middle=surfaceRect.left+surfaceRect.width/2;
@@ -1313,7 +1316,7 @@
     if(!comfort.focus||byId('readerPage').classList.contains('hidden'))return;
     var rect=byId('documentPane').getBoundingClientRect();
     if(!rect.width||!rect.height)return;
-    var x=lastGuidePoint?lastGuidePoint.x:rect.left+rect.width/2,y=lastGuidePoint?lastGuidePoint.y:rect.top+rect.height*(comfort.guideY||.38);
+    var x=guideOffset?rect.left+guideOffset.x:rect.left+rect.width/2,y=guideOffset?rect.top+guideOffset.y:rect.top+rect.height*(comfort.guideY||.38);
     x=Math.max(rect.left+6,Math.min(rect.right-6,x));y=Math.max(rect.top+16,Math.min(rect.bottom-30,y));
     setReadingGuide(x,y,document.elementFromPoint(x,y));
   }

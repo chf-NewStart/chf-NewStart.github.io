@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Carrel — Breathe, Focus, Read</title>
   <meta name="description" content="Breathe, Focus, Read — a local-first desk for academic papers: highlights, notes, spaced review, AI questions, and encrypted sync you own.">
@@ -754,6 +754,12 @@
   <dialog id="settingsDialog">
     <div class="dialog-head"><h2>Desk settings</h2><button class="icon-btn" data-close="settingsDialog">×</button></div>
     <div class="dialog-body">
+      <section>
+        <h3>Google Drive sync — the simple one</h3>
+        <p>One tap connects your own Google Drive. Carrel keeps its library file in a hidden app folder that only this app can see; PDFs stay on each device. No tokens, no repos, no passphrase.</p>
+        <div><button class="button" id="gdriveConnectBtn">Connect Google Drive</button> <button class="soft-button hidden" id="gdriveSyncBtn">Sync now</button> <button class="soft-button hidden" id="gdriveOffBtn">Turn off</button></div>
+        <div class="status" id="gdriveStatus"></div>
+      </section>
       <section>
         <h3>Encrypted GitHub sync</h3>
         <p>Notes and library metadata become one AES-GCM encrypted file in a private repo. The passphrase and fine-grained token stay in this browser. PDFs remain in your repo’s <code>papers/</code> folder or on each device. If sync ever needs attention, saving here again resets it — or paste a device link from your other device into the address bar and it reconfigures itself.</p>
@@ -2599,11 +2605,89 @@
     if(!papers.length){x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--muted');x.textAlign='center';x.font='14px DM Sans';x.fillText('Your connection map will grow here.',cx,cy);}
   }
 
+  /* Google Drive sync — the no-setup path. The library file lives in the account's
+     hidden per-app folder (drive.appdata): Carrel can see only its own file, and the
+     user's real Drive files are invisible to it. */
+  var GDRIVE_CLIENT_ID='615468645410-oh18cpvsq9c14e1ohu1c8pnld47q9jm7.apps.googleusercontent.com';
+  var GDRIVE_KEY='readingRoom.gdrive.v1',GDRIVE_FILE='carrel-library.json';
+  var gdriveCfg=null,gdriveToken=null,gdriveTokenAt=0,gdriveTokenClient=null,gdriveSyncing=false;
+  try{gdriveCfg=JSON.parse(localStorage.getItem(GDRIVE_KEY));}catch(e){}
+  function gdriveOn(){return !!(gdriveCfg&&gdriveCfg.on);}
+  function loadGis(){
+    return new Promise(function(res,rej){
+      if(window.google&&window.google.accounts&&window.google.accounts.oauth2)return res();
+      var script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';
+      script.onload=function(){res();};script.onerror=function(){rej(new Error('Could not load Google sign-in (offline?)'));};
+      document.head.appendChild(script);
+    });
+  }
+  function gdriveGetToken(interactive){
+    return loadGis().then(function(){
+      return new Promise(function(res,rej){
+        if(gdriveToken&&now()-gdriveTokenAt<50*60*1000)return res(gdriveToken);
+        if(!gdriveTokenClient)gdriveTokenClient=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.appdata',callback:function(){}});
+        gdriveTokenClient.callback=function(resp){
+          if(resp&&resp.access_token){gdriveToken=resp.access_token;gdriveTokenAt=now();res(gdriveToken);}
+          else rej(new Error(resp&&resp.error?'Google sign-in: '+resp.error:'Google sign-in was cancelled'));
+        };
+        try{gdriveTokenClient.requestAccessToken({prompt:interactive?'consent':''});}catch(e){rej(e);}
+      });
+    });
+  }
+  async function gdriveSync(interactive){
+    if(!gdriveOn()||gdriveSyncing)return;gdriveSyncing=true;syncUi('☁ syncing…');
+    try{
+      var token=await gdriveGetToken(interactive===true);
+      var list=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&q='+encodeURIComponent("name='"+GDRIVE_FILE+"'"),{headers:{Authorization:'Bearer '+token}});
+      if(list.status===401){gdriveToken=null;throw new Error('Google session expired — open settings and tap Sync now to sign in again.');}
+      if(!list.ok)throw new Error('Drive list failed ('+list.status+')');
+      var files=((await list.json()).files)||[],fileId=files.length?files[0].id:null;
+      if(fileId){
+        var got=await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',{headers:{Authorization:'Bearer '+token}});
+        if(got.ok){try{var remote=await got.json();if(remote&&Array.isArray(remote.chapters)&&mergeState(remote)){persist(false);renderShelf();}}catch(parseError){}}
+      }
+      var payload=JSON.stringify({chapters:await chaptersForSync(),deleted:state.deleted||{}}),up;
+      if(fileId){
+        up=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:payload});
+      }else{
+        var boundary='carrel'+now();
+        var body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:GDRIVE_FILE,parents:['appDataFolder']})+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+payload+'\r\n--'+boundary+'--';
+        up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:body});
+      }
+      if(!up.ok)throw new Error('Drive upload failed ('+up.status+')');
+      byId('gdriveStatus').textContent='Synced with your Google Drive.';
+      syncUi('☁ Drive · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncSignal').title='';
+    }catch(e){
+      var reason=e.message||'Drive sync failed';
+      byId('gdriveStatus').textContent=reason;
+      syncUi('☁ sync needs attention');byId('syncSignal').title=reason;
+    }
+    gdriveSyncing=false;
+  }
+  byId('gdriveConnectBtn').onclick=async function(){
+    var btn=this;btn.disabled=true;byId('gdriveStatus').textContent='Waiting for Google sign-in…';
+    try{
+      await gdriveGetToken(true);
+      gdriveCfg={on:true,at:now()};localStorage.setItem(GDRIVE_KEY,JSON.stringify(gdriveCfg));
+      fillSettings();await gdriveSync();
+    }catch(e){byId('gdriveStatus').textContent=e.message||'Could not connect';}
+    btn.disabled=false;
+  };
+  byId('gdriveSyncBtn').onclick=function(){gdriveSync(true);};
+  byId('gdriveOffBtn').onclick=function(){
+    if(!confirm('Disconnect Google Drive on this device? The file in your Drive stays there.'))return;
+    localStorage.removeItem(GDRIVE_KEY);gdriveCfg=null;gdriveToken=null;fillSettings();syncUi();
+  };
+
   /* encrypted GitHub state sync + PDF picker */
   function fillSettings(){
-    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncLinkBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);byId('aiKey').value=localStorage.getItem(AI_KEY)||'';syncUi();refreshInstallUi();
+    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncLinkBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);byId('aiKey').value=localStorage.getItem(AI_KEY)||'';
+    byId('gdriveConnectBtn').textContent=gdriveOn()?'Reconnect Google Drive':'Connect Google Drive';
+    byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
+    if(!gdriveOn())byId('gdriveStatus').textContent='Not connected.';
+    syncUi();refreshInstallUi();
   }
-  function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(on?'☁ '+syncCfg.repo:'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}
+  function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(on?'☁ '+syncCfg.repo:gdriveOn()?'☁ Google Drive':'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}
   byId('syncSaveBtn').onclick=function(){var repo=byId('syncRepo').value.trim(),token=byId('syncToken').value.trim(),pass=byId('syncPass').value;if(!/^[^\/\s]+\/[^\/\s]+$/.test(repo)||!token||!pass){byId('syncStatus').textContent='Add the repo as owner/name, its fine-grained token, and a passphrase.';return;}syncCfg={repo:repo,token:token,pass:pass};localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg));fillSettings();doSync();};
   byId('syncOffBtn').onclick=function(){if(!confirm('Turn off GitHub sync on this device? Local notes stay here.'))return;localStorage.removeItem(SYNC_KEY);syncCfg=null;fillSettings();};
   byId('syncNowBtn').onclick=function(){doSync();};
@@ -2668,7 +2752,7 @@
       if(reason!==lastSyncToast&&!byId('readerPage').classList.contains('hidden')){lastSyncToast=reason;showReaderToast('Sync: '+reason.slice(0,80));}
     }syncing=false;
   }
-  function scheduleSync(){if(!syncCfg)return;clearTimeout(syncTimer);syncTimer=setTimeout(doSync,4000);}
+  function scheduleSync(){if(!syncCfg&&!gdriveOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){doSync();gdriveSync();},4000);}
   /* The device link is a direct device-to-device hand-off (it already carries the GitHub
      token and passphrase), so the AI key rides along too — unlike the synced file, which
      deliberately never contains it. */
@@ -2786,7 +2870,7 @@
   }
 
   if('serviceWorker' in navigator&&location.protocol!=='file:'){try{navigator.serviceWorker.register('/reading-sw.js').catch(function(){});}catch(e){}}
-  syncUi();renderShelf();updateReviewBadge();
+  syncUi();renderShelf();updateReviewBadge();if(gdriveOn())gdriveSync();
   /* A refresh drops you back into the paper you were reading, not the library. */
   try{var lastOpen=localStorage.getItem(LAST_OPEN_KEY);if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
   if(location.protocol==='file:') byId('launchDialog').showModal();

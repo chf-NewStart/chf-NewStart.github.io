@@ -116,7 +116,10 @@ Each page is self-contained and keeps its data in the visitor's own browser
   (`carrel.webmanifest`, its own icon): browsers that fire an install prompt get
   a ⭳ button in the masthead and in settings, iOS gets Add-to-Home-Screen
   instructions, and the installed window opens portfolio links in a real
-  browser tab. Optional AES-GCM encrypted sync to
+  browser tab. One-tap Google Drive sync stores the library file in the
+  account's hidden per-app folder (`drive.appdata` — Carrel can see only its
+  own file, never the user's real Drive). Power users keep the optional
+  AES-GCM encrypted sync to
   a private GitHub repo (fine-grained token, ciphertext only, files over the
   contents-API 1 MB limit fetched raw), a `papers/` folder picker, and a device
   link that hand-carries token, passphrase and AI key to a new device.

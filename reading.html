@@ -58,7 +58,8 @@
     .install-btn { border-color: var(--accent); color: var(--accent); }
     .install-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
     #installBtn2 svg { flex: 0 0 auto; }
-    .cloud { font-size: .72rem; color: var(--muted); white-space: nowrap; }
+    .cloud { font-size: .72rem; color: var(--muted); white-space: nowrap; border: 0; background: none; padding: 4px 2px; cursor: pointer; }
+    .cloud:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 
     .icon-btn, .button, .soft-button {
       border: 1px solid var(--line); background: var(--surface); border-radius: 999px; min-height: 38px;
@@ -320,6 +321,16 @@
     .notebook-resizer::before { position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; content: ""; background: var(--line); transition: width .15s ease, left .15s ease, background .15s ease; }
     .notebook-resizer:hover::before, .notebook-resizer:focus-visible::before, body.resizing-notebook .notebook-resizer::before { left: 3px; width: 4px; background: var(--accent); }
     .notebook-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    /* Collapsed notebook: the paper takes the full width; a slim edge tab brings it back. */
+    .notebook-reopen { display: none; }
+    @media (min-width: 721px) {
+      .reader-layout.notebook-collapsed { --notebook-width: 0px; }
+      .reader-layout.notebook-collapsed .notebook { display: none; }
+      .reader-layout.notebook-collapsed .notebook-resizer { display: none; }
+      body.resizing-notebook .reader-layout.notebook-collapsed .notebook-resizer { display: block; }
+      .reader-layout.notebook-collapsed .notebook-reopen { position: absolute; z-index: 8; top: 50%; right: 0; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 26px; height: 68px; padding: 0; border: 1px solid var(--line); border-right: 0; border-radius: 11px 0 0 11px; background: var(--surface); color: var(--muted); box-shadow: var(--shadow); font-size: .8rem; }
+      .reader-layout.notebook-collapsed .notebook-reopen:hover { color: var(--ink); border-color: var(--accent); }
+    }
     body.resizing-notebook { cursor: col-resize; user-select: none; }
     body.selecting-paper .reader-tools, body.selecting-paper .comfort-bar, body.selecting-paper .find-bar,
     body.selecting-paper .notebook, body.selecting-paper .mobile-bar, body.selecting-paper .lookup-card { user-select: none; -webkit-user-select: none; }
@@ -360,12 +371,15 @@
     .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px; }
     .ask-chip { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 650; }
     .ask-chip:hover { border-color: var(--accent); color: var(--ink); }
-    /* One-tap actions look different from starters that only fill the question box. */
-    .ask-chip.act { border-color: var(--accent); color: var(--accent-dark); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
-    .ask-chip.act:hover { background: var(--accent-soft); color: var(--ink); }
+    /* One-tap actions look different from starters that only fill the question box —
+       blue like the app's other "this does something" links, not alarm-red. */
+    .ask-chip.act { border-color: var(--blue); color: var(--blue); background: color-mix(in srgb, var(--blue) 8%, var(--surface)); }
+    .ask-chip.act:hover { background: color-mix(in srgb, var(--blue) 16%, var(--surface)); color: var(--ink); }
     .ask-chip.act:disabled { opacity: .55; }
     .ask-row { display: flex; gap: 7px; }
     .ask-row .field { flex: 1; }
+    #aiQuestion { resize: none; overflow-y: auto; max-height: 128px; line-height: 1.45; font: inherit; }
+    .ask-row { align-items: flex-end; }
     .qa-list { display: grid; gap: 12px; margin-top: 18px; }
     .qa { border-top: 1px solid var(--line); padding-top: 12px; }
     .qa .q { font-weight: 650; font-size: .78rem; }
@@ -497,7 +511,7 @@
       <button class="nav-btn" data-view="connectionsPage">Connections</button>
     </nav>
     <div class="head-actions">
-      <span class="cloud" id="syncSignal">this device</span>
+      <button class="cloud" id="syncSignal" type="button" title="Open sync settings">this device</button>
       <button class="icon-btn install-btn hidden" id="installBtn" aria-label="Install Carrel as an app" title="Install Carrel as an app"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg></button>
       <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
@@ -660,7 +674,8 @@
           <div class="guide-shade guide-shade-bottom"></div>
         </div>
         <div class="recall-shield hidden" id="recallShield" aria-hidden="true"><div><span>Quick recall</span><h2>The paper is hidden.</h2><p>Explain what you just read in the page note. Pull it from memory before checking the text.</p></div></div>
-        <div class="notebook-resizer" id="notebookResizer" role="separator" aria-label="Resize notes panel" aria-controls="notebook" aria-orientation="vertical" aria-valuemin="280" aria-valuemax="620" aria-valuenow="360" title="Drag to resize notes · double-click to reset" tabindex="0"></div>
+        <div class="notebook-resizer" id="notebookResizer" role="separator" aria-label="Resize notes panel" aria-controls="notebook" aria-orientation="vertical" aria-valuemin="280" aria-valuemax="620" aria-valuenow="360" title="Drag to resize notes · push far right to tuck away · double-click to reset" tabindex="0"></div>
+        <button class="notebook-reopen" id="notebookReopen" type="button" aria-label="Show the notes panel" aria-expanded="true" title="Show notes">❮</button>
         <aside class="notebook" id="notebook">
           <button class="sheet-close" id="sheetClose" type="button" aria-label="Close notes">✕</button>
           <div class="tabs" role="tablist">
@@ -699,7 +714,7 @@
               <button class="ask-chip act" type="button" id="evidenceBtn" title="One tap: searches real indexed papers about this claim on Semantic Scholar">Find evidence</button>
             </div>
             <div class="ask-row">
-              <input class="field" id="aiQuestion" placeholder="What does this mean?">
+              <textarea class="field" id="aiQuestion" rows="1" placeholder="What does this mean? Enter sends · Shift+Enter for a new line"></textarea>
               <button class="button" id="aiAskBtn">Ask</button>
             </div>
             <div class="status" id="aiStatus" role="status"></div>
@@ -764,7 +779,7 @@
     <div class="dialog-body">
       <section>
         <h3>Encrypted GitHub sync</h3>
-        <p>Notes and library metadata become one AES-GCM encrypted file in a private repo. The passphrase and fine-grained token stay in this browser. PDFs remain in your repo’s <code>papers/</code> folder or on each device.</p>
+        <p>Notes and library metadata become one AES-GCM encrypted file in a private repo. The passphrase and fine-grained token stay in this browser. PDFs remain in your repo’s <code>papers/</code> folder or on each device. If sync ever needs attention, saving here again resets it — or paste a device link from your other device into the address bar and it reconfigures itself.</p>
         <div class="form-grid">
           <input class="field" id="syncRepo" placeholder="owner/private-repo" autocomplete="off" spellcheck="false">
           <input class="field" id="syncToken" type="password" placeholder="fine-grained token: contents read/write" autocomplete="off">
@@ -1597,7 +1612,9 @@
   byId('documentPane').addEventListener('wheel',function(){holdDrift(1500);},{passive:true});
   byId('readerBack').addEventListener('click',function(){setDrift(0);if(zenOn)setZen(false);});
   var NOTEBOOK_WIDTH_KEY='readingRoom.notebookWidth.v1',notebookWidth=innerWidth<=900?320:360;
+  var NOTEBOOK_COLLAPSED_KEY='readingRoom.notebookCollapsed.v1',notebookCollapsed=false;
   try{notebookWidth=+localStorage.getItem(NOTEBOOK_WIDTH_KEY)||notebookWidth;}catch(e){}
+  try{notebookCollapsed=localStorage.getItem(NOTEBOOK_COLLAPSED_KEY)==='1';}catch(e){}
   function setNotebookWidth(value,save){
     var layout=byId('readerLayout'),resizer=byId('notebookResizer');if(innerWidth<=720){layout.style.removeProperty('--notebook-width');return;}
     var available=layout.clientWidth||innerWidth,max=Math.max(280,Math.min(620,available-340));
@@ -1605,22 +1622,40 @@
     resizer.setAttribute('aria-valuemax',String(Math.round(max)));resizer.setAttribute('aria-valuenow',String(notebookWidth));resizer.setAttribute('aria-valuetext',notebookWidth+' pixels wide');
     if(save)try{localStorage.setItem(NOTEBOOK_WIDTH_KEY,String(notebookWidth));}catch(e){}
   }
+  /* Pushing the divider far enough right tucks the whole notebook away; a slim tab at
+     the screen edge brings it back. */
+  function setNotebookCollapsed(on,save){
+    notebookCollapsed=!!on&&innerWidth>720;
+    byId('readerLayout').classList.toggle('notebook-collapsed',notebookCollapsed);
+    byId('notebookReopen').setAttribute('aria-expanded',String(!notebookCollapsed));
+    if(save)try{localStorage.setItem(NOTEBOOK_COLLAPSED_KEY,notebookCollapsed?'1':'0');}catch(e){}
+  }
+  byId('notebookReopen').onclick=function(){setNotebookCollapsed(false,true);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();};
   setNotebookWidth(notebookWidth,false);
+  setNotebookCollapsed(notebookCollapsed,false);
   var notebookDrag=false;
   byId('notebookResizer').onpointerdown=function(e){
     if(innerWidth<=720)return;notebookDrag=true;this.setPointerCapture(e.pointerId);document.body.classList.add('resizing-notebook');e.preventDefault();
   };
   byId('notebookResizer').onpointermove=function(e){
-    if(!notebookDrag)return;var rect=byId('readerLayout').getBoundingClientRect();setNotebookWidth(rect.right-e.clientX,false);
+    if(!notebookDrag)return;var rect=byId('readerLayout').getBoundingClientRect(),want=rect.right-e.clientX;
+    if(want<170){if(!notebookCollapsed)setNotebookCollapsed(true,false);}
+    else{if(notebookCollapsed)setNotebookCollapsed(false,false);setNotebookWidth(want,false);}
   };
   function finishNotebookResize(e){
-    if(!notebookDrag)return;notebookDrag=false;document.body.classList.remove('resizing-notebook');setNotebookWidth(notebookWidth,true);if(e&&byId('notebookResizer').hasPointerCapture(e.pointerId))byId('notebookResizer').releasePointerCapture(e.pointerId);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();
+    if(!notebookDrag)return;notebookDrag=false;document.body.classList.remove('resizing-notebook');
+    setNotebookCollapsed(notebookCollapsed,true);
+    if(!notebookCollapsed)setNotebookWidth(notebookWidth,true);
+    if(e&&byId('notebookResizer').hasPointerCapture(e.pointerId))byId('notebookResizer').releasePointerCapture(e.pointerId);
+    if(readerMode==='pdf'&&pdfDoc)renderPdfPage();
+    if(notebookCollapsed)showReaderToast('Notes tucked away · the ❮ tab brings them back');
   }
   byId('notebookResizer').onpointerup=finishNotebookResize;
   byId('notebookResizer').onpointercancel=finishNotebookResize;
-  byId('notebookResizer').ondblclick=function(){setNotebookWidth(360,true);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();showReaderToast('Notes panel reset');};
+  byId('notebookResizer').ondblclick=function(){setNotebookCollapsed(false,true);setNotebookWidth(360,true);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();showReaderToast('Notes panel reset');};
   byId('notebookResizer').onkeydown=function(e){
     if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'){e.preventDefault();e.stopPropagation();setNotebookWidth(e.key==='Home'?360:notebookWidth+(e.key==='ArrowLeft'?24:-24),true);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();}
+    else if(e.key==='End'){e.preventDefault();e.stopPropagation();setNotebookCollapsed(true,true);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();}
   };
   /* Phone chrome: the notebook rises as a bottom sheet, the bottom bar owns paging,
      and ⋯ reveals the full toolbar only when it is wanted. */
@@ -2502,6 +2537,10 @@
       setAiContext(text,makeThumb(canvas),'Pasted screenshot');st.textContent='Screenshot is ready. Ask something about it.';byId('aiQuestion').focus({preventScroll:true});
     }catch(e){st.textContent=e.message||'OCR failed';}
   }
+  /* The question box grows with pasted or multi-line prompts (bullets survive);
+     Enter sends, Shift+Enter makes a new line. */
+  function growQuestionBox(){var input=byId('aiQuestion');input.style.height='auto';input.style.height=Math.min(128,input.scrollHeight)+'px';}
+  byId('aiQuestion').addEventListener('input',growQuestionBox);
   byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;
   /* Question starters only ever fill the box — nothing sends until Ask is pressed.
      The one one-tap action in the row is Find evidence, styled apart. */
@@ -2509,6 +2548,7 @@
     chip.onclick=function(){
       var input=byId('aiQuestion');
       input.value=chip.dataset.askFull||chip.dataset.askStem||'';
+      growQuestionBox();
       input.focus({preventScroll:true});
       try{input.setSelectionRange(input.value.length,input.value.length);}catch(e){}
     };
@@ -2521,7 +2561,7 @@
     try{
       var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:900,messages:[{role:'system',content:'You are a concise research reading partner. Answer from the supplied excerpt. Distinguish what the excerpt says from your inference. If context is insufficient, say so. Format the answer as short bullet points, each line starting with \u2022 and one idea per line; only skip bullets when the whole answer is a single short sentence. Plain text only, no markdown symbols.'},{role:'user',content:'Paper: '+(ch.title||'Untitled')+'\nContext ('+aiContext.label+'):\n'+aiContext.text.slice(0,24000)+'\n\nQuestion: '+q}]})});
       if(!res.ok)throw new Error('AI returned '+res.status);var data=await res.json(), answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
-      ch.questions.unshift({id:uid('q'),question:q,answer:answer,contextLabel:aiContext.label,excerpt:aiContext.text.slice(0,1200),thumb:aiContext.thumb||'',at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiQuestion').value='';byId('aiStatus').textContent='Saved with this paper.';renderQa();
+      ch.questions.unshift({id:uid('q'),question:q,answer:answer,contextLabel:aiContext.label,excerpt:aiContext.text.slice(0,1200),thumb:aiContext.thumb||'',at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiQuestion').value='';growQuestionBox();byId('aiStatus').textContent='Saved with this paper.';renderQa();
     }catch(e){byId('aiStatus').textContent=e.message||'AI request failed';}btn.disabled=false;
   }
   function renderQa(){var ch=find(currentId);if(!ch)return;byId('qaList').innerHTML=(ch.questions||[]).map(function(x){return '<article class="qa"><div class="q">'+esc(x.question)+'</div><div class="a">'+esc(x.answer)+'</div><div class="meta">'+esc(x.contextLabel||'context')+' · '+new Date(x.at).toLocaleDateString()+'</div></article>';}).join('');}
@@ -2661,7 +2701,21 @@
     var link=location.href.split('#')[0]+'#carrel-setup='+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
     navigator.clipboard.writeText(link).then(function(){byId('syncStatus').textContent='Device link copied. AirDrop it to yourself; it contains your token, passphrase'+(aiKey?' and AI key':'')+'.';});
   };
-  (function importSetup(){var m=location.hash.match(/^#(?:carrel|margin)-setup=(.+)$/);if(!m)return;history.replaceState(null,'',location.pathname+location.search);try{var cfg=JSON.parse(decodeURIComponent(escape(atob(m[1]))));if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Carrel to '+cfg.repo+'? Only continue if you made this link yourself.')){if(cfg.ai){try{localStorage.setItem(AI_KEY,cfg.ai);}catch(e){}}delete cfg.ai;syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));}}catch(e){}})();
+  function importSetup(){
+    var m=location.hash.match(/^#(?:carrel|margin)-setup=(.+)$/);if(!m)return;
+    history.replaceState(null,'',location.pathname+location.search);
+    try{
+      var cfg=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+      if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Carrel to '+cfg.repo+'? Only continue if you made this link yourself.')){
+        if(cfg.ai){try{localStorage.setItem(AI_KEY,cfg.ai);}catch(e){}}
+        delete cfg.ai;syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));
+        byId('syncSignal').title='';fillSettings();doSync();
+      }
+    }catch(e){}
+  }
+  importSetup();
+  addEventListener('hashchange',importSetup);
+  byId('syncSignal').onclick=function(){fillSettings();byId('settingsDialog').showModal();};
 
   var githubPath='papers';
   byId('githubPickBtn').onclick=openGithubPicker;byId('githubRefresh').onclick=function(){listGithubPapers(githubPath);};

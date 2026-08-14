@@ -4,16 +4,16 @@
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <title>Margin — a private paper desk</title>
+  <title>Carrel — a private paper desk</title>
   <meta name="description" content="A local-first paper reader with notes, AI questions, connections, and optional encrypted GitHub sync.">
   <meta name="robots" content="noindex">
-  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/margin-apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/carrel-apple-touch-icon.png">
   <link rel="icon" href="/favicon_io/tomato-favicon.ico?v=3" sizes="any">
-  <link rel="manifest" href="/margin.webmanifest">
+  <link rel="manifest" href="/carrel.webmanifest">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Margin">
+  <meta name="apple-mobile-web-app-title" content="Carrel">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
   <style>
@@ -486,7 +486,7 @@
 </head>
 <body>
   <header class="masthead">
-    <button class="brand" id="brandBtn" aria-label="Open library"><strong>Margin</strong><span>private paper desk</span></button>
+    <button class="brand" id="brandBtn" aria-label="Open library"><strong>Carrel</strong><span>private paper desk</span></button>
     <nav class="nav" aria-label="Main navigation">
       <button class="nav-btn active" data-view="libraryPage">Library</button>
       <button class="nav-btn" data-view="reviewPage">Review</button>
@@ -494,7 +494,7 @@
     </nav>
     <div class="head-actions">
       <span class="cloud" id="syncSignal">this device</span>
-      <button class="icon-btn install-btn hidden" id="installBtn" aria-label="Install Margin as an app" title="Install Margin as an app"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg></button>
+      <button class="icon-btn install-btn hidden" id="installBtn" aria-label="Install Carrel as an app" title="Install Carrel as an app"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg></button>
       <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
       <a class="icon-btn" id="homeLink" href="/" aria-label="Back to houfu72.com">↗</a>
@@ -506,10 +506,10 @@
       <div class="hero">
         <div>
           <div class="eyebrow">Read slowly. Keep what matters.</div>
-          <h1>Your papers, with room in the <em>margin.</em></h1>
+          <h1>A quiet desk of your <em>own.</em></h1>
           <p>Read the real PDF, write beside the page, ask a screenshot a question, and let ideas become connected over time. Your desk is local first; encrypted GitHub sync is optional.</p>
         </div>
-        <div class="hero-card" aria-label="How Margin works">
+        <div class="hero-card" aria-label="How Carrel works">
           <div class="step"><b>01</b><span>Paste a PDF link, drop a file, or pick one from a private GitHub folder.</span></div>
           <div class="step"><b>02</b><span>Page notes, highlights, and AI questions stay attached to the paper.</span></div>
           <div class="step"><b>03</b><span>Shared tags reveal a small network instead of another filing cabinet.</span></div>
@@ -517,7 +517,7 @@
       </div>
 
       <div class="link-import" id="pdfLinkDrop">
-        <div class="link-copy"><b>Paste or drop a PDF link</b><span>Margin downloads one local copy. No commit needed.</span></div>
+        <div class="link-copy"><b>Paste or drop a PDF link</b><span>Carrel downloads one local copy. No commit needed.</span></div>
         <input class="field" id="pdfUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/paper.pdf" aria-label="Direct PDF link">
         <button class="button" id="pdfUrlBtn" type="button">Add link</button>
         <div class="link-status" id="pdfUrlStatus" role="status" aria-live="polite"></div>
@@ -536,7 +536,7 @@
         <input class="search" id="librarySearch" type="search" placeholder="Search titles, authors, tags…" aria-label="Search library">
       </div>
       <div class="shelf" id="shelf"></div>
-      <p class="support-line hidden" id="supportLine">Margin is free and keeps your papers on your own device. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">buy me a coffee ☕</a></p>
+      <p class="support-line hidden" id="supportLine">Carrel is free and keeps your papers on your own device. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">buy me a coffee ☕</a></p>
     </section>
 
     <section id="connectionsPage" class="page hidden">
@@ -771,14 +771,14 @@
       </section>
       <section>
         <h3>DeepSeek assistant</h3>
-        <p>Margin sends extracted screenshot or page text—not the image—to DeepSeek. Technical-term lookup sends the selected phrase and a short nearby excerpt. The API key stays in local storage on this device and is never included in sync.</p>
+        <p>Carrel sends extracted screenshot or page text—not the image—to DeepSeek. Technical-term lookup sends the selected phrase and a short nearby excerpt. The API key stays in local storage on this device and is never included in sync.</p>
         <div class="form-grid"><input class="field" id="aiKey" type="password" placeholder="DeepSeek API key" autocomplete="off"><div><button class="soft-button" id="aiKeySave">Save key</button></div></div>
         <div class="status" id="aiKeyStatus"></div>
       </section>
       <section>
         <h3>Install as an app</h3>
-        <p id="installHint">Margin works offline once installed — papers already on this device open with no network.</p>
-        <button class="soft-button hidden" id="installBtn2"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg> Install Margin</button>
+        <p id="installHint">Carrel works offline once installed — papers already on this device open with no network.</p>
+        <button class="soft-button hidden" id="installBtn2"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg> Install Carrel</button>
       </section>
       <section>
         <h3>Library backup</h3>
@@ -801,7 +801,7 @@
   </dialog>
 
   <dialog id="launchDialog">
-    <div class="dialog-head"><h2>Open Margin as a local site</h2><button class="icon-btn" data-close="launchDialog">×</button></div>
+    <div class="dialog-head"><h2>Open Carrel as a local site</h2><button class="icon-btn" data-close="launchDialog">×</button></div>
     <div class="dialog-body">
       <div class="launch-note">You opened the HTML file directly. The library itself can appear this way, but browsers block the PDF reader and OCR workers on <code>file://</code> pages.</div>
       <p>Use the local web address below while developing, or the normal houfu72.com address after publishing. Your notes still stay in this browser.</p>
@@ -868,7 +868,7 @@
     catch(e){
       if (!storageWarned) {
         storageWarned = true;
-        showError('Margin could not save the newest change because this browser’s small note store is full. Remove a finished paper or turn on encrypted GitHub sync, then try that edit once more.','Margin needs a little room');
+        showError('Carrel could not save the newest change because this browser’s small note store is full. Remove a finished paper or turn on encrypted GitHub sync, then try that edit once more.','Carrel needs a little room');
       }
     }
     if (schedule !== false) scheduleSync();
@@ -1231,7 +1231,7 @@
   async function loadPdfLib(){
     if(pdfLib)return pdfLib;preparePdfCompatibility();
     try{pdfLib=await import('/vendor/pdfjs/pdf.min.js');pdfLib.GlobalWorkerOptions.workerSrc='/vendor/pdfjs/pdf.worker.compat.js';return pdfLib;}
-    catch(e){throw new Error('The PDF engine could not start in this browser. Update iOS or open Margin in Safari, then try again.');}
+    catch(e){throw new Error('The PDF engine could not start in this browser. Update iOS or open Carrel in Safari, then try again.');}
   }
   function contentLayout(content){
     var lines=[],line=null;
@@ -1813,7 +1813,7 @@
   function showMissingPdf(ch){
     pdfViews=[];pdfBuildKey='';
     var action=ch.sourceUrl?'<button class="button" id="missingSource">Download original link</button>':'<button class="button" id="missingPick">Pick from GitHub</button>';
-    var help=ch.sourceUrl?'Margin can download another local copy from its original link.':'Pick <b>'+esc(ch.sourceName||'the same PDF')+'</b> from GitHub or import it again to restore the page view here.';
+    var help=ch.sourceUrl?'Carrel can download another local copy from its original link.':'Pick <b>'+esc(ch.sourceName||'the same PDF')+'</b> from GitHub or import it again to restore the page view here.';
     byId('pdfFrame').innerHTML='<div class="missing-file"><h2>The PDF is not on this device yet.</h2><p>Your notes and extracted text synced safely. '+help+'</p>'+action+' <button class="soft-button" id="missingText">Read extracted text</button></div>';
     var source=byId('missingSource'),pick=byId('missingPick');if(source)source.onclick=async function(){var ok=await importPdfUrl(ch.sourceUrl);if(!ok)showError(byId('pdfUrlStatus').textContent||'The original link is no longer available.','Could not download that PDF');};if(pick)pick.onclick=openGithubPicker;byId('missingText').onclick=function(){ readerMode='text'; updateReaderMode(); };
     byId('prevPage').classList.add('hidden'); byId('nextPage').classList.add('hidden'); byId('zoomTools').classList.add('hidden'); byId('tocBtn').classList.add('hidden'); byId('pageNumber').textContent='';
@@ -2235,7 +2235,7 @@
   byId('savePaperDetails').onclick=function(){var ch=find(currentId);if(!ch)return;ch.title=byId('paperTitleEdit').value.trim()||'Untitled';ch.authors=byId('paperAuthorsEdit').value.trim();ch.tags=byId('paperTagsEdit').value.split(',').map(function(t){return t.trim();}).filter(Boolean).filter(function(t,i,a){return a.indexOf(t)===i;});touch(ch);byId('readerTitle').textContent=ch.title;byId('readerMeta').textContent=ch.authors||ch.sourceName||'';byId('paperTags').value=ch.tags.join(', ');byId('paperDialog').close();if(readerMode==='text')renderText(ch);};
   async function removePaper(ch,leaveReader){
     if(!ch)return false;var githubCopy=ch.sourcePath?' The PDF in your GitHub papers/ folder will stay there.':'';
-    if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Margin? Its notes, highlights, Q&A, and local PDF will be removed.'+githubCopy))return false;
+    if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Carrel? Its notes, highlights, Q&A, and local PDF will be removed.'+githubCopy))return false;
     state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);persist();
     if(currentId===ch.id){stopReadAloud(true);currentId=null;pdfDoc=null;}renderShelf();if(leaveReader)showPage('libraryPage');return true;
   }
@@ -2644,7 +2644,7 @@
             if(mergeState(remote)){persist(false);renderShelf();}
           }
         }
-        var syncChapters=await chaptersForSync(),payload=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{}}),body={message:'Margin reading notes sync',content:btoa(payload)};if(sha)body.sha=sha;
+        var syncChapters=await chaptersForSync(),payload=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{}}),body={message:'Carrel reading notes sync',content:btoa(payload)};if(sha)body.sha=sha;
         var put=await fetch(ghUrl(SYNC_FILE),{method:'PUT',headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)});
         if(put.ok)break;
         if((put.status===409||put.status===422)&&attempt<2)continue;
@@ -2661,14 +2661,14 @@
     if(!syncCfg)return;
     var payload=Object.assign({},syncCfg),aiKey=localStorage.getItem(AI_KEY)||'';
     if(aiKey)payload.ai=aiKey;
-    var link=location.href.split('#')[0]+'#margin-setup='+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    var link=location.href.split('#')[0]+'#carrel-setup='+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
     navigator.clipboard.writeText(link).then(function(){byId('syncStatus').textContent='Device link copied. AirDrop it to yourself; it contains your token, passphrase'+(aiKey?' and AI key':'')+'.';});
   };
-  (function importSetup(){var m=location.hash.match(/^#margin-setup=(.+)$/);if(!m)return;history.replaceState(null,'',location.pathname+location.search);try{var cfg=JSON.parse(decodeURIComponent(escape(atob(m[1]))));if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Margin to '+cfg.repo+'? Only continue if you made this link yourself.')){if(cfg.ai){try{localStorage.setItem(AI_KEY,cfg.ai);}catch(e){}}delete cfg.ai;syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));}}catch(e){}})();
+  (function importSetup(){var m=location.hash.match(/^#(?:carrel|margin)-setup=(.+)$/);if(!m)return;history.replaceState(null,'',location.pathname+location.search);try{var cfg=JSON.parse(decodeURIComponent(escape(atob(m[1]))));if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Carrel to '+cfg.repo+'? Only continue if you made this link yourself.')){if(cfg.ai){try{localStorage.setItem(AI_KEY,cfg.ai);}catch(e){}}delete cfg.ai;syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));}}catch(e){}})();
 
   var githubPath='papers';
   byId('githubPickBtn').onclick=openGithubPicker;byId('githubRefresh').onclick=function(){listGithubPapers(githubPath);};
-  function openGithubPicker(){if(!syncCfg){fillSettings();byId('settingsDialog').showModal();byId('syncStatus').textContent='Connect GitHub first, then Margin can show PDFs from papers/.';return;}byId('githubDialog').showModal();listGithubPapers(githubPath);}
+  function openGithubPicker(){if(!syncCfg){fillSettings();byId('settingsDialog').showModal();byId('syncStatus').textContent='Connect GitHub first, then Carrel can show PDFs from papers/.';return;}byId('githubDialog').showModal();listGithubPapers(githubPath);}
   function renderGithubCrumbs(){
     var crumbs=byId('githubCrumbs');crumbs.innerHTML='';
     githubPath.split('/').forEach(function(part,i,parts){
@@ -2700,7 +2700,7 @@
 
   /* keys, backup, restore */
   byId('aiKeySave').onclick=function(){var k=byId('aiKey').value.trim();if(k)localStorage.setItem(AI_KEY,k);else localStorage.removeItem(AI_KEY);byId('aiKeyStatus').textContent=k?'Saved on this device.':'Key removed.';};
-  byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='margin-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
+  byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='carrel-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
 
   /* Installable app: capture the browser's install prompt where one exists, and explain
@@ -2715,10 +2715,10 @@
     byId('installHint').textContent=isStandalone()
       ?'Installed — you are reading in the app. Papers already on this device open offline.'
       :isIos()
-        ?'On iPhone or iPad: open Margin in Safari, tap Share, then “Add to Home Screen”. It gets its own icon and works offline for papers already on this device.'
+        ?'On iPhone or iPad: open Carrel in Safari, tap Share, then “Add to Home Screen”. It gets its own icon and works offline for papers already on this device.'
         :canPrompt
-          ?'Margin gets its own window and icon, and papers already on this device open with no network.'
-          :'If your browser offers “Install app” in its menu, Margin installs like a normal app and works offline for papers already on this device.';
+          ?'Carrel gets its own window and icon, and papers already on this device open with no network.'
+          :'If your browser offers “Install app” in its menu, Carrel installs like a normal app and works offline for papers already on this device.';
   }
   function promptInstall(){
     if(!installPrompt)return;var p=installPrompt;installPrompt=null;

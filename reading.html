@@ -446,7 +446,14 @@
     }
     @media (max-width: 720px) {
       .masthead { height: 60px; padding: 0 12px; gap: 8px; }
-      .brand span, .cloud, .nav { display: none; }
+      .brand span, .cloud { display: none; }
+      .nav { gap: 2px; }
+      .nav-btn { padding: 6px 7px; font-size: .72rem; }
+      #installNav { display: none; }
+      .head-actions { gap: 4px; }
+      .masthead .icon-btn { width: 34px; min-height: 34px; }
+      .section-head { flex-wrap: wrap; }
+      .search { width: 100%; margin-left: 0; }
       main { min-height: calc(100vh - 60px); min-height: calc(100dvh - 60px); }
       .page { padding: 30px 14px 70px; }
       .hero { margin-bottom: 28px; }
@@ -574,10 +581,11 @@
           <button id="zoomLabel" aria-label="Fit PDF to width">Fit</button>
           <button id="zoomIn" aria-label="Zoom in">＋</button>
         </div>
-        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" title="Reading ruler · drag its ≡ handle or tap the page to move it; color, width, style and height live in Display">▰ <span class="wide">Guide</span></button>
-        <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" title="Reading display · guide style, text size, auto-scroll, paper tone">Aa</button>
-        <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" title="Zen reading · hide everything but the paper (F)">⛶ <span class="wide">Zen</span></button>
-        <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar">⌕ <span class="wide">Find</span></button>
+        <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to reflowed text view" title="Reflow · big phone-friendly text rebuilt from the PDF">≣ <span class="wide">Reflow</span></button>
+        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading ruler · drag its ≡ handle or tap the page to move it; color, width, style and height live in Display">▰ <span class="wide">Guide</span></button>
+        <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Reading display settings" title="Reading display · guide style, text size, auto-scroll, paper tone">Aa</button>
+        <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F)">⛶ <span class="wide">Zen</span></button>
+        <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
         <div class="marker-tools">
           <button class="soft-button" id="highlightBtn" type="button" aria-pressed="false">✦ Marker</button>
           <div class="marker-palette hidden" id="highlightPalette" aria-label="Highlight color">
@@ -1411,7 +1419,7 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,guideLock:false,tone:'white',driftSpeed:10};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,guideLock:false,tone:'white',driftSpeed:4};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
@@ -1713,6 +1721,7 @@
     if(!willOpen&&recallActive)setRecall(false);
     notebook.classList.toggle('sheet-open',willOpen);scrim.classList.toggle('hidden',!willOpen);
     byId('mNotes').setAttribute('aria-expanded',String(willOpen));
+    try{byId('notebook').inert=innerWidth<=720&&!willOpen;}catch(e){}
   }
   byId('mNotes').onclick=function(){toggleSheet();};
   byId('sheetScrim').onclick=function(){toggleSheet(false);};
@@ -1868,6 +1877,7 @@
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
     byId('paperTags').value=(ch.tags||[]).join(', '); renderQa(); renderNoteIndex();
     byId('evidenceList').classList.add('hidden');byId('evidenceList').innerHTML='';
+    aiContext=null;byId('contextCard').classList.add('hidden');byId('aiStatus').textContent='';
     readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('aiPanel');
     if(ch.kind==='pdf'){
       try{
@@ -1913,8 +1923,23 @@
     byId('tocBtn').classList.toggle('hidden',!pdf||!(pdfOutline&&pdfOutline.length));
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('comfortBar').classList.toggle('pdf-mode',pdf);
+    var reflow=byId('reflowBtn');reflow.classList.toggle('hidden',!isPdf);reflow.setAttribute('aria-pressed',String(isPdf&&!pdf));
+    reflow.innerHTML=pdf?'≣ <span class="wide">Reflow</span>':'⧉ <span class="wide">PDF</span>';
+    reflow.setAttribute('aria-label',pdf?'Switch to reflowed text view':'Back to the PDF view');
     if(!pdf&&ch) renderText(ch);applyFocus();loadPageNote();updateProgress();
   }
+  byId('reflowBtn').onclick=async function(){
+    var ch=find(currentId);if(!ch||ch.kind!=='pdf')return;clearPendingSelection();
+    readerMode=readerMode==='pdf'?'text':'pdf';updateReaderMode();
+    if(readerMode==='pdf'&&pdfDoc){Promise.resolve(renderPdfPage()).then(function(){scrollToPdfPage(currentPage,'auto');});return;}
+    if(readerMode==='text'&&(!ch.readerText||!ch.pageParagraphs||ch.readerV!==READER_V)&&pdfDoc){
+      this.disabled=true;
+      try{await ensureReaderData(pdfDoc,ch);pageStartCache={};renderText(ch);showReaderToast('Reflowed from the PDF layout');}
+      catch(e){showReaderToast('Could not reflow this paper');}
+      finally{this.disabled=false;updateReaderMode();}
+    }
+    if(readerMode==='text')restoreReaderPosition(ch,false);
+  };
   function showMissingPdf(ch){
     pdfViews=[];pdfBuildKey='';
     var action=ch.sourceUrl?'<button class="button" id="missingSource">Download original link</button>':'<button class="button" id="missingPick">Pick from GitHub</button>';
@@ -2668,6 +2693,7 @@
   var GDRIVE_PDF_LIMIT=30*1024*1024,gdriveRoaming=false;
   async function gdriveRoamPdfs(token,files){
     if(gdriveRoaming)return;gdriveRoaming=true;
+    var sent=0,failed=0;
     try{
       var have={};files.forEach(function(f){have[f.name]=true;});
       for(var i=0;i<state.chapters.length;i++){
@@ -2677,10 +2703,14 @@
         if(bytes.byteLength>GDRIVE_PDF_LIMIT)continue;
         var boundary='carrel'+now()+i;
         var head='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:'pdf-'+ch.id+'.pdf',parents:['appDataFolder']})+'\r\n--'+boundary+'\r\nContent-Type: application/pdf\r\n\r\n';
-        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:new Blob([head,bytes,'\r\n--'+boundary+'--'])});
+        try{
+          var up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:new Blob([head,bytes,'\r\n--'+boundary+'--'])});
+          if(up.ok)sent++;else failed++;
+        }catch(uploadError){failed++;}
       }
-    }catch(e){}
+    }catch(e){failed++;}
     gdriveRoaming=false;
+    if(sent||failed)byId('gdriveStatus').textContent='Synced with your Google Drive.'+(sent?' '+sent+' paper'+(sent===1?'':'s')+' uploaded.':'')+(failed?' '+failed+' upload'+(failed===1?'':'s')+' failed — Carrel retries on the next sync.':'');
   }
   async function gdriveFetchPdf(id){
     if(!gdriveOn())return null;

@@ -141,6 +141,8 @@
     .guide-color[data-guide-color="blue"] { --guide-swatch: #65a9c3; }
     .guide-color[aria-pressed="true"] { border-color: var(--guide-swatch); color: var(--ink); box-shadow: inset 0 0 0 1px var(--guide-swatch); }
     .guide-scope { display: flex; align-items: center; gap: 5px; }
+    /* On the PDF itself only the guide settings apply; typography belongs to Reader view. */
+    .comfort-bar.pdf-mode .text-only { display: none !important; }
     .comfort-bar .spacer { flex: 1 1 auto; }
     .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
     #focusBtn.active, #comfortBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
@@ -164,18 +166,27 @@
     .text-layer :is(span, br) { position: absolute; color: transparent; white-space: pre; cursor: text; transform-origin: 0 0; }
     .text-layer span.markedContent { top: 0; height: 0; }
     .text-layer ::selection, .original ::selection { background: rgba(64, 137, 174, .34); }
-    /* A translucent reading ruler that follows the pointer (or last tap) and stops
-       at the active PDF column. It does not dim the rest of the paper. */
+    /* A translucent reading ruler that follows the pointer (or the ≡ handle / last tap)
+       and stops at the active PDF column. It stays hidden until it has a real position;
+       "Line focus" additionally fades the paper outside the band. */
     .pane-spotlight { position: absolute; z-index: 6; inset: 0 var(--notebook-width, 360px) 0 0; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity .2s ease; }
-    .pane-spotlight::after { content: ""; position: absolute; left: var(--guide-x, 12%); top: var(--guide-y, 34%); width: var(--guide-w, 38%); height: var(--guide-h, 118px); border-radius: 7px;
+    .pane-spotlight.on.placed { opacity: 1; }
+    .guide-band { position: absolute; left: var(--guide-x, 12%); top: var(--guide-y, 34%); width: var(--guide-w, 38%); height: var(--guide-h, 118px); border-radius: 7px; pointer-events: none;
       background: linear-gradient(90deg, rgba(244,166,56,.14), rgba(255,191,65,.27) 12%, rgba(255,191,65,.27) 88%, rgba(244,166,56,.14));
       box-shadow: inset 0 1px rgba(255,213,126,.3), inset 0 -1px rgba(182,103,21,.2); transition: left .08s linear, top .08s linear, width .12s ease, height .12s ease; }
-    .pane-spotlight[data-guide-color="green"]::after { background: linear-gradient(90deg, rgba(78,164,91,.11), rgba(96,188,111,.23) 12%, rgba(96,188,111,.23) 88%, rgba(78,164,91,.11)); box-shadow: inset 0 1px rgba(164,224,170,.25), inset 0 -1px rgba(43,125,57,.2); }
-    .pane-spotlight[data-guide-color="blue"]::after { background: linear-gradient(90deg, rgba(67,145,177,.1), rgba(83,166,199,.22) 12%, rgba(83,166,199,.22) 88%, rgba(67,145,177,.1)); box-shadow: inset 0 1px rgba(153,213,234,.24), inset 0 -1px rgba(41,113,143,.2); }
-    .pane-spotlight.on { opacity: 1; }
-    html[data-theme="dark"] .pane-spotlight::after { background: linear-gradient(90deg, rgba(190,150,43,.05), rgba(220,177,58,.13) 12%, rgba(220,177,58,.13) 88%, rgba(190,150,43,.05)); box-shadow: inset 0 1px rgba(244,210,111,.16), inset 0 -1px rgba(137,98,19,.22); }
-    html[data-theme="dark"] .pane-spotlight[data-guide-color="green"]::after { background: linear-gradient(90deg, rgba(62,145,87,.05), rgba(78,171,102,.13) 12%, rgba(78,171,102,.13) 88%, rgba(62,145,87,.05)); box-shadow: inset 0 1px rgba(135,211,151,.16), inset 0 -1px rgba(31,104,52,.22); }
-    html[data-theme="dark"] .pane-spotlight[data-guide-color="blue"]::after { background: linear-gradient(90deg, rgba(58,137,167,.05), rgba(77,163,194,.14) 12%, rgba(77,163,194,.14) 88%, rgba(58,137,167,.05)); box-shadow: inset 0 1px rgba(139,207,228,.17), inset 0 -1px rgba(32,102,130,.23); }
+    .pane-spotlight[data-guide-color="green"] .guide-band { background: linear-gradient(90deg, rgba(78,164,91,.11), rgba(96,188,111,.23) 12%, rgba(96,188,111,.23) 88%, rgba(78,164,91,.11)); box-shadow: inset 0 1px rgba(164,224,170,.25), inset 0 -1px rgba(43,125,57,.2); }
+    .pane-spotlight[data-guide-color="blue"] .guide-band { background: linear-gradient(90deg, rgba(67,145,177,.1), rgba(83,166,199,.22) 12%, rgba(83,166,199,.22) 88%, rgba(67,145,177,.1)); box-shadow: inset 0 1px rgba(153,213,234,.24), inset 0 -1px rgba(41,113,143,.2); }
+    /* Line focus: the paper outside the band recedes behind a translucent wash. */
+    .guide-shade { position: absolute; left: 0; right: 0; background: color-mix(in srgb, var(--paper) 72%, transparent); opacity: 0; transition: opacity .2s ease, top .08s linear, height .08s linear; pointer-events: none; }
+    .pane-spotlight[data-guide-style="dim"] .guide-shade { opacity: 1; }
+    .guide-shade-top { top: 0; height: var(--guide-y, 34%); }
+    .guide-shade-bottom { top: calc(var(--guide-y, 34%) + var(--guide-h, 118px)); bottom: 0; }
+    .guide-grip { position: absolute; right: 8px; top: 50%; width: 42px; height: 42px; margin-top: -21px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--muted); font-size: .85rem; box-shadow: 0 4px 14px rgba(0,0,0,.16); pointer-events: auto; touch-action: none; cursor: grab; }
+    .guide-grip:active { cursor: grabbing; }
+    @media (hover: hover) and (pointer: fine) { .guide-grip { display: none; } }
+    html[data-theme="dark"] .guide-band { background: linear-gradient(90deg, rgba(190,150,43,.05), rgba(220,177,58,.13) 12%, rgba(220,177,58,.13) 88%, rgba(190,150,43,.05)); box-shadow: inset 0 1px rgba(244,210,111,.16), inset 0 -1px rgba(137,98,19,.22); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-color="green"] .guide-band { background: linear-gradient(90deg, rgba(62,145,87,.05), rgba(78,171,102,.13) 12%, rgba(78,171,102,.13) 88%, rgba(62,145,87,.05)); box-shadow: inset 0 1px rgba(135,211,151,.16), inset 0 -1px rgba(31,104,52,.22); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-color="blue"] .guide-band { background: linear-gradient(90deg, rgba(58,137,167,.05), rgba(77,163,194,.14) 12%, rgba(77,163,194,.14) 88%, rgba(58,137,167,.05)); box-shadow: inset 0 1px rgba(139,207,228,.17), inset 0 -1px rgba(32,102,130,.23); }
     .recall-shield { position: absolute; z-index: 7; inset: 0 var(--notebook-width, 360px) 0 0; display: grid; place-items: center; padding: 28px; background: color-mix(in srgb, var(--paper) 94%, var(--yellow)); color: var(--ink); text-align: center; }
     .recall-shield.hidden { display: none; }
     .recall-shield div { width: min(430px, 90%); }
@@ -465,7 +476,7 @@
         </div>
         <button class="soft-button" id="readAloudBtn" type="button" aria-pressed="false">▷ Listen</button>
         <button class="soft-button hidden" id="stopReadAloudBtn" type="button" aria-label="Stop reading aloud">■</button>
-        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" title="Reading ruler · choose column or full-page width in Aa">▰ <span class="wide">Guide</span></button>
+        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" title="Reading ruler · drag its ≡ handle or tap the page to move it; color, width, style and height live in Aa">▰ <span class="wide">Guide</span></button>
         <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar">Aa</button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar">⌕ <span class="wide">Find</span></button>
         <div class="marker-tools">
@@ -481,22 +492,22 @@
         <button class="button" id="askPageBtn">Ask page</button>
       </div>
       <div class="comfort-bar hidden" id="comfortBar">
-        <div class="group"><span>Text</span>
+        <div class="group text-only"><span>Text</span>
           <button class="step-btn" id="textSmaller" type="button" aria-label="Smaller text">A−</button>
           <span class="value" id="textSizeValue">100%</span>
           <button class="step-btn" id="textBigger" type="button" aria-label="Bigger text">A+</button>
         </div>
-        <div class="group"><span>Width</span>
+        <div class="group text-only"><span>Width</span>
           <button class="step-btn" id="widthNarrow" type="button" aria-label="Narrower column">↤</button>
           <span class="value" id="widthValue">780</span>
           <button class="step-btn" id="widthWide" type="button" aria-label="Wider column">↦</button>
         </div>
-        <div class="group"><span>Spacing</span>
+        <div class="group text-only"><span>Spacing</span>
           <button class="step-btn" id="leadTight" type="button" aria-label="Tighter lines">≡</button>
           <span class="value" id="leadValue">1.7</span>
           <button class="step-btn" id="leadLoose" type="button" aria-label="Looser lines">☰</button>
         </div>
-        <button class="toggle" id="airyBtn" type="button" aria-pressed="false">Relaxed letters</button>
+        <button class="toggle text-only" id="airyBtn" type="button" aria-pressed="false">Relaxed letters</button>
         <div class="group"><span>Guide color</span>
           <div class="guide-palette" role="group" aria-label="Reading guide color">
             <button class="guide-color" type="button" data-guide-color="yellow" aria-pressed="true">Yellow</button>
@@ -508,6 +519,19 @@
           <div class="guide-scope" role="group" aria-label="Reading guide width">
             <button class="toggle" type="button" data-guide-scope="column" aria-pressed="false">Column</button>
             <button class="toggle" type="button" data-guide-scope="page" aria-pressed="true">Full page</button>
+          </div>
+        </div>
+        <div class="group"><span>Guide style</span>
+          <div class="guide-scope" role="group" aria-label="Reading guide style">
+            <button class="toggle" type="button" data-guide-style="tint" aria-pressed="true">Tint</button>
+            <button class="toggle" type="button" data-guide-style="dim" aria-pressed="false">Line focus</button>
+          </div>
+        </div>
+        <div class="group"><span>Guide height</span>
+          <div class="guide-scope" role="group" aria-label="Reading guide height">
+            <button class="toggle" type="button" data-guide-size="s" aria-pressed="false">S</button>
+            <button class="toggle" type="button" data-guide-size="m" aria-pressed="true">M</button>
+            <button class="toggle" type="button" data-guide-size="l" aria-pressed="false">L</button>
           </div>
         </div>
         <span class="spacer"></span>
@@ -525,7 +549,11 @@
           <div class="pdf-frame" id="pdfFrame"></div>
           <article class="text-document hidden" id="textDocument"></article>
         </div>
-        <div class="pane-spotlight" id="paneSpotlight"></div>
+        <div class="pane-spotlight" id="paneSpotlight">
+          <div class="guide-shade guide-shade-top"></div>
+          <div class="guide-band" id="guideBand"><button class="guide-grip" id="guideGrip" type="button" aria-label="Drag the reading guide">≡</button></div>
+          <div class="guide-shade guide-shade-bottom"></div>
+        </div>
         <div class="recall-shield hidden" id="recallShield" aria-hidden="true"><div><span>Quick recall</span><h2>The paper is hidden.</h2><p>Explain what you just read in the page note. Pull it from memory before checking the text.</p></div></div>
         <div class="notebook-resizer" id="notebookResizer" role="separator" aria-label="Resize notes panel" aria-controls="notebook" aria-orientation="vertical" aria-valuemin="280" aria-valuemax="620" aria-valuenow="360" title="Drag to resize notes · double-click to reset" tabindex="0"></div>
         <aside class="notebook" id="notebook">
@@ -1099,13 +1127,15 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page'};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m'};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
   comfort.leading=Math.max(1.2,Math.min(2.6,+comfort.leading||1.7));
   if(['yellow','green','blue'].indexOf(comfort.guide)<0)comfort.guide='yellow';
   if(['column','page'].indexOf(comfort.guideScope)<0)comfort.guideScope='page';
+  if(['tint','dim'].indexOf(comfort.guideStyle)<0)comfort.guideStyle='tint';
+  if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   var focusPara=null, pageStartCache={}, lastGuidePoint=null;
   function paraSections(){ return byId('textDocument').querySelectorAll('.para'); }
   function applyComfort(){
@@ -1119,8 +1149,11 @@
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
     byId('paneSpotlight').dataset.guideColor=comfort.guide;
+    byId('paneSpotlight').dataset.guideStyle=comfort.guideStyle;
     document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
     document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideScope===comfort.guideScope));});
+    document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideStyle===comfort.guideStyle));});
+    document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideSize===comfort.guideSize));});
     applyFocus();
     try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}
   }
@@ -1135,8 +1168,10 @@
   byId('leadLoose').onclick=function(){stepComfort('leading',0.1,1.2,2.6,1);};
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
   document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.textContent+' reading guide');};});
-  document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();if(lastGuidePoint)setReadingGuide(lastGuidePoint.x,lastGuidePoint.y,document.elementFromPoint(lastGuidePoint.x,lastGuidePoint.y));showReaderToast(btn.textContent+' guide');};});
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';applyComfort();showReaderToast('Reading settings reset');};
+  document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
+  document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.onclick=function(){comfort.guideStyle=btn.dataset.guideStyle;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideStyle==='dim'?'Line focus · the rest of the page steps back':'Tint guide');};});
+  document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
+  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';applyComfort();showReaderToast('Reading settings reset');};
   byId('comfortBtn').onclick=function(){
     var bar=byId('comfortBar'),open=bar.classList.contains('hidden');
     bar.classList.toggle('hidden',!open);this.classList.toggle('active',open);this.setAttribute('aria-expanded',String(open));
@@ -1163,8 +1198,9 @@
   }
   function setReadingGuide(clientX,clientY,target){
     var overlay=byId('paneSpotlight'),rect=overlay.getBoundingClientRect();
+    if(!rect.width||!rect.height)return false;
     var surface=focusSurfaceAt(clientX,clientY,target),surfaceRect=surface&&surface.getBoundingClientRect();
-    if(!surfaceRect||!surfaceRect.width)return;
+    if(!surfaceRect||!surfaceRect.width)return false;
     lastGuidePoint={x:clientX,y:clientY};
     var left=surfaceRect.left,right=surfaceRect.right;
     if(readerMode==='pdf'&&comfort.guideScope==='column'){
@@ -1172,24 +1208,34 @@
       if(clientX<middle)right=middle;else left=middle;
     }
     left=Math.max(rect.left,left);right=Math.min(rect.right,right);
-    var guideHeight=Math.round(innerWidth<=720?Math.max(76,Math.min(108,rect.height*.13)):Math.max(96,Math.min(142,rect.height*.15)));
+    var sizeFactor=comfort.guideSize==='s'?.62:comfort.guideSize==='l'?1.6:1;
+    var guideHeight=Math.round((innerWidth<=720?Math.max(76,Math.min(108,rect.height*.13)):Math.max(96,Math.min(142,rect.height*.15)))*sizeFactor);
     var guideTop=Math.max(8,Math.min(rect.height-guideHeight-8,clientY-rect.top-guideHeight/2));
     overlay.style.setProperty('--guide-x',Math.round(left-rect.left)+'px');
     overlay.style.setProperty('--guide-y',Math.round(guideTop)+'px');
     overlay.style.setProperty('--guide-w',Math.max(0,Math.round(right-left))+'px');
     overlay.style.setProperty('--guide-h',guideHeight+'px');
+    overlay.classList.add('placed');
+    return true;
+  }
+  /* Re-anchor the band from its last screen point. Runs after the pages actually exist
+     (PDF layout is async), after zoom/mode changes, and as the paper scrolls beneath it. */
+  function placeGuide(){
+    if(!comfort.focus||byId('readerPage').classList.contains('hidden'))return;
+    var rect=byId('documentPane').getBoundingClientRect();
+    if(!rect.width||!rect.height)return;
+    var x=lastGuidePoint?lastGuidePoint.x:rect.left+rect.width/2,y=lastGuidePoint?lastGuidePoint.y:rect.top+rect.height*.38;
+    x=Math.max(rect.left+6,Math.min(rect.right-6,x));y=Math.max(rect.top+16,Math.min(rect.bottom-30,y));
+    setReadingGuide(x,y,document.elementFromPoint(x,y));
   }
   function applyFocus(){
     var overlay=byId('paneSpotlight'),btn=byId('focusBtn'),on=!!comfort.focus;
     overlay.classList.toggle('on',on);btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on));
-    if(on&&!overlay.style.getPropertyValue('--guide-x')){
-      var paneRect=byId('documentPane').getBoundingClientRect();
-      setReadingGuide(paneRect.left+paneRect.width/2,paneRect.top+paneRect.height*.38,document.elementFromPoint(paneRect.left+paneRect.width/2,paneRect.top+paneRect.height*.38));
-    }
+    if(on)requestAnimationFrame(placeGuide);
   }
   byId('focusBtn').onclick=function(){
     comfort.focus=!comfort.focus;applyComfort();
-    showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?'Reading guide follows your pointer':'Reading guide on · tap where you are reading'):'Reading guide off');
+    showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?'Reading guide follows your pointer':'Reading guide on · drag its ≡ handle or tap the page'):'Reading guide off');
   };
   byId('documentPane').addEventListener('pointermove',function(e){
     if(!comfort.focus||e.pointerType==='touch')return;setReadingGuide(e.clientX,e.clientY,e.target);
@@ -1199,6 +1245,19 @@
     var selection=window.getSelection&&window.getSelection();if(selection&&!selection.isCollapsed)return;
     setReadingGuide(e.clientX,e.clientY,e.target);
   });
+  var guideDragging=false;
+  byId('guideGrip').addEventListener('pointerdown',function(e){
+    guideDragging=true;this.setPointerCapture(e.pointerId);e.preventDefault();e.stopPropagation();
+  });
+  byId('guideGrip').addEventListener('pointermove',function(e){
+    if(!guideDragging)return;setReadingGuide(e.clientX,e.clientY,null);
+  });
+  function endGuideDrag(e){
+    if(!guideDragging)return;guideDragging=false;
+    if(this.hasPointerCapture&&this.hasPointerCapture(e.pointerId))this.releasePointerCapture(e.pointerId);
+  }
+  byId('guideGrip').addEventListener('pointerup',endGuideDrag);
+  byId('guideGrip').addEventListener('pointercancel',endGuideDrag);
   var NOTEBOOK_WIDTH_KEY='readingRoom.notebookWidth.v1',notebookWidth=innerWidth<=900?320:360;
   try{notebookWidth=+localStorage.getItem(NOTEBOOK_WIDTH_KEY)||notebookWidth;}catch(e){}
   function setNotebookWidth(value,save){
@@ -1217,13 +1276,13 @@
     if(!notebookDrag)return;var rect=byId('readerLayout').getBoundingClientRect();setNotebookWidth(rect.right-e.clientX,false);
   };
   function finishNotebookResize(e){
-    if(!notebookDrag)return;notebookDrag=false;document.body.classList.remove('resizing-notebook');setNotebookWidth(notebookWidth,true);if(e&&byId('notebookResizer').hasPointerCapture(e.pointerId))byId('notebookResizer').releasePointerCapture(e.pointerId);if(readerMode==='pdf'&&pdfDoc&&pdfFit)renderPdfPage();
+    if(!notebookDrag)return;notebookDrag=false;document.body.classList.remove('resizing-notebook');setNotebookWidth(notebookWidth,true);if(e&&byId('notebookResizer').hasPointerCapture(e.pointerId))byId('notebookResizer').releasePointerCapture(e.pointerId);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();
   }
   byId('notebookResizer').onpointerup=finishNotebookResize;
   byId('notebookResizer').onpointercancel=finishNotebookResize;
-  byId('notebookResizer').ondblclick=function(){setNotebookWidth(360,true);if(readerMode==='pdf'&&pdfDoc&&pdfFit)renderPdfPage();showReaderToast('Notes panel reset');};
+  byId('notebookResizer').ondblclick=function(){setNotebookWidth(360,true);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();showReaderToast('Notes panel reset');};
   byId('notebookResizer').onkeydown=function(e){
-    if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'){e.preventDefault();e.stopPropagation();setNotebookWidth(e.key==='Home'?360:notebookWidth+(e.key==='ArrowLeft'?24:-24),true);if(readerMode==='pdf'&&pdfDoc&&pdfFit)renderPdfPage();}
+    if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'){e.preventDefault();e.stopPropagation();setNotebookWidth(e.key==='Home'?360:notebookWidth+(e.key==='ArrowLeft'?24:-24),true);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();}
   };
   /* Phone chrome: the notebook rises as a bottom sheet, the bottom bar owns paging,
      and ⋯ reveals the full toolbar only when it is wanted. */
@@ -1259,7 +1318,7 @@
   var scrollSaveTimer=null;
   var pageTrackTick=false;
   byId('documentPane').addEventListener('scroll',function(){
-    if(!pageTrackTick){pageTrackTick=true;requestAnimationFrame(function(){pageTrackTick=false;trackCurrentPage();});}
+    if(!pageTrackTick){pageTrackTick=true;requestAnimationFrame(function(){pageTrackTick=false;trackCurrentPage();if(comfort.focus&&!guideDragging)placeGuide();});}
     updateProgress();
     clearTimeout(scrollSaveTimer);
     scrollSaveTimer=setTimeout(function(){
@@ -1340,7 +1399,7 @@
 
   /* reader */
   async function openReader(id,preparedDoc){
-    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfFit=true; pdfZoom=1; setHighlightMode(false); clearPendingSelection(); toggleFindBar(false);
+    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); toggleFindBar(false);
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
@@ -1373,8 +1432,7 @@
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('mView').classList.toggle('hidden',!isPdf); byId('mView').textContent=pdf?'Reader':'PDF';
     byId('askPageBtn').textContent=pdf?'Ask page':(isPdf?'Ask Reader':'Ask text');
-    byId('comfortBtn').classList.toggle('hidden',pdf);
-    if(pdf){byId('comfortBar').classList.add('hidden');byId('comfortBtn').classList.remove('active');byId('comfortBtn').setAttribute('aria-expanded','false');}
+    byId('comfortBar').classList.toggle('pdf-mode',pdf);
     if(!pdf&&ch) renderText(ch);applyFocus();updateReadAloudUi();loadPageNote();updateProgress();
   }
   byId('viewToggle').onclick=async function(){
@@ -1466,9 +1524,11 @@
      pixels arrive lazily as pages approach the viewport. Far-away canvases are freed
      again so long papers cannot exhaust a phone's canvas memory. */
   var pdfViews=[], pdfBuildId=0, pdfBuildKey='', pageObserver=null, renderedPages=[];
+  /* Zoom is a multiple of fit-to-width, so 100% always means "the page fills this pane"
+     and one − / + step feels the same on a phone as on a desktop. */
   function pageScale(natural){
     var pane=byId('documentPane'),fitWidth=Math.max(280,(pane.clientWidth||800)-1);
-    return pdfFit?fitWidth/natural.width:(4/3)*pdfZoom;
+    return (fitWidth/natural.width)*(pdfFit?1:pdfZoom);
   }
   function currentBuildKey(){return pdfDoc?[currentId,pdfDoc.numPages,pdfFit,pdfZoom,byId('documentPane').clientWidth].join('|'):'';}
   async function buildPdfScroll(){
@@ -1490,6 +1550,7 @@
     },{root:byId('documentPane'),rootMargin:'160% 0px'});
     pdfViews.forEach(function(view){pageObserver.observe(view.holder);});
     updatePageChrome();
+    if(comfort.focus)requestAnimationFrame(placeGuide);
   }
   async function renderPdfPageAt(n){
     var view=pdfViews[n-1];if(!view||view.rendered||view.rendering||!pdfDoc||view.buildId!==pdfBuildId)return;
@@ -1500,6 +1561,9 @@
       /* A slightly lower pixel ratio on narrow phones prevents large journal pages from
          exhausting Safari's canvas memory while keeping type comfortably sharp. */
       var viewport=page.getViewport({scale:scale}),ratio=Math.min(devicePixelRatio||1,innerWidth<=720?1.5:2);
+      /* Zoomed-in pages are already huge in CSS pixels; cap the backing-store area so a
+         675-page textbook at 250% cannot blow Safari's canvas memory budget. */
+      ratio=Math.max(.5,Math.min(ratio,Math.sqrt((innerWidth<=720?65e5:14e6)/Math.max(1,viewport.width*viewport.height))));
       view.holder.style.width=Math.ceil(viewport.width)+'px';view.holder.style.height=Math.ceil(viewport.height)+'px';view.holder.style.setProperty('--scale-factor',scale);
       view.canvas.width=Math.floor(viewport.width*ratio);view.canvas.height=Math.floor(viewport.height*ratio);view.canvas.style.width=Math.ceil(viewport.width)+'px';view.canvas.style.height=Math.ceil(viewport.height)+'px';
       await page.render({canvasContext:view.canvas.getContext('2d'),viewport:viewport,transform:ratio===1?null:[ratio,0,0,ratio,0,0]}).promise;
@@ -1511,9 +1575,9 @@
     finally{view.rendering=false;}
   }
   function freeFarPages(){
-    if(renderedPages.length<=12)return;
+    if(renderedPages.length<=(innerWidth<=720?8:12))return;
     renderedPages=renderedPages.filter(function(n){
-      if(Math.abs(n-currentPage)<=5)return true;
+      if(Math.abs(n-currentPage)<=(innerWidth<=720?3:5))return true;
       var view=pdfViews[n-1];if(!view)return false;
       view.canvas.width=0;view.canvas.height=0;view.text.innerHTML='';view.highlights.innerHTML='';view.rendered=false;
       if(pageObserver){pageObserver.unobserve(view.holder);pageObserver.observe(view.holder);}
@@ -1554,11 +1618,75 @@
   }
   byId('prevPage').onclick=function(){ if(currentPage>1){ clearPendingSelection();scrollToPdfPage(currentPage-1); } };
   byId('nextPage').onclick=function(){ if(pdfDoc&&currentPage<pdfDoc.numPages){ clearPendingSelection();scrollToPdfPage(currentPage+1); } };
-  function setZoom(value){pdfFit=false;pdfZoom=Math.max(.5,Math.min(2.5,value));byId('zoomLabel').textContent=Math.round(pdfZoom*100)+'%';renderPdfPage();}
-  byId('zoomOut').onclick=function(){setZoom(pdfFit ? .85 : pdfZoom-.15);};
-  byId('zoomIn').onclick=function(){setZoom(pdfFit?1.15:pdfZoom+.15);};
-  byId('zoomLabel').onclick=function(){pdfFit=true;byId('zoomLabel').textContent='Fit';renderPdfPage();};
-  byId('documentPane').addEventListener('wheel',function(e){if(readerMode==='pdf'&&(e.ctrlKey||e.metaKey)){e.preventDefault();setZoom(pdfFit ? (e.deltaY<0 ? 1.15 : .85) : pdfZoom+(e.deltaY<0 ? .1 : -.1));}},{passive:false});
+  function currentZoom(){return pdfFit?1:pdfZoom;}
+  /* Re-render at the new zoom, keeping the content under the anchor point (finger, cursor
+     or pane center) where it was, and remember the choice with the paper. */
+  async function setZoom(value,anchorX,anchorY){
+    if(!pdfDoc)return;
+    var pane=byId('documentPane'),rect=pane.getBoundingClientRect();
+    var oldZoom=currentZoom(),newZoom=Math.max(.5,Math.min(4,+value||1));
+    pdfFit=Math.abs(newZoom-1)<.001;pdfZoom=pdfFit?1:newZoom;
+    var ax=anchorX===undefined?rect.width/2:anchorX-rect.left,ay=anchorY===undefined?rect.height/2:anchorY-rect.top;
+    var f=newZoom/oldZoom,targetLeft=(pane.scrollLeft+ax)*f-ax,targetTop=(pane.scrollTop+ay)*f-ay;
+    byId('zoomLabel').textContent=pdfFit?'Fit':Math.round(pdfZoom*100)+'%';
+    if(pdfBuildKey!==currentBuildKey()||!pdfViews.length){
+      try{await buildPdfScroll();}catch(e){showError(e.message||'This PDF could not be laid out.');return;}
+      pane.scrollLeft=Math.max(0,targetLeft);pane.scrollTop=Math.max(0,targetTop);
+    }
+    var ch=find(currentId);
+    if(ch&&ch.kind==='pdf'&&ch.zoom!==(pdfFit?0:pdfZoom)){ch.zoom=pdfFit?0:pdfZoom;persist(false);}
+    if(comfort.focus)requestAnimationFrame(placeGuide);
+  }
+  byId('zoomOut').onclick=function(){setZoom(currentZoom()-.15);};
+  byId('zoomIn').onclick=function(){setZoom(currentZoom()+.15);};
+  byId('zoomLabel').onclick=function(){setZoom(1);};
+  byId('documentPane').addEventListener('wheel',function(e){if(readerMode==='pdf'&&(e.ctrlKey||e.metaKey)){e.preventDefault();setZoom(currentZoom()+(e.deltaY<0?.15:-.15),e.clientX,e.clientY);}},{passive:false});
+  /* Touch: pinch anywhere on the paper for a live preview, then a crisp re-render under
+     your fingers; double-tap hops between Fit and 160%. */
+  (function(){
+    var pane=byId('documentPane'),frame=byId('pdfFrame');
+    var pinch=null,tapStart=null,lastTapAt=0,lastTapX=0,lastTapY=0;
+    function touchDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
+    pane.addEventListener('touchstart',function(e){
+      if(readerMode!=='pdf'||!pdfDoc)return;
+      if(e.touches.length===1){var t=e.touches[0];tapStart={x:t.clientX,y:t.clientY,at:Date.now()};return;}
+      if(e.touches.length!==2)return;
+      e.preventDefault();tapStart=null;lastTapAt=0;
+      var rect=pane.getBoundingClientRect(),mx=(e.touches[0].clientX+e.touches[1].clientX)/2,my=(e.touches[0].clientY+e.touches[1].clientY)/2;
+      pinch={d:Math.max(20,touchDist(e.touches)),zoom:currentZoom(),k:1,x:mx,y:my};
+      frame.style.transformOrigin=(pane.scrollLeft+mx-rect.left)+'px '+(pane.scrollTop+my-rect.top)+'px';
+      frame.style.willChange='transform';
+    },{passive:false});
+    pane.addEventListener('touchmove',function(e){
+      if(!pinch||e.touches.length!==2)return;
+      e.preventDefault();
+      var target=Math.max(.5,Math.min(4,pinch.zoom*(touchDist(e.touches)/pinch.d)));
+      pinch.k=target/pinch.zoom;
+      frame.style.transform=Math.abs(pinch.k-1)<.005?'':'scale('+pinch.k+')';
+    },{passive:false});
+    function endPinch(e){
+      if(!pinch||(e.touches&&e.touches.length>=2))return;
+      var commit=pinch;pinch=null;
+      frame.style.transform='';frame.style.transformOrigin='';frame.style.willChange='';
+      if(Math.abs(commit.k-1)>.02)setZoom(commit.zoom*commit.k,commit.x,commit.y);
+    }
+    pane.addEventListener('touchend',endPinch);
+    pane.addEventListener('touchcancel',endPinch);
+    ['gesturestart','gesturechange'].forEach(function(name){pane.addEventListener(name,function(e){if(readerMode==='pdf'&&pdfDoc)e.preventDefault();});});
+    pane.addEventListener('touchend',function(e){
+      if(readerMode!=='pdf'||!pdfDoc||pinch||e.touches.length||!e.changedTouches||e.changedTouches.length!==1)return;
+      var t=e.changedTouches[0],at=Date.now();
+      if(!tapStart||Math.hypot(t.clientX-tapStart.x,t.clientY-tapStart.y)>24||at-tapStart.at>320){lastTapAt=0;return;}
+      if(at-lastTapAt<350&&Math.hypot(t.clientX-lastTapX,t.clientY-lastTapY)<48){
+        lastTapAt=0;
+        var sel=window.getSelection&&window.getSelection();
+        if(sel&&!sel.isCollapsed)return;
+        if(t.target&&t.target.closest&&t.target.closest('button'))return;
+        e.preventDefault();
+        setZoom(currentZoom()<=1.01?1.6:1,t.clientX,t.clientY);
+      }else{lastTapAt=at;lastTapX=t.clientX;lastTapY=t.clientY;}
+    },{passive:false});
+  })();
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
@@ -1568,9 +1696,9 @@
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
     if(readerMode!=='pdf')return;
     var pane=byId('documentPane');
-    if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(pdfFit?1.15:pdfZoom+.15);}
-    else if(e.key==='-'){e.preventDefault();setZoom(pdfFit ? .85 : pdfZoom-.15);}
-    else if(e.key==='0'){e.preventDefault();pdfFit=true;renderPdfPage();}
+    if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(currentZoom()+.15);}
+    else if(e.key==='-'){e.preventDefault();setZoom(currentZoom()-.15);}
+    else if(e.key==='0'){e.preventDefault();setZoom(1);}
     else if(e.key==='ArrowDown'){e.preventDefault();pane.scrollBy({top:74});}
     else if(e.key==='ArrowUp'){e.preventDefault();pane.scrollBy({top:-74});}
     else if(e.key===' '||e.key==='PageDown'){e.preventDefault();pane.scrollBy({top:pane.clientHeight*(e.shiftKey?-.85:.85),behavior:'smooth'});}
@@ -1582,7 +1710,7 @@
   addEventListener('resize',function(){
     if(byId('readerPage').classList.contains('hidden'))return;
     setNotebookWidth(notebookWidth,false);
-    clearTimeout(refitTimer);refitTimer=setTimeout(function(){if(readerMode==='pdf'&&pdfDoc&&pdfFit)renderPdfPage();},220);
+    clearTimeout(refitTimer);refitTimer=setTimeout(function(){if(readerMode==='pdf'&&pdfDoc)renderPdfPage();},220);
   });
   /* Map each Reader paragraph back to its PDF page, so "where was this?" is one click. */
   function paraPageStarts(ch){

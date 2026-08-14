@@ -1318,6 +1318,39 @@
     readerBuildPromises[ch.id]=(async function(){var oldText=ch.readerText||'',lines=[],paragraphs=[],pages=[];for(var p=1;p<=doc.numPages;p++){var content=await (await doc.getPage(p)).getTextContent(),layout=contentLayout(content),pageLines=layout.map(function(line){return line.text;});lines.push(pageLines);paragraphs.push(layoutToParagraphs(layout));pages.push(pageLines.join(' '));}var rebuilt=readerTextFromPages(lines,paragraphs)||pages.join('\n\n');migrateReaderAnchors(ch,oldText,rebuilt);ch.pageLines=lines;ch.pageParagraphs=paragraphs;ch.pageTexts=pages;ch.readerText=rebuilt;ch.readerV=READER_V;ch.fr=pages.join('\n\n');ch.focusPara=null;delete ch.readerScroll;ch.updatedAt=now();saveDerivedSoon(ch);persist();return ch.readerText;})().finally(function(){delete readerBuildPromises[ch.id];});
     return readerBuildPromises[ch.id];
   }
+  /* The real title lives inside the PDF: document metadata when it is sane, otherwise
+     the largest text near the top of page one. Filenames are the fallback, not the name. */
+  function filenameTitle(name){return String(name||'').replace(/\.pdf$/i,'').replace(/[_-]+/g,' ');}
+  function guessTitleFromLayout(layout){
+    if(!layout||!layout.length)return '';
+    var pageTop=0;layout.forEach(function(line){if(line.y>pageTop)pageTop=line.y;});
+    var candidates=layout.filter(function(line){
+      var text=line.text.trim();
+      return text.length>=8&&text.length<=220&&line.y>=pageTop*.25&&
+        !/^(doi\b|https?:|www\.|issn|isbn|vol\.?\s*\d|no\.?\s*\d|received\b|revised\b|accepted\b|abstract\b|keywords?\b|©|copyright)/i.test(text)&&
+        !/\d{4}\)|\(\d{4}/.test(text.slice(0,40));
+    });
+    if(!candidates.length)return '';
+    var maxHeight=0;candidates.forEach(function(line){if(line.height>maxHeight)maxHeight=line.height;});
+    var big=candidates.filter(function(line){return line.height>=maxHeight*.86;}).sort(function(a,b){return b.y-a.y;});
+    var parts=[big[0]],last=big[0];
+    for(var i=1;i<big.length;i++){
+      if(last.y-big[i].y<Math.max(last.height,big[i].height)*2.4){parts.push(big[i]);last=big[i];}
+      else break;
+    }
+    var title=parts.map(function(line){return line.text;}).join(' ').replace(/\s+/g,' ').trim();
+    if(title.length<8||title.length>220||/^\d+$/.test(title))return '';
+    return title;
+  }
+  async function derivePdfTitle(doc){
+    try{
+      var meta=await doc.getMetadata().catch(function(){return null;});
+      var infoTitle=meta&&meta.info&&String(meta.info.Title||'').replace(/\s+/g,' ').trim();
+      if(infoTitle&&infoTitle.length>=8&&infoTitle.length<=220&&!/untitled|microsoft word|powerpoint|\.pdf$|\.docx?$|\.tex$|^\d+$/i.test(infoTitle))return infoTitle;
+      var content=await (await doc.getPage(1)).getTextContent();
+      return guessTitleFromLayout(contentLayout(content));
+    }catch(e){return '';}
+  }
   async function importPdf(file, sourcePath, sourceUrl, progressBtn){
     var btn=progressBtn||byId('importPdfBtn'), old=btn.textContent, imported=false; btn.disabled=true; btn.textContent='Reading PDF…';
     try {
@@ -1325,8 +1358,9 @@
       var doc=await lib.getDocument({data:bytes.slice(0)}).promise;
       var existing=state.chapters.find(function(c){ return c.kind==='pdf' && ((sourceUrl&&c.sourceUrl===sourceUrl)||(sourcePath&&c.sourcePath===sourcePath)||(!sourcePath&&!sourceUrl&&c.sourceName===file.name)); });
       var id=existing?existing.id:uid('p'),keepPromise=putPdf(id,bytes);
-      var title=file.name.replace(/\.pdf$/i,'').replace(/[_-]+/g,' ');
+      var title=await derivePdfTitle(doc)||filenameTitle(file.name);
       var ch=existing||normalize({id:id,title:title,authors:'',kind:'pdf',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now(),readPage:1});
+      if(existing&&existing.title===filenameTitle(existing.sourceName))existing.title=title;
       ch.sourceName=file.name;ch.sourcePath=sourcePath||ch.sourcePath||'';ch.sourceUrl=sourceUrl||ch.sourceUrl||'';ch.pageCount=doc.numPages;ch.updatedAt=now();
       if(!existing)state.chapters.push(ch);persist();renderShelf();await openReader(id,doc);if(!await keepPromise)showReaderToast('PDF opened, but this browser may not keep it after closing the tab.');imported=true;
     } catch(e){ showError(e.message||'The PDF reader could not open this file.'); }
@@ -1809,6 +1843,18 @@
         else{var stored=await getPdf(ch.id);if(!stored){showMissingPdf(ch);restoreReaderPosition(ch,true);loadPageNote();updateProgress();return;}var lib=await loadPdfLib();pdfDoc=await lib.getDocument({data:await pdfBytes(stored)}).promise;}
         currentPage=Math.min(currentPage,pdfDoc.numPages);
         loadPdfOutline();
+        /* Papers still wearing their filename get their real title from the PDF itself,
+           quietly in the background. Hand-edited titles are never touched. */
+        if(ch.title===filenameTitle(ch.sourceName)){
+          var titleDoc=pdfDoc,titleId=ch.id;
+          derivePdfTitle(titleDoc).then(function(better){
+            var target=find(titleId);
+            if(!better||!target||target.title!==filenameTitle(target.sourceName)||better===target.title)return;
+            target.title=better;touch(target);
+            if(currentId===titleId)byId('readerTitle').textContent=better;
+            showReaderToast('Title read from the paper');
+          });
+        }
         if(readerMode==='text'&&!ch.readerText){await ensureReaderData(pdfDoc,ch);updateReaderMode();}
         else if(readerMode==='pdf'){renderPdfPage();if(currentPage>1)showReaderToast('Back on page '+currentPage);}
       }catch(e){showPdfProblem(ch,e);}

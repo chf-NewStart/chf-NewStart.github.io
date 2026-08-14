@@ -204,6 +204,9 @@
     .pane-spotlight[data-guide-style="dim"] .guide-shade { opacity: 1; }
     .guide-shade-top { top: 0; height: var(--guide-y, 34%); }
     .guide-shade-bottom { top: calc(var(--guide-y, 34%) + var(--guide-h, 118px)); bottom: 0; }
+    /* Side wings at band height, so in Column scope the other column dims too. */
+    .guide-shade-left { top: var(--guide-y, 34%); height: var(--guide-h, 118px); right: auto; width: var(--guide-x, 12%); }
+    .guide-shade-right { top: var(--guide-y, 34%); height: var(--guide-h, 118px); left: calc(var(--guide-x, 12%) + var(--guide-w, 38%)); }
     /* The grip only takes touches while the guide is actually visible — otherwise an
        invisible circle would sit mid-page eating taps and swipes. */
     .guide-grip { position: absolute; right: 8px; top: 50%; width: 42px; height: 42px; margin-top: -21px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--muted); font-size: .85rem; box-shadow: 0 4px 14px rgba(0,0,0,.16); pointer-events: none; touch-action: none; cursor: grab; transition: transform .15s ease; }
@@ -577,8 +580,8 @@
         </div>
         <div class="group"><span>Auto-scroll</span>
           <button class="toggle" id="driftBtn" type="button" aria-pressed="false">Off</button>
-          <input class="drift-range" id="driftRange" type="range" min="4" max="240" step="2" value="10" aria-label="Auto-scroll speed in pixels per second">
-          <span class="value" id="driftValue">10</span>
+          <input class="drift-range" id="driftRange" type="range" min="1" max="240" step="1" value="10" aria-label="Auto-scroll speed in pixels per second">
+          <span class="value" id="driftValue">10 px/s</span>
         </div>
         <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream paper</button>
         <span class="spacer"></span>
@@ -598,6 +601,8 @@
         </div>
         <div class="pane-spotlight" id="paneSpotlight">
           <div class="guide-shade guide-shade-top"></div>
+          <div class="guide-shade guide-shade-left"></div>
+          <div class="guide-shade guide-shade-right"></div>
           <div class="guide-band" id="guideBand"><button class="guide-grip" id="guideGrip" type="button" aria-label="Drag the reading guide">≡</button></div>
           <div class="guide-shade guide-shade-bottom"></div>
         </div>
@@ -1222,7 +1227,7 @@
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
   if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone='white';
-  comfort.driftSpeed=Math.max(4,Math.min(240,+comfort.driftSpeed||10));
+  comfort.driftSpeed=Math.max(1,Math.min(240,+comfort.driftSpeed||10));
   if(comfort.driftSpeed===120)comfort.driftSpeed=10; /* one-time step off the old too-fast default */
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
@@ -1240,7 +1245,7 @@
     byId('widthValue').textContent=String(comfort.measure);
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
-    byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=String(comfort.driftSpeed);
+    byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=comfort.driftSpeed+' px/s';
     byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');
     byId('creamBtn').setAttribute('aria-pressed',String(comfort.tone==='cream'));
     byId('paneSpotlight').dataset.guideColor=comfort.guide;
@@ -1419,8 +1424,8 @@
     showReaderToast(turningOff?'Auto-scroll off':'Auto-scroll · touching the page pauses it');
   };
   byId('driftRange').oninput=function(){
-    comfort.driftSpeed=Math.max(4,Math.min(240,+this.value||10));
-    byId('driftValue').textContent=String(comfort.driftSpeed);
+    comfort.driftSpeed=Math.max(1,Math.min(240,+this.value||10));
+    byId('driftValue').textContent=comfort.driftSpeed+' px/s';
     saveComfortSoon();
     if(driftSpeed)driftSpeed=comfort.driftSpeed;else setDrift(comfort.driftSpeed);
   };

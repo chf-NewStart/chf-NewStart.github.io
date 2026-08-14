@@ -548,11 +548,13 @@
       </div>
 
       <div class="command-bar">
-        <button class="button primary" id="importPdfBtn">＋ Add a paper from this device</button>
+        <button class="button primary" id="importPdfBtn">＋ Add papers from this device</button>
+        <button class="soft-button" id="folderPickBtn">⌸ Add a folder</button>
         <button class="soft-button" id="githubPickBtn">⌘ Pick from GitHub</button>
         <button class="soft-button" id="newTextBtn">✎ Paste text</button>
         <button class="soft-button" id="reviewShortcut">↻ Review</button>
-        <input class="hidden" type="file" id="pdfFile" accept=".pdf,application/pdf">
+        <input class="hidden" type="file" id="pdfFile" accept=".pdf,application/pdf" multiple>
+        <input class="hidden" type="file" id="pdfFolder" webkitdirectory>
       </div>
 
       <div class="section-head">
@@ -1212,7 +1214,10 @@
   }
   byId('reviewShortcut').onclick=function(){showPage('reviewPage');};
   byId('importPdfBtn').onclick = function(){ if(location.protocol==='file:'){ byId('launchDialog').showModal(); return; } byId('pdfFile').click(); };
-  byId('pdfFile').onchange = function(){ var f=this.files[0]; this.value=''; if(f) importPdf(f); };
+  byId('pdfFile').onchange = function(){ var files=Array.prototype.slice.call(this.files||[]); this.value=''; if(files.length)importDropped([],files); };
+  byId('folderPickBtn').onclick = function(){ if(location.protocol==='file:'){ byId('launchDialog').showModal(); return; } byId('pdfFolder').click(); };
+  byId('pdfFolder').onchange = function(){ var files=Array.prototype.slice.call(this.files||[]); this.value=''; if(files.length)importDropped([],files); };
+  if(!('webkitdirectory' in byId('pdfFolder')))byId('folderPickBtn').classList.add('hidden');
 
   function cleanPdfUrl(value){
     var match=String(value||'').trim().match(/https?:\/\/[^\s]+/i);if(!match)return '';
@@ -1281,6 +1286,7 @@
         for(var j=0;j<found.length;j++){try{pdfFiles.push(await entryFile(found[j]));}catch(e){}}
       }else{
         pdfFiles=files.filter(function(f){return f.type==='application/pdf'||/\.pdf$/i.test(f.name);});
+        if(pdfFiles.length>DROP_PDF_CAP){status.textContent='Importing the first '+DROP_PDF_CAP+' of '+pdfFiles.length+' PDFs…';pdfFiles=pdfFiles.slice(0,DROP_PDF_CAP);}
       }
     }catch(e){}
     if(!pdfFiles.length){status.textContent='No PDFs in that drop — a PDF file, a folder of PDFs, or a direct link all work.';return;}

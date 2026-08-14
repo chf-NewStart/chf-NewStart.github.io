@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Margin — a private paper desk</title>
-  <meta name="description" content="A local-first paper reader with notes, screenshot questions, sketches, connections, and optional encrypted GitHub sync.">
+  <meta name="description" content="A local-first paper reader with notes, AI questions, connections, and optional encrypted GitHub sync.">
   <meta name="robots" content="noindex">
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/tomato-apple-touch-icon.png?v=3">
   <link rel="icon" href="/favicon_io/tomato-favicon.ico?v=3" sizes="any">
@@ -297,7 +297,7 @@
     body.resizing-notebook { cursor: col-resize; user-select: none; }
     body.selecting-paper .reader-tools, body.selecting-paper .comfort-bar, body.selecting-paper .find-bar,
     body.selecting-paper .notebook, body.selecting-paper .mobile-bar, body.selecting-paper .lookup-card { user-select: none; -webkit-user-select: none; }
-    .tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
+    .tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(2, 1fr); border-bottom: 1px solid var(--line); }
     .tab { border: 0; border-bottom: 2px solid transparent; padding: 14px 5px 11px; background: transparent; color: var(--muted); font-size: .72rem; font-weight: 650; }
     .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
     .tab-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 20px; }
@@ -328,6 +328,9 @@
     .context-card img { width: 68px; height: 68px; object-fit: cover; border-radius: 5px; background: white; }
     .context-card b { display: block; margin-bottom: 3px; }
     .context-card span { color: var(--muted); }
+    .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+    .ask-chip { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 650; }
+    .ask-chip:hover { border-color: var(--accent); color: var(--ink); }
     .ask-row { display: flex; gap: 7px; }
     .ask-row .field { flex: 1; }
     .qa-list { display: grid; gap: 12px; margin-top: 18px; }
@@ -335,8 +338,6 @@
     .qa .q { font-weight: 650; font-size: .78rem; }
     .qa .a { margin-top: 6px; white-space: pre-wrap; font: .78rem/1.48 var(--serif); color: var(--muted); }
     .qa .meta { margin-top: 6px; color: var(--muted); font-size: .61rem; }
-    .sketch-wrap { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fffef8; }
-    #sketchCanvas { display: block; width: 100%; height: 430px; touch-action: none; }
 
     /* Connections */
     .connections-intro { display: grid; grid-template-columns: 1fr .65fr; gap: 38px; align-items: end; margin-bottom: 26px; }
@@ -375,6 +376,11 @@
     .github-crumbs button:hover { color: var(--ink); }
     .github-crumbs button:last-child { background: none; color: var(--ink); font-weight: 650; }
     .github-crumbs i { color: var(--muted); font-style: normal; }
+    .toc-list { display: grid; gap: 2px; }
+    .toc-item { display: block; width: 100%; padding: 9px 10px; border: 0; border-radius: 8px; background: none; text-align: left; color: var(--ink); font-size: .88rem; }
+    .toc-item:hover { background: var(--surface-2); }
+    .toc-item[data-depth="1"] { padding-left: 28px; font-size: .82rem; color: var(--muted); }
+    .toc-item[data-depth="2"] { padding-left: 46px; font-size: .78rem; color: var(--muted); }
 
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; }
@@ -454,7 +460,7 @@
         </div>
         <div class="hero-card" aria-label="How Margin works">
           <div class="step"><b>01</b><span>Paste a PDF link, drop a file, or pick one from a private GitHub folder.</span></div>
-          <div class="step"><b>02</b><span>Page notes, questions, and sketches stay attached to the paper.</span></div>
+          <div class="step"><b>02</b><span>Page notes, highlights, and AI questions stay attached to the paper.</span></div>
           <div class="step"><b>03</b><span>Shared tags reveal a small network instead of another filing cabinet.</span></div>
         </div>
       </div>
@@ -493,6 +499,7 @@
       <div class="reader-tools">
         <button class="soft-button" id="readerBack">← <span class="wide">library</span></button>
         <div class="title"><strong id="readerTitle"></strong><span id="readerMeta"></span></div>
+        <button class="soft-button hidden" id="tocBtn" type="button" title="Table of contents">☰ <span class="wide">Contents</span></button>
         <button class="soft-button hidden" id="prevPage" aria-label="Previous page">←</button>
         <span id="pageNumber" class="cloud" title="Jump to a page"></span>
         <button class="soft-button hidden" id="nextPage" aria-label="Next page">→</button>
@@ -596,11 +603,10 @@
         <aside class="notebook" id="notebook">
           <button class="sheet-close" id="sheetClose" type="button" aria-label="Close notes">✕</button>
           <div class="tabs" role="tablist">
-            <button class="tab active" data-tab="notesPanel" role="tab" aria-selected="true" aria-controls="notesPanel">Notes</button>
-            <button class="tab" data-tab="aiPanel" role="tab" aria-selected="false" aria-controls="aiPanel">Ask AI</button>
-            <button class="tab" data-tab="sketchPanel" role="tab" aria-selected="false" aria-controls="sketchPanel">Sketch</button>
+            <button class="tab active" data-tab="aiPanel" role="tab" aria-selected="true" aria-controls="aiPanel">Ask AI</button>
+            <button class="tab" data-tab="notesPanel" role="tab" aria-selected="false" aria-controls="notesPanel">Notes</button>
           </div>
-          <div class="tab-panel" id="notesPanel" role="tabpanel">
+          <div class="tab-panel hidden" id="notesPanel" role="tabpanel">
             <div class="note-heading-row"><h3 id="noteHeading">Page note</h3><button class="recall-button" id="recallBtn" type="button" aria-pressed="false">↻ Recall</button></div>
             <p class="hint">Saved as you type. Recall briefly hides the paper while you explain it from memory. Select a short term for a definition and image; ⌘Z / Ctrl+Z undoes the latest marker stroke.</p>
             <div class="recall-prompt hidden" id="recallPrompt"><b>Without looking:</b>What is the main claim? What evidence supports it? What remains unclear?<br><button id="recallDone" type="button">Done · show the paper</button></div>
@@ -613,7 +619,7 @@
             </div>
             <div class="mini-list" id="noteIndex"></div>
           </div>
-          <div class="tab-panel hidden" id="aiPanel" role="tabpanel">
+          <div class="tab-panel" id="aiPanel" role="tabpanel">
             <h3>Ask the page</h3>
             <p class="hint">Ask about the whole page, a selected passage, or whatever sits under the reading guide right now — the exact text plus a snapshot of the spot become the context. Screenshots also work; OCR happens on this device, and only text is ever sent to your chosen AI.</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -624,18 +630,19 @@
             <div class="ai-drop" id="aiDrop" tabindex="0">Paste or drop a screenshot<br><button class="text-button" id="aiFileBtn" type="button">or choose an image</button></div>
             <input class="hidden" type="file" id="aiFile" accept="image/*">
             <div class="context-card hidden" id="contextCard"><img id="contextThumb" alt="Selected context"><div><b id="contextLabel"></b><span id="contextExcerpt"></span></div></div>
+            <div class="ask-chips" role="group" aria-label="Question starters">
+              <button class="ask-chip" type="button" data-ask-stem="What is ">What is…</button>
+              <button class="ask-chip" type="button" data-ask-stem="Why ">Why…</button>
+              <button class="ask-chip" type="button" data-ask-stem="How ">How…</button>
+              <button class="ask-chip" type="button" data-ask-full="Explain this in plain, simple words.">Explain simply</button>
+              <button class="ask-chip" type="button" data-ask-full="Summarize the key points of this context in a few sentences.">Summarize</button>
+            </div>
             <div class="ask-row">
               <input class="field" id="aiQuestion" placeholder="What does this mean?">
               <button class="button" id="aiAskBtn">Ask</button>
             </div>
             <div class="status" id="aiStatus" role="status"></div>
             <div class="qa-list" id="qaList"></div>
-          </div>
-          <div class="tab-panel hidden" id="sketchPanel" role="tabpanel">
-            <h3>Scratch layer</h3>
-            <p class="hint">Draw with a finger, mouse, or Pencil. This is one loose sketch per paper, included in encrypted sync.</p>
-            <div class="sketch-wrap"><canvas id="sketchCanvas"></canvas></div>
-            <div style="margin-top:10px"><button class="soft-button" id="clearSketch">Clear sketch</button></div>
           </div>
         </aside>
       </div>
@@ -733,6 +740,11 @@
       <p>Use the local web address below while developing, or the normal houfu72.com address after publishing. Your notes still stay in this browser.</p>
       <a class="button" href="http://localhost:8000/reading.html">Open the working local version →</a>
     </div>
+  </dialog>
+
+  <dialog id="tocDialog">
+    <div class="dialog-head"><h2>Contents</h2><button class="icon-btn" data-close="tocDialog">×</button></div>
+    <div class="dialog-body"><div class="toc-list" id="tocList"></div></div>
   </dialog>
 
   <dialog id="errorDialog">
@@ -1430,7 +1442,6 @@
     if(!willOpen&&recallActive)setRecall(false);
     notebook.classList.toggle('sheet-open',willOpen);scrim.classList.toggle('hidden',!willOpen);
     byId('mNotes').setAttribute('aria-expanded',String(willOpen));
-    if(willOpen&&!byId('sketchPanel').classList.contains('hidden'))setupSketch();
   }
   byId('mNotes').onclick=function(){toggleSheet();};
   byId('sheetScrim').onclick=function(){toggleSheet(false);};
@@ -1529,6 +1540,41 @@
     currentPage=Math.max(1,page);
     if(pdfDoc){currentPage=Math.min(currentPage,pdfDoc.numPages);updatePageChrome();scrollToPdfPage(currentPage);}
   }
+  /* Table of contents from the PDF's own outline; chapters resolve to pages on tap. */
+  var pdfOutline=null;
+  async function loadPdfOutline(){
+    pdfOutline=null;byId('tocList').innerHTML='';
+    try{if(pdfDoc)pdfOutline=await pdfDoc.getOutline();}catch(e){}
+    byId('tocBtn').classList.toggle('hidden',readerMode!=='pdf'||!(pdfOutline&&pdfOutline.length));
+  }
+  function renderToc(){
+    var box=byId('tocList');
+    if(box.childElementCount||!pdfOutline)return;
+    var frag=document.createDocumentFragment();
+    (function walk(items,depth){
+      items.forEach(function(item){
+        var b=document.createElement('button');
+        b.type='button';b.className='toc-item';b.dataset.depth=String(Math.min(depth,2));
+        b.textContent=item.title||'Untitled section';
+        b.onclick=function(){tocGo(item);};
+        frag.appendChild(b);
+        if(item.items&&item.items.length&&depth<2)walk(item.items,depth+1);
+      });
+    })(pdfOutline,0);
+    box.appendChild(frag);
+  }
+  async function tocGo(item){
+    try{
+      var dest=item.dest;
+      if(typeof dest==='string')dest=await pdfDoc.getDestination(dest);
+      if(!Array.isArray(dest)||!dest.length)throw new Error('no destination');
+      var first=dest[0];
+      var index=first&&typeof first==='object'?await pdfDoc.getPageIndex(first):+first;
+      byId('tocDialog').close();
+      gotoPdfPage(index+1);
+    }catch(e){showReaderToast('Could not open that chapter');}
+  }
+  byId('tocBtn').onclick=function(){renderToc();byId('tocDialog').showModal();};
   function jumpToParagraph(index){
     var ch=find(currentId);if(!ch)return;
     if(innerWidth<=720)toggleSheet(false);
@@ -1538,17 +1584,18 @@
 
   /* reader */
   async function openReader(id,preparedDoc){
-    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); lastAskSelection=null; toggleFindBar(false);
+    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); lastAskSelection=null; toggleFindBar(false);
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
     byId('paperTags').value=(ch.tags||[]).join(', '); renderQa(); renderNoteIndex();
-    readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('notesPanel'); setupSketch();
+    readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('aiPanel');
     if(ch.kind==='pdf'){
       try{
         if(preparedDoc)pdfDoc=preparedDoc;
         else{var stored=await getPdf(ch.id);if(!stored){showMissingPdf(ch);restoreReaderPosition(ch,true);loadPageNote();updateProgress();return;}var lib=await loadPdfLib();pdfDoc=await lib.getDocument({data:await pdfBytes(stored)}).promise;}
         currentPage=Math.min(currentPage,pdfDoc.numPages);
+        loadPdfOutline();
         if(readerMode==='text'&&!ch.readerText){await ensureReaderData(pdfDoc,ch);updateReaderMode();}
         else if(readerMode==='pdf'){renderPdfPage();if(currentPage>1)showReaderToast('Back on page '+currentPage);}
       }catch(e){showPdfProblem(ch,e);}
@@ -1559,7 +1606,7 @@
     pdfViews=[];pdfBuildKey='';
     var frame=byId('pdfFrame');frame.innerHTML='<div class="missing-file"><h2>This PDF did not open on this phone.</h2><p>'+esc(error&&error.message||'The browser stopped while preparing the page.')+'</p><button class="button" data-pdf-retry>Choose the PDF again</button> '+(readerSourceText(ch)?'<button class="soft-button" data-pdf-reader>Open Reader text</button>':'')+'</div>';
     var retry=frame.querySelector('[data-pdf-retry]'),reader=frame.querySelector('[data-pdf-reader]');retry.onclick=function(){byId('importPdfBtn').click();};if(reader)reader.onclick=function(){readerMode='text';updateReaderMode();};
-    byId('prevPage').classList.add('hidden');byId('nextPage').classList.add('hidden');byId('zoomTools').classList.add('hidden');byId('pageNumber').textContent='';
+    byId('prevPage').classList.add('hidden');byId('nextPage').classList.add('hidden');byId('zoomTools').classList.add('hidden');byId('tocBtn').classList.add('hidden');byId('pageNumber').textContent='';
     byId('mPrev').classList.add('hidden');byId('mNext').classList.add('hidden');byId('mPageLabel').classList.add('hidden');
   }
   function updateReaderMode(){
@@ -1567,6 +1614,7 @@
     byId('pdfFrame').classList.toggle('hidden',!pdf); byId('textDocument').classList.toggle('hidden',pdf);
     byId('prevPage').classList.toggle('hidden',!pdf); byId('nextPage').classList.toggle('hidden',!pdf); byId('pageNumber').classList.toggle('hidden',!pdf);
     byId('zoomTools').classList.toggle('hidden',!pdf);
+    byId('tocBtn').classList.toggle('hidden',!pdf||!(pdfOutline&&pdfOutline.length));
     byId('viewToggle').classList.toggle('hidden',!isPdf); byId('viewToggle').textContent=pdf?'Reader':'PDF';
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('mView').classList.toggle('hidden',!isPdf); byId('mView').textContent=pdf?'Reader':'PDF';
@@ -1591,7 +1639,7 @@
     var help=ch.sourceUrl?'Margin can download another local copy from its original link.':'Pick <b>'+esc(ch.sourceName||'the same PDF')+'</b> from GitHub or import it again to restore the page view here.';
     byId('pdfFrame').innerHTML='<div class="missing-file"><h2>The PDF is not on this device yet.</h2><p>Your notes and extracted text synced safely. '+help+'</p>'+action+' <button class="soft-button" id="missingText">Read extracted text</button></div>';
     var source=byId('missingSource'),pick=byId('missingPick');if(source)source.onclick=async function(){var ok=await importPdfUrl(ch.sourceUrl);if(!ok)showError(byId('pdfUrlStatus').textContent||'The original link is no longer available.','Could not download that PDF');};if(pick)pick.onclick=openGithubPicker;byId('missingText').onclick=function(){ readerMode='text'; updateReaderMode(); };
-    byId('prevPage').classList.add('hidden'); byId('nextPage').classList.add('hidden'); byId('zoomTools').classList.add('hidden'); byId('pageNumber').textContent='';
+    byId('prevPage').classList.add('hidden'); byId('nextPage').classList.add('hidden'); byId('zoomTools').classList.add('hidden'); byId('tocBtn').classList.add('hidden'); byId('pageNumber').textContent='';
     byId('mPrev').classList.add('hidden');byId('mNext').classList.add('hidden');byId('mPageLabel').classList.add('hidden');
   }
   function applyDarkPdf(){
@@ -2105,27 +2153,15 @@
     });
   }
 
-  /* notebook tabs + sketch */
+  /* notebook tabs */
   function setRecall(on){
     recallActive=!!on;byId('recallShield').classList.toggle('hidden',!recallActive);byId('recallShield').setAttribute('aria-hidden',String(!recallActive));byId('recallPrompt').classList.toggle('hidden',!recallActive);byId('recallBtn').setAttribute('aria-pressed',String(recallActive));byId('recallBtn').textContent=recallActive?'Show paper':'↻ Recall';
     if(recallActive){if(innerWidth<=720)toggleSheet(true);requestAnimationFrame(function(){var note=byId('pageNote');note.focus({preventScroll:true});note.setSelectionRange(note.value.length,note.value.length);});}
   }
   byId('recallBtn').onclick=function(){setRecall(!recallActive);};
   byId('recallDone').onclick=function(){setRecall(false);};
-  function switchTab(id){ if(id!=='notesPanel'&&recallActive)setRecall(false);document.querySelectorAll('.tab').forEach(function(t){var on=t.dataset.tab===id;t.classList.toggle('active',on);t.setAttribute('aria-selected',String(on));}); ['notesPanel','aiPanel','sketchPanel'].forEach(function(p){byId(p).classList.toggle('hidden',p!==id);}); if(id==='sketchPanel') setupSketch(); }
+  function switchTab(id){ if(id!=='notesPanel'&&recallActive)setRecall(false);document.querySelectorAll('.tab').forEach(function(t){var on=t.dataset.tab===id;t.classList.toggle('active',on);t.setAttribute('aria-selected',String(on));}); ['notesPanel','aiPanel'].forEach(function(p){byId(p).classList.toggle('hidden',p!==id);}); }
   document.querySelectorAll('.tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.tab); }; });
-  function setupSketch(){
-    var canvas=byId('sketchCanvas'), ch=find(currentId); if(!ch||canvas.closest('.hidden')) return;
-    var w=canvas.clientWidth||300, h=430, ratio=Math.min(devicePixelRatio||1,2); canvas.width=w*ratio; canvas.height=h*ratio;
-    var ctx=canvas.getContext('2d'); ctx.setTransform(ratio,0,0,ratio,0,0); ctx.lineWidth=2; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#263238'; ctx.fillStyle='#fffef8'; ctx.fillRect(0,0,w,h);
-    if(ch.sketch){ var img=new Image(); img.onload=function(){ctx.drawImage(img,0,0,w,h);}; img.src=ch.sketch; }
-    var drawing=false;
-    function point(e){ var r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
-    canvas.onpointerdown=function(e){drawing=true; canvas.setPointerCapture(e.pointerId); var p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};
-    canvas.onpointermove=function(e){if(!drawing)return;var p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();};
-    canvas.onpointerup=canvas.onpointercancel=function(){if(!drawing)return;drawing=false;ch.sketch=canvas.toDataURL('image/png');touch(ch);};
-  }
-  byId('clearSketch').onclick=function(){ var ch=find(currentId); if(!ch||!confirm('Clear this sketch?'))return; ch.sketch='';touch(ch);setupSketch(); };
 
   /* Screenshot OCR -> text AI context, plus current-page questions. */
   byId('askPageBtn').onclick=function(){
@@ -2242,6 +2278,22 @@
     }catch(e){st.textContent=e.message||'OCR failed';}
   }
   byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;
+  /* Question starters: stems drop into the box for finishing; complete questions fire
+     immediately when a context is already chosen. */
+  document.querySelectorAll('.ask-chip').forEach(function(chip){
+    chip.onclick=function(){
+      var input=byId('aiQuestion');
+      if(chip.dataset.askFull){
+        input.value=chip.dataset.askFull;
+        if(aiContext&&aiContext.text){askAi();return;}
+        byId('aiStatus').textContent='Pick a context first: current page, your selection, or the guide area.';
+        input.focus({preventScroll:true});return;
+      }
+      input.value=chip.dataset.askStem||'';
+      input.focus({preventScroll:true});
+      try{input.setSelectionRange(input.value.length,input.value.length);}catch(e){}
+    };
+  });
   async function askAi(){
     var ch=find(currentId), q=byId('aiQuestion').value.trim(), key=localStorage.getItem(AI_KEY)||''; if(!q)return;
     if(!aiContext||!aiContext.text){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}
@@ -2370,6 +2422,7 @@
   byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='margin-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
 
+  if('serviceWorker' in navigator&&location.protocol!=='file:'){try{navigator.serviceWorker.register('/reading-sw.js').catch(function(){});}catch(e){}}
   syncUi();renderShelf();Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
   if(location.protocol==='file:') byId('launchDialog').showModal();
 })();

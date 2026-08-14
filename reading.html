@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Margin — a private paper desk</title>
   <meta name="description" content="A local-first paper reader with notes, screenshot questions, sketches, connections, and optional encrypted GitHub sync.">
   <meta name="robots" content="noindex">
@@ -115,7 +115,7 @@
     /* Reader */
     /* dvh: on iPads/phones 100vh is taller than the visible screen, which pushed the
        notebook's bottom (and the AI answers) off-screen with no way to reach them. */
-    #readerPage { height: calc(100vh - 68px); height: calc(100dvh - 68px); overflow: hidden; display: flex; flex-direction: column; }
+    #readerPage { height: calc(100vh - 68px); height: calc(100dvh - 68px - var(--kb-inset, 0px)); overflow: hidden; display: flex; flex-direction: column; }
     .reader-tools { flex: 0 0 auto; min-height: 54px; padding: 7px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; border-bottom: 1px solid var(--line); background: var(--surface); }
     .reader-tools .title { min-width: 0; margin-right: auto; }
     .reader-tools .title strong { display: block; max-width: min(38vw, 520px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 .9rem var(--serif); }
@@ -395,7 +395,7 @@
       .command-bar .primary { flex-basis: 100%; }
       .command-bar .soft-button { flex: 1; }
       .shelf { grid-template-columns: 1fr; }
-      #readerPage { height: calc(100vh - 60px); height: calc(100dvh - 60px); }
+      #readerPage { height: calc(100vh - 60px); height: calc(100dvh - 60px - var(--kb-inset, 0px)); }
       .reader-tools { padding: 6px 10px; }
       .reader-tools .title strong { max-width: 56vw; }
       .reader-tools .soft-button .wide { display: none; }
@@ -418,7 +418,7 @@
       .pdf-frame { min-width: 100%; margin: 0 auto; padding: 8px 0 30px; gap: 10px; }
       .text-document { width: calc(100% - 16px); margin: 8px auto; padding: 28px 22px; }
       .mobile-bar { display: flex; }
-      .notebook { position: fixed; z-index: 46; inset: auto 0 0 0; height: min(78dvh, 640px); border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: 0 -18px 60px rgba(0,0,0,.28); transform: translateY(104%); transition: transform .28s ease; }
+      .notebook { position: fixed; z-index: 46; inset: auto 0 var(--kb-inset, 0px) 0; height: min(78dvh, 640px); max-height: calc(100dvh - var(--kb-inset, 0px) - 16px); border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: 0 -18px 60px rgba(0,0,0,.28); transform: translateY(104%); transition: transform .28s ease; }
       .notebook.sheet-open { transform: none; }
       .notebook::before { content: ""; position: absolute; z-index: 3; top: 7px; left: 50%; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: var(--line); }
       .notebook .tabs { padding-top: 10px; margin-right: 52px; }
@@ -935,6 +935,26 @@
   addEventListener('scroll', function(){
     if (document.body.classList.contains('reading') && (scrollY || scrollX)) scrollTo(0, 0);
   }, { passive: true });
+  /* iOS never tells the layout about the on-screen keyboard, so the bottom half of the
+     reader — the Ask box included — vanished behind it. The visual viewport does know:
+     shrink the reader by the keyboard's height and keep the focused input in view. */
+  if (window.visualViewport) {
+    var kbRaf = null;
+    var syncKeyboardInset = function(){
+      kbRaf = null;
+      var vv = window.visualViewport;
+      var inset = document.body.classList.contains('reading') ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0;
+      if (inset < 60) inset = 0; /* small deltas are browser chrome, not a keyboard */
+      document.documentElement.style.setProperty('--kb-inset', inset + 'px');
+      if (inset) setTimeout(function(){
+        var ae = document.activeElement;
+        if (ae && ae.closest && ae.closest('.tab-panel, .find-bar, .notebook')) { try { ae.scrollIntoView({ block: 'nearest' }); } catch(e){} }
+      }, 60);
+    };
+    ['resize', 'scroll'].forEach(function(name){
+      window.visualViewport.addEventListener(name, function(){ if (!kbRaf) kbRaf = requestAnimationFrame(syncKeyboardInset); });
+    });
+  }
   document.querySelectorAll('.nav-btn').forEach(function(b){ b.onclick = function(){ showPage(b.dataset.view); }; });
   byId('brandBtn').onclick = function(){ showPage('libraryPage'); };
   byId('readerBack').onclick = function(){ stopReadAloud(true); pdfDoc = null; showPage('libraryPage'); };

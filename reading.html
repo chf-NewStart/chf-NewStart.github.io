@@ -182,8 +182,12 @@
     .pane-spotlight[data-guide-style="dim"] .guide-shade { opacity: 1; }
     .guide-shade-top { top: 0; height: var(--guide-y, 34%); }
     .guide-shade-bottom { top: calc(var(--guide-y, 34%) + var(--guide-h, 118px)); bottom: 0; }
-    .guide-grip { position: absolute; right: 8px; top: 50%; width: 42px; height: 42px; margin-top: -21px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--muted); font-size: .85rem; box-shadow: 0 4px 14px rgba(0,0,0,.16); pointer-events: auto; touch-action: none; cursor: grab; }
+    .guide-grip { position: absolute; right: 8px; top: 50%; width: 42px; height: 42px; margin-top: -21px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--muted); font-size: .85rem; box-shadow: 0 4px 14px rgba(0,0,0,.16); pointer-events: auto; touch-action: none; cursor: grab; transition: transform .15s ease; }
+    .guide-grip::before { content: ""; position: absolute; inset: -14px; border-radius: 50%; }
     .guide-grip:active { cursor: grabbing; }
+    /* While the handle is held, the band tracks the finger 1:1 with no easing lag. */
+    .pane-spotlight.dragging :is(.guide-band, .guide-shade) { transition: none; }
+    .pane-spotlight.dragging .guide-grip { transform: scale(1.14); color: var(--ink); }
     @media (hover: hover) and (pointer: fine) { .guide-grip { display: none; } }
     html[data-theme="dark"] .guide-band { background: linear-gradient(90deg, rgba(190,150,43,.05), rgba(220,177,58,.13) 12%, rgba(220,177,58,.13) 88%, rgba(190,150,43,.05)); box-shadow: inset 0 1px rgba(244,210,111,.16), inset 0 -1px rgba(137,98,19,.22); }
     html[data-theme="dark"] .pane-spotlight[data-guide-color="green"] .guide-band { background: linear-gradient(90deg, rgba(62,145,87,.05), rgba(78,171,102,.13) 12%, rgba(78,171,102,.13) 88%, rgba(62,145,87,.05)); box-shadow: inset 0 1px rgba(135,211,151,.16), inset 0 -1px rgba(31,104,52,.22); }
@@ -382,7 +386,10 @@
       #readerPage.show-tools .reader-tools > :not(.hidden):not(#prevPage):not(#nextPage):not(#pageNumber):not(#viewToggle) { display: inline-flex; }
       .reader-layout { display: block; }
       .notebook-resizer { display: none; }
-      .comfort-bar { padding: 9px 10px; gap: 7px 10px; }
+      /* One swipeable row instead of a stack that eats half the screen. */
+      .comfort-bar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 9px 10px; gap: 7px 10px; }
+      .comfort-bar::-webkit-scrollbar { display: none; }
+      .comfort-bar .group, .comfort-bar .toggle { flex: 0 0 auto; white-space: nowrap; }
       .comfort-bar .spacer { display: none; }
       .document-pane { height: 100%; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
       .pane-spotlight { inset: 0; }
@@ -1128,7 +1135,7 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m'};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
@@ -1137,6 +1144,9 @@
   if(['column','page'].indexOf(comfort.guideScope)<0)comfort.guideScope='page';
   if(['tint','dim'].indexOf(comfort.guideStyle)<0)comfort.guideStyle='tint';
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
+  comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
+  var comfortSaveTimer=null;
+  function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
   var focusPara=null, pageStartCache={}, lastGuidePoint=null;
   function paraSections(){ return byId('textDocument').querySelectorAll('.para'); }
   function applyComfort(){
@@ -1172,7 +1182,7 @@
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.onclick=function(){comfort.guideStyle=btn.dataset.guideStyle;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideStyle==='dim'?'Line focus · the rest of the page steps back':'Tint guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';applyComfort();showReaderToast('Reading settings reset');};
+  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;applyComfort();showReaderToast('Reading settings reset');};
   byId('comfortBtn').onclick=function(){
     var bar=byId('comfortBar'),open=bar.classList.contains('hidden');
     bar.classList.toggle('hidden',!open);this.classList.toggle('active',open);this.setAttribute('aria-expanded',String(open));
@@ -1217,6 +1227,8 @@
     overlay.style.setProperty('--guide-w',Math.max(0,Math.round(right-left))+'px');
     overlay.style.setProperty('--guide-h',guideHeight+'px');
     overlay.classList.add('placed');
+    comfort.guideY=Math.max(.05,Math.min(.95,(clientY-rect.top)/Math.max(1,rect.height)));
+    saveComfortSoon();
     return true;
   }
   /* Re-anchor the band from its last screen point. Runs after the pages actually exist
@@ -1225,7 +1237,7 @@
     if(!comfort.focus||byId('readerPage').classList.contains('hidden'))return;
     var rect=byId('documentPane').getBoundingClientRect();
     if(!rect.width||!rect.height)return;
-    var x=lastGuidePoint?lastGuidePoint.x:rect.left+rect.width/2,y=lastGuidePoint?lastGuidePoint.y:rect.top+rect.height*.38;
+    var x=lastGuidePoint?lastGuidePoint.x:rect.left+rect.width/2,y=lastGuidePoint?lastGuidePoint.y:rect.top+rect.height*(comfort.guideY||.38);
     x=Math.max(rect.left+6,Math.min(rect.right-6,x));y=Math.max(rect.top+16,Math.min(rect.bottom-30,y));
     setReadingGuide(x,y,document.elementFromPoint(x,y));
   }
@@ -1248,13 +1260,13 @@
   });
   var guideDragging=false;
   byId('guideGrip').addEventListener('pointerdown',function(e){
-    guideDragging=true;this.setPointerCapture(e.pointerId);e.preventDefault();e.stopPropagation();
+    guideDragging=true;byId('paneSpotlight').classList.add('dragging');this.setPointerCapture(e.pointerId);e.preventDefault();e.stopPropagation();
   });
   byId('guideGrip').addEventListener('pointermove',function(e){
     if(!guideDragging)return;setReadingGuide(e.clientX,e.clientY,null);
   });
   function endGuideDrag(e){
-    if(!guideDragging)return;guideDragging=false;
+    if(!guideDragging)return;guideDragging=false;byId('paneSpotlight').classList.remove('dragging');
     if(this.hasPointerCapture&&this.hasPointerCapture(e.pointerId))this.releasePointerCapture(e.pointerId);
   }
   byId('guideGrip').addEventListener('pointerup',endGuideDrag);
@@ -1536,6 +1548,14 @@
     if(!pdfDoc)return;var buildId=++pdfBuildId,frame=byId('pdfFrame');
     var first=await pdfDoc.getPage(1),natural=first.getViewport({scale:1}),scale=pageScale(natural);
     if(buildId!==pdfBuildId)return;
+    /* Nearby pages that were already rendered get carried over as scaled snapshots, so a
+       zoom or resize shows slightly soft paper instead of a white flash while the crisp
+       re-render catches up. */
+    var carry={};
+    frame.querySelectorAll('.pdf-page').forEach(function(holder){
+      var n=+holder.dataset.page,c=holder.querySelector('canvas');
+      if(c&&c.width&&Math.abs(n-currentPage)<=2)carry[n]=c;
+    });
     frame.innerHTML='';pdfViews=[];renderedPages=[];
     for(var i=1;i<=pdfDoc.numPages;i++){
       var holder=document.createElement('div');holder.className='pdf-page';holder.dataset.page=i;
@@ -1543,6 +1563,11 @@
       holder.innerHTML='<canvas></canvas><div class="highlight-layer"></div><div class="text-layer"></div>';
       frame.appendChild(holder);
       pdfViews.push({holder:holder,canvas:holder.children[0],highlights:holder.children[1],text:holder.children[2],rendered:false,rendering:false,buildId:buildId});
+      if(carry[i]){
+        var cw=Math.ceil(natural.width*scale),chh=Math.ceil(natural.height*scale);
+        var nc=pdfViews[i-1].canvas;nc.width=cw;nc.height=chh;
+        try{nc.getContext('2d').drawImage(carry[i],0,0,cw,chh);}catch(e){}
+      }
     }
     applyDarkPdf();pdfBuildKey=currentBuildKey();
     if(pageObserver)pageObserver.disconnect();

@@ -2678,17 +2678,16 @@
     });
     return order.sort(function(a,b){return counts[b]-counts[a];}).slice(0,6).join(' ');
   }
-  function renderEvidence(query,papers){
-    var box=byId('evidenceList');
-    var head='<div class="evidence-head">Real papers matching “'+esc(query)+'” — judge them by reading, not by rank · <a href="https://scholar.google.com/scholar?q='+encodeURIComponent(query)+'" target="_blank" rel="noopener">same search on Google Scholar ↗</a></div>';
-    box.innerHTML=head+(papers.length?papers.map(function(p){
+  function evidenceHead(query,note){
+    return '<div class="evidence-head">'+note+' <a href="https://scholar.google.com/scholar?q='+encodeURIComponent(query)+'" target="_blank" rel="noopener">open “'+esc(query)+'” on Google Scholar ↗</a></div>';
+  }
+  function evidenceCards(papers){
+    return papers.map(function(p){
       var authors=(p.authors||[]).slice(0,3).map(function(a){return a.name;}).join(', ')+((p.authors||[]).length>3?' et al.':'');
       var doi=p.externalIds&&p.externalIds.DOI,link=doi?'https://doi.org/'+doi:(p.url||'');
       var tldr=p.tldr&&p.tldr.text?'<span class="ev-tldr">'+esc(p.tldr.text)+'</span>':'';
       return '<a class="evidence-card" href="'+esc(link)+'" target="_blank" rel="noopener"><b>'+esc(p.title||'Untitled')+'</b><span class="ev-meta">'+esc(authors)+(p.year?' · '+p.year:'')+(p.venue?' · '+esc(p.venue):'')+' · cited '+(p.citationCount||0)+'×</span>'+tldr+'</a>';
-    }).join(''):'<div class="ev-meta" style="padding:6px 0">Nothing indexed matched. Try a narrower selection around one specific claim.</div>');
-    box.classList.remove('hidden');
-    box.scrollIntoView({block:'nearest',behavior:'smooth'});
+    }).join('');
   }
   /* Semantic Scholar's free pool rate-limits hard, and its rejections often arrive
      without CORS headers — the browser then reports a bare "Failed to fetch". Retry
@@ -2710,7 +2709,7 @@
   }
   async function findEvidence(){
     if(!aiContext||!aiContext.text){if(!setCurrentPageContext()){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}}
-    var btn=byId('evidenceBtn'),st=byId('aiStatus'),query='';btn.disabled=true;
+    var btn=byId('evidenceBtn'),st=byId('aiStatus'),box=byId('evidenceList'),query='';btn.disabled=true;
     try{
       var key=localStorage.getItem(AI_KEY)||'';
       if(key){
@@ -2721,19 +2720,20 @@
         }catch(e){}
       }
       if(!query)query=keywordQuery(aiContext.text);
-      if(!query)throw new Error('Could not build a search query from this context');
-      st.textContent='Searching Semantic Scholar…';
-      var found=await s2Search(query);
-      renderEvidence(query,found);
-      st.textContent=found.length?'Every result is a real indexed paper — the links go to the source.':'No matches for “'+query+'”.';
-    }catch(e){
-      if(query){
-        var box=byId('evidenceList');
-        box.innerHTML='<div class="evidence-head">Semantic Scholar didn’t answer — its free pool rate-limits hard, and ad-blockers sometimes block it. Your search still works: <a href="https://scholar.google.com/scholar?q='+encodeURIComponent(query)+'" target="_blank" rel="noopener">open “'+esc(query)+'” on Google Scholar ↗</a></div>';
-        box.classList.remove('hidden');
-        st.textContent='Semantic Scholar unreachable — use the Google Scholar link above, or try again in a minute.';
-      }else st.textContent=e.message||'Evidence search failed';
-    }
+      if(!query){st.textContent='Could not build a search query from this context.';btn.disabled=false;return;}
+      /* The reliable part first: a real literature search, one tap away, instantly. */
+      box.innerHTML=evidenceHead(query,'Search built from this claim —');
+      box.classList.remove('hidden');box.scrollIntoView({block:'nearest',behavior:'smooth'});
+      st.textContent='Fetching inline results…';
+      try{
+        var found=await s2Search(query);
+        box.innerHTML=evidenceHead(query,found.length?'Real indexed papers — judge them by reading, not by rank. More:':'Nothing indexed matched this exact phrasing — Scholar matches more loosely:')+evidenceCards(found);
+        st.textContent=found.length?'Inline results come from Semantic Scholar’s real index; links go to the source.':'Try the Google Scholar link above.';
+      }catch(e){
+        box.innerHTML=evidenceHead(query,'Inline previews are resting (Semantic Scholar rate-limits its free pool) — your search is ready:');
+        st.textContent='The Google Scholar link always works.';
+      }
+    }catch(e){st.textContent=e.message||'Evidence search failed';}
     btn.disabled=false;
   }
   byId('evidenceBtn').onclick=findEvidence;

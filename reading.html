@@ -69,6 +69,9 @@
     .page { max-width: 1240px; margin: 0 auto; padding: 46px 28px 90px; }
     .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .15em; font-size: .67rem; font-weight: 750; }
     .hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr); gap: 40px; align-items: end; margin-bottom: 42px; }
+    /* The pitch is for first visits; a working library goes straight to the shelf. */
+    body.has-papers .hero { display: none; }
+    body.has-papers #libraryPage { padding-top: 26px; }
     .hero h1 { margin: 8px 0 12px; max-width: 780px; font: 500 clamp(2.5rem, 6vw, 5.4rem)/.98 var(--serif); letter-spacing: -.055em; }
     .hero h1 em { color: var(--accent); font-weight: inherit; }
     .hero p { margin: 0; max-width: 620px; font: 1.06rem/1.65 var(--serif); color: var(--muted); }
@@ -161,6 +164,9 @@
     /* Cream paper: takes the white glare off long sessions without going dark. */
     .pdf-frame.cream:not(.dark-paper) .pdf-page { background: #f4ecdb; }
     .pdf-frame.cream:not(.dark-paper) .pdf-page canvas { filter: sepia(.26) saturate(.94) brightness(.99); }
+    /* In dark mode, cream becomes warm dark paper: the same inversion, minus the blue cast. */
+    .pdf-frame.cream.dark-paper .pdf-page { background: #1d1813; }
+    .pdf-frame.cream.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.9) sepia(.28); }
     /* Zen reading: nothing on screen but the paper. */
     body.zen .masthead, body.zen .reader-tools, body.zen .comfort-bar, body.zen .find-bar,
     body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer { display: none !important; }
@@ -328,6 +334,7 @@
     .context-card img { width: 68px; height: 68px; object-fit: cover; border-radius: 5px; background: white; }
     .context-card b { display: block; margin-bottom: 3px; }
     .context-card span { color: var(--muted); }
+    .drift-range { width: 130px; height: 30px; margin: 0; accent-color: var(--accent); }
     .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
     .ask-chip { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 650; }
     .ask-chip:hover { border-color: var(--accent); color: var(--ink); }
@@ -569,12 +576,9 @@
           </div>
         </div>
         <div class="group"><span>Auto-scroll</span>
-          <div class="guide-scope" role="group" aria-label="Auto-scroll speed">
-            <button class="toggle" type="button" data-drift="0" aria-pressed="true">Off</button>
-            <button class="toggle" type="button" data-drift="16">Slow</button>
-            <button class="toggle" type="button" data-drift="32">Med</button>
-            <button class="toggle" type="button" data-drift="60">Fast</button>
-          </div>
+          <button class="toggle" id="driftBtn" type="button" aria-pressed="false">Off</button>
+          <input class="drift-range" id="driftRange" type="range" min="30" max="360" step="10" value="120" aria-label="Auto-scroll speed in pixels per second">
+          <span class="value" id="driftValue">120</span>
         </div>
         <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream paper</button>
         <span class="spacer"></span>
@@ -754,6 +758,7 @@
 (function(){
   'use strict';
   var KEY = 'readingRoom.v1';
+  var LAST_OPEN_KEY = 'readingRoom.lastOpen.v1';
   var SYNC_KEY = 'readingRoom.sync.v1';
   var AI_KEY = 'readingRoom.ai.v1';
   var SYNC_FILE = 'reading-room.enc.json';
@@ -937,7 +942,7 @@
     /* The reader is an app screen, not a document: while it is open the page itself must
        never scroll, or the toolbar slides under the sticky masthead. */
     document.body.classList.toggle('reading', id === 'readerPage');
-    if (id !== 'readerPage') { toggleSheet(false); hideLookup(); }
+    if (id !== 'readerPage') { toggleSheet(false); hideLookup(); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){} }
     if (id === 'libraryPage') renderShelf();
     if (id === 'connectionsPage') renderConnections();
     window.scrollTo(0, 0);
@@ -1015,6 +1020,7 @@
   /* library */
   function paperHaystack(ch){ return [ch.title,ch.authors,(ch.tags||[]).join(' '),ch.sourceName,ch.sourceUrl].join(' ').toLowerCase(); }
   function renderShelf(){
+    document.body.classList.toggle('has-papers', state.chapters.length > 0);
     var q = byId('librarySearch').value.trim().toLowerCase();
     var list = state.chapters.filter(function(ch){ return !q || paperHaystack(ch).includes(q); }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
     byId('libraryCount').textContent = state.chapters.length + (state.chapters.length === 1 ? ' paper' : ' papers');
@@ -1205,7 +1211,7 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,tone:'white'};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,tone:'white',driftSpeed:120};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
@@ -1216,6 +1222,7 @@
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
   if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone='white';
+  comfort.driftSpeed=Math.max(30,Math.min(360,+comfort.driftSpeed||120));
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
   /* The guide anchors to the pane, not the screen: zen mode and bar toggles move the
@@ -1232,6 +1239,7 @@
     byId('widthValue').textContent=String(comfort.measure);
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
+    byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=String(comfort.driftSpeed);
     byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');
     byId('creamBtn').setAttribute('aria-pressed',String(comfort.tone==='cream'));
     byId('paneSpotlight').dataset.guideColor=comfort.guide;
@@ -1258,7 +1266,7 @@
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.onclick=function(){comfort.guideStyle=btn.dataset.guideStyle;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideStyle==='dim'?'Line focus · the rest of the page steps back':'Tint guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;comfort.tone='white';applyComfort();showReaderToast('Reading settings reset');};
+  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;comfort.tone='white';comfort.driftSpeed=120;if(driftSpeed)driftSpeed=120;applyComfort();showReaderToast('Reading settings reset');};
   byId('comfortBtn').onclick=function(){
     var bar=byId('comfortBar'),open=bar.classList.contains('hidden');
     bar.classList.toggle('hidden',!open);this.classList.toggle('active',open);this.setAttribute('aria-expanded',String(open));
@@ -1396,16 +1404,25 @@
   }
   function setDrift(speed){
     driftSpeed=+speed||0;driftLast=0;driftRemainder=0;driftHold=false;clearTimeout(driftResume);
-    document.querySelectorAll('[data-drift]').forEach(function(btn){btn.setAttribute('aria-pressed',String(+btn.dataset.drift===driftSpeed));});
+    byId('driftBtn').textContent=driftSpeed?'On':'Off';
+    byId('driftBtn').setAttribute('aria-pressed',String(!!driftSpeed));
     if(driftSpeed&&!driftRaf)driftRaf=requestAnimationFrame(driftTick);
   }
   function holdDrift(ms){
     if(!driftSpeed)return;driftHold=true;clearTimeout(driftResume);
     driftResume=setTimeout(function(){driftHold=false;driftLast=0;},ms);
   }
-  document.querySelectorAll('[data-drift]').forEach(function(btn){
-    btn.onclick=function(){setDrift(btn.dataset.drift);showReaderToast(driftSpeed?'Auto-scroll '+btn.textContent.toLowerCase()+' · touching the page pauses it':'Auto-scroll off');};
-  });
+  byId('driftBtn').onclick=function(){
+    var turningOff=driftSpeed>0;
+    setDrift(turningOff?0:comfort.driftSpeed);
+    showReaderToast(turningOff?'Auto-scroll off':'Auto-scroll · touching the page pauses it');
+  };
+  byId('driftRange').oninput=function(){
+    comfort.driftSpeed=Math.max(30,Math.min(360,+this.value||120));
+    byId('driftValue').textContent=String(comfort.driftSpeed);
+    saveComfortSoon();
+    if(driftSpeed)driftSpeed=comfort.driftSpeed;else setDrift(comfort.driftSpeed);
+  };
   byId('documentPane').addEventListener('touchstart',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('touchmove',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('wheel',function(){holdDrift(1500);},{passive:true});
@@ -1592,7 +1609,7 @@
 
   /* reader */
   async function openReader(id,preparedDoc){
-    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); lastAskSelection=null; toggleFindBar(false);
+    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); lastAskSelection=null; toggleFindBar(false);
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
@@ -2422,7 +2439,9 @@
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
 
   if('serviceWorker' in navigator&&location.protocol!=='file:'){try{navigator.serviceWorker.register('/reading-sw.js').catch(function(){});}catch(e){}}
-  syncUi();renderShelf();Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
+  syncUi();renderShelf();
+  /* A refresh drops you back into the paper you were reading, not the library. */
+  try{var lastOpen=localStorage.getItem(LAST_OPEN_KEY);if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
   if(location.protocol==='file:') byId('launchDialog').showModal();
 })();
 </script>

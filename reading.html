@@ -334,7 +334,7 @@
     .context-card img { width: 68px; height: 68px; object-fit: cover; border-radius: 5px; background: white; }
     .context-card b { display: block; margin-bottom: 3px; }
     .context-card span { color: var(--muted); }
-    .drift-range { width: 130px; height: 30px; margin: 0; accent-color: var(--accent); }
+    .drift-range { width: 130px; height: 30px; margin: 0; accent-color: var(--accent); touch-action: none; }
     .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
     .ask-chip { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 650; }
     .ask-chip:hover { border-color: var(--accent); color: var(--ink); }
@@ -1424,6 +1424,26 @@
     saveComfortSoon();
     if(driftSpeed)driftSpeed=comfort.driftSpeed;else setDrift(comfort.driftSpeed);
   };
+  /* Drive the slider with pointer events ourselves — the same mechanism as the guide's
+     ≡ handle — so a finger drag always moves the thumb instead of panning the bar. */
+  (function(){
+    var range=byId('driftRange'),dragging=false;
+    function setFromPointer(e){
+      var r=range.getBoundingClientRect();if(!r.width)return;
+      var min=+range.min,max=+range.max,step=+range.step||1;
+      var val=min+Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(max-min);
+      val=Math.round(val/step)*step;
+      if(String(val)!==range.value){range.value=String(val);range.dispatchEvent(new Event('input'));}
+    }
+    range.addEventListener('pointerdown',function(e){
+      dragging=true;try{range.setPointerCapture(e.pointerId);}catch(err){}
+      setFromPointer(e);e.preventDefault();
+    });
+    range.addEventListener('pointermove',function(e){if(dragging)setFromPointer(e);});
+    function stopRangeDrag(e){if(!dragging)return;dragging=false;try{range.releasePointerCapture(e.pointerId);}catch(err){}}
+    range.addEventListener('pointerup',stopRangeDrag);
+    range.addEventListener('pointercancel',stopRangeDrag);
+  })();
   byId('documentPane').addEventListener('touchstart',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('touchmove',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('wheel',function(){holdDrift(1500);},{passive:true});
@@ -2180,13 +2200,14 @@
   document.querySelectorAll('.tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.tab); }; });
 
   /* Screenshot OCR -> text AI context, plus current-page questions. */
-  byId('aiUseCurrent').onclick=function(){
-    var ch=find(currentId);if(!ch)return;
+  function setCurrentPageContext(){
+    var ch=find(currentId);if(!ch)return false;
     var text=readerMode==='pdf'?(ch.pageTexts||[])[currentPage-1]:(ch.kind==='pdf'?(ch.readerText||ch.fr):ch.fr), thumb='';
     var view=pdfViews[currentPage-1],c=view&&view.canvas; if(readerMode==='pdf'&&c&&c.width) try{thumb=makeThumb(c);}catch(e){}
     setAiContext(text||'',thumb,readerMode==='pdf'?'Page '+currentPage:(ch.kind==='pdf'?'Reader text':'Paper text'));
-    byId('aiQuestion').focus({preventScroll:true});
-  };
+    return !!text;
+  }
+  byId('aiUseCurrent').onclick=function(){if(setCurrentPageContext())byId('aiQuestion').focus({preventScroll:true});};
   /* Selection as context: the passage's exact text from the PDF's own text layer (no OCR
      round-trip) plus surrounding page text for grounding, and a snapshot of the actual
      spot cropped from the rendered page as the visual record. */
@@ -2302,9 +2323,10 @@
       var input=byId('aiQuestion');
       if(chip.dataset.askFull){
         input.value=chip.dataset.askFull;
-        if(aiContext&&aiContext.text){askAi();return;}
-        byId('aiStatus').textContent='Pick a context first: current page, your selection, or the guide area.';
-        input.focus({preventScroll:true});return;
+        if(!(aiContext&&aiContext.text))setCurrentPageContext();
+        if(aiContext&&aiContext.text)askAi();
+        else byId('aiStatus').textContent='Open a paper first, then tap this again.';
+        return;
       }
       input.value=chip.dataset.askStem||'';
       input.focus({preventScroll:true});
@@ -2317,7 +2339,7 @@
     if(!key){byId('aiStatus').innerHTML='Add your DeepSeek key in <button class="text-button" id="openAiSettings">settings</button> first.';byId('openAiSettings').onclick=function(){fillSettings();byId('settingsDialog').showModal();};return;}
     var btn=byId('aiAskBtn');btn.disabled=true;byId('aiStatus').textContent='Thinking…';
     try{
-      var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:900,messages:[{role:'system',content:'You are a concise research reading partner. Answer from the supplied excerpt. Distinguish what the excerpt says from your inference. If context is insufficient, say so.'},{role:'user',content:'Paper: '+(ch.title||'Untitled')+'\nContext ('+aiContext.label+'):\n'+aiContext.text.slice(0,24000)+'\n\nQuestion: '+q}]})});
+      var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:900,messages:[{role:'system',content:'You are a concise research reading partner. Answer from the supplied excerpt. Distinguish what the excerpt says from your inference. If context is insufficient, say so. Format the answer as short bullet points, each line starting with \u2022 and one idea per line; only skip bullets when the whole answer is a single short sentence. Plain text only, no markdown symbols.'},{role:'user',content:'Paper: '+(ch.title||'Untitled')+'\nContext ('+aiContext.label+'):\n'+aiContext.text.slice(0,24000)+'\n\nQuestion: '+q}]})});
       if(!res.ok)throw new Error('AI returned '+res.status);var data=await res.json(), answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
       ch.questions.unshift({id:uid('q'),question:q,answer:answer,contextLabel:aiContext.label,excerpt:aiContext.text.slice(0,1200),thumb:aiContext.thumb||'',at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiQuestion').value='';byId('aiStatus').textContent='Saved with this paper.';renderQa();
     }catch(e){byId('aiStatus').textContent=e.message||'AI request failed';}btn.disabled=false;

@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "BOTANY",
+            title: "Nutmeg and mace come from the same fruit",
+            fact: "Crack open a nutmeg fruit and you get two spices at once: the nutmeg is the seed, and mace is the lacy scarlet aril wrapped around it. One harvest, two jars on the spice rack.",
+            detail: "In large doses nutmeg’s myristicin is genuinely toxic, which is one reason it stays a pinch-at-a-time spice. Historically, control of the tiny nutmeg-growing Banda Islands was contested by entire empires."
+        },
+        {
+            tag: "BOTANY",
             title: "Chocolate grows straight out of tree trunks",
             fact: "Cacao pods sprout directly from the trunk and thick branches of the cacao tree — the same trunk-fruiting habit (cauliflory) as jackfruit. The Aztecs valued the beans enough to use them as actual currency.",
             detail: "The flowers are pollinated not by bees but by midges only a couple of millimeters long, which breed in the damp leaf litter of shaded plantations. No midges, no chocolate."
@@ -484,6 +490,7 @@
     // matched automatically. The daily fact-hunter job adds entries here
     // whenever a new fact introduces a strange word.
     const GLOSSARY = {
+        "aril": "a fleshy extra coat that grows around some seeds",
         "corm": "a swollen underground stem base a plant regrows from, like a bulb",
         "stigma": "the pollen-receiving tip of a flower’s female organ",
         'achene': 'a tiny dry one-seeded fruit that looks like a seed itself',

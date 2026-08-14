@@ -628,9 +628,9 @@
         <button class="toggle text-only" id="airyBtn" type="button" aria-pressed="false">Relaxed letters</button>
         <div class="group"><span>Guide color</span>
           <div class="guide-palette" role="group" aria-label="Reading guide color">
-            <button class="guide-color" type="button" data-guide-color="yellow" aria-pressed="true">Yellow</button>
-            <button class="guide-color" type="button" data-guide-color="green" aria-pressed="false">Green</button>
-            <button class="guide-color" type="button" data-guide-color="blue" aria-pressed="false">Blue</button>
+            <button class="guide-color" type="button" data-guide-color="yellow" aria-pressed="true" aria-label="Yellow guide">Y</button>
+            <button class="guide-color" type="button" data-guide-color="green" aria-pressed="false" aria-label="Green guide">G</button>
+            <button class="guide-color" type="button" data-guide-color="blue" aria-pressed="false" aria-label="Blue guide">B</button>
           </div>
         </div>
         <div class="group"><span>Guide width</span>
@@ -1523,7 +1523,7 @@
   byId('leadLoose').onclick=function(){stepComfort('leading',0.1,1.2,2.6,1);};
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
   byId('creamBtn').onclick=function(){comfort.tone=comfort.tone==='cream'?'white':'cream';applyComfort();showReaderToast(comfort.tone==='cream'?'Cream paper · easier on the eyes':'White paper');};
-  document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.textContent+' reading guide');};});
+  document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideColor.charAt(0).toUpperCase()+btn.dataset.guideColor.slice(1)+' reading guide');};});
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.onclick=function(){comfort.guideStyle=btn.dataset.guideStyle;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideStyle==='dim'?'Line focus · the rest of the page steps back':'Tint guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});

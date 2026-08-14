@@ -1227,11 +1227,11 @@
     var surface=null;
     if(readerMode==='pdf'){
       surface=target&&target.closest?target.closest('.pdf-page'):null;
-      if(!surface){
-        var pages=byId('pdfFrame').querySelectorAll('.pdf-page');
-        for(var i=0;i<pages.length;i++){var pageRect=pages[i].getBoundingClientRect();if(clientY>=pageRect.top&&clientY<=pageRect.bottom){surface=pages[i];break;}}
-        if(!surface)surface=byId('pdfFrame').querySelector('.pdf-page[data-page="'+currentPage+'"]');
+      if(!surface&&pdfViews.length){
+        var pane=byId('documentPane'),paneRect=pane.getBoundingClientRect();
+        surface=pdfViews[pdfPageIndexAtY(pane.scrollTop+(clientY-paneRect.top))].holder;
       }
+      if(!surface)surface=byId('pdfFrame').querySelector('.pdf-page[data-page="'+currentPage+'"]');
     }else surface=byId('textDocument');
     return surface;
   }
@@ -1299,6 +1299,9 @@
   }
   byId('guideGrip').addEventListener('pointerup',endGuideDrag);
   byId('guideGrip').addEventListener('pointercancel',endGuideDrag);
+  /* iOS cancels the pointer mid-drag if it decides the touch is a scroll; blocking the
+     touchmove default keeps the drag alive until the finger actually lifts. */
+  byId('guideGrip').addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
   /* Zen reading: every bar, note and button leaves; the paper gets the whole screen.
      The guide, zoom, gestures and lookup keep working on top of it. */
   var zenOn=false,zenViaFullscreen=false;
@@ -1306,7 +1309,9 @@
     zenOn=!!on;document.body.classList.toggle('zen',zenOn);
     byId('zenBtn').classList.toggle('active',zenOn);byId('zenBtn').setAttribute('aria-pressed',String(zenOn));
     if(zenOn){toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false');}
-    if(zenOn&&innerWidth>720&&document.documentElement.requestFullscreen){
+    /* Browser fullscreen only on mouse-driven devices: on iPad, system edge gestures keep
+       kicking the page out of fullscreen mid-read, which yanked the whole desk back. */
+    if(zenOn&&matchMedia('(hover: hover) and (pointer: fine)').matches&&document.documentElement.requestFullscreen){
       document.documentElement.requestFullscreen().then(function(){zenViaFullscreen=true;},function(){});
     }else if(!zenOn&&zenViaFullscreen){zenViaFullscreen=false;if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});}
     requestAnimationFrame(function(){
@@ -1686,9 +1691,12 @@
     finally{view.rendering=false;}
   }
   function freeFarPages(){
-    if(renderedPages.length<=(innerWidth<=720?8:12))return;
+    /* Only be stingy when zoomed in (big canvases); at fit size, freed pages re-render
+       visibly while scrolling and read as flicker. */
+    var tight=innerWidth<=720&&!pdfFit&&pdfZoom>1.4;
+    if(renderedPages.length<=(tight?8:12))return;
     renderedPages=renderedPages.filter(function(n){
-      if(Math.abs(n-currentPage)<=(innerWidth<=720?3:5))return true;
+      if(Math.abs(n-currentPage)<=(tight?3:5))return true;
       var view=pdfViews[n-1];if(!view)return false;
       view.canvas.width=0;view.canvas.height=0;view.text.innerHTML='';view.highlights.innerHTML='';view.rendered=false;
       if(pageObserver){pageObserver.unobserve(view.holder);pageObserver.observe(view.holder);}
@@ -1708,14 +1716,17 @@
     loadPageNote();updateProgress();
   }
   var pageSettleTimer=null;
+  /* Binary search over page offsets: measuring 600+ holders per scrolled frame was a
+     real jank source on phones. Offsets are layout values, cheap to compare. */
+  function pdfPageIndexAtY(contentY){
+    var lo=0,hi=pdfViews.length-1;
+    while(lo<hi){var mid=(lo+hi)>>1,h=pdfViews[mid].holder;if(h.offsetTop+h.offsetHeight>=contentY)hi=mid;else lo=mid+1;}
+    return lo;
+  }
   function trackCurrentPage(){
     if(readerMode!=='pdf'||!pdfViews.length)return;
-    var pane=byId('documentPane'),rect=pane.getBoundingClientRect(),line=rect.top+rect.height*.4,best=currentPage,bestDist=Infinity;
-    pdfViews.forEach(function(view,i){
-      var r=view.holder.getBoundingClientRect();if(r.bottom<rect.top||r.top>rect.bottom)return;
-      if(r.top<=line&&r.bottom>=line){best=i+1;bestDist=-1;return;}
-      if(bestDist>=0){var d=Math.min(Math.abs(r.top-line),Math.abs(r.bottom-line));if(d<bestDist){bestDist=d;best=i+1;}}
-    });
+    var pane=byId('documentPane');
+    var best=pdfPageIndexAtY(pane.scrollTop+pane.clientHeight*.4)+1;
     if(best!==currentPage){
       currentPage=best;updatePageChrome();
       clearTimeout(pageSettleTimer);
@@ -1770,8 +1781,11 @@
     var pane=byId('documentPane'),frame=byId('pdfFrame');
     var pinch=null,tapStart=null,lastTapAt=0,lastTapX=0,lastTapY=0;
     /* One-finger swipes lock to their dominant axis, so reading down a zoomed page
-       cannot drift sideways; a clearly horizontal swipe still pans across. */
-    var scrollLock=null,scrollLockIdle=null;
+       cannot drift sideways; a clearly horizontal swipe still pans across. The lock only
+       acts while the finger is down — iOS momentum scrolling runs on its own thread, and
+       correcting it from JS arrives a frame late and reads as jitter. A locked drag
+       releases with no sideways velocity, so the fling stays straight on its own. */
+    var scrollLock=null;
     function touchDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
     pane.addEventListener('touchstart',function(e){
       if(readerMode!=='pdf'||!pdfDoc)return;
@@ -1802,9 +1816,15 @@
       if(!scrollLock||!scrollLock.axis)return;
       if(scrollLock.axis==='y'&&pane.scrollLeft!==scrollLock.left)pane.scrollLeft=scrollLock.left;
       else if(scrollLock.axis==='x'&&pane.scrollTop!==scrollLock.top)pane.scrollTop=scrollLock.top;
-      /* The lock has to survive momentum, so it clears only once scrolling goes quiet. */
-      clearTimeout(scrollLockIdle);scrollLockIdle=setTimeout(function(){scrollLock=null;},250);
     });
+    function releaseScrollLock(e){
+      if(!scrollLock||(e.touches&&e.touches.length))return;
+      if(scrollLock.axis==='y')pane.scrollLeft=scrollLock.left;
+      else if(scrollLock.axis==='x')pane.scrollTop=scrollLock.top;
+      scrollLock=null;
+    }
+    pane.addEventListener('touchend',releaseScrollLock,{passive:true});
+    pane.addEventListener('touchcancel',releaseScrollLock,{passive:true});
     function endPinch(e){
       if(!pinch||(e.touches&&e.touches.length>=2))return;
       var commit=pinch;pinch=null;

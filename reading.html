@@ -2850,9 +2850,10 @@
   /* encrypted GitHub state sync + PDF picker */
   function fillSettings(){
     byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncLinkBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);byId('aiKey').value=localStorage.getItem(AI_KEY)||'';
-    byId('gdriveConnectBtn').textContent=gdriveOn()?'Reconnect Google Drive':'Connect Google Drive';
+    byId('gdriveConnectBtn').textContent=gdriveOn()?'Sign in again':'Connect Google Drive';
+    byId('gdriveConnectBtn').classList.toggle('button',!gdriveOn());byId('gdriveConnectBtn').classList.toggle('soft-button',gdriveOn());
     byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
-    if(!gdriveOn())byId('gdriveStatus').textContent='Not connected.';
+    byId('gdriveStatus').textContent=gdriveOn()?'Connected — your library syncs automatically. Papers follow you between devices.':'Not connected.';
     syncUi();refreshInstallUi();
   }
   function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(on?'☁ '+syncCfg.repo:gdriveOn()?'☁ Google Drive':'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}

@@ -2659,7 +2659,7 @@
     try{
       var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:900,messages:[{role:'system',content:'You are a concise research reading partner. Answer from the supplied excerpt. Distinguish what the excerpt says from your inference. If context is insufficient, say so. Format the answer as short bullet points, each line starting with \u2022 and one idea per line; only skip bullets when the whole answer is a single short sentence. Plain text only, no markdown symbols.'},{role:'user',content:'Paper: '+(ch.title||'Untitled')+'\nContext ('+aiContext.label+'):\n'+aiContext.text.slice(0,24000)+'\n\nQuestion: '+q}]})});
       if(!res.ok)throw new Error('AI returned '+res.status);var data=await res.json(), answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
-      ch.questions.unshift({id:uid('q'),question:q,answer:answer,contextLabel:aiContext.label,excerpt:aiContext.text.slice(0,1200),thumb:aiContext.thumb||'',at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiQuestion').value='';growQuestionBox();byId('aiStatus').textContent='Saved with this paper.';renderQa();var firstQa=byId('qaList').firstElementChild;if(firstQa)firstQa.scrollIntoView({block:'nearest',behavior:'smooth'});
+      ch.questions.unshift({id:uid('q'),question:q,answer:answer,contextLabel:aiContext.label,excerpt:aiContext.text.slice(0,1200),thumb:aiContext.thumb||'',at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiQuestion').value='';growQuestionBox();byId('aiStatus').textContent='Saved with this paper.';renderQa();var qaBox=byId('qaList');qaBox.parentNode.insertBefore(qaBox,byId('evidenceList'));if(qaBox.firstElementChild)qaBox.firstElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
     }catch(e){byId('aiStatus').textContent=e.message||'AI request failed';}btn.disabled=false;
   }
   function renderQa(){var ch=find(currentId);if(!ch)return;byId('qaList').innerHTML=(ch.questions||[]).map(function(x){return '<article class="qa"><div class="q">'+esc(x.question)+'</div><div class="a">'+esc(x.answer)+'</div><div class="meta">'+esc(x.contextLabel||'context')+' · '+new Date(x.at).toLocaleDateString()+'</div></article>';}).join('');}
@@ -2723,7 +2723,9 @@
       if(!query){st.textContent='Could not build a search query from this context.';btn.disabled=false;return;}
       /* The reliable part first: a real literature search, one tap away, instantly. */
       box.innerHTML=evidenceHead(query,'Search built from this claim —');
-      box.classList.remove('hidden');box.scrollIntoView({block:'nearest',behavior:'smooth'});
+      box.classList.remove('hidden');
+      var qa=byId('qaList');qa.parentNode.insertBefore(box,qa);
+      box.scrollIntoView({block:'nearest',behavior:'smooth'});
       st.textContent='Fetching inline results…';
       try{
         var found=await s2Search(query);

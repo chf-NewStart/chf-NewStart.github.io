@@ -538,7 +538,7 @@
       <button class="nav-btn" id="installNav">Install app</button>
     </nav>
     <div class="head-actions">
-      <button class="cloud" id="syncSignal" type="button" title="Open sync settings">this device</button>
+      <button class="cloud" id="syncSignal" type="button" title="Sync now">this device</button>
       <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
       <a class="icon-btn" id="homeLink" href="/" aria-label="Back to houfu72.com">↗</a>
@@ -3054,7 +3054,14 @@
   }
   importSetup();
   addEventListener('hashchange',importSetup);
-  byId('syncSignal').onclick=function(){fillSettings();byId('settingsDialog').showModal();};
+  /* Clicking the cloud syncs right now — and because it is a real user gesture,
+     Google's silent token renewal is allowed to do its quick popup dance, which
+     background syncs cannot. Settings only open when there is an error to look at. */
+  byId('syncSignal').onclick=function(){
+    var standingError=byId('syncSignal').title;
+    doSync();gdriveSync();
+    if(standingError){fillSettings();byId('settingsDialog').showModal();}
+  };
 
   var lastSyncToast='';
   var githubPath='papers';

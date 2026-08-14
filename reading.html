@@ -461,6 +461,51 @@
       #installNav { display: none; }
       .head-actions { gap: 3px; }
       .masthead .icon-btn { width: 32px; min-height: 32px; flex: 0 0 auto; }
+      /* Reading is its own phone screen. The site navigation disappears and the paper,
+         not a squeezed desktop sidebar, owns the viewport. */
+      body.reading .masthead { display: none; }
+      body.reading main { min-height: 100vh; min-height: 100dvh; }
+      #readerPage { height: calc(100vh - var(--kb-inset, 0px)); height: calc(100dvh - var(--kb-inset, 0px)); }
+      .reader-tools { min-height: 54px; padding: 6px 8px; flex-wrap: nowrap; gap: 6px; overflow: hidden; }
+      .reader-tools .title { flex: 1 1 auto; margin-right: 0; }
+      .reader-tools .title strong { max-width: calc(100vw - 72px); font-size: .86rem; }
+      .reader-tools .title span { display: none; }
+      .reader-tools .soft-button .wide { display: none; }
+      #readerBack { flex: 0 0 42px; width: 42px; min-height: 42px; padding: 0; border-color: transparent; background: transparent; font-size: 1.15rem; }
+      /* Default: only back + title. More turns the same row into a compact, sideways
+         tool tray; it never becomes the two-storey button wall shown on desktop. */
+      .reader-tools > :not(#readerBack):not(.title) { display: none; }
+      #readerPage.show-tools .reader-tools { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      #readerPage.show-tools .reader-tools::-webkit-scrollbar { display: none; }
+      #readerPage.show-tools .reader-tools .title { display: none; }
+      #readerPage.show-tools .reader-tools > :not(.hidden):not(.title):not(#prevPage):not(#nextPage):not(#pageNumber) { display: inline-flex; flex: 0 0 auto; }
+      .reader-layout { display: block; }
+      .notebook-resizer { display: none; }
+      /* One swipeable display row instead of controls stacked above the paper. */
+      .comfort-bar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 8px 10px; gap: 7px 10px; }
+      .comfort-bar::-webkit-scrollbar { display: none; }
+      .comfort-bar .group, .comfort-bar .toggle { flex: 0 0 auto; white-space: nowrap; }
+      .comfort-bar .spacer { display: none; }
+      .document-pane { height: 100%; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+      .pane-spotlight { inset: 0; }
+      .recall-shield { inset: 0; place-items: start center; padding-top: 12dvh; }
+      .lookup-card { left: 12px !important; right: 12px; top: auto !important; bottom: calc(66px + env(safe-area-inset-bottom)); width: auto; max-height: min(48dvh, 410px); }
+      .lookup-photo-link { height: 126px; }
+      .pdf-frame { min-width: 100%; margin: 0 auto; padding: 8px 0 24px; gap: 10px; }
+      .text-document { width: calc(100% - 16px); margin: 8px auto; padding: 28px 22px; }
+      .mobile-bar { display: flex; gap: 2px; padding: 5px 7px calc(5px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 24px rgba(30,34,35,.08); }
+      .mobile-bar button { flex: 0 0 44px; min-height: 44px; padding: 0 5px; border: 0; border-radius: 10px; background: transparent; font-size: .72rem; }
+      .mobile-bar .m-page { min-width: 44px; font-size: .68rem; }
+      .mobile-bar #mAsk, .mobile-bar #mNotes { flex: 1 1 68px; max-width: 96px; }
+      .mobile-bar #mMore { font-size: 1.15rem; }
+      .mobile-bar #mAsk[aria-expanded="true"], .mobile-bar #mNotes[aria-expanded="true"], .mobile-bar #mMore[aria-expanded="true"] { color: var(--accent); background: var(--accent-soft); }
+      .notebook { position: fixed; z-index: 46; inset: auto 0 var(--kb-inset, 0px) 0; height: min(74dvh, 620px); max-height: calc(100dvh - var(--kb-inset, 0px) - 12px); border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: 0 -18px 60px rgba(0,0,0,.28); transform: translateY(104%); transition: transform .28s ease; }
+      .notebook.sheet-open { transform: none; }
+      .notebook::before { content: ""; position: absolute; z-index: 3; top: 7px; left: 50%; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: var(--line); }
+      .notebook .tabs { padding-top: 10px; margin-right: 52px; }
+      .sheet-close { position: absolute; z-index: 4; top: 10px; right: 10px; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); font-size: 1rem; }
+      .sheet-scrim { display: block; position: fixed; z-index: 45; inset: 0; background: rgba(12,16,18,.4); }
+      .tab-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
     }
     @media (max-width: 360px) {
       #homeLink { display: none; }
@@ -476,36 +521,6 @@
       .command-bar .primary { flex-basis: 100%; }
       .command-bar .soft-button { flex: 1; }
       .shelf { grid-template-columns: 1fr; }
-      #readerPage { height: calc(100vh - 60px); height: calc(100dvh - 60px - var(--kb-inset, 0px)); }
-      .reader-tools { padding: 6px 10px; }
-      .reader-tools .title strong { max-width: 56vw; }
-      .reader-tools .soft-button .wide { display: none; }
-      /* The top bar keeps only back + title; everything else waits behind the ⋯ button
-         in the bottom bar, so the page itself gets the screen. */
-      .reader-tools > :not(#readerBack):not(.title) { display: none; }
-      #readerPage.show-tools .reader-tools > :not(.hidden):not(#prevPage):not(#nextPage):not(#pageNumber) { display: inline-flex; }
-      .reader-layout { display: block; }
-      .notebook-resizer { display: none; }
-      /* One swipeable row instead of a stack that eats half the screen. */
-      .comfort-bar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 9px 10px; gap: 7px 10px; }
-      .comfort-bar::-webkit-scrollbar { display: none; }
-      .comfort-bar .group, .comfort-bar .toggle { flex: 0 0 auto; white-space: nowrap; }
-      .comfort-bar .spacer { display: none; }
-      .document-pane { height: 100%; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-      .pane-spotlight { inset: 0; }
-      .recall-shield { inset: 0; place-items: start center; padding-top: 12dvh; }
-      .lookup-card { left: 12px !important; right: 12px; top: auto !important; bottom: calc(72px + env(safe-area-inset-bottom)); width: auto; max-height: min(48dvh, 410px); }
-      .lookup-photo-link { height: 126px; }
-      .pdf-frame { min-width: 100%; margin: 0 auto; padding: 8px 0 30px; gap: 10px; }
-      .text-document { width: calc(100% - 16px); margin: 8px auto; padding: 28px 22px; }
-      .mobile-bar { display: flex; }
-      .notebook { position: fixed; z-index: 46; inset: auto 0 var(--kb-inset, 0px) 0; height: min(78dvh, 640px); max-height: calc(100dvh - var(--kb-inset, 0px) - 16px); border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: 0 -18px 60px rgba(0,0,0,.28); transform: translateY(104%); transition: transform .28s ease; }
-      .notebook.sheet-open { transform: none; }
-      .notebook::before { content: ""; position: absolute; z-index: 3; top: 7px; left: 50%; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: var(--line); }
-      .notebook .tabs { padding-top: 10px; margin-right: 52px; }
-      .sheet-close { position: absolute; z-index: 4; top: 10px; right: 10px; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); font-size: 1rem; }
-      .sheet-scrim { display: block; position: fixed; z-index: 45; inset: 0; background: rgba(12,16,18,.4); }
-      .tab-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
       #networkCanvas { height: 390px; }
     }
   </style>
@@ -736,6 +751,7 @@
         <button id="mPrev" type="button" aria-label="Previous page">←</button>
         <span class="m-page" id="mPageLabel" title="Jump to a page"></span>
         <button id="mNext" type="button" aria-label="Next page">→</button>
+        <button id="mAsk" type="button" aria-expanded="false">✦ Ask</button>
         <button id="mNotes" type="button" aria-expanded="false">✎ Notes</button>
         <button id="mMore" type="button" aria-expanded="false" aria-label="More tools">⋯</button>
       </div>
@@ -1051,6 +1067,7 @@
        never scroll, or the toolbar slides under the sticky masthead. */
     document.body.classList.toggle('reading', id === 'readerPage');
     if (id !== 'readerPage') { toggleSheet(false); hideLookup(); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){} }
+    if (id === 'readerPage' && innerWidth <= 720) { toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false'); }
     if (id === 'libraryPage') renderShelf();
     if (id === 'reviewPage') renderReview();
     if (id === 'connectionsPage') renderConnections();
@@ -1803,17 +1820,24 @@
   };
   /* Phone chrome: the notebook rises as a bottom sheet, the bottom bar owns paging,
      and ⋯ reveals the full toolbar only when it is wanted. */
+  function syncMobileSheetButtons(){
+    var open=byId('notebook').classList.contains('sheet-open'),aiOpen=!byId('aiPanel').classList.contains('hidden');
+    byId('mAsk').setAttribute('aria-expanded',String(open&&aiOpen));
+    byId('mNotes').setAttribute('aria-expanded',String(open&&!aiOpen));
+  }
   function toggleSheet(open){
     var notebook=byId('notebook'),scrim=byId('sheetScrim'),willOpen=open!==undefined?open:!notebook.classList.contains('sheet-open');
     if(!willOpen&&recallActive)setRecall(false);
     notebook.classList.toggle('sheet-open',willOpen);scrim.classList.toggle('hidden',!willOpen);
-    byId('mNotes').setAttribute('aria-expanded',String(willOpen));
+    syncMobileSheetButtons();
     var hideSheet=innerWidth<=720&&!willOpen;
     try{byId('notebook').inert=hideSheet;}catch(e){}
     byId('notebook').setAttribute('aria-hidden',String(hideSheet));
     if(hideSheet&&byId('notebook').contains(document.activeElement)){try{document.activeElement.blur();}catch(e){}}
   }
-  byId('mNotes').onclick=function(){toggleSheet();};
+  function toggleMobileTab(id){var same=id==='aiPanel'?!byId('aiPanel').classList.contains('hidden'):!byId('notesPanel').classList.contains('hidden');if(same&&byId('notebook').classList.contains('sheet-open'))toggleSheet(false);else{switchTab(id);toggleSheet(true);}}
+  byId('mAsk').onclick=function(){toggleMobileTab('aiPanel');};
+  byId('mNotes').onclick=function(){toggleMobileTab('notesPanel');};
   byId('sheetScrim').onclick=function(){toggleSheet(false);};
   byId('sheetClose').onclick=function(){toggleSheet(false);};
   byId('mMore').onclick=function(){
@@ -2551,7 +2575,7 @@
   }
   byId('recallBtn').onclick=function(){setRecall(!recallActive);};
   byId('recallDone').onclick=function(){setRecall(false);};
-  function switchTab(id){ if(id!=='notesPanel'&&recallActive)setRecall(false);document.querySelectorAll('.tab').forEach(function(t){var on=t.dataset.tab===id;t.classList.toggle('active',on);t.setAttribute('aria-selected',String(on));}); ['notesPanel','aiPanel'].forEach(function(p){byId(p).classList.toggle('hidden',p!==id);}); }
+  function switchTab(id){ if(id!=='notesPanel'&&recallActive)setRecall(false);document.querySelectorAll('.tab').forEach(function(t){var on=t.dataset.tab===id;t.classList.toggle('active',on);t.setAttribute('aria-selected',String(on));}); ['notesPanel','aiPanel'].forEach(function(p){byId(p).classList.toggle('hidden',p!==id);});syncMobileSheetButtons(); }
   document.querySelectorAll('.tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.tab); }; });
 
   /* Screenshot OCR -> text AI context, plus current-page questions. */

@@ -1614,6 +1614,21 @@
     saveComfortSoon();
     showReaderToast(comfort.guideLock?'Guide pinned to this line · click the paper to release':'Guide follows your pointer');
   });
+  /* Double-click inside the band, on a wordless spot, flips it between full-page and
+     one-column width. Double-clicking a word still just selects the word. */
+  byId('documentPane').addEventListener('dblclick',function(e){
+    if(!comfort.focus||readerMode!=='pdf'||!matchMedia('(hover: hover)').matches)return;
+    var selection=window.getSelection&&window.getSelection();
+    if(selection&&!selection.isCollapsed)return;
+    var overlay=byId('paneSpotlight'),rect=overlay.getBoundingClientRect();
+    var top=rect.top+(parseFloat(overlay.style.getPropertyValue('--guide-y'))||0);
+    var bottom=top+(parseFloat(overlay.style.getPropertyValue('--guide-h'))||0);
+    if(e.clientY<top||e.clientY>bottom)return;
+    comfort.guideScope=comfort.guideScope==='page'?'column':'page';
+    applyComfort();
+    setReadingGuide(e.clientX,e.clientY,e.target);
+    showReaderToast(comfort.guideScope==='column'?'Guide hugs one column · double-click to widen':'Guide spans the page · double-click for one column');
+  });
   var guideDragging=false;
   byId('guideGrip').addEventListener('pointerdown',function(e){
     guideDragging=true;byId('paneSpotlight').classList.add('dragging');try{this.setPointerCapture(e.pointerId);}catch(err){}e.preventDefault();e.stopPropagation();

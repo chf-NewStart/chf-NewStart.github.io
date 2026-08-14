@@ -604,7 +604,7 @@
   </dialog>
 
   <dialog id="errorDialog">
-    <div class="dialog-head"><h2>Could not open that paper</h2><button class="icon-btn" data-close="errorDialog">×</button></div>
+    <div class="dialog-head"><h2 id="errorTitle">Could not open that paper</h2><button class="icon-btn" data-close="errorDialog">×</button></div>
     <div class="dialog-body"><p id="errorMessage"></p></div>
   </dialog>
 
@@ -641,32 +641,26 @@
     try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.chapters)) { s.chapters.forEach(normalize);s.deleted=s.deleted||{};s.chapters=s.chapters.filter(function(ch){return !s.deleted[ch.id];});return s; } } catch(e){}
     return { chapters: [], deleted: {} };
   }
-  /* localStorage is small and a PDF's extracted text is not. If a save overflows, drop the
-     rebuildable text of papers you are not reading and try once more before complaining. */
+  /* localStorage is deliberately only for small, frequently edited state. Rebuildable PDF
+     text lives beside the PDFs in IndexedDB, while encrypted sync may still carry it. */
   var storageWarned = false;
-  function slimStoredText(){
-    var freed = false;
-    state.chapters.slice().sort(function(a,b){ return (a.updatedAt||0)-(b.updatedAt||0); }).forEach(function(ch){
-      if (ch.kind !== 'pdf' || ch.id === currentId) return;
-      ['pageLines','fr','pageTexts'].forEach(function(field){ if (ch[field]) { delete ch[field]; freed = true; } });
-    });
-    return freed;
+  var DERIVED_FIELDS=['pageLines','pageParagraphs','pageTexts','readerText','readerV','fr'];
+  function localState(){
+    var copy=Object.assign({},state);copy.chapters=state.chapters.map(function(ch){var item=Object.assign({},ch);if(item.kind==='pdf')DERIVED_FIELDS.forEach(function(field){delete item[field];});return item;});return copy;
   }
   function persist(schedule){
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    try { localStorage.setItem(KEY, JSON.stringify(localState()));storageWarned=false; }
     catch(e){
-      var saved = false;
-      if (slimStoredText()) { try { localStorage.setItem(KEY, JSON.stringify(state)); saved = true; } catch(e2){} }
-      if (!saved && !storageWarned) {
+      if (!storageWarned) {
         storageWarned = true;
-        showError('This browser has run out of local storage, so the newest note could not be saved here. Turn on encrypted GitHub sync, or remove a paper you have finished, then edit the note again.');
+        showError('Margin could not save the newest change because this browser’s small note store is full. Remove a finished paper or turn on encrypted GitHub sync, then try that edit once more.','Margin needs a little room');
       }
     }
     if (schedule !== false) scheduleSync();
   }
   function find(id){ return state.chapters.find(function(ch){ return ch.id === id; }); }
   function touch(ch){ ch.updatedAt = now(); persist(); }
-  function showError(message){ byId('errorMessage').textContent=message; if(!byId('errorDialog').open) byId('errorDialog').showModal(); }
+  function showError(message,title){ byId('errorTitle').textContent=title||'Could not open that paper';byId('errorMessage').textContent=message; if(!byId('errorDialog').open) byId('errorDialog').showModal(); }
   function showReaderToast(message){var toast=byId('readerToast');clearTimeout(readerToastTimer);toast.textContent=message;toast.classList.remove('hidden');readerToastTimer=setTimeout(function(){toast.classList.add('hidden');},1800);}
 
   /* A selection stays on the paper while this small, source-labelled reference card
@@ -807,11 +801,11 @@
 
   /* IndexedDB keeps actual PDFs local without choking localStorage. ArrayBuffers are
      more reliable than Blob records in older iPhone Safari; memory is a last-resort fallback. */
-  var memoryPdfs={};
+  var memoryPdfs={},memoryDerived={},derivedTimers={};
   function db(){
     return new Promise(function(resolve, reject){
-      var req = indexedDB.open('marginFiles', 1);
-      req.onupgradeneeded = function(){ if (!req.result.objectStoreNames.contains('pdfs')) req.result.createObjectStore('pdfs'); };
+      var req = indexedDB.open('marginFiles', 2);
+      req.onupgradeneeded = function(){ if (!req.result.objectStoreNames.contains('pdfs')) req.result.createObjectStore('pdfs');if(!req.result.objectStoreNames.contains('derived'))req.result.createObjectStore('derived'); };
       req.onsuccess = function(){ resolve(req.result); }; req.onerror = function(){ reject(req.error); };
     });
   }
@@ -824,7 +818,25 @@
     try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('pdfs').objectStore('pdfs').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
     return memoryPdfs[id]||null;
   }
-  async function deletePdf(id){delete memoryPdfs[id];try{var d=await db();return new Promise(function(res){var r=d.transaction('pdfs','readwrite').objectStore('pdfs').delete(id);r.onsuccess=res;r.onerror=res;});}catch(e){}}
+  function derivedData(ch){var record={},has=false;DERIVED_FIELDS.forEach(function(field){if(Object.prototype.hasOwnProperty.call(ch,field)){record[field]=ch[field];has=true;}});return has?record:null;}
+  async function putDerived(ch){
+    if(!ch||ch.kind!=='pdf')return false;var record=derivedData(ch);if(!record)return false;memoryDerived[ch.id]=record;
+    try{var d=await db();await new Promise(function(res,rej){var r=d.transaction('derived','readwrite').objectStore('derived').put(record,ch.id);r.onsuccess=res;r.onerror=function(){rej(r.error);};});delete memoryDerived[ch.id];return true;}catch(e){return false;}
+  }
+  function saveDerivedSoon(ch){if(!ch||ch.kind!=='pdf')return;clearTimeout(derivedTimers[ch.id]);derivedTimers[ch.id]=setTimeout(function(){delete derivedTimers[ch.id];putDerived(ch);},500);}
+  async function getDerived(id){
+    try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('derived').objectStore('derived').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
+    return memoryDerived[id]||null;
+  }
+  function mergeDerivedInto(ch,saved){var changed=false;if(!ch||!saved)return changed;DERIVED_FIELDS.forEach(function(field){var incoming=saved[field],current=ch[field];if(incoming===undefined)return;if(current===undefined||current===null||(Array.isArray(incoming)&&(!Array.isArray(current)||incoming.length>current.length))){ch[field]=incoming;changed=true;}});return changed;}
+  async function hydrateDerived(ch){
+    if(!ch||ch.kind!=='pdf')return ch;var saved=await getDerived(ch.id);if(!saved)return ch;
+    mergeDerivedInto(ch,saved);return ch;
+  }
+  async function deletePdf(id){
+    delete memoryPdfs[id];delete memoryDerived[id];clearTimeout(derivedTimers[id]);delete derivedTimers[id];
+    try{var d=await db();return Promise.all(['pdfs','derived'].map(function(store){return new Promise(function(res){var r=d.transaction(store,'readwrite').objectStore(store).delete(id);r.onsuccess=res;r.onerror=res;});}));}catch(e){}
+  }
 
   /* library */
   function paperHaystack(ch){ return [ch.title,ch.authors,(ch.tags||[]).join(' '),ch.sourceName].join(' ').toLowerCase(); }
@@ -938,12 +950,12 @@
     if(!ch.pageParagraphs)return;
     var rebuilt=readerTextFromPages(ch.pageLines,ch.pageParagraphs);
     if(rebuilt){migrateReaderAnchors(ch,ch.readerText||'',rebuilt);ch.readerText=rebuilt;}
-    ch.readerV=READER_V;ch.focusPara=null;delete ch.readerScroll;persist(false);
+    ch.readerV=READER_V;ch.focusPara=null;delete ch.readerScroll;saveDerivedSoon(ch);persist(false);
   }
   function readerSourceText(ch){return !ch?'':ch.kind==='pdf'?(ch.readerText||readerTextFromPages(ch.pageLines||[],ch.pageParagraphs||[])||ch.fr||''):(ch.fr||'');}
   async function ensureReaderData(doc,ch){
     if(ch.readerText&&ch.pageLines&&ch.pageParagraphs&&ch.readerV===READER_V)return ch.readerText;if(readerBuildPromises[ch.id])return readerBuildPromises[ch.id];
-    readerBuildPromises[ch.id]=(async function(){var oldText=ch.readerText||'',lines=[],paragraphs=[],pages=[];for(var p=1;p<=doc.numPages;p++){var content=await (await doc.getPage(p)).getTextContent(),layout=contentLayout(content),pageLines=layout.map(function(line){return line.text;});lines.push(pageLines);paragraphs.push(layoutToParagraphs(layout));pages.push(pageLines.join(' '));}var rebuilt=readerTextFromPages(lines,paragraphs)||pages.join('\n\n');migrateReaderAnchors(ch,oldText,rebuilt);ch.pageLines=lines;ch.pageParagraphs=paragraphs;ch.pageTexts=pages;ch.readerText=rebuilt;ch.readerV=READER_V;ch.fr=pages.join('\n\n');ch.focusPara=null;delete ch.readerScroll;ch.updatedAt=now();persist();return ch.readerText;})().finally(function(){delete readerBuildPromises[ch.id];});
+    readerBuildPromises[ch.id]=(async function(){var oldText=ch.readerText||'',lines=[],paragraphs=[],pages=[];for(var p=1;p<=doc.numPages;p++){var content=await (await doc.getPage(p)).getTextContent(),layout=contentLayout(content),pageLines=layout.map(function(line){return line.text;});lines.push(pageLines);paragraphs.push(layoutToParagraphs(layout));pages.push(pageLines.join(' '));}var rebuilt=readerTextFromPages(lines,paragraphs)||pages.join('\n\n');migrateReaderAnchors(ch,oldText,rebuilt);ch.pageLines=lines;ch.pageParagraphs=paragraphs;ch.pageTexts=pages;ch.readerText=rebuilt;ch.readerV=READER_V;ch.fr=pages.join('\n\n');ch.focusPara=null;delete ch.readerScroll;ch.updatedAt=now();saveDerivedSoon(ch);persist();return ch.readerText;})().finally(function(){delete readerBuildPromises[ch.id];});
     return readerBuildPromises[ch.id];
   }
   async function importPdf(file, sourcePath){
@@ -1176,7 +1188,7 @@
 
   /* reader */
   async function openReader(id,preparedDoc){
-    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup(); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfFit=true; pdfZoom=1; setHighlightMode(false); clearPendingSelection(); toggleFindBar(false);
+    var ch=find(id); if(!ch) return; stopReadAloud(true); hideLookup();if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfFit=true; pdfZoom=1; setHighlightMode(false); clearPendingSelection(); toggleFindBar(false);
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
@@ -1339,7 +1351,7 @@
       await page.render({canvasContext:view.canvas.getContext('2d'),viewport:viewport,transform:ratio===1?null:[ratio,0,0,ratio,0,0]}).promise;
       if(view.buildId!==pdfBuildId)return;
       view.text.innerHTML='';view.text.style.width=Math.ceil(viewport.width)+'px';view.text.style.height=Math.ceil(viewport.height)+'px';
-      try{var textContent=await page.getTextContent({includeMarkedContent:true});await new pdfLib.TextLayer({textContentSource:textContent,container:view.text,viewport:viewport}).render();var textCh=find(currentId),pageText=contentToLines(textContent).join(' ');if(textCh&&pageText){textCh.pageTexts=textCh.pageTexts||[];if(textCh.pageTexts[n-1]!==pageText){textCh.pageTexts[n-1]=pageText;persist(false);}}}catch(textError){view.text.innerHTML='';}
+      try{var textContent=await page.getTextContent({includeMarkedContent:true});await new pdfLib.TextLayer({textContentSource:textContent,container:view.text,viewport:viewport}).render();var textCh=find(currentId),pageText=contentToLines(textContent).join(' ');if(textCh&&pageText){textCh.pageTexts=textCh.pageTexts||[];if(textCh.pageTexts[n-1]!==pageText){textCh.pageTexts[n-1]=pageText;saveDerivedSoon(textCh);persist(false);}}}catch(textError){view.text.innerHTML='';}
       view.rendered=true;renderedPages.push(n);renderPdfHighlights(n);freeFarPages();
     }catch(e){}
     finally{view.rendering=false;}
@@ -1675,11 +1687,12 @@
   function deriveKey(pass,salt){return crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']).then(function(k){return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:310000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);});}
   function encryptState(pass,obj){var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));return deriveKey(pass,salt).then(function(k){return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},k,new TextEncoder().encode(JSON.stringify(obj)));}).then(function(ct){return JSON.stringify({v:1,salt:b64(salt),iv:b64(iv),data:b64(ct)});});}
   function decryptState(pass,str){var p=JSON.parse(str);return deriveKey(pass,unb64(p.salt)).then(function(k){return crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(p.iv)},k,unb64(p.data));}).then(function(pt){return JSON.parse(new TextDecoder().decode(pt));});}
+  async function chaptersForSync(){return Promise.all(state.chapters.map(async function(ch){var copy=Object.assign({},ch);if(ch.kind==='pdf'){var saved=derivedData(ch)||await getDerived(ch.id);if(saved)Object.assign(copy,saved);}return copy;}));}
   function ghUrl(path){return 'https://api.github.com/repos/'+syncCfg.repo+'/contents/'+path.split('/').map(encodeURIComponent).join('/');}
   function mergeState(inc){
     var changed=false;state.deleted=state.deleted||{};Object.keys(inc.deleted||{}).forEach(function(id){if((inc.deleted[id]||0)>(state.deleted[id]||0)){state.deleted[id]=inc.deleted[id];changed=true;}});
     var kept=state.chapters.filter(function(ch){if(state.deleted[ch.id]){deletePdf(ch.id);changed=true;return false;}return true;});if(kept.length!==state.chapters.length)state.chapters=kept;
-    (inc.chapters||[]).forEach(function(remote){if(!remote||!remote.id||state.deleted[remote.id])return;normalize(remote);var local=find(remote.id);if(!local){state.chapters.push(remote);changed=true;}else if((remote.updatedAt||0)>(local.updatedAt||0)){state.chapters[state.chapters.indexOf(local)]=remote;changed=true;}});
+    (inc.chapters||[]).forEach(function(remote){if(!remote||!remote.id||state.deleted[remote.id])return;normalize(remote);var local=find(remote.id);if(!local){state.chapters.push(remote);if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;}else if((remote.updatedAt||0)>(local.updatedAt||0)){state.chapters[state.chapters.indexOf(local)]=remote;if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;}else if(remote.kind==='pdf'&&mergeDerivedInto(local,derivedData(remote))){saveDerivedSoon(local);}});
     if(currentId&&state.deleted[currentId]){stopReadAloud(true);currentId=null;pdfDoc=null;if(!byId('readerPage').classList.contains('hidden'))showPage('libraryPage');}return changed;
   }
   async function doSync(){
@@ -1687,7 +1700,7 @@
     try{
       var get=await fetch(ghUrl(SYNC_FILE),{headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json'}}),sha=null;
       if(get.status!==404){if(!get.ok)throw new Error(get.status===401||get.status===403?'Token cannot access this repo':'GitHub returned '+get.status);var j=await get.json();sha=j.sha;var remote=await decryptState(syncCfg.pass,atob((j.content||'').replace(/\n/g,'')));if(mergeState(remote)){persist(false);renderShelf();}}
-      var enc=await encryptState(syncCfg.pass,{chapters:state.chapters,deleted:state.deleted||{}}),body={message:'Margin reading notes sync',content:btoa(enc)};if(sha)body.sha=sha;
+      var syncChapters=await chaptersForSync(),enc=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{}}),body={message:'Margin reading notes sync',content:btoa(enc)};if(sha)body.sha=sha;
       var put=await fetch(ghUrl(SYNC_FILE),{method:'PUT',headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)});if(!put.ok)throw new Error('GitHub upload failed ('+put.status+')');syncUi('☁ synced '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncStatus').textContent='Synced to '+syncCfg.repo+'.';
     }catch(e){syncUi('☁ sync needs attention');byId('syncStatus').textContent=e.message||'Sync failed';}syncing=false;
   }
@@ -1732,7 +1745,7 @@
   byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='margin-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
 
-  syncUi(); renderShelf(); if(syncCfg)doSync();
+  syncUi();renderShelf();Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
   if(location.protocol==='file:') byId('launchDialog').showModal();
 })();
 </script>

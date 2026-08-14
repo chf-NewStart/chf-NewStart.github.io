@@ -94,9 +94,11 @@ Each page is self-contained and keeps its data in the visitor's own browser
   thumb-height bottom bar handles paging, Reader/PDF, and notes, the notebook
   rises as a bottom sheet, the top bar keeps only back + title until ⋯ reveals
   the rest, and compatibility shims cover older iPhone Safari PDF.js gaps.
-  PDF files live in IndexedDB on each device; a connected private repo can also
-  provide a `papers/` folder — including subfolders — to browse and pick them
-  from on Mac or phone.
+  PDF files and their rebuildable extracted text live in IndexedDB on each
+  device instead of the browser's small note store; oversized older records
+  migrate there automatically. A connected private repo can also provide a
+  `papers/` folder — including subfolders — to browse and pick them from on Mac
+  or phone.
 - `moneymanage/` — local-first personal finance tracker (OFX/QFX import, learned
   categorisation rules, optional AI key — all stored locally).
 - `msg/` — terminal-style message box; the one page that sends data out (Formspree,

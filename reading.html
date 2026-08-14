@@ -461,6 +461,17 @@
       #installNav { display: none; }
       .head-actions { gap: 3px; }
       .masthead .icon-btn { width: 32px; min-height: 32px; flex: 0 0 auto; }
+      /* The library is a phone screen too. Keep every import control inside the page
+         instead of waiting for the unusually narrow 360px breakpoint. */
+      .link-import { grid-template-columns: minmax(0, 1fr) auto; }
+      .link-copy { grid-column: 1 / -1; }
+      .link-import .field { width: 100%; }
+      .command-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .command-bar .primary { grid-column: 1 / -1; justify-content: center; }
+      .command-bar .soft-button { min-width: 0; white-space: normal; text-align: center; line-height: 1.2; }
+      .section-head { align-items: center; flex-wrap: wrap; }
+      .search { flex: 1 1 100%; width: 100%; margin-left: 0; }
+      .shelf { grid-template-columns: 1fr; }
       /* Reading is its own phone screen. The site navigation disappears and the paper,
          not a squeezed desktop sidebar, owns the viewport. */
       body.reading .masthead { display: none; }
@@ -509,18 +520,10 @@
     }
     @media (max-width: 360px) {
       #homeLink { display: none; }
-      .section-head { flex-wrap: wrap; }
-      .search { width: 100%; margin-left: 0; }
       main { min-height: calc(100vh - 60px); min-height: calc(100dvh - 60px); }
       .page { padding: 30px 14px 70px; }
       .hero { margin-bottom: 28px; }
       .hero h1 { font-size: clamp(2.7rem, 14vw, 4.2rem); }
-      .link-import { grid-template-columns: 1fr auto; }
-      .link-copy { grid-column: 1 / -1; }
-      .command-bar { flex-wrap: wrap; }
-      .command-bar .primary { flex-basis: 100%; }
-      .command-bar .soft-button { flex: 1; }
-      .shelf { grid-template-columns: 1fr; }
       #networkCanvas { height: 390px; }
     }
   </style>

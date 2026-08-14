@@ -577,8 +577,8 @@
         </div>
         <div class="group"><span>Auto-scroll</span>
           <button class="toggle" id="driftBtn" type="button" aria-pressed="false">Off</button>
-          <input class="drift-range" id="driftRange" type="range" min="30" max="360" step="10" value="120" aria-label="Auto-scroll speed in pixels per second">
-          <span class="value" id="driftValue">120</span>
+          <input class="drift-range" id="driftRange" type="range" min="4" max="240" step="2" value="10" aria-label="Auto-scroll speed in pixels per second">
+          <span class="value" id="driftValue">10</span>
         </div>
         <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream paper</button>
         <span class="spacer"></span>
@@ -1211,7 +1211,7 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,tone:'white',driftSpeed:120};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,tone:'white',driftSpeed:10};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
@@ -1222,7 +1222,8 @@
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
   if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone='white';
-  comfort.driftSpeed=Math.max(30,Math.min(360,+comfort.driftSpeed||120));
+  comfort.driftSpeed=Math.max(4,Math.min(240,+comfort.driftSpeed||10));
+  if(comfort.driftSpeed===120)comfort.driftSpeed=10; /* one-time step off the old too-fast default */
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
   /* The guide anchors to the pane, not the screen: zen mode and bar toggles move the
@@ -1266,7 +1267,7 @@
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.onclick=function(){comfort.guideStyle=btn.dataset.guideStyle;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideStyle==='dim'?'Line focus · the rest of the page steps back':'Tint guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;comfort.tone='white';comfort.driftSpeed=120;if(driftSpeed)driftSpeed=120;applyComfort();showReaderToast('Reading settings reset');};
+  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;comfort.tone='white';comfort.driftSpeed=10;if(driftSpeed)driftSpeed=10;applyComfort();showReaderToast('Reading settings reset');};
   byId('comfortBtn').onclick=function(){
     var bar=byId('comfortBar'),open=bar.classList.contains('hidden');
     bar.classList.toggle('hidden',!open);this.classList.toggle('active',open);this.setAttribute('aria-expanded',String(open));
@@ -1418,7 +1419,7 @@
     showReaderToast(turningOff?'Auto-scroll off':'Auto-scroll · touching the page pauses it');
   };
   byId('driftRange').oninput=function(){
-    comfort.driftSpeed=Math.max(30,Math.min(360,+this.value||120));
+    comfort.driftSpeed=Math.max(4,Math.min(240,+this.value||10));
     byId('driftValue').textContent=String(comfort.driftSpeed);
     saveComfortSoon();
     if(driftSpeed)driftSpeed=comfort.driftSpeed;else setDrift(comfort.driftSpeed);

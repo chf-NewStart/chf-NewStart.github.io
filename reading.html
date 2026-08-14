@@ -2282,13 +2282,21 @@
     if(e.key===' '&&!e.shiftKey){
       e.preventDefault();
       if(driftSpeed){setDrift(0);showReaderToast('Auto-scroll off');}
-      else{setDrift(comfort.driftSpeed||4);showReaderToast('Auto-scroll · '+driftLabel()+' · Space stops, Aa adjusts');}
+      else{setDrift(comfort.driftSpeed||4);showReaderToast('Auto-scroll · '+driftLabel()+' · ← → speed, Space stops');}
+      return;
+    }
+    /* While the crawl is running, ← → retune its speed in either view. */
+    if(driftSpeed&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){
+      e.preventDefault();
+      comfort.driftSpeed=Math.max(.5,Math.min(10,+(comfort.driftSpeed+(e.key==='ArrowRight'?.5:-.5)).toFixed(1)));
+      applyComfort();setDrift(comfort.driftSpeed);
+      showReaderToast('Auto-scroll · '+driftLabel());
       return;
     }
     if(readerMode!=='pdf')return;
     var pane=byId('documentPane');
     if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(currentZoom()*1.2);}
-    else if(e.key==='-'){e.preventDefault();setZoom(currentZoom()/1.2);}
+    else if(e.key==='-'||e.key==='_'){e.preventDefault();setZoom(currentZoom()/1.2);}
     else if(e.key==='0'){e.preventDefault();setZoom(1);}
     else if(e.key==='ArrowDown'){e.preventDefault();pane.scrollBy({top:74});}
     else if(e.key==='ArrowUp'){e.preventDefault();pane.scrollBy({top:-74});}

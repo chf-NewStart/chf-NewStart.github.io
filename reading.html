@@ -155,6 +155,19 @@
     .pdf-page canvas { display: block; height: auto; background: white; }
     .pdf-frame.dark-paper .pdf-page { background: #171717; }
     .pdf-frame.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.92); }
+    /* Cream paper: takes the white glare off long sessions without going dark. */
+    .pdf-frame.cream:not(.dark-paper) .pdf-page { background: #f4ecdb; }
+    .pdf-frame.cream:not(.dark-paper) .pdf-page canvas { filter: sepia(.26) saturate(.94) brightness(.99); }
+    /* Zen reading: nothing on screen but the paper. */
+    body.zen .masthead, body.zen .reader-tools, body.zen .comfort-bar, body.zen .find-bar,
+    body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer { display: none !important; }
+    body.zen main { min-height: 100vh; }
+    body.zen #readerPage { height: 100vh; height: 100dvh; }
+    body.zen .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
+    .zen-exit { position: fixed; z-index: 48; top: calc(10px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); width: 42px; height: 42px; padding: 0; display: none; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 74%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease; }
+    body.zen .zen-exit { display: flex; }
+    .zen-exit:hover, .zen-exit:focus-visible, .zen-exit:active { opacity: 1; color: var(--ink); }
+    #zenBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     .highlight-layer { z-index: 1; pointer-events: none; }
     .saved-highlight { position: absolute; border-radius: 4px 3px 5px 2px; mix-blend-mode: multiply; }
@@ -485,6 +498,7 @@
         <button class="soft-button" id="readAloudBtn" type="button" aria-pressed="false">▷ Listen</button>
         <button class="soft-button hidden" id="stopReadAloudBtn" type="button" aria-label="Stop reading aloud">■</button>
         <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" title="Reading ruler · drag its ≡ handle or tap the page to move it; color, width, style and height live in Aa">▰ <span class="wide">Guide</span></button>
+        <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" title="Zen reading · hide everything but the paper (F)">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar">Aa</button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar">⌕ <span class="wide">Find</span></button>
         <div class="marker-tools">
@@ -542,6 +556,15 @@
             <button class="toggle" type="button" data-guide-size="l" aria-pressed="false">L</button>
           </div>
         </div>
+        <div class="group"><span>Auto-scroll</span>
+          <div class="guide-scope" role="group" aria-label="Auto-scroll speed">
+            <button class="toggle" type="button" data-drift="0" aria-pressed="true">Off</button>
+            <button class="toggle" type="button" data-drift="16">Slow</button>
+            <button class="toggle" type="button" data-drift="32">Med</button>
+            <button class="toggle" type="button" data-drift="60">Fast</button>
+          </div>
+        </div>
+        <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream paper</button>
         <span class="spacer"></span>
         <button class="toggle" id="comfortReset" type="button">Reset</button>
       </div>
@@ -627,6 +650,7 @@
           <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up DeepSeek →</button></div>
         </div>
       </aside>
+      <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading">✕</button>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
     </section>
   </main>
@@ -1135,7 +1159,7 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,tone:'white'};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
@@ -1145,6 +1169,7 @@
   if(['tint','dim'].indexOf(comfort.guideStyle)<0)comfort.guideStyle='tint';
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
+  if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone='white';
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
   var focusPara=null, pageStartCache={}, lastGuidePoint=null;
@@ -1159,6 +1184,8 @@
     byId('widthValue').textContent=String(comfort.measure);
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
+    byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');
+    byId('creamBtn').setAttribute('aria-pressed',String(comfort.tone==='cream'));
     byId('paneSpotlight').dataset.guideColor=comfort.guide;
     byId('paneSpotlight').dataset.guideStyle=comfort.guideStyle;
     document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
@@ -1178,11 +1205,12 @@
   byId('leadTight').onclick=function(){stepComfort('leading',-0.1,1.2,2.6,1);};
   byId('leadLoose').onclick=function(){stepComfort('leading',0.1,1.2,2.6,1);};
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
+  byId('creamBtn').onclick=function(){comfort.tone=comfort.tone==='cream'?'white':'cream';applyComfort();showReaderToast(comfort.tone==='cream'?'Cream paper · easier on the eyes':'White paper');};
   document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.textContent+' reading guide');};});
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.onclick=function(){comfort.guideStyle=btn.dataset.guideStyle;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideStyle==='dim'?'Line focus · the rest of the page steps back':'Tint guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;applyComfort();showReaderToast('Reading settings reset');};
+  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;comfort.tone='white';applyComfort();showReaderToast('Reading settings reset');};
   byId('comfortBtn').onclick=function(){
     var bar=byId('comfortBar'),open=bar.classList.contains('hidden');
     bar.classList.toggle('hidden',!open);this.classList.toggle('active',open);this.setAttribute('aria-expanded',String(open));
@@ -1271,6 +1299,63 @@
   }
   byId('guideGrip').addEventListener('pointerup',endGuideDrag);
   byId('guideGrip').addEventListener('pointercancel',endGuideDrag);
+  /* Zen reading: every bar, note and button leaves; the paper gets the whole screen.
+     The guide, zoom, gestures and lookup keep working on top of it. */
+  var zenOn=false,zenViaFullscreen=false;
+  function setZen(on){
+    zenOn=!!on;document.body.classList.toggle('zen',zenOn);
+    byId('zenBtn').classList.toggle('active',zenOn);byId('zenBtn').setAttribute('aria-pressed',String(zenOn));
+    if(zenOn){toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false');}
+    if(zenOn&&innerWidth>720&&document.documentElement.requestFullscreen){
+      document.documentElement.requestFullscreen().then(function(){zenViaFullscreen=true;},function(){});
+    }else if(!zenOn&&zenViaFullscreen){zenViaFullscreen=false;if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});}
+    requestAnimationFrame(function(){
+      if(readerMode==='pdf'&&pdfDoc)renderPdfPage();
+      if(comfort.focus)placeGuide();
+      updateProgress();
+    });
+    showReaderToast(zenOn?'Zen reading · ✕ or Esc brings the desk back':'Back at the desk');
+  }
+  byId('zenBtn').onclick=function(){setZen(!zenOn);};
+  byId('zenExit').onclick=function(){setZen(false);};
+  document.addEventListener('fullscreenchange',function(){
+    if(!document.fullscreenElement&&zenOn&&zenViaFullscreen){zenViaFullscreen=false;setZen(false);}
+  });
+  /* Auto-scroll: the paper drifts up at a steady pace, which quietly enforces a reading
+     rhythm. Touching or wheeling the page pauses the drift, then it resumes. */
+  var driftSpeed=0,driftRaf=null,driftLast=0,driftHold=false,driftRemainder=0,driftResume=null;
+  function driftTick(ts){
+    if(!driftSpeed){driftRaf=null;return;}
+    if(!driftLast)driftLast=ts;
+    var dt=Math.min(80,ts-driftLast);driftLast=ts;
+    if(!driftHold&&!byId('readerPage').classList.contains('hidden')&&!recallActive){
+      var pane=byId('documentPane');
+      driftRemainder+=driftSpeed*dt/1000;
+      var step=Math.floor(driftRemainder);
+      if(step>0){
+        driftRemainder-=step;
+        var before=pane.scrollTop;pane.scrollTop=before+step;
+        if(pane.scrollTop===before&&before>0){setDrift(0);showReaderToast('End of the paper · auto-scroll off');}
+      }
+    }
+    driftRaf=requestAnimationFrame(driftTick);
+  }
+  function setDrift(speed){
+    driftSpeed=+speed||0;driftLast=0;driftRemainder=0;driftHold=false;clearTimeout(driftResume);
+    document.querySelectorAll('[data-drift]').forEach(function(btn){btn.setAttribute('aria-pressed',String(+btn.dataset.drift===driftSpeed));});
+    if(driftSpeed&&!driftRaf)driftRaf=requestAnimationFrame(driftTick);
+  }
+  function holdDrift(ms){
+    if(!driftSpeed)return;driftHold=true;clearTimeout(driftResume);
+    driftResume=setTimeout(function(){driftHold=false;driftLast=0;},ms);
+  }
+  document.querySelectorAll('[data-drift]').forEach(function(btn){
+    btn.onclick=function(){setDrift(btn.dataset.drift);showReaderToast(driftSpeed?'Auto-scroll '+btn.textContent.toLowerCase()+' · touching the page pauses it':'Auto-scroll off');};
+  });
+  byId('documentPane').addEventListener('touchstart',function(){holdDrift(1200);},{passive:true});
+  byId('documentPane').addEventListener('touchmove',function(){holdDrift(1200);},{passive:true});
+  byId('documentPane').addEventListener('wheel',function(){holdDrift(1500);},{passive:true});
+  byId('readerBack').addEventListener('click',function(){setDrift(0);if(zenOn)setZen(false);});
   var NOTEBOOK_WIDTH_KEY='readingRoom.notebookWidth.v1',notebookWidth=innerWidth<=900?320:360;
   try{notebookWidth=+localStorage.getItem(NOTEBOOK_WIDTH_KEY)||notebookWidth;}catch(e){}
   function setNotebookWidth(value,save){
@@ -1747,9 +1832,11 @@
     if(byId('readerPage').classList.contains('hidden'))return;
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
     if(e.key==='Escape'&&(!byId('lookupCard').classList.contains('hidden')||highlightMode)){e.preventDefault();hideLookup();if(highlightMode){clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');}return;}
+    if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
     if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undoLastHighlight();return;}
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
+    if(e.key.toLowerCase()==='f'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();setZen(!zenOn);return;}
     if(readerMode!=='pdf')return;
     var pane=byId('documentPane');
     if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(currentZoom()*1.2);}

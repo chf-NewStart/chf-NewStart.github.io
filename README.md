@@ -90,7 +90,8 @@ Each page is self-contained and keeps its data in the visitor's own browser
   read-aloud that highlights and
   follows the text being spoken, an `Aa` panel for text size, column width,
   and line spacing, a whole-paper find bar (`/`), a reading progress rail, and
-  each paper reopens where you left off. Reader-view paragraphs link back to
+  a voluntary recall check that hides the paper while you explain it from
+  memory. Each paper reopens where you left off. Reader-view paragraphs link back to
   their PDF page, and notes and highlights in the side index jump back to
   their spot. One theme toggle drives the app chrome, the PDF paper, and the
   phone status bar together. On phones the document gets the whole screen: a

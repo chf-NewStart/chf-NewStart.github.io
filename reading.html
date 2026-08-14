@@ -229,7 +229,7 @@
     .guide-grip:active { cursor: grabbing; }
     /* While the handle is held, the band tracks the finger 1:1 with no easing lag. */
     .pane-spotlight.dragging :is(.guide-band, .guide-shade) { transition: none; }
-    .pane-spotlight.locked .guide-band::after { content: ""; position: absolute; right: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--accent); opacity: .55; }
+    .pane-spotlight.locked .guide-band::after { content: ""; position: absolute; left: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--accent); opacity: .55; }
     .pane-spotlight.dragging .guide-grip { transform: scale(1.14); color: var(--ink); }
     @media (hover: hover) and (pointer: fine) { .guide-grip { display: none; } }
     html[data-theme="dark"] .guide-band { background: linear-gradient(90deg, rgba(190,150,43,.05), rgba(220,177,58,.13) 12%, rgba(220,177,58,.13) 88%, rgba(190,150,43,.05)); box-shadow: inset 0 1px rgba(244,210,111,.16), inset 0 -1px rgba(137,98,19,.22); }
@@ -1930,7 +1930,7 @@
         if(preparedDoc)pdfDoc=preparedDoc;
         else{
           var stored=await getPdf(ch.id);
-          if(!stored&&gdriveOn()){showReaderToast('Fetching the PDF from your Google Drive…');stored=await gdriveFetchPdf(ch.id);}
+          if(!stored&&gdriveOn()&&gdriveToken&&now()-gdriveTokenAt<50*60*1000){showReaderToast('Fetching the PDF from your Google Drive…');stored=await gdriveFetchPdf(ch.id);}
           if(!stored){showMissingPdf(ch);restoreReaderPosition(ch,true);loadPageNote();updateProgress();return;}
           var lib=await loadPdfLib();pdfDoc=await lib.getDocument({data:await pdfBytes(stored)}).promise;
         }
@@ -1988,9 +1988,17 @@
   };
   function showMissingPdf(ch){
     pdfViews=[];pdfBuildKey='';
-    var action=ch.sourceUrl?'<button class="button" id="missingSource">Download original link</button>':'<button class="button" id="missingPick">Pick from GitHub</button>';
+    var drive=gdriveOn()?'<button class="button" id="missingDrive">Get it from your Google Drive</button> ':'';
+    var action=drive+(ch.sourceUrl?'<button class="'+(drive?'soft-button':'button')+'" id="missingSource">Download original link</button>':'<button class="'+(drive?'soft-button':'button')+'" id="missingPick">Pick from GitHub</button>');
     var help=ch.sourceUrl?'Carrel can download another local copy from its original link.':'Pick <b>'+esc(ch.sourceName||'the same PDF')+'</b> from GitHub or import it again to restore the page view here.';
     byId('pdfFrame').innerHTML='<div class="missing-file"><h2>The PDF is not on this device yet.</h2><p>Your notes and extracted text synced safely. '+help+'</p>'+action+' <button class="soft-button" id="missingText">Read extracted text</button></div>';
+    var fromDrive=byId('missingDrive');
+    if(fromDrive)fromDrive.onclick=async function(){
+      var btn=this;btn.disabled=true;btn.textContent='Fetching from your Drive…';
+      var got=await gdriveFetchPdf(ch.id,true);
+      if(got){showReaderToast('Got it — opening');openReader(ch.id);}
+      else{btn.disabled=false;btn.textContent='Get it from your Google Drive';showReaderToast('Not found in your Drive yet — sync the device that has the PDF first.');}
+    };
     var source=byId('missingSource'),pick=byId('missingPick');if(source)source.onclick=async function(){var ok=await importPdfUrl(ch.sourceUrl);if(!ok)showError(byId('pdfUrlStatus').textContent||'The original link is no longer available.','Could not download that PDF');};if(pick)pick.onclick=openGithubPicker;byId('missingText').onclick=function(){ readerMode='text'; updateReaderMode(); };
     byId('prevPage').classList.add('hidden'); byId('nextPage').classList.add('hidden'); byId('zoomTools').classList.add('hidden'); byId('tocBtn').classList.add('hidden'); byId('pageNumber').textContent='';
     byId('mPrev').classList.add('hidden');byId('mNext').classList.add('hidden');byId('mPageLabel').classList.add('hidden');
@@ -2721,16 +2729,26 @@
       document.head.appendChild(script);
     });
   }
+  var gdriveTokenSettle=null;
   function gdriveGetToken(interactive){
     return loadGis().then(function(){
       return new Promise(function(res,rej){
         if(gdriveToken&&now()-gdriveTokenAt<50*60*1000)return res(gdriveToken);
-        if(!gdriveTokenClient)gdriveTokenClient=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.appdata',callback:function(){}});
+        var timer=setTimeout(function(){settle(null,new Error('Google sign-in timed out — tap to try again.'));},15000);
+        function settle(token,error){
+          if(gdriveTokenSettle!==settle)return;gdriveTokenSettle=null;clearTimeout(timer);
+          if(token)res(token);else rej(error);
+        }
+        gdriveTokenSettle=settle;
+        if(!gdriveTokenClient)gdriveTokenClient=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.appdata',callback:function(){},error_callback:function(err){
+          var fn=gdriveTokenSettle;if(fn)fn(null,new Error(err&&err.type==='popup_closed'?'Google sign-in was closed':'The sign-in popup was blocked — tap the button to allow it.'));
+        }});
         gdriveTokenClient.callback=function(resp){
-          if(resp&&resp.access_token){gdriveToken=resp.access_token;gdriveTokenAt=now();res(gdriveToken);}
-          else rej(new Error(resp&&resp.error?'Google sign-in: '+resp.error:'Google sign-in was cancelled'));
+          var fn=gdriveTokenSettle;if(!fn)return;
+          if(resp&&resp.access_token){gdriveToken=resp.access_token;gdriveTokenAt=now();fn(gdriveToken,null);}
+          else fn(null,new Error(resp&&resp.error?'Google sign-in: '+resp.error:'Google sign-in was cancelled'));
         };
-        try{gdriveTokenClient.requestAccessToken({prompt:interactive?'consent':''});}catch(e){rej(e);}
+        try{gdriveTokenClient.requestAccessToken({prompt:interactive?'consent':''});}catch(e){settle(null,e);}
       });
     });
   }
@@ -2765,10 +2783,10 @@
     gdriveRoaming=false;
     return {sent:sent,failed:failed};
   }
-  async function gdriveFetchPdf(id){
+  async function gdriveFetchPdf(id,interactive){
     if(!gdriveOn())return null;
     try{
-      var token=await gdriveGetToken(false),files=await gdriveListAll(token),hit=null,name='pdf-'+id+'.pdf';
+      var token=await gdriveGetToken(interactive===true),files=await gdriveListAll(token),hit=null,name='pdf-'+id+'.pdf';
       files.some(function(f){if(f.name===name){hit=f;return true;}return false;});
       if(!hit)return null;
       var r=await fetch('https://www.googleapis.com/drive/v3/files/'+hit.id+'?alt=media',{headers:{Authorization:'Bearer '+token}});

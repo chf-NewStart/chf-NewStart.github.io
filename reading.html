@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Carrel — Breathe, Focus, Read</title>
-  <meta name="description" content="Breathe, Focus, Read — a local-first desk for academic papers: highlights, notes, spaced review, AI questions, and encrypted sync you own.">
+  <meta name="description" content="Breathe, Focus, Read — a calm desk that makes academic papers easier to focus on: reading guides for wandering eyes, notes beside the page, and spaced review that keeps what you read.">
   <meta name="robots" content="noindex">
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/carrel-apple-touch-icon.png">
   <link rel="icon" href="/favicon_io/carrel-favicon.ico" sizes="any">
@@ -508,8 +508,8 @@
       <div class="hero">
         <div>
           <div class="eyebrow">Breathe · Focus · Read</div>
-          <h1>A quiet desk of your <em>own.</em></h1>
-          <p>Read the real PDF, write beside the page, ask a screenshot a question, and let ideas become connected over time. Your desk is local first; encrypted GitHub sync is optional.</p>
+          <h1>Papers, without the <em>fight.</em></h1>
+          <p>A guide for wandering eyes, a spotlight for busy pages, notes beside the paragraph, and spaced review that keeps what you understood. Calm by design — and your library quietly stays your own.</p>
         </div>
         <div class="hero-card" aria-label="How Carrel works">
           <div class="step"><b>01</b><span>Paste a PDF link, drop a file, or pick one from a private GitHub folder.</span></div>
@@ -538,7 +538,7 @@
         <input class="search" id="librarySearch" type="search" placeholder="Search titles, authors, tags…" aria-label="Search library">
       </div>
       <div class="shelf" id="shelf"></div>
-      <p class="support-line hidden" id="supportLine">Carrel is free and keeps your papers on your own device. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">buy me a coffee ☕</a></p>
+      <p class="support-line hidden" id="supportLine">Carrel is free, and built to make papers easier to focus on. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">buy me a coffee ☕</a></p>
     </section>
 
     <section id="connectionsPage" class="page hidden">
@@ -789,6 +789,7 @@
         <div class="status" id="storageNote"></div>
         <button class="soft-button" id="backupBtn">Download backup</button> <button class="soft-button" id="restoreBtn">Restore backup</button>
         <input class="hidden" type="file" id="restoreFile" accept=".json,application/json">
+        <div class="status" id="buildStamp"></div>
       </section>
     </div>
   </dialog>
@@ -2892,6 +2893,7 @@
     });
     if(dirty)persist(false);
   })();
+  try{byId('buildStamp').textContent='This copy of Carrel was published '+document.lastModified+'.';}catch(e){}
   syncUi();renderShelf();updateReviewBadge();if(gdriveOn())gdriveSync();
   /* A refresh drops you back into the paper you were reading, not the library. */
   try{var lastOpen=localStorage.getItem(LAST_OPEN_KEY);if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});

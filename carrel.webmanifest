@@ -1,7 +1,7 @@
 {
   "name": "Carrel",
   "short_name": "Carrel",
-  "description": "Breathe, Focus, Read — a local-first desk for reading academic papers: highlights, notes, spaced review, and encrypted sync you own.",
+  "description": "Breathe, Focus, Read — a calm desk that makes academic papers easier to focus on: reading guides, notes beside the page, and spaced review that keeps what you read.",
   "start_url": "/reading.html",
   "scope": "/",
   "display": "standalone",

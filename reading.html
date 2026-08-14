@@ -229,7 +229,8 @@
     .guide-grip:active { cursor: grabbing; }
     /* While the handle is held, the band tracks the finger 1:1 with no easing lag. */
     .pane-spotlight.dragging :is(.guide-band, .guide-shade) { transition: none; }
-    .pane-spotlight.locked .guide-band::after { content: ""; position: absolute; left: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--accent); opacity: .55; }
+    .pane-spotlight.locked .guide-band::after { content: ""; position: absolute; right: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--accent); opacity: .55; }
+    .pane-spotlight.locked.guide-left .guide-band::after { right: auto; left: 9px; }
     .pane-spotlight.dragging .guide-grip { transform: scale(1.14); color: var(--ink); }
     @media (hover: hover) and (pointer: fine) { .guide-grip { display: none; } }
     html[data-theme="dark"] .guide-band { background: linear-gradient(90deg, rgba(190,150,43,.05), rgba(220,177,58,.13) 12%, rgba(220,177,58,.13) 88%, rgba(190,150,43,.05)); box-shadow: inset 0 1px rgba(244,210,111,.16), inset 0 -1px rgba(137,98,19,.22); }
@@ -1550,10 +1551,12 @@
     var paneRect=byId('documentPane').getBoundingClientRect();
     if(paneRect.width)guideOffset={x:clientX-paneRect.left,y:clientY-paneRect.top};
     var left=surfaceRect.left,right=surfaceRect.right;
+    var leftHalf=false;
     if(readerMode==='pdf'&&comfort.guideScope==='column'){
       var middle=surfaceRect.left+surfaceRect.width/2;
-      if(clientX<middle)right=middle;else left=middle;
+      if(clientX<middle){right=middle;leftHalf=true;}else left=middle;
     }
+    overlay.classList.toggle('guide-left',leftHalf);
     left=Math.max(rect.left,left);right=Math.min(rect.right,right);
     var sizeFactor=comfort.guideSize==='s'?.62:comfort.guideSize==='l'?1.6:1;
     var guideHeight=Math.round((innerWidth<=720?Math.max(76,Math.min(108,rect.height*.13)):Math.max(96,Math.min(142,rect.height*.15)))*sizeFactor);

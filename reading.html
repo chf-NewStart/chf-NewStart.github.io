@@ -146,7 +146,8 @@
     .comfort-bar .spacer { flex: 1 1 auto; }
     .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
     #focusBtn.active, #comfortBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
-    .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; }
+    .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; touch-action: manipulation; }
+    #pageNumber, .mobile-bar .m-page { cursor: pointer; }
     html[data-theme="dark"] .document-pane { background: #111516; }
     /* Pages stack in one continuous vertical scroll, like paper on a desk. */
     .pdf-frame { width: max-content; min-width: 100%; min-height: 100%; margin: 0 auto; padding: 16px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
@@ -467,7 +468,7 @@
         <button class="soft-button" id="readerBack">← <span class="wide">library</span></button>
         <div class="title"><strong id="readerTitle"></strong><span id="readerMeta"></span></div>
         <button class="soft-button hidden" id="prevPage" aria-label="Previous page">←</button>
-        <span id="pageNumber" class="cloud"></span>
+        <span id="pageNumber" class="cloud" title="Jump to a page"></span>
         <button class="soft-button hidden" id="nextPage" aria-label="Next page">→</button>
         <div class="zoom-tools hidden" id="zoomTools" aria-label="PDF zoom controls">
           <button id="zoomOut" aria-label="Zoom out">−</button>
@@ -600,7 +601,7 @@
       </div>
       <div class="mobile-bar" id="mobileBar">
         <button id="mPrev" type="button" aria-label="Previous page">←</button>
-        <span class="m-page" id="mPageLabel"></span>
+        <span class="m-page" id="mPageLabel" title="Jump to a page"></span>
         <button id="mNext" type="button" aria-label="Next page">→</button>
         <button id="mView" type="button">Reader</button>
         <button id="mNotes" type="button" aria-expanded="false">✎ Notes</button>
@@ -1618,6 +1619,17 @@
   }
   byId('prevPage').onclick=function(){ if(currentPage>1){ clearPendingSelection();scrollToPdfPage(currentPage-1); } };
   byId('nextPage').onclick=function(){ if(pdfDoc&&currentPage<pdfDoc.numPages){ clearPendingSelection();scrollToPdfPage(currentPage+1); } };
+  /* A 600-page textbook needs more than ← →: tapping the page counter jumps anywhere. */
+  function promptForPage(){
+    if(!pdfDoc||readerMode!=='pdf')return;
+    var raw=prompt('Go to page (1–'+pdfDoc.numPages+')',String(currentPage));
+    if(raw===null)return;
+    var n=parseInt(raw,10);
+    if(n>=1&&n<=pdfDoc.numPages)gotoPdfPage(n);
+    else if(raw.trim())showReaderToast('Pages run 1–'+pdfDoc.numPages);
+  }
+  byId('pageNumber').onclick=promptForPage;
+  byId('mPageLabel').onclick=promptForPage;
   function currentZoom(){return pdfFit?1:pdfZoom;}
   /* Re-render at the new zoom, keeping the content under the anchor point (finger, cursor
      or pane center) where it was, and remember the choice with the paper. */
@@ -1625,7 +1637,8 @@
     if(!pdfDoc)return;
     var pane=byId('documentPane'),rect=pane.getBoundingClientRect();
     var oldZoom=currentZoom(),newZoom=Math.max(.5,Math.min(4,+value||1));
-    pdfFit=Math.abs(newZoom-1)<.001;pdfZoom=pdfFit?1:newZoom;
+    if(Math.abs(newZoom-1)<=.05)newZoom=1;
+    pdfFit=newZoom===1;pdfZoom=pdfFit?1:newZoom;
     var ax=anchorX===undefined?rect.width/2:anchorX-rect.left,ay=anchorY===undefined?rect.height/2:anchorY-rect.top;
     var f=newZoom/oldZoom,targetLeft=(pane.scrollLeft+ax)*f-ax,targetTop=(pane.scrollTop+ay)*f-ay;
     byId('zoomLabel').textContent=pdfFit?'Fit':Math.round(pdfZoom*100)+'%';
@@ -1637,33 +1650,51 @@
     if(ch&&ch.kind==='pdf'&&ch.zoom!==(pdfFit?0:pdfZoom)){ch.zoom=pdfFit?0:pdfZoom;persist(false);}
     if(comfort.focus)requestAnimationFrame(placeGuide);
   }
-  byId('zoomOut').onclick=function(){setZoom(currentZoom()-.15);};
-  byId('zoomIn').onclick=function(){setZoom(currentZoom()+.15);};
+  byId('zoomOut').onclick=function(){setZoom(currentZoom()/1.2);};
+  byId('zoomIn').onclick=function(){setZoom(currentZoom()*1.2);};
   byId('zoomLabel').onclick=function(){setZoom(1);};
-  byId('documentPane').addEventListener('wheel',function(e){if(readerMode==='pdf'&&(e.ctrlKey||e.metaKey)){e.preventDefault();setZoom(currentZoom()+(e.deltaY<0?.15:-.15),e.clientX,e.clientY);}},{passive:false});
+  byId('documentPane').addEventListener('wheel',function(e){if(readerMode==='pdf'&&(e.ctrlKey||e.metaKey)){e.preventDefault();setZoom(currentZoom()*(e.deltaY<0?1.12:1/1.12),e.clientX,e.clientY);}},{passive:false});
   /* Touch: pinch anywhere on the paper for a live preview, then a crisp re-render under
      your fingers; double-tap hops between Fit and 160%. */
   (function(){
     var pane=byId('documentPane'),frame=byId('pdfFrame');
     var pinch=null,tapStart=null,lastTapAt=0,lastTapX=0,lastTapY=0;
+    /* One-finger swipes lock to their dominant axis, so reading down a zoomed page
+       cannot drift sideways; a clearly horizontal swipe still pans across. */
+    var scrollLock=null,scrollLockIdle=null;
     function touchDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
     pane.addEventListener('touchstart',function(e){
       if(readerMode!=='pdf'||!pdfDoc)return;
-      if(e.touches.length===1){var t=e.touches[0];tapStart={x:t.clientX,y:t.clientY,at:Date.now()};return;}
+      if(e.touches.length===1){
+        var t=e.touches[0];tapStart={x:t.clientX,y:t.clientY,at:Date.now()};
+        scrollLock={x:t.clientX,y:t.clientY,left:pane.scrollLeft,top:pane.scrollTop,axis:null};
+        return;
+      }
       if(e.touches.length!==2)return;
-      e.preventDefault();tapStart=null;lastTapAt=0;
+      e.preventDefault();tapStart=null;lastTapAt=0;scrollLock=null;
       var rect=pane.getBoundingClientRect(),mx=(e.touches[0].clientX+e.touches[1].clientX)/2,my=(e.touches[0].clientY+e.touches[1].clientY)/2;
       pinch={d:Math.max(20,touchDist(e.touches)),zoom:currentZoom(),k:1,x:mx,y:my};
       frame.style.transformOrigin=(pane.scrollLeft+mx-rect.left)+'px '+(pane.scrollTop+my-rect.top)+'px';
       frame.style.willChange='transform';
     },{passive:false});
     pane.addEventListener('touchmove',function(e){
+      if(scrollLock&&!scrollLock.axis&&e.touches.length===1){
+        var t=e.touches[0],dx=Math.abs(t.clientX-scrollLock.x),dy=Math.abs(t.clientY-scrollLock.y);
+        if(dx>6||dy>6)scrollLock.axis=dx>dy*1.4?'x':'y';
+      }
       if(!pinch||e.touches.length!==2)return;
       e.preventDefault();
       var target=Math.max(.5,Math.min(4,pinch.zoom*(touchDist(e.touches)/pinch.d)));
       pinch.k=target/pinch.zoom;
       frame.style.transform=Math.abs(pinch.k-1)<.005?'':'scale('+pinch.k+')';
     },{passive:false});
+    pane.addEventListener('scroll',function(){
+      if(!scrollLock||!scrollLock.axis)return;
+      if(scrollLock.axis==='y'&&pane.scrollLeft!==scrollLock.left)pane.scrollLeft=scrollLock.left;
+      else if(scrollLock.axis==='x'&&pane.scrollTop!==scrollLock.top)pane.scrollTop=scrollLock.top;
+      /* The lock has to survive momentum, so it clears only once scrolling goes quiet. */
+      clearTimeout(scrollLockIdle);scrollLockIdle=setTimeout(function(){scrollLock=null;},250);
+    });
     function endPinch(e){
       if(!pinch||(e.touches&&e.touches.length>=2))return;
       var commit=pinch;pinch=null;
@@ -1696,8 +1727,8 @@
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
     if(readerMode!=='pdf')return;
     var pane=byId('documentPane');
-    if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(currentZoom()+.15);}
-    else if(e.key==='-'){e.preventDefault();setZoom(currentZoom()-.15);}
+    if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(currentZoom()*1.2);}
+    else if(e.key==='-'){e.preventDefault();setZoom(currentZoom()/1.2);}
     else if(e.key==='0'){e.preventDefault();setZoom(1);}
     else if(e.key==='ArrowDown'){e.preventDefault();pane.scrollBy({top:74});}
     else if(e.key==='ArrowUp'){e.preventDefault();pane.scrollBy({top:-74});}

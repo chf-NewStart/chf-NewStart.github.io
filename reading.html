@@ -360,6 +360,10 @@
     .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px; }
     .ask-chip { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 650; }
     .ask-chip:hover { border-color: var(--accent); color: var(--ink); }
+    /* One-tap actions look different from starters that only fill the question box. */
+    .ask-chip.act { border-color: var(--accent); color: var(--accent-dark); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+    .ask-chip.act:hover { background: var(--accent-soft); color: var(--ink); }
+    .ask-chip.act:disabled { opacity: .55; }
     .ask-row { display: flex; gap: 7px; }
     .ask-row .field { flex: 1; }
     .qa-list { display: grid; gap: 12px; margin-top: 18px; }
@@ -677,7 +681,7 @@
             <div class="mini-list" id="noteIndex"></div>
           </div>
           <div class="tab-panel" id="aiPanel" role="tabpanel">
-            <p class="hint">Pick what to ask about — only text ever leaves this device.</p>
+            <p class="hint">Pick what to ask about — only text ever leaves this device. Grey chips just fill the question box; the outlined one runs right away.</p>
             <div class="context-row">
               <button class="soft-button context-btn" id="aiUseCurrent" type="button">⌖ Page</button>
               <button class="soft-button context-btn" id="aiUseSelection" type="button">✂ Selection</button>
@@ -692,7 +696,7 @@
               <button class="ask-chip" type="button" data-ask-stem="How ">How…</button>
               <button class="ask-chip" type="button" data-ask-full="Explain this in plain, simple words.">Explain simply</button>
               <button class="ask-chip" type="button" data-ask-full="Summarize the key points of this context in a few sentences.">Summarize</button>
-              <button class="ask-chip" type="button" id="evidenceBtn" title="Search real indexed papers about this claim on Semantic Scholar">📚 Evidence</button>
+              <button class="ask-chip act" type="button" id="evidenceBtn" title="One tap: searches real indexed papers about this claim on Semantic Scholar">Find evidence</button>
             </div>
             <div class="ask-row">
               <input class="field" id="aiQuestion" placeholder="What does this mean?">
@@ -2499,26 +2503,19 @@
     }catch(e){st.textContent=e.message||'OCR failed';}
   }
   byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;
-  /* Question starters: stems drop into the box for finishing; complete questions fire
-     immediately when a context is already chosen. */
+  /* Question starters only ever fill the box — nothing sends until Ask is pressed.
+     The one one-tap action in the row is Find evidence, styled apart. */
   document.querySelectorAll('.ask-chip[data-ask-stem],.ask-chip[data-ask-full]').forEach(function(chip){
     chip.onclick=function(){
       var input=byId('aiQuestion');
-      if(chip.dataset.askFull){
-        input.value=chip.dataset.askFull;
-        if(!(aiContext&&aiContext.text))setCurrentPageContext();
-        if(aiContext&&aiContext.text)askAi();
-        else byId('aiStatus').textContent='Open a paper first, then tap this again.';
-        return;
-      }
-      input.value=chip.dataset.askStem||'';
+      input.value=chip.dataset.askFull||chip.dataset.askStem||'';
       input.focus({preventScroll:true});
       try{input.setSelectionRange(input.value.length,input.value.length);}catch(e){}
     };
   });
   async function askAi(){
     var ch=find(currentId), q=byId('aiQuestion').value.trim(), key=localStorage.getItem(AI_KEY)||''; if(!q)return;
-    if(!aiContext||!aiContext.text){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}
+    if(!aiContext||!aiContext.text){if(!setCurrentPageContext()){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}}
     if(!key){byId('aiStatus').innerHTML='Add your DeepSeek key in <button class="text-button" id="openAiSettings">settings</button> first.';byId('openAiSettings').onclick=function(){fillSettings();byId('settingsDialog').showModal();};return;}
     var btn=byId('aiAskBtn');btn.disabled=true;byId('aiStatus').textContent='Thinking…';
     try{
@@ -2555,7 +2552,7 @@
     box.classList.remove('hidden');
   }
   async function findEvidence(){
-    if(!aiContext||!aiContext.text){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}
+    if(!aiContext||!aiContext.text){if(!setCurrentPageContext()){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}}
     var btn=byId('evidenceBtn'),st=byId('aiStatus');btn.disabled=true;
     try{
       var query='',key=localStorage.getItem(AI_KEY)||'';

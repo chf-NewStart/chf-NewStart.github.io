@@ -137,6 +137,9 @@
     .reader-tools .title { min-width: 0; margin-right: auto; }
     .reader-tools .title strong { display: block; max-width: min(38vw, 520px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 .9rem var(--serif); }
     .reader-tools .title span { display: block; color: var(--muted); font-size: .63rem; }
+    /* Reflow is a phone remedy; big screens read the real PDF. The button only appears
+       on desktop when it is the way BACK from text view. */
+    @media (min-width: 721px) { #reflowBtn.to-text { display: none; } }
     .find-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px 18px; border-bottom: 1px solid var(--line); background: var(--surface); }
     .find-bar input { flex: 1; min-width: 0; max-width: 420px; min-height: 36px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); padding: 6px 11px; outline: none; }
     .find-bar input:focus { border-color: var(--accent); }
@@ -1972,7 +1975,7 @@
     byId('tocBtn').classList.toggle('hidden',!pdf||!(pdfOutline&&pdfOutline.length));
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('comfortBar').classList.toggle('pdf-mode',pdf);
-    var reflow=byId('reflowBtn');reflow.classList.toggle('hidden',!isPdf);reflow.setAttribute('aria-pressed',String(isPdf&&!pdf));
+    var reflow=byId('reflowBtn');reflow.classList.toggle('hidden',!isPdf);reflow.classList.toggle('to-text',pdf);reflow.setAttribute('aria-pressed',String(isPdf&&!pdf));
     reflow.innerHTML=pdf?'≣ <span class="wide">Reflow</span>':'⧉ <span class="wide">PDF</span>';
     reflow.setAttribute('aria-label',pdf?'Switch to reflowed text view':'Back to the PDF view');
     if(!pdf&&ch) renderText(ch);applyFocus();loadPageNote();updateProgress();

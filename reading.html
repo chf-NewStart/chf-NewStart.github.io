@@ -1357,10 +1357,21 @@
     if(title.length<8||title.length>220||/^\d+$/.test(title))return '';
     return title;
   }
+  /* Publisher metadata loves shipping titles full of XML tags and character entities
+     (Springer's <Emphasis Type="Italic">…</Emphasis>, &#x2018; and friends). Strip it
+     all down to the words. */
+  function cleanMetaTitle(text){
+    return String(text||'')
+      .replace(/<[^>]+>/g,' ')
+      .replace(/&#x([0-9a-f]+);/gi,function(m,hex){try{return String.fromCodePoint(parseInt(hex,16));}catch(e){return ' ';}})
+      .replace(/&#(\d+);/g,function(m,dec){try{return String.fromCodePoint(+dec);}catch(e){return ' ';}})
+      .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&nbsp;/g,' ')
+      .replace(/\s+/g,' ').replace(/\(\s+/g,'(').replace(/\s+\)/g,')').replace(/\s+([,.;:])/g,'$1').trim();
+  }
   async function derivePdfTitle(doc){
     try{
       var meta=await doc.getMetadata().catch(function(){return null;});
-      var infoTitle=meta&&meta.info&&String(meta.info.Title||'').replace(/\s+/g,' ').trim();
+      var infoTitle=meta&&meta.info&&cleanMetaTitle(meta.info.Title);
       if(infoTitle&&infoTitle.length>=8&&infoTitle.length<=220&&!/untitled|microsoft word|powerpoint|\.pdf$|\.docx?$|\.tex$|^\d+$/i.test(infoTitle))return infoTitle;
       var content=await (await doc.getPage(1)).getTextContent();
       return guessTitleFromLayout(contentLayout(content));
@@ -2870,6 +2881,17 @@
   }
 
   if('serviceWorker' in navigator&&location.protocol!=='file:'){try{navigator.serviceWorker.register('/reading-sw.js').catch(function(){});}catch(e){}}
+  /* One-time sweep: titles that already picked up publisher markup get scrubbed. */
+  (function(){
+    var dirty=false;
+    state.chapters.forEach(function(ch){
+      if(/<[^>]+>|&#x?[0-9a-f]+;|&[a-z]+;/i.test(ch.title||'')){
+        var cleaned=cleanMetaTitle(ch.title);
+        if(cleaned&&cleaned!==ch.title){ch.title=cleaned;dirty=true;}
+      }
+    });
+    if(dirty)persist(false);
+  })();
   syncUi();renderShelf();updateReviewBadge();if(gdriveOn())gdriveSync();
   /* A refresh drops you back into the paper you were reading, not the library. */
   try{var lastOpen=localStorage.getItem(LAST_OPEN_KEY);if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});

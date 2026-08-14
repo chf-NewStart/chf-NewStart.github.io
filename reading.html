@@ -55,6 +55,9 @@
     .nav-btn { padding: 8px 11px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-size: .85rem; }
     .nav-btn:hover, .nav-btn.active { background: var(--surface-2); color: var(--ink); }
     .head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .install-btn { border-color: var(--accent); color: var(--accent); }
+    .install-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+    #installBtn2 svg { flex: 0 0 auto; }
     .cloud { font-size: .72rem; color: var(--muted); white-space: nowrap; }
 
     .icon-btn, .button, .soft-button {
@@ -117,6 +120,8 @@
     .card-delete:hover, .card-delete:focus-visible { border-color: #bf6155; background: #bf6155; color: white; opacity: 1; }
     .empty { grid-column: 1 / -1; border: 1px dashed var(--line); border-radius: 14px; padding: 48px 24px; text-align: center; color: var(--muted); }
 
+    .support-line { margin: 28px 0 0; text-align: center; color: var(--muted); font: .8rem/1.5 var(--serif); }
+    .support-line a { color: var(--accent); }
     .tag { display: inline-flex; align-items: center; min-height: 25px; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .66rem; }
     .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
 
@@ -220,6 +225,7 @@
     .guide-grip:active { cursor: grabbing; }
     /* While the handle is held, the band tracks the finger 1:1 with no easing lag. */
     .pane-spotlight.dragging :is(.guide-band, .guide-shade) { transition: none; }
+    .pane-spotlight.locked .guide-band::after { content: ""; position: absolute; right: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--accent); opacity: .55; }
     .pane-spotlight.dragging .guide-grip { transform: scale(1.14); color: var(--ink); }
     @media (hover: hover) and (pointer: fine) { .guide-grip { display: none; } }
     html[data-theme="dark"] .guide-band { background: linear-gradient(90deg, rgba(190,150,43,.05), rgba(220,177,58,.13) 12%, rgba(220,177,58,.13) 88%, rgba(190,150,43,.05)); box-shadow: inset 0 1px rgba(244,210,111,.16), inset 0 -1px rgba(137,98,19,.22); }
@@ -250,6 +256,12 @@
     .marker-swatch[data-highlight-color="coral"] { background: #ff7e69; }
     .marker-swatch[data-highlight-color="blue"] { background: #5ba9ff; }
     .reader-toast { position: fixed; z-index: 40; left: 22px; bottom: 22px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--ink); color: var(--surface); box-shadow: var(--shadow); font-size: .72rem; font-weight: 650; pointer-events: none; }
+    /* While reading aloud, the controls stay on screen — pause, stop, and speed never
+       hide behind a menu. */
+    .voice-bar { position: fixed; z-index: 39; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); box-shadow: var(--shadow); }
+    .voice-bar button { min-width: 42px; height: 42px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink); font-weight: 650; font-size: .8rem; }
+    .voice-bar button:hover { border-color: var(--accent); }
+    body.zen .voice-bar { z-index: 60; }
     .lookup-card { position: fixed; z-index: 44; width: min(370px, calc(100vw - 24px)); max-height: min(540px, calc(100dvh - 24px)); overflow-y: auto; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 22px 70px rgba(20,24,25,.26); backdrop-filter: blur(18px); }
     .lookup-head { display: flex; align-items: flex-start; gap: 12px; padding: 13px 13px 11px 16px; border-bottom: 1px solid var(--line); }
     .lookup-head > div { min-width: 0; flex: 1; }
@@ -345,7 +357,7 @@
     .drift-range { width: 130px; height: 30px; margin: 0; accent-color: var(--accent); touch-action: none; }
     .context-row { display: flex; gap: 6px; margin: 0 0 10px; }
     .context-btn { flex: 1; min-height: 32px; padding: 5px 8px; justify-content: center; font-size: .72rem; white-space: nowrap; }
-    .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+    .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px; }
     .ask-chip { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 650; }
     .ask-chip:hover { border-color: var(--accent); color: var(--ink); }
     .ask-row { display: flex; gap: 7px; }
@@ -355,6 +367,14 @@
     .qa .q { font-weight: 650; font-size: .78rem; }
     .qa .a { margin-top: 6px; white-space: pre-wrap; font: .78rem/1.48 var(--serif); color: var(--muted); }
     .qa .meta { margin-top: 6px; color: var(--muted); font-size: .61rem; }
+    .evidence-list { display: grid; gap: 8px; margin-top: 14px; }
+    .evidence-head { color: var(--muted); font-size: .68rem; line-height: 1.5; }
+    .evidence-head a { color: var(--blue); }
+    .evidence-card { display: block; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-decoration: none; }
+    .evidence-card:hover { border-color: var(--accent); }
+    .evidence-card b { display: block; font: 600 .8rem/1.35 var(--sans); }
+    .evidence-card .ev-meta { display: block; margin-top: 3px; color: var(--muted); font-size: .66rem; }
+    .evidence-card .ev-tldr { display: block; margin-top: 5px; color: var(--muted); font: .72rem/1.45 var(--serif); }
 
     /* Review */
     .review-card { max-width: 640px; padding: 26px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
@@ -452,6 +472,7 @@
       .pdf-frame { min-width: 100%; margin: 0 auto; padding: 8px 0 30px; gap: 10px; }
       .text-document { width: calc(100% - 16px); margin: 8px auto; padding: 28px 22px; }
       .mobile-bar { display: flex; }
+      .voice-bar { right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); }
       .notebook { position: fixed; z-index: 46; inset: auto 0 var(--kb-inset, 0px) 0; height: min(78dvh, 640px); max-height: calc(100dvh - var(--kb-inset, 0px) - 16px); border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: 0 -18px 60px rgba(0,0,0,.28); transform: translateY(104%); transition: transform .28s ease; }
       .notebook.sheet-open { transform: none; }
       .notebook::before { content: ""; position: absolute; z-index: 3; top: 7px; left: 50%; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: var(--line); }
@@ -473,7 +494,7 @@
     </nav>
     <div class="head-actions">
       <span class="cloud" id="syncSignal">this device</span>
-      <button class="icon-btn hidden" id="installBtn" aria-label="Install Margin as an app" title="Install Margin">⭳</button>
+      <button class="icon-btn install-btn hidden" id="installBtn" aria-label="Install Margin as an app" title="Install Margin as an app"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg></button>
       <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
       <a class="icon-btn" id="homeLink" href="/" aria-label="Back to houfu72.com">↗</a>
@@ -515,6 +536,7 @@
         <input class="search" id="librarySearch" type="search" placeholder="Search titles, authors, tags…" aria-label="Search library">
       </div>
       <div class="shelf" id="shelf"></div>
+      <p class="support-line hidden" id="supportLine">Margin is free and keeps your papers on your own device. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">buy me a coffee ☕</a></p>
     </section>
 
     <section id="connectionsPage" class="page hidden">
@@ -670,12 +692,14 @@
               <button class="ask-chip" type="button" data-ask-stem="How ">How…</button>
               <button class="ask-chip" type="button" data-ask-full="Explain this in plain, simple words.">Explain simply</button>
               <button class="ask-chip" type="button" data-ask-full="Summarize the key points of this context in a few sentences.">Summarize</button>
+              <button class="ask-chip" type="button" id="evidenceBtn" title="Search real indexed papers about this claim on Semantic Scholar">📚 Evidence</button>
             </div>
             <div class="ask-row">
               <input class="field" id="aiQuestion" placeholder="What does this mean?">
               <button class="button" id="aiAskBtn">Ask</button>
             </div>
             <div class="status" id="aiStatus" role="status"></div>
+            <div class="evidence-list hidden" id="evidenceList"></div>
             <div class="qa-list" id="qaList"></div>
           </div>
         </aside>
@@ -701,6 +725,11 @@
         </div>
       </aside>
       <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading">✕</button>
+      <div class="voice-bar hidden" id="voiceBar" role="group" aria-label="Read aloud controls">
+        <button id="voicePause" type="button" aria-label="Pause reading">Ⅱ</button>
+        <button id="voiceStop" type="button" aria-label="Stop reading">■</button>
+        <button id="voiceRate" type="button" aria-label="Reading speed" title="Reading speed">1×</button>
+      </div>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
     </section>
   </main>
@@ -749,7 +778,7 @@
       <section>
         <h3>Install as an app</h3>
         <p id="installHint">Margin works offline once installed — papers already on this device open with no network.</p>
-        <button class="soft-button hidden" id="installBtn2">⭳ Install Margin</button>
+        <button class="soft-button hidden" id="installBtn2"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg> Install Margin</button>
       </section>
       <section>
         <h3>Library backup</h3>
@@ -793,6 +822,9 @@
 <script>
 (function(){
   'use strict';
+  /* Create a page at buymeacoffee.com or ko-fi.com, paste its URL here, and the
+     support line under the library shelf appears. Empty keeps it hidden. */
+  var SUPPORT_URL = '';
   var KEY = 'readingRoom.v1';
   var LAST_OPEN_KEY = 'readingRoom.lastOpen.v1';
   var SYNC_KEY = 'readingRoom.sync.v1';
@@ -1316,7 +1348,7 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,tone:'white',driftSpeed:10};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,guideLock:false,tone:'white',driftSpeed:10};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
@@ -1433,20 +1465,28 @@
   }
   function applyFocus(){
     var overlay=byId('paneSpotlight'),btn=byId('focusBtn'),on=!!comfort.focus;
-    overlay.classList.toggle('on',on);btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on));
+    overlay.classList.toggle('on',on);overlay.classList.toggle('locked',!!comfort.guideLock);btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on));
     if(on)requestAnimationFrame(placeGuide);
   }
   byId('focusBtn').onclick=function(){
     comfort.focus=!comfort.focus;applyComfort();
-    showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?'Reading guide follows your pointer':'Reading guide on · drag its ≡ handle or tap the page'):'Reading guide off');
+    showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ≡ handle or tap the page'):'Reading guide off');
   };
   byId('documentPane').addEventListener('pointermove',function(e){
-    if(!comfort.focus||e.pointerType==='touch')return;setReadingGuide(e.clientX,e.clientY,e.target);
+    if(!comfort.focus||comfort.guideLock||e.pointerType==='touch')return;setReadingGuide(e.clientX,e.clientY,e.target);
   });
   byId('documentPane').addEventListener('click',function(e){
-    if(!comfort.focus||matchMedia('(hover: hover)').matches)return;
+    if(!comfort.focus)return;
     var selection=window.getSelection&&window.getSelection();if(selection&&!selection.isCollapsed)return;
-    setReadingGuide(e.clientX,e.clientY,e.target);
+    if(!matchMedia('(hover: hover)').matches){setReadingGuide(e.clientX,e.clientY,e.target);return;}
+    /* Laptop: a click pins the guide to its line so trips to the notebook or toolbar
+       don't drag it away; the next click on the paper releases it. */
+    if(highlightMode)return;
+    comfort.guideLock=!comfort.guideLock;
+    if(!comfort.guideLock)setReadingGuide(e.clientX,e.clientY,e.target);
+    byId('paneSpotlight').classList.toggle('locked',comfort.guideLock);
+    saveComfortSoon();
+    showReaderToast(comfort.guideLock?'Guide pinned to this line · click the paper to release':'Guide follows your pointer');
   });
   var guideDragging=false;
   byId('guideGrip').addEventListener('pointerdown',function(e){
@@ -1739,6 +1779,7 @@
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
     byId('paperTags').value=(ch.tags||[]).join(', '); renderQa(); renderNoteIndex();
+    byId('evidenceList').classList.add('hidden');byId('evidenceList').innerHTML='';
     readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('aiPanel');
     if(ch.kind==='pdf'){
       try{
@@ -1819,12 +1860,21 @@
     }
     return full;
   }
+  /* Speed is remembered; changing it mid-read re-speaks the current sentence at the
+     new rate instead of waiting for the next one. */
+  var VOICE_RATES=[0.8,1,1.25,1.5,1.75,2],voiceRate=1;
+  try{var savedRate=+JSON.parse(localStorage.getItem('readingRoom.voice.v1')||'{}').rate;if(VOICE_RATES.indexOf(savedRate)>=0)voiceRate=savedRate;}catch(e){}
+  function rateLabel(){return String(voiceRate).replace(/(\.\d)0$/,'$1')+'×';}
   function updateReadAloudUi(){
     var btn=byId('readAloudBtn'),idle=lastSpeechSelection?'Listen from your selection':readerMode==='pdf'?'Listen from this page':'Listen from the beginning';
     btn.classList.toggle('active',speechActive);btn.setAttribute('aria-pressed',String(speechActive&&!speechPaused));
     btn.textContent=speechActive?(speechPaused?'▷':'Ⅱ'):'▷';
     btn.title=speechActive?(speechPaused?'Resume':'Pause'):idle;btn.setAttribute('aria-label',btn.title);
     byId('stopReadAloudBtn').classList.toggle('hidden',!speechActive);
+    byId('voiceBar').classList.toggle('hidden',!speechActive);
+    byId('voicePause').textContent=speechPaused?'▷':'Ⅱ';
+    byId('voicePause').setAttribute('aria-label',speechPaused?'Resume reading':'Pause reading');
+    byId('voiceRate').textContent=rateLabel();
   }
   function stopReadAloud(silent){
     if('speechSynthesis' in window)window.speechSynthesis.cancel();speechChunks=[];speechIndex=0;speechUtterance=null;speechActive=false;speechPaused=false;markSpeakingPara(null);updateReadAloudUi();if(!silent)showReaderToast('Reading stopped');
@@ -1832,8 +1882,22 @@
   function speakNextChunk(){
     if(!speechActive||speechPaused)return;if(speechIndex>=speechChunks.length){stopReadAloud(true);showReaderToast('Finished reading');return;}
     var chunk=speechChunks[speechIndex];markSpeakingPara(chunk.para);
-    var utterance=new SpeechSynthesisUtterance(chunk.text);utterance.rate=1;utterance.onend=function(){if(!speechActive)return;speechIndex++;speakNextChunk();};utterance.onerror=function(e){if(e.error==='canceled'||e.error==='interrupted')return;stopReadAloud(true);showReaderToast('Read aloud stopped');};speechUtterance=utterance;window.speechSynthesis.speak(utterance);
+    var utterance=new SpeechSynthesisUtterance(chunk.text);utterance.rate=voiceRate;utterance.onend=function(){if(!speechActive||speechUtterance!==utterance)return;speechIndex++;speakNextChunk();};utterance.onerror=function(e){if(e.error==='canceled'||e.error==='interrupted')return;stopReadAloud(true);showReaderToast('Read aloud stopped');};speechUtterance=utterance;window.speechSynthesis.speak(utterance);
   }
+  function toggleSpeechPause(){
+    if(!speechActive)return;
+    if(speechPaused){speechPaused=false;window.speechSynthesis.resume();if(!window.speechSynthesis.speaking)speakNextChunk();}
+    else{speechPaused=true;window.speechSynthesis.pause();}
+    updateReadAloudUi();
+  }
+  byId('voicePause').onclick=toggleSpeechPause;
+  byId('voiceStop').onclick=function(){stopReadAloud(false);};
+  byId('voiceRate').onclick=function(){
+    voiceRate=VOICE_RATES[(VOICE_RATES.indexOf(voiceRate)+1)%VOICE_RATES.length];
+    try{localStorage.setItem('readingRoom.voice.v1',JSON.stringify({rate:voiceRate}));}catch(e){}
+    updateReadAloudUi();
+    if(speechActive&&!speechPaused){speechUtterance=null;window.speechSynthesis.cancel();speakNextChunk();}
+  };
   async function beginReadAloud(startParagraph){
     if(!('speechSynthesis' in window)||!window.SpeechSynthesisUtterance){showReaderToast('Read aloud is not supported here');return;}
     var ch=find(currentId),btn=byId('readAloudBtn'),selection=Number.isInteger(startParagraph)?null:lastSpeechSelection;if(!ch)return;stopReadAloud(true);btn.disabled=true;btn.textContent='…';
@@ -2437,7 +2501,7 @@
   byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;
   /* Question starters: stems drop into the box for finishing; complete questions fire
      immediately when a context is already chosen. */
-  document.querySelectorAll('.ask-chip').forEach(function(chip){
+  document.querySelectorAll('.ask-chip[data-ask-stem],.ask-chip[data-ask-full]').forEach(function(chip){
     chip.onclick=function(){
       var input=byId('aiQuestion');
       if(chip.dataset.askFull){
@@ -2464,6 +2528,56 @@
     }catch(e){byId('aiStatus').textContent=e.message||'AI request failed';}btn.disabled=false;
   }
   function renderQa(){var ch=find(currentId);if(!ch)return;byId('qaList').innerHTML=(ch.questions||[]).map(function(x){return '<article class="qa"><div class="q">'+esc(x.question)+'</div><div class="a">'+esc(x.answer)+'</div><div class="meta">'+esc(x.contextLabel||'context')+' · '+new Date(x.at).toLocaleDateString()+'</div></article>';}).join('');}
+
+  /* Evidence: the model never gets to invent a citation. At most it distills the claim
+     into a search query; the papers shown all come from Semantic Scholar's real index,
+     with a Google Scholar link for the same query. No AI key needed — a keyword
+     fallback builds the query locally. */
+  var EVIDENCE_STOP={};'the a an and or of to in on for with without from into by is are was were be been being this that these those we our it its as at can could may might will would should must not than then which who whom what where when while how also more most other others over under between within during against per each such same very own new used using use based results result study studies paper table figure section however therefore because although'.split(' ').forEach(function(w){EVIDENCE_STOP[w]=true;});
+  function keywordQuery(text){
+    var counts={},order=[];
+    String(text||'').toLowerCase().replace(/[^a-zà-öø-ÿ0-9\- ]/g,' ').split(/\s+/).forEach(function(w){
+      if(w.length<4||EVIDENCE_STOP[w])return;
+      if(!counts[w]){counts[w]=0;order.push(w);}
+      counts[w]++;
+    });
+    return order.sort(function(a,b){return counts[b]-counts[a];}).slice(0,6).join(' ');
+  }
+  function renderEvidence(query,papers){
+    var box=byId('evidenceList');
+    var head='<div class="evidence-head">Real papers matching “'+esc(query)+'” — judge them by reading, not by rank · <a href="https://scholar.google.com/scholar?q='+encodeURIComponent(query)+'" target="_blank" rel="noopener">same search on Google Scholar ↗</a></div>';
+    box.innerHTML=head+(papers.length?papers.map(function(p){
+      var authors=(p.authors||[]).slice(0,3).map(function(a){return a.name;}).join(', ')+((p.authors||[]).length>3?' et al.':'');
+      var doi=p.externalIds&&p.externalIds.DOI,link=doi?'https://doi.org/'+doi:(p.url||'');
+      var tldr=p.tldr&&p.tldr.text?'<span class="ev-tldr">'+esc(p.tldr.text)+'</span>':'';
+      return '<a class="evidence-card" href="'+esc(link)+'" target="_blank" rel="noopener"><b>'+esc(p.title||'Untitled')+'</b><span class="ev-meta">'+esc(authors)+(p.year?' · '+p.year:'')+(p.venue?' · '+esc(p.venue):'')+' · cited '+(p.citationCount||0)+'×</span>'+tldr+'</a>';
+    }).join(''):'<div class="ev-meta" style="padding:6px 0">Nothing indexed matched. Try a narrower selection around one specific claim.</div>');
+    box.classList.remove('hidden');
+  }
+  async function findEvidence(){
+    if(!aiContext||!aiContext.text){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}
+    var btn=byId('evidenceBtn'),st=byId('aiStatus');btn.disabled=true;
+    try{
+      var query='',key=localStorage.getItem(AI_KEY)||'';
+      if(key){
+        st.textContent='Distilling the claim…';
+        try{
+          var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:60,messages:[{role:'system',content:'Extract the single central scientific claim of the excerpt, then output ONLY a literature search query of 3 to 8 keywords for finding papers that test that claim. Output the query text alone: no quotes, no punctuation, no explanation.'},{role:'user',content:aiContext.text.slice(0,6000)}]})});
+          if(res.ok){var data=await res.json();query=String((((data.choices||[])[0]||{}).message||{}).content||'').replace(/[\n"“”.,;:]/g,' ').replace(/\s+/g,' ').trim();}
+        }catch(e){}
+      }
+      if(!query)query=keywordQuery(aiContext.text);
+      if(!query)throw new Error('Could not build a search query from this context');
+      st.textContent='Searching Semantic Scholar…';
+      var r=await fetch('https://api.semanticscholar.org/graph/v1/paper/search?query='+encodeURIComponent(query)+'&limit=6&fields=title,year,authors,venue,citationCount,externalIds,url,tldr');
+      if(!r.ok)throw new Error(r.status===429?'Semantic Scholar is rate-limiting; try again in a minute.':'Paper search failed ('+r.status+')');
+      var found=((await r.json()).data)||[];
+      renderEvidence(query,found);
+      st.textContent=found.length?'Every result is a real indexed paper — the links go to the source.':'No matches for “'+query+'”.';
+    }catch(e){st.textContent=e.message||'Evidence search failed';}
+    btn.disabled=false;
+  }
+  byId('evidenceBtn').onclick=findEvidence;
 
   /* connections */
   function tagMap(){var map={};state.chapters.forEach(function(ch){(ch.tags||[]).forEach(function(t){var k=t.toLowerCase();if(!map[k])map[k]={label:t,papers:[]};map[k].papers.push(ch);});});return map;}
@@ -2507,28 +2621,37 @@
   async function doSync(){
     if(!syncCfg||syncing)return;syncing=true;syncUi('☁ syncing…');
     try{
-      var get=await fetch(ghUrl(SYNC_FILE),{headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json'}}),sha=null;
-      if(get.status!==404){
-        if(!get.ok)throw new Error(get.status===401||get.status===403?'Token cannot access this repo':'GitHub returned '+get.status);
-        var j=await get.json();sha=j.sha;
-        var enc=atob((j.content||'').replace(/\n/g,''));
-        /* GitHub's contents API sends an empty content field for files over 1MB — a full
-           textbook's extracted text gets there easily. Fetch the raw bytes instead. */
-        if(!enc&&j.size>0){
-          var raw=await fetch(ghUrl(SYNC_FILE),{headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github.raw+json'}});
-          if(!raw.ok)throw new Error('Could not download the sync file ('+raw.status+')');
-          enc=await raw.text();
+      /* Two devices reading at once constantly race each other's pushes: a stale sha
+         makes GitHub answer 409 even though nothing is wrong. Take another lap — read
+         the fresh file, merge, and write on top of it — before calling it a problem. */
+      for(var attempt=0;;attempt++){
+        var get=await fetch(ghUrl(SYNC_FILE),{headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json'}}),sha=null;
+        if(get.status!==404){
+          if(!get.ok)throw new Error(get.status===401||get.status===403?'Token cannot access this repo':'GitHub returned '+get.status);
+          var j=await get.json();sha=j.sha;
+          var enc=atob((j.content||'').replace(/\n/g,''));
+          /* GitHub's contents API sends an empty content field for files over 1MB — a full
+             textbook's extracted text gets there easily. Fetch the raw bytes instead. */
+          if(!enc&&j.size>0){
+            var raw=await fetch(ghUrl(SYNC_FILE),{headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github.raw+json'}});
+            if(!raw.ok)throw new Error('Could not download the sync file ('+raw.status+')');
+            enc=await raw.text();
+          }
+          if(enc){
+            var remote;
+            try{remote=await decryptState(syncCfg.pass,enc);}
+            catch(decryptError){throw new Error('Could not decrypt the sync file — is the passphrase exactly the same as on your other device?');}
+            if(mergeState(remote)){persist(false);renderShelf();}
+          }
         }
-        if(enc){
-          var remote;
-          try{remote=await decryptState(syncCfg.pass,enc);}
-          catch(decryptError){throw new Error('Could not decrypt the sync file — is the passphrase exactly the same as on your other device?');}
-          if(mergeState(remote)){persist(false);renderShelf();}
-        }
+        var syncChapters=await chaptersForSync(),payload=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{}}),body={message:'Margin reading notes sync',content:btoa(payload)};if(sha)body.sha=sha;
+        var put=await fetch(ghUrl(SYNC_FILE),{method:'PUT',headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(put.ok)break;
+        if((put.status===409||put.status===422)&&attempt<2)continue;
+        throw new Error('GitHub upload failed ('+put.status+')');
       }
-      var syncChapters=await chaptersForSync(),enc=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{}}),body={message:'Margin reading notes sync',content:btoa(enc)};if(sha)body.sha=sha;
-      var put=await fetch(ghUrl(SYNC_FILE),{method:'PUT',headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)});if(!put.ok)throw new Error('GitHub upload failed ('+put.status+')');syncUi('☁ synced '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncStatus').textContent='Synced to '+syncCfg.repo+'.';
-    }catch(e){syncUi('☁ sync needs attention');byId('syncStatus').textContent=e.message||'Sync failed';}syncing=false;
+      syncUi('☁ synced '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncStatus').textContent='Synced to '+syncCfg.repo+'.';byId('syncSignal').title='';
+    }catch(e){syncUi('☁ sync needs attention');byId('syncSignal').title=e.message||'Sync failed';byId('syncStatus').textContent=e.message||'Sync failed';}syncing=false;
   }
   function scheduleSync(){if(!syncCfg)return;clearTimeout(syncTimer);syncTimer=setTimeout(doSync,4000);}
   /* The device link is a direct device-to-device hand-off (it already carries the GitHub
@@ -2607,6 +2730,7 @@
   /* In the installed window, the portfolio link opens in a real browser tab. */
   if(isStandalone())byId('homeLink').target='_blank';
   refreshInstallUi();
+  if(SUPPORT_URL){byId('supportLink').href=SUPPORT_URL;byId('supportLine').classList.remove('hidden');}
 
   if('serviceWorker' in navigator&&location.protocol!=='file:'){try{navigator.serviceWorker.register('/reading-sw.js').catch(function(){});}catch(e){}}
   syncUi();renderShelf();updateReviewBadge();

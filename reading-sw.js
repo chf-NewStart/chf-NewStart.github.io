@@ -2,7 +2,10 @@
    already stored on this device open with no network (subway mode). Every other path on
    the site is left completely untouched. Served stale-while-revalidate: instant loads
    from cache, refreshed in the background for the next visit. */
-var CACHE = 'margin-shell-v2';
+var CACHE = 'margin-shell-v3';
+/* The app itself is network-first: online opens always get the newest deploy, the cache
+   only answers when the network can't. Libraries and fonts stay stale-while-revalidate. */
+var NETWORK_FIRST = ['/reading.html', '/margin.webmanifest'];
 var SHELL = [
   '/reading.html',
   '/margin.webmanifest',
@@ -36,6 +39,15 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
   if (url.origin !== location.origin || SHELL.indexOf(url.pathname) < 0) return;
   var path = url.pathname;
+  if (NETWORK_FIRST.indexOf(path) >= 0) {
+    e.respondWith(
+      fetch(e.request).then(function (res) {
+        if (res && res.ok) caches.open(CACHE).then(function (c) { c.put(path, res.clone()); });
+        return res;
+      }).catch(function () { return caches.match(path); })
+    );
+    return;
+  }
   e.respondWith(
     caches.match(path).then(function (cached) {
       var refresh = fetch(e.request).then(function (res) {

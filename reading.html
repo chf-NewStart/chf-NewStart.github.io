@@ -447,11 +447,17 @@
     @media (max-width: 720px) {
       .masthead { height: 60px; padding: 0 12px; gap: 8px; }
       .brand span, .cloud { display: none; }
-      .nav { gap: 2px; }
-      .nav-btn { padding: 6px 7px; font-size: .72rem; }
+      .masthead { gap: 6px; padding: 0 8px; overflow-x: auto; scrollbar-width: none; }
+      .masthead::-webkit-scrollbar { display: none; }
+      .brand strong { font-size: 1.2rem; }
+      .nav { gap: 1px; }
+      .nav-btn { padding: 5px 5px; font-size: .68rem; }
       #installNav { display: none; }
-      .head-actions { gap: 4px; }
-      .masthead .icon-btn { width: 34px; min-height: 34px; }
+      .head-actions { gap: 3px; }
+      .masthead .icon-btn { width: 32px; min-height: 32px; flex: 0 0 auto; }
+    }
+    @media (max-width: 360px) {
+      #homeLink { display: none; }
       .section-head { flex-wrap: wrap; }
       .search { width: 100%; margin-left: 0; }
       main { min-height: calc(100vh - 60px); min-height: calc(100dvh - 60px); }
@@ -531,7 +537,7 @@
       </div>
 
       <div class="link-import" id="pdfLinkDrop">
-        <div class="link-copy"><b>Paste or drop a PDF link</b><span>Carrel downloads one local copy. No commit needed.</span></div>
+        <div class="link-copy"><b>Drop PDFs, a whole folder, or a link</b><span>Carrel keeps local copies. Subfolders welcome.</span></div>
         <input class="field" id="pdfUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/paper.pdf" aria-label="Direct PDF link">
         <button class="button" id="pdfUrlBtn" type="button">Add link</button>
         <div class="link-status" id="pdfUrlStatus" role="status" aria-live="polite"></div>
@@ -584,7 +590,7 @@
         <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to reflowed text view" title="Reflow · big phone-friendly text rebuilt from the PDF">≣ <span class="wide">Reflow</span></button>
         <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading ruler · drag its ≡ handle or tap the page to move it; color, width, style and height live in Display">▰ <span class="wide">Guide</span></button>
         <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Reading display settings" title="Reading display · guide style, text size, auto-scroll, paper tone">Aa</button>
-        <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F)">⛶ <span class="wide">Zen</span></button>
+        <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F) · Space auto-scrolls">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
         <div class="marker-tools">
           <button class="soft-button" id="highlightBtn" type="button" aria-pressed="false">✦ Marker</button>
@@ -1240,11 +1246,48 @@
     drop.ondragover=function(e){e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';drop.classList.add('drag');};
     drop.ondragleave=function(e){if(!drop.contains(e.relatedTarget))drop.classList.remove('drag');};
     drop.ondrop=function(e){
-      e.preventDefault();drop.classList.remove('drag');var transfer=e.dataTransfer,file=transfer&&transfer.files&&transfer.files[0];
-      if(file){if(file.type==='application/pdf'||/\.pdf$/i.test(file.name))importPdf(file);else byId('pdfUrlStatus').textContent='Drop a PDF file or a direct PDF link here.';return;}
-      var value=transfer&&(transfer.getData('text/uri-list')||transfer.getData('text/plain'));byId('pdfUrl').value=cleanPdfUrl(value)||value||'';importPdfUrl(value);
+      e.preventDefault();drop.classList.remove('drag');var transfer=e.dataTransfer;if(!transfer)return;
+      /* Entries must be grabbed synchronously during the event — they die with it. */
+      var entries=[];
+      if(transfer.items)for(var i=0;i<transfer.items.length;i++){var entry=transfer.items[i].webkitGetAsEntry&&transfer.items[i].webkitGetAsEntry();if(entry)entries.push(entry);}
+      var files=Array.prototype.slice.call(transfer.files||[]);
+      if(entries.length||files.length){importDropped(entries,files);return;}
+      var value=transfer.getData('text/uri-list')||transfer.getData('text/plain');byId('pdfUrl').value=cleanPdfUrl(value)||value||'';importPdfUrl(value);
     };
   })();
+  /* A whole folder can land on the drop zone: walk it (subfolders too), pull out the
+     PDFs, and import them one by one with a running count. Capped at 40 per drop. */
+  var DROP_PDF_CAP=40;
+  function entryFile(entry){return new Promise(function(res,rej){entry.file(res,rej);});}
+  function readAllEntries(reader){return new Promise(function(res,rej){var all=[];(function next(){reader.readEntries(function(batch){if(!batch.length)return res(all);all=all.concat(batch);next();},rej);})();});}
+  async function collectPdfEntries(entry,found,depth){
+    if(found.length>=DROP_PDF_CAP||depth>6)return;
+    if(entry.isFile){if(/\.pdf$/i.test(entry.name))found.push(entry);return;}
+    if(entry.isDirectory){
+      try{var children=await readAllEntries(entry.createReader());}catch(e){return;}
+      for(var i=0;i<children.length&&found.length<DROP_PDF_CAP;i++)await collectPdfEntries(children[i],found,depth+1);
+    }
+  }
+  async function importDropped(entries,files){
+    var status=byId('pdfUrlStatus'),pdfFiles=[];
+    try{
+      if(entries.length){
+        var found=[];status.textContent='Looking through the drop…';
+        for(var i=0;i<entries.length;i++)await collectPdfEntries(entries[i],found,0);
+        for(var j=0;j<found.length;j++){try{pdfFiles.push(await entryFile(found[j]));}catch(e){}}
+      }else{
+        pdfFiles=files.filter(function(f){return f.type==='application/pdf'||/\.pdf$/i.test(f.name);});
+      }
+    }catch(e){}
+    if(!pdfFiles.length){status.textContent='No PDFs in that drop — a PDF file, a folder of PDFs, or a direct link all work.';return;}
+    if(pdfFiles.length===1){status.textContent='';importPdf(pdfFiles[0]);return;}
+    var ok=0;
+    for(var k=0;k<pdfFiles.length;k++){
+      status.textContent='Importing '+(k+1)+' / '+pdfFiles.length+' · '+pdfFiles[k].name;
+      try{if(await importPdf(pdfFiles[k],null,null,null,true))ok++;}catch(e){}
+    }
+    status.textContent='Imported '+ok+' of '+pdfFiles.length+' papers.';
+  }
   document.addEventListener('paste',function(e){
     if(byId('libraryPage').classList.contains('hidden')||!e.clipboardData||e.target===byId('pdfUrl')||/^(INPUT|TEXTAREA)$/.test(e.target.tagName)||e.target.isContentEditable)return;
     var url=cleanPdfUrl(e.clipboardData.getData('text/plain'));if(!url)return;e.preventDefault();byId('pdfUrl').value=url;importPdfUrl(url);
@@ -1391,7 +1434,7 @@
       return guessTitleFromLayout(contentLayout(content));
     }catch(e){return '';}
   }
-  async function importPdf(file, sourcePath, sourceUrl, progressBtn){
+  async function importPdf(file, sourcePath, sourceUrl, progressBtn, stayPut){
     var btn=progressBtn||byId('importPdfBtn'), old=btn.textContent, imported=false; btn.disabled=true; btn.textContent='Reading PDF…';
     try {
       var bytes=await file.arrayBuffer(),lib=await loadPdfLib();btn.textContent='Opening PDF…';
@@ -1402,7 +1445,7 @@
       var ch=existing||normalize({id:id,title:title,authors:'',kind:'pdf',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now(),readPage:1});
       if(existing&&existing.title===filenameTitle(existing.sourceName))existing.title=title;
       ch.sourceName=file.name;ch.sourcePath=sourcePath||ch.sourcePath||'';ch.sourceUrl=sourceUrl||ch.sourceUrl||'';ch.pageCount=doc.numPages;ch.updatedAt=now();
-      if(!existing)state.chapters.push(ch);persist();renderShelf();await openReader(id,doc);if(!await keepPromise)showReaderToast('PDF opened, but this browser may not keep it after closing the tab.');imported=true;
+      if(!existing)state.chapters.push(ch);persist();renderShelf();if(!stayPut)await openReader(id,doc);if(!await keepPromise)showReaderToast('PDF opened, but this browser may not keep it after closing the tab.');imported=true;
     } catch(e){ showError(e.message||'The PDF reader could not open this file.'); }
     finally { btn.disabled=false; btn.textContent=old; }
     return imported;
@@ -1592,7 +1635,7 @@
       if(comfort.focus)placeGuide();
       updateProgress();
     });
-    showReaderToast(zenOn?'Zen reading · ✕ or Esc brings the desk back':'Back at the desk');
+    showReaderToast(zenOn?'Zen reading · Space starts a slow auto-scroll · Esc leaves':'Back at the desk');
   }
   byId('zenBtn').onclick=function(){setZen(!zenOn);};
   byId('zenExit').onclick=function(){setZen(false);};
@@ -1721,7 +1764,10 @@
     if(!willOpen&&recallActive)setRecall(false);
     notebook.classList.toggle('sheet-open',willOpen);scrim.classList.toggle('hidden',!willOpen);
     byId('mNotes').setAttribute('aria-expanded',String(willOpen));
-    try{byId('notebook').inert=innerWidth<=720&&!willOpen;}catch(e){}
+    var hideSheet=innerWidth<=720&&!willOpen;
+    try{byId('notebook').inert=hideSheet;}catch(e){}
+    byId('notebook').setAttribute('aria-hidden',String(hideSheet));
+    if(hideSheet&&byId('notebook').contains(document.activeElement)){try{document.activeElement.blur();}catch(e){}}
   }
   byId('mNotes').onclick=function(){toggleSheet();};
   byId('sheetScrim').onclick=function(){toggleSheet(false);};
@@ -2224,6 +2270,13 @@
     if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undoLastHighlight();return;}
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
     if(e.key.toLowerCase()==='f'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();setZen(!zenOn);return;}
+    /* Space is the settle-in key: start the slow crawl, tap again to stop. */
+    if(e.key===' '&&!e.shiftKey){
+      e.preventDefault();
+      if(driftSpeed){setDrift(0);showReaderToast('Auto-scroll off');}
+      else{setDrift(comfort.driftSpeed||4);showReaderToast('Auto-scroll · '+driftLabel()+' · Space stops, Aa adjusts');}
+      return;
+    }
     if(readerMode!=='pdf')return;
     var pane=byId('documentPane');
     if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(currentZoom()*1.2);}
@@ -2231,7 +2284,7 @@
     else if(e.key==='0'){e.preventDefault();setZoom(1);}
     else if(e.key==='ArrowDown'){e.preventDefault();pane.scrollBy({top:74});}
     else if(e.key==='ArrowUp'){e.preventDefault();pane.scrollBy({top:-74});}
-    else if(e.key===' '||e.key==='PageDown'){e.preventDefault();pane.scrollBy({top:pane.clientHeight*(e.shiftKey?-.85:.85),behavior:'smooth'});}
+    else if(e.key==='PageDown'||(e.key===' '&&e.shiftKey)){e.preventDefault();pane.scrollBy({top:pane.clientHeight*.85,behavior:'smooth'});}
     else if(e.key==='PageUp'){e.preventDefault();pane.scrollBy({top:-pane.clientHeight*.85,behavior:'smooth'});}
     else if(e.key==='ArrowRight'){e.preventDefault();byId('nextPage').click();}
     else if(e.key==='ArrowLeft'){e.preventDefault();byId('prevPage').click();}
@@ -2692,7 +2745,7 @@
      file pulls it down when the paper is opened. */
   var GDRIVE_PDF_LIMIT=30*1024*1024,gdriveRoaming=false;
   async function gdriveRoamPdfs(token,files){
-    if(gdriveRoaming)return;gdriveRoaming=true;
+    if(gdriveRoaming)return {sent:0,failed:0};gdriveRoaming=true;
     var sent=0,failed=0;
     try{
       var have={};files.forEach(function(f){have[f.name]=true;});
@@ -2710,7 +2763,7 @@
       }
     }catch(e){failed++;}
     gdriveRoaming=false;
-    if(sent||failed)byId('gdriveStatus').textContent='Synced with your Google Drive.'+(sent?' '+sent+' paper'+(sent===1?'':'s')+' uploaded.':'')+(failed?' '+failed+' upload'+(failed===1?'':'s')+' failed — Carrel retries on the next sync.':'');
+    return {sent:sent,failed:failed};
   }
   async function gdriveFetchPdf(id){
     if(!gdriveOn())return null;
@@ -2750,8 +2803,9 @@
         up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:body});
       }
       if(!up.ok)throw new Error('Drive upload failed ('+up.status+')');
-      gdriveRoamPdfs(token,files);
-      byId('gdriveStatus').textContent='Synced with your Google Drive.';
+      byId('gdriveStatus').textContent='Library synced — checking papers…';
+      var roam=await gdriveRoamPdfs(token,files);
+      byId('gdriveStatus').textContent='Synced with your Google Drive.'+(roam.sent?' '+roam.sent+' paper'+(roam.sent===1?'':'s')+' uploaded.':'')+(roam.failed?' '+roam.failed+' upload'+(roam.failed===1?'':'s')+' failed — Carrel retries on the next sync.':'');
       syncUi('☁ Drive · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncSignal').title='';
     }catch(e){
       var reason=e.message||'Drive sync failed';
@@ -2978,6 +3032,7 @@
     if(dirty)persist(false);
   })();
   try{byId('buildStamp').textContent='This copy of Carrel was published '+document.lastModified+'.';}catch(e){}
+  toggleSheet(false);
   syncUi();renderShelf();updateReviewBadge();if(gdriveOn())gdriveSync();
   /* A refresh drops you back into the paper you were reading, not the library. */
   try{var lastOpen=localStorage.getItem(LAST_OPEN_KEY);if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});

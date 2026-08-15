@@ -171,7 +171,7 @@
     .comfort-bar .spacer { flex: 1 1 auto; }
     .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
     #focusBtn.active, #comfortBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
-    .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; touch-action: manipulation; }
+    .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; touch-action: manipulation; overscroll-behavior: contain; }
     #pageNumber, .mobile-bar .m-page { cursor: pointer; }
     html[data-theme="dark"] .document-pane { background: #111516; }
     /* Pages stack in one continuous vertical scroll, like paper on a desk. */
@@ -2080,7 +2080,10 @@
   /* Continuous vertical scroll: every page has a placeholder box up front, and real
      pixels arrive lazily as pages approach the viewport. Far-away canvases are freed
      again so long papers cannot exhaust a phone's canvas memory. */
-  var pdfViews=[], pdfBuildId=0, pdfBuildKey='', pageObserver=null, renderedPages=[];
+  var pdfViews=[], pdfBuildId=0, pdfBuildKey='', pageObserver=null, renderedPages=[], layoutZoom=1;
+  /* iPads sit past the 720px phone cutoffs but share Safari's tight canvas memory
+     ceiling; coarse-pointer is the honest signal for "this is glass, budget like it". */
+  var coarsePointer=matchMedia('(pointer: coarse)');
   /* Zoom is a multiple of fit-to-width, so 100% always means "the page fills this pane"
      and one − / + step feels the same on a phone as on a desktop. */
   function pageScale(natural){
@@ -2090,7 +2093,7 @@
   function currentBuildKey(){return pdfDoc?[currentId,pdfDoc.numPages,pdfFit,pdfZoom,byId('documentPane').clientWidth].join('|'):'';}
   async function buildPdfScroll(){
     if(!pdfDoc)return;var buildId=++pdfBuildId,frame=byId('pdfFrame');
-    var first=await pdfDoc.getPage(1),natural=first.getViewport({scale:1}),scale=pageScale(natural);
+    var first=await pdfDoc.getPage(1),natural=first.getViewport({scale:1}),scale=pageScale(natural),builtZoom=currentZoom();
     if(buildId!==pdfBuildId)return;
     /* Nearby pages that were already rendered get carried over as scaled snapshots, so a
        zoom or resize shows slightly soft paper instead of a white flash while the crisp
@@ -2113,7 +2116,7 @@
         try{nc.getContext('2d').drawImage(carry[i],0,0,cw,chh);}catch(e){}
       }
     }
-    applyDarkPdf();pdfBuildKey=currentBuildKey();
+    applyDarkPdf();pdfBuildKey=currentBuildKey();layoutZoom=builtZoom;
     if(pageObserver)pageObserver.disconnect();
     pageObserver=new IntersectionObserver(function(entries){
       entries.forEach(function(entry){if(entry.isIntersecting)renderPdfPageAt(+entry.target.dataset.page);});
@@ -2132,8 +2135,10 @@
          exhausting Safari's canvas memory while keeping type comfortably sharp. */
       var viewport=page.getViewport({scale:scale}),ratio=Math.min(devicePixelRatio||1,innerWidth<=720?1.5:2);
       /* Zoomed-in pages are already huge in CSS pixels; cap the backing-store area so a
-         675-page textbook at 250% cannot blow Safari's canvas memory budget. */
-      ratio=Math.max(.5,Math.min(ratio,Math.sqrt((innerWidth<=720?65e5:14e6)/Math.max(1,viewport.width*viewport.height))));
+         675-page textbook at 250% cannot blow Safari's canvas memory budget. Tablets get
+         a middle tier: desktop-sized pixel counts were what made iPad zooming flicker. */
+      var areaCap=innerWidth<=720?65e5:coarsePointer.matches?9e6:14e6;
+      ratio=Math.max(.5,Math.min(ratio,Math.sqrt(areaCap/Math.max(1,viewport.width*viewport.height))));
       view.holder.style.width=Math.ceil(viewport.width)+'px';view.holder.style.height=Math.ceil(viewport.height)+'px';view.holder.style.setProperty('--scale-factor',scale);
       view.canvas.width=Math.floor(viewport.width*ratio);view.canvas.height=Math.floor(viewport.height*ratio);view.canvas.style.width=Math.ceil(viewport.width)+'px';view.canvas.style.height=Math.ceil(viewport.height)+'px';
       await page.render({canvasContext:view.canvas.getContext('2d'),viewport:viewport,transform:ratio===1?null:[ratio,0,0,ratio,0,0]}).promise;
@@ -2146,8 +2151,9 @@
   }
   function freeFarPages(){
     /* Only be stingy when zoomed in (big canvases); at fit size, freed pages re-render
-       visibly while scrolling and read as flicker. */
-    var tight=innerWidth<=720&&!pdfFit&&pdfZoom>1.4;
+       visibly while scrolling and read as flicker. Phones and iPads both count as tight:
+       zoomed canvases are what exhaust Safari's shared canvas budget on glass. */
+    var tight=(innerWidth<=720||coarsePointer.matches)&&!pdfFit&&pdfZoom>1.4;
     if(renderedPages.length<=(tight?8:12))return;
     renderedPages=renderedPages.filter(function(n){
       if(Math.abs(n-currentPage)<=(tight?3:5))return true;
@@ -2222,39 +2228,57 @@
   byId('mPageLabel').onclick=promptForPage;
   function currentZoom(){return pdfFit?1:pdfZoom;}
   /* Re-render at the new zoom, keeping the content under the anchor point (finger, cursor
-     or pane center) where it was, and remember the choice with the paper. */
-  async function setZoom(value,anchorX,anchorY){
-    if(!pdfDoc)return;
+     or pane center) where it was, and remember the choice with the paper. shiftX/Y say how
+     far the anchor itself travelled during the gesture, so a pinch that also drags lands
+     the text under the fingers' final spot, not their first. Commits run through a chain:
+     a quick zoom-out-then-in used to interleave two async rebuilds and let the first one
+     stomp the scroll position with stale numbers — the read spot silently jumped. The
+     scale factor comes from layoutZoom (what the DOM is actually laid out at), not from
+     whatever zoom was last requested. onSettled fires once this commit's layout and scroll
+     are truly in place, letting the pinch preview stay up until the swap is seamless. */
+  var zoomChain=Promise.resolve(),zoomSerial=0;
+  function setZoom(value,anchorX,anchorY,shiftX,shiftY,onSettled){
+    if(!pdfDoc){if(onSettled)onSettled();return;}
     var pane=byId('documentPane'),rect=pane.getBoundingClientRect();
-    var oldZoom=currentZoom(),newZoom=Math.max(.5,Math.min(4,+value||1));
+    var newZoom=Math.max(.5,Math.min(4,+value||1));
     if(Math.abs(newZoom-1)<=.05)newZoom=1;
     pdfFit=newZoom===1;pdfZoom=pdfFit?1:newZoom;
-    var ax=anchorX===undefined?rect.width/2:anchorX-rect.left,ay=anchorY===undefined?rect.height/2:anchorY-rect.top;
-    var f=newZoom/oldZoom,targetLeft=(pane.scrollLeft+ax)*f-ax,targetTop=(pane.scrollTop+ay)*f-ay;
     byId('zoomLabel').textContent=pdfFit?'Fit':Math.round(pdfZoom*100)+'%';
-    if(pdfBuildKey!==currentBuildKey()||!pdfViews.length){
-      try{await buildPdfScroll();}catch(e){showError(e.message||'This PDF could not be laid out.');return;}
-      pane.scrollLeft=Math.max(0,targetLeft);pane.scrollTop=Math.max(0,targetTop);
-    }
     var ch=find(currentId);
     if(ch&&ch.kind==='pdf'&&ch.zoom!==(pdfFit?0:pdfZoom)){ch.zoom=pdfFit?0:pdfZoom;persist(false);}
-    if(comfort.focus)requestAnimationFrame(placeGuide);
+    var ax=anchorX===undefined?rect.width/2:anchorX-rect.left,ay=anchorY===undefined?rect.height/2:anchorY-rect.top;
+    var serial=++zoomSerial;
+    zoomChain=zoomChain.then(async function(){
+      /* A newer request superseded this one before it touched anything: let that one
+         measure and place the scroll instead of landing stale numbers here. */
+      if(serial!==zoomSerial||!pdfDoc){if(onSettled)onSettled();return;}
+      var f=newZoom/layoutZoom;
+      var targetLeft=(pane.scrollLeft+ax)*f-ax-(shiftX||0),targetTop=(pane.scrollTop+ay)*f-ay-(shiftY||0);
+      if(pdfBuildKey!==currentBuildKey()||!pdfViews.length){
+        try{await buildPdfScroll();}catch(e){if(onSettled)onSettled();showError(e.message||'This PDF could not be laid out.');return;}
+      }
+      pane.scrollLeft=Math.max(0,targetLeft);pane.scrollTop=Math.max(0,targetTop);
+      if(onSettled)onSettled();
+      if(comfort.focus)requestAnimationFrame(placeGuide);
+    }).catch(function(){if(onSettled)onSettled();});
   }
   byId('zoomOut').onclick=function(){setZoom(currentZoom()/1.2);};
   byId('zoomIn').onclick=function(){setZoom(currentZoom()*1.2);};
   byId('zoomLabel').onclick=function(){setZoom(1);};
   byId('documentPane').addEventListener('wheel',function(e){if(readerMode==='pdf'&&(e.ctrlKey||e.metaKey)){e.preventDefault();setZoom(currentZoom()*(e.deltaY<0?1.12:1/1.12),e.clientX,e.clientY);}},{passive:false});
-  /* Touch: pinch anywhere on the paper for a live preview, then a crisp re-render under
-     your fingers; double-tap hops between Fit and 160%. */
+  /* Touch: pinch anywhere on the paper for a live preview that follows both fingers —
+     spread and travel — then a crisp re-render lands under them without a snap-back;
+     double-tap hops between Fit and 160%. */
   (function(){
     var pane=byId('documentPane'),frame=byId('pdfFrame');
     var pinch=null,tapStart=null,lastTapAt=0,lastTapX=0,lastTapY=0;
     /* When the page is zoomed (horizontal overflow exists), one-finger panning is taken
        over completely: native iOS panning keeps applying its own sideways delta while the
-       finger is down, so correcting it after the fact can never win. Here the swipe locks
-       to its dominant axis and the locked axis simply never moves — drift is impossible —
-       with a momentum fling on release. Un-zoomed pages keep native scrolling, where
-       sideways drift cannot happen anyway. Long-press text selection is left native. */
+       finger is down, so correcting it after the fact can never win. The custom pan moves
+       freely in both axes — a zoomed page is a flat surface to roam, and the old lock to
+       one axis is what made reaching the other half of a page impossible — with a momentum
+       fling on release. Un-zoomed pages keep native scrolling, where sideways drift cannot
+       happen anyway. Long-press text selection is left native. */
     var panGesture=null,panVel=null,panRaf=null;
     function stopPanMomentum(){panVel=null;if(panRaf){cancelAnimationFrame(panRaf);panRaf=null;}}
     function panMomentumTick(ts){
@@ -2265,63 +2289,72 @@
       if(Math.hypot(panVel.vx,panVel.vy)>.02)panRaf=requestAnimationFrame(panMomentumTick);
       else panVel=null;
     }
+    function startPan(t,ts){return {lastX:t.clientX,lastY:t.clientY,lastT:ts,vx:0,vy:0};}
     function handlePanMove(e){
       var t=e.touches[0],g=panGesture;
       var sel=window.getSelection&&window.getSelection();
       if(sel&&!sel.isCollapsed){panGesture=null;return;}
       e.preventDefault();
       var dx=t.clientX-g.lastX,dy=t.clientY-g.lastY,dt=Math.max(1,e.timeStamp-g.lastT);
-      if(!g.axis){
-        var tdx=Math.abs(t.clientX-g.x),tdy=Math.abs(t.clientY-g.y);
-        if(tdx>6||tdy>6)g.axis=tdx>tdy*1.4?'x':'y';
-      }
-      var mx=g.axis==='x'?dx:0,my=g.axis==='y'?dy:0;
-      if(g.axis){pane.scrollLeft-=mx;pane.scrollTop-=my;}
+      pane.scrollLeft-=dx;pane.scrollTop-=dy;
       var blend=Math.min(1,dt/50);
-      g.vx=g.vx*(1-blend)+(mx/dt)*blend;g.vy=g.vy*(1-blend)+(my/dt)*blend;
+      g.vx=g.vx*(1-blend)+(dx/dt)*blend;g.vy=g.vy*(1-blend)+(dy/dt)*blend;
       g.lastX=t.clientX;g.lastY=t.clientY;g.lastT=e.timeStamp;
     }
     function endPanGesture(e){
       if(!panGesture||(e.touches&&e.touches.length))return;
       var g=panGesture;panGesture=null;
-      if(!g.axis)return;
-      var vx=g.axis==='x'?g.vx:0,vy=g.axis==='y'?g.vy:0,speed=Math.hypot(vx,vy);
+      var vx=g.vx,vy=g.vy,speed=Math.hypot(vx,vy);
       if(speed<.25)return;
       if(speed>3.5){vx*=3.5/speed;vy*=3.5/speed;}
       panVel={vx:vx,vy:vy,t:performance.now()};
       if(!panRaf)panRaf=requestAnimationFrame(panMomentumTick);
     }
     function touchDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
+    function touchMid(t){return{x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2};}
     pane.addEventListener('touchstart',function(e){
       if(readerMode!=='pdf'||!pdfDoc)return;
       stopPanMomentum();
       if(e.touches.length===1){
         var t=e.touches[0];tapStart={x:t.clientX,y:t.clientY,at:Date.now()};
-        panGesture=pane.scrollWidth>pane.clientWidth+1?{x:t.clientX,y:t.clientY,lastX:t.clientX,lastY:t.clientY,lastT:e.timeStamp,axis:null,vx:0,vy:0}:null;
+        panGesture=pane.scrollWidth>pane.clientWidth+1?startPan(t,e.timeStamp):null;
         return;
       }
       if(e.touches.length!==2)return;
       e.preventDefault();tapStart=null;lastTapAt=0;panGesture=null;
-      var rect=pane.getBoundingClientRect(),mx=(e.touches[0].clientX+e.touches[1].clientX)/2,my=(e.touches[0].clientY+e.touches[1].clientY)/2;
-      pinch={d:Math.max(20,touchDist(e.touches)),zoom:currentZoom(),k:1,x:mx,y:my};
-      frame.style.transformOrigin=(pane.scrollLeft+mx-rect.left)+'px '+(pane.scrollTop+my-rect.top)+'px';
+      var rect=pane.getBoundingClientRect(),m=touchMid(e.touches);
+      pinch={d:Math.max(20,touchDist(e.touches)),zoom:currentZoom(),k:1,x:m.x,y:m.y,curX:m.x,curY:m.y};
+      frame.style.transformOrigin=(pane.scrollLeft+m.x-rect.left)+'px '+(pane.scrollTop+m.y-rect.top)+'px';
       frame.style.willChange='transform';
     },{passive:false});
     pane.addEventListener('touchmove',function(e){
       if(panGesture&&!pinch&&e.touches.length===1){handlePanMove(e);return;}
       if(!pinch||e.touches.length!==2)return;
       e.preventDefault();
-      var target=Math.max(.5,Math.min(4,pinch.zoom*(touchDist(e.touches)/pinch.d)));
-      pinch.k=target/pinch.zoom;
-      frame.style.transform=Math.abs(pinch.k-1)<.005?'':'scale('+pinch.k+')';
+      var m=touchMid(e.touches),target=Math.max(.5,Math.min(4,pinch.zoom*(touchDist(e.touches)/pinch.d)));
+      pinch.k=target/pinch.zoom;pinch.curX=m.x;pinch.curY=m.y;
+      frame.style.transform='translate('+(m.x-pinch.x)+'px,'+(m.y-pinch.y)+'px) scale('+pinch.k+')';
     },{passive:false});
     pane.addEventListener('touchend',endPanGesture,{passive:true});
     pane.addEventListener('touchcancel',function(){panGesture=null;},{passive:true});
+    function clearPinchPreview(){
+      /* If a newer pinch already owns the preview when this commit settles, hand it a
+         transform origin matching the fresh scroll instead of wiping its live preview. */
+      if(pinch){var rect=pane.getBoundingClientRect();frame.style.transformOrigin=(pane.scrollLeft+pinch.x-rect.left)+'px '+(pane.scrollTop+pinch.y-rect.top)+'px';return;}
+      frame.style.transform='';frame.style.transformOrigin='';frame.style.willChange='';
+    }
     function endPinch(e){
       if(!pinch||(e.touches&&e.touches.length>=2))return;
       var commit=pinch;pinch=null;
-      frame.style.transform='';frame.style.transformOrigin='';frame.style.willChange='';
-      if(Math.abs(commit.k-1)>.02)setZoom(commit.zoom*commit.k,commit.x,commit.y);
+      if(Math.abs(commit.k-1)<=.02)commit.k=1;
+      var shiftX=commit.curX-commit.x,shiftY=commit.curY-commit.y;
+      if(commit.k===1&&Math.hypot(shiftX,shiftY)<2){clearPinchPreview();return;}
+      /* The preview stays applied while the crisp layout builds; setZoom clears it in the
+         same frame the new scroll position lands, so the paper never snaps back. A two-
+         finger drag (k≈1) becomes a plain scroll shift with no rebuild at all. */
+      setZoom(commit.zoom*commit.k,commit.x,commit.y,shiftX,shiftY,clearPinchPreview);
+      /* A finger still resting on the glass keeps panning from right here. */
+      if(e.touches&&e.touches.length===1)panGesture=startPan(e.touches[0],e.timeStamp);
     }
     pane.addEventListener('touchend',endPinch);
     pane.addEventListener('touchcancel',endPinch);

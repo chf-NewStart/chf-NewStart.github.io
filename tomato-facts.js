@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "KITCHEN SCIENCE",
+            title: "Black, white, and green pepper are the same berry",
+            fact: "All three come from the same vine, Piper nigrum. Green peppercorns are picked unripe, black ones are unripe and sun-dried until the skin darkens and wrinkles, and white ones are ripened and soaked to strip the skin off.",
+            detail: "Pink “peppercorns” are the impostor at the party — they’re berries of an unrelated South American tree that happen to look the part."
+        },
+        {
             tag: "BOTANY",
             title: "Nutmeg and mace come from the same fruit",
             fact: "Crack open a nutmeg fruit and you get two spices at once: the nutmeg is the seed, and mace is the lacy scarlet aril wrapped around it. One harvest, two jars on the spice rack.",

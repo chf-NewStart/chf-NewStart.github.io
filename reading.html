@@ -188,7 +188,7 @@
     .pdf-frame.cream.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.9) sepia(.28); }
     /* Zen reading: nothing on screen but the paper. */
     body.zen .masthead, body.zen .reader-tools, body.zen .comfort-bar, body.zen .find-bar,
-    body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer { display: none !important; }
+    body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer, body.zen .notebook-tuck { display: none !important; }
     body.zen main { min-height: 100vh; }
     body.zen #readerPage { height: 100vh; height: 100dvh; }
     body.zen .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
@@ -285,6 +285,12 @@
     .lookup-links a:hover { text-decoration: underline; }
     .missing-file { align-self: start; width: min(620px, 100%); margin-top: 15vh; padding: 34px; border-radius: 14px; background: var(--surface); color: var(--ink); text-align: center; }
     .missing-file p { color: var(--muted); }
+    /* Download card: a real progress bar while a paper rides down from Drive. */
+    .dl-rail { width: min(360px, 90%); height: 8px; margin: 20px auto 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+    .dl-fill { width: 0%; height: 100%; border-radius: 999px; background: var(--accent); transition: width .25s ease; }
+    .dl-fill.waiting { width: 34%; animation: dl-slide 1.1s ease-in-out infinite alternate; }
+    @keyframes dl-slide { from { margin-left: 0; } to { margin-left: 66%; } }
+    .dl-note { font-size: .8rem; min-height: 1.2em; }
     .text-document { --read-size: 1.02rem; --read-leading: 1.72; --read-measure: 780px; --read-spacing: normal;
       width: min(var(--read-measure), calc(100% - 36px)); min-height: calc(100% - 36px); margin: 18px auto; padding: clamp(32px, 7vw, 78px); background: var(--surface); box-shadow: 0 10px 45px rgba(0,0,0,.12); }
     .text-document.reader-document { width: min(var(--read-measure), calc(100% - 36px)); }
@@ -322,8 +328,10 @@
     .notebook-resizer::before { position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; content: ""; background: var(--line); transition: width .15s ease, left .15s ease, background .15s ease; }
     .notebook-resizer:hover::before, .notebook-resizer:focus-visible::before, body.resizing-notebook .notebook-resizer::before { left: 3px; width: 4px; background: var(--accent); }
     .notebook-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-    /* Collapsed notebook: the paper takes the full width; a slim edge tab brings it back. */
-    .notebook-reopen { display: none; }
+    /* Collapsed notebook: the paper takes the full width; a slim edge tab brings it back.
+       Its mirror twin rides the divider while the notebook is open, so tucking it away is
+       the same single tap — no dragging required. */
+    .notebook-reopen, .notebook-tuck { display: none; }
     @media (min-width: 721px) {
       .reader-layout.notebook-collapsed { --notebook-width: 0px; }
       .reader-layout.notebook-collapsed .notebook { display: none; }
@@ -331,6 +339,9 @@
       body.resizing-notebook .reader-layout.notebook-collapsed .notebook-resizer { display: block; }
       .reader-layout.notebook-collapsed .notebook-reopen { position: absolute; z-index: 8; top: 50%; right: 0; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 26px; height: 68px; padding: 0; border: 1px solid var(--line); border-right: 0; border-radius: 11px 0 0 11px; background: var(--surface); color: var(--muted); box-shadow: var(--shadow); font-size: .8rem; }
       .reader-layout.notebook-collapsed .notebook-reopen:hover { color: var(--ink); border-color: var(--accent); }
+      .notebook-tuck { position: absolute; z-index: 9; top: 50%; right: var(--notebook-width); transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 26px; height: 68px; padding: 0; border: 1px solid var(--line); border-right: 0; border-radius: 11px 0 0 11px; background: var(--surface); color: var(--muted); box-shadow: var(--shadow); font-size: .8rem; }
+      .notebook-tuck:hover { color: var(--ink); border-color: var(--accent); }
+      .reader-layout.notebook-collapsed .notebook-tuck, body.resizing-notebook .notebook-tuck { display: none; }
     }
     body.resizing-notebook { cursor: col-resize; user-select: none; }
     body.selecting-paper .reader-tools, body.selecting-paper .comfort-bar, body.selecting-paper .find-bar,
@@ -703,6 +714,7 @@
         <div class="recall-shield hidden" id="recallShield" aria-hidden="true"><div><span>Quick recall</span><h2>The paper is hidden.</h2><p>Explain what you just read in the page note. Pull it from memory before checking the text.</p></div></div>
         <div class="notebook-resizer" id="notebookResizer" role="separator" aria-label="Resize notes panel" aria-controls="notebook" aria-orientation="vertical" aria-valuemin="280" aria-valuemax="620" aria-valuenow="360" title="Drag to resize notes · push far right to tuck away · double-click to reset" tabindex="0"></div>
         <button class="notebook-reopen" id="notebookReopen" type="button" aria-label="Show the notes panel" aria-expanded="true" title="Show notes">❮</button>
+        <button class="notebook-tuck" id="notebookTuck" type="button" aria-label="Tuck the notes panel away" title="Tuck notes away">❯</button>
         <aside class="notebook" id="notebook">
           <button class="sheet-close" id="sheetClose" type="button" aria-label="Close notes">✕</button>
           <div class="tabs" role="tablist">
@@ -1795,6 +1807,7 @@
     if(save)try{localStorage.setItem(NOTEBOOK_COLLAPSED_KEY,notebookCollapsed?'1':'0');}catch(e){}
   }
   byId('notebookReopen').onclick=function(){setNotebookCollapsed(false,true);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();};
+  byId('notebookTuck').onclick=function(){setNotebookCollapsed(true,true);if(readerMode==='pdf'&&pdfDoc)renderPdfPage();showReaderToast('Notes tucked away · the ❮ tab brings them back');};
   setNotebookWidth(notebookWidth,false);
   setNotebookCollapsed(notebookCollapsed,false);
   var notebookDrag=false;
@@ -2001,7 +2014,7 @@
         if(preparedDoc)pdfDoc=preparedDoc;
         else{
           var stored=await getPdf(ch.id);
-          if(!stored&&gdriveOn()&&gdriveToken&&now()-gdriveTokenAt<50*60*1000){showReaderToast('Fetching the PDF from your Google Drive…');stored=await gdriveFetchPdf(ch.id);}
+          if(!stored&&gdriveOn()&&gdriveToken&&now()-gdriveTokenAt<50*60*1000)stored=await gdriveFetchPdf(ch.id,false,showPdfDownloading(ch));
           if(!stored){showMissingPdf(ch);restoreReaderPosition(ch,true);loadPageNote();updateProgress();return;}
           var lib=await loadPdfLib();pdfDoc=await lib.getDocument({data:await pdfBytes(stored)}).promise;
         }
@@ -2057,6 +2070,19 @@
     }
     if(readerMode==='text')restoreReaderPosition(ch,false);
   };
+  /* First open on a new device: the paper lives in Drive but not here yet. Put the
+     download where the pages will appear — with real numbers — so a large PDF reads as
+     "arriving", never as a hang. Returns the progress updater for gdriveFetchPdf. */
+  function showPdfDownloading(ch){
+    pdfViews=[];pdfBuildKey='';
+    byId('pdfFrame').innerHTML='<div class="missing-file"><h2>Fetching this paper…</h2><p>Downloading <b>'+esc(ch.title||ch.sourceName||'this PDF')+'</b> from your Google Drive. It stays on this device, so the next open is instant.</p><div class="dl-rail"><div class="dl-fill waiting" id="dlFill"></div></div><p class="dl-note" id="dlNote">Contacting your Drive…</p></div>';
+    var fmt=function(n){return n<996147?Math.max(1,Math.round(n/1024))+' KB':(n/1048576).toFixed(n<10485760?1:0)+' MB';};
+    return function(loaded,total){
+      var fill=byId('dlFill'),note=byId('dlNote');if(!fill)return;
+      if(total>0){fill.classList.remove('waiting');fill.style.width=Math.min(100,Math.round(loaded/total*100))+'%';note.textContent=fmt(loaded)+' of '+fmt(total);}
+      else if(loaded>0)note.textContent=fmt(loaded)+' so far…';
+    };
+  }
   function showMissingPdf(ch){
     pdfViews=[];pdfBuildKey='';
     var drive=gdriveOn()?'<button class="button" id="missingDrive">Get it from your Google Drive</button> ':'';
@@ -2065,10 +2091,9 @@
     byId('pdfFrame').innerHTML='<div class="missing-file"><h2>The PDF is not on this device yet.</h2><p>Your notes and extracted text synced safely. '+help+'</p>'+action+' <button class="soft-button" id="missingText">Read extracted text</button></div>';
     var fromDrive=byId('missingDrive');
     if(fromDrive)fromDrive.onclick=async function(){
-      var btn=this;btn.disabled=true;btn.textContent='Fetching from your Drive…';
-      var got=await gdriveFetchPdf(ch.id,true);
+      var got=await gdriveFetchPdf(ch.id,true,showPdfDownloading(ch));
       if(got){showReaderToast('Got it — opening');openReader(ch.id);}
-      else{btn.disabled=false;btn.textContent='Get it from your Google Drive';showReaderToast('Not found in your Drive yet — sync the device that has the PDF first.');}
+      else{showMissingPdf(ch);showReaderToast('Not found in your Drive yet — sync the device that has the PDF first.');}
     };
     var source=byId('missingSource'),pick=byId('missingPick');if(source)source.onclick=async function(){var ok=await importPdfUrl(ch.sourceUrl);if(!ok)showError(byId('pdfUrlStatus').textContent||'The original link is no longer available.','Could not download that PDF');};if(pick)pick.onclick=openGithubPicker;byId('missingText').onclick=function(){ readerMode='text'; updateReaderMode(); };
     byId('prevPage').classList.add('hidden'); byId('nextPage').classList.add('hidden'); byId('zoomTools').classList.add('hidden'); byId('tocBtn').classList.add('hidden'); byId('pageNumber').textContent='';
@@ -2924,7 +2949,7 @@
     gdriveRoaming=false;
     return {sent:sent,failed:failed};
   }
-  async function gdriveFetchPdf(id,interactive){
+  async function gdriveFetchPdf(id,interactive,onProgress){
     if(!gdriveOn())return null;
     try{
       var token=await gdriveGetToken(interactive===true),files=await gdriveListAll(token),hit=null,name='pdf-'+id+'.pdf';
@@ -2932,7 +2957,18 @@
       if(!hit)return null;
       var r=await fetch('https://www.googleapis.com/drive/v3/files/'+hit.id+'?alt=media',{headers:{Authorization:'Bearer '+token}});
       if(!r.ok)return null;
-      var bytes=await r.arrayBuffer();if(!bytes||bytes.byteLength<100)return null;
+      var bytes;
+      /* Stream the body when someone is watching: Drive reports the size up front, so
+         the download card can show honest percentages instead of a silent wait. */
+      if(onProgress&&r.body&&r.body.getReader){
+        var total=+hit.size||0,reader=r.body.getReader(),chunks=[],loaded=0;
+        onProgress(0,total);
+        for(;;){var step=await reader.read();if(step.done)break;chunks.push(step.value);loaded+=step.value.byteLength;onProgress(loaded,total);}
+        var all=new Uint8Array(loaded),off=0;
+        chunks.forEach(function(c){all.set(c,off);off+=c.byteLength;});
+        bytes=all.buffer;
+      }else bytes=await r.arrayBuffer();
+      if(!bytes||bytes.byteLength<100)return null;
       await putPdf(id,bytes);return bytes;
     }catch(e){return null;}
   }

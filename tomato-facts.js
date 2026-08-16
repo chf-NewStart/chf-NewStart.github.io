@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "PHYSICS",
+            title: "Pistachios can set themselves on fire",
+            fact: "Packed in bulk, oily pistachios can self-heat: fat oxidation releases warmth, the pile insulates itself, and the temperature can climb toward spontaneous combustion. Maritime cargo rules treat them as a self-heating hazard.",
+            detail: "That’s why international shipping codes set limits on how pistachios are stowed and ventilated at sea. The same self-heating chemistry is behind hay-barn fires and oily-rag fires in workshops."
+        },
+        {
             tag: "KITCHEN SCIENCE",
             title: "Black, white, and green pepper are the same berry",
             fact: "All three come from the same vine, Piper nigrum. Green peppercorns are picked unripe, black ones are unripe and sun-dried until the skin darkens and wrinkles, and white ones are ripened and soaked to strip the skin off.",

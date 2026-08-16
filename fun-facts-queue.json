@@ -1,14 +1,6 @@
 [
   {
     "fact": {
-      "tag": "PHYSICS",
-      "title": "Pistachios can set themselves on fire",
-      "fact": "Packed in bulk, oily pistachios can self-heat: fat oxidation releases warmth, the pile insulates itself, and the temperature can climb toward spontaneous combustion. Maritime cargo rules treat them as a self-heating hazard.",
-      "detail": "That’s why international shipping codes set limits on how pistachios are stowed and ventilated at sea. The same self-heating chemistry is behind hay-barn fires and oily-rag fires in workshops."
-    }
-  },
-  {
-    "fact": {
       "tag": "BOTANY",
       "title": "Every true tea comes from one species",
       "fact": "Green, black, oolong, white, and pu-erh tea are all leaves of a single plant, Camellia sinensis. The differences come from processing — mainly how far the leaves are allowed to oxidize before drying.",

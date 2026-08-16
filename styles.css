@@ -111,9 +111,15 @@ body {
    .bio-bg canvas (z-index: -2) can show through — an opaque body
    background paints over negative-z fixed elements. */
 body.has-bio-bg {
+    /* The flat dark layer at the bottom of the stack is a veil over the
+       canvas: at full brightness the tissue confetti competes with every
+       block of text on the page. body paints above negative-z fixed
+       elements, so dimming here is free — no filter pass over an animated
+       WebGL canvas, which Chromium's compositor handles unreliably. */
     background:
         radial-gradient(circle at 10% 10%, rgba(35, 199, 103, 0.08), transparent 30rem),
-        radial-gradient(circle at 88% 42%, rgba(110, 214, 232, 0.05), transparent 34rem);
+        radial-gradient(circle at 88% 42%, rgba(110, 214, 232, 0.05), transparent 34rem),
+        linear-gradient(rgba(3, 8, 6, 0.45), rgba(3, 8, 6, 0.45));
 }
 
 .bio-bg {
@@ -278,6 +284,14 @@ h4 {
     position: relative;
     padding: 120px 0;
     border-top: 1px solid var(--line);
+}
+
+/* The live backdrop is the hero's artwork; past the fold it turns into
+   noise behind body text. A near-opaque floor keeps the lower sections
+   calm and readable while a hint of the tissue still breathes through. */
+.scroll-section:not(.hero-section),
+footer {
+    background-color: rgba(4, 10, 8, 0.9);
 }
 
 /* Navigation */
@@ -556,8 +570,8 @@ h4 {
        second time. The launcher side is intentionally left almost untouched so
        the living tissue remains visible as the hero artwork. */
     background:
-        linear-gradient(90deg, rgba(3, 8, 6, 0.34) 0%, rgba(3, 8, 6, 0.16) 38%, transparent 64%),
-        linear-gradient(0deg, rgba(7, 16, 14, 0.48) 0%, transparent 25%);
+        linear-gradient(90deg, rgba(3, 8, 6, 0.52) 0%, rgba(3, 8, 6, 0.26) 38%, transparent 64%),
+        linear-gradient(0deg, rgba(7, 16, 14, 0.58) 0%, transparent 25%);
 }
 
 .hero-section .container {
@@ -663,17 +677,17 @@ footer {
 }
 
 .cta-button-unclench {
-    border-color: #55e3ff;
-    color: #dffaff;
-    background: rgba(85, 227, 255, 0.08);
-    box-shadow: 6px 6px 0 rgba(85, 227, 255, 0.11);
+    border-color: var(--line-strong);
+    color: var(--ink);
+    background: rgba(118, 247, 165, 0.06);
+    box-shadow: 6px 6px 0 rgba(118, 247, 165, 0.08);
 }
 
 .cta-button-unclench:hover {
-    border-color: #8decff;
-    color: #061012;
-    background: #8decff;
-    box-shadow: 9px 9px 0 rgba(85, 227, 255, 0.1);
+    border-color: var(--accent);
+    color: var(--bg-deep);
+    background: var(--accent);
+    box-shadow: 9px 9px 0 rgba(118, 247, 165, 0.1);
 }
 
 .text-link {
@@ -789,71 +803,22 @@ footer {
     text-shadow: 0 0 10px rgba(118, 247, 165, 0.5);
 }
 
-.launcher-row-margin {
-    background: linear-gradient(90deg, rgba(255, 121, 94, 0.13), transparent 76%);
-}
-
-.launcher-row-margin code,
-.launcher-row-margin i {
-    color: #ff795e;
+/* One accent for the whole panel. Each row used to carry its own color
+   (orange, cyan, amber, green), which made the launcher read as clutter
+   instead of a list; highlighted rows now share the green accent. */
+.launcher-row-margin,
+.launcher-row-unclench,
+.launcher-row-monet,
+.launcher-row-arcade {
+    background: linear-gradient(90deg, rgba(118, 247, 165, 0.07), transparent 72%);
 }
 
 .launcher-row-margin:hover,
-.launcher-row-margin:focus-visible {
-    background: linear-gradient(90deg, rgba(255, 121, 94, 0.22), transparent 82%);
-}
-
-.launcher-row-margin:hover code,
-.launcher-row-margin:focus-visible code {
-    text-shadow: 0 0 11px rgba(255, 121, 94, 0.55);
-}
-
-.launcher-row-unclench {
-    background: linear-gradient(90deg, rgba(85, 227, 255, 0.11), transparent 74%);
-}
-
-.launcher-row-unclench code,
-.launcher-row-unclench i {
-    color: #55e3ff;
-}
-
+.launcher-row-margin:focus-visible,
 .launcher-row-unclench:hover,
-.launcher-row-unclench:focus-visible {
-    background: linear-gradient(90deg, rgba(85, 227, 255, 0.18), transparent 80%);
-}
-
-.launcher-row-unclench:hover code,
-.launcher-row-unclench:focus-visible code {
-    text-shadow: 0 0 11px rgba(85, 227, 255, 0.55);
-}
-
-.launcher-row-monet {
-    background: linear-gradient(90deg, rgba(231, 183, 104, 0.1), transparent 72%);
-}
-
-.launcher-row-monet code,
-.launcher-row-monet i {
-    color: #e7b768;
-}
-
+.launcher-row-unclench:focus-visible,
 .launcher-row-monet:hover,
-.launcher-row-monet:focus-visible {
-    background: linear-gradient(90deg, rgba(231, 183, 104, 0.16), transparent 78%);
-}
-
-.launcher-row-monet:hover code,
-.launcher-row-monet:focus-visible code {
-    text-shadow: 0 0 10px rgba(231, 183, 104, 0.5);
-}
-
-.launcher-row-arcade {
-    background: linear-gradient(90deg, rgba(118, 247, 165, 0.08), transparent 72%);
-}
-
-.launcher-row-arcade i {
-    color: var(--accent);
-}
-
+.launcher-row-monet:focus-visible,
 .launcher-row-arcade:hover,
 .launcher-row-arcade:focus-visible {
     background: linear-gradient(90deg, rgba(118, 247, 165, 0.14), transparent 78%);
@@ -912,12 +877,11 @@ footer {
     margin-bottom: 64px;
 }
 
-/* Soft dark halo so section text stays legible over the live backdrop. */
-.section-kicker,
-.section-title,
-.section-summary,
+/* Soft dark halo so hero text stays legible over the live backdrop. The
+   lower sections sit on their own near-opaque floor and need no halo —
+   on a flat background the blur reads as smudges around big type. */
 .hero-copy h1,
-.hero-lead {
+.hero-lede {
     text-shadow: 0 1px 18px rgba(3, 8, 6, 0.62), 0 1px 3px rgba(3, 8, 6, 0.55);
 }
 
@@ -2676,9 +2640,9 @@ iframe {
     min-height: 42px;
     align-items: center;
     padding: 0 15px;
-    border-color: #55e3ff;
-    color: #061012;
-    background: #55e3ff;
+    border-color: rgba(85, 227, 255, 0.55);
+    color: #9cf3ff;
+    background: rgba(85, 227, 255, 0.08);
     font-weight: 600;
     letter-spacing: 0.04em;
 }

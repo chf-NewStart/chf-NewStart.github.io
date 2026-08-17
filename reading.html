@@ -2014,7 +2014,9 @@
         if(preparedDoc)pdfDoc=preparedDoc;
         else{
           var stored=await getPdf(ch.id);
-          if(!stored&&gdriveOn()&&gdriveToken&&now()-gdriveTokenAt<50*60*1000)stored=await gdriveFetchPdf(ch.id,false,showPdfDownloading(ch));
+          /* Opening a paper is itself a tap, so the Drive fetch is free to renew its
+             token quietly — no need to visit settings first on a fresh device. */
+          if(!stored&&gdriveOn())stored=await gdriveFetchPdf(ch.id,true,showPdfDownloading(ch));
           if(!stored){showMissingPdf(ch);restoreReaderPosition(ch,true);loadPageNote();updateProgress();return;}
           var lib=await loadPdfLib();pdfDoc=await lib.getDocument({data:await pdfBytes(stored)}).promise;
         }
@@ -2881,12 +2883,45 @@
 
   /* Google Drive sync — the no-setup path. The library file lives in the account's
      hidden per-app folder (drive.appdata): Carrel can see only its own file, and the
-     user's real Drive files are invisible to it. */
+     user's real Drive files are invisible to it. Connecting is a one-time act per
+     device: the hour-long token is kept alongside the settings and renewed quietly
+     inside real taps, so later opens sync on their own instead of asking to
+     reconnect. */
   var GDRIVE_CLIENT_ID='615468645410-oh18cpvsq9c14e1ohu1c8pnld47q9jm7.apps.googleusercontent.com';
   var GDRIVE_KEY='readingRoom.gdrive.v1',GDRIVE_FILE='carrel-library.json';
-  var gdriveCfg=null,gdriveToken=null,gdriveTokenAt=0,gdriveTokenClient=null,gdriveSyncing=false;
+  var gdriveCfg=null,gdriveToken=null,gdriveTokenAt=0,gdriveEmail='',gdriveTokenClient=null,gdriveSyncing=false;
   try{gdriveCfg=JSON.parse(localStorage.getItem(GDRIVE_KEY));}catch(e){}
+  /* The token rides in the same record as the on/off switch — like the GitHub token
+     above, it never leaves this browser, and it can only see the hidden app folder
+     for at most an hour. A page reopened within that hour syncs with no popup at all. */
+  if(gdriveCfg){gdriveEmail=gdriveCfg.email||'';if(gdriveCfg.tok&&gdriveCfg.tokAt){gdriveToken=gdriveCfg.tok;gdriveTokenAt=+gdriveCfg.tokAt||0;}}
   function gdriveOn(){return !!(gdriveCfg&&gdriveCfg.on);}
+  function gdriveTokenFresh(){return !!gdriveToken&&now()-gdriveTokenAt<50*60*1000;}
+  function gdriveSaveAuth(){
+    if(!gdriveCfg)return;
+    gdriveCfg.tok=gdriveToken||'';gdriveCfg.tokAt=gdriveToken?gdriveTokenAt:0;if(gdriveEmail)gdriveCfg.email=gdriveEmail;
+    try{localStorage.setItem(GDRIVE_KEY,JSON.stringify(gdriveCfg));}catch(e){}
+  }
+  /* Knowing which account was picked lets every later renewal skip the account
+     chooser — the popup opens and closes itself with nothing to click. */
+  function gdriveLearnEmail(token){
+    if(gdriveEmail)return;
+    fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)',{headers:{Authorization:'Bearer '+token}})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(d){if(d&&d.user&&d.user.emailAddress){gdriveEmail=d.user.emailAddress;gdriveSaveAuth();}})
+      .catch(function(){});
+  }
+  /* Rule of the popup road: Google will only hand out a token during a real user
+     gesture. When a background sync finds the token stale, Carrel does not let a
+     doomed popup end in "needs attention" — it waits for the next tap and finishes
+     the sync inside it. */
+  function gestureLive(){return !!(navigator.userActivation&&navigator.userActivation.isActive);}
+  var gdriveArmed=false;
+  function gdriveArmGestureSync(){
+    if(gdriveArmed||!gdriveOn())return;gdriveArmed=true;
+    syncUi('☁ tap to sync');
+    addEventListener('click',function(){gdriveArmed=false;if(gdriveOn())gdriveSync(true);},{capture:true,once:true});
+  }
   function loadGis(){
     return new Promise(function(res,rej){
       if(window.google&&window.google.accounts&&window.google.accounts.oauth2)return res();
@@ -2895,32 +2930,51 @@
       document.head.appendChild(script);
     });
   }
-  var gdriveTokenSettle=null;
+  var gdriveTokenSettle=null,gdriveTokenPending=null;
   function gdriveGetToken(interactive){
-    return loadGis().then(function(){
+    if(gdriveTokenFresh())return Promise.resolve(gdriveToken);
+    /* Everyone waiting shares one sign-in: a second request while the popup is up
+       would orphan the first caller and strand its promise. */
+    if(gdriveTokenPending)return gdriveTokenPending;
+    var request=loadGis().then(function(){
       return new Promise(function(res,rej){
-        if(gdriveToken&&now()-gdriveTokenAt<50*60*1000)return res(gdriveToken);
-        var timer=setTimeout(function(){settle(null,new Error('Google sign-in timed out — tap to try again.'));},15000);
+        if(gdriveTokenFresh())return res(gdriveToken);
+        /* A first sign-in walks through passwords and 2FA — give it two minutes.
+           Silent renewals come back within seconds or not at all. */
+        var timer=setTimeout(function(){if(!interactive)gdriveArmGestureSync();settle(null,new Error('Google sign-in timed out — tap to try again.'));},interactive?120000:15000);
         function settle(token,error){
           if(gdriveTokenSettle!==settle)return;gdriveTokenSettle=null;clearTimeout(timer);
           if(token)res(token);else rej(error);
         }
         gdriveTokenSettle=settle;
         if(!gdriveTokenClient)gdriveTokenClient=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.appdata',callback:function(){},error_callback:function(err){
-          var fn=gdriveTokenSettle;if(fn)fn(null,new Error(err&&err.type==='popup_closed'?'Google sign-in was closed':'The sign-in popup was blocked — tap the button to allow it.'));
+          if(!(err&&err.type==='popup_closed'))gdriveArmGestureSync();
+          var fn=gdriveTokenSettle;if(fn)fn(null,new Error(err&&err.type==='popup_closed'?'Google sign-in was closed':'The sign-in popup was blocked — tap anywhere and Carrel finishes on its own.'));
         }});
         gdriveTokenClient.callback=function(resp){
-          var fn=gdriveTokenSettle;if(!fn)return;
-          if(resp&&resp.access_token){gdriveToken=resp.access_token;gdriveTokenAt=now();fn(gdriveToken,null);}
-          else fn(null,new Error(resp&&resp.error?'Google sign-in: '+resp.error:'Google sign-in was cancelled'));
+          var fn=gdriveTokenSettle;
+          if(resp&&resp.access_token){
+            /* Keep a token that arrives after its caller gave up (a slow 2FA outlives
+               the timeout): the sign-in still counts, and the next action uses it. */
+            gdriveToken=resp.access_token;gdriveTokenAt=now();gdriveSaveAuth();gdriveLearnEmail(gdriveToken);
+            if(fn)fn(gdriveToken,null);
+          }
+          else if(fn)fn(null,new Error(resp&&resp.error?'Google sign-in: '+resp.error:'Google sign-in was cancelled'));
         };
-        try{gdriveTokenClient.requestAccessToken({prompt:interactive?'consent':''});}catch(e){settle(null,e);}
+        /* prompt:'' asks Google for the least ceremony it can offer: the full consent
+           screen only the first time this device ever connects, afterwards a popup
+           that opens and closes itself. Never 'consent' — that forced the whole
+           permission screen on every manual sync, which read as "reconnect again". */
+        var ask={prompt:''};if(gdriveEmail)ask.hint=gdriveEmail;
+        try{gdriveTokenClient.requestAccessToken(ask);}catch(e){settle(null,e);}
       });
     });
+    gdriveTokenPending=request.then(function(t){gdriveTokenPending=null;return t;},function(e){gdriveTokenPending=null;throw e;});
+    return gdriveTokenPending;
   }
   async function gdriveListAll(token){
     var r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size)',{headers:{Authorization:'Bearer '+token}});
-    if(r.status===401){gdriveToken=null;throw new Error('Google session expired — open settings and tap Sync now to sign in again.');}
+    if(r.status===401){gdriveToken=null;gdriveSaveAuth();var stale=new Error('Google signed this device out — Carrel reconnects on your next tap.');stale.auth=true;throw stale;}
     if(!r.ok)throw new Error('Drive list failed ('+r.status+')');
     return ((await r.json()).files)||[];
   }
@@ -2979,8 +3033,12 @@
       for(var i=0;i<files.length;i++)if(files[i].name===name)await fetch('https://www.googleapis.com/drive/v3/files/'+files[i].id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
     }catch(e){}
   }
-  async function gdriveSync(interactive){
-    if(!gdriveOn()||gdriveSyncing)return;gdriveSyncing=true;syncUi('☁ syncing…');
+  async function gdriveSync(interactive,retried){
+    if(!gdriveOn()||gdriveSyncing)return;
+    /* No tap in flight and no living token: skip the doomed popup and let the next
+       real tap carry the sync instead. */
+    if(!interactive&&!gdriveTokenFresh()&&!gestureLive()){gdriveArmGestureSync();return;}
+    gdriveSyncing=true;syncUi('☁ syncing…');
     try{
       var token=await gdriveGetToken(interactive===true);
       var files=await gdriveListAll(token),fileId=null;
@@ -2997,15 +3055,19 @@
         var body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:GDRIVE_FILE,parents:['appDataFolder']})+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+payload+'\r\n--'+boundary+'--';
         up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:body});
       }
-      if(!up.ok)throw new Error('Drive upload failed ('+up.status+')');
+      if(!up.ok){var upErr=new Error('Drive upload failed ('+up.status+')');if(up.status===401)upErr.auth=true;throw upErr;}
       byId('gdriveStatus').textContent='Library synced — checking papers…';
       var roam=await gdriveRoamPdfs(token,files);
       byId('gdriveStatus').textContent='Synced with your Google Drive.'+(roam.sent?' '+roam.sent+' paper'+(roam.sent===1?'':'s')+' uploaded.':'')+(roam.failed?' '+roam.failed+' upload'+(roam.failed===1?'':'s')+' failed — Carrel retries on the next sync.':'');
       syncUi('☁ Drive · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncSignal').title='';
     }catch(e){
+      /* A token Google no longer honors is not the user's problem: drop it and take
+         one more lap with a fresh sign-in before reporting anything. */
+      if(e&&e.auth){gdriveToken=null;gdriveSaveAuth();if(!retried){gdriveSyncing=false;return gdriveSync(interactive,true);}}
       var reason=e.message||'Drive sync failed';
       byId('gdriveStatus').textContent=reason;
-      syncUi('☁ sync needs attention');byId('syncSignal').title=reason;
+      if(gdriveArmed){syncUi('☁ tap to sync');byId('syncSignal').title=reason;}
+      else{syncUi('☁ sync needs attention');byId('syncSignal').title=reason;}
     }
     gdriveSyncing=false;
   }
@@ -3013,15 +3075,17 @@
     var btn=this;btn.disabled=true;byId('gdriveStatus').textContent='Waiting for Google sign-in…';
     try{
       await gdriveGetToken(true);
-      gdriveCfg={on:true,at:now()};localStorage.setItem(GDRIVE_KEY,JSON.stringify(gdriveCfg));
-      fillSettings();await gdriveSync();
+      /* saveAuth folds the fresh token into the record, so even an immediate
+         reload of this page syncs without another popup */
+      gdriveCfg={on:true,at:now()};gdriveSaveAuth();
+      fillSettings();await gdriveSync(true);
     }catch(e){byId('gdriveStatus').textContent=e.message||'Could not connect';}
     btn.disabled=false;
   };
   byId('gdriveSyncBtn').onclick=function(){gdriveSync(true);};
   byId('gdriveOffBtn').onclick=function(){
     if(!confirm('Disconnect Google Drive on this device? The file in your Drive stays there.'))return;
-    localStorage.removeItem(GDRIVE_KEY);gdriveCfg=null;gdriveToken=null;fillSettings();syncUi();
+    localStorage.removeItem(GDRIVE_KEY);gdriveCfg=null;gdriveToken=null;gdriveTokenAt=0;gdriveEmail='';fillSettings();syncUi();
   };
 
   /* encrypted GitHub state sync + PDF picker */
@@ -3030,7 +3094,7 @@
     byId('gdriveConnectBtn').textContent=gdriveOn()?'Sign in again':'Connect Google Drive';
     byId('gdriveConnectBtn').classList.toggle('button',!gdriveOn());byId('gdriveConnectBtn').classList.toggle('soft-button',gdriveOn());
     byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
-    byId('gdriveStatus').textContent=gdriveOn()?'Connected — your library syncs automatically. Papers follow you between devices.':'Not connected.';
+    byId('gdriveStatus').textContent=gdriveOn()?'Connected'+(gdriveEmail?' as '+gdriveEmail:'')+' — your library syncs automatically. Papers follow you between devices.':'Not connected.';
     syncUi();refreshInstallUi();
   }
   function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(on?'☁ '+syncCfg.repo:gdriveOn()?'☁ Google Drive':'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}
@@ -3128,7 +3192,7 @@
      background syncs cannot. Settings only open when there is an error to look at. */
   byId('syncSignal').onclick=function(){
     var standingError=byId('syncSignal').title;
-    doSync();gdriveSync();
+    doSync();gdriveSync(true);
     if(standingError){fillSettings();byId('settingsDialog').showModal();}
   };
 
@@ -3236,7 +3300,9 @@
   })();
   try{byId('buildStamp').textContent='This copy of Carrel was published '+document.lastModified+'.';}catch(e){}
   toggleSheet(false);
-  syncUi();renderShelf();updateReviewBadge();if(gdriveOn())gdriveSync();
+  /* Loading Google's script ahead of time keeps the first tap's token renewal inside
+     the tap's own permission window. */
+  syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});gdriveSync();}
   /* A refresh drops you back into the paper you were reading, not the library. */
   try{var lastOpen=localStorage.getItem(LAST_OPEN_KEY);if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
   if(location.protocol==='file:') byId('launchDialog').showModal();

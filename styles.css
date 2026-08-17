@@ -2235,6 +2235,32 @@ iframe {
     display: none;
 }
 
+/* Day-log: the Live Lab narrated as one sentence, where the highlighted
+   words are the tools themselves. Prose first, navigation second — so the
+   links keep body type and take only a dashed accent underline. */
+.day-log {
+    max-width: 66ch;
+    margin: 0 0 44px;
+    font-size: clamp(1.02rem, 0.95rem + 0.35vw, 1.16rem);
+    line-height: 2;
+    color: var(--ink);
+}
+
+.day-log a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(118, 247, 165, 0.5);
+    padding-bottom: 2px;
+    transition: background 160ms ease, border-color 160ms ease;
+}
+
+.day-log a:hover,
+.day-log a:focus-visible {
+    background: rgba(118, 247, 165, 0.14);
+    border-bottom-style: solid;
+    border-bottom-color: var(--accent);
+}
+
 .arcade-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));

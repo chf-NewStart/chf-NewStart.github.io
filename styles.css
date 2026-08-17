@@ -2261,6 +2261,25 @@ iframe {
     border-bottom-color: var(--accent);
 }
 
+/* In the hero the day-log sits where the launcher box used to be: bare
+   prose over the living tissue — no border, no panel, just a halo so the
+   words stay legible against the animated canvas. */
+.hero-day {
+    /* Above the tomato rain (z-index 3): the sprites pile up at the hero's
+       bottom edge — right where this prose sits on phones — and bare text
+       under a heap of geese is unreadable. Behind it, they're scenery. */
+    position: relative;
+    z-index: 4;
+    min-width: 0;
+    max-width: 30rem;
+}
+
+.hero-day .day-log {
+    margin: 0;
+    font-size: 1.04rem;
+    text-shadow: 0 1px 18px rgba(3, 8, 6, 0.62), 0 1px 3px rgba(3, 8, 6, 0.55);
+}
+
 .arcade-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));

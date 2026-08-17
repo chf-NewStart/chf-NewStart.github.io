@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "BOTANY",
+            title: "Every true tea comes from one species",
+            fact: "Green, black, oolong, white, and pu-erh tea are all leaves of a single plant, Camellia sinensis. The differences come from processing — mainly how far the leaves are allowed to oxidize before drying.",
+            detail: "Herbal “teas” like chamomile, peppermint, and rooibos contain no tea plant at all; strictly speaking they’re infusions, or tisanes. Green tea skips oxidation almost entirely; black tea embraces it fully."
+        },
+        {
             tag: "PHYSICS",
             title: "Pistachios can set themselves on fire",
             fact: "Packed in bulk, oily pistachios can self-heat: fat oxidation releases warmth, the pile insulates itself, and the temperature can climb toward spontaneous combustion. Maritime cargo rules treat them as a self-heating hazard.",

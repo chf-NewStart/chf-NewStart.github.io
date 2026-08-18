@@ -32,7 +32,7 @@
       --muted: #70777a; --line: #d8d4ca; --accent: #e85d3f; --accent-dark: #b83c25;
       --blue: #295b71; --yellow: #f1d989; --shadow: 0 18px 50px rgba(45, 48, 43, .09);
       --accent-soft: color-mix(in srgb, var(--accent) 15%, var(--surface));
-      --sans: "DM Sans", system-ui, sans-serif; --serif: Georgia, "Times New Roman", serif;
+      --sans: "DM Sans", system-ui, sans-serif; --serif: Charter, "Bitstream Charter", "Iowan Old Style", Georgia, "Noto Serif", "Liberation Serif", serif;
       --hand: "Houfu Hand", "Bradley Hand", "Segoe Print", cursive;
     }
     html[data-theme="dark"] {
@@ -178,6 +178,9 @@
     .pdf-frame { width: max-content; min-width: 100%; min-height: 100%; margin: 0 auto; padding: 16px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
     .pdf-page { position: relative; flex: 0 0 auto; background: white; box-shadow: 0 10px 45px rgba(0,0,0,.18); }
     .pdf-page canvas { display: block; height: auto; background: white; }
+    .pdf-links { position: absolute; inset: 0; pointer-events: none; }
+    .pdf-link { position: absolute; pointer-events: auto; border-radius: 3px; }
+    .pdf-link:hover { background: rgba(64, 137, 174, .16); box-shadow: 0 0 0 1px rgba(64, 137, 174, .4); }
     .pdf-frame.dark-paper .pdf-page { background: #171717; }
     .pdf-frame.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.92); }
     /* Cream paper: takes the white glare off long sessions without going dark. */
@@ -208,7 +211,7 @@
     .text-layer :is(span, br) { position: absolute; color: transparent; white-space: pre; cursor: text; transform-origin: 0 0; }
     .text-layer span.markedContent { top: 0; height: 0; }
     .text-layer ::selection, .original ::selection { background: rgba(64, 137, 174, .34); }
-    /* A translucent reading ruler that follows the pointer (or the ≡ handle / last tap)
+    /* A translucent reading ruler that follows the pointer (or the ⠿ handle / last tap)
        and stops at the active PDF column. It stays hidden until it has a real position;
        "Line focus" additionally fades the paper outside the band. */
     .pane-spotlight { position: absolute; z-index: 6; inset: 0 var(--notebook-width, 360px) 0 0; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity .2s ease; }
@@ -297,8 +300,8 @@
     .reader-kicker { margin-bottom: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: .14em; font: 700 .63rem var(--sans); }
     .text-document h1 { margin: 0 0 12px; font: 500 clamp(1.8rem, 4vw, 3rem)/1.08 var(--serif); }
     .text-document .byline { color: var(--muted); margin-bottom: 44px; font: .9rem var(--serif); }
-    .para { position: relative; padding: 8px 0 10px; border-radius: 5px; transition: opacity .22s ease, background .3s ease; }
-    .para + .para { margin-top: .72em; }
+    .para { position: relative; padding: 2px 0; border-radius: 5px; transition: opacity .22s ease, background .3s ease; }
+    .para + .para { margin-top: .95em; }
     .para .original { font: var(--read-size)/var(--read-leading) var(--serif); word-spacing: var(--read-spacing); white-space: pre-wrap; }
     .para.reader-heading { margin-top: 2.4em; padding-top: 1.15em; border-top: 1px solid var(--line); }
     .para.reader-heading .original { font-family: var(--sans); font-size: calc(var(--read-size) * .88); font-weight: 750; letter-spacing: .08em; line-height: 1.35; text-transform: uppercase; }
@@ -314,7 +317,7 @@
     .reader-fig img { display: block; max-width: 100%; border: 1px solid var(--line); border-radius: 10px; background: white; }
     html[data-theme="dark"] .reader-fig img { background: #f4f2ec; }
     .para .original b { font-weight: 680; }
-    .para.current::before { content: ""; position: absolute; left: -16px; top: 12px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--accent); }
+    .para.current::before { content: ""; position: absolute; left: -16px; top: 4px; bottom: 2px; width: 3px; border-radius: 2px; background: var(--accent); }
     .page-marker { display: flex; align-items: center; gap: 10px; margin: 24px 0 2px; color: var(--muted); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; }
     .page-marker::after { content: ""; flex: 1; height: 1px; background: var(--line); }
     .page-marker button { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font: inherit; letter-spacing: inherit; }
@@ -323,7 +326,8 @@
     .para .translation { color: var(--muted); font: italic .94rem/1.62 var(--serif); margin-top: 8px; }
     .inline-note { width: 100%; min-height: 72px; margin-top: 10px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: color-mix(in srgb, var(--yellow) 18%, var(--surface)); }
     #pageNote, .inline-note { font: 1.08rem/1.55 var(--hand); word-spacing: .16em; caret-color: var(--accent); }
-    .para-action { margin-top: 7px; border: 0; background: none; color: var(--blue); font-size: .7rem; padding: 3px 0; }
+    .para-action { margin-top: 4px; border: 0; background: none; color: var(--blue); font-size: .7rem; padding: 3px 0; opacity: 0; pointer-events: none; transition: opacity .15s ease; }
+    .para:hover .para-action, .para.current .para-action, .para:focus-within .para-action { opacity: 1; pointer-events: auto; }
     .para-action + .para-action { margin-left: 14px; }
 
     .notebook { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--surface); }
@@ -637,7 +641,7 @@
           <button id="zoomIn" aria-label="Zoom in">＋</button>
         </div>
         <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to reflowed text view" title="Reflow · big phone-friendly text rebuilt from the PDF">≣ <span class="wide">Reflow</span></button>
-        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading ruler · drag its ≡ handle or tap the page to move it; color, width, style and height live in Display">▰ <span class="wide">Guide</span></button>
+        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading ruler · drag its ⠿ handle or tap the page to move it; color, width, style and height live in Display">▰ <span class="wide">Guide</span></button>
         <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Reading display settings" title="Reading display · guide style, text size, auto-scroll, paper tone">Aa</button>
         <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F) · Space auto-scrolls">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
@@ -664,9 +668,9 @@
           <button class="step-btn" id="widthWide" type="button" aria-label="Wider column">↦</button>
         </div>
         <div class="group text-only"><span>Spacing</span>
-          <button class="step-btn" id="leadTight" type="button" aria-label="Tighter lines">≡</button>
+          <button class="step-btn" id="leadTight" type="button" aria-label="Tighter lines">−</button>
           <span class="value" id="leadValue">1.7</span>
-          <button class="step-btn" id="leadLoose" type="button" aria-label="Looser lines">☰</button>
+          <button class="step-btn" id="leadLoose" type="button" aria-label="Looser lines">+</button>
         </div>
         <button class="toggle text-only" id="airyBtn" type="button" aria-pressed="false">Relaxed letters</button>
         <div class="group"><span>Guide color</span>
@@ -720,7 +724,7 @@
           <div class="guide-shade guide-shade-top"></div>
           <div class="guide-shade guide-shade-left"></div>
           <div class="guide-shade guide-shade-right"></div>
-          <div class="guide-band" id="guideBand"><button class="guide-grip" id="guideGrip" type="button" aria-label="Drag the reading guide">≡</button></div>
+          <div class="guide-band" id="guideBand"><button class="guide-grip" id="guideGrip" type="button" aria-label="Drag the reading guide">⠿</button></div>
           <div class="guide-shade guide-shade-bottom"></div>
         </div>
         <div class="recall-shield hidden" id="recallShield" aria-hidden="true"><div><span>Quick recall</span><h2>The paper is hidden.</h2><p>Explain what you just read in the page note. Pull it from memory before checking the text.</p></div></div>
@@ -1428,7 +1432,7 @@
   /* Paragraph objects: {t:text, k:kind(''|h1|h2|h3|cap), r:[[start,end,flags]...]} with
      run offsets valid inside t. Kind comes from font size against the body size when
      known, with the old shape-regex as the fallback. */
-  function layoutToParagraphs(lines,bodySize){
+  function layoutToParagraphs(lines,bodySize,vocab){
     if(!lines.length)return[];
     lines=orderColumns(lines);
     var height=layoutMedian(lines.map(function(l){return l.height;}))||10,width=layoutMedian(lines.map(function(l){return l.endX-l.x;}))||200;
@@ -1436,9 +1440,11 @@
     var normalGap=layoutMedian(gaps)||height*1.15,out=[],current='',runs=[],curSize=0,curAllBold=true,curLines=0;
     var body=bodySize||height;
     function shapeHeading(text){return text.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(text)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(text));}
+    function mathy(text){return /[=∑∏∫∂≤≥≈≠∈∇⊤←→↦∥]|\|\|/.test(text);}
     function kindOf(text,size,allBold,lineCount){
-      if(/^(?:FIGURE|TABLE|SCHEME)\s?\d+\b/.test(text)||/^(figure|fig\.|table|scheme)\s?\d+[.:|]/i.test(text))return 'cap';
-      if(lineCount<=3&&text.length<200){
+      var capShape=/^[^\s(]?(?:figure|fig\.|table|scheme)\s?\d+(?:\.\d+)*(?!\.?\d)/i.test(text);
+      if(capShape)return (/^.?(?:FIGURE|TABLE|SCHEME)\s?\d/.test(text)||/^[^\s(]?(?:figure|fig\.|table|scheme)\s?\d+(?:\.\d+)*(?!\.?\d)\s*[.:|]/i.test(text)||size<=body*.96)?'cap':'';
+      if(lineCount<=3&&text.length<200&&!mathy(text)){
         if(size>=body*1.45)return 'h1';
         if(size>=body*1.24)return 'h2';
         if(size>=body*1.12||(allBold&&text.length<90))return 'h3';
@@ -1452,7 +1458,19 @@
     }
     function appendLine(line){
       var offset;
-      if(current&&/[-­]$/.test(current)){current=current.slice(0,-1);offset=current.length;}
+      if(current&&/[-‐‑­]$/.test(current)){
+        /* Line-break hyphen: join solid ("veri-"+"fied") or keep the hyphen
+           ("nitrogen-"+"fixing") by checking which form the paper itself uses. */
+        var leftWord=(current.match(/[A-Za-z0-9à-öø-ÿ]+(?=[-‐‑­]$)/)||[''])[0];
+        var rightWord=(line.text.match(/^[A-Za-z0-9à-öø-ÿ]+/)||[''])[0];
+        var keep=false;
+        if(leftWord&&rightWord&&vocab){
+          var solid=(leftWord+rightWord).toLowerCase(),hyph=(leftWord+'-'+rightWord).toLowerCase();
+          keep=vocab[solid]?false:vocab[hyph]?true:/^[A-Z0-9]/.test(line.text);
+        }
+        if(keep){current=current.replace(/[‐‑­]$/,'-');offset=current.length;}
+        else{current=current.slice(0,-1);offset=current.length;}
+      }
       else if(current){current+=' ';offset=current.length;}
       else offset=0;
       current+=line.text;
@@ -1474,7 +1492,11 @@
       var dy=line.y-next.y,columnReset=dy<-(height*2)&&Math.abs(next.x-line.x)>height*3;
       var extraGap=dy>normalGap*1.38,indented=next.x-line.x>Math.max(6,height*.65);
       var shortFinish=(line.endX-line.x)<width*.72&&/[.!?][”"')\]]?$/.test(text);
-      if(nextHeading||columnReset||extraGap||indented||shortFinish)flush();
+      /* A superscript (strain names like nifD⁻) can push the rest of its sentence onto
+         an offset line starting with "-)" or a bare closer — never a real paragraph. */
+      var continuation=/^[)\]},;]|^-[)\]},;]/.test(next.text);
+      if(nextHeading||columnReset)flush();
+      else if((extraGap||indented||shortFinish)&&!continuation)flush();
     });
     return out;
   }
@@ -1483,7 +1505,7 @@
   function readerStructure(pageLines,pageParagraphs){
     var counts={};
     (pageLines||[]).forEach(function(lines){var seen={};lines.slice(0,3).concat(lines.slice(-3)).forEach(function(line){var key=boundaryKey(line);if(key.length>3&&!seen[key]){counts[key]=(counts[key]||0)+1;seen[key]=true;}});});
-    function noise(line,index,total){if(/^(?:figure|fig\.?|table|scheme)\s?\d/i.test(line))return false;var key=boundaryKey(line);return /^\s*(?:\d+|[ivxlcdm]+)\s*$/i.test(line)||/^(?:doi\s*:|https?:\/\/doi\.)/i.test(line)||/(?:copyright|all rights reserved|downloaded from|terms of use)/i.test(line)||((index<3||index>=total-3)&&(counts[key]||0)>=2);}
+    function noise(line,index,total){if(/^(?:figure|fig\.?|table|scheme)\s?\d/i.test(line))return false;if((line.match(/\.\s?\.\s?\./g)||[]).length>=2&&/\d\s*$/.test(line))return true;var key=boundaryKey(line);return /^\s*(?:\d+|[ivxlcdm]+)\s*$/i.test(line)||/^(?:doi\s*:|https?:\/\/doi\.)/i.test(line)||/(?:copyright|all rights reserved|downloaded from|terms of use)/i.test(line)||((index<3||index>=total-3)&&(counts[key]||0)>=2);}
     var cleaned=(pageLines||[]).map(function(lines){return lines.filter(function(line,i){return line&&!noise(line,i,lines.length);});});
     var pages=[],meta=[];
     cleaned.forEach(function(lines,pageIndex){
@@ -1527,7 +1549,7 @@
     (ch.readerHighlights||[]).forEach(function(mark){var quote=String(mark.text||''),found=-1,offset=-1;newParas.some(function(p,i){var at=p.indexOf(quote);if(at>=0){found=i;offset=at;return true;}return false;});if(found<0)found=closest(mark.para||0);mark.para=found;if(offset>=0){mark.start=offset;mark.end=offset+quote.length;}});
   }
   /* Bump when layout-aware segmentation changes; anchored notes/highlights are remapped. */
-  var READER_V=4;
+  var READER_V=5;
   function refreshReaderSegmentation(ch){
     /* Only repairs ancient pre-v3 text; the v4 structured rebuild needs the open PDF
        and happens in ensureReaderData, so this must never stamp v4 on its own. */
@@ -1554,18 +1576,23 @@
          the document-shared font objects, and their names reveal Bold and Italic. */
       var fontFlags={};
       try{
-        for(var fp=1;fp<=Math.min(2,doc.numPages);fp++){
-          var fpg=await doc.getPage(fp),fvp=fpg.getViewport({scale:.12});
+        var seen={};layouts.forEach(function(ls){ls.forEach(function(l){(l.runs||[]).forEach(function(r){if(typeof r[2]==='string')seen[r[2]]=1;});});});
+        var samplePages=[1,2];
+        if(doc.numPages>4)[.15,.35,.55,.75,.92].forEach(function(f){var p=Math.max(3,Math.round(doc.numPages*f));if(samplePages.indexOf(p)<0)samplePages.push(p);});
+        for(var fp=0;fp<samplePages.length;fp++){
+          if(samplePages[fp]>doc.numPages)continue;
+          var fpg=await doc.getPage(samplePages[fp]),fvp=fpg.getViewport({scale:.12});
           var fc=document.createElement('canvas');fc.width=Math.ceil(fvp.width);fc.height=Math.ceil(fvp.height);
           await fpg.render({canvasContext:fc.getContext('2d'),viewport:fvp}).promise;
-          var seen={};layouts.forEach(function(ls){ls.forEach(function(l){(l.runs||[]).forEach(function(r){if(typeof r[2]==='string')seen[r[2]]=1;});});});
+          var missing=0;
           Object.keys(seen).forEach(function(fontName){
             if(fontFlags[fontName]!==undefined)return;
             try{
               var fo=fpg.commonObjs.get(fontName),real=(fo&&(fo.name||fo.loadedName))||'';
               fontFlags[fontName]=(/bold|black|heavy|semibold|demi|-bd\b|\.b$|\.bi$/i.test(real)?1:0)|(/italic|oblique|-it\b|\.i$|\.bi$/i.test(real)?2:0);
-            }catch(unresolved){}
+            }catch(unresolved){missing++;}
           });
+          if(!missing)break;
         }
       }catch(fontPass){}
       layouts.forEach(function(ls){ls.forEach(function(l){
@@ -1578,15 +1605,22 @@
         });
         l.runs=flat;
       });});
+      /* Every word the paper uses mid-line, so hyphenated line breaks can be
+         resolved by example: does "gram-positive" or "grampositive" actually occur? */
+      var vocab={};
+      layouts.forEach(function(ls){ls.forEach(function(l){
+        var m=l.text.toLowerCase().match(/[a-z0-9à-öø-ÿ]+(?:-[a-z0-9à-öø-ÿ]+)*/g);
+        if(m)m.forEach(function(w){vocab[w]=1;});
+      });});
       var lines=[],paragraphs=[],pages=[];
       layouts.forEach(function(layout){
         var pageLines=layout.map(function(l){return l.text;});
-        lines.push(pageLines);paragraphs.push(layoutToParagraphs(layout,body));pages.push(pageLines.join(' '));
+        lines.push(pageLines);paragraphs.push(layoutToParagraphs(layout,body,vocab));pages.push(pageLines.join(' '));
       });
       var rebuilt=readerTextFromPages(lines,paragraphs)||pages.join('\n\n');
       migrateReaderAnchors(ch,oldText,rebuilt);
       ch.pageLines=lines;ch.pageParagraphs=paragraphs;ch.pageTexts=pages;ch.readerText=rebuilt;ch.readerV=READER_V;ch.fr=pages.join('\n\n');
-      try{ch.figCount=await buildFigures(doc,ch,layouts,paragraphs,pageDims);}catch(figError){ch.figCount=0;}
+      try{ch.figCount=await buildFigures(doc,ch,layouts,paragraphs,pageDims,body);}catch(figError){ch.figCount=0;}
       ch.focusPara=null;delete ch.readerScroll;ch.updatedAt=now();saveDerivedSoon(ch);persist();
       return ch.readerText;
     })().finally(function(){delete readerBuildPromises[ch.id];});
@@ -1595,8 +1629,8 @@
   /* Figures without decoding a single embedded image: a caption line anchors a crop of
      the rendered page. The whitespace between the caption and the text above it, within
      the caption's column band, is the figure. Tables crop the region below instead. */
-  var FIGURE_CAP=60;
-  async function buildFigures(doc,ch,layouts,paragraphs,pageDims){
+  var FIGURE_CAP=120;
+  async function buildFigures(doc,ch,layouts,paragraphs,pageDims,body){
     var figIndex=0;
     for(var pageIdx=0;pageIdx<paragraphs.length&&figIndex<FIGURE_CAP;pageIdx++){
       var caps=paragraphs[pageIdx].filter(function(p){return p.k==='cap';});
@@ -1607,17 +1641,18 @@
         var cap=caps[c],capLine=null;
         for(var li=0;li<layout.length;li++){
           var lt=layout[li].text;
-          if(lt.length>=6&&cap.t.indexOf(lt)===0&&/^(fig|table|scheme)/i.test(lt)){capLine=layout[li];break;}
+          if(lt.length>=6&&cap.t.indexOf(lt)===0&&/^[^\s(]?(fig|table|scheme)/i.test(lt)){capLine=layout[li];break;}
           if(lt.length>=6&&lt.toLowerCase().indexOf(cap.t.slice(0,Math.min(24,cap.t.length)).toLowerCase())===0){capLine=layout[li];break;}
         }
         if(!capLine)continue;
-        var below=/^table/i.test(cap.t);
+        var below=/^[^\s(]?table/i.test(cap.t);
         var mid=pageW/2,capCenter=(capLine.x+capLine.endX)/2,capW=capLine.endX-capLine.x;
         var band=capW<pageW*.55?(capCenter<mid?[Math.max(0,capLine.x-14),mid+6]:[mid-6,Math.min(pageW,capLine.endX+14)]):[Math.max(0,capLine.x-14),Math.min(pageW,capLine.endX+14)];
         /* nearest text line vertically on the figure side, inside the band */
         var edge=below?0:pageH,found=false;
         layout.forEach(function(l){
           if(l===capLine)return;
+          if(l.height<body*.82||(l.endX-l.x)<(band[1]-band[0])*.28)return;
           var lc=(l.x+l.endX)/2;if(lc<band[0]||lc>band[1])return;
           if(below){if(l.y<capLine.y-capLine.height&&l.y>edge){edge=l.y;found=true;}}
           else{if(l.y>capLine.y+capLine.height&&(edge===pageH||l.y<edge)){edge=l.y;found=true;}}
@@ -1634,7 +1669,9 @@
         }
         var regionLo=Math.min(top,bottom),regionHi=Math.max(top,bottom),blocked=false;
         layout.forEach(function(l){
-          if(l===capLine)return;var lc=(l.x+l.endX)/2;
+          if(l===capLine)return;
+          if(l.height<body*.82||(l.endX-l.x)<pageW*.15)return;
+          var lc=(l.x+l.endX)/2;
           if(lc>=band[0]&&lc<=band[1])return;
           if(l.y>regionLo&&l.y<regionHi)blocked=true;
         });
@@ -1748,7 +1785,8 @@
   function paraSections(){ return byId('textDocument').querySelectorAll('.para'); }
   function applyComfort(){
     var doc=byId('textDocument');
-    doc.style.setProperty('--read-size',(comfort.size/100*1.02).toFixed(3)+'rem');
+    var readBase=matchMedia('(pointer: coarse)').matches?1.08:1.02;
+    doc.style.setProperty('--read-size',(comfort.size/100*readBase).toFixed(3)+'rem');
     doc.style.setProperty('--read-measure',comfort.measure+'px');
     doc.style.setProperty('--read-leading',String(comfort.leading));
     doc.style.setProperty('--read-spacing',comfort.airy?'.2em':'normal');
@@ -1852,7 +1890,7 @@
   }
   byId('focusBtn').onclick=function(){
     comfort.focus=!comfort.focus;applyComfort();
-    showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ≡ handle or tap the page'):'Reading guide off');
+    showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page'):'Reading guide off');
   };
   byId('documentPane').addEventListener('pointermove',function(e){
     if(!comfort.focus||comfort.guideLock||e.pointerType==='touch')return;setReadingGuide(e.clientX,e.clientY,e.target);
@@ -1879,15 +1917,53 @@
      and one-column width, right where you clicked. Double-clicking a word still just
      selects the word. */
   byId('documentPane').addEventListener('dblclick',function(e){
-    if(!comfort.focus||readerMode!=='pdf'||!matchMedia('(hover: hover)').matches)return;
+    if(readerMode!=='pdf'||!matchMedia('(hover: hover)').matches)return;
     clearTimeout(guideLockClickTimer);
     var selection=window.getSelection&&window.getSelection();
     if(selection&&!selection.isCollapsed)return;
-    comfort.guideScope=comfort.guideScope==='page'?'column':'page';
-    applyComfort();
-    setReadingGuide(e.clientX,e.clientY,e.target);
-    showReaderToast(comfort.guideScope==='column'?'Guide hugs one column · double-click to widen':'Guide spans the page · double-click for one column');
+    if(comfort.focus&&!e.shiftKey){
+      comfort.guideScope=comfort.guideScope==='page'?'column':'page';
+      applyComfort();
+      setReadingGuide(e.clientX,e.clientY,e.target);
+      showReaderToast(comfort.guideScope==='column'?'Guide hugs one column · double-click to widen':'Guide spans the page · double-click for one column');
+      return;
+    }
+    columnZoomAt(e);
   });
+  /* Double-click on a blank spot of a page: zoom straight to the column under the
+     cursor (or the text width on single-column pages) — no pinching and panning to
+     line it up by hand. Double-click again returns to Fit. */
+  async function columnZoomAt(e){
+    if(!pdfDoc)return;
+    var holder=e.target.closest?e.target.closest('.pdf-page'):null;
+    if(!holder)return;
+    if(currentZoom()>1.25){setZoom(1);showReaderToast('Back to full width');return;}
+    var pageNo=+holder.dataset.page,rect=holder.getBoundingClientRect();
+    if(!rect.width)return;
+    var fx=(e.clientX-rect.left)/rect.width;
+    try{
+      var pg=await pdfDoc.getPage(pageNo),content=await pg.getTextContent(),vp=pg.getViewport({scale:1});
+      var lines=contentLayout(content),pageW=vp.width,mid=pageW/2;
+      var narrow=lines.filter(function(l){var w=l.endX-l.x;return w<pageW*.58&&w>pageW*.12;});
+      var side=narrow.filter(function(l){var c=(l.x+l.endX)/2;return fx*pageW<mid?c<mid:c>=mid;});
+      var pool=side.length>=6?side:lines.filter(function(l){return (l.endX-l.x)>pageW*.12;});
+      if(!pool.length)return;
+      var xs=pool.map(function(l){return l.x;}).sort(function(a,b){return a-b;});
+      var es=pool.map(function(l){return l.endX;}).sort(function(a,b){return a-b;});
+      var frac0=Math.max(0,(xs[Math.floor(xs.length*.1)]-8)/pageW);
+      var frac1=Math.min(1,(es[Math.floor(es.length*.9)]+8)/pageW);
+      if(frac1-frac0<=0)return;
+      var z=Math.max(1.15,Math.min(4,.985/(frac1-frac0)));
+      setZoom(z,e.clientX,e.clientY,0,0,function(){
+        var pane=byId('documentPane'),h2=byId('pdfFrame').querySelector('.pdf-page[data-page="'+pageNo+'"]');
+        if(!h2)return;
+        var hr=h2.getBoundingClientRect(),pr=pane.getBoundingClientRect();
+        var margin=Math.max(0,(pr.width-(frac1-frac0)*hr.width)/2);
+        pane.scrollLeft=Math.max(0,pane.scrollLeft+(hr.left-pr.left)+frac0*hr.width-margin);
+      });
+      showReaderToast(side.length>=6?'Zoomed to this column · double-click to go back':'Zoomed to the text width · double-click to go back');
+    }catch(err){}
+  }
   /* Keyboard scope control: place the guide as full-page or hugging one column,
      keeping its current line. */
   function placeGuideScoped(scope,half){
@@ -1981,7 +2057,7 @@
     if(driftSpeed)driftSpeed=comfort.driftSpeed;else setDrift(comfort.driftSpeed);
   };
   /* Drive the slider with pointer events ourselves — the same mechanism as the guide's
-     ≡ handle — so a finger drag always moves the thumb instead of panning the bar. */
+     ⠿ handle — so a finger drag always moves the thumb instead of panning the bar. */
   (function(){
     var range=byId('driftRange'),dragging=false;
     function setFromPointer(e){
@@ -2164,6 +2240,19 @@
   byId('findPrev').onclick=function(){gotoFindMatch(findIndex-1);};
   byId('findNext').onclick=function(){gotoFindMatch(findIndex+1);};
 
+  var linkReturnSpot=null;
+  async function followPdfDest(dest){
+    if(!pdfDoc)return;
+    try{
+      var d=typeof dest==='string'?await pdfDoc.getDestination(dest):dest;
+      if(!d||!d[0])return;
+      var idx=await pdfDoc.getPageIndex(d[0]);
+      var pane=byId('documentPane');
+      linkReturnSpot={top:pane.scrollTop,left:pane.scrollLeft};
+      gotoPdfPage(idx+1);
+      showReaderToast('Jumped to p. '+(idx+1)+' · Backspace comes back');
+    }catch(destError){}
+  }
   function gotoPdfPage(page){
     var ch=find(currentId);if(!ch||ch.kind!=='pdf')return;
     if(innerWidth<=720)toggleSheet(false);
@@ -2392,6 +2481,24 @@
       if(view.buildId!==pdfBuildId)return;
       view.text.innerHTML='';view.text.style.width=Math.ceil(viewport.width)+'px';view.text.style.height=Math.ceil(viewport.height)+'px';
       try{var textContent=await page.getTextContent({includeMarkedContent:true});await new pdfLib.TextLayer({textContentSource:textContent,container:view.text,viewport:viewport}).render();var textCh=find(currentId),pageText=contentToLines(textContent).join(' ');if(textCh&&pageText){textCh.pageTexts=textCh.pageTexts||[];if(textCh.pageTexts[n-1]!==pageText){textCh.pageTexts[n-1]=pageText;saveDerivedSoon(textCh);persist(false);}}}catch(textError){view.text.innerHTML='';}
+      /* The PDF's own link annotations: citations jump to their reference, outline
+         links jump between sections, URLs open in a new tab. */
+      try{
+        if(!view.links){view.links=document.createElement('div');view.links.className='pdf-links';view.holder.appendChild(view.links);}
+        view.links.innerHTML='';
+        var annots=await page.getAnnotations({intent:'display'});
+        annots.forEach(function(a){
+          if(a.subtype!=='Link'||!a.rect||(!a.url&&!a.dest))return;
+          var r=viewport.convertToViewportRectangle(a.rect);
+          var left=Math.min(r[0],r[2]),top=Math.min(r[1],r[3]),wd=Math.abs(r[2]-r[0]),ht=Math.abs(r[3]-r[1]);
+          if(wd<2||ht<2)return;
+          var el=document.createElement('a');el.className='pdf-link';
+          el.style.left=left+'px';el.style.top=top+'px';el.style.width=wd+'px';el.style.height=ht+'px';
+          if(a.url){el.href=a.url;el.target='_blank';el.rel='noopener';el.title=a.url;}
+          else{el.href='#';el.title='Jump there · Backspace comes back';el.onclick=function(ev){ev.preventDefault();ev.stopPropagation();followPdfDest(a.dest);};}
+          view.links.appendChild(el);
+        });
+      }catch(annotError){}
       view.rendered=true;renderedPages.push(n);renderPdfHighlights(n);freeFarPages();
     }catch(e){}
     finally{view.rendering=false;}
@@ -2629,6 +2736,7 @@
     if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undoLastHighlight();return;}
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
     if(e.key.toLowerCase()==='f'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();setZen(!zenOn);return;}
+    if(e.key==='Backspace'&&readerMode==='pdf'&&linkReturnSpot){e.preventDefault();var lrPane=byId('documentPane');lrPane.scrollTop=linkReturnSpot.top;lrPane.scrollLeft=linkReturnSpot.left;linkReturnSpot=null;showReaderToast('Back where you were');return;}
     /* Space is the settle-in key: start the slow crawl, tap again to stop. */
     if(e.key===' '&&!e.shiftKey){
       e.preventDefault();
@@ -2724,6 +2832,13 @@
     if(meta)loadFigureImages();
     byId('textDocument').querySelectorAll('[data-note]').forEach(function(b){ b.onclick=function(){ var ta=byId('textDocument').querySelector('[data-note-area="'+b.dataset.note+'"]'); ta.classList.toggle('hidden'); if(!ta.classList.contains('hidden')) ta.focus(); }; });
     byId('textDocument').querySelectorAll('[data-goto-page]').forEach(function(b){b.onclick=function(){gotoPdfPage(+b.dataset.gotoPage);};});
+    byId('textDocument').onclick=function(e){
+      if(e.target.closest('button, textarea, a, mark, img'))return;
+      if(String(getSelection&&getSelection()||''))return;
+      var section=e.target.closest('.para');if(!section)return;
+      var idx=[].indexOf.call(paraSections(),section);
+      if(idx>=0)setFocusPara(idx,false);
+    };
     byId('textDocument').querySelectorAll('[data-note-area]').forEach(function(ta){ ta.oninput=function(){ var c=find(currentId),i=ta.dataset.noteArea,map=ta.dataset.noteScope==='reader'?c.readerNotes:c.notes;if(ta.value.trim())map[i]=ta.value;else delete map[i];touch(c);renderNoteIndex(); }; });
   }
   function styledTextHtml(text,marks,runs,paraIndex){

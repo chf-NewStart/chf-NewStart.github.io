@@ -79,11 +79,21 @@ Each page is self-contained and keeps its data in the visitor's own browser
   675-page textbook stays light on a phone).
 
   **Reading.** Pinch to zoom with a live preview re-rendered crisply under your
-  fingers; double-tap between Fit and 160%; one-finger panning locks to its
+  fingers; double-tap between Fit and 160%; on a laptop, double-click a blank
+  spot to snap-zoom to that column (double-click again for full width);
+  one-finger panning locks to its
   dominant axis so zoomed scrolling never drifts sideways (with its own momentum
   fling); tap the page counter to jump anywhere; ☰ Contents opens the PDF's own
-  chapter outline; zoom, page, scroll position and the open paper itself all
-  survive a refresh.
+  chapter outline; the PDF's own links work — citations jump to their
+  reference (Backspace comes back), URLs open in a new tab; zoom, page,
+  scroll position and the open paper itself all survive a refresh.
+
+  **Ebook mode.** On phones, Reflow rebuilds the paper as an ebook instead of
+  a flat text dump: heading tiers recovered from the PDF's font sizes, bold
+  and italic preserved (species names stay italic), two-column pages read in
+  reading order, figures cropped out of the page and shown inline above their
+  captions, hyphenated line breaks resolved against the paper's own
+  vocabulary, and headers/footers/TOC dot leaders stripped.
 
   **Focus.** A reading guide band (yellow/green/blue, full-page or column width,
   S/M/L height) that tints or — in Line focus — masks everything except the lines

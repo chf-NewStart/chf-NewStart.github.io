@@ -302,6 +302,18 @@
     .para .original { font: var(--read-size)/var(--read-leading) var(--serif); word-spacing: var(--read-spacing); white-space: pre-wrap; }
     .para.reader-heading { margin-top: 2.4em; padding-top: 1.15em; border-top: 1px solid var(--line); }
     .para.reader-heading .original { font-family: var(--sans); font-size: calc(var(--read-size) * .88); font-weight: 750; letter-spacing: .08em; line-height: 1.35; text-transform: uppercase; }
+    /* Ebook structure: real heading tiers from the paper's own font sizes. */
+    .para.reader-h1 { margin-top: 2.6em; }
+    .para.reader-h1 .original { font: 600 calc(var(--read-size) * 1.5)/1.2 var(--serif); letter-spacing: -.015em; text-transform: none; }
+    .para.reader-h2 { margin-top: 2.2em; }
+    .para.reader-h2 .original { font: 650 calc(var(--read-size) * 1.22)/1.28 var(--sans); letter-spacing: 0; text-transform: none; }
+    .para.reader-h3 .original { text-transform: none; letter-spacing: .02em; font-size: calc(var(--read-size) * 1.02); }
+    .para.reader-cap { border-top: 0; }
+    .para.reader-cap .original { font: .82em/1.5 var(--sans); color: var(--muted); }
+    .reader-fig { margin: 6px 0 10px; }
+    .reader-fig img { display: block; max-width: 100%; border: 1px solid var(--line); border-radius: 10px; background: white; }
+    html[data-theme="dark"] .reader-fig img { background: #f4f2ec; }
+    .para .original b { font-weight: 680; }
     .para.current::before { content: ""; position: absolute; left: -16px; top: 12px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--accent); }
     .page-marker { display: flex; align-items: center; gap: 10px; margin: 24px 0 2px; color: var(--muted); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; }
     .page-marker::after { content: ""; flex: 1; height: 1px; background: var(--line); }
@@ -930,7 +942,7 @@
   /* localStorage is deliberately only for small, frequently edited state. Rebuildable PDF
      text lives beside the PDFs in IndexedDB, while encrypted sync may still carry it. */
   var storageWarned = false;
-  var DERIVED_FIELDS=['pageLines','pageParagraphs','pageTexts','readerText','readerV','fr','termLookups'];
+  var DERIVED_FIELDS=['pageLines','pageParagraphs','pageTexts','readerText','readerV','fr','termLookups','figCount'];
   function localState(){
     var copy=Object.assign({},state);copy.chapters=state.chapters.map(function(ch){var item=Object.assign({},ch);if(item.kind==='pdf')DERIVED_FIELDS.forEach(function(field){delete item[field];});return item;});return copy;
   }
@@ -1143,6 +1155,15 @@
     if(!ch||ch.kind!=='pdf')return false;var record=derivedData(ch);if(!record)return false;memoryDerived[ch.id]=record;
     try{var d=await db();await new Promise(function(res,rej){var r=d.transaction('derived','readwrite').objectStore('derived').put(record,ch.id);r.onsuccess=res;r.onerror=function(){rej(r.error);};});delete memoryDerived[ch.id];return true;}catch(e){return false;}
   }
+  async function putFigure(key,buf){
+    try{var d=await db();await new Promise(function(res,rej){var r=d.transaction('derived','readwrite').objectStore('derived').put(buf,key);r.onsuccess=res;r.onerror=function(){rej(r.error);};});return true;}catch(e){return false;}
+  }
+  async function getFigure(key){
+    try{var d=await db();return await new Promise(function(res,rej){var r=d.transaction('derived').objectStore('derived').get(key);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});}catch(e){return null;}
+  }
+  async function deleteFigures(id){
+    try{var d=await db();await new Promise(function(res){var r=d.transaction('derived','readwrite').objectStore('derived').delete(IDBKeyRange.bound('fig:'+id+':','fig:'+id+':\uffff'));r.onsuccess=res;r.onerror=res;});}catch(e){}
+  }
   function saveDerivedSoon(ch){if(!ch||ch.kind!=='pdf')return;clearTimeout(derivedTimers[ch.id]);derivedTimers[ch.id]=setTimeout(function(){delete derivedTimers[ch.id];putDerived(ch);},500);}
   async function getDerived(id){
     try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('derived').objectStore('derived').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
@@ -1348,33 +1369,108 @@
   }
   function contentLayout(content){
     var lines=[],line=null;
-    function finish(){if(line&&line.text.trim()){line.text=line.text.replace(/\s+/g,' ').trim();lines.push(line);}line=null;}
+    function finish(){
+      if(line&&line.text.trim()){
+        var lead=line.text.length-line.text.replace(/^\s+/,'').length;
+        line.text=line.text.replace(/\s+/g,' ').trim();
+        if(lead)line.runs.forEach(function(r){r[0]=Math.max(0,r[0]-lead);r[1]=Math.max(0,r[1]-lead);});
+        line.runs=line.runs.filter(function(r){return r[1]>r[0]&&r[2];});
+        lines.push(line);
+      }
+      line=null;
+    }
     (content.items||[]).forEach(function(item){
       var part=String(item.str||''),tr=item.transform||[],x=Number.isFinite(+tr[4])?+tr[4]:0,y=Number.isFinite(+tr[5])?+tr[5]:0,height=Math.max(1,Math.abs(+item.height||+tr[3]||+tr[0]||10)),width=Math.max(0,+item.width||part.length*height*.45);
       if(part){
         if(line&&Math.abs(y-line.y)>Math.max(2,height*.55))finish();
-        if(!line)line={text:'',x:x,y:y,endX:x,height:height};
-        if(line.text&&!/\s$/.test(line.text)&&!/^[,.;:!?%)\]]/.test(part))line.text+=' ';
-        line.text+=part;line.x=Math.min(line.x,x);line.endX=Math.max(line.endX,x+width);line.height=Math.max(line.height,height);
+        if(!line)line={text:'',x:x,y:y,endX:x,height:height,runs:[]};
+        var gap=line?x-line.endX:0;
+        if(line.text&&!/\s$/.test(line.text)&&!/^[,.;:!?%)\]]/.test(part)&&gap>height*.12)line.text+=' ';
+        var font=item.fontName||'',start=line.text.length;
+        line.text+=part;
+        if(font){
+          var last=line.runs[line.runs.length-1];
+          if(last&&last[2]===font&&last[1]>=start-1)last[1]=line.text.length;
+          else line.runs.push([start,line.text.length,font]);
+        }
+        line.x=Math.min(line.x,x);line.endX=Math.max(line.endX,x+width);line.height=Math.max(line.height,height);
       }
       if(item.hasEOL)finish();
     });
     finish();return lines;
   }
   function contentToLines(content){return contentLayout(content).map(function(line){return line.text;});}
-  function layoutToParagraphs(lines){
+  function layoutMedian(values){var a=values.filter(function(n){return Number.isFinite(n)&&n>0;}).sort(function(x,y){return x-y;});return a.length?a[Math.floor(a.length/2)]:0;}
+  /* Two-column pages read left column first, then right — like a human. Lines that span
+     the width (titles, full-width figures) act as separators between banded blocks. */
+  function orderColumns(lines){
+    if(lines.length<8)return lines;
+    var left=Math.min.apply(null,lines.map(function(l){return l.x;}));
+    var right=Math.max.apply(null,lines.map(function(l){return l.endX;}));
+    var pageW=right-left;if(pageW<200)return lines;
+    var mid=left+pageW/2,leftBand=0,rightBand=0;
+    lines.forEach(function(l){
+      var w=l.endX-l.x;
+      if(w<pageW*.58){if(l.x+w/2<mid)leftBand++;else rightBand++;}
+    });
+    if(leftBand<lines.length*.25||rightBand<lines.length*.2)return lines;
+    var out=[],bufL=[],bufR=[];
+    function flushBands(){out.push.apply(out,bufL);out.push.apply(out,bufR);bufL=[];bufR=[];}
+    lines.forEach(function(l){
+      var w=l.endX-l.x;
+      if(w>=pageW*.58){flushBands();out.push(l);}
+      else if(l.x+w/2<mid)bufL.push(l);
+      else bufR.push(l);
+    });
+    flushBands();
+    return out;
+  }
+  /* Paragraph objects: {t:text, k:kind(''|h1|h2|h3|cap), r:[[start,end,flags]...]} with
+     run offsets valid inside t. Kind comes from font size against the body size when
+     known, with the old shape-regex as the fallback. */
+  function layoutToParagraphs(lines,bodySize){
     if(!lines.length)return[];
-    function median(values){var a=values.filter(function(n){return Number.isFinite(n)&&n>0;}).sort(function(a,b){return a-b;});return a.length?a[Math.floor(a.length/2)]:0;}
-    var height=median(lines.map(function(l){return l.height;}))||10,width=median(lines.map(function(l){return l.endX-l.x;}))||200;
+    lines=orderColumns(lines);
+    var height=layoutMedian(lines.map(function(l){return l.height;}))||10,width=layoutMedian(lines.map(function(l){return l.endX-l.x;}))||200;
     var gaps=[];for(var g=0;g<lines.length-1;g++){var dy=lines[g].y-lines[g+1].y;if(dy>height*.45&&dy<height*3)gaps.push(dy);}
-    var normalGap=median(gaps)||height*1.15,out=[],current='';
-    function flush(){if(current.trim())out.push(current.replace(/\s+/g,' ').trim());current='';}
+    var normalGap=layoutMedian(gaps)||height*1.15,out=[],current='',runs=[],curSize=0,curAllBold=true,curLines=0;
+    var body=bodySize||height;
+    function shapeHeading(text){return text.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(text)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(text));}
+    function kindOf(text,size,allBold,lineCount){
+      if(/^(?:FIGURE|TABLE|SCHEME)\s?\d+\b/.test(text)||/^(figure|fig\.|table|scheme)\s?\d+[.:|]/i.test(text))return 'cap';
+      if(lineCount<=3&&text.length<200){
+        if(size>=body*1.45)return 'h1';
+        if(size>=body*1.24)return 'h2';
+        if(size>=body*1.12||(allBold&&text.length<90))return 'h3';
+      }
+      return shapeHeading(text)?'h3':'';
+    }
+    function flush(){
+      var t=current.replace(/\s+/g,' ').trim();
+      if(t)out.push({t:t,k:kindOf(t,curSize,curAllBold&&runs.length>0,curLines),r:runs.filter(function(r){return r[1]>r[0];})});
+      current='';runs=[];curSize=0;curAllBold=true;curLines=0;
+    }
+    function appendLine(line){
+      var offset;
+      if(current&&/[-­]$/.test(current)){current=current.slice(0,-1);offset=current.length;}
+      else if(current){current+=' ';offset=current.length;}
+      else offset=0;
+      current+=line.text;
+      (line.runs||[]).forEach(function(r){runs.push([offset+r[0],offset+r[1],r[2]]);});
+      var covered=(line.runs||[]).reduce(function(n,r){return n+(r[2]&1?r[1]-r[0]:0);},0);
+      if(covered<line.text.length*.8)curAllBold=false;
+      curSize=Math.max(curSize,line.height);curLines++;
+    }
     lines.forEach(function(line,i){
-      var next=lines[i+1],text=line.text,heading=text.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(text)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(text));
-      if(heading){flush();out.push(text);return;}
-      current=current?(/[-­]$/.test(current)?current.replace(/[-­]$/,'')+text:current+' '+text):text;
+      var next=lines[i+1],text=line.text;
+      var bigness=line.height>=body*1.12,headingish=shapeHeading(text)||bigness&&text.length<200;
+      if(headingish&&!current){appendLine(line);
+        var nextClose=next&&Math.abs(next.height-line.height)<line.height*.12&&(line.y-next.y)<line.height*2.2&&(shapeHeading(next.text)||next.height>=body*1.12);
+        if(!nextClose)flush();
+        return;}
+      appendLine(line);
       if(!next){flush();return;}
-      var nextHeading=next.text.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(next.text)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(next.text));
+      var nextHeading=shapeHeading(next.text)||next.height>=body*1.12&&next.text.length<200;
       var dy=line.y-next.y,columnReset=dy<-(height*2)&&Math.abs(next.x-line.x)>height*3;
       var extraGap=dy>normalGap*1.38,indented=next.x-line.x>Math.max(6,height*.65);
       var shortFinish=(line.endX-line.x)<width*.72&&/[.!?][”"')\]]?$/.test(text);
@@ -1383,14 +1479,21 @@
     return out;
   }
   function boundaryKey(line){return String(line||'').toLowerCase().replace(/\d+/g,'#').replace(/[^a-z#]+/g,' ').trim();}
-  function readerPagesFromLines(pageLines,pageParagraphs){
+  function paraEntry(p){return typeof p==='string'?{t:p,k:'',r:[]}:(p&&p.t!==undefined?p:{t:String(p||''),k:'',r:[]});}
+  function readerStructure(pageLines,pageParagraphs){
     var counts={};
     (pageLines||[]).forEach(function(lines){var seen={};lines.slice(0,3).concat(lines.slice(-3)).forEach(function(line){var key=boundaryKey(line);if(key.length>3&&!seen[key]){counts[key]=(counts[key]||0)+1;seen[key]=true;}});});
-    function noise(line,index,total){var key=boundaryKey(line);return /^\s*(?:\d+|[ivxlcdm]+)\s*$/i.test(line)||/^(?:doi\s*:|https?:\/\/doi\.)/i.test(line)||/(?:copyright|all rights reserved|downloaded from|terms of use)/i.test(line)||((index<3||index>=total-3)&&(counts[key]||0)>=2);}
+    function noise(line,index,total){if(/^(?:figure|fig\.?|table|scheme)\s?\d/i.test(line))return false;var key=boundaryKey(line);return /^\s*(?:\d+|[ivxlcdm]+)\s*$/i.test(line)||/^(?:doi\s*:|https?:\/\/doi\.)/i.test(line)||/(?:copyright|all rights reserved|downloaded from|terms of use)/i.test(line)||((index<3||index>=total-3)&&(counts[key]||0)>=2);}
     var cleaned=(pageLines||[]).map(function(lines){return lines.filter(function(line,i){return line&&!noise(line,i,lines.length);});});
-    return cleaned.map(function(lines,pageIndex){
+    var pages=[],meta=[];
+    cleaned.forEach(function(lines,pageIndex){
       var layoutParagraphs=pageParagraphs&&pageParagraphs[pageIndex];
-      if(layoutParagraphs&&layoutParagraphs.length)return layoutParagraphs.filter(function(p,i){return p&&!noise(p,i,layoutParagraphs.length);}).join('\n\n');
+      if(layoutParagraphs&&layoutParagraphs.length){
+        var kept=layoutParagraphs.map(paraEntry).filter(function(p,i){return p.t&&!noise(p.t,i,layoutParagraphs.length);});
+        pages.push(kept.map(function(p){return p.t;}).join('\n\n'));
+        if(pages[pages.length-1])kept.forEach(function(p){meta.push(p);});
+        return;
+      }
       /* A paragraph's last line is usually visibly shorter than the column, so compare each
          line against this page's median width instead of splitting at every sentence end. */
       var lengths=lines.map(function(l){return l.length;}).sort(function(a,b){return a-b;});
@@ -1404,9 +1507,13 @@
         var sentence=/[.!?][”"')\]]?$/.test(line),short=line.length<breakBelow;
         if(sentence&&(short||current.length>700)){out.push(current);current='';}
       });
-      if(current)out.push(current);return out.join('\n\n');
+      if(current)out.push(current);
+      pages.push(out.join('\n\n'));
+      if(pages[pages.length-1])out.forEach(function(t){meta.push({t:t,k:'',r:[]});});
     });
+    return {pages:pages,meta:meta};
   }
+  function readerPagesFromLines(pageLines,pageParagraphs){return readerStructure(pageLines,pageParagraphs).pages;}
   function readerTextFromPages(pageLines,pageParagraphs){return readerPagesFromLines(pageLines,pageParagraphs).filter(Boolean).join('\n\n');}
   function migrateReaderAnchors(ch,oldText,newText){
     if(!oldText||oldText===newText)return;var oldParas=paras(oldText),newParas=paras(newText);if(!newParas.length)return;
@@ -1420,19 +1527,134 @@
     (ch.readerHighlights||[]).forEach(function(mark){var quote=String(mark.text||''),found=-1,offset=-1;newParas.some(function(p,i){var at=p.indexOf(quote);if(at>=0){found=i;offset=at;return true;}return false;});if(found<0)found=closest(mark.para||0);mark.para=found;if(offset>=0){mark.start=offset;mark.end=offset+quote.length;}});
   }
   /* Bump when layout-aware segmentation changes; anchored notes/highlights are remapped. */
-  var READER_V=3;
+  var READER_V=4;
   function refreshReaderSegmentation(ch){
-    if(!ch||ch.kind!=='pdf'||!ch.pageLines||ch.readerV===READER_V)return;
+    /* Only repairs ancient pre-v3 text; the v4 structured rebuild needs the open PDF
+       and happens in ensureReaderData, so this must never stamp v4 on its own. */
+    if(!ch||ch.kind!=='pdf'||!ch.pageLines||(ch.readerV||0)>=3)return;
     if(!ch.pageParagraphs)return;
     var rebuilt=readerTextFromPages(ch.pageLines,ch.pageParagraphs);
     if(rebuilt){migrateReaderAnchors(ch,ch.readerText||'',rebuilt);ch.readerText=rebuilt;}
-    ch.readerV=READER_V;ch.focusPara=null;delete ch.readerScroll;saveDerivedSoon(ch);persist(false);
+    ch.readerV=3;ch.focusPara=null;delete ch.readerScroll;saveDerivedSoon(ch);persist(false);
   }
   function readerSourceText(ch){return !ch?'':ch.kind==='pdf'?(ch.readerText||readerTextFromPages(ch.pageLines||[],ch.pageParagraphs||[])||ch.fr||''):(ch.fr||'');}
   async function ensureReaderData(doc,ch){
     if(ch.readerText&&ch.pageLines&&ch.pageParagraphs&&ch.readerV===READER_V)return ch.readerText;if(readerBuildPromises[ch.id])return readerBuildPromises[ch.id];
-    readerBuildPromises[ch.id]=(async function(){var oldText=ch.readerText||'',lines=[],paragraphs=[],pages=[];for(var p=1;p<=doc.numPages;p++){var content=await (await doc.getPage(p)).getTextContent(),layout=contentLayout(content),pageLines=layout.map(function(line){return line.text;});lines.push(pageLines);paragraphs.push(layoutToParagraphs(layout));pages.push(pageLines.join(' '));}var rebuilt=readerTextFromPages(lines,paragraphs)||pages.join('\n\n');migrateReaderAnchors(ch,oldText,rebuilt);ch.pageLines=lines;ch.pageParagraphs=paragraphs;ch.pageTexts=pages;ch.readerText=rebuilt;ch.readerV=READER_V;ch.fr=pages.join('\n\n');ch.focusPara=null;delete ch.readerScroll;ch.updatedAt=now();saveDerivedSoon(ch);persist();return ch.readerText;})().finally(function(){delete readerBuildPromises[ch.id];});
+    readerBuildPromises[ch.id]=(async function(){
+      var oldText=ch.readerText||'',layouts=[],pageDims=[];
+      for(var p=1;p<=doc.numPages;p++){
+        var pg=await doc.getPage(p),content=await pg.getTextContent();
+        layouts.push(contentLayout(content));
+        var vp=pg.getViewport({scale:1});pageDims.push([vp.width,vp.height]);
+      }
+      /* Body size = the font size carrying the most characters across the paper. */
+      var sizeWeight={};layouts.forEach(function(ls){ls.forEach(function(l){var k=(Math.round(l.height*2)/2).toFixed(1);sizeWeight[k]=(sizeWeight[k]||0)+l.text.length;});});
+      var body=10,best=0;Object.keys(sizeWeight).forEach(function(k){if(sizeWeight[k]>best){best=sizeWeight[k];body=+k;}});
+      /* Real font names only exist after a render; one tiny render of pages 1-2 resolves
+         the document-shared font objects, and their names reveal Bold and Italic. */
+      var fontFlags={};
+      try{
+        for(var fp=1;fp<=Math.min(2,doc.numPages);fp++){
+          var fpg=await doc.getPage(fp),fvp=fpg.getViewport({scale:.12});
+          var fc=document.createElement('canvas');fc.width=Math.ceil(fvp.width);fc.height=Math.ceil(fvp.height);
+          await fpg.render({canvasContext:fc.getContext('2d'),viewport:fvp}).promise;
+          var seen={};layouts.forEach(function(ls){ls.forEach(function(l){(l.runs||[]).forEach(function(r){if(typeof r[2]==='string')seen[r[2]]=1;});});});
+          Object.keys(seen).forEach(function(fontName){
+            if(fontFlags[fontName]!==undefined)return;
+            try{
+              var fo=fpg.commonObjs.get(fontName),real=(fo&&(fo.name||fo.loadedName))||'';
+              fontFlags[fontName]=(/bold|black|heavy|semibold|demi|-bd\b|\.b$|\.bi$/i.test(real)?1:0)|(/italic|oblique|-it\b|\.i$|\.bi$/i.test(real)?2:0);
+            }catch(unresolved){}
+          });
+        }
+      }catch(fontPass){}
+      layouts.forEach(function(ls){ls.forEach(function(l){
+        var flat=[];(l.runs||[]).forEach(function(r){
+          var flags=typeof r[2]==='string'?(fontFlags[r[2]]||0):r[2];
+          if(!flags)return;
+          var last=flat[flat.length-1];
+          if(last&&last[2]===flags&&last[1]>=r[0]-1)last[1]=Math.max(last[1],r[1]);
+          else flat.push([r[0],r[1],flags]);
+        });
+        l.runs=flat;
+      });});
+      var lines=[],paragraphs=[],pages=[];
+      layouts.forEach(function(layout){
+        var pageLines=layout.map(function(l){return l.text;});
+        lines.push(pageLines);paragraphs.push(layoutToParagraphs(layout,body));pages.push(pageLines.join(' '));
+      });
+      var rebuilt=readerTextFromPages(lines,paragraphs)||pages.join('\n\n');
+      migrateReaderAnchors(ch,oldText,rebuilt);
+      ch.pageLines=lines;ch.pageParagraphs=paragraphs;ch.pageTexts=pages;ch.readerText=rebuilt;ch.readerV=READER_V;ch.fr=pages.join('\n\n');
+      try{ch.figCount=await buildFigures(doc,ch,layouts,paragraphs,pageDims);}catch(figError){ch.figCount=0;}
+      ch.focusPara=null;delete ch.readerScroll;ch.updatedAt=now();saveDerivedSoon(ch);persist();
+      return ch.readerText;
+    })().finally(function(){delete readerBuildPromises[ch.id];});
     return readerBuildPromises[ch.id];
+  }
+  /* Figures without decoding a single embedded image: a caption line anchors a crop of
+     the rendered page. The whitespace between the caption and the text above it, within
+     the caption's column band, is the figure. Tables crop the region below instead. */
+  var FIGURE_CAP=60;
+  async function buildFigures(doc,ch,layouts,paragraphs,pageDims){
+    var figIndex=0;
+    for(var pageIdx=0;pageIdx<paragraphs.length&&figIndex<FIGURE_CAP;pageIdx++){
+      var caps=paragraphs[pageIdx].filter(function(p){return p.k==='cap';});
+      if(!caps.length)continue;
+      var layout=layouts[pageIdx],dims=pageDims[pageIdx],pageW=dims[0],pageH=dims[1];
+      var scale=Math.min(1.6,1300/pageW),canvas=null;
+      for(var c=0;c<caps.length&&figIndex<FIGURE_CAP;c++){
+        var cap=caps[c],capLine=null;
+        for(var li=0;li<layout.length;li++){
+          var lt=layout[li].text;
+          if(lt.length>=6&&cap.t.indexOf(lt)===0&&/^(fig|table|scheme)/i.test(lt)){capLine=layout[li];break;}
+          if(lt.length>=6&&lt.toLowerCase().indexOf(cap.t.slice(0,Math.min(24,cap.t.length)).toLowerCase())===0){capLine=layout[li];break;}
+        }
+        if(!capLine)continue;
+        var below=/^table/i.test(cap.t);
+        var mid=pageW/2,capCenter=(capLine.x+capLine.endX)/2,capW=capLine.endX-capLine.x;
+        var band=capW<pageW*.55?(capCenter<mid?[Math.max(0,capLine.x-14),mid+6]:[mid-6,Math.min(pageW,capLine.endX+14)]):[Math.max(0,capLine.x-14),Math.min(pageW,capLine.endX+14)];
+        /* nearest text line vertically on the figure side, inside the band */
+        var edge=below?0:pageH,found=false;
+        layout.forEach(function(l){
+          if(l===capLine)return;
+          var lc=(l.x+l.endX)/2;if(lc<band[0]||lc>band[1])return;
+          if(below){if(l.y<capLine.y-capLine.height&&l.y>edge){edge=l.y;found=true;}}
+          else{if(l.y>capLine.y+capLine.height&&(edge===pageH||l.y<edge)){edge=l.y;found=true;}}
+        });
+        var top,bottom; /* PDF coords: y grows upward */
+        if(below){top=capLine.y-capLine.height*.9;bottom=found?edge+8:Math.max(0,top-260);}
+        else{bottom=capLine.y+capLine.height*1.4;top=found?edge-10:Math.min(pageH,bottom+260);}
+        var hPts=top-bottom;
+        if(hPts<36||hPts>pageH*.92)continue;
+        if(!canvas){
+          var pg=await doc.getPage(pageIdx+1),vp=pg.getViewport({scale:scale});
+          canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
+          await pg.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+        }
+        var regionLo=Math.min(top,bottom),regionHi=Math.max(top,bottom),blocked=false;
+        layout.forEach(function(l){
+          if(l===capLine)return;var lc=(l.x+l.endX)/2;
+          if(lc>=band[0]&&lc<=band[1])return;
+          if(l.y>regionLo&&l.y<regionHi)blocked=true;
+        });
+        if(!blocked){
+          var minX=pageW,maxX=0;layout.forEach(function(l){minX=Math.min(minX,l.x);maxX=Math.max(maxX,l.endX);});
+          band=[Math.max(0,minX-10),Math.min(pageW,maxX+10)];
+        }
+        var sx=Math.max(0,band[0]*scale),sw=Math.min(canvas.width-sx,(band[1]-band[0])*scale);
+        var sy=Math.max(0,(pageH-top)*scale),sh=Math.min(canvas.height-sy,hPts*scale);
+        if(sw<60||sh<40)continue;
+        var crop=document.createElement('canvas');crop.width=Math.round(sw);crop.height=Math.round(sh);
+        crop.getContext('2d').drawImage(canvas,sx,sy,sw,sh,0,0,crop.width,crop.height);
+        var blob=await new Promise(function(res){crop.toBlob(res,'image/jpeg',.85);});
+        if(!blob)continue;
+        var buf=await blob.arrayBuffer();
+        if(await putFigure('fig:'+ch.id+':'+figIndex,buf)){cap.f=figIndex;figIndex++;}
+      }
+      canvas=null;
+    }
+    return figIndex;
   }
   /* The real title lives inside the PDF: document metadata when it is sane, otherwise
      the largest text near the top of page one. Filenames are the fallback, not the name. */
@@ -2032,7 +2254,7 @@
             showReaderToast('Title read from the paper');
           });
         }
-        if(readerMode==='text'&&!ch.readerText){await ensureReaderData(pdfDoc,ch);updateReaderMode();}
+        if(readerMode==='text'&&(!ch.readerText||ch.readerV!==READER_V)){await ensureReaderData(pdfDoc,ch);updateReaderMode();}
         else if(readerMode==='pdf'){renderPdfPage();if(currentPage>1)showReaderToast('Back on page '+currentPage);}
       }catch(e){showPdfProblem(ch,e);}
     } else renderText(ch);
@@ -2468,22 +2690,62 @@
     if(expected&&paras(pages.filter(Boolean).join('\n\n')).length!==paras(expected).length)starts=null;
     pageStartCache={id:ch.id,starts:starts};return starts;
   }
+  var readerMetaCache={id:null,v:null,meta:[]},figureUrls={};
+  function loadFigureImages(){
+    byId('textDocument').querySelectorAll('img[data-fig]').forEach(function(img){
+      var key='fig:'+img.dataset.fig;
+      if(figureUrls[key]){img.src=figureUrls[key];return;}
+      getFigure(key).then(function(buf){
+        if(!buf)return void (img.closest('figure')&&img.closest('figure').classList.add('hidden'));
+        var url=URL.createObjectURL(new Blob([buf],{type:'image/jpeg'}));
+        figureUrls[key]=url;img.src=url;
+      });
+    });
+  }
   function renderText(ch){
     var isPdfReader=ch.kind==='pdf'&&readerMode==='text',source=isPdfReader?(ch.readerText||readerTextFromPages(ch.pageLines||[],ch.pageParagraphs||[])||ch.fr):ch.fr;
     var fr=paras(source),en=isPdfReader?[]:paras(ch.en||''),noteMap=isPdfReader?ch.readerNotes:ch.notes,marks=isPdfReader?ch.readerHighlights:ch.textHighlights,scope=isPdfReader?'reader':'text';
     var starts=isPdfReader?paraPageStarts(ch):null,startAt={};(starts||[]).forEach(function(s){startAt[s.para]=s.page;});
     var out=(isPdfReader?'<div class="reader-kicker">Reader view · headers and footers removed</div>':'')+'<h1>'+esc(ch.title||'Untitled')+'</h1><div class="byline">'+esc(ch.authors||ch.sourceName||'')+'</div>';
-    fr.forEach(function(p,i){ var n=noteMap[i]||'',heading=p.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(p)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(p)); if(startAt[i])out+='<div class="page-marker">Page '+startAt[i]+'<button type="button" data-goto-page="'+startAt[i]+'">view page</button></div>'; out+='<section class="para'+(heading?' reader-heading':'')+'"><div class="original" data-para-index="'+i+'">'+highlightedTextHtml(p,marks,i)+'</div>'+(en[i]?'<div class="translation">'+esc(en[i])+'</div>':'')+'<button class="para-action" data-note="'+i+'">'+(n?'Edit margin note •':'Add margin note')+'</button><textarea class="inline-note '+(n?'':'hidden')+'" data-note-area="'+i+'" data-note-scope="'+scope+'" placeholder="Note on this paragraph…">'+esc(n)+'</textarea></section>'; });
+    var meta=null;
+    if(isPdfReader&&ch.pageParagraphs){
+      if(readerMetaCache.id!==ch.id||readerMetaCache.v!==ch.readerV)readerMetaCache={id:ch.id,v:ch.readerV,meta:readerStructure(ch.pageLines||[],ch.pageParagraphs).meta};
+      if(readerMetaCache.meta.length===fr.length)meta=readerMetaCache.meta;
+    }
+    fr.forEach(function(p,i){
+      var n=noteMap[i]||'',m=meta&&meta[i]||null;
+      var kind=m?m.k:(p.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(p)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(p))?'h3':'');
+      var cls=kind==='h1'?' reader-heading reader-h1':kind==='h2'?' reader-heading reader-h2':kind==='h3'?' reader-heading reader-h3':kind==='cap'?' reader-cap':'';
+      if(startAt[i])out+='<div class="page-marker">Page '+startAt[i]+'<button type="button" data-goto-page="'+startAt[i]+'">view page</button></div>';
+      var fig=m&&m.f!==undefined?'<figure class="reader-fig"><img data-fig="'+esc(ch.id)+':'+m.f+'" alt="Figure from the paper" loading="lazy"></figure>':'';
+      out+='<section class="para'+cls+'">'+fig+'<div class="original" data-para-index="'+i+'">'+styledTextHtml(p,marks,m&&m.r,i)+'</div>'+(en[i]?'<div class="translation">'+esc(en[i])+'</div>':'')+'<button class="para-action" data-note="'+i+'">'+(n?'Edit margin note •':'Add margin note')+'</button><textarea class="inline-note '+(n?'':'hidden')+'" data-note-area="'+i+'" data-note-scope="'+scope+'" placeholder="Note on this paragraph…">'+esc(n)+'</textarea></section>';
+    });
     byId('textDocument').classList.toggle('reader-document',isPdfReader);byId('textDocument').innerHTML=out;
+    if(meta)loadFigureImages();
     byId('textDocument').querySelectorAll('[data-note]').forEach(function(b){ b.onclick=function(){ var ta=byId('textDocument').querySelector('[data-note-area="'+b.dataset.note+'"]'); ta.classList.toggle('hidden'); if(!ta.classList.contains('hidden')) ta.focus(); }; });
     byId('textDocument').querySelectorAll('[data-goto-page]').forEach(function(b){b.onclick=function(){gotoPdfPage(+b.dataset.gotoPage);};});
     byId('textDocument').querySelectorAll('[data-note-area]').forEach(function(ta){ ta.oninput=function(){ var c=find(currentId),i=ta.dataset.noteArea,map=ta.dataset.noteScope==='reader'?c.readerNotes:c.notes;if(ta.value.trim())map[i]=ta.value;else delete map[i];touch(c);renderNoteIndex(); }; });
   }
-  function highlightedTextHtml(text,marks,paraIndex){
-    var selected=(marks||[]).filter(function(h){return h.para===paraIndex;}).sort(function(a,b){return a.start-b.start;}),out='',pos=0;
-    selected.forEach(function(h){var start=Math.max(pos,Math.min(text.length,h.start)),end=Math.max(start,Math.min(text.length,h.end));if(end<=pos)return;out+=esc(text.slice(pos,start))+'<mark class="hl-'+esc(h.color||'yellow')+'">'+esc(text.slice(start,end))+'</mark>';pos=end;});
-    return out+esc(text.slice(pos));
+  function styledTextHtml(text,marks,runs,paraIndex){
+    var sel=(marks||[]).filter(function(h){return h.para===paraIndex;});
+    if(!sel.length&&!(runs&&runs.length))return esc(text);
+    var cuts={0:1};cuts[text.length]=1;
+    sel.forEach(function(h){cuts[Math.max(0,Math.min(text.length,h.start))]=1;cuts[Math.max(0,Math.min(text.length,h.end))]=1;});
+    (runs||[]).forEach(function(r){cuts[Math.max(0,Math.min(text.length,r[0]))]=1;cuts[Math.max(0,Math.min(text.length,r[1]))]=1;});
+    var points=Object.keys(cuts).map(Number).sort(function(a,b){return a-b;}),out='';
+    for(var i=0;i<points.length-1;i++){
+      var a=points[i],b=points[i+1];if(b<=a)continue;
+      var seg=esc(text.slice(a,b)),flags=0,mark=null;
+      (runs||[]).forEach(function(r){if(r[0]<=a&&r[1]>=b)flags|=r[2];});
+      sel.forEach(function(h){if(!mark&&h.start<=a&&h.end>=b)mark=h;});
+      if(flags&2)seg='<i>'+seg+'</i>';
+      if(flags&1)seg='<b>'+seg+'</b>';
+      if(mark)seg='<mark class="hl-'+esc(mark.color||'yellow')+'">'+seg+'</mark>';
+      out+=seg;
+    }
+    return out;
   }
+  function highlightedTextHtml(text,marks,paraIndex){return styledTextHtml(text,marks,null,paraIndex);}
   function noteKey(){ return readerMode==='pdf' ? String(currentPage) : 'document'; }
   function loadPageNote(){ var ch=find(currentId); if(!ch) return; var key=noteKey(); byId('noteHeading').textContent=readerMode==='pdf'?'Page '+currentPage+' note':'Paper note'; byId('pageNote').value=(ch.pageNotes||{})[key]||''; }
   byId('pageNote').oninput=function(){ var ch=find(currentId), key=noteKey(); if(this.value.trim()) ch.pageNotes[key]=this.value; else delete ch.pageNotes[key]; touch(ch); renderNoteIndex(); };
@@ -2493,7 +2755,7 @@
   async function removePaper(ch,leaveReader){
     if(!ch)return false;var githubCopy=ch.sourcePath?' The PDF in your GitHub papers/ folder will stay there.':'';
     if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Carrel? Its notes, highlights, Q&A, and local PDF will be removed.'+githubCopy))return false;
-    state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);gdriveDeletePdf(ch.id);persist();
+    state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);deleteFigures(ch.id);gdriveDeletePdf(ch.id);persist();
     if(currentId===ch.id){currentId=null;pdfDoc=null;}renderShelf();if(leaveReader)showPage('libraryPage');return true;
   }
   byId('deletePaperBtn').onclick=function(){removePaper(find(currentId),true);};

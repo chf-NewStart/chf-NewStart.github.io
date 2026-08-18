@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "HISTORY",
+            title: "Baby carrots were invented to rescue ugly ones",
+            fact: "In 1986, California farmer Mike Yurosek got tired of discarding truckloads of broken and crooked carrots, so he whittled them into smooth little snack-size pieces. The “baby carrot” was born from waste-cutting, not breeding.",
+            detail: "The invention roughly doubled American carrot consumption within a decade — a marketing lesson carved directly into a vegetable."
+        },
+        {
             tag: "BOTANY",
             title: "Every true tea comes from one species",
             fact: "Green, black, oolong, white, and pu-erh tea are all leaves of a single plant, Camellia sinensis. The differences come from processing — mainly how far the leaves are allowed to oxidize before drying.",

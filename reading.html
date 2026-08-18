@@ -1755,6 +1755,22 @@
     return imported;
   }
 
+  /* PDFs pushed by the "Read in Carrel" browser extension: its content script relays
+     the fetched bytes with a window.postMessage. Only same-window senders qualify
+     (a page that merely opened this tab can never fake that), and the payload must
+     actually be a PDF. */
+  window.addEventListener('message',function(e){
+    if(e.source!==window||!e.data||e.data.type!=='carrel-ext-import')return;
+    var bytes=e.data.bytes;
+    if(!(bytes instanceof ArrayBuffer)||bytes.byteLength<1200)return;
+    var head=new Uint8Array(bytes.slice(0,5)),magic='';for(var i=0;i<head.length;i++)magic+=String.fromCharCode(head[i]);
+    if(magic!=='%PDF-')return;
+    var name=String(e.data.name||'').replace(/[^\w .()\[\]&,'-]+/g,' ').trim().slice(0,140)||'paper.pdf';
+    if(!/\.pdf$/i.test(name))name+='.pdf';
+    importPdf(new File([bytes],name,{type:'application/pdf'}),'',String(e.data.sourceUrl||'').slice(0,600));
+    showReaderToast('Adding from your browser…');
+  });
+
   /* text import and edit */
   byId('newTextBtn').onclick=function(){ editingId=null; byId('textDialogTitle').textContent='Add a text'; byId('textTitle').value=''; byId('textAuthors').value=''; byId('textBody').value=''; byId('textDialog').showModal(); };
   byId('saveTextBtn').onclick=function(){
@@ -2024,6 +2040,9 @@
     zenOn=!!on;document.body.classList.toggle('zen',zenOn);
     byId('zenBtn').classList.toggle('active',zenOn);byId('zenBtn').setAttribute('aria-pressed',String(zenOn));
     if(zenOn){toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false');}
+    /* Leaving zen keeps the paper at full width: the notebook stays tucked away
+       instead of instantly reclaiming its panel; one tap on its edge brings it back. */
+    else if(innerWidth>720)setNotebookCollapsed(true,false);
     /* Browser fullscreen only on mouse-driven devices: on iPad, system edge gestures keep
        kicking the page out of fullscreen mid-read, which yanked the whole desk back. */
     if(zenOn&&matchMedia('(hover: hover) and (pointer: fine)').matches&&document.documentElement.requestFullscreen){

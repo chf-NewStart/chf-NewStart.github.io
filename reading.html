@@ -1952,7 +1952,7 @@
   }
   function zoomToBand(fracs,pageNo,anchorX,anchorY,label){
     if(!fracs)return;
-    var z=Math.max(1.15,Math.min(4,.985/(fracs[1]-fracs[0])));
+    var z=Math.max(1.15,Math.min(1.44,.985/(fracs[1]-fracs[0])));
     setZoom(z,anchorX,anchorY,0,0,function(){
       var pane=byId('documentPane'),h2=byId('pdfFrame').querySelector('.pdf-page[data-page="'+pageNo+'"]');
       if(!h2)return;

@@ -639,6 +639,7 @@
           <button id="zoomOut" aria-label="Zoom out">−</button>
           <button id="zoomLabel" aria-label="Fit PDF to width">Fit</button>
           <button id="zoomIn" aria-label="Zoom in">＋</button>
+          <button id="colZoomBtn" aria-label="Zoom to one column" title="Zoom to one column (C) — taps cycle left · right · full width">Col</button>
         </div>
         <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to reflowed text view" title="Reflow · big phone-friendly text rebuilt from the PDF">≣ <span class="wide">Reflow</span></button>
         <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading ruler · drag its ⠿ handle or tap the page to move it; color, width, style and height live in Display">▰ <span class="wide">Guide</span></button>
@@ -1930,38 +1931,62 @@
     }
     columnZoomAt(e);
   });
-  /* Double-click on a blank spot of a page: zoom straight to the column under the
-     cursor (or the text width on single-column pages) — no pinching and panning to
-     line it up by hand. Double-click again returns to Fit. */
+  /* One-column zoom: the Col button (or C) cycles Fit -> left column -> right column
+     -> Fit, measured from the current page's own text layout; double-click on a blank
+     spot of a page zooms the column under the cursor directly. */
+  var colZoomSide=0;
+  async function columnBands(pageNo){
+    var pg=await pdfDoc.getPage(pageNo),content=await pg.getTextContent(),vp=pg.getViewport({scale:1});
+    var lines=contentLayout(content),pageW=vp.width,mid=pageW/2;
+    function band(pool){
+      if(!pool.length)return null;
+      var xs=pool.map(function(l){return l.x;}).sort(function(a,b){return a-b;});
+      var es=pool.map(function(l){return l.endX;}).sort(function(a,b){return a-b;});
+      var f0=Math.max(0,(xs[Math.floor(xs.length*.1)]-8)/pageW),f1=Math.min(1,(es[Math.floor(es.length*.9)]+8)/pageW);
+      return f1-f0>0?[f0,f1]:null;
+    }
+    var narrow=lines.filter(function(l){var w=l.endX-l.x;return w<pageW*.58&&w>pageW*.12;});
+    var left=narrow.filter(function(l){return (l.x+l.endX)/2<mid;}),right=narrow.filter(function(l){return (l.x+l.endX)/2>=mid;});
+    return {twoCol:left.length>=6&&right.length>=6,left:band(left),right:band(right),
+            text:band(lines.filter(function(l){return (l.endX-l.x)>pageW*.12;}))};
+  }
+  function zoomToBand(fracs,pageNo,anchorX,anchorY,label){
+    if(!fracs)return;
+    var z=Math.max(1.15,Math.min(4,.985/(fracs[1]-fracs[0])));
+    setZoom(z,anchorX,anchorY,0,0,function(){
+      var pane=byId('documentPane'),h2=byId('pdfFrame').querySelector('.pdf-page[data-page="'+pageNo+'"]');
+      if(!h2)return;
+      var hr=h2.getBoundingClientRect(),pr=pane.getBoundingClientRect();
+      var margin=Math.max(0,(pr.width-(fracs[1]-fracs[0])*hr.width)/2);
+      pane.scrollLeft=Math.max(0,pane.scrollLeft+(hr.left-pr.left)+fracs[0]*hr.width-margin);
+    });
+    if(label)showReaderToast(label);
+  }
   async function columnZoomAt(e){
     if(!pdfDoc)return;
     var holder=e.target.closest?e.target.closest('.pdf-page'):null;
     if(!holder)return;
-    if(currentZoom()>1.25){setZoom(1);showReaderToast('Back to full width');return;}
+    if(currentZoom()>1.25){setZoom(1);colZoomSide=0;showReaderToast('Back to full width');return;}
     var pageNo=+holder.dataset.page,rect=holder.getBoundingClientRect();
     if(!rect.width)return;
     var fx=(e.clientX-rect.left)/rect.width;
     try{
-      var pg=await pdfDoc.getPage(pageNo),content=await pg.getTextContent(),vp=pg.getViewport({scale:1});
-      var lines=contentLayout(content),pageW=vp.width,mid=pageW/2;
-      var narrow=lines.filter(function(l){var w=l.endX-l.x;return w<pageW*.58&&w>pageW*.12;});
-      var side=narrow.filter(function(l){var c=(l.x+l.endX)/2;return fx*pageW<mid?c<mid:c>=mid;});
-      var pool=side.length>=6?side:lines.filter(function(l){return (l.endX-l.x)>pageW*.12;});
-      if(!pool.length)return;
-      var xs=pool.map(function(l){return l.x;}).sort(function(a,b){return a-b;});
-      var es=pool.map(function(l){return l.endX;}).sort(function(a,b){return a-b;});
-      var frac0=Math.max(0,(xs[Math.floor(xs.length*.1)]-8)/pageW);
-      var frac1=Math.min(1,(es[Math.floor(es.length*.9)]+8)/pageW);
-      if(frac1-frac0<=0)return;
-      var z=Math.max(1.15,Math.min(4,.985/(frac1-frac0)));
-      setZoom(z,e.clientX,e.clientY,0,0,function(){
-        var pane=byId('documentPane'),h2=byId('pdfFrame').querySelector('.pdf-page[data-page="'+pageNo+'"]');
-        if(!h2)return;
-        var hr=h2.getBoundingClientRect(),pr=pane.getBoundingClientRect();
-        var margin=Math.max(0,(pr.width-(frac1-frac0)*hr.width)/2);
-        pane.scrollLeft=Math.max(0,pane.scrollLeft+(hr.left-pr.left)+frac0*hr.width-margin);
-      });
-      showReaderToast(side.length>=6?'Zoomed to this column · double-click to go back':'Zoomed to the text width · double-click to go back');
+      var bands=await columnBands(pageNo);
+      if(bands.twoCol){colZoomSide=fx<.5?1:2;zoomToBand(fx<.5?bands.left:bands.right,pageNo,e.clientX,e.clientY,'Zoomed to this column · C or double-click goes back');}
+      else{colZoomSide=2;zoomToBand(bands.text,pageNo,e.clientX,e.clientY,'Zoomed to the text width · C or double-click goes back');}
+    }catch(err){}
+  }
+  async function cycleColumnZoom(){
+    if(!pdfDoc||readerMode!=='pdf')return;
+    if(currentZoom()<=1.05)colZoomSide=0;
+    try{
+      var pageNo=currentPage,bands=await columnBands(pageNo);
+      if(bands.twoCol){
+        if(colZoomSide===0){colZoomSide=1;zoomToBand(bands.left,pageNo,undefined,undefined,'Left column · Col again for the right');}
+        else if(colZoomSide===1){colZoomSide=2;zoomToBand(bands.right,pageNo,undefined,undefined,'Right column · Col again for full width');}
+        else{colZoomSide=0;setZoom(1);showReaderToast('Back to full width');}
+      }else if(colZoomSide===0){colZoomSide=2;zoomToBand(bands.text,pageNo,undefined,undefined,'Text width · Col again for full width');}
+      else{colZoomSide=0;setZoom(1);showReaderToast('Back to full width');}
     }catch(err){}
   }
   /* Keyboard scope control: place the guide as full-page or hugging one column,
@@ -2618,6 +2643,7 @@
   }
   byId('zoomOut').onclick=function(){setZoom(currentZoom()/1.2);};
   byId('zoomIn').onclick=function(){setZoom(currentZoom()*1.2);};
+  byId('colZoomBtn').onclick=function(){cycleColumnZoom();};
   byId('zoomLabel').onclick=function(){setZoom(1);};
   byId('documentPane').addEventListener('wheel',function(e){if(readerMode==='pdf'&&(e.ctrlKey||e.metaKey)){e.preventDefault();setZoom(currentZoom()*(e.deltaY<0?1.12:1/1.12),e.clientX,e.clientY);}},{passive:false});
   /* Touch: pinch anywhere on the paper for a live preview that follows both fingers —
@@ -2736,6 +2762,7 @@
     if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undoLastHighlight();return;}
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
     if(e.key.toLowerCase()==='f'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();setZen(!zenOn);return;}
+    if(e.key.toLowerCase()==='c'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&readerMode==='pdf'&&pdfDoc){e.preventDefault();cycleColumnZoom();return;}
     if(e.key==='Backspace'&&readerMode==='pdf'&&linkReturnSpot){e.preventDefault();var lrPane=byId('documentPane');lrPane.scrollTop=linkReturnSpot.top;lrPane.scrollLeft=linkReturnSpot.left;linkReturnSpot=null;showReaderToast('Back where you were');return;}
     /* Space is the settle-in key: start the slow crawl, tap again to stop. */
     if(e.key===' '&&!e.shiftKey){

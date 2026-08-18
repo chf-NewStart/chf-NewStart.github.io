@@ -484,10 +484,13 @@
       .masthead::-webkit-scrollbar { display: none; }
       .brand strong { font-size: 1.2rem; }
       .nav { gap: 1px; }
-      .nav-btn { padding: 5px 5px; font-size: .68rem; }
+      /* Every child keeps its size and the bar itself scrolls: at 320px the brand
+         used to get crushed and the Review count wrapped. */
+      .masthead > *, .nav-btn { flex: 0 0 auto; }
+      .nav-btn { padding: 6px 7px; font-size: .72rem; white-space: nowrap; }
       #installNav { display: none; }
       .head-actions { gap: 3px; }
-      .masthead .icon-btn { width: 32px; min-height: 32px; flex: 0 0 auto; }
+      .masthead .icon-btn { width: 40px; min-height: 40px; flex: 0 0 auto; }
       /* The library is a phone screen too. Keep every import control inside the page
          instead of waiting for the unusually narrow 360px breakpoint. */
       .link-import { grid-template-columns: minmax(0, 1fr) auto; }
@@ -1186,7 +1189,17 @@
 
   /* library */
   function paperHaystack(ch){ return [ch.title,ch.authors,(ch.tags||[]).join(' '),ch.sourceName,ch.sourceUrl].join(' ').toLowerCase(); }
+  function connectionsReady(){
+    var seen={},linked=false;
+    state.chapters.forEach(function(c){(c.tags||[]).forEach(function(t){t=String(t).toLowerCase().trim();if(!t)return;if(seen[t])linked=true;seen[t]=true;});});
+    return linked;
+  }
+  function updateConnectionsNav(){
+    var ready=connectionsReady()||!byId('connectionsPage').classList.contains('hidden');
+    document.querySelectorAll('.nav-btn[data-view="connectionsPage"]').forEach(function(b){b.classList.toggle('hidden',!ready);});
+  }
   function renderShelf(){
+    updateConnectionsNav();
     document.body.classList.toggle('has-papers', state.chapters.length > 0);
     var q = byId('librarySearch').value.trim().toLowerCase();
     var list = state.chapters.filter(function(ch){ return !q || paperHaystack(ch).includes(q); }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
@@ -1255,7 +1268,11 @@
     var where=esc(item.ch.title||'Untitled')+(item.page?' · p. '+item.page:'');
     var body=item.kind==='qa'
       ?'<div class="review-q">'+esc(item.content)+'</div><button class="soft-button" id="reviewReveal" type="button">Show the saved answer</button><div class="review-a hidden" id="reviewAnswer">'+esc(item.answer)+'</div>'
-      :'<blockquote class="review-quote">'+esc(item.content)+'</blockquote><p class="review-prompt">'+(item.kind==='highlight'?'Why did you mark this? Explain it from memory first.':'Your note — say it back from memory before peeking at the paper.')+'</p>';
+      :item.kind==='highlight'
+      /* the quote IS the front of the card: recall why it mattered */
+      ?'<blockquote class="review-quote">'+esc(item.content)+'</blockquote><p class="review-prompt">Why did you mark this? Explain it from memory first.</p>'
+      /* but a note shown up front would grade itself — hide it until recalled */
+      :'<p class="review-prompt">You left yourself a note here. Say it from memory — then check.</p><button class="soft-button" id="reviewReveal" type="button">Reveal my note</button><blockquote class="review-quote hidden" id="reviewAnswer">'+esc(item.content)+'</blockquote>';
     box.innerHTML='<article class="review-card"><span class="review-eyebrow">'+(item.kind==='qa'?'Saved question':item.kind==='highlight'?'Highlight':'Note')+' · '+where+'</span>'+body+
       '<div class="review-actions"><button class="text-button" id="reviewOpen" type="button">Show in paper</button><span class="spacer"></span><button class="soft-button" id="reviewAgain" type="button">Fuzzy · tomorrow</button><button class="button" id="reviewGood" type="button">Got it</button></div></article>';
     var reveal=byId('reviewReveal');
@@ -2127,7 +2144,7 @@
   var NOTEBOOK_WIDTH_KEY='readingRoom.notebookWidth.v1',notebookWidth=innerWidth<=900?320:360;
   var NOTEBOOK_COLLAPSED_KEY='readingRoom.notebookCollapsed.v1',notebookCollapsed=false;
   try{notebookWidth=+localStorage.getItem(NOTEBOOK_WIDTH_KEY)||notebookWidth;}catch(e){}
-  try{notebookCollapsed=localStorage.getItem(NOTEBOOK_COLLAPSED_KEY)==='1';}catch(e){}
+  try{var ncSaved=localStorage.getItem(NOTEBOOK_COLLAPSED_KEY);notebookCollapsed=ncSaved===null?true:ncSaved==='1';}catch(e){}
   function setNotebookWidth(value,save){
     var layout=byId('readerLayout'),resizer=byId('notebookResizer');if(innerWidth<=720){layout.style.removeProperty('--notebook-width');return;}
     var available=layout.clientWidth||innerWidth,max=Math.max(280,Math.min(620,available-340));

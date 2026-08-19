@@ -184,11 +184,11 @@
     .pdf-frame.dark-paper .pdf-page { background: #171717; }
     .pdf-frame.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.92); }
     /* Cream paper: takes the white glare off long sessions without going dark. */
-    .pdf-frame.cream:not(.dark-paper) .pdf-page { background: #f4ecdb; }
-    .pdf-frame.cream:not(.dark-paper) .pdf-page canvas { filter: sepia(.26) saturate(.94) brightness(.99); }
+    .pdf-frame.cream:not(.dark-paper) .pdf-page { background: #f6e8cc; }
+    .pdf-frame.cream:not(.dark-paper) .pdf-page canvas { mix-blend-mode: multiply; filter: saturate(.97); }
     /* In dark mode, cream becomes warm dark paper: the same inversion, minus the blue cast. */
-    .pdf-frame.cream.dark-paper .pdf-page { background: #1d1813; }
-    .pdf-frame.cream.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.9) sepia(.28); }
+    .pdf-frame.cream.dark-paper .pdf-page { background: #201a12; }
+    .pdf-frame.cream.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.88) brightness(.92) sepia(.42); }
     /* Zen reading: nothing on screen but the paper. */
     body.zen .masthead, body.zen .reader-tools, body.zen .comfort-bar, body.zen .find-bar,
     body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer, body.zen .notebook-tuck { display: none !important; }
@@ -2148,7 +2148,11 @@
   function setNotebookWidth(value,save){
     var layout=byId('readerLayout'),resizer=byId('notebookResizer');if(innerWidth<=720){layout.style.removeProperty('--notebook-width');return;}
     var available=layout.clientWidth||innerWidth,max=Math.max(280,Math.min(620,available-340));
-    notebookWidth=Math.round(Math.max(280,Math.min(max,+value||360)));layout.style.setProperty('--notebook-width',notebookWidth+'px');
+    notebookWidth=Math.round(Math.max(280,Math.min(max,+value||360)));
+    /* While tucked away the column must stay 0 — a window resize (leaving browser
+       fullscreen, exiting zen) re-clamps the width and used to bring the empty
+       column back, leaving side-panel-shaped dead space next to the paper. */
+    if(!notebookCollapsed)layout.style.setProperty('--notebook-width',notebookWidth+'px');
     resizer.setAttribute('aria-valuemax',String(Math.round(max)));resizer.setAttribute('aria-valuenow',String(notebookWidth));resizer.setAttribute('aria-valuetext',notebookWidth+' pixels wide');
     if(save)try{localStorage.setItem(NOTEBOOK_WIDTH_KEY,String(notebookWidth));}catch(e){}
   }

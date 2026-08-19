@@ -157,6 +157,7 @@
     .find-bar .step-btn { min-width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
     .find-bar .step-btn:hover { border-color: var(--accent); }
     .para.find-flash { background: color-mix(in srgb, var(--yellow) 34%, transparent); }
+    .text-layer span.find-span { background: color-mix(in srgb, var(--yellow) 55%, transparent); border-radius: 3px; }
     .progress-rail { flex: 0 0 auto; height: 4px; background: var(--surface-2); }
     .progress-rail i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .18s ease-out; }
     .comfort-bar { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 18px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--yellow) 15%, var(--surface)); }
@@ -2297,13 +2298,29 @@
     findIndex=((index%findMatches.length)+findMatches.length)%findMatches.length;
     var m=findMatches[findIndex],where=m.page?'p. '+m.page:'¶ '+(m.para+1);
     byId('findCount').textContent=where+' · '+(findIndex+1)+' / '+findMatches.length;
-    if(m.page){gotoPdfPage(m.page);return;}
+    if(m.page){gotoPdfPage(m.page);flashPdfFind(m.page,byId('findInput').value.trim().toLowerCase());return;}
     var list=paraSections(),section=list[m.para];if(!section)return;
     section.scrollIntoView({block:'center',behavior:'smooth'});
     clearTimeout(findFlashTimer);
     byId('textDocument').querySelectorAll('.find-flash').forEach(function(s){s.classList.remove('find-flash');});
     section.classList.add('find-flash');
     findFlashTimer=setTimeout(function(){section.classList.remove('find-flash');},1600);
+  }
+  /* Show the match on the page itself: tint the text-layer spans holding the term,
+     clear them on every jump and fade them after a beat — never a lasting mark. */
+  function flashPdfFind(page,q){
+    document.querySelectorAll('.find-span').forEach(function(s){s.classList.remove('find-span');});
+    if(!q)return;
+    var tries=0;
+    (function attempt(){
+      var view=pdfViews[page-1];
+      if(!view||!view.rendered){if(tries++<24)setTimeout(attempt,250);return;}
+      view.text.querySelectorAll('span').forEach(function(s){
+        if(s.textContent.toLowerCase().indexOf(q)>=0)s.classList.add('find-span');
+      });
+      clearTimeout(findFlashTimer);
+      findFlashTimer=setTimeout(function(){document.querySelectorAll('.find-span').forEach(function(s){s.classList.remove('find-span');});},2600);
+    })();
   }
   byId('findInput').oninput=function(){clearTimeout(findTimer);findTimer=setTimeout(runFind,260);};
   byId('findInput').onkeydown=function(e){

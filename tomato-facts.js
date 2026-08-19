@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "CHEMISTRY",
+            title: "Onions make you cry with a purpose-built gas",
+            fact: "Slicing an onion breaks cells and mixes enzymes with sulfur compounds, producing a volatile gas that drifts up and stings your eyes into watering. It’s a chemical defense — you’re being maced by a bulb.",
+            detail: "The tear-maker is called syn-propanethial S-oxide. Chilling the onion first slows the enzymes, and a sharp knife crushes fewer cells — both genuinely reduce the crying."
+        },
+        {
             tag: "HISTORY",
             title: "Baby carrots were invented to rescue ugly ones",
             fact: "In 1986, California farmer Mike Yurosek got tired of discarding truckloads of broken and crooked carrots, so he whittled them into smooth little snack-size pieces. The “baby carrot” was born from waste-cutting, not breeding.",

@@ -41,6 +41,14 @@
       --blue: #8dc0d0; --yellow: #806d33; --shadow: 0 18px 50px rgba(0, 0, 0, .24);
       --accent-soft: color-mix(in srgb, var(--accent) 22%, var(--surface));
     }
+    /* Cream paper warms the whole desk in day mode: header, toolbars, notebook and
+       the reflow sheet live in the paper's palette instead of framing warm paper in
+       cool grey. Night palettes are untouched. */
+    html:not([data-theme="dark"]) body.cream-tone {
+      --paper: #f4ead2; --surface: #faf1da; --surface-2: #ecdfc0; --line: #ddd0ae;
+    }
+    html:not([data-theme="dark"]) body.cream-tone .document-pane { background: #d9cdae; }
+    html[data-theme="dark"] body.cream-tone .text-document { background: #1d1813; }
     html { background: var(--paper); color: var(--ink); }
     body { margin: 0; min-height: 100vh; font-family: var(--sans); background: var(--paper); color: var(--ink); }
     button, input, textarea { font: inherit; color: inherit; }
@@ -1829,7 +1837,7 @@
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
     byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=driftLabel();
-    byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');
+    byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');document.body.classList.toggle('cream-tone',comfort.tone==='cream');
     byId('creamBtn').setAttribute('aria-pressed',String(comfort.tone==='cream'));
     byId('paneSpotlight').dataset.guideColor=comfort.guide;
     byId('paneSpotlight').dataset.guideStyle=comfort.guideStyle;

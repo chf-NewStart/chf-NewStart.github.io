@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "CHEMISTRY",
+            title: "Garlic breath comes from your lungs, not your mouth",
+            fact: "One garlic compound — allyl methyl sulfide — isn’t broken down by digestion. It rides your bloodstream to the lungs and exhales itself for hours, which is why brushing, mouthwash, and gum never fully fix garlic breath.",
+            detail: "The same bloodstream route is why heavy garlic can scent sweat and even breast milk. Studies suggest raw apple or mint leaves help degrade the sulfides — the folk remedies had a point."
+        },
+        {
+            tag: "CHEMISTRY",
             title: "Onions make you cry with a purpose-built gas",
             fact: "Slicing an onion breaks cells and mixes enzymes with sulfur compounds, producing a volatile gas that drifts up and stings your eyes into watering. It’s a chemical defense — you’re being maced by a bulb.",
             detail: "The tear-maker is called syn-propanethial S-oxide. Chilling the onion first slows the enzymes, and a sharp knife crushes fewer cells — both genuinely reduce the crying."

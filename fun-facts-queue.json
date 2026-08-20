@@ -1,14 +1,6 @@
 [
   {
     "fact": {
-      "tag": "CHEMISTRY",
-      "title": "Garlic breath comes from your lungs, not your mouth",
-      "fact": "One garlic compound — allyl methyl sulfide — isn’t broken down by digestion. It rides your bloodstream to the lungs and exhales itself for hours, which is why brushing, mouthwash, and gum never fully fix garlic breath.",
-      "detail": "The same bloodstream route is why heavy garlic can scent sweat and even breast milk. Studies suggest raw apple or mint leaves help degrade the sulfides — the folk remedies had a point."
-    }
-  },
-  {
-    "fact": {
       "tag": "PHYSICS",
       "title": "A popcorn kernel is a tiny pressure cooker",
       "fact": "Each kernel is a sealed caryopsis with a moist starchy core. Heat superheats that moisture well past boiling until, around 180 °C, the hull fails and the starch flash-expands into foam — the pop is a miniature steam explosion.",

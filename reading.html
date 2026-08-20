@@ -92,7 +92,7 @@
     .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .15em; font-size: .67rem; font-weight: 750; }
     .hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr); gap: 40px; align-items: end; margin-bottom: 42px; }
     /* The pitch is for first visits; a working library goes straight to the shelf. */
-    body.has-papers .hero { display: none; }
+    body.has-papers .hero, body.has-papers .demo { display: none; }
     body.has-papers #libraryPage { padding-top: 26px; }
     .hero h1 { margin: 8px 0 12px; max-width: 780px; font: 500 clamp(2.5rem, 6vw, 5.4rem)/.98 var(--serif); letter-spacing: -.055em; }
     .hero h1 em { color: var(--accent); font-weight: inherit; }
@@ -100,6 +100,12 @@
     .hero-card { border-top: 1px solid var(--ink); padding-top: 14px; display: grid; gap: 12px; }
     .hero-card .step { display: grid; grid-template-columns: 26px 1fr; gap: 8px; font-size: .8rem; line-height: 1.4; }
     .hero-card .step b { color: var(--accent); }
+
+    /* Nothing of the demo travels until it is asked for: the poster stands in, and
+       preload="none" keeps the 11MB off a first paint. */
+    .demo { max-width: 720px; margin: 0 0 34px; display: grid; gap: 10px; }
+    .demo video { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-2); box-shadow: var(--shadow); }
+    .demo figcaption { color: var(--muted); font: .78rem/1.55 var(--sans); }
 
     .link-import { display: grid; grid-template-columns: minmax(180px, .72fr) minmax(260px, 1.28fr) auto; gap: 10px; align-items: center; margin-bottom: 10px; padding: 12px; border: 1px dashed var(--line); border-radius: 18px; background: color-mix(in srgb, var(--surface) 84%, transparent); transition: border-color .18s ease, background .18s ease, transform .18s ease; }
     .link-import.drag { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
@@ -598,6 +604,16 @@
           <div class="step"><b>03</b><span>Shared tags reveal a small network instead of another filing cabinet.</span></div>
         </div>
       </div>
+
+      <figure class="demo">
+        <video controls playsinline preload="none" width="1280" height="800"
+               poster="/assets/carrel-promo/carrel-app-demo-poster.jpg"
+               aria-label="Ninety-second Carrel demo, no narration">
+          <source src="/assets/carrel-promo/carrel-app-demo.mp4" type="video/mp4">
+          <a href="/assets/carrel-promo/carrel-app-demo.mp4">Download the demo</a> — your browser cannot play it here.
+        </video>
+        <figcaption>Ninety seconds, no narration: a paper opens, the guide follows your pointer, a column snaps to full width, and the same page reflows to read like a book on a phone.</figcaption>
+      </figure>
 
       <div class="link-import" id="pdfLinkDrop">
         <div class="link-copy"><b>Drop PDFs, a whole folder, or a link</b><span>Carrel keeps local copies. Subfolders welcome.</span></div>

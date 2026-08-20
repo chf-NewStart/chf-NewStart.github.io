@@ -2453,7 +2453,10 @@
 
   /* reader */
   async function openReader(id,preparedDoc){
-    var ch=find(id); if(!ch) return; hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); lastAskSelection=null; toggleFindBar(false);
+    /* pdfViews must go too: renderPdfPage's spot-preserving rebuild otherwise measures
+       the PREVIOUS paper's pages — an extension import into an open reader landed the
+       new paper mid-page, at wherever the old one had been scrolled. */
+    var ch=find(id); if(!ch) return; hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; pdfViews=[]; pdfBuildKey=''; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); lastAskSelection=null; toggleFindBar(false);
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';

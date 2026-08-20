@@ -57,3 +57,6 @@ Three terms, that's the whole trick (in `height()`):
 
 - `saddle_ball.py` — the scene builder (everything above).
 - `preview.mp4` — headless-rendered preview of exactly what the script produces.
+- `reply.mp4` — the captioned cut: opens with the heckle ("a graph of going
+  down in life"), lets the physics answer it, ends on "you were reading the
+  axis. i was watching the ball."

@@ -564,7 +564,7 @@
       .tab-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
     }
     @media (max-width: 360px) {
-      #homeLink { display: none; }
+      #refreshBtn { display: none; }
       main { min-height: calc(100vh - 60px); min-height: calc(100dvh - 60px); }
       .page { padding: 30px 14px 70px; }
       .hero { margin-bottom: 28px; }
@@ -586,7 +586,7 @@
       <button class="cloud" id="syncSignal" type="button" title="Sync now">this device</button>
       <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
-      <a class="icon-btn" id="homeLink" href="/" aria-label="Back to houfu72.com">↗</a>
+      <button class="icon-btn" id="refreshBtn" aria-label="Reload Carrel to get the newest version" title="Get the newest version">↻</button>
     </div>
   </header>
 
@@ -638,6 +638,7 @@
       </div>
       <div class="shelf" id="shelf"></div>
       <p class="support-line hidden" id="supportLine">Carrel is free, and built to make papers easier to focus on. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">a coffee is always appreciated ☕</a></p>
+      <p class="support-line">Carrel is part of <a id="homeLink" href="/">houfu72.com ↗</a></p>
     </section>
 
     <section id="connectionsPage" class="page hidden">
@@ -1163,6 +1164,10 @@
   /* modal helpers */
   document.querySelectorAll('[data-close]').forEach(function(b){ b.onclick = function(){ byId(b.dataset.close).close(); }; });
   byId('settingsBtn').onclick = function(){ fillSettings(); byId('settingsDialog').showModal(); };
+  /* The standalone app can sit open for days while deploys pass it by; the service
+     worker fetches reading.html network-first, so one reload is all "update" takes.
+     Flush the save first — reload mid-debounce would drop the newest edit. */
+  byId('refreshBtn').onclick = function(){ persist(false); location.reload(); };
 
   /* IndexedDB keeps actual PDFs local without choking localStorage. ArrayBuffers are
      more reliable than Blob records in older iPhone Safari; memory is a last-resort fallback. */

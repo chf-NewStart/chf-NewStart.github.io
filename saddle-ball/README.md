@@ -62,6 +62,11 @@ sideways through the dimension it wasn't using, rises around the hanging
 ridge, and lodges in the **highest** dome. Identical equations, identical
 honesty, opposite direction. Runs exactly like the ball version.
 
+It gets the full balloon treatment: a sky gradient, a couple of clouds, and
+a string with a knot. The string hangs from an anchor that copies the
+balloon's position but not its rotation — so it trails the flight without
+spinning as the balloon rolls along the canopy.
+
 ## Files
 
 - `saddle_ball.py` — the scene builder (everything above).

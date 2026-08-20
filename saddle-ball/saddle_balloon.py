@@ -60,9 +60,25 @@ scene.frame_start, scene.frame_end = 1, FRAME_END
 scene.render.fps = FPS
 scene.gravity = (0.0, 0.0, 9.81)          # buoyancy: "gravity" points up
 
-world = bpy.data.worlds.new("White")
+# a soft sky: pale at the horizon, bluer overhead (screen-space gradient,
+# so it stays put while the camera orbits)
+world = bpy.data.worlds.new("Sky")
 world.use_nodes = True
-world.node_tree.nodes["Background"].inputs[0].default_value = (1, 1, 1, 1)
+wnt = world.node_tree
+wnt.nodes.clear()
+tc = wnt.nodes.new("ShaderNodeTexCoord")
+sep = wnt.nodes.new("ShaderNodeSeparateXYZ")
+ramp = wnt.nodes.new("ShaderNodeValToRGB")
+ramp.color_ramp.elements[0].position = 0.0
+ramp.color_ramp.elements[0].color = (0.82, 0.90, 0.96, 1)
+ramp.color_ramp.elements[1].position = 1.0
+ramp.color_ramp.elements[1].color = (0.35, 0.57, 0.84, 1)
+bg = wnt.nodes.new("ShaderNodeBackground")
+wout = wnt.nodes.new("ShaderNodeOutputWorld")
+wnt.links.new(tc.outputs["Window"], sep.inputs["Vector"])
+wnt.links.new(sep.outputs["Y"], ramp.inputs["Fac"])
+wnt.links.new(ramp.outputs["Color"], bg.inputs["Color"])
+wnt.links.new(bg.outputs["Background"], wout.inputs["Surface"])
 scene.world = world
 
 def flat_material(name, rgb):
@@ -147,6 +163,59 @@ ball.name = "Balloon"
 for p in ball.data.polygons:
     p.use_smooth = True
 ball.data.materials.append(MAT_BALL)
+
+# ------------------------------------------- string, knot, and a few clouds
+
+# the string follows the balloon's position but not its spin: it hangs from
+# an anchor that copies the balloon's location only
+anchor = link(bpy.data.objects.new("Anchor", None))
+con = anchor.constraints.new("COPY_LOCATION")
+con.target = ball
+
+MAT_STRING = flat_material("String", (0.033, 0.033, 0.033))
+MAT_KNOT   = flat_material("Knot",   (0.45, 0.02, 0.01))
+
+string_cu = bpy.data.curves.new("String", "CURVE")
+string_cu.dimensions = "3D"
+string_cu.bevel_depth = 0.012
+string_cu.bevel_resolution = 3
+string_cu.materials.append(MAT_STRING)
+sp = string_cu.splines.new("POLY")
+N = 12
+sp.points.add(N - 1)
+for i, p in enumerate(sp.points):
+    t = i / (N - 1)
+    p.co = (0.18 * t * t, 0.0, -(BALL_R + 0.02) - 1.35 * t, 1)   # gentle bend
+string = link(bpy.data.objects.new("String", string_cu))
+string.parent = anchor
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.09, segments=24, ring_count=12,
+                                     location=(0, 0, -(BALL_R + 0.02)))
+knot = bpy.context.active_object
+knot.name = "Knot"
+knot.scale = (1, 1, 0.7)
+for p in knot.data.polygons:
+    p.use_smooth = True
+knot.data.materials.append(MAT_KNOT)
+knot.parent = anchor
+knot.location = (0, 0, -(BALL_R + 0.02))
+
+MAT_CLOUD = flat_material("Cloud", (1, 1, 1))
+
+def add_cloud(x, y, z, s=1.0):
+    for dx, r in ((-0.55, 0.42), (0.0, 0.60), (0.60, 0.45)):
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=r * s, segments=24,
+                                             ring_count=12,
+                                             location=(x + dx * s, y, z))
+        puff = bpy.context.active_object
+        puff.scale = (1, 1, 0.65)
+        for p in puff.data.polygons:
+            p.use_smooth = True
+        puff.data.materials.append(MAT_CLOUD)
+
+add_cloud(-5.8, 0.5, 0.3, 1.0)
+add_cloud(0.3, 1.5, -5.0, 1.2)
+add_cloud(8.0, 0.5, -3.0, 0.8)
 
 # -------------------------------------------------------------------- physics
 

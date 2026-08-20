@@ -1,0 +1,59 @@
+# Saddle escape — the honest local-minimum animation
+
+A remake of the "ball stuck in a local minimum escapes through a higher
+dimension" animation, with the two things fixed that the original fudged:
+
+1. The starting point is a **real saddle** of the surface (a true minimum
+   along x, gently downhill along y) — found numerically, not painted on.
+2. The ball **lands**: it rolls around the barrier into a genuinely lower
+   bowl, sloshes, and comes to rest at the global minimum. No falling off
+   the edge of the world forever.
+
+The whole journey is rigid-body physics from frame 1. The ball has no
+animation keyframes at all — it tips off the saddle, arcs around the hill,
+and is captured by the well entirely on its own.
+
+## How to run it
+
+1. Install Blender (blender.org, it's free — any 4.x works, tested on 4.5).
+2. Open Blender → **Scripting** tab → **Open** → `saddle_ball.py` → **Run Script**.
+3. Hover the viewport and press **Spacebar** to watch it live.
+4. **Ctrl+F12** renders the full animation (set the output path in
+   Output Properties first — default writes to `/tmp`).
+
+**Before rendering**: play the animation through once (or Scene Properties →
+Rigid Body World → Cache → **Bake All Dynamics**). Rendering with a cold
+physics cache gives you 345 frames of the ball sitting perfectly still —
+the renderer does not run the simulation on its own.
+
+Every run rebuilds the scene from scratch, so tweak a number, run again,
+and play. Nothing you do in the file can wreck a saved scene.
+
+## The surface
+
+Three terms, that's the whole trick (in `height()`):
+
+| term | what it does |
+|---|---|
+| `bowl` | wide paraboloid centered on the true minimum at (2.4, 0) |
+| `barrier` | Gaussian hill blocking the straight path. Its skirt **is** the fake valley: walls you in along x, falls away along y — a saddle |
+| `well` | deeper Gaussian dip at the bowl center, so the ball is visibly captured and rests below everything else |
+
+## Knobs worth turning
+
+- `BALL_START` y-offset (±0.08): which side it escapes, and how long it
+  hesitates — smaller magnitude = longer dramatic pause.
+- `barrier` height `2.2` / y-width `0.7`: taller or wider-skirted hill.
+  If you widen y a lot the saddle can turn into a true minimum and the
+  ball will (correctly!) stay stuck forever.
+- `well` depth `-1.2` / width `0.6`: how emphatic the landing is.
+- `rb.linear_damping` / `rb.angular_damping`: how quickly the final slosh
+  dies out.
+- `cam_key(...)` lines at the bottom: the camera move — starts side-on
+  (reads like a 2D curve), swings up and around as the ball escapes.
+- `FRAME_END = 345` at 30 fps ≈ 11.5 s.
+
+## Files
+
+- `saddle_ball.py` — the scene builder (everything above).
+- `preview.mp4` — headless-rendered preview of exactly what the script produces.

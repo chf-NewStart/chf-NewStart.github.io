@@ -3405,7 +3405,9 @@
   function gdriveArmGestureSync(){
     if(gdriveArmed||!gdriveOn())return;gdriveArmed=true;
     syncUi('☁ tap to sync');
-    addEventListener('click',function(){gdriveArmed=false;if(gdriveOn())gdriveSync(true);},{capture:true,once:true});
+    /* In zen a click is a page turn, not permission: the popup would also boot
+       the browser out of fullscreen. Stay armed and wait for a tap at the desk. */
+    addEventListener('click',function(){gdriveArmed=false;if(zenOn){gdriveArmGestureSync();return;}if(gdriveOn())gdriveSync(true);},{capture:true,once:true});
   }
   function loadGis(){
     return new Promise(function(res,rej){
@@ -3522,7 +3524,9 @@
     if(!gdriveOn()||gdriveSyncing)return;
     /* No tap in flight and no living token: skip the doomed popup and let the next
        real tap carry the sync instead. */
-    if(!interactive&&!gdriveTokenFresh()&&!gestureLive()){gdriveArmGestureSync();return;}
+    /* Zen taps count as gestures to the browser, but a token popup mid-read is
+       exactly the interruption zen exists to prevent — park the sync instead. */
+    if(!interactive&&!gdriveTokenFresh()&&(zenOn||!gestureLive())){gdriveArmGestureSync();return;}
     gdriveSyncing=true;syncUi('☁ syncing…');
     try{
       var token=await gdriveGetToken(interactive===true);

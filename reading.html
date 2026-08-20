@@ -218,6 +218,7 @@
     /* The guide keeps a seat in zen: same faint circle as the exit, one slot below.
        When the guide is on, the accent shows through even at rest opacity. */
     .zen-guide { top: calc(60px + env(safe-area-inset-top)); font-size: .78rem; }
+    .zen-theme { top: calc(110px + env(safe-area-inset-top)); font-size: 1.02rem; }
     .zen-guide.active { color: var(--accent); opacity: .55; }
     .zen-guide.active:hover, .zen-guide.active:focus-visible { color: var(--accent); }
     #zenBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
@@ -838,6 +839,7 @@
       </aside>
       <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading">✕</button>
       <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-pressed="false" aria-label="Toggle the reading guide" title="Reading guide (G)">▰</button>
+      <button class="zen-exit zen-theme" id="zenTheme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
     </section>
   </main>
@@ -1120,10 +1122,11 @@
     /* The button shows where a tap goes, not where you are: a moon all day, a sun
        all night. U+FE0E keeps the sun a glyph — iOS would otherwise paint it as
        a full-color emoji among the monochrome icons. */
-    var tb = byId('themeBtn');
-    tb.textContent = dark ? '☀︎' : '☾';
-    tb.setAttribute('aria-label', dark ? 'Switch to day reading' : 'Switch to night reading');
-    tb.title = dark ? 'Day reading' : 'Night reading';
+    var tb = byId('themeBtn'), zt = byId('zenTheme');
+    tb.textContent = zt.textContent = dark ? '☀︎' : '☾';
+    var themeLabel = dark ? 'Switch to day reading' : 'Switch to night reading';
+    tb.setAttribute('aria-label', themeLabel); zt.setAttribute('aria-label', themeLabel);
+    tb.title = zt.title = dark ? 'Day reading' : 'Night reading';
     darkPdf = dark;
     var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = dark ? '#161a1c' : '#f3f0e8';
     applyDarkPdf();
@@ -1971,6 +1974,7 @@
   /* Zen strips the toolbars, but the guide is a reading aid, not chrome — it keeps
      this one faint seat beside the exit so dense passages don't cost a round trip. */
   byId('zenGuide').onclick=function(){byId('focusBtn').onclick();};
+  byId('zenTheme').onclick=function(){byId('themeBtn').onclick();};
   byId('focusBtn').onclick=function(){
     comfort.focus=!comfort.focus;applyComfort();
     showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page'):'Reading guide off');

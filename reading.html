@@ -215,6 +215,11 @@
     .zen-exit { position: fixed; z-index: 48; top: calc(10px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); width: 42px; height: 42px; padding: 0; display: none; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 74%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease; }
     body.zen .zen-exit { display: flex; }
     .zen-exit:hover, .zen-exit:focus-visible, .zen-exit:active { opacity: 1; color: var(--ink); }
+    /* The guide keeps a seat in zen: same faint circle as the exit, one slot below.
+       When the guide is on, the accent shows through even at rest opacity. */
+    .zen-guide { top: calc(60px + env(safe-area-inset-top)); font-size: .78rem; }
+    .zen-guide.active { color: var(--accent); opacity: .55; }
+    .zen-guide.active:hover, .zen-guide.active:focus-visible { color: var(--accent); }
     #zenBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     .highlight-layer { z-index: 1; pointer-events: none; }
@@ -832,6 +837,7 @@
         </div>
       </aside>
       <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading">✕</button>
+      <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-pressed="false" aria-label="Toggle the reading guide" title="Reading guide (G)">▰</button>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
     </section>
   </main>
@@ -1959,8 +1965,12 @@
   function applyFocus(){
     var overlay=byId('paneSpotlight'),btn=byId('focusBtn'),on=!!comfort.focus;
     overlay.classList.toggle('on',on);overlay.classList.toggle('locked',!!comfort.guideLock);btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on));
+    var zg=byId('zenGuide');zg.classList.toggle('active',on);zg.setAttribute('aria-pressed',String(on));
     if(on)requestAnimationFrame(placeGuide);
   }
+  /* Zen strips the toolbars, but the guide is a reading aid, not chrome — it keeps
+     this one faint seat beside the exit so dense passages don't cost a round trip. */
+  byId('zenGuide').onclick=function(){byId('focusBtn').onclick();};
   byId('focusBtn').onclick=function(){
     comfort.focus=!comfort.focus;applyComfort();
     showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page'):'Reading guide off');
@@ -2859,6 +2869,7 @@
     if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undoLastHighlight();return;}
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
     if(e.key.toLowerCase()==='f'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();setZen(!zenOn);return;}
+    if(e.key.toLowerCase()==='g'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();byId('focusBtn').onclick();return;}
     if(e.key.toLowerCase()==='c'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&readerMode==='pdf'&&pdfDoc){e.preventDefault();cycleColumnZoom();return;}
     if(e.key==='Backspace'&&readerMode==='pdf'&&linkReturnSpot){e.preventDefault();var lrPane=byId('documentPane');lrPane.scrollTop=linkReturnSpot.top;lrPane.scrollLeft=linkReturnSpot.left;linkReturnSpot=null;showReaderToast('Back where you were');return;}
     /* Space is the settle-in key: start the slow crawl, tap again to stop. */

@@ -80,6 +80,8 @@
       text-decoration: none; font-weight: 600; font-size: .8rem;
     }
     .icon-btn { width: 38px; padding: 0; }
+    /* The sun and moon are quiet glyphs at button size — let them breathe. */
+    #themeBtn { font-size: 1.15rem; }
     .button { border-color: var(--accent); background: var(--accent); color: white; }
     .button:hover { background: var(--accent-dark); }
     .soft-button { background: transparent; }
@@ -584,7 +586,7 @@
     </nav>
     <div class="head-actions">
       <button class="cloud" id="syncSignal" type="button" title="Sync now">this device</button>
-      <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to night reading">☾</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
       <button class="icon-btn" id="refreshBtn" aria-label="Reload Carrel to get the newest version" title="Get the newest version">↻</button>
     </div>
@@ -1109,6 +1111,13 @@
      all follow the same light/dark switch. */
   function applyTheme(dark){
     if (dark) document.documentElement.dataset.theme = 'dark'; else delete document.documentElement.dataset.theme;
+    /* The button shows where a tap goes, not where you are: a moon all day, a sun
+       all night. U+FE0E keeps the sun a glyph — iOS would otherwise paint it as
+       a full-color emoji among the monochrome icons. */
+    var tb = byId('themeBtn');
+    tb.textContent = dark ? '☀︎' : '☾';
+    tb.setAttribute('aria-label', dark ? 'Switch to day reading' : 'Switch to night reading');
+    tb.title = dark ? 'Day reading' : 'Night reading';
     darkPdf = dark;
     var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = dark ? '#161a1c' : '#f3f0e8';
     applyDarkPdf();

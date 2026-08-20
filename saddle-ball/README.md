@@ -53,6 +53,15 @@ Three terms, that's the whole trick (in `height()`):
   (reads like a 2D curve), swings up and around as the ball escapes.
 - `FRAME_END = 345` at 30 fps ≈ 11.5 s.
 
+## The ascending version
+
+A ball can't roll uphill, but a balloon can rise: `saddle_balloon.py` is the
+mirror image — the surface flipped into a hanging canopy, gravity pointed up.
+The balloon starts trapped in a pocket (the same saddle, upside down), slips
+sideways through the dimension it wasn't using, rises around the hanging
+ridge, and lodges in the **highest** dome. Identical equations, identical
+honesty, opposite direction. Runs exactly like the ball version.
+
 ## Files
 
 - `saddle_ball.py` — the scene builder (everything above).
@@ -60,3 +69,5 @@ Three terms, that's the whole trick (in `height()`):
 - `reply.mp4` — the captioned cut: opens with the heckle ("a graph of going
   down in life"), lets the physics answer it, ends on "you were reading the
   axis. i was watching the ball."
+- `saddle_balloon.py` / `balloon.mp4` — the ascending version: the balloon
+  rises out of its pocket and settles at the top.

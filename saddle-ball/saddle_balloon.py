@@ -1,0 +1,234 @@
+# Saddle escape, ascending — the balloon version
+#
+# The mirror image of saddle_ball.py: the surface is flipped into a hanging
+# canopy and gravity points UP, so the red sphere is a balloon pressed
+# against the ceiling. It starts trapped in a pocket (a real saddle of the
+# canopy), slips sideways through the dimension it wasn't using, RISES
+# around the hanging ridge, and lodges in the highest dome. Same equations
+# as the descending version — buoyancy just runs them upward. Pure physics
+# from frame 1, no keyframes on the balloon.
+#
+# Use: open Blender -> Scripting tab -> open this file -> Run Script.
+# Then press Spacebar in the viewport to play. Render with Ctrl+F12
+# (play the animation through once first so the physics cache is filled).
+
+import bpy
+import math
+
+# ---------------------------------------------------------------- the canopy
+
+def base_height(x, y):
+    bowl    = 0.10 * ((x - 2.4) ** 2 + y * y)
+    barrier = 2.2 * math.exp(-(x - 0.4) ** 2 / 0.5 - y * y / 0.7)
+    well    = -1.2 * math.exp(-((x - 2.4) ** 2 + y * y) / 0.6)
+    return bowl + barrier + well
+
+def height(x, y):          # the canopy: the descending surface, upside down
+    return -base_height(x, y)
+
+X_MIN, X_MAX = -4.0, 6.2
+Y_MIN, Y_MAX = -2.8, 2.8
+
+# find the saddle on the original surface (same point, mirrored)
+def slope_x(x):
+    e = 1e-4
+    return (base_height(x + e, 0) - base_height(x - e, 0)) / (2 * e)
+
+lo, hi = -2.5, -0.3
+for _ in range(60):
+    mid = 0.5 * (lo + hi)
+    if slope_x(mid) < 0:
+        lo = mid
+    else:
+        hi = mid
+SADDLE_X = 0.5 * (lo + hi)
+
+BALL_R     = 0.55
+BALL_START = (SADDLE_X, -0.08)  # a hair off the crest so it slips out on its own
+FRAME_END  = 375
+FPS        = 30
+
+# ---------------------------------------------------------------- fresh scene
+
+for coll in (bpy.data.objects, bpy.data.meshes, bpy.data.curves,
+             bpy.data.materials, bpy.data.cameras, bpy.data.worlds):
+    for block in list(coll):
+        coll.remove(block)
+
+scene = bpy.context.scene
+scene.frame_start, scene.frame_end = 1, FRAME_END
+scene.render.fps = FPS
+scene.gravity = (0.0, 0.0, 9.81)          # buoyancy: "gravity" points up
+
+world = bpy.data.worlds.new("White")
+world.use_nodes = True
+world.node_tree.nodes["Background"].inputs[0].default_value = (1, 1, 1, 1)
+scene.world = world
+
+def flat_material(name, rgb):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = (*rgb, 1)
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    nt.links.new(em.outputs["Emission"], out.inputs["Surface"])
+    return mat
+
+MAT_PAPER = flat_material("Paper", (1, 1, 1))
+MAT_GRID  = flat_material("Grid",  (0.5, 0.5, 0.5))
+MAT_LINE  = flat_material("Slice", (0.05, 0.05, 0.05))
+MAT_BALL  = flat_material("Ball",  (0.75, 0.05, 0.02))
+
+def link(obj):
+    scene.collection.objects.link(obj)
+    return obj
+
+# -------------------------------------------------- smooth canopy (collision)
+
+STEP = 0.05
+nx = int(round((X_MAX - X_MIN) / STEP)) + 1
+ny = int(round((Y_MAX - Y_MIN) / STEP)) + 1
+verts = [(X_MIN + i * STEP, Y_MIN + j * STEP, height(X_MIN + i * STEP, Y_MIN + j * STEP))
+         for j in range(ny) for i in range(nx)]
+faces = [(j * nx + i, j * nx + i + 1, (j + 1) * nx + i + 1, (j + 1) * nx + i)
+         for j in range(ny - 1) for i in range(nx - 1)]
+
+mesh = bpy.data.meshes.new("Surface")
+mesh.from_pydata(verts, [], faces)
+for p in mesh.polygons:
+    p.use_smooth = True
+mesh.materials.append(MAT_PAPER)
+surface = link(bpy.data.objects.new("Surface", mesh))
+
+# ------------------------------------------------------ grid lines and slice
+# lines hang slightly BELOW the canopy so they are visible from underneath
+
+def add_polyline(name, pts, radius, mat, lift=-0.012):
+    cu = bpy.data.curves.new(name, "CURVE")
+    cu.dimensions = "3D"
+    cu.bevel_depth = radius
+    cu.bevel_resolution = 4
+    cu.materials.append(mat)
+    sp = cu.splines.new("POLY")
+    sp.points.add(len(pts) - 1)
+    for p, (x, y) in zip(sp.points, pts):
+        p.co = (x, y, height(x, y) + lift, 1)
+    return link(bpy.data.objects.new(name, cu))
+
+SAMPLE = 0.06
+xs = [X_MIN + i * SAMPLE for i in range(int((X_MAX - X_MIN) / SAMPLE) + 1)]
+ys = [Y_MIN + i * SAMPLE for i in range(int((Y_MAX - Y_MIN) / SAMPLE) + 1)]
+
+GRID = 0.35
+n_iso_y = int((Y_MAX - Y_MIN) / GRID)                 # iso-y lines, offset so none sits at y=0
+for k in range(n_iso_y):
+    y0 = Y_MIN + (k + 0.5) * GRID
+    add_polyline(f"grid_y{k}", [(x, y0) for x in xs], 0.010, MAT_GRID)
+n_iso_x = int((X_MAX - X_MIN) / GRID) + 1
+for k in range(n_iso_x):
+    x0 = X_MIN + k * GRID
+    add_polyline(f"grid_x{k}", [(x0, y) for y in ys], 0.010, MAT_GRID)
+
+add_polyline("slice", [(x, 0.0) for x in xs], 0.045, MAT_LINE, lift=-0.02)  # the bold 2D curve
+
+# ---------------------------------------------------------------- the balloon
+
+# released a little below the canopy: the pocket curves tighter than the
+# balloon, so a snug start would bury its flanks in the pocket walls —
+# from here it floats up and bridges the pocket gently
+bpy.ops.mesh.primitive_uv_sphere_add(
+    radius=BALL_R, segments=48, ring_count=24,
+    location=(BALL_START[0], BALL_START[1],
+              height(*BALL_START) - BALL_R - 0.15))
+ball = bpy.context.active_object
+ball.name = "Balloon"
+for p in ball.data.polygons:
+    p.use_smooth = True
+ball.data.materials.append(MAT_BALL)
+
+# -------------------------------------------------------------------- physics
+
+def add_rigidbody(obj, kind):
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    bpy.ops.rigidbody.object_add(type=kind)
+
+add_rigidbody(surface, "PASSIVE")
+surface.rigid_body.collision_shape = "MESH"
+surface.rigid_body.friction = 0.8
+surface.rigid_body.restitution = 0.0
+surface.rigid_body.use_margin = True
+surface.rigid_body.collision_margin = 0.002
+
+add_rigidbody(ball, "ACTIVE")
+rb = ball.rigid_body
+rb.collision_shape = "SPHERE"
+rb.mass = 1.2
+rb.friction = 0.8
+rb.restitution = 0.0
+rb.linear_damping = 0.4
+rb.angular_damping = 0.9
+rb.use_margin = True
+rb.collision_margin = 0.002
+
+# sleeping is off while the balloon slips out of the pocket (it must stay
+# live at tiny speeds), then enabled so it comes truly to rest in the dome
+rb.use_deactivation = False
+rb.deactivate_linear_velocity = 0.6
+rb.deactivate_angular_velocity = 0.8
+rb.keyframe_insert("use_deactivation", frame=1)
+rb.keyframe_insert("use_deactivation", frame=230)
+rb.use_deactivation = True
+rb.keyframe_insert("use_deactivation", frame=231)
+
+rbw = scene.rigidbody_world
+rbw.substeps_per_frame = 30
+rbw.solver_iterations = 20
+rbw.point_cache.frame_start = 1
+rbw.point_cache.frame_end = FRAME_END
+
+# --------------------------------------------------------------------- camera
+
+target = link(bpy.data.objects.new("Target", None))
+target.location = (0.8, 0.0, -0.9)
+pivot = link(bpy.data.objects.new("Pivot", None))
+pivot.location = (0.8, 0.0, -0.9)
+
+cam = link(bpy.data.objects.new("Camera", bpy.data.cameras.new("Camera")))
+cam.data.lens = 40
+cam.parent = pivot
+tt = cam.constraints.new("TRACK_TO")
+tt.target = target
+tt.track_axis = "TRACK_NEGATIVE_Z"
+tt.up_axis = "UP_Y"
+scene.camera = cam
+
+# side-on "it's just a 2D curve" view, then swing down and around,
+# looking up at the canopy as the balloon rises
+def cam_key(frame, orbit_deg, cam_h):
+    pivot.rotation_euler = (0, 0, math.radians(orbit_deg))
+    pivot.keyframe_insert("rotation_euler", frame=frame)
+    cam.location = (0, -11.5, cam_h)
+    cam.keyframe_insert("location", frame=frame)
+
+cam_key(1, 0, -3.0)
+cam_key(70, 0, -3.0)
+cam_key(185, 54, -5.4)
+cam_key(FRAME_END, 60, -5.8)
+
+# --------------------------------------------------------------------- render
+
+scene.render.engine = "CYCLES"
+scene.cycles.samples = 16
+scene.cycles.max_bounces = 0
+scene.cycles.use_denoising = False
+scene.view_settings.view_transform = "Standard"
+scene.render.resolution_x = 720
+scene.render.resolution_y = 720
+scene.render.film_transparent = False
+
+print(f"Scene built. Saddle at x = {SADDLE_X:.3f}. "
+      "Press Spacebar to play; the balloon rises. Ctrl+F12 to render.")

@@ -40,6 +40,9 @@
       --muted: #a5aaa8; --line: #363d3e; --accent: #ff795e; --accent-dark: #ff9b87;
       --blue: #8dc0d0; --yellow: #806d33; --shadow: 0 18px 50px rgba(0, 0, 0, .24);
       --accent-soft: color-mix(in srgb, var(--accent) 22%, var(--surface));
+      /* Native scrollbars, inputs and dialogs follow the room's light — without
+         this the browser paints its daylight scrollbar down a dark page. */
+      color-scheme: dark;
     }
     /* Cream paper warms the whole desk in day mode: header, toolbars, notebook and
        the reflow sheet live in the paper's palette instead of framing warm paper in
@@ -49,7 +52,7 @@
     }
     html:not([data-theme="dark"]) body.cream-tone .document-pane { background: #d9cdae; }
     html[data-theme="dark"] body.cream-tone .text-document { background: #1d1813; }
-    html { background: var(--paper); color: var(--ink); }
+    html { background: var(--paper); color: var(--ink); color-scheme: light; }
     body { margin: 0; min-height: 100vh; font-family: var(--sans); background: var(--paper); color: var(--ink); }
     button, input, textarea { font: inherit; color: inherit; }
     button { cursor: pointer; }
@@ -214,6 +217,10 @@
     body.zen .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
     .zen-exit { position: fixed; z-index: 48; top: calc(10px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); width: 42px; height: 42px; padding: 0; display: none; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 74%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease; }
     body.zen .zen-exit { display: flex; }
+    /* A scrollbar is chrome, and zen hides chrome: the wheel, the trackpad and the
+       Space drift still scroll — the paper just keeps its whole edge. */
+    body.zen .document-pane { scrollbar-width: none; }
+    body.zen .document-pane::-webkit-scrollbar { display: none; }
     .zen-exit:hover, .zen-exit:focus-visible, .zen-exit:active { opacity: 1; color: var(--ink); }
     /* The guide keeps a seat in zen: same faint circle as the exit, one slot below.
        When the guide is on, the accent shows through even at rest opacity. */

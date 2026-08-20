@@ -6,6 +6,10 @@
 *.qfx
 moneymanage/*.ofx
 moneymanage/*.qfx
+# Billing PDFs land in this folder by accident; the site's own PDFs live in
+# subdirectories, so these root-only patterns leave them alone.
+/Invoice-*.pdf
+/Receipt-*.pdf
 
 # Local credentials and runtime configuration
 .env

@@ -47,10 +47,12 @@
     /* Cream paper warms the whole desk in day mode: header, toolbars, notebook and
        the reflow sheet live in the paper's palette instead of framing warm paper in
        cool grey. Night palettes are untouched. */
+    /* Cream sits in the Kindle–Apple Books sepia band (#FBF0D9 / #F8F1E3): warm,
+       but pale — the earlier mix pulled toward butter and read as yellow. */
     html:not([data-theme="dark"]) body.cream-tone {
-      --paper: #f4ead2; --surface: #faf1da; --surface-2: #ecdfc0; --line: #ddd0ae;
+      --paper: #f6efdf; --surface: #fbf5e8; --surface-2: #eee6d2; --line: #e0d7c0;
     }
-    html:not([data-theme="dark"]) body.cream-tone .document-pane { background: #d9cdae; }
+    html:not([data-theme="dark"]) body.cream-tone .document-pane { background: #e2d9c3; }
     html[data-theme="dark"] body.cream-tone .text-document { background: #1d1813; }
     html { background: var(--paper); color: var(--ink); color-scheme: light; }
     body { margin: 0; min-height: 100vh; font-family: var(--sans); background: var(--paper); color: var(--ink); }
@@ -204,7 +206,7 @@
     .pdf-frame.dark-paper .pdf-page { background: #171717; }
     .pdf-frame.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.92); }
     /* Cream paper: takes the white glare off long sessions without going dark. */
-    .pdf-frame.cream:not(.dark-paper) .pdf-page { background: #f6e8cc; }
+    .pdf-frame.cream:not(.dark-paper) .pdf-page { background: #f9efdb; }
     .pdf-frame.cream:not(.dark-paper) .pdf-page canvas { mix-blend-mode: multiply; filter: saturate(.97); }
     /* In dark mode, cream becomes warm dark paper: the same inversion, minus the blue cast. */
     .pdf-frame.cream.dark-paper .pdf-page { background: #1d1813; }

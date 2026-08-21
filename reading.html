@@ -1705,8 +1705,18 @@
   function focusShelfBook(id){
     var books=byId('shelf').querySelectorAll('[data-shelf-paper]');for(var i=0;i<books.length;i++)if(books[i].dataset.shelfPaper===id){try{books[i].focus({preventScroll:true});}catch(e){books[i].focus();}break;}
   }
+  function inferredSourceCredit(ch){
+    var source=filenameTitle(ch.sourceName||''),yearAt=source.search(/(?:19|20)\d{2}/);
+    if(yearAt<2)return '';
+    var words=source.slice(0,yearAt).trim().split(/\s+/).filter(function(word){return /^[a-zÀ-ž'’]{2,}$/i.test(word);});
+    if(!words.length||words.length>4)return '';
+    words=words.map(function(word){return word.charAt(0).toUpperCase()+word.slice(1).toLowerCase();});
+    return words.length===2?words.join(' & '):words.join(' ');
+  }
   function shelfSpineCredit(ch){
-    var credit=String(ch.authors||'').trim();if(credit)credit=credit.split(/\s*(?:,|;|·|\band\b)\s*/i)[0];else credit=ch.kind==='pdf'?'PDF':'NOTE';
+    var credit=String(ch.authors||'').trim();
+    if(credit)credit=credit.split(/\s*(?:,|;|·|\band\b)\s*/i)[0];
+    else credit=String(ch.journal||ch.venue||ch.publication||'').trim()||inferredSourceCredit(ch)||(ch.kind==='pdf'?'Unknown author':'Personal note');
     return credit.length>18?credit.slice(0,17)+'…':credit;
   }
   function compareShelfPapers(a,b){

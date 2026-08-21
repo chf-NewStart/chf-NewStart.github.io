@@ -140,19 +140,96 @@
     .search { margin-left: auto; width: min(280px, 42vw); background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 8px 2px; outline: none; }
     .search:focus { border-color: var(--accent); }
 
-    .shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-    .paper-card-shell { position: relative; min-width: 0; min-height: 220px; }
-    .paper-card { position: relative; width: 100%; height: 100%; min-height: 220px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); text-align: left; overflow: hidden; }
-    .paper-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--card-accent, var(--accent)); opacity: .9; }
-    .paper-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 55%, var(--line)); box-shadow: var(--shadow); }
-    .paper-card .kind { color: var(--muted); text-transform: uppercase; letter-spacing: .13em; font-size: .62rem; }
-    .paper-card h3 { margin: 22px 0 10px; font: 500 1.22rem/1.18 var(--serif); letter-spacing: -.02em; }
-    .paper-card .authors { color: var(--muted); font: .84rem/1.45 var(--serif); }
-    .paper-card .card-foot { position: absolute; left: 22px; right: 18px; bottom: 18px; display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: .68rem; }
-    .paper-card .progress { margin-left: auto; }
-    .card-delete { position: absolute; z-index: 2; top: 12px; right: 12px; min-height: 30px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--muted); font: 650 .62rem var(--sans); opacity: .72; }
-    .card-delete:hover, .card-delete:focus-visible { border-color: #bf6155; background: #bf6155; color: white; opacity: 1; }
-    .empty { grid-column: 1 / -1; border: 1px dashed var(--line); border-radius: 14px; padding: 48px 24px; text-align: center; color: var(--muted); }
+    /* The Living Shelf: a paper is first encountered as a physical spine, then
+       followed by a thread of light into a quiet, open reading surface. */
+    .living-shelf {
+      --shelf-height: clamp(520px, 64vw, 650px);
+      position: relative; min-height: var(--shelf-height); display: grid;
+      grid-template-columns: minmax(290px, .86fr) minmax(74px, .22fr) minmax(470px, 1.44fr);
+      gap: 0; border: 1px solid var(--line); border-radius: 26px;
+      background:
+        radial-gradient(circle at 76% 48%, color-mix(in srgb, var(--yellow) 21%, transparent), transparent 27%),
+        linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--paper) 96%, transparent));
+      box-shadow: var(--shadow); overflow: clip; isolation: isolate;
+    }
+    .living-shelf::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .33; pointer-events: none; background-image: repeating-linear-gradient(96deg, transparent 0 41px, color-mix(in srgb, var(--ink) 4%, transparent) 42px 43px); }
+    .shelf-empty { grid-column: 1 / -1; align-self: stretch; display: grid; place-items: center; min-height: 360px; padding: 48px 24px; text-align: center; color: var(--muted); }
+    .shelf-empty div { max-width: 460px; }
+    .shelf-empty b { display: block; margin-bottom: 8px; color: var(--ink); font: 500 1.45rem var(--serif); }
+
+    .bookcase { position: relative; min-width: 0; display: flex; flex-direction: column; padding: 26px 18px 22px 22px; background: color-mix(in srgb, var(--surface-2) 49%, transparent); border-right: 1px solid color-mix(in srgb, var(--line) 76%, transparent); }
+    .pile-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 5px 18px; }
+    .pile-head strong { font-size: .65rem; letter-spacing: .17em; text-transform: uppercase; }
+    .pile-head span { color: var(--muted); font: italic .76rem var(--serif); }
+    .book-pile { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; overflow-y: auto; overflow-x: hidden; padding: 18px 9px 24px 7px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent; }
+    .book-spine {
+      --book-width: 90%; --book-height: 52px; --book-offset: 0px; --book-tilt: 0deg;
+      position: relative; flex: 0 0 var(--book-height); width: var(--book-width); min-width: 0; margin-left: var(--book-offset);
+      padding: 8px 78px 9px 23px; border: 0; border-radius: 4px 11px 9px 4px;
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,.055) 0 1px, transparent 1px 4px),
+        linear-gradient(90deg, rgba(0,0,0,.11), transparent 9%, rgba(255,255,255,.12) 48%, transparent 84%, rgba(0,0,0,.09)),
+        var(--book-accent);
+      color: var(--book-ink); text-align: left; box-shadow: 0 6px 12px rgba(42,38,30,.14), inset 0 2px 0 rgba(255,255,255,.2), inset 0 -2px 0 rgba(0,0,0,.1);
+      transform: rotate(var(--book-tilt)); transform-origin: left center;
+      transition: width .28s cubic-bezier(.2,.85,.25,1), margin-left .28s cubic-bezier(.2,.85,.25,1), transform .28s ease, filter .2s ease, box-shadow .28s ease;
+    }
+    .book-spine::before { content: ""; position: absolute; inset: 3px 8px 4px; border: solid color-mix(in srgb, var(--book-ink) 26%, transparent); border-width: 0 2px; opacity: .6; pointer-events: none; }
+    .book-spine::after { content: ""; position: absolute; left: 17px; right: 12px; bottom: 2px; height: 2px; border-radius: 0 0 5px 1px; background: color-mix(in srgb, var(--book-ink) 46%, white); opacity: .5; }
+    .book-spine:hover, .book-spine:focus-visible { width: min(100%, calc(var(--book-width) + 38px)); margin-left: max(0px, calc(var(--book-offset) - 7px)); transform: rotate(0deg) translateY(-1px); z-index: 3; filter: saturate(1.06) brightness(1.05); box-shadow: 0 12px 22px rgba(42,38,30,.2), inset 0 -5px 0 rgba(0,0,0,.12); outline: none; }
+    .book-spine.is-selected { width: min(100%, calc(var(--book-width) + 30px)); margin-left: max(0px, calc(var(--book-offset) - 5px)); transform: rotate(0deg) translateX(7px); z-index: 2; box-shadow: 0 12px 24px rgba(42,38,30,.2), 0 0 0 2px color-mix(in srgb, var(--yellow) 75%, white), inset 0 -5px 0 rgba(0,0,0,.12); }
+    .book-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 1.08rem/1.05 var(--hand); letter-spacing: .015em; text-shadow: 0 1px rgba(255,255,255,.12); }
+    .book-author { position: absolute; top: 50%; right: 22px; max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transform: translateY(-50%); color: var(--book-ink); font: 750 .51rem/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; opacity: .82; }
+    .book-mark { position: absolute; top: 50%; right: 7px; width: auto; height: auto; background: none; color: var(--book-ink); clip-path: none; opacity: .3; transform: translateY(-50%) scale(.75); transition: opacity .2s ease, transform .2s ease; font-size: .68rem; }
+    .book-spine.is-selected .book-mark { opacity: .9; transform: translateY(-50%) scale(1); }
+
+    .reading-thread-bridge { position: relative; min-width: 0; min-height: var(--shelf-height); display: grid; place-items: center; pointer-events: none; }
+    .reading-thread-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+    .thread-halo, .reading-thread { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+    .thread-halo { stroke: color-mix(in srgb, var(--yellow) 44%, transparent); stroke-width: 8; opacity: .22; filter: blur(4px); }
+    .reading-thread { stroke: url(#readingThreadGradient); stroke-width: 1.65; stroke-dasharray: 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--yellow) 34%, transparent)); animation: threadDraw .68s cubic-bezier(.2,.8,.25,1) forwards; }
+    .thread-spark { fill: color-mix(in srgb, var(--yellow) 84%, white); filter: drop-shadow(0 0 7px color-mix(in srgb, var(--yellow) 70%, transparent)); animation: lightBreathe 2.8s ease-in-out infinite; }
+    @keyframes threadDraw { to { stroke-dashoffset: 0; } }
+
+    .open-book-wrap { position: relative; align-self: start; min-width: 0; padding: 34px 32px 34px 10px; perspective: 1500px; }
+    .open-book-wrap::before { content: ""; position: absolute; inset: 20% 8% 16%; z-index: -1; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--yellow) 38%, transparent), transparent 66%); filter: blur(22px); animation: lightBreathe 3.4s ease-in-out infinite; }
+    .open-book { position: relative; min-height: calc(var(--shelf-height) - 68px); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .86fr); filter: drop-shadow(0 24px 27px rgba(43,39,30,.13)); transform-style: preserve-3d; }
+    .open-book::before { content: ""; position: absolute; z-index: 4; top: 10px; bottom: 12px; left: 50%; width: 30px; transform: translateX(-50%); background: linear-gradient(90deg, transparent, rgba(77,67,43,.13) 43%, rgba(255,255,255,.5) 51%, transparent); pointer-events: none; }
+    .book-page { position: relative; min-width: 0; padding: clamp(28px, 3.3vw, 48px); border: 1px solid color-mix(in srgb, var(--line) 78%, #cabb97); background:
+      linear-gradient(90deg, rgba(85,74,47,.06), transparent 12%),
+      color-mix(in srgb, var(--surface) 92%, #fff4d2);
+      overflow: hidden;
+    }
+    .book-page::after { content: ""; position: absolute; inset: 0; opacity: .22; pointer-events: none; background-image: repeating-linear-gradient(0deg, transparent 0 25px, color-mix(in srgb, var(--ink) 5%, transparent) 26px); }
+    .book-page.left { z-index: 2; padding-bottom: 112px; border-radius: 12px 2px 2px 17px; transform-origin: right center; animation: openLeft .48s cubic-bezier(.18,.83,.2,1) both; }
+    .book-page.right { border-radius: 2px 13px 18px 2px; transform-origin: left center; animation: openRight .52s cubic-bezier(.18,.83,.2,1) both; }
+    @keyframes openLeft { from { opacity: .3; transform: rotateY(22deg) scale(.96); } to { opacity: 1; transform: rotateY(3deg) scale(1); } }
+    @keyframes openRight { from { opacity: .25; transform: rotateY(-28deg) scale(.95); } to { opacity: 1; transform: rotateY(-3deg) scale(1); } }
+    @keyframes lightBreathe { 0%,100% { opacity: .58; transform: scale(.98); } 50% { opacity: 1; transform: scale(1.035); } }
+    .paper-kicker { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; color: var(--accent); font-size: .61rem; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+    .paper-kicker i { width: 18px; height: 1px; background: currentColor; }
+    .paper-title { position: relative; z-index: 1; margin: 24px 0 14px; font: 500 clamp(1.8rem, 3.3vw, 3.45rem)/.98 var(--serif); letter-spacing: -.045em; overflow-wrap: anywhere; }
+    .paper-title.long { font-size: clamp(1.65rem, 2.55vw, 2.7rem); line-height: 1.01; letter-spacing: -.037em; }
+    .paper-title.very-long { font-size: clamp(1.45rem, 2.05vw, 2.2rem); line-height: 1.04; letter-spacing: -.028em; }
+    .paper-byline { position: relative; z-index: 1; margin: 0; color: var(--muted); font: .91rem/1.55 var(--serif); overflow-wrap: anywhere; }
+    .paper-tags { position: relative; z-index: 1; margin-top: 20px; }
+    .paper-actions { position: absolute; z-index: 2; left: clamp(28px, 3.3vw, 48px); right: clamp(28px, 3.3vw, 48px); bottom: 36px; display: flex; align-items: center; gap: 9px; }
+    .paper-actions .button { min-height: 44px; border-radius: 11px; flex: 1; }
+    .paper-actions .soft-button { min-height: 44px; border-radius: 11px; }
+    .paper-actions .remove-paper { flex: 0 0 auto; color: var(--muted); }
+    .paper-actions .remove-paper:hover, .paper-actions .remove-paper:focus-visible { border-color: #bf6155; background: #bf6155; color: white; }
+    .page-number { position: absolute; z-index: 1; bottom: 14px; left: 0; right: 0; color: var(--muted); font: .58rem var(--serif); text-align: center; }
+    .right-page-inner { position: relative; z-index: 1; min-height: 100%; display: flex; flex-direction: column; }
+    .light-mark { width: 44px; height: 44px; margin: 2px 0 28px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--yellow) 66%, var(--line)); border-radius: 50%; background: color-mix(in srgb, var(--yellow) 25%, var(--surface)); color: #856a19; box-shadow: 0 0 25px color-mix(in srgb, var(--yellow) 42%, transparent); font-size: 1.1rem; animation: lightBreathe 3s ease-in-out infinite; }
+    .paper-thought { margin: 0 0 28px; color: color-mix(in srgb, var(--ink) 82%, var(--muted)); font: italic 1.02rem/1.65 var(--serif); }
+    .paper-stats { display: grid; gap: 0; margin-top: auto; border-top: 1px solid var(--line); }
+    .paper-stat { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .paper-stat span { color: var(--muted); font-size: .68rem; }
+    .paper-stat b { font: 600 .76rem var(--sans); }
+    .reading-progress { margin-top: 24px; }
+    .reading-progress > div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: .64rem; }
+    .reading-progress-track { height: 4px; margin-top: 9px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+    .reading-progress-track i { display: block; width: var(--paper-progress); height: 100%; border-radius: inherit; background: linear-gradient(90deg, #698d60, var(--accent)); }
 
     .support-line { margin: 28px 0 0; text-align: center; color: var(--muted); font: .8rem/1.5 var(--serif); }
     .support-line a { color: var(--accent); }
@@ -515,6 +592,19 @@
       .hero-card { display: none; }
       .reader-layout { --notebook-width: 320px; }
       .connections-intro { grid-template-columns: 1fr; }
+      .living-shelf { --shelf-height: auto; grid-template-columns: 1fr; overflow: hidden; }
+      .bookcase { min-height: 220px; padding: 21px 18px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .pile-head { margin-bottom: 8px; }
+      .book-pile { min-height: 132px; flex-direction: row; justify-content: flex-start; align-items: center; gap: 10px; overflow-x: auto; overflow-y: hidden; padding: 13px 8px 18px; scroll-snap-type: x proximity; }
+      .book-spine, .book-spine:hover, .book-spine:focus-visible, .book-spine.is-selected { flex: 0 0 244px; width: 244px; height: 86px; margin-left: 0; padding: 16px 76px 16px 25px; transform: rotate(var(--book-tilt)); scroll-snap-align: start; }
+      .book-spine:hover, .book-spine:focus-visible, .book-spine.is-selected { transform: rotate(0deg) translateY(-3px); }
+      .book-title { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 1.12rem; }
+      .reading-thread-bridge { min-height: 74px; }
+      .reading-thread-svg { display: none; }
+      .reading-thread-bridge::before { content: ""; position: absolute; left: 12%; right: 12%; top: 22px; height: 30px; border-bottom: 1.25px solid color-mix(in srgb, var(--yellow) 58%, var(--muted)); border-radius: 0 0 50% 50%; box-shadow: 0 5px 12px color-mix(in srgb, var(--yellow) 18%, transparent); }
+      .reading-thread-bridge::after { content: ""; position: relative; top: 3px; width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--yellow) 82%, white); box-shadow: 0 0 12px color-mix(in srgb, var(--yellow) 62%, transparent); }
+      .open-book-wrap { padding: 0 22px 30px; }
+      .open-book { min-height: 510px; }
     }
     @media (max-width: 720px) {
       .masthead { height: 60px; padding: 0 12px; gap: 8px; }
@@ -542,7 +632,18 @@
       .library-health .soft-button { width: 100%; margin-left: 0; }
       .section-head { align-items: center; flex-wrap: wrap; }
       .search { flex: 1 1 100%; width: 100%; margin-left: 0; }
-      .shelf { grid-template-columns: 1fr; }
+      .living-shelf { border-radius: 18px; }
+      .open-book-wrap { padding: 0 12px 18px; }
+      .open-book { min-height: 0; grid-template-columns: 1fr; filter: drop-shadow(0 18px 22px rgba(43,39,30,.11)); }
+      .open-book::before { display: none; }
+      .book-page.left, .book-page.right { min-height: 390px; border-radius: 10px; transform: none; animation: pageRise .38s ease-out both; }
+      .book-page.right { min-height: 330px; margin-top: -1px; }
+      .book-page { padding: 30px 25px; }
+      .paper-title { font-size: clamp(2rem, 10vw, 3.2rem); }
+      .paper-title.long { font-size: clamp(1.72rem, 8vw, 2.45rem); }
+      .paper-title.very-long { font-size: clamp(1.5rem, 6.8vw, 2.05rem); }
+      .paper-actions { left: 25px; right: 25px; bottom: 31px; }
+      @keyframes pageRise { from { opacity: .35; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
       /* Reading is its own phone screen. The site navigation disappears and the paper,
          not a squeezed desktop sidebar, owns the viewport. */
       body.reading .masthead { display: none; }
@@ -596,6 +697,11 @@
       .hero { margin-bottom: 28px; }
       .hero h1 { font-size: clamp(2.7rem, 14vw, 4.2rem); }
       #networkCanvas { height: 390px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .book-spine, .book-page, .reading-thread, .thread-spark, .light-mark, .open-book-wrap::before { animation: none !important; transition: none !important; }
+      .reading-thread { stroke-dashoffset: 0; }
+      .book-page.left, .book-page.right { opacity: 1; transform: none; }
     }
   </style>
 </head>
@@ -667,7 +773,7 @@
         <h2>Your library</h2><span class="count" id="libraryCount"></span>
         <input class="search" id="librarySearch" type="search" placeholder="Search titles, authors, tags…" aria-label="Search library">
       </div>
-      <div class="shelf" id="shelf"></div>
+      <div class="living-shelf" id="shelf"></div>
       <p class="support-line hidden" id="supportLine">Phloem is free, and built to make papers easier to focus on. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">a coffee is always appreciated ☕</a></p>
       <p class="support-line">Phloem is part of <a id="homeLink" href="/">houfu72.com ↗</a></p>
     </section>
@@ -981,7 +1087,12 @@
   var AI_KEY = 'readingRoom.ai.v1';
   var SYNC_FILE = 'reading-room.enc.json';
   var LOOKUP_DELAY = 900;
-  var CARD_COLORS = ['#e85d3f', '#295b71', '#8c6e3f', '#657d5c', '#8a5a83'];
+  var BOOK_SPINES = [
+    {cover:'#8498c9',ink:'#f6df72'}, {cover:'#d8eeea',ink:'#bd4d43'},
+    {cover:'#e6e39a',ink:'#315ca3'}, {cover:'#45aaa3',ink:'#f5e58b'},
+    {cover:'#e7b7ac',ink:'#315fa5'}, {cover:'#d96854',ink:'#f6e6b4'},
+    {cover:'#6d9d79',ink:'#f4e5a0'}, {cover:'#c5a3c6',ink:'#f8efd1'}
+  ];
   var state = loadState();
   var currentId = null, currentPage = 1, pdfDoc = null, pdfLib = null, pdfRendering = false, pdfRenderPending = false;
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
@@ -1393,28 +1504,69 @@
   }
   function renderDuplicateNotice(){
     var panel=byId('duplicateNotice'),button=byId('cleanDuplicatesBtn'),groups=duplicateGroups(state.chapters,false);
-    if(groups.length){var extras=groups.reduce(function(n,group){return n+group.length-1;},0);panel.classList.remove('hidden','done');button.classList.remove('hidden');button.disabled=false;button.textContent='Review & merge';byId('duplicateNoticeTitle').textContent=groups.length+' duplicate '+(groups.length===1?'group':'groups')+' found';byId('duplicateNoticeCopy').textContent=extras+' extra '+(extras===1?'card looks':'cards look')+' like the same PDF. Notes, highlights and Q&A will be combined before anything is retired.';return;}
+    if(groups.length){var extras=groups.reduce(function(n,group){return n+group.length-1;},0);panel.classList.remove('hidden','done');button.classList.remove('hidden');button.disabled=false;button.textContent='Review & merge';byId('duplicateNoticeTitle').textContent=groups.length+' duplicate '+(groups.length===1?'group':'groups')+' found';byId('duplicateNoticeCopy').textContent=extras+' extra '+(extras===1?'copy looks':'copies look')+' like the same PDF. Notes, highlights and Q&A will be combined before anything is retired.';return;}
     if(duplicateNoticeMessage){panel.classList.remove('hidden');panel.classList.add('done');button.classList.add('hidden');byId('duplicateNoticeTitle').textContent='Library cleaned';byId('duplicateNoticeCopy').textContent=duplicateNoticeMessage;return;}
     panel.classList.add('hidden');panel.classList.remove('done');button.classList.remove('hidden');
   }
+  var librarySelectionId=null;
+  function shelfPaperStats(ch){
+    var highlights=Object.keys(ch.highlights||{}).reduce(function(n,k){return n+(ch.highlights[k]||[]).length;},0)+(ch.textHighlights||[]).length+(ch.readerHighlights||[]).length;
+    var notes=Object.keys(ch.notes||{}).length+Object.keys(ch.readerNotes||{}).length+Object.keys(ch.pageNotes||{}).filter(function(k){return ch.pageNotes[k];}).length+highlights;
+    var questions=(ch.questions||[]).length,page=+ch.readPage||1,total=ch.kind==='pdf'?(+ch.pageCount||0):paras(ch.fr).length;
+    var progress=ch.kind==='pdf'&&total?Math.max(1,Math.min(100,Math.round(page/total*100))):(total?Math.min(100,Math.round(page/total*100)):0);
+    return {highlights:highlights,notes:notes,questions:questions,page:page,total:total,progress:progress};
+  }
+  function shelfDate(ch){
+    var stamp=+ch.updatedAt||+ch.addedAt||0;if(!stamp)return 'Waiting to be opened';
+    var days=Math.floor((now()-stamp)/86400000);if(days<=0)return 'Touched today';if(days===1)return 'Touched yesterday';if(days<14)return 'Touched '+days+' days ago';
+    try{return 'Touched '+new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(new Date(stamp));}catch(e){return 'Ready to return to';}
+  }
+  function shelfThought(stats){
+    if(stats.questions)return stats.questions+' saved '+(stats.questions===1?'question is':'questions are')+' waiting for your next pass through the paper.';
+    if(stats.notes)return 'You left '+stats.notes+' trace'+(stats.notes===1?'':'s')+' of attention here. Open the paper and let one of them lead you back in.';
+    if(stats.progress>8)return 'You already know the way into this paper. The next useful idea may be only a page away.';
+    return 'Every paper begins as a closed world. Open it slowly; let one useful idea light the next.';
+  }
+  function shelfThread(selectedIndex,total){
+    var y=total<2?260:Math.round(58+(Math.min(selectedIndex,total-1)/(total-1))*404),path='M0 '+y+' C54 '+y+', 57 260, 176 260';
+    return '<div class="reading-thread-bridge" aria-hidden="true"><svg class="reading-thread-svg" viewBox="0 0 180 520" preserveAspectRatio="none"><defs><linearGradient id="readingThreadGradient" x1="0" y1="0" x2="180" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" style="stop-color:var(--muted);stop-opacity:.24"/><stop offset=".58" style="stop-color:#b89b50;stop-opacity:.62"/><stop offset="1" style="stop-color:var(--yellow)"/></linearGradient></defs><path class="thread-halo" d="'+path+'"/><path class="reading-thread" pathLength="1" d="'+path+'"/><circle class="thread-spark" cx="176" cy="260" r="5.5"/></svg></div>';
+  }
+  function renderOpenPaper(ch,stats){
+    var tags=(ch.tags||[]).slice(0,4),kind=ch.kind==='pdf'?'PDF paper':'text note',source=ch.authors||ch.sourceName||'No authors yet',title=String(ch.title||'Untitled'),titleClass=title.length>118?' very-long':(title.length>72?' long':'');
+    var progressLabel=ch.kind==='pdf'?(stats.total?'Page '+stats.page+' of '+stats.total:'Page '+stats.page):(stats.total+' paragraph'+(stats.total===1?'':'s'));
+    var detail=document.createElement('div');detail.className='open-book-wrap';detail.id='selectedPaper';detail.setAttribute('aria-live','polite');
+    detail.innerHTML='<article class="open-book" aria-label="Selected paper: '+esc(title)+'"><section class="book-page left"><div class="paper-kicker"><i></i>'+esc(kind)+'</div><h3 class="paper-title'+titleClass+'">'+esc(title)+'</h3><p class="paper-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div><div class="paper-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button><button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div><span class="page-number">I</span></section><section class="book-page right"><div class="right-page-inner"><div class="light-mark" aria-hidden="true">✦</div><p class="paper-thought">'+esc(shelfThought(stats))+'</p><div class="paper-stats"><div class="paper-stat"><span>Notes &amp; highlights</span><b>'+stats.notes+'</b></div><div class="paper-stat"><span>Saved Q&amp;A</span><b>'+stats.questions+'</b></div><div class="paper-stat"><span>Last visit</span><b>'+esc(shelfDate(ch))+'</b></div></div><div class="reading-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="reading-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div></div><span class="page-number">II</span></section></article>';
+    detail.querySelector('.open-selected').onclick=function(){openReader(ch.id);};
+    detail.querySelector('.remove-paper').onclick=function(){removePaper(ch,false);};
+    return detail;
+  }
+  function focusShelfBook(id){
+    var books=byId('shelf').querySelectorAll('[data-shelf-paper]');for(var i=0;i<books.length;i++)if(books[i].dataset.shelfPaper===id){try{books[i].focus({preventScroll:true});}catch(e){books[i].focus();}break;}
+  }
+  function shelfSpineCredit(ch){
+    var credit=String(ch.authors||'').trim();if(credit)credit=credit.split(/\s*(?:,|;|·|\band\b)\s*/i)[0];else credit=ch.kind==='pdf'?'PDF':'NOTE';
+    return credit.length>18?credit.slice(0,17)+'…':credit;
+  }
   function renderShelf(){
     updateConnectionsNav();
-    document.body.classList.toggle('has-papers', state.chapters.length > 0);
-    var q = byId('librarySearch').value.trim().toLowerCase();
-    var list = state.chapters.filter(function(ch){ return !q || paperHaystack(ch).includes(q); }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
-    byId('libraryCount').textContent = state.chapters.length + (state.chapters.length === 1 ? ' paper' : ' papers');renderDuplicateNotice();
-    var shelf = byId('shelf'); shelf.innerHTML = '';
-    if (!list.length){ shelf.innerHTML = '<div class="empty">' + (state.chapters.length ? 'Nothing matches that search.' : 'Your first paper can start here. Paste a PDF link above, drop in a file, or connect a private GitHub repo.') + '</div>'; return; }
-    list.forEach(function(ch, idx){
-      var highlights = Object.keys(ch.highlights||{}).reduce(function(n,k){return n+(ch.highlights[k]||[]).length;},0)+(ch.textHighlights||[]).length+(ch.readerHighlights||[]).length;
-      var notes = Object.keys(ch.notes||{}).length + Object.keys(ch.readerNotes||{}).length + Object.keys(ch.pageNotes||{}).filter(function(k){ return ch.pageNotes[k]; }).length + highlights;
-      var shell=document.createElement('div');shell.className='paper-card-shell';
-      var b = document.createElement('button'); b.className = 'paper-card'; b.style.setProperty('--card-accent', CARD_COLORS[idx % CARD_COLORS.length]);
-      b.innerHTML = '<span class="kind">' + esc(ch.kind === 'pdf' ? 'PDF paper' : 'text note') + '</span><h3>' + esc(ch.title || 'Untitled') + '</h3><div class="authors">' + esc(ch.authors || ch.sourceName || 'No authors yet') + '</div><div class="tag-row" style="margin-top:12px">' + (ch.tags||[]).slice(0,3).map(function(t){ return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div><div class="card-foot"><span>' + notes + ' note' + (notes===1?'':'s') + ' · ' + (ch.questions||[]).length + ' Q&amp;A</span><span class="progress">' + (ch.kind==='pdf' ? 'p. ' + (ch.readPage||1) : paras(ch.fr).length + ' ¶') + '</span></div>';
-      b.onclick = function(){ openReader(ch.id); };
-      var remove=document.createElement('button');remove.className='card-delete';remove.type='button';remove.textContent='Remove';remove.setAttribute('aria-label','Remove '+(ch.title||'Untitled')+' from library');remove.onclick=function(e){e.stopPropagation();removePaper(ch,false);};
-      shell.appendChild(b);shell.appendChild(remove);shelf.appendChild(shell);
+    document.body.classList.toggle('has-papers',state.chapters.length>0);
+    var q=byId('librarySearch').value.trim().toLowerCase();
+    var list=state.chapters.filter(function(ch){return !q||paperHaystack(ch).includes(q);}).sort(function(a,b){return (b.updatedAt||0)-(a.updatedAt||0);});
+    byId('libraryCount').textContent=(q?list.length+' of ':'')+state.chapters.length+(state.chapters.length===1?' paper':' papers');renderDuplicateNotice();
+    var shelf=byId('shelf');shelf.innerHTML='';
+    if(!list.length){shelf.innerHTML='<div class="shelf-empty"><div><b>'+(state.chapters.length?'No paper found':'Your shelf is waiting')+'</b>'+(state.chapters.length?'Try another title, author, or tag.':'Paste a PDF link, drop in a file, or connect a private GitHub folder to place the first book.')+'</div></div>';return;}
+    if(!librarySelectionId||!list.some(function(ch){return ch.id===librarySelectionId;}))librarySelectionId=list[0].id;
+    var selected=list.find(function(ch){return ch.id===librarySelectionId;})||list[0],selectedIndex=list.indexOf(selected),stats=shelfPaperStats(selected);
+    var caseEl=document.createElement('section');caseEl.className='bookcase';caseEl.setAttribute('aria-label','Paper stack');caseEl.innerHTML='<div class="pile-head"><strong>Reading pile</strong><span>choose a spine</span></div>';
+    var pile=document.createElement('div');pile.className='book-pile';pile.setAttribute('role','list');
+    list.forEach(function(ch,idx){
+      var book=document.createElement('button'),isSelected=ch.id===selected.id,spine=BOOK_SPINES[idx%BOOK_SPINES.length];
+      book.type='button';book.className='book-spine'+(isSelected?' is-selected':'');book.dataset.shelfPaper=ch.id;book.setAttribute('aria-pressed',isSelected?'true':'false');book.setAttribute('aria-label',(isSelected?'Open paper: ':'Preview paper: ')+(ch.title||'Untitled'));
+      book.title=(ch.title||'Untitled')+' — '+(ch.authors||ch.sourceName||'Phloem');book.style.setProperty('--book-accent',spine.cover);book.style.setProperty('--book-ink',spine.ink);book.style.setProperty('--book-height',(47+(idx*7)%14)+'px');book.style.setProperty('--book-width',(82+(idx*13)%18)+'%');book.style.setProperty('--book-offset',((idx*11)%23)+'px');book.style.setProperty('--book-tilt',(((idx%7)-3)*.46)+'deg');
+      book.innerHTML='<span class="book-title">'+esc(ch.title||'Untitled')+'</span><span class="book-author">'+esc(shelfSpineCredit(ch))+'</span><span class="book-mark" aria-hidden="true">✦</span>';
+      book.onclick=function(e){if(ch.id===librarySelectionId){openReader(ch.id);return;}var oldTop=pile.scrollTop,oldLeft=pile.scrollLeft,fromKeyboard=e.detail===0;librarySelectionId=ch.id;renderShelf();var nextPile=byId('shelf').querySelector('.book-pile');if(nextPile){nextPile.scrollTop=oldTop;nextPile.scrollLeft=oldLeft;}if(fromKeyboard)setTimeout(function(){focusShelfBook(ch.id);},0);};pile.appendChild(book);
     });
+    caseEl.appendChild(pile);shelf.appendChild(caseEl);shelf.insertAdjacentHTML('beforeend',shelfThread(selectedIndex,list.length));shelf.appendChild(renderOpenPaper(selected,stats));
   }
   byId('librarySearch').oninput = renderShelf;
   byId('cleanDuplicatesBtn').onclick=async function(){
@@ -1422,9 +1574,9 @@
     var groups=duplicateGroups(state.chapters,false),extras=groups.reduce(function(n,group){return n+group.length-1;},0);
     if(!groups.length){duplicateNoticeMessage='No matching PDF copies remain.';renderDuplicateNotice();return;}
     var names=groups.slice(0,6).map(function(group){var paper=canonicalPaper(group);return '• '+(paper.title||paper.sourceName||'Untitled')+' ('+group.length+' copies)';}).join('\n');
-    var question='Merge '+groups.length+' duplicate '+(groups.length===1?'group':'groups')+' and retire '+extras+' extra '+(extras===1?'card':'cards')+'?\n\n'+names+(groups.length>6?'\n• and '+(groups.length-6)+' more':'')+'\n\nPhloem keeps every note, highlight, tag and saved Q&A. The oldest copy becomes the shared paper ID, and the cleanup follows your normal sync.';
+    var question='Merge '+groups.length+' duplicate '+(groups.length===1?'group':'groups')+' and retire '+extras+' extra '+(extras===1?'copy':'copies')+'?\n\n'+names+(groups.length>6?'\n• and '+(groups.length-6)+' more':'')+'\n\nPhloem keeps every note, highlight, tag and saved Q&A. The oldest copy becomes the shared paper ID, and the cleanup follows your normal sync.';
     if(!confirm(question)){button.disabled=false;button.textContent=old;return;}
-    button.textContent='Merging safely…';collapseDuplicateGroups(groups);await repairDuplicateStorage();persist();updateReviewBadge();duplicateNoticeMessage='Merged '+extras+' extra '+(extras===1?'card':'cards')+' without discarding annotations. The cleanup will reach your other devices on their next sync.';clearTimeout(duplicateNoticeTimer);duplicateNoticeTimer=setTimeout(function(){duplicateNoticeMessage='';renderDuplicateNotice();},9000);renderShelf();
+    button.textContent='Merging safely…';collapseDuplicateGroups(groups);await repairDuplicateStorage();persist();updateReviewBadge();duplicateNoticeMessage='Merged '+extras+' extra '+(extras===1?'copy':'copies')+' without discarding annotations. The cleanup will reach your other devices on their next sync.';clearTimeout(duplicateNoticeTimer);duplicateNoticeTimer=setTimeout(function(){duplicateNoticeMessage='';renderDuplicateNotice();},9000);renderShelf();
   };
 
   /* Review: everything you marked comes back for a self-test on a spacing schedule.

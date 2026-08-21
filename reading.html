@@ -31,7 +31,7 @@
       --paper: #f3f0e8; --surface: #fbfaf6; --surface-2: #ebe7dc; --ink: #20272d;
       --muted: #70777a; --line: #d8d4ca; --accent: #e85d3f; --accent-dark: #b83c25;
       --blue: #295b71; --yellow: #f1d989; --shadow: 0 18px 50px rgba(45, 48, 43, .09);
-      --note-ink: #17343b;
+      --note-ink: #234f91;
       --accent-soft: color-mix(in srgb, var(--accent) 15%, var(--surface));
       --sans: "DM Sans", system-ui, sans-serif; --serif: Charter, "Bitstream Charter", "Iowan Old Style", Georgia, "Noto Serif", "Liberation Serif", serif;
       --hand: "Houfu Hand", "Bradley Hand", "Segoe Print", cursive;
@@ -196,15 +196,15 @@
     html[data-theme="dark"] .note-rail svg { opacity: .67; }
     html[data-theme="dark"] .rail-vine { stroke: #819b82; }
     html[data-theme="dark"] .rail-leaves { fill: #8da38a; }
-    .book-pile { flex: 1 1 auto; min-height: 238px; display: flex; flex-direction: row; justify-content: flex-start; align-items: flex-start; gap: 12px; overflow-x: auto; overflow-y: hidden; padding: 31px 10px 23px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent; }
+    .book-pile { flex: 1 1 auto; min-height: 262px; display: flex; flex-direction: row; justify-content: flex-start; align-items: flex-start; gap: 14px; overflow-x: auto; overflow-y: hidden; padding: 31px 10px 23px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent; }
     .book-spine {
       --book-open-font: 1.02rem; --book-tilt: 0deg;
-      position: relative; z-index: 2; display: block; flex: 0 0 224px; width: 224px; height: var(--note-height, 178px); min-width: 0; margin: var(--note-drop, 0px) 0 0;
-      padding: 19px 19px 34px; border: 1px solid color-mix(in srgb, var(--book-ink) 16%, transparent); border-radius: 2px 3px 7px 4px;
+      position: relative; z-index: 2; display: block; flex: 0 0 248px; width: 248px; height: var(--note-height, 196px); min-width: 0; margin: var(--note-drop, 0px) 0 0;
+      padding: 20px 20px 38px; border: 1px solid color-mix(in srgb, var(--book-ink) 13%, transparent); border-radius: 2px 3px 7px 4px;
       background:
         radial-gradient(circle at 18% 12%, rgba(255,255,255,.2), transparent 34%),
         repeating-linear-gradient(0deg, rgba(255,255,255,.045) 0 1px, transparent 1px 5px),
-        var(--book-accent);
+        color-mix(in srgb, var(--book-accent) 60%, #fffbed);
       color: var(--book-ink); text-align: left;
       box-shadow: 3px 3px 0 color-mix(in srgb, var(--book-accent) 76%, #d7a99a), 6px 7px 13px rgba(42,38,30,.13), inset 0 1px rgba(255,255,255,.32);
       transform: rotate(calc(var(--book-tilt) * .72)); transform-origin: 50% 0;
@@ -215,13 +215,13 @@
     .book-spine::after { content: ""; position: absolute; z-index: 3; top: -9px; left: 50%; width: 38px; height: 15px; border: 1px solid rgba(115,103,73,.12); border-radius: 1px; background: linear-gradient(90deg, rgba(238,226,181,.5), rgba(255,247,213,.72) 48%, rgba(231,217,169,.5)); box-shadow: 0 2px 3px rgba(60,54,39,.1); transform: translateX(-50%) rotate(var(--tape-tilt, -1deg)); opacity: .78; pointer-events: none; }
     .book-spine:hover { z-index: 3; filter: saturate(1.018); box-shadow: 3px 3px 0 color-mix(in srgb, var(--book-accent) 76%, #d7a99a), 7px 10px 17px rgba(42,38,30,.16), inset 0 1px rgba(255,255,255,.32); }
     .book-spine:focus-visible { z-index: 3; outline: 2px solid color-mix(in srgb, var(--accent) 72%, white); outline-offset: 3px; }
-    .book-spine.is-selected { height: var(--note-height, 178px); transform: rotate(0deg); z-index: 2; box-shadow: 3px 4px 0 color-mix(in srgb, var(--book-accent) 72%, #d7a99a), 0 0 0 2px color-mix(in srgb, var(--yellow) 72%, white), 8px 12px 20px rgba(42,38,30,.16), inset 0 1px rgba(255,255,255,.34); }
+    .book-spine.is-selected { height: var(--note-height, 196px); transform: rotate(0deg); z-index: 2; box-shadow: 3px 4px 0 color-mix(in srgb, var(--book-accent) 72%, #d7a99a), 0 0 0 2px color-mix(in srgb, var(--yellow) 72%, white), 8px 12px 20px rgba(42,38,30,.16), inset 0 1px rgba(255,255,255,.34); }
     .note-corner { position: absolute; z-index: 5; right: -1px; bottom: -1px; width: 48px; height: 48px; pointer-events: none; opacity: 0; transform: scale(.08) rotate(5deg); transform-origin: 100% 100%; clip-path: polygon(100% 0, 100% 100%, 0 100%); background: linear-gradient(135deg, rgba(26,43,43,.18) 0 4%, color-mix(in srgb, var(--book-accent) 26%, #fff9e8) 15% 100%); filter: drop-shadow(-4px -4px 4px rgba(38,39,31,.2)); transition: transform .26s cubic-bezier(.2,.74,.22,1), opacity .12s ease; }
     .book-spine:hover .note-corner { opacity: 1; transform: scale(1) rotate(0deg); }
-    .book-title { position: absolute; top: 17px; left: 19px; right: 19px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 7; overflow: hidden; white-space: normal; overflow-wrap: anywhere; color: var(--note-ink); font: 500 var(--note-font, 1.04rem)/1.16 var(--hand); letter-spacing: .008em; word-spacing: .13em; text-shadow: none; }
-    .book-spine.is-selected .book-title { top: 17px; left: 19px; right: 19px; -webkit-line-clamp: 7; font-size: var(--note-font, 1.04rem); line-height: 1.16; }
-    .book-author { position: absolute; left: 19px; right: 24px; bottom: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--note-ink); font: 500 .68rem/1 var(--hand); letter-spacing: .02em; word-spacing: .1em; text-transform: none; opacity: .78; }
-    .book-spine.is-selected .book-author { left: 19px; right: 24px; bottom: 12px; font-size: .68rem; }
+    .book-title { position: absolute; top: 18px; left: 20px; right: 20px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 7; overflow: hidden; white-space: normal; overflow-wrap: anywhere; color: var(--note-ink); font: 500 var(--note-font, 1.09rem)/1.19 var(--hand); letter-spacing: 0; word-spacing: .22em; text-shadow: none; }
+    .book-spine.is-selected .book-title { top: 18px; left: 20px; right: 20px; -webkit-line-clamp: 7; font-size: var(--note-font, 1.09rem); line-height: 1.19; }
+    .book-author { position: absolute; left: 20px; right: 25px; bottom: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--note-ink); font: 500 .76rem/1 var(--hand); letter-spacing: 0; word-spacing: .18em; text-transform: none; opacity: .86; }
+    .book-spine.is-selected .book-author { left: 20px; right: 25px; bottom: 13px; font-size: .76rem; }
     .book-mark { display: none; }
 
     .reading-thread-bridge { position: relative; min-width: 0; min-height: var(--shelf-height); display: grid; place-items: center; pointer-events: none; }
@@ -1731,8 +1731,8 @@
     list.forEach(function(ch,idx){
       var book=document.createElement('button'),isSelected=ch.id===selected.id,visualHash=paperVisualHash(ch),spine=BOOK_SPINES[visualHash%BOOK_SPINES.length];
       book.type='button';book.className='book-spine'+(isSelected?' is-selected':'');book.dataset.shelfPaper=ch.id;book.setAttribute('aria-pressed',isSelected?'true':'false');book.setAttribute('aria-label',(isSelected?'Open paper: ':'Preview paper: ')+(ch.title||'Untitled'));
-      var spineTitle=String(ch.title||'Untitled'),spineLength=spineTitle.length,spineLines=spineLength>118?9:(spineLength>84?8:(spineLength>52?7:(spineLength>30?4:3))),openHeight=60+spineLines*24,openFont=spineLength>118?'1.26rem':(spineLength>84?'1.28rem':(spineLength>52?'1.32rem':(spineLength>30?'1.38rem':'1.48rem'))),noteFont=spineLength>112?'.91rem':(spineLength>82?'.95rem':(spineLength>54?'.99rem':'1.06rem'));
-      book.title=spineTitle+' — '+(ch.authors||ch.sourceName||'Phloem');book.style.setProperty('--book-accent',spine.cover);book.style.setProperty('--book-ink',spine.ink);book.style.setProperty('--book-height',(47+visualHash%14)+'px');book.style.setProperty('--book-open-height',openHeight+'px');book.style.setProperty('--book-lines',spineLines);book.style.setProperty('--book-open-font',openFont);book.style.setProperty('--note-font',noteFont);book.style.setProperty('--book-width',(82+((visualHash>>>4)%18))+'%');book.style.setProperty('--book-offset',((visualHash>>>9)%23)+'px');book.style.setProperty('--book-tilt',((((visualHash>>>14)%7)-3)*.46)+'deg');book.style.setProperty('--note-drop',((visualHash>>>19)%9)+'px');book.style.setProperty('--note-height',(164+((visualHash>>>23)%25))+'px');book.style.setProperty('--tape-tilt',((((visualHash>>>27)%11)-5)*.55)+'deg');
+      var spineTitle=String(ch.title||'Untitled'),spineLength=spineTitle.length,spineLines=spineLength>118?9:(spineLength>84?8:(spineLength>52?7:(spineLength>30?4:3))),openHeight=60+spineLines*24,openFont=spineLength>118?'1.26rem':(spineLength>84?'1.28rem':(spineLength>52?'1.32rem':(spineLength>30?'1.38rem':'1.48rem'))),noteFont=spineLength>112?'.97rem':(spineLength>82?'1.01rem':(spineLength>54?'1.06rem':'1.14rem'));
+      book.title=spineTitle+' — '+(ch.authors||ch.sourceName||'Phloem');book.style.setProperty('--book-accent',spine.cover);book.style.setProperty('--book-ink',spine.ink);book.style.setProperty('--book-height',(47+visualHash%14)+'px');book.style.setProperty('--book-open-height',openHeight+'px');book.style.setProperty('--book-lines',spineLines);book.style.setProperty('--book-open-font',openFont);book.style.setProperty('--note-font',noteFont);book.style.setProperty('--book-width',(82+((visualHash>>>4)%18))+'%');book.style.setProperty('--book-offset',((visualHash>>>9)%23)+'px');book.style.setProperty('--book-tilt',((((visualHash>>>14)%7)-3)*.46)+'deg');book.style.setProperty('--note-drop',((visualHash>>>19)%9)+'px');book.style.setProperty('--note-height',(184+((visualHash>>>23)%25))+'px');book.style.setProperty('--tape-tilt',((((visualHash>>>27)%11)-5)*.55)+'deg');
       book.innerHTML='<span class="book-title">'+esc(spineTitle)+'</span><span class="book-author">'+esc(shelfSpineCredit(ch))+'</span><span class="note-corner" aria-hidden="true"></span>';
       book.onclick=function(e){if(ch.id===librarySelectionId){openReader(ch.id);return;}var oldTop=pile.scrollTop,oldLeft=pile.scrollLeft,fromKeyboard=e.detail===0;librarySelectionId=ch.id;renderShelf();var nextPile=byId('shelf').querySelector('.book-pile');if(nextPile){nextPile.scrollTop=oldTop;nextPile.scrollLeft=oldLeft;}if(fromKeyboard)setTimeout(function(){focusShelfBook(ch.id);},0);};pile.appendChild(book);
     });

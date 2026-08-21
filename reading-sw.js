@@ -1,8 +1,8 @@
-/* Carrel offline shell: caches only the reader app and the libraries it needs, so papers
+/* Phloem offline shell: caches only the reader app and the libraries it needs, so papers
    already stored on this device open with no network (subway mode). Every other path on
    the site is left completely untouched. Served stale-while-revalidate: instant loads
    from cache, refreshed in the background for the next visit. */
-var CACHE = 'carrel-shell-v3';
+var CACHE = 'phloem-shell-v1';
 /* The app itself is network-first: online opens always get the newest deploy, the cache
    only answers when the network can't. Libraries and fonts stay stale-while-revalidate. */
 var NETWORK_FIRST = ['/reading.html', '/carrel.webmanifest'];
@@ -14,10 +14,10 @@ var SHELL = [
   '/vendor/pdfjs/pdf.worker.min.js',
   '/fonts/dm-sans-var-latin.woff2',
   '/fonts/houfu-hand.woff2',
-  '/favicon_io/carrel-favicon.ico',
-  '/favicon_io/carrel-apple-touch-icon.png',
-  '/favicon_io/carrel-icon-192.png',
-  '/favicon_io/carrel-icon-512.png'
+  '/favicon_io/phloem-favicon.ico',
+  '/favicon_io/phloem-apple-touch-icon.png',
+  '/favicon_io/phloem-icon-192.png',
+  '/favicon_io/phloem-icon-512.png'
 ];
 
 self.addEventListener('install', function (e) {
@@ -29,7 +29,7 @@ self.addEventListener('install', function (e) {
 self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
-      return Promise.all(keys.filter(function (k) { return k !== CACHE && (k.indexOf('margin-shell-') === 0 || k.indexOf('carrel-shell-') === 0); }).map(function (k) { return caches.delete(k); }));
+      return Promise.all(keys.filter(function (k) { return k !== CACHE && (k.indexOf('margin-shell-') === 0 || k.indexOf('carrel-shell-') === 0 || k.indexOf('phloem-shell-') === 0); }).map(function (k) { return caches.delete(k); }));
     }).then(function () { return self.clients.claim(); })
   );
 });

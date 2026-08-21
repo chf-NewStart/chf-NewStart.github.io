@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the original chill-piano bed used by the Carrel promo video."""
+"""Render the original chill-piano bed used by the Phloem promo video."""
 
 from __future__ import annotations
 

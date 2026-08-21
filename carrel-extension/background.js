@@ -1,20 +1,20 @@
-/* Read in Carrel — background worker.
+/* Read in Phloem — background worker.
    Fetches the PDF the user asked for (with their cookies, so campus/institution
-   access carries over), parks the bytes in extension storage, and opens Carrel;
-   the content script on the Carrel tab hands the bytes to the page. Nothing is
+   access carries over), parks the bytes in extension storage, and opens Phloem;
+   the content script on the Phloem tab hands the bytes to the page. Nothing is
    ever sent anywhere except from the PDF's own server to the user's browser. */
 'use strict';
 
-var CARREL = 'https://houfu72.com/reading.html';
+var PHLOEM = 'https://houfu72.com/reading.html';
 var MAX_BYTES = 80 * 1024 * 1024;
 
 chrome.runtime.onInstalled.addListener(function () {
-  chrome.contextMenus.create({ id: 'carrel-link', title: 'Read link in Carrel', contexts: ['link'] });
-  chrome.contextMenus.create({ id: 'carrel-page', title: 'Read this page’s PDF in Carrel', contexts: ['page'] });
+  chrome.contextMenus.create({ id: 'phloem-link', title: 'Read link in Phloem', contexts: ['link'] });
+  chrome.contextMenus.create({ id: 'phloem-page', title: 'Read this page’s PDF in Phloem', contexts: ['page'] });
 });
 
 chrome.contextMenus.onClicked.addListener(function (info, tab) {
-  var url = info.menuItemId === 'carrel-link' ? info.linkUrl : (info.pageUrl || (tab && tab.url));
+  var url = info.menuItemId === 'phloem-link' ? info.linkUrl : (info.pageUrl || (tab && tab.url));
   if (url) importFromUrl(url);
 });
 
@@ -62,14 +62,14 @@ async function importFromUrl(url) {
       chunks.push(btoa(bin));
     }
     await chrome.storage.local.set({
-      carrelPending: { name: pdfName(real, res.headers.get('content-disposition')), sourceUrl: real, at: Date.now(), b64: chunks }
+      phloemPending: { name: pdfName(real, res.headers.get('content-disposition')), sourceUrl: real, at: Date.now(), b64: chunks }
     });
-    var tabs = await chrome.tabs.query({ url: CARREL + '*' });
+    var tabs = await chrome.tabs.query({ url: PHLOEM + '*' });
     if (tabs.length) {
       chrome.tabs.update(tabs[0].id, { active: true });
       chrome.windows.update(tabs[0].windowId, { focused: true });
     } else {
-      chrome.tabs.create({ url: CARREL });
+      chrome.tabs.create({ url: PHLOEM });
     }
     chrome.action.setBadgeText({ text: '' });
   } catch (e) {

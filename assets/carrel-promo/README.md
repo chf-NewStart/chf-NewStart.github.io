@@ -1,4 +1,4 @@
-# Carrel promotional assets
+# Phloem promotional assets
 
 Made from the installed-app screen recording captured on 2026-08-14.
 

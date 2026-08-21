@@ -1,6 +1,6 @@
 {
-  "name": "Carrel",
-  "short_name": "Carrel",
+  "name": "Phloem",
+  "short_name": "Phloem",
   "description": "Breathe, Focus, Read — a calm desk that makes academic papers easier to focus on: reading guides, notes beside the page, and spaced review that keeps what you read.",
   "start_url": "/reading.html",
   "scope": "/",
@@ -10,19 +10,19 @@
   "theme_color": "#f3f0e8",
   "icons": [
     {
-      "src": "/favicon_io/carrel-icon-192.png",
+      "src": "/favicon_io/phloem-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/favicon_io/carrel-icon-512.png",
+      "src": "/favicon_io/phloem-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/favicon_io/carrel-icon-512.png",
+      "src": "/favicon_io/phloem-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

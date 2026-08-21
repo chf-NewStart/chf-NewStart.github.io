@@ -72,8 +72,9 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `journal.html` — one page per day. Optional sync pushes an **AES-GCM encrypted
   blob** to a private GitHub repo the visitor owns (fine-grained token; the repo
   only ever sees ciphertext).
-- `reading.html` — **Carrel** ("Breathe, Focus, Read"), a local-first paper desk
-  (named for a library study carrel) for slow, focused reading.
+- `reading.html` — **Phloem** ("Breathe, Focus, Read"), a local-first paper desk
+  for slow, focused reading — named for the plant tissue that carries sugars
+  from the leaves to the fruit, which is also what a reading desk is for.
   Single hand-written file, no framework; PDFs render with vendored pdf.js in one
   continuous scroll (lazy rendering, canvas memory capped, far pages freed so a
   675-page textbook stays light on a phone).
@@ -122,12 +123,12 @@ Each page is self-contained and keeps its data in the visitor's own browser
 
   **Storage & sync.** Papers and their extracted text live in IndexedDB on each
   device; a small service worker (`reading-sw.js`) caches the reader shell so
-  already-imported papers open fully offline. Carrel is an installable PWA
+  already-imported papers open fully offline. Phloem is an installable PWA
   (`carrel.webmanifest`, its own icon): browsers that fire an install prompt get
   a ⭳ button in the masthead and in settings, iOS gets Add-to-Home-Screen
   instructions, and the installed window opens portfolio links in a real
   browser tab. One-tap Google Drive sync stores the library file in the
-  account's hidden per-app folder (`drive.appdata` — Carrel can see only its
+  account's hidden per-app folder (`drive.appdata` — Phloem can see only its
   own file, never the user's real Drive), and PDFs up to 30 MB ride along so
   a paper added on one device opens on the others. Power users keep the optional
   AES-GCM encrypted sync to
@@ -169,7 +170,7 @@ and `data-zh="` in `index.html`, and the EN → 中文 → EN round-trip above.
 ## License
 
 The code in this repository is released under the [MIT License](LICENSE) — take
-Carrel or any of the tools apart, reuse them, learn from them. Personal content
+Phloem or any of the tools apart, reuse them, learn from them. Personal content
 is **not** covered by that license and remains all rights reserved: photos and
 images (`emo/`, `food/`, `matrix/`, `money/`, `monet/`, `robo1/`, `swim/`, the
 sprite and card art), resume files (`resumes/`), and the handwriting font

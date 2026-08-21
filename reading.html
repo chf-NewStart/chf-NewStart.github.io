@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <title>Carrel — Breathe, Focus, Read</title>
+  <title>Phloem — Breathe, Focus, Read</title>
   <meta name="description" content="Breathe, Focus, Read — a calm desk that makes academic papers easier to focus on: reading guides for wandering eyes, notes beside the page, and spaced review that keeps what you read.">
-  <meta property="og:title" content="Carrel — Breathe, Focus, Read">
+  <meta property="og:title" content="Phloem — Breathe, Focus, Read">
   <meta property="og:description" content="A calm, free reading desk that makes academic papers easier to focus on: reading guides, notes beside the page, and spaced review that keeps what you read.">
   <meta property="og:image" content="https://houfu72.com/assets/carrel-promo/carrel-app-overview.jpg">
   <meta property="og:image:width" content="1600">
@@ -14,13 +14,13 @@
   <meta property="og:url" content="https://houfu72.com/reading.html">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/carrel-apple-touch-icon.png">
-  <link rel="icon" href="/favicon_io/carrel-favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/phloem-apple-touch-icon.png">
+  <link rel="icon" href="/favicon_io/phloem-favicon.ico" sizes="any">
   <link rel="manifest" href="/carrel.webmanifest">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Carrel">
+  <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
   <style>
@@ -590,7 +590,7 @@
 </head>
 <body>
   <header class="masthead">
-    <button class="brand" id="brandBtn" aria-label="Open library"><strong>Carrel</strong><span>Breathe · Focus · Read</span></button>
+    <button class="brand" id="brandBtn" aria-label="Open library"><strong>Phloem</strong><span>Breathe · Focus · Read</span></button>
     <nav class="nav" aria-label="Main navigation">
       <button class="nav-btn active" data-view="libraryPage">Library</button>
       <button class="nav-btn" data-view="reviewPage">Review</button>
@@ -601,7 +601,7 @@
       <button class="cloud" id="syncSignal" type="button" title="Sync now">this device</button>
       <button class="icon-btn" id="themeBtn" aria-label="Switch to night reading">☾</button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
-      <button class="icon-btn" id="refreshBtn" aria-label="Reload Carrel to get the newest version" title="Get the newest version">↻</button>
+      <button class="icon-btn" id="refreshBtn" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
     </div>
   </header>
 
@@ -613,7 +613,7 @@
           <h1>Papers, without the <em>fight.</em></h1>
           <p>A guide for wandering eyes, a spotlight for busy pages, notes beside the paragraph, and spaced review that keeps what you understood. Calm by design — and your library quietly stays your own.</p>
         </div>
-        <div class="hero-card" aria-label="How Carrel works">
+        <div class="hero-card" aria-label="How Phloem works">
           <div class="step"><b>01</b><span>Paste a PDF link, drop a file, or pick one from a private GitHub folder.</span></div>
           <div class="step"><b>02</b><span>Page notes, highlights, and AI questions stay attached to the paper.</span></div>
           <div class="step"><b>03</b><span>Shared tags reveal a small network instead of another filing cabinet.</span></div>
@@ -623,7 +623,7 @@
       <figure class="demo">
         <video controls playsinline preload="none" width="1280" height="800"
                poster="/assets/carrel-promo/carrel-app-demo-poster.jpg"
-               aria-label="Ninety-second Carrel demo, no narration">
+               aria-label="Ninety-second Phloem demo, no narration">
           <source src="/assets/carrel-promo/carrel-app-demo.mp4" type="video/mp4">
           <a href="/assets/carrel-promo/carrel-app-demo.mp4">Download the demo</a> — your browser cannot play it here.
         </video>
@@ -631,7 +631,7 @@
       </figure>
 
       <div class="link-import" id="pdfLinkDrop">
-        <div class="link-copy"><b>Drop PDFs, a whole folder, or a link</b><span>Carrel keeps local copies. Subfolders welcome.</span></div>
+        <div class="link-copy"><b>Drop PDFs, a whole folder, or a link</b><span>Phloem keeps local copies. Subfolders welcome.</span></div>
         <input class="field" id="pdfUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/paper.pdf" aria-label="Direct PDF link">
         <button class="button" id="pdfUrlBtn" type="button">Add link</button>
         <div class="link-status" id="pdfUrlStatus" role="status" aria-live="polite"></div>
@@ -652,8 +652,8 @@
         <input class="search" id="librarySearch" type="search" placeholder="Search titles, authors, tags…" aria-label="Search library">
       </div>
       <div class="shelf" id="shelf"></div>
-      <p class="support-line hidden" id="supportLine">Carrel is free, and built to make papers easier to focus on. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">a coffee is always appreciated ☕</a></p>
-      <p class="support-line">Carrel is part of <a id="homeLink" href="/">houfu72.com ↗</a></p>
+      <p class="support-line hidden" id="supportLine">Phloem is free, and built to make papers easier to focus on. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">a coffee is always appreciated ☕</a></p>
+      <p class="support-line">Phloem is part of <a id="homeLink" href="/">houfu72.com ↗</a></p>
     </section>
 
     <section id="connectionsPage" class="page hidden">
@@ -895,14 +895,14 @@
       </section>
       <section>
         <h3>DeepSeek assistant</h3>
-        <p>Carrel sends extracted screenshot or page text—not the image—to DeepSeek. Technical-term lookup sends the selected phrase and a short nearby excerpt. The API key stays in local storage on this device and is never included in sync.</p>
+        <p>Phloem sends extracted screenshot or page text—not the image—to DeepSeek. Technical-term lookup sends the selected phrase and a short nearby excerpt. The API key stays in local storage on this device and is never included in sync.</p>
         <div class="form-grid"><input class="field" id="aiKey" type="password" placeholder="DeepSeek API key" autocomplete="off"><div><button class="soft-button" id="aiKeySave">Save key</button></div></div>
         <div class="status" id="aiKeyStatus"></div>
       </section>
       <section>
         <h3>Install as an app</h3>
-        <p id="installHint">Carrel works offline once installed — papers already on this device open with no network.</p>
-        <button class="soft-button hidden" id="installBtn2"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg> Install Carrel</button>
+        <p id="installHint">Phloem works offline once installed — papers already on this device open with no network.</p>
+        <button class="soft-button hidden" id="installBtn2"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M4.5 6.5 8 10l3.5-3.5"/><path d="M3 13.5h10"/></svg> Install Phloem</button>
       </section>
       <section>
         <h3>Library backup</h3>
@@ -927,7 +927,7 @@
   </dialog>
 
   <dialog id="launchDialog">
-    <div class="dialog-head"><h2>Open Carrel as a local site</h2><button class="icon-btn" data-close="launchDialog">×</button></div>
+    <div class="dialog-head"><h2>Open Phloem as a local site</h2><button class="icon-btn" data-close="launchDialog">×</button></div>
     <div class="dialog-body">
       <div class="launch-note">You opened the HTML file directly. The library itself can appear this way, but browsers block the PDF reader and OCR workers on <code>file://</code> pages.</div>
       <p>Use the local web address below while developing, or the normal houfu72.com address after publishing. Your notes still stay in this browser.</p>
@@ -941,7 +941,7 @@
   </dialog>
 
   <dialog id="installDialog">
-    <div class="dialog-head"><h2>Install Carrel</h2><button class="icon-btn" data-close="installDialog">×</button></div>
+    <div class="dialog-head"><h2>Install Phloem</h2><button class="icon-btn" data-close="installDialog">×</button></div>
     <div class="dialog-body">
       <p id="installDialogHint"></p>
       <button class="button hidden" id="installDialogBtn">Install now</button>
@@ -1002,7 +1002,7 @@
     catch(e){
       if (!storageWarned) {
         storageWarned = true;
-        showError('Carrel could not save the newest change because this browser’s small note store is full. Remove a finished paper or turn on encrypted GitHub sync, then try that edit once more.','Carrel needs a little room');
+        showError('Phloem could not save the newest change because this browser’s small note store is full. Remove a finished paper or turn on encrypted GitHub sync, then try that edit once more.','Phloem needs a little room');
       }
     }
     if (schedule !== false) scheduleSync();
@@ -1442,7 +1442,7 @@
   async function loadPdfLib(){
     if(pdfLib)return pdfLib;preparePdfCompatibility();
     try{pdfLib=await import('/vendor/pdfjs/pdf.min.js');pdfLib.GlobalWorkerOptions.workerSrc='/vendor/pdfjs/pdf.worker.compat.js';return pdfLib;}
-    catch(e){throw new Error('The PDF engine could not start in this browser. Update iOS or open Carrel in Safari, then try again.');}
+    catch(e){throw new Error('The PDF engine could not start in this browser. Update iOS or open Phloem in Safari, then try again.');}
   }
   function contentLayout(content){
     var lines=[],line=null;
@@ -1827,12 +1827,14 @@
     return imported;
   }
 
-  /* PDFs pushed by the "Read in Carrel" browser extension: its content script relays
+  /* PDFs pushed by the "Read in Phloem" browser extension: its content script relays
      the fetched bytes with a window.postMessage. Only same-window senders qualify
      (a page that merely opened this tab can never fake that), and the payload must
      actually be a PDF. */
   window.addEventListener('message',function(e){
-    if(e.source!==window||!e.data||e.data.type!=='carrel-ext-import')return;
+    /* 'carrel-ext-import' is the wire name from before the Phloem rename: extensions
+       already installed keep sending it, so both spellings stay welcome forever. */
+    if(e.source!==window||!e.data||(e.data.type!=='carrel-ext-import'&&e.data.type!=='phloem-ext-import'))return;
     var bytes=e.data.bytes;
     if(!(bytes instanceof ArrayBuffer)||bytes.byteLength<1200)return;
     var head=new Uint8Array(bytes.slice(0,5)),magic='';for(var i=0;i<head.length;i++)magic+=String.fromCharCode(head[i]);
@@ -2544,7 +2546,7 @@
     pdfViews=[];pdfBuildKey='';
     var drive=gdriveOn()?'<button class="button" id="missingDrive">Get it from your Google Drive</button> ':'';
     var action=drive+(ch.sourceUrl?'<button class="'+(drive?'soft-button':'button')+'" id="missingSource">Download original link</button>':'<button class="'+(drive?'soft-button':'button')+'" id="missingPick">Pick from GitHub</button>');
-    var help=ch.sourceUrl?'Carrel can download another local copy from its original link.':'Pick <b>'+esc(ch.sourceName||'the same PDF')+'</b> from GitHub or import it again to restore the page view here.';
+    var help=ch.sourceUrl?'Phloem can download another local copy from its original link.':'Pick <b>'+esc(ch.sourceName||'the same PDF')+'</b> from GitHub or import it again to restore the page view here.';
     byId('pdfFrame').innerHTML='<div class="missing-file"><h2>The PDF is not on this device yet.</h2><p>Your notes and extracted text synced safely. '+help+'</p>'+action+' <button class="soft-button" id="missingText">Read extracted text</button></div>';
     var fromDrive=byId('missingDrive');
     if(fromDrive)fromDrive.onclick=async function(){
@@ -3018,7 +3020,7 @@
   byId('savePaperDetails').onclick=function(){var ch=find(currentId);if(!ch)return;ch.title=byId('paperTitleEdit').value.trim()||'Untitled';ch.authors=byId('paperAuthorsEdit').value.trim();ch.tags=byId('paperTagsEdit').value.split(',').map(function(t){return t.trim();}).filter(Boolean).filter(function(t,i,a){return a.indexOf(t)===i;});touch(ch);byId('readerTitle').textContent=ch.title;byId('readerMeta').textContent=ch.authors||ch.sourceName||'';byId('paperTags').value=ch.tags.join(', ');byId('paperDialog').close();if(readerMode==='text')renderText(ch);};
   async function removePaper(ch,leaveReader){
     if(!ch)return false;var githubCopy=ch.sourcePath?' The PDF in your GitHub papers/ folder will stay there.':'';
-    if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Carrel? Its notes, highlights, Q&A, and local PDF will be removed.'+githubCopy))return false;
+    if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Phloem? Its notes, highlights, Q&A, and local PDF will be removed.'+githubCopy))return false;
     state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);deleteFigures(ch.id);gdriveDeletePdf(ch.id);persist();
     if(currentId===ch.id){currentId=null;pdfDoc=null;}renderShelf();if(leaveReader)showPage('libraryPage');return true;
   }
@@ -3406,12 +3408,14 @@
   }
 
   /* Google Drive sync — the no-setup path. The library file lives in the account's
-     hidden per-app folder (drive.appdata): Carrel can see only its own file, and the
+     hidden per-app folder (drive.appdata): Phloem can see only its own file, and the
      user's real Drive files are invisible to it. Connecting is a one-time act per
      device: the hour-long token is kept alongside the settings and renewed quietly
      inside real taps, so later opens sync on their own instead of asking to
      reconnect. */
   var GDRIVE_CLIENT_ID='615468645410-oh18cpvsq9c14e1ohu1c8pnld47q9jm7.apps.googleusercontent.com';
+  /* GDRIVE_FILE predates the Phloem rename. It must never change: it is the name of
+     every user's library file already sitting in Drive appdata. */
   var GDRIVE_KEY='readingRoom.gdrive.v1',GDRIVE_FILE='carrel-library.json';
   var gdriveCfg=null,gdriveToken=null,gdriveTokenAt=0,gdriveEmail='',gdriveTokenClient=null,gdriveSyncing=false;
   try{gdriveCfg=JSON.parse(localStorage.getItem(GDRIVE_KEY));}catch(e){}
@@ -3436,7 +3440,7 @@
       .catch(function(){});
   }
   /* Rule of the popup road: Google will only hand out a token during a real user
-     gesture. When a background sync finds the token stale, Carrel does not let a
+     gesture. When a background sync finds the token stale, Phloem does not let a
      doomed popup end in "needs attention" — it waits for the next tap and finishes
      the sync inside it. */
   function gestureLive(){return !!(navigator.userActivation&&navigator.userActivation.isActive);}
@@ -3475,7 +3479,7 @@
         gdriveTokenSettle=settle;
         if(!gdriveTokenClient)gdriveTokenClient=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.appdata',callback:function(){},error_callback:function(err){
           if(!(err&&err.type==='popup_closed'))gdriveArmGestureSync();
-          var fn=gdriveTokenSettle;if(fn)fn(null,new Error(err&&err.type==='popup_closed'?'Google sign-in was closed':'The sign-in popup was blocked — tap anywhere and Carrel finishes on its own.'));
+          var fn=gdriveTokenSettle;if(fn)fn(null,new Error(err&&err.type==='popup_closed'?'Google sign-in was closed':'The sign-in popup was blocked — tap anywhere and Phloem finishes on its own.'));
         }});
         gdriveTokenClient.callback=function(resp){
           var fn=gdriveTokenSettle;
@@ -3500,7 +3504,7 @@
   }
   async function gdriveListAll(token){
     var r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size)',{headers:{Authorization:'Bearer '+token}});
-    if(r.status===401){gdriveToken=null;gdriveSaveAuth();var stale=new Error('Google signed this device out — Carrel reconnects on your next tap.');stale.auth=true;throw stale;}
+    if(r.status===401){gdriveToken=null;gdriveSaveAuth();var stale=new Error('Google signed this device out — Phloem reconnects on your next tap.');stale.auth=true;throw stale;}
     if(!r.ok)throw new Error('Drive list failed ('+r.status+')');
     return ((await r.json()).files)||[];
   }
@@ -3518,7 +3522,7 @@
         var stored=await getPdf(ch.id);if(!stored)continue;
         var bytes=stored instanceof ArrayBuffer?stored:await pdfBytes(stored);
         if(bytes.byteLength>GDRIVE_PDF_LIMIT)continue;
-        var boundary='carrel'+now()+i;
+        var boundary='phloem'+now()+i;
         var head='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:'pdf-'+ch.id+'.pdf',parents:['appDataFolder']})+'\r\n--'+boundary+'\r\nContent-Type: application/pdf\r\n\r\n';
         try{
           var up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:new Blob([head,bytes,'\r\n--'+boundary+'--'])});
@@ -3579,14 +3583,14 @@
       if(fileId){
         up=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:payload});
       }else{
-        var boundary='carrel'+now();
+        var boundary='phloem'+now();
         var body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:GDRIVE_FILE,parents:['appDataFolder']})+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+payload+'\r\n--'+boundary+'--';
         up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:body});
       }
       if(!up.ok){var upErr=new Error('Drive upload failed ('+up.status+')');if(up.status===401)upErr.auth=true;throw upErr;}
       byId('gdriveStatus').textContent='Library synced — checking papers…';
       var roam=await gdriveRoamPdfs(token,files);
-      byId('gdriveStatus').textContent='Synced with your Google Drive.'+(roam.sent?' '+roam.sent+' paper'+(roam.sent===1?'':'s')+' uploaded.':'')+(roam.failed?' '+roam.failed+' upload'+(roam.failed===1?'':'s')+' failed — Carrel retries on the next sync.':'');
+      byId('gdriveStatus').textContent='Synced with your Google Drive.'+(roam.sent?' '+roam.sent+' paper'+(roam.sent===1?'':'s')+' uploaded.':'')+(roam.failed?' '+roam.failed+' upload'+(roam.failed===1?'':'s')+' failed — Phloem retries on the next sync.':'');
       syncUi('☁ Drive · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncSignal').title='';
     }catch(e){
       /* A token Google no longer honors is not the user's problem: drop it and take
@@ -3676,7 +3680,7 @@
             if(remote&&mergeState(remote)){persist(false);renderShelf();}
           }
         }
-        var syncChapters=await chaptersForSync(),payload=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{}}),body={message:'Carrel reading notes sync',content:btoa(payload)};if(sha)body.sha=sha;
+        var syncChapters=await chaptersForSync(),payload=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{}}),body={message:'Phloem reading notes sync',content:btoa(payload)};if(sha)body.sha=sha;
         var put=await fetch(ghUrl(SYNC_FILE),{method:'PUT',headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)});
         if(put.ok)break;
         if((put.status===409||put.status===422)&&attempt<2)continue;
@@ -3698,15 +3702,15 @@
     if(!syncCfg)return;
     var payload=Object.assign({},syncCfg),aiKey=localStorage.getItem(AI_KEY)||'';
     if(aiKey)payload.ai=aiKey;
-    var link=location.href.split('#')[0]+'#carrel-setup='+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    var link=location.href.split('#')[0]+'#phloem-setup='+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
     navigator.clipboard.writeText(link).then(function(){byId('syncStatus').textContent='Device link copied. AirDrop it to yourself; it contains your token, passphrase'+(aiKey?' and AI key':'')+'.';});
   };
   function importSetup(){
-    var m=location.hash.match(/^#(?:carrel|margin)-setup=(.+)$/);if(!m)return;
+    var m=location.hash.match(/^#(?:phloem|carrel|margin)-setup=(.+)$/);if(!m)return;
     history.replaceState(null,'',location.pathname+location.search);
     try{
       var cfg=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
-      if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Carrel to '+cfg.repo+'? Only continue if you made this link yourself.')){
+      if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Phloem to '+cfg.repo+'? Only continue if you made this link yourself.')){
         if(cfg.ai){try{localStorage.setItem(AI_KEY,cfg.ai);}catch(e){}}
         delete cfg.ai;syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));
         byId('syncSignal').title='';fillSettings();doSync();
@@ -3727,7 +3731,7 @@
   var lastSyncToast='';
   var githubPath='papers';
   byId('githubPickBtn').onclick=openGithubPicker;byId('githubRefresh').onclick=function(){listGithubPapers(githubPath);};
-  function openGithubPicker(){if(!syncCfg){fillSettings();byId('settingsDialog').showModal();byId('syncStatus').textContent='Connect GitHub first, then Carrel can show PDFs from papers/.';return;}byId('githubDialog').showModal();listGithubPapers(githubPath);}
+  function openGithubPicker(){if(!syncCfg){fillSettings();byId('settingsDialog').showModal();byId('syncStatus').textContent='Connect GitHub first, then Phloem can show PDFs from papers/.';return;}byId('githubDialog').showModal();listGithubPapers(githubPath);}
   function renderGithubCrumbs(){
     var crumbs=byId('githubCrumbs');crumbs.innerHTML='';
     githubPath.split('/').forEach(function(part,i,parts){
@@ -3759,7 +3763,7 @@
 
   /* keys, backup, restore */
   byId('aiKeySave').onclick=function(){var k=byId('aiKey').value.trim();if(k)localStorage.setItem(AI_KEY,k);else localStorage.removeItem(AI_KEY);byId('aiKeyStatus').textContent=k?'Saved on this device.':'Key removed.';};
-  byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='carrel-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
+  byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='phloem-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
 
   /* Installable app: capture the browser's install prompt where one exists, and explain
@@ -3773,10 +3777,10 @@
     byId('installHint').textContent=isStandalone()
       ?'Installed — you are reading in the app. Papers already on this device open offline.'
       :isIos()
-        ?'On iPhone or iPad: open Carrel in Safari, tap Share, then “Add to Home Screen”. It gets its own icon and works offline for papers already on this device.'
+        ?'On iPhone or iPad: open Phloem in Safari, tap Share, then “Add to Home Screen”. It gets its own icon and works offline for papers already on this device.'
         :canPrompt
-          ?'Carrel gets its own window and icon, and papers already on this device open with no network.'
-          :'If your browser offers “Install app” in its menu, Carrel installs like a normal app and works offline for papers already on this device.';
+          ?'Phloem gets its own window and icon, and papers already on this device open with no network.'
+          :'If your browser offers “Install app” in its menu, Phloem installs like a normal app and works offline for papers already on this device.';
   }
   function promptInstall(){
     if(!installPrompt)return;var p=installPrompt;installPrompt=null;
@@ -3791,14 +3795,14 @@
     if(installPrompt&&!isStandalone()){promptInstall();return;}
     var hint=byId('installDialogHint'),btn=byId('installDialogBtn');
     btn.classList.add('hidden');
-    if(isStandalone())hint.textContent='Carrel is already installed — you are reading in the app right now.';
-    else if(isIos())hint.textContent='On iPhone or iPad: open this page in Safari, tap Share, then “Add to Home Screen”. Carrel gets its own icon and works offline for papers already on this device.';
-    else hint.textContent='Your browser has not offered an install prompt on this visit. In Chrome or Edge, look for the small install icon at the right end of the address bar. Once installed, Carrel opens in its own window and works offline.';
+    if(isStandalone())hint.textContent='Phloem is already installed — you are reading in the app right now.';
+    else if(isIos())hint.textContent='On iPhone or iPad: open this page in Safari, tap Share, then “Add to Home Screen”. Phloem gets its own icon and works offline for papers already on this device.';
+    else hint.textContent='Your browser has not offered an install prompt on this visit. In Chrome or Edge, look for the small install icon at the right end of the address bar. Once installed, Phloem opens in its own window and works offline.';
     byId('installDialog').showModal();
   };
   byId('installDialogBtn').onclick=function(){byId('installDialog').close();promptInstall();};
   /* In the installed window, the portfolio link opens in a real browser tab. */
-  if(isStandalone()){byId('homeLink').target='_blank';document.title='Carrel';}
+  if(isStandalone()){byId('homeLink').target='_blank';document.title='Phloem';}
   refreshInstallUi();
   if(SUPPORT_URL){byId('supportLink').href=SUPPORT_URL;byId('supportLine').classList.remove('hidden');}
   /* Nothing is lost without an account: papers and notes live in this browser's own
@@ -3808,7 +3812,7 @@
     navigator.storage.persist().catch(function(){}).then(function(){
       if(navigator.storage.persisted)navigator.storage.persisted().then(function(granted){
         byId('storageNote').textContent=granted
-          ?'This browser has agreed to keep Carrel’s local data safe from automatic cleanup.'
+          ?'This browser has agreed to keep Phloem’s local data safe from automatic cleanup.'
           :'Storage here is best-effort — a browser cleanup could remove local data. Installing the app and keeping a backup (or sync) protects you.';
       },function(){});
     });
@@ -3826,7 +3830,7 @@
     });
     if(dirty)persist(false);
   })();
-  try{byId('buildStamp').textContent='This copy of Carrel was published '+document.lastModified+'.';}catch(e){}
+  try{byId('buildStamp').textContent='This copy of Phloem was published '+document.lastModified+'.';}catch(e){}
   toggleSheet(false);
   /* Loading Google's script ahead of time keeps the first tap's token renewal inside
      the tap's own permission window. */

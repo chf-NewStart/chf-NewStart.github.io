@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Read in Carrel",
-  "version": "1.0.0",
-  "description": "Send any PDF on the web straight to Carrel \u2014 the free, local-first paper reading desk. Breathe, Focus, Read.",
+  "name": "Read in Phloem",
+  "version": "1.1.0",
+  "description": "Send any PDF on the web straight to Phloem \u2014 the free, local-first paper reading desk. Breathe, Focus, Read.",
   "permissions": [
     "contextMenus",
     "storage",
@@ -27,7 +27,7 @@
     }
   ],
   "action": {
-    "default_title": "Read this PDF in Carrel"
+    "default_title": "Read this PDF in Phloem"
   },
   "icons": {
     "16": "icons/icon16.png",

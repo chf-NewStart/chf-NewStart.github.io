@@ -199,23 +199,19 @@
       color: var(--book-ink); text-align: left;
       box-shadow: 0 7px 15px rgba(42,38,30,.13), inset 0 1px rgba(255,255,255,.24);
       transform: translate(var(--note-x, 0), var(--note-y, 0)) rotate(calc(var(--book-tilt) * .72)); transform-origin: 50% 0;
-      transition: opacity .18s ease, filter .18s ease;
+      transition: transform .17s cubic-bezier(.2,.72,.25,1);
       scroll-snap-align: start;
     }
     .book-spine::before { content: none; }
     .book-spine::after { content: ""; position: absolute; z-index: 3; top: -9px; left: 50%; width: 38px; height: 15px; border: 1px solid rgba(115,103,73,.12); border-radius: 1px; background: linear-gradient(90deg, rgba(238,226,181,.5), rgba(255,247,213,.72) 48%, rgba(231,217,169,.5)); box-shadow: 0 2px 3px rgba(60,54,39,.1); transform: translateX(-50%) rotate(var(--tape-tilt, -1deg)); opacity: .78; pointer-events: none; }
-    .book-spine:hover { z-index: 6; }
-    .book-spine:focus-visible { z-index: 6; outline: 2px solid color-mix(in srgb, var(--accent) 72%, white); outline-offset: 3px; }
+    .book-spine:hover { z-index: 6; transform: translate(var(--note-x, 0), var(--note-y, 0)) rotate(0deg); }
+    .book-spine:focus-visible { z-index: 6; transform: translate(var(--note-x, 0), var(--note-y, 0)) rotate(0deg); outline: 2px solid color-mix(in srgb, var(--accent) 72%, white); outline-offset: 3px; }
     .book-spine.is-selected { height: var(--note-height, 196px); transform: translate(var(--note-x, 0), var(--note-y, 0)) rotate(0deg); z-index: 5; box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow) 72%, white), 0 9px 18px rgba(42,38,30,.16), inset 0 1px rgba(255,255,255,.26); }
     .book-title { position: absolute; top: 18px; left: 20px; right: 20px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 7; overflow: hidden; white-space: normal; overflow-wrap: anywhere; color: var(--note-ink); font: 500 var(--note-font, 1.09rem)/1.19 var(--hand); letter-spacing: 0; word-spacing: .22em; text-shadow: none; }
     .book-spine.is-selected .book-title { top: 18px; left: 20px; right: 20px; -webkit-line-clamp: 7; font-size: var(--note-font, 1.09rem); line-height: 1.19; }
     .book-author { position: absolute; left: 20px; right: 25px; bottom: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--note-ink); font: 500 .76rem/1 var(--hand); letter-spacing: 0; word-spacing: .18em; text-transform: none; opacity: .86; }
     .book-spine.is-selected .book-author { left: 20px; right: 25px; bottom: 13px; font-size: .76rem; }
     .book-mark { display: none; }
-    @media (hover: hover) and (pointer: fine) {
-      .book-pile:has(.book-spine:hover) .book-spine:not(:hover) { opacity: .26; filter: saturate(.38) contrast(.92); }
-    }
-    .book-pile:has(.book-spine:focus-visible) .book-spine:not(:focus-visible) { opacity: .26; filter: saturate(.38) contrast(.92); }
 
     .reading-thread-bridge { position: relative; min-width: 0; min-height: var(--shelf-height); display: grid; place-items: center; pointer-events: none; }
     .reading-thread-svg { display: block; width: 100%; height: 100%; overflow: visible; }

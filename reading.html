@@ -202,15 +202,14 @@
       position: relative; z-index: 2; display: block; flex: 0 0 248px; width: 248px; height: var(--note-height, 196px); min-width: 0; margin: var(--note-drop, 0px) 0 0;
       padding: 20px 20px 38px; border: 1px solid color-mix(in srgb, var(--book-ink) 13%, transparent); border-radius: 2px 3px 7px 4px;
       background:
-        radial-gradient(circle at 18% 12%, rgba(255,255,255,.2), transparent 34%),
-        repeating-linear-gradient(0deg, rgba(255,255,255,.045) 0 1px, transparent 1px 5px),
+        linear-gradient(165deg, rgba(255,255,255,.14), transparent 58%),
         color-mix(in srgb, var(--book-accent) 60%, #fffbed);
       color: var(--book-ink); text-align: left;
       box-shadow: 3px 3px 0 color-mix(in srgb, var(--book-accent) 76%, #d7a99a), 6px 7px 13px rgba(42,38,30,.13), inset 0 1px rgba(255,255,255,.32);
       transform: rotate(calc(var(--book-tilt) * .72)); transform-origin: 50% 0;
       scroll-snap-align: start;
     }
-    .book-spine::before { content: ""; position: absolute; inset: 5px; border-top: 1px solid rgba(255,255,255,.3); border-left: 1px solid rgba(255,255,255,.18); pointer-events: none; opacity: .72; }
+    .book-spine::before { content: none; }
     .book-spine::after { content: ""; position: absolute; z-index: 3; top: -9px; left: 50%; width: 38px; height: 15px; border: 1px solid rgba(115,103,73,.12); border-radius: 1px; background: linear-gradient(90deg, rgba(238,226,181,.5), rgba(255,247,213,.72) 48%, rgba(231,217,169,.5)); box-shadow: 0 2px 3px rgba(60,54,39,.1); transform: translateX(-50%) rotate(var(--tape-tilt, -1deg)); opacity: .78; pointer-events: none; }
     .book-spine:focus-visible { z-index: 3; outline: 2px solid color-mix(in srgb, var(--accent) 72%, white); outline-offset: 3px; }
     .book-spine.is-selected { height: var(--note-height, 196px); transform: rotate(0deg); z-index: 2; box-shadow: 3px 4px 0 color-mix(in srgb, var(--book-accent) 72%, #d7a99a), 0 0 0 2px color-mix(in srgb, var(--yellow) 72%, white), 8px 12px 20px rgba(42,38,30,.16), inset 0 1px rgba(255,255,255,.34); }

@@ -286,12 +286,68 @@ h4 {
     border-top: 1px solid var(--line);
 }
 
-/* The live backdrop is the hero's artwork; past the fold it turns into
-   noise behind body text. A near-opaque floor keeps the lower sections
-   calm and readable while a hint of the tissue still breathes through. */
-.scroll-section:not(.hero-section),
+/* Keep the live field quieter below the fold, but let enough colour through
+   that the visual language continues beyond the hero. Dense content still
+   sits inside its own translucent surfaces. */
+.scroll-section:not(.hero-section) {
+    background-color: rgba(4, 10, 8, 0.52);
+}
+
 footer {
-    background-color: rgba(4, 10, 8, 0.9);
+    background-color: rgba(4, 10, 8, 0.7);
+}
+
+#about-section,
+#experience-section,
+#projects-section,
+#games-section,
+#personal-section {
+    overflow: hidden;
+}
+
+#about-section::before,
+#experience-section::before,
+#projects-section::before,
+#games-section::before,
+#personal-section::before {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    content: '';
+    background-repeat: no-repeat;
+    background-size: clamp(680px, 76vw, 1120px) auto;
+    opacity: 0.36;
+    filter: saturate(1.45) brightness(1.16) contrast(1.06);
+    mix-blend-mode: screen;
+}
+
+#about-section::before {
+    background-image: url('assets/microscopy/cell-field-01.jpg');
+    background-position: calc(100% + 110px) 3%;
+    -webkit-mask-image: radial-gradient(ellipse 76% 31% at 76% 15%, #000 18%, transparent 82%);
+    mask-image: radial-gradient(ellipse 76% 31% at 76% 15%, #000 18%, transparent 82%);
+}
+
+#experience-section::before,
+#games-section::before {
+    background-image: url('assets/microscopy/cell-field-02.jpg');
+    background-position: calc(100% + 90px) 7%;
+    -webkit-mask-image: radial-gradient(ellipse 72% 38% at 84% 19%, #000 15%, transparent 82%);
+    mask-image: radial-gradient(ellipse 72% 38% at 84% 19%, #000 15%, transparent 82%);
+}
+
+#projects-section::before,
+#personal-section::before {
+    background-image: url('assets/microscopy/cell-field-03.jpg');
+    background-position: -90px 10%;
+    -webkit-mask-image: radial-gradient(ellipse 72% 38% at 16% 24%, #000 15%, transparent 82%);
+    mask-image: radial-gradient(ellipse 72% 38% at 16% 24%, #000 15%, transparent 82%);
+}
+
+.scroll-section:not(.hero-section) > .container {
+    position: relative;
+    z-index: 1;
 }
 
 /* Navigation */
@@ -910,7 +966,117 @@ footer {
 }
 
 .about-section {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.012), transparent 48%);
+    background-color: rgba(4, 10, 8, 0.42);
+    background-image: linear-gradient(180deg, rgba(118, 247, 165, 0.035), transparent 48%);
+}
+
+.micrograph-shell {
+    margin: -18px 0 74px;
+}
+
+.micrograph-gallery {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.8fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    height: clamp(330px, 32vw, 420px);
+}
+
+.micrograph-card {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid rgba(151, 255, 188, 0.22);
+    background: #06100c;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.26);
+    isolation: isolate;
+}
+
+.micrograph-card--lead {
+    grid-row: 1 / -1;
+}
+
+.micrograph-card::before {
+    position: absolute;
+    inset: 12px;
+    z-index: 2;
+    pointer-events: none;
+    content: '';
+    background:
+        linear-gradient(var(--accent), var(--accent)) 0 0 / 22px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) 0 0 / 1px 22px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) 100% 100% / 22px 1px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) 100% 100% / 1px 22px no-repeat;
+    opacity: 0.58;
+}
+
+.micrograph-card::after {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    content: '';
+    background:
+        linear-gradient(180deg, rgba(2, 7, 5, 0.08) 42%, rgba(2, 7, 5, 0.88) 100%),
+        linear-gradient(90deg, rgba(118, 247, 165, 0.05), transparent 42%);
+}
+
+.micrograph-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(1.14) contrast(1.06);
+    transition: transform 700ms cubic-bezier(0.2, 0.75, 0.2, 1), filter 300ms ease;
+}
+
+.micrograph-card figcaption {
+    display: flex;
+    position: absolute;
+    right: 24px;
+    bottom: 19px;
+    left: 24px;
+    z-index: 3;
+    justify-content: space-between;
+    gap: 18px;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.micrograph-card figcaption span:last-child {
+    color: var(--accent);
+    text-align: right;
+}
+
+.micrograph-note {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 12px 0 0;
+    color: var(--muted-deep);
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+}
+
+.micrograph-note > span:first-child {
+    width: 6px;
+    height: 6px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--tomato);
+    box-shadow: 0 0 12px rgba(255, 118, 95, 0.72);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .micrograph-card:hover img {
+        transform: scale(1.035);
+        filter: saturate(1.28) contrast(1.08);
+    }
 }
 
 .about-content {
@@ -3091,6 +3257,21 @@ textarea {
         max-width: 62ch;
     }
 
+    .micrograph-shell {
+        margin-top: -8px;
+    }
+
+    .micrograph-gallery {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: minmax(0, 1.2fr) minmax(0, 0.8fr);
+        height: 550px;
+    }
+
+    .micrograph-card--lead {
+        grid-row: 1;
+        grid-column: 1 / -1;
+    }
+
     .monet-feature {
         grid-template-columns: 1fr;
         grid-template-areas:
@@ -3258,6 +3439,48 @@ textarea {
 
     .hero-command {
         display: none;
+    }
+
+    .micrograph-shell {
+        margin: -4px 0 58px;
+    }
+
+    .micrograph-gallery {
+        display: flex;
+        height: auto;
+        gap: 12px;
+        padding: 0 18px 8px 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: thin;
+    }
+
+    .micrograph-card,
+    .micrograph-card--lead {
+        width: auto;
+        height: 238px;
+        flex: 0 0 calc(88% - 18px);
+        grid-column: auto;
+        grid-row: auto;
+        scroll-snap-align: start;
+    }
+
+    .micrograph-card figcaption {
+        right: 18px;
+        bottom: 16px;
+        left: 18px;
+        font-size: 0.58rem;
+    }
+
+    #about-section::before,
+    #experience-section::before,
+    #projects-section::before,
+    #games-section::before,
+    #personal-section::before {
+        background-size: 760px auto;
+        opacity: 0.26;
     }
 
     .hero-copy h1 {

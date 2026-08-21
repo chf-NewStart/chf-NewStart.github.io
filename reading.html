@@ -1221,6 +1221,8 @@
   var LAST_OPEN_KEY = 'readingRoom.lastOpen.v1';
   var SYNC_KEY = 'readingRoom.sync.v1';
   var AI_KEY = 'readingRoom.ai.v1';
+  var STARTER_GUIDE_URL = '/assets/phloem-guide/phloem-field-guide.pdf';
+  var STARTER_GUIDE_ID = 'phloem-field-guide-v1';
   var SYNC_FILE = 'reading-room.enc.json';
   var LOOKUP_DELAY = 900;
   var BOOK_SPINES = [
@@ -1234,6 +1236,8 @@
     {cover:'#a7c8e7',ink:'#234f91'},
     {cover:'#df8d80',ink:'#234f91'}
   ];
+  var pristineLibrary = false;
+  try { pristineLibrary = localStorage.getItem(KEY) === null; } catch(e){}
   var state = loadState();
   var currentId = null, currentPage = 1, pdfDoc = null, pdfLib = null, pdfRendering = false, pdfRenderPending = false;
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
@@ -1581,6 +1585,15 @@
   async function getPdf(id){
     try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('pdfs').objectStore('pdfs').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
     return memoryPdfs[id]||null;
+  }
+  async function seedStarterGuide(){
+    if(!pristineLibrary||state.chapters.length||syncCfg||gdriveOn()||location.protocol==='file:'||/^#(?:phloem|carrel|margin)-setup=/.test(location.hash))return false;
+    try{
+      var response=await fetch(STARTER_GUIDE_URL,{cache:'no-cache',credentials:'same-origin'});if(!response.ok)throw new Error('starter guide unavailable');
+      var bytes=await response.arrayBuffer(),head=new Uint8Array(bytes,0,Math.min(5,bytes.byteLength)),magic='';for(var i=0;i<head.length;i++)magic+=String.fromCharCode(head[i]);if(magic!=='%PDF-')throw new Error('starter guide is not a PDF');
+      var stamp=now(),guide=normalize({id:STARTER_GUIDE_ID,title:'A Field Guide to Phloem',authors:'Phloem',kind:'pdf',sourceName:'phloem-field-guide.pdf',sourceUrl:new URL(STARTER_GUIDE_URL,location.href).href,pageCount:6,fileSize:bytes.byteLength,notes:{},pageNotes:{},tags:['starter','field guide'],questions:[],addedAt:stamp,updatedAt:stamp,readPage:1});
+      guide.contentHash=await pdfFingerprint(bytes).catch(function(){return '';});await putPdf(guide.id,bytes);state.chapters.push(guide);librarySelectionId=guide.id;persist(false);renderShelf();updateReviewBadge();return true;
+    }catch(e){return false;}
   }
   function derivedData(ch){var record={},has=false;DERIVED_FIELDS.forEach(function(field){if(Object.prototype.hasOwnProperty.call(ch,field)){record[field]=ch[field];has=true;}});return has?record:null;}
   async function putDerived(ch){
@@ -4345,6 +4358,7 @@
      the tap's own permission window. */
   Object.keys(state.merged||{}).forEach(function(dropId){queueDuplicateStorage(state.merged[dropId],dropId);});
   var startupDuplicateRepair=repairDuplicateStorage();
+  var startupStarterGuide=seedStarterGuide();
   syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupDuplicateRepair.then(function(){gdriveSync();});}
   /* A refresh drops you back into the paper you were reading, not the library. */
   try{var lastOpen=resolvedPaperId(localStorage.getItem(LAST_OPEN_KEY));if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){return startupDuplicateRepair;}).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});

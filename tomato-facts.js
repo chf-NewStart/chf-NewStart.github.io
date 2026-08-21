@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "PHYSICS",
+            title: "A popcorn kernel is a tiny pressure cooker",
+            fact: "Each kernel is a sealed caryopsis with a moist starchy core. Heat superheats that moisture well past boiling until, around 180 °C, the hull fails and the starch flash-expands into foam — the pop is a miniature steam explosion.",
+            detail: "Moisture is everything: kernels pop best near 14% water content. Too dry and there’s no steam to burst the hull; too wet and it fails early into a dense, chewy pop. The leftover “old maids” at the bowl’s bottom are usually kernels with cracked hulls that leaked their pressure."
+        },
+        {
             tag: "CHEMISTRY",
             title: "Garlic breath comes from your lungs, not your mouth",
             fact: "One garlic compound — allyl methyl sulfide — isn’t broken down by digestion. It rides your bloodstream to the lungs and exhales itself for hours, which is why brushing, mouthwash, and gum never fully fix garlic breath.",

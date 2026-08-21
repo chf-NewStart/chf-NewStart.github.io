@@ -207,6 +207,7 @@
       color: var(--book-ink); text-align: left;
       box-shadow: 3px 3px 0 color-mix(in srgb, var(--book-accent) 76%, #d7a99a), 6px 7px 13px rgba(42,38,30,.13), inset 0 1px rgba(255,255,255,.32);
       transform: rotate(calc(var(--book-tilt) * .72)); transform-origin: 50% 0;
+      transition: opacity .18s ease, filter .18s ease;
       scroll-snap-align: start;
     }
     .book-spine::before { content: none; }
@@ -218,6 +219,10 @@
     .book-author { position: absolute; left: 20px; right: 25px; bottom: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--note-ink); font: 500 .76rem/1 var(--hand); letter-spacing: 0; word-spacing: .18em; text-transform: none; opacity: .86; }
     .book-spine.is-selected .book-author { left: 20px; right: 25px; bottom: 13px; font-size: .76rem; }
     .book-mark { display: none; }
+    @media (hover: hover) and (pointer: fine) {
+      .book-pile:has(.book-spine:hover) .book-spine:not(:hover) { opacity: .26; filter: saturate(.38) contrast(.92); }
+    }
+    .book-pile:has(.book-spine:focus-visible) .book-spine:not(:focus-visible) { opacity: .26; filter: saturate(.38) contrast(.92); }
 
     .reading-thread-bridge { position: relative; min-width: 0; min-height: var(--shelf-height); display: grid; place-items: center; pointer-events: none; }
     .reading-thread-svg { display: block; width: 100%; height: 100%; overflow: visible; }

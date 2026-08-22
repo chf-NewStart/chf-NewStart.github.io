@@ -1,14 +1,6 @@
 [
   {
     "fact": {
-      "tag": "BOTANY",
-      "title": "Corn cobs almost always have an even number of rows",
-      "fact": "Count the rows on an ear of corn: 12, 14, 16 — almost always even. The kernel rows arise from paired flower spikelets, so they’re laid down two at a time from the start.",
-      "detail": "Row number is largely genetic, and breeders track it as a yield trait. Odd-rowed ears exist but are rare enough that finding one is corn-maze-trivia territory."
-    }
-  },
-  {
-    "fact": {
       "tag": "GENOMICS",
       "title": "Bell peppers are chilies with a broken heat switch",
       "fact": "Sweet bell peppers are the same species as many hot chilies — they just carry a recessive mutation that disables capsaicin production entirely. Zero heat, by genetics rather than by breeding out flavor.",

@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "BOTANY",
+            title: "Corn cobs almost always have an even number of rows",
+            fact: "Count the rows on an ear of corn: 12, 14, 16 — almost always even. The kernel rows arise from paired flower spikelets, so they’re laid down two at a time from the start.",
+            detail: "Row number is largely genetic, and breeders track it as a yield trait. Odd-rowed ears exist but are rare enough that finding one is corn-maze-trivia territory."
+        },
+        {
             tag: "PHYSICS",
             title: "A popcorn kernel is a tiny pressure cooker",
             fact: "Each kernel is a sealed caryopsis with a moist starchy core. Heat superheats that moisture well past boiling until, around 180 °C, the hull fails and the starch flash-expands into foam — the pop is a miniature steam explosion.",

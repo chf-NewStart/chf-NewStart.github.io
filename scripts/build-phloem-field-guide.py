@@ -6,6 +6,7 @@ from reportlab.lib.colors import HexColor, Color
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -15,12 +16,15 @@ from reportlab.platypus import Paragraph
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "output" / "pdf" / "phloem-field-guide.pdf"
 ASSET = ROOT / "assets" / "phloem-guide" / "phloem-field-guide.pdf"
+PHLOEM_ICON = ROOT / "favicon_io" / "phloem-book-vine-clean-512.png"
 
 PAGE_W = 7.2 * inch
 PAGE_H = 9.2 * inch
 M = 0.62 * inch
 
-CREAM = HexColor("#F5F1E7")
+# Match the approved icon's own paper tone so the artwork sits directly on the
+# guide page instead of looking pasted into a pale square.
+CREAM = HexColor("#FCF6ED")
 PAPER = HexColor("#FFFDF7")
 INK = HexColor("#253039")
 MUTED = HexColor("#6E7779")
@@ -153,47 +157,12 @@ def checklist_row(c, number, title, text, x, y, width):
     para(c, text, x + 36, y - 17, width - 36, SMALL)
 
 
-def draw_book_lamp(c, x, y, scale=1.0):
-    c.saveState()
-    c.translate(x, y)
-    c.setStrokeColor(INK)
-    c.setLineWidth(2.2 * scale)
-    # Open book canopy
-    p = c.beginPath()
-    p.moveTo(-78 * scale, 35 * scale)
-    p.curveTo(-48 * scale, 25 * scale, -34 * scale, 18 * scale, 0, -2 * scale)
-    p.curveTo(30 * scale, 17 * scale, 48 * scale, 25 * scale, 82 * scale, 35 * scale)
-    p.lineTo(70 * scale, 62 * scale)
-    p.curveTo(42 * scale, 54 * scale, 20 * scale, 43 * scale, 0, 26 * scale)
-    p.curveTo(-22 * scale, 43 * scale, -43 * scale, 54 * scale, -70 * scale, 62 * scale)
-    p.close()
-    c.setFillColor(PAPER)
-    c.drawPath(p, fill=1, stroke=1)
-    c.line(0, -2 * scale, 0, 26 * scale)
-    # Lamp glow and fruit-shaped bulb
-    c.setFillColor(Color(1.0, 0.73, 0.30, alpha=0.22))
-    c.circle(-28 * scale, -15 * scale, 29 * scale, fill=1, stroke=0)
-    c.setFillColor(CORAL)
-    c.circle(-28 * scale, -15 * scale, 16 * scale, fill=1, stroke=0)
-    c.setStrokeColor(INK)
-    c.line(-28 * scale, 0, -28 * scale, 10 * scale)
-    # Vine stand
-    c.setStrokeColor(GREEN)
-    c.setLineWidth(4 * scale)
-    q = c.beginPath()
-    q.moveTo(12 * scale, -4 * scale)
-    q.curveTo(48 * scale, -24 * scale, 41 * scale, -72 * scale, 16 * scale, -104 * scale)
-    q.curveTo(1 * scale, -123 * scale, 8 * scale, -143 * scale, -2 * scale, -158 * scale)
-    c.drawPath(q, fill=0, stroke=1)
-    c.setFillColor(GREEN)
-    for lx, ly, rot in [(37, -43, 25), (31, -72, -28), (15, -105, 35), (4, -132, -33)]:
-        c.saveState(); c.translate(lx * scale, ly * scale); c.rotate(rot)
-        c.ellipse(-10 * scale, -4 * scale, 10 * scale, 4 * scale, fill=1, stroke=0)
-        c.restoreState()
-    c.setStrokeColor(MUTED)
-    c.setLineWidth(2 * scale)
-    c.line(-28 * scale, -160 * scale, 44 * scale, -160 * scale)
-    c.restoreState()
+def draw_phloem_icon(c, x, y, size):
+    """Use the approved app artwork, never a hand-reconstructed substitute."""
+    c.drawImage(
+        ImageReader(str(PHLOEM_ICON)), x, y, width=size, height=size,
+        preserveAspectRatio=True, anchor="c", mask="auto",
+    )
 
 
 def page_one(c):
@@ -206,7 +175,8 @@ def page_one(c):
     c.drawString(M, PAGE_H - 139, "A Field Guide")
     c.drawString(M, PAGE_H - 181, "to Phloem")
     para(c, "A calm, local-first desk for reading papers, leaving useful traces, and finding your way back.", M, PAGE_H - 207, 3.35 * inch, CALLOUT)
-    draw_book_lamp(c, PAGE_W - 1.85 * inch, PAGE_H - 2.35 * inch, 0.72)
+    icon_size = 1.84 * inch
+    draw_phloem_icon(c, PAGE_W - M - icon_size, PAGE_H - 3.0 * inch, icon_size)
     rounded_box(c, M, 1.08 * inch, PAGE_W - 2 * M, 2.1 * inch, PAPER, LINE, 14, True)
     c.setFillColor(GREEN)
     c.setFont("GuideSerifBold", 17)

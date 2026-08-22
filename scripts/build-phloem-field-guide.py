@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "output" / "pdf" / "phloem-field-guide.pdf"
 ASSET = ROOT / "assets" / "phloem-guide" / "phloem-field-guide.pdf"
 PHLOEM_ICON = ROOT / "favicon_io" / "phloem-book-vine-clean-512.png"
+ARTIST_URL = "https://www.linkedin.com/in/itpromma/"
 
 PAGE_W = 7.2 * inch
 PAGE_H = 9.2 * inch
@@ -330,6 +331,11 @@ def page_six(c):
     c.drawString(M + 20, 1.19 * inch, "1. Open this guide   2. Move the reading bar   3. Mark one line")
     c.drawString(M + 20, .97 * inch, "4. Write one margin note   5. Return to the wall")
     sprig(c, PAGE_W - M - 22, .88 * inch, .65, -14, Color(.18, .42, .38, alpha=.7))
+    credit = "Phloem icon artwork by Promma  ·  linkedin.com/in/itpromma"
+    c.setFillColor(MUTED); c.setFont("GuideSans", 6.4)
+    c.drawString(M, 39, credit)
+    credit_width = pdfmetrics.stringWidth(credit, "GuideSans", 6.4)
+    c.linkURL(ARTIST_URL, (M, 35, M + credit_width, 46), relative=0, thickness=0)
 
 
 def build():

@@ -162,10 +162,13 @@ No tooling needed — from the repo root:
 ```bash
 python3 -m http.server
 ```
-
 then open `http://localhost:8000/`. Quick sanity checks before pushing:
 `node --check` on each of `site.js` and `bio-bg.js`, equal counts of `data-en="`
 and `data-zh="` in `index.html`, and the EN → 中文 → EN round-trip above.
+
+## Credits
+
+Phloem icon artwork by [Promma](https://www.linkedin.com/in/itpromma/).
 
 ## License
 

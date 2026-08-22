@@ -1,6 +1,6 @@
 # Read in Phloem — browser extension
 
-Current store package: **1.1.6**
+Current store package: **1.1.7**
 
 Send any PDF on the web straight to [Phloem](https://houfu72.com/reading.html),
 the free local-first paper reading desk. Right-click a PDF link → **Read link in
@@ -37,3 +37,7 @@ extension ever makes is the download of the PDF you explicitly asked for.
 1. Open `chrome://extensions`, switch on **Developer mode**.
 2. **Load unpacked** → pick this folder.
 3. Right-click any PDF link → *Read link in Phloem*.
+
+## Artwork credit
+
+Phloem icon artwork by [Promma](https://www.linkedin.com/in/itpromma/).

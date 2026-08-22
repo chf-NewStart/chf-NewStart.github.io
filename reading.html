@@ -479,6 +479,8 @@
     #highlightBtn { transition: background .16s, border-color .16s, transform .16s; }
     #highlightBtn.active { border-color: #c49b14; background: #ffd83d; color: #30270b; box-shadow: 0 0 0 3px rgba(255,216,61,.18); }
     #highlightBtn.ready:not(.active) { border-color: #c49b14; box-shadow: inset 0 -3px 0 #ffd83d; }
+    .marker-on #textDocument mark { cursor: pointer; }
+    .marker-on #textDocument mark:hover { outline: 1.5px dashed var(--ink); outline-offset: 1px; }
     .marker-palette { display: flex; gap: 5px; margin-left: 6px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
     .marker-swatch { width: 24px; height: 24px; padding: 0; border: 2px solid var(--surface); border-radius: 50%; box-shadow: 0 0 0 1px var(--line); }
     .marker-swatch.selected { box-shadow: 0 0 0 2px var(--ink); transform: scale(.88); }
@@ -1039,7 +1041,7 @@
           </div>
           <div class="tab-panel hidden" id="notesPanel" role="tabpanel">
             <div class="note-heading-row"><h3 id="noteHeading">Page note</h3><button class="recall-button" id="recallBtn" type="button" aria-pressed="false">↻ Recall</button></div>
-            <p class="hint">Saved as you type. Recall briefly hides the paper while you explain it from memory. Select a short term for a definition and image; ⌘Z / Ctrl+Z undoes the latest marker stroke.</p>
+            <p class="hint">Saved as you type. Recall briefly hides the paper while you explain it from memory. Select a short term for a definition and image; ⌘Z / Ctrl+Z undoes the latest marker stroke, and with the marker on you can click any highlight to remove it.</p>
             <div class="recall-prompt hidden" id="recallPrompt"><b>Without looking:</b>What is the main claim? What evidence supports it? What remains unclear?<br><button id="recallDone" type="button">Done · show the paper</button></div>
             <textarea class="note-area" id="pageNote" placeholder="What is the claim? What do you doubt? What should you use later?"></textarea>
             <label class="field-label" for="paperTags">Connections / tags</label>
@@ -3508,6 +3510,8 @@
     byId('textDocument').querySelectorAll('[data-note]').forEach(function(b){ b.onclick=function(){ var ta=byId('textDocument').querySelector('[data-note-area="'+b.dataset.note+'"]'); ta.classList.toggle('hidden'); if(!ta.classList.contains('hidden')) ta.focus(); }; });
     byId('textDocument').querySelectorAll('[data-goto-page]').forEach(function(b){b.onclick=function(){gotoPdfPage(+b.dataset.gotoPage);};});
     byId('textDocument').onclick=function(e){
+      var markEl=e.target.closest('mark[data-hl-id]');
+      if(markEl&&highlightMode&&!String(getSelection&&getSelection()||'')){removeTextHighlightById(markEl.dataset.hlId);return;}
       if(e.target.closest('button, textarea, a, mark, img'))return;
       if(String(getSelection&&getSelection()||''))return;
       var section=e.target.closest('.para');if(!section)return;
@@ -3530,7 +3534,7 @@
       sel.forEach(function(h){if(!mark&&h.start<=a&&h.end>=b)mark=h;});
       if(flags&2)seg='<i>'+seg+'</i>';
       if(flags&1)seg='<b>'+seg+'</b>';
-      if(mark)seg='<mark class="hl-'+esc(mark.color||'yellow')+'">'+seg+'</mark>';
+      if(mark)seg='<mark class="hl-'+esc(mark.color||'yellow')+'" data-hl-id="'+esc(mark.id||'')+'">'+seg+'</mark>';
       out+=seg;
     }
     return out;
@@ -3578,7 +3582,7 @@
   function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');if(highlightMode&&!markerPointerDown)scheduleHighlightCommit(550);}
   function setHighlightMode(on){
     highlightMode=!!on;var btn=byId('highlightBtn');if(!btn)return;
-    btn.classList.toggle('active',highlightMode);btn.setAttribute('aria-pressed',String(highlightMode));btn.textContent=highlightMode?'✦ Marker on':'✦ Marker';byId('highlightPalette').classList.toggle('hidden',!highlightMode);
+    btn.classList.toggle('active',highlightMode);btn.setAttribute('aria-pressed',String(highlightMode));btn.textContent=highlightMode?'✦ Marker on':'✦ Marker';byId('highlightPalette').classList.toggle('hidden',!highlightMode);document.body.classList.toggle('marker-on',highlightMode);
   }
   function mergeHighlightRects(rects){
     var sorted=rects.slice().sort(function(a,b){return Math.abs(a.y-b.y)>.002?a.y-b.y:a.x-b.x;}),out=[];
@@ -3659,6 +3663,30 @@
     else{var target=h.kind==='reader'?ch.readerHighlights:ch.textHighlights;target.push({id:uid('h'),para:h.para,start:h.start,end:h.end,text:h.text,color:highlightColor,at:now()});touch(ch);renderText(ch);}
     clearPendingSelection();renderNoteIndex();
   }
+  function removeTextHighlightById(id){
+    var ch=find(currentId);if(!ch||!id)return;
+    var isPdfReader=ch.kind==='pdf'&&readerMode==='text';
+    if(isPdfReader)ch.readerHighlights=(ch.readerHighlights||[]).filter(function(h){return h.id!==id;});
+    else ch.textHighlights=(ch.textHighlights||[]).filter(function(h){return h.id!==id;});
+    clearPendingSelection();touch(ch);renderText(ch);renderNoteIndex();showReaderToast('Highlight removed');
+  }
+  function erasePdfHighlightAtPoint(pageEl,clientX,clientY){
+    var ch=find(currentId);if(!ch)return false;
+    var page=+pageEl.dataset.page||currentPage,list=(ch.highlights||{})[String(page)]||[];
+    var base=pageEl.getBoundingClientRect();if(!base.width||!base.height||!list.length)return false;
+    var x=(clientX-base.left)/base.width,y=(clientY-base.top)/base.height,hit=null;
+    list.forEach(function(h){(h.rects||[]).some(function(r){var padY=Math.max(.004,r.h*.3),padX=.004;if(x>=r.x-padX&&x<=r.x+r.w+padX&&y>=r.y-padY&&y<=r.y+r.h+padY){if(!hit||(h.at||0)>=(hit.at||0))hit=h;return true;}return false;});});
+    if(!hit)return false;
+    ch.highlights[String(page)]=list.filter(function(h){return h.id!==hit.id;});
+    clearPendingSelection();touch(ch);renderPdfHighlights(page);renderNoteIndex();showReaderToast('Highlight removed');
+    return true;
+  }
+  byId('pdfFrame').addEventListener('click',function(e){
+    if(!highlightMode||pendingSelection)return;
+    var s=window.getSelection&&window.getSelection();if(s&&!s.isCollapsed)return;
+    var pageEl=e.target.closest('.pdf-page');if(!pageEl)return;
+    erasePdfHighlightAtPoint(pageEl,e.clientX,e.clientY);
+  });
   function undoLastHighlight(){
     var ch=find(currentId),latest=null;if(!ch)return;
     Object.keys(ch.highlights||{}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(h){if(!latest||(h.at||0)>=(latest.item.at||0))latest={kind:'pdf',page:page,item:h};});});

@@ -61,16 +61,6 @@
       radial-gradient(ellipse at 84% -8%, rgba(255,214,104,.36), rgba(255,228,151,.12) 27%, transparent 49%),
       linear-gradient(118deg, transparent 0 46%, rgba(255,236,184,.11) 53%, transparent 64%);
       background-attachment: fixed; }
-    html[data-theme="dark"] body.library-view {
-      --paper: #111916; --surface: #1a2420; --surface-2: #243129; --ink: #eef0e9;
-      --muted: #a8b1aa; --line: #34453c;
-      background-image:
-      linear-gradient(rgba(123,190,143,.032) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(123,190,143,.028) 1px, transparent 1px),
-      radial-gradient(ellipse at 18% -5%, rgba(74,183,111,.16), transparent 39%),
-      radial-gradient(ellipse at 84% 2%, rgba(221,190,91,.12), transparent 33%),
-      linear-gradient(180deg, #14201a, var(--paper) 52%);
-      background-size: 100% 176px, 260px 100%, auto, auto, auto; background-attachment: fixed; }
     button, input, textarea { font: inherit; color: inherit; }
     button { cursor: pointer; }
     a { color: inherit; }
@@ -125,7 +115,11 @@
 
     /* Nothing of the demo travels until it is asked for: the poster stands in, and
        preload="none" keeps the 11MB off a first paint. */
-    .demo { max-width: 720px; margin: 0 0 34px; display: grid; gap: 10px; }
+    /* Keep the composited video surface out of the first paint until local storage
+       tells us this is genuinely an empty library. Otherwise Chromium can leave a
+       black rectangle behind after the parent is hidden on a returning visit. */
+    .demo { max-width: 720px; margin: 0 0 34px; display: none; gap: 10px; }
+    body.library-ready:not(.has-papers) .demo { display: grid; }
     .demo video { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-2); box-shadow: var(--shadow); }
     .demo figcaption { color: var(--muted); font: .78rem/1.55 var(--sans); }
 
@@ -176,11 +170,6 @@
       radial-gradient(ellipse at 86% 0%, rgba(255,218,115,.26), transparent 31%),
       radial-gradient(circle at 76% 48%, color-mix(in srgb, var(--yellow) 21%, transparent), transparent 27%),
       linear-gradient(135deg, color-mix(in srgb, var(--surface) 88%, transparent), color-mix(in srgb, var(--paper) 94%, transparent)); }
-    html[data-theme="dark"] body.library-view .living-shelf { background:
-      radial-gradient(ellipse at 18% 5%, rgba(78,177,108,.13), transparent 34%),
-      radial-gradient(ellipse at 84% 3%, rgba(229,201,105,.10), transparent 31%),
-      linear-gradient(145deg, color-mix(in srgb, var(--surface) 88%, transparent), color-mix(in srgb, var(--paper) 94%, transparent));
-      box-shadow: 0 20px 58px rgba(0,0,0,.28), inset 0 1px rgba(148,211,163,.05); }
     .shelf-empty { grid-column: 1 / -1; align-self: stretch; display: grid; place-items: center; min-height: 360px; padding: 48px 24px; text-align: center; color: var(--muted); }
     .shelf-empty div { max-width: 460px; }
     .shelf-empty b { display: block; margin-bottom: 8px; color: var(--ink); font: 500 1.45rem var(--serif); }
@@ -1762,6 +1751,7 @@
   function renderShelf(){
     updateConnectionsNav();
     document.body.classList.toggle('has-papers',state.chapters.length>0);
+    document.body.classList.add('library-ready');
     var q=byId('librarySearch').value.trim().toLowerCase();
     var list=state.chapters.filter(function(ch){return !q||paperHaystack(ch).includes(q);}).sort(compareShelfPapers);
     byId('libraryCount').textContent=(q?list.length+' of ':'')+state.chapters.length+(state.chapters.length===1?' paper':' papers');renderDuplicateNotice();

@@ -757,10 +757,18 @@
       .library-health .soft-button { width: 100%; margin-left: 0; }
       .section-head { align-items: center; flex-wrap: wrap; }
       .search { flex: 1 1 100%; width: 100%; margin-left: 0; }
+      /* The phone shelf is one compact object: a scrollable note tray stays above a
+         shorter selected notebook, so choosing papers never means crossing a wall of
+         full-size cards before the detail appears. */
       .living-shelf { border-radius: 18px; }
-      .book-pile { max-height: none; grid-template-columns: 1fr; gap: 26px; overflow: visible; padding: 18px 16px 34px; }
-      .open-book-wrap { padding: 88px 12px 18px 32px; }
-      .open-book-wrap > .tucked-keepsake { right: calc(12px + var(--keepsake-right, 96px)); }
+      .bookcase { height: clamp(240px, 34dvh, 280px); min-height: 0; padding: 13px 10px 10px; }
+      .pile-head { margin: 0 8px 5px; }
+      .book-pile { min-height: 0; max-height: none; grid-template-columns: 1fr; gap: 15px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 13px 14px 24px; }
+      .book-spine, .book-spine.is-selected { --note-height: 142px !important; }
+      .book-title, .book-spine.is-selected .book-title { top: 14px; left: 17px; right: 17px; -webkit-line-clamp: 5; font-size: min(var(--note-font, 1rem), 1rem); line-height: 1.14; }
+      .book-author, .book-spine.is-selected .book-author { left: 17px; right: 20px; bottom: 10px; font-size: .7rem; }
+      .open-book-wrap { padding: 46px 10px 16px 27px; }
+      .open-book-wrap > .tucked-keepsake { top: -18px; right: calc(10px + var(--keepsake-right, 96px)); height: 98px; }
       .open-book-wrap { grid-template-columns: minmax(0, 1fr); }
       .field-folio { display: none; }
       .open-book { min-height: 0; grid-template-columns: 1fr; filter: drop-shadow(0 18px 22px rgba(43,39,30,.11)); }
@@ -772,12 +780,20 @@
       .paper-title.long { font-size: clamp(1.72rem, 8vw, 2.45rem); }
       .paper-title.very-long { font-size: clamp(1.5rem, 6.8vw, 2.05rem); }
       .paper-actions { left: 25px; right: 60px; bottom: 31px; }
-      .closed-book { min-height: 590px; }
-      .closed-book-inner { padding: 38px 28px 30px 58px; }
+      .closed-book { min-height: clamp(395px, 54dvh, 440px); }
+      .closed-book-inner { padding: 29px 22px 23px 54px; }
+      .closed-book-kicker { font-size: .57rem; letter-spacing: .12em; }
+      .closed-book-title { margin: 18px 0 8px; }
       .closed-book-title { max-width: 100%; font-size: clamp(1.75rem, 8.2vw, 2.55rem); }
       .closed-book-title.long { font-size: clamp(1.55rem, 6.6vw, 2.18rem); }
       .closed-book-title.very-long { font-size: clamp(1.35rem, 5.6vw, 1.86rem); line-height: 1.06; }
       .closed-book-byline, .closed-book .paper-tags { max-width: 100%; }
+      .closed-book .paper-tags { display: none; }
+      .cover-stat { padding-top: 7px; padding-bottom: 7px; }
+      .cover-progress { margin-top: 11px; }
+      .cover-progress-track { margin-top: 7px; }
+      .cover-actions { margin-top: 13px; gap: 8px; }
+      .cover-actions .button, .cover-actions .soft-button { min-height: 41px; }
       @keyframes pageRise { from { opacity: .35; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
       /* Reading is its own phone screen. The site navigation disappears and the paper,
          not a squeezed desktop sidebar, owns the viewport. */
@@ -831,6 +847,8 @@
       .page { padding: 30px 14px 70px; }
       .hero { margin-bottom: 28px; }
       .hero h1 { font-size: clamp(2.7rem, 14vw, 4.2rem); }
+      .bookcase { height: 230px; }
+      .closed-book { min-height: 395px; }
       #networkCanvas { height: 390px; }
     }
     @media (prefers-reduced-motion: reduce) {

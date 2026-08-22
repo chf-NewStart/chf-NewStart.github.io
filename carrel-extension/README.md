@@ -9,6 +9,9 @@ the file with your own cookies (so campus/institution access carries over),
 hands the bytes to the Phloem tab, and the paper opens ready to read — nothing
 is ever uploaded anywhere.
 
+On a fresh install, the extension opens Phloem once. A new empty library receives
+the bundled field guide; extension updates and existing libraries stay untouched.
+
 ## How it works
 
 - `background.js` — fetches the PDF the user asked for, checks it really is a

@@ -8,9 +8,13 @@
 var PHLOEM = 'https://houfu72.com/reading.html';
 var MAX_BYTES = 80 * 1024 * 1024;
 
-chrome.runtime.onInstalled.addListener(function () {
+chrome.runtime.onInstalled.addListener(function (details) {
   chrome.contextMenus.create({ id: 'phloem-link', title: 'Read link in Phloem', contexts: ['link'] });
   chrome.contextMenus.create({ id: 'phloem-page', title: 'Read this page’s PDF in Phloem', contexts: ['page'] });
+  /* Installation is the real first-run path for most readers. Open the desk once so
+     a pristine library can place its bundled field guide on the wall. Updates stay
+     silent, and an existing Phloem library never receives another starter guide. */
+  if (details && details.reason === 'install') chrome.tabs.create({ url: PHLOEM + '?welcome=extension' });
 });
 
 chrome.contextMenus.onClicked.addListener(function (info, tab) {

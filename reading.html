@@ -123,19 +123,15 @@
     .demo video { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-2); box-shadow: var(--shadow); }
     .demo figcaption { color: var(--muted); font: .78rem/1.55 var(--sans); }
 
-    .link-import { display: grid; grid-template-columns: minmax(180px, .72fr) minmax(260px, 1.28fr) auto; gap: 10px; align-items: center; margin-bottom: 10px; padding: 12px; border: 1px dashed var(--line); border-radius: 18px; background: color-mix(in srgb, var(--surface) 84%, transparent); transition: border-color .18s ease, background .18s ease, transform .18s ease; }
-    .link-import.drag { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
-    .link-copy { min-width: 0; }
-    .link-copy b, .link-copy span { display: block; }
-    .link-copy b { margin-bottom: 3px; font: 650 .84rem var(--sans); }
-    .link-copy span { color: var(--muted); font-size: .68rem; line-height: 1.4; }
-    .link-import .field { min-width: 0; min-height: 44px; border-radius: 11px; background: var(--bg); }
-    .link-import .button { min-height: 44px; border-radius: 11px; white-space: nowrap; }
     .link-status { grid-column: 1 / -1; min-height: 0; color: var(--muted); font-size: .7rem; }
     .link-status:not(:empty) { padding: 1px 3px 2px; }
-    .command-bar { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 12px; box-shadow: var(--shadow); display: flex; gap: 9px; margin-bottom: 38px; }
+    .command-bar { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 12px; box-shadow: var(--shadow); display: flex; gap: 9px; margin-bottom: 38px; transition: border-color .18s ease, background .18s ease; }
+    .command-bar.drag { border-color: var(--accent); background: var(--accent-soft); }
     .command-bar .button, .command-bar .soft-button { min-height: 44px; border-radius: 11px; }
     .command-bar .primary { flex: 1; justify-content: flex-start; font-size: .9rem; }
+    .link-dialog-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+    .link-dialog-form .field { min-width: 0; min-height: 46px; }
+    .link-dialog-form .button { min-height: 46px; white-space: nowrap; }
     .library-health { display: flex; align-items: center; gap: 18px; margin: -20px 0 30px; padding: 13px 15px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 13px; background: var(--accent-soft); }
     .library-health > div { min-width: 0; }
     .library-health strong, .library-health span { display: block; }
@@ -736,12 +732,11 @@
       .masthead .icon-btn { width: 40px; min-height: 40px; flex: 0 0 auto; }
       /* The library is a phone screen too. Keep every import control inside the page
          instead of waiting for the unusually narrow 360px breakpoint. */
-      .link-import { grid-template-columns: minmax(0, 1fr) auto; }
-      .link-copy { grid-column: 1 / -1; }
-      .link-import .field { width: 100%; }
       .command-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .command-bar .primary { grid-column: 1 / -1; justify-content: center; }
       .command-bar .soft-button { min-width: 0; white-space: normal; text-align: center; line-height: 1.2; }
+      .link-dialog-form { grid-template-columns: 1fr; }
+      .link-dialog-form .button { width: 100%; }
       .library-health { align-items: flex-start; flex-direction: column; gap: 10px; }
       .library-health .soft-button { width: 100%; margin-left: 0; }
       .section-head { align-items: center; flex-wrap: wrap; }
@@ -889,22 +884,17 @@
         <figcaption>Ninety seconds, no narration: a paper opens, the guide follows your pointer, a column snaps to full width, and the same page reflows to read like a book on a phone.</figcaption>
       </figure>
 
-      <div class="link-import" id="pdfLinkDrop">
-        <div class="link-copy"><b>Drop PDFs, a whole folder, or a link</b><span>Phloem keeps local copies. Subfolders welcome.</span></div>
-        <input class="field" id="pdfUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/paper.pdf" aria-label="Direct PDF link">
-        <button class="button" id="pdfUrlBtn" type="button">Add link</button>
-        <div class="link-status" id="pdfUrlStatus" role="status" aria-live="polite"></div>
-      </div>
-
-      <div class="command-bar">
+      <div class="command-bar" id="pdfLinkDrop">
         <button class="button primary" id="importPdfBtn">＋ Add papers from this device</button>
         <button class="soft-button" id="folderPickBtn">⌸ Add a folder</button>
+        <button class="soft-button" id="linkImportBtn">↗ Add from link</button>
         <button class="soft-button" id="githubPickBtn">⌘ Pick from GitHub</button>
         <button class="soft-button" id="newTextBtn">✎ Paste text</button>
         <button class="soft-button" id="reviewShortcut">Review notes</button>
         <input class="hidden" type="file" id="pdfFile" accept=".pdf,application/pdf" multiple>
         <input class="hidden" type="file" id="pdfFolder" webkitdirectory>
       </div>
+      <div class="link-status" id="libraryImportStatus" role="status" aria-live="polite"></div>
 
       <div class="library-health hidden" id="duplicateNotice" role="status" aria-live="polite">
         <div><strong id="duplicateNoticeTitle"></strong><span id="duplicateNoticeCopy"></span></div>
@@ -1134,6 +1124,18 @@
       <label class="field-label" for="paperAuthorsEdit">Authors / citation</label><input class="field" id="paperAuthorsEdit">
       <label class="field-label" for="paperTagsEdit">Tags</label><input class="field" id="paperTagsEdit" placeholder="method, metabolism, revisit">
       <button class="button" id="savePaperDetails">Save details</button>
+    </div>
+  </dialog>
+
+  <dialog id="linkDialog">
+    <div class="dialog-head"><h2>Add a PDF from a link</h2><button class="icon-btn" data-close="linkDialog">×</button></div>
+    <div class="dialog-body">
+      <p>Paste a direct PDF link. Phloem downloads one local copy, so the link is not needed again on this device.</p>
+      <div class="link-dialog-form">
+        <input class="field" id="pdfUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/paper.pdf" aria-label="Direct PDF link">
+        <button class="button" id="pdfUrlBtn" type="button">Add paper</button>
+        <div class="link-status" id="pdfUrlStatus" role="status" aria-live="polite"></div>
+      </div>
     </div>
   </dialog>
 
@@ -1858,6 +1860,9 @@
   byId('folderPickBtn').onclick = function(){ if(location.protocol==='file:'){ byId('launchDialog').showModal(); return; } byId('pdfFolder').click(); };
   byId('pdfFolder').onchange = function(){ var files=Array.prototype.slice.call(this.files||[]); this.value=''; if(files.length)importDropped([],files); };
   if(!('webkitdirectory' in byId('pdfFolder')))byId('folderPickBtn').classList.add('hidden');
+  byId('linkImportBtn').onclick=function(){
+    byId('pdfUrlStatus').textContent='';byId('linkDialog').showModal();setTimeout(function(){byId('pdfUrl').focus();},0);
+  };
 
   function cleanPdfUrl(value){
     var match=String(value||'').trim().match(/https?:\/\/[^\s]+/i);if(!match)return '';
@@ -1887,9 +1892,10 @@
       status.textContent=e instanceof TypeError?'That site blocked direct importing. Download the PDF there, then drop the file here.':(e.message||'Could not import that PDF link.');return false;
     }finally{btn.disabled=false;input.disabled=false;btn.textContent=old;}
   }
-  byId('pdfUrlBtn').onclick=function(){importPdfUrl(byId('pdfUrl').value);};
-  byId('pdfUrl').onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();importPdfUrl(this.value);}};
-  byId('pdfUrl').onpaste=function(e){var text=e.clipboardData&&e.clipboardData.getData('text/plain'),url=cleanPdfUrl(text);if(!url)return;e.preventDefault();this.value=url;importPdfUrl(url);};
+  async function submitPdfUrl(){if(await importPdfUrl(byId('pdfUrl').value)&&byId('linkDialog').open)byId('linkDialog').close();}
+  byId('pdfUrlBtn').onclick=submitPdfUrl;
+  byId('pdfUrl').onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();submitPdfUrl();}};
+  byId('pdfUrl').onpaste=function(e){var text=e.clipboardData&&e.clipboardData.getData('text/plain'),url=cleanPdfUrl(text);if(!url)return;e.preventDefault();this.value=url;submitPdfUrl();};
   (function setupLibraryDrop(){
     var drop=byId('pdfLinkDrop');
     drop.ondragover=function(e){e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';drop.classList.add('drag');};
@@ -1901,7 +1907,7 @@
       if(transfer.items)for(var i=0;i<transfer.items.length;i++){var entry=transfer.items[i].webkitGetAsEntry&&transfer.items[i].webkitGetAsEntry();if(entry)entries.push(entry);}
       var files=Array.prototype.slice.call(transfer.files||[]);
       if(entries.length||files.length){importDropped(entries,files);return;}
-      var value=transfer.getData('text/uri-list')||transfer.getData('text/plain');byId('pdfUrl').value=cleanPdfUrl(value)||value||'';importPdfUrl(value);
+      var value=transfer.getData('text/uri-list')||transfer.getData('text/plain');byId('pdfUrl').value=cleanPdfUrl(value)||value||'';byId('pdfUrlStatus').textContent='';byId('linkDialog').showModal();
     };
   })();
   /* A whole folder can land on the drop zone: walk it (subfolders too), pull out the
@@ -1918,7 +1924,7 @@
     }
   }
   async function importDropped(entries,files){
-    var status=byId('pdfUrlStatus'),pdfFiles=[];
+    var status=byId('libraryImportStatus'),pdfFiles=[];
     try{
       if(entries.length){
         var found=[];status.textContent='Looking through the drop…';

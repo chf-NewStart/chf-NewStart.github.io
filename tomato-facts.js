@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "GENOMICS",
+            title: "Bell peppers are chilies with a broken heat switch",
+            fact: "Sweet bell peppers are the same species as many hot chilies — they just carry a recessive mutation that disables capsaicin production entirely. Zero heat, by genetics rather than by breeding out flavor.",
+            detail: "The Scoville scale that ranks chili heat began in 1912 as a human taste test: how much sugar water it took to dilute an extract until tasters felt no burn. Bell peppers score an honest zero."
+        },
+        {
             tag: "BOTANY",
             title: "Corn cobs almost always have an even number of rows",
             fact: "Count the rows on an ear of corn: 12, 14, 16 — almost always even. The kernel rows arise from paired flower spikelets, so they’re laid down two at a time from the start.",

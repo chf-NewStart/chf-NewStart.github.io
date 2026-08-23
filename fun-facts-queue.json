@@ -1,14 +1,6 @@
 [
   {
     "fact": {
-      "tag": "GENOMICS",
-      "title": "Bell peppers are chilies with a broken heat switch",
-      "fact": "Sweet bell peppers are the same species as many hot chilies — they just carry a recessive mutation that disables capsaicin production entirely. Zero heat, by genetics rather than by breeding out flavor.",
-      "detail": "The Scoville scale that ranks chili heat began in 1912 as a human taste test: how much sugar water it took to dilute an extract until tasters felt no burn. Bell peppers score an honest zero."
-    }
-  },
-  {
-    "fact": {
       "tag": "BIOLOGY",
       "title": "Mushrooms are closer kin to you than to plants",
       "fact": "On the tree of life, fungi and animals share a more recent common ancestor than either does with plants. Fungi don’t photosynthesize, they digest; and their cell walls are built of chitin — the same material as insect shells.",

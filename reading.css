@@ -323,6 +323,13 @@
     .reader-tools .title span { display: block; color: var(--muted); font-size: .63rem; }
     .reader-tools .soft-button { min-height: 34px; padding: 6px 9px; border-color: transparent; background: transparent; color: var(--muted); }
     .reader-tools .soft-button:hover, .reader-tools .soft-button.active, .reader-tools .soft-button[aria-pressed="true"] { border-color: var(--line); background: var(--surface-2); color: var(--ink); }
+    .guide-tool { flex: 0 0 auto; display: inline-flex; align-items: stretch; overflow: hidden; border: 1px solid transparent; border-radius: 10px; color: var(--muted); }
+    .reader-tools .guide-tool .soft-button { min-height: 32px; border: 0; border-radius: 0; background: transparent; color: inherit; }
+    .reader-tools .guide-tool .soft-button:hover { border: 0; background: color-mix(in srgb, var(--surface-2) 72%, transparent); color: var(--ink); }
+    .reader-tools .guide-tool .guide-tool-menu { min-width: 29px; padding-inline: 7px; border-left: 1px solid color-mix(in srgb, var(--line) 72%, transparent); font-size: .75rem; }
+    .guide-tool:hover { border-color: var(--line); background: var(--surface-2); color: var(--ink); }
+    .guide-tool.active, .guide-tool.settings-open { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+    .guide-tool.active .guide-tool-menu, .guide-tool.settings-open .guide-tool-menu { border-left-color: color-mix(in srgb, var(--accent) 38%, var(--line)); }
     #readerBack { border-color: var(--line); background: var(--surface-2); color: var(--ink); }
     /* Reflow is a phone remedy; big screens read the real PDF. The button only appears
        on desktop when it is the way BACK from text view. */
@@ -362,7 +369,6 @@
     /* On the PDF itself only the guide settings apply; typography belongs to Reader view. */
     .comfort-bar.pdf-mode .text-only { display: none !important; }
     .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
-    #focusBtn.active, #comfortBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; touch-action: manipulation; overscroll-behavior: contain; }
     #pageNumber, .mobile-bar .m-page { cursor: pointer; }
     html[data-theme="dark"] .document-pane { background: #111516; }

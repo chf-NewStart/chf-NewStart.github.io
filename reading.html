@@ -124,8 +124,10 @@
           <button id="colZoomBtn" aria-label="Zoom to one column" title="Zoom to one column (C) — taps cycle left · right · full width">Col</button>
         </div>
         <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to reflowed text view" title="Reflow · big phone-friendly text rebuilt from the PDF">≣ <span class="wide">Reflow</span></button>
-        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading guide · uses your saved settings; open Reading for dimness, width, color and size">▰ <span class="wide">Guide</span></button>
-        <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Open reading controls" title="Adjust guide, auto-scroll, text and paper">Reading</button>
+        <div class="guide-tool" id="guideTool" role="group" aria-label="Reading guide and settings">
+          <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Toggle reading guide" title="Turn the reading guide on or off">▰ <span class="wide">Guide</span></button>
+          <button class="soft-button guide-tool-menu" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Open guide and reading settings" title="Dimness, width, height, color and other reading settings">⌄</button>
+        </div>
         <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F) · Space auto-scrolls">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
         <div class="marker-tools">

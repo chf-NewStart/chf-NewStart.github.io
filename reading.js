@@ -1346,7 +1346,7 @@
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
   byId('guideDimRange').oninput=function(){comfort.guideDim=Math.max(20,Math.min(85,+this.value||55));byId('guideDimValue').textContent=comfort.guideDim+'%';byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();};
   byId('comfortReset').onclick=function(){Object.assign(comfort,DEFAULT_COMFORT);if(driftSpeed)driftSpeed=DEFAULT_COMFORT.driftSpeed;applyComfort();showReaderToast('Reading settings reset · cream paper · guide off');};
-  function setComfortBarOpen(open){var bar=byId('comfortBar'),btn=byId('comfortBtn');bar.classList.toggle('hidden',!open);btn.classList.toggle('active',open);btn.setAttribute('aria-expanded',String(open));}
+  function setComfortBarOpen(open){var bar=byId('comfortBar'),btn=byId('comfortBtn');bar.classList.toggle('hidden',!open);byId('guideTool').classList.toggle('settings-open',open);btn.setAttribute('aria-expanded',String(open));}
   byId('comfortBtn').onclick=function(){setComfortBarOpen(byId('comfortBar').classList.contains('hidden'));};
   function setFocusPara(index,scroll){
     var list=paraSections();if(!list.length){focusPara=null;return;}
@@ -1407,7 +1407,7 @@
   }
   function applyFocus(){
     var overlay=byId('paneSpotlight'),btn=byId('focusBtn'),on=!!comfort.focus;
-    overlay.classList.toggle('on',on);overlay.classList.toggle('locked',!!comfort.guideLock);btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on));
+    overlay.classList.toggle('on',on);overlay.classList.toggle('locked',!!comfort.guideLock);btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on));byId('guideTool').classList.toggle('active',on);
     var zg=byId('zenGuide');zg.classList.toggle('active',on);zg.setAttribute('aria-pressed',String(on));
     if(on)requestAnimationFrame(placeGuide);
   }

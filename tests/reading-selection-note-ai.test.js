@@ -47,12 +47,17 @@ function check(name, condition, extra) {
   await page.waitForFunction(() => document.querySelector('#textDocument .original'));
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && !document.getElementById('notesPanel').classList.contains('hidden') && document.getElementById('aiPanel').classList.contains('hidden'));
   check('reader opens to notes instead of AI', await page.evaluate(() => !document.getElementById('notesPanel').classList.contains('hidden') && document.getElementById('aiPanel').classList.contains('hidden')));
+  check('guide and reading settings share one toolbar control', await page.locator('#guideTool').count() === 1 && await page.getByRole('button', { name: 'Reading', exact: true }).count() === 0);
   check('guide no longer offers competing styles', await page.locator('[data-guide-style]').count() === 0);
   await page.click('#comfortBtn');
   check('guide dimness remains directly available', await page.locator('#guideDimRange').isVisible() && await page.locator('#guideDimRange').inputValue() === '70');
   check('legacy tint settings migrate to line focus', await page.locator('.guide-shade-top').evaluate(element => getComputedStyle(element).opacity === '0.7'));
   check('retired guide style is removed from saved settings', await page.evaluate(() => !Object.prototype.hasOwnProperty.call(JSON.parse(localStorage.getItem('readingRoom.comfort.v1')), 'guideStyle')));
   await page.click('#comfortBtn');
+  await page.evaluate(() => localStorage.setItem('readingRoom.guideAdjustSeen.v1', '1'));
+  await page.click('#focusBtn');
+  check('main half toggles the whole guide control on', await page.locator('#guideTool').evaluate(element => element.classList.contains('active')) && await page.locator('#focusBtn').getAttribute('aria-pressed') === 'true');
+  await page.click('#focusBtn');
   await page.evaluate(() => {
     const paragraph = document.querySelector('#textDocument .original');
     const node = paragraph.firstChild;

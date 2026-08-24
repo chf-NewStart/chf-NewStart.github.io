@@ -124,7 +124,7 @@
           <button id="colZoomBtn" aria-label="Zoom to one column" title="Zoom to one column (C) — taps cycle left · right · full width">Col</button>
         </div>
         <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to reflowed text view" title="Reflow · big phone-friendly text rebuilt from the PDF">≣ <span class="wide">Reflow</span></button>
-        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading guide · uses your saved settings; open Adjust for line focus, dimness, color and size">▰ <span class="wide">Guide</span></button>
+        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading guide · uses your saved settings; open Reading for dimness, width, color and size">▰ <span class="wide">Guide</span></button>
         <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Open reading controls" title="Adjust guide, auto-scroll, text and paper">Reading</button>
         <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F) · Space auto-scrolls">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
@@ -164,13 +164,7 @@
         <div class="comfort-section comfort-guide" aria-label="Guide settings">
           <span class="comfort-section-title">Guide</span>
           <div class="comfort-section-body">
-            <div class="group" id="guideStyleGroup"><span class="group-label">Style</span>
-              <div class="guide-scope" role="group" aria-label="Reading guide style">
-                <button class="toggle" type="button" data-guide-style="tint" aria-pressed="true">Tint</button>
-                <button class="toggle" type="button" data-guide-style="dim" aria-pressed="false">Line focus</button>
-              </div>
-            </div>
-            <div class="group guide-dim-control"><span class="group-label">Dimness</span>
+            <div class="group guide-dim-control" id="guideDimGroup"><span class="group-label">Dimness</span>
               <input class="drift-range" id="guideDimRange" type="range" min="20" max="85" step="5" value="56" aria-label="Dimness outside the focused lines">
               <span class="value" id="guideDimValue">56%</span>
             </div>

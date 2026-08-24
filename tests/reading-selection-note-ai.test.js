@@ -40,12 +40,19 @@ function check(name, condition, extra) {
     };
     localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [chapter] }));
     localStorage.setItem('readingRoom.lastOpen.v1', chapter.id);
+    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ guideStyle: 'tint', guideDim: 70 }));
   });
 
   await page.goto('http://localhost:8126/reading.html', { waitUntil: 'load' });
   await page.waitForFunction(() => document.querySelector('#textDocument .original'));
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && !document.getElementById('notesPanel').classList.contains('hidden') && document.getElementById('aiPanel').classList.contains('hidden'));
   check('reader opens to notes instead of AI', await page.evaluate(() => !document.getElementById('notesPanel').classList.contains('hidden') && document.getElementById('aiPanel').classList.contains('hidden')));
+  check('guide no longer offers competing styles', await page.locator('[data-guide-style]').count() === 0);
+  await page.click('#comfortBtn');
+  check('guide dimness remains directly available', await page.locator('#guideDimRange').isVisible() && await page.locator('#guideDimRange').inputValue() === '70');
+  check('legacy tint settings migrate to line focus', await page.locator('.guide-shade-top').evaluate(element => getComputedStyle(element).opacity === '0.7'));
+  check('retired guide style is removed from saved settings', await page.evaluate(() => !Object.prototype.hasOwnProperty.call(JSON.parse(localStorage.getItem('readingRoom.comfort.v1')), 'guideStyle')));
+  await page.click('#comfortBtn');
   await page.evaluate(() => {
     const paragraph = document.querySelector('#textDocument .original');
     const node = paragraph.firstChild;

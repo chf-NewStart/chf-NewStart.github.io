@@ -194,12 +194,13 @@
     button.title=note?'Ask AI about this passage with your related notes included':'Ask AI about this passage';
     button.setAttribute('aria-label',button.title);
   }
+  function setSelectionAction(id){document.querySelectorAll('#selectionCard .selection-action').forEach(function(button){var active=button.id===id;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});}
   function showSelectionCard(selection,rect){
     if(!selection||!selection.text)return;hideLookup();hideHighlightCard();selectionNoteTarget=null;byId('selectionEyebrow').textContent='Selected passage';
     byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
     var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';
     var words=selection.text.trim().split(/\s+/).length;byId('selectionSecondary').classList.toggle('hidden',selection.text.length>140||words>14);
-    byId('selectionAddNote').textContent='Note';refreshSelectionAskContext();byId('selectionCard').classList.remove('hidden');placeSelectionCard(rect);
+    byId('selectionAddNote').textContent='Note';setSelectionAction('');refreshSelectionAskContext();byId('selectionCard').classList.remove('hidden');placeSelectionCard(rect);
   }
   function openSelectionInAi(){
     var selection=pendingSelection||lastAskSelection,note=notesForSelection(selection);
@@ -2516,10 +2517,10 @@
   byId('selectionExplain').onclick=function(){
     var selection=pendingSelection||lastAskSelection,rect=selectionAnchor;if(!selection)return;hideSelectionCard();clearPendingSelection(true);queueLookup(selection.text,rect,selection,0);
   };
-  byId('selectionAsk').onclick=function(){openSelectionInAi();};
-  byId('selectionHighlight').onclick=function(){commitPendingHighlight();};
+  byId('selectionAsk').onclick=function(){setSelectionAction('selectionAsk');openSelectionInAi();};
+  byId('selectionHighlight').onclick=function(){setSelectionAction('selectionHighlight');commitPendingHighlight();};
   byId('selectionAddNote').onclick=function(){
-    var target=ensureSelectionNoteTarget();if(!target)return;byId('selectionEyebrow').textContent='Highlight note';byId('selectionNoteBox').classList.remove('hidden');
+    var target=ensureSelectionNoteTarget();if(!target)return;setSelectionAction('selectionAddNote');byId('selectionEyebrow').textContent='Highlight note';byId('selectionNoteBox').classList.remove('hidden');
     byId('selectionHighlight').textContent='Highlighted ✓';byId('selectionHighlight').disabled=true;byId('selectionAddNote').textContent='Editing note';
     refreshSelectionAskContext();placeSelectionCard();requestAnimationFrame(function(){byId('selectionNote').focus({preventScroll:true});});
   };

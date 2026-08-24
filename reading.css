@@ -465,7 +465,7 @@
     .selection-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 13px 14px 10px; }
     .selection-action { min-height: 40px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: .68rem; font-weight: 700; }
     .selection-action:hover { border-color: var(--accent); background: var(--accent-soft); }
-    .selection-action.primary { border-color: color-mix(in srgb, var(--accent) 52%, var(--line)); background: var(--accent-soft); color: var(--accent-dark); }
+    .selection-action.active { border-color: color-mix(in srgb, var(--accent) 58%, var(--line)); background: var(--accent-soft); color: var(--accent-dark); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 13%, transparent); }
     .selection-action:disabled { cursor: default; opacity: .42; }
     .selection-action:disabled:hover { border-color: var(--line); background: var(--surface); }
     .selection-secondary { display: flex; justify-content: flex-end; padding: 0 17px 12px; }

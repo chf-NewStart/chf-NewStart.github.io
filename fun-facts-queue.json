@@ -1,17 +1,6 @@
 [
   {
     "fact": {
-      "tag": "BIOLOGY",
-      "title": "Mushrooms are closer kin to you than to plants",
-      "fact": "On the tree of life, fungi and animals share a more recent common ancestor than either does with plants. Fungi don’t photosynthesize, they digest; and their cell walls are built of chitin — the same material as insect shells.",
-      "detail": "That kinship is why fungal infections are hard to treat: drugs that hurt fungal cells often hurt ours too. Plants split off earlier and went the sunlight route; fungi, like us, eat."
-    },
-    "glossary": {
-      "chitin": "the tough material that builds fungal cell walls and insect shells"
-    }
-  },
-  {
-    "fact": {
       "tag": "RECORDS",
       "title": "One of Earth’s largest organisms is a fungus",
       "fact": "A single honey fungus (Armillaria) in Oregon’s Blue Mountains spreads through roughly nine square kilometers of forest soil — one genetic individual, likely thousands of years old, quietly eating tree roots.",

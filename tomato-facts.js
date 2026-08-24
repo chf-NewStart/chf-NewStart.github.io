@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "BIOLOGY",
+            title: "Mushrooms are closer kin to you than to plants",
+            fact: "On the tree of life, fungi and animals share a more recent common ancestor than either does with plants. Fungi don’t photosynthesize, they digest; and their cell walls are built of chitin — the same material as insect shells.",
+            detail: "That kinship is why fungal infections are hard to treat: drugs that hurt fungal cells often hurt ours too. Plants split off earlier and went the sunlight route; fungi, like us, eat."
+        },
+        {
             tag: "GENOMICS",
             title: "Bell peppers are chilies with a broken heat switch",
             fact: "Sweet bell peppers are the same species as many hot chilies — they just carry a recessive mutation that disables capsaicin production entirely. Zero heat, by genetics rather than by breeding out flavor.",
@@ -544,6 +550,7 @@
     // matched automatically. The daily fact-hunter job adds entries here
     // whenever a new fact introduces a strange word.
     const GLOSSARY = {
+        "chitin": "the tough material that builds fungal cell walls and insect shells",
         "aril": "a fleshy extra coat that grows around some seeds",
         "corm": "a swollen underground stem base a plant regrows from, like a bulb",
         "stigma": "the pollen-receiving tip of a flower’s female organ",

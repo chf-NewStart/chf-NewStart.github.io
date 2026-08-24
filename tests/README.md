@@ -7,7 +7,8 @@ the highlight card (recolor, per-highlight notes, remove), and undo/redo.
 
 `reading-ai-providers.test.js` covers the AI provider router: keyless on-device
 Gemini, migration of an existing DeepSeek key, current model selection, saved
-thread context, and the provider settings UI.
+thread context, the provider settings UI, and AI-key transfer through a private
+device setup link even when GitHub sync is not configured.
 
 Run with Node 18+ and Playwright's bundled Chromium:
 

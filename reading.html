@@ -387,12 +387,12 @@
       </section>
       <section>
         <h3>Encrypted GitHub sync</h3>
-        <p>Notes and library metadata become one AES-GCM encrypted file in a private repo. The passphrase and fine-grained token stay in this browser. PDFs remain in your repo’s <code>papers/</code> folder or on each device. If sync ever needs attention, saving here again resets it — or paste a device link from your other device into the address bar and it reconfigures itself.</p>
+        <p>Notes and library metadata become one AES-GCM encrypted file in a private repo. The passphrase and fine-grained token stay in this browser unless you explicitly make a private device setup link. PDFs remain in your repo’s <code>papers/</code> folder or on each device. If sync ever needs attention, saving here again resets it.</p>
         <div class="form-grid">
           <input class="field" id="syncRepo" placeholder="owner/private-repo" autocomplete="off" spellcheck="false">
           <input class="field" id="syncToken" type="password" placeholder="fine-grained token: contents read/write" autocomplete="off">
           <input class="field" id="syncPass" type="password" placeholder="encryption passphrase" autocomplete="off">
-          <div><button class="button" id="syncSaveBtn">Save & sync</button> <button class="soft-button hidden" id="syncNowBtn">Sync now</button> <button class="soft-button hidden" id="syncLinkBtn">Copy device link</button> <button class="soft-button hidden" id="syncOffBtn">Turn off</button></div>
+          <div><button class="button" id="syncSaveBtn">Save & sync</button> <button class="soft-button hidden" id="syncNowBtn">Sync now</button> <button class="soft-button hidden" id="syncOffBtn">Turn off</button></div>
           <button class="soft-button hidden" id="syncForceBtn">Replace the cloud copy with this device’s library</button>
         </div>
         <div class="status" id="syncStatus"></div>
@@ -424,6 +424,12 @@
           <div><button class="soft-button" id="aiKeySave">Save AI settings</button></div>
         </div>
         <div class="status" id="aiKeyStatus"></div>
+      </section>
+      <section>
+        <h3>Set up another device</h3>
+        <p>Make a private setup link containing your AI provider settings and every saved API key, plus GitHub sync credentials when configured. Open it only on a device you trust. Google Drive still asks you to sign in separately and its session is never placed in the link.</p>
+        <button class="soft-button" id="syncLinkBtn">Copy device setup link</button>
+        <div class="status" id="deviceLinkStatus" role="status" aria-live="polite"></div>
       </section>
       <section>
         <h3>Install as an app</h3>

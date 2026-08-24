@@ -137,7 +137,9 @@ Each page is self-contained and keeps its data in the visitor's own browser
   AES-GCM encrypted sync to
   a private GitHub repo (fine-grained token, ciphertext only, files over the
   contents-API 1 MB limit fetched raw), a `papers/` folder picker, and a device
-  link that hand-carries token, passphrase and AI provider settings to a new device.
+  link that can be made with or without GitHub sync and hand-carries every saved AI
+  provider key plus optional GitHub token and passphrase to a trusted new device.
+  Google Drive authorization is never embedded and must be signed in again.
 
   On phones the paper gets the whole screen: a thumb-height bottom bar, the
   notebook as a bottom sheet, ⋯ revealing the full toolbar, and the layout

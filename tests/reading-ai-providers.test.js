@@ -90,6 +90,38 @@ function check(name, condition, extra) {
   check('editable model appears in settings', await deepSeekPage.locator('#aiModel').inputValue() === 'deepseek-v4-flash');
   await deepSeekContext.close();
 
+  const setupSourceContext = await browser.newContext();
+  const setupSourcePage = await setupSourceContext.newPage();
+  await setupSourcePage.addInitScript(() => {
+    localStorage.setItem('readingRoom.ai.providers.v1', JSON.stringify({
+      provider: 'openai',
+      providers: { openai: { key: 'setup-transfer-test-key', model: 'gpt-5-mini', endpoint: '' } }
+    }));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async value => { window.__deviceSetupLink = value; } }
+    });
+  });
+  await setupSourcePage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
+  await setupSourcePage.click('#settingsBtn');
+  check('device setup link works without GitHub sync', await setupSourcePage.locator('#syncLinkBtn').isVisible());
+  await setupSourcePage.click('#syncLinkBtn');
+  const setupLink = await setupSourcePage.evaluate(() => window.__deviceSetupLink || '');
+  check('device setup link is copied', setupLink.includes('#phloem-setup='));
+  await setupSourceContext.close();
+
+  const setupTargetContext = await browser.newContext();
+  const setupTargetPage = await setupTargetContext.newPage();
+  await setupTargetPage.addInitScript(() => { window.confirm = () => true; });
+  await setupTargetPage.goto(setupLink, { waitUntil: 'load' });
+  const importedAi = await setupTargetPage.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.ai.providers.v1') || 'null'));
+  check('device setup imports selected AI provider', importedAi && importedAi.provider === 'openai', importedAi && importedAi.provider);
+  check('device setup imports AI key', importedAi && importedAi.providers.openai.key === 'setup-transfer-test-key');
+  check('device setup does not invent GitHub sync', await setupTargetPage.evaluate(() => localStorage.getItem('readingRoom.sync.v1') === null));
+  await setupTargetPage.click('#settingsBtn');
+  check('imported AI key appears ready in settings', await setupTargetPage.locator('#aiKeyStatus').textContent().then(text => text.includes('Ready to use OpenAI')));
+  await setupTargetContext.close();
+
   await browser.close();
   server.close();
   process.exit(failures ? 1 : 0);

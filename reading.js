@@ -3312,7 +3312,7 @@
   function aiProviderNote(id){
     if(id==='auto')return 'Private by default. Gemini Nano runs inside supported desktop Chrome; if it is unavailable, Automatic can fall back to a cloud key already saved on this device.';
     if(id==='compatible')return 'For OpenRouter, a local model gateway, or another service that accepts OpenAI-style chat completions. The endpoint must allow browser requests (CORS).';
-    return 'Only the text context you choose is sent to '+AI_PROVIDERS[id].label+'. The key stays in this browser and is excluded from library sync and backups.';
+    return 'Only the text context you choose is sent to '+AI_PROVIDERS[id].label+'. The key is excluded from library sync and backups, and leaves this browser only when you explicitly make a private device setup link.';
   }
   function renderAiProviderFields(){
     var id=byId('aiProvider').value,cfg=aiSettings.providers[id]||{},cloud=id!=='auto';byId('aiCloudFields').classList.toggle('hidden',!cloud);byId('aiEndpointFields').classList.toggle('hidden',id!=='compatible');byId('aiProviderNote').textContent=aiProviderNote(id);
@@ -3326,7 +3326,7 @@
   }
   function fillAiSettings(){aiSettings=loadAiSettings();byId('aiProvider').value=aiSettings.provider||'auto';renderAiProviderFields();}
   function fillSettings(){
-    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncLinkBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);fillAiSettings();
+    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);fillAiSettings();
     byId('gdriveConnectBtn').textContent=gdriveOn()?'Sign in again':'Connect Google Drive';
     byId('gdriveConnectBtn').classList.toggle('button',!gdriveOn());byId('gdriveConnectBtn').classList.toggle('soft-button',gdriveOn());
     byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
@@ -3408,25 +3408,32 @@
     }syncing=false;
   }
   function scheduleSync(){if(!syncCfg&&!gdriveOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){doSync();gdriveSync();},4000);}
-  /* The device link is a direct device-to-device hand-off (it already carries the GitHub
-     token and passphrase), so provider choices and AI keys ride along too — unlike the
-     synced file, which deliberately never contains them. */
+  /* A device link is a direct hand-off, independent of library sync. It always carries
+     the AI provider configuration (including every saved key) and includes GitHub
+     credentials only when present. Google OAuth sessions are deliberately never copied. */
+  function aiKeyCount(settings){var count=0;Object.keys(settings&&settings.providers||{}).forEach(function(id){if(settings.providers[id]&&settings.providers[id].key)count++;});return count;}
+  function encodeSetup(payload){return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+  function decodeSetup(encoded){encoded=String(encoded||'').replace(/-/g,'+').replace(/_/g,'/');while(encoded.length%4)encoded+='=';return JSON.parse(decodeURIComponent(escape(atob(encoded))));}
   byId('syncLinkBtn').onclick=function(){
-    if(!syncCfg)return;
-    var payload=Object.assign({},syncCfg);payload.aiSettings=loadAiSettings();
-    var link=location.href.split('#')[0]+'#phloem-setup='+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-    navigator.clipboard.writeText(link).then(function(){byId('syncStatus').textContent='Device link copied. AirDrop it to yourself; it contains your sync credentials and AI settings, including any saved keys.';});
+    var settings=loadAiSettings(),payload={v:2,aiSettings:settings};if(syncCfg)payload.github={repo:syncCfg.repo,token:syncCfg.token,pass:syncCfg.pass};if(gdriveOn())payload.googleDrive=true;
+    var link=location.href.split('#')[0]+'#phloem-setup='+encodeSetup(payload),keys=aiKeyCount(settings),status=byId('deviceLinkStatus');
+    if(!(navigator.clipboard&&navigator.clipboard.writeText)){status.textContent='This browser cannot copy the setup link. Try opening Phloem in Safari, Chrome, or Edge.';return;}
+    navigator.clipboard.writeText(link).then(function(){status.textContent='Private setup link copied with '+keys+' AI '+(keys===1?'key':'keys')+(syncCfg?' and GitHub sync credentials':'')+'. Send it only to yourself.';},function(){status.textContent='The browser blocked copying. Allow clipboard access, then try again.';});
   };
   function importSetup(){
     var m=location.hash.match(/^#(?:phloem|carrel|margin)-setup=(.+)$/);if(!m)return;
     history.replaceState(null,'',location.pathname+location.search);
     try{
-      var cfg=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
-      if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Phloem to '+cfg.repo+'? Only continue if you made this link yourself.')){
-        if(cfg.aiSettings&&cfg.aiSettings.providers){try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg.aiSettings));var linkedDeepSeek=cfg.aiSettings.providers.deepseek&&cfg.aiSettings.providers.deepseek.key;if(linkedDeepSeek)localStorage.setItem(LEGACY_AI_KEY,linkedDeepSeek);else localStorage.removeItem(LEGACY_AI_KEY);}catch(e){}}
+      var cfg=decodeSetup(m[1]),linkedSync=cfg.github&&cfg.github.repo&&cfg.github.token&&cfg.github.pass?cfg.github:(cfg.repo&&cfg.token&&cfg.pass?{repo:cfg.repo,token:cfg.token,pass:cfg.pass}:null),linkedAi=cfg.aiSettings&&cfg.aiSettings.providers?cfg.aiSettings:null,parts=[];
+      if(linkedAi)parts.push(aiKeyCount(linkedAi)+' saved AI '+(aiKeyCount(linkedAi)===1?'key':'keys')+' and provider settings');
+      else if(cfg.ai)parts.push('a saved DeepSeek key');
+      if(linkedSync)parts.push('GitHub sync for '+linkedSync.repo);
+      if(cfg.googleDrive)parts.push('a reminder to sign in to Google Drive');
+      if(parts.length&&confirm('Configure this device with '+parts.join(', ')+'? Only continue if you made this private link yourself.')){
+        if(linkedAi){try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(linkedAi));var linkedDeepSeek=linkedAi.providers.deepseek&&linkedAi.providers.deepseek.key;if(linkedDeepSeek)localStorage.setItem(LEGACY_AI_KEY,linkedDeepSeek);else localStorage.removeItem(LEGACY_AI_KEY);}catch(e){}}
         else if(cfg.ai){try{localStorage.setItem(LEGACY_AI_KEY,cfg.ai);localStorage.removeItem(AI_SETTINGS_KEY);}catch(e){}}
-        delete cfg.ai;delete cfg.aiSettings;aiSettings=loadAiSettings();syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));
-        byId('syncSignal').title='';fillSettings();doSync();
+        aiSettings=loadAiSettings();if(linkedSync){syncCfg={repo:linkedSync.repo,token:linkedSync.token,pass:linkedSync.pass};localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg));}
+        byId('syncSignal').title='';fillSettings();byId('deviceLinkStatus').textContent='This device is configured'+(cfg.googleDrive&&!gdriveOn()?'. Sign in to Google Drive above to reconnect library sync.':'.');if(linkedSync)doSync();
       }
     }catch(e){}
   }

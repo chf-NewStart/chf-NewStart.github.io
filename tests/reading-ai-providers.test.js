@@ -47,6 +47,7 @@ function check(name, condition, extra) {
   });
   await localPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
   if (await localPage.locator('#notebookReopen').isVisible()) await localPage.click('#notebookReopen');
+  await localPage.click('[data-tab="aiPanel"]');
   await localPage.click('#aiUseCurrent');
   await localPage.fill('#aiQuestion', 'What happens to light energy?');
   await localPage.click('#aiAskBtn');
@@ -78,6 +79,7 @@ function check(name, condition, extra) {
   });
   await deepSeekPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
   if (await deepSeekPage.locator('#notebookReopen').isVisible()) await deepSeekPage.click('#notebookReopen');
+  await deepSeekPage.click('[data-tab="aiPanel"]');
   await deepSeekPage.click('#aiUseCurrent');
   await deepSeekPage.fill('#aiQuestion', 'Summarize this.');
   await deepSeekPage.click('#aiAskBtn');

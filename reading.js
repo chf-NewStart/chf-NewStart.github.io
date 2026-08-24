@@ -281,7 +281,7 @@
   function showSelectionCard(selection,rect){
     if(!selection||!selection.text)return;hideLookup();hideHighlightCard();selectionNoteTarget=null;byId('selectionEyebrow').textContent='Selected passage';
     byId('selectionCard').classList.remove('ai-open','note-open');byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
-    byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
+    byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionAiNoteText').textContent='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
     var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';
     var words=selection.text.trim().split(/\s+/).length;byId('selectionSecondary').classList.toggle('hidden',selection.text.length>140||words>14);
     byId('selectionAddNote').textContent='Add note';setSelectionAction('');byId('selectionCard').classList.remove('hidden');placeSelectionCard(rect);
@@ -291,7 +291,7 @@
     if(!selection||!selection.text||!ownNote||!useSelectionForAi(selection,note,true))return;clearPendingSelection(true);
     var ch=find(currentId),savedText=String(aiContext&&aiContext.text||'').slice(0,16000),match=ch&&(ch.aiThreads||[]).find(function(thread){return thread.contextLabel===aiContext.label&&thread.contextText===savedText;});
     if(match){ch.activeAiThreadId=match.id;aiThreadDraft=false;}else aiThreadDraft=true;renderQa();
-    var card=byId('selectionCard');card.classList.remove('note-open');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');byId('selectionContext').classList.remove('hidden');byId('selectionContextText').textContent='Thread context · selected passage + your note';byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Your question will start a thread from this note.';renderSelectionAiThread();placeSelectionCard();
+    var card=byId('selectionCard');card.classList.remove('note-open');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');byId('selectionContext').classList.add('hidden');byId('selectionAiNoteText').textContent=ownNote;byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Your question will start a thread from this note.';renderSelectionAiThread();placeSelectionCard();
     requestAnimationFrame(function(){byId('selectionAiQuestion').focus({preventScroll:true});});
   }
 
@@ -1905,7 +1905,7 @@
     byId('paperTags').value=(ch.tags||[]).join(', '); renderNoteIndex();
     byId('evidenceList').classList.add('hidden');byId('evidenceList').innerHTML='';
     aiContext=null;aiThreadDraft=false;byId('contextCard').classList.add('hidden');byId('aiStatus').textContent='';restoreActiveAiThread(ch);renderQa();
-    readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('aiPanel');
+    readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('notesPanel');
     if(ch.kind==='pdf'){
       try{
         if(preparedDoc)pdfDoc=preparedDoc;
@@ -2481,7 +2481,7 @@
     Object.keys(ch.highlights||{}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(h){all.push('<div class="mini-note" data-jump-page="'+esc(page)+'"><b><span class="tag hl-'+esc(h.color||'yellow')+'">Highlight</span> · page '+esc(page)+'</b><br>“'+esc((h.text||'').slice(0,145))+'”'+(h.note?'<span class="hl-note">✎ '+esc(h.note.slice(0,120))+'</span>':'')+'<button class="remove-highlight" data-remove-highlight="'+esc(h.id)+'" data-highlight-page="'+esc(page)+'" aria-label="Remove highlight">×</button></div>');});});
     (ch.textHighlights||[]).forEach(function(h){all.push('<div class="mini-note" data-jump-para="'+h.para+'"><b><span class="tag hl-'+esc(h.color||'yellow')+'">Highlight</span> · paragraph '+(h.para+1)+'</b><br>“'+esc((h.text||'').slice(0,145))+'”'+(h.note?'<span class="hl-note">✎ '+esc(h.note.slice(0,120))+'</span>':'')+'<button class="remove-highlight" data-remove-text-highlight="'+esc(h.id)+'" aria-label="Remove highlight">×</button></div>');});
     (ch.readerHighlights||[]).forEach(function(h){all.push('<div class="mini-note" data-jump-para="'+h.para+'"><b><span class="tag hl-'+esc(h.color||'yellow')+'">Highlight</span> · Reader paragraph '+(h.para+1)+'</b><br>“'+esc((h.text||'').slice(0,145))+'”'+(h.note?'<span class="hl-note">✎ '+esc(h.note.slice(0,120))+'</span>':'')+'<button class="remove-highlight" data-remove-reader-highlight="'+esc(h.id)+'" aria-label="Remove Reader highlight">×</button></div>');});
-    byId('noteIndex').innerHTML=all.join('');
+    byId('noteIndex').innerHTML=all.length?all.join(''):'<div class="notebook-empty">No saved notes or highlights yet. Select a passage to mark it, or write beside this page below.</div>';
     byId('noteIndex').querySelectorAll('[data-jump-page],[data-jump-para]').forEach(function(d){d.onclick=function(e){
       if(e.target.closest('.remove-highlight'))return;
       if(d.dataset.jumpPage)gotoPdfPage(+d.dataset.jumpPage);
@@ -2936,7 +2936,7 @@
     var ch=find(currentId),box=byId('selectionAiThread');if(!ch||!box)return;var thread=aiThreadDraft?null:activeAiThread(ch),html='';
     if(thread)html+='<div class="ai-thread-meta">'+esc(thread.contextLabel||'Passage thread')+' · '+new Date(thread.createdAt||thread.updatedAt||now()).toLocaleDateString()+'</div>';
     (thread&&thread.messages||[]).forEach(function(message){html+='<div class="ai-turn'+(message.role==='user'?' you':'')+'">'+esc(message.content)+'</div>';});if(pending)html+='<div class="ai-turn pending">'+esc(pending)+'</div>';
-    if(!html)html='<div class="ai-thread-empty">Start from what you wrote, then keep replying here without leaving the passage.</div>';box.innerHTML=html;byId('selectionAiSend').textContent=thread&&thread.messages.length?'Reply':'Ask';
+    if(!html)html='<div class="ai-thread-empty">Ask a question, test your note, or keep thinking with the passage beside you.</div>';box.innerHTML=html;byId('selectionAiSend').textContent=thread&&thread.messages.length?'Reply':'Ask';
     requestAnimationFrame(function(){box.scrollTop=box.scrollHeight;placeSelectionCard();});
   }
   function showAiSetupStatus(targetId,message){

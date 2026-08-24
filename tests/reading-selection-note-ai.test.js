@@ -44,6 +44,8 @@ function check(name, condition, extra) {
 
   await page.goto('http://localhost:8126/reading.html', { waitUntil: 'load' });
   await page.waitForFunction(() => document.querySelector('#textDocument .original'));
+  await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && !document.getElementById('notesPanel').classList.contains('hidden') && document.getElementById('aiPanel').classList.contains('hidden'));
+  check('reader opens to notes instead of AI', await page.evaluate(() => !document.getElementById('notesPanel').classList.contains('hidden') && document.getElementById('aiPanel').classList.contains('hidden')));
   await page.evaluate(() => {
     const paragraph = document.querySelector('#textDocument .original');
     const node = paragraph.firstChild;
@@ -73,8 +75,13 @@ function check(name, condition, extra) {
 
   await page.click('#selectionNoteAi');
   check('thread opens inside the note card', await page.locator('#selectionAiBox').isVisible());
-  check('thread context includes passage and note', await page.locator('#selectionContextText').textContent().then(text => text.includes('selected passage + your note')));
+  check('saved note is visible inside its thread', await page.locator('#selectionAiNoteText').textContent().then(text => text === 'This is the bridge between the data sources.'));
+  check('generic context banner is replaced by the note itself', !(await page.locator('#selectionContext').isVisible()));
   check('thread returns to the note', await page.locator('#selectionAiBack').textContent().then(text => text.includes('Note')));
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileCard = await page.locator('#selectionCard').boundingBox();
+  check('note thread stays on-screen on mobile', mobileCard && mobileCard.y >= 0 && mobileCard.y + mobileCard.height <= 844);
+  check('note remains visible in the mobile thread', await page.locator('#selectionAiNoteText').isVisible());
   await page.click('#selectionAiBack');
   check('back restores the note editor', await page.locator('#selectionNote').isVisible());
   check('note survives the thread round trip', await page.locator('#selectionNote').inputValue().then(value => value.includes('bridge between')));

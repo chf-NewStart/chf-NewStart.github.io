@@ -68,10 +68,10 @@
       </figure>
 
       <div class="command-bar" id="pdfLinkDrop">
-        <button class="button primary" id="importPdfBtn">＋ Add papers from this device</button>
-        <button class="soft-button" id="folderPickBtn">⌸ Add a folder</button>
-        <button class="soft-button" id="linkImportBtn">↗ Add from link</button>
-        <button class="soft-button" id="githubPickBtn">⌘ Pick from GitHub</button>
+        <button class="button primary" id="importPdfBtn">＋ Add papers</button>
+        <button class="soft-button" id="folderPickBtn">⌸ Folder</button>
+        <button class="soft-button" id="linkImportBtn">↗ Link</button>
+        <button class="soft-button" id="githubPickBtn">⌘ GitHub</button>
         <button class="soft-button" id="newTextBtn">✎ Paste text</button>
         <button class="soft-button" id="reviewShortcut">Review notes</button>
         <input class="hidden" type="file" id="pdfFile" accept=".pdf,application/pdf" multiple>
@@ -125,7 +125,7 @@
         </div>
         <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to reflowed text view" title="Reflow · big phone-friendly text rebuilt from the PDF">≣ <span class="wide">Reflow</span></button>
         <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading guide · uses your saved settings; open Adjust for line focus, dimness, color and size">▰ <span class="wide">Guide</span></button>
-        <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Adjust reading controls" title="Adjust guide, auto-scroll, text and paper">Adjust</button>
+        <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Open reading controls" title="Adjust guide, auto-scroll, text and paper">Reading</button>
         <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F) · Space auto-scrolls">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
         <div class="marker-tools">
@@ -236,24 +236,32 @@
         <aside class="notebook" id="notebook">
           <button class="sheet-close" id="sheetClose" type="button" aria-label="Close notes">✕</button>
           <div class="tabs" role="tablist">
-            <button class="tab active" data-tab="aiPanel" role="tab" aria-selected="true" aria-controls="aiPanel">Ask AI</button>
-            <button class="tab" data-tab="notesPanel" role="tab" aria-selected="false" aria-controls="notesPanel">Notes</button>
+            <button class="tab active" data-tab="notesPanel" role="tab" aria-selected="true" aria-controls="notesPanel">Notes</button>
+            <button class="tab" data-tab="aiPanel" role="tab" aria-selected="false" aria-controls="aiPanel">Discuss</button>
           </div>
-          <div class="tab-panel hidden" id="notesPanel" role="tabpanel">
-            <div class="note-heading-row"><h3 id="noteHeading">Page note</h3><button class="recall-button" id="recallBtn" type="button" aria-pressed="false">↻ Recall</button></div>
-            <p class="hint">Saved as you type. Recall briefly hides the paper while you explain it from memory. Select a short term for a definition and image. Click a highlight to recolor it, note on it, or remove it; with the marker on, a click erases it. ⌘Z undoes marker work, ⇧⌘Z redoes it.</p>
-            <div class="recall-prompt hidden" id="recallPrompt"><b>Without looking:</b>What is the main claim? What evidence supports it? What remains unclear?<br><button id="recallDone" type="button">Done · show the paper</button></div>
-            <textarea class="note-area" id="pageNote" placeholder="What is the claim? What do you doubt? What should you use later?"></textarea>
-            <label class="field-label" for="paperTags">Connections / tags</label>
-            <input class="field" id="paperTags" placeholder="method, metabolism, revisit">
-            <div style="display:flex;gap:8px;margin-top:10px">
-              <button class="soft-button" id="editPaperBtn">Edit details</button>
-              <button class="soft-button" id="deletePaperBtn">Delete</button>
+          <div class="tab-panel" id="notesPanel" role="tabpanel">
+            <div class="notebook-intro">
+              <span class="panel-eyebrow">Notebook</span>
+              <h3>Notes in this paper</h3>
+              <p class="hint">Your page notes, highlighted passages, and notes on highlights stay together here.</p>
             </div>
             <div class="mini-list" id="noteIndex"></div>
+            <section class="page-note-card">
+              <div class="note-heading-row"><div><span class="panel-eyebrow">Write beside the page</span><h3 id="noteHeading">Page note</h3></div><button class="recall-button" id="recallBtn" type="button" aria-pressed="false">↻ Recall</button></div>
+              <p class="hint">Saved as you type. Recall briefly hides the paper while you explain it from memory.</p>
+              <div class="recall-prompt hidden" id="recallPrompt"><b>Without looking:</b>What is the main claim? What evidence supports it? What remains unclear?<br><button id="recallDone" type="button">Done · show the paper</button></div>
+              <textarea class="note-area" id="pageNote" placeholder="What is the claim? What do you doubt? What should you use later?"></textarea>
+            </section>
+            <label class="field-label" for="paperTags">Connections / tags</label>
+            <input class="field" id="paperTags" placeholder="method, metabolism, revisit">
+            <div class="paper-tools">
+              <button class="text-button" id="editPaperBtn">Edit paper details</button>
+              <button class="text-button danger-text" id="deletePaperBtn">Remove paper</button>
+            </div>
           </div>
-          <div class="tab-panel" id="aiPanel" role="tabpanel">
-            <div class="ai-panel-head"><p class="hint">Pick what to ask about. With on-device Gemini, nothing leaves this device; cloud providers receive only the text you choose.</p><button class="text-button" id="aiNewThread" type="button">+ New thread</button></div>
+          <div class="tab-panel hidden" id="aiPanel" role="tabpanel">
+            <div class="ai-panel-head"><div><span class="panel-eyebrow">Reading partner</span><h3>Discuss this paper</h3><p class="hint">Choose what to discuss. Only that context is sent to your selected AI provider.</p></div><button class="text-button" id="aiNewThread" type="button">+ New thread</button></div>
+            <span class="field-label context-label">Start with</span>
             <div class="context-row">
               <button class="soft-button context-btn" id="aiUseCurrent" type="button">⌖ Page</button>
               <button class="soft-button context-btn" id="aiUseSelection" type="button">✂ Selection</button>
@@ -265,9 +273,6 @@
             <label class="ai-thread-picker hidden" id="aiThreadPickerRow"><span>Thread</span><select class="field" id="aiThreadPicker" aria-label="Saved AI threads"></select></label>
             <div class="ai-thread" id="qaList" aria-live="polite"></div>
             <div class="ask-chips" role="group" aria-label="Question starters">
-              <button class="ask-chip" type="button" data-ask-stem="What is ">What is…</button>
-              <button class="ask-chip" type="button" data-ask-stem="Why ">Why…</button>
-              <button class="ask-chip" type="button" data-ask-stem="How ">How…</button>
               <button class="ask-chip" type="button" data-ask-full="Explain this in plain, simple words.">Explain simply</button>
               <button class="ask-chip" type="button" data-ask-full="Summarize the key points of this context in a few sentences.">Summarize</button>
               <button class="ask-chip" type="button" id="evidenceBtn" title="One tap: searches real indexed papers about this claim on Semantic Scholar">Find evidence</button>
@@ -285,8 +290,8 @@
         <button id="mPrev" type="button" aria-label="Previous page">←</button>
         <span class="m-page" id="mPageLabel" title="Jump to a page"></span>
         <button id="mNext" type="button" aria-label="Next page">→</button>
-        <button id="mAsk" type="button" aria-expanded="false">✦ Ask</button>
         <button id="mNotes" type="button" aria-expanded="false">✎ Notes</button>
+        <button id="mAsk" type="button" aria-expanded="false">✦ Discuss</button>
         <button id="mMore" type="button" aria-expanded="false" aria-label="More tools">⋯</button>
       </div>
       <aside class="selection-card hidden" id="selectionCard" aria-label="Actions for selected text">
@@ -318,6 +323,7 @@
         </div>
         <div class="selection-ai hidden" id="selectionAiBox">
           <div class="selection-ai-head"><button class="text-button" id="selectionAiBack" type="button">← Note</button><button class="text-button" id="selectionAiNew" type="button">+ New thread</button></div>
+          <div class="selection-ai-note"><span>Your note</span><p id="selectionAiNoteText"></p></div>
           <div class="selection-ai-thread" id="selectionAiThread" aria-live="polite"></div>
           <div class="selection-ai-row"><textarea id="selectionAiQuestion" rows="1" placeholder="Ask about this note and passage…" title="Enter sends · Shift+Enter for a new line"></textarea><button class="button" id="selectionAiSend" type="button">Ask</button></div>
           <span class="selection-ai-status" id="selectionAiStatus" role="status"></span>
@@ -378,7 +384,8 @@
 
   <dialog id="settingsDialog">
     <div class="dialog-head"><h2>Desk settings</h2><button class="icon-btn" data-close="settingsDialog">×</button></div>
-    <div class="dialog-body">
+    <div class="dialog-body settings-body">
+      <p class="settings-lede">Choose how this reading desk syncs, thinks with you, and moves between devices. Your reading settings stay calm and local by default.</p>
       <section>
         <h3>Sync with Google Drive</h3>
         <p>One tap connects your own Google Drive. Notes and the library live in a hidden app folder only this app can see — and your PDFs (up to 30 MB each) ride along, so a paper added on one device opens on the others. No tokens, no repos, no passphrase.</p>

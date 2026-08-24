@@ -56,11 +56,11 @@
     .cloud:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 
     .icon-btn, .button, .soft-button {
-      border: 1px solid var(--line); background: var(--surface); border-radius: 999px; min-height: 38px;
+      border: 1px solid var(--line); background: var(--surface); border-radius: 10px; min-height: 38px;
       padding: 8px 14px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
       text-decoration: none; font-weight: 600; font-size: .8rem;
     }
-    .icon-btn { width: 38px; padding: 0; }
+    .icon-btn { width: 38px; padding: 0; border-radius: 50%; }
     /* The sun and moon are quiet glyphs at button size — let them breathe. */
     #themeBtn { font-size: 1.15rem; }
     .button { border-color: var(--accent); background: var(--accent); color: white; }
@@ -76,7 +76,7 @@
     .hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr); gap: 40px; align-items: end; margin-bottom: 42px; }
     /* The pitch is for first visits; a working library goes straight to the shelf. */
     body.has-papers .hero, body.has-papers .demo { display: none; }
-    body.has-papers #libraryPage { padding-top: 26px; }
+    body.has-papers #libraryPage { padding-top: 22px; }
     .hero h1 { margin: 8px 0 12px; max-width: 780px; font: 500 clamp(2.5rem, 6vw, 5.4rem)/.98 var(--serif); letter-spacing: -.055em; }
     .hero h1 em { color: var(--accent); font-weight: inherit; }
     .hero p { margin: 0; max-width: 620px; font: 1.06rem/1.65 var(--serif); color: var(--muted); }
@@ -96,10 +96,11 @@
 
     .link-status { grid-column: 1 / -1; min-height: 0; color: var(--muted); font-size: .7rem; }
     .link-status:not(:empty) { padding: 1px 3px 2px; }
-    .command-bar { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 12px; box-shadow: var(--shadow); display: flex; gap: 9px; margin-bottom: 38px; transition: border-color .18s ease, background .18s ease; }
+    .command-bar { background: color-mix(in srgb, var(--surface) 82%, transparent); border: 1px solid var(--line); border-radius: 16px; padding: 9px; display: flex; gap: 6px; margin-bottom: 28px; transition: border-color .18s ease, background .18s ease; }
     .command-bar.drag { border-color: var(--accent); background: var(--accent-soft); }
-    .command-bar .button, .command-bar .soft-button { min-height: 44px; border-radius: 11px; }
-    .command-bar .primary { flex: 1; justify-content: flex-start; font-size: .9rem; }
+    .command-bar .button, .command-bar .soft-button { min-height: 40px; padding-inline: 12px; }
+    .command-bar .primary { flex: 0 0 auto; justify-content: flex-start; font-size: .84rem; }
+    #reviewShortcut { margin-left: auto; }
     .link-dialog-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
     .link-dialog-form .field { min-width: 0; min-height: 46px; }
     .link-dialog-form .button { min-height: 46px; white-space: nowrap; }
@@ -123,10 +124,10 @@
     /* The Living Shelf: loose working notes gather on a research wall, while the
        selected paper rests beside them as a proper field notebook. */
     .living-shelf {
-      --shelf-height: clamp(620px, 62vw, 740px);
+      --shelf-height: clamp(540px, 50vw, 640px);
       position: relative; min-height: var(--shelf-height); display: grid;
       grid-template-columns: minmax(500px, .88fr) minmax(0, 1.12fr);
-      gap: 0; border: 1px solid var(--line); border-radius: 26px;
+      gap: 0; border: 1px solid var(--line); border-radius: 22px;
       background:
         radial-gradient(circle at 76% 48%, color-mix(in srgb, var(--yellow) 21%, transparent), transparent 27%),
         linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--paper) 96%, transparent));
@@ -314,10 +315,15 @@
     /* dvh: on iPads/phones 100vh is taller than the visible screen, which pushed the
        notebook's bottom (and the AI answers) off-screen with no way to reach them. */
     #readerPage { height: calc(100vh - 68px); height: calc(100dvh - 68px - var(--kb-inset, 0px)); overflow: hidden; display: flex; flex-direction: column; }
-    .reader-tools { flex: 0 0 auto; min-height: 54px; padding: 7px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    body.reading .masthead { height: 58px; }
+    body.reading #readerPage { height: calc(100vh - 58px); height: calc(100dvh - 58px - var(--kb-inset, 0px)); }
+    .reader-tools { flex: 0 0 auto; min-height: 50px; padding: 6px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px; border-bottom: 1px solid var(--line); background: var(--surface); }
     .reader-tools .title { min-width: 0; margin-right: auto; }
     .reader-tools .title strong { display: block; max-width: min(38vw, 520px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 .9rem var(--serif); }
     .reader-tools .title span { display: block; color: var(--muted); font-size: .63rem; }
+    .reader-tools .soft-button { min-height: 34px; padding: 6px 9px; border-color: transparent; background: transparent; color: var(--muted); }
+    .reader-tools .soft-button:hover, .reader-tools .soft-button.active, .reader-tools .soft-button[aria-pressed="true"] { border-color: var(--line); background: var(--surface-2); color: var(--ink); }
+    #readerBack { border-color: var(--line); background: var(--surface-2); color: var(--ink); }
     /* Reflow is a phone remedy; big screens read the real PDF. The button only appears
        on desktop when it is the way BACK from text view. */
     @media (min-width: 721px) { #reflowBtn.to-text { display: none; } }
@@ -504,6 +510,9 @@
     .selection-ai { padding: 12px 14px 14px; }
     .selection-ai-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .selection-ai-head .text-button { font-size: .64rem; }
+    .selection-ai-note { margin: 0 0 10px; padding: 11px 12px 12px; border-left: 3px solid var(--accent); border-radius: 3px 10px 10px 3px; background: color-mix(in srgb, var(--yellow) 18%, var(--paper)); }
+    .selection-ai-note span { display: block; margin-bottom: 5px; color: var(--accent-dark); font-size: .57rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .selection-ai-note p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); font: .8rem/1.5 var(--sans); }
     .selection-ai-thread { display: grid; gap: 8px; max-height: min(260px, 34dvh); overflow-y: auto; overscroll-behavior: contain; padding: 1px 2px 9px; }
     .selection-ai-row { display: flex; align-items: flex-end; gap: 7px; }
     .selection-ai-row textarea { flex: 1; min-width: 0; max-height: 112px; resize: none; overflow-y: auto; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: .78rem/1.45 var(--sans); outline: none; }
@@ -607,11 +616,13 @@
     body.selecting-paper .reader-tools, body.selecting-paper .comfort-bar, body.selecting-paper .find-bar,
     body.selecting-paper .notebook, body.selecting-paper .mobile-bar, body.selecting-paper .selection-card, body.selecting-paper .lookup-card { user-select: none; -webkit-user-select: none; }
     .tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(2, 1fr); border-bottom: 1px solid var(--line); }
-    .tab { border: 0; border-bottom: 2px solid transparent; padding: 14px 5px 11px; background: transparent; color: var(--muted); font-size: .72rem; font-weight: 650; }
+    .tab { border: 0; border-bottom: 2px solid transparent; padding: 14px 5px 11px; background: transparent; color: var(--muted); font-size: .72rem; font-weight: 700; letter-spacing: .02em; }
     .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
-    .tab-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 20px; }
+    .tab-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px; }
     .tab-panel h3 { margin: 0 0 5px; font: 500 1.15rem var(--serif); }
-    .tab-panel .hint { margin: 0 0 16px; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+    .tab-panel .hint { margin: 0 0 14px; color: var(--muted); font-size: .7rem; line-height: 1.5; }
+    .panel-eyebrow { display: block; margin-bottom: 5px; color: var(--accent); font-size: .56rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .notebook-intro { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
     .note-heading-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
     .note-heading-row h3 { margin: 0; }
     .recall-button { min-height: 30px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--ink); font-size: .7rem; font-weight: 700; }
@@ -622,26 +633,36 @@
     .field-label { display: block; margin: 15px 0 6px; color: var(--muted); font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
     .field, .note-area { width: 100%; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); padding: 10px 11px; outline: none; }
     .field:focus, .note-area:focus { border-color: var(--accent); }
-    .note-area { min-height: 180px; resize: vertical; font: .92rem/1.55 var(--serif); }
-    .mini-list { display: grid; gap: 8px; margin-top: 16px; }
-    .mini-note { position: relative; border-left: 2px solid var(--yellow); padding: 7px 26px 7px 10px; font: .78rem/1.4 var(--serif); color: var(--muted); }
+    .note-area { min-height: 132px; resize: vertical; font: .92rem/1.55 var(--serif); }
+    .mini-list { display: grid; gap: 7px; margin: 12px 0 18px; }
+    .notebook-empty { padding: 15px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font: .75rem/1.5 var(--serif); }
+    .mini-note { position: relative; border-left: 3px solid var(--yellow); border-radius: 0 9px 9px 0; padding: 9px 29px 9px 11px; background: color-mix(in srgb, var(--paper) 68%, transparent); font: .78rem/1.4 var(--serif); color: var(--muted); }
     .mini-note[data-jump-page], .mini-note[data-jump-para] { cursor: pointer; border-radius: 0 7px 7px 0; }
     .mini-note[data-jump-page]:hover, .mini-note[data-jump-para]:hover { background: var(--surface-2); border-left-color: var(--accent); }
     .mini-note.note-written { font: .8rem/1.48 var(--sans); word-spacing: normal; color: var(--ink); }
     .mini-note.note-written b { font: 650 .66rem/1.3 var(--sans); color: var(--muted); word-spacing: normal; }
     .mini-note .remove-highlight { position: absolute; top: 3px; right: 0; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); }
     .mini-note .remove-highlight:hover { color: var(--accent); background: var(--surface-2); }
-    .ai-drop { border: 1px dashed var(--line); border-radius: 10px; padding: 16px; text-align: center; color: var(--muted); font-size: .75rem; }
+    .page-note-card { margin-top: 4px; padding: 15px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--paper) 66%, transparent); }
+    .page-note-card .hint { margin-bottom: 10px; }
+    .paper-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .paper-tools .text-button { font-size: .66rem; }
+    .danger-text { color: var(--muted); }
+    .danger-text:hover { color: var(--accent); }
+    .ai-drop { border: 1px dashed var(--line); border-radius: 10px; padding: 12px; text-align: center; color: var(--muted); font-size: .7rem; }
     .ai-drop.drag { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
     .context-card { display: grid; grid-template-columns: 68px 1fr; gap: 10px; margin: 12px 0; padding: 9px; border-radius: 9px; background: var(--surface-2); font-size: .7rem; }
     .context-card img { width: 68px; height: 68px; object-fit: cover; border-radius: 5px; background: white; }
     .context-card b { display: block; margin-bottom: 3px; }
     .context-card span { color: var(--muted); }
     .drift-range { width: 130px; height: 30px; margin: 0; accent-color: var(--accent); touch-action: none; }
-    .ai-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-    .ai-panel-head .hint { flex: 1; }
+    .ai-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .ai-panel-head > div { min-width: 0; }
+    .ai-panel-head h3 { margin-bottom: 4px; }
+    .ai-panel-head .hint { margin-bottom: 0; }
     .ai-panel-head .text-button { flex: 0 0 auto; padding-top: 1px; font-size: .68rem; }
-    .context-row { display: flex; gap: 6px; margin: 0 0 10px; }
+    .context-label { margin-top: 13px; }
+    .context-row { display: flex; gap: 6px; margin: 0 0 9px; }
     .context-btn { flex: 1; min-height: 32px; padding: 5px 8px; justify-content: center; font-size: .72rem; white-space: nowrap; }
     .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px; }
     .ask-chip { min-height: 30px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 650; }
@@ -691,7 +712,7 @@
     .connection-cluster button:hover { color: var(--ink); }
 
     /* Drawers / dialogs */
-    dialog { width: min(620px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow-y: auto; border: 1px solid var(--line); border-radius: 16px; padding: 0; background: var(--surface); color: var(--ink); box-shadow: 0 24px 100px rgba(0,0,0,.28); }
+    dialog { width: min(640px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow-y: auto; border: 1px solid var(--line); border-radius: 16px; padding: 0; background: var(--surface); color: var(--ink); box-shadow: 0 24px 100px rgba(0,0,0,.28); }
     dialog::backdrop { background: rgba(12,16,18,.42); backdrop-filter: blur(3px); }
     .dialog-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 18px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
     .dialog-head h2 { margin: 0; font: 500 1.3rem var(--serif); }
@@ -700,6 +721,14 @@
     .dialog-body section + section { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 22px; }
     .dialog-body h3 { margin: 0 0 6px; font: 500 1rem var(--serif); }
     .dialog-body p { color: var(--muted); font-size: .75rem; line-height: 1.5; }
+    #settingsDialog { width: min(900px, calc(100vw - 24px)); }
+    #settingsDialog .dialog-head { padding-inline: 24px; }
+    .settings-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 18px; }
+    .settings-lede { grid-column: 1 / -1; max-width: 680px; margin: 0 4px 2px; font: .88rem/1.55 var(--serif) !important; }
+    .settings-body section { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 13px; background: color-mix(in srgb, var(--paper) 72%, transparent); }
+    .settings-body section + section { margin-top: 0; padding-top: 18px; }
+    .settings-body section:last-of-type { grid-column: 1 / -1; }
+    .settings-body section > p:first-of-type { margin-top: 0; }
     .launch-note { margin: 0 0 18px; padding: 14px; border-radius: 10px; background: var(--surface-2); font: .88rem/1.55 var(--serif); }
     .form-grid { display: grid; gap: 8px; }
     .form-grid .field { min-height: 42px; }
@@ -723,6 +752,22 @@
     .toc-item:hover { background: var(--surface-2); }
     .toc-item[data-depth="1"] { padding-left: 28px; font-size: .82rem; color: var(--muted); }
     .toc-item[data-depth="2"] { padding-left: 46px; font-size: .78rem; color: var(--muted); }
+
+    /* Laptop-height screens should reveal the selected paper's action without turning
+       the library into a cover that must be scrolled before it can be opened. */
+    @media (min-width: 1101px) and (max-height: 800px) {
+      .living-shelf { --shelf-height: 470px; }
+      .open-book-wrap { padding-top: 38px; padding-bottom: 22px; }
+      .closed-book { min-height: calc(var(--shelf-height) - 74px); }
+      .closed-book-inner { padding: 25px 38px 24px 64px; }
+      .closed-book-title { margin-top: 17px; margin-bottom: 8px; }
+      .closed-book .paper-tags { display: none; }
+      .cover-stat { padding-top: 7px; padding-bottom: 7px; }
+      .cover-progress { margin-top: 10px; }
+      .cover-progress-track { margin-top: 6px; }
+      .cover-actions { margin-top: 11px; }
+      .cover-actions .button, .cover-actions .soft-button { min-height: 40px; }
+    }
 
     @media (max-width: 1100px) {
       .living-shelf { --shelf-height: auto; grid-template-columns: 1fr; overflow: hidden; }
@@ -769,6 +814,7 @@
       .command-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .command-bar .primary { grid-column: 1 / -1; justify-content: center; }
       .command-bar .soft-button { min-width: 0; white-space: normal; text-align: center; line-height: 1.2; }
+      #reviewShortcut { margin-left: 0; }
       .link-dialog-form { grid-template-columns: 1fr; }
       .link-dialog-form .button { width: 100%; }
       .library-health { align-items: flex-start; flex-direction: column; gap: 10px; }
@@ -817,7 +863,7 @@
          not a squeezed desktop sidebar, owns the viewport. */
       body.reading .masthead { display: none; }
       body.reading main { min-height: 100vh; min-height: 100dvh; }
-      #readerPage { height: calc(100vh - var(--kb-inset, 0px)); height: calc(100dvh - var(--kb-inset, 0px)); }
+      body.reading #readerPage { height: calc(100vh - var(--kb-inset, 0px)); height: calc(100dvh - var(--kb-inset, 0px)); }
       .reader-tools { min-height: 54px; padding: 6px 8px; flex-wrap: nowrap; gap: 6px; overflow: hidden; }
       .reader-tools .title { flex: 1 1 auto; margin-right: 0; }
       .reader-tools .title strong { max-width: calc(100vw - 72px); font-size: .86rem; }
@@ -842,7 +888,7 @@
       .document-pane { height: 100%; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
       .pane-spotlight { inset: 0; }
       .recall-shield { inset: 0; place-items: start center; padding-top: 12dvh; }
-      .selection-card, .lookup-card { left: 12px !important; right: 12px; top: auto !important; bottom: calc(66px + env(safe-area-inset-bottom)); width: auto; max-height: min(52dvh, 440px); overflow-y: auto; }
+      .selection-card, .lookup-card { left: 12px !important; right: 12px; top: auto !important; bottom: calc(66px + env(safe-area-inset-bottom)); width: auto; max-height: min(68dvh, 560px); overflow-y: auto; }
       .selection-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .lookup-photo-link { height: 126px; }
       .pdf-frame { min-width: 100%; margin: 0 auto; padding: 8px 0 24px; gap: 10px; }
@@ -860,6 +906,9 @@
       .sheet-close { position: absolute; z-index: 4; top: 10px; right: 10px; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); font-size: 1rem; }
       .sheet-scrim { display: block; position: fixed; z-index: 45; inset: 0; background: rgba(12,16,18,.4); }
       .tab-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+      .settings-body { grid-template-columns: 1fr; padding: 12px; }
+      .settings-lede, .settings-body section:last-of-type { grid-column: 1; }
+      .settings-body section { padding: 15px; }
     }
     @media (max-width: 360px) {
       #refreshBtn { display: none; }

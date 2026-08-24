@@ -107,7 +107,9 @@ Each page is self-contained and keeps its data in the visitor's own browser
   **Marks.** A four-color marker with persistent highlights, page and paragraph
   notes, a whole-paper find bar (`/`), selection lookups (Wikipedia
   definition + image, cached per paper), and a recall check that hides the paper
-  while you explain it from memory.
+  while you explain it from memory. A selection opens a compact Highlight / Note /
+  Define card; AI stays out of that first decision and appears as a passage thread
+  only after the reader has written a note.
 
   **Ask AI.** Three one-tap contexts — current page, your selection, or whatever
   sits under the guide band — send exact text-layer text (never OCR of what the

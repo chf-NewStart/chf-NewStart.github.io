@@ -10,12 +10,17 @@ Gemini, migration of an existing DeepSeek key, current model selection, saved
 thread context, the provider settings UI, and AI-key transfer through a private
 device setup link even when GitHub sync is not configured.
 
+`reading-selection-note-ai.test.js` covers the compact, note-first selection
+card: no immediate AI shortcut, automatic highlight support for a note, and an
+AI thread that appears only after the note contains text.
+
 Run with Node 18+ and Playwright's bundled Chromium:
 
 ```sh
 npm install playwright
 node tests/reading-highlights.test.js
 node tests/reading-ai-providers.test.js
+node tests/reading-selection-note-ai.test.js
 ```
 
 Exit code 0 means every check passed. If your Chromium lives in a nonstandard

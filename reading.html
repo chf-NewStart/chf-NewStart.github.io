@@ -295,9 +295,8 @@
           <button class="lookup-close" id="selectionClose" type="button" aria-label="Close selection actions">×</button>
         </div>
         <div class="selection-actions" role="group" aria-label="Selected passage action">
-          <button class="selection-action" id="selectionAsk" type="button" aria-pressed="false">✦ Ask AI</button>
           <button class="selection-action" id="selectionHighlight" type="button" aria-pressed="false">Highlight</button>
-          <button class="selection-action" id="selectionAddNote" type="button" aria-pressed="false">Note</button>
+          <button class="selection-action" id="selectionAddNote" type="button" aria-pressed="false">Add note</button>
         </div>
         <div class="selection-context hidden" id="selectionContext"><span class="selection-context-copy" id="selectionContextText"></span></div>
         <div class="selection-secondary" id="selectionSecondary">
@@ -313,13 +312,14 @@
           <button class="text-button selection-remove" id="selectionRemoveHighlight" type="button" aria-label="Remove highlight" title="Remove highlight"><span class="eraser-icon" aria-hidden="true"></span></button>
         </div>
         <div class="selection-note hidden" id="selectionNoteBox">
+          <div class="selection-note-head"><strong>Your note</strong></div>
           <textarea id="selectionNote" placeholder="Write what you noticed… saved as you type."></textarea>
-          <span class="selection-note-status" id="selectionNoteStatus"></span>
+          <div class="selection-note-footer"><span class="selection-note-status" id="selectionNoteStatus"></span><button class="text-button selection-note-ai hidden" id="selectionNoteAi" type="button">✦ Start AI thread</button></div>
         </div>
         <div class="selection-ai hidden" id="selectionAiBox">
-          <div class="selection-ai-head"><button class="text-button" id="selectionAiBack" type="button">← Actions</button><button class="text-button" id="selectionAiNew" type="button">+ New thread</button></div>
+          <div class="selection-ai-head"><button class="text-button" id="selectionAiBack" type="button">← Note</button><button class="text-button" id="selectionAiNew" type="button">+ New thread</button></div>
           <div class="selection-ai-thread" id="selectionAiThread" aria-live="polite"></div>
-          <div class="selection-ai-row"><textarea id="selectionAiQuestion" rows="1" placeholder="Ask about this passage…" title="Enter sends · Shift+Enter for a new line"></textarea><button class="button" id="selectionAiSend" type="button">Ask</button></div>
+          <div class="selection-ai-row"><textarea id="selectionAiQuestion" rows="1" placeholder="Ask about this note and passage…" title="Enter sends · Shift+Enter for a new line"></textarea><button class="button" id="selectionAiSend" type="button">Ask</button></div>
           <span class="selection-ai-status" id="selectionAiStatus" role="status"></span>
         </div>
       </aside>

@@ -17,6 +17,7 @@
   };
   var STARTER_GUIDE_URL = '/assets/phloem-guide/phloem-field-guide.pdf';
   var STARTER_GUIDE_ID = 'phloem-field-guide-v1';
+  var PDF_ZOOM_PREFERENCE_VERSION = 2;
   var SYNC_FILE = 'reading-room.enc.json';
   var LOOKUP_DELAY = 900;
   var BOOK_SPINES = [
@@ -1874,11 +1875,22 @@
   }
 
   /* reader */
+  function restorePdfZoom(ch){
+    var saved=ch&&ch.kind==='pdf'?+ch.zoom:0;
+    /* An older build could leave a paper at the 50% floor even when the reader had not
+       made a deliberate per-paper choice. That is half of Phloem's fit-to-pane size,
+       not Acrobat-style "actual size", so migrate it once back to the readable default.
+       Choices made after this migration carry a version and remain fully respected. */
+    if(ch&&ch.kind==='pdf'&&saved>0&&saved<=.5&&(+ch.zoomPreferenceV||0)<PDF_ZOOM_PREFERENCE_VERSION){
+      saved=0;ch.zoom=0;ch.zoomPreferenceV=PDF_ZOOM_PREFERENCE_VERSION;persist(false);
+    }
+    pdfZoom=saved>0?Math.max(.5,Math.min(4,saved)):1;pdfFit=pdfZoom===1;
+  }
   async function openReader(id,preparedDoc){
     /* pdfViews must go too: renderPdfPage's spot-preserving rebuild otherwise measures
        the PREVIOUS paper's pages — an extension import into an open reader landed the
        new paper mid-page, at wherever the old one had been scrolled. */
-    var ch=find(id); if(!ch) return; hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; pdfViews=[]; pdfBuildKey=''; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} pdfZoom=ch.kind==='pdf'&&+ch.zoom>0?Math.max(.5,Math.min(4,+ch.zoom)):1; pdfFit=pdfZoom===1; setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); highlightHistory=[]; highlightFuture=[]; lastAskSelection=null; toggleFindBar(false);
+    var ch=find(id); if(!ch) return; hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; pdfViews=[]; pdfBuildKey=''; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} restorePdfZoom(ch); setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); highlightHistory=[]; highlightFuture=[]; lastAskSelection=null; toggleFindBar(false);
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
@@ -2167,7 +2179,8 @@
     pdfFit=newZoom===1;pdfZoom=pdfFit?1:newZoom;
     byId('zoomLabel').textContent=pdfFit?'Fit':Math.round(pdfZoom*100)+'%';
     var ch=find(currentId);
-    if(ch&&ch.kind==='pdf'&&ch.zoom!==(pdfFit?0:pdfZoom)){ch.zoom=pdfFit?0:pdfZoom;persist(false);}
+    var storedZoom=pdfFit?0:pdfZoom;
+    if(ch&&ch.kind==='pdf'&&(ch.zoom!==storedZoom||ch.zoomPreferenceV!==PDF_ZOOM_PREFERENCE_VERSION)){ch.zoom=storedZoom;ch.zoomPreferenceV=PDF_ZOOM_PREFERENCE_VERSION;persist(false);}
     var ax=anchorX===undefined?rect.width/2:anchorX-rect.left,ay=anchorY===undefined?rect.height/2:anchorY-rect.top;
     var serial=++zoomSerial;
     zoomChain=zoomChain.then(async function(){

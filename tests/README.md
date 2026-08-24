@@ -14,6 +14,9 @@ device setup link even when GitHub sync is not configured.
 card: no immediate AI shortcut, automatic highlight support for a note, and an
 AI thread that appears only after the note contains text.
 
+`reading-pdf-zoom.test.js` covers the one-time migration from the legacy 50%
+initial PDF scale to Fit while preserving deliberate per-paper zoom choices.
+
 Run with Node 18+ and Playwright's bundled Chromium:
 
 ```sh
@@ -21,6 +24,7 @@ npm install playwright
 node tests/reading-highlights.test.js
 node tests/reading-ai-providers.test.js
 node tests/reading-selection-note-ai.test.js
+node tests/reading-pdf-zoom.test.js
 ```
 
 Exit code 0 means every check passed. If your Chromium lives in a nonstandard

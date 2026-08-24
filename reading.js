@@ -6,7 +6,15 @@
   var KEY = 'readingRoom.v1';
   var LAST_OPEN_KEY = 'readingRoom.lastOpen.v1';
   var SYNC_KEY = 'readingRoom.sync.v1';
-  var AI_KEY = 'readingRoom.ai.v1';
+  var LEGACY_AI_KEY = 'readingRoom.ai.v1';
+  var AI_SETTINGS_KEY = 'readingRoom.ai.providers.v1';
+  var AI_PROVIDERS = {
+    gemini:{label:'Gemini API',model:'gemini-3.6-flash'},
+    deepseek:{label:'DeepSeek',model:'deepseek-v4-flash'},
+    openai:{label:'OpenAI',model:'gpt-5-mini'},
+    anthropic:{label:'Anthropic',model:'claude-sonnet-4-20250514'},
+    compatible:{label:'OpenAI-compatible',model:'',endpoint:''}
+  };
   var STARTER_GUIDE_URL = '/assets/phloem-guide/phloem-field-guide.pdf';
   var STARTER_GUIDE_ID = 'phloem-field-guide-v1';
   var SYNC_FILE = 'reading-room.enc.json';
@@ -29,7 +37,7 @@
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
-  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null;
+  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings();
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
 
   function byId(id){ return document.getElementById(id); }
@@ -37,6 +45,78 @@
   function uid(prefix){ return prefix + now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function esc(s){ return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function paras(text){ return String(text || '').split(/\n\s*\n/).map(function(p){ return p.trim(); }).filter(Boolean); }
+  function defaultAiSettings(){
+    var providers={};Object.keys(AI_PROVIDERS).forEach(function(id){providers[id]={key:'',model:AI_PROVIDERS[id].model||'',endpoint:AI_PROVIDERS[id].endpoint||''};});
+    return{provider:'auto',providers:providers};
+  }
+  function loadAiSettings(){
+    var cfg=defaultAiSettings(),saved=null;
+    try{saved=JSON.parse(localStorage.getItem(AI_SETTINGS_KEY)||'null');}catch(e){}
+    if(saved&&saved.providers){
+      cfg.provider=saved.provider==='browser'?'auto':(saved.provider||'auto');
+      Object.keys(cfg.providers).forEach(function(id){if(saved.providers[id])cfg.providers[id]=Object.assign(cfg.providers[id],saved.providers[id]);});
+    }
+    var legacy=localStorage.getItem(LEGACY_AI_KEY)||'';
+    if(legacy&&!cfg.providers.deepseek.key){cfg.providers.deepseek.key=legacy;if(!saved)cfg.provider='deepseek';try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg));}catch(e){}}
+    if(!AI_PROVIDERS[cfg.provider]&&cfg.provider!=='auto')cfg.provider='auto';return cfg;
+  }
+  function saveAiSettings(){try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(aiSettings));}catch(e){} }
+  function browserLanguageModel(){return window.LanguageModel||(window.ai&&window.ai.languageModel)||null;}
+  function cloudAiRoute(preferred){
+    var ids=preferred&&preferred!=='auto'?[preferred]:['gemini','deepseek','openai','anthropic','compatible'];
+    for(var i=0;i<ids.length;i++){var id=ids[i],cfg=aiSettings.providers[id]||{};if(AI_PROVIDERS[id]&&cfg.key&&cfg.model&&(id!=='compatible'||cfg.endpoint))return{id:id,label:AI_PROVIDERS[id].label,cfg:cfg};}
+    return null;
+  }
+  function activeAiRoute(skipBrowser){var selected=aiSettings.provider||'auto';if(selected==='auto'&&!skipBrowser&&browserLanguageModel())return{id:'browser',label:'Gemini Nano (on device)',cfg:{}};return cloudAiRoute(selected);}
+  function hasAiRoute(){aiSettings=loadAiSettings();return!!activeAiRoute(false);}
+  function aiSetupError(message){var e=new Error(message);e.aiSetup=true;return e;}
+  function aiProgress(fn,message){if(fn)fn(message);}
+  function aiSystem(messages){var found=(messages||[]).find(function(message){return message.role==='system';});return found&&found.content||'You are a helpful reading assistant.';}
+  function aiTurns(messages){return(messages||[]).filter(function(message){return message.role!=='system';}).map(function(message){return{role:message.role==='assistant'?'assistant':'user',content:String(message.content||'')};});}
+  function trimBrowserPrompt(text){text=String(text||'');return text.length<=12000?text:text.slice(0,9000)+'\n\n[Middle of context shortened for the on-device model.]\n\n'+text.slice(-2600);}
+  function aiTranscript(messages){return aiTurns(messages).map(function(message){return(message.role==='assistant'?'Assistant':'Reader')+': '+message.content;}).join('\n\n');}
+  async function runBrowserAi(messages,onProgress){
+    var api=browserLanguageModel();if(!api)throw aiSetupError('On-device Gemini is not available in this browser. Choose a cloud provider in settings.');
+    var modern=api===window.LanguageModel,system=aiSystem(messages),options=modern?{initialPrompts:[{role:'system',content:system}]}:{systemPrompt:system},availability='available';
+    try{if(api.availability)availability=await api.availability(options);else if(api.capabilities){var caps=await api.capabilities();availability=caps&&caps.available||'unavailable';}}catch(e){availability='unavailable';}
+    if(availability==='unavailable'||availability==='no')throw aiSetupError('This device cannot run Gemini Nano. Choose Gemini, DeepSeek, or another cloud provider in settings.');
+    if(availability==='downloadable'||availability==='after-download'||availability==='downloading')aiProgress(onProgress,'Preparing on-device Gemini…');
+    options.monitor=function(m){if(!m||!m.addEventListener)return;m.addEventListener('downloadprogress',function(e){aiProgress(onProgress,'Downloading on-device Gemini… '+Math.round((e.loaded||0)*100)+'%');});};
+    var session;
+    try{session=await api.create(options);aiProgress(onProgress,'Thinking on this device…');var answer=await session.prompt(trimBrowserPrompt(aiTranscript(messages)));if(!String(answer||'').trim())throw new Error('On-device Gemini returned no answer');return{text:String(answer).trim(),provider:'Gemini Nano (on device)'};}
+    catch(e){if(e&&e.aiSetup)throw e;if(e&&(e.name==='NotAllowedError'||e.name==='NotSupportedError'))throw aiSetupError('On-device Gemini needs a supported desktop Chrome and may need its model downloaded first. You can choose a cloud provider in settings.');throw e;}
+    finally{if(session&&session.destroy)try{session.destroy();}catch(e){}}
+  }
+  async function aiResponseError(response,label){
+    if(response.ok)return;var detail='';try{var body=await response.json();detail=body&&body.error&&(body.error.message||body.error)||body&&body.message||'';}catch(e){}
+    throw new Error(label+' returned '+response.status+(detail?': '+String(detail).slice(0,180):''));
+  }
+  async function runCloudAi(route,messages,maxTokens){
+    var id=route.id,cfg=route.cfg,response,data,text='',system=aiSystem(messages),turns=aiTurns(messages);
+    if(id==='gemini'){
+      response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(cfg.model)+':generateContent',{method:'POST',headers:{'x-goog-api-key':cfg.key,'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:system}]},contents:turns.map(function(message){return{role:message.role==='assistant'?'model':'user',parts:[{text:message.content}]};}),generationConfig:{maxOutputTokens:maxTokens}})});
+      await aiResponseError(response,route.label);data=await response.json();text=((((data.candidates||[])[0]||{}).content||{}).parts||[]).map(function(part){return part.text||'';}).join('');
+    }else if(id==='deepseek'){
+      response=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},body:JSON.stringify({model:cfg.model,max_tokens:maxTokens,thinking:{type:'disabled'},messages:(messages||[]).map(function(message){return{role:message.role,content:message.content};})})});
+      await aiResponseError(response,route.label);data=await response.json();text=String(((((data.choices||[])[0]||{}).message||{}).content)||'');
+    }else if(id==='openai'){
+      response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},body:JSON.stringify({model:cfg.model,max_output_tokens:maxTokens,instructions:system,input:turns})});
+      await aiResponseError(response,route.label);data=await response.json();text=String(data.output_text||'');if(!text)text=(data.output||[]).reduce(function(all,item){return all.concat((item.content||[]).filter(function(part){return part.type==='output_text';}).map(function(part){return part.text||'';}));},[]).join('');
+    }else if(id==='anthropic'){
+      response=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':cfg.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','Content-Type':'application/json'},body:JSON.stringify({model:cfg.model,max_tokens:maxTokens,system:system,messages:turns})});
+      await aiResponseError(response,route.label);data=await response.json();text=(data.content||[]).filter(function(part){return part.type==='text';}).map(function(part){return part.text||'';}).join('');
+    }else{
+      response=await fetch(cfg.endpoint,{method:'POST',headers:{'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},body:JSON.stringify({model:cfg.model,max_tokens:maxTokens,messages:(messages||[]).map(function(message){return{role:message.role,content:message.content};})})});
+      await aiResponseError(response,route.label);data=await response.json();text=String(((((data.choices||[])[0]||{}).message||{}).content)||'');
+    }
+    if(!text.trim())throw new Error(route.label+' returned no answer');return{text:text.trim(),provider:route.label};
+  }
+  async function runAiMessages(messages,maxTokens,onProgress){
+    aiSettings=loadAiSettings();var route=activeAiRoute(false);if(!route)throw aiSetupError('Choose an AI provider and add its API key in settings.');
+    if(route.id==='browser'){try{return await runBrowserAi(messages,onProgress);}catch(e){var fallback=aiSettings.provider==='auto'&&cloudAiRoute();if(!fallback)throw e;aiProgress(onProgress,'On-device Gemini is unavailable; asking '+fallback.label+'…');return runCloudAi(fallback,messages,maxTokens);}}
+    aiProgress(onProgress,'Asking '+route.label+'…');return runCloudAi(route,messages,maxTokens);
+  }
+  function runAi(system,user,maxTokens,onProgress){return runAiMessages([{role:'system',content:system},{role:'user',content:user}],maxTokens,onProgress);}
   function normalize(ch){
     ch.notes = ch.notes || {}; ch.pageNotes = ch.pageNotes || {}; ch.tags = ch.tags || [];
     ch.questions = ch.questions || []; ch.highlights = ch.highlights || {}; ch.textHighlights = ch.textHighlights || [];
@@ -252,7 +332,7 @@
   }
   function renderLookup(term,result){
     byId('lookupTitle').textContent=result.title||term;var definition=byId('lookupDefinition');definition.textContent=conciseExtract(result.extract)||'No concise explanation was available for this entry.';definition.classList.remove('loading');
-    var source=byId('lookupSource'),isAi=result.source==='ai';source.textContent=isAi?'AI explanation · verify':'Wikipedia';source.classList.toggle('ai',isAi);source.classList.remove('hidden');byId('lookupAiSetup').classList.add('hidden');
+    var source=byId('lookupSource'),isAi=result.source==='ai';source.textContent=isAi?(result.provider||'AI')+' explanation · verify':'Wikipedia';source.classList.toggle('ai',isAi);source.classList.remove('hidden');byId('lookupAiSetup').classList.add('hidden');
     var article=byId('lookupArticle');article.href=result.url||'#';article.classList.toggle('hidden',!result.url);
     var photoLink=byId('lookupPhotoLink'),photo=byId('lookupPhoto'),imageSource=byId('lookupImageSource');
     if(result.image){photo.src=result.image;photo.alt='Image for '+(result.title||term);photoLink.href=result.imagePage||result.url||result.image;photoLink.classList.remove('hidden');imageSource.href=result.imagePage||result.url||result.image;imageSource.classList.remove('hidden');}
@@ -287,13 +367,11 @@
     source=String(source).replace(/\s+/g,' ').trim();var needle=String(selection.text||'').replace(/\s+/g,' ').trim(),at=source.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase());
     if(at<0)return source.slice(0,1400);return source.slice(Math.max(0,at-600),Math.min(source.length,at+needle.length+800));
   }
-  async function deepseekEntry(term,context){
-    var key=localStorage.getItem(AI_KEY)||'';if(!key)return null;
-    byId('lookupTitle').textContent='Asking DeepSeek…';byId('lookupDefinition').textContent='Wikipedia has no clean entry, so I’m reading this term in the paper’s context.';
-    var ch=find(currentId),res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:360,messages:[{role:'system',content:'You write careful glossary notes for scientific-paper readers. Define the selected term as used in the supplied excerpt. Be concise, concrete, and honest about ambiguity. Return only valid JSON with string fields title, definition, and image_query. The definition must be 2-3 sentences with no markdown. image_query must name one concrete scientific object, organism, process diagram, or instrument suitable for a Wikimedia Commons search; leave it empty if no honest visual exists.'},{role:'user',content:'Paper: '+(ch&&ch.title||'Untitled')+'\nSelected term: '+term+'\nNearby excerpt: '+String(context||'No nearby excerpt available.').slice(0,1800)}]})});
-    if(!res.ok)throw new Error('DeepSeek returned '+res.status);var data=await res.json(),answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'',match=answer.match(/\{[\s\S]*\}/),parsed=match&&JSON.parse(match[0]);
-    if(!parsed||!String(parsed.definition||'').trim())throw new Error('DeepSeek returned no definition');
-    return{title:String(parsed.title||term).trim().slice(0,100),extract:String(parsed.definition).trim(),url:'',image:'',imagePage:'',imageQuery:String(parsed.image_query||'').trim().slice(0,100),source:'ai'};
+  async function aiGlossaryEntry(term,context){
+    if(!hasAiRoute())return null;byId('lookupTitle').textContent='Asking AI…';byId('lookupDefinition').textContent='Wikipedia has no clean entry, so I’m reading this term in the paper’s context.';
+    var ch=find(currentId),result=await runAi('You write careful glossary notes for scientific-paper readers. Define the selected term as used in the supplied excerpt. Be concise, concrete, and honest about ambiguity. Return only valid JSON with string fields title, definition, and image_query. The definition must be 2-3 sentences with no markdown. image_query must name one concrete scientific object, organism, process diagram, or instrument suitable for a Wikimedia Commons search; leave it empty if no honest visual exists.','Paper: '+(ch&&ch.title||'Untitled')+'\nSelected term: '+term+'\nNearby excerpt: '+String(context||'No nearby excerpt available.').slice(0,1800),360,function(message){byId('lookupTitle').textContent=message;});
+    var match=result.text.match(/\{[\s\S]*\}/),parsed=match&&JSON.parse(match[0]);if(!parsed||!String(parsed.definition||'').trim())throw new Error(result.provider+' returned no definition');
+    return{title:String(parsed.title||term).trim().slice(0,100),extract:String(parsed.definition).trim(),url:'',image:'',imagePage:'',imageQuery:String(parsed.image_query||'').trim().slice(0,100),source:'ai',provider:result.provider};
   }
   function rememberLookup(ch,termKey,result){
     if(!ch||!result)return;result=Object.assign({},result,{cachedAt:now()});ch.termLookups=ch.termLookups||{};ch.termLookups[termKey]=result;
@@ -306,13 +384,13 @@
       var memoryHit=Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)),result=memoryHit?lookupCache[key]:paperHit?ch.termLookups[termKey]:await wikipediaEntry(term);
       if(serial!==lookupSerial)return;
       if(!result){
-        if(!localStorage.getItem(AI_KEY)){lookupCache[key]=null;showLookupProblem(term,'Wikipedia has no clean entry for this phrase. Add a DeepSeek key to explain technical terms from the nearby paper context.');byId('lookupAiSetup').classList.remove('hidden');return;}
-        result=await deepseekEntry(term,context);if(serial!==lookupSerial)return;
+        if(!hasAiRoute()){lookupCache[key]=null;showLookupProblem(term,'Wikipedia has no clean entry for this phrase. Set up on-device Gemini or add an AI provider key to explain it from the nearby paper context.');byId('lookupAiSetup').classList.remove('hidden');return;}
+        result=await aiGlossaryEntry(term,context);if(serial!==lookupSerial)return;
       }
       lookupCache[key]=result;renderLookup(term,result);
       if(!result.image&&!result.imageChecked){var image=null;try{image=await commonsImage(result.imageQuery||result.title||term);}catch(imageError){}if(serial!==lookupSerial)return;result=Object.assign({},result,{imageChecked:true});if(image){result.image=image.url;result.imagePage=image.page;}lookupCache[key]=result;renderLookup(term,result);}
       if(ch&&(!paperHit||ch.termLookups[termKey]!==result))rememberLookup(ch,termKey,result);
-    }catch(e){if(serial===lookupSerial)showLookupProblem(term,'The reference lookup could not finish. Your highlight is still safe—try again when you are online.');}
+    }catch(e){if(serial===lookupSerial){showLookupProblem(term,e&&e.aiSetup?e.message:'The reference lookup could not finish. Your highlight is still safe—try again when you are online.');if(e&&e.aiSetup)byId('lookupAiSetup').classList.remove('hidden');}}
   }
   function queueLookup(text,rect,selection,delay){
     var term=String(text||'').replace(/\s+/g,' ').replace(/^[\s"'“”‘’.,;:!?]+|[\s"'“”‘’.,;:!?]+$/g,'').trim();if(term.length<2)return;
@@ -2864,20 +2942,22 @@
     if(!html)html='<div class="ai-thread-empty">Ask here, then keep replying in the same thread without leaving the passage.</div>';box.innerHTML=html;byId('selectionAiSend').textContent=thread&&thread.messages.length?'Reply':'Ask';
     requestAnimationFrame(function(){box.scrollTop=box.scrollHeight;placeSelectionCard();});
   }
+  function showAiSetupStatus(targetId,message){
+    var status=byId(targetId),button=document.createElement('button');status.textContent=(message||'Choose an AI provider in settings.')+' ';button.className='text-button';button.type='button';button.textContent='Open settings';button.onclick=function(){fillSettings();byId('settingsDialog').showModal();};status.appendChild(button);
+  }
   async function askSelectionAi(){
-    var ch=find(currentId),input=byId('selectionAiQuestion'),q=input.value.trim(),key=localStorage.getItem(AI_KEY)||'';if(!q||!ch||!aiContext||!aiContext.text)return;
-    if(!key){byId('selectionAiStatus').innerHTML='Add your DeepSeek key in <button class="text-button" id="selectionOpenAiSettings">settings</button> first.';byId('selectionOpenAiSettings').onclick=function(){fillSettings();byId('settingsDialog').showModal();};return;}
+    var ch=find(currentId),input=byId('selectionAiQuestion'),q=input.value.trim();if(!q||!ch||!aiContext||!aiContext.text)return;
+    if(!hasAiRoute()){showAiSetupStatus('selectionAiStatus','On-device Gemini is not available here. Choose a cloud provider and add its key.');return;}
     var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch);created=true;}
     var sentAt=now();thread.messages.push({role:'user',content:q,at:sentAt});thread.updatedAt=sentAt;input.value='';growSelectionAiQuestion();renderSelectionAiThread('Thinking…');renderQa('Thinking…');
     var button=byId('selectionAiSend');button.disabled=true;byId('selectionAiStatus').textContent='Thinking…';
     try{
-      var response=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:1200,messages:aiThreadMessages(ch,thread)})});
-      if(!response.ok)throw new Error('AI returned '+response.status);var data=await response.json(),answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
-      thread.messages.push({role:'assistant',content:answer,at:now()});if(thread.messages.length>24){thread.messages=thread.messages.slice(-24);if(thread.messages[0]&&thread.messages[0].role==='assistant')thread.messages.shift();}thread.updatedAt=now();ch.aiThreads=ch.aiThreads.filter(function(item){return item.id!==thread.id;});ch.aiThreads.unshift(thread);ch.activeAiThreadId=thread.id;
-      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:answer,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('selectionAiStatus').textContent='Saved in this passage thread.';renderSelectionAiThread();renderQa();
+      var result=await runAiMessages(aiThreadMessages(ch,thread),1200,function(message){byId('selectionAiStatus').textContent=message;});
+      thread.messages.push({role:'assistant',content:result.text,provider:result.provider,at:now()});if(thread.messages.length>24){thread.messages=thread.messages.slice(-24);if(thread.messages[0]&&thread.messages[0].role==='assistant')thread.messages.shift();}thread.updatedAt=now();ch.aiThreads=ch.aiThreads.filter(function(item){return item.id!==thread.id;});ch.aiThreads.unshift(thread);ch.activeAiThreadId=thread.id;
+      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:result.text,provider:result.provider,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('selectionAiStatus').textContent='Saved in this passage thread · '+result.provider+'.';renderSelectionAiThread();renderQa();
     }catch(error){
       if(thread.messages[thread.messages.length-1]&&thread.messages[thread.messages.length-1].role==='user'&&thread.messages[thread.messages.length-1].content===q)thread.messages.pop();if(created&&!thread.messages.length){ch.aiThreads=ch.aiThreads.filter(function(item){return item.id!==thread.id;});ch.activeAiThreadId=ch.aiThreads[0]?ch.aiThreads[0].id:'';aiThreadDraft=true;}
-      input.value=q;growSelectionAiQuestion();byId('selectionAiStatus').textContent=error.message||'AI request failed';renderSelectionAiThread();renderQa();
+      input.value=q;growSelectionAiQuestion();if(error&&error.aiSetup)showAiSetupStatus('selectionAiStatus',error.message);else byId('selectionAiStatus').textContent=error.message||'AI request failed';renderSelectionAiThread();renderQa();
     }button.disabled=false;
   }
   byId('selectionAiQuestion').addEventListener('input',growSelectionAiQuestion);
@@ -2886,22 +2966,21 @@
   byId('selectionAiNew').onclick=function(){aiThreadDraft=true;byId('selectionAiStatus').textContent='New thread with this passage.';renderSelectionAiThread();byId('selectionAiQuestion').focus({preventScroll:true});};
   byId('selectionAiBack').onclick=function(){byId('selectionCard').classList.remove('ai-open');byId('selectionAiBox').classList.add('hidden');setSelectionAction('selectionAsk');placeSelectionCard();};
   async function askAi(){
-    var ch=find(currentId),q=byId('aiQuestion').value.trim(),key=localStorage.getItem(AI_KEY)||'';if(!q)return;
+    var ch=find(currentId),q=byId('aiQuestion').value.trim();if(!q)return;
     if(!aiContext||!aiContext.text){if(!setCurrentPageContext()){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}}
-    if(!key){byId('aiStatus').innerHTML='Add your DeepSeek key in <button class="text-button" id="openAiSettings">settings</button> first.';byId('openAiSettings').onclick=function(){fillSettings();byId('settingsDialog').showModal();};return;}
+    if(!hasAiRoute()){showAiSetupStatus('aiStatus','On-device Gemini is not available here. Choose a cloud provider and add its key.');return;}
     var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch);created=true;}
     var sentAt=now();thread.messages.push({role:'user',content:q,at:sentAt});thread.updatedAt=sentAt;byId('aiQuestion').value='';growQuestionBox();renderQa('Thinking…');
     var btn=byId('aiAskBtn');btn.disabled=true;byId('aiStatus').textContent='Thinking…';
     try{
-      var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:1200,messages:aiThreadMessages(ch,thread)})});
-      if(!res.ok)throw new Error('AI returned '+res.status);var data=await res.json(),answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
-      thread.messages.push({role:'assistant',content:answer,at:now()});if(thread.messages.length>24){thread.messages=thread.messages.slice(-24);if(thread.messages[0]&&thread.messages[0].role==='assistant')thread.messages.shift();}thread.updatedAt=now();
+      var result=await runAiMessages(aiThreadMessages(ch,thread),1200,function(message){byId('aiStatus').textContent=message;});
+      thread.messages.push({role:'assistant',content:result.text,provider:result.provider,at:now()});if(thread.messages.length>24){thread.messages=thread.messages.slice(-24);if(thread.messages[0]&&thread.messages[0].role==='assistant')thread.messages.shift();}thread.updatedAt=now();
       ch.aiThreads=ch.aiThreads.filter(function(t){return t.id!==thread.id;});ch.aiThreads.unshift(thread);ch.activeAiThreadId=thread.id;
-      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:answer,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiStatus').textContent='Saved in this thread.';renderQa();var box=byId('qaList');if(box.lastElementChild)box.lastElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
+      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:result.text,provider:result.provider,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiStatus').textContent='Saved in this thread · '+result.provider+'.';renderQa();var box=byId('qaList');if(box.lastElementChild)box.lastElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
     }catch(e){
       if(thread.messages[thread.messages.length-1]&&thread.messages[thread.messages.length-1].role==='user'&&thread.messages[thread.messages.length-1].content===q)thread.messages.pop();
       if(created&&!thread.messages.length){ch.aiThreads=ch.aiThreads.filter(function(t){return t.id!==thread.id;});ch.activeAiThreadId=ch.aiThreads[0]?ch.aiThreads[0].id:'';aiThreadDraft=true;}
-      byId('aiQuestion').value=q;growQuestionBox();byId('aiStatus').textContent=e.message||'AI request failed';renderQa();
+      byId('aiQuestion').value=q;growQuestionBox();if(e&&e.aiSetup)showAiSetupStatus('aiStatus',e.message);else byId('aiStatus').textContent=e.message||'AI request failed';renderQa();
     }btn.disabled=false;
   }
   function renderQa(pending){
@@ -2960,12 +3039,11 @@
     if(!aiContext||!aiContext.text){if(!setCurrentPageContext()){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}}
     var btn=byId('evidenceBtn'),st=byId('aiStatus'),box=byId('evidenceList'),query='';btn.disabled=true;
     try{
-      var key=localStorage.getItem(AI_KEY)||'';
-      if(key){
+      if(hasAiRoute()){
         st.textContent='Distilling the claim…';
         try{
-          var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:60,messages:[{role:'system',content:'Extract the single central scientific claim of the excerpt, then output ONLY a literature search query of 3 to 8 keywords for finding papers that test that claim. Output the query text alone: no quotes, no punctuation, no explanation.'},{role:'user',content:aiContext.text.slice(0,6000)}]})});
-          if(res.ok){var data=await res.json();query=String((((data.choices||[])[0]||{}).message||{}).content||'').replace(/[\n"“”.,;:]/g,' ').replace(/\s+/g,' ').trim();}
+          var result=await runAi('Extract the single central scientific claim of the excerpt, then output ONLY a literature search query of 3 to 8 keywords for finding papers that test that claim. Output the query text alone: no quotes, no punctuation, no explanation.',aiContext.text.slice(0,6000),60,function(message){st.textContent=message;});
+          query=String(result.text||'').replace(/[\n"“”.,;:]/g,' ').replace(/\s+/g,' ').trim();
         }catch(e){}
       }
       if(!query)query=keywordQuery(aiContext.text);
@@ -3230,8 +3308,24 @@
   };
 
   /* encrypted GitHub state sync + PDF picker */
+  function aiProviderNote(id){
+    if(id==='auto')return 'Private by default. Gemini Nano runs inside supported desktop Chrome; if it is unavailable, Automatic can fall back to a cloud key already saved on this device.';
+    if(id==='compatible')return 'For OpenRouter, a local model gateway, or another service that accepts OpenAI-style chat completions. The endpoint must allow browser requests (CORS).';
+    return 'Only the text context you choose is sent to '+AI_PROVIDERS[id].label+'. The key stays in this browser and is excluded from library sync and backups.';
+  }
+  function renderAiProviderFields(){
+    var id=byId('aiProvider').value,cfg=aiSettings.providers[id]||{},cloud=id!=='auto';byId('aiCloudFields').classList.toggle('hidden',!cloud);byId('aiEndpointFields').classList.toggle('hidden',id!=='compatible');byId('aiProviderNote').textContent=aiProviderNote(id);
+    if(cloud){byId('aiKey').value=cfg.key||'';byId('aiKey').placeholder=AI_PROVIDERS[id].label+' API key';byId('aiModel').value=cfg.model||AI_PROVIDERS[id].model||'';byId('aiEndpoint').value=cfg.endpoint||'';}refreshAiSettingsStatus(id);
+  }
+  async function refreshAiSettingsStatus(id){
+    var status=byId('aiKeyStatus');if(id!=='auto'){var cfg=aiSettings.providers[id]||{};status.textContent=cfg.key?'Ready to use '+AI_PROVIDERS[id].label+'.':'Add a key and save to use '+AI_PROVIDERS[id].label+'.';return;}
+    var api=browserLanguageModel(),fallback=cloudAiRoute();if(!api){status.textContent=fallback?'Gemini Nano is unavailable here; Automatic will use '+fallback.label+'.':'Gemini Nano is unavailable in this browser. Choose a cloud provider below to use AI.';return;}status.textContent='Checking on-device Gemini…';
+    try{var availability=api.availability?await api.availability():api.capabilities?(await api.capabilities()).available:'available';if(byId('aiProvider').value!=='auto')return;status.textContent=(availability==='available'||availability==='readily')?'On-device Gemini is ready. Your reading context stays on this device.':(availability==='downloadable'||availability==='after-download'||availability==='downloading')?'On-device Gemini is supported and will download when you first press Ask.':'Gemini Nano cannot run on this device'+(fallback?'; Automatic will use '+fallback.label+'.':'. Choose a cloud provider to use AI.');}
+    catch(e){if(byId('aiProvider').value==='auto')status.textContent=fallback?'Automatic will use '+fallback.label+'.':'Could not start on-device Gemini. Choose a cloud provider to use AI.';}
+  }
+  function fillAiSettings(){aiSettings=loadAiSettings();byId('aiProvider').value=aiSettings.provider||'auto';renderAiProviderFields();}
   function fillSettings(){
-    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncLinkBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);byId('aiKey').value=localStorage.getItem(AI_KEY)||'';
+    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncLinkBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);fillAiSettings();
     byId('gdriveConnectBtn').textContent=gdriveOn()?'Sign in again':'Connect Google Drive';
     byId('gdriveConnectBtn').classList.toggle('button',!gdriveOn());byId('gdriveConnectBtn').classList.toggle('soft-button',gdriveOn());
     byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
@@ -3314,14 +3408,13 @@
   }
   function scheduleSync(){if(!syncCfg&&!gdriveOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){doSync();gdriveSync();},4000);}
   /* The device link is a direct device-to-device hand-off (it already carries the GitHub
-     token and passphrase), so the AI key rides along too — unlike the synced file, which
-     deliberately never contains it. */
+     token and passphrase), so provider choices and AI keys ride along too — unlike the
+     synced file, which deliberately never contains them. */
   byId('syncLinkBtn').onclick=function(){
     if(!syncCfg)return;
-    var payload=Object.assign({},syncCfg),aiKey=localStorage.getItem(AI_KEY)||'';
-    if(aiKey)payload.ai=aiKey;
+    var payload=Object.assign({},syncCfg);payload.aiSettings=loadAiSettings();
     var link=location.href.split('#')[0]+'#phloem-setup='+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-    navigator.clipboard.writeText(link).then(function(){byId('syncStatus').textContent='Device link copied. AirDrop it to yourself; it contains your token, passphrase'+(aiKey?' and AI key':'')+'.';});
+    navigator.clipboard.writeText(link).then(function(){byId('syncStatus').textContent='Device link copied. AirDrop it to yourself; it contains your sync credentials and AI settings, including any saved keys.';});
   };
   function importSetup(){
     var m=location.hash.match(/^#(?:phloem|carrel|margin)-setup=(.+)$/);if(!m)return;
@@ -3329,8 +3422,9 @@
     try{
       var cfg=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
       if(cfg.repo&&cfg.token&&cfg.pass&&confirm('Connect Phloem to '+cfg.repo+'? Only continue if you made this link yourself.')){
-        if(cfg.ai){try{localStorage.setItem(AI_KEY,cfg.ai);}catch(e){}}
-        delete cfg.ai;syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));
+        if(cfg.aiSettings&&cfg.aiSettings.providers){try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg.aiSettings));var linkedDeepSeek=cfg.aiSettings.providers.deepseek&&cfg.aiSettings.providers.deepseek.key;if(linkedDeepSeek)localStorage.setItem(LEGACY_AI_KEY,linkedDeepSeek);else localStorage.removeItem(LEGACY_AI_KEY);}catch(e){}}
+        else if(cfg.ai){try{localStorage.setItem(LEGACY_AI_KEY,cfg.ai);localStorage.removeItem(AI_SETTINGS_KEY);}catch(e){}}
+        delete cfg.ai;delete cfg.aiSettings;aiSettings=loadAiSettings();syncCfg=cfg;localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));
         byId('syncSignal').title='';fillSettings();doSync();
       }
     }catch(e){}
@@ -3380,7 +3474,16 @@
   }
 
   /* keys, backup, restore */
-  byId('aiKeySave').onclick=function(){var k=byId('aiKey').value.trim();if(k)localStorage.setItem(AI_KEY,k);else localStorage.removeItem(AI_KEY);byId('aiKeyStatus').textContent=k?'Saved on this device.':'Key removed.';};
+  byId('aiProvider').onchange=function(){aiSettings.provider=this.value;renderAiProviderFields();};
+  byId('aiKeySave').onclick=function(){
+    var id=byId('aiProvider').value;aiSettings.provider=id;
+    if(id!=='auto'){
+      var key=byId('aiKey').value.trim(),model=byId('aiModel').value.trim(),endpoint=byId('aiEndpoint').value.trim();if(!model){byId('aiKeyStatus').textContent='Add a model name first.';return;}
+      if(id==='compatible'){if(!endpoint){byId('aiKeyStatus').textContent='Add the full chat-completions endpoint first.';return;}try{var parsed=new URL(endpoint);if(parsed.protocol!=='https:'&&!(parsed.protocol==='http:'&&(parsed.hostname==='localhost'||parsed.hostname==='127.0.0.1')))throw new Error();}catch(e){byId('aiKeyStatus').textContent='Use an HTTPS endpoint, or HTTP only for localhost.';return;}}
+      aiSettings.providers[id]={key:key,model:model,endpoint:id==='compatible'?endpoint:''};if(id==='deepseek'){if(key)localStorage.setItem(LEGACY_AI_KEY,key);else localStorage.removeItem(LEGACY_AI_KEY);}
+    }
+    saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Gemini Nano will be used when this browser supports it.':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');
+  };
   byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='phloem-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
 

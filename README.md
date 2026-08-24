@@ -113,9 +113,12 @@ Each page is self-contained and keeps its data in the visitor's own browser
   sits under the guide band — send exact text-layer text (never OCR of what the
   PDF already knows) plus a cropped snapshot of the spot for the record; question
   chips (What is… / Why… / How…) and keyboard-free Summarize / Explain simply;
-  answers come back as short bullets. Screenshot OCR runs on-device via vendored
-  Tesseract; only text is ever sent, and the DeepSeek key never leaves the device
-  except inside the hand-carried device link.
+  answers come back as short bullets. Automatic uses Chrome's on-device Gemini
+  Nano when available; Gemini API, DeepSeek, OpenAI, Anthropic, and custom
+  OpenAI-compatible endpoints are optional bring-your-own-key alternatives.
+  Screenshot OCR runs on-device via vendored Tesseract; only selected text is
+  sent to cloud providers, and provider keys never leave the device except inside
+  the hand-carried device link.
 
   **Review.** Highlights, notes and saved questions ripen into spaced self-test
   cards (1 → 3 → 7 → 14 → 30 → 60 days, honest self-grading), each able to jump
@@ -134,7 +137,7 @@ Each page is self-contained and keeps its data in the visitor's own browser
   AES-GCM encrypted sync to
   a private GitHub repo (fine-grained token, ciphertext only, files over the
   contents-API 1 MB limit fetched raw), a `papers/` folder picker, and a device
-  link that hand-carries token, passphrase and AI key to a new device.
+  link that hand-carries token, passphrase and AI provider settings to a new device.
 
   On phones the paper gets the whole screen: a thumb-height bottom bar, the
   notebook as a bottom sheet, ⋯ revealing the full toolbar, and the layout

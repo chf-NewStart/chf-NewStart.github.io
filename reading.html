@@ -253,7 +253,7 @@
             <div class="mini-list" id="noteIndex"></div>
           </div>
           <div class="tab-panel" id="aiPanel" role="tabpanel">
-            <div class="ai-panel-head"><p class="hint">Pick what to ask about — only text ever leaves this device.</p><button class="text-button" id="aiNewThread" type="button">+ New thread</button></div>
+            <div class="ai-panel-head"><p class="hint">Pick what to ask about. With on-device Gemini, nothing leaves this device; cloud providers receive only the text you choose.</p><button class="text-button" id="aiNewThread" type="button">+ New thread</button></div>
             <div class="context-row">
               <button class="soft-button context-btn" id="aiUseCurrent" type="button">⌖ Page</button>
               <button class="soft-button context-btn" id="aiUseSelection" type="button">✂ Selection</button>
@@ -333,7 +333,7 @@
           <h3 id="lookupTitle">Looking up…</h3>
           <span class="lookup-source hidden" id="lookupSource"></span>
           <p class="lookup-definition loading" id="lookupDefinition" role="status" aria-live="polite">Finding a useful explanation and image.</p>
-          <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up DeepSeek →</button></div>
+          <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up AI →</button></div>
         </div>
       </aside>
       <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading">✕</button>
@@ -398,9 +398,31 @@
         <div class="status" id="syncStatus"></div>
       </section>
       <section>
-        <h3>DeepSeek assistant</h3>
-        <p>Phloem sends extracted screenshot or page text—not the image—to DeepSeek. Technical-term lookup sends the selected phrase and a short nearby excerpt. The API key stays in local storage on this device and is never included in sync.</p>
-        <div class="form-grid"><input class="field" id="aiKey" type="password" placeholder="DeepSeek API key" autocomplete="off"><div><button class="soft-button" id="aiKeySave">Save key</button></div></div>
+        <h3>AI assistant</h3>
+        <p>Automatic uses Gemini Nano inside compatible desktop Chrome, with no account or API key. You can instead bring a Gemini, DeepSeek, OpenAI, Anthropic, or other OpenAI-compatible key. Cloud providers receive only the extracted text you choose—never the PDF or screenshot itself.</p>
+        <div class="ai-provider-grid">
+          <label class="field-label" for="aiProvider">Provider</label>
+          <select class="field" id="aiProvider">
+            <option value="auto">Automatic · on-device Gemini</option>
+            <option value="gemini">Gemini API</option>
+            <option value="deepseek">DeepSeek API</option>
+            <option value="openai">OpenAI API</option>
+            <option value="anthropic">Anthropic API</option>
+            <option value="compatible">Other OpenAI-compatible API</option>
+          </select>
+          <p class="ai-provider-note" id="aiProviderNote"></p>
+          <div class="form-grid hidden" id="aiCloudFields">
+            <label class="field-label" for="aiKey">API key</label>
+            <input class="field" id="aiKey" type="password" placeholder="API key" autocomplete="off" spellcheck="false">
+            <label class="field-label" for="aiModel">Model</label>
+            <input class="field" id="aiModel" autocomplete="off" spellcheck="false">
+            <div id="aiEndpointFields">
+              <label class="field-label" for="aiEndpoint">Chat-completions endpoint</label>
+              <input class="field" id="aiEndpoint" type="url" placeholder="https://example.com/v1/chat/completions" autocomplete="off" spellcheck="false">
+            </div>
+          </div>
+          <div><button class="soft-button" id="aiKeySave">Save AI settings</button></div>
+        </div>
         <div class="status" id="aiKeyStatus"></div>
       </section>
       <section>

@@ -46,6 +46,7 @@ function check(name, condition, extra) {
     };
   });
   await localPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
+  check('guide default dimness is 55%', await localPage.locator('#guideDimRange').inputValue() === '55');
   if (await localPage.locator('#notebookReopen').isVisible()) await localPage.click('#notebookReopen');
   await localPage.click('[data-tab="aiPanel"]');
   await localPage.click('#aiUseCurrent');

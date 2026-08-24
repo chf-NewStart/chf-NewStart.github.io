@@ -17,6 +17,9 @@ AI thread that appears only after the note contains text.
 `reading-pdf-zoom.test.js` covers the one-time migration from the legacy 50%
 initial PDF scale to Fit while preserving deliberate per-paper zoom choices.
 
+`reading-pdf-authors.test.js` covers full page-one author extraction, repair of
+older blank credits, and preservation of manually edited author fields.
+
 Run with Node 18+ and Playwright's bundled Chromium:
 
 ```sh
@@ -25,6 +28,7 @@ node tests/reading-highlights.test.js
 node tests/reading-ai-providers.test.js
 node tests/reading-selection-note-ai.test.js
 node tests/reading-pdf-zoom.test.js
+node tests/reading-pdf-authors.test.js
 ```
 
 Exit code 0 means every check passed. If your Chromium lives in a nonstandard

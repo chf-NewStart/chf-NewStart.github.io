@@ -872,7 +872,10 @@
     (content.items||[]).forEach(function(item){
       var part=String(item.str||''),tr=item.transform||[],x=Number.isFinite(+tr[4])?+tr[4]:0,y=Number.isFinite(+tr[5])?+tr[5]:0,height=Math.max(1,Math.abs(+item.height||+tr[3]||+tr[0]||10)),width=Math.max(0,+item.width||part.length*height*.45);
       if(part){
-        if(line&&Math.abs(y-line.y)>Math.max(2,height*.55))finish();
+        /* Superscript affiliation numbers share a visual line with the author names.
+           Compare against both runs' heights so those smaller, raised glyphs do not
+           split a single author credit into several fake lines. */
+        if(line&&Math.abs(y-line.y)>Math.max(2,height*.55,line.height*.55))finish();
         if(!line)line={text:'',x:x,y:y,endX:x,height:height,runs:[]};
         var gap=line?x-line.endX:0;
         if(line.text&&!/\s$/.test(line.text)&&!/^[,.;:!?%)\]]/.test(part)&&gap>height*.12)line.text+=' ';
@@ -1214,14 +1217,62 @@
       .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&nbsp;/g,' ')
       .replace(/\s+/g,' ').replace(/\(\s+/g,'(').replace(/\s+\)/g,')').replace(/\s+([,.;:])/g,'$1').trim();
   }
-  async function derivePdfTitle(doc){
-    try{
-      var meta=await doc.getMetadata().catch(function(){return null;});
-      var infoTitle=meta&&meta.info&&cleanMetaTitle(meta.info.Title);
-      if(infoTitle&&infoTitle.length>=8&&infoTitle.length<=220&&!/untitled|microsoft word|powerpoint|\.pdf$|\.docx?$|\.tex$|^\d+$/i.test(infoTitle))return infoTitle;
-      var content=await (await doc.getPage(1)).getTextContent();
-      return guessTitleFromLayout(contentLayout(content));
-    }catch(e){return '';}
+  function cleanAuthorCredit(text){
+    var credit=cleanMetaTitle(text);
+    if(!credit||/^(?:unknown|anonymous|none|n\/?a|author|the authors?)$/i.test(credit))return '';
+    return credit
+      .replace(/([A-Za-zÀ-ž.'’\-])\s*(?:[0-9¹²³⁴⁵⁶⁷⁸⁹⁰]+(?:\s*,\s*[0-9¹²³⁴⁵⁶⁷⁸⁹⁰]+)*(?:\s*[*†‡§¶]+)?|[*†‡§¶]+)(?=\s*(?:,|;|\band\b|&|$))/gi,'$1')
+      .replace(/\s*\((?:\d+[\s,]*)+\)\s*(?=,|;|\band\b|&|$)/gi,'')
+      .replace(/\s+,/g,',').replace(/,\s*(?:and|&)\s+/gi,' and ').replace(/\s+/g,' ').trim();
+  }
+  function authorParts(credit){
+    return cleanAuthorCredit(credit).split(/\s*(?:,|;|\band\b|&)\s*/i).map(function(part){return part.trim();}).filter(function(part){
+      if(!part||/\b(?:abstract|open access|correspondence|university|department|institute|journal|received|accepted|copyright)\b/i.test(part))return false;
+      var words=part.replace(/\bet\s+al\.?$/i,'').split(/\s+/).filter(Boolean);
+      if(words.length<2||words.length>9||!words.every(function(word){return /^[A-Za-zÀ-ž.'’\-]+$/.test(word);}))return false;
+      var capitals=0,particles=/^(?:al|bin|da|de|del|der|di|du|la|le|van|von|y)$/;
+      var styled=words.every(function(word){var core=word.replace(/^[.'’\-]+/,'');if(particles.test(core.toLowerCase()))return true;var first=core.charAt(0);if(first&&first===first.toLocaleUpperCase()&&first!==first.toLocaleLowerCase()){capitals++;return true;}return false;});
+      return styled&&capitals>=2;
+    });
+  }
+  function metadataAuthorCredit(meta){
+    var info=meta&&meta.info||{},raw=info.Author||info.Authors||'';
+    if(!raw&&meta&&meta.metadata&&typeof meta.metadata.get==='function'){
+      try{raw=meta.metadata.get('dc:creator')||meta.metadata.get('pdf:Author')||'';}catch(e){}
+    }
+    if(Array.isArray(raw))raw=raw.join(', ');
+    var credit=cleanAuthorCredit(raw);return authorParts(credit).length?credit:'';
+  }
+  function guessAuthorsFromLayout(layout){
+    if(!layout||!layout.length)return '';
+    var pageTop=0,best='',bestScore=0;layout.forEach(function(line){if(line.y>pageTop)pageTop=line.y;});
+    layout.forEach(function(line,index){
+      var joined='',maxHeight=line.height;
+      for(var span=0;span<3&&index+span<layout.length;span++){
+        var next=layout[index+span];maxHeight=Math.max(maxHeight,next.height);
+        if(next.y<pageTop*.45||next.height>19||Math.abs(next.y-line.y)>Math.max(4,maxHeight*1.25))break;
+        joined+=(joined?' ':'')+String(next.text||'').trim();
+        var raw=joined.trim();
+        if(!raw||raw.length>360||/\b(?:abstract|open access|doi|correspondence|university|department|institute|received|accepted|copyright)\b/i.test(raw))continue;
+        var credit=cleanAuthorCredit(raw),parts=authorParts(credit);
+        if(parts.length<2)continue;
+        var score=parts.length*100-credit.length*.05+(line.y/pageTop)*10-span;
+        if(score>bestScore){best=credit;bestScore=score;}
+      }
+    });
+    return best;
+  }
+  async function derivePdfDetails(doc){
+    var details={title:'',authors:''},meta=null,layout=[];
+    try{meta=await doc.getMetadata().catch(function(){return null;});}catch(e){}
+    var infoTitle=meta&&meta.info&&cleanMetaTitle(meta.info.Title);
+    if(infoTitle&&infoTitle.length>=8&&infoTitle.length<=220&&!/untitled|microsoft word|powerpoint|\.pdf$|\.docx?$|\.tex$|^\d+$/i.test(infoTitle))details.title=infoTitle;
+    details.authors=metadataAuthorCredit(meta);
+    try{layout=contentLayout(await (await doc.getPage(1)).getTextContent());}catch(e){}
+    if(!details.title)details.title=guessTitleFromLayout(layout);
+    var pageAuthors=guessAuthorsFromLayout(layout);
+    if(authorParts(pageAuthors).length>authorParts(details.authors).length)details.authors=pageAuthors;
+    return details;
   }
   function findImportedPaper(probe){
     var papers=state.chapters.filter(function(ch){return ch.kind==='pdf';});
@@ -1233,11 +1284,12 @@
     try {
       var bytes=await file.arrayBuffer(),hashPromise=pdfFingerprint(bytes).catch(function(){return '';}),lib=await loadPdfLib();btn.textContent='Opening PDF…';
       var doc=await lib.getDocument({data:bytes.slice(0)}).promise;
-      var title=await derivePdfTitle(doc)||filenameTitle(file.name),contentHash=await hashPromise;
+      var details=await derivePdfDetails(doc),title=details.title||filenameTitle(file.name),contentHash=await hashPromise;
       var probe={kind:'pdf',title:title,sourceName:file.name,sourcePath:sourcePath||'',sourceUrl:sourceUrl||'',pageCount:doc.numPages,fileSize:bytes.byteLength,contentHash:contentHash};
       var existing=findImportedPaper(probe),id=existing?existing.id:uid('p'),keepPromise=putPdf(id,bytes);
-      var ch=existing||normalize({id:id,title:title,authors:'',kind:'pdf',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now(),readPage:1});
+      var ch=existing||normalize({id:id,title:title,authors:details.authors||'',kind:'pdf',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now(),readPage:1});
       if(existing&&titleQuality(probe)>titleQuality(existing))existing.title=title;
+      if(existing&&!String(existing.authors||'').trim()&&details.authors)existing.authors=details.authors;
       ch.sourceName=file.name;ch.sourcePath=sourcePath||ch.sourcePath||'';ch.sourceUrl=sourceUrl||ch.sourceUrl||'';ch.pageCount=doc.numPages;ch.fileSize=bytes.byteLength;if(contentHash)ch.contentHash=contentHash;ch.updatedAt=now();
       if(!existing)state.chapters.push(ch);persist();renderShelf();if(!stayPut)await openReader(id,doc);if(existing&&!stayPut)showReaderToast('Already in your library — notes kept, local PDF refreshed.');if(!await keepPromise)showReaderToast('PDF opened, but this browser may not keep it after closing the tab.');imported=true;
     } catch(e){ showError(e.message||'The PDF reader could not open this file.'); }
@@ -1911,16 +1963,18 @@
         }
         currentPage=Math.min(currentPage,pdfDoc.numPages);
         loadPdfOutline();
-        /* Papers still wearing their filename get their real title from the PDF itself,
-           quietly in the background. Hand-edited titles are never touched. */
-        if(ch.title===filenameTitle(ch.sourceName)){
+        /* Older imports may still wear a filename or have no author credit. Repair both
+           from the local PDF, while never replacing hand-edited library details. */
+        if(ch.title===filenameTitle(ch.sourceName)||!String(ch.authors||'').trim()){
           var titleDoc=pdfDoc,titleId=ch.id;
-          derivePdfTitle(titleDoc).then(function(better){
+          derivePdfDetails(titleDoc).then(function(details){
             var target=find(titleId);
-            if(!better||!target||target.title!==filenameTitle(target.sourceName)||better===target.title)return;
-            target.title=better;touch(target);
-            if(currentId===titleId)byId('readerTitle').textContent=better;
-            showReaderToast('Title read from the paper');
+            if(!target)return;var changed=false,titleChanged=false,authorsChanged=false;
+            if(details.title&&target.title===filenameTitle(target.sourceName)&&details.title!==target.title){target.title=details.title;changed=titleChanged=true;}
+            if(details.authors&&!String(target.authors||'').trim()){target.authors=details.authors;changed=authorsChanged=true;}
+            if(!changed)return;touch(target);
+            if(currentId===titleId){byId('readerTitle').textContent=target.title;byId('readerMeta').textContent=target.authors||target.sourceName||'';}
+            showReaderToast(titleChanged&&authorsChanged?'Title and authors read from the paper':(authorsChanged?'Authors read from the paper':'Title read from the paper'));
           });
         }
         if(readerMode==='text'&&(!ch.readerText||ch.readerV!==READER_V)){await ensureReaderData(pdfDoc,ch);updateReaderMode();}

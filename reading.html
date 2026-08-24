@@ -124,8 +124,8 @@
           <button id="colZoomBtn" aria-label="Zoom to one column" title="Zoom to one column (C) — taps cycle left · right · full width">Col</button>
         </div>
         <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to reflowed text view" title="Reflow · big phone-friendly text rebuilt from the PDF">≣ <span class="wide">Reflow</span></button>
-        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading ruler · drag its ⠿ handle or tap the page to move it; color, width, style and height live in Display">▰ <span class="wide">Guide</span></button>
-        <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Reading display settings" title="Reading display · guide style, text size, auto-scroll, paper tone">Aa</button>
+        <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Reading guide" title="Reading guide · uses your saved settings; open Adjust for line focus, dimness, color and size">▰ <span class="wide">Guide</span></button>
+        <button class="soft-button" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Adjust reading controls" title="Adjust guide, auto-scroll, text and paper">Adjust</button>
         <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F) · Space auto-scrolls">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
         <div class="marker-tools">
@@ -169,11 +169,15 @@
             <button class="toggle" type="button" data-guide-scope="page" aria-pressed="true">Full page</button>
           </div>
         </div>
-        <div class="group"><span>Guide style</span>
+        <div class="group" id="guideStyleGroup"><span>Guide style</span>
           <div class="guide-scope" role="group" aria-label="Reading guide style">
             <button class="toggle" type="button" data-guide-style="tint" aria-pressed="true">Tint</button>
             <button class="toggle" type="button" data-guide-style="dim" aria-pressed="false">Line focus</button>
           </div>
+        </div>
+        <div class="group guide-dim-control"><span>Outside dimness</span>
+          <input class="drift-range" id="guideDimRange" type="range" min="20" max="85" step="5" value="56" aria-label="Dimness outside the focused lines">
+          <span class="value" id="guideDimValue">56%</span>
         </div>
         <div class="group"><span>Guide height</span>
           <div class="guide-scope" role="group" aria-label="Reading guide height">
@@ -184,7 +188,7 @@
         </div>
         <div class="group"><span>Auto-scroll</span>
           <button class="toggle" id="driftBtn" type="button" aria-pressed="false">Off</button>
-          <input class="drift-range" id="driftRange" type="range" min="0.5" max="20" step="0.5" value="4" aria-label="Auto-scroll speed in pixels per second">
+          <input class="drift-range" id="driftRange" type="range" min="0.5" max="60" step="0.5" value="4" aria-label="Auto-scroll speed in pixels per second">
           <span class="value" id="driftValue">4 px/s</span>
         </div>
         <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream paper</button>

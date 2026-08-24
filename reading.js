@@ -1214,7 +1214,7 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideY:.38,guideLock:false,tone:'white',driftSpeed:4};
+  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideDim:56,guideY:.38,guideLock:false,tone:'white',driftSpeed:4};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
@@ -1223,9 +1223,10 @@
   if(['column','page'].indexOf(comfort.guideScope)<0)comfort.guideScope='page';
   if(['tint','dim'].indexOf(comfort.guideStyle)<0)comfort.guideStyle='tint';
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
+  comfort.guideDim=Math.max(20,Math.min(85,+comfort.guideDim||56));
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
   if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone='white';
-  comfort.driftSpeed=Math.max(.5,Math.min(20,+comfort.driftSpeed||4));
+  comfort.driftSpeed=Math.max(.5,Math.min(60,+comfort.driftSpeed||4));
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
   /* The guide anchors to the pane, not the screen: zen mode and bar toggles move the
@@ -1244,10 +1245,13 @@
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
     byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=driftLabel();
+    byId('guideDimRange').value=String(comfort.guideDim);byId('guideDimValue').textContent=comfort.guideDim+'%';
     byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');document.body.classList.toggle('cream-tone',comfort.tone==='cream');
     byId('creamBtn').setAttribute('aria-pressed',String(comfort.tone==='cream'));
     byId('paneSpotlight').dataset.guideColor=comfort.guide;
     byId('paneSpotlight').dataset.guideStyle=comfort.guideStyle;
+    byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));
+    byId('comfortBar').classList.toggle('line-focus',comfort.guideStyle==='dim');
     document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
     document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideScope===comfort.guideScope));});
     document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideStyle===comfort.guideStyle));});
@@ -1270,11 +1274,10 @@
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.onclick=function(){comfort.guideStyle=btn.dataset.guideStyle;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideStyle==='dim'?'Line focus · the rest of the page steps back':'Tint guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideY=.38;comfort.tone='white';comfort.driftSpeed=4;if(driftSpeed)driftSpeed=4;applyComfort();showReaderToast('Reading settings reset');};
-  byId('comfortBtn').onclick=function(){
-    var bar=byId('comfortBar'),open=bar.classList.contains('hidden');
-    bar.classList.toggle('hidden',!open);this.classList.toggle('active',open);this.setAttribute('aria-expanded',String(open));
-  };
+  byId('guideDimRange').oninput=function(){comfort.guideDim=Math.max(20,Math.min(85,+this.value||56));byId('guideDimValue').textContent=comfort.guideDim+'%';byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();};
+  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideDim=56;comfort.guideY=.38;comfort.tone='white';comfort.driftSpeed=4;if(driftSpeed)driftSpeed=4;applyComfort();showReaderToast('Reading settings reset');};
+  function setComfortBarOpen(open){var bar=byId('comfortBar'),btn=byId('comfortBtn');bar.classList.toggle('hidden',!open);btn.classList.toggle('active',open);btn.setAttribute('aria-expanded',String(open));}
+  byId('comfortBtn').onclick=function(){setComfortBarOpen(byId('comfortBar').classList.contains('hidden'));};
   function setFocusPara(index,scroll){
     var list=paraSections();if(!list.length){focusPara=null;return;}
     focusPara=Math.max(0,Math.min(list.length-1,index||0));
@@ -1344,6 +1347,7 @@
   byId('zenTheme').onclick=function(){byId('themeBtn').onclick();};
   byId('focusBtn').onclick=function(){
     comfort.focus=!comfort.focus;applyComfort();
+    if(comfort.focus&&!zenOn){var seen=false;try{seen=localStorage.getItem('readingRoom.guideAdjustSeen.v1')==='1';}catch(e){}if(!seen){setComfortBarOpen(true);requestAnimationFrame(function(){var bar=byId('comfortBar'),group=byId('guideStyleGroup');if(bar.scrollWidth>bar.clientWidth)bar.scrollTo({left:Math.max(0,group.offsetLeft-12),behavior:'smooth'});});try{localStorage.setItem('readingRoom.guideAdjustSeen.v1','1');}catch(e){}}}
     showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page'):'Reading guide off');
   };
   byId('documentPane').addEventListener('pointermove',function(e){
@@ -1532,15 +1536,15 @@
     showReaderToast(turningOff?'Auto-scroll off':'Auto-scroll · touching the page pauses it');
   };
   byId('driftRange').oninput=function(){
-    comfort.driftSpeed=Math.max(.5,Math.min(20,+this.value||4));
+    comfort.driftSpeed=Math.max(.5,Math.min(60,+this.value||4));
     byId('driftValue').textContent=driftLabel();
     saveComfortSoon();
     if(driftSpeed)driftSpeed=comfort.driftSpeed;else setDrift(comfort.driftSpeed);
   };
   /* Drive the slider with pointer events ourselves — the same mechanism as the guide's
      ⠿ handle — so a finger drag always moves the thumb instead of panning the bar. */
-  (function(){
-    var range=byId('driftRange'),dragging=false;
+  function wireTouchRange(range){
+    var dragging=false;
     function setFromPointer(e){
       var r=range.getBoundingClientRect();if(!r.width)return;
       var min=+range.min,max=+range.max,step=+range.step||1;
@@ -1556,7 +1560,8 @@
     function stopRangeDrag(e){if(!dragging)return;dragging=false;try{range.releasePointerCapture(e.pointerId);}catch(err){}}
     range.addEventListener('pointerup',stopRangeDrag);
     range.addEventListener('pointercancel',stopRangeDrag);
-  })();
+  }
+  wireTouchRange(byId('driftRange'));wireTouchRange(byId('guideDimRange'));
   byId('documentPane').addEventListener('touchstart',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('touchmove',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('wheel',function(){holdDrift(1500);},{passive:true});
@@ -2258,7 +2263,7 @@
     /* While the crawl is running, ← → retune its speed in either view. */
     if(driftSpeed&&!e.shiftKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){
       e.preventDefault();
-      comfort.driftSpeed=Math.max(.5,Math.min(20,+(comfort.driftSpeed+(e.key==='ArrowRight'?.5:-.5)).toFixed(1)));
+      comfort.driftSpeed=Math.max(.5,Math.min(60,+(comfort.driftSpeed+(e.key==='ArrowRight'?.5:-.5)).toFixed(1)));
       applyComfort();setDrift(comfort.driftSpeed);
       showReaderToast('Auto-scroll · '+driftLabel());
       return;

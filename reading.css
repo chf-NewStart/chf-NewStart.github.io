@@ -346,6 +346,7 @@
     .guide-color[data-guide-color="blue"] { --guide-swatch: #65a9c3; }
     .guide-color[aria-pressed="true"] { border-color: var(--guide-swatch); color: var(--ink); box-shadow: inset 0 0 0 1px var(--guide-swatch); }
     .guide-scope { display: flex; align-items: center; gap: 5px; }
+    .comfort-bar:not(.line-focus) .guide-dim-control { display: none; }
     /* On the PDF itself only the guide settings apply; typography belongs to Reader view. */
     .comfort-bar.pdf-mode .text-only { display: none !important; }
     .comfort-bar .spacer { flex: 1 1 auto; }
@@ -412,8 +413,8 @@
     .pane-spotlight[data-guide-color="green"] .guide-band { background: linear-gradient(90deg, rgba(78,164,91,.11), rgba(96,188,111,.23) 12%, rgba(96,188,111,.23) 88%, rgba(78,164,91,.11)); box-shadow: inset 0 1px rgba(164,224,170,.25), inset 0 -1px rgba(43,125,57,.2); }
     .pane-spotlight[data-guide-color="blue"] .guide-band { background: linear-gradient(90deg, rgba(67,145,177,.1), rgba(83,166,199,.22) 12%, rgba(83,166,199,.22) 88%, rgba(67,145,177,.1)); box-shadow: inset 0 1px rgba(153,213,234,.24), inset 0 -1px rgba(41,113,143,.2); }
     /* Line focus: the paper outside the band recedes behind a translucent wash. */
-    .guide-shade { position: absolute; left: 0; right: 0; background: color-mix(in srgb, var(--paper) 56%, transparent); opacity: 0; transition: opacity .2s ease, top .08s linear, height .08s linear; pointer-events: none; }
-    .pane-spotlight[data-guide-style="dim"] .guide-shade { opacity: 1; }
+    .guide-shade { position: absolute; left: 0; right: 0; background: var(--paper); opacity: 0; transition: opacity .2s ease, top .08s linear, height .08s linear; pointer-events: none; }
+    .pane-spotlight[data-guide-style="dim"] .guide-shade { opacity: var(--guide-dim-opacity, .56); }
     .guide-shade-top { top: 0; height: var(--guide-y, 34%); }
     .guide-shade-bottom { top: calc(var(--guide-y, 34%) + var(--guide-h, 118px)); bottom: 0; }
     /* Side wings at band height, so in Column scope the other column dims too. */

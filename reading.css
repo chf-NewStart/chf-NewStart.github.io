@@ -608,6 +608,9 @@
     .context-card b { display: block; margin-bottom: 3px; }
     .context-card span { color: var(--muted); }
     .drift-range { width: 130px; height: 30px; margin: 0; accent-color: var(--accent); touch-action: none; }
+    .ai-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .ai-panel-head .hint { flex: 1; }
+    .ai-panel-head .text-button { flex: 0 0 auto; padding-top: 1px; font-size: .68rem; }
     .context-row { display: flex; gap: 6px; margin: 0 0 10px; }
     .context-btn { flex: 1; min-height: 32px; padding: 5px 8px; justify-content: center; font-size: .72rem; white-space: nowrap; }
     .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px; }
@@ -617,11 +620,14 @@
     .ask-row .field { flex: 1; }
     #aiQuestion { resize: none; overflow-y: auto; max-height: 128px; line-height: 1.45; font: inherit; }
     .ask-row { align-items: flex-end; }
-    .qa-list { display: grid; gap: 12px; margin-top: 18px; }
-    .qa { border-top: 1px solid var(--line); padding-top: 12px; }
-    .qa .q { font-weight: 650; font-size: .78rem; }
-    .qa .a { margin-top: 6px; white-space: pre-wrap; font: .78rem/1.48 var(--serif); color: var(--muted); }
-    .qa .meta { margin-top: 6px; color: var(--muted); font-size: .61rem; }
+    .ai-thread-picker { display: flex; align-items: center; gap: 9px; margin: 12px 0 8px; color: var(--muted); font-size: .6rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    .ai-thread-picker .field { flex: 1; min-width: 0; height: 34px; padding: 5px 28px 5px 9px; color: var(--ink); font-size: .68rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
+    .ai-thread { display: grid; gap: 8px; margin: 12px 0; }
+    .ai-thread-meta { color: var(--muted); font-size: .61rem; }
+    .ai-turn { max-width: 92%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 12px 12px 12px 3px; background: var(--paper); overflow-wrap: anywhere; white-space: pre-wrap; color: var(--ink); font: .78rem/1.5 var(--serif); }
+    .ai-turn.you { justify-self: end; border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); border-radius: 12px 12px 3px 12px; background: var(--accent-soft); font-family: var(--sans); }
+    .ai-turn.pending { color: var(--muted); font-style: italic; }
+    .ai-thread-empty { padding: 11px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font: .72rem/1.45 var(--serif); }
     .evidence-list { display: grid; gap: 8px; margin-top: 14px; }
     .evidence-head { color: var(--muted); font-size: .68rem; line-height: 1.5; }
     .evidence-head a { color: var(--blue); }

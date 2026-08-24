@@ -234,7 +234,7 @@
             <div class="mini-list" id="noteIndex"></div>
           </div>
           <div class="tab-panel" id="aiPanel" role="tabpanel">
-            <p class="hint">Pick what to ask about — only text ever leaves this device.</p>
+            <div class="ai-panel-head"><p class="hint">Pick what to ask about — only text ever leaves this device.</p><button class="text-button" id="aiNewThread" type="button">+ New thread</button></div>
             <div class="context-row">
               <button class="soft-button context-btn" id="aiUseCurrent" type="button">⌖ Page</button>
               <button class="soft-button context-btn" id="aiUseSelection" type="button">✂ Selection</button>
@@ -243,6 +243,8 @@
             <div class="ai-drop" id="aiDrop" tabindex="0">Paste or drop a screenshot<br><button class="text-button" id="aiFileBtn" type="button">or choose an image</button></div>
             <input class="hidden" type="file" id="aiFile" accept="image/*">
             <div class="context-card hidden" id="contextCard"><img id="contextThumb" alt="Selected context"><div><b id="contextLabel"></b><span id="contextExcerpt"></span></div></div>
+            <label class="ai-thread-picker hidden" id="aiThreadPickerRow"><span>Thread</span><select class="field" id="aiThreadPicker" aria-label="Saved AI threads"></select></label>
+            <div class="ai-thread" id="qaList" aria-live="polite"></div>
             <div class="ask-chips" role="group" aria-label="Question starters">
               <button class="ask-chip" type="button" data-ask-stem="What is ">What is…</button>
               <button class="ask-chip" type="button" data-ask-stem="Why ">Why…</button>
@@ -256,7 +258,6 @@
               <button class="button" id="aiAskBtn">Ask</button>
             </div>
             <div class="status" id="aiStatus" role="status"></div>
-            <div class="qa-list" id="qaList"></div>
             <div class="evidence-list hidden" id="evidenceList"></div>
           </div>
         </aside>

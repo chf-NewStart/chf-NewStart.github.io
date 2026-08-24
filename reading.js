@@ -29,7 +29,7 @@
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
-  var readerMode = 'pdf', editingId = null, aiContext = null, syncCfg = null, syncing = false, syncTimer = null;
+  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
 
   function byId(id){ return document.getElementById(id); }
@@ -40,6 +40,9 @@
   function normalize(ch){
     ch.notes = ch.notes || {}; ch.pageNotes = ch.pageNotes || {}; ch.tags = ch.tags || [];
     ch.questions = ch.questions || []; ch.highlights = ch.highlights || {}; ch.textHighlights = ch.textHighlights || [];
+    if(!Array.isArray(ch.aiThreads))ch.aiThreads=[];
+    if(!ch.aiThreads.length&&ch.questions.length)ch.aiThreads=ch.questions.slice(0,12).map(function(q){return {id:'legacy-'+(q.id||uid('q')),contextLabel:q.contextLabel||'Earlier question',contextText:q.excerpt||'',messages:[{role:'user',content:q.question||'',at:q.at||now()},{role:'assistant',content:q.answer||'',at:q.at||now()}],createdAt:q.at||now(),updatedAt:q.at||now()};});
+    ch.aiThreads=ch.aiThreads.filter(function(t){return t&&t.id&&Array.isArray(t.messages);}).slice(0,12);if(ch.activeAiThreadId&&!ch.aiThreads.some(function(t){return t.id===ch.activeAiThreadId;}))ch.activeAiThreadId='';if(!ch.activeAiThreadId&&ch.aiThreads[0])ch.activeAiThreadId=ch.aiThreads[0].id;
     ch.readerHighlights = ch.readerHighlights || []; ch.readerNotes = ch.readerNotes || {}; ch.termLookups = ch.termLookups || {}; ch.reviews = ch.reviews || {};
     ch.addedAt = ch.addedAt || now(); ch.updatedAt = ch.updatedAt || ch.addedAt;
     ch.readPage = ch.readPage || 1; ch.kind = ch.kind || (ch.pageTexts ? 'pdf' : 'text');
@@ -118,7 +121,7 @@
     if(titleQuality(extra)>titleQuality(keep))keep.title=extra.title;
     if(String(extra.authors||'').length>String(keep.authors||'').length)keep.authors=extra.authors;
     keep.tags=mergeTags(keep.tags,extra.tags);keep.notes=mergeNoteMap(keep.notes,extra.notes);keep.pageNotes=mergeNoteMap(keep.pageNotes,extra.pageNotes);keep.readerNotes=mergeNoteMap(keep.readerNotes,extra.readerNotes);
-    keep.questions=mergeItemArrays(keep.questions,extra.questions);keep.textHighlights=mergeItemArrays(keep.textHighlights,extra.textHighlights);keep.readerHighlights=mergeItemArrays(keep.readerHighlights,extra.readerHighlights);keep.highlights=mergeHighlightMap(keep.highlights,extra.highlights);
+    keep.questions=mergeItemArrays(keep.questions,extra.questions);keep.aiThreads=mergeItemArrays(keep.aiThreads,extra.aiThreads).sort(function(a,b){return (+b.updatedAt||0)-(+a.updatedAt||0);}).slice(0,12);keep.textHighlights=mergeItemArrays(keep.textHighlights,extra.textHighlights);keep.readerHighlights=mergeItemArrays(keep.readerHighlights,extra.readerHighlights);keep.highlights=mergeHighlightMap(keep.highlights,extra.highlights);
     keep.reviews=mergeReviews(keep.reviews,extra.reviews);keep.termLookups=mergeLookups(keep.termLookups,extra.termLookups);
     keep.readPage=Math.max(+keep.readPage||1,+extra.readPage||1);keep.pageCount=Math.max(+keep.pageCount||0,+extra.pageCount||0)||keep.pageCount;keep.fileSize=Math.max(+keep.fileSize||0,+extra.fileSize||0)||keep.fileSize;
     keep.addedAt=Math.min(+keep.addedAt||now(),+extra.addedAt||now());keep.updatedAt=Math.max(+keep.updatedAt||0,+extra.updatedAt||0);
@@ -1806,9 +1809,9 @@
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
-    byId('paperTags').value=(ch.tags||[]).join(', '); renderQa(); renderNoteIndex();
+    byId('paperTags').value=(ch.tags||[]).join(', '); renderNoteIndex();
     byId('evidenceList').classList.add('hidden');byId('evidenceList').innerHTML='';
-    aiContext=null;byId('contextCard').classList.add('hidden');byId('aiStatus').textContent='';
+    aiContext=null;aiThreadDraft=false;byId('contextCard').classList.add('hidden');byId('aiStatus').textContent='';restoreActiveAiThread(ch);renderQa();
     readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('aiPanel');
     if(ch.kind==='pdf'){
       try{
@@ -2759,7 +2762,13 @@
     out.getContext('2d').drawImage(canvas,sx,sy,sw,sh,0,0,out.width,out.height);
     return out.toDataURL('image/jpeg',.72);
   }
-  function setAiContext(text,thumb,label){ aiContext={text:text,thumb:thumb,label:label}; byId('contextCard').classList.remove('hidden'); byId('contextThumb').src=thumb||'data:image/gif;base64,R0lGODlhAQABAAAAACw='; byId('contextLabel').textContent=label; byId('contextExcerpt').textContent=(text||'No text extracted').slice(0,160); }
+  function activeAiThread(ch){ch=ch||find(currentId);if(!ch)return null;return (ch.aiThreads||[]).find(function(t){return t.id===ch.activeAiThreadId;})||null;}
+  function paintAiContext(){
+    var card=byId('contextCard');if(!aiContext||!aiContext.text){card.classList.add('hidden');return;}
+    card.classList.remove('hidden');byId('contextThumb').src=aiContext.thumb||'data:image/gif;base64,R0lGODlhAQABAAAAACw=';byId('contextLabel').textContent=aiContext.label||'Context';byId('contextExcerpt').textContent=(aiContext.text||'No text extracted').slice(0,160);
+  }
+  function restoreActiveAiThread(ch){var thread=activeAiThread(ch);if(!thread)return;aiContext={text:thread.contextText||'',thumb:'',label:thread.contextLabel||'Saved context'};paintAiContext();}
+  function setAiContext(text,thumb,label){aiContext={text:text,thumb:thumb,label:label};aiThreadDraft=true;paintAiContext();renderQa();}
   function makeThumb(source){ var c=document.createElement('canvas'), max=420, scale=Math.min(1,max/source.width); c.width=Math.max(1,Math.round(source.width*scale));c.height=Math.max(1,Math.round(source.height*scale));c.getContext('2d').drawImage(source,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.58); }
   byId('aiFileBtn').onclick=function(e){e.stopPropagation();byId('aiFile').click();};
   byId('aiDrop').onclick=function(){byId('aiFile').click();};
@@ -2786,6 +2795,11 @@
   function growQuestionBox(){var input=byId('aiQuestion');input.style.height='auto';input.style.height=Math.min(128,input.scrollHeight)+'px';}
   byId('aiQuestion').addEventListener('input',growQuestionBox);
   byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;
+  byId('aiNewThread').onclick=function(){aiThreadDraft=true;renderQa();byId('aiStatus').textContent=aiContext&&aiContext.text?'New thread with this context.':'New thread — pick a context, then ask.';byId('aiQuestion').focus({preventScroll:true});};
+  byId('aiThreadPicker').onchange=function(){
+    var ch=find(currentId);if(!ch)return;if(!this.value){aiThreadDraft=true;renderQa();byId('aiStatus').textContent='New thread — pick or keep the context, then ask.';return;}
+    ch.activeAiThreadId=this.value;aiThreadDraft=false;aiContext=null;restoreActiveAiThread(ch);renderQa();persist(false);byId('aiStatus').textContent='Thread reopened.';
+  };
   /* Question starters only ever fill the box — nothing sends until Ask is pressed.
      The one one-tap action in the row is Find evidence, styled apart. */
   document.querySelectorAll('.ask-chip[data-ask-stem],.ask-chip[data-ask-full]').forEach(function(chip){
@@ -2797,18 +2811,43 @@
       try{input.setSelectionRange(input.value.length,input.value.length);}catch(e){}
     };
   });
+  function aiThreadTitle(thread){var first=(thread.messages||[]).find(function(m){return m.role==='user'&&m.content;});var title=String(first&&first.content||thread.contextLabel||'New thread').replace(/\s+/g,' ').trim();return title.length>54?title.slice(0,51)+'…':title;}
+  function newAiThread(ch){
+    var thread={id:uid('thread'),contextLabel:aiContext.label||'Context',contextText:String(aiContext.text||'').slice(0,16000),messages:[],createdAt:now(),updatedAt:now()};
+    ch.aiThreads=ch.aiThreads||[];ch.aiThreads.unshift(thread);ch.aiThreads=ch.aiThreads.slice(0,12);ch.activeAiThreadId=thread.id;aiThreadDraft=false;return thread;
+  }
+  function aiThreadMessages(ch,thread){
+    var system='You are a concise research reading partner in an ongoing conversation. Answer from the supplied excerpt and remember the earlier turns in this thread. Distinguish what the excerpt says from your inference. If context is insufficient, say so. Prefer short plain paragraphs or compact bullets; no headings or decorative markdown.';
+    var context='Paper: '+(ch.title||'Untitled')+'\nReference context ('+(thread.contextLabel||'context')+'):\n'+String(thread.contextText||'').slice(0,16000),history=(thread.messages||[]).slice(-20).map(function(m){return {role:m.role,content:m.content};});
+    if(history[0]&&history[0].role==='user')history[0].content=context+'\n\nQuestion: '+history[0].content;else history.unshift({role:'user',content:context});return [{role:'system',content:system}].concat(history);
+  }
   async function askAi(){
-    var ch=find(currentId), q=byId('aiQuestion').value.trim(), key=localStorage.getItem(AI_KEY)||''; if(!q)return;
+    var ch=find(currentId),q=byId('aiQuestion').value.trim(),key=localStorage.getItem(AI_KEY)||'';if(!q)return;
     if(!aiContext||!aiContext.text){if(!setCurrentPageContext()){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}}
     if(!key){byId('aiStatus').innerHTML='Add your DeepSeek key in <button class="text-button" id="openAiSettings">settings</button> first.';byId('openAiSettings').onclick=function(){fillSettings();byId('settingsDialog').showModal();};return;}
+    var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch);created=true;}
+    var sentAt=now();thread.messages.push({role:'user',content:q,at:sentAt});thread.updatedAt=sentAt;byId('aiQuestion').value='';growQuestionBox();renderQa('Thinking…');
     var btn=byId('aiAskBtn');btn.disabled=true;byId('aiStatus').textContent='Thinking…';
     try{
-      var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:900,messages:[{role:'system',content:'You are a concise research reading partner. Answer from the supplied excerpt. Distinguish what the excerpt says from your inference. If context is insufficient, say so. Format the answer as short bullet points, each line starting with \u2022 and one idea per line; only skip bullets when the whole answer is a single short sentence. Plain text only, no markdown symbols.'},{role:'user',content:'Paper: '+(ch.title||'Untitled')+'\nContext ('+aiContext.label+'):\n'+aiContext.text.slice(0,24000)+'\n\nQuestion: '+q}]})});
-      if(!res.ok)throw new Error('AI returned '+res.status);var data=await res.json(), answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
-      ch.questions.unshift({id:uid('q'),question:q,answer:answer,contextLabel:aiContext.label,excerpt:aiContext.text.slice(0,1200),thumb:aiContext.thumb||'',at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiQuestion').value='';growQuestionBox();byId('aiStatus').textContent='Saved with this paper.';renderQa();var qaBox=byId('qaList');qaBox.parentNode.insertBefore(qaBox,byId('evidenceList'));if(qaBox.firstElementChild)qaBox.firstElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
-    }catch(e){byId('aiStatus').textContent=e.message||'AI request failed';}btn.disabled=false;
+      var res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:1200,messages:aiThreadMessages(ch,thread)})});
+      if(!res.ok)throw new Error('AI returned '+res.status);var data=await res.json(),answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
+      thread.messages.push({role:'assistant',content:answer,at:now()});if(thread.messages.length>24){thread.messages=thread.messages.slice(-24);if(thread.messages[0]&&thread.messages[0].role==='assistant')thread.messages.shift();}thread.updatedAt=now();
+      ch.aiThreads=ch.aiThreads.filter(function(t){return t.id!==thread.id;});ch.aiThreads.unshift(thread);ch.activeAiThreadId=thread.id;
+      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:answer,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiStatus').textContent='Saved in this thread.';renderQa();var box=byId('qaList');if(box.lastElementChild)box.lastElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
+    }catch(e){
+      if(thread.messages[thread.messages.length-1]&&thread.messages[thread.messages.length-1].role==='user'&&thread.messages[thread.messages.length-1].content===q)thread.messages.pop();
+      if(created&&!thread.messages.length){ch.aiThreads=ch.aiThreads.filter(function(t){return t.id!==thread.id;});ch.activeAiThreadId=ch.aiThreads[0]?ch.aiThreads[0].id:'';aiThreadDraft=true;}
+      byId('aiQuestion').value=q;growQuestionBox();byId('aiStatus').textContent=e.message||'AI request failed';renderQa();
+    }btn.disabled=false;
   }
-  function renderQa(){var ch=find(currentId);if(!ch)return;byId('qaList').innerHTML=(ch.questions||[]).map(function(x){return '<article class="qa"><div class="q">'+esc(x.question)+'</div><div class="a">'+esc(x.answer)+'</div><div class="meta">'+esc(x.contextLabel||'context')+' · '+new Date(x.at).toLocaleDateString()+'</div></article>';}).join('');}
+  function renderQa(pending){
+    var ch=find(currentId),box=byId('qaList');if(!ch||!box)return;var threads=ch.aiThreads||[],thread=aiThreadDraft?null:activeAiThread(ch),row=byId('aiThreadPickerRow'),picker=byId('aiThreadPicker');
+    row.classList.toggle('hidden',!threads.length);picker.innerHTML='';if(threads.length){var fresh=document.createElement('option');fresh.value='';fresh.textContent='New thread';picker.appendChild(fresh);threads.forEach(function(t){var option=document.createElement('option');option.value=t.id;option.textContent=aiThreadTitle(t);picker.appendChild(option);});picker.value=thread?thread.id:'';}
+    var html='';if(thread)html+='<div class="ai-thread-meta">'+esc(thread.contextLabel||'Context')+' · '+new Date(thread.createdAt||thread.updatedAt||now()).toLocaleDateString()+'</div>';
+    (thread&&thread.messages||[]).forEach(function(m){html+='<div class="ai-turn'+(m.role==='user'?' you':'')+'">'+esc(m.content)+'</div>';});if(pending)html+='<div class="ai-turn pending">'+esc(pending)+'</div>';
+    if(!html)html='<div class="ai-thread-empty">Start a question here. Your next messages will stay in the same conversation until you choose New thread.</div>';box.innerHTML=html;
+    byId('aiAskBtn').textContent=thread&&thread.messages.length?'Reply':'Ask';byId('aiQuestion').placeholder=thread&&thread.messages.length?'Ask a follow-up…':'What does this mean?';
+  }
 
   /* Evidence: the model never gets to invent a citation. At most it distills the claim
      into a search query; the papers shown all come from Semantic Scholar's real index,

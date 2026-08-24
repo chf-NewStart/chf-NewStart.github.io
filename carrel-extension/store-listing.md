@@ -18,3 +18,38 @@ not upload your PDFs to a developer server.
 
 Artwork credit: Phloem icon artwork by Promma.
 https://www.linkedin.com/in/itpromma/
+
+## Privacy dashboard copy
+
+### Single purpose
+
+Send a PDF the user explicitly chooses - from a link, the current PDF tab, or a
+local file - into the Phloem reading app at houfu72.com for reading and annotation.
+
+### contextMenus justification
+
+Adds “Read link in Phloem” and “Read this page’s PDF in Phloem” to Chrome’s
+right-click menu. The extension runs only when the user selects one of these commands.
+
+### storage justification
+
+Temporarily stores the user-selected PDF bytes so the background worker can hand
+them to the Phloem tab. The pending copy is deleted immediately after delivery.
+
+### unlimitedStorage justification
+
+PDFs can exceed Chrome storage’s normal quota. This permission prevents a
+user-selected paper from failing while it is temporarily transferred to Phloem;
+the temporary copy is deleted after delivery.
+
+### notifications justification
+
+Shows local, user-facing errors when the selected link is not a PDF, the download
+fails, the file is too large, or local-file access must be enabled.
+
+### Host permission justification
+
+Required only to fetch the PDF URL the user explicitly selects from any website,
+including authenticated campus or library sites, and to read a user-opened local
+PDF after Chrome’s separate file-URL permission is enabled. The extension does not
+inspect pages or browse passively.

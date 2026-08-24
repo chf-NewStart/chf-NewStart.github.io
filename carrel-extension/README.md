@@ -1,6 +1,6 @@
 # Read in Phloem — browser extension
 
-Current store package: **1.1.8**
+Current store package: **1.1.9**
 
 Send any PDF on the web or your computer straight to [Phloem](https://houfu72.com/reading.html),
 the free local-first paper reading desk. Right-click a PDF link → **Read link in
@@ -34,7 +34,6 @@ passed into Phloem metadata or optional sync.
 
 - `<all_urls>` — to download the PDF you clicked from whatever site hosts it, or read
   a local PDF after you explicitly enable Chrome's file-URL switch.
-- `activeTab` — to identify the PDF in the tab when you click the extension.
 - `storage` + `unlimitedStorage` — the fetched PDF is handed over through
   extension storage (papers are routinely 10–30 MB).
 - `contextMenus` — the right-click entries.

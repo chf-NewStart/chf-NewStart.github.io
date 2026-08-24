@@ -27,6 +27,7 @@
   var state = loadState();
   var currentId = null, currentPage = 1, pdfDoc = null, pdfLib = null, pdfRendering = false, pdfRenderPending = false;
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
+  var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
   var readerMode = 'pdf', editingId = null, aiContext = null, syncCfg = null, syncing = false, syncTimer = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
@@ -161,6 +162,47 @@
   function showError(message,title){ byId('errorTitle').textContent=title||'Could not open that paper';byId('errorMessage').textContent=message; if(!byId('errorDialog').open) byId('errorDialog').showModal(); }
   function showReaderToast(message){var toast=byId('readerToast');clearTimeout(readerToastTimer);toast.textContent=message;toast.classList.remove('hidden');readerToastTimer=setTimeout(function(){toast.classList.add('hidden');},1800);}
 
+  /* Selection is a crossroads, not an automatic network request. Keep the exact
+     passage on-device until the reader chooses explain, AI, marker, or note. */
+  function hideSelectionCard(){selectionAnchor=null;byId('selectionCard').classList.add('hidden');}
+  function placeSelectionCard(rect){
+    if(rect)selectionAnchor={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width||Math.max(0,rect.right-rect.left)};
+    var card=byId('selectionCard');if(!selectionAnchor||card.classList.contains('hidden'))return;
+    if(innerWidth<=720){card.style.left='';card.style.top='';return;}
+    requestAnimationFrame(function(){
+      if(card.classList.contains('hidden')||!selectionAnchor)return;
+      var box=card.getBoundingClientRect(),gap=12,center=selectionAnchor.left+(selectionAnchor.width||0)/2;
+      var left=Math.max(gap,Math.min(center-box.width/2,innerWidth-box.width-gap)),top=selectionAnchor.bottom+gap;
+      if(top+box.height>innerHeight-gap)top=selectionAnchor.top-box.height-gap;
+      top=Math.max(gap,Math.min(top,innerHeight-box.height-gap));
+      card.style.left=Math.round(left)+'px';card.style.top=Math.round(top)+'px';
+    });
+  }
+  function notesForSelection(selection){
+    var ch=find(currentId);if(!ch||!selection)return'';var parts=[],seen=Object.create(null);
+    function add(label,value){value=String(value||'').trim();if(!value||seen[value])return;seen[value]=true;parts.push(label+':\n'+value);}
+    if(selectionNoteTarget&&selectionNoteTarget.item)add('Highlight note',selectionNoteTarget.item.note);
+    if(selection.kind==='pdf')add('Page '+selection.page+' note',(ch.pageNotes||{})[String(selection.page)]);
+    else{var map=selection.kind==='reader'?(ch.readerNotes||{}):(ch.notes||{});add((selection.kind==='reader'?'Reader ':'')+'Paragraph '+((selection.para||0)+1)+' note',map[String(selection.para||0)]);}
+    add('Paper note',(ch.pageNotes||{}).document);return parts.join('\n\n');
+  }
+  function refreshSelectionNoteAction(){
+    var note=notesForSelection(pendingSelection||lastAskSelection),button=byId('selectionAskNote');button.disabled=!note;
+    button.title=note?'Ask about the passage with your related note included':'Add a note here or in the notebook first';
+  }
+  function showSelectionCard(selection,rect){
+    if(!selection||!selection.text)return;hideLookup();hideHighlightCard();selectionNoteTarget=null;byId('selectionEyebrow').textContent='Selected passage';
+    byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
+    var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';
+    byId('selectionAddNote').textContent='✎ Add note';setHighlightColor(highlightColor);refreshSelectionNoteAction();byId('selectionCard').classList.remove('hidden');placeSelectionCard(rect);
+  }
+  function openSelectionInAi(includeNote){
+    var selection=pendingSelection||lastAskSelection,note=includeNote?notesForSelection(selection):'';
+    if(!selection||!selection.text)return;hideSelectionCard();clearPendingSelection(true);switchTab('aiPanel');
+    if(innerWidth<=720)toggleSheet(true);else setNotebookCollapsed(false,true);
+    useSelectionForAi(selection,note);
+  }
+
   /* A selection stays on the paper while this small, source-labelled reference card
      looks up an encyclopedic definition and a freely hosted image. */
   function hideLookup(){clearTimeout(lookupTimer);lookupSerial++;lookupAnchor=null;byId('lookupCard').classList.add('hidden');}
@@ -256,20 +298,23 @@
       if(ch&&(!paperHit||ch.termLookups[termKey]!==result))rememberLookup(ch,termKey,result);
     }catch(e){if(serial===lookupSerial)showLookupProblem(term,'The reference lookup could not finish. Your highlight is still safe—try again when you are online.');}
   }
-  function queueLookup(text,rect,selection){
+  function queueLookup(text,rect,selection,delay){
     var term=String(text||'').replace(/\s+/g,' ').replace(/^[\s"'“”‘’.,;:!?]+|[\s"'“”‘’.,;:!?]+$/g,'').trim();if(term.length<2)return;
     clearTimeout(lookupTimer);var serial=++lookupSerial,context=lookupPaperContext(selection);
     lookupTimer=setTimeout(function(){
       if(serial!==lookupSerial||selectionPointerDown)return;prepareLookup(term,rect);
       if(term.length>140||term.split(/\s+/).length>14){showLookupProblem(term,'Select a word or short phrase for a clearer definition and a more relevant image.');return;}
       loadLookup(term,serial,context);
-    },LOOKUP_DELAY);
+    },delay===undefined?LOOKUP_DELAY:delay);
   }
   byId('lookupClose').onclick=hideLookup;
   byId('lookupAiSetup').onclick=function(){hideLookup();fillSettings();byId('settingsDialog').showModal();};
   byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
-  document.addEventListener('pointerdown',function(e){if(!e.target.closest('#lookupCard'))hideLookup();},true);
-  window.addEventListener('resize',function(){placeLookupCard();});
+  document.addEventListener('pointerdown',function(e){
+    if(!e.target.closest('#lookupCard'))hideLookup();
+    if(!e.target.closest('#selectionCard')&&!e.target.closest('.text-layer,.original'))hideSelectionCard();
+  },true);
+  window.addEventListener('resize',function(){placeLookupCard();placeSelectionCard();});
 
   /* One theme for everything: the app chrome, the PDF paper, and the phone status bar
      all follow the same light/dark switch. */
@@ -2176,6 +2221,7 @@
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
+    if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
     if(e.key==='Escape'&&!byId('highlightCard').classList.contains('hidden')){e.preventDefault();hideHighlightCard();return;}
     if(e.key==='Escape'&&(!byId('lookupCard').classList.contains('hidden')||highlightMode)){e.preventDefault();hideLookup();if(highlightMode){clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');}return;}
     if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
@@ -2354,9 +2400,14 @@
   /* The last real selection survives page turns and sheet-opening taps, so "My selection"
      in Ask AI still works after the on-screen selection has collapsed. */
   var lastAskSelection=null;
-  function clearPendingSelection(){clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');var s=window.getSelection&&window.getSelection();if(s)s.removeAllRanges();}
+  function clearPendingSelection(keepCard){clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');if(!keepCard)hideSelectionCard();var s=window.getSelection&&window.getSelection();if(s)s.removeAllRanges();}
   function scheduleHighlightCommit(delay){clearTimeout(highlightCommitTimer);highlightCommitTimer=setTimeout(function(){if(highlightMode)commitPendingHighlight();},delay);}
   function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');if(highlightMode&&!markerPointerDown)scheduleHighlightCommit(550);}
+  function setHighlightColor(color){
+    highlightColor=['yellow','mint','coral','blue'].indexOf(color)>=0?color:'yellow';
+    document.querySelectorAll('[data-highlight-color]').forEach(function(x){x.classList.toggle('selected',x.dataset.highlightColor===highlightColor);});
+    document.querySelectorAll('[data-selection-color]').forEach(function(x){x.classList.toggle('selected',x.dataset.selectionColor===highlightColor);});
+  }
   function setHighlightMode(on){
     highlightMode=!!on;var btn=byId('highlightBtn');if(!btn)return;
     btn.classList.toggle('active',highlightMode);btn.setAttribute('aria-pressed',String(highlightMode));btn.textContent=highlightMode?'✦ Marker on':'✦ Marker';byId('highlightPalette').classList.toggle('hidden',!highlightMode);document.body.classList.toggle('marker-on',highlightMode);
@@ -2409,17 +2460,18 @@
       var host=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;
       var page=host&&host.closest?host.closest('.pdf-page'):null;if(!page||!byId('pdfFrame').contains(page)||!page.querySelector('.text-layer').contains(range.commonAncestorContainer))return;
       var base=page.getBoundingClientRect(),rects=Array.from(range.getClientRects()).filter(function(r){return r.width>1&&r.height>1;}).map(function(r){var x=Math.max(0,(r.left-base.left-1.5)/base.width),y=Math.max(0,(r.top-base.top+r.height*.12)/base.height);return{x:x,y:y,w:Math.min(1-x,(r.width+3)/base.width),h:Math.min(1-y,(r.height*.76)/base.height)};}).filter(function(r){return r.x<1&&r.y<1;});rects=mergeHighlightRects(rects);
-      if(rects.length){var pdfSelection={kind:'pdf',page:+page.dataset.page||currentPage,text:text,rects:rects};setPendingSelection(pdfSelection);if(!selectionPointerDown)queueLookup(text,selectionRect,pdfSelection);}
+      if(rects.length){var pdfSelection={kind:'pdf',page:+page.dataset.page||currentPage,text:text,rects:rects};setPendingSelection(pdfSelection);if(!selectionPointerDown&&!highlightMode)showSelectionCard(pdfSelection,selectionRect);}
     }else{
       var original=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;original=original&&original.closest('.original');if(!original||!byId('textDocument').contains(original))return;
       var startOwner=range.startContainer.nodeType===1?range.startContainer:range.startContainer.parentElement,endOwner=range.endContainer.nodeType===1?range.endContainer:range.endContainer.parentElement;if(!original.contains(startOwner)||!original.contains(endOwner))return;
       var before=document.createRange();before.selectNodeContents(original);before.setEnd(range.startContainer,range.startOffset);var through=document.createRange();through.selectNodeContents(original);through.setEnd(range.endContainer,range.endOffset);
-      var ch=find(currentId),textSelection={kind:ch&&ch.kind==='pdf'?'reader':'text',para:+original.dataset.paraIndex,start:before.toString().length,end:through.toString().length,text:text};setPendingSelection(textSelection);if(!selectionPointerDown)queueLookup(text,selectionRect,textSelection);
+      var ch=find(currentId),textSelection={kind:ch&&ch.kind==='pdf'?'reader':'text',para:+original.dataset.paraIndex,start:before.toString().length,end:through.toString().length,text:text};setPendingSelection(textSelection);if(!selectionPointerDown&&!highlightMode)showSelectionCard(textSelection,selectionRect);
     }
   }
   document.addEventListener('selectionchange',captureSelection);
   byId('documentPane').addEventListener('pointerdown',function(e){
     if(!e.target.closest('.text-layer,.original'))return;
+    hideSelectionCard();
     selectionPointerDown=true;document.body.classList.add('selecting-paper');
     if(highlightMode){markerPointerDown=true;clearTimeout(highlightCommitTimer);}
   });
@@ -2433,25 +2485,50 @@
   byId('highlightBtn').onclick=function(){
     if(pendingSelection){commitPendingHighlight();return;}setHighlightMode(!highlightMode);
   };
-  document.querySelectorAll('[data-highlight-color]').forEach(function(b){b.onclick=function(){highlightColor=b.dataset.highlightColor;document.querySelectorAll('[data-highlight-color]').forEach(function(x){x.classList.toggle('selected',x===b);});if(!highlightMode)setHighlightMode(true);};});
-  function commitPendingHighlight(){
+  document.querySelectorAll('[data-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.highlightColor);if(!highlightMode)setHighlightMode(true);};});
+  document.querySelectorAll('[data-selection-color]').forEach(function(b){b.onclick=function(){
+    setHighlightColor(b.dataset.selectionColor);var ch=find(currentId),target=selectionNoteTarget;if(!target||!ch)return;
+    var from=target.item.color||'yellow',to=highlightColor;if(from===to)return;
+    recordHighlightAction({op:'recolor',kind:target.kind,page:target.page,item:target.item,from:from,to:to});target.item.color=to;touch(ch);refreshHighlightViews(target.kind,target.page);
+  };});
+  function savePendingHighlight(note,keepCard){
     clearTimeout(highlightCommitTimer);var ch=find(currentId),h=pendingSelection;if(!ch||!h)return;
-    var item;
+    var item={id:uid('h'),text:h.text,color:highlightColor,at:now()};if(String(note||'').trim())item.note=String(note).trim();var saved;
     if(h.kind==='pdf'){
-      var page=String(h.page);if(!ch.highlights[page])ch.highlights[page]=[];
-      item={id:uid('h'),text:h.text,rects:h.rects,color:highlightColor,at:now()};
+      var page=String(h.page);if(!ch.highlights[page])ch.highlights[page]=[];item.rects=h.rects;
       /* Text-offset anchor beside the rects: offsets into the whitespace-normalized
          page text, so a future re-extraction can re-derive where this quote lives. */
       var pageText=String((ch.pageTexts||[])[h.page-1]||'').replace(/\s+/g,' '),found=pageText.indexOf(h.text);
       if(found>=0){item.start=found;item.end=found+h.text.length;}
-      ch.highlights[page].push(item);recordHighlightAction({op:'add',kind:'pdf',page:page,item:item});touch(ch);renderPdfHighlights(+page);
+      ch.highlights[page].push(item);recordHighlightAction({op:'add',kind:'pdf',page:page,item:item});touch(ch);renderPdfHighlights(+page);saved={kind:'pdf',page:page,id:item.id,item:item,selection:h};
     }else{
       var target=h.kind==='reader'?ch.readerHighlights:ch.textHighlights;
-      item={id:uid('h'),para:h.para,start:h.start,end:h.end,text:h.text,color:highlightColor,at:now()};
-      target.push(item);recordHighlightAction({op:'add',kind:h.kind,item:item});touch(ch);renderText(ch);
+      item.para=h.para;item.start=h.start;item.end=h.end;target.push(item);recordHighlightAction({op:'add',kind:h.kind,item:item});touch(ch);renderText(ch);saved={kind:h.kind,page:null,id:item.id,item:item,selection:h};
     }
-    clearPendingSelection();renderNoteIndex();
+    clearPendingSelection(keepCard);renderNoteIndex();return saved;
   }
+  function commitPendingHighlight(){
+    var saved=savePendingHighlight('',false);if(saved)showReaderToast('Passage highlighted');return saved;
+  }
+  function ensureSelectionNoteTarget(){
+    if(selectionNoteTarget)return selectionNoteTarget;selectionNoteTarget=savePendingHighlight('',true);return selectionNoteTarget;
+  }
+  byId('selectionClose').onclick=function(){clearPendingSelection();};
+  byId('selectionExplain').onclick=function(){
+    var selection=pendingSelection||lastAskSelection,rect=selectionAnchor;if(!selection)return;hideSelectionCard();clearPendingSelection(true);queueLookup(selection.text,rect,selection,0);
+  };
+  byId('selectionAsk').onclick=function(){openSelectionInAi(false);};
+  byId('selectionAskNote').onclick=function(){openSelectionInAi(true);};
+  byId('selectionHighlight').onclick=function(){commitPendingHighlight();};
+  byId('selectionAddNote').onclick=function(){
+    var target=ensureSelectionNoteTarget();if(!target)return;byId('selectionEyebrow').textContent='Highlight note';byId('selectionNoteBox').classList.remove('hidden');
+    byId('selectionHighlight').textContent='Highlighted ✓';byId('selectionHighlight').disabled=true;byId('selectionAddNote').textContent='✎ Editing note';
+    refreshSelectionNoteAction();placeSelectionCard();requestAnimationFrame(function(){byId('selectionNote').focus({preventScroll:true});});
+  };
+  byId('selectionNote').oninput=function(){
+    var target=ensureSelectionNoteTarget(),ch=find(currentId);if(!target||!ch)return;if(this.value.trim())target.item.note=this.value;else delete target.item.note;
+    touch(ch);renderNoteIndex();byId('selectionNoteStatus').textContent=this.value.trim()?'Saved locally as you type':'Highlight saved · note is empty';refreshSelectionNoteAction();placeSelectionCard();
+  };
   function highlightListFor(ch,kind,page){
     if(kind==='pdf'){ch.highlights=ch.highlights||{};if(!ch.highlights[String(page)])ch.highlights[String(page)]=[];return ch.highlights[String(page)];}
     if(kind==='reader'){ch.readerHighlights=ch.readerHighlights||[];return ch.readerHighlights;}
@@ -2550,7 +2627,7 @@
   }
   function openHighlightCard(ref,anchor){
     var rec=findHighlightRecord(ref);if(!rec)return;
-    activeCardRef=ref;hideLookup();
+    activeCardRef=ref;hideLookup();hideSelectionCard();
     byId('highlightCardQuote').textContent='“'+String(rec.text||'').slice(0,120)+'”';
     byId('highlightCardNote').value=rec.note||'';
     document.querySelectorAll('[data-card-color]').forEach(function(b){b.classList.toggle('selected',b.dataset.cardColor===(rec.color||'yellow'));});
@@ -2603,8 +2680,8 @@
   /* Selection as context: the passage's exact text from the PDF's own text layer (no OCR
      round-trip) plus surrounding page text for grounding, and a snapshot of the actual
      spot cropped from the rendered page as the visual record. */
-  byId('aiUseSelection').onclick=function(){
-    var ch=find(currentId),sel=lastAskSelection;
+  function useSelectionForAi(sel,note){
+    var ch=find(currentId);sel=sel||lastAskSelection;
     if(!ch||!sel||!sel.text){byId('aiStatus').textContent='Select or highlight a passage on the paper first, then come back here.';return;}
     var around='',label='Selection',thumb='';
     if(sel.kind==='pdf'){
@@ -2619,10 +2696,12 @@
       var source=sel.kind==='reader'?readerSourceText(ch):ch.fr;
       around=paras(source)[sel.para]||'';
     }
-    setAiContext('Selected passage:\n“'+sel.text+'”'+(around?'\n\nSurrounding text:\n'+around:''),thumb,label);
-    byId('aiStatus').textContent='Context is that passage. Ask away.';
+    note=String(note||'').trim();setAiContext('Selected passage:\n“'+sel.text+'”'+(around?'\n\nSurrounding text:\n'+around:'')+(note?'\n\nMy related note:\n'+note:''),thumb,label+(note?' + note':''));
+    byId('aiStatus').textContent=note?'Context includes the passage and your note. Ask away.':'Context is that passage. Ask away.';
     byId('aiQuestion').focus({preventScroll:true});
-  };
+    return true;
+  }
+  byId('aiUseSelection').onclick=function(){useSelectionForAi(lastAskSelection,'');};
   /* Guide area as context: whatever lines the reading band is sitting on right now.
      Text comes from the PDF's own text layer (spans whose line center falls inside the
      band), so it is exact; the band region is cropped from the rendered page as the

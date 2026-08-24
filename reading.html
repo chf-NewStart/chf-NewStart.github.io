@@ -269,6 +269,30 @@
         <button id="mNotes" type="button" aria-expanded="false">✎ Notes</button>
         <button id="mMore" type="button" aria-expanded="false" aria-label="More tools">⋯</button>
       </div>
+      <aside class="selection-card hidden" id="selectionCard" aria-label="Actions for selected text">
+        <div class="lookup-head">
+          <div><span class="lookup-eyebrow" id="selectionEyebrow">Selected passage</span><span class="lookup-selection" id="selectionExcerpt"></span></div>
+          <button class="lookup-close" id="selectionClose" type="button" aria-label="Close selection actions">×</button>
+        </div>
+        <div class="selection-actions">
+          <button class="selection-action" id="selectionExplain" type="button">⌕ Explain</button>
+          <button class="selection-action primary" id="selectionAsk" type="button">✦ Ask AI</button>
+          <button class="selection-action" id="selectionHighlight" type="button">Highlight</button>
+          <button class="selection-action" id="selectionAddNote" type="button">✎ Add note</button>
+          <button class="selection-action" id="selectionAskNote" type="button" disabled>✦ Ask + note</button>
+        </div>
+        <div class="selection-colors" role="group" aria-label="Highlight color">
+          <span>COLOR</span>
+          <button class="marker-swatch selected" data-selection-color="yellow" type="button" aria-label="Yellow highlight"></button>
+          <button class="marker-swatch" data-selection-color="mint" type="button" aria-label="Mint highlight"></button>
+          <button class="marker-swatch" data-selection-color="coral" type="button" aria-label="Coral highlight"></button>
+          <button class="marker-swatch" data-selection-color="blue" type="button" aria-label="Blue highlight"></button>
+        </div>
+        <div class="selection-note hidden" id="selectionNoteBox">
+          <textarea id="selectionNote" placeholder="Write what you noticed… saved as you type."></textarea>
+          <span class="selection-note-status" id="selectionNoteStatus"></span>
+        </div>
+      </aside>
       <aside class="lookup-card hidden" id="lookupCard" aria-label="Definition for selected text">
         <div class="lookup-head">
           <div><span class="lookup-eyebrow">Selected term</span><span class="lookup-selection" id="lookupSelection"></span></div>

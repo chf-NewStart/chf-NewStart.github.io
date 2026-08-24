@@ -283,9 +283,24 @@
         <div class="selection-secondary" id="selectionSecondary">
           <button class="selection-explain" id="selectionExplain" type="button">Define this term</button>
         </div>
+        <div class="selection-saved-tools hidden" id="selectionSavedTools">
+          <div class="selection-saved-colors" role="group" aria-label="Highlight color">
+            <button class="marker-swatch" data-card-color="yellow" type="button" aria-label="Yellow"></button>
+            <button class="marker-swatch" data-card-color="mint" type="button" aria-label="Mint"></button>
+            <button class="marker-swatch" data-card-color="coral" type="button" aria-label="Coral"></button>
+            <button class="marker-swatch" data-card-color="blue" type="button" aria-label="Blue"></button>
+          </div>
+          <button class="text-button selection-remove" id="selectionRemoveHighlight" type="button">Remove highlight</button>
+        </div>
         <div class="selection-note hidden" id="selectionNoteBox">
           <textarea id="selectionNote" placeholder="Write what you noticed… saved as you type."></textarea>
           <span class="selection-note-status" id="selectionNoteStatus"></span>
+        </div>
+        <div class="selection-ai hidden" id="selectionAiBox">
+          <div class="selection-ai-head"><button class="text-button" id="selectionAiBack" type="button">← Actions</button><button class="text-button" id="selectionAiNew" type="button">+ New thread</button></div>
+          <div class="selection-ai-thread" id="selectionAiThread" aria-live="polite"></div>
+          <div class="selection-ai-row"><textarea id="selectionAiQuestion" rows="1" placeholder="Ask about this passage…" title="Enter sends · Shift+Enter for a new line"></textarea><button class="button" id="selectionAiSend" type="button">Ask</button></div>
+          <span class="selection-ai-status" id="selectionAiStatus" role="status"></span>
         </div>
       </aside>
       <aside class="lookup-card hidden" id="lookupCard" aria-label="Definition for selected text">
@@ -299,22 +314,6 @@
           <span class="lookup-source hidden" id="lookupSource"></span>
           <p class="lookup-definition loading" id="lookupDefinition" role="status" aria-live="polite">Finding a useful explanation and image.</p>
           <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up DeepSeek →</button></div>
-        </div>
-      </aside>
-      <aside class="highlight-card hidden" id="highlightCard" aria-label="Highlight options">
-        <div class="lookup-head">
-          <div><span class="lookup-eyebrow">Highlight</span><span class="lookup-selection" id="highlightCardQuote"></span></div>
-          <button class="lookup-close" id="highlightCardClose" type="button" aria-label="Close highlight options">×</button>
-        </div>
-        <div class="highlight-card-body">
-          <div class="highlight-card-swatches" role="group" aria-label="Highlight color">
-            <button class="marker-swatch" data-card-color="yellow" type="button" aria-label="Yellow"></button>
-            <button class="marker-swatch" data-card-color="mint" type="button" aria-label="Mint"></button>
-            <button class="marker-swatch" data-card-color="coral" type="button" aria-label="Coral"></button>
-            <button class="marker-swatch" data-card-color="blue" type="button" aria-label="Blue"></button>
-            <button class="soft-button highlight-card-remove" id="highlightCardRemove" type="button">Remove</button>
-          </div>
-          <textarea class="highlight-card-note" id="highlightCardNote" placeholder="Add a note to this highlight… saved as you type."></textarea>
         </div>
       </aside>
       <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading">✕</button>

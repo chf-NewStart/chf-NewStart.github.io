@@ -167,7 +167,10 @@
 
   /* Selection is a crossroads, not an automatic network request. Keep the exact
      passage on-device until the reader chooses explain, AI, marker, or note. */
-  function hideSelectionCard(){selectionAnchor=null;byId('selectionCard').classList.add('hidden');}
+  function hideSelectionCard(){
+    selectionAnchor=null;activeCardRef=null;selectionNoteTarget=null;var card=byId('selectionCard');card.classList.add('hidden');card.classList.remove('ai-open');
+    byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');
+  }
   function placeSelectionCard(rect){
     if(rect)selectionAnchor={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width||Math.max(0,rect.right-rect.left)};
     var card=byId('selectionCard');if(!selectionAnchor||card.classList.contains('hidden'))return;
@@ -197,6 +200,7 @@
   function setSelectionAction(id){document.querySelectorAll('#selectionCard .selection-action').forEach(function(button){var active=button.id===id;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});}
   function showSelectionCard(selection,rect){
     if(!selection||!selection.text)return;hideLookup();hideHighlightCard();selectionNoteTarget=null;byId('selectionEyebrow').textContent='Selected passage';
+    byId('selectionCard').classList.remove('ai-open');byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');
     byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
     var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';
     var words=selection.text.trim().split(/\s+/).length;byId('selectionSecondary').classList.toggle('hidden',selection.text.length>140||words>14);
@@ -204,9 +208,11 @@
   }
   function openSelectionInAi(){
     var selection=pendingSelection||lastAskSelection,note=notesForSelection(selection);
-    if(!selection||!selection.text)return;hideSelectionCard();clearPendingSelection(true);switchTab('aiPanel');
-    if(innerWidth<=720)toggleSheet(true);else setNotebookCollapsed(false,true);
-    useSelectionForAi(selection,note);
+    if(!selection||!selection.text||!useSelectionForAi(selection,note,true))return;clearPendingSelection(true);
+    var ch=find(currentId),savedText=String(aiContext&&aiContext.text||'').slice(0,16000),match=ch&&(ch.aiThreads||[]).find(function(thread){return thread.contextLabel===aiContext.label&&thread.contextText===savedText;});
+    if(match){ch.activeAiThreadId=match.id;aiThreadDraft=false;}else aiThreadDraft=true;renderQa();
+    var card=byId('selectionCard');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Your question will start a thread here.';renderSelectionAiThread();placeSelectionCard();
+    requestAnimationFrame(function(){byId('selectionAiQuestion').focus({preventScroll:true});});
   }
 
   /* A selection stays on the paper while this small, source-labelled reference card
@@ -2228,7 +2234,6 @@
     if(byId('readerPage').classList.contains('hidden'))return;
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
     if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
-    if(e.key==='Escape'&&!byId('highlightCard').classList.contains('hidden')){e.preventDefault();hideHighlightCard();return;}
     if(e.key==='Escape'&&(!byId('lookupCard').classList.contains('hidden')||highlightMode)){e.preventDefault();hideLookup();if(highlightMode){clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');}return;}
     if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
@@ -2528,6 +2533,7 @@
     var target=ensureSelectionNoteTarget(),ch=find(currentId);if(!target||!ch)return;if(this.value.trim())target.item.note=this.value;else delete target.item.note;
     touch(ch);renderNoteIndex();byId('selectionNoteStatus').textContent=this.value.trim()?'Saved locally as you type':'Highlight saved · note is empty';refreshSelectionAskContext();placeSelectionCard();
   };
+  byId('selectionNote').onfocus=function(){if(selectionNoteTarget)setSelectionAction('selectionAddNote');};
   function highlightListFor(ch,kind,page){
     if(kind==='pdf'){ch.highlights=ch.highlights||{};if(!ch.highlights[String(page)])ch.highlights[String(page)]=[];return ch.highlights[String(page)];}
     if(kind==='reader'){ch.readerHighlights=ch.readerHighlights||[];return ch.readerHighlights;}
@@ -2608,38 +2614,22 @@
     if(!action){showReaderToast('Nothing to redo');return;}
     if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}
   }
-  /* The highlight card: click a highlight (marker off) to recolor it, attach a note
-     that stays with that exact quote, or remove it. */
+  /* A saved highlight reuses the same passage card as a fresh selection. Its small
+     management row adds recolor/remove without sending the reader to another UI. */
   var activeCardRef=null;
-  function hideHighlightCard(){activeCardRef=null;byId('highlightCard').classList.add('hidden');}
-  function placeHighlightCard(anchor){
-    var card=byId('highlightCard');
-    if(innerWidth<=720){card.style.left='';card.style.top='';return;}
-    requestAnimationFrame(function(){
-      if(card.classList.contains('hidden'))return;
-      var box=card.getBoundingClientRect(),gap=12,left=anchor.right+gap;
-      if(left+box.width>innerWidth-gap)left=anchor.left-box.width-gap;
-      left=Math.max(gap,Math.min(left,innerWidth-box.width-gap));
-      var top=Math.max(gap,Math.min(anchor.bottom+8,innerHeight-box.height-gap));
-      card.style.left=Math.round(left)+'px';card.style.top=Math.round(top)+'px';
-    });
-  }
+  function hideHighlightCard(){activeCardRef=null;byId('selectionSavedTools').classList.add('hidden');}
   function openHighlightCard(ref,anchor){
     var rec=findHighlightRecord(ref);if(!rec)return;
-    activeCardRef=ref;hideLookup();hideSelectionCard();
-    byId('highlightCardQuote').textContent='“'+String(rec.text||'').slice(0,120)+'”';
-    byId('highlightCardNote').value=rec.note||'';
+    hideLookup();hideSelectionCard();activeCardRef=ref;
+    var selection=ref.kind==='pdf'?{kind:'pdf',page:+ref.page||currentPage,text:rec.text||'',rects:rec.rects||[]}:{kind:ref.kind,para:+rec.para||0,start:+rec.start||0,end:+rec.end||0,text:rec.text||''};
+    lastAskSelection=selection;selectionNoteTarget={kind:ref.kind,page:ref.page,id:ref.id,item:rec,selection:selection};pendingSelection=null;byId('highlightBtn').classList.remove('ready');
+    var card=byId('selectionCard'),words=selection.text.trim().split(/\s+/).length;card.classList.remove('ai-open');byId('selectionAiBox').classList.add('hidden');byId('selectionEyebrow').textContent='Saved highlight';byId('selectionExcerpt').textContent='“'+selection.text+'”';
+    byId('selectionSecondary').classList.toggle('hidden',selection.text.length>140||words>14);byId('selectionSavedTools').classList.remove('hidden');byId('selectionNoteBox').classList.remove('hidden');byId('selectionNote').value=rec.note||'';byId('selectionNoteStatus').textContent=rec.note?'Saved with this highlight':'Add a note if you want to remember why it matters';
+    byId('selectionHighlight').disabled=true;byId('selectionHighlight').textContent='Highlighted ✓';byId('selectionAddNote').textContent='Note';setSelectionAction('selectionHighlight');refreshSelectionAskContext();
     document.querySelectorAll('[data-card-color]').forEach(function(b){b.classList.toggle('selected',b.dataset.cardColor===(rec.color||'yellow'));});
-    byId('highlightCard').classList.remove('hidden');
-    placeHighlightCard(anchor||{left:innerWidth/2,right:innerWidth/2,top:innerHeight/2,bottom:innerHeight/2});
+    card.classList.remove('hidden');placeSelectionCard(anchor||{left:innerWidth/2,right:innerWidth/2,top:innerHeight/2,bottom:innerHeight/2});
   }
-  byId('highlightCardClose').onclick=hideHighlightCard;
-  byId('highlightCardRemove').onclick=function(){if(activeCardRef)removeHighlight(activeCardRef.kind,activeCardRef.page,activeCardRef.id);};
-  byId('highlightCardNote').oninput=function(){
-    var rec=findHighlightRecord(activeCardRef);if(!rec)return;
-    if(this.value.trim())rec.note=this.value;else delete rec.note;
-    var ch=find(currentId);if(ch)touch(ch);renderNoteIndex();
-  };
+  byId('selectionRemoveHighlight').onclick=function(){if(activeCardRef)removeHighlight(activeCardRef.kind,activeCardRef.page,activeCardRef.id);};
   document.querySelectorAll('[data-card-color]').forEach(function(b){b.onclick=function(){
     var rec=findHighlightRecord(activeCardRef);if(!rec)return;
     var to=b.dataset.cardColor;if(to===(rec.color||'yellow'))return;
@@ -2648,7 +2638,6 @@
     document.querySelectorAll('[data-card-color]').forEach(function(x){x.classList.toggle('selected',x===b);});
     refreshHighlightViews(activeCardRef.kind,activeCardRef.page);
   };});
-  document.addEventListener('pointerdown',function(e){if(!e.target.closest('#highlightCard')&&!byId('highlightCard').classList.contains('hidden'))hideHighlightCard();},true);
   function renderPdfHighlights(pageNum){
     var ch=find(currentId);if(!ch)return;
     (pageNum?[pageNum]:renderedPages.slice()).forEach(function(n){
@@ -2679,7 +2668,7 @@
   /* Selection as context: the passage's exact text from the PDF's own text layer (no OCR
      round-trip) plus surrounding page text for grounding, and a snapshot of the actual
      spot cropped from the rendered page as the visual record. */
-  function useSelectionForAi(sel,note){
+  function useSelectionForAi(sel,note,inline){
     var ch=find(currentId);sel=sel||lastAskSelection;
     if(!ch||!sel||!sel.text){byId('aiStatus').textContent='Select or highlight a passage on the paper first, then come back here.';return;}
     var around='',label='Selection',thumb='';
@@ -2696,8 +2685,7 @@
       around=paras(source)[sel.para]||'';
     }
     note=String(note||'').trim();setAiContext('Selected passage:\n“'+sel.text+'”'+(around?'\n\nSurrounding text:\n'+around:'')+(note?'\n\nMy related note:\n'+note:''),thumb,label+(note?' + note':''));
-    byId('aiStatus').textContent=note?'Context includes the passage and your note. Ask away.':'Context is that passage. Ask away.';
-    byId('aiQuestion').focus({preventScroll:true});
+    if(!inline){byId('aiStatus').textContent=note?'Context includes the passage and your note. Ask away.':'Context is that passage. Ask away.';byId('aiQuestion').focus({preventScroll:true});}
     return true;
   }
   byId('aiUseSelection').onclick=function(){useSelectionForAi(lastAskSelection,'');};
@@ -2822,6 +2810,35 @@
     var context='Paper: '+(ch.title||'Untitled')+'\nReference context ('+(thread.contextLabel||'context')+'):\n'+String(thread.contextText||'').slice(0,16000),history=(thread.messages||[]).slice(-20).map(function(m){return {role:m.role,content:m.content};});
     if(history[0]&&history[0].role==='user')history[0].content=context+'\n\nQuestion: '+history[0].content;else history.unshift({role:'user',content:context});return [{role:'system',content:system}].concat(history);
   }
+  function growSelectionAiQuestion(){var input=byId('selectionAiQuestion');input.style.height='auto';input.style.height=Math.min(112,input.scrollHeight)+'px';}
+  function renderSelectionAiThread(pending){
+    var ch=find(currentId),box=byId('selectionAiThread');if(!ch||!box)return;var thread=aiThreadDraft?null:activeAiThread(ch),html='';
+    if(thread)html+='<div class="ai-thread-meta">'+esc(thread.contextLabel||'Passage thread')+' · '+new Date(thread.createdAt||thread.updatedAt||now()).toLocaleDateString()+'</div>';
+    (thread&&thread.messages||[]).forEach(function(message){html+='<div class="ai-turn'+(message.role==='user'?' you':'')+'">'+esc(message.content)+'</div>';});if(pending)html+='<div class="ai-turn pending">'+esc(pending)+'</div>';
+    if(!html)html='<div class="ai-thread-empty">Ask here, then keep replying in the same thread without leaving the passage.</div>';box.innerHTML=html;byId('selectionAiSend').textContent=thread&&thread.messages.length?'Reply':'Ask';
+    requestAnimationFrame(function(){box.scrollTop=box.scrollHeight;placeSelectionCard();});
+  }
+  async function askSelectionAi(){
+    var ch=find(currentId),input=byId('selectionAiQuestion'),q=input.value.trim(),key=localStorage.getItem(AI_KEY)||'';if(!q||!ch||!aiContext||!aiContext.text)return;
+    if(!key){byId('selectionAiStatus').innerHTML='Add your DeepSeek key in <button class="text-button" id="selectionOpenAiSettings">settings</button> first.';byId('selectionOpenAiSettings').onclick=function(){fillSettings();byId('settingsDialog').showModal();};return;}
+    var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch);created=true;}
+    var sentAt=now();thread.messages.push({role:'user',content:q,at:sentAt});thread.updatedAt=sentAt;input.value='';growSelectionAiQuestion();renderSelectionAiThread('Thinking…');renderQa('Thinking…');
+    var button=byId('selectionAiSend');button.disabled=true;byId('selectionAiStatus').textContent='Thinking…';
+    try{
+      var response=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:1200,messages:aiThreadMessages(ch,thread)})});
+      if(!response.ok)throw new Error('AI returned '+response.status);var data=await response.json(),answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
+      thread.messages.push({role:'assistant',content:answer,at:now()});if(thread.messages.length>24){thread.messages=thread.messages.slice(-24);if(thread.messages[0]&&thread.messages[0].role==='assistant')thread.messages.shift();}thread.updatedAt=now();ch.aiThreads=ch.aiThreads.filter(function(item){return item.id!==thread.id;});ch.aiThreads.unshift(thread);ch.activeAiThreadId=thread.id;
+      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:answer,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('selectionAiStatus').textContent='Saved in this passage thread.';renderSelectionAiThread();renderQa();
+    }catch(error){
+      if(thread.messages[thread.messages.length-1]&&thread.messages[thread.messages.length-1].role==='user'&&thread.messages[thread.messages.length-1].content===q)thread.messages.pop();if(created&&!thread.messages.length){ch.aiThreads=ch.aiThreads.filter(function(item){return item.id!==thread.id;});ch.activeAiThreadId=ch.aiThreads[0]?ch.aiThreads[0].id:'';aiThreadDraft=true;}
+      input.value=q;growSelectionAiQuestion();byId('selectionAiStatus').textContent=error.message||'AI request failed';renderSelectionAiThread();renderQa();
+    }button.disabled=false;
+  }
+  byId('selectionAiQuestion').addEventListener('input',growSelectionAiQuestion);
+  byId('selectionAiQuestion').onkeydown=function(event){if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();askSelectionAi();}};
+  byId('selectionAiSend').onclick=askSelectionAi;
+  byId('selectionAiNew').onclick=function(){aiThreadDraft=true;byId('selectionAiStatus').textContent='New thread with this passage.';renderSelectionAiThread();byId('selectionAiQuestion').focus({preventScroll:true});};
+  byId('selectionAiBack').onclick=function(){byId('selectionCard').classList.remove('ai-open');byId('selectionAiBox').classList.add('hidden');setSelectionAction('selectionAsk');placeSelectionCard();};
   async function askAi(){
     var ch=find(currentId),q=byId('aiQuestion').value.trim(),key=localStorage.getItem(AI_KEY)||'';if(!q)return;
     if(!aiContext||!aiContext.text){if(!setCurrentPageContext()){byId('aiStatus').textContent='Pick a context first: current page, your selection, the guide area, or a screenshot.';return;}}

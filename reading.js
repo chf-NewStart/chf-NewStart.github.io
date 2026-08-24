@@ -1292,7 +1292,8 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var comfort={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideDim:56,guideY:.38,guideLock:false,tone:'white',driftSpeed:4};
+  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideStyle:'tint',guideSize:'m',guideDim:56,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
+  var comfort=Object.assign({},DEFAULT_COMFORT);
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
@@ -1303,7 +1304,7 @@
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   comfort.guideDim=Math.max(20,Math.min(85,+comfort.guideDim||56));
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
-  if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone='white';
+  if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone=DEFAULT_COMFORT.tone;
   comfort.driftSpeed=Math.max(.5,Math.min(60,+comfort.driftSpeed||4));
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
@@ -1353,7 +1354,7 @@
   document.querySelectorAll('[data-guide-style]').forEach(function(btn){btn.onclick=function(){comfort.guideStyle=btn.dataset.guideStyle;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideStyle==='dim'?'Line focus · the rest of the page steps back':'Tint guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
   byId('guideDimRange').oninput=function(){comfort.guideDim=Math.max(20,Math.min(85,+this.value||56));byId('guideDimValue').textContent=comfort.guideDim+'%';byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();};
-  byId('comfortReset').onclick=function(){comfort.size=100;comfort.measure=780;comfort.leading=1.7;comfort.airy=false;comfort.guide='yellow';comfort.guideScope='page';comfort.guideStyle='tint';comfort.guideSize='m';comfort.guideDim=56;comfort.guideY=.38;comfort.tone='white';comfort.driftSpeed=4;if(driftSpeed)driftSpeed=4;applyComfort();showReaderToast('Reading settings reset');};
+  byId('comfortReset').onclick=function(){Object.assign(comfort,DEFAULT_COMFORT);if(driftSpeed)driftSpeed=DEFAULT_COMFORT.driftSpeed;applyComfort();showReaderToast('Reading settings reset · cream paper · guide off');};
   function setComfortBarOpen(open){var bar=byId('comfortBar'),btn=byId('comfortBtn');bar.classList.toggle('hidden',!open);btn.classList.toggle('active',open);btn.setAttribute('aria-expanded',String(open));}
   byId('comfortBtn').onclick=function(){setComfortBarOpen(byId('comfortBar').classList.contains('hidden'));};
   function setFocusPara(index,scroll){

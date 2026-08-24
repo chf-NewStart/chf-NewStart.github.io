@@ -280,9 +280,9 @@
           <button class="selection-action" id="selectionHighlight" type="button" aria-pressed="false">Highlight</button>
           <button class="selection-action" id="selectionAddNote" type="button" aria-pressed="false">Note</button>
         </div>
-        <div class="selection-context hidden" id="selectionContext"><span class="selection-context-copy" id="selectionContextText"></span><button class="text-button" id="selectionNotesToggle" type="button">Use passage only</button></div>
+        <div class="selection-context hidden" id="selectionContext"><span class="selection-context-copy" id="selectionContextText"></span></div>
         <div class="selection-secondary" id="selectionSecondary">
-          <button class="selection-explain" id="selectionExplain" type="button">Define this term</button>
+          <button class="selection-explain" id="selectionExplain" type="button" aria-label="Look up a definition"><span aria-hidden="true">⌕</span> Define</button>
         </div>
         <div class="selection-saved-tools hidden" id="selectionSavedTools">
           <div class="selection-saved-colors" role="group" aria-label="Highlight color">
@@ -291,7 +291,7 @@
             <button class="marker-swatch" data-card-color="coral" type="button" aria-label="Coral"></button>
             <button class="marker-swatch" data-card-color="blue" type="button" aria-label="Blue"></button>
           </div>
-          <button class="text-button selection-remove" id="selectionRemoveHighlight" type="button">Remove highlight</button>
+          <button class="text-button selection-remove" id="selectionRemoveHighlight" type="button" aria-label="Remove highlight" title="Remove highlight"><span class="eraser-icon" aria-hidden="true"></span></button>
         </div>
         <div class="selection-note hidden" id="selectionNoteBox">
           <textarea id="selectionNote" placeholder="Write what you noticed… saved as you type."></textarea>

@@ -256,9 +256,6 @@
     .closed-book-inner { position: absolute; z-index: 4; inset: 0; display: flex; flex-direction: column; min-height: 0; padding: 42px 52px 40px 72px; }
     .closed-book-kicker { display: flex; align-items: center; gap: 9px; font: 750 .64rem/1 var(--sans); letter-spacing: .15em; text-transform: uppercase; }
     .closed-book-kicker::before { content: ""; width: 22px; height: 2px; background: currentColor; opacity: .65; }
-    .cover-field-mark { position: absolute; top: 28px; right: 0; display: flex; align-items: center; gap: 8px; padding: 6px 8px 5px; border: 1px solid currentColor; border-radius: 2px; opacity: .44; transform: rotate(1.2deg); }
-    .cover-field-mark b { font: italic 600 .7rem/1 var(--serif); letter-spacing: .02em; }
-    .cover-field-mark span { padding-left: 8px; border-left: 1px solid currentColor; font: 750 .43rem/1.15 var(--sans); letter-spacing: .12em; text-transform: uppercase; }
     .closed-book-title { max-width: 100%; margin: 27px 0 11px; display: block; overflow: visible; font: 500 clamp(1.85rem, 2.45vw, 2.65rem)/1.03 var(--serif); letter-spacing: -.035em; overflow-wrap: anywhere; }
     .closed-book-title.long { font-size: clamp(1.65rem, 2.05vw, 2.25rem); line-height: 1.04; }
     .closed-book-title.very-long { font-size: clamp(1.45rem, 1.75vw, 1.92rem); line-height: 1.06; }
@@ -833,7 +830,6 @@
       .closed-book { min-height: clamp(395px, 54dvh, 440px); }
       .closed-book-inner { padding: 29px 22px 23px 54px; }
       .closed-book-kicker { font-size: .57rem; letter-spacing: .12em; }
-      .cover-field-mark { display: none; }
       .closed-book-title { margin: 18px 0 8px; }
       .closed-book-title { max-width: 100%; font-size: clamp(1.65rem, 7.4vw, 2.3rem); }
       .closed-book-title.long { font-size: clamp(1.48rem, 6.1vw, 2rem); }

@@ -245,7 +245,7 @@ def page_three(c):
     # Tool cards
     tx = px + pw + 24
     cards = [
-        ("Guide", "Drag the yellow bar to hold your place."),
+        ("Guide", "Starts yellow and full-page; drag it to hold your line."),
         ("Fit / zoom", "Make dense figures and small labels comfortable."),
         ("Reflow", "Switch to rebuilt text when the original page is cramped."),
         ("Recall", "Hide the page briefly and explain the idea in your own words."),
@@ -259,12 +259,12 @@ def page_three(c):
 
 def page_four(c):
     page_base(c, 4, "Your traces")
-    heading(c, "03 - Notice", "Leave evidence for future you", "A mark should shorten the next visit, not recreate the whole paper.")
+    heading(c, "03 - Notice", "Think beside the passage", "Select once, then keep the highlight, note, definition, and AI thread together on the page.")
     cards = [
-        ("MARK", CORAL, "Highlight a sentence that changes the model in your head."),
-        ("MARGIN", GREEN, "Write the smallest note that will restore the context later."),
-        ("LOOK UP", HexColor("#315FA5"), "Select a short term for a definition and a source-linked image."),
-        ("ASK", HexColor("#B88928"), "Save a question when a passage deserves a second pass."),
+        ("MARK", CORAL, "Select a saved highlight to reopen its note, colors, AI, and eraser - never a duplicate."),
+        ("NOTE", GREEN, "Write the smallest note that restores the context; it stays with the highlight."),
+        ("DEFINE", HexColor("#315FA5"), "Select a short term for a definition and a source-linked image."),
+        ("ASK AI", HexColor("#B88928"), "Start a thread beside the passage. Related highlight, page, and paper notes are included."),
     ]
     x_positions = [M, PAGE_W / 2 + 6]
     y_positions = [3.77 * inch, 1.65 * inch]
@@ -273,7 +273,7 @@ def page_four(c):
         rounded_box(c, x, y, 2.94 * inch, 1.65 * inch, PAPER, LINE, 12, True)
         c.setFillColor(color); c.setFont("GuideSansBold", 7); c.drawString(x + 18, y + 1.34 * inch, label)
         c.setFillColor(INK); c.setFont("GuideSerifBold", 14)
-        c.drawString(x + 18, y + 1.04 * inch, ["Keep one line", "Write for return", "Resolve a term", "Save the gap"][i])
+        c.drawString(x + 18, y + 1.04 * inch, ["Reopen the mark", "Write for return", "Resolve a term", "Start a thread"][i])
         para(c, text, x + 18, y + .83 * inch, 2.42 * inch, BODY)
     rounded_box(c, M, .72 * inch, PAGE_W - 2 * M, .61 * inch, GREEN_SOFT, Color(0.18, .42, .38, alpha=.32), 8, False)
     c.setFillColor(GREEN); c.setFont("GuideHand", 11)
@@ -316,7 +316,7 @@ def page_six(c):
         ("LOCAL FIRST", "Your library works without an account. PDFs live in this browser's local storage."),
         ("OPTIONAL SYNC", "Use Google Drive app data, or encrypted GitHub sync, when you need the same library on several devices."),
         ("BACKUP", "Export a portable JSON backup for notes and metadata. Keep original PDFs separately too."),
-        ("BROWSER EXTENSION", "Right-click a PDF link or use the toolbar button to send it directly into Phloem."),
+        ("BROWSER EXTENSION", "Send web or local PDFs from Chrome. For files on your computer, enable Allow access to file URLs once."),
     ]
     for i, (title, text) in enumerate(items):
         y = 5.0 * inch - i * .82 * inch

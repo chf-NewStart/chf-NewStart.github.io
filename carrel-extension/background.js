@@ -2,7 +2,8 @@
    Fetches the PDF the user asked for (with their cookies, so campus/institution
    access carries over), parks the bytes in extension storage, and opens Phloem;
    the content script on the Phloem tab hands the bytes to the page. Nothing is
-   ever sent anywhere except from the PDF's own server to the user's browser. */
+   ever sent to Phloem's developer: web PDFs travel only from their own server
+   to the browser, and local PDFs never leave the device. */
 'use strict';
 
 var PHLOEM = 'https://houfu72.com/reading.html';
@@ -24,6 +25,7 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
 
 chrome.action.onClicked.addListener(function (tab) {
   if (tab && tab.url) importFromUrl(tab.url);
+  else notify('Open a PDF first', 'Open a web or local PDF in Chrome, then click Read in Phloem again.');
 });
 
 function notify(title, message) {
@@ -42,12 +44,49 @@ function pdfName(url, disposition) {
   return name + '.pdf';
 }
 
+function unwrapPdfUrl(url) {
+  var value = String(url || '').trim();
+  if (!value) return '';
+  try {
+    var parsed = new URL(value);
+    if (parsed.protocol === 'chrome-extension:') {
+      var nested = parsed.searchParams.get('file') || parsed.searchParams.get('src');
+      if (nested && /^(?:file|https?):/i.test(nested)) return nested;
+      var path = decodeURIComponent(parsed.pathname.replace(/^\/+/, ''));
+      if (/^(?:file|https?):/i.test(path)) return path;
+    }
+  } catch (e) {}
+  /* Older Chrome PDF viewer builds exposed the source directly after their own
+     extension URL instead of using ?file=. Keep that shape working too. */
+  return value.replace(/^chrome-extension:\/\/[a-p]+\/((?:file|https?):)/i, '$1');
+}
+
+async function localFileAccessAllowed() {
+  try { return await chrome.extension.isAllowedFileSchemeAccess(); }
+  catch (e) { return false; }
+}
+
+async function explainLocalFileAccess() {
+  chrome.action.setBadgeText({ text: '!' });
+  notify('Allow local PDF access', 'Open the instructions, enable “Allow access to file URLs,” then click Phloem on the PDF again.');
+  try { await chrome.runtime.openOptionsPage(); }
+  catch (e) { chrome.tabs.create({ url: chrome.runtime.getURL('options.html') }); }
+}
+
 async function importFromUrl(url) {
-  /* The chrome built-in viewer wraps the real URL; unwrap common shapes. */
-  var real = url.replace(/^chrome-extension:\/\/[a-p]+\/(https?)/, '$1');
+  /* The Chrome PDF viewer sometimes wraps the real URL; unwrap web and local shapes. */
+  var real = unwrapPdfUrl(url), local = /^file:/i.test(real);
+  if (!real) {
+    notify('Open a PDF first', 'Open a web or local PDF in Chrome, then click Read in Phloem again.');
+    return false;
+  }
+  if (local && !(await localFileAccessAllowed())) {
+    await explainLocalFileAccess();
+    return false;
+  }
   try {
     chrome.action.setBadgeText({ text: '…' });
-    var res = await fetch(real, { credentials: 'include' });
+    var res = await fetch(real, local ? {} : { credentials: 'include' });
     if (!res.ok) throw new Error('The server answered ' + res.status + '.');
     var bytes = await res.arrayBuffer();
     if (bytes.byteLength > MAX_BYTES) throw new Error('That file is over 80 MB.');
@@ -56,7 +95,7 @@ async function importFromUrl(url) {
     if (magic !== '%PDF-') {
       notify('Not a PDF', 'That link is a web page, not a PDF file. Open the paper’s PDF and try again.');
       chrome.action.setBadgeText({ text: '' });
-      return;
+      return false;
     }
     /* base64 in slices — one giant btoa call would blow the argument limit */
     var u8 = new Uint8Array(bytes), chunks = [], SLICE = 1 << 18;
@@ -66,7 +105,8 @@ async function importFromUrl(url) {
       chunks.push(btoa(bin));
     }
     await chrome.storage.local.set({
-      phloemPending: { name: pdfName(real, res.headers.get('content-disposition')), sourceUrl: real, at: Date.now(), b64: chunks }
+      /* Never pass a local filesystem path into Phloem metadata or optional sync. */
+      phloemPending: { name: pdfName(real, res.headers.get('content-disposition')), sourceUrl: local ? '' : real, at: Date.now(), b64: chunks }
     });
     var tabs = await chrome.tabs.query({ url: PHLOEM + '*' });
     if (tabs.length) {
@@ -76,8 +116,10 @@ async function importFromUrl(url) {
       chrome.tabs.create({ url: PHLOEM });
     }
     chrome.action.setBadgeText({ text: '' });
+    return true;
   } catch (e) {
     chrome.action.setBadgeText({ text: '' });
-    notify('Could not fetch that PDF', (e && e.message) || 'The download failed.');
+    notify(local ? 'Could not read that local PDF' : 'Could not fetch that PDF', local ? 'Chrome allowed file access, but could not read this file. Reopen the PDF in Chrome and try once more.' : ((e && e.message) || 'The download failed.'));
+    return false;
   }
 }

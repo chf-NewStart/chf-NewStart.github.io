@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open local PDFs in Phloem</title>
+  <style>
+    :root { color-scheme: light; --paper:#f6f0df; --surface:#fffdf7; --ink:#24282b; --muted:#6e7679; --line:#ddd4bd; --accent:#e85d3f; --soft:#fbe4dc; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 28px; background: var(--paper); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { width: min(620px, 100%); padding: 34px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 22px 70px rgba(50,43,25,.12); }
+    .eyebrow { color: var(--accent); font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 8px 0 10px; font: 500 2.1rem/1.1 Georgia, serif; letter-spacing: -.025em; }
+    p { margin: 0; color: var(--muted); }
+    ol { margin: 25px 0; padding: 0; list-style: none; counter-reset: steps; }
+    li { counter-increment: steps; display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: start; margin: 13px 0; }
+    li::before { content: counter(steps); display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: var(--soft); color: var(--accent); font-size: .78rem; font-weight: 800; }
+    strong { color: var(--ink); }
+    .status { margin-top: 22px; padding: 12px 14px; border-radius: 11px; background: var(--soft); color: #9e3e2b; font-size: .86rem; font-weight: 700; }
+    .status.ready { background: #e2f2e3; color: #2d6b38; }
+    button { margin-top: 12px; min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: .86rem; font-weight: 700; cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="eyebrow">Read in Phloem</span>
+    <h1>Let Phloem open local PDFs</h1>
+    <p>Chrome keeps files on your computer behind a separate permission that only you can enable.</p>
+    <ol>
+      <li><span>Right-click the <strong>Read in Phloem</strong> extension icon.</span></li>
+      <li><span>Choose <strong>Manage extension</strong>.</span></li>
+      <li><span>Turn on <strong>Allow access to file URLs</strong>.</span></li>
+      <li><span>Return to your PDF and click the Phloem icon again.</span></li>
+    </ol>
+    <div class="status" id="fileStatus" role="status">Checking Chrome’s file access…</div>
+    <button id="checkAgain" type="button">Check again</button>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

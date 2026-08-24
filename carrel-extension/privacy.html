@@ -18,18 +18,20 @@
 <body>
 <main>
   <h1>Privacy Policy — Read in Phloem</h1>
-  <p class="updated">Effective 21 August 2026 · applies to the "Read in Phloem" browser extension, known as "Read in Carrel" before this date. Only the name changed; the practices below are unchanged.</p>
+  <p class="updated">Effective 24 August 2026 · applies to the "Read in Phloem" browser extension, known as "Read in Carrel" before this date.</p>
 
   <p class="summary"><strong>The short version:</strong> this extension collects nothing,
-  stores nothing permanently, and sends nothing anywhere. Its only network request is
-  downloading the PDF you explicitly asked for, from the site that hosts it, straight
-  to your own browser.</p>
+  stores nothing permanently, and sends nothing anywhere. It downloads only the web PDF
+  you explicitly asked for, or reads a local PDF directly after you enable Chrome's
+  file-access switch.</p>
 
   <h2>What the extension does</h2>
   <p>When you right-click a link and choose “Read link in Phloem” (or click the toolbar
   button while viewing a PDF), the extension downloads that one PDF and hands it to the
   Phloem reading app at <a href="https://houfu72.com/reading.html">houfu72.com/reading.html</a>,
-  where it opens for reading. That is the extension’s single purpose.</p>
+  where it opens for reading. The same action can open a PDF stored on your computer
+  after you enable Chrome's standard “Allow access to file URLs” setting. That is the
+  extension’s single purpose.</p>
 
   <h2>Data collection</h2>
   <p>None. The extension does not collect, log, transmit, sell, or share any user data —
@@ -41,6 +43,12 @@
   explicitly chose, from the website that hosts it. The request is made with your own
   browser session, which means a paper you can access through your institution downloads
   the same way it would if you clicked it normally. No other requests are made.</p>
+
+  <h2>Local files</h2>
+  <p>Chrome requires you to explicitly enable “Allow access to file URLs” on the
+  extension’s details page. The extension checks that setting only when you ask it to
+  open a local PDF. The file is read on your device, its filesystem path is not passed
+  into Phloem metadata or optional sync, and no network request is made for it.</p>
 
   <h2>Storage</h2>
   <p>The downloaded PDF is held briefly in the extension’s local storage while it is

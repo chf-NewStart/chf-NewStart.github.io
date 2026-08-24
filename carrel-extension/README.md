@@ -1,8 +1,8 @@
 # Read in Phloem — browser extension
 
-Current store package: **1.1.7**
+Current store package: **1.1.8**
 
-Send any PDF on the web straight to [Phloem](https://houfu72.com/reading.html),
+Send any PDF on the web or your computer straight to [Phloem](https://houfu72.com/reading.html),
 the free local-first paper reading desk. Right-click a PDF link → **Read link in
 Phloem**, or click the toolbar button while viewing a PDF. The extension fetches
 the file with your own cookies (so campus/institution access carries over),
@@ -19,11 +19,22 @@ the bundled field guide; extension updates and existing libraries stay untouched
 - `content.js` — runs only on `houfu72.com/reading.html`; picks the parked
   bytes up and hands them to the page with `window.postMessage`.
 - Phloem itself verifies the `%PDF` magic and imports through its normal
-  pipeline (deduped by source URL, real title extracted from the PDF).
+pipeline (deduped by source URL, real title extracted from the PDF).
+
+## Local PDFs
+
+Chrome keeps local files behind a separate user-controlled switch. The first time
+someone clicks the extension on a `file://` PDF, Phloem checks that switch. If it is
+off, a short instruction page explains how to right-click the extension icon, choose
+**Manage extension**, and enable **Allow access to file URLs**. After that, clicking
+the extension on a local PDF imports it normally. The local filesystem path is not
+passed into Phloem metadata or optional sync.
 
 ## Permissions, honestly
 
-- `<all_urls>` — to download the PDF you clicked from whatever site hosts it.
+- `<all_urls>` — to download the PDF you clicked from whatever site hosts it, or read
+  a local PDF after you explicitly enable Chrome's file-URL switch.
+- `activeTab` — to identify the PDF in the tab when you click the extension.
 - `storage` + `unlimitedStorage` — the fetched PDF is handed over through
   extension storage (papers are routinely 10–30 MB).
 - `contextMenus` — the right-click entries.

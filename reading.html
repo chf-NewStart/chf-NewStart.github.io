@@ -275,18 +275,12 @@
           <button class="lookup-close" id="selectionClose" type="button" aria-label="Close selection actions">×</button>
         </div>
         <div class="selection-actions">
-          <button class="selection-action" id="selectionExplain" type="button">⌕ Explain</button>
           <button class="selection-action primary" id="selectionAsk" type="button">✦ Ask AI</button>
           <button class="selection-action" id="selectionHighlight" type="button">Highlight</button>
-          <button class="selection-action" id="selectionAddNote" type="button">✎ Add note</button>
-          <button class="selection-action" id="selectionAskNote" type="button" disabled>✦ Ask + note</button>
+          <button class="selection-action" id="selectionAddNote" type="button">Note</button>
         </div>
-        <div class="selection-colors" role="group" aria-label="Highlight color">
-          <span>COLOR</span>
-          <button class="marker-swatch selected" data-selection-color="yellow" type="button" aria-label="Yellow highlight"></button>
-          <button class="marker-swatch" data-selection-color="mint" type="button" aria-label="Mint highlight"></button>
-          <button class="marker-swatch" data-selection-color="coral" type="button" aria-label="Coral highlight"></button>
-          <button class="marker-swatch" data-selection-color="blue" type="button" aria-label="Blue highlight"></button>
+        <div class="selection-secondary" id="selectionSecondary">
+          <button class="selection-explain" id="selectionExplain" type="button">Define this term</button>
         </div>
         <div class="selection-note hidden" id="selectionNoteBox">
           <textarea id="selectionNote" placeholder="Write what you noticed… saved as you type."></textarea>

@@ -186,18 +186,20 @@
     else{var map=selection.kind==='reader'?(ch.readerNotes||{}):(ch.notes||{});add((selection.kind==='reader'?'Reader ':'')+'Paragraph '+((selection.para||0)+1)+' note',map[String(selection.para||0)]);}
     add('Paper note',(ch.pageNotes||{}).document);return parts.join('\n\n');
   }
-  function refreshSelectionNoteAction(){
-    var note=notesForSelection(pendingSelection||lastAskSelection),button=byId('selectionAskNote');button.disabled=!note;
-    button.title=note?'Ask about the passage with your related note included':'Add a note here or in the notebook first';
+  function refreshSelectionAskContext(){
+    var note=notesForSelection(pendingSelection||lastAskSelection),button=byId('selectionAsk');
+    button.title=note?'Ask AI about this passage with your related notes included':'Ask AI about this passage';
+    button.setAttribute('aria-label',button.title);
   }
   function showSelectionCard(selection,rect){
     if(!selection||!selection.text)return;hideLookup();hideHighlightCard();selectionNoteTarget=null;byId('selectionEyebrow').textContent='Selected passage';
     byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
     var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';
-    byId('selectionAddNote').textContent='✎ Add note';setHighlightColor(highlightColor);refreshSelectionNoteAction();byId('selectionCard').classList.remove('hidden');placeSelectionCard(rect);
+    var words=selection.text.trim().split(/\s+/).length;byId('selectionSecondary').classList.toggle('hidden',selection.text.length>140||words>14);
+    byId('selectionAddNote').textContent='Note';refreshSelectionAskContext();byId('selectionCard').classList.remove('hidden');placeSelectionCard(rect);
   }
-  function openSelectionInAi(includeNote){
-    var selection=pendingSelection||lastAskSelection,note=includeNote?notesForSelection(selection):'';
+  function openSelectionInAi(){
+    var selection=pendingSelection||lastAskSelection,note=notesForSelection(selection);
     if(!selection||!selection.text)return;hideSelectionCard();clearPendingSelection(true);switchTab('aiPanel');
     if(innerWidth<=720)toggleSheet(true);else setNotebookCollapsed(false,true);
     useSelectionForAi(selection,note);
@@ -2406,7 +2408,6 @@
   function setHighlightColor(color){
     highlightColor=['yellow','mint','coral','blue'].indexOf(color)>=0?color:'yellow';
     document.querySelectorAll('[data-highlight-color]').forEach(function(x){x.classList.toggle('selected',x.dataset.highlightColor===highlightColor);});
-    document.querySelectorAll('[data-selection-color]').forEach(function(x){x.classList.toggle('selected',x.dataset.selectionColor===highlightColor);});
   }
   function setHighlightMode(on){
     highlightMode=!!on;var btn=byId('highlightBtn');if(!btn)return;
@@ -2486,11 +2487,6 @@
     if(pendingSelection){commitPendingHighlight();return;}setHighlightMode(!highlightMode);
   };
   document.querySelectorAll('[data-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.highlightColor);if(!highlightMode)setHighlightMode(true);};});
-  document.querySelectorAll('[data-selection-color]').forEach(function(b){b.onclick=function(){
-    setHighlightColor(b.dataset.selectionColor);var ch=find(currentId),target=selectionNoteTarget;if(!target||!ch)return;
-    var from=target.item.color||'yellow',to=highlightColor;if(from===to)return;
-    recordHighlightAction({op:'recolor',kind:target.kind,page:target.page,item:target.item,from:from,to:to});target.item.color=to;touch(ch);refreshHighlightViews(target.kind,target.page);
-  };});
   function savePendingHighlight(note,keepCard){
     clearTimeout(highlightCommitTimer);var ch=find(currentId),h=pendingSelection;if(!ch||!h)return;
     var item={id:uid('h'),text:h.text,color:highlightColor,at:now()};if(String(note||'').trim())item.note=String(note).trim();var saved;
@@ -2517,17 +2513,16 @@
   byId('selectionExplain').onclick=function(){
     var selection=pendingSelection||lastAskSelection,rect=selectionAnchor;if(!selection)return;hideSelectionCard();clearPendingSelection(true);queueLookup(selection.text,rect,selection,0);
   };
-  byId('selectionAsk').onclick=function(){openSelectionInAi(false);};
-  byId('selectionAskNote').onclick=function(){openSelectionInAi(true);};
+  byId('selectionAsk').onclick=function(){openSelectionInAi();};
   byId('selectionHighlight').onclick=function(){commitPendingHighlight();};
   byId('selectionAddNote').onclick=function(){
     var target=ensureSelectionNoteTarget();if(!target)return;byId('selectionEyebrow').textContent='Highlight note';byId('selectionNoteBox').classList.remove('hidden');
-    byId('selectionHighlight').textContent='Highlighted ✓';byId('selectionHighlight').disabled=true;byId('selectionAddNote').textContent='✎ Editing note';
-    refreshSelectionNoteAction();placeSelectionCard();requestAnimationFrame(function(){byId('selectionNote').focus({preventScroll:true});});
+    byId('selectionHighlight').textContent='Highlighted ✓';byId('selectionHighlight').disabled=true;byId('selectionAddNote').textContent='Editing note';
+    refreshSelectionAskContext();placeSelectionCard();requestAnimationFrame(function(){byId('selectionNote').focus({preventScroll:true});});
   };
   byId('selectionNote').oninput=function(){
     var target=ensureSelectionNoteTarget(),ch=find(currentId);if(!target||!ch)return;if(this.value.trim())target.item.note=this.value;else delete target.item.note;
-    touch(ch);renderNoteIndex();byId('selectionNoteStatus').textContent=this.value.trim()?'Saved locally as you type':'Highlight saved · note is empty';refreshSelectionNoteAction();placeSelectionCard();
+    touch(ch);renderNoteIndex();byId('selectionNoteStatus').textContent=this.value.trim()?'Saved locally as you type':'Highlight saved · note is empty';refreshSelectionAskContext();placeSelectionCard();
   };
   function highlightListFor(ch,kind,page){
     if(kind==='pdf'){ch.highlights=ch.highlights||{};if(!ch.highlights[String(page)])ch.highlights[String(page)]=[];return ch.highlights[String(page)];}

@@ -27,7 +27,7 @@
   var state = loadState();
   var currentId = null, currentPage = 1, pdfDoc = null, pdfLib = null, pdfRendering = false, pdfRenderPending = false;
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
-  var selectionAnchor = null, selectionNoteTarget = null;
+  var selectionAnchor = null, selectionNoteTarget = null, selectionAiNotesEnabled = true;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
   var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
@@ -184,34 +184,38 @@
       card.style.left=Math.round(left)+'px';card.style.top=Math.round(top)+'px';
     });
   }
-  function notesForSelection(selection){
-    var ch=find(currentId);if(!ch||!selection)return'';var parts=[],seen=Object.create(null);
-    function add(label,value){value=String(value||'').trim();if(!value||seen[value])return;seen[value]=true;parts.push(label+':\n'+value);}
+  function relatedNotesForSelection(selection){
+    var ch=find(currentId);if(!ch||!selection)return[];var parts=[],seen=Object.create(null);
+    function add(label,value){value=String(value||'').trim();if(!value||seen[value])return;seen[value]=true;parts.push({label:label,value:value});}
     if(selectionNoteTarget&&selectionNoteTarget.item)add('Highlight note',selectionNoteTarget.item.note);
     if(selection.kind==='pdf')add('Page '+selection.page+' note',(ch.pageNotes||{})[String(selection.page)]);
     else{var map=selection.kind==='reader'?(ch.readerNotes||{}):(ch.notes||{});add((selection.kind==='reader'?'Reader ':'')+'Paragraph '+((selection.para||0)+1)+' note',map[String(selection.para||0)]);}
-    add('Paper note',(ch.pageNotes||{}).document);return parts.join('\n\n');
+    add('Paper note',(ch.pageNotes||{}).document);return parts;
   }
+  function notesForSelection(selection){return relatedNotesForSelection(selection).map(function(note){return note.label+':\n'+note.value;}).join('\n\n');}
   function refreshSelectionAskContext(){
-    var note=notesForSelection(pendingSelection||lastAskSelection),button=byId('selectionAsk');
-    button.title=note?'Ask AI about this passage with your related notes included':'Ask AI about this passage';
+    var selection=pendingSelection||lastAskSelection,notes=relatedNotesForSelection(selection),button=byId('selectionAsk'),context=byId('selectionContext'),toggle=byId('selectionNotesToggle');
+    if(!notes.length){selectionAiNotesEnabled=true;context.classList.add('hidden');button.title='Ask AI about this passage';button.setAttribute('aria-label',button.title);return;}
+    context.classList.remove('hidden');var detail=notes.length<=2?notes.map(function(note){return note.label.toLowerCase();}).join(' + '):notes.length+' related notes';
+    byId('selectionContextText').textContent=selectionAiNotesEnabled?'Ask AI uses this passage + your '+detail+'.':'Ask AI uses this passage only.';toggle.textContent=selectionAiNotesEnabled?'Use passage only':'Include my notes';
+    button.title=selectionAiNotesEnabled?'Ask AI about this passage with your related notes included':'Ask AI about this passage without notes';
     button.setAttribute('aria-label',button.title);
   }
   function setSelectionAction(id){document.querySelectorAll('#selectionCard .selection-action').forEach(function(button){var active=button.id===id;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});}
   function showSelectionCard(selection,rect){
-    if(!selection||!selection.text)return;hideLookup();hideHighlightCard();selectionNoteTarget=null;byId('selectionEyebrow').textContent='Selected passage';
+    if(!selection||!selection.text)return;hideLookup();hideHighlightCard();selectionNoteTarget=null;selectionAiNotesEnabled=true;byId('selectionEyebrow').textContent='Selected passage';
     byId('selectionCard').classList.remove('ai-open');byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');
     byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
     var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';
     var words=selection.text.trim().split(/\s+/).length;byId('selectionSecondary').classList.toggle('hidden',selection.text.length>140||words>14);
     byId('selectionAddNote').textContent='Note';setSelectionAction('');refreshSelectionAskContext();byId('selectionCard').classList.remove('hidden');placeSelectionCard(rect);
   }
-  function openSelectionInAi(){
-    var selection=pendingSelection||lastAskSelection,note=notesForSelection(selection);
+  function openSelectionInAi(keepQuestion){
+    var selection=pendingSelection||lastAskSelection,note=selectionAiNotesEnabled?notesForSelection(selection):'';
     if(!selection||!selection.text||!useSelectionForAi(selection,note,true))return;clearPendingSelection(true);
     var ch=find(currentId),savedText=String(aiContext&&aiContext.text||'').slice(0,16000),match=ch&&(ch.aiThreads||[]).find(function(thread){return thread.contextLabel===aiContext.label&&thread.contextText===savedText;});
     if(match){ch.activeAiThreadId=match.id;aiThreadDraft=false;}else aiThreadDraft=true;renderQa();
-    var card=byId('selectionCard');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Your question will start a thread here.';renderSelectionAiThread();placeSelectionCard();
+    var card=byId('selectionCard');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');if(!keepQuestion)byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Your question will start a thread here.';renderSelectionAiThread();placeSelectionCard();
     requestAnimationFrame(function(){byId('selectionAiQuestion').focus({preventScroll:true});});
   }
 
@@ -2523,6 +2527,7 @@
     var selection=pendingSelection||lastAskSelection,rect=selectionAnchor;if(!selection)return;hideSelectionCard();clearPendingSelection(true);queueLookup(selection.text,rect,selection,0);
   };
   byId('selectionAsk').onclick=function(){setSelectionAction('selectionAsk');openSelectionInAi();};
+  byId('selectionNotesToggle').onclick=function(){selectionAiNotesEnabled=!selectionAiNotesEnabled;refreshSelectionAskContext();if(byId('selectionCard').classList.contains('ai-open'))openSelectionInAi(true);else placeSelectionCard();};
   byId('selectionHighlight').onclick=function(){setSelectionAction('selectionHighlight');commitPendingHighlight();};
   byId('selectionAddNote').onclick=function(){
     var target=ensureSelectionNoteTarget();if(!target)return;setSelectionAction('selectionAddNote');byId('selectionEyebrow').textContent='Highlight note';byId('selectionNoteBox').classList.remove('hidden');
@@ -2620,7 +2625,7 @@
   function hideHighlightCard(){activeCardRef=null;byId('selectionSavedTools').classList.add('hidden');}
   function openHighlightCard(ref,anchor){
     var rec=findHighlightRecord(ref);if(!rec)return;
-    hideLookup();hideSelectionCard();activeCardRef=ref;
+    hideLookup();hideSelectionCard();activeCardRef=ref;selectionAiNotesEnabled=true;
     var selection=ref.kind==='pdf'?{kind:'pdf',page:+ref.page||currentPage,text:rec.text||'',rects:rec.rects||[]}:{kind:ref.kind,para:+rec.para||0,start:+rec.start||0,end:+rec.end||0,text:rec.text||''};
     lastAskSelection=selection;selectionNoteTarget={kind:ref.kind,page:ref.page,id:ref.id,item:rec,selection:selection};pendingSelection=null;byId('highlightBtn').classList.remove('ready');
     var card=byId('selectionCard'),words=selection.text.trim().split(/\s+/).length;card.classList.remove('ai-open');byId('selectionAiBox').classList.add('hidden');byId('selectionEyebrow').textContent='Saved highlight';byId('selectionExcerpt').textContent='“'+selection.text+'”';
@@ -2823,7 +2828,7 @@
     if(!key){byId('selectionAiStatus').innerHTML='Add your DeepSeek key in <button class="text-button" id="selectionOpenAiSettings">settings</button> first.';byId('selectionOpenAiSettings').onclick=function(){fillSettings();byId('settingsDialog').showModal();};return;}
     var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch);created=true;}
     var sentAt=now();thread.messages.push({role:'user',content:q,at:sentAt});thread.updatedAt=sentAt;input.value='';growSelectionAiQuestion();renderSelectionAiThread('Thinking…');renderQa('Thinking…');
-    var button=byId('selectionAiSend');button.disabled=true;byId('selectionAiStatus').textContent='Thinking…';
+    var button=byId('selectionAiSend');button.disabled=true;byId('selectionNotesToggle').disabled=true;byId('selectionAiStatus').textContent='Thinking…';
     try{
       var response=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-chat',max_tokens:1200,messages:aiThreadMessages(ch,thread)})});
       if(!response.ok)throw new Error('AI returned '+response.status);var data=await response.json(),answer=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;if(!answer)throw new Error('No answer returned');
@@ -2832,7 +2837,7 @@
     }catch(error){
       if(thread.messages[thread.messages.length-1]&&thread.messages[thread.messages.length-1].role==='user'&&thread.messages[thread.messages.length-1].content===q)thread.messages.pop();if(created&&!thread.messages.length){ch.aiThreads=ch.aiThreads.filter(function(item){return item.id!==thread.id;});ch.activeAiThreadId=ch.aiThreads[0]?ch.aiThreads[0].id:'';aiThreadDraft=true;}
       input.value=q;growSelectionAiQuestion();byId('selectionAiStatus').textContent=error.message||'AI request failed';renderSelectionAiThread();renderQa();
-    }button.disabled=false;
+    }button.disabled=false;byId('selectionNotesToggle').disabled=false;
   }
   byId('selectionAiQuestion').addEventListener('input',growSelectionAiQuestion);
   byId('selectionAiQuestion').onkeydown=function(event){if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();askSelectionAi();}};

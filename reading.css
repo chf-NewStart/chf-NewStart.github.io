@@ -470,6 +470,12 @@
     .selection-action.active { border-color: color-mix(in srgb, var(--accent) 58%, var(--line)); background: var(--accent-soft); color: var(--accent-dark); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 13%, transparent); }
     .selection-action:disabled { cursor: default; opacity: .42; }
     .selection-action:disabled:hover { border-color: var(--line); background: var(--surface); }
+    .selection-context { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 14px 9px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent-soft) 70%, transparent); color: var(--muted); font-size: .62rem; line-height: 1.35; }
+    .selection-context-copy { min-width: 0; }
+    .selection-context-copy::before { content: "✦"; margin-right: 6px; color: var(--accent); }
+    .selection-context .text-button { flex: 0 0 auto; font-size: .59rem; }
+    .selection-context .text-button:disabled { opacity: .45; }
+    .selection-card.ai-open .selection-context { margin: 0; padding: 9px 14px; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--accent-soft); }
     .selection-secondary { display: flex; justify-content: flex-end; padding: 0 17px 12px; }
     .selection-explain { padding: 2px 0; border: 0; border-bottom: 1px dotted color-mix(in srgb, var(--muted) 55%, transparent); border-radius: 0; background: transparent; color: var(--muted); font-size: .62rem; font-weight: 650; }
     .selection-explain:hover { color: var(--ink); border-bottom-color: var(--ink); background: transparent; }

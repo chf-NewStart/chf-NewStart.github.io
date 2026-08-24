@@ -140,60 +140,75 @@
 
       </div>
       <div class="comfort-bar hidden" id="comfortBar">
-        <div class="group text-only"><span>Text</span>
-          <button class="step-btn" id="textSmaller" type="button" aria-label="Smaller text">A−</button>
-          <span class="value" id="textSizeValue">100%</span>
-          <button class="step-btn" id="textBigger" type="button" aria-label="Bigger text">A+</button>
-        </div>
-        <div class="group text-only"><span>Width</span>
-          <button class="step-btn" id="widthNarrow" type="button" aria-label="Narrower column">↤</button>
-          <span class="value" id="widthValue">780</span>
-          <button class="step-btn" id="widthWide" type="button" aria-label="Wider column">↦</button>
-        </div>
-        <div class="group text-only"><span>Spacing</span>
-          <button class="step-btn" id="leadTight" type="button" aria-label="Tighter lines">−</button>
-          <span class="value" id="leadValue">1.7</span>
-          <button class="step-btn" id="leadLoose" type="button" aria-label="Looser lines">+</button>
-        </div>
-        <button class="toggle text-only" id="airyBtn" type="button" aria-pressed="false">Relaxed letters</button>
-        <div class="group"><span>Guide color</span>
-          <div class="guide-palette" role="group" aria-label="Reading guide color">
-            <button class="guide-color" type="button" data-guide-color="yellow" aria-pressed="true" aria-label="Yellow guide">Y</button>
-            <button class="guide-color" type="button" data-guide-color="green" aria-pressed="false" aria-label="Green guide">G</button>
-            <button class="guide-color" type="button" data-guide-color="blue" aria-pressed="false" aria-label="Blue guide">B</button>
+        <div class="comfort-section comfort-text text-only" aria-label="Text settings">
+          <span class="comfort-section-title">Text</span>
+          <div class="comfort-section-body">
+            <div class="group"><span class="group-label">Size</span>
+              <button class="step-btn" id="textSmaller" type="button" aria-label="Smaller text">A−</button>
+              <span class="value" id="textSizeValue">100%</span>
+              <button class="step-btn" id="textBigger" type="button" aria-label="Bigger text">A+</button>
+            </div>
+            <div class="group"><span class="group-label">Width</span>
+              <button class="step-btn" id="widthNarrow" type="button" aria-label="Narrower column">↤</button>
+              <span class="value" id="widthValue">780</span>
+              <button class="step-btn" id="widthWide" type="button" aria-label="Wider column">↦</button>
+            </div>
+            <div class="group"><span class="group-label">Spacing</span>
+              <button class="step-btn" id="leadTight" type="button" aria-label="Tighter lines">−</button>
+              <span class="value" id="leadValue">1.7</span>
+              <button class="step-btn" id="leadLoose" type="button" aria-label="Looser lines">+</button>
+            </div>
+            <button class="toggle" id="airyBtn" type="button" aria-pressed="false">Relaxed letters</button>
           </div>
         </div>
-        <div class="group"><span>Guide width</span>
-          <div class="guide-scope" role="group" aria-label="Reading guide width">
-            <button class="toggle" type="button" data-guide-scope="column" aria-pressed="false">Column</button>
-            <button class="toggle" type="button" data-guide-scope="page" aria-pressed="true">Full page</button>
+        <div class="comfort-section comfort-guide" aria-label="Guide settings">
+          <span class="comfort-section-title">Guide</span>
+          <div class="comfort-section-body">
+            <div class="group" id="guideStyleGroup"><span class="group-label">Style</span>
+              <div class="guide-scope" role="group" aria-label="Reading guide style">
+                <button class="toggle" type="button" data-guide-style="tint" aria-pressed="true">Tint</button>
+                <button class="toggle" type="button" data-guide-style="dim" aria-pressed="false">Line focus</button>
+              </div>
+            </div>
+            <div class="group guide-dim-control"><span class="group-label">Dimness</span>
+              <input class="drift-range" id="guideDimRange" type="range" min="20" max="85" step="5" value="56" aria-label="Dimness outside the focused lines">
+              <span class="value" id="guideDimValue">56%</span>
+            </div>
+            <div class="group"><span class="group-label">Width</span>
+              <div class="guide-scope" role="group" aria-label="Reading guide width">
+                <button class="toggle" type="button" data-guide-scope="column" aria-pressed="false">Column</button>
+                <button class="toggle" type="button" data-guide-scope="page" aria-pressed="true">Full page</button>
+              </div>
+            </div>
+            <div class="group"><span class="group-label">Height</span>
+              <div class="guide-scope" role="group" aria-label="Reading guide height">
+                <button class="toggle" type="button" data-guide-size="s" aria-pressed="false">S</button>
+                <button class="toggle" type="button" data-guide-size="m" aria-pressed="true">M</button>
+                <button class="toggle" type="button" data-guide-size="l" aria-pressed="false">L</button>
+              </div>
+            </div>
+            <div class="group"><span class="group-label">Color</span>
+              <div class="guide-palette" role="group" aria-label="Reading guide color">
+                <button class="guide-color" type="button" data-guide-color="yellow" aria-pressed="true" aria-label="Yellow guide">Y</button>
+                <button class="guide-color" type="button" data-guide-color="green" aria-pressed="false" aria-label="Green guide">G</button>
+                <button class="guide-color" type="button" data-guide-color="blue" aria-pressed="false" aria-label="Blue guide">B</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="group" id="guideStyleGroup"><span>Guide style</span>
-          <div class="guide-scope" role="group" aria-label="Reading guide style">
-            <button class="toggle" type="button" data-guide-style="tint" aria-pressed="true">Tint</button>
-            <button class="toggle" type="button" data-guide-style="dim" aria-pressed="false">Line focus</button>
+        <div class="comfort-section comfort-motion" aria-label="Auto-scroll settings">
+          <span class="comfort-section-title">Auto-scroll</span>
+          <div class="comfort-section-body">
+            <button class="toggle" id="driftBtn" type="button" aria-pressed="false">Off</button>
+            <input class="drift-range" id="driftRange" type="range" min="0.5" max="60" step="0.5" value="4" aria-label="Auto-scroll speed in pixels per second">
+            <span class="value" id="driftValue">4 px/s</span>
           </div>
         </div>
-        <div class="group guide-dim-control"><span>Outside dimness</span>
-          <input class="drift-range" id="guideDimRange" type="range" min="20" max="85" step="5" value="56" aria-label="Dimness outside the focused lines">
-          <span class="value" id="guideDimValue">56%</span>
+        <div class="comfort-section comfort-paper" aria-label="Paper settings">
+          <span class="comfort-section-title">Paper</span>
+          <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream</button>
         </div>
-        <div class="group"><span>Guide height</span>
-          <div class="guide-scope" role="group" aria-label="Reading guide height">
-            <button class="toggle" type="button" data-guide-size="s" aria-pressed="false">S</button>
-            <button class="toggle" type="button" data-guide-size="m" aria-pressed="true">M</button>
-            <button class="toggle" type="button" data-guide-size="l" aria-pressed="false">L</button>
-          </div>
-        </div>
-        <div class="group"><span>Auto-scroll</span>
-          <button class="toggle" id="driftBtn" type="button" aria-pressed="false">Off</button>
-          <input class="drift-range" id="driftRange" type="range" min="0.5" max="60" step="0.5" value="4" aria-label="Auto-scroll speed in pixels per second">
-          <span class="value" id="driftValue">4 px/s</span>
-        </div>
-        <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream paper</button>
-        <span class="spacer"></span>
-        <button class="toggle" id="comfortReset" type="button">Reset</button>
+        <button class="toggle comfort-reset" id="comfortReset" type="button">Reset all</button>
       </div>
       <div class="find-bar hidden" id="findBar">
         <input id="findInput" type="search" placeholder="Find in this paper…" aria-label="Find in this paper">

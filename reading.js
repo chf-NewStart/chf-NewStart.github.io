@@ -1347,7 +1347,7 @@
   byId('zenTheme').onclick=function(){byId('themeBtn').onclick();};
   byId('focusBtn').onclick=function(){
     comfort.focus=!comfort.focus;applyComfort();
-    if(comfort.focus&&!zenOn){var seen=false;try{seen=localStorage.getItem('readingRoom.guideAdjustSeen.v1')==='1';}catch(e){}if(!seen){setComfortBarOpen(true);requestAnimationFrame(function(){var bar=byId('comfortBar'),group=byId('guideStyleGroup');if(bar.scrollWidth>bar.clientWidth)bar.scrollTo({left:Math.max(0,group.offsetLeft-12),behavior:'smooth'});});try{localStorage.setItem('readingRoom.guideAdjustSeen.v1','1');}catch(e){}}}
+    if(comfort.focus&&!zenOn){var seen=false;try{seen=localStorage.getItem('readingRoom.guideAdjustSeen.v1')==='1';}catch(e){}if(!seen){setComfortBarOpen(true);requestAnimationFrame(function(){var bar=byId('comfortBar'),group=byId('guideStyleGroup'),barRect=bar.getBoundingClientRect(),groupRect=group.getBoundingClientRect();if(bar.scrollWidth>bar.clientWidth)bar.scrollTo({left:Math.max(0,bar.scrollLeft+groupRect.left-barRect.left-12),behavior:'smooth'});});try{localStorage.setItem('readingRoom.guideAdjustSeen.v1','1');}catch(e){}}}
     showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page'):'Reading guide off');
   };
   byId('documentPane').addEventListener('pointermove',function(e){

@@ -331,9 +331,16 @@
     .text-layer span.find-span { background: color-mix(in srgb, var(--yellow) 55%, transparent); border-radius: 3px; }
     .progress-rail { flex: 0 0 auto; height: 4px; background: var(--surface-2); }
     .progress-rail i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .18s ease-out; }
-    .comfort-bar { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 18px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--yellow) 15%, var(--surface)); }
+    .comfort-bar { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--yellow) 12%, var(--surface)); }
+    .comfort-section { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 10px; border: 1px solid color-mix(in srgb, var(--line) 78%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--surface) 84%, transparent); }
+    .comfort-section-title { align-self: stretch; display: flex; align-items: center; padding-right: 10px; border-right: 1px solid var(--line); color: var(--accent-dark); font-size: .61rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+    .comfort-section-body { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .comfort-guide { flex: 1 1 870px; }
+    .comfort-guide .comfort-section-body { flex-wrap: wrap; }
+    .comfort-motion { flex: 0 1 auto; }
+    .comfort-reset { align-self: center; margin-left: auto; }
     .comfort-bar .group { display: flex; align-items: center; gap: 7px; }
-    .comfort-bar .group > span { color: var(--muted); font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .comfort-bar .group-label { color: var(--muted); font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
     .comfort-bar .step-btn { min-width: 32px; height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: .8rem; }
     .comfort-bar .step-btn:hover { border-color: var(--accent); }
     .comfort-bar .value { min-width: 34px; color: var(--muted); font-size: .72rem; text-align: center; }
@@ -349,7 +356,6 @@
     .comfort-bar:not(.line-focus) .guide-dim-control { display: none; }
     /* On the PDF itself only the guide settings apply; typography belongs to Reader view. */
     .comfort-bar.pdf-mode .text-only { display: none !important; }
-    .comfort-bar .spacer { flex: 1 1 auto; }
     .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
     #focusBtn.active, #comfortBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; touch-action: manipulation; overscroll-behavior: contain; }
@@ -819,10 +825,11 @@
       .reader-layout { display: block; }
       .notebook-resizer { display: none; }
       /* One swipeable display row instead of controls stacked above the paper. */
-      .comfort-bar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 8px 10px; gap: 7px 10px; }
+      .comfort-bar { flex-wrap: nowrap; align-items: stretch; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 8px 10px; gap: 8px; }
       .comfort-bar::-webkit-scrollbar { display: none; }
-      .comfort-bar .group, .comfort-bar .toggle { flex: 0 0 auto; white-space: nowrap; }
-      .comfort-bar .spacer { display: none; }
+      .comfort-section, .comfort-bar .group, .comfort-bar .toggle { flex: 0 0 auto; white-space: nowrap; }
+      .comfort-section-body, .comfort-guide .comfort-section-body { flex-wrap: nowrap; }
+      .comfort-reset { margin-left: 0; }
       .document-pane { height: 100%; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
       .pane-spotlight { inset: 0; }
       .recall-shield { inset: 0; place-items: start center; padding-top: 12dvh; }

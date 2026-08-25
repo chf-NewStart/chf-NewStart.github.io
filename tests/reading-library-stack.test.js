@@ -78,8 +78,11 @@ function check(name, condition, extra) {
   check('category name can be changed from its highlighter', await page.locator('.paper-category-tab.is-selected .paper-category-mark').textContent() === 'Metabolic models');
 
   await page.locator('.paper-category-tab').filter({ hasText: 'Unsorted' }).locator('.paper-category-open').click();
-  page.once('dialog', dialog => dialog.accept('Metabolic models'));
-  await page.locator('[data-shelf-paper="paper_field"]').locator('xpath=..').locator('.paper-category-move').click();
+  const fieldSticky = page.locator('[data-shelf-paper="paper_field"]').locator('xpath=..');
+  await fieldSticky.locator('.paper-category-move').click();
+  check('move opens a clickable category picker', await fieldSticky.locator('.paper-category-menu').isVisible());
+  check('picker lists the existing destination without typing', await fieldSticky.locator('.paper-category-choice').filter({ hasText: 'Metabolic models' }).count() === 1);
+  await fieldSticky.locator('.paper-category-choice').filter({ hasText: 'Metabolic models' }).click();
   await page.locator('.paper-category-tab').filter({ hasText: 'Metabolic models' }).locator('.paper-category-open').click();
   check('sticky can move into another category', await page.locator('.category-note-grid .paper-sticky-note').count() === 2 && await page.locator('.paper-category-tab.is-selected .paper-category-count').textContent() === '2');
   check('category changes persist with papers', await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.filter(ch => ch.category === 'Metabolic models').length === 2));

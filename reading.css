@@ -176,10 +176,18 @@
     .book-spine.paper-sticky-note.is-selected { border-color: color-mix(in srgb, var(--yellow) 82%, var(--note-ink)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow) 68%, white), 0 9px 18px rgba(42,38,30,.16); }
     .paper-sticky-note::after { content: ""; position: absolute; z-index: 3; top: -8px; left: 50%; width: 38px; height: 14px; border: 1px solid rgba(115,103,73,.12); border-radius: 1px; background: linear-gradient(90deg, rgba(238,226,181,.5), rgba(255,247,213,.72) 48%, rgba(231,217,169,.5)); box-shadow: 0 2px 3px rgba(60,54,39,.1); transform: translateX(-50%) rotate(var(--tape-tilt, -1deg)); opacity: .78; }
     .paper-sticky-note .book-title { position: absolute; top: 18px; left: 20px; right: 20px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; white-space: normal; overflow-wrap: anywhere; color: var(--note-ink); font-family: var(--hand); font-size: var(--note-font, 1.16rem); font-weight: 500; line-height: 1.16; word-spacing: .22em; }
-    .paper-sticky-note .book-author { position: absolute; left: 20px; right: 25px; bottom: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--note-ink); font-family: var(--hand); font-size: .78rem; font-weight: 500; line-height: 1; word-spacing: .18em; opacity: .88; }
-    .paper-category-move { position: absolute; z-index: 7; right: 8px; bottom: 7px; width: 28px; height: 28px; padding: 0; border: 1px solid color-mix(in srgb, var(--note-ink) 18%, transparent); border-radius: 50%; background: color-mix(in srgb, var(--surface) 82%, #fffbed); color: var(--note-ink); font: 700 .7rem/1 var(--sans); opacity: 0; transform: translateY(3px); transition: opacity .15s ease, transform .15s ease; }
-    .paper-sticky-wrap:hover .paper-category-move, .paper-category-move:focus-visible { opacity: .9; transform: none; }
-    .paper-category-move:hover, .paper-category-move:focus-visible { border-color: var(--note-ink); outline: none; }
+    .paper-sticky-note .book-author { position: absolute; left: 20px; right: 69px; bottom: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--note-ink); font-family: var(--hand); font-size: .78rem; font-weight: 500; line-height: 1; word-spacing: .18em; opacity: .88; }
+    .paper-sticky-wrap.is-menu-open { z-index: 20; }
+    .paper-category-move { position: absolute; z-index: 7; right: 8px; bottom: 7px; width: 57px; height: 27px; padding: 0 7px; border: 1px solid color-mix(in srgb, var(--ink) 17%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--surface) 84%, #fffbed); color: var(--ink); font: 750 .56rem/1 var(--sans); letter-spacing: .02em; opacity: 0; transform: translateY(3px); transition: opacity .15s ease, transform .15s ease; }
+    .paper-sticky-wrap:hover .paper-category-move, .paper-sticky-wrap.is-menu-open .paper-category-move, .paper-category-move:focus-visible { opacity: .92; transform: none; }
+    .paper-category-move:hover, .paper-category-move:focus-visible { border-color: var(--ink); outline: none; }
+    .paper-category-menu { position: absolute; z-index: 12; right: 7px; bottom: 40px; width: min(178px, calc(100% - 14px)); max-height: 164px; overflow-y: auto; padding: 7px; border: 1px solid color-mix(in srgb, var(--line) 78%, #a89977); border-radius: 10px; background: color-mix(in srgb, var(--surface) 94%, #fff5d9); box-shadow: 0 13px 25px rgba(42,38,30,.22), inset 0 1px rgba(255,255,255,.55); }
+    .paper-category-menu[hidden] { display: none; }
+    .paper-category-menu-label { display: block; padding: 3px 7px 6px; color: var(--muted); font: 750 .5rem/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; }
+    .paper-category-choice { display: block; width: 100%; min-height: 30px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font: 650 .68rem/1.15 var(--sans); }
+    .paper-category-choice:hover, .paper-category-choice:focus-visible { background: color-mix(in srgb, var(--yellow) 34%, transparent); outline: none; }
+    .paper-category-choice.is-new { margin-top: 4px; border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent); border-radius: 0 0 6px 6px; color: var(--accent); }
+    .paper-category-menu-empty { display: block; padding: 5px 8px 7px; color: var(--muted); font: italic .65rem/1.2 var(--serif); }
     .book-mark { display: none; }
 
     .reading-thread-bridge { position: relative; min-width: 0; min-height: var(--shelf-height); display: grid; place-items: center; pointer-events: none; }
@@ -834,9 +842,10 @@
       .book-pile { min-height: 0; max-height: none; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 16px 10px 22px; }
       .category-note-grid { gap: 14px 9px; padding: 0 1px 10px; }
       .book-spine.paper-sticky-note { height: 142px; }
-      .paper-category-move { right: 6px; bottom: 5px; opacity: .72; transform: none; }
+      .paper-category-move { right: 6px; bottom: 5px; width: 53px; height: 25px; opacity: .72; transform: none; }
+      .paper-category-menu { right: 5px; bottom: 35px; width: min(164px, calc(100% - 10px)); max-height: 124px; }
       .paper-sticky-note .book-title { top: 13px; left: 16px; right: 16px; -webkit-line-clamp: 4; font-size: min(var(--note-font, .94rem), .94rem); line-height: 1.12; }
-      .paper-sticky-note .book-author { left: 16px; right: 19px; bottom: 9px; font-size: .66rem; }
+      .paper-sticky-note .book-author { left: 16px; right: 63px; bottom: 9px; font-size: .66rem; }
       .open-book-wrap { padding: 46px 10px 16px 27px; }
       .open-book-wrap { grid-template-columns: minmax(0, 1fr); }
       .field-folio { display: none; }

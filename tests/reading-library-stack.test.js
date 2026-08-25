@@ -73,6 +73,7 @@ function check(name, condition, extra) {
   const dayWall = await page.evaluate(() => ({
     bookcase: getComputedStyle(document.querySelector('.bookcase')).backgroundColor,
     noteSurface: getComputedStyle(document.querySelector('.paper-note-surface')).backgroundColor,
+    stickyPaper: getComputedStyle(document.querySelector('.paper-sticky-note')).backgroundImage,
     handwriting: getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color
   }));
   await page.click('#themeBtn');
@@ -85,14 +86,14 @@ function check(name, condition, extra) {
     return {
       bookcase: pixel(getComputedStyle(document.querySelector('.bookcase')).backgroundColor),
       noteSurface: pixel(getComputedStyle(document.querySelector('.paper-note-surface')).backgroundColor),
-      sticky: pixel(getComputedStyle(document.querySelector('.paper-sticky-note')).backgroundColor),
-      handwriting: pixel(getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color)
+      stickyPaper: getComputedStyle(document.querySelector('.paper-sticky-note')).backgroundImage,
+      handwriting: getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color
     };
   });
   check('night reading wall uses a deep green canvas instead of the gray daylight mix', nightWall.bookcase.every(channel => channel < 45), JSON.stringify(nightWall.bookcase));
   check('night sticky well is dark enough to recede behind the notes', nightWall.noteSurface.every(channel => channel < 50), JSON.stringify(nightWall.noteSurface));
-  check('night sticky papers are muted instead of daylight-bright', nightWall.sticky.every(channel => channel < 75), JSON.stringify(nightWall.sticky));
-  check('night handwriting becomes pale enough to read', nightWall.handwriting.reduce((sum, channel) => sum + channel, 0) / 3 > 155, JSON.stringify(nightWall.handwriting));
+  check('night mode preserves the sticky-note paper colors', nightWall.stickyPaper === dayWall.stickyPaper);
+  check('night mode preserves the blue handwritten ink', nightWall.handwriting === dayWall.handwriting);
   await page.click('#themeBtn');
   check('daylight wall materials stay unchanged after a night-mode round trip', await page.evaluate(expected => {
     return getComputedStyle(document.querySelector('.bookcase')).backgroundColor === expected.bookcase

@@ -1,14 +1,6 @@
 [
   {
     "fact": {
-      "tag": "RECORDS",
-      "title": "One of Earth’s largest organisms is a fungus",
-      "fact": "A single honey fungus (Armillaria) in Oregon’s Blue Mountains spreads through roughly nine square kilometers of forest soil — one genetic individual, likely thousands of years old, quietly eating tree roots.",
-      "detail": "It was mapped by sampling and genotyping across the Malheur National Forest: the far-flung samples kept coming back as the same individual. Most of the organism is underground filaments; the mushrooms you’d see are just its fruit."
-    }
-  },
-  {
-    "fact": {
       "tag": "BIOLOGY",
       "title": "Lichens have survived open space",
       "fact": "Lichens — a working partnership between a fungus and an alga — were strapped to the outside of a space capsule in European Space Agency experiments, exposed to vacuum, radiation, and temperature swings, and revived on return to Earth.",

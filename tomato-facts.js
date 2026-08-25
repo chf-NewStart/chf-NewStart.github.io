@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "RECORDS",
+            title: "One of Earth’s largest organisms is a fungus",
+            fact: "A single honey fungus (Armillaria) in Oregon’s Blue Mountains spreads through roughly nine square kilometers of forest soil — one genetic individual, likely thousands of years old, quietly eating tree roots.",
+            detail: "It was mapped by sampling and genotyping across the Malheur National Forest: the far-flung samples kept coming back as the same individual. Most of the organism is underground filaments; the mushrooms you’d see are just its fruit."
+        },
+        {
             tag: "BIOLOGY",
             title: "Mushrooms are closer kin to you than to plants",
             fact: "On the tree of life, fungi and animals share a more recent common ancestor than either does with plants. Fungi don’t photosynthesize, they digest; and their cell walls are built of chitin — the same material as insect shells.",

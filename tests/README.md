@@ -14,6 +14,10 @@ device setup link even when GitHub sync is not configured.
 card: no immediate AI shortcut, automatic highlight support for a note, and an
 AI thread that appears only after the note contains text.
 
+`reading-library-stack.test.js` covers the category-first paper stack on the
+library's left side: collapsed category strips, hover reveal of the existing
+title/author sticky, direct category editing, selection, search, and mobile fit.
+
 `reading-pdf-zoom.test.js` covers the one-time migration from the legacy 50%
 initial PDF scale to Fit while preserving deliberate per-paper zoom choices.
 
@@ -31,6 +35,7 @@ npm install playwright
 node tests/reading-highlights.test.js
 node tests/reading-ai-providers.test.js
 node tests/reading-selection-note-ai.test.js
+node tests/reading-library-stack.test.js
 node tests/reading-pdf-zoom.test.js
 node tests/reading-pdf-authors.test.js
 node tests/reading-extension-local-pdf.test.js

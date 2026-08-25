@@ -41,6 +41,7 @@ function check(name, condition, extra) {
       paper('paper_field', 'Field observations across seasons', 'Maya Chen', [], 2000),
       paper('paper_microbes', 'Rhizosphere communities and nutrient exchange', 'Owen Bell', ['Microbiome'], 3000)
     ] }));
+    localStorage.setItem('readingRoom.theme', 'light');
   });
 
   await page.goto('http://localhost:8130/reading.html', { waitUntil: 'load' });
@@ -68,6 +69,36 @@ function check(name, condition, extra) {
     return style.overflowX === 'auto' && style.scrollbarWidth === 'thin';
   }));
   check('large ruled category sheet is gone', await page.locator('.paper-stack-entry').count() === 0 && await page.locator('.paper-note-surface').evaluate(element => !getComputedStyle(element).backgroundImage.includes('repeating-linear-gradient')));
+
+  const dayWall = await page.evaluate(() => ({
+    bookcase: getComputedStyle(document.querySelector('.bookcase')).backgroundColor,
+    noteSurface: getComputedStyle(document.querySelector('.paper-note-surface')).backgroundColor,
+    handwriting: getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color
+  }));
+  await page.click('#themeBtn');
+  const nightWall = await page.evaluate(() => {
+    const pixel = value => {
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+      const context = canvas.getContext('2d'); context.fillStyle = value; context.fillRect(0, 0, 1, 1);
+      return Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3);
+    };
+    return {
+      bookcase: pixel(getComputedStyle(document.querySelector('.bookcase')).backgroundColor),
+      noteSurface: pixel(getComputedStyle(document.querySelector('.paper-note-surface')).backgroundColor),
+      sticky: pixel(getComputedStyle(document.querySelector('.paper-sticky-note')).backgroundColor),
+      handwriting: pixel(getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color)
+    };
+  });
+  check('night reading wall uses a deep green canvas instead of the gray daylight mix', nightWall.bookcase.every(channel => channel < 45), JSON.stringify(nightWall.bookcase));
+  check('night sticky well is dark enough to recede behind the notes', nightWall.noteSurface.every(channel => channel < 50), JSON.stringify(nightWall.noteSurface));
+  check('night sticky papers are muted instead of daylight-bright', nightWall.sticky.every(channel => channel < 75), JSON.stringify(nightWall.sticky));
+  check('night handwriting becomes pale enough to read', nightWall.handwriting.reduce((sum, channel) => sum + channel, 0) / 3 > 155, JSON.stringify(nightWall.handwriting));
+  await page.click('#themeBtn');
+  check('daylight wall materials stay unchanged after a night-mode round trip', await page.evaluate(expected => {
+    return getComputedStyle(document.querySelector('.bookcase')).backgroundColor === expected.bookcase
+      && getComputedStyle(document.querySelector('.paper-note-surface')).backgroundColor === expected.noteSurface
+      && getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color === expected.handwriting;
+  }, dayWall));
 
   await page.locator('[data-shelf-paper="paper_models"]').click({ position: { x: 120, y: 20 } });
   check('clicking a sticky selects it without opening the reader', await page.locator('#libraryPage').evaluate(element => !element.classList.contains('hidden')));

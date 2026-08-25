@@ -32,6 +32,7 @@ function check(name, condition, extra) {
   page.on('pageerror', error => errors.push(error.message));
 
   await page.addInitScript(() => {
+    if (sessionStorage.getItem('readingStackKeepState')) return;
     const stamp = Date.now();
     const paper = (id, title, authors, tags, age) => ({ id, kind: 'text', title, authors, tags, fr: 'A short test paper.', notes: {}, pageNotes: {}, questions: [], addedAt: stamp - age, updatedAt: stamp - age, readPage: 1 });
     localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [
@@ -62,6 +63,10 @@ function check(name, condition, extra) {
     const surface = document.querySelector('.paper-note-surface');
     return rail && surface && rail.parentElement === surface.parentElement && !surface.contains(rail);
   }));
+  check('category highlighters expose horizontal scrolling', await page.locator('.paper-category-rail').evaluate(element => {
+    const style = getComputedStyle(element);
+    return style.overflowX === 'auto' && style.scrollbarWidth === 'thin';
+  }));
   check('large ruled category sheet is gone', await page.locator('.paper-stack-entry').count() === 0 && await page.locator('.paper-note-surface').evaluate(element => !getComputedStyle(element).backgroundImage.includes('repeating-linear-gradient')));
 
   await page.locator('[data-shelf-paper="paper_models"]').click({ position: { x: 120, y: 20 } });
@@ -82,6 +87,10 @@ function check(name, condition, extra) {
   await fieldSticky.locator('.paper-category-move').click();
   check('move opens a clickable category picker', await fieldSticky.locator('.paper-category-menu').isVisible());
   check('picker lists the existing destination without typing', await fieldSticky.locator('.paper-category-choice').filter({ hasText: 'Metabolic models' }).count() === 1);
+  check('picker has a category search field', await fieldSticky.locator('.paper-category-search').isVisible());
+  check('picker results are vertically scrollable', await fieldSticky.locator('.paper-category-options').evaluate(element => getComputedStyle(element).overflowY === 'auto'));
+  await fieldSticky.locator('.paper-category-search').fill('metabolic');
+  check('category search filters the destination list', await fieldSticky.locator('.paper-category-options .paper-category-choice').evaluateAll(elements => elements.filter(element => !element.hidden).map(element => element.textContent)).then(names => names.length === 1 && names[0] === 'Metabolic models'));
   await fieldSticky.locator('.paper-category-choice').filter({ hasText: 'Metabolic models' }).click();
   await page.locator('.paper-category-tab').filter({ hasText: 'Metabolic models' }).locator('.paper-category-open').click();
   check('sticky can move into another category', await page.locator('.category-note-grid .paper-sticky-note').count() === 2 && await page.locator('.paper-category-tab.is-selected .paper-category-count').textContent() === '2');
@@ -98,6 +107,23 @@ function check(name, condition, extra) {
   check('mobile stack stays compact above the notebook', mobile && mobile.height <= 285, mobile && mobile.height);
   check('mobile keeps the requested two-note row', mobileFirstTwo.length === 2 && Math.abs(mobileFirstTwo[0].y - mobileFirstTwo[1].y) < 2 && mobileFirstTwo[1].x > mobileFirstTwo[0].x, JSON.stringify(mobileFirstTwo));
   check('move-category control stays visible without hover on mobile', await page.locator('.category-note-grid .paper-category-move').first().evaluate(element => Number(getComputedStyle(element).opacity) > 0.6));
+
+  await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem('readingRoom.v1'));
+    const stamp = Date.now() - 100000;
+    for (let i = 1; i <= 12; i++) data.chapters.push({ id: 'paper_topic_' + i, kind: 'text', title: 'Paper in topic ' + i, authors: 'Field Reader', category: 'Topic ' + i, tags: [], fr: 'Test paper.', notes: {}, pageNotes: {}, questions: [], addedAt: stamp - i, updatedAt: stamp - i, readPage: 1 });
+    localStorage.setItem('readingRoom.v1', JSON.stringify(data));
+    sessionStorage.setItem('readingStackKeepState', '1');
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('.paper-category-tab.is-selected');
+  check('many category highlighters actually overflow into a scrollable row', await page.locator('.paper-category-rail').evaluate(element => element.scrollWidth > element.clientWidth));
+  const crowdedSticky = page.locator('.paper-sticky-wrap').first();
+  await crowdedSticky.locator('.paper-category-move').click();
+  check('many move destinations actually overflow into a scrollable list', await crowdedSticky.locator('.paper-category-options').evaluate(element => element.scrollHeight > element.clientHeight));
+  await crowdedSticky.locator('.paper-category-search').fill('Topic 11');
+  check('search finds one category in a long list', await crowdedSticky.locator('.paper-category-options .paper-category-choice').evaluateAll(elements => elements.filter(element => !element.hidden).map(element => element.textContent)).then(names => names.length === 1 && names[0] === 'Topic 11'));
   check('reading wall has no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

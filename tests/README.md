@@ -16,7 +16,8 @@ AI thread that appears only after the note contains text.
 
 `reading-library-stack.test.js` covers the fixed category-highlighter rail and
 soft reading wall: the two-column handwritten sticky grid, category
-creation/renaming, no-typing move picker, selection, search, and mobile fit.
+creation/renaming, searchable and scrollable move picker, overflow scrolling for
+many category highlighters, selection, search, and mobile fit.
 
 `reading-pdf-zoom.test.js` covers the one-time migration from the legacy 50%
 initial PDF scale to Fit while preserving deliberate per-paper zoom choices.

@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css">
+  <link rel="stylesheet" href="/reading.css?v=26">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -493,6 +493,20 @@
     <div class="dialog-body"><p id="errorMessage"></p></div>
   </dialog>
 
-<script src="/reading.js" defer></script>
+<script>
+  /* An already-open installed copy may still be controlled by yesterday's offline
+     worker. A new worker takes over immediately and reloads only those older copies;
+     first-time visitors do not get an unnecessary second load. */
+  (function(){
+    if(!('serviceWorker' in navigator)||location.protocol==='file:')return;
+    var hadController=!!navigator.serviceWorker.controller,reloading=false;
+    navigator.serviceWorker.addEventListener('controllerchange',function(){
+      if(!hadController||reloading)return;
+      reloading=true;location.reload();
+    });
+    navigator.serviceWorker.register('/reading-sw.js?v=26',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+  })();
+</script>
+<script src="/reading.js?v=26" defer></script>
 </body>
 </html>

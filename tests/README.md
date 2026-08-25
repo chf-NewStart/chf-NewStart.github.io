@@ -28,6 +28,10 @@ older blank credits, and preservation of manually edited author fields.
 `file://` PDFs, Chrome's permission-denied path, HTTP errors, and the direct file
 picker fallback.
 
+`reading-app-update.test.js` keeps the reader bundle and offline worker on one
+version, bypasses the browser's worker-script cache, and upgrades already-open
+older copies without making first-time visitors reload twice.
+
 Run with Node 18+ and Playwright's bundled Chromium:
 
 ```sh
@@ -39,6 +43,7 @@ node tests/reading-library-stack.test.js
 node tests/reading-pdf-zoom.test.js
 node tests/reading-pdf-authors.test.js
 node tests/reading-extension-local-pdf.test.js
+node tests/reading-app-update.test.js
 ```
 
 Exit code 0 means every check passed. If your Chromium lives in a nonstandard

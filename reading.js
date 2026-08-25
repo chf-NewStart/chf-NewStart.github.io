@@ -3625,7 +3625,8 @@
     });
   }
 
-  if('serviceWorker' in navigator&&location.protocol!=='file:'){try{navigator.serviceWorker.register('/reading-sw.js').catch(function(){});}catch(e){}}
+  /* Registration begins in reading.html before this deferred bundle. Keeping it out
+     of here avoids racing the versioned worker with an older unversioned URL. */
   /* One-time sweep: titles that already picked up publisher markup get scrubbed. */
   (function(){
     var dirty=false;

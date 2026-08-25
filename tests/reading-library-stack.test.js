@@ -51,40 +51,30 @@ function check(name, condition, extra) {
 
   check('left pane is labelled as a paper stack', await page.locator('.pile-head strong').textContent() === 'Paper stack');
   check('right field notebook remains present', await page.locator('.open-book-wrap .closed-book').count() === 1);
-  check('every paper exposes a category strip', await page.locator('.paper-category-strip').count() === 4);
-  check('first tag becomes the initial DIY category', await page.locator('[data-shelf-paper="paper_roots"] .paper-category-mark').textContent() === 'Plant physiology');
-  check('untagged papers fall back to Unsorted', await page.locator('[data-shelf-paper="paper_field"] .paper-category-mark').textContent() === 'Unsorted');
-
-  const selectedHeight = await page.locator('.paper-stack-entry.is-selected').evaluate(element => element.getBoundingClientRect().height);
-  const restingHeight = await page.locator('[data-shelf-paper="paper_models"]').evaluate(element => element.parentElement.getBoundingClientRect().height);
-  check('selected sheet is pulled out to reveal its sticky note', selectedHeight > 190, selectedHeight);
-  check('resting sheets expose only their category strip', restingHeight < 60, restingHeight);
-
-  await page.locator('[data-shelf-paper="paper_models"] .paper-category-strip').hover();
-  await page.waitForTimeout(320);
-  const hoverHeight = await page.locator('[data-shelf-paper="paper_models"]').evaluate(element => element.parentElement.getBoundingClientRect().height);
-  check('hover pulls a sheet out', hoverHeight > 190, hoverHeight);
-  check('revealed sticky keeps the handwritten title and author', await page.locator('[data-shelf-paper="paper_models"] .paper-sticky-note').textContent().then(text => text.includes('Constraint models') && text.includes('Dev Rao')));
+  check('all papers share one category sheet for now', await page.locator('.paper-category-strip').count() === 1);
+  check('shared category is explicitly Unsorted', await page.locator('.paper-category-mark').textContent() === 'Unsorted');
+  check('shared category reports its paper count', await page.locator('.paper-category-count').textContent() === '4 papers');
+  check('one sticky note remains for every paper', await page.locator('.category-note-grid .paper-sticky-note').count() === 4);
+  const firstTwoNotes = await page.locator('.category-note-grid .paper-sticky-note').evaluateAll(elements => elements.slice(0, 2).map(element => ({ x: element.getBoundingClientRect().x, y: element.getBoundingClientRect().y, width: element.getBoundingClientRect().width })));
+  check('sticky notes return to two per row', firstTwoNotes.length === 2 && Math.abs(firstTwoNotes[0].y - firstTwoNotes[1].y) < 2 && firstTwoNotes[1].x > firstTwoNotes[0].x, JSON.stringify(firstTwoNotes));
+  check('sticky notes are compact instead of full-sheet width', firstTwoNotes.every(note => note.width < 230), JSON.stringify(firstTwoNotes));
+  check('sticky keeps the handwritten title and author', await page.locator('[data-shelf-paper="paper_models"]').textContent().then(text => text.includes('Constraint models') && text.includes('Dev Rao')));
 
   await page.locator('[data-shelf-paper="paper_models"]').click({ position: { x: 120, y: 20 } });
   check('clicking a sheet selects it without opening the reader', await page.locator('#libraryPage').evaluate(element => !element.classList.contains('hidden')));
   check('the unchanged right notebook follows the selected paper', await page.locator('.closed-book-title').textContent() === 'Constraint models for carbon allocation');
 
-  page.once('dialog', dialog => dialog.accept('Methods'));
-  await page.locator('.paper-stack-entry.is-selected .paper-category-edit').click();
-  check('category can be renamed from its exposed strip', await page.locator('.paper-stack-entry.is-selected .paper-category-mark').textContent() === 'Methods');
-  check('renamed category is saved with the paper', await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === 'paper_models').category === 'Methods'));
-
-  await page.fill('#librarySearch', 'Methods');
-  check('search includes DIY categories', await page.locator('.paper-stack-entry').count() === 1);
+  check('per-paper category pencils are removed', await page.locator('.paper-category-edit').count() === 0);
+  await page.fill('#librarySearch', 'Constraint models');
+  check('search narrows the shared sheet to the matching sticky', await page.locator('.category-note-grid .paper-sticky-note').count() === 1 && await page.locator('.paper-category-count').textContent() === '1 paper');
   await page.fill('#librarySearch', '');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(100);
   const mobile = await page.locator('.bookcase').boundingBox();
-  const mobileSelectedHeight = await page.locator('.paper-stack-entry.is-selected').evaluate(element => element.getBoundingClientRect().height);
+  const mobileFirstTwo = await page.locator('.category-note-grid .paper-sticky-note').evaluateAll(elements => elements.slice(0, 2).map(element => ({ x: element.getBoundingClientRect().x, y: element.getBoundingClientRect().y, width: element.getBoundingClientRect().width })));
   check('mobile stack stays compact above the notebook', mobile && mobile.height <= 285, mobile && mobile.height);
-  check('mobile selected note still reveals inside the stack', mobileSelectedHeight >= 160 && mobileSelectedHeight <= 180, mobileSelectedHeight);
+  check('mobile keeps the requested two-note row', mobileFirstTwo.length === 2 && Math.abs(mobileFirstTwo[0].y - mobileFirstTwo[1].y) < 2 && mobileFirstTwo[1].x > mobileFirstTwo[0].x, JSON.stringify(mobileFirstTwo));
   check('paper stack has no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

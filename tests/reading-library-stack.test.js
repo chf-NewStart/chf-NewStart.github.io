@@ -96,8 +96,14 @@ function check(name, condition, extra) {
   check('sticky can move into another category', await page.locator('.category-note-grid .paper-sticky-note').count() === 2 && await page.locator('.paper-category-tab.is-selected .paper-category-count').textContent() === '2');
   check('category changes persist with papers', await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.filter(ch => ch.category === 'Metabolic models').length === 2));
 
+  await page.locator('.paper-category-tab').filter({ hasText: 'Unsorted' }).locator('.paper-category-open').click();
+  const rootSticky = page.locator('[data-shelf-paper="paper_roots"]').locator('xpath=..');
+  await rootSticky.locator('.paper-sticky-grip').dragTo(page.locator('.paper-category-tab').filter({ hasText: 'Metabolic models' }));
+  check('a sticky can be dragged directly onto a category', await page.locator('.paper-category-tab.is-selected .paper-category-mark').textContent() === 'Metabolic models' && await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === 'paper_roots').category === 'Metabolic models'));
+  check('sticky drag target receives the moved paper', await page.locator('.category-note-grid .paper-sticky-note').count() === 3);
+
   await page.fill('#librarySearch', 'Metabolic models');
-  check('search finds papers by category name', await page.locator('.category-note-grid .paper-sticky-note').count() === 2);
+  check('search finds papers by category name', await page.locator('.category-note-grid .paper-sticky-note').count() === 3);
   await page.fill('#librarySearch', '');
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -124,6 +130,21 @@ function check(name, condition, extra) {
   check('many move destinations actually overflow into a scrollable list', await crowdedSticky.locator('.paper-category-options').evaluate(element => element.scrollHeight > element.clientHeight));
   await crowdedSticky.locator('.paper-category-search').fill('Topic 11');
   check('search finds one category in a long list', await crowdedSticky.locator('.paper-category-options .paper-category-choice').evaluateAll(elements => elements.filter(element => !element.hidden).map(element => element.textContent)).then(names => names.length === 1 && names[0] === 'Topic 11'));
+  await crowdedSticky.locator('.paper-category-search').press('Escape');
+
+  const draggedCategory = page.locator('.paper-category-tab[data-category-name="Metabolic models"]');
+  await draggedCategory.locator('.paper-category-grip').dragTo(page.locator('.paper-category-tab').first(), { targetPosition: { x: 2, y: 20 } });
+  const orderAfterDrag = await page.locator('.paper-category-mark').evaluateAll(elements => elements.map(element => element.textContent));
+  check('dragging a category changes its position', orderAfterDrag[0] === 'Metabolic models', JSON.stringify(orderAfterDrag.slice(0, 5)));
+  check('dragged category order is saved with a timestamp', await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem('readingRoom.v1'));
+    return data.categoryOrder[0] === 'Metabolic models' && data.categoryOrderUpdatedAt > 0;
+  }));
+  await page.locator('.paper-category-tab').first().locator('.paper-category-step.next').click();
+  check('move arrows provide a touch-friendly reorder fallback', await page.locator('.paper-category-mark').nth(1).textContent() === 'Metabolic models');
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('.paper-category-tab.is-selected');
+  check('custom category order survives a reload', await page.locator('.paper-category-mark').nth(1).textContent() === 'Metabolic models');
   check('reading wall has no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

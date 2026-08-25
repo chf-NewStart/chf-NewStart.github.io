@@ -664,17 +664,20 @@
     if(!list.length){shelf.innerHTML='<div class="shelf-empty"><div><b>'+(state.chapters.length?'No paper found':'Your shelf is waiting')+'</b>'+(state.chapters.length?'Try another title, author, or tag.':'Paste a PDF link, drop in a file, or connect a private GitHub folder to place the first book.')+'</div></div>';return;}
     if(!librarySelectionId||!list.some(function(ch){return ch.id===librarySelectionId;}))librarySelectionId=list[0].id;
     var selected=list.find(function(ch){return ch.id===librarySelectionId;})||list[0],stats=shelfPaperStats(selected);
-    var caseEl=document.createElement('section');caseEl.className='bookcase';caseEl.setAttribute('aria-label','Paper stack');caseEl.innerHTML='<div class="pile-head"><strong>Paper stack</strong><button class="paper-category-add" id="newCategoryBtn" type="button" title="Create a category from the selected paper">＋ Category</button></div>';
+    var caseEl=document.createElement('section');caseEl.className='bookcase';caseEl.setAttribute('aria-label','Reading wall');caseEl.innerHTML='<div class="pile-head"><strong>Reading wall</strong><button class="paper-category-add" id="newCategoryBtn" type="button" title="Create a category from the selected paper">＋ Category</button></div>';
+    var categoryRail=document.createElement('nav');categoryRail.className='paper-category-rail';categoryRail.setAttribute('aria-label','Paper categories');
+    var noteSurface=document.createElement('div');noteSurface.className='paper-note-surface';
     var pile=document.createElement('div');pile.className='book-pile';
     var grouped=[],groupMap={};list.forEach(function(ch){var label=shelfPaperCategory(ch),key=label.toLowerCase();if(!groupMap[key]){groupMap[key]={label:label,papers:[]};grouped.push(groupMap[key]);}groupMap[key].papers.push(ch);});
     var selectedCategory=shelfPaperCategory(selected).toLowerCase();
     grouped.forEach(function(group,groupIndex){
-      var entry=document.createElement('section'),categoryStrip=document.createElement('div'),categoryOpen=document.createElement('button'),categoryEdit=document.createElement('button'),noteGrid=document.createElement('div'),isOpen=group.label.toLowerCase()===selectedCategory,categoryHash=0;
-      for(var c=0;c<group.label.length;c++)categoryHash=(categoryHash*33+group.label.charCodeAt(c))>>>0;
-      entry.className='paper-stack-entry'+(isOpen?' is-selected':'');entry.setAttribute('aria-label',group.label+' papers');entry.style.setProperty('--sheet-tilt',((((categoryHash>>>4)%7)-3)*.12)+'deg');
-      categoryStrip.className='paper-category-strip';categoryOpen.type='button';categoryOpen.className='paper-category-open';categoryOpen.setAttribute('aria-expanded',isOpen?'true':'false');categoryOpen.innerHTML='<span class="paper-category-caption">Category</span><span class="paper-category-mark">'+esc(group.label)+'</span><span class="paper-category-count">'+group.papers.length+' '+(group.papers.length===1?'paper':'papers')+'</span>';categoryOpen.onclick=function(){if(!isOpen){librarySelectionId=group.papers[0].id;renderShelf();}};
-      categoryEdit.type='button';categoryEdit.className='paper-category-edit';categoryEdit.textContent='✎';categoryEdit.title='Rename '+group.label;categoryEdit.setAttribute('aria-label','Rename category '+group.label);categoryEdit.onclick=function(){var answer=prompt('Rename category “'+group.label+'”',group.label);if(answer===null)return;var next=categoryLabel(answer),stamp=now();state.chapters.forEach(function(ch){if(shelfPaperCategory(ch).toLowerCase()===group.label.toLowerCase()){setShelfPaperCategory(ch,next);ch.updatedAt=stamp;}});persist();renderShelf();};categoryStrip.appendChild(categoryOpen);categoryStrip.appendChild(categoryEdit);
-      noteGrid.className='category-note-grid';
+      var categoryTab=document.createElement('div'),categoryOpen=document.createElement('button'),categoryEdit=document.createElement('button'),noteGrid=document.createElement('div'),isOpen=group.label.toLowerCase()===selectedCategory;
+      categoryTab.className='paper-category-tab'+(isOpen?' is-selected':'');categoryTab.setAttribute('aria-label',group.label+' papers');
+      categoryOpen.type='button';categoryOpen.className='paper-category-open';categoryOpen.setAttribute('aria-pressed',isOpen?'true':'false');categoryOpen.innerHTML='<span class="paper-category-mark">'+esc(group.label)+'</span><span class="paper-category-count">'+group.papers.length+'</span>';categoryOpen.onclick=function(){if(!isOpen){librarySelectionId=group.papers[0].id;renderShelf();}};
+      categoryEdit.type='button';categoryEdit.className='paper-category-edit';categoryEdit.textContent='✎';categoryEdit.title='Rename '+group.label;categoryEdit.setAttribute('aria-label','Rename category '+group.label);categoryEdit.onclick=function(){var answer=prompt('Rename category “'+group.label+'”',group.label);if(answer===null)return;var next=categoryLabel(answer),stamp=now();state.chapters.forEach(function(ch){if(shelfPaperCategory(ch).toLowerCase()===group.label.toLowerCase()){setShelfPaperCategory(ch,next);ch.updatedAt=stamp;}});persist();renderShelf();};
+      categoryTab.appendChild(categoryOpen);categoryTab.appendChild(categoryEdit);categoryRail.appendChild(categoryTab);
+      if(!isOpen)return;
+      noteSurface.setAttribute('aria-label',group.label+' category');noteGrid.className='category-note-grid';
       group.papers.forEach(function(ch){
         var wrap=document.createElement('div'),book=document.createElement('button'),move=document.createElement('button'),isSelected=ch.id===selected.id,visualHash=paperVisualHash(ch),spine=WALL_NOTES[(visualHash>>>1)%WALL_NOTES.length];
         wrap.className='paper-sticky-wrap';book.type='button';book.className='book-spine paper-sticky-note'+(isSelected?' is-selected':'');book.dataset.shelfPaper=ch.id;book.setAttribute('aria-pressed',isSelected?'true':'false');book.setAttribute('aria-label',(isSelected?'Open paper: ':'Preview paper: ')+(ch.title||'Untitled'));
@@ -684,10 +687,10 @@
         book.onclick=function(e){if(ch.id===librarySelectionId){openReader(ch.id);return;}var oldTop=pile.scrollTop,oldLeft=pile.scrollLeft,fromKeyboard=e.detail===0;librarySelectionId=ch.id;renderShelf();var nextPile=byId('shelf').querySelector('.book-pile');if(nextPile){nextPile.scrollTop=oldTop;nextPile.scrollLeft=oldLeft;}if(fromKeyboard)setTimeout(function(){focusShelfBook(ch.id);},0);};
         move.type='button';move.className='paper-category-move';move.textContent='↗';move.title='Move to another category';move.setAttribute('aria-label','Move '+spineTitle+' to another category');move.onclick=function(){if(chooseShelfCategory(ch,'Move “'+spineTitle+'” to a category.'))renderShelf();};wrap.appendChild(book);wrap.appendChild(move);noteGrid.appendChild(wrap);
       });
-      entry.appendChild(categoryStrip);entry.appendChild(noteGrid);pile.appendChild(entry);
+      pile.appendChild(noteGrid);
     });
     caseEl.querySelector('#newCategoryBtn').onclick=function(){var answer=prompt('Create a category from the selected paper.',shelfPaperCategory(selected)==='Unsorted'?'':shelfPaperCategory(selected));if(answer===null||!String(answer).trim())return;setShelfPaperCategory(selected,answer);persist();renderShelf();};
-    caseEl.appendChild(pile);shelf.appendChild(caseEl);shelf.appendChild(renderOpenPaper(selected,stats,BOOK_SPINES[paperVisualHash(selected)%BOOK_SPINES.length]));
+    noteSurface.appendChild(pile);caseEl.appendChild(categoryRail);caseEl.appendChild(noteSurface);shelf.appendChild(caseEl);shelf.appendChild(renderOpenPaper(selected,stats,BOOK_SPINES[paperVisualHash(selected)%BOOK_SPINES.length]));
   }
   byId('librarySearch').oninput = renderShelf;
   byId('librarySort').onchange=function(){librarySortMode=this.value;try{localStorage.setItem(LIBRARY_SORT_KEY,librarySortMode);}catch(e){}renderShelf();};

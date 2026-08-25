@@ -100,6 +100,67 @@ function optionsHarness(options = {}) {
   return { context, state, elements };
 }
 
+function contentHarness(pending) {
+  const state = { documentHandlers: {}, windowHandlers: {}, posted: [], removedKeys: [], timer: null };
+  function makeElement(tag) {
+    return {
+      tag,
+      id: '',
+      className: '',
+      textContent: '',
+      children: [],
+      removed: false,
+      setAttribute() {},
+      appendChild(child) { this.children.push(child); return child; },
+      remove() { this.removed = true; },
+      querySelector(selector) {
+        const wanted = selector.charAt(0) === '.' ? selector.slice(1) : '';
+        const queue = this.children.slice();
+        while (queue.length) {
+          const child = queue.shift();
+          if (wanted && child.className === wanted) return child;
+          queue.push(...(child.children || []));
+        }
+        return null;
+      }
+    };
+  }
+  const root = makeElement('html');
+  const windowObject = {
+    addEventListener(type, handler) { state.windowHandlers[type] = handler; },
+    postMessage(data, origin) { state.posted.push({ data, origin }); }
+  };
+  const context = {
+    chrome: {
+      storage: {
+        local: {
+          get(key, callback) { callback({ phloemPending: pending }); },
+          remove(key) { state.removedKeys.push(key); }
+        },
+        onChanged: { addListener(handler) { state.storageHandler = handler; } }
+      },
+      runtime: { onMessage: { addListener(handler) { state.messageHandler = handler; } } }
+    },
+    document: {
+      readyState: 'loading',
+      documentElement: root,
+      createElement: makeElement,
+      addEventListener(type, handler) { state.documentHandlers[type] = handler; }
+    },
+    window: windowObject,
+    location: { origin: 'https://houfu72.com' },
+    Uint8Array,
+    Date,
+    String,
+    atob: value => Buffer.from(value, 'base64').toString('binary'),
+    setTimeout(handler) { state.timer = handler; return 1; },
+    clearTimeout() { state.timer = null; }
+  };
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'carrel-extension/content.js'), 'utf8'), context);
+  return { context, state, root };
+}
+
 (async () => {
   const local = backgroundHarness();
   assert.strictEqual(await local.context.importFromUrl('file:///Users/chf/Downloads/science.ado8575.pdf'), true);
@@ -162,6 +223,32 @@ function optionsHarness(options = {}) {
   const contentSource = fs.readFileSync(path.join(ROOT, 'carrel-extension/content.js'), 'utf8');
   assert.match(contentSource, /phloem-deliver-pending/);
   console.log('PASS  Phloem content script exposes the pending-PDF receiver ping');
+
+  const transferId = Date.now();
+  const pending = {
+    name: '00_Appointment_Brief_and_Checklist.pdf', sourceUrl: '', at: transferId,
+    b64: [Buffer.from(new Uint8Array(PDF_BYTES)).toString('base64')]
+  };
+  const handoff = contentHarness(pending);
+  const overlay = handoff.context.importOverlay;
+  assert.ok(overlay && !overlay.removed);
+  assert.strictEqual(handoff.state.posted.length, 0);
+  handoff.state.documentHandlers.DOMContentLoaded();
+  assert.strictEqual(handoff.state.posted.length, 1);
+  assert.strictEqual(handoff.state.posted[0].data.transferId, transferId);
+  assert.strictEqual(handoff.state.posted[0].data.type, 'carrel-ext-import');
+  handoff.state.windowHandlers.message({
+    source: handoff.context.window,
+    data: { type: 'phloem-ext-import-complete', transferId, ok: true }
+  });
+  assert.ok(overlay.removed);
+  assert.strictEqual(handoff.context.importOverlay, null);
+  console.log('PASS  import overlay covers the old paper until Phloem acknowledges completion');
+
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'carrel-extension/manifest.json'), 'utf8'));
+  assert.strictEqual(manifest.content_scripts[0].run_at, 'document_start');
+  assert.match(fs.readFileSync(path.join(ROOT, 'reading.js'), 'utf8'), /phloem-ext-import-complete/);
+  console.log('PASS  overlay starts before page paint and Phloem sends the completion acknowledgement');
 })().catch(error => {
   console.error('FAIL ', error);
   process.exit(1);

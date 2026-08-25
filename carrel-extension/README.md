@@ -1,6 +1,6 @@
 # Read in Phloem — browser extension
 
-Current store package: **1.1.12**
+Current store package: **1.1.13**
 
 Send any PDF on the web or your computer straight to [Phloem](https://houfu72.com/reading.html),
 the free local-first paper reading desk. Right-click a PDF link → **Read link in

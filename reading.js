@@ -1301,18 +1301,21 @@
      the fetched bytes with a window.postMessage. Only same-window senders qualify
      (a page that merely opened this tab can never fake that), and the payload must
      actually be a PDF. */
-  window.addEventListener('message',function(e){
+  window.addEventListener('message',async function(e){
     /* 'carrel-ext-import' is the wire name from before the Phloem rename: extensions
        already installed keep sending it, so both spellings stay welcome forever. */
     if(e.source!==window||!e.data||(e.data.type!=='carrel-ext-import'&&e.data.type!=='phloem-ext-import'))return;
+    var transferId=e.data.transferId;
+    function finishExtensionImport(ok){window.postMessage({type:'phloem-ext-import-complete',transferId:transferId,ok:!!ok},location.origin);}
     var bytes=e.data.bytes;
-    if(!(bytes instanceof ArrayBuffer)||bytes.byteLength<1200)return;
+    if(!(bytes instanceof ArrayBuffer)||bytes.byteLength<1200){finishExtensionImport(false);return;}
     var head=new Uint8Array(bytes.slice(0,5)),magic='';for(var i=0;i<head.length;i++)magic+=String.fromCharCode(head[i]);
-    if(magic!=='%PDF-')return;
+    if(magic!=='%PDF-'){finishExtensionImport(false);return;}
     var name=String(e.data.name||'').replace(/[^\w .()\[\]&,'-]+/g,' ').trim().slice(0,140)||'paper.pdf';
     if(!/\.pdf$/i.test(name))name+='.pdf';
-    importPdf(new File([bytes],name,{type:'application/pdf'}),'',String(e.data.sourceUrl||'').slice(0,600));
     showReaderToast('Adding from your browser…');
+    var imported=await importPdf(new File([bytes],name,{type:'application/pdf'}),'',String(e.data.sourceUrl||'').slice(0,600));
+    finishExtensionImport(imported);
   });
 
   /* text import and edit */

@@ -23,10 +23,18 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
   if (url) importFromUrl(url);
 });
 
-chrome.action.onClicked.addListener(function (tab) {
-  if (tab && tab.url) importFromUrl(tab.url);
-  else notify('Open a PDF first', 'Open a web or local PDF in Chrome, then click Read in Phloem again.');
-});
+chrome.action.onClicked.addListener(handleActionClick);
+
+async function handleActionClick(tab) {
+  var url = tab && (tab.url || tab.pendingUrl);
+  if (url) return importFromUrl(url);
+  /* When file-URL access is off Chrome deliberately omits the local address from
+     tabs.Tab. Do not strand the reader: open the direct picker, which works
+     without that permission. */
+  notify('Choose the local PDF', 'Chrome hid this file address. Choose the PDF directly on the page that just opened.');
+  await openLocalPdfHelp();
+  return false;
+}
 
 function notify(title, message) {
   try {

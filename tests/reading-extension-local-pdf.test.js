@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PDF_BYTES = new TextEncoder().encode('%PDF-1.4\nPhloem local PDF test').buffer;
 
 function backgroundHarness(options = {}) {
-  const state = { createdTabs: [], pending: null, notices: [], optionsOpened: 0, fetches: [] };
+  const state = { actionHandler: null, createdTabs: [], pending: null, notices: [], optionsOpened: 0, fetches: [] };
   const chrome = {
     runtime: {
       onInstalled: { addListener() {} },
@@ -15,7 +15,7 @@ function backgroundHarness(options = {}) {
       getURL: name => 'chrome-extension://phloem/' + name
     },
     contextMenus: { create() {}, onClicked: { addListener() {} } },
-    action: { onClicked: { addListener() {} }, setBadgeText() {} },
+    action: { onClicked: { addListener(handler) { state.actionHandler = handler; } }, setBadgeText() {} },
     notifications: { create(value) { state.notices.push(value); } },
     extension: { isAllowedFileSchemeAccess: async () => options.fileAllowed !== false },
     storage: { local: { set: async value => { state.pending = value.phloemPending; } } },
@@ -106,6 +106,13 @@ function optionsHarness() {
   assert.strictEqual(denied.state.fetches.length, 0);
   assert.strictEqual(denied.state.optionsOpened, 1);
   console.log('PASS  denied file access opens the direct-import fallback');
+
+  const hidden = backgroundHarness();
+  assert.strictEqual(await hidden.state.actionHandler({ id: 42 }), false);
+  assert.strictEqual(hidden.state.fetches.length, 0);
+  assert.strictEqual(hidden.state.optionsOpened, 1);
+  assert.match(hidden.state.notices[0].message, /Choose the PDF directly/);
+  console.log('PASS  a hidden local tab URL opens the direct-import fallback');
 
   const web = backgroundHarness({
     response: { ok: false, status: 404, headers: { get: () => null }, arrayBuffer: async () => PDF_BYTES }

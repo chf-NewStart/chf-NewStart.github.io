@@ -32,6 +32,11 @@ local file - into the Phloem reading app at houfu72.com for reading and annotati
 Adds “Read link in Phloem” and “Read this page’s PDF in Phloem” to Chrome’s
 right-click menu. The extension runs only when the user selects one of these commands.
 
+### activeTab justification
+
+Reads the current tab's URL only after the user clicks the extension button, so it can
+identify the PDF the user explicitly chose. It does not inspect tabs passively.
+
 ### storage justification
 
 Temporarily stores the user-selected PDF bytes so the background worker can hand

@@ -22,16 +22,17 @@
 
   <p class="summary"><strong>The short version:</strong> this extension collects nothing,
   stores nothing permanently, and sends nothing anywhere. It downloads only the web PDF
-  you explicitly asked for, or reads a local PDF directly after you enable Chrome's
-  file-access switch.</p>
+  you explicitly asked for, or reads a local PDF only after you choose it or enable
+  Chrome's file-access switch.</p>
 
   <h2>What the extension does</h2>
   <p>When you right-click a link and choose “Read link in Phloem” (or click the toolbar
   button while viewing a PDF), the extension downloads that one PDF and hands it to the
   Phloem reading app at <a href="https://houfu72.com/reading.html">houfu72.com/reading.html</a>,
   where it opens for reading. The same action can open a PDF stored on your computer
-  after you enable Chrome's standard “Allow access to file URLs” setting. That is the
-  extension’s single purpose.</p>
+  after you enable Chrome's standard “Allow access to file URLs” setting, or after you
+  explicitly choose it on the extension's local-file page. That is the extension’s
+  single purpose.</p>
 
   <h2>Data collection</h2>
   <p>None. The extension does not collect, log, transmit, sell, or share any user data —
@@ -47,8 +48,10 @@
   <h2>Local files</h2>
   <p>Chrome requires you to explicitly enable “Allow access to file URLs” on the
   extension’s details page. The extension checks that setting only when you ask it to
-  open a local PDF. The file is read on your device, its filesystem path is not passed
-  into Phloem metadata or optional sync, and no network request is made for it.</p>
+  open a local PDF. As a fallback, you can select the PDF directly on the extension's
+  local-file page without enabling that setting. In both cases the file is read on your
+  device, its filesystem path is not passed into Phloem metadata or optional sync, and
+  no network request is made for it.</p>
 
   <h2>Storage</h2>
   <p>The downloaded PDF is held briefly in the extension’s local storage while it is

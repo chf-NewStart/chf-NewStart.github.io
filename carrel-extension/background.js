@@ -66,11 +66,15 @@ async function localFileAccessAllowed() {
   catch (e) { return false; }
 }
 
-async function explainLocalFileAccess() {
-  chrome.action.setBadgeText({ text: '!' });
-  notify('Allow local PDF access', 'Open the instructions, enable “Allow access to file URLs,” then click Phloem on the PDF again.');
+async function openLocalPdfHelp() {
   try { await chrome.runtime.openOptionsPage(); }
   catch (e) { chrome.tabs.create({ url: chrome.runtime.getURL('options.html') }); }
+}
+
+async function explainLocalFileAccess() {
+  chrome.action.setBadgeText({ text: '!' });
+  notify('Choose or allow the local PDF', 'Enable “Allow access to file URLs,” or choose the PDF directly on the page that just opened.');
+  await openLocalPdfHelp();
 }
 
 async function importFromUrl(url) {
@@ -87,7 +91,10 @@ async function importFromUrl(url) {
   try {
     chrome.action.setBadgeText({ text: '…' });
     var res = await fetch(real, local ? {} : { credentials: 'include' });
-    if (!res.ok) throw new Error('The server answered ' + res.status + '.');
+    /* A file:// fetch can expose valid bytes with the opaque status 0, for which
+       Response.ok is false. HTTP status is meaningful only for network PDFs; the
+       PDF signature below is the reliable check for a local file. */
+    if (!local && !res.ok) throw new Error('The server answered ' + res.status + '.');
     var bytes = await res.arrayBuffer();
     if (bytes.byteLength > MAX_BYTES) throw new Error('That file is over 80 MB.');
     var head = new Uint8Array(bytes.slice(0, 5)), magic = '';
@@ -119,7 +126,8 @@ async function importFromUrl(url) {
     return true;
   } catch (e) {
     chrome.action.setBadgeText({ text: '' });
-    notify(local ? 'Could not read that local PDF' : 'Could not fetch that PDF', local ? 'Chrome allowed file access, but could not read this file. Reopen the PDF in Chrome and try once more.' : ((e && e.message) || 'The download failed.'));
+    notify(local ? 'Could not read that local PDF' : 'Could not fetch that PDF', local ? 'Choose the PDF directly on the page that just opened. Chrome said: ' + ((e && e.message) || 'the file could not be read.') : ((e && e.message) || 'The download failed.'));
+    if (local) await openLocalPdfHelp();
     return false;
   }
 }

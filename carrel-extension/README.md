@@ -1,6 +1,6 @@
 # Read in Phloem — browser extension
 
-Current store package: **1.1.9**
+Current store package: **1.1.10**
 
 Send any PDF on the web or your computer straight to [Phloem](https://houfu72.com/reading.html),
 the free local-first paper reading desk. Right-click a PDF link → **Read link in
@@ -27,7 +27,8 @@ Chrome keeps local files behind a separate user-controlled switch. The first tim
 someone clicks the extension on a `file://` PDF, Phloem checks that switch. If it is
 off, a short instruction page explains how to right-click the extension icon, choose
 **Manage extension**, and enable **Allow access to file URLs**. After that, clicking
-the extension on a local PDF imports it normally. The local filesystem path is not
+the extension on a local PDF imports it normally. The same page also has a **Choose
+PDF** fallback that works without file-URL access. The local filesystem path is not
 passed into Phloem metadata or optional sync.
 
 ## Permissions, honestly

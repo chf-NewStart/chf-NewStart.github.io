@@ -239,15 +239,32 @@ function contentHarness(pending) {
   assert.strictEqual(handoff.state.posted[0].data.type, 'carrel-ext-import');
   handoff.state.windowHandlers.message({
     source: handoff.context.window,
+    data: { type: 'phloem-ext-import-accepted', transferId }
+  });
+  assert.ok(!overlay.removed && handoff.state.timer);
+  handoff.state.windowHandlers.message({
+    source: handoff.context.window,
     data: { type: 'phloem-ext-import-complete', transferId, ok: true }
   });
   assert.ok(overlay.removed);
   assert.strictEqual(handoff.context.importOverlay, null);
   console.log('PASS  import overlay covers the old paper until Phloem acknowledges completion');
 
+  const cachedPage = contentHarness(Object.assign({}, pending, { at: transferId + 1 }));
+  const cachedOverlay = cachedPage.context.importOverlay;
+  cachedPage.state.documentHandlers.DOMContentLoaded();
+  assert.ok(cachedOverlay && !cachedOverlay.removed && cachedPage.state.timer);
+  const compatibilityTimeout = cachedPage.state.timer;
+  compatibilityTimeout();
+  assert.ok(cachedOverlay.removed);
+  assert.strictEqual(cachedPage.context.importOverlay, null);
+  console.log('PASS  an older cached Phloem page releases the import cover without a refresh');
+
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'carrel-extension/manifest.json'), 'utf8'));
   assert.strictEqual(manifest.content_scripts[0].run_at, 'document_start');
-  assert.match(fs.readFileSync(path.join(ROOT, 'reading.js'), 'utf8'), /phloem-ext-import-complete/);
+  const readingSource = fs.readFileSync(path.join(ROOT, 'reading.js'), 'utf8');
+  assert.match(readingSource, /phloem-ext-import-accepted/);
+  assert.match(readingSource, /phloem-ext-import-complete/);
   console.log('PASS  overlay starts before page paint and Phloem sends the completion acknowledgement');
 })().catch(error => {
   console.error('FAIL ', error);

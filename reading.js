@@ -1313,6 +1313,7 @@
     if(magic!=='%PDF-'){finishExtensionImport(false);return;}
     var name=String(e.data.name||'').replace(/[^\w .()\[\]&,'-]+/g,' ').trim().slice(0,140)||'paper.pdf';
     if(!/\.pdf$/i.test(name))name+='.pdf';
+    window.postMessage({type:'phloem-ext-import-accepted',transferId:transferId},location.origin);
     showReaderToast('Adding from your browser…');
     var imported=await importPdf(new File([bytes],name,{type:'application/pdf'}),'',String(e.data.sourceUrl||'').slice(0,600));
     finishExtensionImport(imported);

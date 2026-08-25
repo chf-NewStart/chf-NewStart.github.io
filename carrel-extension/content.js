@@ -34,7 +34,10 @@ function showImporting(p) {
   var name = importOverlay.querySelector('.phloem-import-name');
   if (name) name.textContent = String(p.name || 'Your paper');
   clearTimeout(importOverlayTimer);
-  importOverlayTimer = setTimeout(hideImporting, 90000);
+  /* Older already-open Phloem pages import the PDF but do not know the completion
+     acknowledgement yet. Release their cover after a short compatibility window;
+     current pages extend this timer as soon as they acknowledge receipt below. */
+  importOverlayTimer = setTimeout(hideImporting, 8000);
 }
 
 function hideImporting() {
@@ -85,6 +88,11 @@ chrome.runtime.onMessage.addListener(function (message) {
   chrome.storage.local.get('phloemPending', function (r) { queueDelivery(r && r.phloemPending); });
 });
 window.addEventListener('message', function (event) {
-  if (event.source !== window || !event.data || event.data.type !== 'phloem-ext-import-complete') return;
-  if (!event.data.transferId || event.data.transferId === activeTransfer) hideImporting();
+  if (event.source !== window || !event.data) return;
+  if (event.data.type === 'phloem-ext-import-accepted' && event.data.transferId === activeTransfer) {
+    clearTimeout(importOverlayTimer);
+    importOverlayTimer = setTimeout(hideImporting, 90000);
+    return;
+  }
+  if (event.data.type === 'phloem-ext-import-complete' && (!event.data.transferId || event.data.transferId === activeTransfer)) hideImporting();
 });

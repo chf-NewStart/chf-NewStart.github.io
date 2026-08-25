@@ -33,14 +33,10 @@ function check(name, condition, extra) {
 
   await page.addInitScript(() => {
     const stamp = Date.now();
-    const paper = (id, title, authors, tags, age, category) => {
-      const chapter = { id, kind: 'text', title, authors, tags, fr: 'A short test paper.', notes: {}, pageNotes: {}, questions: [], addedAt: stamp - age, updatedAt: stamp - age, readPage: 1 };
-      if (category !== undefined) chapter.category = category;
-      return chapter;
-    };
+    const paper = (id, title, authors, tags, age) => ({ id, kind: 'text', title, authors, tags, fr: 'A short test paper.', notes: {}, pageNotes: {}, questions: [], addedAt: stamp - age, updatedAt: stamp - age, readPage: 1 });
     localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [
       paper('paper_roots', 'Root architecture under drought', 'Lina Mora', ['Plant physiology'], 0),
-      paper('paper_models', 'Constraint models for carbon allocation', 'Dev Rao', ['Modelling'], 1000, 'Metabolic models'),
+      paper('paper_models', 'Constraint models for carbon allocation', 'Dev Rao', ['Modelling'], 1000),
       paper('paper_field', 'Field observations across seasons', 'Maya Chen', [], 2000),
       paper('paper_microbes', 'Rhizosphere communities and nutrient exchange', 'Owen Bell', ['Microbiome'], 3000)
     ] }));
@@ -59,14 +55,31 @@ function check(name, condition, extra) {
   check('sticky notes return to two per row', firstTwoNotes.length === 2 && Math.abs(firstTwoNotes[0].y - firstTwoNotes[1].y) < 2 && firstTwoNotes[1].x > firstTwoNotes[0].x, JSON.stringify(firstTwoNotes));
   check('sticky notes are compact instead of full-sheet width', firstTwoNotes.every(note => note.width < 230), JSON.stringify(firstTwoNotes));
   check('sticky keeps the handwritten title and author', await page.locator('[data-shelf-paper="paper_models"]').textContent().then(text => text.includes('Constraint models') && text.includes('Dev Rao')));
+  check('sticky title uses the Houfu handwriting face', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('Houfu Hand')));
+  check('category sheet has layered paper edges', await page.locator('.paper-stack-entry').evaluate(element => getComputedStyle(element).boxShadow !== 'none' && getComputedStyle(element).backgroundImage.includes('repeating-linear-gradient')));
 
   await page.locator('[data-shelf-paper="paper_models"]').click({ position: { x: 120, y: 20 } });
   check('clicking a sheet selects it without opening the reader', await page.locator('#libraryPage').evaluate(element => !element.classList.contains('hidden')));
   check('the unchanged right notebook follows the selected paper', await page.locator('.closed-book-title').textContent() === 'Constraint models for carbon allocation');
 
-  check('per-paper category pencils are removed', await page.locator('.paper-category-edit').count() === 0);
-  await page.fill('#librarySearch', 'Constraint models');
-  check('search narrows the shared sheet to the matching sticky', await page.locator('.category-note-grid .paper-sticky-note').count() === 1 && await page.locator('.paper-category-count').textContent() === '1 paper');
+  check('new-category control is available', await page.locator('#newCategoryBtn').count() === 1);
+  page.once('dialog', dialog => dialog.accept('Models'));
+  await page.click('#newCategoryBtn');
+  check('new category is created from the selected sticky', await page.locator('.paper-category-strip').count() === 2 && await page.locator('.paper-stack-entry.is-selected .paper-category-mark').textContent() === 'Models');
+
+  page.once('dialog', dialog => dialog.accept('Metabolic models'));
+  await page.locator('.paper-stack-entry.is-selected .paper-category-edit').click();
+  check('category name can be changed from its paper tab', await page.locator('.paper-stack-entry.is-selected .paper-category-mark').textContent() === 'Metabolic models');
+
+  await page.locator('.paper-stack-entry').filter({ hasText: 'Unsorted' }).locator('.paper-category-open').click();
+  page.once('dialog', dialog => dialog.accept('Metabolic models'));
+  await page.locator('[data-shelf-paper="paper_field"]').locator('xpath=..').locator('.paper-category-move').click();
+  await page.locator('.paper-stack-entry').filter({ hasText: 'Metabolic models' }).locator('.paper-category-open').click();
+  check('sticky can move into another category', await page.locator('.paper-stack-entry.is-selected .paper-sticky-note').count() === 2 && await page.locator('.paper-stack-entry.is-selected .paper-category-count').textContent() === '2 papers');
+  check('category changes persist with papers', await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.filter(ch => ch.category === 'Metabolic models').length === 2));
+
+  await page.fill('#librarySearch', 'Metabolic models');
+  check('search finds papers by category name', await page.locator('.category-note-grid .paper-sticky-note').count() === 2);
   await page.fill('#librarySearch', '');
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -75,6 +88,7 @@ function check(name, condition, extra) {
   const mobileFirstTwo = await page.locator('.category-note-grid .paper-sticky-note').evaluateAll(elements => elements.slice(0, 2).map(element => ({ x: element.getBoundingClientRect().x, y: element.getBoundingClientRect().y, width: element.getBoundingClientRect().width })));
   check('mobile stack stays compact above the notebook', mobile && mobile.height <= 285, mobile && mobile.height);
   check('mobile keeps the requested two-note row', mobileFirstTwo.length === 2 && Math.abs(mobileFirstTwo[0].y - mobileFirstTwo[1].y) < 2 && mobileFirstTwo[1].x > mobileFirstTwo[0].x, JSON.stringify(mobileFirstTwo));
+  check('move-category control stays visible without hover on mobile', await page.locator('.paper-stack-entry.is-selected .paper-category-move').first().evaluate(element => Number(getComputedStyle(element).opacity) > 0.6));
   check('paper stack has no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

@@ -569,7 +569,12 @@
   }
 
   /* library */
-  function paperHaystack(ch){ return [ch.title,ch.authors,(ch.tags||[]).join(' '),ch.sourceName,ch.sourceUrl].join(' ').toLowerCase(); }
+  function shelfPaperCategory(ch){return String(ch.category||'').trim()||'Unsorted';}
+  function categoryLabel(value){value=String(value||'').trim().replace(/\s+/g,' ').slice(0,48);return value||'Unsorted';}
+  function setShelfPaperCategory(ch,value){var label=categoryLabel(value);if(label.toLowerCase()==='unsorted')delete ch.category;else ch.category=label;ch.updatedAt=now();return label;}
+  function shelfCategoryNames(){var names=[],seen={};state.chapters.forEach(function(ch){var label=shelfPaperCategory(ch),key=label.toLowerCase();if(!seen[key]){seen[key]=true;names.push(label);}});return names;}
+  function chooseShelfCategory(ch,promptLead){var names=shelfCategoryNames(),answer=prompt(promptLead+'\n\nExisting: '+names.join(', ')+'\nType an existing or new category name.',shelfPaperCategory(ch));if(answer===null)return false;setShelfPaperCategory(ch,answer);persist();return true;}
+  function paperHaystack(ch){ return [ch.title,ch.authors,shelfPaperCategory(ch),(ch.tags||[]).join(' '),ch.sourceName,ch.sourceUrl].join(' ').toLowerCase(); }
   function connectionsReady(){
     var seen={},linked=false;
     state.chapters.forEach(function(c){(c.tags||[]).forEach(function(t){t=String(t).toLowerCase().trim();if(!t)return;if(seen[t])linked=true;seen[t]=true;});});
@@ -659,19 +664,29 @@
     if(!list.length){shelf.innerHTML='<div class="shelf-empty"><div><b>'+(state.chapters.length?'No paper found':'Your shelf is waiting')+'</b>'+(state.chapters.length?'Try another title, author, or tag.':'Paste a PDF link, drop in a file, or connect a private GitHub folder to place the first book.')+'</div></div>';return;}
     if(!librarySelectionId||!list.some(function(ch){return ch.id===librarySelectionId;}))librarySelectionId=list[0].id;
     var selected=list.find(function(ch){return ch.id===librarySelectionId;})||list[0],stats=shelfPaperStats(selected);
-    var caseEl=document.createElement('section');caseEl.className='bookcase';caseEl.setAttribute('aria-label','Paper stack');caseEl.innerHTML='<div class="pile-head"><strong>Paper stack</strong><span>One category for now</span></div>';
+    var caseEl=document.createElement('section');caseEl.className='bookcase';caseEl.setAttribute('aria-label','Paper stack');caseEl.innerHTML='<div class="pile-head"><strong>Paper stack</strong><button class="paper-category-add" id="newCategoryBtn" type="button" title="Create a category from the selected paper">＋ Category</button></div>';
     var pile=document.createElement('div');pile.className='book-pile';
-    var entry=document.createElement('section'),categoryStrip=document.createElement('div'),noteGrid=document.createElement('div');entry.className='paper-stack-entry is-selected';entry.setAttribute('aria-label','Unsorted papers');categoryStrip.className='paper-category-strip';categoryStrip.innerHTML='<span class="paper-category-caption">Category</span><span class="paper-category-mark">Unsorted</span><span class="paper-category-count">'+list.length+' '+(list.length===1?'paper':'papers')+'</span>';noteGrid.className='category-note-grid';
-    list.forEach(function(ch,idx){
-      var book=document.createElement('button'),isSelected=ch.id===selected.id,visualHash=paperVisualHash(ch),spine=WALL_NOTES[(visualHash>>>1)%WALL_NOTES.length];
-      book.type='button';book.className='book-spine paper-sticky-note'+(isSelected?' is-selected':'');book.dataset.shelfPaper=ch.id;book.setAttribute('aria-pressed',isSelected?'true':'false');book.setAttribute('aria-label',(isSelected?'Open paper: ':'Preview paper: ')+(ch.title||'Untitled'));
-      var spineTitle=String(ch.title||'Untitled'),spineLength=spineTitle.length,noteFont=spineLength>112?'.92rem':(spineLength>82?'.98rem':(spineLength>54?'1.04rem':'1.12rem'));
-      book.title=spineTitle+' — '+(ch.authors||ch.sourceName||'Phloem');book.style.setProperty('--note-font',noteFont);book.style.setProperty('--note-paper',spine.cover);book.style.setProperty('--note-ink',spine.ink);book.style.setProperty('--note-tilt',((((visualHash>>>20)%9)-4)*.18)+'deg');book.style.setProperty('--tape-tilt',((((visualHash>>>27)%11)-5)*.45)+'deg');
-      book.innerHTML='<span class="book-title">'+esc(spineTitle)+'</span><span class="book-author">'+esc(shelfSpineCredit(ch))+'</span>';
-      book.onclick=function(e){if(ch.id===librarySelectionId){openReader(ch.id);return;}var oldTop=pile.scrollTop,oldLeft=pile.scrollLeft,fromKeyboard=e.detail===0;librarySelectionId=ch.id;renderShelf();var nextPile=byId('shelf').querySelector('.book-pile');if(nextPile){nextPile.scrollTop=oldTop;nextPile.scrollLeft=oldLeft;}if(fromKeyboard)setTimeout(function(){focusShelfBook(ch.id);},0);};
-      noteGrid.appendChild(book);
+    var grouped=[],groupMap={};list.forEach(function(ch){var label=shelfPaperCategory(ch),key=label.toLowerCase();if(!groupMap[key]){groupMap[key]={label:label,papers:[]};grouped.push(groupMap[key]);}groupMap[key].papers.push(ch);});
+    var selectedCategory=shelfPaperCategory(selected).toLowerCase();
+    grouped.forEach(function(group,groupIndex){
+      var entry=document.createElement('section'),categoryStrip=document.createElement('div'),categoryOpen=document.createElement('button'),categoryEdit=document.createElement('button'),noteGrid=document.createElement('div'),isOpen=group.label.toLowerCase()===selectedCategory,categoryHash=0;
+      for(var c=0;c<group.label.length;c++)categoryHash=(categoryHash*33+group.label.charCodeAt(c))>>>0;
+      entry.className='paper-stack-entry'+(isOpen?' is-selected':'');entry.setAttribute('aria-label',group.label+' papers');entry.style.setProperty('--sheet-tilt',((((categoryHash>>>4)%7)-3)*.12)+'deg');
+      categoryStrip.className='paper-category-strip';categoryOpen.type='button';categoryOpen.className='paper-category-open';categoryOpen.setAttribute('aria-expanded',isOpen?'true':'false');categoryOpen.innerHTML='<span class="paper-category-caption">Category</span><span class="paper-category-mark">'+esc(group.label)+'</span><span class="paper-category-count">'+group.papers.length+' '+(group.papers.length===1?'paper':'papers')+'</span>';categoryOpen.onclick=function(){if(!isOpen){librarySelectionId=group.papers[0].id;renderShelf();}};
+      categoryEdit.type='button';categoryEdit.className='paper-category-edit';categoryEdit.textContent='✎';categoryEdit.title='Rename '+group.label;categoryEdit.setAttribute('aria-label','Rename category '+group.label);categoryEdit.onclick=function(){var answer=prompt('Rename category “'+group.label+'”',group.label);if(answer===null)return;var next=categoryLabel(answer),stamp=now();state.chapters.forEach(function(ch){if(shelfPaperCategory(ch).toLowerCase()===group.label.toLowerCase()){setShelfPaperCategory(ch,next);ch.updatedAt=stamp;}});persist();renderShelf();};categoryStrip.appendChild(categoryOpen);categoryStrip.appendChild(categoryEdit);
+      noteGrid.className='category-note-grid';
+      group.papers.forEach(function(ch){
+        var wrap=document.createElement('div'),book=document.createElement('button'),move=document.createElement('button'),isSelected=ch.id===selected.id,visualHash=paperVisualHash(ch),spine=WALL_NOTES[(visualHash>>>1)%WALL_NOTES.length];
+        wrap.className='paper-sticky-wrap';book.type='button';book.className='book-spine paper-sticky-note'+(isSelected?' is-selected':'');book.dataset.shelfPaper=ch.id;book.setAttribute('aria-pressed',isSelected?'true':'false');book.setAttribute('aria-label',(isSelected?'Open paper: ':'Preview paper: ')+(ch.title||'Untitled'));
+        var spineTitle=String(ch.title||'Untitled'),spineLength=spineTitle.length,noteFont=spineLength>112?'.98rem':(spineLength>82?'1.02rem':(spineLength>54?'1.08rem':'1.18rem'));
+        book.title=spineTitle+' — '+(ch.authors||ch.sourceName||'Phloem');book.style.setProperty('--note-font',noteFont);book.style.setProperty('--note-paper',spine.cover);book.style.setProperty('--note-ink',spine.ink);book.style.setProperty('--note-tilt',((((visualHash>>>20)%9)-4)*.18)+'deg');book.style.setProperty('--tape-tilt',((((visualHash>>>27)%11)-5)*.45)+'deg');
+        book.innerHTML='<span class="book-title">'+esc(spineTitle)+'</span><span class="book-author">'+esc(shelfSpineCredit(ch))+'</span>';
+        book.onclick=function(e){if(ch.id===librarySelectionId){openReader(ch.id);return;}var oldTop=pile.scrollTop,oldLeft=pile.scrollLeft,fromKeyboard=e.detail===0;librarySelectionId=ch.id;renderShelf();var nextPile=byId('shelf').querySelector('.book-pile');if(nextPile){nextPile.scrollTop=oldTop;nextPile.scrollLeft=oldLeft;}if(fromKeyboard)setTimeout(function(){focusShelfBook(ch.id);},0);};
+        move.type='button';move.className='paper-category-move';move.textContent='↗';move.title='Move to another category';move.setAttribute('aria-label','Move '+spineTitle+' to another category');move.onclick=function(){if(chooseShelfCategory(ch,'Move “'+spineTitle+'” to a category.'))renderShelf();};wrap.appendChild(book);wrap.appendChild(move);noteGrid.appendChild(wrap);
+      });
+      entry.appendChild(categoryStrip);entry.appendChild(noteGrid);pile.appendChild(entry);
     });
-    entry.appendChild(categoryStrip);entry.appendChild(noteGrid);pile.appendChild(entry);
+    caseEl.querySelector('#newCategoryBtn').onclick=function(){var answer=prompt('Create a category from the selected paper.',shelfPaperCategory(selected)==='Unsorted'?'':shelfPaperCategory(selected));if(answer===null||!String(answer).trim())return;setShelfPaperCategory(selected,answer);persist();renderShelf();};
     caseEl.appendChild(pile);shelf.appendChild(caseEl);shelf.appendChild(renderOpenPaper(selected,stats,BOOK_SPINES[paperVisualHash(selected)%BOOK_SPINES.length]));
   }
   byId('librarySearch').oninput = renderShelf;

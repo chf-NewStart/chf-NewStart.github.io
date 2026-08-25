@@ -14,8 +14,9 @@ device setup link even when GitHub sync is not configured.
 card: no immediate AI shortcut, automatic highlight support for a note, and an
 AI thread that appears only after the note contains text.
 
-`reading-library-stack.test.js` covers the library's single shared category
-sheet: the two-column title/author sticky grid, selection, search, and mobile fit.
+`reading-library-stack.test.js` covers the layered category sheets: the
+two-column handwritten sticky grid, category creation/renaming, moving papers,
+selection, search, and mobile fit.
 
 `reading-pdf-zoom.test.js` covers the one-time migration from the legacy 50%
 initial PDF scale to Fit while preserving deliberate per-paper zoom choices.

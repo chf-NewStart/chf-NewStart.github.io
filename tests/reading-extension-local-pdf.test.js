@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PDF_BYTES = new TextEncoder().encode('%PDF-1.4\nPhloem local PDF test').buffer;
 
 function backgroundHarness(options = {}) {
-  const state = { actionHandler: null, createdTabs: [], pending: null, notices: [], optionsOpened: 0, fetches: [] };
+  const state = { actionHandler: null, createdTabs: [], pending: null, notices: [], optionsOpened: 0, fetches: [], messages: [], reloadedTabs: [], updatedTabs: [], focusedWindows: [] };
   const chrome = {
     runtime: {
       onInstalled: { addListener() {} },
@@ -20,11 +20,16 @@ function backgroundHarness(options = {}) {
     extension: { isAllowedFileSchemeAccess: async () => options.fileAllowed !== false },
     storage: { local: { set: async value => { state.pending = value.phloemPending; } } },
     tabs: {
-      query: async () => [],
+      query: async () => options.tabs || [],
       create: async value => { state.createdTabs.push(value); },
-      update: async () => {}
+      sendMessage: async (id, message) => {
+        state.messages.push({ id, message });
+        if (options.sendMessageFails) throw new Error('Receiving end does not exist.');
+      },
+      reload: async id => { state.reloadedTabs.push(id); },
+      update: async (id, value) => { state.updatedTabs.push({ id, value }); }
     },
-    windows: { update: async () => {} }
+    windows: { update: async (id, value) => { state.focusedWindows.push({ id, value }); } }
   };
   const context = {
     chrome,
@@ -49,8 +54,8 @@ function backgroundHarness(options = {}) {
   return { context, state };
 }
 
-function optionsHarness() {
-  const state = { pending: null, createdTabs: [] };
+function optionsHarness(options = {}) {
+  const state = { pending: null, createdTabs: [], messages: [], reloadedTabs: [], updatedTabs: [] };
   const elements = {};
   ['fileStatus', 'checkAgain', 'localPdf', 'importStatus'].forEach(id => {
     elements[id] = {
@@ -67,9 +72,14 @@ function optionsHarness() {
       extension: { isAllowedFileSchemeAccess: async () => true },
       storage: { local: { set: async value => { state.pending = value.phloemPending; } } },
       tabs: {
-        query: async () => [],
+        query: async () => options.tabs || [],
         create: async value => { state.createdTabs.push(value); },
-        update: async () => {}
+        sendMessage: async (id, message) => {
+          state.messages.push({ id, message });
+          if (options.sendMessageFails) throw new Error('Receiving end does not exist.');
+        },
+        reload: async id => { state.reloadedTabs.push(id); },
+        update: async (id, value) => { state.updatedTabs.push({ id, value }); }
       },
       windows: { update: async () => {} }
     },
@@ -121,6 +131,17 @@ function optionsHarness() {
   assert.match(web.state.notices[0].message, /404/);
   console.log('PASS  network PDFs still require a successful HTTP response');
 
+  const stale = backgroundHarness({
+    tabs: [{ id: 77, windowId: 9 }],
+    sendMessageFails: true
+  });
+  assert.strictEqual(await stale.context.importFromUrl('file:///Users/chf/Downloads/science.ado8575.pdf'), true);
+  assert.deepStrictEqual(stale.state.reloadedTabs, [77]);
+  assert.strictEqual(stale.state.createdTabs.length, 0);
+  assert.strictEqual(stale.state.updatedTabs[0].id, 77);
+  assert.strictEqual(stale.state.focusedWindows[0].id, 9);
+  console.log('PASS  a stale existing Phloem tab reloads before receiving the PDF');
+
   const picker = optionsHarness();
   const file = { name: 'science.ado8575.pdf', size: PDF_BYTES.byteLength, arrayBuffer: async () => PDF_BYTES };
   assert.strictEqual(await picker.context.importLocalPdf(file), true);
@@ -130,6 +151,17 @@ function optionsHarness() {
   assert.strictEqual(picker.state.createdTabs.length, 1);
   assert.strictEqual(picker.state.createdTabs[0].url, 'https://houfu72.com/reading.html');
   console.log('PASS  direct file picker transfers a local PDF without file-URL access');
+
+  const stalePicker = optionsHarness({ tabs: [{ id: 88, windowId: 10 }], sendMessageFails: true });
+  assert.strictEqual(await stalePicker.context.importLocalPdf(file), true);
+  assert.deepStrictEqual(stalePicker.state.reloadedTabs, [88]);
+  assert.strictEqual(stalePicker.state.createdTabs.length, 0);
+  assert.strictEqual(stalePicker.state.updatedTabs[0].id, 88);
+  console.log('PASS  direct picker reloads a stale existing Phloem receiver');
+
+  const contentSource = fs.readFileSync(path.join(ROOT, 'carrel-extension/content.js'), 'utf8');
+  assert.match(contentSource, /phloem-deliver-pending/);
+  console.log('PASS  Phloem content script exposes the pending-PDF receiver ping');
 })().catch(error => {
   console.error('FAIL ', error);
   process.exit(1);

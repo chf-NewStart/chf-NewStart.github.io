@@ -44,6 +44,11 @@ async function revealPhloem() {
   try {
     var tabs = await chrome.tabs.query({ url: PHLOEM + '*' });
     if (tabs.length) {
+      try {
+        await chrome.tabs.sendMessage(tabs[0].id, { type: 'phloem-deliver-pending' });
+      } catch (e) {
+        await chrome.tabs.reload(tabs[0].id);
+      }
       await chrome.tabs.update(tabs[0].id, { active: true });
       await chrome.windows.update(tabs[0].windowId, { focused: true });
       return;

@@ -26,3 +26,7 @@ chrome.storage.local.get('phloemPending', function (r) { deliver(r && r.phloemPe
 chrome.storage.onChanged.addListener(function (changes, area) {
   if (area === 'local' && changes.phloemPending && changes.phloemPending.newValue) deliver(changes.phloemPending.newValue);
 });
+chrome.runtime.onMessage.addListener(function (message) {
+  if (!message || message.type !== 'phloem-deliver-pending') return;
+  chrome.storage.local.get('phloemPending', function (r) { deliver(r && r.phloemPending); });
+});

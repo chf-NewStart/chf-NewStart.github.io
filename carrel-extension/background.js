@@ -85,6 +85,25 @@ async function explainLocalFileAccess() {
   await openLocalPdfHelp();
 }
 
+async function activatePhloemWithPendingPdf() {
+  var tabs = await chrome.tabs.query({ url: PHLOEM + '*' });
+  if (!tabs.length) {
+    await chrome.tabs.create({ url: PHLOEM });
+    return;
+  }
+  var target = tabs[0];
+  try {
+    /* A tab opened before this extension was installed/reloaded has no current
+       content script. Ping the receiver; if it is missing, reload once so Chrome
+       attaches the current script, which picks up phloemPending on startup. */
+    await chrome.tabs.sendMessage(target.id, { type: 'phloem-deliver-pending' });
+  } catch (e) {
+    await chrome.tabs.reload(target.id);
+  }
+  await chrome.tabs.update(target.id, { active: true });
+  await chrome.windows.update(target.windowId, { focused: true });
+}
+
 async function importFromUrl(url) {
   /* The Chrome PDF viewer sometimes wraps the real URL; unwrap web and local shapes. */
   var real = unwrapPdfUrl(url), local = /^file:/i.test(real);
@@ -123,13 +142,7 @@ async function importFromUrl(url) {
       /* Never pass a local filesystem path into Phloem metadata or optional sync. */
       phloemPending: { name: pdfName(real, res.headers.get('content-disposition')), sourceUrl: local ? '' : real, at: Date.now(), b64: chunks }
     });
-    var tabs = await chrome.tabs.query({ url: PHLOEM + '*' });
-    if (tabs.length) {
-      chrome.tabs.update(tabs[0].id, { active: true });
-      chrome.windows.update(tabs[0].windowId, { focused: true });
-    } else {
-      chrome.tabs.create({ url: PHLOEM });
-    }
+    await activatePhloemWithPendingPdf();
     chrome.action.setBadgeText({ text: '' });
     return true;
   } catch (e) {

@@ -149,6 +149,8 @@ function check(name, condition, extra) {
     });
     check('Vertical book defaults to a calmer one-page view', await page.locator('[data-vertical-pages="one"]').getAttribute('aria-pressed') === 'true' && (await page.locator('#pageNumber').textContent()).startsWith('20 /'), JSON.stringify(comfortPage));
     check('the comfort page is cropped and centered with breathing room', comfortPage.leftSpace > comfortPage.paneWidth * .12 && comfortPage.rightSpace > comfortPage.paneWidth * .12 && comfortPage.topSpace >= 16 && comfortPage.bottomSpace >= 16, JSON.stringify(comfortPage));
+    const onePagePaper = await page.locator('.pdf-page.book-active').evaluate(paper => ({ background: getComputedStyle(paper).backgroundColor, wash: getComputedStyle(paper, '::after').backgroundColor, isolation: getComputedStyle(paper).isolation, blend: getComputedStyle(paper.querySelector('canvas')).mixBlendMode }));
+    check('one-page cream is blended within its paper leaf', onePagePaper.isolation === 'isolate' && onePagePaper.blend === 'multiply' && onePagePaper.wash.endsWith('0.06)'), JSON.stringify(onePagePaper));
     const comfortZoom = parseInt(await page.locator('#zoomLabel').textContent(), 10);
     await page.click('#zoomIn');
     await page.waitForFunction(before => parseInt(document.getElementById('zoomLabel').textContent, 10) > before && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 1, comfortZoom);
@@ -184,6 +186,9 @@ function check(name, condition, extra) {
     });
     check('a normal laptop pane shows the requested right-to-left two-page spread', spread.count === 2 && (await page.locator('#pageNumber').textContent()).includes('20–21'), JSON.stringify(spread));
     check('the spread cuts scan margins without crowding the viewport', spread.cropRatios.some(ratio => ratio < .8) && spread.width > spread.paneWidth * .48 && spread.height > spread.paneHeight * .68 && spread.topSpace >= 20 && spread.bottomSpace >= 20 && spread.gutter >= 20, JSON.stringify(spread));
+    const spreadPaper = await page.locator('.pdf-page.book-active').evaluateAll(pages => pages.map(paper => ({ background: getComputedStyle(paper).backgroundColor, wash: getComputedStyle(paper, '::after').backgroundColor, isolation: getComputedStyle(paper).isolation, blend: getComputedStyle(paper.querySelector('canvas')).mixBlendMode })));
+    check('both spread leaves retain an equally visible cream treatment', spreadPaper.length === 2 && spreadPaper.every(style => style.background === onePagePaper.background && style.isolation === 'isolate' && style.blend === 'multiply' && style.wash.endsWith('0.12)')), JSON.stringify(spreadPaper));
+    if (process.env.PHLOEM_VERTICAL_BOOK_SPREAD_SCREENSHOT) await page.screenshot({ path: process.env.PHLOEM_VERTICAL_BOOK_SPREAD_SCREENSHOT });
     await page.click('#nextPage');
     await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('22–23 /'));
     check('one page turn advances the whole two-page spread', true);

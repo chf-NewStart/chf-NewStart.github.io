@@ -499,7 +499,9 @@
     html[data-theme="dark"] .document-pane { background: #111516; }
     /* Pages stack in one continuous vertical scroll, like paper on a desk. */
     .pdf-frame { width: max-content; min-width: 100%; min-height: 100%; margin: 0 auto; padding: 16px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-    .pdf-page { position: relative; flex: 0 0 auto; background: white; box-shadow: 0 10px 45px rgba(0,0,0,.18); }
+    /* Keep canvas color blending inside each physical leaf. Without isolation, the two
+       canvases in a spread can multiply against the gray desk and lose their cream tone. */
+    .pdf-page { position: relative; isolation: isolate; flex: 0 0 auto; background: white; box-shadow: 0 10px 45px rgba(0,0,0,.18); }
     .pdf-sheet { position: absolute; inset: 0 auto auto 0; transform-origin: top left; }
     .pdf-page.book-cropped { overflow: hidden; }
     .pdf-page canvas { display: block; height: auto; background: white; }
@@ -539,6 +541,10 @@
     /* Soft paper: neutral off-white rather than the old yellow/sepia tint. */
     .pdf-frame.cream:not(.dark-paper) .pdf-page { background: #f4f2ec; }
     .pdf-frame.cream:not(.dark-paper) .pdf-page canvas { mix-blend-mode: multiply; filter: saturate(.96) contrast(1.01); }
+    .pdf-frame.cream:not(.dark-paper) .pdf-page::after { content: ""; position: absolute; z-index: 3; inset: 0; pointer-events: none; background: rgba(207,188,142,.06); mix-blend-mode: multiply; }
+    /* Two smaller leaves read as brighter against the desk, so give the spread just
+       enough extra paper wash to retain the same perceived warmth as one large leaf. */
+    .pdf-frame.cream.column-book-spread:not(.dark-paper) .pdf-page::after { background: rgba(207,188,142,.12); }
     /* In dark mode, cream becomes warm dark paper: the same inversion, minus the blue cast. */
     .pdf-frame.cream.dark-paper .pdf-page { background: #1d1813; }
     .pdf-frame.cream.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.9) sepia(.28); }

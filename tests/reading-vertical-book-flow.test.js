@@ -138,6 +138,24 @@ function check(name, condition, extra) {
     });
     check('the vertical guide begins over the book text rather than its outer margin', Math.abs(guidePosition.center - guidePosition.inkRight) < .12, JSON.stringify(guidePosition));
     await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('column-book-comfort') && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 1);
+    await page.waitForFunction(() => {
+      const pane = document.getElementById('documentPane').getBoundingClientRect(), paper = document.querySelector('.pdf-page.book-active').getBoundingClientRect();
+      return paper.left - pane.left > pane.width * .12 && pane.right - paper.right > pane.width * .12 && paper.top - pane.top >= 16 && pane.bottom - paper.bottom >= 16;
+    });
+    const comfortPage = await page.locator('#documentPane').evaluate(pane => {
+      const paneRect = pane.getBoundingClientRect(), paper = document.querySelector('.pdf-page.book-active').getBoundingClientRect();
+      return { width: paper.width, height: paper.height, paneWidth: paneRect.width, paneHeight: paneRect.height, leftSpace: paper.left - paneRect.left, rightSpace: paneRect.right - paper.right, topSpace: paper.top - paneRect.top, bottomSpace: paneRect.bottom - paper.bottom };
+    });
+    check('Vertical book defaults to a calmer one-page view', await page.locator('[data-vertical-pages="one"]').getAttribute('aria-pressed') === 'true' && (await page.locator('#pageNumber').textContent()).startsWith('20 /'), JSON.stringify(comfortPage));
+    check('the comfort page is cropped and centered with breathing room', comfortPage.leftSpace > comfortPage.paneWidth * .12 && comfortPage.rightSpace > comfortPage.paneWidth * .12 && comfortPage.topSpace >= 16 && comfortPage.bottomSpace >= 16, JSON.stringify(comfortPage));
+    const comfortZoom = parseInt(await page.locator('#zoomLabel').textContent(), 10);
+    await page.click('#zoomIn');
+    await page.waitForFunction(before => parseInt(document.getElementById('zoomLabel').textContent, 10) > before && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 1, comfortZoom);
+    check('manual zoom stays available when one page needs larger type', parseInt(await page.locator('#zoomLabel').textContent(), 10) > comfortZoom, await page.locator('#zoomLabel').textContent());
+    await page.click('#colZoomBtn');
+    await page.waitForFunction(before => parseInt(document.getElementById('zoomLabel').textContent, 10) <= before, comfortZoom);
+    await page.click('button[data-vertical-pages="two"]');
     await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('column-book-spread') && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 2);
     await page.waitForFunction(() => {
       const pane = document.getElementById('documentPane').getBoundingClientRect();
@@ -156,19 +174,23 @@ function check(name, condition, extra) {
         height: Math.max(...rects.map(rect => rect.height)),
         paneWidth: paneRect.width,
         paneHeight: paneRect.height,
+        topSpace: Math.min(...rects.map(rect => rect.top)) - paneRect.top,
+        bottomSpace: paneRect.bottom - Math.max(...rects.map(rect => rect.bottom)),
+        gutter: Math.max(...rects.map(rect => rect.left)) - Math.min(...rects.map(rect => rect.right)),
         cropRatios: pages.map(page => page.offsetWidth / page.querySelector('.pdf-sheet').offsetWidth)
       };
     });
     check('wide screens show a right-to-left two-page spread', spread.count === 2 && (await page.locator('#pageNumber').textContent()).includes('20–21'), JSON.stringify(spread));
-    check('the spread cuts scan margins and fills the reading area', spread.cropRatios.some(ratio => ratio < .8) && spread.width > spread.paneWidth * .48 && spread.height > spread.paneHeight * .72, JSON.stringify(spread));
+    check('the spread cuts scan margins without crowding the viewport', spread.cropRatios.some(ratio => ratio < .8) && spread.width > spread.paneWidth * .48 && spread.height > spread.paneHeight * .68 && spread.topSpace >= 20 && spread.bottomSpace >= 20 && spread.gutter >= 20, JSON.stringify(spread));
     await page.click('#nextPage');
     await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('22–23 /'));
     check('one page turn advances the whole two-page spread', true);
     if (process.env.PHLOEM_VERTICAL_BOOK_SCREENSHOT) {
       if (await page.locator('#focusBtn').getAttribute('aria-pressed') === 'true') await page.click('#focusBtn');
+      await page.click('button[data-vertical-pages="one"]');
       if (await page.locator('#comfortBtn').getAttribute('aria-expanded') === 'true') await page.click('#comfortBtn');
       await page.click('#notebookTuck');
-      await page.waitForFunction(() => document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 2);
+      await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('column-book-comfort') && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 1);
       await page.waitForTimeout(500);
       await page.screenshot({ path: process.env.PHLOEM_VERTICAL_BOOK_SCREENSHOT });
     }

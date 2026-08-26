@@ -474,6 +474,7 @@
     .comfort-guide .comfort-section-body { flex-wrap: wrap; }
     .comfort-pdf { flex: 0 0 auto; }
     .comfort-bar:not(.pdf-mode) .pdf-only { display: none !important; }
+    .vertical-pages-group[hidden] { display: none !important; }
     .comfort-motion { flex: 0 1 auto; }
     .comfort-reset { align-self: center; margin-left: auto; }
     .comfort-bar .group { display: flex; align-items: center; gap: 7px; }
@@ -509,7 +510,7 @@
     .pdf-frame.column-book-flow { min-width: 100%; min-height: 100%; padding: 10px; display: grid; grid-template-columns: max-content; place-content: center; gap: 0; perspective: 1500px; }
     .pdf-frame.column-book-flow .pdf-page { display: none; grid-area: 1 / 1; transform-origin: center right; }
     .pdf-frame.column-book-flow .pdf-page:is(.book-active, .book-turning) { display: block; }
-    .pdf-frame.column-book-flow.column-book-spread { grid-template-columns: max-content max-content; gap: clamp(8px, 1vw, 18px); }
+    .pdf-frame.column-book-flow.column-book-spread { grid-template-columns: max-content max-content; gap: clamp(24px, 2.4vw, 40px); }
     .pdf-frame.column-book-flow.column-book-spread .pdf-page.book-spread-left { grid-area: 1 / 1; transform-origin: center right; }
     .pdf-frame.column-book-flow.column-book-spread .pdf-page.book-spread-right { grid-area: 1 / 2; transform-origin: center left; }
     .pdf-frame.column-book-spread.spread-turning { animation: spreadLeafIn .2s ease-out both; }

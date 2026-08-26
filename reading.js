@@ -249,6 +249,7 @@
   /* Selection stays a small, local decision: define, highlight, or write a note.
      AI becomes available inside that note only after the reader has written one. */
   function hideSelectionCard(){
+    hideLookup();
     selectionAnchor=null;activeCardRef=null;selectionNoteTarget=null;var card=byId('selectionCard');card.classList.add('hidden');card.classList.remove('ai-open','note-open');
     byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
   }
@@ -284,7 +285,7 @@
     byId('selectionCard').classList.remove('ai-open','note-open');byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
     byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionAiNoteText').textContent='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
     var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';
-    var words=selection.text.trim().split(/\s+/).length;byId('selectionSecondary').classList.toggle('hidden',selection.text.length>140||words>14);
+    byId('selectionSecondary').classList.remove('hidden');
     byId('selectionAddNote').textContent='Add note';setSelectionAction('');byId('selectionCard').classList.remove('hidden');placeSelectionCard(rect);
   }
   function openSelectionInAi(){
@@ -298,10 +299,11 @@
 
   /* A selection stays on the paper while this small, source-labelled reference card
      looks up an encyclopedic definition and a freely hosted image. */
-  function hideLookup(){clearTimeout(lookupTimer);lookupSerial++;lookupAnchor=null;byId('lookupCard').classList.add('hidden');}
+  function hideLookup(){clearTimeout(lookupTimer);lookupSerial++;lookupAnchor=null;byId('lookupCard').classList.add('hidden');byId('selectionCard').classList.remove('lookup-open');placeSelectionCard();}
   function placeLookupCard(rect){
     if(rect)lookupAnchor={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
     var card=byId('lookupCard');if(!lookupAnchor||card.classList.contains('hidden'))return;
+    if(card.parentElement===byId('selectionCard')){byId('selectionCard').classList.add('lookup-open');placeSelectionCard();return;}
     if(innerWidth<=720){card.style.left='';card.style.top='';return;}
     requestAnimationFrame(function(){
       if(card.classList.contains('hidden')||!lookupAnchor)return;
@@ -2800,8 +2802,9 @@
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
+    if(e.key==='Escape'&&!byId('lookupCard').classList.contains('hidden')){e.preventDefault();hideLookup();return;}
     if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
-    if(e.key==='Escape'&&(!byId('lookupCard').classList.contains('hidden')||highlightMode)){e.preventDefault();hideLookup();if(highlightMode){clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');}return;}
+    if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
     if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
     if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undoHighlight();return;}
@@ -3262,7 +3265,7 @@
   }
   byId('selectionClose').onclick=function(){clearPendingSelection();};
   byId('selectionExplain').onclick=function(){
-    var selection=pendingSelection||lastAskSelection,rect=selectionAnchor;if(!selection)return;hideSelectionCard();clearPendingSelection(true);queueLookup(selection.text,rect,selection,0);
+    var selection=pendingSelection||lastAskSelection,rect=selectionAnchor;if(!selection)return;queueLookup(selection.text,rect,selection,0);
   };
   byId('selectionHighlight').onclick=function(){setSelectionAction('selectionHighlight');commitPendingHighlight();};
   byId('selectionAddNote').onclick=function(){
@@ -3365,8 +3368,8 @@
     hideLookup();hideSelectionCard();activeCardRef=ref;
     var selection=ref.kind==='pdf'?{kind:'pdf',page:+ref.page||currentPage,text:rec.text||'',rects:rec.rects||[]}:{kind:ref.kind,para:+rec.para||0,start:+rec.start||0,end:+rec.end||0,text:rec.text||''};
     lastAskSelection=selection;selectionNoteTarget={kind:ref.kind,page:ref.page,id:ref.id,item:rec,selection:selection};pendingSelection=null;byId('highlightBtn').classList.remove('ready');
-    var card=byId('selectionCard'),words=selection.text.trim().split(/\s+/).length;card.classList.remove('ai-open');card.classList.add('note-open');byId('selectionAiBox').classList.add('hidden');byId('selectionContext').classList.add('hidden');byId('selectionEyebrow').textContent=rec.note?'Note on highlight':'Saved highlight';byId('selectionExcerpt').textContent='“'+selection.text+'”';
-    byId('selectionSecondary').classList.toggle('hidden',selection.text.length>140||words>14);byId('selectionSavedTools').classList.remove('hidden');byId('selectionNoteBox').classList.remove('hidden');byId('selectionNote').value=rec.note||'';byId('selectionNoteStatus').textContent=rec.note?'Saved with this highlight':'Add a note if you want to remember why it matters';
+    var card=byId('selectionCard');card.classList.remove('ai-open');card.classList.add('note-open');byId('selectionAiBox').classList.add('hidden');byId('selectionContext').classList.add('hidden');byId('selectionEyebrow').textContent=rec.note?'Note on highlight':'Saved highlight';byId('selectionExcerpt').textContent='“'+selection.text+'”';
+    byId('selectionSecondary').classList.remove('hidden');byId('selectionSavedTools').classList.remove('hidden');byId('selectionNoteBox').classList.remove('hidden');byId('selectionNote').value=rec.note||'';byId('selectionNoteStatus').textContent=rec.note?'Saved with this highlight':'Add a note if you want to remember why it matters';
     byId('selectionHighlight').disabled=true;byId('selectionHighlight').textContent='Highlighted ✓';byId('selectionAddNote').textContent='Note';setSelectionAction('selectionHighlight');refreshSelectionNoteThread();
     document.querySelectorAll('[data-card-color]').forEach(function(b){b.classList.toggle('selected',b.dataset.cardColor===(rec.color||'yellow'));});
     card.classList.remove('hidden');placeSelectionCard(anchor||{left:innerWidth/2,right:innerWidth/2,top:innerHeight/2,bottom:innerHeight/2});

@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=45">
+  <link rel="stylesheet" href="/reading.css?v=46">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -353,19 +353,19 @@
           <div class="selection-ai-row"><textarea id="selectionAiQuestion" rows="1" placeholder="Ask about this note and passage…" title="Enter sends · Shift+Enter for a new line"></textarea><button class="button" id="selectionAiSend" type="button">Ask</button></div>
           <span class="selection-ai-status" id="selectionAiStatus" role="status"></span>
         </div>
-      </aside>
-      <aside class="lookup-card hidden" id="lookupCard" aria-label="Definition for selected text">
-        <div class="lookup-head">
-          <div><span class="lookup-eyebrow">Selected term</span><span class="lookup-selection" id="lookupSelection"></span></div>
-          <button class="lookup-close" id="lookupClose" type="button" aria-label="Close definition">×</button>
-        </div>
-        <a class="lookup-photo-link hidden" id="lookupPhotoLink" href="#" target="_blank" rel="noopener noreferrer"><img class="lookup-photo" id="lookupPhoto" alt="" decoding="async"></a>
-        <div class="lookup-body">
-          <h3 id="lookupTitle">Looking up…</h3>
-          <span class="lookup-source hidden" id="lookupSource"></span>
-          <p class="lookup-definition loading" id="lookupDefinition" role="status" aria-live="polite">Finding a useful explanation and image.</p>
-          <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up AI →</button></div>
-        </div>
+        <aside class="lookup-card hidden" id="lookupCard" aria-label="Definition for selected text">
+          <div class="lookup-head">
+            <div><span class="lookup-eyebrow">Definition for selection</span><span class="lookup-selection" id="lookupSelection"></span></div>
+            <button class="lookup-close" id="lookupClose" type="button" aria-label="Close definition">×</button>
+          </div>
+          <a class="lookup-photo-link hidden" id="lookupPhotoLink" href="#" target="_blank" rel="noopener noreferrer"><img class="lookup-photo" id="lookupPhoto" alt="" decoding="async"></a>
+          <div class="lookup-body">
+            <h3 id="lookupTitle">Looking up…</h3>
+            <span class="lookup-source hidden" id="lookupSource"></span>
+            <p class="lookup-definition loading" id="lookupDefinition" role="status" aria-live="polite">Finding a useful explanation and image.</p>
+            <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up AI →</button></div>
+          </div>
+        </aside>
       </aside>
       <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading">✕</button>
       <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-pressed="false" aria-label="Toggle the reading guide" title="Reading guide (G)">▰</button>
@@ -559,9 +559,9 @@
       if(!hadController||reloading)return;
       reloading=true;location.reload();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=45',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=46',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=45" defer></script>
+<script src="/reading.js?v=46" defer></script>
 </body>
 </html>

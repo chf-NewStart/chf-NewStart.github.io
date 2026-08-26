@@ -105,11 +105,22 @@ function check(name, condition, extra) {
   check('selection card has no Ask AI shortcut', await page.locator('#selectionAsk').count() === 0);
   check('selection card offers two primary actions', await page.locator('#selectionCard .selection-action').count() === 2);
   check('selection card stays compact', await page.locator('#selectionCard').evaluate(element => element.getBoundingClientRect().width <= 362));
+  check('selected text still offers Define', await page.locator('#selectionExplain').isVisible());
   check('AI thread is hidden before a note exists', !(await page.locator('#selectionNoteAi').isVisible()));
+
+  await page.click('#selectionExplain');
+  await page.waitForFunction(() => !document.getElementById('lookupCard').classList.contains('hidden'));
+  check('definition opens inside the selection workspace', await page.locator('#lookupCard').evaluate(element => element.parentElement.id === 'selectionCard'));
+  check('selected passage remains visible while defining', await page.locator('#selectionCard').isVisible() && (await page.locator('#selectionExcerpt').textContent()).length > 4);
+  check('the selected words remain visibly selected on the paper', await page.evaluate(() => window.getSelection().toString().trim().length > 0));
+  check('highlight and note actions remain available while defining', await page.locator('#selectionHighlight').isVisible() && await page.locator('#selectionAddNote').isVisible());
+  await page.click('#lookupClose');
+  check('closing the definition keeps the selected passage open', await page.locator('#selectionCard').isVisible());
 
   await page.click('#selectionAddNote');
   check('note action becomes the note workspace', await page.locator('#selectionCard').evaluate(element => element.classList.contains('note-open')));
   check('note action creates the supporting highlight', await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].textHighlights.length === 1));
+  check('a saved highlight still offers Define', await page.locator('#selectionExplain').isVisible());
   check('AI thread stays hidden for an empty note', !(await page.locator('#selectionNoteAi').isVisible()));
 
   await page.fill('#selectionNote', 'This is the bridge between the data sources.');

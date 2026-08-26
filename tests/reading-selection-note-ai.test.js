@@ -57,6 +57,37 @@ function check(name, condition, extra) {
   await page.evaluate(() => localStorage.setItem('readingRoom.guideAdjustSeen.v1', '1'));
   await page.click('#focusBtn');
   check('main half toggles the whole guide control on', await page.locator('#guideTool').evaluate(element => element.classList.contains('active')) && await page.locator('#focusBtn').getAttribute('aria-pressed') === 'true');
+  await page.click('#comfortBtn');
+  await page.click('button[data-guide-orientation="column"]');
+  await page.waitForFunction(() => {
+    const overlay = document.getElementById('paneSpotlight');
+    const band = document.getElementById('guideBand');
+    return overlay.classList.contains('placed') && band.getBoundingClientRect().width < overlay.getBoundingClientRect().width * .2;
+  });
+  check('guide offers a vertical column flow', await page.locator('#paneSpotlight').getAttribute('data-guide-orientation') === 'column' && await page.locator('button[data-guide-orientation="column"]').getAttribute('aria-pressed') === 'true');
+  check('column flow explains its right-to-left order', (await page.locator('button[data-guide-orientation="column"]').getAttribute('title')).includes('right to left'));
+  check('row-only span control leaves the column UI', await page.locator('#guideSpanGroup').evaluate(element => element.hidden) && await page.locator('#guideSizeLabel').textContent() === 'Width');
+  const verticalGuide = await page.locator('#guideBand').evaluate((band) => {
+    const guide = band.getBoundingClientRect();
+    const pane = document.getElementById('paneSpotlight').getBoundingClientRect();
+    return { tall: guide.height > pane.height * .65, narrow: guide.width < pane.width * .18, center: (guide.left + guide.width / 2 - pane.left) / pane.width };
+  });
+  check('column guide is tall and narrow', verticalGuide.tall && verticalGuide.narrow, JSON.stringify(verticalGuide));
+  check('column guide begins on the right side', verticalGuide.center > .55, verticalGuide.center.toFixed(2));
+  await page.locator('#documentPane').evaluate((pane) => {
+    const overlay = document.getElementById('paneSpotlight').getBoundingClientRect();
+    pane.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse', clientX: overlay.left + overlay.width * .3, clientY: overlay.top + overlay.height * .45 }));
+  });
+  await page.waitForTimeout(140);
+  const movedCenter = await page.locator('#guideBand').evaluate((band) => {
+    const guide = band.getBoundingClientRect();
+    const pane = document.getElementById('paneSpotlight').getBoundingClientRect();
+    return (guide.left + guide.width / 2 - pane.left) / pane.width;
+  });
+  check('column guide follows horizontal pointer movement', movedCenter < verticalGuide.center - .1, movedCenter.toFixed(2));
+  await page.click('button[data-guide-orientation="row"]');
+  check('legacy comfort settings default to row flow', await page.locator('#paneSpotlight').getAttribute('data-guide-orientation') === 'row');
+  await page.click('#comfortBtn');
   await page.click('#focusBtn');
   await page.evaluate(() => {
     const paragraph = document.querySelector('#textDocument .original');

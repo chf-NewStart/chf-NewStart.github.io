@@ -532,9 +532,9 @@
     .text-layer :is(span, br) { position: absolute; color: transparent; white-space: pre; cursor: text; transform-origin: 0 0; }
     .text-layer span.markedContent { top: 0; height: 0; }
     .text-layer ::selection, .original ::selection { background: rgba(64, 137, 174, .34); }
-    /* A translucent reading ruler that follows the pointer (or the ⠿ handle / last tap)
-       and stops at the active PDF column. It stays hidden until it has a real position,
-       while the dimness control fades the paper outside the band. */
+    /* A translucent reading ruler that follows the pointer (or the ⠿ handle / last tap).
+       Row flow follows one horizontal passage; column flow follows one top-to-bottom
+       column for traditional right-to-left books. */
     .pane-spotlight { position: absolute; z-index: 6; inset: 0 var(--notebook-width, 360px) 0 0; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity .2s ease; }
     .pane-spotlight.on.placed { opacity: 1; }
     .guide-band { position: absolute; left: var(--guide-x, 12%); top: var(--guide-y, 34%); width: var(--guide-w, 38%); height: var(--guide-h, 118px); border-radius: 7px; pointer-events: none;
@@ -542,20 +542,25 @@
       box-shadow: inset 0 1px rgba(204,158,66,.52), inset 0 -1px rgba(142,103,36,.36), 0 0 0 1px rgba(187,143,61,.1); transition: left .08s linear, top .08s linear, width .12s ease, height .12s ease; }
     .pane-spotlight[data-guide-color="green"] .guide-band { background: linear-gradient(90deg, rgba(78,164,91,.13), rgba(96,188,111,.27) 12%, rgba(96,188,111,.27) 88%, rgba(78,164,91,.13)); box-shadow: inset 0 1px rgba(91,174,101,.5), inset 0 -1px rgba(43,125,57,.36), 0 0 0 1px rgba(78,164,91,.1); }
     .pane-spotlight[data-guide-color="blue"] .guide-band { background: linear-gradient(90deg, rgba(67,145,177,.13), rgba(83,166,199,.27) 12%, rgba(83,166,199,.27) 88%, rgba(67,145,177,.13)); box-shadow: inset 0 1px rgba(78,154,184,.5), inset 0 -1px rgba(41,113,143,.36), 0 0 0 1px rgba(67,145,177,.1); }
+    .pane-spotlight[data-guide-orientation="column"] .guide-band { background: linear-gradient(180deg, rgba(187,143,61,.1), rgba(214,171,88,.22) 10%, rgba(214,171,88,.22) 90%, rgba(187,143,61,.1)); box-shadow: inset 1px 0 rgba(204,158,66,.52), inset -1px 0 rgba(142,103,36,.36), 0 0 0 1px rgba(187,143,61,.1); }
+    .pane-spotlight[data-guide-orientation="column"][data-guide-color="green"] .guide-band { background: linear-gradient(180deg, rgba(78,164,91,.13), rgba(96,188,111,.27) 10%, rgba(96,188,111,.27) 90%, rgba(78,164,91,.13)); box-shadow: inset 1px 0 rgba(91,174,101,.5), inset -1px 0 rgba(43,125,57,.36), 0 0 0 1px rgba(78,164,91,.1); }
+    .pane-spotlight[data-guide-orientation="column"][data-guide-color="blue"] .guide-band { background: linear-gradient(180deg, rgba(67,145,177,.13), rgba(83,166,199,.27) 10%, rgba(83,166,199,.27) 90%, rgba(67,145,177,.13)); box-shadow: inset 1px 0 rgba(78,154,184,.5), inset -1px 0 rgba(41,113,143,.36), 0 0 0 1px rgba(67,145,177,.1); }
     /* The paper outside the focused line always recedes behind a translucent wash. */
-    .guide-shade { position: absolute; left: 0; right: 0; background: var(--paper); opacity: 0; transition: opacity .2s ease, top .08s linear, height .08s linear; pointer-events: none; }
+    .guide-shade { position: absolute; left: 0; right: 0; background: var(--paper); opacity: 0; transition: opacity .2s ease, left .08s linear, top .08s linear, width .08s linear, height .08s linear; pointer-events: none; }
     .pane-spotlight .guide-shade { opacity: var(--guide-dim-opacity, .55); }
     .guide-shade-top { top: 0; height: var(--guide-y, 34%); }
     .guide-shade-bottom { top: calc(var(--guide-y, 34%) + var(--guide-h, 118px)); bottom: 0; }
     /* Side wings at band height, so in Column scope the other column dims too. */
     .guide-shade-left { top: var(--guide-y, 34%); height: var(--guide-h, 118px); right: auto; width: var(--guide-x, 12%); }
     .guide-shade-right { top: var(--guide-y, 34%); height: var(--guide-h, 118px); left: calc(var(--guide-x, 12%) + var(--guide-w, 38%)); }
+    .comfort-guide #guideSpanGroup[hidden] { display: none !important; }
     /* The grip only takes touches while the guide is actually visible — otherwise an
        invisible circle would sit mid-page eating taps and swipes. */
     .guide-grip { position: absolute; right: 8px; top: 50%; width: 42px; height: 42px; margin-top: -21px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--muted); font-size: .85rem; box-shadow: 0 4px 14px rgba(0,0,0,.16); pointer-events: none; touch-action: none; cursor: grab; transition: transform .15s ease; }
     .pane-spotlight.on.placed .guide-grip { pointer-events: auto; }
     .guide-grip::before { content: ""; position: absolute; inset: -14px; border-radius: 50%; }
     .guide-grip:active { cursor: grabbing; }
+    .pane-spotlight[data-guide-orientation="column"] .guide-grip { left: 50%; right: auto; top: 8px; margin: 0 0 0 -21px; }
     /* While the handle is held, the band tracks the finger 1:1 with no easing lag. */
     .pane-spotlight.dragging :is(.guide-band, .guide-shade) { transition: none; }
     .pane-spotlight.locked .guide-band::after { content: ""; position: absolute; right: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--accent); opacity: .55; }
@@ -565,6 +570,9 @@
     html[data-theme="dark"] .guide-band { background: linear-gradient(90deg, rgba(190,150,43,.08), rgba(220,177,58,.19) 12%, rgba(220,177,58,.19) 88%, rgba(190,150,43,.08)); box-shadow: inset 0 1px rgba(244,210,111,.34), inset 0 -1px rgba(137,98,19,.38), 0 0 0 1px rgba(220,177,58,.08); }
     html[data-theme="dark"] .pane-spotlight[data-guide-color="green"] .guide-band { background: linear-gradient(90deg, rgba(62,145,87,.08), rgba(78,171,102,.19) 12%, rgba(78,171,102,.19) 88%, rgba(62,145,87,.08)); box-shadow: inset 0 1px rgba(135,211,151,.32), inset 0 -1px rgba(31,104,52,.38), 0 0 0 1px rgba(78,171,102,.08); }
     html[data-theme="dark"] .pane-spotlight[data-guide-color="blue"] .guide-band { background: linear-gradient(90deg, rgba(58,137,167,.08), rgba(77,163,194,.2) 12%, rgba(77,163,194,.2) 88%, rgba(58,137,167,.08)); box-shadow: inset 0 1px rgba(139,207,228,.32), inset 0 -1px rgba(32,102,130,.4), 0 0 0 1px rgba(77,163,194,.08); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="column"] .guide-band { background: linear-gradient(180deg, rgba(190,150,43,.08), rgba(220,177,58,.19) 10%, rgba(220,177,58,.19) 90%, rgba(190,150,43,.08)); box-shadow: inset 1px 0 rgba(244,210,111,.34), inset -1px 0 rgba(137,98,19,.38), 0 0 0 1px rgba(220,177,58,.08); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="column"][data-guide-color="green"] .guide-band { background: linear-gradient(180deg, rgba(62,145,87,.08), rgba(78,171,102,.19) 10%, rgba(78,171,102,.19) 90%, rgba(62,145,87,.08)); box-shadow: inset 1px 0 rgba(135,211,151,.32), inset -1px 0 rgba(31,104,52,.38), 0 0 0 1px rgba(78,171,102,.08); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="column"][data-guide-color="blue"] .guide-band { background: linear-gradient(180deg, rgba(58,137,167,.08), rgba(77,163,194,.2) 10%, rgba(77,163,194,.2) 90%, rgba(58,137,167,.08)); box-shadow: inset 1px 0 rgba(139,207,228,.32), inset -1px 0 rgba(32,102,130,.4), 0 0 0 1px rgba(77,163,194,.08); }
     .recall-shield { position: absolute; z-index: 7; inset: 0 var(--notebook-width, 360px) 0 0; display: grid; place-items: center; padding: 28px; background: color-mix(in srgb, var(--paper) 94%, var(--yellow)); color: var(--ink); text-align: center; }
     .recall-shield.hidden { display: none; }
     .recall-shield div { width: min(430px, 90%); }

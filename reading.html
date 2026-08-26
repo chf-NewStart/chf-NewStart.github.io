@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=31">
+  <link rel="stylesheet" href="/reading.css?v=32">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -166,18 +166,24 @@
         <div class="comfort-section comfort-guide" aria-label="Guide settings">
           <span class="comfort-section-title">Guide</span>
           <div class="comfort-section-body">
+            <div class="group"><span class="group-label">Flow</span>
+              <div class="guide-scope" role="group" aria-label="Reading guide direction">
+                <button class="toggle" type="button" data-guide-orientation="row" aria-pressed="true">Rows</button>
+                <button class="toggle" type="button" data-guide-orientation="column" aria-pressed="false" title="Top to bottom, then right to left">Columns</button>
+              </div>
+            </div>
             <div class="group guide-dim-control" id="guideDimGroup"><span class="group-label">Dimness</span>
               <input class="drift-range" id="guideDimRange" type="range" min="20" max="85" step="5" value="55" aria-label="Dimness outside the focused lines">
               <span class="value" id="guideDimValue">55%</span>
             </div>
-            <div class="group"><span class="group-label">Width</span>
+            <div class="group" id="guideSpanGroup"><span class="group-label">Span</span>
               <div class="guide-scope" role="group" aria-label="Reading guide width">
-                <button class="toggle" type="button" data-guide-scope="column" aria-pressed="false">Column</button>
+                <button class="toggle" type="button" data-guide-scope="column" aria-pressed="false">Half page</button>
                 <button class="toggle" type="button" data-guide-scope="page" aria-pressed="true">Full page</button>
               </div>
             </div>
-            <div class="group"><span class="group-label">Height</span>
-              <div class="guide-scope" role="group" aria-label="Reading guide height">
+            <div class="group"><span class="group-label" id="guideSizeLabel">Height</span>
+              <div class="guide-scope" id="guideSizeGroup" role="group" aria-label="Reading guide height">
                 <button class="toggle" type="button" data-guide-size="s" aria-pressed="false">S</button>
                 <button class="toggle" type="button" data-guide-size="m" aria-pressed="true">M</button>
                 <button class="toggle" type="button" data-guide-size="l" aria-pressed="false">L</button>
@@ -504,9 +510,9 @@
       if(!hadController||reloading)return;
       reloading=true;location.reload();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=31',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=32',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=31" defer></script>
+<script src="/reading.js?v=32" defer></script>
 </body>
 </html>

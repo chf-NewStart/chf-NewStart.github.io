@@ -1387,16 +1387,18 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
-  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideScope:'page',guideSize:'m',guideDim:55,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
+  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideOrientation:'row',guideScope:'page',guideSize:'m',guideDim:55,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
   var comfort=Object.assign({},DEFAULT_COMFORT);
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
   comfort.leading=Math.max(1.2,Math.min(2.6,+comfort.leading||1.7));
   if(['yellow','green','blue'].indexOf(comfort.guide)<0)comfort.guide='yellow';
+  if(['row','column'].indexOf(comfort.guideOrientation)<0)comfort.guideOrientation='row';
   if(['column','page'].indexOf(comfort.guideScope)<0)comfort.guideScope='page';
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   comfort.guideDim=Math.max(20,Math.min(85,+comfort.guideDim||55));
+  comfort.guideX=Math.max(.05,Math.min(.95,+comfort.guideX||.72));
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
   if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone=DEFAULT_COMFORT.tone;
   comfort.driftSpeed=Math.max(.5,Math.min(60,+comfort.driftSpeed||4));
@@ -1421,11 +1423,17 @@
     byId('guideDimRange').value=String(comfort.guideDim);byId('guideDimValue').textContent=comfort.guideDim+'%';
     byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');document.body.classList.toggle('cream-tone',comfort.tone==='cream');
     byId('creamBtn').setAttribute('aria-pressed',String(comfort.tone==='cream'));
-    byId('paneSpotlight').dataset.guideColor=comfort.guide;
-    byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));
+    var guideOverlay=byId('paneSpotlight');
+    guideOverlay.dataset.guideColor=comfort.guide;
+    guideOverlay.dataset.guideOrientation=comfort.guideOrientation;
+    guideOverlay.style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));
     document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
+    document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideOrientation===comfort.guideOrientation));});
     document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideScope===comfort.guideScope));});
     document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideSize===comfort.guideSize));});
+    byId('guideSpanGroup').hidden=comfort.guideOrientation==='column';
+    byId('guideSizeLabel').textContent=comfort.guideOrientation==='column'?'Width':'Height';
+    byId('guideSizeGroup').setAttribute('aria-label','Reading guide '+(comfort.guideOrientation==='column'?'width':'height'));
     applyFocus();
     try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}
   }
@@ -1441,8 +1449,9 @@
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
   byId('creamBtn').onclick=function(){comfort.tone=comfort.tone==='cream'?'white':'cream';applyComfort();showReaderToast(comfort.tone==='cream'?'Cream paper · easier on the eyes':'White paper');};
   document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideColor.charAt(0).toUpperCase()+btn.dataset.guideColor.slice(1)+' reading guide');};});
+  document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.onclick=function(){comfort.guideOrientation=btn.dataset.guideOrientation;comfort.focus=true;guideOffset=null;applyComfort();placeGuide();showReaderToast(comfort.guideOrientation==='column'?'Column guide · top to bottom, then right to left':'Row guide · left to right');};});
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
-  document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide height · '+btn.dataset.guideSize.toUpperCase());};});
+  document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide '+(comfort.guideOrientation==='column'?'width':'height')+' · '+btn.dataset.guideSize.toUpperCase());};});
   byId('guideDimRange').oninput=function(){comfort.guideDim=Math.max(20,Math.min(85,+this.value||55));byId('guideDimValue').textContent=comfort.guideDim+'%';byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();};
   byId('comfortReset').onclick=function(){Object.assign(comfort,DEFAULT_COMFORT);if(driftSpeed)driftSpeed=DEFAULT_COMFORT.driftSpeed;applyComfort();showReaderToast('Reading settings reset · cream paper · guide off');};
   function setComfortBarOpen(open){var bar=byId('comfortBar'),btn=byId('comfortBtn');bar.classList.toggle('hidden',!open);byId('guideTool').classList.toggle('settings-open',open);btn.setAttribute('aria-expanded',String(open));}
@@ -1474,23 +1483,37 @@
     if(!surfaceRect||!surfaceRect.width)return false;
     var paneRect=byId('documentPane').getBoundingClientRect();
     if(paneRect.width)guideOffset={x:clientX-paneRect.left,y:clientY-paneRect.top};
-    var left=surfaceRect.left,right=surfaceRect.right;
-    var leftHalf=false;
-    if(readerMode==='pdf'&&comfort.guideScope==='column'){
-      var middle=surfaceRect.left+surfaceRect.width/2;
-      if(clientX<middle){right=middle;leftHalf=true;}else left=middle;
-    }
-    overlay.classList.toggle('guide-left',leftHalf);
-    left=Math.max(rect.left,left);right=Math.min(rect.right,right);
     var sizeFactor=comfort.guideSize==='s'?.62:comfort.guideSize==='l'?1.6:1;
-    var guideHeight=Math.round((innerWidth<=720?Math.max(76,Math.min(108,rect.height*.13)):Math.max(96,Math.min(142,rect.height*.15)))*sizeFactor);
-    var guideTop=Math.max(8,Math.min(rect.height-guideHeight-8,clientY-rect.top-guideHeight/2));
-    overlay.style.setProperty('--guide-x',Math.round(left-rect.left)+'px');
-    overlay.style.setProperty('--guide-y',Math.round(guideTop)+'px');
-    overlay.style.setProperty('--guide-w',Math.max(0,Math.round(right-left))+'px');
-    overlay.style.setProperty('--guide-h',guideHeight+'px');
+    if(comfort.guideOrientation==='column'){
+      var visibleLeft=Math.max(rect.left,surfaceRect.left),visibleRight=Math.min(rect.right,surfaceRect.right);
+      var visibleTop=Math.max(rect.top,surfaceRect.top),visibleBottom=Math.min(rect.bottom,surfaceRect.bottom);
+      if(visibleRight<=visibleLeft||visibleBottom<=visibleTop)return false;
+      var guideWidth=Math.round(Math.max(44,Math.min(76,surfaceRect.width*.065))*sizeFactor);
+      guideWidth=Math.min(guideWidth,Math.max(24,visibleRight-visibleLeft-8));
+      var guideLeft=Math.max(visibleLeft-rect.left+4,Math.min(visibleRight-rect.left-guideWidth-4,clientX-rect.left-guideWidth/2));
+      overlay.classList.remove('guide-left');
+      overlay.style.setProperty('--guide-x',Math.round(guideLeft)+'px');
+      overlay.style.setProperty('--guide-y',Math.round(visibleTop-rect.top)+'px');
+      overlay.style.setProperty('--guide-w',guideWidth+'px');
+      overlay.style.setProperty('--guide-h',Math.max(0,Math.round(visibleBottom-visibleTop))+'px');
+      comfort.guideX=Math.max(.05,Math.min(.95,(clientX-rect.left)/Math.max(1,rect.width)));
+    }else{
+      var left=surfaceRect.left,right=surfaceRect.right,leftHalf=false;
+      if(readerMode==='pdf'&&comfort.guideScope==='column'){
+        var middle=surfaceRect.left+surfaceRect.width/2;
+        if(clientX<middle){right=middle;leftHalf=true;}else left=middle;
+      }
+      overlay.classList.toggle('guide-left',leftHalf);
+      left=Math.max(rect.left,left);right=Math.min(rect.right,right);
+      var guideHeight=Math.round((innerWidth<=720?Math.max(76,Math.min(108,rect.height*.13)):Math.max(96,Math.min(142,rect.height*.15)))*sizeFactor);
+      var guideTop=Math.max(8,Math.min(rect.height-guideHeight-8,clientY-rect.top-guideHeight/2));
+      overlay.style.setProperty('--guide-x',Math.round(left-rect.left)+'px');
+      overlay.style.setProperty('--guide-y',Math.round(guideTop)+'px');
+      overlay.style.setProperty('--guide-w',Math.max(0,Math.round(right-left))+'px');
+      overlay.style.setProperty('--guide-h',guideHeight+'px');
+      comfort.guideY=Math.max(.05,Math.min(.95,(clientY-rect.top)/Math.max(1,rect.height)));
+    }
     overlay.classList.add('placed');
-    comfort.guideY=Math.max(.05,Math.min(.95,(clientY-rect.top)/Math.max(1,rect.height)));
     saveComfortSoon();
     return true;
   }
@@ -1500,7 +1523,7 @@
     if(!comfort.focus||byId('readerPage').classList.contains('hidden'))return;
     var rect=byId('documentPane').getBoundingClientRect();
     if(!rect.width||!rect.height)return;
-    var x=guideOffset?rect.left+guideOffset.x:rect.left+rect.width/2,y=guideOffset?rect.top+guideOffset.y:rect.top+rect.height*(comfort.guideY||.38);
+    var x=guideOffset?rect.left+guideOffset.x:rect.left+rect.width*(comfort.guideOrientation==='column'?(comfort.guideX||.72):.5),y=guideOffset?rect.top+guideOffset.y:rect.top+rect.height*(comfort.guideY||.38);
     x=Math.max(rect.left+6,Math.min(rect.right-6,x));y=Math.max(rect.top+16,Math.min(rect.bottom-30,y));
     setReadingGuide(x,y,document.elementFromPoint(x,y));
   }
@@ -1539,7 +1562,7 @@
       if(!comfort.guideLock)setReadingGuide(lockX,lockY,lockTarget);
       byId('paneSpotlight').classList.toggle('locked',comfort.guideLock);
       saveComfortSoon();
-      showReaderToast(comfort.guideLock?'Guide pinned to this line · click the paper to release':'Guide follows your pointer');
+      showReaderToast(comfort.guideLock?'Guide pinned to this '+(comfort.guideOrientation==='column'?'column':'line')+' · click the paper to release':'Guide follows your pointer');
     },260);
   });
   /* A wordless double-click anywhere on the paper flips the guide between full-page
@@ -1550,7 +1573,7 @@
     clearTimeout(guideLockClickTimer);
     var selection=window.getSelection&&window.getSelection();
     if(selection&&!selection.isCollapsed)return;
-    if(comfort.focus&&!e.shiftKey){
+    if(comfort.focus&&!e.shiftKey&&comfort.guideOrientation==='row'){
       comfort.guideScope=comfort.guideScope==='page'?'column':'page';
       applyComfort();
       setReadingGuide(e.clientX,e.clientY,e.target);
@@ -1620,6 +1643,10 @@
   /* Keyboard scope control: place the guide as full-page or hugging one column,
      keeping its current line. */
   function placeGuideScoped(scope,half){
+    if(comfort.guideOrientation==='column'){
+      comfort.focus=true;comfort.guideX=half==='left'?.28:.72;guideOffset=null;applyComfort();placeGuide();
+      return;
+    }
     comfort.focus=true;comfort.guideScope=scope;applyComfort();
     var overlay=byId('paneSpotlight'),rect=byId('documentPane').getBoundingClientRect();
     if(!rect.width)return;
@@ -2462,9 +2489,9 @@
     else if(e.key==='ArrowUp'){e.preventDefault();pane.scrollBy({top:-74});}
     else if(e.key==='PageDown'||(e.key===' '&&e.shiftKey)){e.preventDefault();pane.scrollBy({top:pane.clientHeight*.85,behavior:'smooth'});}
     else if(e.key==='PageUp'){e.preventDefault();pane.scrollBy({top:-pane.clientHeight*.85,behavior:'smooth'});}
-    else if(e.shiftKey&&e.key==='ArrowLeft'){e.preventDefault();placeGuideScoped('column','left');showReaderToast('Guide hugs the left column · Shift+Enter for full page');}
-    else if(e.shiftKey&&e.key==='ArrowRight'){e.preventDefault();placeGuideScoped('column','right');showReaderToast('Guide hugs the right column · Shift+Enter for full page');}
-    else if(e.shiftKey&&e.key==='Enter'){e.preventDefault();placeGuideScoped('page');showReaderToast('Guide spans the full page');}
+    else if(e.shiftKey&&e.key==='ArrowLeft'){e.preventDefault();placeGuideScoped('column','left');showReaderToast(comfort.guideOrientation==='column'?'Column guide moved left':'Guide hugs the left half · Shift+Enter for full page');}
+    else if(e.shiftKey&&e.key==='ArrowRight'){e.preventDefault();placeGuideScoped('column','right');showReaderToast(comfort.guideOrientation==='column'?'Column guide moved right':'Guide hugs the right half · Shift+Enter for full page');}
+    else if(e.shiftKey&&e.key==='Enter'){e.preventDefault();placeGuideScoped('page');showReaderToast(comfort.guideOrientation==='column'?'Column guide returned to the right':'Guide spans the full page');}
     else if(e.key==='ArrowRight'){e.preventDefault();byId('nextPage').click();}
     else if(e.key==='ArrowLeft'){e.preventDefault();byId('prevPage').click();}
   });

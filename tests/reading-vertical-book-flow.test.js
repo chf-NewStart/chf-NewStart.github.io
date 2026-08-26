@@ -73,6 +73,25 @@ function check(name, condition, extra) {
   await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('3 /'));
   check('swiping a leaf right turns forward like a bound book', true);
 
+  await page.waitForFunction(() => document.querySelectorAll('.pdf-page.book-turning').length === 0);
+  const paneBox = await page.locator('#documentPane').boundingBox();
+  const canvasBox = await page.locator('.pdf-page.book-active canvas').boundingBox();
+  const dragX = Math.max(paneBox.x + 28, Math.min(paneBox.x + paneBox.width - 132, canvasBox.x + canvasBox.width * .42));
+  const dragY = Math.max(paneBox.y + 45, Math.min(paneBox.y + paneBox.height - 45, canvasBox.y + canvasBox.height * .46));
+  await page.mouse.move(dragX, dragY);
+  await page.mouse.down();
+  await page.mouse.move(dragX + 105, dragY + 3, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('4 /'));
+  check('dragging a leaf right with a mouse turns forward', true);
+
+  await page.waitForFunction(() => document.querySelectorAll('.pdf-page.book-turning').length === 0);
+  await page.locator('#documentPane').evaluate(pane => {
+    pane.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: 90, deltaY: 0, deltaMode: 0 }));
+  });
+  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('3 /'));
+  check('a horizontal trackpad gesture turns back without skipping leaves', true);
+
   await page.click('#mMore');
   await page.click('#comfortBtn');
   await page.click('button[data-guide-orientation="row"]');

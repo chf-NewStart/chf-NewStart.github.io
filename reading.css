@@ -500,6 +500,8 @@
     .pdf-frame.column-book-flow { min-width: 100%; min-height: 100%; padding: 10px; display: grid; grid-template-columns: max-content; place-content: center; gap: 0; perspective: 1500px; }
     .pdf-frame.column-book-flow .pdf-page { display: none; grid-area: 1 / 1; transform-origin: center right; }
     .pdf-frame.column-book-flow .pdf-page:is(.book-active, .book-turning) { display: block; }
+    .pdf-frame.column-book-flow .pdf-page canvas { cursor: grab; }
+    .document-pane.column-book-flow.turning-book-leaf, .document-pane.column-book-flow.turning-book-leaf .pdf-page canvas { cursor: grabbing; }
     .pdf-frame.column-book-flow .pdf-page.book-out-next { z-index: 2; animation: bookOutNext .25s cubic-bezier(.4,0,.2,1) both; }
     .pdf-frame.column-book-flow .pdf-page.book-in-next { z-index: 1; animation: bookInNext .25s cubic-bezier(.2,.7,.2,1) both; }
     .pdf-frame.column-book-flow .pdf-page.book-out-prev { z-index: 2; animation: bookOutPrev .25s cubic-bezier(.4,0,.2,1) both; }

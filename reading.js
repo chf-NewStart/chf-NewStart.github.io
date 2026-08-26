@@ -1550,6 +1550,7 @@
     if(!comfort.focus||comfort.guideLock||e.pointerType==='touch')return;setReadingGuide(e.clientX,e.clientY,e.target);
   });
   byId('documentPane').addEventListener('click',function(e){
+    if(Date.now()<columnBookSuppressClickUntil){e.preventDefault();e.stopImmediatePropagation();return;}
     if(!comfort.focus)return;
     var selection=window.getSelection&&window.getSelection();if(selection&&!selection.isCollapsed)return;
     if(!matchMedia('(hover: hover)').matches){setReadingGuide(e.clientX,e.clientY,e.target);return;}
@@ -2145,7 +2146,7 @@
   /* iPads sit past the 720px phone cutoffs but share Safari's tight canvas memory
      ceiling; coarse-pointer is the honest signal for "this is glass, budget like it". */
   var coarsePointer=matchMedia('(pointer: coarse)');
-  var columnBookTurning=false,columnBookQueuedTarget=0,columnBookFits=true,columnBookMinLeft=0,columnBookMaxLeft=0,columnBookAutoZoomed=false,columnBookFitToken='';
+  var columnBookTurning=false,columnBookQueuedTarget=0,columnBookFits=true,columnBookMinLeft=0,columnBookMaxLeft=0,columnBookAutoZoomed=false,columnBookFitToken='',columnBookSuppressClickUntil=0;
   function columnBookFlow(){return readerMode==='pdf'&&comfort.guideOrientation==='column';}
   function syncColumnBookPages(){
     if(!pdfViews)return;
@@ -2463,13 +2464,33 @@
   byId('zoomIn').onclick=function(){setZoom(currentZoom()*1.2);};
   byId('colZoomBtn').onclick=function(){cycleColumnZoom();};
   byId('zoomLabel').onclick=function(){setZoom(1);};
-  byId('documentPane').addEventListener('wheel',function(e){if(readerMode==='pdf'&&(e.ctrlKey||e.metaKey)){e.preventDefault();setZoom(currentZoom()*(e.deltaY<0?1.12:1/1.12),e.clientX,e.clientY);}},{passive:false});
+  /* A trackpad's horizontal gesture is the desktop equivalent of sliding a book leaf.
+     On enlarged scans it first travels across the columns, then turns only after the
+     reader reaches an edge. One quiet pause arms the next leaf so inertial wheel events
+     cannot accidentally skip several pages. */
+  var columnBookWheelSum=0,columnBookWheelTimer=null,columnBookWheelConsumed=false;
+  byId('documentPane').addEventListener('wheel',function(e){
+    if(readerMode!=='pdf')return;
+    if(e.ctrlKey||e.metaKey){e.preventDefault();setZoom(currentZoom()*(e.deltaY<0?1.12:1/1.12),e.clientX,e.clientY);return;}
+    if(!columnBookFlow()||Math.abs(e.deltaX)<12||Math.abs(e.deltaX)<=Math.abs(e.deltaY)*1.12)return;
+    var pane=byId('documentPane'),forward=e.deltaX<0;
+    var atTurnEdge=columnBookFits||(forward?pane.scrollLeft<=columnBookMinLeft+3:pane.scrollLeft>=columnBookMaxLeft-3);
+    clearTimeout(columnBookWheelTimer);
+    columnBookWheelTimer=setTimeout(function(){columnBookWheelSum=0;columnBookWheelConsumed=false;},210);
+    if(!atTurnEdge||columnBookWheelConsumed)return;
+    e.preventDefault();
+    if(columnBookWheelSum&&Math.sign(columnBookWheelSum)!==Math.sign(e.deltaX))columnBookWheelSum=0;
+    columnBookWheelSum+=e.deltaX;
+    if(Math.abs(columnBookWheelSum)<72)return;
+    columnBookWheelConsumed=true;columnBookWheelSum=0;
+    turnColumnBookPage(currentPage+(forward?1:-1));
+  },{passive:false});
   /* Touch: pinch anywhere on the paper for a live preview that follows both fingers —
      spread and travel — then a crisp re-render lands under them without a snap-back;
      double-tap hops between Fit and 160%. */
   (function(){
     var pane=byId('documentPane'),frame=byId('pdfFrame');
-    var pinch=null,tapStart=null,lastTapAt=0,lastTapX=0,lastTapY=0,bookSwipe=null;
+    var pinch=null,tapStart=null,lastTapAt=0,lastTapX=0,lastTapY=0,bookSwipe=null,pointerBookSwipe=null;
     /* When the page is zoomed (horizontal overflow exists), one-finger panning is taken
        over completely: native iOS panning keeps applying its own sideways delta while the
        finger is down, so correcting it after the fact can never win. The custom pan moves
@@ -2490,6 +2511,33 @@
     function startPan(t,ts){return {lastX:t.clientX,lastY:t.clientY,lastT:ts,startX:t.clientX,startY:t.clientY,vx:0,vy:0,edgePull:0};}
     function activeBookHolder(){return pdfViews[currentPage-1]&&pdfViews[currentPage-1].holder;}
     function clearBookSwipePreview(){var active=activeBookHolder();if(active)active.style.transform='';}
+    /* Mouse and pen readers get the same physical leaf gesture as touch readers. Keep
+       this on the paper surface so selecting text, following links, and using controls
+       remain ordinary browser interactions. */
+    pane.addEventListener('pointerdown',function(e){
+      if(!columnBookFlow()||!pdfDoc||(e.pointerType!=='mouse'&&e.pointerType!=='pen')||e.button!==0)return;
+      if(!e.target.closest||!e.target.closest('.pdf-page')||e.target.closest('a,button,.pdf-link,.text-layer span,mark'))return;
+      pointerBookSwipe={id:e.pointerId,x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false};
+      try{pane.setPointerCapture(e.pointerId);}catch(err){}pane.classList.add('turning-book-leaf');
+    });
+    pane.addEventListener('pointermove',function(e){
+      var g=pointerBookSwipe;if(!g||g.id!==e.pointerId)return;
+      var dx=e.clientX-g.x,dy=e.clientY-g.y;g.lastX=e.clientX;g.lastY=e.clientY;
+      if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.08){
+        e.preventDefault();g.moved=true;
+        var active=activeBookHolder();if(active)active.style.transform='translateX('+Math.max(-90,Math.min(90,dx*.35))+'px)';
+      }
+    });
+    function endPointerBookSwipe(e){
+      var g=pointerBookSwipe;if(!g||g.id!==e.pointerId)return;
+      pointerBookSwipe=null;pane.classList.remove('turning-book-leaf');clearBookSwipePreview();
+      var dx=e.clientX-g.x,dy=e.clientY-g.y;
+      if(!g.moved||Math.abs(dx)<64||Math.abs(dx)<=Math.abs(dy)*1.05)return;
+      e.preventDefault();columnBookSuppressClickUntil=Date.now()+420;
+      turnColumnBookPage(currentPage+(dx>0?1:-1));
+    }
+    pane.addEventListener('pointerup',endPointerBookSwipe);
+    pane.addEventListener('pointercancel',function(e){if(pointerBookSwipe&&pointerBookSwipe.id===e.pointerId){pointerBookSwipe=null;pane.classList.remove('turning-book-leaf');clearBookSwipePreview();}});
     function handlePanMove(e){
       var t=e.touches[0],g=panGesture;
       var sel=window.getSelection&&window.getSelection();

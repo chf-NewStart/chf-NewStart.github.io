@@ -472,6 +472,8 @@
     .comfort-section-body { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .comfort-guide { flex: 1 1 870px; }
     .comfort-guide .comfort-section-body { flex-wrap: wrap; }
+    .comfort-pdf { flex: 0 0 auto; }
+    .comfort-bar:not(.pdf-mode) .pdf-only { display: none !important; }
     .comfort-motion { flex: 0 1 auto; }
     .comfort-reset { align-self: center; margin-left: auto; }
     .comfort-bar .group { display: flex; align-items: center; gap: 7px; }
@@ -497,6 +499,8 @@
     /* Pages stack in one continuous vertical scroll, like paper on a desk. */
     .pdf-frame { width: max-content; min-width: 100%; min-height: 100%; margin: 0 auto; padding: 16px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
     .pdf-page { position: relative; flex: 0 0 auto; background: white; box-shadow: 0 10px 45px rgba(0,0,0,.18); }
+    .pdf-sheet { position: absolute; inset: 0 auto auto 0; transform-origin: top left; }
+    .pdf-page.book-cropped { overflow: hidden; }
     .pdf-page canvas { display: block; height: auto; background: white; }
     /* Traditional vertical books are read as individual leaves: top-to-bottom within a
        column, then right-to-left across columns and pages. Only the current leaf occupies
@@ -505,6 +509,11 @@
     .pdf-frame.column-book-flow { min-width: 100%; min-height: 100%; padding: 10px; display: grid; grid-template-columns: max-content; place-content: center; gap: 0; perspective: 1500px; }
     .pdf-frame.column-book-flow .pdf-page { display: none; grid-area: 1 / 1; transform-origin: center right; }
     .pdf-frame.column-book-flow .pdf-page:is(.book-active, .book-turning) { display: block; }
+    .pdf-frame.column-book-flow.column-book-spread { grid-template-columns: max-content max-content; gap: clamp(8px, 1vw, 18px); }
+    .pdf-frame.column-book-flow.column-book-spread .pdf-page.book-spread-left { grid-area: 1 / 1; transform-origin: center right; }
+    .pdf-frame.column-book-flow.column-book-spread .pdf-page.book-spread-right { grid-area: 1 / 2; transform-origin: center left; }
+    .pdf-frame.column-book-spread.spread-turning { animation: spreadLeafIn .2s ease-out both; }
+    @keyframes spreadLeafIn { from { opacity: .35; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
     .pdf-frame.column-book-flow .pdf-page canvas { cursor: grab; }
     .document-pane.column-book-flow.turning-book-leaf, .document-pane.column-book-flow.turning-book-leaf .pdf-page canvas { cursor: grabbing; }
     .pdf-frame.column-book-flow .pdf-page.book-out-next { z-index: 2; animation: bookOutNext .25s cubic-bezier(.4,0,.2,1) both; }
@@ -517,6 +526,7 @@
     @keyframes bookInPrev { from { opacity: .12; transform: translateX(10%); } }
     @media (prefers-reduced-motion: reduce) {
       .pdf-frame.column-book-flow .pdf-page.book-turning { animation-duration: .01ms; }
+      .pdf-frame.column-book-spread.spread-turning { animation-duration: .01ms; }
       .guide-tool.guide-discovery, #mMore.guide-discovery, .guide-tool.guide-discovery .guide-discovery-note { animation: none; }
       .guide-tool.guide-discovery .guide-discovery-note { opacity: 1; transform: none; }
     }

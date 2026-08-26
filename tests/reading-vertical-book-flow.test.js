@@ -102,10 +102,14 @@ function check(name, condition, extra) {
   await page.click('#mMore');
   await page.click('#comfortBtn');
   await page.click('button[data-guide-orientation="row"]');
-  check('row flow keeps the continuous PDF scroller', await page.locator('#documentPane').evaluate(pane => !pane.classList.contains('column-book-flow')));
-  await page.click('button[data-guide-orientation="column"]');
+  check('guide direction no longer changes the PDF layout', await page.locator('#documentPane').evaluate(pane => pane.classList.contains('column-book-flow')) && await page.locator('#paneSpotlight').getAttribute('data-guide-orientation') === 'row');
+  await page.click('button[data-pdf-direction="horizontal"]');
+  await page.waitForFunction(() => !document.getElementById('documentPane').classList.contains('column-book-flow'));
+  check('Normal PDF restores the continuous downward scroller', true);
+  await page.click('button[data-pdf-direction="vertical"]');
   await page.waitForFunction(() => document.getElementById('documentPane').classList.contains('column-book-flow'));
-  check('column flow can be restored without reopening the book', true);
+  await page.click('button[data-guide-orientation="column"]');
+  check('Vertical book can be restored without reopening the PDF', true);
   if (process.env.PHLOEM_VERTICAL_BOOK_TEST_PDF) {
     for (let target = 4; target <= 20; target++) {
       await page.click('#mNext');
@@ -133,6 +137,41 @@ function check(name, condition, extra) {
       return { center: (guide.left + guide.width / 2 - paper.left) / paper.width, inkRight: xs[Math.floor(xs.length * .985)] };
     });
     check('the vertical guide begins over the book text rather than its outer margin', Math.abs(guidePosition.center - guidePosition.inkRight) < .12, JSON.stringify(guidePosition));
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('column-book-spread') && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 2);
+    await page.waitForFunction(() => {
+      const pane = document.getElementById('documentPane').getBoundingClientRect();
+      const pages = Array.from(document.querySelectorAll('.pdf-page.book-active')).map(page => page.getBoundingClientRect());
+      if (pages.length !== 2) return false;
+      const width = Math.max(...pages.map(rect => rect.right)) - Math.min(...pages.map(rect => rect.left));
+      return width <= pane.width * .99 && Math.max(...pages.map(rect => rect.height)) <= pane.height * .99;
+    });
+    const spread = await page.locator('#documentPane').evaluate(pane => {
+      const pages = Array.from(document.querySelectorAll('.pdf-page.book-active'));
+      const paneRect = pane.getBoundingClientRect();
+      const rects = pages.map(page => page.getBoundingClientRect());
+      return {
+        count: pages.length,
+        width: Math.max(...rects.map(rect => rect.right)) - Math.min(...rects.map(rect => rect.left)),
+        height: Math.max(...rects.map(rect => rect.height)),
+        paneWidth: paneRect.width,
+        paneHeight: paneRect.height,
+        cropRatios: pages.map(page => page.offsetWidth / page.querySelector('.pdf-sheet').offsetWidth)
+      };
+    });
+    check('wide screens show a right-to-left two-page spread', spread.count === 2 && (await page.locator('#pageNumber').textContent()).includes('20–21'), JSON.stringify(spread));
+    check('the spread cuts scan margins and fills the reading area', spread.cropRatios.some(ratio => ratio < .8) && spread.width > spread.paneWidth * .48 && spread.height > spread.paneHeight * .72, JSON.stringify(spread));
+    await page.click('#nextPage');
+    await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('22–23 /'));
+    check('one page turn advances the whole two-page spread', true);
+    if (process.env.PHLOEM_VERTICAL_BOOK_SCREENSHOT) {
+      if (await page.locator('#focusBtn').getAttribute('aria-pressed') === 'true') await page.click('#focusBtn');
+      if (await page.locator('#comfortBtn').getAttribute('aria-expanded') === 'true') await page.click('#comfortBtn');
+      await page.click('#notebookTuck');
+      await page.waitForFunction(() => document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 2);
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: process.env.PHLOEM_VERTICAL_BOOK_SCREENSHOT });
+    }
   } else {
     const desktop = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     desktop.on('pageerror', error => errors.push(error.message));

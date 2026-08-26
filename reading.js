@@ -1389,7 +1389,7 @@
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
   var GUIDE_DISCOVERY_KEY='readingRoom.guideDiscoverySeen.v1';
-  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideOrientation:'row',guideScope:'page',guideSize:'m',guideDim:55,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
+  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfDirection:'horizontal',guideScope:'page',guideSize:'m',guideDim:55,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
   var comfort=Object.assign({},DEFAULT_COMFORT);
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
@@ -1397,6 +1397,8 @@
   comfort.leading=Math.max(1.2,Math.min(2.6,+comfort.leading||1.7));
   if(['yellow','green','blue'].indexOf(comfort.guide)<0)comfort.guide='yellow';
   if(['row','column'].indexOf(comfort.guideOrientation)<0)comfort.guideOrientation='row';
+  if(!savedComfort||!Object.prototype.hasOwnProperty.call(savedComfort,'pdfDirection'))comfort.pdfDirection=savedComfort&&savedComfort.guideOrientation==='column'?'vertical':'horizontal';
+  if(['horizontal','vertical'].indexOf(comfort.pdfDirection)<0)comfort.pdfDirection='horizontal';
   if(['column','page'].indexOf(comfort.guideScope)<0)comfort.guideScope='page';
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
   comfort.guideDim=Math.max(20,Math.min(85,+comfort.guideDim||55));
@@ -1422,7 +1424,7 @@
       return;
     }
     var note=byId('guideDiscoveryNote');
-    note.textContent=comfort.guideOrientation==='column'?'Vertical book? Focus one column with Guide.':'Focus one line—or a vertical column—with Guide.';
+    note.textContent=comfort.pdfDirection==='vertical'?'Vertical book? Focus one column with Guide.':'Focus one line—or a vertical column—with Guide.';
     note.setAttribute('aria-hidden','false');byId('guideTool').classList.add('guide-discovery');
     if(innerWidth<=720){byId('mMore').classList.add('guide-discovery');showReaderToast('Need focus? Guide is under •••');}
     try{localStorage.setItem(GUIDE_DISCOVERY_KEY,'1');}catch(e){}
@@ -1457,6 +1459,7 @@
     guideOverlay.style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));
     document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
     document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideOrientation===comfort.guideOrientation));});
+    document.querySelectorAll('[data-pdf-direction]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.pdfDirection===comfort.pdfDirection));});
     document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideScope===comfort.guideScope));});
     document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideSize===comfort.guideSize));});
     byId('guideSpanGroup').hidden=comfort.guideOrientation==='column';
@@ -1477,8 +1480,9 @@
   byId('leadLoose').onclick=function(){stepComfort('leading',0.1,1.2,2.6,1);};
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
   byId('creamBtn').onclick=function(){comfort.tone=comfort.tone==='cream'?'white':'cream';applyComfort();showReaderToast(comfort.tone==='cream'?'Cream paper · easier on the eyes':'White paper');};
+  document.querySelectorAll('[data-pdf-direction]').forEach(function(btn){btn.onclick=function(){comfort.pdfDirection=btn.dataset.pdfDirection;columnBookFitToken='';guideOffset=null;applyComfort();showReaderToast(comfort.pdfDirection==='vertical'?'Vertical book · cropped right-to-left pages':'Normal PDF · continuous downward pages');};});
   document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideColor.charAt(0).toUpperCase()+btn.dataset.guideColor.slice(1)+' reading guide');};});
-  document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.onclick=function(){comfort.guideOrientation=btn.dataset.guideOrientation;comfort.focus=true;guideOffset=null;columnBookFitToken='';applyComfort();placeGuide();showReaderToast(comfort.guideOrientation==='column'?'Vertical book · top to bottom, pages turn right to left':'Row guide · continuous page scroll');};});
+  document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.onclick=function(){comfort.guideOrientation=btn.dataset.guideOrientation;comfort.focus=true;guideOffset=null;applyComfort();placeGuide();showReaderToast(comfort.guideOrientation==='column'?'Vertical guide · follows one top-to-bottom column':'Row guide · follows one horizontal passage');};});
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide '+(comfort.guideOrientation==='column'?'width':'height')+' · '+btn.dataset.guideSize.toUpperCase());};});
   byId('guideDimRange').oninput=function(){comfort.guideDim=Math.max(20,Math.min(85,+this.value||55));byId('guideDimValue').textContent=comfort.guideDim+'%';byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();};
@@ -2179,13 +2183,36 @@
      ceiling; coarse-pointer is the honest signal for "this is glass, budget like it". */
   var coarsePointer=matchMedia('(pointer: coarse)');
   var columnBookTurning=false,columnBookQueuedTarget=0,columnBookFits=true,columnBookMinLeft=0,columnBookMaxLeft=0,columnBookAutoZoomed=false,columnBookFitToken='',columnBookSuppressClickUntil=0;
-  function columnBookFlow(){return readerMode==='pdf'&&comfort.guideOrientation==='column';}
+  function columnBookFlow(){return readerMode==='pdf'&&comfort.pdfDirection==='vertical';}
+  function columnBookSpread(){var pane=byId('documentPane');return columnBookFlow()&&pane&&pane.clientWidth>=920&&pane.clientHeight>=520;}
+  function columnBookStep(){return columnBookSpread()?2:1;}
+  function resetBookCrop(view){
+    if(!view||!view.crop)return;
+    view.crop=null;view.holder.classList.remove('book-cropped');
+    if(view.pageWidth)view.holder.style.width=view.pageWidth+'px';if(view.pageHeight)view.holder.style.height=view.pageHeight+'px';
+    if(view.sheet)view.sheet.style.transform='';
+  }
+  function cropBookView(view,bounds){
+    if(!view||!bounds||!view.pageWidth||!view.pageHeight)return;
+    var padX=Math.max(10,view.pageWidth*.018),padY=Math.max(10,view.pageHeight*.016);
+    var x=Math.max(0,bounds.x0*view.pageWidth-padX),y=Math.max(0,bounds.y0*view.pageHeight-padY);
+    var right=Math.min(view.pageWidth,bounds.x1*view.pageWidth+padX),bottom=Math.min(view.pageHeight,bounds.y1*view.pageHeight+padY);
+    var w=Math.max(40,right-x),h=Math.max(60,bottom-y);
+    view.crop={x:x,y:y,width:w,height:h};view.holder.classList.add('book-cropped');
+    view.holder.style.width=Math.ceil(w)+'px';view.holder.style.height=Math.ceil(h)+'px';
+    view.sheet.style.transform='translate('+Math.round(-x)+'px,'+Math.round(-y)+'px)';
+  }
   function syncColumnBookPages(){
     if(!pdfViews)return;
-    var on=columnBookFlow();
+    var on=columnBookFlow(),spread=columnBookSpread(),frame=byId('pdfFrame'),pane=byId('documentPane');
+    frame.classList.toggle('column-book-spread',spread);pane.classList.toggle('column-book-spread',spread);
     pdfViews.forEach(function(view,index){
-      view.holder.classList.toggle('book-active',on&&index===currentPage-1);
-      if(!on)view.holder.classList.remove('book-turning','book-out-next','book-in-next','book-out-prev','book-in-prev');
+      var right=on&&index===currentPage-1,left=spread&&index===currentPage;
+      view.holder.classList.toggle('book-active',right||left);
+      view.holder.classList.toggle('book-spread-right',right&&spread);
+      view.holder.classList.toggle('book-spread-left',left);
+      if(!spread)resetBookCrop(view);
+      if(!on)view.holder.classList.remove('book-turning','book-out-next','book-in-next','book-out-prev','book-in-prev','book-spread-right','book-spread-left');
     });
   }
   /* Scanned vertical books often devote most of each page to blank paper. Find the dark
@@ -2216,7 +2243,7 @@
     }catch(e){return null;}
   }
   function alignColumnBookPage(pageNo,bounds,behavior){
-    var view=pdfViews[pageNo-1],pane=byId('documentPane');if(!view||!bounds||!columnBookFlow())return;
+    var view=pdfViews[pageNo-1],pane=byId('documentPane');if(!view||!bounds||!columnBookFlow()||columnBookSpread())return;
     syncColumnBookPages();
     var w=view.holder.offsetWidth,h=view.holder.offsetHeight,contentW=(bounds.x1-bounds.x0)*w,contentH=(bounds.y1-bounds.y0)*h;
     var top=view.holder.offsetTop+bounds.y0*h-Math.max(12,(pane.clientHeight-contentH)/2);
@@ -2240,9 +2267,44 @@
       guideOffset={x:gx-paneRect.left,y:gy-paneRect.top};setReadingGuide(gx,gy,view.holder);
     });
   }
+  function layoutColumnBookSpread(pageNos,boundsList){
+    if(!columnBookSpread()||pageNos[0]!==currentPage)return;
+    pageNos.forEach(function(pageNo,index){cropBookView(pdfViews[pageNo-1],boundsList[index]);});
+    syncColumnBookPages();columnBookFits=true;columnBookMinLeft=columnBookMaxLeft=0;
+    var pane=byId('documentPane');requestAnimationFrame(function(){pane.scrollTo({top:0,left:0,behavior:'auto'});});
+    if(comfort.focus)requestAnimationFrame(function(){
+      if(!columnBookSpread()||comfort.guideLock){placeGuide();return;}
+      var rightView=pdfViews[currentPage-1],paper=rightView&&rightView.holder.getBoundingClientRect(),paneRect=pane.getBoundingClientRect();
+      if(!paper)return;
+      var gx=Math.max(paneRect.left+14,Math.min(paneRect.right-14,paper.right-Math.min(28,paper.width*.05)));
+      var gy=Math.max(paneRect.top+24,Math.min(paneRect.bottom-30,paper.top+paper.height*.36));
+      guideOffset={x:gx-paneRect.left,y:gy-paneRect.top};setReadingGuide(gx,gy,rightView.holder);
+    });
+  }
+  async function fitColumnBookSpread(pageNo,force){
+    if(!pdfDoc||!columnBookSpread()||pageNo!==currentPage)return;
+    var pageNos=[pageNo];if(pageNo<pdfDoc.numPages)pageNos.push(pageNo+1);
+    await Promise.all(pageNos.map(renderPdfPageAt));
+    if(!columnBookSpread()||pageNo!==currentPage)return;
+    var views=pageNos.map(function(n){return pdfViews[n-1];});
+    if(views.some(function(view){return !view||!view.rendered;})){setTimeout(function(){fitColumnBookSpread(pageNo,force);},90);return;}
+    views.forEach(resetBookCrop);
+    var boundsList=views.map(function(view){return verticalInkBounds(view)||{x0:.03,x1:.97,y0:.03,y1:.97};});
+    var pane=byId('documentPane'),nowZoom=currentZoom(),baseWidth=0,baseHeight=0;
+    views.forEach(function(view,index){var bounds=boundsList[index];baseWidth+=(bounds.x1-bounds.x0)*view.pageWidth/nowZoom;baseHeight=Math.max(baseHeight,(bounds.y1-bounds.y0)*view.pageHeight/nowZoom);});
+    var desired=Math.max(.5,Math.min(3.4,Math.min((pane.clientWidth*.92-Math.max(12,(pageNos.length-1)*10))/Math.max(1,baseWidth),(pane.clientHeight*.91)/Math.max(1,baseHeight))));
+    var token=currentId+'|spread|'+pageNos.join('-')+'|'+pane.clientWidth+'x'+pane.clientHeight,shouldZoom=force||columnBookFitToken!==token||nowZoom<desired*.94||nowZoom>desired*1.06;
+    columnBookFitToken=token;
+    if(shouldZoom&&Math.abs(desired-nowZoom)>.035){
+      columnBookAutoZoomed=Math.abs(desired-1)>.05;
+      setZoom(desired,undefined,undefined,0,0,function(){Promise.all(pageNos.map(renderPdfPageAt)).then(function(){var fresh=pageNos.map(function(n){return pdfViews[n-1];}),freshBounds=fresh.map(function(view){return verticalInkBounds(view)||{x0:.03,x1:.97,y0:.03,y1:.97};});layoutColumnBookSpread(pageNos,freshBounds);});});
+    }else layoutColumnBookSpread(pageNos,boundsList);
+  }
   async function fitColumnBookPage(pageNo,force){
     if(!pdfDoc||!columnBookFlow()||!pdfViews[pageNo-1])return;
+    if(columnBookSpread())return fitColumnBookSpread(pageNo,force);
     syncColumnBookPages();await renderPdfPageAt(pageNo);
+    if(columnBookSpread())return fitColumnBookSpread(pageNo,force);
     if(!columnBookFlow()||pageNo!==currentPage)return;
     var view=pdfViews[pageNo-1],bounds=verticalInkBounds(view);
     if(!view.rendered){setTimeout(function(){fitColumnBookPage(pageNo,force);},90);return;}
@@ -2250,11 +2312,11 @@
     var pane=byId('documentPane'),fitPageHeight=view.holder.offsetHeight/Math.max(.5,currentZoom());
     var desired=Math.max(1,Math.min(3.4,(pane.clientHeight*.84)/Math.max(1,(bounds.y1-bounds.y0)*fitPageHeight)));
     var token=currentId+'|'+pageNo+'|'+pane.clientWidth+'x'+pane.clientHeight,nowZoom=currentZoom();
-    var shouldZoom=force||columnBookFitToken!==token&&(nowZoom<desired*.9||nowZoom>desired*1.3);
+    var shouldZoom=force||columnBookFitToken!==token||nowZoom<desired*.9||nowZoom>desired*1.3;
     columnBookFitToken=token;
     if(shouldZoom&&Math.abs(desired-nowZoom)>.06){
       columnBookAutoZoomed=desired>1.05;
-      setZoom(desired,undefined,undefined,0,0,function(){renderPdfPageAt(pageNo).then(function(){var fresh=pdfViews[pageNo-1],freshBounds=verticalInkBounds(fresh);if(freshBounds)alignColumnBookPage(pageNo,freshBounds,'auto');});});
+      setZoom(desired,undefined,undefined,0,0,function(){if(columnBookSpread()){fitColumnBookSpread(currentPage,false);return;}renderPdfPageAt(pageNo).then(function(){var fresh=pdfViews[pageNo-1],freshBounds=verticalInkBounds(fresh);if(freshBounds)alignColumnBookPage(pageNo,freshBounds,'auto');});});
     }else alignColumnBookPage(pageNo,bounds,force?'smooth':'auto');
   }
   function applyPdfFlowMode(forceFit){
@@ -2272,6 +2334,20 @@
     target=Math.max(1,Math.min(pdfDoc.numPages,target));
     if(columnBookTurning){columnBookQueuedTarget=target;return;}
     if(target===currentPage){syncColumnBookPages();fitColumnBookPage(target,false);return;}
+    if(columnBookSpread()){
+      columnBookTurning=true;
+      var spreadPages=[target];if(target<pdfDoc.numPages)spreadPages.push(target+1);
+      await Promise.all(spreadPages.map(renderPdfPageAt));
+      if(!columnBookSpread()){columnBookTurning=false;return;}
+      currentPage=target;syncColumnBookPages();updatePageChrome();updateProgress();byId('pdfFrame').classList.add('spread-turning');
+      var spreadCh=find(currentId);if(spreadCh&&spreadCh.kind==='pdf'){spreadCh.readPage=currentPage;spreadCh.updatedAt=now();persist(false);}
+      setTimeout(function(){
+        byId('pdfFrame').classList.remove('spread-turning');var spreadQueued=columnBookQueuedTarget;columnBookQueuedTarget=0;columnBookTurning=false;
+        if(spreadQueued&&spreadQueued!==currentPage)requestAnimationFrame(function(){turnColumnBookPage(spreadQueued);});
+        else fitColumnBookSpread(currentPage,false);
+      },220);
+      return;
+    }
     columnBookTurning=true;var from=currentPage,forward=target>from,oldView=pdfViews[from-1],nextView=pdfViews[target-1];
     await renderPdfPageAt(target);
     if(!columnBookFlow()){columnBookTurning=false;return;}
@@ -2310,9 +2386,10 @@
     for(var i=1;i<=pdfDoc.numPages;i++){
       var holder=document.createElement('div');holder.className='pdf-page';holder.dataset.page=i;
       holder.style.width=Math.ceil(natural.width*scale)+'px';holder.style.height=Math.ceil(natural.height*scale)+'px';
-      holder.innerHTML='<canvas></canvas><div class="highlight-layer"></div><div class="text-layer"></div>';
+      holder.innerHTML='<div class="pdf-sheet"><canvas></canvas><div class="highlight-layer"></div><div class="text-layer"></div></div>';
       frame.appendChild(holder);
-      pdfViews.push({holder:holder,canvas:holder.children[0],highlights:holder.children[1],text:holder.children[2],rendered:false,rendering:false,buildId:buildId});
+      var sheet=holder.children[0];sheet.style.width=holder.style.width;sheet.style.height=holder.style.height;
+      pdfViews.push({holder:holder,sheet:sheet,canvas:sheet.children[0],highlights:sheet.children[1],text:sheet.children[2],pageWidth:Math.ceil(natural.width*scale),pageHeight:Math.ceil(natural.height*scale),crop:null,rendered:false,rendering:false,buildId:buildId});
       if(carry[i]){
         var cw=Math.ceil(natural.width*scale),chh=Math.ceil(natural.height*scale);
         var nc=pdfViews[i-1].canvas;nc.width=cw;nc.height=chh;
@@ -2344,7 +2421,9 @@
          a middle tier: desktop-sized pixel counts were what made iPad zooming flicker. */
       var areaCap=innerWidth<=720?65e5:coarsePointer.matches?9e6:14e6;
       ratio=Math.max(.5,Math.min(ratio,Math.sqrt(areaCap/Math.max(1,viewport.width*viewport.height))));
-      view.holder.style.width=Math.ceil(viewport.width)+'px';view.holder.style.height=Math.ceil(viewport.height)+'px';view.holder.style.setProperty('--scale-factor',scale);
+      view.pageWidth=Math.ceil(viewport.width);view.pageHeight=Math.ceil(viewport.height);view.crop=null;
+      view.holder.classList.remove('book-cropped');view.holder.style.width=view.pageWidth+'px';view.holder.style.height=view.pageHeight+'px';view.holder.style.setProperty('--scale-factor',scale);
+      view.sheet.style.width=view.pageWidth+'px';view.sheet.style.height=view.pageHeight+'px';view.sheet.style.transform='';
       view.canvas.width=Math.floor(viewport.width*ratio);view.canvas.height=Math.floor(viewport.height*ratio);view.canvas.style.width=Math.ceil(viewport.width)+'px';view.canvas.style.height=Math.ceil(viewport.height)+'px';
       await page.render({canvasContext:view.canvas.getContext('2d'),viewport:viewport,transform:ratio===1?null:[ratio,0,0,ratio,0,0]}).promise;
       if(view.buildId!==pdfBuildId)return;
@@ -2353,7 +2432,7 @@
       /* The PDF's own link annotations: citations jump to their reference, outline
          links jump between sections, URLs open in a new tab. */
       try{
-        if(!view.links){view.links=document.createElement('div');view.links.className='pdf-links';view.holder.appendChild(view.links);}
+        if(!view.links){view.links=document.createElement('div');view.links.className='pdf-links';view.sheet.appendChild(view.links);}
         view.links.innerHTML='';
         var annots=await page.getAnnotations({intent:'display'});
         annots.forEach(function(a){
@@ -2392,10 +2471,11 @@
   }
   function updatePageChrome(){
     if(!pdfDoc)return;
-    byId('pageNumber').textContent=currentPage+' / '+pdfDoc.numPages;byId('mPageLabel').textContent=currentPage+' / '+pdfDoc.numPages;
-    byId('prevPage').disabled=currentPage<=1;byId('nextPage').disabled=currentPage>=pdfDoc.numPages;
-    byId('mPrev').disabled=currentPage<=1;byId('mNext').disabled=currentPage>=pdfDoc.numPages;
-    var book=columnBookFlow();
+    var book=columnBookFlow(),spread=columnBookSpread(),spreadEnd=spread?Math.min(pdfDoc.numPages,currentPage+1):currentPage;
+    var pageLabel=(spreadEnd>currentPage?currentPage+'–'+spreadEnd:currentPage)+' / '+pdfDoc.numPages;
+    byId('pageNumber').textContent=pageLabel;byId('mPageLabel').textContent=pageLabel;
+    byId('prevPage').disabled=currentPage<=1;byId('nextPage').disabled=spreadEnd>=pdfDoc.numPages;
+    byId('mPrev').disabled=currentPage<=1;byId('mNext').disabled=spreadEnd>=pdfDoc.numPages;
     byId('prevPage').textContent=book?'→':'←';byId('nextPage').textContent=book?'←':'→';
     byId('mPrev').textContent=book?'→':'←';byId('mNext').textContent=book?'←':'→';
     byId('prevPage').setAttribute('aria-label',book?'Previous page · turn right':'Previous page');byId('nextPage').setAttribute('aria-label',book?'Next page · turn left':'Next page');
@@ -2442,8 +2522,8 @@
     }
     else updatePageChrome();
   }
-  byId('prevPage').onclick=function(){ if(currentPage>1){ clearPendingSelection();scrollToPdfPage(currentPage-1); } };
-  byId('nextPage').onclick=function(){ if(pdfDoc&&currentPage<pdfDoc.numPages){ clearPendingSelection();scrollToPdfPage(currentPage+1); } };
+  byId('prevPage').onclick=function(){ var step=columnBookFlow()?columnBookStep():1;if(currentPage>1){ clearPendingSelection();scrollToPdfPage(Math.max(1,currentPage-step)); } };
+  byId('nextPage').onclick=function(){ var step=columnBookFlow()?columnBookStep():1;if(pdfDoc&&currentPage+step<=pdfDoc.numPages){ clearPendingSelection();scrollToPdfPage(currentPage+step); } };
   /* A 600-page textbook needs more than ← →: tapping the page counter jumps anywhere. */
   function promptForPage(){
     if(!pdfDoc||readerMode!=='pdf')return;
@@ -2515,7 +2595,7 @@
     columnBookWheelSum+=e.deltaX;
     if(Math.abs(columnBookWheelSum)<72)return;
     columnBookWheelConsumed=true;columnBookWheelSum=0;
-    turnColumnBookPage(currentPage+(forward?1:-1));
+    turnColumnBookPage(currentPage+(forward?columnBookStep():-columnBookStep()));
   },{passive:false});
   /* Touch: pinch anywhere on the paper for a live preview that follows both fingers —
      spread and travel — then a crisp re-render lands under them without a snap-back;
@@ -2566,7 +2646,7 @@
       var dx=e.clientX-g.x,dy=e.clientY-g.y;
       if(!g.moved||Math.abs(dx)<64||Math.abs(dx)<=Math.abs(dy)*1.05)return;
       e.preventDefault();columnBookSuppressClickUntil=Date.now()+420;
-      turnColumnBookPage(currentPage+(dx>0?1:-1));
+      turnColumnBookPage(currentPage+(dx>0?columnBookStep():-columnBookStep()));
     }
     pane.addEventListener('pointerup',endPointerBookSwipe);
     pane.addEventListener('pointercancel',function(e){if(pointerBookSwipe&&pointerBookSwipe.id===e.pointerId){pointerBookSwipe=null;pane.classList.remove('turning-book-leaf');clearBookSwipePreview();}});
@@ -2593,7 +2673,7 @@
       if(!panGesture||(e.touches&&e.touches.length))return;
       var g=panGesture;panGesture=null;
       if(columnBookFlow()&&Math.abs(g.edgePull)>64&&Math.abs(g.lastX-g.startX)>Math.abs(g.lastY-g.startY)*1.05){
-        clearBookSwipePreview();tapStart=null;lastTapAt=0;turnColumnBookPage(currentPage+(g.edgePull>0?1:-1));return;
+        clearBookSwipePreview();tapStart=null;lastTapAt=0;turnColumnBookPage(currentPage+(g.edgePull>0?columnBookStep():-columnBookStep()));return;
       }
       clearBookSwipePreview();
       var vx=g.vx,vy=g.vy,speed=Math.hypot(vx,vy);
@@ -2646,7 +2726,7 @@
       tapStart=null;lastTapAt=0;e.preventDefault();
       /* In a right-bound vertical book the next leaf is exposed by swiping the current
          leaf to the right; the reverse swipe returns to the previous leaf. */
-      turnColumnBookPage(currentPage+(dx>0?1:-1));
+      turnColumnBookPage(currentPage+(dx>0?columnBookStep():-columnBookStep()));
     }
     pane.addEventListener('touchend',endBookSwipe,{passive:false});
     pane.addEventListener('touchend',endPanGesture,{passive:true});

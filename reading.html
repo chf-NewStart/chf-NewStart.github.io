@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=37">
+  <link rel="stylesheet" href="/reading.css?v=38">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -164,10 +164,21 @@
             <button class="toggle" id="airyBtn" type="button" aria-pressed="false">Relaxed letters</button>
           </div>
         </div>
+        <div class="comfort-section comfort-pdf pdf-only" aria-label="PDF reading layout">
+          <span class="comfort-section-title">PDF</span>
+          <div class="comfort-section-body">
+            <div class="group"><span class="group-label">Reading</span>
+              <div class="guide-scope" role="group" aria-label="PDF reading direction">
+                <button class="toggle" type="button" data-pdf-direction="horizontal" aria-pressed="true">Normal</button>
+                <button class="toggle" type="button" data-pdf-direction="vertical" aria-pressed="false" title="Cropped pages in traditional right-to-left order">Vertical book</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="comfort-section comfort-guide" aria-label="Guide settings">
           <span class="comfort-section-title">Guide</span>
           <div class="comfort-section-body">
-            <div class="group"><span class="group-label">Flow</span>
+            <div class="group"><span class="group-label">Direction</span>
               <div class="guide-scope" role="group" aria-label="Reading guide direction">
                 <button class="toggle" type="button" data-guide-orientation="row" aria-pressed="true">Rows</button>
                 <button class="toggle" type="button" data-guide-orientation="column" aria-pressed="false" title="Top to bottom, then right to left">Columns</button>
@@ -511,9 +522,9 @@
       if(!hadController||reloading)return;
       reloading=true;location.reload();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=37',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=38',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=37" defer></script>
+<script src="/reading.js?v=38" defer></script>
 </body>
 </html>

@@ -2933,6 +2933,71 @@
     return out;
   }
   function highlightedTextHtml(text,marks,paraIndex){return styledTextHtml(text,marks,null,paraIndex);}
+  function listeningPackFilename(ch){
+    var stem=String(ch.title||ch.sourceName||'paper').replace(/\.pdf$/i,'').replace(/[\u0000-\u001f\u007f/\\<>:"|?*]+/g,' ').replace(/\s+/g,' ').trim().slice(0,100)||'paper';
+    return stem+' — Phloem listening pack.md';
+  }
+  function listeningQuote(value){
+    var text=String(value||'').trim();
+    return text?text.split(/\r?\n/).map(function(line){return '> '+(line||' ');}).join('\n'):'> —';
+  }
+  function listeningPackMarkdown(ch){
+    var title=String(ch.title||'Untitled').trim(),lines=['# '+title,'','> Phloem listening pack · prepared locally on '+new Date().toLocaleDateString(),''];
+    lines.push('## How to use this in NotebookLM','');
+    if(ch.kind==='pdf')lines.push('Upload the original PDF and this listening pack as two sources in the same notebook. The PDF is the authority for the paper; this file adds your reading trail.');
+    else lines.push('Upload this listening pack as a source. It includes the text and your reading trail.');
+    lines.push('','When making an Audio Overview, explain the central ideas, evidence, and open questions. Give extra attention to the highlighted passages and reader notes below. Treat reader notes as questions or reactions—not as claims made by the author.','','## Paper','');
+    lines.push('- **Author(s):** '+(String(ch.authors||'').trim()||'Not recorded'));
+    if(ch.sourceName)lines.push('- **Source file:** '+String(ch.sourceName).trim());
+    if((ch.tags||[]).length)lines.push('- **Tags:** '+ch.tags.join(', '));
+    lines.push('','## Reader notes and highlights','');
+    var annotations=0,sourceParas=paras(ch.fr||''),readerParas=paras(readerSourceText(ch));
+    Object.keys(ch.pageNotes||{}).sort(function(a,b){if(a==='document')return-1;if(b==='document')return 1;return(+a||0)-(+b||0);}).forEach(function(key){
+      var note=String(ch.pageNotes[key]||'').trim();if(!note)return;annotations++;
+      lines.push('### '+(key==='document'?'Paper note':'Page '+key+' note'),'','**Reader note**','',listeningQuote(note),'');
+    });
+    Object.keys(ch.notes||{}).sort(function(a,b){return+a-+b;}).forEach(function(key){
+      var note=String(ch.notes[key]||'').trim();if(!note)return;annotations++;var excerpt=sourceParas[+key]||'';
+      lines.push('### Paragraph '+(+key+1)+' note','');if(excerpt)lines.push('**Paper passage**','',listeningQuote(excerpt),'');lines.push('**Reader note**','',listeningQuote(note),'');
+    });
+    Object.keys(ch.readerNotes||{}).sort(function(a,b){return+a-+b;}).forEach(function(key){
+      var note=String(ch.readerNotes[key]||'').trim();if(!note)return;annotations++;var excerpt=readerParas[+key]||'';
+      lines.push('### Reader paragraph '+(+key+1)+' note','');if(excerpt)lines.push('**Paper passage**','',listeningQuote(excerpt),'');lines.push('**Reader note**','',listeningQuote(note),'');
+    });
+    Object.keys(ch.highlights||{}).sort(function(a,b){return+a-+b;}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(mark){
+      if(!String(mark.text||'').trim()&&!String(mark.note||'').trim())return;annotations++;lines.push('### Highlight · page '+page,'');if(mark.text)lines.push('**Highlighted passage**','',listeningQuote(mark.text),'');if(mark.note)lines.push('**Reader note**','',listeningQuote(mark.note),'');
+    });});
+    (ch.textHighlights||[]).forEach(function(mark){
+      if(!String(mark.text||'').trim()&&!String(mark.note||'').trim())return;annotations++;lines.push('### Highlight · paragraph '+(+mark.para+1),'');if(mark.text)lines.push('**Highlighted passage**','',listeningQuote(mark.text),'');if(mark.note)lines.push('**Reader note**','',listeningQuote(mark.note),'');
+    });
+    (ch.readerHighlights||[]).forEach(function(mark){
+      if(!String(mark.text||'').trim()&&!String(mark.note||'').trim())return;annotations++;lines.push('### Highlight · Reader paragraph '+(+mark.para+1),'');if(mark.text)lines.push('**Highlighted passage**','',listeningQuote(mark.text),'');if(mark.note)lines.push('**Reader note**','',listeningQuote(mark.note),'');
+    });
+    if(!annotations)lines.push('No reading notes or highlights have been added yet.','');
+    var source=readerSourceText(ch).trim(),maxSource=3000000;
+    if(source){
+      var clipped=source.length>maxSource;source=source.slice(0,maxSource);
+      lines.push('## Extracted paper text','',ch.kind==='pdf'?'This extracted text helps with searching and narration. Use the original PDF for figures, tables, equations, and page layout.':'The imported text follows.','',source);
+      if(clipped)lines.push('','_[Extracted text shortened here because the source exceeds the listening-pack size limit. Use the original paper for the remainder.]_');
+    }else if(ch.kind==='pdf')lines.push('## Paper text','', 'No full text was available to extract in Phloem. Upload the original PDF with this pack so NotebookLM can read the paper.');
+    lines.push('','---','Prepared by Phloem. Nothing was sent anywhere when this file was created.');
+    return lines.join('\n');
+  }
+  function downloadListeningPack(ch){
+    var blob=new Blob([listeningPackMarkdown(ch)],{type:'text/markdown;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=listeningPackFilename(ch);document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},2000);
+  }
+  byId('notebookLmBtn').onclick=function(){
+    var ch=find(currentId),btn=this,status=byId('notebookLmStatus');if(!ch)return;
+    btn.disabled=true;btn.textContent='Preparing…';status.textContent='Creating the listening pack on this device…';
+    try{
+      downloadListeningPack(ch);
+      window.open('https://notebooklm.google.com/','_blank','noopener');
+      status.textContent=ch.kind==='pdf'?'Downloaded. In NotebookLM, upload this pack and the original PDF together.':'Downloaded. Upload the listening pack in the new NotebookLM tab.';
+      showReaderToast('Listening pack ready · upload it in NotebookLM');
+    }catch(e){status.textContent='The listening pack could not be downloaded. Please try again.';showReaderToast('Could not prepare the listening pack');}
+    finally{btn.disabled=false;btn.textContent='Prepare & open ↗';}
+  };
   function noteKey(){ return readerMode==='pdf' ? String(currentPage) : 'document'; }
   function loadPageNote(){ var ch=find(currentId); if(!ch) return; var key=noteKey(); byId('noteHeading').textContent=readerMode==='pdf'?'Page '+currentPage+' note':'Paper note'; byId('pageNote').value=(ch.pageNotes||{})[key]||''; }
   byId('pageNote').oninput=function(){ var ch=find(currentId), key=noteKey(); if(this.value.trim()) ch.pageNotes[key]=this.value; else delete ch.pageNotes[key]; touch(ch); renderNoteIndex(); };

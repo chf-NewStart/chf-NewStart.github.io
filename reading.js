@@ -696,9 +696,9 @@
       group.papers.forEach(function(ch){
         var wrap=document.createElement('div'),book=document.createElement('button'),paperGrip=document.createElement('span'),move=document.createElement('button'),menu=document.createElement('div'),categorySearch=document.createElement('input'),categoryOptions=document.createElement('div'),isSelected=ch.id===selected.id,visualHash=paperVisualHash(ch),spine=WALL_NOTES[(visualHash>>>1)%WALL_NOTES.length],menuId='paper-category-menu-'+(++categoryMenuIndex);
         wrap.className='paper-sticky-wrap';book.type='button';book.className='book-spine paper-sticky-note'+(isSelected?' is-selected':'');book.dataset.shelfPaper=ch.id;book.setAttribute('aria-pressed',isSelected?'true':'false');book.setAttribute('aria-label',(isSelected?'Open paper: ':'Preview paper: ')+(ch.title||'Untitled'));
-        var spineTitle=String(ch.title||'Untitled'),spineLength=spineTitle.length,noteFont=spineLength>112?'.98rem':(spineLength>82?'1.02rem':(spineLength>54?'1.08rem':'1.18rem'));
+        var spineTitle=String(ch.title||'Untitled'),spineCredit=shelfSpineCredit(ch),spineLength=spineTitle.length,noteFont=spineLength>112?'.98rem':(spineLength>82?'1.02rem':(spineLength>54?'1.08rem':'1.18rem'));
         book.title=spineTitle+' — '+(ch.authors||ch.sourceName||'Phloem');book.style.setProperty('--note-font',noteFont);book.style.setProperty('--note-paper',spine.cover);book.style.setProperty('--note-ink',spine.ink);book.style.setProperty('--note-tilt',((((visualHash>>>20)%9)-4)*.18)+'deg');book.style.setProperty('--tape-tilt',((((visualHash>>>27)%11)-5)*.45)+'deg');
-        book.innerHTML='<span class="book-title">'+esc(spineTitle)+'</span><span class="book-author">'+esc(shelfSpineCredit(ch))+'</span>';
+        book.innerHTML='<span class="book-title'+(hasHanScript(spineTitle)?' is-han':'')+'">'+esc(spineTitle)+'</span><span class="book-author'+(hasHanScript(spineCredit)?' is-han':'')+'">'+esc(spineCredit)+'</span>';
         book.onclick=function(e){if(ch.id===librarySelectionId){openReader(ch.id);return;}var oldTop=pile.scrollTop,oldLeft=pile.scrollLeft,fromKeyboard=e.detail===0;librarySelectionId=ch.id;renderShelf();var nextPile=byId('shelf').querySelector('.book-pile');if(nextPile){nextPile.scrollTop=oldTop;nextPile.scrollLeft=oldLeft;}if(fromKeyboard)setTimeout(function(){focusShelfBook(ch.id);},0);};
         paperGrip.className='paper-sticky-grip';paperGrip.textContent='⠿';paperGrip.title='Drag this paper to a category';paperGrip.setAttribute('aria-label','Drag '+spineTitle+' to a category');paperGrip.setAttribute('role','button');paperGrip.tabIndex=0;paperGrip.draggable=true;paperGrip.ondragstart=function(e){draggingPaperId=ch.id;wrap.classList.add('is-paper-dragging');if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',ch.id);}};paperGrip.ondragend=clearShelfDrag;
         move.type='button';move.className='paper-category-move';move.textContent='↗ Move';move.title='Move to another category';move.setAttribute('aria-label','Move '+spineTitle+' to another category');move.setAttribute('aria-controls',menuId);move.setAttribute('aria-expanded','false');
@@ -1233,6 +1233,7 @@
   /* The real title lives inside the PDF: document metadata when it is sane, otherwise
      the largest text near the top of page one. Filenames are the fallback, not the name. */
   function filenameTitle(name){return String(name||'').replace(/\.pdf$/i,'').replace(/[_-]+/g,' ');}
+  function hasHanScript(text){return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/.test(String(text||''));}
   function hasCompactScript(text){return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]/.test(String(text||''));}
   function plausibleTitleLength(text){var length=String(text||'').length;return length>=(hasCompactScript(text)?2:8)&&length<=220;}
   function guessTitleFromLayout(layout){

@@ -38,7 +38,7 @@ function check(name, condition, extra) {
     localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [
       paper('paper_roots', 'Root architecture under drought', 'Lina Mora', ['Plant physiology'], 0),
       paper('paper_models', 'Constraint models for carbon allocation', 'Dev Rao', ['Modelling'], 1000),
-      paper('paper_field', 'Field observations across seasons', 'Maya Chen', [], 2000),
+      paper('paper_field', '次第花開', '希阿榮博堪布', [], 2000),
       paper('paper_microbes', 'Rhizosphere communities and nutrient exchange', 'Owen Bell', ['Microbiome'], 3000)
     ] }));
     localStorage.setItem('readingRoom.theme', 'light');
@@ -58,6 +58,8 @@ function check(name, condition, extra) {
   check('sticky notes are compact instead of full-sheet width', firstTwoNotes.every(note => note.width < 230), JSON.stringify(firstTwoNotes));
   check('sticky keeps the handwritten title and author', await page.locator('[data-shelf-paper="paper_models"]').textContent().then(text => text.includes('Constraint models') && text.includes('Dev Rao')));
   check('sticky title uses the Houfu handwriting face', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('Houfu Hand')));
+  check('Chinese sticky title uses a Kai typeface', await page.locator('[data-shelf-paper="paper_field"] .book-title').evaluate(element => element.classList.contains('is-han') && getComputedStyle(element).fontFamily.includes('Kaiti TC')));
+  check('Chinese sticky author uses the same Kai typeface', await page.locator('[data-shelf-paper="paper_field"] .book-author').evaluate(element => element.classList.contains('is-han') && getComputedStyle(element).fontFamily.includes('Kaiti TC')));
   check('category is a large handwritten highlighter', await page.locator('.paper-category-mark').evaluate(element => parseFloat(getComputedStyle(element).fontSize) >= 17 && getComputedStyle(element, '::before').backgroundImage !== 'none'));
   check('category rail is fixed outside the scrolling note surface', await page.evaluate(() => {
     const rail = document.querySelector('.paper-category-rail');

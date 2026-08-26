@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "BIOLOGY",
+            title: "Lichens have survived open space",
+            fact: "Lichens — a working partnership between a fungus and an alga — were strapped to the outside of a space capsule in European Space Agency experiments, exposed to vacuum, radiation, and temperature swings, and revived on return to Earth.",
+            detail: "The trick is their talent for total shutdown: dried out, metabolism near zero, they simply wait. The same toughness lets lichens live on bare rock from Antarctica to desert mountaintops, slowly making soil for everything else."
+        },
+        {
             tag: "RECORDS",
             title: "One of Earth’s largest organisms is a fungus",
             fact: "A single honey fungus (Armillaria) in Oregon’s Blue Mountains spreads through roughly nine square kilometers of forest soil — one genetic individual, likely thousands of years old, quietly eating tree roots.",

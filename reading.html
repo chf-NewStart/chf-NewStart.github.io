@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=42">
+  <link rel="stylesheet" href="/reading.css?v=43">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -265,8 +265,8 @@
               <h3>Notes in this paper</h3>
               <p class="hint">Your page notes, highlighted passages, and notes on highlights stay together here.</p>
               <div class="notebook-listen">
-                <div><b>Listen in NotebookLM</b><span>Package this paper’s reading trail for an Audio Overview.</span></div>
-                <button class="soft-button notebook-listen-button" id="notebookLmBtn" type="button">Prepare &amp; open ↗</button>
+                <div><b>Explore in NotebookLM</b><span>Audio Overview · Mind Map · study tools</span></div>
+                <button class="soft-button notebook-listen-button" id="notebookLmBtn" type="button">Package &amp; open ↗</button>
               </div>
               <p class="notebook-listen-status" id="notebookLmStatus" role="status" aria-live="polite"></p>
             </div>
@@ -533,9 +533,9 @@
       if(!hadController||reloading)return;
       reloading=true;location.reload();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=42',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=43',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=42" defer></script>
+<script src="/reading.js?v=43" defer></script>
 </body>
 </html>

@@ -2933,20 +2933,19 @@
     return out;
   }
   function highlightedTextHtml(text,marks,paraIndex){return styledTextHtml(text,marks,null,paraIndex);}
-  function listeningPackFilename(ch){
-    var stem=String(ch.title||ch.sourceName||'paper').replace(/\.pdf$/i,'').replace(/[\u0000-\u001f\u007f/\\<>:"|?*]+/g,' ').replace(/\s+/g,' ').trim().slice(0,100)||'paper';
-    return stem+' — Phloem listening pack.md';
-  }
+  function notebookPackageStem(ch){return String(ch.title||ch.sourceName||'paper').replace(/\.pdf$/i,'').replace(/[\u0000-\u001f\u007f/\\<>:"|?*]+/g,' ').replace(/\s+/g,' ').trim().slice(0,100)||'paper';}
+  function notebookGuideFilename(ch){return notebookPackageStem(ch)+' — Phloem guide.md';}
+  function notebookPdfFilename(ch){var name=String(ch.sourceName||notebookPackageStem(ch)+'.pdf').replace(/[\u0000-\u001f\u007f/\\<>:"|?*]+/g,' ').replace(/\s+/g,' ').trim().slice(0,140)||'paper.pdf';return /\.pdf$/i.test(name)?name:name+'.pdf';}
   function listeningQuote(value){
     var text=String(value||'').trim();
     return text?text.split(/\r?\n/).map(function(line){return '> '+(line||' ');}).join('\n'):'> —';
   }
   function listeningPackMarkdown(ch){
-    var title=String(ch.title||'Untitled').trim(),lines=['# '+title,'','> Phloem listening pack · prepared locally on '+new Date().toLocaleDateString(),''];
+    var title=String(ch.title||'Untitled').trim(),lines=['# '+title,'','> Phloem NotebookLM guide · prepared locally on '+new Date().toLocaleDateString(),''];
     lines.push('## How to use this in NotebookLM','');
-    if(ch.kind==='pdf')lines.push('Upload the original PDF and this listening pack as two sources in the same notebook. The PDF is the authority for the paper; this file adds your reading trail.');
-    else lines.push('Upload this listening pack as a source. It includes the text and your reading trail.');
-    lines.push('','When making an Audio Overview, explain the central ideas, evidence, and open questions. Give extra attention to the highlighted passages and reader notes below. Treat reader notes as questions or reactions—not as claims made by the author.','','## Paper','');
+    if(ch.kind==='pdf')lines.push('Upload the original PDF and this guide as two sources in the same notebook. The PDF is the authority for the paper; this file adds your reading trail.');
+    else lines.push('Upload this guide as a source. It includes the text and your reading trail.');
+    lines.push('','### Mind Map framing','','Center the map on the paper’s main question. Branch into major concepts, methods, evidence, findings, limitations, and open questions. Give highlighted passages extra weight. Put personal reactions beneath a clearly named **Reader notes** branch so they are never mistaken for the author’s claims.','','### Audio Overview framing','','Explain the central ideas, evidence, and open questions. Give extra attention to the highlighted passages and reader notes below. Treat reader notes as questions or reactions—not as claims made by the author.','','## Paper','');
     lines.push('- **Author(s):** '+(String(ch.authors||'').trim()||'Not recorded'));
     if(ch.sourceName)lines.push('- **Source file:** '+String(ch.sourceName).trim());
     if((ch.tags||[]).length)lines.push('- **Tags:** '+ch.tags.join(', '));
@@ -2978,25 +2977,71 @@
     if(source){
       var clipped=source.length>maxSource;source=source.slice(0,maxSource);
       lines.push('## Extracted paper text','',ch.kind==='pdf'?'This extracted text helps with searching and narration. Use the original PDF for figures, tables, equations, and page layout.':'The imported text follows.','',source);
-      if(clipped)lines.push('','_[Extracted text shortened here because the source exceeds the listening-pack size limit. Use the original paper for the remainder.]_');
+      if(clipped)lines.push('','_[Extracted text shortened here because the source exceeds the package size limit. Use the original paper for the remainder.]_');
     }else if(ch.kind==='pdf')lines.push('## Paper text','', 'No full text was available to extract in Phloem. Upload the original PDF with this pack so NotebookLM can read the paper.');
     lines.push('','---','Prepared by Phloem. Nothing was sent anywhere when this file was created.');
     return lines.join('\n');
   }
-  function downloadListeningPack(ch){
-    var blob=new Blob([listeningPackMarkdown(ch)],{type:'text/markdown;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download=listeningPackFilename(ch);document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},2000);
+  function notebookPackageReadme(ch){
+    var hasPdf=ch.kind==='pdf';
+    return [
+      'PHLOEM → NOTEBOOKLM PACKAGE','',
+      'NotebookLM cannot read this ZIP directly. Unzip it first.','',
+      '1. Unzip this package.',
+      '2. Open https://notebook.google.com/ and create or open a notebook.',
+      hasPdf?'3. Upload BOTH the PDF and the Phloem guide Markdown file.':'3. Upload the Phloem guide Markdown file.',
+      '4. Choose Mind Map, Audio Overview, or another Studio tool.','',
+      'MIND MAP','The guide asks NotebookLM to separate concepts, methods, evidence, findings, limitations, and your own questions. Expand a node or click it to investigate that branch.','',
+      'AUDIO OVERVIEW','The guide asks the hosts to prioritize your highlights and questions while keeping your notes separate from the author’s claims.','',
+      'PRIVACY','Phloem assembled this package on your device. Nothing is sent to Google until you choose the files and upload them.','',
+      'Paper: '+String(ch.title||'Untitled'),
+      'Author(s): '+(String(ch.authors||'').trim()||'Not recorded')
+    ].join('\n');
   }
-  byId('notebookLmBtn').onclick=function(){
-    var ch=find(currentId),btn=this,status=byId('notebookLmStatus');if(!ch)return;
-    btn.disabled=true;btn.textContent='Preparing…';status.textContent='Creating the listening pack on this device…';
+  var notebookZipCrcTable=null;
+  function notebookCrcTable(){
+    if(notebookZipCrcTable)return notebookZipCrcTable;notebookZipCrcTable=new Uint32Array(256);
+    for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c&1)?0xedb88320^(c>>>1):c>>>1;notebookZipCrcTable[n]=c>>>0;}return notebookZipCrcTable;
+  }
+  async function notebookCrc32(bytes,done,total,onProgress){
+    var table=notebookCrcTable(),crc=0xffffffff,chunk=4194304;
+    for(var start=0;start<bytes.length;start+=chunk){var end=Math.min(bytes.length,start+chunk);for(var i=start;i<end;i++)crc=table[(crc^bytes[i])&255]^(crc>>>8);if(onProgress)onProgress(done+end,total);if(end<bytes.length)await new Promise(function(resolve){setTimeout(resolve,0);});}
+    return(crc^0xffffffff)>>>0;
+  }
+  function notebookZipDate(date){var year=Math.max(1980,date.getFullYear());return{time:(date.getHours()<<11)|(date.getMinutes()<<5)|(date.getSeconds()>>1),date:((year-1980)<<9)|((date.getMonth()+1)<<5)|date.getDate()};}
+  async function notebookZip(files,onProgress){
+    var encoder=new TextEncoder(),stamp=notebookZipDate(new Date()),prepared=files.map(function(file){var data=typeof file.data==='string'?encoder.encode(file.data):(file.data instanceof Uint8Array?file.data:new Uint8Array(file.data));return{name:encoder.encode(file.name),data:data};}),total=prepared.reduce(function(sum,file){return sum+file.data.length;},0)||1,done=0,parts=[],central=[],offset=0;
+    for(var f=0;f<prepared.length;f++){
+      var file=prepared[f],crc=await notebookCrc32(file.data,done,total,onProgress),size=file.data.length,local=new Uint8Array(30),lv=new DataView(local.buffer);
+      lv.setUint32(0,0x04034b50,true);lv.setUint16(4,20,true);lv.setUint16(6,0x0800,true);lv.setUint16(8,0,true);lv.setUint16(10,stamp.time,true);lv.setUint16(12,stamp.date,true);lv.setUint32(14,crc,true);lv.setUint32(18,size,true);lv.setUint32(22,size,true);lv.setUint16(26,file.name.length,true);lv.setUint16(28,0,true);
+      parts.push(local,file.name,file.data);
+      var directory=new Uint8Array(46),dv=new DataView(directory.buffer);dv.setUint32(0,0x02014b50,true);dv.setUint16(4,20,true);dv.setUint16(6,20,true);dv.setUint16(8,0x0800,true);dv.setUint16(10,0,true);dv.setUint16(12,stamp.time,true);dv.setUint16(14,stamp.date,true);dv.setUint32(16,crc,true);dv.setUint32(20,size,true);dv.setUint32(24,size,true);dv.setUint16(28,file.name.length,true);dv.setUint16(30,0,true);dv.setUint16(32,0,true);dv.setUint16(34,0,true);dv.setUint16(36,0,true);dv.setUint32(38,0,true);dv.setUint32(42,offset,true);central.push(directory,file.name);
+      offset+=local.length+file.name.length+size;done+=size;
+    }
+    var centralSize=central.reduce(function(sum,part){return sum+part.length;},0),end=new Uint8Array(22),ev=new DataView(end.buffer);ev.setUint32(0,0x06054b50,true);ev.setUint16(4,0,true);ev.setUint16(6,0,true);ev.setUint16(8,prepared.length,true);ev.setUint16(10,prepared.length,true);ev.setUint32(12,centralSize,true);ev.setUint32(16,offset,true);ev.setUint16(20,0,true);
+    return new Blob(parts.concat(central,[end]),{type:'application/zip'});
+  }
+  async function buildNotebookPackage(ch,onProgress){
+    var files=[{name:'README — OPEN FIRST.txt',data:notebookPackageReadme(ch)}];
+    if(ch.kind==='pdf'){
+      var stored=await getPdf(ch.id);if(!stored){var missing=new Error('missing PDF');missing.missingPdf=true;throw missing;}
+      var pdf=stored instanceof ArrayBuffer?new Uint8Array(stored):(ArrayBuffer.isView(stored)?new Uint8Array(stored.buffer,stored.byteOffset,stored.byteLength):new Uint8Array(await stored.arrayBuffer()));
+      if(pdf.length<5||String.fromCharCode(pdf[0],pdf[1],pdf[2],pdf[3],pdf[4])!=='%PDF-')throw new Error('saved file is not a PDF');
+      files.push({name:notebookPdfFilename(ch),data:pdf});
+    }
+    files.push({name:notebookGuideFilename(ch),data:listeningPackMarkdown(ch)});return notebookZip(files,onProgress);
+  }
+  function downloadNotebookPackage(ch,blob){var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=notebookPackageStem(ch)+' — Phloem NotebookLM package.zip';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},5000);}
+  byId('notebookLmBtn').onclick=async function(){
+    var ch=find(currentId),btn=this,status=byId('notebookLmStatus');if(!ch)return;var notebookTab=window.open('about:blank','_blank');
+    btn.disabled=true;btn.textContent='Packaging…';status.textContent='Collecting the paper, highlights, and notes on this device…';
     try{
-      downloadListeningPack(ch);
-      window.open('https://notebooklm.google.com/','_blank','noopener');
-      status.textContent=ch.kind==='pdf'?'Downloaded. In NotebookLM, upload this pack and the original PDF together.':'Downloaded. Upload the listening pack in the new NotebookLM tab.';
-      showReaderToast('Listening pack ready · upload it in NotebookLM');
-    }catch(e){status.textContent='The listening pack could not be downloaded. Please try again.';showReaderToast('Could not prepare the listening pack');}
-    finally{btn.disabled=false;btn.textContent='Prepare & open ↗';}
+      var blob=await buildNotebookPackage(ch,function(done,total){status.textContent='Packaging locally… '+Math.min(100,Math.round(done/total*100))+'%';});downloadNotebookPackage(ch,blob);
+      if(notebookTab&&!notebookTab.closed){try{notebookTab.opener=null;notebookTab.location.replace('https://notebook.google.com/');}catch(e){}}
+      status.textContent=ch.kind==='pdf'?'ZIP downloaded. Unzip it, then upload the PDF and Phloem guide together.':'ZIP downloaded. Unzip it, then upload the Phloem guide.';
+      showReaderToast('NotebookLM package ready · unzip before uploading');
+    }catch(e){if(notebookTab&&!notebookTab.closed)try{notebookTab.close();}catch(closeError){}status.textContent=e.missingPdf?'The original PDF is not stored on this device. Re-add the PDF here, then package it again.':'The NotebookLM package could not be created. Please try again.';showReaderToast(e.missingPdf?'Re-add the PDF on this device first':'Could not create the NotebookLM package');}
+    finally{btn.disabled=false;btn.textContent='Package & open ↗';}
   };
   function noteKey(){ return readerMode==='pdf' ? String(currentPage) : 'document'; }
   function loadPageNote(){ var ch=find(currentId); if(!ch) return; var key=noteKey(); byId('noteHeading').textContent=readerMode==='pdf'?'Page '+currentPage+' note':'Paper note'; byId('pageNote').value=(ch.pageNotes||{})[key]||''; }

@@ -54,17 +54,21 @@ function deliver(p) {
   showImporting(p);
   delivered = p.at;
   chrome.storage.local.remove('phloemPending');
-  var total = 0, parts = p.b64.map(function (c) {
-    var bin = atob(c), u8 = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    total += u8.length;
-    return u8;
-  });
+  /* Measure first, then decode directly into the final buffer. The previous
+     parts array temporarily doubled a large book's memory footprint. */
+  var total = p.b64.reduce(function (sum, c) {
+    var padding = c.slice(-2) === '==' ? 2 : (c.slice(-1) === '=' ? 1 : 0);
+    return sum + Math.floor(c.length * 3 / 4) - padding;
+  }, 0);
   var bytes = new Uint8Array(total), off = 0;
-  parts.forEach(function (u8) { bytes.set(u8, off); off += u8.length; });
+  p.b64.forEach(function (c) {
+    var bin = atob(c);
+    for (var i = 0; i < bin.length; i++) bytes[off + i] = bin.charCodeAt(i);
+    off += bin.length;
+  });
   /* The wire name predates the Phloem rename; the page accepts it forever, and
      keeping it means an old page and a new extension still understand each other. */
-  window.postMessage({ type: 'carrel-ext-import', name: p.name, sourceUrl: p.sourceUrl, transferId: p.at, bytes: bytes.buffer }, location.origin);
+  window.postMessage({ type: 'carrel-ext-import', name: p.name, sourceUrl: p.sourceUrl, transferId: p.at, bytes: bytes.buffer }, location.origin, [bytes.buffer]);
 }
 
 function queueDelivery(p) {

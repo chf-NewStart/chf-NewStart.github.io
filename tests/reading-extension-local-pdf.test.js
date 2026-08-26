@@ -93,7 +93,8 @@ function optionsHarness(options = {}) {
     Date,
     Math,
     String,
-    btoa: value => Buffer.from(value, 'binary').toString('base64')
+    btoa: value => Buffer.from(value, 'binary').toString('base64'),
+    setTimeout(handler) { handler(); return 1; }
   };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'carrel-extension/options.js'), 'utf8'), context);
@@ -128,7 +129,7 @@ function contentHarness(pending) {
   const root = makeElement('html');
   const windowObject = {
     addEventListener(type, handler) { state.windowHandlers[type] = handler; },
-    postMessage(data, origin) { state.posted.push({ data, origin }); }
+    postMessage(data, origin, transfer) { state.posted.push({ data, origin, transfer: transfer || [] }); }
   };
   const context = {
     chrome: {
@@ -172,6 +173,16 @@ function contentHarness(pending) {
   assert.strictEqual(local.state.createdTabs[0].url, 'https://houfu72.com/reading.html');
   console.log('PASS  local file response status 0 is accepted after PDF signature validation');
 
+  const oversizedLocal = backgroundHarness({
+    response: {
+      ok: false, status: 0, headers: { get: () => null },
+      arrayBuffer: async () => ({ byteLength: 201 * 1024 * 1024 })
+    }
+  });
+  assert.strictEqual(await oversizedLocal.context.importFromUrl('file:///Users/chf/Downloads/too-large.pdf'), false);
+  assert.match(oversizedLocal.state.notices[0].message, /over 200 MB/);
+  console.log('PASS  toolbar import shares the finite 200 MB memory guard');
+
   const denied = backgroundHarness({ fileAllowed: false });
   assert.strictEqual(await denied.context.importFromUrl('file:///Users/chf/Downloads/science.ado8575.pdf'), false);
   assert.strictEqual(denied.state.fetches.length, 0);
@@ -213,6 +224,21 @@ function contentHarness(pending) {
   assert.strictEqual(picker.state.createdTabs[0].url, 'https://houfu72.com/reading.html');
   console.log('PASS  direct file picker transfers a local PDF without file-URL access');
 
+  const largePicker = optionsHarness();
+  const largeBook = { name: '658749937-次第花開-希阿榮博堪布.pdf', size: 126385421, arrayBuffer: async () => PDF_BYTES };
+  assert.strictEqual(await largePicker.context.importLocalPdf(largeBook), true);
+  assert.strictEqual(largePicker.state.pending.name, '658749937-次第花開-希阿榮博堪布.pdf');
+  assert.strictEqual(largePicker.elements.importStatus.className, 'import-status ready');
+  console.log('PASS  121 MB Chinese book clears the new large-PDF guard');
+
+  const oversizedPicker = optionsHarness();
+  let oversizedRead = false;
+  const oversizedBook = { name: 'too-large.pdf', size: 201 * 1024 * 1024, arrayBuffer: async () => { oversizedRead = true; return PDF_BYTES; } };
+  assert.strictEqual(await oversizedPicker.context.importLocalPdf(oversizedBook), false);
+  assert.strictEqual(oversizedRead, false);
+  assert.match(oversizedPicker.elements.importStatus.textContent, /over 200 MB/);
+  console.log('PASS  finite 200 MB browser-memory guard remains explicit');
+
   const stalePicker = optionsHarness({ tabs: [{ id: 88, windowId: 10 }], sendMessageFails: true });
   assert.strictEqual(await stalePicker.context.importLocalPdf(file), true);
   assert.deepStrictEqual(stalePicker.state.reloadedTabs, [88]);
@@ -237,6 +263,9 @@ function contentHarness(pending) {
   assert.strictEqual(handoff.state.posted.length, 1);
   assert.strictEqual(handoff.state.posted[0].data.transferId, transferId);
   assert.strictEqual(handoff.state.posted[0].data.type, 'carrel-ext-import');
+  assert.strictEqual(handoff.state.posted[0].transfer.length, 1);
+  assert.strictEqual(handoff.state.posted[0].transfer[0], handoff.state.posted[0].data.bytes);
+  console.log('PASS  PDF handoff transfers the buffer instead of cloning it');
   handoff.state.windowHandlers.message({
     source: handoff.context.window,
     data: { type: 'phloem-ext-import-accepted', transferId }
@@ -261,10 +290,14 @@ function contentHarness(pending) {
   console.log('PASS  an older cached Phloem page releases the import cover without a refresh');
 
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'carrel-extension/manifest.json'), 'utf8'));
+  assert.strictEqual(manifest.version, '1.1.15');
   assert.strictEqual(manifest.content_scripts[0].run_at, 'document_start');
+  assert.match(fs.readFileSync(path.join(ROOT, 'carrel-extension/options.html'), 'utf8'), /large books up to 200 MB/);
   const readingSource = fs.readFileSync(path.join(ROOT, 'reading.js'), 'utf8');
   assert.match(readingSource, /phloem-ext-import-accepted/);
   assert.match(readingSource, /phloem-ext-import-complete/);
+  assert.match(readingSource, /preparedBytes instanceof ArrayBuffer/);
+  assert.match(readingSource, /Keep international filenames/);
   console.log('PASS  overlay starts before page paint and Phloem sends the completion acknowledgement');
 })().catch(error => {
   console.error('FAIL ', error);

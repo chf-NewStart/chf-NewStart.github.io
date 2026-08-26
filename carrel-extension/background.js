@@ -7,7 +7,10 @@
 'use strict';
 
 var PHLOEM = 'https://houfu72.com/reading.html';
-var MAX_BYTES = 80 * 1024 * 1024;
+/* chrome.storage.local has no quota while unlimitedStorage is granted. Keep a
+   practical memory guard because the PDF still has to cross extension contexts. */
+var MAX_BYTES = 200 * 1024 * 1024;
+var MAX_MB = Math.round(MAX_BYTES / (1024 * 1024));
 
 chrome.runtime.onInstalled.addListener(function (details) {
   chrome.contextMenus.create({ id: 'phloem-link', title: 'Read link in Phloem', contexts: ['link'] });
@@ -50,6 +53,22 @@ function pdfName(url, disposition) {
   }
   name = name.replace(/\.pdf$/i, '').trim() || 'paper';
   return name + '.pdf';
+}
+
+function bytesToBinary(bytes) {
+  var blocks = [], BLOCK = 1 << 15;
+  for (var i = 0; i < bytes.length; i += BLOCK) {
+    blocks.push(String.fromCharCode.apply(null, bytes.subarray(i, Math.min(bytes.length, i + BLOCK))));
+  }
+  return blocks.join('');
+}
+
+function base64Chunks(bytes) {
+  var u8 = new Uint8Array(bytes), chunks = [], SLICE = 1 << 18;
+  for (var o = 0; o < u8.length; o += SLICE) {
+    chunks.push(btoa(bytesToBinary(u8.subarray(o, Math.min(u8.length, o + SLICE)))));
+  }
+  return chunks;
 }
 
 function unwrapPdfUrl(url) {
@@ -123,7 +142,7 @@ async function importFromUrl(url) {
        PDF signature below is the reliable check for a local file. */
     if (!local && !res.ok) throw new Error('The server answered ' + res.status + '.');
     var bytes = await res.arrayBuffer();
-    if (bytes.byteLength > MAX_BYTES) throw new Error('That file is over 80 MB.');
+    if (bytes.byteLength > MAX_BYTES) throw new Error('That file is over ' + MAX_MB + ' MB.');
     var head = new Uint8Array(bytes.slice(0, 5)), magic = '';
     for (var i = 0; i < head.length; i++) magic += String.fromCharCode(head[i]);
     if (magic !== '%PDF-') {
@@ -131,13 +150,8 @@ async function importFromUrl(url) {
       chrome.action.setBadgeText({ text: '' });
       return false;
     }
-    /* base64 in slices — one giant btoa call would blow the argument limit */
-    var u8 = new Uint8Array(bytes), chunks = [], SLICE = 1 << 18;
-    for (var o = 0; o < u8.length; o += SLICE) {
-      var part = u8.subarray(o, Math.min(u8.length, o + SLICE)), bin = '';
-      for (var j = 0; j < part.length; j++) bin += String.fromCharCode(part[j]);
-      chunks.push(btoa(bin));
-    }
+    /* Base64 stays sliced so large books never hit btoa's argument limit. */
+    var chunks = base64Chunks(bytes);
     await chrome.storage.local.set({
       /* Never pass a local filesystem path into Phloem metadata or optional sync. */
       phloemPending: { name: pdfName(real, res.headers.get('content-disposition')), sourceUrl: local ? '' : real, at: Date.now(), b64: chunks }

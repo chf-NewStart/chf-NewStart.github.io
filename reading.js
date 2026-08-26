@@ -1233,12 +1233,14 @@
   /* The real title lives inside the PDF: document metadata when it is sane, otherwise
      the largest text near the top of page one. Filenames are the fallback, not the name. */
   function filenameTitle(name){return String(name||'').replace(/\.pdf$/i,'').replace(/[_-]+/g,' ');}
+  function hasCompactScript(text){return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]/.test(String(text||''));}
+  function plausibleTitleLength(text){var length=String(text||'').length;return length>=(hasCompactScript(text)?2:8)&&length<=220;}
   function guessTitleFromLayout(layout){
     if(!layout||!layout.length)return '';
     var pageTop=0;layout.forEach(function(line){if(line.y>pageTop)pageTop=line.y;});
     var candidates=layout.filter(function(line){
       var text=line.text.trim();
-      return text.length>=8&&text.length<=220&&line.y>=pageTop*.25&&
+      return plausibleTitleLength(text)&&line.y>=pageTop*.25&&
         !/^(doi\b|https?:|www\.|issn|isbn|vol\.?\s*\d|no\.?\s*\d|received\b|revised\b|accepted\b|abstract\b|keywords?\b|©|copyright)/i.test(text)&&
         !/\d{4}\)|\(\d{4}/.test(text.slice(0,40));
     });
@@ -1251,7 +1253,7 @@
       else break;
     }
     var title=parts.map(function(line){return line.text;}).join(' ').replace(/\s+/g,' ').trim();
-    if(title.length<8||title.length>220||/^\d+$/.test(title))return '';
+    if(!plausibleTitleLength(title)||/^\d+$/.test(title))return '';
     return title;
   }
   /* Publisher metadata loves shipping titles full of XML tags and character entities
@@ -1274,8 +1276,11 @@
       .replace(/\s+,/g,',').replace(/,\s*(?:and|&)\s+/gi,' and ').replace(/\s+/g,' ').trim();
   }
   function authorParts(credit){
-    return cleanAuthorCredit(credit).split(/\s*(?:,|;|\band\b|&)\s*/i).map(function(part){return part.trim();}).filter(function(part){
+    return cleanAuthorCredit(credit).split(/\s*(?:,|，|;|；|、|\band\b|&)\s*/i).map(function(part){return part.trim();}).filter(function(part){
       if(!part||/\b(?:abstract|open access|correspondence|university|department|institute|journal|received|accepted|copyright)\b/i.test(part))return false;
+      /* A Chinese, Japanese or Korean name may be one unspaced word. Keep the
+         stricter Western-name heuristic below for Latin metadata and page text. */
+      if(hasCompactScript(part)&&/^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af·・\s]+$/.test(part))return part.replace(/\s+/g,'').length>=2&&part.length<=40;
       var words=part.replace(/\bet\s+al\.?$/i,'').split(/\s+/).filter(Boolean);
       if(words.length<2||words.length>9||!words.every(function(word){return /^[A-Za-zÀ-ž.'’\-]+$/.test(word);}))return false;
       var capitals=0,particles=/^(?:al|bin|da|de|del|der|di|du|la|le|van|von|y)$/;
@@ -1314,7 +1319,7 @@
     var details={title:'',authors:''},meta=null,layout=[];
     try{meta=await doc.getMetadata().catch(function(){return null;});}catch(e){}
     var infoTitle=meta&&meta.info&&cleanMetaTitle(meta.info.Title);
-    if(infoTitle&&infoTitle.length>=8&&infoTitle.length<=220&&!/untitled|microsoft word|powerpoint|\.pdf$|\.docx?$|\.tex$|^\d+$/i.test(infoTitle))details.title=infoTitle;
+    if(infoTitle&&plausibleTitleLength(infoTitle)&&!/untitled|microsoft word|powerpoint|\.pdf$|\.docx?$|\.tex$|^\d+$/i.test(infoTitle))details.title=infoTitle;
     details.authors=metadataAuthorCredit(meta);
     try{layout=contentLayout(await (await doc.getPage(1)).getTextContent());}catch(e){}
     if(!details.title)details.title=guessTitleFromLayout(layout);
@@ -1327,10 +1332,10 @@
     if(probe.contentHash){var hashed=papers.find(function(ch){return ch.contentHash===probe.contentHash;});if(hashed)return hashed;}
     return papers.find(function(ch){if(ch.contentHash&&probe.contentHash&&ch.contentHash!==probe.contentHash)return false;if(samePdfSource(ch,probe,'sourceUrl')||samePdfSource(ch,probe,'sourcePath'))return true;return +ch.pageCount===+probe.pageCount&&identityText(ch.sourceName)===identityText(probe.sourceName)&&identityText(probe.sourceName).length>=5;});
   }
-  async function importPdf(file, sourcePath, sourceUrl, progressBtn, stayPut){
+  async function importPdf(file, sourcePath, sourceUrl, progressBtn, stayPut, preparedBytes){
     var btn=progressBtn||byId('importPdfBtn'), old=btn.textContent, imported=false; btn.disabled=true; btn.textContent='Reading PDF…';
     try {
-      var bytes=await file.arrayBuffer(),hashPromise=pdfFingerprint(bytes).catch(function(){return '';}),lib=await loadPdfLib();btn.textContent='Opening PDF…';
+      var bytes=preparedBytes instanceof ArrayBuffer?preparedBytes:await file.arrayBuffer(),hashPromise=pdfFingerprint(bytes).catch(function(){return '';}),lib=await loadPdfLib();btn.textContent='Opening PDF…';
       var doc=await lib.getDocument({data:bytes.slice(0)}).promise;
       var details=await derivePdfDetails(doc),title=details.title||filenameTitle(file.name),contentHash=await hashPromise;
       var probe={kind:'pdf',title:title,sourceName:file.name,sourcePath:sourcePath||'',sourceUrl:sourceUrl||'',pageCount:doc.numPages,fileSize:bytes.byteLength,contentHash:contentHash};
@@ -1359,11 +1364,15 @@
     if(!(bytes instanceof ArrayBuffer)||bytes.byteLength<1200){finishExtensionImport(false);return;}
     var head=new Uint8Array(bytes.slice(0,5)),magic='';for(var i=0;i<head.length;i++)magic+=String.fromCharCode(head[i]);
     if(magic!=='%PDF-'){finishExtensionImport(false);return;}
-    var name=String(e.data.name||'').replace(/[^\w .()\[\]&,'-]+/g,' ').trim().slice(0,140)||'paper.pdf';
+    /* Keep international filenames; remove only control characters and characters
+       that cannot safely form a filename on common desktop filesystems. */
+    var name=String(e.data.name||'').replace(/[\u0000-\u001f\u007f/\\<>:"|?*]+/g,' ').trim().slice(0,140)||'paper.pdf';
     if(!/\.pdf$/i.test(name))name+='.pdf';
     window.postMessage({type:'phloem-ext-import-accepted',transferId:transferId},location.origin);
     showReaderToast('Adding from your browser…');
-    var imported=await importPdf(new File([bytes],name,{type:'application/pdf'}),'',String(e.data.sourceUrl||'').slice(0,600));
+    /* The extension already supplied an ArrayBuffer. Reuse it instead of wrapping
+       it in a File and immediately allocating another 100+ MB copy. */
+    var imported=await importPdf({name:name},'',String(e.data.sourceUrl||'').slice(0,600),null,false,bytes);
     finishExtensionImport(imported);
   });
 

@@ -6,8 +6,10 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const PDF_BASE64 = 'JVBERi0xLjMKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3VyY2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSIC9GMiAzIDAgUgo+PgplbmRvYmoKMiAwIG9iago8PAovQmFzZUZvbnQgL0hlbHZldGljYSAvRW5jb2RpbmcgL1dpbkFuc2lFbmNvZGluZyAvTmFtZSAvRjEgL1N1YnR5cGUgL1R5cGUxIC9UeXBlIC9Gb250Cj4+CmVuZG9iagozIDAgb2JqCjw8Ci9CYXNlRm9udCAvSGVsdmV0aWNhLUJvbGQgL0VuY29kaW5nIC9XaW5BbnNpRW5jb2RpbmcgL05hbWUgL0YyIC9TdWJ0eXBlIC9UeXBlMSAvVHlwZSAvRm9udAo+PgplbmRvYmoKNCAwIG9iago8PAovQ29udGVudHMgOCAwIFIgL01lZGlhQm94IFsgMCAwIDYxMiA3OTIgXSAvUGFyZW50IDcgMCBSIC9SZXNvdXJjZXMgPDwKL0ZvbnQgMSAwIFIgL1Byb2NTZXQgWyAvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJIF0KPj4gL1JvdGF0ZSAwIC9UcmFucyA8PAoKPj4gCiAgL1R5cGUgL1BhZ2UKPj4KZW5kb2JqCjUgMCBvYmoKPDwKL1BhZ2VNb2RlIC9Vc2VOb25lIC9QYWdlcyA3IDAgUiAvVHlwZSAvQ2F0YWxvZwo+PgplbmRvYmoKNiAwIG9iago8PAovQXV0aG9yIChBZGEgTG92ZWxhY2UpIC9DcmVhdGlvbkRhdGUgKEQ6MjAyNjA4MjQxNzA5MTQtMDQnMDAnKSAvQ3JlYXRvciAoYW5vbnltb3VzKSAvS2V5d29yZHMgKCkgL01vZERhdGUgKEQ6MjAyNjA4MjQxNzA5MTQtMDQnMDAnKSAvUHJvZHVjZXIgKFJlcG9ydExhYiBQREYgTGlicmFyeSAtIFwob3BlbnNvdXJjZVwpKSAKICAvU3ViamVjdCAodW5zcGVjaWZpZWQpIC9UaXRsZSAoQW5hbHl0aWNhbCBlbmdpbmVzIGZvciBmaWVsZCByZXNlYXJjaCkgL1RyYXBwZWQgL0ZhbHNlCj4+CmVuZG9iago3IDAgb2JqCjw8Ci9Db3VudCAxIC9LaWRzIFsgNCAwIFIgXSAvVHlwZSAvUGFnZXMKPj4KZW5kb2JqCjggMCBvYmoKPDwKL0ZpbHRlciBbIC9BU0NJSTg1RGVjb2RlIC9GbGF0ZURlY29kZSBdIC9MZW5ndGggMjU1Cj4+CnN0cmVhbQpHYXNKTGJtTTxBJjs5TDlgPm1EcW03LEwwSmowTCRIJUQ/I1tGLXJaOEhuIy4yJiRYIixcMSVpZmwmMlxqRGxZS2dBaTFQZm9BPClcY2FVaiJuV0MyNFxFOztiK0g3aztlWjY1J05WYjwpaVdDTldVSSp0Vj9YTm1Xb1xjWkgnQiZxIlshI0poSGhQVT02U24sL1k4MWhrRikwPT9jbCs4X1ZqV3E+VDppaGRoXlNfQmxTKXRhJ08xN2VSLmBsODo6aEI1ay5MT29QIiorOi4kUjdmNiI8WmM6QUg7Skk9bCRhPEFGbW5LTDNVZmgtNDVjZV5jPEgycTxAQGl0fj5lbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA5CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDA2MSAwMDAwMCBuIAowMDAwMDAwMTAyIDAwMDAwIG4gCjAwMDAwMDAyMDkgMDAwMDAgbiAKMDAwMDAwMDMyMSAwMDAwMCBuIAowMDAwMDAwNTE0IDAwMDAwIG4gCjAwMDAwMDA1ODIgMDAwMDAgbiAKMDAwMDAwMDg3NSAwMDAwMCBuIAowMDAwMDAwOTM0IDAwMDAwIG4gCnRyYWlsZXIKPDwKL0lEIApbPDYyYjQwMTc3YzM1NDhjZTk1MTBmZDlkMGVlNmYzYjExPjw2MmI0MDE3N2MzNTQ4Y2U5NTEwZmQ5ZDBlZTZmM2IxMT5dCiUgUmVwb3J0TGFiIGdlbmVyYXRlZCBQREYgZG9jdW1lbnQgLS0gZGlnZXN0IChvcGVuc291cmNlKQoKL0luZm8gNiAwIFIKL1Jvb3QgNSAwIFIKL1NpemUgOQo+PgpzdGFydHhyZWYKMTI3OQolJUVPRgo=';
-const PDF_BUFFER = process.env.PHLOEM_AUTHOR_TEST_PDF ? fs.readFileSync(process.env.PHLOEM_AUTHOR_TEST_PDF) : Buffer.from(PDF_BASE64, 'base64');
+const PDF_PATH = process.env.PHLOEM_AUTHOR_TEST_PDF || '';
+const PDF_BUFFER = PDF_PATH ? null : Buffer.from(PDF_BASE64, 'base64');
 const EXPECTED_AUTHORS = process.env.PHLOEM_AUTHOR_TEST_EXPECTED || 'Ada Lovelace and Grace Hopper';
+const EXPECTED_TITLE = process.env.PHLOEM_AUTHOR_TEST_TITLE || 'Analytical engines for field research';
 const PORT = +(process.env.PHLOEM_AUTHOR_TEST_PORT || 8128);
 const server = http.createServer((req, res) => {
   const pathname = req.url.split('?')[0] === '/' ? '/reading.html' : req.url.split('?')[0];
@@ -41,12 +43,14 @@ function check(name, condition, extra) {
   });
 
   await page.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
-  await page.setInputFiles('#pdfFile', {
+  if (PDF_PATH) await page.setInputFiles('#pdfFile', PDF_PATH);
+  else await page.setInputFiles('#pdfFile', {
     name: 'author-test.pdf', mimeType: 'application/pdf', buffer: PDF_BUFFER
   });
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0]);
   await page.waitForTimeout(300);
   let paper = await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0]);
+  check('new import accepts a valid metadata title in its writing system', paper.title === EXPECTED_TITLE, paper.title);
   check('new import prefers the full page-one author credit', paper.authors === EXPECTED_AUTHORS, paper.authors);
 
   await page.evaluate(() => {
@@ -56,7 +60,7 @@ function check(name, condition, extra) {
     localStorage.setItem('readingRoom.lastOpen.v1', state.chapters[0].id);
   });
   await page.reload({ waitUntil: 'load' });
-  await page.waitForTimeout(800);
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].authors);
   paper = await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0]);
   check('older blank author credit repairs on open', paper.authors === EXPECTED_AUTHORS, paper.authors);
 

@@ -1,7 +1,10 @@
 'use strict';
 
 var PHLOEM = 'https://houfu72.com/reading.html';
-var MAX_BYTES = 80 * 1024 * 1024;
+/* The extension has unlimitedStorage; this is a browser-memory guard, not a
+   storage quota. It comfortably covers large scanned books while staying finite. */
+var MAX_BYTES = 200 * 1024 * 1024;
+var MAX_MB = Math.round(MAX_BYTES / (1024 * 1024));
 
 async function refreshFileAccess() {
   var status = document.getElementById('fileStatus');
@@ -30,12 +33,27 @@ function pdfMagic(bytes) {
   return magic;
 }
 
+function fileSize(bytes) {
+  var mb = bytes / (1024 * 1024);
+  return (mb >= 10 ? Math.round(mb) : Math.round(mb * 10) / 10) + ' MB';
+}
+
+function yieldToBrowser() {
+  return new Promise(function (resolve) { setTimeout(resolve, 0); });
+}
+
+function bytesToBinary(bytes) {
+  var blocks = [], BLOCK = 1 << 15;
+  for (var i = 0; i < bytes.length; i += BLOCK) {
+    blocks.push(String.fromCharCode.apply(null, bytes.subarray(i, Math.min(bytes.length, i + BLOCK))));
+  }
+  return blocks.join('');
+}
+
 function base64Chunks(bytes) {
   var u8 = new Uint8Array(bytes), chunks = [], SLICE = 1 << 18;
   for (var o = 0; o < u8.length; o += SLICE) {
-    var part = u8.subarray(o, Math.min(u8.length, o + SLICE)), bin = '';
-    for (var j = 0; j < part.length; j++) bin += String.fromCharCode(part[j]);
-    chunks.push(btoa(bin));
+    chunks.push(btoa(bytesToBinary(u8.subarray(o, Math.min(u8.length, o + SLICE)))));
   }
   return chunks;
 }
@@ -60,14 +78,20 @@ async function revealPhloem() {
 async function importLocalPdf(file) {
   if (!file) return false;
   try {
-    showImportStatus('Reading “' + file.name + '”…');
-    if (file.size > MAX_BYTES) throw new Error('That file is over 80 MB.');
+    showImportStatus('Reading “' + file.name + '” (' + fileSize(file.size) + ')…');
+    if (file.size > MAX_BYTES) throw new Error('That file is over ' + MAX_MB + ' MB.');
+    await yieldToBrowser();
     var bytes = await file.arrayBuffer();
     if (pdfMagic(bytes) !== '%PDF-') throw new Error('That file is not a PDF.');
     var name = String(file.name || 'paper.pdf').trim() || 'paper.pdf';
     if (!/\.pdf$/i.test(name)) name += '.pdf';
+    showImportStatus('Preparing “' + name + '” for Phloem… Large books can take a moment.');
+    await yieldToBrowser();
+    var chunks = base64Chunks(bytes);
+    showImportStatus('Passing “' + name + '” to Phloem…');
+    await yieldToBrowser();
     await chrome.storage.local.set({
-      phloemPending: { name: name, sourceUrl: '', at: Date.now(), b64: base64Chunks(bytes) }
+      phloemPending: { name: name, sourceUrl: '', at: Date.now(), b64: chunks }
     });
     showImportStatus('Opening “' + name + '” in Phloem…', 'ready');
     await revealPhloem();

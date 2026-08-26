@@ -1402,12 +1402,13 @@
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
   var GUIDE_DISCOVERY_KEY='readingRoom.guideDiscoverySeen.v1';
-  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfDirection:'horizontal',verticalPages:'one',guideScope:'page',guideSize:'m',guideDim:55,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
+  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfDirection:'horizontal',verticalPages:'one',guideScope:'page',guideSize:'m',guideDim:55,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
   var comfort=Object.assign({},DEFAULT_COMFORT);
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
   comfort.leading=Math.max(1.2,Math.min(2.6,+comfort.leading||1.7));
+  if(['book','clean'].indexOf(comfort.typeface)<0)comfort.typeface=DEFAULT_COMFORT.typeface;
   if(['yellow','green','blue'].indexOf(comfort.guide)<0)comfort.guide='yellow';
   if(['row','column'].indexOf(comfort.guideOrientation)<0)comfort.guideOrientation='row';
   if(!savedComfort||!Object.prototype.hasOwnProperty.call(savedComfort,'pdfDirection'))comfort.pdfDirection=savedComfort&&savedComfort.guideOrientation==='column'?'vertical':'horizontal';
@@ -1459,10 +1460,12 @@
     doc.style.setProperty('--read-measure',comfort.measure+'px');
     doc.style.setProperty('--read-leading',String(comfort.leading));
     doc.style.setProperty('--read-spacing',comfort.airy?'.2em':'normal');
+    doc.style.setProperty('--read-font',comfort.typeface==='clean'?'var(--sans)':'var(--serif)');
     byId('textSizeValue').textContent=comfort.size+'%';
     byId('widthValue').textContent=String(comfort.measure);
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
+    document.querySelectorAll('[data-reading-typeface]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.readingTypeface===comfort.typeface));});
     byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=driftLabel();
     byId('guideDimRange').value=String(comfort.guideDim);byId('guideDimValue').textContent=comfort.guideDim+'%';
     byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');document.body.classList.toggle('cream-tone',comfort.tone==='cream');
@@ -1494,6 +1497,7 @@
   byId('widthWide').onclick=function(){stepComfort('measure',60,440,1100,0);};
   byId('leadTight').onclick=function(){stepComfort('leading',-0.1,1.2,2.6,1);};
   byId('leadLoose').onclick=function(){stepComfort('leading',0.1,1.2,2.6,1);};
+  document.querySelectorAll('[data-reading-typeface]').forEach(function(btn){btn.onclick=function(){comfort.typeface=btn.dataset.readingTypeface;applyComfort();showReaderToast(btn.textContent+' reading typeface');};});
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
   byId('creamBtn').onclick=function(){comfort.tone=comfort.tone==='cream'?'white':'cream';applyComfort();showReaderToast(comfort.tone==='cream'?'Cream paper · easier on the eyes':'White paper');};
   document.querySelectorAll('[data-pdf-direction]').forEach(function(btn){btn.onclick=function(){comfort.pdfDirection=btn.dataset.pdfDirection;columnBookFitToken='';columnBookManualZoom=false;guideOffset=null;applyComfort();showReaderToast(comfort.pdfDirection==='vertical'?'Vertical book · cropped right-to-left pages':'Normal PDF · continuous downward pages');};});

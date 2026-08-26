@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=46">
+  <link rel="stylesheet" href="/reading.css?v=47">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -150,6 +150,12 @@
               <button class="step-btn" id="textSmaller" type="button" aria-label="Smaller text">A−</button>
               <span class="value" id="textSizeValue">100%</span>
               <button class="step-btn" id="textBigger" type="button" aria-label="Bigger text">A+</button>
+            </div>
+            <div class="group"><span class="group-label">Typeface</span>
+              <div class="guide-scope" role="group" aria-label="Reading typeface">
+                <button class="toggle typeface-book" type="button" data-reading-typeface="book" aria-pressed="true">Book</button>
+                <button class="toggle typeface-clean" type="button" data-reading-typeface="clean" aria-pressed="false">Clean</button>
+              </div>
             </div>
             <div class="group"><span class="group-label">Width</span>
               <button class="step-btn" id="widthNarrow" type="button" aria-label="Narrower column">↤</button>
@@ -559,9 +565,9 @@
       if(!hadController||reloading)return;
       reloading=true;location.reload();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=46',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=47',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=46" defer></script>
+<script src="/reading.js?v=47" defer></script>
 </body>
 </html>

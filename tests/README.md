@@ -32,6 +32,9 @@ direction choices, and switching back to the continuous scroller. Set
 `reading-pdf-authors.test.js` covers full page-one author extraction, repair of
 older blank credits, and preservation of manually edited author fields.
 
+`reading-typography.test.js` covers the Reflow-only Book/Clean typeface control,
+its immediate effect on long-form text, and persistence across reloads.
+
 `reading-extension-local-pdf.test.js` covers extension imports for local
 `file://` PDFs, Chrome's permission-denied path, HTTP errors, and the direct file
 picker fallback.
@@ -51,6 +54,7 @@ node tests/reading-library-stack.test.js
 node tests/reading-pdf-zoom.test.js
 node tests/reading-vertical-book-flow.test.js
 node tests/reading-pdf-authors.test.js
+node tests/reading-typography.test.js
 node tests/reading-extension-local-pdf.test.js
 node tests/reading-app-update.test.js
 ```

@@ -493,6 +493,24 @@
     .pdf-frame { width: max-content; min-width: 100%; min-height: 100%; margin: 0 auto; padding: 16px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
     .pdf-page { position: relative; flex: 0 0 auto; background: white; box-shadow: 0 10px 45px rgba(0,0,0,.18); }
     .pdf-page canvas { display: block; height: auto; background: white; }
+    /* Traditional vertical books are read as individual leaves: top-to-bottom within a
+       column, then right-to-left across columns and pages. Only the current leaf occupies
+       the pane, so swiping never falls into the next page's giant scanned margin. */
+    .document-pane.column-book-flow { overscroll-behavior: none; }
+    .pdf-frame.column-book-flow { min-width: 100%; min-height: 100%; padding: 10px; display: grid; grid-template-columns: max-content; place-content: center; gap: 0; perspective: 1500px; }
+    .pdf-frame.column-book-flow .pdf-page { display: none; grid-area: 1 / 1; transform-origin: center right; }
+    .pdf-frame.column-book-flow .pdf-page:is(.book-active, .book-turning) { display: block; }
+    .pdf-frame.column-book-flow .pdf-page.book-out-next { z-index: 2; animation: bookOutNext .25s cubic-bezier(.4,0,.2,1) both; }
+    .pdf-frame.column-book-flow .pdf-page.book-in-next { z-index: 1; animation: bookInNext .25s cubic-bezier(.2,.7,.2,1) both; }
+    .pdf-frame.column-book-flow .pdf-page.book-out-prev { z-index: 2; animation: bookOutPrev .25s cubic-bezier(.4,0,.2,1) both; }
+    .pdf-frame.column-book-flow .pdf-page.book-in-prev { z-index: 1; animation: bookInPrev .25s cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes bookOutNext { to { opacity: .08; transform: translateX(16%) rotateY(-4deg); } }
+    @keyframes bookInNext { from { opacity: .12; transform: translateX(-10%); } }
+    @keyframes bookOutPrev { to { opacity: .08; transform: translateX(-16%) rotateY(4deg); } }
+    @keyframes bookInPrev { from { opacity: .12; transform: translateX(10%); } }
+    @media (prefers-reduced-motion: reduce) {
+      .pdf-frame.column-book-flow .pdf-page.book-turning { animation-duration: .01ms; }
+    }
     .pdf-links { position: absolute; inset: 0; pointer-events: none; }
     .pdf-link { position: absolute; pointer-events: auto; border-radius: 3px; }
     .pdf-link:hover { background: rgba(64, 137, 174, .16); box-shadow: 0 0 0 1px rgba(64, 137, 174, .4); }

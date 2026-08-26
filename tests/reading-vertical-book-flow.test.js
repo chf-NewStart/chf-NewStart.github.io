@@ -35,14 +35,21 @@ function check(name, condition, extra) {
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => {
     localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {} }));
-    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ guideOrientation: 'column', focus: true, guideDim: 55 }));
+    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ guideOrientation: 'column', focus: false, guideDim: 55 }));
   });
 
   await page.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await page.setInputFiles('#pdfFile', PDF);
   await page.waitForFunction(() => document.querySelector('.pdf-page.book-active canvas')?.width > 0);
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => localStorage.getItem('readingRoom.guideDiscoverySeen.v1') === '1');
 
+  check('a first PDF opens cleanly with the guide off', await page.locator('#focusBtn').getAttribute('aria-pressed') === 'false' && !(await page.locator('#paneSpotlight').evaluate(overlay => overlay.classList.contains('on'))));
+  check('first entrance quietly points to the guide instead', await page.locator('#mMore').evaluate(button => button.classList.contains('guide-discovery')) && (await page.locator('#guideDiscoveryNote').textContent()).includes('one column'));
+  await page.click('#mMore');
+  check('the guide itself is cued when mobile tools open', await page.locator('#guideTool').evaluate(tool => tool.classList.contains('guide-discovery')));
+  await page.evaluate(() => localStorage.setItem('readingRoom.guideAdjustSeen.v1', '1'));
+  await page.click('#focusBtn');
+  await page.click('#mMore');
   check('column flow opens as a single-page book', await page.locator('#documentPane').evaluate(pane => pane.classList.contains('column-book-flow')));
   check('only the current book leaf is visible', await page.locator('.pdf-page').evaluateAll(pages => pages.filter(page => getComputedStyle(page).display !== 'none').length === 1));
   check('right-to-left page arrows are visible', await page.locator('#mPrev').textContent() === '→' && await page.locator('#mNext').textContent() === '←');
@@ -126,6 +133,28 @@ function check(name, condition, extra) {
       return { center: (guide.left + guide.width / 2 - paper.left) / paper.width, inkRight: xs[Math.floor(xs.length * .985)] };
     });
     check('the vertical guide begins over the book text rather than its outer margin', Math.abs(guidePosition.center - guidePosition.inkRight) < .12, JSON.stringify(guidePosition));
+  } else {
+    const desktop = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    desktop.on('pageerror', error => errors.push(error.message));
+    await desktop.addInitScript(() => {
+      if (sessionStorage.getItem('guideDesktopSeeded')) return;
+      sessionStorage.setItem('guideDesktopSeeded', '1');
+      localStorage.clear();
+      localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {} }));
+      localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ guideOrientation: 'row', focus: false, guideDim: 55 }));
+    });
+    await desktop.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+    await desktop.setInputFiles('#pdfFile', PDF);
+    await desktop.waitForFunction(() => localStorage.getItem('readingRoom.guideDiscoverySeen.v1') === '1');
+    const desktopCue = await desktop.locator('#guideDiscoveryNote').boundingBox();
+    const desktopGuide = await desktop.locator('#guideTool').boundingBox();
+    check('desktop cue sits beside the Guide control without covering the PDF', desktopCue && desktopGuide && desktopCue.y >= desktopGuide.y + desktopGuide.height && desktopCue.x + desktopCue.width <= 1280, JSON.stringify(desktopCue));
+    check('desktop first entrance also leaves the guide disabled', await desktop.locator('#focusBtn').getAttribute('aria-pressed') === 'false');
+    await desktop.reload({ waitUntil: 'load' });
+    await desktop.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0);
+    await desktop.waitForTimeout(700);
+    check('the Guide cue does not repeat on later entrances', !(await desktop.locator('#guideTool').evaluate(tool => tool.classList.contains('guide-discovery'))));
+    await desktop.close();
   }
   check('vertical book flow has no page errors', errors.length === 0, errors.join('; '));
 

@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=36">
+  <link rel="stylesheet" href="/reading.css?v=37">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -127,6 +127,7 @@
         <div class="guide-tool" id="guideTool" role="group" aria-label="Reading guide and settings">
           <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Toggle reading guide" title="Turn the reading guide on or off">▰ <span class="wide">Guide</span></button>
           <button class="soft-button guide-tool-menu" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Open guide and reading settings" title="Dimness, width, height, color and other reading settings">⌄</button>
+          <span class="guide-discovery-note" id="guideDiscoveryNote" role="status" aria-live="polite" aria-hidden="true">Focus one line—or a vertical column.</span>
         </div>
         <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F) · Space auto-scrolls">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
@@ -510,9 +511,9 @@
       if(!hadController||reloading)return;
       reloading=true;location.reload();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=36',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=37',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=36" defer></script>
+<script src="/reading.js?v=37" defer></script>
 </body>
 </html>

@@ -1388,6 +1388,7 @@
 
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
+  var GUIDE_DISCOVERY_KEY='readingRoom.guideDiscoverySeen.v1';
   var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,airy:false,focus:false,guide:'yellow',guideOrientation:'row',guideScope:'page',guideSize:'m',guideDim:55,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
   var comfort=Object.assign({},DEFAULT_COMFORT);
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
@@ -1405,6 +1406,32 @@
   comfort.driftSpeed=Math.max(.5,Math.min(60,+comfort.driftSpeed||4));
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
+  var guideDiscoveryTimer=null,guideDiscoveryLaunchTimer=null;
+  function dismissGuideDiscovery(){
+    clearTimeout(guideDiscoveryTimer);clearTimeout(guideDiscoveryLaunchTimer);
+    byId('guideTool').classList.remove('guide-discovery');byId('mMore').classList.remove('guide-discovery');
+    byId('guideDiscoveryNote').setAttribute('aria-hidden','true');
+  }
+  function guideDiscoverySeen(){
+    try{return localStorage.getItem(GUIDE_DISCOVERY_KEY)==='1'||localStorage.getItem('readingRoom.guideAdjustSeen.v1')==='1';}catch(e){return true;}
+  }
+  function showGuideDiscovery(chapterId){
+    if(currentId!==chapterId||readerMode!=='pdf'||!pdfDoc||byId('readerPage').classList.contains('hidden'))return;
+    if(comfort.focus||guideDiscoverySeen()){
+      try{localStorage.setItem(GUIDE_DISCOVERY_KEY,'1');}catch(e){}
+      return;
+    }
+    var note=byId('guideDiscoveryNote');
+    note.textContent=comfort.guideOrientation==='column'?'Vertical book? Focus one column with Guide.':'Focus one line—or a vertical column—with Guide.';
+    note.setAttribute('aria-hidden','false');byId('guideTool').classList.add('guide-discovery');
+    if(innerWidth<=720){byId('mMore').classList.add('guide-discovery');showReaderToast('Need focus? Guide is under •••');}
+    try{localStorage.setItem(GUIDE_DISCOVERY_KEY,'1');}catch(e){}
+    guideDiscoveryTimer=setTimeout(dismissGuideDiscovery,5400);
+  }
+  function scheduleGuideDiscovery(chapterId){
+    clearTimeout(guideDiscoveryLaunchTimer);
+    guideDiscoveryLaunchTimer=setTimeout(function(){showGuideDiscovery(chapterId);},520);
+  }
   /* The guide anchors to the pane, not the screen: zen mode and bar toggles move the
      pane, and a pane-relative anchor keeps the band over the same line of text. */
   var focusPara=null, pageStartCache={}, guideOffset=null;
@@ -1457,7 +1484,7 @@
   byId('guideDimRange').oninput=function(){comfort.guideDim=Math.max(20,Math.min(85,+this.value||55));byId('guideDimValue').textContent=comfort.guideDim+'%';byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();};
   byId('comfortReset').onclick=function(){Object.assign(comfort,DEFAULT_COMFORT);if(driftSpeed)driftSpeed=DEFAULT_COMFORT.driftSpeed;applyComfort();showReaderToast('Reading settings reset · cream paper · guide off');};
   function setComfortBarOpen(open){var bar=byId('comfortBar'),btn=byId('comfortBtn');bar.classList.toggle('hidden',!open);byId('guideTool').classList.toggle('settings-open',open);btn.setAttribute('aria-expanded',String(open));}
-  byId('comfortBtn').onclick=function(){setComfortBarOpen(byId('comfortBar').classList.contains('hidden'));};
+  byId('comfortBtn').onclick=function(){dismissGuideDiscovery();setComfortBarOpen(byId('comfortBar').classList.contains('hidden'));};
   function setFocusPara(index,scroll){
     var list=paraSections();if(!list.length){focusPara=null;return;}
     focusPara=Math.max(0,Math.min(list.length-1,index||0));
@@ -1540,6 +1567,7 @@
   byId('zenGuide').onclick=function(){byId('focusBtn').onclick();};
   byId('zenTheme').onclick=function(){byId('themeBtn').onclick();};
   byId('focusBtn').onclick=function(){
+    dismissGuideDiscovery();
     var turningOn=!comfort.focus,seen=false;
     if(turningOn){try{seen=localStorage.getItem('readingRoom.guideAdjustSeen.v1')==='1';}catch(e){}if(!seen){comfort.guide='yellow';comfort.guideScope='page';}}
     comfort.focus=turningOn;applyComfort();
@@ -1849,6 +1877,7 @@
   byId('mMore').onclick=function(){
     var on=!byId('readerPage').classList.contains('show-tools');
     byId('readerPage').classList.toggle('show-tools',on);this.setAttribute('aria-expanded',String(on));
+    if(on)this.classList.remove('guide-discovery');
   };
   byId('mPrev').onclick=function(){byId('prevPage').click();};
   byId('mNext').onclick=function(){byId('nextPage').click();};
@@ -2070,7 +2099,10 @@
           });
         }
         if(readerMode==='text'&&(!ch.readerText||ch.readerV!==READER_V)){await ensureReaderData(pdfDoc,ch);updateReaderMode();}
-        else if(readerMode==='pdf'){renderPdfPage();if(currentPage>1)showReaderToast('Back on page '+currentPage);}
+        else if(readerMode==='pdf'){
+          Promise.resolve(renderPdfPage()).then(function(){scheduleGuideDiscovery(ch.id);});
+          if(currentPage>1)showReaderToast('Back on page '+currentPage);
+        }
       }catch(e){showPdfProblem(ch,e);}
     } else renderText(ch);
     restoreReaderPosition(ch,true); loadPageNote(); updateProgress();

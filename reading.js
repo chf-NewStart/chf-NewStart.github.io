@@ -2188,7 +2188,7 @@
   var coarsePointer=matchMedia('(pointer: coarse)');
   var columnBookTurning=false,columnBookQueuedTarget=0,columnBookFits=true,columnBookMinLeft=0,columnBookMaxLeft=0,columnBookAutoZoomed=false,columnBookManualZoom=false,columnBookFitToken='',columnBookSuppressClickUntil=0;
   function columnBookFlow(){return readerMode==='pdf'&&comfort.pdfDirection==='vertical';}
-  function columnBookSpread(){var pane=byId('documentPane');return columnBookFlow()&&comfort.verticalPages==='two'&&pane&&pane.clientWidth>=920&&pane.clientHeight>=520;}
+  function columnBookSpread(){var pane=byId('documentPane');return columnBookFlow()&&comfort.verticalPages==='two'&&pane&&pane.clientWidth>=640&&pane.clientHeight>=480;}
   function columnBookComfortPage(){var pane=byId('documentPane');return columnBookFlow()&&!columnBookSpread()&&pane&&pane.clientWidth>=760&&pane.clientHeight>=520;}
   function columnBookCropped(){return columnBookSpread()||columnBookComfortPage();}
   function columnBookStep(){return columnBookSpread()?2:1;}
@@ -2303,7 +2303,7 @@
     var pane=byId('documentPane'),nowZoom=currentZoom(),baseWidth=0,baseHeight=0;
     views.forEach(function(view,index){var bounds=boundsList[index];baseWidth+=(bounds.x1-bounds.x0)*view.pageWidth/nowZoom;baseHeight=Math.max(baseHeight,(bounds.y1-bounds.y0)*view.pageHeight/nowZoom);});
     var widthShare=spread?.86:.64,heightShare=spread?.84:.88,gutter=spread?Math.max(24,Math.min(40,pane.clientWidth*.024)):0;
-    var desired=Math.max(.5,Math.min(3.4,Math.min((pane.clientWidth*widthShare-gutter)/Math.max(1,baseWidth),(pane.clientHeight*heightShare)/Math.max(1,baseHeight))));
+    var desired=Math.max(spread?.35:.5,Math.min(3.4,Math.min((pane.clientWidth*widthShare-gutter)/Math.max(1,baseWidth),(pane.clientHeight*heightShare)/Math.max(1,baseHeight))));
     var token=currentId+'|'+(spread?'spread':'comfort')+'|'+pageNos.join('-')+'|'+pane.clientWidth+'x'+pane.clientHeight;
     var shouldZoom=force||(!columnBookManualZoom&&(columnBookFitToken!==token||nowZoom<desired*.94||nowZoom>desired*1.06));
     columnBookFitToken=token;
@@ -2561,7 +2561,7 @@
   function setZoom(value,anchorX,anchorY,shiftX,shiftY,onSettled){
     if(!pdfDoc){if(onSettled)onSettled();return;}
     var pane=byId('documentPane'),rect=pane.getBoundingClientRect();
-    var newZoom=Math.max(.5,Math.min(4,+value||1));
+    var newZoom=Math.max(columnBookSpread()?.35:.5,Math.min(4,+value||1));
     if(Math.abs(newZoom-1)<=.05)newZoom=1;
     pdfFit=newZoom===1;pdfZoom=pdfFit?1:newZoom;
     byId('zoomLabel').textContent=pdfFit?'Fit':Math.round(pdfZoom*100)+'%';

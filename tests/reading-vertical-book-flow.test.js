@@ -155,6 +155,7 @@ function check(name, condition, extra) {
     check('manual zoom stays available when one page needs larger type', parseInt(await page.locator('#zoomLabel').textContent(), 10) > comfortZoom, await page.locator('#zoomLabel').textContent());
     await page.click('#colZoomBtn');
     await page.waitForFunction(before => parseInt(document.getElementById('zoomLabel').textContent, 10) <= before, comfortZoom);
+    await page.setViewportSize({ width: 1100, height: 800 });
     await page.click('button[data-vertical-pages="two"]');
     await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('column-book-spread') && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 2);
     await page.waitForFunction(() => {
@@ -162,7 +163,8 @@ function check(name, condition, extra) {
       const pages = Array.from(document.querySelectorAll('.pdf-page.book-active')).map(page => page.getBoundingClientRect());
       if (pages.length !== 2) return false;
       const width = Math.max(...pages.map(rect => rect.right)) - Math.min(...pages.map(rect => rect.left));
-      return width <= pane.width * .99 && Math.max(...pages.map(rect => rect.height)) <= pane.height * .99;
+      const height = Math.max(...pages.map(rect => rect.height));
+      return width <= pane.width * .99 && height > pane.height * .68 && height <= pane.height * .99;
     });
     const spread = await page.locator('#documentPane').evaluate(pane => {
       const pages = Array.from(document.querySelectorAll('.pdf-page.book-active'));
@@ -180,7 +182,7 @@ function check(name, condition, extra) {
         cropRatios: pages.map(page => page.offsetWidth / page.querySelector('.pdf-sheet').offsetWidth)
       };
     });
-    check('wide screens show a right-to-left two-page spread', spread.count === 2 && (await page.locator('#pageNumber').textContent()).includes('20–21'), JSON.stringify(spread));
+    check('a normal laptop pane shows the requested right-to-left two-page spread', spread.count === 2 && (await page.locator('#pageNumber').textContent()).includes('20–21'), JSON.stringify(spread));
     check('the spread cuts scan margins without crowding the viewport', spread.cropRatios.some(ratio => ratio < .8) && spread.width > spread.paneWidth * .48 && spread.height > spread.paneHeight * .68 && spread.topSpace >= 20 && spread.bottomSpace >= 20 && spread.gutter >= 20, JSON.stringify(spread));
     await page.click('#nextPage');
     await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('22–23 /'));

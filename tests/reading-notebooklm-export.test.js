@@ -93,8 +93,25 @@ function check(name, condition, extra) {
   const cardText = await page.locator('.notebook-listen').textContent();
   check('handoff offers both mind maps and audio', cardText.includes('Mind Map') && cardText.includes('Audio Overview'));
 
-  const downloadPromise = page.waitForEvent('download');
   await page.click('#notebookLmBtn');
+  check('package opens a review before downloading', await page.locator('#notebookPackageDialog').evaluate(element => element.open));
+  check('review does not open NotebookLM before confirmation', await page.evaluate(() => !window.__notebookLmOpenStart));
+  const review = await page.evaluate(() => ({
+    intro: document.querySelector('.notebook-package-intro').textContent,
+    files: Array.from(document.querySelectorAll('.notebook-package-file')).filter(element => !element.classList.contains('hidden')).map(element => element.textContent),
+    guide: document.getElementById('notebookGuideEditor').value,
+    readme: document.getElementById('notebookReadmeEditor').value,
+    summary: document.getElementById('notebookPackageSummary').textContent
+  }));
+  check('review lists the exact PDF, Markdown, and README files', review.files.length === 3 && review.files.some(text => text.includes('roots-shoots.pdf') && text.includes('untouched')) && review.files.some(text => text.includes('Phloem guide.md')) && review.files.some(text => text.includes('README — OPEN FIRST.txt')), review.files.join(' | '));
+  check('review explains that edits only affect this export', review.intro.includes('affect this export only') && review.intro.includes('original PDF stay unchanged'));
+  check('full generated Markdown is visible before export', review.guide.includes('Roots sense local nitrate') && review.guide.includes('Shoots coordinate that response'));
+  check('full README is visible before export', review.readme.includes('Unzip this package') && review.readme.includes('Upload BOTH'));
+  check('review summarizes generated contents', review.summary.includes('3 files') && review.summary.includes('notes and highlights') && review.summary.includes('extracted text characters'), review.summary);
+  await page.locator('#notebookGuideEditor').evaluate(element => { element.value += '\n\nCUSTOM MAP EMPHASIS: connect roots to shoots.'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#notebookReadmeEditor').evaluate(element => { element.value += '\n\nCUSTOM README NOTE: begin with the root-signaling question.'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  const downloadPromise = page.waitForEvent('download');
+  await page.click('#notebookPackageCreate');
   const download = await downloadPromise, zipPath = await download.path();
   await page.waitForFunction(() => window.__notebookPackage);
   const exported = await page.evaluate(() => ({ name: window.__notebookPackageName, package: window.__notebookPackage, openedAt: window.__notebookLmOpenStart, notebookUrl: window.__notebookLmUrl }));
@@ -116,7 +133,11 @@ function check(name, condition, extra) {
   check('pack includes highlight and attached note', pack.includes('Roots sense local nitrate') && pack.includes('causal or correlational'));
   check('pack separates reader reactions from author claims', pack.includes('Treat reader notes as questions or reactions—not as claims made by the author.'));
   check('pack gives Mind Map framing', pack.includes('### Mind Map framing') && pack.includes('methods, evidence, findings, limitations'));
-  check('NotebookLM tab opens immediately while packaging', exported.openedAt === 'about:blank');
+  check('edited Markdown is the copy placed in the ZIP', pack.includes('CUSTOM MAP EMPHASIS: connect roots to shoots.'));
+  check('edited README is the copy placed in the ZIP', readme.includes('CUSTOM README NOTE: begin with the root-signaling question.'));
+  const savedState = await page.evaluate(() => localStorage.getItem('readingRoom.v1'));
+  check('review edits do not alter saved Phloem notes', !savedState.includes('CUSTOM MAP EMPHASIS') && !savedState.includes('CUSTOM README NOTE'));
+  check('NotebookLM tab opens when the reviewed export is confirmed', exported.openedAt === 'about:blank');
   check('prepared tab continues to NotebookLM', exported.notebookUrl === 'https://notebook.google.com/');
   const status = await page.locator('#notebookLmStatus').textContent();
   check('notebook shows the unzip and two-source handoff', status.includes('Unzip') && status.includes('PDF and Phloem guide'));

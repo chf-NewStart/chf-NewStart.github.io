@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=44">
+  <link rel="stylesheet" href="/reading.css?v=45">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -266,7 +266,7 @@
               <p class="hint">Your page notes, highlighted passages, and notes on highlights stay together here.</p>
               <div class="notebook-listen">
                 <div><b>Explore in NotebookLM</b><span>Audio Overview · Mind Map · study tools</span></div>
-                <button class="soft-button notebook-listen-button" id="notebookLmBtn" type="button">Package &amp; open ↗</button>
+                <button class="soft-button notebook-listen-button" id="notebookLmBtn" type="button">Review package</button>
               </div>
               <p class="notebook-listen-status" id="notebookLmStatus" role="status" aria-live="polite"></p>
             </div>
@@ -484,6 +484,32 @@
     </div>
   </dialog>
 
+  <dialog id="notebookPackageDialog">
+    <div class="dialog-head"><div><span class="panel-eyebrow">NotebookLM export</span><h2>Review your package</h2></div><button class="icon-btn" data-close="notebookPackageDialog" aria-label="Close package review">×</button></div>
+    <div class="dialog-body notebook-package-body">
+      <div class="notebook-package-intro">
+        <p><b>These are the exact files Phloem will put in the ZIP.</b> Read or edit the guide and instructions below before downloading.</p>
+        <p class="notebook-package-local-note">Edits here affect this export only. Your saved notes, highlights, and original PDF stay unchanged. To change the reading trail permanently, edit it in Phloem and reopen this review.</p>
+      </div>
+      <div class="notebook-package-files" aria-label="Files in this package">
+        <div class="notebook-package-file" id="notebookPdfPackageRow"><span class="notebook-file-kind">PDF</span><div><b id="notebookPdfFileName"></b><span>Original paper · untouched</span></div></div>
+        <div class="notebook-package-file"><span class="notebook-file-kind">MD</span><div><b id="notebookGuideFileName"></b><span>Paper text + your notes, highlights, and prompts · editable below</span></div></div>
+        <div class="notebook-package-file"><span class="notebook-file-kind">TXT</span><div><b>README — OPEN FIRST.txt</b><span>Unzip and NotebookLM upload instructions · editable below</span></div></div>
+      </div>
+      <p class="notebook-package-summary" id="notebookPackageSummary"></p>
+      <details class="notebook-package-editor" open>
+        <summary><span>Phloem guide (.md)</span><small>Full generated content</small></summary>
+        <textarea class="notebook-package-textarea notebook-guide-textarea" id="notebookGuideEditor" aria-label="Edit the generated Phloem Markdown guide" spellcheck="false"></textarea>
+      </details>
+      <details class="notebook-package-editor">
+        <summary><span>README (.txt)</span><small>Instructions included in the ZIP</small></summary>
+        <textarea class="notebook-package-textarea" id="notebookReadmeEditor" aria-label="Edit the package README" spellcheck="false"></textarea>
+      </details>
+      <div class="status notebook-package-status" id="notebookPackageStatus" role="status" aria-live="polite"></div>
+      <div class="notebook-package-actions"><button class="soft-button" type="button" data-close="notebookPackageDialog">Cancel</button><button class="button" id="notebookPackageCreate" type="button">Create ZIP &amp; open NotebookLM ↗</button></div>
+    </div>
+  </dialog>
+
   <dialog id="githubDialog">
     <div class="dialog-head"><h2>Pick a GitHub paper</h2><button class="icon-btn" data-close="githubDialog">×</button></div>
     <div class="dialog-body">
@@ -533,9 +559,9 @@
       if(!hadController||reloading)return;
       reloading=true;location.reload();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=44',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=45',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=44" defer></script>
+<script src="/reading.js?v=45" defer></script>
 </body>
 </html>

@@ -3009,6 +3009,27 @@
       'Author(s): '+(String(ch.authors||'').trim()||'Not recorded')
     ].join('\n');
   }
+  function notebookAnnotationCount(ch){
+    var count=0;
+    [ch.pageNotes,ch.notes,ch.readerNotes].forEach(function(map){Object.keys(map||{}).forEach(function(key){if(String(map[key]||'').trim())count++;});});
+    Object.keys(ch.highlights||{}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(mark){if(String(mark.text||'').trim()||String(mark.note||'').trim())count++;});});
+    [ch.textHighlights,ch.readerHighlights].forEach(function(marks){(marks||[]).forEach(function(mark){if(String(mark.text||'').trim()||String(mark.note||'').trim())count++;});});
+    return count;
+  }
+  var notebookPackageChapterId='';
+  function openNotebookPackageReview(ch){
+    notebookPackageChapterId=ch.id;
+    byId('notebookPdfPackageRow').classList.toggle('hidden',ch.kind!=='pdf');
+    byId('notebookPdfFileName').textContent=notebookPdfFilename(ch);
+    byId('notebookGuideFileName').textContent=notebookGuideFilename(ch);
+    byId('notebookGuideEditor').value=listeningPackMarkdown(ch);
+    byId('notebookReadmeEditor').value=notebookPackageReadme(ch);
+    var annotations=notebookAnnotationCount(ch),sourceLength=Math.min(readerSourceText(ch).trim().length,3000000),files=ch.kind==='pdf'?3:2;
+    byId('notebookPackageSummary').textContent=files+' files · '+annotations+' '+(annotations===1?'note or highlight':'notes and highlights')+' · '+sourceLength.toLocaleString()+' extracted text characters';
+    byId('notebookPackageStatus').textContent='';
+    byId('notebookPackageDialog').showModal();
+    setTimeout(function(){byId('notebookGuideEditor').scrollTop=0;},0);
+  }
   var notebookZipCrcTable=null;
   function notebookCrcTable(){
     if(notebookZipCrcTable)return notebookZipCrcTable;notebookZipCrcTable=new Uint32Array(256);
@@ -3032,27 +3053,33 @@
     var centralSize=central.reduce(function(sum,part){return sum+part.length;},0),end=new Uint8Array(22),ev=new DataView(end.buffer);ev.setUint32(0,0x06054b50,true);ev.setUint16(4,0,true);ev.setUint16(6,0,true);ev.setUint16(8,prepared.length,true);ev.setUint16(10,prepared.length,true);ev.setUint32(12,centralSize,true);ev.setUint32(16,offset,true);ev.setUint16(20,0,true);
     return new Blob(parts.concat(central,[end]),{type:'application/zip'});
   }
-  async function buildNotebookPackage(ch,onProgress){
-    var files=[{name:'README — OPEN FIRST.txt',data:notebookPackageReadme(ch)}];
+  async function buildNotebookPackage(ch,onProgress,reviewed){
+    var readme=reviewed&&typeof reviewed.readme==='string'?reviewed.readme:notebookPackageReadme(ch),guide=reviewed&&typeof reviewed.guide==='string'?reviewed.guide:listeningPackMarkdown(ch);
+    var files=[{name:'README — OPEN FIRST.txt',data:readme}];
     if(ch.kind==='pdf'){
       var stored=await getPdf(ch.id);if(!stored){var missing=new Error('missing PDF');missing.missingPdf=true;throw missing;}
       var pdf=stored instanceof ArrayBuffer?new Uint8Array(stored):(ArrayBuffer.isView(stored)?new Uint8Array(stored.buffer,stored.byteOffset,stored.byteLength):new Uint8Array(await stored.arrayBuffer()));
       if(pdf.length<5||String.fromCharCode(pdf[0],pdf[1],pdf[2],pdf[3],pdf[4])!=='%PDF-')throw new Error('saved file is not a PDF');
       files.push({name:notebookPdfFilename(ch),data:pdf});
     }
-    files.push({name:notebookGuideFilename(ch),data:listeningPackMarkdown(ch)});return notebookZip(files,onProgress);
+    files.push({name:notebookGuideFilename(ch),data:guide});return notebookZip(files,onProgress);
   }
   function downloadNotebookPackage(ch,blob){var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=notebookPackageStem(ch)+' — Phloem NotebookLM package.zip';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},5000);}
-  byId('notebookLmBtn').onclick=async function(){
-    var ch=find(currentId),btn=this,status=byId('notebookLmStatus');if(!ch)return;var notebookTab=window.open('about:blank','_blank');
-    btn.disabled=true;btn.textContent='Packaging…';status.textContent='Collecting the paper, highlights, and notes on this device…';
+  byId('notebookLmBtn').onclick=function(){var ch=find(currentId);if(ch)openNotebookPackageReview(ch);};
+  byId('notebookPackageCreate').onclick=async function(){
+    var ch=find(notebookPackageChapterId),btn=this,status=byId('notebookPackageStatus'),notebookStatus=byId('notebookLmStatus');if(!ch){status.textContent='This paper is no longer available. Close the review and try again.';return;}
+    var guide=byId('notebookGuideEditor').value,readme=byId('notebookReadmeEditor').value;
+    if(!guide.trim()){status.textContent='The Markdown guide is empty. Add some content before creating the ZIP.';byId('notebookGuideEditor').focus();return;}
+    if(!readme.trim()){status.textContent='The README is empty. Add instructions before creating the ZIP.';byId('notebookReadmeEditor').focus();return;}
+    var notebookTab=window.open('about:blank','_blank');btn.disabled=true;btn.textContent='Creating ZIP…';status.textContent='Collecting the reviewed files on this device…';
     try{
-      var blob=await buildNotebookPackage(ch,function(done,total){status.textContent='Packaging locally… '+Math.min(100,Math.round(done/total*100))+'%';});downloadNotebookPackage(ch,blob);
+      var blob=await buildNotebookPackage(ch,function(done,total){status.textContent='Packaging locally… '+Math.min(100,Math.round(done/total*100))+'%';},{guide:guide,readme:readme});downloadNotebookPackage(ch,blob);
       if(notebookTab&&!notebookTab.closed){try{notebookTab.opener=null;notebookTab.location.replace('https://notebook.google.com/');}catch(e){}}
-      status.textContent=ch.kind==='pdf'?'ZIP downloaded. Unzip it, then upload the PDF and Phloem guide together.':'ZIP downloaded. Unzip it, then upload the Phloem guide.';
+      byId('notebookPackageDialog').close();
+      notebookStatus.textContent=ch.kind==='pdf'?'ZIP downloaded. Unzip it, then upload the PDF and Phloem guide together.':'ZIP downloaded. Unzip it, then upload the Phloem guide.';
       showReaderToast('NotebookLM package ready · unzip before uploading');
     }catch(e){if(notebookTab&&!notebookTab.closed)try{notebookTab.close();}catch(closeError){}status.textContent=e.missingPdf?'The original PDF is not stored on this device. Re-add the PDF here, then package it again.':'The NotebookLM package could not be created. Please try again.';showReaderToast(e.missingPdf?'Re-add the PDF on this device first':'Could not create the NotebookLM package');}
-    finally{btn.disabled=false;btn.textContent='Package & open ↗';}
+    finally{btn.disabled=false;btn.textContent='Create ZIP & open NotebookLM ↗';}
   };
   function noteKey(){ return readerMode==='pdf' ? String(currentPage) : 'document'; }
   function loadPageNote(){ var ch=find(currentId); if(!ch) return; var key=noteKey(); byId('noteHeading').textContent=readerMode==='pdf'?'Page '+currentPage+' note':'Paper note'; byId('pageNote').value=(ch.pageNotes||{})[key]||''; }

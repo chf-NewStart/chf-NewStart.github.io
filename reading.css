@@ -904,6 +904,32 @@
     .dialog-body section + section { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 22px; }
     .dialog-body h3 { margin: 0 0 6px; font: 500 1rem var(--serif); }
     .dialog-body p { color: var(--muted); font-size: .75rem; line-height: 1.5; }
+    #notebookPackageDialog { width: min(920px, calc(100vw - 24px)); }
+    #notebookPackageDialog .dialog-head > div { min-width: 0; }
+    #notebookPackageDialog .dialog-head .panel-eyebrow { margin-bottom: 3px; }
+    .notebook-package-body { display: grid; gap: 14px; }
+    .notebook-package-intro p { margin: 0; }
+    .notebook-package-intro p + p { margin-top: 7px; }
+    .notebook-package-intro b { color: var(--ink); }
+    .notebook-package-local-note { padding: 10px 12px; border-left: 3px solid var(--yellow); border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--yellow) 13%, var(--paper)); }
+    .notebook-package-files { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .notebook-package-file { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 9px; align-items: start; min-width: 0; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--paper) 76%, transparent); }
+    .notebook-file-kind { display: grid; place-items: center; min-height: 27px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: .57rem; font-weight: 850; letter-spacing: .07em; }
+    .notebook-package-file b, .notebook-package-file span { display: block; }
+    .notebook-package-file b { overflow: hidden; color: var(--ink); font: 650 .68rem/1.35 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+    .notebook-package-file div > span { margin-top: 3px; color: var(--muted); font: .61rem/1.4 var(--sans); }
+    .notebook-package-summary { margin: -3px 2px 0 !important; font-size: .66rem !important; }
+    .notebook-package-editor { overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); }
+    .notebook-package-editor summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 13px; cursor: pointer; color: var(--ink); font: 700 .72rem/1.3 var(--sans); list-style-position: inside; }
+    .notebook-package-editor summary:hover { background: var(--surface-2); }
+    .notebook-package-editor summary small { margin-left: auto; color: var(--muted); font-size: .61rem; font-weight: 500; }
+    .notebook-package-textarea { display: block; width: calc(100% - 22px); min-height: 180px; margin: 0 11px 11px; border: 1px solid var(--line); border-radius: 8px; padding: 11px; resize: vertical; outline: none; background: var(--surface); color: var(--ink); font: .7rem/1.52 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; tab-size: 2; white-space: pre; }
+    .notebook-guide-textarea { min-height: 285px; }
+    .notebook-package-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent); }
+    .notebook-package-status { margin: -2px 2px 0; }
+    .notebook-package-status:empty { display: none; }
+    .notebook-package-actions { position: sticky; bottom: -20px; z-index: 2; display: flex; justify-content: flex-end; gap: 8px; margin: 0 -20px -20px; padding: 14px 20px 18px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(9px); }
+    .notebook-package-actions .button, .notebook-package-actions .soft-button { min-height: 42px; }
     #settingsDialog { width: min(900px, calc(100vw - 24px)); }
     #settingsDialog .dialog-head { padding-inline: 24px; }
     .settings-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 18px; }
@@ -1109,6 +1135,13 @@
       .settings-body { grid-template-columns: 1fr; padding: 12px; }
       .settings-lede, .settings-body section:last-of-type { grid-column: 1; }
       .settings-body section { padding: 15px; }
+      .notebook-package-files { grid-template-columns: 1fr; }
+      .notebook-package-file b { white-space: normal; overflow-wrap: anywhere; }
+      .notebook-package-editor summary { align-items: flex-start; flex-direction: column; gap: 3px; }
+      .notebook-package-editor summary small { margin-left: 0; }
+      .notebook-guide-textarea { min-height: 220px; }
+      .notebook-package-actions { flex-direction: column-reverse; }
+      .notebook-package-actions .button, .notebook-package-actions .soft-button { width: 100%; }
     }
     @media (max-width: 360px) {
       #refreshBtn { display: none; }

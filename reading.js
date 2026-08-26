@@ -508,6 +508,16 @@
     try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('pdfs').objectStore('pdfs').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
     return memoryPdfs[id]||null;
   }
+  async function downloadPaperPdf(ch,button){
+    if(!ch||ch.kind!=='pdf')return;var original=button&&button.textContent;if(button){button.disabled=true;button.textContent='Getting…';}
+    try{
+      var stored=await getPdf(ch.id);
+      if(!stored&&gdriveOn())stored=await gdriveFetchPdf(ch.id,true,function(loaded,total){if(button&&total)button.textContent=Math.min(99,Math.round(loaded/total*100))+'%';});
+      if(!stored){showError('The original PDF is not stored on this device yet. Open or re-add it here first, then download it from the library.','PDF not on this device');return;}
+      var blob=stored instanceof Blob?stored:new Blob([stored],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=notebookPdfFilename(ch);document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},5000);showReaderToast('Original PDF downloaded');
+    }catch(e){showError('Phloem could not download this PDF. Re-add the local file and try again.','Could not download PDF');}
+    finally{if(button){button.disabled=false;button.textContent=original;}}
+  }
   async function seedStarterGuide(){
     if(!pristineLibrary||state.chapters.length||syncCfg||gdriveOn()||location.protocol==='file:'||/^#(?:phloem|carrel|margin)-setup=/.test(location.hash))return false;
     try{
@@ -623,9 +633,10 @@
     var tags=(ch.tags||[]).slice(0,4),kind=ch.kind==='pdf'?'PDF paper':'text note',source=ch.authors||ch.sourceName||'No authors yet',title=String(ch.title||'Untitled'),titleClass=title.length>118?' very-long':(title.length>72?' long':'');
     var progressLabel=ch.kind==='pdf'?(stats.total?'Page '+stats.page+' of '+stats.total:'Page '+stats.page):(stats.total+' paragraph'+(stats.total===1?'':'s'));
     var detail=document.createElement('div');detail.className='open-book-wrap';detail.id='selectedPaper';detail.setAttribute('aria-live','polite');
-    detail.innerHTML='<span class="cover-focus-guide" aria-hidden="true"><span>Focus guide</span></span><article class="closed-book" aria-label="Selected paper: '+esc(title)+'">'+renderBookPunches(ch,false)+'<div class="closed-book-inner"><div class="closed-book-kicker">'+esc(kind)+' · field notebook</div><h3 class="closed-book-title'+titleClass+'">'+esc(title)+'</h3><p class="closed-book-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div><div class="cover-record"><div class="cover-stat"><span>Marks</span><b>'+stats.notes+'</b></div><div class="cover-stat"><span>Questions</span><b>'+stats.questions+'</b></div><div class="cover-stat"><span>Last opened</span><b>'+esc(shelfDate(ch).replace(/^Touched /,''))+'</b></div></div><div class="cover-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="cover-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div><div class="cover-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button><button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div></div></article>';
+    detail.innerHTML='<span class="cover-focus-guide" aria-hidden="true"><span>Focus guide</span></span><article class="closed-book" aria-label="Selected paper: '+esc(title)+'">'+renderBookPunches(ch,false)+'<div class="closed-book-inner"><div class="closed-book-kicker">'+esc(kind)+' · field notebook</div><h3 class="closed-book-title'+titleClass+'">'+esc(title)+'</h3><p class="closed-book-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div><div class="cover-record"><div class="cover-stat"><span>Marks</span><b>'+stats.notes+'</b></div><div class="cover-stat"><span>Questions</span><b>'+stats.questions+'</b></div><div class="cover-stat"><span>Last opened</span><b>'+esc(shelfDate(ch).replace(/^Touched /,''))+'</b></div></div><div class="cover-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="cover-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div><div class="cover-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button>'+(ch.kind==='pdf'?'<button class="soft-button download-paper" type="button" aria-label="Download original PDF for '+esc(title)+'">↓ PDF</button>':'')+'<button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div></div></article>';
     var closed=detail.querySelector('.closed-book'),palette=cover||BOOK_SPINES[0];closed.style.setProperty('--cover',palette.cover);closed.style.setProperty('--cover-ink',palette.ink);
     detail.querySelector('.open-selected').onclick=function(){openReader(ch.id);};
+    var downloadButton=detail.querySelector('.download-paper');if(downloadButton)downloadButton.onclick=function(){downloadPaperPdf(ch,downloadButton);};
     detail.querySelector('.remove-paper').onclick=function(){removePaper(ch,false);};
     return detail;
   }

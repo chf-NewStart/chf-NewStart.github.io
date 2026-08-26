@@ -408,6 +408,7 @@
     .cover-actions .button, .cover-actions .soft-button { min-height: 45px; border-radius: 10px; }
     .cover-actions .button { flex: 1; }
     .cover-actions .soft-button { border-color: color-mix(in srgb, var(--cover-ink) 28%, transparent); background: rgba(255,255,255,.18); }
+    .cover-actions .download-paper { min-width: 76px; }
     .cover-actions .remove-paper:hover, .cover-actions .remove-paper:focus-visible { border-color: #9d4038; background: #9d4038; color: white; }
     .paper-stats { display: grid; gap: 0; margin-top: auto; border-top: 1px solid var(--line); }
     .paper-stat { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
@@ -1051,8 +1052,10 @@
       .cover-stat { padding-top: 7px; padding-bottom: 7px; }
       .cover-progress { margin-top: 11px; }
       .cover-progress-track { margin-top: 7px; }
-      .cover-actions { margin-top: 13px; gap: 8px; }
+      .cover-actions { margin-top: 13px; gap: 8px; flex-wrap: wrap; }
       .cover-actions .button, .cover-actions .soft-button { min-height: 41px; }
+      .cover-actions .open-selected { flex: 1 0 100%; }
+      .cover-actions .download-paper, .cover-actions .remove-paper { flex: 1 1 0; min-width: 0; }
       @keyframes pageRise { from { opacity: .35; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
       /* Reading is its own phone screen. The site navigation disappears and the paper,
          not a squeezed desktop sidebar, owns the viewport. */

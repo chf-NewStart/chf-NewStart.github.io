@@ -120,6 +120,20 @@ function check(name, condition, extra) {
   check('prepared tab continues to NotebookLM', exported.notebookUrl === 'https://notebook.google.com/');
   const status = await page.locator('#notebookLmStatus').textContent();
   check('notebook shows the unzip and two-source handoff', status.includes('Unzip') && status.includes('PDF and Phloem guide'));
+  await page.click('#readerBack');
+  await page.waitForFunction(() => !document.getElementById('libraryPage').classList.contains('hidden'));
+  check('selected PDF offers an original-file download on the library page', await page.locator('#selectedPaper .download-paper').isVisible());
+  const paperDownloadPromise = page.waitForEvent('download');
+  await page.click('#selectedPaper .download-paper');
+  const paperDownload = await paperDownloadPromise, paperPath = await paperDownload.path(), paperHead = fs.readFileSync(paperPath).subarray(0, 5).toString();
+  check('library download preserves the original PDF filename', paperDownload.suggestedFilename() === 'roots-shoots.pdf', paperDownload.suggestedFilename());
+  check('library download is the original PDF', paperHead === '%PDF-', paperHead);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileActions = await page.locator('#selectedPaper .cover-actions').evaluate(element => {
+    const parent = element.getBoundingClientRect(), children = Array.from(element.children).map(child => child.getBoundingClientRect());
+    return { parent: { left: parent.left, right: parent.right }, children: children.map(rect => ({ left: rect.left, right: rect.right, width: rect.width })) };
+  });
+  check('Continue, PDF, and Remove all fit the mobile notebook', mobileActions.children.length === 3 && mobileActions.children.every(rect => rect.left >= mobileActions.parent.left - 1 && rect.right <= mobileActions.parent.right + 1), JSON.stringify(mobileActions));
   check('export has no page errors', errors.length === 0, errors.join('; '));
 
   await context.close();

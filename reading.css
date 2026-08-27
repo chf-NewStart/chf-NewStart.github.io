@@ -422,6 +422,16 @@
     .closed-book-byline { max-width: 100%; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: .92rem/1.5 var(--serif); opacity: .78; }
     .closed-book .paper-tags { max-width: 100%; margin-top: 14px; }
     .closed-book .tag { border: 1px solid color-mix(in srgb, var(--cover-ink) 16%, transparent); background: rgba(255,255,255,.24); color: inherit; }
+    .cover-cloud { width: 100%; margin-top: 13px; display: grid; grid-template-columns: 9px minmax(0, 1fr); align-items: center; gap: 7px; color: inherit; font: 650 .64rem/1.25 var(--sans); }
+    .cover-cloud-dot { width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 50%; opacity: .64; }
+    .cover-cloud-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .78; }
+    .cover-cloud.synced .cover-cloud-dot { border-color: transparent; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 13%, transparent); }
+    .cover-cloud.uploading .cover-cloud-dot, .cover-cloud.fetching .cover-cloud-dot { border-right-color: transparent; animation: cloudTransferSpin .8s linear infinite; }
+    .cover-cloud.paused .cover-cloud-dot { border-radius: 2px; transform: rotate(45deg); opacity: .78; }
+    .cover-cloud-track { display: none; grid-column: 1 / -1; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.3); }
+    .cover-cloud.uploading .cover-cloud-track, .cover-cloud.fetching .cover-cloud-track { display: block; }
+    .cover-cloud-track i { display: block; width: var(--cloud-progress); height: 100%; border-radius: inherit; background: currentColor; opacity: .72; transition: width .2s ease; }
+    @keyframes cloudTransferSpin { to { transform: rotate(360deg); } }
     .cover-record { position: static; width: 100%; margin-top: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid color-mix(in srgb, var(--cover-ink) 24%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--cover-ink) 24%, transparent); }
     .cover-stat { min-width: 0; padding: 10px 13px 10px 0; }
     .cover-stat span, .cover-stat b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1014,6 +1024,7 @@
       .closed-book-inner { padding: 25px 38px 24px 64px; }
       .closed-book-title { margin-top: 17px; margin-bottom: 8px; }
       .closed-book .paper-tags { display: none; }
+      .cover-cloud { margin-top: 8px; }
       .cover-stat { padding-top: 7px; padding-bottom: 7px; }
       .cover-progress { margin-top: 10px; }
       .cover-progress-track { margin-top: 6px; }
@@ -1213,7 +1224,7 @@
       #networkCanvas { height: 390px; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .book-spine, .paper-category-tab, .book-page, .reading-thread, .thread-spark, .open-book-wrap::before { animation: none !important; transition: none !important; }
+      .book-spine, .paper-category-tab, .book-page, .reading-thread, .thread-spark, .open-book-wrap::before, .cover-cloud-dot { animation: none !important; transition: none !important; }
       .reading-thread { stroke-dashoffset: 0; }
       .book-page.left, .book-page.right { opacity: 1; transform: none; }
     }

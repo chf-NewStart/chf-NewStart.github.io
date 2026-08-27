@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=54">
+  <link rel="stylesheet" href="/reading.css?v=55">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -420,7 +420,7 @@
       <p class="settings-lede">Choose how this reading desk syncs, thinks with you, and moves between devices. Your reading settings stay calm and local by default.</p>
       <section>
         <h3>Sync with Google Drive</h3>
-        <p>One tap connects your own Google Drive. Notes and the library live in a hidden app folder only this app can see — and your PDFs (up to 30 MB each) ride along, so a paper added on one device opens on the others. No tokens, no repos, no passphrase.</p>
+        <p>One tap connects your own Google Drive. Notes, papers, and large books up to 200 MB live in a hidden app folder only Phloem can see. Big uploads continue quietly in chunks, so an interrupted transfer resumes instead of starting over.</p>
         <div><button class="button" id="gdriveConnectBtn">Connect Google Drive</button> <button class="soft-button hidden" id="gdriveSyncBtn">Sync now</button> <button class="soft-button hidden" id="gdriveOffBtn">Turn off</button></div>
         <div class="status" id="gdriveStatus"></div>
       </section>
@@ -585,9 +585,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=54',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=55',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=54" defer></script>
+<script src="/reading.js?v=55" defer></script>
 </body>
 </html>

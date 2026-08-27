@@ -683,8 +683,9 @@
   function renderOpenPaper(ch,stats,cover){
     var tags=(ch.tags||[]).slice(0,4),kind=ch.kind==='pdf'?'PDF paper':'text note',source=ch.authors||ch.sourceName||'No authors yet',title=String(ch.title||'Untitled'),titleClass=title.length>118?' very-long':(title.length>72?' long':'');
     var progressLabel=ch.kind==='pdf'?(stats.total?'Page '+stats.page+' of '+stats.total:'Page '+stats.page):(stats.total+' paragraph'+(stats.total===1?'':'s'));
+    var drive=ch.kind==='pdf'?gdrivePaperStatus(ch):null,driveMarkup=drive?'<div class="cover-cloud '+drive.tone+'" id="paperDriveStatus" data-paper-id="'+esc(ch.id)+'" role="status" aria-label="'+esc(drive.label)+'"><span class="cover-cloud-dot" aria-hidden="true"></span><span class="cover-cloud-label">'+esc(drive.label)+'</span><span class="cover-cloud-track" aria-hidden="true"><i style="--cloud-progress:'+drive.progress+'%"></i></span></div>':'';
     var detail=document.createElement('div');detail.className='open-book-wrap';detail.id='selectedPaper';detail.setAttribute('aria-live','polite');
-    detail.innerHTML='<span class="cover-focus-guide" aria-hidden="true"><span>Focus guide</span></span><article class="closed-book" aria-label="Selected paper: '+esc(title)+'">'+renderBookPunches(ch,false)+'<div class="closed-book-inner"><div class="closed-book-kicker">'+esc(kind)+' · field notebook</div><h3 class="closed-book-title'+titleClass+'">'+esc(title)+'</h3><p class="closed-book-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div><div class="cover-record"><div class="cover-stat"><span>Marks</span><b>'+stats.notes+'</b></div><div class="cover-stat"><span>Questions</span><b>'+stats.questions+'</b></div><div class="cover-stat"><span>Last opened</span><b>'+esc(shelfDate(ch).replace(/^Touched /,''))+'</b></div></div><div class="cover-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="cover-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div><div class="cover-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button>'+(ch.kind==='pdf'?'<button class="soft-button download-paper" type="button" aria-label="Download original PDF for '+esc(title)+'">↓ PDF</button>':'')+'<button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div></div></article>';
+    detail.innerHTML='<span class="cover-focus-guide" aria-hidden="true"><span>Focus guide</span></span><article class="closed-book" aria-label="Selected paper: '+esc(title)+'">'+renderBookPunches(ch,false)+'<div class="closed-book-inner"><div class="closed-book-kicker">'+esc(kind)+' · field notebook</div><h3 class="closed-book-title'+titleClass+'">'+esc(title)+'</h3><p class="closed-book-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div>'+driveMarkup+'<div class="cover-record"><div class="cover-stat"><span>Marks</span><b>'+stats.notes+'</b></div><div class="cover-stat"><span>Questions</span><b>'+stats.questions+'</b></div><div class="cover-stat"><span>Last opened</span><b>'+esc(shelfDate(ch).replace(/^Touched /,''))+'</b></div></div><div class="cover-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="cover-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div><div class="cover-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button>'+(ch.kind==='pdf'?'<button class="soft-button download-paper" type="button" aria-label="Download original PDF for '+esc(title)+'">↓ PDF</button>':'')+'<button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div></div></article>';
     var closed=detail.querySelector('.closed-book'),palette=cover||BOOK_SPINES[0];closed.style.setProperty('--cover',palette.cover);closed.style.setProperty('--cover-ink',palette.ink);
     detail.querySelector('.open-selected').onclick=function(){openReader(ch.id);};
     var downloadButton=detail.querySelector('.download-paper');if(downloadButton)downloadButton.onclick=function(){downloadPaperPdf(ch,downloadButton);};
@@ -1522,7 +1523,7 @@
       if(existing&&titleQuality(probe)>titleQuality(existing))existing.title=title;
       if(existing&&!String(existing.authors||'').trim()&&details.authors)existing.authors=details.authors;
       ch.sourceName=file.name;ch.sourcePath=sourcePath||ch.sourcePath||'';ch.sourceUrl=sourceUrl||ch.sourceUrl||'';ch.pageCount=doc.numPages;ch.fileSize=bytes.byteLength;if(contentHash)ch.contentHash=contentHash;ch.updatedAt=now();
-      if(!existing)state.chapters.push(ch);persist();renderShelf();if(!stayPut)await openReader(id,doc);if(existing&&!stayPut)showReaderToast('Already in your library — notes kept, local PDF refreshed.');if(!await keepPromise)showReaderToast('PDF opened, but this browser may not keep it after closing the tab.');imported=true;
+      if(!existing)state.chapters.push(ch);persist();renderShelf();if(!stayPut)await openReader(id,doc);if(existing&&!stayPut)showReaderToast('Already in your library — notes kept, local PDF refreshed.');var kept=await keepPromise;if(!kept)showReaderToast('PDF opened, but this browser may not keep it after closing the tab.');else if(gdriveOn())gdriveSetPdfState(id,{state:'queued',size:bytes.byteLength});imported=true;
     } catch(e){ showError(e.message||'The PDF reader could not open this file.'); }
     finally { btn.disabled=false; btn.textContent=old; }
     return imported;
@@ -4034,30 +4035,92 @@
     if(!r.ok)throw new Error('Drive list failed ('+r.status+')');
     return ((await r.json()).files)||[];
   }
-  /* Papers ride along in the same hidden folder: any local PDF not yet in Drive is
-     uploaded quietly after each sync (up to 30 MB each), and a device that lacks the
-     file pulls it down when the paper is opened. */
-  var GDRIVE_PDF_LIMIT=30*1024*1024,gdriveRoaming=false;
-  async function gdriveRoamPdfs(token,files){
-    if(gdriveRoaming)return {sent:0,failed:0};gdriveRoaming=true;
-    var sent=0,failed=0;
-    try{
-      var have={};files.forEach(function(f){have[f.name]=true;});
-      for(var i=0;i<state.chapters.length;i++){
-        var ch=state.chapters[i];if(ch.kind!=='pdf'||have['pdf-'+ch.id+'.pdf'])continue;
-        var stored=await getPdf(ch.id);if(!stored)continue;
-        var bytes=stored instanceof ArrayBuffer?stored:await pdfBytes(stored);
-        if(bytes.byteLength>GDRIVE_PDF_LIMIT)continue;
-        var boundary='phloem'+now()+i;
-        var head='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:'pdf-'+ch.id+'.pdf',parents:['appDataFolder']})+'\r\n--'+boundary+'\r\nContent-Type: application/pdf\r\n\r\n';
-        try{
-          var up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:new Blob([head,bytes,'\r\n--'+boundary+'--'])});
-          if(up.ok)sent++;else failed++;
-        }catch(uploadError){failed++;}
+  /* Papers ride along in the same hidden folder. Large books use Drive's resumable
+     protocol: an 8 MB chunk completes at a time, and the private session URL plus the
+     confirmed byte offset stay on this device so a refresh or network break continues
+     instead of restarting a 100+ MB upload. */
+  var GDRIVE_PDF_LIMIT=200*1024*1024,GDRIVE_CHUNK_BYTES=8*1024*1024,GDRIVE_UPLOADS_KEY='readingRoom.gdriveUploads.v1';
+  var gdriveRoaming=false,gdrivePdfStates={},gdriveUploads={};
+  try{gdriveUploads=JSON.parse(localStorage.getItem(GDRIVE_UPLOADS_KEY)||'{}')||{};}catch(e){gdriveUploads={};}
+  function gdriveFormatBytes(value){var n=+value||0;if(!n)return 'size unknown';if(n<1048576)return Math.max(1,Math.round(n/1024))+' KB';return(n/1048576).toFixed(n<10485760?1:0)+' MB';}
+  function gdrivePaperStatus(ch){
+    var stateInfo=gdrivePdfStates[ch.id],size=gdriveFormatBytes((stateInfo&&stateInfo.size)||ch.fileSize),label='',tone='local',progress=Math.max(0,Math.min(100,stateInfo?(+stateInfo.progress||0):0));
+    if(!gdriveOn())label='This device only · '+size;
+    else if(!stateInfo){label='Drive · checking this PDF';tone='checking';}
+    else if(stateInfo.state==='synced'){label='Available on your devices · '+size;tone='synced';progress=100;}
+    else if(stateInfo.state==='uploading'){label='Uploading to Drive · '+progress+'%';tone='uploading';}
+    else if(stateInfo.state==='fetching'){label='Downloading from Drive · '+progress+'%';tone='fetching';}
+    else if(stateInfo.state==='queued'){label='Waiting to upload · '+size;tone='queued';}
+    else if(stateInfo.state==='too-large'){label='Over Phloem’s 200 MB sync limit · this device only';tone='paused';}
+    else if(stateInfo.state==='missing'){label='PDF is not in Drive yet';tone='paused';}
+    else{label='Drive transfer paused · tap the cloud to retry';tone='paused';}
+    return {label:label,tone:tone,progress:progress};
+  }
+  function gdriveSetPdfState(id,next){
+    gdrivePdfStates[id]=next||{};var box=byId('paperDriveStatus');if(!box||box.dataset.paperId!==id)return;
+    var ch=find(id);if(!ch)return;var view=gdrivePaperStatus(ch),label=box.querySelector('.cover-cloud-label'),fill=box.querySelector('.cover-cloud-track i');
+    box.className='cover-cloud '+view.tone;box.setAttribute('aria-label',view.label);if(label)label.textContent=view.label;if(fill)fill.style.setProperty('--cloud-progress',view.progress+'%');
+  }
+  function gdriveSaveUploads(){
+    var fresh={},cutoff=now()-6*86400000;Object.keys(gdriveUploads||{}).forEach(function(id){var item=gdriveUploads[id];if(item&&item.session&&(+item.at||0)>cutoff)fresh[id]=item;});gdriveUploads=fresh;
+    try{if(Object.keys(fresh).length)localStorage.setItem(GDRIVE_UPLOADS_KEY,JSON.stringify(fresh));else localStorage.removeItem(GDRIVE_UPLOADS_KEY);}catch(e){}
+  }
+  function gdriveForgetUpload(id){if(gdriveUploads[id]){delete gdriveUploads[id];gdriveSaveUploads();}}
+  function gdriveRememberUpload(id,item){gdriveUploads[id]=item;gdriveSaveUploads();return item;}
+  function gdriveUploadError(response,label){var error=new Error(label+' ('+response.status+')');if(response.status===401)error.auth=true;if(response.status===404||response.status===410)error.expired=true;return error;}
+  function gdriveRangeNext(response,fallback,limit){var range=response.headers.get('Range')||response.headers.get('range')||'',match=range.match(/bytes=\d+-(\d+)/i),next=match?+match[1]+1:fallback;return Math.max(0,Math.min(limit,next));}
+  async function gdriveStartPdfUpload(token,ch,total){
+    var response=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,size',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':'application/pdf','X-Upload-Content-Length':String(total)},body:JSON.stringify({name:'pdf-'+ch.id+'.pdf',parents:['appDataFolder']})});
+    if(!response.ok)throw gdriveUploadError(response,'Drive could not start the PDF upload');var session=response.headers.get('Location')||response.headers.get('location');if(!session)throw new Error('Drive did not return a resumable upload address');
+    return gdriveRememberUpload(ch.id,{session:session,next:0,size:total,hash:ch.contentHash||'',at:now()});
+  }
+  async function gdriveResumePdfUpload(token,item,total){
+    var response=await fetch(item.session,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Range':'bytes */'+total}});
+    if(response.status===308)return {complete:false,next:gdriveRangeNext(response,0,total)};
+    if(response.ok)return {complete:true,next:total};
+    throw gdriveUploadError(response,'Drive could not resume the PDF upload');
+  }
+  async function gdriveUploadPdf(token,ch,bytes,onProgress){
+    var total=bytes.byteLength;
+    for(var restart=0;restart<2;restart++){
+      var item=gdriveUploads[ch.id];
+      if(item&&(+item.size!==total||(item.hash||'')!==(ch.contentHash||'')||now()-(+item.at||0)>6*86400000)){gdriveForgetUpload(ch.id);item=null;}
+      if(!item)item=await gdriveStartPdfUpload(token,ch,total);
+      else{
+        try{var resumed=await gdriveResumePdfUpload(token,item,total);if(resumed.complete){gdriveForgetUpload(ch.id);if(onProgress)onProgress(total,total);return true;}item.next=resumed.next;item.at=now();gdriveRememberUpload(ch.id,item);}
+        catch(resumeError){if(resumeError.expired){gdriveForgetUpload(ch.id);continue;}throw resumeError;}
       }
-    }catch(e){failed++;}
-    gdriveRoaming=false;
-    return {sent:sent,failed:failed};
+      if(onProgress)onProgress(item.next,total);var expired=false;
+      while(item.next<total){
+        var start=item.next,end=Math.min(total,start+GDRIVE_CHUNK_BYTES),response=await fetch(item.session,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/pdf','Content-Range':'bytes '+start+'-'+(end-1)+'/'+total},body:bytes.slice(start,end)});
+        if(response.status===308)item.next=gdriveRangeNext(response,end,total);
+        else if(response.ok)item.next=total;
+        else{var chunkError=gdriveUploadError(response,'Drive paused the PDF upload');if(chunkError.expired){gdriveForgetUpload(ch.id);expired=true;break;}throw chunkError;}
+        item.at=now();if(item.next<total)gdriveRememberUpload(ch.id,item);if(onProgress)onProgress(item.next,total);
+      }
+      if(expired)continue;
+      if(item.next>=total){gdriveForgetUpload(ch.id);return true;}
+    }
+    throw new Error('Drive upload session expired twice — tap the cloud to try again.');
+  }
+  async function gdriveRoamPdfs(token,files){
+    if(gdriveRoaming)return {sent:0,failed:0,skipped:0};gdriveRoaming=true;
+    var sent=0,failed=0,skipped=0,have={};files.forEach(function(file){have[file.name]=file;});
+    try{
+      for(var i=0;i<state.chapters.length;i++){
+        var ch=state.chapters[i];if(ch.kind!=='pdf')continue;var name='pdf-'+ch.id+'.pdf',remote=have[name];
+        if(remote){gdriveForgetUpload(ch.id);gdriveSetPdfState(ch.id,{state:'synced',size:+remote.size||ch.fileSize});continue;}
+        var stored=await getPdf(ch.id);if(!stored){gdriveSetPdfState(ch.id,{state:'missing',size:ch.fileSize});continue;}
+        var bytes=stored instanceof ArrayBuffer?stored:await pdfBytes(stored);
+        if(bytes.byteLength>GDRIVE_PDF_LIMIT){skipped++;gdriveSetPdfState(ch.id,{state:'too-large',size:bytes.byteLength});continue;}
+        gdriveSetPdfState(ch.id,{state:'queued',size:bytes.byteLength});
+        try{
+          await gdriveUploadPdf(token,ch,bytes,function(done,total){var percent=Math.min(100,Math.round(done/total*100));gdriveSetPdfState(ch.id,{state:'uploading',size:total,progress:percent});byId('gdriveStatus').textContent='Uploading '+(ch.title||ch.sourceName||'paper')+'… '+percent+'%';syncUi('☁ Drive · '+percent+'%');});
+          sent++;have[name]={name:name,size:String(bytes.byteLength)};gdriveSetPdfState(ch.id,{state:'synced',size:bytes.byteLength,progress:100});
+        }catch(uploadError){if(uploadError&&uploadError.auth)throw uploadError;failed++;gdriveSetPdfState(ch.id,{state:'paused',size:bytes.byteLength});}
+      }
+      return {sent:sent,failed:failed,skipped:skipped};
+    }finally{gdriveRoaming=false;}
   }
   async function gdriveFetchPdf(id,interactive,onProgress){
     if(!gdriveOn())return null;
@@ -4065,26 +4128,26 @@
       id=resolvedPaperId(id);var token=await gdriveGetToken(interactive===true),files=await gdriveListAll(token),hit=null,names=['pdf-'+id+'.pdf'];
       Object.keys(state.merged||{}).forEach(function(dropId){if(resolvedPaperId(dropId)===id)names.push('pdf-'+dropId+'.pdf');});
       files.some(function(f){if(names.indexOf(f.name)>=0){hit=f;return true;}return false;});
-      if(!hit)return null;
+      if(!hit){var absent=find(id);gdriveSetPdfState(id,{state:'missing',size:absent&&absent.fileSize});return null;}
       var r=await fetch('https://www.googleapis.com/drive/v3/files/'+hit.id+'?alt=media',{headers:{Authorization:'Bearer '+token}});
-      if(!r.ok)return null;
+      if(!r.ok){gdriveSetPdfState(id,{state:'paused',size:+hit.size||0});return null;}
       var bytes;
       /* Stream the body when someone is watching: Drive reports the size up front, so
          the download card can show honest percentages instead of a silent wait. */
       if(onProgress&&r.body&&r.body.getReader){
         var total=+hit.size||0,reader=r.body.getReader(),chunks=[],loaded=0;
-        onProgress(0,total);
-        for(;;){var step=await reader.read();if(step.done)break;chunks.push(step.value);loaded+=step.value.byteLength;onProgress(loaded,total);}
+        onProgress(0,total);gdriveSetPdfState(id,{state:'fetching',size:total,progress:0});
+        for(;;){var step=await reader.read();if(step.done)break;chunks.push(step.value);loaded+=step.value.byteLength;onProgress(loaded,total);gdriveSetPdfState(id,{state:'fetching',size:total,progress:total?Math.min(100,Math.round(loaded/total*100)):0});}
         var all=new Uint8Array(loaded),off=0;
         chunks.forEach(function(c){all.set(c,off);off+=c.byteLength;});
         bytes=all.buffer;
       }else bytes=await r.arrayBuffer();
       if(!bytes||bytes.byteLength<100)return null;
-      await putPdf(id,bytes);var ch=find(id);if(ch&&!ch.contentHash)rememberPdfFingerprint(ch,bytes);return bytes;
-    }catch(e){return null;}
+      await putPdf(id,bytes);var ch=find(id);if(ch&&!ch.contentHash)rememberPdfFingerprint(ch,bytes);gdriveSetPdfState(id,{state:'synced',size:bytes.byteLength,progress:100});return bytes;
+    }catch(e){var failed=find(id);gdriveSetPdfState(id,{state:'paused',size:failed&&failed.fileSize});return null;}
   }
   async function gdriveDeletePdf(id){
-    if(!gdriveOn())return;
+    gdriveForgetUpload(id);delete gdrivePdfStates[id];if(!gdriveOn())return;
     try{
       var token=await gdriveGetToken(false),files=await gdriveListAll(token),name='pdf-'+id+'.pdf';
       for(var i=0;i<files.length;i++)if(files[i].name===name)await fetch('https://www.googleapis.com/drive/v3/files/'+files[i].id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
@@ -4124,7 +4187,7 @@
       byId('gdriveStatus').textContent='Library synced — checking papers…';
       var roam=await gdriveRoamPdfs(token,files);
       await gdrivePruneMergedPdfs(token);
-      byId('gdriveStatus').textContent='Synced with your Google Drive.'+(roam.sent?' '+roam.sent+' paper'+(roam.sent===1?'':'s')+' uploaded.':'')+(roam.failed?' '+roam.failed+' upload'+(roam.failed===1?'':'s')+' failed — Phloem retries on the next sync.':'');
+      byId('gdriveStatus').textContent='Synced with your Google Drive.'+(roam.sent?' '+roam.sent+' paper'+(roam.sent===1?'':'s')+' uploaded.':'')+(roam.failed?' '+roam.failed+' upload'+(roam.failed===1?'':'s')+' paused — Phloem resumes on the next sync.':'')+(roam.skipped?' '+roam.skipped+' file'+(roam.skipped===1?' is':'s are')+' over the 200 MB sync limit.':'');
       syncUi('☁ Drive · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncSignal').title='';
     }catch(e){
       /* A token Google no longer honors is not the user's problem: drop it and take
@@ -4151,7 +4214,7 @@
   byId('gdriveSyncBtn').onclick=function(){gdriveSync(true);};
   byId('gdriveOffBtn').onclick=function(){
     if(!confirm('Disconnect Google Drive on this device? The file in your Drive stays there.'))return;
-    localStorage.removeItem(GDRIVE_KEY);gdriveCfg=null;gdriveToken=null;gdriveTokenAt=0;gdriveEmail='';fillSettings();syncUi();
+    localStorage.removeItem(GDRIVE_KEY);gdriveCfg=null;gdriveToken=null;gdriveTokenAt=0;gdriveEmail='';gdrivePdfStates={};fillSettings();syncUi();renderShelf();
   };
 
   /* encrypted GitHub state sync + PDF picker */

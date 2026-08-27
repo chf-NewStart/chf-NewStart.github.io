@@ -99,6 +99,7 @@ async function run() {
   check('review comments support multiple user-selected passages', source.includes('data-review-add-passage') && source.includes('Add another passage') && source.includes('pdfAnchors.push') && source.includes('textAnchors.push'));
   check('PDF reviews expose a fingerprint-locked share action', html.includes('id="shareReviewBtn"') && html.includes('id="reviewShareDialog"') && source.includes("'#phloem-review='") && source.includes("String(ch.contentHash||'')===hash"));
   check('shared review links require confirmation and can request the exact missing PDF', source.includes("primary.textContent=target?'Add shared review':'Choose matching PDF'") && source.includes("if(hash!==payload.paper.contentHash)") && source.includes('applySharedReview(pendingSharedReview,exact)'));
+  check('review sharing clearly uses replaceable snapshots rather than pretending links are live', source.includes('This is a snapshot, not a live link') && source.includes('copy a new link') && source.includes('if(!ch.reviewShareId)') && source.includes('comment.sourceId!==layerId'));
   check('manual passage corrections are labelled and reversible', source.includes('Linked by you') && html.includes('id="reviewLinkUndoBtn"') && source.includes('function restoreReviewLinkUndo') && css.includes('.reviewer-chip.review-linked-by-user'));
   check('manual passage corrections override AI and survive a same-comment re-import', source.includes('comment.manualReviewLink') && source.includes('function preserveManualReviewLocation') && source.includes('preserveManualReviewLocation(record,prior)') && extractFunction('reviewCanAutoLocate').includes('comment.manualReviewLink'));
   const manualContext = {
@@ -223,6 +224,7 @@ async function run() {
   check('weak passage matches stay unresolved instead of becoming highlights', source.includes("+comment.matchConfidence>=.72") && source.includes("comment.locationStatus=confident?'confident':'needs-checking'") && source.includes('No passage linked yet'));
   check('multi-location comments require every quoted passage to validate', source.includes('anchors.every(function(anchor)') && source.includes('comment.matchConfidence=Math.min.apply'));
   check('reviewers see actionable passage state instead of model confidence', html.includes('id="reviewQualitySummary"') && source.includes("+' passage'") && source.includes('without a passage') && !extractFunction('renderReviewerPanel').includes('confidently') && !extractFunction('renderReviewerPanel').includes('classificationAudit'));
+  check('the one missing passage is directly filterable and shown after an unsuccessful locate pass', source.includes("levelOrder=['all','needs'") && source.includes("level==='needs'?'Needs passage'") && source.includes("reviewFilter==='needs'?reviewNeedsPassage") && source.includes("if(result.needsChecking)reviewFilter='needs'"));
   check('re-importing the same reviewer report replaces an incomplete extraction', source.includes("comment.sourceId!==reportId") && source.includes("report.id!==reportId") && source.includes('priorByText[reviewNormalizedText(item.text)]'));
 
   const classificationContext = {

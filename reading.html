@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=49">
+  <link rel="stylesheet" href="/reading.css?v=50">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -319,12 +319,13 @@
       </div>
       <div class="mobile-bar" id="mobileBar">
         <button id="mPrev" type="button" aria-label="Previous page">←</button>
-        <span class="m-page" id="mPageLabel" title="Jump to a page"></span>
+        <button class="m-page" id="mPageLabel" type="button" aria-label="Jump to a page"></button>
         <button id="mNext" type="button" aria-label="Next page">→</button>
         <button id="mNotes" type="button" aria-expanded="false">✎ Notes</button>
         <button id="mAsk" type="button" aria-expanded="false">✦ Discuss</button>
         <button id="mMore" type="button" aria-expanded="false" aria-label="More tools">⋯</button>
       </div>
+      <button id="linkReturn" class="link-return hidden" type="button">↩ Back to where you were</button>
       <aside class="selection-card hidden" id="selectionCard" aria-label="Actions for selected text">
         <div class="lookup-head">
           <div><span class="lookup-eyebrow" id="selectionEyebrow">Selected passage</span><span class="lookup-selection" id="selectionExcerpt"></span></div>
@@ -557,17 +558,33 @@
 <script>
   /* An already-open installed copy may still be controlled by yesterday's offline
      worker. A new worker takes over immediately and reloads only those older copies;
-     first-time visitors do not get an unnecessary second load. */
+     first-time visitors do not get an unnecessary second load, and a copy that is
+     mid-read holds its reload until the reader returns to the library — a refresh
+     under an open paper would drop the scroll spot, the notes sheet and unsent Ask
+     text. */
   (function(){
     if(!('serviceWorker' in navigator)||location.protocol==='file:')return;
-    var hadController=!!navigator.serviceWorker.controller,reloading=false;
+    var hadController=!!navigator.serviceWorker.controller,reloading=false,waitingForLibrary=false;
+    function refresh(){
+      if(reloading)return;
+      if(document.body.classList.contains('reading')){
+        if(waitingForLibrary)return;
+        waitingForLibrary=true;
+        new MutationObserver(function(records,observer){
+          if(document.body.classList.contains('reading'))return;
+          observer.disconnect();reloading=true;location.reload();
+        }).observe(document.body,{attributes:true,attributeFilter:['class']});
+        return;
+      }
+      reloading=true;location.reload();
+    }
     navigator.serviceWorker.addEventListener('controllerchange',function(){
       if(!hadController||reloading)return;
-      reloading=true;location.reload();
+      refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=49',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=50',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=49" defer></script>
+<script src="/reading.js?v=50" defer></script>
 </body>
 </html>

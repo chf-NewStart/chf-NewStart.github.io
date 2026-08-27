@@ -57,7 +57,7 @@
       cfg.provider=saved.provider==='browser'?'auto':(saved.provider||'auto');
       Object.keys(cfg.providers).forEach(function(id){if(saved.providers[id])cfg.providers[id]=Object.assign(cfg.providers[id],saved.providers[id]);});
     }
-    var legacy=localStorage.getItem(LEGACY_AI_KEY)||'';
+    var legacy='';try{legacy=localStorage.getItem(LEGACY_AI_KEY)||'';}catch(e){}
     if(legacy&&!cfg.providers.deepseek.key){cfg.providers.deepseek.key=legacy;if(!saved)cfg.provider='deepseek';try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg));}catch(e){}}
     if(!AI_PROVIDERS[cfg.provider]&&cfg.provider!=='auto')cfg.provider='auto';return cfg;
   }
@@ -426,11 +426,13 @@
     applyDarkPdf();
     if (!byId('connectionsPage').classList.contains('hidden')) renderConnections();
   }
-  var savedTheme = localStorage.getItem('readingRoom.theme');
+  /* Safari's "Block All Cookies" makes localStorage itself throw; an unguarded read
+     this early would abort the whole script and leave a blank page. */
+  var savedTheme = null; try { savedTheme = localStorage.getItem('readingRoom.theme'); } catch(e){}
   applyTheme(savedTheme ? savedTheme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches);
   byId('themeBtn').onclick = function(){
     var dark = document.documentElement.dataset.theme !== 'dark';
-    localStorage.setItem('readingRoom.theme', dark ? 'dark' : 'light');
+    try { localStorage.setItem('readingRoom.theme', dark ? 'dark' : 'light'); } catch(e){}
     applyTheme(dark);
   };
   function showPage(id){
@@ -463,7 +465,7 @@
       document.documentElement.style.setProperty('--kb-inset', inset + 'px');
       if (inset) setTimeout(function(){
         var ae = document.activeElement;
-        if (ae && ae.closest && ae.closest('.tab-panel, .find-bar, .notebook')) { try { ae.scrollIntoView({ block: 'nearest' }); } catch(e){} }
+        if (ae && ae.closest && ae.closest('.tab-panel, .find-bar, .notebook, .selection-card')) { try { ae.scrollIntoView({ block: 'nearest' }); } catch(e){} }
       }, 60);
     };
     ['resize', 'scroll'].forEach(function(name){
@@ -472,7 +474,19 @@
   }
   document.querySelectorAll('.nav-btn[data-view]').forEach(function(b){ b.onclick = function(){ showPage(b.dataset.view); }; });
   byId('brandBtn').onclick = function(){ showPage('libraryPage'); };
-  byId('readerBack').onclick = function(){ pdfDoc = null; showPage('libraryPage'); };
+  byId('readerBack').onclick = function(){
+    /* Leaving through our own button consumes the reader's history layer too, so the
+       next system back does not have to be pressed twice. */
+    if(history.state&&history.state.phloem==='reader'){try{history.back();return;}catch(e){}}
+    pdfDoc = null; showPage('libraryPage');
+  };
+  addEventListener('popstate',function(e){
+    var st=e.state&&e.state.phloem;
+    var sheetOpen=byId('notebook').classList.contains('sheet-open');
+    var readerOpen=!byId('readerPage').classList.contains('hidden');
+    if(sheetOpen&&st!=='sheet'){toggleSheet(false,true);return;}
+    if(readerOpen&&!st){setDrift(0);if(zenOn)setZen(false);pdfDoc=null;showPage('libraryPage');}
+  });
 
   /* modal helpers */
   document.querySelectorAll('[data-close]').forEach(function(b){ b.onclick = function(){ byId(b.dataset.close).close(); }; });
@@ -1919,8 +1933,9 @@
     byId('mAsk').setAttribute('aria-expanded',String(open&&aiOpen));
     byId('mNotes').setAttribute('aria-expanded',String(open&&!aiOpen));
   }
-  function toggleSheet(open){
+  function toggleSheet(open,fromHistory){
     var notebook=byId('notebook'),scrim=byId('sheetScrim'),willOpen=open!==undefined?open:!notebook.classList.contains('sheet-open');
+    var wasOpen=notebook.classList.contains('sheet-open');
     if(!willOpen&&recallActive)setRecall(false);
     notebook.classList.toggle('sheet-open',willOpen);scrim.classList.toggle('hidden',!willOpen);
     syncMobileSheetButtons();
@@ -1928,8 +1943,19 @@
     try{byId('notebook').inert=hideSheet;}catch(e){}
     byId('notebook').setAttribute('aria-hidden',String(hideSheet));
     if(hideSheet&&byId('notebook').contains(document.activeElement)){try{document.activeElement.blur();}catch(e){}}
+    /* The system back gesture peels the sheet before it may leave the reader: opening
+       adds one history layer, and any in-page close consumes that layer again so the
+       stack never drifts from what is on screen. */
+    try{
+      if(willOpen&&!wasOpen&&innerWidth<=720&&!(history.state&&history.state.phloem==='sheet'))history.pushState({phloem:'sheet'},'');
+      else if(!willOpen&&wasOpen&&!fromHistory&&history.state&&history.state.phloem==='sheet')history.back();
+    }catch(e){}
   }
-  function toggleMobileTab(id){var same=id==='aiPanel'?!byId('aiPanel').classList.contains('hidden'):!byId('notesPanel').classList.contains('hidden');if(same&&byId('notebook').classList.contains('sheet-open'))toggleSheet(false);else{switchTab(id);toggleSheet(true);}}
+  function toggleMobileTab(id){var same=id==='aiPanel'?!byId('aiPanel').classList.contains('hidden'):!byId('notesPanel').classList.contains('hidden');if(same&&byId('notebook').classList.contains('sheet-open'))toggleSheet(false);else{switchTab(id);toggleSheet(true);
+    /* On an annotated paper the write-a-note box sits screens below the sheet's fold;
+       opening Notes brings the pen to hand instead of the archive. */
+    if(id==='notesPanel'&&innerWidth<=720)requestAnimationFrame(function(){try{byId('pageNote').scrollIntoView({block:'center'});}catch(e){}});
+  }}
   byId('mAsk').onclick=function(){toggleMobileTab('aiPanel');};
   byId('mNotes').onclick=function(){toggleMobileTab('notesPanel');};
   byId('sheetScrim').onclick=function(){toggleSheet(false);};
@@ -2047,9 +2073,17 @@
       var pane=byId('documentPane');
       linkReturnSpot={top:pane.scrollTop,left:pane.scrollLeft};
       gotoPdfPage(idx+1);
-      showReaderToast('Jumped to p. '+(idx+1)+' · Backspace comes back');
+      /* A phone has no Backspace: the way back is a button that waits above the bar. */
+      if(matchMedia('(hover: none)').matches){byId('linkReturn').classList.remove('hidden');showReaderToast('Jumped to p. '+(idx+1));}
+      else showReaderToast('Jumped to p. '+(idx+1)+' · Backspace comes back');
     }catch(destError){}
   }
+  function returnFromLink(){
+    if(!linkReturnSpot)return;
+    var pane=byId('documentPane');pane.scrollTop=linkReturnSpot.top;pane.scrollLeft=linkReturnSpot.left;
+    linkReturnSpot=null;byId('linkReturn').classList.add('hidden');showReaderToast('Back where you were');
+  }
+  byId('linkReturn').onclick=returnFromLink;
   function gotoPdfPage(page){
     var ch=find(currentId);if(!ch||ch.kind!=='pdf')return;
     if(innerWidth<=720)toggleSheet(false);
@@ -2123,13 +2157,17 @@
     /* pdfViews must go too: renderPdfPage's spot-preserving rebuild otherwise measures
        the PREVIOUS paper's pages — an extension import into an open reader landed the
        new paper mid-page, at wherever the old one had been scrolled. */
-    var ch=find(id); if(!ch) return; hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; pdfViews=[]; pdfBuildKey=''; columnBookTurning=false;columnBookQueuedTarget=0;columnBookFits=true;columnBookMinLeft=0;columnBookMaxLeft=0;columnBookAutoZoomed=false;columnBookManualZoom=false;columnBookFitToken=''; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} restorePdfZoom(ch); setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); highlightHistory=[]; highlightFuture=[]; lastAskSelection=null; toggleFindBar(false);
+    var ch=find(id); if(!ch) return; hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; pdfViews=[]; pdfBuildKey=''; columnBookTurning=false;columnBookQueuedTarget=0;columnBookFits=true;columnBookMinLeft=0;columnBookMaxLeft=0;columnBookAutoZoomed=false;columnBookManualZoom=false;columnBookFitToken=''; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} restorePdfZoom(ch); setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); highlightHistory=[]; highlightFuture=[]; lastAskSelection=null; toggleFindBar(false); linkReturnSpot=null; byId('linkReturn').classList.add('hidden');
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
     byId('paperTags').value=(ch.tags||[]).join(', '); renderNoteIndex();
     byId('evidenceList').classList.add('hidden');byId('evidenceList').innerHTML='';
     aiContext=null;aiThreadDraft=false;byId('contextCard').classList.add('hidden');byId('aiStatus').textContent='';restoreActiveAiThread(ch);renderQa();
+    /* One history layer per open paper: the system back gesture then returns to the
+       library instead of leaving the app mid-read. A stale layer left by exiting
+       through the masthead is reused, never stacked. */
+    if(byId('readerPage').classList.contains('hidden')&&!(history.state&&history.state.phloem)){try{history.pushState({phloem:'reader'},'');}catch(e){}}
     readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('notesPanel');
     if(ch.kind==='pdf'){
       try{
@@ -2477,9 +2515,9 @@
     try{
       var page=await pdfDoc.getPage(n),natural=page.getViewport({scale:1}),scale=pageScale(natural);
       if(view.buildId!==pdfBuildId)return;
-      /* A slightly lower pixel ratio on narrow phones prevents large journal pages from
-         exhausting Safari's canvas memory while keeping type comfortably sharp. */
-      var viewport=page.getViewport({scale:scale}),ratio=Math.min(devicePixelRatio||1,innerWidth<=720?1.5:2);
+      /* dpr-3 phones read at ratio 2: at fit that is under 1MP per page, and the area
+         cap below plus the far-page canvas freeing remain the real memory guards. */
+      var viewport=page.getViewport({scale:scale}),ratio=Math.min(devicePixelRatio||1,2);
       /* Zoomed-in pages are already huge in CSS pixels; cap the backing-store area so a
          675-page textbook at 250% cannot blow Safari's canvas memory budget. Tablets get
          a middle tier: desktop-sized pixel counts were what made iPad zooming flicker. */
@@ -2852,7 +2890,7 @@
     if(e.key.toLowerCase()==='f'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();setZen(!zenOn);return;}
     if(e.key.toLowerCase()==='g'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();byId('focusBtn').onclick();return;}
     if(e.key.toLowerCase()==='c'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&readerMode==='pdf'&&pdfDoc){e.preventDefault();cycleColumnZoom();return;}
-    if(e.key==='Backspace'&&readerMode==='pdf'&&linkReturnSpot){e.preventDefault();var lrPane=byId('documentPane');lrPane.scrollTop=linkReturnSpot.top;lrPane.scrollLeft=linkReturnSpot.left;linkReturnSpot=null;showReaderToast('Back where you were');return;}
+    if(e.key==='Backspace'&&readerMode==='pdf'&&linkReturnSpot){e.preventDefault();returnFromLink();return;}
     if(e.key===' '&&!e.shiftKey&&columnBookFlow()){
       e.preventDefault();byId('nextPage').click();return;
     }
@@ -2888,6 +2926,12 @@
   });
   var refitTimer=null;
   addEventListener('resize',function(){
+    /* toggleSheet keys inert/aria-hidden to the width at the moment it ran; rotating a
+       phone to landscape crosses the breakpoint and would otherwise leave the visible
+       desktop sidebar swallowing every tap. Recompute on every viewport change. */
+    var rotatedNotebook=byId('notebook'),sheetTucked=innerWidth<=720&&!rotatedNotebook.classList.contains('sheet-open');
+    try{rotatedNotebook.inert=sheetTucked;}catch(e){}
+    rotatedNotebook.setAttribute('aria-hidden',String(sheetTucked));
     if(byId('readerPage').classList.contains('hidden'))return;
     setNotebookWidth(notebookWidth,false);
     clearTimeout(refitTimer);refitTimer=setTimeout(function(){if(readerMode==='pdf'&&pdfDoc)renderPdfPage();},220);
@@ -3162,7 +3206,9 @@
   var lastAskSelection=null;
   function clearPendingSelection(keepCard){clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');if(!keepCard)hideSelectionCard();var s=window.getSelection&&window.getSelection();if(s)s.removeAllRanges();}
   function scheduleHighlightCommit(delay){clearTimeout(highlightCommitTimer);highlightCommitTimer=setTimeout(function(){if(highlightMode)commitPendingHighlight();},delay);}
-  function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');if(highlightMode&&!markerPointerDown)scheduleHighlightCommit(550);}
+  /* Dragging native selection handles never sets markerPointerDown, so on touch the
+     commit fuse must outlast a thumb's pauses or it captures one word of a sentence. */
+  function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');if(highlightMode&&!markerPointerDown)scheduleHighlightCommit(coarsePointer.matches?2000:550);}
   function setHighlightColor(color){
     highlightColor=['yellow','mint','coral','blue'].indexOf(color)>=0?color:'yellow';
     document.querySelectorAll('[data-highlight-color]').forEach(function(x){x.classList.toggle('selected',x.dataset.highlightColor===highlightColor);});
@@ -3567,7 +3613,7 @@
      Enter sends, Shift+Enter makes a new line. */
   function growQuestionBox(){var input=byId('aiQuestion');input.style.height='auto';input.style.height=Math.min(128,input.scrollHeight)+'px';}
   byId('aiQuestion').addEventListener('input',growQuestionBox);
-  byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;
+  byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;
   byId('aiNewThread').onclick=function(){aiThreadDraft=true;renderQa();byId('aiStatus').textContent=aiContext&&aiContext.text?'New thread with this context.':'New thread — pick a context, then ask.';byId('aiQuestion').focus({preventScroll:true});};
   byId('aiThreadPicker').onchange=function(){
     var ch=find(currentId);if(!ch)return;if(!this.value){aiThreadDraft=true;renderQa();byId('aiStatus').textContent='New thread — pick or keep the context, then ask.';return;}

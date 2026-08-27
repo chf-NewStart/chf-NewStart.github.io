@@ -59,6 +59,10 @@ older copies without making first-time visitors reload twice.
 malformed saved records, IndexedDB safety-copy restoration, and recovery of an
 original PDF whose metadata disappeared.
 
+`reading-review-fail-closed.test.js` covers the passage-quality boundary: weak
+AI matches remain unhighlighted, rejected matches become manual-only, corrected
+passages override AI, and unsafe locations are omitted from shared layers.
+
 Run with Node 18+ and Playwright's bundled Chromium:
 
 ```sh
@@ -76,6 +80,7 @@ node tests/reading-docx-review.test.js
 node tests/reading-extension-local-pdf.test.js
 node tests/reading-app-update.test.js
 node tests/reading-persistence.test.js
+node tests/reading-review-fail-closed.test.js
 ```
 
 Exit code 0 means every check passed. If your Chromium lives in a nonstandard

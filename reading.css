@@ -987,6 +987,7 @@
     .reviewer-classification { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 9px; }
     .reviewer-chip.review-needs-passage { box-shadow: inset 0 0 0 1px color-mix(in srgb, #b8791f 48%, var(--line)); background: color-mix(in srgb, #f2d98f 18%, var(--surface-2)); color: #8a5b18; }
     .reviewer-chip.review-linked-by-user { box-shadow: inset 0 0 0 1px color-mix(in srgb, #32708b 35%, var(--line)); background: color-mix(in srgb, #69b9da 16%, var(--surface-2)); color: #285f76; }
+    .reviewer-chip.review-manual-only { box-shadow: inset 0 0 0 1px color-mix(in srgb, #c54f34 34%, var(--line)); background: color-mix(in srgb, #f3775b 13%, var(--surface-2)); color: #93412f; }
     .reviewer-chip { border-radius: 999px; padding: 4px 7px; background: var(--surface-2); color: var(--muted); font: 750 .55rem/1 var(--sans); }
     .reviewer-chip.level { background: color-mix(in srgb, var(--yellow) 20%, var(--surface-2)); color: var(--ink); }
     .reviewer-chip.level.review-level-general { background: color-mix(in srgb, #80b369 24%, var(--surface-2)); }
@@ -1011,6 +1012,7 @@
     .reviewer-resolve { margin-top: 8px; color: var(--muted); }
     .reviewer-resolve:hover { color: var(--accent); }
     .reviewer-unlinked { display: block; margin: 2px 0 7px; color: var(--muted); font: italic .66rem/1.4 var(--serif); }
+    .reviewer-unlinked.manual-only { color: color-mix(in srgb, #93412f 78%, var(--muted)); font-style: normal; font-weight: 700; }
     .reviewer-response { width: 100%; min-height: 86px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; outline: none; background: var(--surface); color: var(--ink); font: .76rem/1.5 var(--sans); }
     .reviewer-response:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent); }
     .panel-eyebrow { display: block; margin-bottom: 5px; color: var(--accent); font-size: .56rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }

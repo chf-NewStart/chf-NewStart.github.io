@@ -3537,11 +3537,23 @@
     });
     var best='',bestScore=0,bestHits=0,bestTarget=false;
     candidates.forEach(function(candidate){var normalized=reviewNormalizedText(candidate),hits=0,score=0,targetHit=false;terms.forEach(function(term){if(normalized.indexOf(term)>=0){hits++;score+=1+Math.min(2.5,term.length/7);}});targets.forEach(function(target){if(target&&normalized.indexOf(target)>=0){targetHit=true;score+=9;}});if(candidate.length>360)score-=1;if(score>bestScore){best=candidate;bestScore=score;bestHits=hits;bestTarget=targetHit;}});
-    if(!bestTarget&&(bestHits<2||bestScore<4.2))return'';return best.slice(0,460).trim();
+    /* Page references narrow the search, but two generic overlaps such as “scale” and
+       “bioreactors” are not evidence that a title or affiliation block answers the
+       reviewer. Local fallback is deliberately conservative: weak cases stay unlinked. */
+    if(!bestTarget&&(bestHits<3||bestScore<6))return'';return best.slice(0,460).trim();
   }
   function repairPdfReviewQuotes(ch,pageOnly){
     if(!ch||ch.kind!=='pdf'||!Array.isArray(ch.reviewComments)||!Array.isArray(ch.pageTexts))return false;var changed=false;
-    ch.reviewComments.forEach(function(comment){if(!reviewCanAutoLocate(comment))return;var anchors=Array.isArray(comment.pdfAnchors)?comment.pdfAnchors:[];anchors.forEach(function(anchor,index){var page=+anchor.page||0;if(!page||pageOnly&&page!==+pageOnly)return;var full=String(ch.pageTexts[page-1]||''),range=anchor.quote?reviewQuoteRange(full,anchor.quote):null;if(!range){var local=reviewLocalPdfQuote(full,comment);if(local){range=reviewQuoteRange(full,local);anchor.method='local-pdf-quote';}}if(!range)return;range=reviewSentenceRange(full,range,comment);if(anchor.quote!==range.quote){anchor.quote=range.quote;changed=true;}if(index===0&&comment.quote!==range.quote){comment.quote=range.quote;comment.anchorMethod=anchor.method;changed=true;}});});return changed;
+    ch.reviewComments.forEach(function(comment){
+      if(!reviewCanAutoLocate(comment))return;var anchors=Array.isArray(comment.pdfAnchors)?comment.pdfAnchors:[],kept=[];
+      anchors.forEach(function(anchor){
+        var page=+anchor.page||0;if(!page||pageOnly&&page!==+pageOnly){kept.push(anchor);return;}var full=String(ch.pageTexts[page-1]||''),localMethod=anchor.method==='local-pdf-quote'||anchor.method==='review-page-reference',range=null;
+        if(localMethod){var local=reviewLocalPdfQuote(full,comment);if(local)range=reviewQuoteRange(full,local);if(range)anchor.method='local-pdf-quote';}
+        else{range=anchor.quote?reviewQuoteRange(full,anchor.quote):null;if(!range){var fallback=reviewLocalPdfQuote(full,comment);if(fallback){range=reviewQuoteRange(full,fallback);anchor.method='local-pdf-quote';}}}
+        if(!range){changed=true;return;}range=reviewSentenceRange(full,range,comment);if(anchor.quote!==range.quote){anchor.quote=range.quote;changed=true;}kept.push(anchor);
+      });
+      if(kept.length!==anchors.length){comment.pdfAnchors=kept;changed=true;}if(!kept.length){if(comment.anchored){resetReviewLocation(comment);comment.locationStatus='needs-checking';changed=true;}return;}var primary=kept[0],confidence=Math.min.apply(null,kept.map(function(anchor){return Math.max(0,Math.min(1,+anchor.confidence||0));}));if(comment.page!==primary.page||comment.quote!==primary.quote||comment.anchorMethod!==primary.method||comment.matchConfidence!==confidence){comment.page=primary.page;comment.quote=primary.quote;comment.anchorMethod=primary.method;comment.matchConfidence=confidence;comment.anchored=true;changed=true;}
+    });if(changed)ch.reviewUpdatedAt=now();return changed;
   }
   function reviewExplicitPages(comment,pageCount){
     var raw=[comment&&comment.locationHint,comment&&comment.text].filter(Boolean).join(' '),pages=[],seen={},match,re=/(?:\bp{1,2}\.?|\bpages?)\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?/gi;
@@ -3568,9 +3580,8 @@
   }
   function reviewAiJson(value){var text=String(value||'').trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');try{return JSON.parse(text);}catch(e){}var start=text.indexOf('{'),end=text.lastIndexOf('}');if(start>=0&&end>start)return JSON.parse(text.slice(start,end+1));return null;}
   function applyPdfReviewMatches(ch,prepared,rawMatches,provider){
-    var comment=prepared.comment,pageCandidates=prepared.candidates,explicit=prepared.explicit,valid=[],seen={};
-    (rawMatches||[]).slice(0,4).forEach(function(match){var page=match&&Number.isInteger(+match.page)?+match.page:null,allowed=pageCandidates.some(function(item){return item.page===page;}),confidence=match&&match.confidence!==undefined?+match.confidence:.65;if(!page||!allowed||confidence<.55)return;var full=String((ch.pageTexts||[])[page-1]||''),range=reviewQuoteRange(full,match.quote||''),fallback=range?null:reviewLocalPdfQuote(full,comment);if(!range&&fallback)range=reviewQuoteRange(full,fallback);if(range)range=reviewSentenceRange(full,range,comment);if(!range&&explicit.indexOf(page)<0)return;var key=page+'|'+reviewNormalizedText(range&&range.quote||'');if(seen[key])return;seen[key]=1;valid.push({page:page,quote:range?range.quote:'',confidence:Math.max(0,Math.min(1,fallback?Math.min(confidence,.68):confidence)),method:range?(fallback?'local-pdf-quote':'ai-pdf-quote'):'review-page-reference'});});
-    explicit.forEach(function(page){if(!valid.some(function(anchor){return anchor.page===page;})){var full=String((ch.pageTexts||[])[page-1]||''),quote=reviewLocalPdfQuote(full,comment),range=quote?reviewSentenceRange(full,reviewQuoteRange(full,quote),comment):null;valid.push({page:page,quote:range?range.quote:'',confidence:range ? .68 : 1,method:range?'local-pdf-quote':'review-page-reference'});}});valid.sort(function(a,b){var refA=a.method==='review-page-reference'?1:0,refB=b.method==='review-page-reference'?1:0;return refA-refB||explicit.indexOf(a.page)-explicit.indexOf(b.page)||a.page-b.page;});if(!valid.length)return false;
+    var comment=prepared.comment,pageCandidates=prepared.candidates,valid=[],seen={};
+    (rawMatches||[]).slice(0,4).forEach(function(match){var page=match&&Number.isInteger(+match.page)?+match.page:null,allowed=pageCandidates.some(function(item){return item.page===page;}),confidence=match&&match.confidence!==undefined?+match.confidence:.65;if(!page||!allowed||confidence<.55)return;var full=String((ch.pageTexts||[])[page-1]||''),range=reviewQuoteRange(full,match.quote||''),fallback=range?null:reviewLocalPdfQuote(full,comment);if(!range&&fallback)range=reviewQuoteRange(full,fallback);if(range)range=reviewSentenceRange(full,range,comment);if(!range)return;var key=page+'|'+reviewNormalizedText(range.quote);if(seen[key])return;seen[key]=1;valid.push({page:page,quote:range.quote,confidence:Math.max(0,Math.min(1,fallback?Math.min(confidence,.68):confidence)),method:fallback?'local-pdf-quote':'ai-pdf-quote'});});if(!valid.length)return false;
     var primary=valid[0];comment.pdfAnchors=valid;comment.page=primary.page;comment.para=null;comment.start=0;comment.end=0;comment.quote=primary.quote;comment.anchors=[];comment.anchored=true;comment.anchorMethod=primary.method;comment.matchConfidence=Math.min.apply(null,valid.map(function(anchor){return anchor.confidence;}));comment.locatedProvider=provider||'Reviewer reference';comment.updatedAt=now();return true;
   }
   function applyTextReviewMatch(ch,prepared,match,provider){

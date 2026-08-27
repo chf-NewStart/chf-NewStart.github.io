@@ -113,19 +113,23 @@ async function run() {
   const preserved = manualContext.preserveManualReviewLocation(refreshedComment, savedManual);
   savedManual.pdfAnchors[0].quote = 'Mutated after copy';
   check('manual reviewer locations are copied by value during re-import', preserved && refreshedComment.page === 7 && refreshedComment.pdfAnchors[0].quote === 'Exact selected sentence.' && refreshedComment.manualReviewLink === true);
-  check('explicit manuscript page references survive even if AI omits them', source.includes("'review-page-reference'") && source.includes('explicit.forEach(function(page)'));
+  check('explicit manuscript pages guide candidate search without becoming unverified anchors', source.includes('explicit.concat(ranked.slice(0,8)') && !extractFunction('applyPdfReviewMatches').includes('explicit.forEach(function(page)') && extractFunction('applyPdfReviewMatches').includes('if(!range)return'));
   check('older nine-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:2') && source.includes('This review used the older summary importer'));
   check('legacy summary matches are suppressed until the source report is re-imported', source.includes('comment.legacyImport=!!legacyReviewReports') && source.includes("if(comment.legacyImport&&!comment.manualReviewLink){comment.anchored=false"));
   check('broad restructuring feedback is not forced onto a coincidental passage', source.includes('function stabilizedReviewLevel') && source.includes("level='section'") && source.includes('Section-wide · no single passage named'));
   check('PDF matches must use candidate pages and a confidence threshold', source.includes('reviewCandidatePdfPages') && source.includes('confidence<.55') && source.includes('allowed=pageCandidates.some'));
   check('an invented quote no longer falls back to the whole paragraph', !source.includes("if(start<0){quote=text;start=0;}"));
-  check('AI-selected PDF pages require a drawable passage', source.includes('if(!range&&explicit.indexOf(page)<0)return') && source.includes('never return a page with an empty quote'));
-  check('older page-only links are repaired from real PDF text', source.includes('function repairPdfReviewQuotes') && source.includes('repairPdfReviewQuotes(ch)') && source.includes('reviewNeedsPassage(ch,comment)'));
+  check('AI-selected PDF pages always require a drawable verified passage', extractFunction('applyPdfReviewMatches').includes('if(!range)return') && source.includes('never return a page with an empty quote'));
+  check('older page-only links are repaired only when relevant text exists, otherwise removed', source.includes('function repairPdfReviewQuotes') && source.includes("anchor.method==='review-page-reference'") && source.includes("comment.locationStatus='needs-checking'") && source.includes('repairPdfReviewQuotes(ch)'));
   check('PDF quote mapping respects words split across text-layer spans', source.includes('function pdfReviewSpanNeedsSpace') && source.includes('pdfReviewSpanNeedsSpace(previous,span)'));
   check('review scope colors cover PDF passages, page markers, text passages, and cards', html.includes('class="review-scope-key"') && css.includes('.review-level-section.review-marker-first::after') && css.includes('.review-page-marker.review-level-general') && css.includes('.review-comment-anchor.review-level-editorial') && css.includes('.reviewer-comment-card.review-level-section'));
   check('original Word drafts use the same resumable Drive roaming path', source.includes("name:'docx-'+ch.id+'.docx'") && source.includes('binarySourceSpec(ch)'));
 
-  const reviewContext = {};
+  const reviewContext = {
+    reviewCanAutoLocate: () => true,
+    resetReviewLocation: comment => { comment.page = null; comment.quote = ''; comment.pdfAnchors = []; comment.anchored = false; comment.matchConfidence = 0; },
+    now: () => 500
+  };
   vm.runInNewContext([
     extractFunction('paras'),
     extractFunction('reviewNormalizedText'),
@@ -135,6 +139,7 @@ async function run() {
     extractFunction('reviewSearchTerms'),
     extractFunction('reviewQuotedPassages'),
     extractFunction('reviewLocalPdfQuote'),
+    extractFunction('repairPdfReviewQuotes'),
     extractFunction('reviewExplicitPages'),
     extractFunction('reviewReportChunks'),
     extractFunction('reviewReportUnits')
@@ -153,6 +158,11 @@ async function run() {
   check('PDF review highlights snap to one complete relevant sentence', completeSentence.quote.startsWith('Although') && completeSentence.quote.endsWith('accurately.') && !completeSentence.quote.includes('For example'));
   const localPassage = reviewContext.reviewLocalPdfQuote('Background material is summarized first. Probe position changed the measured oxygen concentration gradient across the vessel. The conclusion follows.', { text: 'Please clarify how probe position affects the oxygen concentration gradient.' });
   check('page-only references gain a conservative local passage highlight', localPassage.includes('Probe position changed'));
+  const falseTitlePassage = reviewContext.reviewLocalPdfQuote('Probe Location Matters: Oxygen Gradient Measurements and CFD-Informed Modeling Challenge the Well-Mixed Assumption in Bench-Scale Bioreactors Ittisak Promma, Danny Kang, Zahra Negahban, Valerie Ward, Nasser Mohieddin Abukhdeir, Marc G. Aucoin, Hector Budman Department of Chemical Engineering, University of Waterloo, Waterloo, ON, Canada.', { text: 'The scale is described variously as a 15–20 L system, a 20 L bioreactor and a 19.5 L vessel operated at 13.5–14 L. Nominal vessel volume and actual working volume should be distinguished consistently (pp. 1, 3–4).' });
+  check('generic title-page overlap cannot become a reviewer passage', falseTitlePassage === '');
+  const staleR59 = { kind: 'pdf', pageTexts: ['Probe Location Matters: Oxygen Gradient Measurements and CFD-Informed Modeling Challenge the Well-Mixed Assumption in Bench-Scale Bioreactors. Department of Chemical Engineering, University of Waterloo.', '', 'Twenty-liter bioreactors are widely used in industrial practice. The nominal vessel volume differs from the actual working volume.'], reviewComments: [{ text: 'The scale is described variously as a 15–20 L system, a 20 L bioreactor and a 19.5 L vessel. Nominal vessel volume and actual working volume should be distinguished consistently (pp. 1, 3–4).', page: 3, quote: 'The nominal vessel volume differs from the actual working volume.', pdfAnchors: [{ page: 3, quote: 'The nominal vessel volume differs from the actual working volume.', confidence: .94, method: 'ai-pdf-quote' }, { page: 1, quote: 'Probe Location Matters: Oxygen Gradient Measurements and CFD-Informed Modeling Challenge the Well-Mixed Assumption in Bench-Scale Bioreactors.', confidence: .68, method: 'local-pdf-quote' }], anchored: true, anchorMethod: 'ai-pdf-quote', matchConfidence: .68 }] };
+  const cleanedStaleR59 = reviewContext.repairPdfReviewQuotes(staleR59);
+  check('saved R59-style title-page false positives are removed on reopen', cleanedStaleR59 && staleR59.reviewComments[0].pdfAnchors.length === 1 && staleR59.reviewComments[0].pdfAnchors[0].page === 3 && staleR59.reviewComments[0].matchConfidence === .94 && staleR59.reviewUpdatedAt === 500);
   const quotedPassages = reviewContext.reviewQuotedPassages({ text: 'Please revise “Probe position changed the measured oxygen concentration gradient across the vessel.” and do not match “too short”.' });
   check('complete quoted manuscript text is isolated for the no-AI fast path', quotedPassages.length === 1 && quotedPassages[0].startsWith('Probe position'));
   const unrelatedPassage = reviewContext.reviewLocalPdfQuote('The statistical analysis used a standard confidence interval.', { text: 'Please clarify the oxygen sensor placement and spatial concentration gradient.' });

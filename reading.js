@@ -2317,8 +2317,9 @@
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('comfortBar').classList.toggle('pdf-mode',pdf);
     var reflow=byId('reflowBtn');reflow.classList.toggle('hidden',!isPdf);reflow.classList.toggle('to-text',pdf);reflow.setAttribute('aria-pressed',String(isPdf&&!pdf));
-    reflow.innerHTML=pdf?'Aa <span class="wide">Reflow</span>':'⧉ <span class="wide">PDF</span>';
-    reflow.setAttribute('aria-label',pdf?'Switch to reflowed text view':'Back to the PDF view');
+    reflow.innerHTML=pdf?'Aa <span class="wide">Reader view</span>':'⧉ <span class="wide">PDF</span>';
+    reflow.setAttribute('aria-label',pdf?'Switch to Reader view':'Back to the PDF view');
+    reflow.setAttribute('title',pdf?'Reader view · the paper rebuilt as clean, phone-friendly text':'Back to the original PDF layout');
     if(!pdf&&ch) renderText(ch);applyPdfFlowMode();applyFocus();loadPageNote();updateProgress();
   }
   byId('reflowBtn').onclick=async function(){
@@ -2327,8 +2328,8 @@
     if(readerMode==='pdf'&&pdfDoc){Promise.resolve(renderPdfPage()).then(function(){scrollToPdfPage(currentPage,'auto');});return;}
     if(readerMode==='text'&&(!ch.readerText||!ch.pageParagraphs||ch.readerV!==READER_V)&&pdfDoc){
       this.disabled=true;
-      try{await ensureReaderData(pdfDoc,ch);pageStartCache={};renderText(ch);showReaderToast('Reflowed from the PDF layout');}
-      catch(e){showReaderToast('Could not reflow this paper');}
+      try{await ensureReaderData(pdfDoc,ch);pageStartCache={};renderText(ch);showReaderToast('Reader view · rebuilt from the PDF');}
+      catch(e){showReaderToast('Could not build Reader view for this paper');}
       finally{this.disabled=false;updateReaderMode();}
     }
     if(readerMode==='text')restoreReaderPosition(ch,false);

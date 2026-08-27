@@ -1136,8 +1136,11 @@
       .reader-tools .title span { display: none; }
       .reader-tools .soft-button .wide { display: none; }
       /* With the ⋯ tray open the row scrolls sideways anyway, so the buttons can say
-         what they do — a row of bare glyphs (☰ ≣ ⌄ ⛶ ⌕) read as riddles on a phone. */
+         what they do — a row of bare glyphs (☰ ≣ ⌄ ⛶ ⌕) read as riddles on a phone.
+         The back arrow keeps its arrow: half-clipped at the screen edge, its label
+         read as a mysterious "Libra". */
       #readerPage.show-tools .reader-tools .soft-button .wide { display: inline; }
+      #readerPage.show-tools .reader-tools #readerBack .wide { display: none; }
       #readerBack { flex: 0 0 42px; width: 42px; min-height: 42px; padding: 0; border-color: transparent; background: transparent; font-size: 1.15rem; }
       /* Default: only back + title. More turns the same row into a compact, sideways
          tool tray; it never becomes the two-storey button wall shown on desktop. */

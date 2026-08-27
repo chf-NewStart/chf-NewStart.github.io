@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=52">
+  <link rel="stylesheet" href="/reading.css?v=53">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -123,7 +123,7 @@
           <button id="zoomIn" aria-label="Zoom in">＋</button>
           <button id="colZoomBtn" aria-label="Zoom to one column" title="Zoom to one column (C) — taps cycle left · right · full width">Col</button>
         </div>
-        <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to reflowed text view" title="Reflow · big phone-friendly text rebuilt from the PDF">Aa <span class="wide">Reflow</span></button>
+        <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to Reader view" title="Reader view · the paper rebuilt as clean, phone-friendly text">Aa <span class="wide">Reader view</span></button>
         <div class="guide-tool" id="guideTool" role="group" aria-label="Reading guide and settings">
           <button class="soft-button" id="focusBtn" type="button" aria-pressed="false" aria-label="Toggle reading guide" title="Turn the reading guide on or off">▰ <span class="wide">Guide</span></button>
           <button class="soft-button guide-tool-menu" id="comfortBtn" type="button" aria-expanded="false" aria-controls="comfortBar" aria-label="Open guide and reading settings" title="Dimness, width, height, color and other reading settings">⌄ <span class="wide">Settings</span></button>
@@ -582,9 +582,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=52',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=53',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=52" defer></script>
+<script src="/reading.js?v=53" defer></script>
 </body>
 </html>

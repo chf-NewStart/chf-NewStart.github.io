@@ -148,7 +148,12 @@ async function run() {
   check('classification uses parallel cloud specialists but one local worker', source.includes('workerCount=Math.min(local?1:4,batches.length)') && source.includes('reviewClassificationBatches(units,6)'));
   check('missing classification items receive one targeted retry', source.includes('var missing=batch.filter') && source.includes('if(missing.length)try{await ask(missing);'));
   check('invalid passage matches receive one targeted retry', source.includes('if(!passed[prepared[p].id])') && source.includes('if(!textPassed[prepared[t].id])'));
-  check('one provider is held for the complete review import', source.includes('var reviewRoute=activeAiRoute(false)') && source.includes('extractReviewerReportWithAi(report,function(message,progress)') && source.includes('},reviewRoute)'));
+  check('one selected cloud provider is the explicit high-accuracy review recheck', source.includes('async function reviewAiPlan') && source.includes("if(availability==='available'||availability==='readily')") && source.includes('escalation:readyLocal?chosen:null') && source.includes('refineReviewClassificationsWithAi(extracted'));
+  check('DeepSeek review calls request strict JSON output', source.includes("if(/return only json/i.test(system))deepseekBody.response_format={type:'json_object'}"));
+  check('automatic review matching sends hard items directly to the selected cloud provider', source.includes('function reviewShouldEscalateBeforeLocation') && source.includes('var direct=plan.escalation?comments.filter') && source.includes('High-accuracy recheck'));
+  check('weak passage matches stay unresolved instead of becoming highlights', source.includes("+comment.matchConfidence>=.72") && source.includes("comment.locationStatus=confident?'confident':'needs-checking'") && source.includes('Needs checking · no confident passage yet'));
+  check('multi-location comments require every quoted passage to validate', source.includes('anchors.every(function(anchor)') && source.includes('comment.matchConfidence=Math.min.apply'));
+  check('reviewers see an honest confidence summary', html.includes('id="reviewQualitySummary"') && source.includes("+' confidently located · '") && source.includes("+' need checking'"));
   check('re-importing the same reviewer report replaces an incomplete extraction', source.includes("comment.sourceId!==reportId") && source.includes("report.id!==reportId") && source.includes('priorByText[reviewNormalizedText(item.text)]'));
 
   const classificationContext = {

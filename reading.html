@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=74">
+  <link rel="stylesheet" href="/reading.css?v=75">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -301,6 +301,7 @@
               <button class="soft-button hidden" id="locateReviewsBtn" type="button">✦ Locate unlinked comments with AI</button>
               <p class="reviewer-locate-status" id="reviewerLocateStatus" role="status" aria-live="polite"></p>
               <div class="task-progress hidden" id="reviewerProgress" role="progressbar" aria-label="Review analysis progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+              <p class="review-quality-summary hidden" id="reviewQualitySummary" role="status"></p>
               <div class="reviewer-filter-row" id="reviewerFilters" role="group" aria-label="Filter comments by scope"></div>
             </div>
             <div class="reviewer-comment-list" id="readerReviewList"></div>
@@ -492,11 +493,11 @@
       </section>
       <section>
         <h3>AI assistant</h3>
-        <p>Automatic uses Gemini Nano inside compatible desktop Chrome, with no account or API key. Chrome owns the first model download; prepare it here before a long review, or bring a Gemini, DeepSeek, OpenAI, Anthropic, or other OpenAI-compatible key. Cloud providers receive only the extracted text you choose—never the PDF or screenshot itself.</p>
+        <p>Choose one AI mode. Private uses Gemini Nano inside compatible desktop Chrome. Choosing a cloud provider keeps the private first pass when available, then uses that provider to recheck only uncertain review labels and difficult passage matches; other AI questions use the selected provider directly. Cloud providers receive extracted review text and candidate excerpts—never the PDF file itself.</p>
         <div class="ai-provider-grid">
-          <label class="field-label" for="aiProvider">Provider</label>
+          <label class="field-label" for="aiProvider">AI mode</label>
           <select class="field" id="aiProvider">
-            <option value="auto">Automatic · on-device Gemini</option>
+            <option value="auto">Private · on-device Gemini</option>
             <option value="gemini">Gemini API</option>
             <option value="deepseek">DeepSeek API</option>
             <option value="openai">OpenAI API</option>
@@ -640,9 +641,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=74',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=75',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=74" defer></script>
+<script src="/reading.js?v=75" defer></script>
 </body>
 </html>

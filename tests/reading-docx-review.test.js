@@ -70,7 +70,7 @@ async function run() {
   check('the reader sidebar has a dedicated Reviews tab', html.includes('data-tab="reviewsPanel"') && html.includes('id="readerReviewList"'));
   check('Word comment ranges become manuscript highlights', source.includes("name==='commentRangeStart'") && source.includes("name==='commentRangeEnd'") && css.includes('.review-comment-anchor'));
   check('review responses and resolved state persist on the chapter', source.includes('comment.response=area.value') && source.includes('comment.resolved=!comment.resolved'));
-  check('unlinked feedback is located only through an explicit AI action', html.includes('id="locateReviewsBtn"') && source.includes('locateOneReviewWithAi') && source.includes('runAi(system,user,650,onProgress)'));
+  check('unlinked feedback is located only through an explicit AI action', html.includes('id="locateReviewsBtn"') && source.includes('locateReviewsWithAi') && source.includes('locateReviewBatchWithAi'));
   check('the review flow clearly supports one combined Word file', html.includes('id="reviewCombinedFile"') && html.includes('Commented Word manuscript') && source.includes("if(!parsed.comments.length)"));
   check('the review flow clearly supports a manuscript plus separate comments', html.includes('id="reviewPaperFile"') && html.includes('id="reviewCommentsFile"') && source.includes('importSourceFile(paper,null,null,button,true)') && source.includes('importReviewerFile(target,comments,button)'));
   check('a comment-only reviewer Word file can still be attached from the reader sidebar', html.includes('id="importReviewFileBtn"') && source.includes('extractReviewerReportWithAi') && source.includes('importReviewerFile'));
@@ -113,7 +113,50 @@ async function run() {
   const numberedUnits = reviewContext.reviewReportUnits(numberedReport);
   check('all 25 numbered reviewer concerns survive deterministic segmentation', numberedUnits.filter(unit => unit.number).length === 25 && numberedUnits.every(unit => unit.response), numberedUnits.length + ' units');
   check('AI classification is keyed to stable input ids rather than freeform summaries', source.includes('Return exactly one result for every inputId') && source.includes('unit.number||!classification'));
+  check('AI classification is checked against local review rules', source.includes('function reviewClassificationAudit') && source.includes('classificationAudit:checked.audit') && source.includes('confidence from 0 to 1'));
+  check('passage matching batches comments by stable ids', source.includes('Return exactly one item for every commentId') && source.includes('reviewLocationBatches(comments,config.size)'));
+  check('cloud matching uses bounded parallel batches', source.includes("size:local?1:3,concurrency:local?1:2") && source.includes('await Promise.all(workers)'));
+  check('a dropped batch item gets one targeted retry', source.includes("!byComment[prepared[p].id]&&!prepared[p].comment.anchored") && source.includes("!byComment[prepared[t].id]&&!prepared[t].comment.anchored"));
+  check('one provider is held for the complete review import', source.includes('var reviewRoute=activeAiRoute(false)') && source.includes('extractReviewerReportWithAi(report,function(message)') && source.includes('},reviewRoute)'));
   check('re-importing the same reviewer report replaces an incomplete extraction', source.includes("comment.sourceId!==reportId") && source.includes("report.id!==reportId") && source.includes('priorByText[reviewNormalizedText(item.text)]'));
+
+  const classificationContext = {
+    REVIEW_LEVEL_LABELS: { general: 'General', section: 'Section', specific: 'Specific', editorial: 'Editorial / typo' },
+    REVIEW_TOPIC_LABELS: { writing: 'Writing', structure: 'Structure', methods: 'Methods', statistics: 'Statistics', modeling: 'Modeling', evidence: 'Evidence', figures: 'Figure / table', consistency: 'Consistency', claims: 'Claims', references: 'References', other: 'Other' }
+  };
+  vm.runInNewContext([
+    extractFunction('normalizeReviewLevel'),
+    extractFunction('normalizeReviewTopic'),
+    extractFunction('fallbackReviewLevel'),
+    extractFunction('fallbackReviewTopic'),
+    extractFunction('fallbackReviewLocation'),
+    extractFunction('stabilizedReviewLevel'),
+    extractFunction('reviewClassificationSignals'),
+    extractFunction('reviewClassificationAudit'),
+    extractFunction('reviewLocationBatches')
+  ].join('\n'), classificationContext);
+  const restructureAudit = classificationContext.reviewClassificationAudit(
+    { group: 'Major comments', text: 'Restructure the manuscript to separate the experimental validation from the hydrodynamic modeling.' },
+    { level: 'specific', topic: 'modeling', confidence: 0.94, locationHint: '' }
+  );
+  check('a broad restructuring request cannot be mislabeled as passage-specific', restructureAudit.level === 'section' && restructureAudit.topic === 'structure' && restructureAudit.audit.adjusted);
+  const consistencyAudit = classificationContext.reviewClassificationAudit(
+    { group: 'Major comments', text: 'There is a discrepancy regarding the impeller diameter. Please correct this inconsistency in the text.' },
+    { level: 'specific', topic: 'methods', confidence: 0.91, locationHint: 'Section 3.1 · Figure 1' }
+  );
+  check('a direct numeric consistency correction is treated as editorial', consistencyAudit.level === 'editorial' && consistencyAudit.topic === 'consistency');
+  const figureAudit = classificationContext.reviewClassificationAudit(
+    { group: 'Major comments', text: 'Figure 6 is difficult to interpret. It is highly recommended to redesign it.' },
+    { level: 'general', topic: 'other', confidence: 0.83, locationHint: 'Figure 6' }
+  );
+  check('a named figure redesign stays specific and visual', figureAudit.level === 'specific' && figureAudit.topic === 'figures');
+  const modelingAudit = classificationContext.reviewClassificationAudit(
+    { group: 'Major comments', text: 'The authors should reorganize the model evaluation to distinguish calibration, reconstruction, and prediction.' },
+    { level: 'section', topic: 'modeling', confidence: 0.9, locationHint: '' }
+  );
+  check('conceptual model reorganization is not flattened into a generic structure topic', modelingAudit.level === 'section' && modelingAudit.topic === 'modeling');
+  const locationBatches = classificationContext.reviewLocationBatches(Array.from({ length: 25 }, (_, index) => index), 3);
+  check('25 cloud locations collapse to nine AI batches', locationBatches.length === 9 && locationBatches[8].length === 1, locationBatches.length + ' batches');
 
   const functionSource = extractFunction('docxZipEntries');
   const context = { ArrayBuffer, Uint8Array, DataView, TextDecoder, Blob, Response, DecompressionStream };

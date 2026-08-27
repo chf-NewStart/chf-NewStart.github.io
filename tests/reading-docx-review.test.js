@@ -82,7 +82,8 @@ async function run() {
   check('Word formatting distinguishes reviewer text from author replies', source.includes('paragraphRoles:reviewRoles') && source.includes("'REVIEWER TEXT'") && source.includes("'AUTHOR RESPONSE'"));
   check('PDF review navigation stays in the original PDF', extractFunction('focusReviewerPassage').includes('gotoPdfPage(page)') && !extractFunction('focusReviewerPassage').includes("readerMode='text'"));
   check('review packages are filed in a compact In review category', source.includes("REVIEW_WORKSPACE_CATEGORY = 'In review'") && source.includes('placeInReviewWorkspace(target)') && source.includes('placeInReviewWorkspace(ch)'));
-  check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.comment.id,review.page)') && css.includes('.review-comment-highlight'));
+  check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.comment.id,review.page)') && source.indexOf('var review=pdfReviewAtPoint') < source.indexOf("if(s&&!s.isCollapsed)return") && css.includes('.review-comment-highlight'));
+  check('review comments navigate back to their highlighted passages', source.includes(".reviewer-comment-card.has-passage") && source.includes('focusReviewerPassage(ch,card.dataset.reviewCard)'));
   check('one reviewer concern can link every distinct PDF passage it cites', source.includes('comment.pdfAnchors=valid') && source.includes('"matches"') && source.includes('up to four') && source.includes('reviewer-passage-links'));
   check('explicit manuscript page references survive even if AI omits them', source.includes("'review-page-reference'") && source.includes('explicit.forEach(function(page)'));
   check('older nine-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:2') && source.includes('This review used the older summary importer'));
@@ -93,7 +94,7 @@ async function run() {
   check('AI-selected PDF pages require a drawable passage', source.includes('if(!range&&explicit.indexOf(page)<0)return') && source.includes('never return a page with an empty quote'));
   check('older page-only links are repaired from real PDF text', source.includes('function repairPdfReviewQuotes') && source.includes('repairPdfReviewQuotes(ch)') && source.includes('reviewNeedsPassage(ch,comment)'));
   check('PDF quote mapping respects words split across text-layer spans', source.includes('function pdfReviewSpanNeedsSpace') && source.includes('pdfReviewSpanNeedsSpace(previous,span)'));
-  check('review scope colors are explained and carried onto PDF badges', html.includes('class="review-scope-key"') && css.includes('.review-level-section.review-marker-first::after') && css.includes('.review-level-general.review-marker-first::after'));
+  check('review scope colors cover PDF passages, page markers, text passages, and cards', html.includes('class="review-scope-key"') && css.includes('.review-level-section.review-marker-first::after') && css.includes('.review-page-marker.review-level-general') && css.includes('.review-comment-anchor.review-level-editorial') && css.includes('.reviewer-comment-card.review-level-section'));
   check('original Word drafts use the same resumable Drive roaming path', source.includes("name:'docx-'+ch.id+'.docx'") && source.includes('binarySourceSpec(ch)'));
 
   const reviewContext = {};

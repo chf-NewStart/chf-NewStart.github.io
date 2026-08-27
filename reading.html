@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=80">
+  <link rel="stylesheet" href="/reading.css?v=81">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -294,7 +294,10 @@
               <h3>Reviewer comments</h3>
               <p class="hint">Comments are classified by scope and topic. R-marked passages stay visible on the original PDF; select either the mark or the comment to move between them.</p>
               <div class="review-scope-key" aria-label="PDF highlight colors by review scope"><span class="general">General</span><span class="section">Section</span><span class="specific">Specific</span><span class="editorial">Editorial</span></div>
-              <button class="soft-button" id="importReviewFileBtn" type="button">＋ Import reviewer Word file</button>
+              <div class="review-file-actions">
+                <button class="soft-button" id="importReviewFileBtn" type="button">＋ Import reviewer Word file</button>
+                <button class="soft-button hidden" id="shareReviewBtn" type="button">↗ Share review</button>
+              </div>
               <p class="review-replace-note hidden" id="reviewReplaceNote">Choosing another reviewer file safely replaces this review after the new file finishes processing.</p>
               <button class="soft-button review-clear-button hidden" id="clearReviewCommentsBtn" type="button">Clear all comments</button>
               <input class="hidden" id="reviewFile" type="file" accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
@@ -440,6 +443,19 @@
       </div>
       <p class="review-import-status" id="reviewImportStatus" role="status" aria-live="polite"></p>
       <div class="task-progress hidden" id="reviewImportProgress" role="progressbar" aria-label="Review import progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+    </div>
+  </dialog>
+
+  <dialog id="reviewShareDialog">
+    <div class="dialog-head"><div><span class="dialog-eyebrow">Revision desk</span><h2 id="reviewShareTitle">Share review layer</h2></div><button class="icon-btn" data-close="reviewShareDialog" aria-label="Close review sharing">×</button></div>
+    <div class="dialog-body review-share-body">
+      <p class="review-share-lede" id="reviewShareIntro"></p>
+      <div class="review-share-paper"><span>Exact paper</span><strong id="reviewSharePaper"></strong><small id="reviewShareMatch"></small></div>
+      <div class="review-share-includes" id="reviewShareIncludes"></div>
+      <p class="review-share-privacy" id="reviewSharePrivacy"></p>
+      <p class="status review-share-status" id="reviewShareStatus" role="status" aria-live="polite"></p>
+      <input class="hidden" id="reviewSharePdfFile" type="file" accept=".pdf,application/pdf">
+      <div class="review-share-actions"><button class="soft-button" type="button" data-close="reviewShareDialog">Cancel</button><button class="button" id="reviewSharePrimary" type="button">Copy review link</button></div>
     </div>
   </dialog>
 
@@ -647,9 +663,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=80',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=81',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=80" defer></script>
+<script src="/reading.js?v=81" defer></script>
 </body>
 </html>

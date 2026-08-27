@@ -930,6 +930,9 @@
     .tab-panel .hint { margin: 0 0 14px; color: var(--muted); font-size: .7rem; line-height: 1.5; }
     .reviewer-panel-head { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
     .reviewer-panel-head .soft-button { width: 100%; margin-top: 2px; white-space: normal; }
+    .review-file-actions { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(118px, .75fr); gap: 8px; align-items: stretch; }
+    .review-file-actions .soft-button { width: auto; min-width: 0; }
+    .review-file-actions #shareReviewBtn.hidden { display: none; }
     .review-scope-key { display: flex; flex-wrap: wrap; gap: 5px 10px; margin: -5px 0 12px; color: var(--muted); font: 700 .55rem/1.2 var(--sans); }
     .review-scope-key span { display: inline-flex; align-items: center; gap: 5px; }
     .review-scope-key span::before { width: 8px; height: 8px; border-radius: 50%; background: #b8791f; content: ""; }
@@ -1143,6 +1146,19 @@
     .review-import-status { min-height: 1em; margin: 0 2px !important; color: var(--muted); font: .68rem/1.5 var(--sans) !important; }
     .review-import-status:empty { display: none; }
     .review-import-status + .task-progress { margin-top: -8px; }
+    #reviewShareDialog { width: min(610px, calc(100vw - 24px)); }
+    .review-share-body { display: grid; gap: 14px; }
+    .review-share-lede { margin: 0 !important; color: var(--ink) !important; font: .92rem/1.52 var(--serif) !important; }
+    .review-share-paper { display: grid; gap: 4px; min-width: 0; border: 1px solid var(--line); border-radius: 11px; padding: 13px 14px; background: var(--paper); }
+    .review-share-paper > span { color: var(--accent); font: 800 .57rem/1.2 var(--sans); letter-spacing: .09em; text-transform: uppercase; }
+    .review-share-paper strong { overflow: hidden; color: var(--ink); font: 700 .78rem/1.4 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+    .review-share-paper small { color: var(--muted); font: .65rem/1.45 var(--sans); }
+    .review-share-includes { display: flex; flex-wrap: wrap; gap: 6px; }
+    .review-share-includes span { border: 1px solid var(--line); border-radius: 999px; padding: 5px 8px; background: var(--surface-2); color: var(--muted); font: 700 .61rem/1 var(--sans); }
+    .review-share-privacy { margin: 0 !important; padding: 10px 12px; border-left: 3px solid var(--yellow); border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--yellow) 12%, var(--paper)); font-size: .67rem !important; }
+    .review-share-status { min-height: 1em; margin: -3px 2px 0; }
+    .review-share-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px; }
+    .review-share-actions .button, .review-share-actions .soft-button { min-height: 42px; }
     #notebookPackageDialog { width: min(920px, calc(100vw - 24px)); }
     #notebookPackageDialog .dialog-head > div { min-width: 0; }
     #notebookPackageDialog .dialog-head .panel-eyebrow { margin-bottom: 3px; }

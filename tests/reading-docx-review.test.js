@@ -96,6 +96,8 @@ async function run() {
   check('one reviewer concern can link every distinct PDF passage it cites', source.includes('comment.pdfAnchors=valid') && source.includes('"matches"') && source.includes('up to four') && source.includes('reviewer-passage-links'));
   check('readers can reject a wrong AI passage and select the correction on the paper', html.includes('id="selectionLinkReview"') && source.includes('function removeReviewerPassage') && source.includes('function linkSelectionToReview') && source.includes("method:'manual-pdf-selection'") && source.includes('Wrong passage'));
   check('review comments support multiple user-selected passages', source.includes('data-review-add-passage') && source.includes('Add another passage') && source.includes('pdfAnchors.push') && source.includes('textAnchors.push'));
+  check('PDF reviews expose a fingerprint-locked share action', html.includes('id="shareReviewBtn"') && html.includes('id="reviewShareDialog"') && source.includes("'#phloem-review='") && source.includes("String(ch.contentHash||'')===hash"));
+  check('shared review links require confirmation and can request the exact missing PDF', source.includes("primary.textContent=target?'Add shared review':'Choose matching PDF'") && source.includes("if(hash!==payload.paper.contentHash)") && source.includes('applySharedReview(pendingSharedReview,exact)'));
   check('manual passage corrections are labelled and reversible', source.includes('Linked by you') && html.includes('id="reviewLinkUndoBtn"') && source.includes('function restoreReviewLinkUndo') && css.includes('.reviewer-chip.review-linked-by-user'));
   check('manual passage corrections override AI and survive a same-comment re-import', source.includes('comment.manualReviewLink') && source.includes('function preserveManualReviewLocation') && source.includes('preserveManualReviewLocation(record,prior)') && extractFunction('reviewCanAutoLocate').includes('comment.manualReviewLink'));
   const manualContext = {
@@ -182,6 +184,23 @@ async function run() {
   const softBreakReport = '[REVIEWER TEXT] 4. Exchange-rate scaling needs justification\nExplain the physical basis.\n5. CFD geometry is inconsistent\nCorrect the impeller diameter.\nMinor comments\nCorrect batch to fed-batch in the abstract.\nUse nominal and working volume consistently.\nOverall recommendation\nMajor revision is recommended.';
   const softBreakUnits = reviewContext.reviewReportUnits(softBreakReport);
   check('Word soft line-breaks cannot merge several numbered and minor concerns', softBreakUnits.some(unit => unit.number === '4' && !unit.text.includes('5. CFD')) && softBreakUnits.some(unit => unit.number === '5' && !unit.text.includes('Minor comments')) && softBreakUnits.filter(unit => unit.group.toLowerCase() === 'minor comments').length === 2 && Math.max(...softBreakUnits.map(unit => unit.text.length)) < 180, softBreakUnits.map(unit => unit.text).join(' | '));
+  const shareContext = { now: () => 900, normalizeReviewLevel: value => value, normalizeReviewTopic: value => value, TextEncoder, TextDecoder, Blob, Response, CompressionStream, DecompressionStream, btoa, atob };
+  vm.runInNewContext([
+    extractFunction('reviewNormalizedText'),
+    extractFunction('reviewPdfAnchors'),
+    extractFunction('reviewSharePayload'),
+    extractFunction('sharedReviewRecords'),
+    extractFunction('reviewShareBase64'),
+    extractFunction('reviewShareBytes'),
+    extractFunction('encodeSharedReview'),
+    extractFunction('decodeSharedReview')
+  ].join('\n'), shareContext);
+  const sharePaper = { kind: 'pdf', title: 'Private manuscript', sourceName: 'paper.pdf', pageCount: 12, contentHash: 'a'.repeat(64), reviewShareId: 'review-layer-1', notes: { 1: 'private note' }, questions: [{ answer: 'private AI answer' }], reviewComments: [{ author: 'Reviewer 2', text: 'Correct this terminology.', level: 'editorial', topic: 'writing', response: 'Corrected.', resolved: true, pdfAnchors: [{ page: 4, quote: 'batch fermentation experiments', confidence: .94, method: 'ai-pdf-quote' }] }] };
+  const sharedPayload = shareContext.reviewSharePayload(sharePaper), sharedJson = JSON.stringify(sharedPayload), sharedRecords = shareContext.sharedReviewRecords(sharedPayload);
+  check('the share payload carries review state and locations but no manuscript, notes, or AI data', sharedPayload.paper.contentHash === 'a'.repeat(64) && sharedPayload.comments[0].pdfAnchors[0].page === 4 && sharedPayload.comments[0].response === 'Corrected.' && !sharedJson.includes('private note') && !sharedJson.includes('private AI answer') && !sharedJson.includes('pdfBytes'));
+  check('a received review reconstructs clickable PDF anchors and response state', sharedRecords[0].pdfAnchors[0].method === 'shared-pdf-quote' && sharedRecords[0].quote === 'batch fermentation experiments' && sharedRecords[0].response === 'Corrected.' && sharedRecords[0].resolved === true);
+  const encodedShare = await shareContext.encodeSharedReview(sharedPayload), decodedShare = await shareContext.decodeSharedReview(encodedShare);
+  check('compressed review links round-trip without losing their PDF fingerprint or anchors', decodedShare.paper.contentHash === sharedPayload.paper.contentHash && decodedShare.comments[0].pdfAnchors[0].quote === 'batch fermentation experiments' && encodedShare.length < sharedJson.length);
   check('AI classification is keyed to stable input ids rather than freeform summaries', source.includes('Return exactly one result for every inputId') && source.includes('unit.number||!classification'));
   check('AI classification is checked against local review rules', source.includes('function reviewClassificationAudit') && source.includes('classificationAudit:checked.audit') && source.includes('confidence from 0 to 1'));
   check('passage matching batches comments by stable ids', source.includes('Return exactly one item for every commentId') && source.includes('reviewLocationBatches(comments,config.size)'));

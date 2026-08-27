@@ -78,7 +78,7 @@ async function run() {
   check('long response-to-reviewers files are chunked instead of truncated', source.includes('function reviewReportChunks') && !source.includes("String(text||'').slice(0,30000)"));
   check('Word formatting distinguishes reviewer text from author replies', source.includes('paragraphRoles:reviewRoles') && source.includes("'REVIEWER TEXT'") && source.includes("'AUTHOR RESPONSE'"));
   check('PDF review navigation stays in the original PDF', extractFunction('focusReviewerPassage').includes('gotoPdfPage(page)') && !extractFunction('focusReviewerPassage').includes("readerMode='text'"));
-  check('review packages are filed in a dedicated Under review category', source.includes("REVIEW_WORKSPACE_CATEGORY='Under review'") && source.includes('placeInReviewWorkspace(target)') && source.includes('placeInReviewWorkspace(ch)'));
+  check('review packages are filed in a compact In review category', source.includes("REVIEW_WORKSPACE_CATEGORY = 'In review'") && source.includes('placeInReviewWorkspace(target)') && source.includes('placeInReviewWorkspace(ch)'));
   check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.comment.id,review.page)') && css.includes('.review-comment-highlight'));
   check('one reviewer concern can link every distinct PDF passage it cites', source.includes('comment.pdfAnchors=valid') && source.includes('"matches"') && source.includes('up to four') && source.includes('reviewer-passage-links'));
   check('explicit manuscript page references survive even if AI omits them', source.includes("method:'review-page-reference'") && source.includes('explicit.forEach(function(page)'));
@@ -122,7 +122,10 @@ async function run() {
 
   const classificationContext = {
     REVIEW_LEVEL_LABELS: { general: 'General', section: 'Section', specific: 'Specific', editorial: 'Editorial / typo' },
-    REVIEW_TOPIC_LABELS: { writing: 'Writing', structure: 'Structure', methods: 'Methods', statistics: 'Statistics', modeling: 'Modeling', evidence: 'Evidence', figures: 'Figure / table', consistency: 'Consistency', claims: 'Claims', references: 'References', other: 'Other' }
+    REVIEW_TOPIC_LABELS: { writing: 'Writing', structure: 'Structure', methods: 'Methods', statistics: 'Statistics', modeling: 'Modeling', evidence: 'Evidence', figures: 'Figure / table', consistency: 'Consistency', claims: 'Claims', references: 'References', other: 'Other' },
+    REVIEW_WORKSPACE_CATEGORY: 'In review',
+    LEGACY_REVIEW_WORKSPACE_CATEGORY: 'Under review',
+    now: () => 123456
   };
   vm.runInNewContext([
     extractFunction('normalizeReviewLevel'),
@@ -133,7 +136,8 @@ async function run() {
     extractFunction('stabilizedReviewLevel'),
     extractFunction('reviewClassificationSignals'),
     extractFunction('reviewClassificationAudit'),
-    extractFunction('reviewLocationBatches')
+    extractFunction('reviewLocationBatches'),
+    extractFunction('migrateReviewWorkspaceLabels')
   ].join('\n'), classificationContext);
   const restructureAudit = classificationContext.reviewClassificationAudit(
     { group: 'Major comments', text: 'Restructure the manuscript to separate the experimental validation from the hydrodynamic modeling.' },
@@ -157,6 +161,9 @@ async function run() {
   check('conceptual model reorganization is not flattened into a generic structure topic', modelingAudit.level === 'section' && modelingAudit.topic === 'modeling');
   const locationBatches = classificationContext.reviewLocationBatches(Array.from({ length: 25 }, (_, index) => index), 3);
   check('25 cloud locations collapse to nine AI batches', locationBatches.length === 9 && locationBatches[8].length === 1, locationBatches.length + ' batches');
+  const oldWorkspace = { chapters: [{ category: 'Under review', reviewPreviousCategory: 'Under review', updatedAt: 1 }], categoryOrder: ['Under review', 'Academic', 'In review'], categoryOrderUpdatedAt: 1 };
+  const migratedWorkspace = classificationContext.migrateReviewWorkspaceLabels(oldWorkspace, true);
+  check('existing Under review folders migrate without duplication', migratedWorkspace && oldWorkspace.chapters[0].category === 'In review' && oldWorkspace.categoryOrder.join('|') === 'In review|Academic');
 
   const functionSource = extractFunction('docxZipEntries');
   const context = { ArrayBuffer, Uint8Array, DataView, TextDecoder, Blob, Response, DecompressionStream };

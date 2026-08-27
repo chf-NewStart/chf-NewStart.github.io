@@ -20,6 +20,8 @@
   var PDF_ZOOM_PREFERENCE_VERSION = 2;
   var SYNC_FILE = 'reading-room.enc.json';
   var LOOKUP_DELAY = 900;
+  var REVIEW_WORKSPACE_CATEGORY = 'In review';
+  var LEGACY_REVIEW_WORKSPACE_CATEGORY = 'Under review';
   var BOOK_SPINES = [
     {cover:'#8498c9',ink:'#f6df72'}, {cover:'#d8eeea',ink:'#bd4d43'},
     {cover:'#e6e39a',ink:'#315ca3'}, {cover:'#45aaa3',ink:'#f5e58b'},
@@ -123,7 +125,6 @@
   function runAi(system,user,maxTokens,onProgress,routeOverride){return runAiMessages([{role:'system',content:system},{role:'user',content:user}],maxTokens,onProgress,routeOverride);}
   var REVIEW_LEVEL_LABELS={general:'General',section:'Section',specific:'Specific',editorial:'Editorial / typo'};
   var REVIEW_TOPIC_LABELS={writing:'Writing',structure:'Structure',methods:'Methods',statistics:'Statistics',modeling:'Modeling',evidence:'Evidence',figures:'Figure / table',consistency:'Consistency',claims:'Claims',references:'References',other:'Other'};
-  var REVIEW_WORKSPACE_CATEGORY='Under review';
   function normalizeReviewLevel(value,comment){
     value=String(value||'').toLowerCase().replace(/[^a-z]+/g,'');
     if(value==='sectional'||value==='sectionwide')value='section';
@@ -244,8 +245,13 @@
     if(plans.length)state.chapters=state.chapters.filter(function(ch){return !state.deleted[ch.id];});return plans;
   }
   function loadState(){
-    try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.chapters)) { s.chapters.forEach(normalize);s.deleted=s.deleted||{};s.merged=s.merged||{};s.categoryOrder=Array.isArray(s.categoryOrder)?s.categoryOrder:[];s.categoryOrderUpdatedAt=+s.categoryOrderUpdatedAt||0;s.chapters=s.chapters.filter(function(ch){return !s.deleted[ch.id];});return s; } } catch(e){}
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.chapters)) { s.chapters.forEach(normalize);s.deleted=s.deleted||{};s.merged=s.merged||{};s.categoryOrder=Array.isArray(s.categoryOrder)?s.categoryOrder:[];s.categoryOrderUpdatedAt=+s.categoryOrderUpdatedAt||0;s.chapters=s.chapters.filter(function(ch){return !s.deleted[ch.id];});if(migrateReviewWorkspaceLabels(s,true))localStorage.setItem(KEY,JSON.stringify(s));return s; } } catch(e){}
     return { chapters: [], deleted: {}, merged: {}, categoryOrder: [], categoryOrderUpdatedAt: 0 };
+  }
+  function migrateReviewWorkspaceLabels(target,touchRecords){
+    if(!target)return false;var changed=false,legacy=LEGACY_REVIEW_WORKSPACE_CATEGORY.toLowerCase(),stamp=now();
+    (target.chapters||[]).forEach(function(ch){if(String(ch.category||'').trim().toLowerCase()===legacy){ch.category=REVIEW_WORKSPACE_CATEGORY;if(touchRecords)ch.updatedAt=Math.max(stamp,+ch.updatedAt||0);changed=true;}if(String(ch.reviewPreviousCategory||'').trim().toLowerCase()===legacy){ch.reviewPreviousCategory=REVIEW_WORKSPACE_CATEGORY;changed=true;}});
+    var seen={},order=[];(target.categoryOrder||[]).forEach(function(label){label=String(label||'').trim();if(label.toLowerCase()===legacy){label=REVIEW_WORKSPACE_CATEGORY;changed=true;}var key=label.toLowerCase();if(label&&!seen[key]){seen[key]=1;order.push(label);}else if(label)changed=true;});if(changed){target.categoryOrder=order;if(touchRecords)target.categoryOrderUpdatedAt=Math.max(stamp,+target.categoryOrderUpdatedAt||0);}return changed;
   }
   /* localStorage is deliberately only for small, frequently edited state. Rebuildable PDF
      text lives beside the PDFs in IndexedDB, while encrypted sync may still carry it. */
@@ -665,7 +671,7 @@
     if(!ch)return;
     var previous=shelfPaperCategory(ch);if(previous.toLowerCase()!==REVIEW_WORKSPACE_CATEGORY.toLowerCase()&&previous.toLowerCase()!=='unsorted'&&!ch.reviewPreviousCategory)ch.reviewPreviousCategory=previous;
     setShelfPaperCategory(ch,REVIEW_WORKSPACE_CATEGORY);ch.reviewWorkspace=true;
-    var order=(state.categoryOrder||[]).filter(function(label){return String(label||'').toLowerCase()!==REVIEW_WORKSPACE_CATEGORY.toLowerCase();});order.unshift(REVIEW_WORKSPACE_CATEGORY);state.categoryOrder=order;state.categoryOrderUpdatedAt=now();
+    var order=(state.categoryOrder||[]).filter(function(label){var key=String(label||'').toLowerCase();return key!==REVIEW_WORKSPACE_CATEGORY.toLowerCase()&&key!==LEGACY_REVIEW_WORKSPACE_CATEGORY.toLowerCase();});order.unshift(REVIEW_WORKSPACE_CATEGORY);state.categoryOrder=order;state.categoryOrderUpdatedAt=now();
   }
   function shelfCategoryNames(){var raw=[],existing={},names=[],seen={};state.chapters.forEach(function(ch){var label=shelfPaperCategory(ch),key=label.toLowerCase();if(!existing[key]){existing[key]=label;raw.push(label);}});(state.categoryOrder||[]).forEach(function(label){var key=String(label||'').toLowerCase();if(existing[key]&&!seen[key]){seen[key]=true;names.push(existing[key]);}});raw.forEach(function(label){var key=label.toLowerCase();if(!seen[key]){seen[key]=true;names.push(label);}});return names;}
   function saveShelfCategoryOrder(order){var existing=shelfCategoryNames(),known={},saved=[];existing.forEach(function(label){known[label.toLowerCase()]=label;});(order||[]).forEach(function(label){var key=String(label||'').toLowerCase();if(known[key]&&saved.every(function(item){return item.toLowerCase()!==key;}))saved.push(known[key]);});existing.forEach(function(label){if(saved.every(function(item){return item.toLowerCase()!==label.toLowerCase();}))saved.push(label);});state.categoryOrder=saved;state.categoryOrderUpdatedAt=now();persist();}
@@ -4750,6 +4756,7 @@
       if((remote.updatedAt||0)>(local.updatedAt||0)){state.chapters[state.chapters.indexOf(local)]=remote;if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;return;}
       if(remote.kind==='pdf'){if(remote.contentHash&&!local.contentHash){local.contentHash=remote.contentHash;changed=true;}if(remote.fileSize&&!local.fileSize){local.fileSize=remote.fileSize;changed=true;}if(mergeDerivedInto(local,derivedData(remote)))saveDerivedSoon(local);}
     });
+    if(migrateReviewWorkspaceLabels(state,true))changed=true;
     var exact=duplicateGroups(state.chapters,true);if(exact.length){collapseDuplicateGroups(exact);changed=true;}
     if(currentId&&state.deleted[currentId]){var resolved=resolvedPaperId(currentId);if(find(resolved)){currentId=resolved;try{localStorage.setItem(LAST_OPEN_KEY,resolved);}catch(e){}}else{currentId=null;pdfDoc=null;if(!byId('readerPage').classList.contains('hidden'))showPage('libraryPage');}}return changed;
   }

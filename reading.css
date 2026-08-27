@@ -231,8 +231,10 @@
        hover would reveal a control — which made categories and papers take two taps.
        On touch screens nothing waits behind a hover: every control is already visible,
        drag grips give way to the tap-friendly arrows and Move menu, and taps act at
-       finger size on the first try. */
+       finger size on the first try. Long-press peeks at a sticky, so the note must
+       not sprout iOS's text-selection callout mid-hold. */
     @media (hover: none) {
+      .book-spine.paper-sticky-note { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
       .paper-category-tab { opacity: .74; }
       .paper-category-grip, .paper-sticky-grip { display: none; }
       .paper-category-edit { opacity: .7; }

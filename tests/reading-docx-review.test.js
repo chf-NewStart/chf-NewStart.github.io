@@ -82,6 +82,8 @@ async function run() {
   check('Word formatting distinguishes reviewer text from author replies', source.includes('paragraphRoles:reviewRoles') && source.includes("'REVIEWER TEXT'") && source.includes("'AUTHOR RESPONSE'"));
   check('PDF review navigation stays in the original PDF', extractFunction('focusReviewerPassage').includes('gotoPdfPage(page)') && !extractFunction('focusReviewerPassage').includes("readerMode='text'"));
   check('review packages are filed in a compact In review category', source.includes("REVIEW_WORKSPACE_CATEGORY = 'In review'") && source.includes('placeInReviewWorkspace(target)') && source.includes('placeInReviewWorkspace(ch)'));
+  check('In review opens as a pinned focused workspace instead of a separate page', source.includes("reviewWorkspaceOpen=selectedCategory===REVIEW_WORKSPACE_CATEGORY.toLowerCase()") && source.includes("is-review-workspace") && source.includes("review-workspace-open") && !html.includes('id="inReviewPage"'));
+  check('the revision workspace pairs files, progress, recency, and one continuation action', source.includes('function renderReviewWorkspaceCard') && source.includes('review-workspace-pair') && source.includes('review-workspace-scopes') && source.includes('Continue review&nbsp; →') && source.includes('shelfDate(ch)'));
   check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.comment.id,review.page)') && source.indexOf('var review=pdfReviewAtPoint') < source.indexOf("if(s&&!s.isCollapsed)return") && css.includes('.review-comment-highlight'));
   check('review comments navigate back to their highlighted passages', source.includes(".reviewer-comment-card.has-passage") && source.includes('focusReviewerPassage(ch,card.dataset.reviewCard)'));
   check('one reviewer concern can link every distinct PDF passage it cites', source.includes('comment.pdfAnchors=valid') && source.includes('"matches"') && source.includes('up to four') && source.includes('reviewer-passage-links'));
@@ -186,6 +188,35 @@ async function run() {
   const oldWorkspace = { chapters: [{ category: 'Under review', reviewPreviousCategory: 'Under review', updatedAt: 1 }], categoryOrder: ['Under review', 'Academic', 'In review'], categoryOrderUpdatedAt: 1 };
   const migratedWorkspace = classificationContext.migrateReviewWorkspaceLabels(oldWorkspace, true);
   check('existing Under review folders migrate without duplication', migratedWorkspace && oldWorkspace.chapters[0].category === 'In review' && oldWorkspace.categoryOrder.join('|') === 'In review|Academic');
+
+  const workspaceContext = {
+    REVIEW_WORKSPACE_CATEGORY: 'In review',
+    REVIEW_LEVEL_LABELS: { general: 'General', section: 'Section', specific: 'Specific', editorial: 'Editorial / typo' },
+    state: {
+      chapters: [{ category: 'Academic' }, { category: 'In review' }, { category: 'Notes' }],
+      categoryOrder: ['Notes', 'Academic', 'In review']
+    }
+  };
+  vm.runInNewContext([
+    extractFunction('normalizeReviewLevel'),
+    extractFunction('shelfPaperCategory'),
+    extractFunction('shelfCategoryNames'),
+    extractFunction('reviewWorkspaceStats'),
+    extractFunction('reviewWorkspaceFiles')
+  ].join('\n'), workspaceContext);
+  check('In review stays pinned ahead of user-ordered categories', workspaceContext.shelfCategoryNames().join('|') === 'In review|Notes|Academic');
+  const workspacePaper = {
+    reviewReports: [{ name: 'Reviewer 1.docx' }, { name: 'Reviewer 1.docx' }, { name: 'Reviewer 2.docx' }],
+    reviewComments: [
+      { level: 'general', resolved: false },
+      { level: 'section', resolved: true },
+      { level: 'specific', resolved: false },
+      { level: 'editorial', resolved: true }
+    ]
+  };
+  const workspaceStats = workspaceContext.reviewWorkspaceStats(workspacePaper);
+  check('revision progress counts open and completed work by scope', workspaceStats.total === 4 && workspaceStats.open === 2 && workspaceStats.levels.section.open === 0 && workspaceStats.levels.specific.open === 1);
+  check('reviewer file pairing deduplicates source document names', workspaceContext.reviewWorkspaceFiles(workspacePaper).join('|') === 'Reviewer 1.docx|Reviewer 2.docx');
 
   const functionSource = extractFunction('docxZipEntries');
   const context = { ArrayBuffer, Uint8Array, DataView, TextDecoder, Blob, Response, DecompressionStream };

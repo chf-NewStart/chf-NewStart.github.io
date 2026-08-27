@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=89">
+  <link rel="stylesheet" href="/reading.css?v=90">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -439,6 +439,8 @@
         <button class="review-import-option" id="reviewCombinedBtn" type="button"><span class="review-import-number">1 file</span><strong>Commented Word manuscript</strong><small>The paper and Word comments are together in one <code>.docx</code>.</small></button>
         <button class="review-import-option" id="reviewPairModeBtn" type="button" aria-expanded="false" aria-controls="reviewPairFields"><span class="review-import-number">2 files</span><strong>Paper + reviewer report</strong><small>Kept together automatically in the Under review folder.</small></button>
       </div>
+      <div class="review-layer-file-row"><div><span>From a collaborator</span><strong>Already have a shared review layer?</strong></div><button class="soft-button" id="reviewLayerFileBtn" type="button">Open review file</button></div>
+      <input class="hidden" id="reviewLayerFile" type="file" accept=".phloem-review,application/json">
       <input class="hidden" id="reviewCombinedFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
       <div class="review-pair-fields hidden" id="reviewPairFields">
         <div class="review-file-row"><div><span>01 · Manuscript</span><strong id="reviewPaperName">PDF or Word document</strong></div><button class="soft-button" id="reviewPaperPick" type="button">Choose paper</button></div>
@@ -461,7 +463,7 @@
       <p class="review-share-privacy" id="reviewSharePrivacy"></p>
       <p class="status review-share-status" id="reviewShareStatus" role="status" aria-live="polite"></p>
       <input class="hidden" id="reviewSharePdfFile" type="file" accept=".pdf,application/pdf">
-      <div class="review-share-actions"><button class="soft-button" type="button" data-close="reviewShareDialog">Cancel</button><button class="button" id="reviewSharePrimary" type="button">Copy review link</button></div>
+      <div class="review-share-actions"><button class="soft-button" type="button" data-close="reviewShareDialog">Cancel</button><button class="soft-button" id="reviewShareDownload" type="button">Download review file</button><button class="button" id="reviewSharePrimary" type="button">Copy review link</button></div>
     </div>
   </dialog>
 
@@ -681,9 +683,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=89',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=90',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=89" defer></script>
+<script src="/reading.js?v=90" defer></script>
 </body>
 </html>

@@ -124,8 +124,10 @@ async function run() {
   check('AI classification is keyed to stable input ids rather than freeform summaries', source.includes('Return exactly one result for every inputId') && source.includes('unit.number||!classification'));
   check('AI classification is checked against local review rules', source.includes('function reviewClassificationAudit') && source.includes('classificationAudit:checked.audit') && source.includes('confidence from 0 to 1'));
   check('passage matching batches comments by stable ids', source.includes('Return exactly one item for every commentId') && source.includes('reviewLocationBatches(comments,config.size)'));
-  check('cloud matching uses bounded parallel batches', source.includes("size:local?1:3,concurrency:local?1:2") && source.includes('await Promise.all(workers)'));
-  check('a dropped batch item gets one targeted retry', source.includes("!byComment[prepared[p].id]&&!prepared[p].comment.anchored") && source.includes("!byComment[prepared[t].id]&&!prepared[t].comment.anchored"));
+  check('cloud matching uses four bounded parallel workers', source.includes("size:local?1:3,concurrency:local?1:4") && source.includes('await Promise.all(workers)'));
+  check('classification uses parallel cloud specialists but one local worker', source.includes('workerCount=Math.min(local?1:4,batches.length)') && source.includes('reviewClassificationBatches(units,6)'));
+  check('missing classification items receive one targeted retry', source.includes('var missing=batch.filter') && source.includes('if(missing.length)try{await ask(missing);'));
+  check('invalid passage matches receive one targeted retry', source.includes('if(!passed[prepared[p].id])') && source.includes('if(!textPassed[prepared[t].id])'));
   check('one provider is held for the complete review import', source.includes('var reviewRoute=activeAiRoute(false)') && source.includes('extractReviewerReportWithAi(report,function(message,progress)') && source.includes('},reviewRoute)'));
   check('re-importing the same reviewer report replaces an incomplete extraction', source.includes("comment.sourceId!==reportId") && source.includes("report.id!==reportId") && source.includes('priorByText[reviewNormalizedText(item.text)]'));
 

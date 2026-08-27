@@ -72,7 +72,8 @@ async function run() {
   check('Word comment ranges become manuscript highlights', source.includes("name==='commentRangeStart'") && source.includes("name==='commentRangeEnd'") && css.includes('.review-comment-anchor'));
   check('review responses and resolved state persist on the chapter', source.includes('comment.response=area.value') && source.includes('comment.resolved=!comment.resolved'));
   check('AI classifies reviewer concerns without seeing or drafting author responses', source.includes('This task is classification only. Do not draft, rewrite, evaluate, summarize, or complete an author response') && !source.includes('Existing author response:'));
-  check('the response field is explicitly author-written', source.includes('Your response · written by you') && source.includes('Write your response here…'));
+  check('revision-note fields explicitly exclude AI-written answers', source.includes('Your revision note · never written by AI') && source.includes('Write your own revision note here…') && html.includes('AI only classifies and locates feedback; it never writes'));
+  check('re-imports use stable and conservative fuzzy matching before replacing review work', source.includes('function matchPriorReviewComments') && extractFunction('importReviewerFile').includes('priorMatches=matchPriorReviewComments(extracted,priorComments)') && extractFunction('applySharedReview').includes('matchPriorReviewComments(records,previous)'));
   check('the current review can be visibly cleared without removing the paper', html.includes('class="soft-button review-clear-button hidden"') && source.includes('ch.reviewComments=[];ch.reviewReports=[]') && source.includes('ch.reviewClearedAt=stamp;ch.reviewUpdatedAt=stamp') && source.includes('Your paper, reading notes, and personal highlights will stay'));
   check('choosing another reviewer file safely replaces the old review automatically', html.includes('id="reviewReplaceNote"') && source.includes('pendingReviewReplace=(ch.reviewComments||[]).length>0') && source.includes('ch.reviewComments=replaceCurrent?comments') && source.indexOf('await locateReviewsWithAi(ch,matchable') < source.indexOf('ch.reviewComments=replaceCurrent?comments'));
   check('review deletion timestamps stop synced comments from reappearing', source.includes('function reviewStateStamp') && source.includes('if(localReviewAt>remoteReviewAt)copyReviewState(remote,local)') && source.includes('if(remoteReviewAt>localReviewAt){copyReviewState(local,remote)'));
@@ -101,7 +102,7 @@ async function run() {
   check('shared review links require confirmation and can request the exact missing PDF', source.includes("primary.textContent=target?'Add shared review':'Choose matching PDF'") && source.includes("if(hash!==payload.paper.contentHash)") && source.includes('applySharedReview(pendingSharedReview,exact)'));
   check('review sharing clearly uses replaceable snapshots rather than pretending links are live', source.includes('This is a snapshot, not a live link') && source.includes('copy a new link') && source.includes('if(!ch.reviewShareId)') && source.includes('comment.sourceId!==layerId'));
   check('manual passage corrections are labelled and reversible', source.includes('Linked by you') && html.includes('id="reviewLinkUndoBtn"') && source.includes('function restoreReviewLinkUndo') && css.includes('.reviewer-chip.review-linked-by-user'));
-  check('manual passage corrections override AI and survive a same-comment re-import', source.includes('comment.manualReviewLink') && source.includes('function preserveManualReviewLocation') && source.includes('preserveManualReviewLocation(record,prior)') && extractFunction('reviewCanAutoLocate').includes('comment.manualReviewLink'));
+  check('manual passage corrections override AI and survive a same-comment re-import', source.includes('comment.manualReviewLink') && source.includes('function preserveManualReviewLocation') && extractFunction('restorePriorReviewWork').includes('preserveManualReviewLocation(comment,prior)') && extractFunction('reviewCanAutoLocate').includes('comment.manualReviewLink'));
   const manualContext = {
     REVIEW_LOCATION_FIELDS: ['para','page','start','end','quote','anchors','pdfAnchors','anchored','anchorMethod','matchConfidence','locatedProvider','locationStatus','manualReviewLink','manualLocationRejected'],
     now: () => 500
@@ -110,13 +111,28 @@ async function run() {
     extractFunction('cloneReviewLocationValue'),
     extractFunction('reviewLocationSnapshot'),
     extractFunction('applyReviewLocationSnapshot'),
-    extractFunction('preserveManualReviewLocation')
+    extractFunction('preserveManualReviewLocation'),
+    extractFunction('reviewNormalizedText'),
+    extractFunction('reviewCommentSimilarity'),
+    extractFunction('reviewAuthorsCompatible'),
+    extractFunction('matchPriorReviewComments'),
+    extractFunction('restorePriorReviewWork')
   ].join('\n'), manualContext);
   const savedManual = { page: 7, quote: 'Exact selected sentence.', pdfAnchors: [{ page: 7, quote: 'Exact selected sentence.', method: 'manual-pdf-selection', manual: true }], anchored: true, matchConfidence: 1, manualReviewLink: true };
   const refreshedComment = { page: null, quote: '', pdfAnchors: [], anchored: false };
   const preserved = manualContext.preserveManualReviewLocation(refreshedComment, savedManual);
   savedManual.pdfAnchors[0].quote = 'Mutated after copy';
   check('manual reviewer locations are copied by value during re-import', preserved && refreshedComment.page === 7 && refreshedComment.pdfAnchors[0].quote === 'Exact selected sentence.' && refreshedComment.manualReviewLink === true);
+  const priorConcern = { id: 'r-old', author: 'Reviewer 2', text: 'The authors should distinguish the nominal twenty-liter vessel volume from the actual 13.5–14 L working volume throughout the manuscript. This is important for interpreting the scale.', response: 'Check every volume mention before resubmission.', resolved: false };
+  const revisedConcern = { id: 'r-new', author: 'Reviewer 2', text: 'Distinguish the nominal twenty-liter vessel volume from the actual 13.5–14 L working volume throughout the manuscript.', response: '', resolved: false };
+  const priorMatch = manualContext.matchPriorReviewComments([revisedConcern], [priorConcern])[0];
+  manualContext.restorePriorReviewWork(revisedConcern, priorMatch);
+  check('trimmed or split reviewer text keeps the user-written revision note', revisedConcern.id === 'r-old' && revisedConcern.response === 'Check every volume mention before resubmission.');
+  const reorderedMatches = manualContext.matchPriorReviewComments(
+    [{ id: 'layer-1', sourceId: 'layer', author: 'Reviewer', text: 'Correct the figure caption.' }, { id: 'layer-2', sourceId: 'layer', author: 'Reviewer', text: 'Clarify the oxygen probe calibration.' }],
+    [{ id: 'layer-1', sourceId: 'layer', author: 'Reviewer', text: 'Clarify the oxygen probe calibration.', response: 'Calibration note' }, { id: 'layer-2', sourceId: 'layer', author: 'Reviewer', text: 'Correct the figure caption.', response: 'Caption note' }]
+  );
+  check('reordered shared comments cannot move a revision note onto the wrong concern', reorderedMatches[0].response === 'Caption note' && reorderedMatches[1].response === 'Calibration note');
   check('explicit manuscript pages guide candidate search without becoming unverified anchors', source.includes('explicit.concat(ranked.slice(0,8)') && !extractFunction('applyPdfReviewMatches').includes('explicit.forEach(function(page)') && extractFunction('applyPdfReviewMatches').includes('if(!range)return'));
   check('older merged-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:3') && source.includes('Word line-breaks merged into one comment'));
   check('legacy summary matches are suppressed until the source report is re-imported', source.includes('comment.legacyImport=!!legacyReviewReports') && source.includes("if(comment.legacyImport&&!comment.manualReviewLink){comment.anchored=false"));
@@ -225,7 +241,7 @@ async function run() {
   check('multi-location comments require every quoted passage to validate', source.includes('anchors.every(function(anchor)') && source.includes('comment.matchConfidence=Math.min.apply'));
   check('reviewers see actionable passage state instead of model confidence', html.includes('id="reviewQualitySummary"') && source.includes("+' passage'") && source.includes('without a passage') && !extractFunction('renderReviewerPanel').includes('confidently') && !extractFunction('renderReviewerPanel').includes('classificationAudit'));
   check('the one missing passage is directly filterable and shown after an unsuccessful locate pass', source.includes("levelOrder=['all','needs'") && source.includes("level==='needs'?'Needs passage'") && source.includes("reviewFilter==='needs'?reviewNeedsPassage") && source.includes("if(result.needsChecking)reviewFilter='needs'"));
-  check('re-importing the same reviewer report replaces an incomplete extraction', source.includes("comment.sourceId!==reportId") && source.includes("report.id!==reportId") && source.includes('priorByText[reviewNormalizedText(item.text)]'));
+  check('re-importing the same reviewer report replaces an incomplete extraction', source.includes("comment.sourceId!==reportId") && source.includes("report.id!==reportId") && source.includes('priorMatches=matchPriorReviewComments(extracted,priorComments)'));
 
   const classificationContext = {
     REVIEW_LEVEL_LABELS: { general: 'General', section: 'Section', specific: 'Specific', editorial: 'Editorial / typo' },

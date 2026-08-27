@@ -780,6 +780,11 @@
     .reader-fig { margin: 6px 0 10px; }
     .reader-fig img { display: block; max-width: 100%; border: 1px solid var(--line); border-radius: 10px; background: white; }
     html[data-theme="dark"] .reader-fig img { background: #f4f2ec; }
+    /* An equation shows as its typeset crop; the extracted symbol soup underneath
+       stays in the DOM for search and notes but never on screen. */
+    .para.eq-figured .original { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+    .para.reader-eq .reader-fig img { border: 0; border-left: 3px solid var(--line); border-radius: 0; padding-left: 12px; background: transparent; }
+    html[data-theme="dark"] .para.reader-eq .reader-fig img { background: #f4f2ec; border-radius: 8px; padding: 6px 6px 6px 12px; }
     .para .original b { font-weight: 680; }
     .para.current::before { content: ""; position: absolute; left: -16px; top: 4px; bottom: 2px; width: 3px; border-radius: 2px; background: var(--accent); }
     .page-marker { display: flex; align-items: center; gap: 10px; margin: 24px 0 2px; color: var(--muted); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; }

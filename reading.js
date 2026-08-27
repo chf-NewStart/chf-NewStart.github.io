@@ -1030,9 +1030,63 @@
     });
     return out;
   }
-  /* Paragraph objects: {t:text, k:kind(''|h1|h2|h3|cap), r:[[start,end,flags]...]} with
-     run offsets valid inside t. Kind comes from font size against the body size when
-     known, with the old shape-regex as the fallback. */
+  /* Display equations cannot reflow: a matrix becomes bracket shards ("⌐ ⌐", "| |")
+     and rows of lone symbols. Detect clusters of math-shaped lines, lift each cluster
+     out of the text flow, and hand its page region to the figure pipeline so the
+     reader sees the equation exactly as typeset. */
+  function mathLineKind(l){
+    var t=l.text;
+    if(/^[\s⎡⎢⎣⎤⎥⎦⎧⎨⎩⎫⎬⎭⎛⎜⎝⎞⎟⎠\[\]|⌐¬⌜⌝⌞⌟─━│┃┌┐└┘(){}.,·]+$/.test(t))return 'piece';
+    var tokens=t.split(/\s+/).filter(Boolean);
+    if(!tokens.length)return '';
+    var shorty=tokens.filter(function(w){return w.length<=2||/^[\d.,()+-]+$/.test(w);}).length;
+    var hard=/[=→←↦≥≤≈≠∑∏∫∂∇±×÷∈∀∃⊤⊥ωαβγδλμσθφψπΩΔΣΓΛΘΦ]/.test(t);
+    if(tokens.length>=4&&shorty>=tokens.length*.6)return hard?'hardrow':'row';
+    if(hard&&tokens.length<=12&&shorty>=tokens.length*.3)return 'hardrow';
+    return '';
+  }
+  function extractMathRegions(layout,body){
+    if(layout.length<3)return layout;
+    var flagged=layout.map(mathLineKind);
+    if(!flagged.some(function(k){return k;}))return layout;
+    var order=layout.map(function(l,i){return i;}).sort(function(a,b){return layout[b].y-layout[a].y;});
+    var clusters=[],cur=null,lastY=0;
+    order.forEach(function(i){
+      if(!flagged[i]){return;}
+      if(cur&&lastY-layout[i].y<=body*4.5)cur.push(i);
+      else{cur=[i];clusters.push(cur);}
+      lastY=layout[i].y;
+    });
+    var regionAt={},squash={};
+    clusters.forEach(function(cluster){
+      var pieces=cluster.filter(function(i){return flagged[i]==='piece';}).length;
+      var hard=cluster.some(function(i){return flagged[i]==='hardrow';});
+      /* An author line or a stray numeric row must not become an image: a real
+         equation shows bracket pieces, or explicit operators, or sheer bulk. */
+      if(!(pieces>=2||(hard&&cluster.length>=2)||cluster.length>=4))return;
+      var left=1e9,right=0,top=0,bottom=1e9,text=[];
+      cluster.sort(function(a,b){return layout[b].y-layout[a].y;}).forEach(function(i){
+        var l=layout[i];
+        left=Math.min(left,l.x);right=Math.max(right,l.endX);
+        top=Math.max(top,l.y+l.height);bottom=Math.min(bottom,l.y-l.height*.4);
+        text.push(l.text);
+      });
+      var key=clusters.indexOf(cluster);
+      cluster.forEach(function(i){regionAt[i]=key;});
+      squash[key]={text:text.join(' ').replace(/\s+/g,' ').slice(0,160),x:left,y:top,endX:right,height:body,runs:[],eq:[left,bottom,right,top]};
+    });
+    var out=[],emitted={};
+    layout.forEach(function(l,i){
+      var key=regionAt[i];
+      if(key===undefined){out.push(l);return;}
+      if(!emitted[key]&&squash[key]){emitted[key]=true;out.push(squash[key]);}
+    });
+    return out;
+  }
+  /* Paragraph objects: {t:text, k:kind(''|h1|h2|h3|cap|eq), r:[[start,end,flags]...]}
+     with run offsets valid inside t. Kind comes from font size against the body size
+     when known, with the old shape-regex as the fallback. An eq paragraph carries its
+     page box in eb until buildFigures swaps it for a rendered crop. */
   function layoutToParagraphs(lines,bodySize,vocab){
     if(!lines.length)return[];
     lines=orderColumns(lines);
@@ -1082,6 +1136,7 @@
     }
     lines.forEach(function(line,i){
       var next=lines[i+1],text=line.text;
+      if(line.eq){flush();out.push({t:line.text||'Equation',k:'eq',r:[],eb:line.eq});return;}
       var bigness=line.height>=body*1.12,headingish=shapeHeading(text)||bigness&&text.length<200;
       if(headingish&&!current){appendLine(line);
         var nextClose=next&&Math.abs(next.height-line.height)<line.height*.12&&(line.y-next.y)<line.height*2.2&&(shapeHeading(next.text)||next.height>=body*1.12);
@@ -1153,7 +1208,7 @@
     (ch.readerHighlights||[]).forEach(function(mark){var quote=String(mark.text||''),found=-1,offset=-1;newParas.some(function(p,i){var at=p.indexOf(quote);if(at>=0){found=i;offset=at;return true;}return false;});if(found<0)found=closest(mark.para||0);mark.para=found;if(offset>=0){mark.start=offset;mark.end=offset+quote.length;}});
   }
   /* Bump when layout-aware segmentation changes; anchored notes/highlights are remapped. */
-  var READER_V=6;
+  var READER_V=7;
   function refreshReaderSegmentation(ch){
     /* Only repairs ancient pre-v3 text; the v4 structured rebuild needs the open PDF
        and happens in ensureReaderData, so this must never stamp v4 on its own. */
@@ -1219,7 +1274,7 @@
       var lines=[],paragraphs=[],pages=[];
       layouts.forEach(function(layout){
         var pageLines=layout.map(function(l){return l.text;});
-        lines.push(pageLines);paragraphs.push(layoutToParagraphs(layout,body,vocab));pages.push(pageLines.join(' '));
+        lines.push(pageLines);paragraphs.push(layoutToParagraphs(extractMathRegions(layout,body),body,vocab));pages.push(pageLines.join(' '));
       });
       var rebuilt=readerTextFromPages(lines,paragraphs)||pages.join('\n\n');
       migrateReaderAnchors(ch,oldText,rebuilt);
@@ -1238,9 +1293,29 @@
     var figIndex=0;
     for(var pageIdx=0;pageIdx<paragraphs.length&&figIndex<FIGURE_CAP;pageIdx++){
       var caps=paragraphs[pageIdx].filter(function(p){return p.k==='cap';});
-      if(!caps.length)continue;
+      var eqs=paragraphs[pageIdx].filter(function(p){return p.k==='eq'&&p.eb;});
+      if(!caps.length&&!eqs.length)continue;
       var layout=layouts[pageIdx],dims=pageDims[pageIdx],pageW=dims[0],pageH=dims[1];
       var scale=Math.min(1.6,1300/pageW),canvas=null;
+      /* Equations know their own box — crop it straight from the rendered page. */
+      for(var e=0;e<eqs.length&&figIndex<FIGURE_CAP;e++){
+        var eb=eqs[e].eb,eqLeft=Math.max(0,eb[0]-8),eqBottom=Math.max(0,eb[1]-6),eqRight=Math.min(pageW,eb[2]+8),eqTop=Math.min(pageH,eb[3]+6);
+        if(eqRight-eqLeft<40||eqTop-eqBottom<18)continue;
+        if(!canvas){
+          var eqPg=await doc.getPage(pageIdx+1),eqVp=eqPg.getViewport({scale:scale});
+          canvas=document.createElement('canvas');canvas.width=Math.ceil(eqVp.width);canvas.height=Math.ceil(eqVp.height);
+          await eqPg.render({canvasContext:canvas.getContext('2d'),viewport:eqVp}).promise;
+        }
+        var eqSx=Math.max(0,eqLeft*scale),eqSw=Math.min(canvas.width-eqSx,(eqRight-eqLeft)*scale);
+        var eqSy=Math.max(0,(pageH-eqTop)*scale),eqSh=Math.min(canvas.height-eqSy,(eqTop-eqBottom)*scale);
+        if(eqSw<40||eqSh<20)continue;
+        var eqCrop=document.createElement('canvas');eqCrop.width=Math.round(eqSw);eqCrop.height=Math.round(eqSh);
+        eqCrop.getContext('2d').drawImage(canvas,eqSx,eqSy,eqSw,eqSh,0,0,eqCrop.width,eqCrop.height);
+        var eqBlob=await new Promise(function(res){eqCrop.toBlob(res,'image/jpeg',.85);});
+        if(!eqBlob)continue;
+        var eqBuf=await eqBlob.arrayBuffer();
+        if(await putFigure('fig:'+ch.id+':'+figIndex,eqBuf)){eqs[e].f=figIndex;figIndex++;}
+      }
       for(var c=0;c<caps.length&&figIndex<FIGURE_CAP;c++){
         var cap=caps[c],capLine=null;
         for(var li=0;li<layout.length;li++){
@@ -3007,9 +3082,11 @@
     fr.forEach(function(p,i){
       var n=noteMap[i]||'',m=meta&&meta[i]||null;
       var kind=m?m.k:(p.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(p)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(p))?'h3':'');
-      var cls=kind==='h1'?' reader-heading reader-h1':kind==='h2'?' reader-heading reader-h2':kind==='h3'?' reader-heading reader-h3':kind==='cap'?' reader-cap':'';
+      var cls=kind==='h1'?' reader-heading reader-h1':kind==='h2'?' reader-heading reader-h2':kind==='h3'?' reader-heading reader-h3':kind==='cap'?' reader-cap':kind==='eq'?' reader-eq':'';
       if(startAt[i])out+='<div class="page-marker">Page '+startAt[i]+'<button type="button" data-goto-page="'+startAt[i]+'">view page</button></div>';
-      var fig=m&&m.f!==undefined?'<figure class="reader-fig"><img data-fig="'+esc(ch.id)+':'+m.f+'" alt="Figure from the paper" loading="lazy"></figure>':'';
+      var fig=m&&m.f!==undefined?'<figure class="reader-fig"><img data-fig="'+esc(ch.id)+':'+m.f+'" alt="'+(kind==='eq'?'Equation from the paper':'Figure from the paper')+'" loading="lazy"></figure>':'';
+      /* With the typeset crop on screen, the extracted symbol soup would only echo it. */
+      if(kind==='eq'&&fig)cls+=' eq-figured';
       out+='<section class="para'+cls+'">'+fig+'<div class="original" data-para-index="'+i+'">'+styledTextHtml(p,marks,m&&m.r,i)+'</div>'+(en[i]?'<div class="translation">'+esc(en[i])+'</div>':'')+'<button class="para-action" data-note="'+i+'">'+(n?'Edit margin note •':'Add margin note')+'</button><textarea class="inline-note '+(n?'':'hidden')+'" data-note-area="'+i+'" data-note-scope="'+scope+'" placeholder="Note on this paragraph…">'+esc(n)+'</textarea></section>';
     });
     byId('textDocument').classList.toggle('reader-document',isPdfReader);byId('textDocument').innerHTML=out;

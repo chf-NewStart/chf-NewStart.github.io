@@ -59,6 +59,14 @@
     #installBtn2 svg { flex: 0 0 auto; }
     .cloud { font-size: .72rem; color: var(--muted); white-space: nowrap; border: 0; background: none; padding: 4px 2px; cursor: pointer; }
     .cloud:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+    .cloud-pass-banner { display: flex; align-items: center; gap: 11px; padding: 10px clamp(18px, 5vw, 72px); border-bottom: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line)); background: color-mix(in srgb, var(--yellow) 20%, var(--paper)); color: var(--ink); font: .7rem/1.35 var(--sans); }
+    .cloud-pass-banner.hidden { display: none; }
+    .cloud-pass-banner > div { display: flex; min-width: 0; flex: 1; align-items: baseline; gap: 8px; }
+    .cloud-pass-banner strong { font-weight: 750; }
+    .cloud-pass-banner div span { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+    .cloud-pass-mark { display: grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--accent); color: var(--paper); }
+    .cloud-pass-banner .text-button { flex: 0 0 auto; }
+    body.reading .cloud-pass-banner { display: none; }
 
     .icon-btn, .button, .soft-button {
       border: 1px solid var(--line); background: var(--surface); border-radius: 10px; min-height: 38px;
@@ -1206,6 +1214,7 @@
     .ai-provider-grid { display: grid; gap: 9px; }
     .ai-provider-grid .field-label { margin-top: 4px; }
     .ai-provider-note { margin: 0; padding: 10px 12px; border-radius: 9px; background: var(--surface-2); color: var(--muted); font-size: .7rem; line-height: 1.5; }
+    #aiPassCreate { width: 100%; }
     .status { min-height: 1.2em; margin-top: 8px; color: var(--muted); font-size: .7rem; }
     .github-papers { display: grid; gap: 7px; margin-top: 12px; }
     .github-paper { display: flex; align-items: center; gap: 9px; width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 10px; background: var(--paper); text-align: left; }
@@ -1264,6 +1273,10 @@
     }
     @media (max-width: 720px) {
       .masthead { height: 60px; padding: 0 12px; gap: 8px; }
+      .cloud-pass-banner { align-items: flex-start; padding: 9px 12px; }
+      .cloud-pass-banner > div { display: grid; gap: 1px; }
+      .cloud-pass-banner div span { white-space: normal; }
+      .cloud-pass-banner .text-button { align-self: center; font-size: .64rem; }
       .brand span, .cloud { display: none; }
       .masthead { gap: 6px; padding: 0 8px; overflow-x: auto; scrollbar-width: none; }
       .masthead::-webkit-scrollbar { display: none; }

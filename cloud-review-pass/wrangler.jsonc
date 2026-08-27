@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "phloem-review-pass",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-08-27",
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://houfu72.com,https://www.houfu72.com,https://chf-newstart.github.io",
+    "DEEPSEEK_MODEL": "deepseek-v4-flash"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "phloem-review-passes",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ]
+}

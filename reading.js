@@ -8,6 +8,8 @@
   var SYNC_KEY = 'readingRoom.sync.v1';
   var LEGACY_AI_KEY = 'readingRoom.ai.v1';
   var AI_SETTINGS_KEY = 'readingRoom.ai.providers.v1';
+  var AI_PASS_SESSION_KEY = 'readingRoom.ai.reviewPass.v1';
+  var AI_PASS_SERVICE_KEY = 'readingRoom.ai.passService.v1';
   var AI_PROVIDERS = {
     gemini:{label:'Gemini API',model:'gemini-3.6-flash'},
     deepseek:{label:'DeepSeek',model:'deepseek-v4-flash'},
@@ -44,7 +46,7 @@
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
   var localAiPreparePromise = null;
-  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), reviewFocusId = '', reviewFocusPage = 0, reviewFocusAnchorIndex = -1, reviewFilter = 'all', reviewPassageGroupIds = [], reviewLinkTargetId = '', reviewLinkUndo = null, pendingReviewTargetId = '', pendingReviewReplace = false, reviewPairPaper = null, reviewPairComments = null, pendingSharedReview = null;
+  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), sharedAiPass = loadSharedAiPass(), reviewFocusId = '', reviewFocusPage = 0, reviewFocusAnchorIndex = -1, reviewFilter = 'all', reviewPassageGroupIds = [], reviewLinkTargetId = '', reviewLinkUndo = null, pendingReviewTargetId = '', pendingReviewReplace = false, reviewPairPaper = null, reviewPairComments = null, pendingSharedReview = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
 
   function byId(id){ return document.getElementById(id); }
@@ -69,6 +71,26 @@
     if(!AI_PROVIDERS[cfg.provider]&&cfg.provider!=='auto')cfg.provider='auto';return cfg;
   }
   function saveAiSettings(){try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(aiSettings));}catch(e){} }
+  function normalizePassEndpoint(value){
+    value=String(value||'').trim().replace(/\/+$/,'');if(!value)return'';try{var url=new URL(value);if(url.protocol!=='https:'&&!(url.protocol==='http:'&&(url.hostname==='localhost'||url.hostname==='127.0.0.1')))return'';return url.origin+url.pathname.replace(/\/+$/,'');}catch(e){return'';}
+  }
+  function loadSharedAiPass(){
+    var pass=null;try{pass=JSON.parse(sessionStorage.getItem(AI_PASS_SESSION_KEY)||'null');}catch(e){}if(!pass||!normalizePassEndpoint(pass.endpoint)||!/^[A-Za-z0-9_-]{24,}$/.test(String(pass.token||'')))return null;var expires=+pass.activeUntil||+pass.claimBefore||0;if(expires&&expires<=now()){try{sessionStorage.removeItem(AI_PASS_SESSION_KEY);}catch(e){}return null;}return pass;
+  }
+  function saveSharedAiPass(pass){sharedAiPass=pass||null;try{if(pass)sessionStorage.setItem(AI_PASS_SESSION_KEY,JSON.stringify(pass));else sessionStorage.removeItem(AI_PASS_SESSION_KEY);}catch(e){}renderSharedAiPass();}
+  function sharedReviewPassRoute(){
+    sharedAiPass=loadSharedAiPass();if(!sharedAiPass)return null;if(!sharedAiPass.jobId){sharedAiPass.jobId=uid('review-job-');saveSharedAiPass(sharedAiPass);}return{id:'review-pass',label:'Shared DeepSeek pass',cfg:{endpoint:sharedAiPass.endpoint,token:sharedAiPass.token,jobId:sharedAiPass.jobId}};
+  }
+  function reviewPassExpiryLabel(pass){var expires=+pass.activeUntil||0;if(!expires)return'Available for one reviewer workflow.';var minutes=Math.max(1,Math.ceil((expires-now())/60000));return'Active for this review · '+minutes+' min remaining.';}
+  function renderSharedAiPass(){
+    var pass=loadSharedAiPass(),banner=byId('cloudPassBanner'),detail=byId('cloudPassBannerDetail');if(!banner)return;banner.classList.toggle('hidden',!pass);if(pass&&detail)detail.textContent=reviewPassExpiryLabel(pass);var status=byId('aiPassStatus');if(status&&pass)status.textContent='A shared high-accuracy pass is ready on this device. It will be removed after the review finishes.';
+  }
+  function updateSharedPassFromResponse(response){
+    if(!sharedAiPass||!response)return;var activeUntil=+response.headers.get('X-Phloem-Pass-Expires')||0;if(activeUntil){sharedAiPass.activeUntil=activeUntil;saveSharedAiPass(sharedAiPass);}
+  }
+  async function finishSharedReviewPass(route){
+    if(!route||route.id!=='review-pass')return;try{await fetch(normalizePassEndpoint(route.cfg.endpoint)+'/complete',{method:'POST',headers:{'Authorization':'Bearer '+route.cfg.token,'Content-Type':'application/json'},body:JSON.stringify({job_id:route.cfg.jobId})});}catch(e){}saveSharedAiPass(null);
+  }
   function browserLanguageModel(){return window.LanguageModel||(window.ai&&window.ai.languageModel)||null;}
   function cloudAiRoute(preferred){
     var ids=preferred&&preferred!=='auto'?[preferred]:['gemini','deepseek','openai','anthropic','compatible'];
@@ -77,9 +99,10 @@
   }
   function activeAiRoute(skipBrowser){var selected=aiSettings.provider||'auto';if(selected==='auto')return!skipBrowser&&browserLanguageModel()?{id:'browser',label:'Gemini Nano (on device)',cfg:{}}:null;return cloudAiRoute(selected);}
   function reviewAiPlan(){
-    aiSettings=loadAiSettings();var selected=aiSettings.provider||'auto',route=selected==='auto'?(browserLanguageModel()?{id:'browser',label:'Gemini Nano (on device)',cfg:{}}:null):cloudAiRoute(selected);
+    var shared=sharedReviewPassRoute();if(shared)return{mode:'shared',classification:shared,location:shared};aiSettings=loadAiSettings();var selected=aiSettings.provider||'auto',route=selected==='auto'?(browserLanguageModel()?{id:'browser',label:'Gemini Nano (on device)',cfg:{}}:null):cloudAiRoute(selected);
     return{mode:selected==='auto'?(route?'local':'none'):(route?'cloud':'none'),classification:route,location:route};
   }
+  function hasReviewAiRoute(){return!!sharedReviewPassRoute()||hasAiRoute();}
   function hasAiRoute(){aiSettings=loadAiSettings();return!!activeAiRoute(false);}
   function aiSetupError(message){var e=new Error(message);e.aiSetup=true;return e;}
   function setTaskProgress(id,value){
@@ -120,7 +143,11 @@
   }
   async function runCloudAi(route,messages,maxTokens){
     var id=route.id,cfg=route.cfg,response,data,text='',system=aiSystem(messages),turns=aiTurns(messages);
-    if(id==='gemini'){
+    if(id==='review-pass'){
+      response=await fetch(normalizePassEndpoint(cfg.endpoint)+'/review',{method:'POST',headers:{'Authorization':'Bearer '+cfg.token,'Content-Type':'application/json'},body:JSON.stringify({job_id:cfg.jobId,messages:messages,max_tokens:maxTokens})});
+      if(!response.ok&&(response.status===401||response.status===403||response.status===410||response.status===429)){saveSharedAiPass(null);throw aiSetupError(response.status===429?'This shared review pass has reached its usage limit.':'This shared review pass has expired or was already used.');}
+      await aiResponseError(response,route.label);updateSharedPassFromResponse(response);data=await response.json();text=String(((((data.choices||[])[0]||{}).message||{}).content)||'');
+    }else if(id==='gemini'){
       response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(cfg.model)+':generateContent',{method:'POST',headers:{'x-goog-api-key':cfg.key,'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:system}]},contents:turns.map(function(message){return{role:message.role==='assistant'?'model':'user',parts:[{text:message.content}]};}),generationConfig:{maxOutputTokens:maxTokens}})});
       await aiResponseError(response,route.label);data=await response.json();text=((((data.candidates||[])[0]||{}).content||{}).parts||[]).map(function(part){return part.text||'';}).join('');
     }else if(id==='deepseek'){
@@ -633,7 +660,7 @@
     finally{if(button){button.disabled=false;button.textContent=original;}}
   }
   async function seedStarterGuide(){
-    if(!pristineLibrary||state.chapters.length||syncCfg||gdriveOn()||location.protocol==='file:'||/^#(?:(?:phloem|carrel|margin)-setup|phloem-review)=/.test(location.hash))return false;
+    if(!pristineLibrary||state.chapters.length||syncCfg||gdriveOn()||location.protocol==='file:'||/^#(?:(?:phloem|carrel|margin)-setup|phloem-review|phloem-ai-pass)=/.test(location.hash))return false;
     try{
       var response=await fetch(STARTER_GUIDE_URL,{cache:'no-cache',credentials:'same-origin'});if(!response.ok)throw new Error('starter guide unavailable');
       var bytes=await response.arrayBuffer(),head=new Uint8Array(bytes,0,Math.min(5,bytes.byteLength)),magic='';for(var i=0;i<head.length;i++)magic+=String.fromCharCode(head[i]);if(magic!=='%PDF-')throw new Error('starter guide is not a PDF');
@@ -3844,15 +3871,15 @@
       var report=await reviewReportText(file);if(!report.trim())throw new Error('That reviewer file contains no readable text.');status.textContent='Separating the reviewer comments with '+plan.classification.label+'…';setTaskProgress('reviewerProgress',10);var classificationStarted=now(),extracted=await extractReviewerReportWithAi(report,function(message,progress){status.textContent=message;setTaskProgress('reviewerProgress',10+(Number.isFinite(progress)?progress:0)*45);},plan.classification),classificationMs=now()-classificationStarted;if(!extracted.length)throw new Error('AI could not find actionable reviewer comments in that file.');setTaskProgress('reviewerProgress',55);
       ch.reviewReports=Array.isArray(ch.reviewReports)?ch.reviewReports:[];var existingComments=ch.reviewComments||[],existingReports=ch.reviewReports,replaceCount=replaceCurrent?existingComments.length:0,priorReport=existingReports.find(function(report){return String(report.name||'').toLowerCase()===String(file.name||'').toLowerCase();}),reportId=priorReport?priorReport.id:uid('report'),priorComments=replaceCurrent?existingComments:existingComments.filter(function(comment){return comment.sourceId===reportId;}),priorMatches=matchPriorReviewComments(extracted,priorComments);
       var comments=extracted.map(function(item,index){var record={id:uid('rr'),sourceId:reportId,author:item.author,date:'',text:item.text,level:normalizeReviewLevel(item.level),topic:normalizeReviewTopic(item.topic),locationHint:item.locationHint||'',classificationAudit:item.classificationAudit||null,classifiedProvider:item.classifiedProvider||plan.classification.label,para:null,page:null,start:0,end:0,quote:'',anchors:[],pdfAnchors:[],anchored:false,replies:[],response:item.response||'',resolved:false,sourceName:file.name,addedAt:now()},prior=priorMatches[index];if(prior)restorePriorReviewWork(record,prior);return record;});var matchable=comments.filter(reviewCanAutoLocate),locationStarted=now(),location=await locateReviewsBalanced(ch,matchable,function(message,progress){status.textContent=message;setTaskProgress('reviewerProgress',55+(Number.isFinite(progress)?progress:0)*45);},plan),locationMs=now()-locationStarted;
-      ch.reviewComments=replaceCurrent?comments:existingComments.filter(function(comment){return comment.sourceId!==reportId;}).concat(comments);ch.reviewReports=replaceCurrent?[]:existingReports.filter(function(report){return report.id!==reportId;});var levels={},adjusted=0,stamp=now(),totalMs=stamp-started;comments.forEach(function(comment){levels[comment.level]=(levels[comment.level]||0)+1;if(comment.classificationAudit&&comment.classificationAudit.adjusted)adjusted++;});ch.reviewReports.push({id:reportId,name:file.name,addedAt:stamp,comments:comments.length,levels:levels,extractorVersion:3,classifierVersion:3,locatorVersion:5,provider:plan.classification.label,classificationProvider:plan.classification.label,locationProvider:plan.location.label,exactMatches:location.exactMatched,needsChecking:location.needsChecking,adjustedClassifications:adjusted,timing:{classificationMs:classificationMs,locationMs:locationMs,totalMs:totalMs}});ch.reviewUpdatedAt=stamp;ch.reviewClearedAt=0;placeInReviewWorkspace(ch);touch(ch);if(readerMode==='text')renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();renderPdfReviewFocus(currentPage);updateReviewBadge();setTaskProgress('reviewerProgress',100);status.textContent=(replaceCurrent?'Replaced '+replaceCount+' old comment'+(replaceCount===1?'':'s')+' with ':'Imported ')+comments.length+' reviewer concern'+(comments.length===1?'':'s')+' · '+location.confident+' passage'+(location.confident===1?'':'s')+' linked · '+location.needsChecking+' without a passage'+(location.exactMatched?' · '+location.exactMatched+' exact-text link'+(location.exactMatched===1?'':'s'):'')+' · '+elapsedLabel(totalMs)+'.';
+      ch.reviewComments=replaceCurrent?comments:existingComments.filter(function(comment){return comment.sourceId!==reportId;}).concat(comments);ch.reviewReports=replaceCurrent?[]:existingReports.filter(function(report){return report.id!==reportId;});var levels={},adjusted=0,stamp=now(),totalMs=stamp-started;comments.forEach(function(comment){levels[comment.level]=(levels[comment.level]||0)+1;if(comment.classificationAudit&&comment.classificationAudit.adjusted)adjusted++;});ch.reviewReports.push({id:reportId,name:file.name,addedAt:stamp,comments:comments.length,levels:levels,extractorVersion:3,classifierVersion:3,locatorVersion:5,provider:plan.classification.label,classificationProvider:plan.classification.label,locationProvider:plan.location.label,exactMatches:location.exactMatched,needsChecking:location.needsChecking,adjustedClassifications:adjusted,timing:{classificationMs:classificationMs,locationMs:locationMs,totalMs:totalMs}});ch.reviewUpdatedAt=stamp;ch.reviewClearedAt=0;placeInReviewWorkspace(ch);touch(ch);if(readerMode==='text')renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();renderPdfReviewFocus(currentPage);updateReviewBadge();setTaskProgress('reviewerProgress',100);status.textContent=(replaceCurrent?'Replaced '+replaceCount+' old comment'+(replaceCount===1?'':'s')+' with ':'Imported ')+comments.length+' reviewer concern'+(comments.length===1?'':'s')+' · '+location.confident+' passage'+(location.confident===1?'':'s')+' linked · '+location.needsChecking+' without a passage'+(location.exactMatched?' · '+location.exactMatched+' exact-text link'+(location.exactMatched===1?'':'s'):'')+' · '+elapsedLabel(totalMs)+'.';await finishSharedReviewPass(plan.classification);
     }catch(e){status.textContent=e.message||'Phloem could not import that reviewer file.';setTaskProgress('reviewerProgress',false);}
     finally{button.disabled=false;if(currentId===ch.id)renderReviewerPanel(ch);else button.textContent=old;}
   }
   async function locateUnlinkedReviews(ch,button){
     var pending=(ch.reviewComments||[]).filter(function(comment){return comment.text&&reviewCanAutoLocate(comment)&&reviewNeedsPassage(ch,comment);}),status=byId('reviewerLocateStatus');if(!pending.length)return;
-    if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}
+    if(!hasReviewAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}
     var plan=await reviewAiPlan(),started=now();button.disabled=true;setTaskProgress('reviewerProgress',0);
-    try{var result=await locateReviewsBalanced(ch,pending,function(message,progress){status.textContent=message;setTaskProgress('reviewerProgress',(Number.isFinite(progress)?progress:0)*100);},plan),elapsed=now()-started;ch.reviewUpdatedAt=now();touch(ch);if(result.needsChecking)reviewFilter='needs';renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();setTaskProgress('reviewerProgress',100);status.textContent=result.confident+' passage'+(result.confident===1?'':'s')+' linked · '+result.needsChecking+' still without a passage'+(result.exactMatched?' · '+result.exactMatched+' exact-text link'+(result.exactMatched===1?'':'s'):'')+' · '+elapsedLabel(elapsed)+'.';}
+    try{var result=await locateReviewsBalanced(ch,pending,function(message,progress){status.textContent=message;setTaskProgress('reviewerProgress',(Number.isFinite(progress)?progress:0)*100);},plan),elapsed=now()-started;ch.reviewUpdatedAt=now();touch(ch);if(result.needsChecking)reviewFilter='needs';renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();setTaskProgress('reviewerProgress',100);status.textContent=result.confident+' passage'+(result.confident===1?'':'s')+' linked · '+result.needsChecking+' still without a passage'+(result.exactMatched?' · '+result.exactMatched+' exact-text link'+(result.exactMatched===1?'':'s'):'')+' · '+elapsedLabel(elapsed)+'.';await finishSharedReviewPass(plan.location);}
     catch(e){status.textContent=e.message||'Phloem could not locate those comments.';setTaskProgress('reviewerProgress',false);}
     finally{button.disabled=false;}
   }
@@ -5045,8 +5072,11 @@
     catch(e){if(byId('aiProvider').value==='auto')status.textContent='Could not start on-device Gemini. Choose a cloud provider to use AI.';}
   }
   function fillAiSettings(){aiSettings=loadAiSettings();byId('aiProvider').value=aiSettings.provider||'auto';renderAiProviderFields();}
+  function fillPassSettings(){
+    var service='';try{service=localStorage.getItem(AI_PASS_SERVICE_KEY)||'';}catch(e){}byId('aiPassService').value=service;byId('aiPassOwnerCode').value='';renderSharedAiPass();if(!loadSharedAiPass())byId('aiPassStatus').textContent=service?'Ready to make a one-review link. Your approval code is never saved here.':'Add the address of your private pass service once it is deployed.';
+  }
   function fillSettings(){
-    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);fillAiSettings();
+    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);fillAiSettings();fillPassSettings();
     byId('gdriveConnectBtn').textContent=gdriveOn()?'Sign in again':'Connect Google Drive';
     byId('gdriveConnectBtn').classList.toggle('button',!gdriveOn());byId('gdriveConnectBtn').classList.toggle('soft-button',gdriveOn());
     byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
@@ -5171,10 +5201,19 @@
       if(!reviewShareTarget(pendingSharedReview)&&state.chapters.some(function(ch){return ch.kind==='pdf'&&!ch.contentHash;})){byId('reviewShareStatus').textContent='Checking the PDFs already on this device…';await backfillPdfFingerprints();refreshIncomingReviewShare();byId('reviewShareStatus').textContent=reviewShareTarget(pendingSharedReview)?'Exact PDF verified.':'Choose the exact PDF to attach this review layer.';}
     }catch(e){pendingSharedReview=null;showError(e.message||'Phloem could not read this shared review.','Could not open shared review');}
   }
+  function importSharedAiPass(){
+    var match=location.hash.match(/^#phloem-ai-pass=(.+)$/);if(!match)return;history.replaceState(history.state&&history.state.phloem?{phloem:history.state.phloem}:null,'',location.pathname+location.search);
+    try{
+      var payload=decodeSetup(match[1]),endpoint=normalizePassEndpoint(payload.endpoint),token=String(payload.token||''),claimBefore=+payload.claimBefore||0;if(payload.kind!=='phloem-ai-pass'||payload.version!==1||!endpoint||!/^[A-Za-z0-9_-]{24,}$/.test(token)||claimBefore<=now())throw new Error('This review pass is invalid or has expired.');
+      if(confirm('Use this shared high-accuracy review pass?\n\nIt permits one reviewer workflow. Extracted reviewer text and candidate manuscript excerpts—not the PDF file—will be sent through the pass owner’s DeepSeek account.')){saveSharedAiPass({endpoint:endpoint,token:token,claimBefore:claimBefore,activeUntil:0,jobId:''});if(byId('settingsDialog').open)fillSettings();}
+    }catch(e){showError(e.message||'Phloem could not open this review pass.','Could not open review pass');}
+  }
   importSetup();
   importSharedReview();
+  importSharedAiPass();
   addEventListener('hashchange',importSetup);
   addEventListener('hashchange',importSharedReview);
+  addEventListener('hashchange',importSharedAiPass);
   /* Clicking the cloud syncs right now — and because it is a real user gesture,
      Google's silent token renewal is allowed to do its quick popup dance, which
      background syncs cannot. Settings only open when there is an error to look at. */
@@ -5229,6 +5268,15 @@
       aiSettings.providers[id]={key:key,model:model,endpoint:id==='compatible'?endpoint:''};if(id==='deepseek'){if(key)localStorage.setItem(LEGACY_AI_KEY,key);else localStorage.removeItem(LEGACY_AI_KEY);}
     }
     saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Asking Chrome to prepare Gemini now…':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');if(id==='auto'&&browserLanguageModel())startLocalAiPreparation();else setTaskProgress('aiKeyProgress',false);
+  };
+  byId('cloudPassRemove').onclick=function(){saveSharedAiPass(null);if(byId('settingsDialog').open)fillPassSettings();};
+  byId('aiPassCreate').onclick=async function(){
+    var button=this,status=byId('aiPassStatus'),endpoint=normalizePassEndpoint(byId('aiPassService').value),ownerCode=byId('aiPassOwnerCode').value.trim();if(!endpoint){status.textContent='Add a valid HTTPS pass service URL first.';return;}if(!ownerCode){status.textContent='Enter your approval code. It is sent once and never saved.';return;}button.disabled=true;button.textContent='Making pass…';status.textContent='Creating a single-use review grant…';
+    try{
+      var response=await fetch(endpoint+'/passes',{method:'POST',headers:{'Authorization':'Bearer '+ownerCode,'Content-Type':'application/json'},body:'{}'});if(!response.ok){var detail='';try{detail=(await response.json()).error||'';}catch(e){}throw new Error(detail||'Pass service returned '+response.status);}
+      var pass=await response.json();if(!pass||!/^[A-Za-z0-9_-]{24,}$/.test(String(pass.token||''))||!+pass.claimBefore)throw new Error('The pass service returned an invalid grant.');var payload={kind:'phloem-ai-pass',version:1,endpoint:endpoint,token:pass.token,claimBefore:+pass.claimBefore},publicPage=location.protocol==='file:'?(document.querySelector('meta[property="og:url"]')||{}).content:location.href.split('#')[0],link=publicPage+'#phloem-ai-pass='+encodeSetup(payload);await copyPlainText(link);try{localStorage.setItem(AI_PASS_SERVICE_KEY,endpoint);}catch(e){}byId('aiPassOwnerCode').value='';status.textContent='One-review link copied. It can be claimed once, then runs for up to ten minutes within its hard usage limit.';
+    }catch(e){status.textContent=e.message||'Phloem could not create that pass.';}
+    finally{button.disabled=false;button.textContent='Copy one-review pass';}
   };
   byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='phloem-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();updateReviewBadge();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
@@ -5306,7 +5354,7 @@
   var startupDuplicateRepair=repairDuplicateStorage();
   var startupStarterGuide=seedStarterGuide();
   var startupLibraryWork=[startupStarterGuide];
-  syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupLibraryWork.push(startupDuplicateRepair.then(function(){return gdriveSync();}));}
+  renderSharedAiPass();syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupLibraryWork.push(startupDuplicateRepair.then(function(){return gdriveSync();}));}
   Promise.allSettled(startupLibraryWork).then(function(){libraryHydrating=false;renderShelf();updateReviewBadge();});
   /* A refresh drops you back into the paper you were reading, not the library. */
   try{var lastOpen=resolvedPaperId(localStorage.getItem(LAST_OPEN_KEY));if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){return startupDuplicateRepair;}).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});

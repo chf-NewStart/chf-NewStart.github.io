@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=86">
+  <link rel="stylesheet" href="/reading.css?v=87">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -41,6 +41,12 @@
       <button class="icon-btn" id="refreshBtn" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
     </div>
   </header>
+
+  <div class="cloud-pass-banner hidden" id="cloudPassBanner" role="status" aria-live="polite">
+    <span class="cloud-pass-mark" aria-hidden="true">✦</span>
+    <div><strong>High-accuracy review pass ready</strong><span id="cloudPassBannerDetail">For one reviewer workflow. The owner’s API key is never shared.</span></div>
+    <button class="text-button" id="cloudPassRemove" type="button">Remove pass</button>
+  </div>
 
   <main>
     <section id="libraryPage" class="page">
@@ -543,6 +549,18 @@
         <div class="task-progress hidden" id="aiKeyProgress" role="progressbar" aria-label="On-device Gemini preparation progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
       </section>
       <section>
+        <h3>Share a cloud review pass</h3>
+        <p>Create a one-review link for a friend who needs stronger passage matching. The link carries a temporary grant—not your DeepSeek key—and permits only review classification and location.</p>
+        <div class="form-grid">
+          <label class="field-label" for="aiPassService">Pass service URL</label>
+          <input class="field" id="aiPassService" type="url" placeholder="https://phloem-review-pass.your-name.workers.dev" autocomplete="url" spellcheck="false">
+          <label class="field-label" for="aiPassOwnerCode">Your approval code</label>
+          <input class="field" id="aiPassOwnerCode" type="password" placeholder="Not saved in this browser" autocomplete="off" spellcheck="false">
+          <button class="soft-button" id="aiPassCreate" type="button">Copy one-review pass</button>
+        </div>
+        <div class="status" id="aiPassStatus" role="status" aria-live="polite"></div>
+      </section>
+      <section>
         <h3>Set up another device</h3>
         <p>Make a private setup link containing your AI provider settings and every saved API key, plus GitHub sync credentials when configured. Open it only on a device you trust. Google Drive still asks you to sign in separately and its session is never placed in the link.</p>
         <button class="soft-button" id="syncLinkBtn">Copy device setup link</button>
@@ -663,9 +681,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=86',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=87',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=86" defer></script>
+<script src="/reading.js?v=87" defer></script>
 </body>
 </html>

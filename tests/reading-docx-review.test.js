@@ -81,12 +81,15 @@ async function run() {
   check('review packages are filed in a compact In review category', source.includes("REVIEW_WORKSPACE_CATEGORY = 'In review'") && source.includes('placeInReviewWorkspace(target)') && source.includes('placeInReviewWorkspace(ch)'));
   check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.comment.id,review.page)') && css.includes('.review-comment-highlight'));
   check('one reviewer concern can link every distinct PDF passage it cites', source.includes('comment.pdfAnchors=valid') && source.includes('"matches"') && source.includes('up to four') && source.includes('reviewer-passage-links'));
-  check('explicit manuscript page references survive even if AI omits them', source.includes("method:'review-page-reference'") && source.includes('explicit.forEach(function(page)'));
+  check('explicit manuscript page references survive even if AI omits them', source.includes("'review-page-reference'") && source.includes('explicit.forEach(function(page)'));
   check('older nine-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:2') && source.includes('This review used the older summary importer'));
   check('legacy summary matches are suppressed until the source report is re-imported', source.includes('comment.legacyImport=!!legacyReviewReports') && source.includes("if(comment.legacyImport){comment.anchored=false"));
   check('broad restructuring feedback is not forced onto a coincidental passage', source.includes('function stabilizedReviewLevel') && source.includes("level='section'") && source.includes('Section-wide · no single passage named'));
   check('PDF matches must use candidate pages and a confidence threshold', source.includes('reviewCandidatePdfPages') && source.includes('confidence<.55') && source.includes('allowed=pageCandidates.some'));
   check('an invented quote no longer falls back to the whole paragraph', !source.includes("if(start<0){quote=text;start=0;}"));
+  check('AI-selected PDF pages require a drawable passage', source.includes('if(!range&&explicit.indexOf(page)<0)return') && source.includes('never return a page with an empty quote'));
+  check('older page-only links are repaired from real PDF text', source.includes('function repairPdfReviewQuotes') && source.includes('repairPdfReviewQuotes(ch)') && source.includes('reviewNeedsPassage(ch,comment)'));
+  check('PDF quote mapping respects words split across text-layer spans', source.includes('function pdfReviewSpanNeedsSpace') && source.includes('pdfReviewSpanNeedsSpace(previous,span)'));
   check('original Word drafts use the same resumable Drive roaming path', source.includes("name:'docx-'+ch.id+'.docx'") && source.includes('binarySourceSpec(ch)'));
 
   const reviewContext = {};
@@ -94,6 +97,8 @@ async function run() {
     extractFunction('paras'),
     extractFunction('reviewNormalizedText'),
     extractFunction('reviewQuoteRange'),
+    extractFunction('reviewSearchTerms'),
+    extractFunction('reviewLocalPdfQuote'),
     extractFunction('reviewExplicitPages'),
     extractFunction('reviewReportChunks'),
     extractFunction('reviewReportUnits')
@@ -106,6 +111,10 @@ async function run() {
   check('one comment can seed both manuscript locations it explicitly compares', JSON.stringify(dualRefs) === JSON.stringify([6, 15]), dualRefs.join(','));
   const fuzzyQuote = reviewContext.reviewQuoteRange('The model reconstructs the oxygen distribution from a local constraint.', 'model “reconstructs” the oxygen distribution');
   check('quote validation tolerates punctuation but still returns source text', fuzzyQuote && fuzzyQuote.quote.includes('model reconstructs'));
+  const localPassage = reviewContext.reviewLocalPdfQuote('Background material is summarized first. Probe position changed the measured oxygen concentration gradient across the vessel. The conclusion follows.', { text: 'Please clarify how probe position affects the oxygen concentration gradient.' });
+  check('page-only references gain a conservative local passage highlight', localPassage.includes('Probe position changed'));
+  const unrelatedPassage = reviewContext.reviewLocalPdfQuote('The statistical analysis used a standard confidence interval.', { text: 'Please clarify the oxygen sensor placement and spatial concentration gradient.' });
+  check('local passage repair refuses unrelated page text', unrelatedPassage === '');
   const longReport = 'Reviewer 1\n\n' + Array.from({ length: 180 }, (_, i) => 'Comment ' + i + ' asks for a specific clarification about methods and evidence.').join('\n\n');
   const chunks = reviewContext.reviewReportChunks(longReport);
   check('long reports keep every section in bounded chunks', chunks.length > 1 && chunks.join('\n').includes('Comment 179') && Math.max(...chunks.map(chunk => chunk.length)) < 9200, chunks.length + ' chunks');

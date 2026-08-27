@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=73">
+  <link rel="stylesheet" href="/reading.css?v=74">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -59,7 +59,6 @@
 
       <div class="command-bar" id="pdfLinkDrop">
         <button class="button primary" id="importPdfBtn">＋ Add to library</button>
-        <button class="soft-button" id="reviewShortcut">Review a manuscript</button>
         <input class="hidden" type="file" id="pdfFile" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
         <input class="hidden" type="file" id="pdfFolder" webkitdirectory>
       </div>
@@ -641,9 +640,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=73',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=74',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=73" defer></script>
+<script src="/reading.js?v=74" defer></script>
 </body>
 </html>

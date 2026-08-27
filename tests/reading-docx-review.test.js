@@ -68,6 +68,7 @@ function makeStoredZip(records) {
 async function run() {
   check('the Add menu accepts PDFs and Word drafts', html.includes('id="addDialog"') && html.includes('.docx,application/pdf'));
   check('the reader sidebar has a dedicated Reviews tab', html.includes('data-tab="reviewsPanel"') && html.includes('id="readerReviewList"'));
+  check('the library does not duplicate the global Review destination', !html.includes('id="reviewShortcut"') && !source.includes("byId('reviewShortcut')") && html.includes('data-view="reviewPage"'));
   check('Word comment ranges become manuscript highlights', source.includes("name==='commentRangeStart'") && source.includes("name==='commentRangeEnd'") && css.includes('.review-comment-anchor'));
   check('review responses and resolved state persist on the chapter', source.includes('comment.response=area.value') && source.includes('comment.resolved=!comment.resolved'));
   check('AI classifies reviewer concerns without seeing or drafting author responses', source.includes('This task is classification only. Do not draft, rewrite, evaluate, summarize, or complete an author response') && !source.includes('Existing author response:'));

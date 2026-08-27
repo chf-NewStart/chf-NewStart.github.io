@@ -934,7 +934,6 @@
   function updateReviewBadge(){
     var open=state.chapters.reduce(function(total,ch){return total+(ch.reviewComments||[]).filter(function(comment){return !comment.resolved;}).length;},0);
     document.querySelectorAll('[data-view="reviewPage"]').forEach(function(b){b.textContent=open?'Review · '+open:'Review';});
-    byId('reviewShortcut').textContent=open?'Reviewer comments · '+open:'Review notes';
   }
   function reviewerReviewItems(){var items=[];state.chapters.forEach(function(ch){(ch.reviewComments||[]).forEach(function(comment){items.push({ch:ch,comment:comment});});});return items.sort(function(a,b){return Number(a.comment.resolved)-Number(b.comment.resolved)||(+b.ch.updatedAt||0)-(+a.ch.updatedAt||0);});}
   function setReviewPageMode(mode){
@@ -978,7 +977,6 @@
     }
     showReviewCard();
   }
-  byId('reviewShortcut').onclick=function(){showPage('reviewPage');};
   byId('reviewerModeBtn').onclick=function(){setReviewPageMode('reviewers');};
   byId('memoryModeBtn').onclick=function(){setReviewPageMode('memory');};
   function closeAddDialog(){if(byId('addDialog').open)byId('addDialog').close();}

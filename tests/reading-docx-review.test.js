@@ -94,9 +94,28 @@ async function run() {
   check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.comment.id,review.page)') && source.indexOf('var review=pdfReviewAtPoint') < source.indexOf("if(s&&!s.isCollapsed)return") && css.includes('.review-comment-highlight'));
   check('review comments navigate back to their highlighted passages', source.includes(".reviewer-comment-card.has-passage") && source.includes('focusReviewerPassage(ch,card.dataset.reviewCard)'));
   check('one reviewer concern can link every distinct PDF passage it cites', source.includes('comment.pdfAnchors=valid') && source.includes('"matches"') && source.includes('up to four') && source.includes('reviewer-passage-links'));
+  check('readers can reject a wrong AI passage and select the correction on the paper', html.includes('id="selectionLinkReview"') && source.includes('function removeReviewerPassage') && source.includes('function linkSelectionToReview') && source.includes("method:'manual-pdf-selection'") && source.includes('Wrong passage'));
+  check('review comments support multiple user-selected passages', source.includes('data-review-add-passage') && source.includes('Add another passage') && source.includes('pdfAnchors.push') && source.includes('textAnchors.push'));
+  check('manual passage corrections are labelled and reversible', source.includes('Linked by you') && html.includes('id="reviewLinkUndoBtn"') && source.includes('function restoreReviewLinkUndo') && css.includes('.reviewer-chip.review-linked-by-user'));
+  check('manual passage corrections override AI and survive a same-comment re-import', source.includes('comment.manualReviewLink') && source.includes('function preserveManualReviewLocation') && source.includes('preserveManualReviewLocation(record,prior)') && extractFunction('reviewCanAutoLocate').includes('comment.manualReviewLink'));
+  const manualContext = {
+    REVIEW_LOCATION_FIELDS: ['para','page','start','end','quote','anchors','pdfAnchors','anchored','anchorMethod','matchConfidence','locatedProvider','locationStatus','manualReviewLink','manualLocationRejected'],
+    now: () => 500
+  };
+  vm.runInNewContext([
+    extractFunction('cloneReviewLocationValue'),
+    extractFunction('reviewLocationSnapshot'),
+    extractFunction('applyReviewLocationSnapshot'),
+    extractFunction('preserveManualReviewLocation')
+  ].join('\n'), manualContext);
+  const savedManual = { page: 7, quote: 'Exact selected sentence.', pdfAnchors: [{ page: 7, quote: 'Exact selected sentence.', method: 'manual-pdf-selection', manual: true }], anchored: true, matchConfidence: 1, manualReviewLink: true };
+  const refreshedComment = { page: null, quote: '', pdfAnchors: [], anchored: false };
+  const preserved = manualContext.preserveManualReviewLocation(refreshedComment, savedManual);
+  savedManual.pdfAnchors[0].quote = 'Mutated after copy';
+  check('manual reviewer locations are copied by value during re-import', preserved && refreshedComment.page === 7 && refreshedComment.pdfAnchors[0].quote === 'Exact selected sentence.' && refreshedComment.manualReviewLink === true);
   check('explicit manuscript page references survive even if AI omits them', source.includes("'review-page-reference'") && source.includes('explicit.forEach(function(page)'));
   check('older nine-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:2') && source.includes('This review used the older summary importer'));
-  check('legacy summary matches are suppressed until the source report is re-imported', source.includes('comment.legacyImport=!!legacyReviewReports') && source.includes("if(comment.legacyImport){comment.anchored=false"));
+  check('legacy summary matches are suppressed until the source report is re-imported', source.includes('comment.legacyImport=!!legacyReviewReports') && source.includes("if(comment.legacyImport&&!comment.manualReviewLink){comment.anchored=false"));
   check('broad restructuring feedback is not forced onto a coincidental passage', source.includes('function stabilizedReviewLevel') && source.includes("level='section'") && source.includes('Section-wide · no single passage named'));
   check('PDF matches must use candidate pages and a confidence threshold', source.includes('reviewCandidatePdfPages') && source.includes('confidence<.55') && source.includes('allowed=pageCandidates.some'));
   check('an invented quote no longer falls back to the whole paragraph', !source.includes("if(start<0){quote=text;start=0;}"));

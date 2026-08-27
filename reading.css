@@ -764,6 +764,8 @@
     .selection-card .lookup-selection { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
     .selection-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; padding: 10px 14px 8px; }
     .selection-action { min-height: 36px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: .68rem; font-weight: 700; }
+    .selection-link-review { grid-column: 1 / -1; border-color: color-mix(in srgb, var(--accent) 58%, var(--line)); background: var(--accent); color: #fff; }
+    .selection-action.selection-link-review:hover { border-color: var(--accent-dark); background: var(--accent-dark); color: #fff; }
     .selection-action:hover { border-color: var(--accent); background: var(--accent-soft); }
     .selection-action.active { border-color: color-mix(in srgb, var(--accent) 58%, var(--line)); background: var(--accent-soft); color: var(--accent-dark); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 13%, transparent); }
     .selection-action:disabled { cursor: default; opacity: .42; }
@@ -940,6 +942,9 @@
     .reviewer-panel-head #clearReviewCommentsBtn.hidden { display: none; }
     .reviewer-locate-status { min-height: 0; margin: 8px 0 0; color: var(--muted); font-size: .65rem; line-height: 1.45; }
     .reviewer-locate-status:empty { display: none; }
+    .review-link-mode { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--line)); border-radius: 10px; background: var(--accent-soft); color: var(--ink); font: 700 .64rem/1.4 var(--sans); }
+    .review-link-mode .text-button { flex: 0 0 auto; color: var(--accent-dark); }
+    .review-link-undo { display: block; margin: 7px 0 0 auto; color: var(--accent); font-size: .62rem; }
     .review-quality-summary { margin: 10px 0 0; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--paper) 84%, var(--cream)); color: var(--ink); font: 700 .62rem/1.4 var(--sans); }
     .review-quality-summary.needs-checking { border-color: color-mix(in srgb, #b8791f 42%, var(--line)); background: color-mix(in srgb, #f2d98f 14%, var(--paper)); }
     .task-progress { position: relative; overflow: hidden; width: 100%; height: 5px; margin-top: 8px; border-radius: 999px; background: color-mix(in srgb, var(--line) 64%, transparent); }
@@ -954,6 +959,7 @@
     .reviewer-comment-list { display: grid; gap: 12px; padding: 14px 0 5px; }
     .reviewer-comment-card { padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); transition: border-color .18s ease, opacity .18s ease, box-shadow .18s ease; }
     .reviewer-comment-card.focused { border-color: color-mix(in srgb, var(--yellow) 72%, var(--accent)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow) 22%, transparent); }
+    .reviewer-comment-card.linking { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent); }
     .reviewer-comment-card.review-level-specific { border-left: 4px solid #b8791f; }
     .reviewer-comment-card.review-level-general { border-left: 4px solid #5b7e4d; }
     .reviewer-comment-card.review-level-section { border-left: 4px solid #32708b; }
@@ -964,6 +970,7 @@
     .reviewer-card-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 10px; color: var(--muted); font-size: .59rem; font-weight: 750; letter-spacing: .055em; text-transform: uppercase; }
     .reviewer-classification { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 9px; }
     .reviewer-chip.review-needs-checking { box-shadow: inset 0 0 0 1px color-mix(in srgb, #b8791f 48%, var(--line)); background: color-mix(in srgb, #f2d98f 18%, var(--surface-2)); color: #8a5b18; }
+    .reviewer-chip.review-linked-by-user { box-shadow: inset 0 0 0 1px color-mix(in srgb, #32708b 35%, var(--line)); background: color-mix(in srgb, #69b9da 16%, var(--surface-2)); color: #285f76; }
     .reviewer-chip { border-radius: 999px; padding: 4px 7px; background: var(--surface-2); color: var(--muted); font: 750 .55rem/1 var(--sans); }
     .reviewer-chip.level { background: color-mix(in srgb, var(--yellow) 20%, var(--surface-2)); color: var(--ink); }
     .reviewer-chip.level.review-level-general { background: color-mix(in srgb, #80b369 24%, var(--surface-2)); }
@@ -975,10 +982,14 @@
     .reviewer-reply { margin: 8px 0; padding: 9px 10px; border-radius: 8px; background: var(--surface-2); }
     .reviewer-reply b { display: block; margin-bottom: 3px; color: var(--muted); font-size: .62rem; }
     .reviewer-reply p { margin: 0; font: .72rem/1.45 var(--serif); }
-    .reviewer-show-passage, .reviewer-resolve { border: 0; padding: 4px 0; background: transparent; color: var(--accent); font: 700 .66rem/1.3 var(--sans); }
+    .reviewer-show-passage, .reviewer-resolve, .reviewer-add-passage, .reviewer-wrong-passage { border: 0; padding: 4px 0; background: transparent; color: var(--accent); font: 700 .66rem/1.3 var(--sans); }
     .reviewer-show-passage { display: block; margin: 1px 0 4px; }
-    .reviewer-passage-links { display: flex; flex-wrap: wrap; gap: 1px 12px; margin: 1px 0 4px; }
+    .reviewer-passage-links { display: grid; gap: 3px; margin: 1px 0 4px; }
+    .reviewer-passage-item { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid color-mix(in srgb, var(--line) 62%, transparent); }
     .reviewer-passage-links .reviewer-show-passage { margin: 0; }
+    .reviewer-wrong-passage { flex: 0 0 auto; color: var(--muted); font-size: .58rem; }
+    .reviewer-wrong-passage:hover { color: var(--accent); }
+    .reviewer-add-passage { display: block; margin: 3px 0 8px; color: var(--blue); font-size: .61rem; }
     .reviewer-resolve { margin-top: 8px; color: var(--muted); }
     .reviewer-resolve:hover { color: var(--accent); }
     .reviewer-unlinked { display: block; margin: 2px 0 7px; color: var(--muted); font: italic .66rem/1.4 var(--serif); }

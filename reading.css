@@ -156,7 +156,8 @@
     .paper-category-rail::-webkit-scrollbar-track { background: transparent; }
     .paper-category-rail::-webkit-scrollbar-thumb { border-radius: 999px; background: color-mix(in srgb, var(--muted) 42%, transparent); }
     .paper-category-tab { position: relative; flex: 0 0 auto; display: flex; align-items: center; min-width: 224px; max-width: 278px; opacity: .52; transition: opacity .16s ease, transform .16s ease; }
-    .paper-category-tab:hover, .paper-category-tab:focus-within, .paper-category-tab.is-selected { opacity: 1; }
+    .paper-category-tab:focus-within, .paper-category-tab.is-selected { opacity: 1; }
+    @media (hover: hover) { .paper-category-tab:hover { opacity: 1; } }
     .paper-category-tab.is-selected { transform: translateY(-1px); }
     .paper-category-tab.is-dragging { opacity: .24; transform: scale(.97); }
     .paper-category-tab.paper-drop-target { opacity: 1; border-radius: 10px; background: color-mix(in srgb, var(--yellow) 28%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 44%, transparent); transform: translateY(-2px); }
@@ -173,10 +174,12 @@
     .paper-category-mark::before { content: ""; position: absolute; z-index: -1; inset: 1px 0 0; height: 1.32em; border-radius: 5px 12px 4px 9px; background: linear-gradient(90deg, rgba(245,211,80,.72), rgba(247,218,93,.96) 48%, rgba(238,196,48,.72)); clip-path: polygon(1% 13%, 98% 2%, 100% 82%, 74% 94%, 29% 86%, 0 100%); transform: rotate(-1.2deg); box-shadow: inset 0 -1px rgba(175,130,12,.08); }
     .paper-category-count { position: relative; z-index: 1; flex: 0 0 auto; min-width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--surface) 75%, transparent); color: var(--muted); font: 700 .55rem/1 var(--sans); }
     .paper-category-edit { flex: 0 0 29px; width: 29px; height: 29px; margin-left: -6px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font: 650 .7rem/1 var(--sans); opacity: 0; }
-    .paper-category-tab.is-selected .paper-category-edit, .paper-category-tab:hover .paper-category-edit, .paper-category-edit:focus-visible { opacity: .7; }
+    .paper-category-tab.is-selected .paper-category-edit, .paper-category-edit:focus-visible { opacity: .7; }
+    @media (hover: hover) { .paper-category-tab:hover .paper-category-edit { opacity: .7; } }
     .paper-category-edit:hover, .paper-category-edit:focus-visible { background: color-mix(in srgb, var(--surface) 74%, transparent); color: var(--ink); opacity: 1; outline: none; }
     .paper-category-reorder { flex: 0 0 42px; display: flex; align-items: center; margin-left: -5px; opacity: 0; transition: opacity .14s ease; }
-    .paper-category-tab:hover .paper-category-reorder, .paper-category-tab:focus-within .paper-category-reorder, .paper-category-tab.is-selected .paper-category-reorder { opacity: .72; }
+    .paper-category-tab:focus-within .paper-category-reorder, .paper-category-tab.is-selected .paper-category-reorder { opacity: .72; }
+    @media (hover: hover) { .paper-category-tab:hover .paper-category-reorder { opacity: .72; } }
     .paper-category-step { width: 21px; height: 27px; padding: 0; border: 0; background: transparent; color: var(--muted); font: 750 1rem/1 var(--sans); }
     .paper-category-step:hover, .paper-category-step:focus-visible { border-radius: 6px; background: color-mix(in srgb, var(--surface) 78%, transparent); color: var(--ink); outline: none; }
     .paper-category-step:disabled { opacity: .2; cursor: default; }
@@ -188,7 +191,7 @@
     .category-note-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 19px 12px; padding: 0 5px 12px 9px; }
     .paper-sticky-wrap { position: relative; min-width: 0; }
     .book-spine.paper-sticky-note { position: relative; display: block; width: 100%; height: 178px; min-width: 0; margin: 0; padding: 0; border: 1px solid color-mix(in srgb, var(--note-ink) 14%, transparent); border-radius: 2px 3px 7px 4px; background: linear-gradient(165deg, rgba(255,255,255,.15), transparent 58%), color-mix(in srgb, var(--note-paper) 62%, #fffbed); color: var(--note-ink); text-align: left; box-shadow: 0 7px 15px rgba(42,38,30,.13), inset 0 1px rgba(255,255,255,.24); transform: rotate(var(--note-tilt, 0deg)); cursor: pointer; transition: transform .17s ease, box-shadow .17s ease; }
-    .book-spine.paper-sticky-note:hover { z-index: 4; transform: translateY(-3px) rotate(0deg); box-shadow: 0 11px 19px rgba(42,38,30,.17), inset 0 1px rgba(255,255,255,.24); }
+    @media (hover: hover) { .book-spine.paper-sticky-note:hover { z-index: 4; transform: translateY(-3px) rotate(0deg); box-shadow: 0 11px 19px rgba(42,38,30,.17), inset 0 1px rgba(255,255,255,.24); } }
     .book-spine.paper-sticky-note:focus-visible { z-index: 4; transform: rotate(0deg); outline: 2px solid color-mix(in srgb, var(--accent) 72%, white); outline-offset: 3px; }
     .book-spine.paper-sticky-note.is-selected { border-color: color-mix(in srgb, var(--yellow) 82%, var(--note-ink)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow) 68%, white), 0 9px 18px rgba(42,38,30,.16); }
     .paper-sticky-note::after { content: ""; position: absolute; z-index: 3; top: -8px; left: 50%; width: 38px; height: 14px; border: 1px solid rgba(115,103,73,.12); border-radius: 1px; background: linear-gradient(90deg, rgba(238,226,181,.5), rgba(255,247,213,.72) 48%, rgba(231,217,169,.5)); box-shadow: 0 2px 3px rgba(60,54,39,.1); transform: translateX(-50%) rotate(var(--tape-tilt, -1deg)); opacity: .78; }
@@ -201,10 +204,12 @@
     .paper-sticky-wrap.is-paper-dragging { z-index: 19; opacity: .42; }
     .paper-sticky-wrap.is-paper-dragging .paper-sticky-note { transform: rotate(0deg) scale(.97); }
     .paper-sticky-grip { position: absolute; z-index: 7; left: 7px; top: 7px; width: 22px; height: 24px; display: grid; place-items: center; border-radius: 6px; background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--note-ink, var(--ink)); font: 700 .7rem/1 var(--sans); cursor: grab; opacity: .28; user-select: none; transition: opacity .15s ease, background .15s ease; }
-    .paper-sticky-wrap:hover .paper-sticky-grip, .paper-sticky-grip:focus-visible { background: color-mix(in srgb, var(--surface) 88%, #fffbed); opacity: .9; outline: none; }
+    .paper-sticky-grip:focus-visible { background: color-mix(in srgb, var(--surface) 88%, #fffbed); opacity: .9; outline: none; }
+    @media (hover: hover) { .paper-sticky-wrap:hover .paper-sticky-grip { background: color-mix(in srgb, var(--surface) 88%, #fffbed); opacity: .9; } }
     .paper-sticky-grip:active { cursor: grabbing; }
     .paper-category-move { position: absolute; z-index: 7; right: 8px; bottom: 7px; width: 57px; height: 27px; padding: 0 7px; border: 1px solid color-mix(in srgb, var(--ink) 17%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--surface) 84%, #fffbed); color: var(--ink); font: 750 .56rem/1 var(--sans); letter-spacing: .02em; opacity: 0; transform: translateY(3px); transition: opacity .15s ease, transform .15s ease; }
-    .paper-sticky-wrap:hover .paper-category-move, .paper-sticky-wrap.is-menu-open .paper-category-move, .paper-category-move:focus-visible { opacity: .92; transform: none; }
+    .paper-sticky-wrap.is-menu-open .paper-category-move, .paper-category-move:focus-visible { opacity: .92; transform: none; }
+    @media (hover: hover) { .paper-sticky-wrap:hover .paper-category-move { opacity: .92; transform: none; } }
     .paper-category-move:hover, .paper-category-move:focus-visible { border-color: var(--ink); outline: none; }
     .paper-category-menu { position: absolute; z-index: 12; right: 7px; top: 35px; width: min(198px, calc(100% - 14px)); padding: 7px; border: 1px solid color-mix(in srgb, var(--line) 78%, #a89977); border-radius: 10px; background: color-mix(in srgb, var(--surface) 94%, #fff5d9); box-shadow: 0 13px 25px rgba(42,38,30,.22), inset 0 1px rgba(255,255,255,.55); }
     .paper-sticky-wrap.menu-above .paper-category-menu { top: auto; bottom: 39px; }
@@ -221,6 +226,22 @@
     .paper-category-choice:hover, .paper-category-choice:focus-visible { background: color-mix(in srgb, var(--yellow) 34%, transparent); outline: none; }
     .paper-category-choice.is-new { margin-top: 4px; border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent); border-radius: 0 0 6px 6px; color: var(--accent); }
     .paper-category-menu-empty { display: block; padding: 5px 8px 7px; color: var(--muted); font: italic .65rem/1.2 var(--serif); }
+
+    /* Glass has no hover, and iPad Safari spends the first tap simulating one whenever
+       hover would reveal a control — which made categories and papers take two taps.
+       On touch screens nothing waits behind a hover: every control is already visible,
+       drag grips give way to the tap-friendly arrows and Move menu, and taps act at
+       finger size on the first try. */
+    @media (hover: none) {
+      .paper-category-tab { opacity: .74; }
+      .paper-category-grip, .paper-sticky-grip { display: none; }
+      .paper-category-edit { opacity: .7; }
+      .paper-category-reorder { opacity: .72; }
+      .paper-category-step { width: 27px; height: 34px; }
+      .paper-category-move { width: 62px; height: 31px; opacity: .92; transform: none; }
+      .paper-category-choice { min-height: 36px; }
+      .bookcase button, .paper-category-menu input { touch-action: manipulation; }
+    }
 
     /* At night this is a dim field desk, not the daylight wall with a gray filter.
        The sticky colors and blue handwriting stay identical across themes so a
@@ -760,7 +781,8 @@
     .inline-note { width: 100%; min-height: 72px; margin-top: 10px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: color-mix(in srgb, var(--yellow) 18%, var(--surface)); }
     #pageNote, .inline-note { font: .88rem/1.55 var(--sans); word-spacing: normal; caret-color: var(--accent); }
     .para-action { margin-top: 4px; border: 0; background: none; color: var(--blue); font-size: .7rem; padding: 3px 0; opacity: 0; pointer-events: none; transition: opacity .15s ease; }
-    .para:hover .para-action, .para.current .para-action, .para:focus-within .para-action { opacity: 1; pointer-events: auto; }
+    .para.current .para-action, .para:focus-within .para-action { opacity: 1; pointer-events: auto; }
+    @media (hover: hover) { .para:hover .para-action { opacity: 1; pointer-events: auto; } }
     .para-action + .para-action { margin-left: 14px; }
 
     .notebook { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--surface); }

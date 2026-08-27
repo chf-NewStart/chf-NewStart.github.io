@@ -15,8 +15,9 @@ function check(name, condition, extra) {
 }
 
 function extractFunction(name) {
-  const marker = 'async function ' + name + '(';
-  const start = source.indexOf(marker);
+  const asyncMarker = 'async function ' + name + '(';
+  const syncMarker = 'function ' + name + '(';
+  const start = source.indexOf(asyncMarker) >= 0 ? source.indexOf(asyncMarker) : source.indexOf(syncMarker);
   if (start < 0) return '';
   const brace = source.indexOf('{', start);
   let depth = 0;
@@ -69,11 +70,35 @@ async function run() {
   check('the reader sidebar has a dedicated Reviews tab', html.includes('data-tab="reviewsPanel"') && html.includes('id="readerReviewList"'));
   check('Word comment ranges become manuscript highlights', source.includes("name==='commentRangeStart'") && source.includes("name==='commentRangeEnd'") && css.includes('.review-comment-anchor'));
   check('review responses and resolved state persist on the chapter', source.includes('comment.response=area.value') && source.includes('comment.resolved=!comment.resolved'));
-  check('unlinked feedback is located only through an explicit AI action', html.includes('id="locateReviewsBtn"') && source.includes('locateOneReviewWithAi') && source.includes('runAi(system,user,450,onProgress)'));
+  check('unlinked feedback is located only through an explicit AI action', html.includes('id="locateReviewsBtn"') && source.includes('locateOneReviewWithAi') && source.includes('runAi(system,user,650,onProgress)'));
   check('the review flow clearly supports one combined Word file', html.includes('id="reviewCombinedFile"') && html.includes('Commented Word manuscript') && source.includes("if(!parsed.comments.length)"));
   check('the review flow clearly supports a manuscript plus separate comments', html.includes('id="reviewPaperFile"') && html.includes('id="reviewCommentsFile"') && source.includes('importSourceFile(paper,null,null,button,true)') && source.includes('importReviewerFile(target,comments,button)'));
   check('a comment-only reviewer Word file can still be attached from the reader sidebar', html.includes('id="importReviewFileBtn"') && source.includes('extractReviewerReportWithAi') && source.includes('importReviewerFile'));
+  check('review concerns are classified by scope and topic', html.includes('id="reviewerFilters"') && source.includes('REVIEW_LEVEL_LABELS') && source.includes('REVIEW_TOPIC_LABELS') && css.includes('.reviewer-classification'));
+  check('long response-to-reviewers files are chunked instead of truncated', source.includes('function reviewReportChunks') && !source.includes("String(text||'').slice(0,30000)"));
+  check('Word formatting distinguishes reviewer text from author replies', source.includes('paragraphRoles:reviewRoles') && source.includes("'REVIEWER TEXT'") && source.includes("'AUTHOR RESPONSE'"));
+  check('PDF review navigation stays in the original PDF', extractFunction('focusReviewerPassage').includes('gotoPdfPage(page)') && !extractFunction('focusReviewerPassage').includes("readerMode='text'"));
+  check('PDF matches must use candidate pages and a confidence threshold', source.includes('reviewCandidatePdfPages') && source.includes('confidence<.55') && source.includes('allowed=pageCandidates.some'));
+  check('an invented quote no longer falls back to the whole paragraph', !source.includes("if(start<0){quote=text;start=0;}"));
   check('original Word drafts use the same resumable Drive roaming path', source.includes("name:'docx-'+ch.id+'.docx'") && source.includes('binarySourceSpec(ch)'));
+
+  const reviewContext = {};
+  vm.runInNewContext([
+    extractFunction('paras'),
+    extractFunction('reviewNormalizedText'),
+    extractFunction('reviewQuoteRange'),
+    extractFunction('reviewExplicitPages'),
+    extractFunction('reviewReportChunks')
+  ].join('\n'), reviewContext);
+  const pageRefs = reviewContext.reviewExplicitPages({ text: 'See pp. 18–20 and page 31.' }, 34);
+  check('explicit page ranges seed the PDF candidate set', JSON.stringify(pageRefs) === JSON.stringify([18, 19, 20, 31]), pageRefs.join(','));
+  const mainOnlyRefs = reviewContext.reviewExplicitPages({ text: 'Supplementary p. 13 differs; main manuscript p. 7 needs the correction.' }, 34);
+  check('supplement page numbers are not mistaken for main-PDF pages', JSON.stringify(mainOnlyRefs) === JSON.stringify([7]), mainOnlyRefs.join(','));
+  const fuzzyQuote = reviewContext.reviewQuoteRange('The model reconstructs the oxygen distribution from a local constraint.', 'model “reconstructs” the oxygen distribution');
+  check('quote validation tolerates punctuation but still returns source text', fuzzyQuote && fuzzyQuote.quote.includes('model reconstructs'));
+  const longReport = 'Reviewer 1\n\n' + Array.from({ length: 180 }, (_, i) => 'Comment ' + i + ' asks for a specific clarification about methods and evidence.').join('\n\n');
+  const chunks = reviewContext.reviewReportChunks(longReport);
+  check('long reports keep every section in bounded chunks', chunks.length > 1 && chunks.join('\n').includes('Comment 179') && Math.max(...chunks.map(chunk => chunk.length)) < 9200, chunks.length + ' chunks');
 
   const functionSource = extractFunction('docxZipEntries');
   const context = { ArrayBuffer, Uint8Array, DataView, TextDecoder, Blob, Response, DecompressionStream };

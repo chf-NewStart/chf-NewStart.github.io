@@ -38,7 +38,7 @@
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
-  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), reviewFocusId = '', pendingReviewTargetId = '', reviewPairPaper = null, reviewPairComments = null;
+  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), reviewFocusId = '', reviewFilter = 'all', pendingReviewTargetId = '', reviewPairPaper = null, reviewPairComments = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
 
   function byId(id){ return document.getElementById(id); }
@@ -118,6 +118,22 @@
     aiProgress(onProgress,'Asking '+route.label+'…');return runCloudAi(route,messages,maxTokens);
   }
   function runAi(system,user,maxTokens,onProgress){return runAiMessages([{role:'system',content:system},{role:'user',content:user}],maxTokens,onProgress);}
+  var REVIEW_LEVEL_LABELS={general:'General',section:'Section',specific:'Specific',editorial:'Editorial / typo'};
+  var REVIEW_TOPIC_LABELS={writing:'Writing',structure:'Structure',methods:'Methods',statistics:'Statistics',modeling:'Modeling',evidence:'Evidence',figures:'Figure / table',consistency:'Consistency',claims:'Claims',references:'References',other:'Other'};
+  function normalizeReviewLevel(value,comment){
+    value=String(value||'').toLowerCase().replace(/[^a-z]+/g,'');
+    if(value==='sectional'||value==='sectionwide')value='section';
+    if(value==='typo'||value==='language'||value==='copyedit')value='editorial';
+    if(!REVIEW_LEVEL_LABELS[value])value=comment&&comment.anchored?'specific':'general';
+    return value;
+  }
+  function normalizeReviewTopic(value){
+    value=String(value||'').toLowerCase().replace(/[^a-z]+/g,'');
+    var aliases={typo:'writing',language:'writing',grammar:'writing',style:'writing',method:'methods',analysis:'statistics',data:'evidence',figure:'figures',table:'figures',visual:'figures',model:'modeling',citation:'references',reference:'references',interpretation:'claims',scope:'claims'};
+    value=aliases[value]||value;return REVIEW_TOPIC_LABELS[value]?value:'other';
+  }
+  function reviewLevelLabel(value){return REVIEW_LEVEL_LABELS[value]||REVIEW_LEVEL_LABELS.general;}
+  function reviewTopicLabel(value){return REVIEW_TOPIC_LABELS[value]||REVIEW_TOPIC_LABELS.other;}
   function normalize(ch){
     ch.notes = ch.notes || {}; ch.pageNotes = ch.pageNotes || {}; ch.tags = ch.tags || [];
     ch.questions = ch.questions || []; ch.highlights = ch.highlights || {}; ch.textHighlights = ch.textHighlights || [];
@@ -126,7 +142,7 @@
     ch.aiThreads=ch.aiThreads.filter(function(t){return t&&t.id&&Array.isArray(t.messages);}).slice(0,12);if(ch.activeAiThreadId&&!ch.aiThreads.some(function(t){return t.id===ch.activeAiThreadId;}))ch.activeAiThreadId='';if(!ch.activeAiThreadId&&ch.aiThreads[0])ch.activeAiThreadId=ch.aiThreads[0].id;
     ch.readerHighlights = ch.readerHighlights || []; ch.readerNotes = ch.readerNotes || {}; ch.termLookups = ch.termLookups || {}; ch.reviews = ch.reviews || {};
     if(!Array.isArray(ch.reviewComments))ch.reviewComments=[];
-    ch.reviewComments.forEach(function(comment){comment.replies=Array.isArray(comment.replies)?comment.replies:[];comment.anchors=Array.isArray(comment.anchors)?comment.anchors:(comment.anchored?[{para:comment.para,start:comment.start,end:comment.end,quote:comment.quote||''}]:[]);comment.response=String(comment.response||'');comment.resolved=!!comment.resolved;});
+    ch.reviewComments.forEach(function(comment){comment.replies=Array.isArray(comment.replies)?comment.replies:[];comment.anchors=Array.isArray(comment.anchors)?comment.anchors:(comment.anchored&&comment.para!==null&&comment.para!==undefined?[{para:comment.para,start:comment.start,end:comment.end,quote:comment.quote||''}]:[]);comment.response=String(comment.response||'');comment.locationHint=String(comment.locationHint||'');comment.level=normalizeReviewLevel(comment.level,comment);comment.topic=normalizeReviewTopic(comment.topic);comment.page=+comment.page||null;comment.resolved=!!comment.resolved;});
     ch.addedAt = ch.addedAt || now(); ch.updatedAt = ch.updatedAt || ch.addedAt;
     ch.readPage = ch.readPage || 1; ch.kind = ch.kind || (ch.pageTexts ? 'pdf' : 'text');
     return ch;
@@ -867,7 +883,7 @@
   function renderReviewerInbox(){
     var box=byId('reviewerDesk'),items=reviewerReviewItems(),open=items.filter(function(item){return !item.comment.resolved;}).length;byId('reviewCount').textContent=items.length?(open+' open · '+items.length+' total'):'';byId('reviewerCount').textContent=items.length?'· '+open:'';
     if(!items.length){box.innerHTML='<div class="empty">No reviewer comments yet. Add a commented Word draft, or attach a comment-only reviewer file to a manuscript.</div>';return;}
-    box.innerHTML='<div class="reviewer-inbox">'+items.map(function(item){var comment=item.comment;return '<article class="reviewer-inbox-card'+(comment.resolved?' resolved':'')+'"><span class="review-eyebrow">'+esc(comment.author||'Reviewer')+' · '+esc(item.ch.title||'Untitled')+'</span><p>'+esc(comment.text||'')+'</p>'+(comment.quote&&comment.anchored?'<blockquote>'+esc(comment.quote)+'</blockquote>':'')+'<button class="text-button" type="button" data-open-review-paper="'+esc(item.ch.id)+'" data-open-review-comment="'+esc(comment.id)+'">Open beside draft →</button></article>';}).join('')+'</div>';
+    box.innerHTML='<div class="reviewer-inbox">'+items.map(function(item){var comment=item.comment;return '<article class="reviewer-inbox-card'+(comment.resolved?' resolved':'')+'"><span class="review-eyebrow">'+esc(comment.author||'Reviewer')+' · '+esc(item.ch.title||'Untitled')+'</span><div class="reviewer-classification"><span class="reviewer-chip level">'+esc(reviewLevelLabel(comment.level))+'</span><span class="reviewer-chip">'+esc(reviewTopicLabel(comment.topic))+'</span></div><p>'+esc(comment.text||'')+'</p>'+(comment.quote&&comment.anchored?'<blockquote>'+esc(comment.quote)+'</blockquote>':'')+'<button class="text-button" type="button" data-open-review-paper="'+esc(item.ch.id)+'" data-open-review-comment="'+esc(comment.id)+'">Open beside draft →</button></article>';}).join('')+'</div>';
     box.querySelectorAll('[data-open-review-paper]').forEach(function(button){button.onclick=function(){var chapterId=button.dataset.openReviewPaper,commentId=button.dataset.openReviewComment;openReader(chapterId).then(function(){showReviewerComment(find(chapterId),commentId);});};});
   }
   function renderReview(){
@@ -1530,7 +1546,7 @@
       var id=paraToComment[docxAttr(node,'paraId')],parent=paraToComment[docxAttr(node,'paraIdParent')];if(!id||!comments[id])return;
       if(parent&&parent!==id)comments[id].parentId=parent;comments[id].sourceResolved=/^(?:1|true)$/i.test(docxAttr(node,'done'));
     });
-    var active={},paragraphs=[],kinds=[],anchors={};
+    var active={},paragraphs=[],kinds=[],reviewRoles=[],anchors={};
     docxElements(documentXml,'p').forEach(function(paragraph){
       var raw='',localAnchors={},references={};
       function append(text){if(!text)return;var start=raw.length;raw+=text;Object.keys(active).forEach(function(id){var anchor=localAnchors[id]||(localAnchors[id]={start:start,end:start});anchor.end=raw.length;});}
@@ -1552,12 +1568,13 @@
       walk(paragraph,false);var leading=(raw.match(/^\s*/)||[''])[0].length,text=raw.trim();if(!text)return;var paraIndex=paragraphs.length;
       Object.keys(references).forEach(function(id){if(!localAnchors[id])localAnchors[id]={start:references[id],end:references[id]};});
       Object.keys(localAnchors).forEach(function(id){var anchor=localAnchors[id],start=Math.max(0,Math.min(text.length,anchor.start-leading)),end=Math.max(start,Math.min(text.length,anchor.end-leading));if(end===start){start=0;end=text.length;}(anchors[id]=anchors[id]||[]).push({para:paraIndex,start:start,end:end,quote:text.slice(start,end)});});
-      paragraphs.push(text);kinds.push(docxParagraphKind(paragraph));
+      var roleRuns=docxElements(paragraph,'r').filter(function(run){return docxNodeText(run).trim();}),italicRuns=roleRuns.filter(function(run){var italic=docxElements(run,'i')[0]||docxElements(run,'iCs')[0],value=italic&&docxAttr(italic,'val');return!!italic&&!/^(?:0|false|off)$/i.test(value||'1');});
+      paragraphs.push(text);kinds.push(docxParagraphKind(paragraph));reviewRoles.push(roleRuns.length&&italicRuns.length/roleRuns.length>=.8?'reviewer':'response');
     });
     var roots=[];Object.keys(comments).forEach(function(id){var comment=comments[id],ranges=anchors[id]||[];comment.anchored=!!ranges.length;comment.resolved=!!comment.sourceResolved;if(ranges.length){comment.anchors=ranges;Object.assign(comment,ranges[0]);comment.quote=ranges.map(function(anchor){return anchor.quote;}).join(' … ');comment.anchorMethod='word';}if(comment.parentId&&comments[comment.parentId])comments[comment.parentId].replies.push({author:comment.author,date:comment.date,text:comment.text,sourceId:comment.sourceId});else if(comment.text)roots.push(comment);});
     var title='',creator='';if(coreXml){var titleNode=docxElements(coreXml,'title')[0],creatorNode=docxElements(coreXml,'creator')[0];title=titleNode&&titleNode.textContent.trim()||'';creator=creatorNode&&creatorNode.textContent.trim()||'';}
     if(!title){for(var i=0;i<paragraphs.length;i++)if(kinds[i]==='h1'){title=paragraphs[i];break;}}
-    return {title:title||filenameTitle(filename),authors:creator,paragraphs:paragraphs,kinds:kinds,comments:roots,trackedChanges:tracked};
+    return {title:title||filenameTitle(filename),authors:creator,paragraphs:paragraphs,kinds:kinds,paragraphRoles:reviewRoles,comments:roots,trackedChanges:tracked};
   }
   function hasHanScript(text){return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/.test(String(text||''));}
   function hasCompactScript(text){return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]/.test(String(text||''));}
@@ -1679,7 +1696,7 @@
 
   function mergeImportedReviewState(incoming,existing){
     var old={},byText={};(existing||[]).forEach(function(comment){old[String(comment.sourceId||comment.id)]=comment;byText[String(comment.author||'')+'|'+String(comment.text||'')+'|'+String(comment.quote||'')]=comment;});
-    return (incoming||[]).map(function(comment){var prior=old[String(comment.sourceId||comment.id)]||byText[String(comment.author||'')+'|'+String(comment.text||'')+'|'+String(comment.quote||'')];if(prior){comment.response=prior.response||'';comment.resolved=!!prior.resolved;comment.updatedAt=prior.updatedAt||0;if(prior.anchored&&prior.anchorMethod==='ai'&&!comment.anchored){comment.para=prior.para;comment.start=prior.start;comment.end=prior.end;comment.quote=prior.quote;comment.anchors=prior.anchors||[{para:prior.para,start:prior.start,end:prior.end,quote:prior.quote||''}];comment.anchored=true;comment.anchorMethod='ai';comment.locatedProvider=prior.locatedProvider||'';}}return comment;});
+    return (incoming||[]).map(function(comment){var prior=old[String(comment.sourceId||comment.id)]||byText[String(comment.author||'')+'|'+String(comment.text||'')+'|'+String(comment.quote||'')];if(prior){comment.response=prior.response||'';comment.resolved=!!prior.resolved;comment.updatedAt=prior.updatedAt||0;if(prior.anchored&&prior.anchorMethod==='ai'&&!comment.anchored){comment.para=prior.para;comment.start=prior.start;comment.end=prior.end;comment.quote=prior.quote;comment.anchors=prior.anchors||[{para:prior.para,start:prior.start,end:prior.end,quote:prior.quote||''}];comment.anchored=true;comment.anchorMethod='ai';comment.locatedProvider=prior.locatedProvider||'';}}comment.level=normalizeReviewLevel(comment.level,comment);comment.topic=normalizeReviewTopic(comment.topic);comment.locationHint=String(comment.locationHint||'');return comment;});
   }
   async function importDocx(file,progressBtn,stayPut,preparedBytes){
     var btn=progressBtn||byId('importPdfBtn'),old=btn.textContent,imported=false;btn.disabled=true;btn.textContent='Reading Word…';
@@ -2857,7 +2874,7 @@
           view.links.appendChild(el);
         });
       }catch(annotError){}
-      view.rendered=true;renderedPages.push(n);renderPdfHighlights(n);freeFarPages();
+      view.rendered=true;renderedPages.push(n);renderPdfHighlights(n);renderPdfReviewFocus(n);freeFarPages();
     }catch(e){}
     finally{view.rendering=false;}
   }
@@ -3327,12 +3344,49 @@
   }
   function reviewerDate(value){if(!value)return '';try{return new Intl.DateTimeFormat(undefined,{year:'numeric',month:'short',day:'numeric'}).format(new Date(value));}catch(e){return '';}}
   function reviewerById(ch,id){return (ch&&ch.reviewComments||[]).find(function(comment){return comment.id===id;});}
+  function reviewNormalizedText(value){
+    value=String(value||'');try{value=value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'');}catch(e){}
+    return value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ');
+  }
+  function reviewQuoteRange(text,quote){
+    text=String(text||'');quote=String(quote||'').trim();if(!text||!quote)return null;
+    var at=text.toLowerCase().indexOf(quote.toLowerCase());if(at>=0)return{start:at,end:at+quote.length,quote:text.slice(at,at+quote.length)};
+    var words=reviewNormalizedText(quote).split(' ').filter(function(word){return word.length>1;});
+    for(var width=Math.min(14,words.length);width>=Math.min(4,words.length);width--){
+      for(var i=0;i+width<=words.length;i++){
+        var pattern=words.slice(i,i+width).map(function(word){return word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}).join('[^\\p{L}\\p{N}]+'),match;
+        try{match=text.match(new RegExp(pattern,'iu'));}catch(e){match=null;}
+        if(match&&match.index!==undefined)return{start:match.index,end:match.index+match[0].length,quote:match[0]};
+      }
+    }
+    return null;
+  }
+  function reviewParagraphPage(ch,para){
+    var starts=paraPageStarts(ch),page=null;if(!starts)return null;
+    starts.forEach(function(item){if(item.para<=para)page=item.page;});return page;
+  }
+  function reviewCommentPage(ch,comment){
+    if(comment&&comment.page)return +comment.page;
+    if(comment&&comment.para!==null&&comment.para!==undefined)return reviewParagraphPage(ch,+comment.para);
+    return null;
+  }
+  function clearPdfReviewFocus(){document.querySelectorAll('.review-focus-span').forEach(function(span){span.classList.remove('review-focus-span');});}
+  function renderPdfReviewFocus(pageNum){
+    var ch=find(currentId),comment=reviewerById(ch,reviewFocusId);if(!ch||!comment||readerMode!=='pdf'||reviewCommentPage(ch,comment)!==+pageNum)return;clearPdfReviewFocus();if(!comment.quote)return;
+    var tries=0;(function attempt(){
+      var view=pdfViews[pageNum-1];if(!view||!view.rendered){if(view)renderPdfPageAt(pageNum);if(tries++<24)setTimeout(attempt,180);return;}
+      var entries=[],joined='',cursor=0;view.text.querySelectorAll('span').forEach(function(span){if(span.querySelector&&span.querySelector('span'))return;var value=reviewNormalizedText(span.textContent);if(!value)return;if(joined){joined+=' ';cursor++;}var start=cursor;joined+=value;cursor=joined.length;entries.push({span:span,start:start,end:cursor});});
+      var wanted=reviewNormalizedText(comment.quote),at=wanted?joined.indexOf(wanted):-1;
+      if(at<0){var words=wanted.split(' ');for(var width=Math.min(12,words.length);width>=Math.min(4,words.length)&&at<0;width--)for(var i=0;i+width<=words.length;i++){var phrase=words.slice(i,i+width).join(' '),found=joined.indexOf(phrase);if(found>=0){wanted=phrase;at=found;break;}}}
+      if(at<0)return;var end=at+wanted.length;entries.forEach(function(entry){if(entry.end>at&&entry.start<end)entry.span.classList.add('review-focus-span');});
+    })();
+  }
   async function focusReviewerPassage(ch,id){
-    var comment=reviewerById(ch,id);if(!comment||!comment.anchored)return;reviewFocusId=id;
-    if(ch.kind==='pdf'&&readerMode==='pdf'){
-      try{if((!ch.readerText||!ch.fr)&&pdfDoc)await ensureReaderData(pdfDoc,ch);}catch(e){}
-      readerMode='text';updateReaderMode();
-    }else renderText(ch);
+    var comment=reviewerById(ch,id);if(!comment||!comment.anchored)return;clearPdfReviewFocus();reviewFocusId=id;
+    if(ch.kind==='pdf'){
+      var page=reviewCommentPage(ch,comment);if(!page)return;gotoPdfPage(page);renderPdfReviewFocus(page);if(innerWidth<=720)toggleSheet(false);return;
+    }
+    renderText(ch);
     jumpToParagraph(comment.para);requestAnimationFrame(function(){var anchor=byId('textDocument').querySelector('[data-review-comment-id="'+CSS.escape(id)+'"]');if(anchor)anchor.scrollIntoView({block:'center',behavior:'smooth'});});if(innerWidth<=720)toggleSheet(false);
   }
   function showReviewerComment(ch,id){
@@ -3340,23 +3394,65 @@
     requestAnimationFrame(function(){var card=byId('readerReviewList').querySelector('[data-review-card="'+CSS.escape(id)+'"]');if(card)card.scrollIntoView({block:'nearest',behavior:'smooth'});byId('textDocument').querySelectorAll('.review-comment-anchor').forEach(function(anchor){anchor.classList.toggle('is-focused',anchor.dataset.reviewCommentId===id);});});
   }
   function reviewManuscriptText(ch){return ch&&ch.kind==='pdf'?(ch.readerText||ch.fr||''):(ch&&ch.fr||'');}
+  function reviewSearchTerms(comment){
+    var stop={about:1,after:1,again:1,also:1,author:1,because:1,before:1,being:1,between:1,could:1,figure:1,from:1,have:1,into:1,manuscript:1,more:1,other:1,paper:1,please:1,reviewer:1,should:1,study:1,table:1,than:1,that:1,their:1,there:1,these:1,they:1,this:1,those:1,through:1,using:1,what:1,when:1,where:1,which:1,while:1,would:1};
+    var raw=[comment&&comment.text,comment&&comment.locationHint].filter(Boolean).join(' '),seen={},terms=[];(reviewNormalizedText(raw).match(/[\p{L}\p{N}]{4,}/gu)||[]).forEach(function(word){if(!stop[word]&&!seen[word]){seen[word]=1;terms.push(word);}});return terms.slice(0,42);
+  }
+  function reviewExplicitPages(comment,pageCount){
+    var raw=[comment&&comment.locationHint,comment&&comment.text].filter(Boolean).join(' '),pages=[],seen={},match,re=/(?:\bp{1,2}\.?|\bpages?)\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?/gi;
+    while((match=re.exec(raw))){var context=raw.slice(Math.max(0,match.index-90),match.index).toLowerCase(),supplementAt=Math.max(context.lastIndexOf('supplement'),context.lastIndexOf('appendix'),context.lastIndexOf('supporting information')),mainAt=Math.max(context.lastIndexOf('main manuscript'),context.lastIndexOf('main text'));if(supplementAt>mainAt)continue;var first=+match[1],last=+match[2]||first;if(last-first>6)last=first;for(var n=first;n<=last;n++)if(n>=1&&n<=pageCount&&!seen[n]){seen[n]=1;pages.push(n);}}
+    return pages;
+  }
+  function reviewPageExcerpt(text,terms){
+    text=String(text||'');if(text.length<=1500)return text;var best=0,bestScore=-1;
+    for(var start=0;start<text.length;start+=650){var sample=reviewNormalizedText(text.slice(start,start+1500)),score=0;terms.forEach(function(term){if(sample.indexOf(term)>=0)score+=1+Math.min(2,term.length/8);});if(score>bestScore){bestScore=score;best=start;}}
+    return text.slice(Math.max(0,best-100),Math.min(text.length,best+1500));
+  }
+  function reviewCandidatePdfPages(ch,comment){
+    var pages=ch.pageTexts||[],terms=reviewSearchTerms(comment),explicit=reviewExplicitPages(comment,pages.length),explicitMap={};explicit.forEach(function(page){explicitMap[page]=1;});
+    var targets=String([comment.text,comment.locationHint].filter(Boolean).join(' ')).match(/(?:fig(?:ure)?|table|eq(?:uation)?|section)\s*[sS]?\d+(?:\.\d+)*/gi)||[];
+    var ranked=pages.map(function(text,index){var normalized=reviewNormalizedText(text),score=explicitMap[index+1]?120:0;terms.forEach(function(term){if(normalized.indexOf(term)>=0)score+=1+Math.min(2,term.length/8);});targets.forEach(function(target){if(normalized.indexOf(reviewNormalizedText(target))>=0)score+=22;});return{page:index+1,text:String(text||''),score:score};});
+    ranked.sort(function(a,b){return b.score-a.score||a.page-b.page;});var picked=[],seen={};explicit.concat(ranked.slice(0,8).map(function(item){return item.page;})).forEach(function(page){if(!seen[page]&&pages[page-1]){seen[page]=1;picked.push(ranked.find(function(item){return item.page===page;}));}});
+    return picked.slice(0,10).map(function(item){return{page:item.page,text:reviewPageExcerpt(item.text,terms),score:item.score};});
+  }
   function reviewCandidateParagraphs(ch,comment){
-    var words=String(comment.text||'').toLowerCase().match(/[\p{L}\p{N}]{4,}/gu)||[],wanted={};words.forEach(function(word){wanted[word]=1;});
+    var words=reviewSearchTerms(comment),wanted={};words.forEach(function(word){wanted[word]=1;});
     var all=paras(reviewManuscriptText(ch)).map(function(text,index){var score=0;(text.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu)||[]).forEach(function(word){if(wanted[word])score++;});return{index:index,text:text,score:score};}),picked=all.slice().sort(function(a,b){return b.score-a.score||a.index-b.index;}).slice(0,16),seen={};picked.forEach(function(item){seen[item.index]=1;});
     for(var i=0;i<8&&all.length;i++){var sample=all[Math.min(all.length-1,Math.round(i*(all.length-1)/7))];if(!seen[sample.index]){picked.push(sample);seen[sample.index]=1;}}
     return picked.slice(0,24).sort(function(a,b){return a.index-b.index;});
   }
+  function reviewAiJson(value){var text=String(value||'').trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');try{return JSON.parse(text);}catch(e){}var start=text.indexOf('{'),end=text.lastIndexOf('}');if(start>=0&&end>start)return JSON.parse(text.slice(start,end+1));return null;}
   async function locateOneReviewWithAi(ch,comment,onProgress){
-    var candidates=reviewCandidateParagraphs(ch,comment),numbered=candidates.map(function(item){return '['+item.index+'] '+item.text.slice(0,360);}).join('\n\n'),system='You locate reviewer feedback in a manuscript. Choose the one paragraph the comment most directly refers to. Return only JSON: {"paragraph": number, "quote": "an exact short quote copied from that paragraph"}. If none fit, use null for paragraph.',user='Reviewer comment:\n'+comment.text+'\n\nCandidate manuscript paragraphs:\n'+numbered,result=await runAi(system,user,450,onProgress),match=String(result.text||'').match(/\{[\s\S]*\}/),data=match?JSON.parse(match[0]):null,index=data&&data.paragraph!==null&&data.paragraph!==undefined&&Number.isInteger(+data.paragraph)?+data.paragraph:null,text=index===null?'':paras(reviewManuscriptText(ch))[index]||'';
-    if(index===null||!text)return false;var quote=String(data.quote||'').trim(),start=quote?text.indexOf(quote):-1;if(start<0){quote=text;start=0;}comment.para=index;comment.start=start;comment.end=start+quote.length;comment.quote=quote;comment.anchors=[{para:index,start:start,end:start+quote.length,quote:quote}];comment.anchored=true;comment.anchorMethod='ai';comment.locatedProvider=result.provider||'AI';comment.updatedAt=now();return true;
+    if(ch.kind==='pdf'){
+      var pageCandidates=reviewCandidatePdfPages(ch,comment),pageText=pageCandidates.map(function(item){return '[PDF page '+item.page+']\n'+item.text;}).join('\n\n'),pdfSystem='You locate reviewer feedback in a PDF manuscript. Choose only from the candidate PDF pages. Return only JSON: {"page": number or null, "quote": "a short exact quote copied verbatim from that page or empty", "confidence": 0 to 1}. A manuscript-wide comment may use null. If the concern targets supplementary material that is not shown, return null. Never invent a quote and never choose a merely related passage.',pdfUser='Reviewer comment:\n'+comment.text+'\n\nLocation hint:\n'+(comment.locationHint||'none')+'\n\nCandidate PDF pages:\n'+pageText,pdfResult=await runAi(pdfSystem,pdfUser,650,onProgress),pdfData=reviewAiJson(pdfResult.text),page=pdfData&&Number.isInteger(+pdfData.page)?+pdfData.page:null,allowed=pageCandidates.some(function(item){return item.page===page;}),confidence=pdfData&&pdfData.confidence!==undefined?+pdfData.confidence:.65;
+      if(!page||!allowed||confidence<.55)return false;var full=String((ch.pageTexts||[])[page-1]||''),range=reviewQuoteRange(full,pdfData.quote||'');comment.page=page;comment.para=null;comment.start=0;comment.end=0;comment.quote=range?range.quote:'';comment.anchors=[];comment.anchored=true;comment.anchorMethod=range?'ai-pdf-quote':'ai-pdf-page';comment.matchConfidence=Math.max(0,Math.min(1,confidence));comment.locatedProvider=pdfResult.provider||'AI';comment.updatedAt=now();return true;
+    }
+    var candidates=reviewCandidateParagraphs(ch,comment),numbered=candidates.map(function(item){return '['+item.index+'] '+item.text.slice(0,520);}).join('\n\n'),system='You locate reviewer feedback in a manuscript. Choose only from the candidate paragraphs. Return only JSON: {"paragraph": number or null, "quote": "a short exact quote copied verbatim from that paragraph", "confidence": 0 to 1}. A manuscript-wide comment may use null. Never invent a quote.',user='Reviewer comment:\n'+comment.text+'\n\nLocation hint:\n'+(comment.locationHint||'none')+'\n\nCandidate manuscript paragraphs:\n'+numbered,result=await runAi(system,user,650,onProgress),data=reviewAiJson(result.text),index=data&&data.paragraph!==null&&data.paragraph!==undefined&&Number.isInteger(+data.paragraph)?+data.paragraph:null,allowedIndex=candidates.some(function(item){return item.index===index;}),text=index===null?'':paras(reviewManuscriptText(ch))[index]||'',confidence=data&&data.confidence!==undefined?+data.confidence:.65,range=reviewQuoteRange(text,data&&data.quote||'');
+    if(index===null||!allowedIndex||!text||!range||confidence<.55)return false;comment.para=index;comment.start=range.start;comment.end=range.end;comment.quote=range.quote;comment.anchors=[{para:index,start:range.start,end:range.end,quote:range.quote}];comment.anchored=true;comment.anchorMethod='ai';comment.matchConfidence=Math.max(0,Math.min(1,confidence));comment.locatedProvider=result.provider||'AI';comment.updatedAt=now();return true;
   }
   async function reviewReportText(file){
-    if(/\.docx$/i.test(file.name||'')){var parsed=await parseDocx(await file.arrayBuffer(),file.name),body=parsed.paragraphs.join('\n\n'),bubbles=(parsed.comments||[]).map(function(comment){return (comment.author||'Reviewer')+': '+comment.text;}).join('\n\n');return [body,bubbles].filter(Boolean).join('\n\nReviewer comments:\n\n');}
+    if(/\.docx$/i.test(file.name||'')){var parsed=await parseDocx(await file.arrayBuffer(),file.name),roles=parsed.paragraphRoles||[],reviewerRuns=roles.filter(function(role){return role==='reviewer';}).length,responseRuns=roles.filter(function(role){return role==='response';}).length,structured=reviewerRuns>=2&&responseRuns>=1&&reviewerRuns>=roles.length*.2,body=parsed.paragraphs.map(function(paragraph,index){return structured?'['+(roles[index]==='reviewer'?'REVIEWER TEXT':'AUTHOR RESPONSE')+'] '+paragraph:paragraph;}).join('\n\n'),bubbles=(parsed.comments||[]).map(function(comment){return (comment.author||'Reviewer')+': '+comment.text;}).join('\n\n');return [body,bubbles].filter(Boolean).join('\n\nReviewer comments:\n\n');}
     return file.text();
   }
+  function reviewReportChunks(text){
+    var paragraphs=paras(text),limit=8800,chunks=[],current='',reviewer='';
+    function flush(){if(current.trim())chunks.push(current.trim());current='';}
+    paragraphs.forEach(function(paragraph){
+      var heading=paragraph.replace(/^\[(?:REVIEWER TEXT|AUTHOR RESPONSE)\]\s*/i,'');if(/^reviewer\s+\d+/i.test(heading))reviewer=heading.split('\n')[0].slice(0,160);
+      var pieces=[];while(paragraph.length>limit){var at=paragraph.lastIndexOf('\n',limit);if(at<limit*.45)at=paragraph.lastIndexOf('. ',limit);if(at<limit*.45)at=limit;pieces.push(paragraph.slice(0,at+1));paragraph=paragraph.slice(at+1).trim();}if(paragraph)pieces.push(paragraph);
+      pieces.forEach(function(piece){var prefix=reviewer?'Reviewer context: '+reviewer+'\n\n':'';if(current&&current.length+piece.length+2>limit)flush();if(!current&&prefix)current=prefix;current+=(current?'\n\n':'')+piece;});
+    });flush();return chunks;
+  }
   async function extractReviewerReportWithAi(text,onProgress){
-    var system='Turn a reviewer report into a clean list of actionable reviewer comments. Preserve the reviewer wording. Exclude salutations, section labels, and generic thanks. Return only JSON: {"reviewer":"name or Reviewer","comments":["comment one","comment two"]}.',user='Reviewer report:\n\n'+String(text||'').slice(0,30000),result=await runAi(system,user,2600,onProgress),match=String(result.text||'').match(/\{[\s\S]*\}/),data=match?JSON.parse(match[0]):null,reviewer=String(data&&data.reviewer||'Reviewer'),items=Array.isArray(data&&data.comments)?data.comments:[];
-    return items.map(function(item){return{author:String(item&&item.author||reviewer),text:String(item&&item.comment||item&&item.text||item||'').trim()};}).filter(function(item){return item.text;}).slice(0,80);
+    var chunks=reviewReportChunks(text),all=[],seen={},system='Extract actionable reviewer concerns from a response-to-reviewers document. Reviewer comments and author replies may be interleaved. Do not turn author replies, private task notes, generic praise, section labels, recommendations, or confidential comments to the editor into reviewer concerns. Split numbered or bulleted minor issues into separate concerns, but keep a multi-sentence concern together. Pair an existing author reply with its concern when the reply is present. Classify level as exactly one of: general (manuscript-wide), section (a whole section or subsection), specific (a passage, claim, method, equation, figure, table, or result), editorial (typo, grammar, formatting, citation, or simple consistency correction). Classify topic as exactly one of: writing, structure, methods, statistics, modeling, evidence, figures, consistency, claims, references, other. Preserve explicit manuscript page, section, figure, table, and equation references in locationHint. Ignore standalone Page N labels that number the reviewer report itself. Return only JSON: {"reviewer":"Reviewer name","comments":[{"reviewer":"Reviewer name","text":"reviewer concern","response":"existing author response or empty","level":"general|section|specific|editorial","topic":"writing|structure|methods|statistics|modeling|evidence|figures|consistency|claims|references|other","locationHint":"explicit location or empty"}]}.',failed=0;
+    for(var c=0;c<chunks.length;c++){
+      if(onProgress)onProgress('Classifying review section '+(c+1)+' of '+chunks.length+'…');
+      try{
+        var result=await runAi(system,'Response-to-reviewers section:\n\n'+chunks[c],3200,onProgress),data=reviewAiJson(result.text),reviewer=String(data&&data.reviewer||'Reviewer'),items=Array.isArray(data&&data.comments)?data.comments:[];
+        items.forEach(function(item){item=typeof item==='string'?{text:item}:item||{};var text=String(item.comment||item.text||'').trim(),key=reviewNormalizedText(text);if(!text||!key)return;var record={author:String(item.reviewer||item.author||reviewer||'Reviewer'),text:text,response:String(item.response||'').trim(),level:normalizeReviewLevel(item.level||item.scope),topic:normalizeReviewTopic(item.topic||item.category),locationHint:String(item.locationHint||item.location||item.target||'').trim()};if(seen[key]!==undefined){var old=all[seen[key]];if(!old.response&&record.response)old.response=record.response;if(!old.locationHint&&record.locationHint)old.locationHint=record.locationHint;return;}seen[key]=all.length;all.push(record);});
+      }catch(e){failed++;}
+    }
+    if(failed)throw new Error('AI could not reliably read '+failed+' of '+chunks.length+' review sections, so no partial import was saved. Try a cloud model for this long report.');return all.slice(0,160);
   }
   async function importReviewerFile(ch,file,button){
     var status=byId('reviewerLocateStatus'),old=button.textContent;if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}button.disabled=true;button.textContent='Reading review…';
@@ -3364,25 +3460,27 @@
       if(ch.kind==='pdf'&&!reviewManuscriptText(ch)&&pdfDoc){status.textContent='Preparing the manuscript text…';await ensureReaderData(pdfDoc,ch);}
       if(!paras(reviewManuscriptText(ch)).length)throw new Error('This paper has no readable manuscript text to match against.');
       var report=await reviewReportText(file);if(!report.trim())throw new Error('That reviewer file contains no readable text.');status.textContent='Separating the reviewer comments…';var extracted=await extractReviewerReportWithAi(report,function(message){status.textContent=message;});if(!extracted.length)throw new Error('AI could not find actionable reviewer comments in that file.');
-      var comments=extracted.map(function(item){return{id:uid('rr'),sourceId:uid('report'),author:item.author,date:'',text:item.text,para:null,start:0,end:0,quote:'',anchors:[],anchored:false,replies:[],response:'',resolved:false,sourceName:file.name,addedAt:now()};});ch.reviewComments=(ch.reviewComments||[]).concat(comments);ch.reviewReports=Array.isArray(ch.reviewReports)?ch.reviewReports:[];ch.reviewReports.push({name:file.name,addedAt:now(),comments:comments.length});var linked=0;
-      for(var i=0;i<comments.length;i++){status.textContent='Matching comment '+(i+1)+' of '+comments.length+' to the manuscript…';try{if(await locateOneReviewWithAi(ch,comments[i],function(message){status.textContent=message;}))linked++;}catch(e){}}
-      touch(ch);renderText(ch);renderReviewerPanel(ch);updateReviewBadge();status.textContent='Imported '+comments.length+' reviewer comment'+(comments.length===1?'':'s')+' · '+linked+' linked to highlighted passages.';
+      var reportId=uid('report'),comments=extracted.map(function(item){return{id:uid('rr'),sourceId:reportId,author:item.author,date:'',text:item.text,level:normalizeReviewLevel(item.level),topic:normalizeReviewTopic(item.topic),locationHint:item.locationHint||'',para:null,page:null,start:0,end:0,quote:'',anchors:[],anchored:false,replies:[],response:item.response||'',resolved:false,sourceName:file.name,addedAt:now()};});ch.reviewComments=(ch.reviewComments||[]).concat(comments);ch.reviewReports=Array.isArray(ch.reviewReports)?ch.reviewReports:[];var linked=0,matchable=comments.filter(function(comment){return comment.level!=='general';});
+      for(var i=0;i<matchable.length;i++){status.textContent='Matching comment '+(i+1)+' of '+matchable.length+' to the manuscript…';try{if(await locateOneReviewWithAi(ch,matchable[i],function(message){status.textContent=message;}))linked++;}catch(e){}}
+      var levels={};comments.forEach(function(comment){levels[comment.level]=(levels[comment.level]||0)+1;});ch.reviewReports.push({id:reportId,name:file.name,addedAt:now(),comments:comments.length,levels:levels});touch(ch);if(readerMode==='text')renderText(ch);renderReviewerPanel(ch);renderPdfReviewFocus(currentPage);updateReviewBadge();status.textContent='Imported '+comments.length+' reviewer concern'+(comments.length===1?'':'s')+' · '+linked+' linked to the PDF · '+(comments.length-matchable.length)+' manuscript-wide.';
     }catch(e){status.textContent=e.message||'Phloem could not import that reviewer file.';}
     finally{button.disabled=false;button.textContent=old;}
   }
   async function locateUnlinkedReviews(ch,button){
-    var pending=(ch.reviewComments||[]).filter(function(comment){return !comment.anchored&&comment.text;}),status=byId('reviewerLocateStatus');if(!pending.length)return;
+    var pending=(ch.reviewComments||[]).filter(function(comment){return !comment.anchored&&comment.text&&comment.level!=='general';}),status=byId('reviewerLocateStatus');if(!pending.length)return;
     if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}
     button.disabled=true;var found=0;
     try{for(var i=0;i<pending.length;i++){status.textContent='Locating '+(i+1)+' of '+pending.length+'…';try{if(await locateOneReviewWithAi(ch,pending[i],function(message){status.textContent=message;}))found++;}catch(e){status.textContent=e.message||'AI could not locate that comment.';}}touch(ch);renderText(ch);renderReviewerPanel(ch);status.textContent=found?'Linked '+found+' comment'+(found===1?'':'s')+' to the manuscript.':'No confident passage matches were found.';}
     finally{button.disabled=false;}
   }
   function renderReviewerPanel(ch){
-    ch=ch||find(currentId);var comments=ch&&ch.reviewComments||[],list=byId('readerReviewList'),count=byId('readerReviewerCount'),locate=byId('locateReviewsBtn');count.textContent=comments.length?'· '+comments.filter(function(comment){return !comment.resolved;}).length:'';
-    if(!comments.length){list.innerHTML='<div class="notebook-empty">This document has no reviewer comments.</div>';locate.classList.add('hidden');return;}
-    var unlinked=comments.filter(function(comment){return !comment.anchored;}).length;locate.classList.toggle('hidden',!unlinked);locate.textContent='✦ Locate '+unlinked+' unlinked comment'+(unlinked===1?'':'s')+' with AI';
-    list.innerHTML=comments.map(function(comment,index){var replies=(comment.replies||[]).map(function(reply){return '<div class="reviewer-reply"><b>'+esc(reply.author||'Reply')+'</b><p>'+esc(reply.text||'')+'</p></div>';}).join(''),where=comment.anchored?'<button class="reviewer-show-passage" type="button" data-show-review="'+esc(comment.id)+'">Show highlighted passage →</button>':'<span class="reviewer-unlinked">Passage not linked yet</span>';
-      return '<article class="reviewer-comment-card'+(comment.resolved?' resolved':'')+(comment.id===reviewFocusId?' focused':'')+'" data-review-card="'+esc(comment.id)+'"><div class="reviewer-card-head"><span>R'+(index+1)+' · '+esc(comment.author||'Reviewer')+'</span><span>'+esc(reviewerDate(comment.date))+'</span></div>'+(comment.quote&&comment.anchored?'<blockquote>'+esc(comment.quote)+'</blockquote>':'')+'<p class="reviewer-comment-text">'+esc(comment.text||'')+'</p>'+replies+where+'<label class="field-label" for="review-response-'+esc(comment.id)+'">Response draft</label><textarea class="reviewer-response" id="review-response-'+esc(comment.id)+'" data-review-response="'+esc(comment.id)+'" placeholder="Draft your response to the reviewer…">'+esc(comment.response||'')+'</textarea><button class="reviewer-resolve" type="button" data-resolve-review="'+esc(comment.id)+'">'+(comment.resolved?'Reopen comment':'Mark resolved')+'</button></article>';
+    ch=ch||find(currentId);var comments=ch&&ch.reviewComments||[],list=byId('readerReviewList'),count=byId('readerReviewerCount'),locate=byId('locateReviewsBtn'),filters=byId('reviewerFilters');count.textContent=comments.length?'· '+comments.filter(function(comment){return !comment.resolved;}).length:'';
+    if(!comments.length){list.innerHTML='<div class="notebook-empty">This document has no reviewer comments.</div>';filters.innerHTML='';locate.classList.add('hidden');return;}
+    var levelOrder=['all','general','section','specific','editorial'],levelCounts={all:comments.length};comments.forEach(function(comment){comment.level=normalizeReviewLevel(comment.level,comment);comment.topic=normalizeReviewTopic(comment.topic);levelCounts[comment.level]=(levelCounts[comment.level]||0)+1;});if(reviewFilter!=='all'&&!levelCounts[reviewFilter])reviewFilter='all';
+    filters.innerHTML=levelOrder.filter(function(level){return level==='all'||levelCounts[level];}).map(function(level){return '<button class="reviewer-filter" type="button" data-review-filter="'+level+'" aria-pressed="'+String(reviewFilter===level)+'">'+(level==='all'?'All':reviewLevelLabel(level))+' · '+(levelCounts[level]||0)+'</button>';}).join('');filters.querySelectorAll('[data-review-filter]').forEach(function(button){button.onclick=function(){reviewFilter=button.dataset.reviewFilter;renderReviewerPanel(ch);};});
+    var unlinked=comments.filter(function(comment){return !comment.anchored&&comment.level!=='general';}).length;locate.classList.toggle('hidden',!unlinked);locate.textContent='✦ Locate '+unlinked+' unlinked comment'+(unlinked===1?'':'s')+' with AI';var visible=comments.map(function(comment,index){return{comment:comment,index:index};}).filter(function(item){return reviewFilter==='all'||item.comment.level===reviewFilter;});
+    list.innerHTML=visible.map(function(item){var comment=item.comment,index=item.index,replies=(comment.replies||[]).map(function(reply){return '<div class="reviewer-reply"><b>'+esc(reply.author||'Reply')+'</b><p>'+esc(reply.text||'')+'</p></div>';}).join(''),page=reviewCommentPage(ch,comment),where=comment.anchored?'<button class="reviewer-show-passage" type="button" data-show-review="'+esc(comment.id)+'">'+(comment.quote?'Show highlighted passage':'Show referenced page')+(page?' · p. '+page:'')+' →</button>':comment.level==='general'?'<span class="reviewer-unlinked">Manuscript-wide · no single passage</span>':'<span class="reviewer-unlinked">Passage not linked yet</span>',location=comment.locationHint?'<p class="reviewer-location">⌖ '+esc(comment.locationHint)+'</p>':'';
+      return '<article class="reviewer-comment-card'+(comment.resolved?' resolved':'')+(comment.id===reviewFocusId?' focused':'')+'" data-review-card="'+esc(comment.id)+'"><div class="reviewer-card-head"><span>R'+(index+1)+' · '+esc(comment.author||'Reviewer')+'</span><span>'+esc(reviewerDate(comment.date))+'</span></div><div class="reviewer-classification"><span class="reviewer-chip level">'+esc(reviewLevelLabel(comment.level))+'</span><span class="reviewer-chip">'+esc(reviewTopicLabel(comment.topic))+'</span></div>'+location+(comment.quote&&comment.anchored?'<blockquote>'+esc(comment.quote)+'</blockquote>':'')+'<p class="reviewer-comment-text">'+esc(comment.text||'')+'</p>'+replies+where+'<label class="field-label" for="review-response-'+esc(comment.id)+'">Response draft</label><textarea class="reviewer-response" id="review-response-'+esc(comment.id)+'" data-review-response="'+esc(comment.id)+'" placeholder="Draft your response to the reviewer…">'+esc(comment.response||'')+'</textarea><button class="reviewer-resolve" type="button" data-resolve-review="'+esc(comment.id)+'">'+(comment.resolved?'Reopen comment':'Mark resolved')+'</button></article>';
     }).join('');
     list.querySelectorAll('[data-show-review]').forEach(function(button){button.onclick=function(){focusReviewerPassage(ch,button.dataset.showReview);};});
     list.querySelectorAll('[data-review-response]').forEach(function(area){area.oninput=function(){var comment=reviewerById(ch,area.dataset.reviewResponse);if(!comment)return;comment.response=area.value;comment.updatedAt=now();touch(ch);};});

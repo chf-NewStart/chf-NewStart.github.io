@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=57">
+  <link rel="stylesheet" href="/reading.css?v=58">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -298,11 +298,12 @@
             <div class="reviewer-panel-head">
               <span class="panel-eyebrow">Revision desk</span>
               <h3>Reviewer comments</h3>
-              <p class="hint">Choose a comment to see its passage. A comment-only reviewer file uses your selected AI to split and locate feedback; your source document stays untouched.</p>
+              <p class="hint">Comments are classified by scope and topic. Selecting a linked comment opens its highlighted place in the original PDF; your source files stay untouched.</p>
               <button class="soft-button" id="importReviewFileBtn" type="button">＋ Import reviewer Word file</button>
               <input class="hidden" id="reviewFile" type="file" accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
               <button class="soft-button hidden" id="locateReviewsBtn" type="button">✦ Locate unlinked comments with AI</button>
               <p class="reviewer-locate-status" id="reviewerLocateStatus" role="status" aria-live="polite"></p>
+              <div class="reviewer-filter-row" id="reviewerFilters" role="group" aria-label="Filter comments by scope"></div>
             </div>
             <div class="reviewer-comment-list" id="readerReviewList"></div>
           </div>
@@ -637,9 +638,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=57',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=58',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=57" defer></script>
+<script src="/reading.js?v=58" defer></script>
 </body>
 </html>

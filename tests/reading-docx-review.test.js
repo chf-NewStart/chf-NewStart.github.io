@@ -79,7 +79,12 @@ async function run() {
   check('Word formatting distinguishes reviewer text from author replies', source.includes('paragraphRoles:reviewRoles') && source.includes("'REVIEWER TEXT'") && source.includes("'AUTHOR RESPONSE'"));
   check('PDF review navigation stays in the original PDF', extractFunction('focusReviewerPassage').includes('gotoPdfPage(page)') && !extractFunction('focusReviewerPassage').includes("readerMode='text'"));
   check('review packages are filed in a dedicated Under review category', source.includes("REVIEW_WORKSPACE_CATEGORY='Under review'") && source.includes('placeInReviewWorkspace(target)') && source.includes('placeInReviewWorkspace(ch)'));
-  check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.id)') && css.includes('.review-comment-highlight'));
+  check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.comment.id,review.page)') && css.includes('.review-comment-highlight'));
+  check('one reviewer concern can link every distinct PDF passage it cites', source.includes('comment.pdfAnchors=valid') && source.includes('"matches"') && source.includes('up to four') && source.includes('reviewer-passage-links'));
+  check('explicit manuscript page references survive even if AI omits them', source.includes("method:'review-page-reference'") && source.includes('explicit.forEach(function(page)'));
+  check('older nine-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:2') && source.includes('This review used the older summary importer'));
+  check('legacy summary matches are suppressed until the source report is re-imported', source.includes('comment.legacyImport=!!legacyReviewReports') && source.includes("if(comment.legacyImport){comment.anchored=false"));
+  check('broad restructuring feedback is not forced onto a coincidental passage', source.includes('function stabilizedReviewLevel') && source.includes("level='section'") && source.includes('Section-wide · no single passage named'));
   check('PDF matches must use candidate pages and a confidence threshold', source.includes('reviewCandidatePdfPages') && source.includes('confidence<.55') && source.includes('allowed=pageCandidates.some'));
   check('an invented quote no longer falls back to the whole paragraph', !source.includes("if(start<0){quote=text;start=0;}"));
   check('original Word drafts use the same resumable Drive roaming path', source.includes("name:'docx-'+ch.id+'.docx'") && source.includes('binarySourceSpec(ch)'));
@@ -97,6 +102,8 @@ async function run() {
   check('explicit page ranges seed the PDF candidate set', JSON.stringify(pageRefs) === JSON.stringify([18, 19, 20, 31]), pageRefs.join(','));
   const mainOnlyRefs = reviewContext.reviewExplicitPages({ text: 'Supplementary p. 13 differs; main manuscript p. 7 needs the correction.' }, 34);
   check('supplement page numbers are not mistaken for main-PDF pages', JSON.stringify(mainOnlyRefs) === JSON.stringify([7]), mainOnlyRefs.join(','));
+  const dualRefs = reviewContext.reviewExplicitPages({ text: 'The control description on p. 6 conflicts with the model description on p. 15.' }, 34);
+  check('one comment can seed both manuscript locations it explicitly compares', JSON.stringify(dualRefs) === JSON.stringify([6, 15]), dualRefs.join(','));
   const fuzzyQuote = reviewContext.reviewQuoteRange('The model reconstructs the oxygen distribution from a local constraint.', 'model “reconstructs” the oxygen distribution');
   check('quote validation tolerates punctuation but still returns source text', fuzzyQuote && fuzzyQuote.quote.includes('model reconstructs'));
   const longReport = 'Reviewer 1\n\n' + Array.from({ length: 180 }, (_, i) => 'Comment ' + i + ' asks for a specific clarification about methods and evidence.').join('\n\n');

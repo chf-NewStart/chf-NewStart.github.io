@@ -43,8 +43,9 @@ resume probing, and honest per-paper transfer states.
 one-file and paper-plus-comments reviewer paths, DOCX archive extraction, Word
 comment-range highlights, lossless numbered-concern segmentation, automatic
 Under review filing, scope/topic classification, persistent clickable PDF review
-marks, strict AI passage validation, the reviewer sidebar, response and resolved
-state, and original Word-file roaming.
+marks, multi-passage grounding, legacy-import refresh notices, strict AI passage
+validation, the reviewer sidebar, response and resolved state, and original
+Word-file roaming.
 
 `reading-extension-local-pdf.test.js` covers extension imports for local
 `file://` PDFs, Chrome's permission-denied path, HTTP errors, and the direct file

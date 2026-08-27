@@ -38,7 +38,7 @@
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
-  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), reviewFocusId = '', pendingReviewTargetId = '';
+  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), reviewFocusId = '', pendingReviewTargetId = '', reviewPairPaper = null, reviewPairComments = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
 
   function byId(id){ return document.getElementById(id); }
@@ -906,9 +906,31 @@
   byId('reviewerModeBtn').onclick=function(){setReviewPageMode('reviewers');};
   byId('memoryModeBtn').onclick=function(){setReviewPageMode('memory');};
   function closeAddDialog(){if(byId('addDialog').open)byId('addDialog').close();}
+  function resetReviewImport(){
+    reviewPairPaper=null;reviewPairComments=null;byId('reviewPaperFile').value='';byId('reviewCommentsFile').value='';byId('reviewCombinedFile').value='';byId('reviewPaperName').textContent='PDF or Word document';byId('reviewCommentsName').textContent='Word or text document';byId('reviewPairImportBtn').disabled=true;byId('reviewPairFields').classList.add('hidden');byId('reviewPairModeBtn').setAttribute('aria-expanded','false');byId('reviewImportStatus').textContent='';
+  }
   byId('importPdfBtn').onclick = function(){byId('addDialog').showModal();};
   byId('addDeviceBtn').onclick = function(){ if(location.protocol==='file:'){ closeAddDialog();byId('launchDialog').showModal(); return; } closeAddDialog();byId('pdfFile').click(); };
-  byId('addReviewBtn').onclick = function(){var target=find(librarySelectionId)||state.chapters[0];closeAddDialog();if(!target){byId('libraryImportStatus').textContent='Add and select the manuscript first, then attach its reviewer comments.';return;}pendingReviewTargetId=target.id;byId('reviewFile').click();};
+  byId('addReviewBtn').onclick = function(){closeAddDialog();resetReviewImport();byId('reviewImportDialog').showModal();};
+  byId('reviewCombinedBtn').onclick=function(){byId('reviewCombinedFile').click();};
+  byId('reviewCombinedFile').onchange=async function(){
+    var file=this.files&&this.files[0],button=byId('reviewCombinedBtn'),status=byId('reviewImportStatus');this.value='';if(!file)return;var old=button.innerHTML;button.disabled=true;status.textContent='Checking the Word comments…';
+    try{var bytes=await file.arrayBuffer(),parsed=await parseDocx(bytes,file.name);if(!parsed.comments.length){status.textContent='No Word comments were found in that file. If the feedback is separate, use the 2-file option.';return;}byId('reviewImportDialog').close();await importDocx(file,button,false,bytes);}
+    catch(e){status.textContent=e.message||'Phloem could not read that commented manuscript.';}
+    finally{button.disabled=false;button.innerHTML=old;}
+  };
+  byId('reviewPairModeBtn').onclick=function(){var fields=byId('reviewPairFields'),open=fields.classList.contains('hidden');fields.classList.toggle('hidden',!open);this.setAttribute('aria-expanded',String(open));if(open)byId('reviewPaperPick').focus();};
+  byId('reviewPaperPick').onclick=function(){byId('reviewPaperFile').click();};
+  byId('reviewCommentsPick').onclick=function(){byId('reviewCommentsFile').click();};
+  function updateReviewPairReady(){byId('reviewPairImportBtn').disabled=!(reviewPairPaper&&reviewPairComments);}
+  byId('reviewPaperFile').onchange=function(){reviewPairPaper=this.files&&this.files[0]||null;byId('reviewPaperName').textContent=reviewPairPaper?reviewPairPaper.name:'PDF or Word document';updateReviewPairReady();};
+  byId('reviewCommentsFile').onchange=function(){reviewPairComments=this.files&&this.files[0]||null;byId('reviewCommentsName').textContent=reviewPairComments?reviewPairComments.name:'Word or text document';updateReviewPairReady();};
+  byId('reviewPairImportBtn').onclick=async function(){
+    var paper=reviewPairPaper,comments=reviewPairComments,button=this,status=byId('reviewImportStatus');if(!paper||!comments)return;if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first so Phloem can locate the separate comments.';return;}var stamp=now();button.disabled=true;status.textContent='Importing the manuscript…';
+    try{var added=await importSourceFile(paper,null,null,button,true);if(!added)throw new Error('The manuscript could not be imported.');var target=state.chapters.filter(function(ch){return ch.sourceName===paper.name&&ch.updatedAt>=stamp-1000;}).sort(function(a,b){return (+b.updatedAt||0)-(+a.updatedAt||0);})[0];if(!target)throw new Error('Phloem could not identify the imported manuscript.');byId('reviewImportDialog').close();await openReader(target.id);switchTab('reviewsPanel');if(innerWidth>720)setNotebookCollapsed(false,true);await importReviewerFile(target,comments,button);}
+    catch(e){status.textContent=e.message||'Phloem could not import that review package.';}
+    finally{button.disabled=false;button.textContent='Import paper & comments';}
+  };
   byId('pdfFile').onchange = function(){ var files=Array.prototype.slice.call(this.files||[]); this.value=''; if(files.length)importDropped([],files); };
   byId('folderPickBtn').onclick = function(){ if(location.protocol==='file:'){ closeAddDialog();byId('launchDialog').showModal(); return; } closeAddDialog();byId('pdfFolder').click(); };
   byId('pdfFolder').onchange = function(){ var files=Array.prototype.slice.call(this.files||[]); this.value=''; if(files.length)importDropped([],files); };

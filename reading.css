@@ -101,11 +101,11 @@
 
     .link-status { grid-column: 1 / -1; min-height: 0; color: var(--muted); font-size: .7rem; }
     .link-status:not(:empty) { padding: 1px 3px 2px; }
-    .command-bar { background: color-mix(in srgb, var(--surface) 82%, transparent); border: 1px solid var(--line); border-radius: 16px; padding: 9px; display: flex; gap: 6px; margin-bottom: 28px; transition: border-color .18s ease, background .18s ease; }
-    .command-bar.drag { border-color: var(--accent); background: var(--accent-soft); }
+    .command-bar { display: flex; gap: 10px; margin-bottom: 28px; transition: background .18s ease, outline-color .18s ease; }
+    .command-bar.drag { border-radius: 10px; outline: 1px dashed var(--accent); outline-offset: 8px; background: var(--accent-soft); }
     .command-bar .button, .command-bar .soft-button { min-height: 40px; padding-inline: 12px; }
     .command-bar .primary { flex: 0 0 auto; justify-content: flex-start; font-size: .84rem; }
-    #reviewShortcut { margin-left: auto; }
+    #reviewShortcut { margin-left: 0; }
     .link-dialog-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
     .link-dialog-form .field { min-width: 0; min-height: 46px; }
     .link-dialog-form .button { min-height: 46px; white-space: nowrap; }
@@ -1004,6 +1004,26 @@
     .add-source strong { font-size: .78rem; }
     .add-source small { margin-top: 3px; color: var(--muted); font-size: .64rem; line-height: 1.35; }
     .add-dialog-note { margin: 14px 2px 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: .67rem !important; }
+    #reviewImportDialog { width: min(760px, calc(100vw - 24px)); }
+    .review-import-body { display: grid; gap: 16px; }
+    .review-import-lede { margin: 0 !important; color: var(--ink) !important; font: 1rem/1.5 var(--serif) !important; }
+    .review-import-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+    .review-import-option { display: grid; gap: 5px; min-height: 148px; border: 1px solid var(--line); border-radius: 13px; padding: 16px; background: var(--paper); color: var(--ink); text-align: left; align-content: start; }
+    .review-import-option:hover, .review-import-option[aria-expanded="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 62%, var(--paper)); }
+    .review-import-number { width: fit-content; margin-bottom: 5px; border-radius: 999px; padding: 4px 8px; background: var(--surface-2); color: var(--accent); font: 800 .58rem/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+    .review-import-option strong { font: 700 .88rem/1.35 var(--sans); }
+    .review-import-option small { color: var(--muted); font: .7rem/1.5 var(--sans); }
+    .review-import-option code { color: inherit; font-size: .94em; }
+    .review-pair-fields { display: grid; gap: 9px; padding: 14px; border: 1px solid var(--line); border-radius: 13px; background: color-mix(in srgb, var(--surface-2) 58%, var(--paper)); }
+    .review-file-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; border-bottom: 1px solid var(--line); padding: 3px 2px 12px; }
+    .review-file-row div { min-width: 0; }
+    .review-file-row span, .review-file-row strong { display: block; }
+    .review-file-row span { margin-bottom: 4px; color: var(--accent); font: 800 .57rem/1.3 var(--sans); letter-spacing: .09em; text-transform: uppercase; }
+    .review-file-row strong { overflow: hidden; color: var(--ink); font: 650 .72rem/1.4 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+    .review-file-row .soft-button { flex: 0 0 auto; }
+    .review-pair-fields > .button { width: 100%; margin-top: 2px; }
+    .review-import-status { min-height: 1em; margin: 0 2px !important; color: var(--muted); font: .68rem/1.5 var(--sans) !important; }
+    .review-import-status:empty { display: none; }
     #notebookPackageDialog { width: min(920px, calc(100vw - 24px)); }
     #notebookPackageDialog .dialog-head > div { min-width: 0; }
     #notebookPackageDialog .dialog-head .panel-eyebrow { margin-bottom: 3px; }
@@ -1117,8 +1137,7 @@
       /* The library is a phone screen too. Keep every import control inside the page
          instead of waiting for the unusually narrow 360px breakpoint. */
       .command-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .command-bar .primary { grid-column: 1 / -1; justify-content: center; }
-      .command-bar #reviewShortcut { grid-column: 1 / -1; }
+      .command-bar .primary { justify-content: center; }
       .command-bar .soft-button { min-width: 0; white-space: normal; text-align: center; line-height: 1.2; }
       #reviewShortcut { margin-left: 0; }
       .link-dialog-form { grid-template-columns: 1fr; }
@@ -1252,6 +1271,9 @@
       .tab-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
       .settings-body { grid-template-columns: 1fr; padding: 12px; }
       .add-source-grid { grid-template-columns: 1fr; }
+      .review-import-options { grid-template-columns: 1fr; }
+      .review-import-option { min-height: 0; }
+      .review-file-row { align-items: flex-start; }
       .reviewer-inbox { grid-template-columns: 1fr; }
       .settings-lede, .settings-body section:last-of-type { grid-column: 1; }
       .settings-body section { padding: 15px; }

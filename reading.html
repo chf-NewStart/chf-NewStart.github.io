@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=56">
+  <link rel="stylesheet" href="/reading.css?v=57">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -68,8 +68,8 @@
       </figure>
 
       <div class="command-bar" id="pdfLinkDrop">
-        <button class="button primary" id="importPdfBtn">＋ Add</button>
-        <button class="soft-button" id="reviewShortcut">Review</button>
+        <button class="button primary" id="importPdfBtn">＋ Add to library</button>
+        <button class="soft-button" id="reviewShortcut">Review a manuscript</button>
         <input class="hidden" type="file" id="pdfFile" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
         <input class="hidden" type="file" id="pdfFolder" webkitdirectory>
       </div>
@@ -403,14 +403,34 @@
     <div class="dialog-body">
       <p class="add-dialog-lede">Read a paper, work through reviewer feedback, or keep a passage nearby.</p>
       <div class="add-source-grid">
-        <button class="add-source" id="addDeviceBtn" type="button"><span class="add-source-icon">↑</span><strong>PDF or Word draft</strong><small>Import from this device</small></button>
-        <button class="add-source" id="addReviewBtn" type="button"><span class="add-source-icon">R</span><strong>Reviewer comments</strong><small>Attach a comment-only Word file</small></button>
+        <button class="add-source" id="addDeviceBtn" type="button"><span class="add-source-icon">↑</span><strong>Read a document</strong><small>PDF or Word from this device</small></button>
+        <button class="add-source" id="addReviewBtn" type="button"><span class="add-source-icon">R</span><strong>Review a manuscript</strong><small>One commented file, or paper + comments</small></button>
         <button class="add-source" id="folderPickBtn" type="button"><span class="add-source-icon">⌸</span><strong>Folder</strong><small>Add supported documents together</small></button>
         <button class="add-source" id="linkImportBtn" type="button"><span class="add-source-icon">↗</span><strong>PDF link</strong><small>Save a direct download locally</small></button>
         <button class="add-source" id="githubPickBtn" type="button"><span class="add-source-icon">⌘</span><strong>GitHub</strong><small>Choose a PDF from your repository</small></button>
         <button class="add-source" id="newTextBtn" type="button"><span class="add-source-icon">✎</span><strong>Paste text</strong><small>Create a clean reading copy</small></button>
       </div>
       <p class="add-dialog-note">Word drafts keep their original file, reviewer comments, replies, and tracked-change summary.</p>
+    </div>
+  </dialog>
+
+  <dialog id="reviewImportDialog">
+    <div class="dialog-head"><div><span class="dialog-eyebrow">Revision desk</span><h2>Review a manuscript</h2></div><button class="icon-btn" data-close="reviewImportDialog">×</button></div>
+    <div class="dialog-body review-import-body">
+      <p class="review-import-lede">How did the feedback arrive?</p>
+      <div class="review-import-options">
+        <button class="review-import-option" id="reviewCombinedBtn" type="button"><span class="review-import-number">1 file</span><strong>Commented Word manuscript</strong><small>The paper and Word comments are together in one <code>.docx</code>.</small></button>
+        <button class="review-import-option" id="reviewPairModeBtn" type="button" aria-expanded="false" aria-controls="reviewPairFields"><span class="review-import-number">2 files</span><strong>Paper + reviewer report</strong><small>A PDF or Word manuscript, plus a separate comments document.</small></button>
+      </div>
+      <input class="hidden" id="reviewCombinedFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+      <div class="review-pair-fields hidden" id="reviewPairFields">
+        <div class="review-file-row"><div><span>01 · Manuscript</span><strong id="reviewPaperName">PDF or Word document</strong></div><button class="soft-button" id="reviewPaperPick" type="button">Choose paper</button></div>
+        <input class="hidden" id="reviewPaperFile" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+        <div class="review-file-row"><div><span>02 · Reviewer comments</span><strong id="reviewCommentsName">Word or text document</strong></div><button class="soft-button" id="reviewCommentsPick" type="button">Choose comments</button></div>
+        <input class="hidden" id="reviewCommentsFile" type="file" accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+        <button class="button" id="reviewPairImportBtn" type="button" disabled>Import paper &amp; comments</button>
+      </div>
+      <p class="review-import-status" id="reviewImportStatus" role="status" aria-live="polite"></p>
     </div>
   </dialog>
 
@@ -617,9 +637,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=56',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=57',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=56" defer></script>
+<script src="/reading.js?v=57" defer></script>
 </body>
 </html>

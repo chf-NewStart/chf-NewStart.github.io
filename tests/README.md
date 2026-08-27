@@ -39,9 +39,10 @@ its immediate effect on long-form text, and persistence across reloads.
 large books: the 200 MB ceiling, resumable chunk uploads, saved checkpoints,
 resume probing, and honest per-paper transfer states.
 
-`reading-docx-review.test.js` covers the unified PDF/Word Add flow, DOCX archive
-extraction, Word comment-range highlights, the reviewer sidebar, response and
-resolved state, explicit AI passage location, and original Word-file roaming.
+`reading-docx-review.test.js` covers the unified PDF/Word Add flow, its explicit
+one-file and paper-plus-comments reviewer paths, DOCX archive extraction, Word
+comment-range highlights, the reviewer sidebar, response and resolved state,
+explicit AI passage location, and original Word-file roaming.
 
 `reading-extension-local-pdf.test.js` covers extension imports for local
 `file://` PDFs, Chrome's permission-denied path, HTTP errors, and the direct file

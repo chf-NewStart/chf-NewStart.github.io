@@ -867,6 +867,12 @@
     .reviewer-panel-head .soft-button { width: 100%; margin-top: 2px; white-space: normal; }
     .reviewer-locate-status { min-height: 0; margin: 8px 0 0; color: var(--muted); font-size: .65rem; line-height: 1.45; }
     .reviewer-locate-status:empty { display: none; }
+    .task-progress { position: relative; overflow: hidden; width: 100%; height: 5px; margin-top: 8px; border-radius: 999px; background: color-mix(in srgb, var(--line) 64%, transparent); }
+    .task-progress i { display: block; width: var(--task-progress, 0%); height: 100%; border-radius: inherit; background: var(--accent); transition: width .25s ease; }
+    .task-progress.indeterminate i { width: 36%; animation: task-progress-scan 1.15s ease-in-out infinite; }
+    .task-progress.compact { height: 3px; margin-top: 5px; }
+    @keyframes task-progress-scan { from { transform: translateX(-110%); } to { transform: translateX(310%); } }
+    @media (prefers-reduced-motion: reduce) { .task-progress.indeterminate i { width: 55%; animation: none; } }
     .reviewer-filter-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 11px; }
     .reviewer-filter { min-height: 27px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font: 700 .57rem/1 var(--sans); }
     .reviewer-filter[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
@@ -1040,6 +1046,7 @@
     .review-pair-fields > .button { width: 100%; margin-top: 2px; }
     .review-import-status { min-height: 1em; margin: 0 2px !important; color: var(--muted); font: .68rem/1.5 var(--sans) !important; }
     .review-import-status:empty { display: none; }
+    .review-import-status + .task-progress { margin-top: -8px; }
     #notebookPackageDialog { width: min(920px, calc(100vw - 24px)); }
     #notebookPackageDialog .dialog-head > div { min-width: 0; }
     #notebookPackageDialog .dialog-head .panel-eyebrow { margin-bottom: 3px; }

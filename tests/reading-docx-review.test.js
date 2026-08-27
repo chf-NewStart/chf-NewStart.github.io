@@ -117,7 +117,7 @@ async function run() {
   check('passage matching batches comments by stable ids', source.includes('Return exactly one item for every commentId') && source.includes('reviewLocationBatches(comments,config.size)'));
   check('cloud matching uses bounded parallel batches', source.includes("size:local?1:3,concurrency:local?1:2") && source.includes('await Promise.all(workers)'));
   check('a dropped batch item gets one targeted retry', source.includes("!byComment[prepared[p].id]&&!prepared[p].comment.anchored") && source.includes("!byComment[prepared[t].id]&&!prepared[t].comment.anchored"));
-  check('one provider is held for the complete review import', source.includes('var reviewRoute=activeAiRoute(false)') && source.includes('extractReviewerReportWithAi(report,function(message)') && source.includes('},reviewRoute)'));
+  check('one provider is held for the complete review import', source.includes('var reviewRoute=activeAiRoute(false)') && source.includes('extractReviewerReportWithAi(report,function(message,progress)') && source.includes('},reviewRoute)'));
   check('re-importing the same reviewer report replaces an incomplete extraction', source.includes("comment.sourceId!==reportId") && source.includes("report.id!==reportId") && source.includes('priorByText[reviewNormalizedText(item.text)]'));
 
   const classificationContext = {

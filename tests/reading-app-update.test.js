@@ -28,5 +28,10 @@ check('first paint uses a quiet library loading state', html.includes('class="sh
 check('empty-library pitch waits until restoration settles', css.includes('body.library-ready:not(.has-papers) .hero') && js.includes("document.body.classList.toggle('library-ready',!libraryHydrating)"));
 check('startup waits for seeding and Drive restoration', js.includes('Promise.allSettled(startupLibraryWork)'));
 check('old empty-shelf message is gone', !js.includes('Your shelf is waiting'));
+check('on-device Gemini has an explicit preparation action', html.includes('id="aiPrepareLocal"') && js.includes('function prepareBrowserAi'));
+check('saving Automatic starts preparation from the user click', js.includes("if(id==='auto'&&browserLanguageModel())startLocalAiPreparation()"));
+check('download startup no longer reports a misleading zero percent', js.includes('Chrome is starting the on-device Gemini download') && !js.includes("Math.round((e.loaded||0)*100)"));
+check('AI work exposes accessible progress rails', html.includes('id="aiKeyProgress" role="progressbar"') && html.includes('id="reviewerProgress" role="progressbar"') && css.includes('.task-progress.indeterminate'));
+check('review classification and matching report batch progress', js.includes("onProgress('Classified '") && js.includes("done/comments.length"));
 
 process.exit(failures ? 1 : 0);

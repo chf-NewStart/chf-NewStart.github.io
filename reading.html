@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=63">
+  <link rel="stylesheet" href="/reading.css?v=64">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -298,6 +298,7 @@
               <input class="hidden" id="reviewFile" type="file" accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
               <button class="soft-button hidden" id="locateReviewsBtn" type="button">✦ Locate unlinked comments with AI</button>
               <p class="reviewer-locate-status" id="reviewerLocateStatus" role="status" aria-live="polite"></p>
+              <div class="task-progress hidden" id="reviewerProgress" role="progressbar" aria-label="Review analysis progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
               <div class="reviewer-filter-row" id="reviewerFilters" role="group" aria-label="Filter comments by scope"></div>
             </div>
             <div class="reviewer-comment-list" id="readerReviewList"></div>
@@ -325,6 +326,7 @@
               <button class="button" id="aiAskBtn">Ask</button>
             </div>
             <div class="status" id="aiStatus" role="status"></div>
+            <div class="task-progress hidden" id="aiTaskProgress" role="progressbar" aria-label="AI response progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
             <div class="evidence-list hidden" id="evidenceList"></div>
           </div>
         </aside>
@@ -371,6 +373,7 @@
           <div class="selection-ai-thread" id="selectionAiThread" aria-live="polite"></div>
           <div class="selection-ai-row"><textarea id="selectionAiQuestion" rows="1" placeholder="Ask about this note and passage…" title="Enter sends · Shift+Enter for a new line"></textarea><button class="button" id="selectionAiSend" type="button">Ask</button></div>
           <span class="selection-ai-status" id="selectionAiStatus" role="status"></span>
+          <div class="task-progress compact hidden" id="selectionAiProgress" role="progressbar" aria-label="AI response progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
         </div>
         <aside class="lookup-card hidden" id="lookupCard" aria-label="Definition for selected text">
           <div class="lookup-head">
@@ -427,6 +430,7 @@
         <button class="button" id="reviewPairImportBtn" type="button" disabled>Import paper &amp; comments</button>
       </div>
       <p class="review-import-status" id="reviewImportStatus" role="status" aria-live="polite"></p>
+      <div class="task-progress hidden" id="reviewImportProgress" role="progressbar" aria-label="Review import progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
     </div>
   </dialog>
 
@@ -486,7 +490,7 @@
       </section>
       <section>
         <h3>AI assistant</h3>
-        <p>Automatic uses Gemini Nano inside compatible desktop Chrome, with no account or API key. You can instead bring a Gemini, DeepSeek, OpenAI, Anthropic, or other OpenAI-compatible key. Cloud providers receive only the extracted text you choose—never the PDF or screenshot itself.</p>
+        <p>Automatic uses Gemini Nano inside compatible desktop Chrome, with no account or API key. Chrome owns the first model download; prepare it here before a long review, or bring a Gemini, DeepSeek, OpenAI, Anthropic, or other OpenAI-compatible key. Cloud providers receive only the extracted text you choose—never the PDF or screenshot itself.</p>
         <div class="ai-provider-grid">
           <label class="field-label" for="aiProvider">Provider</label>
           <select class="field" id="aiProvider">
@@ -508,9 +512,10 @@
               <input class="field" id="aiEndpoint" type="url" placeholder="https://example.com/v1/chat/completions" autocomplete="off" spellcheck="false">
             </div>
           </div>
-          <div><button class="soft-button" id="aiKeySave">Save AI settings</button></div>
+          <div><button class="soft-button" id="aiKeySave">Save AI settings</button> <button class="soft-button hidden" id="aiPrepareLocal" type="button">Prepare on-device Gemini</button></div>
         </div>
         <div class="status" id="aiKeyStatus"></div>
+        <div class="task-progress hidden" id="aiKeyProgress" role="progressbar" aria-label="On-device Gemini preparation progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
       </section>
       <section>
         <h3>Set up another device</h3>
@@ -633,9 +638,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=63',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=64',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=63" defer></script>
+<script src="/reading.js?v=64" defer></script>
 </body>
 </html>

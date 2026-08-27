@@ -43,6 +43,7 @@
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
+  var localAiPreparePromise = null;
   var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), reviewFocusId = '', reviewFocusPage = 0, reviewFilter = 'all', pendingReviewTargetId = '', reviewPairPaper = null, reviewPairComments = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
 
@@ -76,21 +77,36 @@
   function activeAiRoute(skipBrowser){var selected=aiSettings.provider||'auto';if(selected==='auto'&&!skipBrowser&&browserLanguageModel())return{id:'browser',label:'Gemini Nano (on device)',cfg:{}};return cloudAiRoute(selected);}
   function hasAiRoute(){aiSettings=loadAiSettings();return!!activeAiRoute(false);}
   function aiSetupError(message){var e=new Error(message);e.aiSetup=true;return e;}
-  function aiProgress(fn,message){if(fn)fn(message);}
+  function setTaskProgress(id,value){
+    var rail=byId(id);if(!rail)return;if(value===false){rail.classList.add('hidden');rail.classList.remove('indeterminate');rail.removeAttribute('aria-valuenow');rail.style.removeProperty('--task-progress');return;}
+    var amount=Number(value),determinate=value!==null&&value!==undefined&&Number.isFinite(amount);rail.classList.remove('hidden');rail.classList.toggle('indeterminate',!determinate);if(!determinate){rail.removeAttribute('aria-valuenow');rail.style.removeProperty('--task-progress');return;}amount=Math.max(0,Math.min(100,Math.round(amount)));rail.setAttribute('aria-valuenow',String(amount));rail.style.setProperty('--task-progress',amount+'%');
+  }
+  function aiProgress(fn,message,progress){if(fn)fn(message,progress);}
   function aiSystem(messages){var found=(messages||[]).find(function(message){return message.role==='system';});return found&&found.content||'You are a helpful reading assistant.';}
   function aiTurns(messages){return(messages||[]).filter(function(message){return message.role!=='system';}).map(function(message){return{role:message.role==='assistant'?'assistant':'user',content:String(message.content||'')};});}
   function trimBrowserPrompt(text){text=String(text||'');return text.length<=12000?text:text.slice(0,9000)+'\n\n[Middle of context shortened for the on-device model.]\n\n'+text.slice(-2600);}
   function aiTranscript(messages){return aiTurns(messages).map(function(message){return(message.role==='assistant'?'Assistant':'Reader')+': '+message.content;}).join('\n\n');}
+  function browserAiOptions(api,system){return api===window.LanguageModel?{initialPrompts:[{role:'system',content:system}]}:{systemPrompt:system};}
+  function browserDownloadMessage(loaded){loaded=Number(loaded);if(!Number.isFinite(loaded)||loaded<=0)return'Chrome is starting the on-device Gemini download…';if(loaded>=1)return'Gemini is downloaded. Chrome is preparing it for use…';return'Downloading on-device Gemini… '+Math.max(1,Math.round(loaded*100))+'%';}
+  function browserAiFriendlyError(error){if(error&&(error.name==='NotAllowedError'||error.name==='InvalidStateError'))return aiSetupError('Chrome needs a direct click to download Gemini. Open Desk settings and press Prepare on-device Gemini.');if(error&&error.name==='NotSupportedError')return aiSetupError('This device cannot run Gemini Nano. Choose DeepSeek or another cloud provider in settings.');return error;}
+  function prepareBrowserAi(onProgress){
+    if(localAiPreparePromise)return localAiPreparePromise;var api=browserLanguageModel();if(!api)return Promise.reject(aiSetupError('On-device Gemini is not available in this browser. Choose a cloud provider in settings.'));
+    var options=browserAiOptions(api,'You are a concise research reading partner.');options.monitor=function(m){if(!m||!m.addEventListener)return;m.addEventListener('downloadprogress',function(event){var loaded=Number(event.loaded);aiProgress(onProgress,browserDownloadMessage(loaded),loaded>=1?null:Math.max(0,loaded*100));});};aiProgress(onProgress,'Asking Chrome to prepare on-device Gemini…',null);
+    /* create() is intentionally invoked before any await: Chrome permits the first
+       model download only while this direct button click still counts as activation. */
+    var creation;try{creation=api.create(options);}catch(error){return Promise.reject(browserAiFriendlyError(error));}
+    localAiPreparePromise=Promise.resolve(creation).then(function(session){if(session&&session.destroy)try{session.destroy();}catch(e){}aiProgress(onProgress,'On-device Gemini is ready. Future reviews can start immediately.',100);return true;}).catch(function(error){throw browserAiFriendlyError(error);}).finally(function(){localAiPreparePromise=null;});return localAiPreparePromise;
+  }
   async function runBrowserAi(messages,onProgress){
     var api=browserLanguageModel();if(!api)throw aiSetupError('On-device Gemini is not available in this browser. Choose a cloud provider in settings.');
-    var modern=api===window.LanguageModel,system=aiSystem(messages),options=modern?{initialPrompts:[{role:'system',content:system}]}:{systemPrompt:system},availability='available';
+    if(localAiPreparePromise)await localAiPreparePromise;var system=aiSystem(messages),options=browserAiOptions(api,system),availability='available';
     try{if(api.availability)availability=await api.availability(options);else if(api.capabilities){var caps=await api.capabilities();availability=caps&&caps.available||'unavailable';}}catch(e){availability='unavailable';}
     if(availability==='unavailable'||availability==='no')throw aiSetupError('This device cannot run Gemini Nano. Choose Gemini, DeepSeek, or another cloud provider in settings.');
-    if(availability==='downloadable'||availability==='after-download'||availability==='downloading')aiProgress(onProgress,'Preparing on-device Gemini…');
-    options.monitor=function(m){if(!m||!m.addEventListener)return;m.addEventListener('downloadprogress',function(e){aiProgress(onProgress,'Downloading on-device Gemini… '+Math.round((e.loaded||0)*100)+'%');});};
+    if(availability==='downloadable'||availability==='after-download'||availability==='downloading')aiProgress(onProgress,'Preparing on-device Gemini…',null);
+    options.monitor=function(m){if(!m||!m.addEventListener)return;m.addEventListener('downloadprogress',function(e){var loaded=Number(e.loaded);aiProgress(onProgress,browserDownloadMessage(loaded),loaded>=1?null:Math.max(0,loaded*100));});};
     var session;
-    try{session=await api.create(options);aiProgress(onProgress,'Thinking on this device…');var answer=await session.prompt(trimBrowserPrompt(aiTranscript(messages)));if(!String(answer||'').trim())throw new Error('On-device Gemini returned no answer');return{text:String(answer).trim(),provider:'Gemini Nano (on device)'};}
-    catch(e){if(e&&e.aiSetup)throw e;if(e&&(e.name==='NotAllowedError'||e.name==='NotSupportedError'))throw aiSetupError('On-device Gemini needs a supported desktop Chrome and may need its model downloaded first. You can choose a cloud provider in settings.');throw e;}
+    try{session=await api.create(options);aiProgress(onProgress,'Thinking on this device…',null);var answer=await session.prompt(trimBrowserPrompt(aiTranscript(messages)));if(!String(answer||'').trim())throw new Error('On-device Gemini returned no answer');return{text:String(answer).trim(),provider:'Gemini Nano (on device)'};}
+    catch(e){if(e&&e.aiSetup)throw e;throw browserAiFriendlyError(e);}
     finally{if(session&&session.destroy)try{session.destroy();}catch(e){}}
   }
   async function aiResponseError(response,label){
@@ -943,16 +959,16 @@
   byId('memoryModeBtn').onclick=function(){setReviewPageMode('memory');};
   function closeAddDialog(){if(byId('addDialog').open)byId('addDialog').close();}
   function resetReviewImport(){
-    reviewPairPaper=null;reviewPairComments=null;byId('reviewPaperFile').value='';byId('reviewCommentsFile').value='';byId('reviewCombinedFile').value='';byId('reviewPaperName').textContent='PDF or Word document';byId('reviewCommentsName').textContent='Word or text document';byId('reviewPairImportBtn').disabled=true;byId('reviewPairFields').classList.add('hidden');byId('reviewPairModeBtn').setAttribute('aria-expanded','false');byId('reviewImportStatus').textContent='';
+    reviewPairPaper=null;reviewPairComments=null;byId('reviewPaperFile').value='';byId('reviewCommentsFile').value='';byId('reviewCombinedFile').value='';byId('reviewPaperName').textContent='PDF or Word document';byId('reviewCommentsName').textContent='Word or text document';byId('reviewPairImportBtn').disabled=true;byId('reviewPairFields').classList.add('hidden');byId('reviewPairModeBtn').setAttribute('aria-expanded','false');byId('reviewImportStatus').textContent='';setTaskProgress('reviewImportProgress',false);
   }
   byId('importPdfBtn').onclick = function(){byId('addDialog').showModal();};
   byId('addDeviceBtn').onclick = function(){ if(location.protocol==='file:'){ closeAddDialog();byId('launchDialog').showModal(); return; } closeAddDialog();byId('pdfFile').click(); };
   byId('addReviewBtn').onclick = function(){closeAddDialog();resetReviewImport();byId('reviewImportDialog').showModal();};
   byId('reviewCombinedBtn').onclick=function(){byId('reviewCombinedFile').click();};
   byId('reviewCombinedFile').onchange=async function(){
-    var file=this.files&&this.files[0],button=byId('reviewCombinedBtn'),status=byId('reviewImportStatus');this.value='';if(!file)return;var old=button.innerHTML,stamp=now();button.disabled=true;status.textContent='Checking the Word comments…';
-    try{var bytes=await file.arrayBuffer(),parsed=await parseDocx(bytes,file.name);if(!parsed.comments.length){status.textContent='No Word comments were found in that file. If the feedback is separate, use the 2-file option.';return;}byId('reviewImportDialog').close();if(await importDocx(file,button,false,bytes)){var target=state.chapters.filter(function(ch){return ch.sourceName===file.name&&ch.updatedAt>=stamp-1000;}).sort(function(a,b){return (+b.updatedAt||0)-(+a.updatedAt||0);})[0];if(target){placeInReviewWorkspace(target);touch(target);renderShelf();}}}
-    catch(e){status.textContent=e.message||'Phloem could not read that commented manuscript.';}
+    var file=this.files&&this.files[0],button=byId('reviewCombinedBtn'),status=byId('reviewImportStatus');this.value='';if(!file)return;var old=button.innerHTML,stamp=now();button.disabled=true;status.textContent='Checking the Word comments…';setTaskProgress('reviewImportProgress',10);
+    try{var bytes=await file.arrayBuffer();setTaskProgress('reviewImportProgress',35);var parsed=await parseDocx(bytes,file.name);if(!parsed.comments.length){status.textContent='No Word comments were found in that file. If the feedback is separate, use the 2-file option.';setTaskProgress('reviewImportProgress',false);return;}setTaskProgress('reviewImportProgress',65);if(await importDocx(file,button,false,bytes)){var target=state.chapters.filter(function(ch){return ch.sourceName===file.name&&ch.updatedAt>=stamp-1000;}).sort(function(a,b){return (+b.updatedAt||0)-(+a.updatedAt||0);})[0];if(target){placeInReviewWorkspace(target);touch(target);renderShelf();}}setTaskProgress('reviewImportProgress',100);byId('reviewImportDialog').close();}
+    catch(e){status.textContent=e.message||'Phloem could not read that commented manuscript.';setTaskProgress('reviewImportProgress',false);}
     finally{button.disabled=false;button.innerHTML=old;}
   };
   byId('reviewPairModeBtn').onclick=function(){var fields=byId('reviewPairFields'),open=fields.classList.contains('hidden');fields.classList.toggle('hidden',!open);this.setAttribute('aria-expanded',String(open));if(open)byId('reviewPaperPick').focus();};
@@ -962,9 +978,9 @@
   byId('reviewPaperFile').onchange=function(){reviewPairPaper=this.files&&this.files[0]||null;byId('reviewPaperName').textContent=reviewPairPaper?reviewPairPaper.name:'PDF or Word document';updateReviewPairReady();};
   byId('reviewCommentsFile').onchange=function(){reviewPairComments=this.files&&this.files[0]||null;byId('reviewCommentsName').textContent=reviewPairComments?reviewPairComments.name:'Word or text document';updateReviewPairReady();};
   byId('reviewPairImportBtn').onclick=async function(){
-    var paper=reviewPairPaper,comments=reviewPairComments,button=this,status=byId('reviewImportStatus');if(!paper||!comments)return;if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first so Phloem can locate the separate comments.';return;}var stamp=now();button.disabled=true;status.textContent='Importing the manuscript…';
-    try{var added=await importSourceFile(paper,null,null,button,true);if(!added)throw new Error('The manuscript could not be imported.');var target=state.chapters.filter(function(ch){return ch.sourceName===paper.name&&ch.updatedAt>=stamp-1000;}).sort(function(a,b){return (+b.updatedAt||0)-(+a.updatedAt||0);})[0];if(!target)throw new Error('Phloem could not identify the imported manuscript.');placeInReviewWorkspace(target);touch(target);renderShelf();byId('reviewImportDialog').close();await openReader(target.id);switchTab('reviewsPanel');if(innerWidth>720)setNotebookCollapsed(false,true);await importReviewerFile(target,comments,button);}
-    catch(e){status.textContent=e.message||'Phloem could not import that review package.';}
+    var paper=reviewPairPaper,comments=reviewPairComments,button=this,status=byId('reviewImportStatus');if(!paper||!comments)return;if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first so Phloem can locate the separate comments.';return;}var stamp=now();button.disabled=true;status.textContent='Importing the manuscript…';setTaskProgress('reviewImportProgress',5);
+    try{var added=await importSourceFile(paper,null,null,button,true);if(!added)throw new Error('The manuscript could not be imported.');setTaskProgress('reviewImportProgress',70);var target=state.chapters.filter(function(ch){return ch.sourceName===paper.name&&ch.updatedAt>=stamp-1000;}).sort(function(a,b){return (+b.updatedAt||0)-(+a.updatedAt||0);})[0];if(!target)throw new Error('Phloem could not identify the imported manuscript.');placeInReviewWorkspace(target);touch(target);renderShelf();setTaskProgress('reviewImportProgress',100);byId('reviewImportDialog').close();await openReader(target.id);switchTab('reviewsPanel');if(innerWidth>720)setNotebookCollapsed(false,true);await importReviewerFile(target,comments,button);}
+    catch(e){status.textContent=e.message||'Phloem could not import that review package.';setTaskProgress('reviewImportProgress',false);}
     finally{button.disabled=false;button.textContent='Import paper & comments';}
   };
   byId('pdfFile').onchange = function(){ var files=Array.prototype.slice.call(this.files||[]); this.value=''; if(files.length)importDropped([],files); };
@@ -3491,8 +3507,8 @@
   }
   async function locateReviewsWithAi(ch,comments,onProgress,routeOverride){
     var config=reviewLocationConfig(routeOverride),batches=reviewLocationBatches(comments,config.size),next=0,done=0,found=0;
-    if(!batches.length)return 0;if(onProgress)onProgress('Matching '+comments.length+' comments in '+batches.length+' '+config.label+' batch'+(batches.length===1?'':'es')+'…');
-    async function worker(){for(;;){var batchIndex=next++;if(batchIndex>=batches.length)return;var batch=batches[batchIndex],batchFound=await locateReviewBatchWithAi(ch,batch,function(message){if(onProgress)onProgress('Match batch '+(batchIndex+1)+' of '+batches.length+' · '+message);},config.route);found+=batchFound;done+=batch.length;if(onProgress)onProgress('Checked '+Math.min(done,comments.length)+' of '+comments.length+' comments · '+found+' linked…');}}
+    if(!batches.length)return 0;if(onProgress)onProgress('Matching '+comments.length+' comments in '+batches.length+' '+config.label+' batch'+(batches.length===1?'':'es')+'…',0);
+    async function worker(){for(;;){var batchIndex=next++;if(batchIndex>=batches.length)return;var batch=batches[batchIndex],batchFound=await locateReviewBatchWithAi(ch,batch,function(message){if(onProgress)onProgress('Match batch '+(batchIndex+1)+' of '+batches.length+' · '+message,done/comments.length);},config.route);found+=batchFound;done+=batch.length;if(onProgress)onProgress('Checked '+Math.min(done,comments.length)+' of '+comments.length+' comments · '+found+' linked…',done/comments.length);}}
     var workers=[],count=Math.min(config.concurrency,batches.length);for(var i=0;i<count;i++)workers.push(worker());await Promise.all(workers);return found;
   }
   async function locateOneReviewWithAi(ch,comment,onProgress,routeOverride){return(await locateReviewBatchWithAi(ch,[comment],onProgress,routeOverride))>0;}
@@ -3573,30 +3589,32 @@
     if(!units.length)return[];
     for(var start=0;start<units.length;start+=batchSize){
       var batch=units.slice(start,start+batchSize),payload=batch.map(function(unit){return '[INPUT '+unit.inputId+']\nReviewer: '+unit.reviewer+'\nGroup: '+(unit.group||'none')+'\nNumber: '+(unit.number||'none')+'\nReviewer text:\n'+unit.text+'\nExisting author response:\n'+(unit.response||'none');}).join('\n\n'),byId={},provider='';
-      if(onProgress)onProgress('Classifying review items '+(start+1)+'–'+Math.min(units.length,start+batch.length)+' of '+units.length+'…');
-      try{var result=await runAi(system,payload,1900,onProgress,routeOverride),data=reviewAiJson(result.text),items=Array.isArray(data&&data.items)?data.items:[];provider=result.provider||'';items.forEach(function(item){if(item&&item.inputId)byId[String(item.inputId)]=item;});}
+      var batchProgress=start/units.length;if(onProgress)onProgress('Classifying review items '+(start+1)+'–'+Math.min(units.length,start+batch.length)+' of '+units.length+'…',batchProgress);
+      try{var result=await runAi(system,payload,1900,function(message){if(onProgress)onProgress(message,batchProgress);},routeOverride),data=reviewAiJson(result.text),items=Array.isArray(data&&data.items)?data.items:[];provider=result.provider||'';items.forEach(function(item){if(item&&item.inputId)byId[String(item.inputId)]=item;});}
       catch(e){failed++;}
       batch.forEach(function(unit){var classification=byId[unit.inputId],keep=unit.number||!classification||classification.actionable!==false;if(!keep)return;var record=reviewUnitRecord(unit,classification,provider),key=reviewNormalizedText(record.text);if(!key||seen[key])return;seen[key]=1;all.push(record);});
+      if(onProgress)onProgress('Classified '+Math.min(units.length,start+batch.length)+' of '+units.length+' review items…',Math.min(1,(start+batch.length)/units.length));
     }
     if(!all.length&&failed)throw new Error('AI could not classify this reviewer report. Try a cloud model for this long document.');return all.slice(0,160);
   }
   async function importReviewerFile(ch,file,button){
     var status=byId('reviewerLocateStatus'),old=button.textContent;if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}var reviewRoute=activeAiRoute(false);button.disabled=true;button.textContent='Reading review…';
     try{
-      if(ch.kind==='pdf'&&!reviewManuscriptText(ch)&&pdfDoc){status.textContent='Preparing the manuscript text…';await ensureReaderData(pdfDoc,ch);}
+      setTaskProgress('reviewerProgress',3);if(ch.kind==='pdf'&&!reviewManuscriptText(ch)&&pdfDoc){status.textContent='Preparing the manuscript text…';setTaskProgress('reviewerProgress',6);await ensureReaderData(pdfDoc,ch);}
       if(!paras(reviewManuscriptText(ch)).length)throw new Error('This paper has no readable manuscript text to match against.');
-      var report=await reviewReportText(file);if(!report.trim())throw new Error('That reviewer file contains no readable text.');status.textContent='Separating the reviewer comments with '+reviewRoute.label+'…';var extracted=await extractReviewerReportWithAi(report,function(message){status.textContent=message;},reviewRoute);if(!extracted.length)throw new Error('AI could not find actionable reviewer comments in that file.');
+      var report=await reviewReportText(file);if(!report.trim())throw new Error('That reviewer file contains no readable text.');status.textContent='Separating the reviewer comments with '+reviewRoute.label+'…';setTaskProgress('reviewerProgress',10);var extracted=await extractReviewerReportWithAi(report,function(message,progress){status.textContent=message;setTaskProgress('reviewerProgress',10+(Number.isFinite(progress)?progress:0)*45);},reviewRoute);if(!extracted.length)throw new Error('AI could not find actionable reviewer comments in that file.');setTaskProgress('reviewerProgress',55);
       ch.reviewReports=Array.isArray(ch.reviewReports)?ch.reviewReports:[];var priorReport=ch.reviewReports.find(function(report){return String(report.name||'').toLowerCase()===String(file.name||'').toLowerCase();}),reportId=priorReport?priorReport.id:uid('report'),priorComments=(ch.reviewComments||[]).filter(function(comment){return comment.sourceId===reportId;}),priorByText={};priorComments.forEach(function(comment){priorByText[reviewNormalizedText(comment.text)]=comment;});
-      var comments=extracted.map(function(item){var record={id:uid('rr'),sourceId:reportId,author:item.author,date:'',text:item.text,level:normalizeReviewLevel(item.level),topic:normalizeReviewTopic(item.topic),locationHint:item.locationHint||'',classificationAudit:item.classificationAudit||null,classifiedProvider:item.classifiedProvider||reviewRoute.label,para:null,page:null,start:0,end:0,quote:'',anchors:[],pdfAnchors:[],anchored:false,replies:[],response:item.response||'',resolved:false,sourceName:file.name,addedAt:now()},prior=priorByText[reviewNormalizedText(item.text)];if(prior){record.id=prior.id;record.response=prior.response||record.response;record.resolved=!!prior.resolved;record.replies=prior.replies||[];}return record;});ch.reviewComments=(ch.reviewComments||[]).filter(function(comment){return comment.sourceId!==reportId;}).concat(comments);ch.reviewReports=ch.reviewReports.filter(function(report){return report.id!==reportId;});var matchable=comments.filter(reviewCanAutoLocate),linked=await locateReviewsWithAi(ch,matchable,function(message){status.textContent=message;},reviewRoute);
-      var levels={},adjusted=0;comments.forEach(function(comment){levels[comment.level]=(levels[comment.level]||0)+1;if(comment.classificationAudit&&comment.classificationAudit.adjusted)adjusted++;});ch.reviewReports.push({id:reportId,name:file.name,addedAt:now(),comments:comments.length,levels:levels,extractorVersion:2,classifierVersion:2,locatorVersion:2,provider:reviewRoute.label,adjustedClassifications:adjusted});placeInReviewWorkspace(ch);touch(ch);if(readerMode==='text')renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();renderPdfReviewFocus(currentPage);updateReviewBadge();status.textContent='Imported '+comments.length+' reviewer concern'+(comments.length===1?'':'s')+' · '+linked+' linked to the '+(ch.kind==='pdf'?'PDF':'manuscript')+' · '+(adjusted?adjusted+' label'+(adjusted===1?'':'s')+' corrected by local checks':'AI labels agreed with local checks')+' · '+reviewRoute.label+' · filed in '+REVIEW_WORKSPACE_CATEGORY+'.';
-    }catch(e){status.textContent=e.message||'Phloem could not import that reviewer file.';}
+      var comments=extracted.map(function(item){var record={id:uid('rr'),sourceId:reportId,author:item.author,date:'',text:item.text,level:normalizeReviewLevel(item.level),topic:normalizeReviewTopic(item.topic),locationHint:item.locationHint||'',classificationAudit:item.classificationAudit||null,classifiedProvider:item.classifiedProvider||reviewRoute.label,para:null,page:null,start:0,end:0,quote:'',anchors:[],pdfAnchors:[],anchored:false,replies:[],response:item.response||'',resolved:false,sourceName:file.name,addedAt:now()},prior=priorByText[reviewNormalizedText(item.text)];if(prior){record.id=prior.id;record.response=prior.response||record.response;record.resolved=!!prior.resolved;record.replies=prior.replies||[];}return record;});ch.reviewComments=(ch.reviewComments||[]).filter(function(comment){return comment.sourceId!==reportId;}).concat(comments);ch.reviewReports=ch.reviewReports.filter(function(report){return report.id!==reportId;});var matchable=comments.filter(reviewCanAutoLocate),linked=await locateReviewsWithAi(ch,matchable,function(message,progress){status.textContent=message;setTaskProgress('reviewerProgress',55+(Number.isFinite(progress)?progress:0)*45);},reviewRoute);
+      var levels={},adjusted=0;comments.forEach(function(comment){levels[comment.level]=(levels[comment.level]||0)+1;if(comment.classificationAudit&&comment.classificationAudit.adjusted)adjusted++;});ch.reviewReports.push({id:reportId,name:file.name,addedAt:now(),comments:comments.length,levels:levels,extractorVersion:2,classifierVersion:2,locatorVersion:2,provider:reviewRoute.label,adjustedClassifications:adjusted});placeInReviewWorkspace(ch);touch(ch);if(readerMode==='text')renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();renderPdfReviewFocus(currentPage);updateReviewBadge();setTaskProgress('reviewerProgress',100);status.textContent='Imported '+comments.length+' reviewer concern'+(comments.length===1?'':'s')+' · '+linked+' linked to the '+(ch.kind==='pdf'?'PDF':'manuscript')+' · '+(adjusted?adjusted+' label'+(adjusted===1?'':'s')+' corrected by local checks':'AI labels agreed with local checks')+' · '+reviewRoute.label+' · filed in '+REVIEW_WORKSPACE_CATEGORY+'.';
+    }catch(e){status.textContent=e.message||'Phloem could not import that reviewer file.';setTaskProgress('reviewerProgress',false);}
     finally{button.disabled=false;button.textContent=old;}
   }
   async function locateUnlinkedReviews(ch,button){
     var pending=(ch.reviewComments||[]).filter(function(comment){return !comment.anchored&&comment.text&&reviewCanAutoLocate(comment);}),status=byId('reviewerLocateStatus');if(!pending.length)return;
     if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}
-    var reviewRoute=activeAiRoute(false);button.disabled=true;var found=0;
-    try{found=await locateReviewsWithAi(ch,pending,function(message){status.textContent=message;},reviewRoute);touch(ch);renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();status.textContent=found?'Linked '+found+' comment'+(found===1?'':'s')+' to the manuscript with '+reviewRoute.label+'.':'No confident passage matches were found.';}
+    var reviewRoute=activeAiRoute(false);button.disabled=true;var found=0;setTaskProgress('reviewerProgress',0);
+    try{found=await locateReviewsWithAi(ch,pending,function(message,progress){status.textContent=message;setTaskProgress('reviewerProgress',(Number.isFinite(progress)?progress:0)*100);},reviewRoute);touch(ch);renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();setTaskProgress('reviewerProgress',100);status.textContent=found?'Linked '+found+' comment'+(found===1?'':'s')+' to the manuscript with '+reviewRoute.label+'.':'No confident passage matches were found.';}
+    catch(e){status.textContent=e.message||'Phloem could not locate those comments.';setTaskProgress('reviewerProgress',false);}
     finally{button.disabled=false;}
   }
   function reviewerPassageMarkup(ch,comment){
@@ -4278,14 +4296,14 @@
     if(!hasAiRoute()){showAiSetupStatus('selectionAiStatus','On-device Gemini is not available here. Choose a cloud provider and add its key.');return;}
     var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch);created=true;}
     var sentAt=now();thread.messages.push({role:'user',content:q,at:sentAt});thread.updatedAt=sentAt;input.value='';growSelectionAiQuestion();renderSelectionAiThread('Thinking…');renderQa('Thinking…');
-    var button=byId('selectionAiSend');button.disabled=true;byId('selectionAiStatus').textContent='Thinking…';
+    var button=byId('selectionAiSend');button.disabled=true;byId('selectionAiStatus').textContent='Thinking…';setTaskProgress('selectionAiProgress',null);
     try{
-      var result=await runAiMessages(aiThreadMessages(ch,thread),1200,function(message){byId('selectionAiStatus').textContent=message;});
+      var result=await runAiMessages(aiThreadMessages(ch,thread),1200,function(message,progress){byId('selectionAiStatus').textContent=message;setTaskProgress('selectionAiProgress',progress);});
       thread.messages.push({role:'assistant',content:result.text,provider:result.provider,at:now()});if(thread.messages.length>24){thread.messages=thread.messages.slice(-24);if(thread.messages[0]&&thread.messages[0].role==='assistant')thread.messages.shift();}thread.updatedAt=now();ch.aiThreads=ch.aiThreads.filter(function(item){return item.id!==thread.id;});ch.aiThreads.unshift(thread);ch.activeAiThreadId=thread.id;
-      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:result.text,provider:result.provider,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('selectionAiStatus').textContent='Saved in this note thread · '+result.provider+'.';renderSelectionAiThread();renderQa();
+      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:result.text,provider:result.provider,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('selectionAiStatus').textContent='Saved in this note thread · '+result.provider+'.';setTaskProgress('selectionAiProgress',100);renderSelectionAiThread();renderQa();
     }catch(error){
       if(thread.messages[thread.messages.length-1]&&thread.messages[thread.messages.length-1].role==='user'&&thread.messages[thread.messages.length-1].content===q)thread.messages.pop();if(created&&!thread.messages.length){ch.aiThreads=ch.aiThreads.filter(function(item){return item.id!==thread.id;});ch.activeAiThreadId=ch.aiThreads[0]?ch.aiThreads[0].id:'';aiThreadDraft=true;}
-      input.value=q;growSelectionAiQuestion();if(error&&error.aiSetup)showAiSetupStatus('selectionAiStatus',error.message);else byId('selectionAiStatus').textContent=error.message||'AI request failed';renderSelectionAiThread();renderQa();
+      input.value=q;growSelectionAiQuestion();setTaskProgress('selectionAiProgress',false);if(error&&error.aiSetup)showAiSetupStatus('selectionAiStatus',error.message);else byId('selectionAiStatus').textContent=error.message||'AI request failed';renderSelectionAiThread();renderQa();
     }button.disabled=false;
   }
   byId('selectionAiQuestion').addEventListener('input',growSelectionAiQuestion);
@@ -4299,16 +4317,16 @@
     if(!hasAiRoute()){showAiSetupStatus('aiStatus','On-device Gemini is not available here. Choose a cloud provider and add its key.');return;}
     var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch);created=true;}
     var sentAt=now();thread.messages.push({role:'user',content:q,at:sentAt});thread.updatedAt=sentAt;byId('aiQuestion').value='';growQuestionBox();renderQa('Thinking…');
-    var btn=byId('aiAskBtn');btn.disabled=true;byId('aiStatus').textContent='Thinking…';
+    var btn=byId('aiAskBtn');btn.disabled=true;byId('aiStatus').textContent='Thinking…';setTaskProgress('aiTaskProgress',null);
     try{
-      var result=await runAiMessages(aiThreadMessages(ch,thread),1200,function(message){byId('aiStatus').textContent=message;});
+      var result=await runAiMessages(aiThreadMessages(ch,thread),1200,function(message,progress){byId('aiStatus').textContent=message;setTaskProgress('aiTaskProgress',progress);});
       thread.messages.push({role:'assistant',content:result.text,provider:result.provider,at:now()});if(thread.messages.length>24){thread.messages=thread.messages.slice(-24);if(thread.messages[0]&&thread.messages[0].role==='assistant')thread.messages.shift();}thread.updatedAt=now();
       ch.aiThreads=ch.aiThreads.filter(function(t){return t.id!==thread.id;});ch.aiThreads.unshift(thread);ch.activeAiThreadId=thread.id;
-      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:result.text,provider:result.provider,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiStatus').textContent='Saved in this thread · '+result.provider+'.';renderQa();var box=byId('qaList');if(box.lastElementChild)box.lastElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
+      ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:result.text,provider:result.provider,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('aiStatus').textContent='Saved in this thread · '+result.provider+'.';setTaskProgress('aiTaskProgress',100);renderQa();var box=byId('qaList');if(box.lastElementChild)box.lastElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
     }catch(e){
       if(thread.messages[thread.messages.length-1]&&thread.messages[thread.messages.length-1].role==='user'&&thread.messages[thread.messages.length-1].content===q)thread.messages.pop();
       if(created&&!thread.messages.length){ch.aiThreads=ch.aiThreads.filter(function(t){return t.id!==thread.id;});ch.activeAiThreadId=ch.aiThreads[0]?ch.aiThreads[0].id:'';aiThreadDraft=true;}
-      byId('aiQuestion').value=q;growQuestionBox();if(e&&e.aiSetup)showAiSetupStatus('aiStatus',e.message);else byId('aiStatus').textContent=e.message||'AI request failed';renderQa();
+      byId('aiQuestion').value=q;growQuestionBox();setTaskProgress('aiTaskProgress',false);if(e&&e.aiSetup)showAiSetupStatus('aiStatus',e.message);else byId('aiStatus').textContent=e.message||'AI request failed';renderQa();
     }btn.disabled=false;
   }
   function renderQa(pending){
@@ -4712,13 +4730,13 @@
     return 'Only the text context you choose is sent to '+AI_PROVIDERS[id].label+'. The key is excluded from library sync and backups, and leaves this browser only when you explicitly make a private device setup link.';
   }
   function renderAiProviderFields(){
-    var id=byId('aiProvider').value,cfg=aiSettings.providers[id]||{},cloud=id!=='auto';byId('aiCloudFields').classList.toggle('hidden',!cloud);byId('aiEndpointFields').classList.toggle('hidden',id!=='compatible');byId('aiProviderNote').textContent=aiProviderNote(id);
+    var id=byId('aiProvider').value,cfg=aiSettings.providers[id]||{},cloud=id!=='auto',prepare=byId('aiPrepareLocal');byId('aiCloudFields').classList.toggle('hidden',!cloud);byId('aiEndpointFields').classList.toggle('hidden',id!=='compatible');byId('aiProviderNote').textContent=aiProviderNote(id);prepare.classList.toggle('hidden',id!=='auto'||!browserLanguageModel());prepare.disabled=false;prepare.textContent='Prepare on-device Gemini';setTaskProgress('aiKeyProgress',false);
     if(cloud){byId('aiKey').value=cfg.key||'';byId('aiKey').placeholder=AI_PROVIDERS[id].label+' API key';byId('aiModel').value=cfg.model||AI_PROVIDERS[id].model||'';byId('aiEndpoint').value=cfg.endpoint||'';}refreshAiSettingsStatus(id);
   }
   async function refreshAiSettingsStatus(id){
     var status=byId('aiKeyStatus');if(id!=='auto'){var cfg=aiSettings.providers[id]||{};status.textContent=cfg.key?'Ready to use '+AI_PROVIDERS[id].label+'.':'Add a key and save to use '+AI_PROVIDERS[id].label+'.';return;}
     var api=browserLanguageModel(),fallback=cloudAiRoute();if(!api){status.textContent=fallback?'Gemini Nano is unavailable here; Automatic will use '+fallback.label+'.':'Gemini Nano is unavailable in this browser. Choose a cloud provider below to use AI.';return;}status.textContent='Checking on-device Gemini…';
-    try{var availability=api.availability?await api.availability():api.capabilities?(await api.capabilities()).available:'available';if(byId('aiProvider').value!=='auto')return;status.textContent=(availability==='available'||availability==='readily')?'On-device Gemini is ready. Your reading context stays on this device.':(availability==='downloadable'||availability==='after-download'||availability==='downloading')?'On-device Gemini is supported and will download when you first press Ask.':'Gemini Nano cannot run on this device'+(fallback?'; Automatic will use '+fallback.label+'.':'. Choose a cloud provider to use AI.');}
+    try{var availability=api.availability?await api.availability():api.capabilities?(await api.capabilities()).available:'available',prepare=byId('aiPrepareLocal');if(byId('aiProvider').value!=='auto')return;if(availability==='available'||availability==='readily'){status.textContent='On-device Gemini is ready. Your reading context stays on this device.';prepare.textContent='Gemini ready';prepare.disabled=true;setTaskProgress('aiKeyProgress',false);}else if(availability==='downloadable'||availability==='after-download'||availability==='downloading'){status.textContent=availability==='downloading'?'Chrome is downloading Gemini in the background. Press Prepare to show its progress here.':'Press Prepare on-device Gemini now so a long review does not have to wait for Chrome’s first download.';}else status.textContent='Gemini Nano cannot run on this device'+(fallback?'; Automatic will use '+fallback.label+'.':'. Choose a cloud provider to use AI.');}
     catch(e){if(byId('aiProvider').value==='auto')status.textContent=fallback?'Automatic will use '+fallback.label+'.':'Could not start on-device Gemini. Choose a cloud provider to use AI.';}
   }
   function fillAiSettings(){aiSettings=loadAiSettings();byId('aiProvider').value=aiSettings.provider||'auto';renderAiProviderFields();}
@@ -4884,6 +4902,8 @@
 
   /* keys, backup, restore */
   byId('aiProvider').onchange=function(){aiSettings.provider=this.value;renderAiProviderFields();};
+  function startLocalAiPreparation(){var button=byId('aiPrepareLocal'),status=byId('aiKeyStatus');button.disabled=true;button.textContent='Preparing…';setTaskProgress('aiKeyProgress',null);prepareBrowserAi(function(message,progress){status.textContent=message;setTaskProgress('aiKeyProgress',progress);}).then(function(){button.textContent='Gemini ready';button.disabled=true;setTaskProgress('aiKeyProgress',100);},function(error){status.textContent=error.message||'Chrome could not prepare on-device Gemini.';button.textContent='Try preparing again';button.disabled=false;setTaskProgress('aiKeyProgress',false);});}
+  byId('aiPrepareLocal').onclick=startLocalAiPreparation;
   byId('aiKeySave').onclick=function(){
     var id=byId('aiProvider').value;aiSettings.provider=id;
     if(id!=='auto'){
@@ -4891,7 +4911,7 @@
       if(id==='compatible'){if(!endpoint){byId('aiKeyStatus').textContent='Add the full chat-completions endpoint first.';return;}try{var parsed=new URL(endpoint);if(parsed.protocol!=='https:'&&!(parsed.protocol==='http:'&&(parsed.hostname==='localhost'||parsed.hostname==='127.0.0.1')))throw new Error();}catch(e){byId('aiKeyStatus').textContent='Use an HTTPS endpoint, or HTTP only for localhost.';return;}}
       aiSettings.providers[id]={key:key,model:model,endpoint:id==='compatible'?endpoint:''};if(id==='deepseek'){if(key)localStorage.setItem(LEGACY_AI_KEY,key);else localStorage.removeItem(LEGACY_AI_KEY);}
     }
-    saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Gemini Nano will be used when this browser supports it.':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');
+    saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Asking Chrome to prepare Gemini now…':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');if(id==='auto'&&browserLanguageModel())startLocalAiPreparation();else setTaskProgress('aiKeyProgress',false);
   };
   byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='phloem-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
   byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();updateReviewBadge();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};

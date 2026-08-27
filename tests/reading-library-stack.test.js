@@ -179,6 +179,22 @@ function check(name, condition, extra) {
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('.paper-category-tab.is-selected');
   check('custom category order survives a reload', await page.locator('.paper-category-mark').nth(1).textContent() === 'Metabolic models');
+
+  await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem('readingRoom.v1'));
+    const stamp = Date.now();
+    data.chapters.push({ id: 'paper_in_review', kind: 'text', title: 'Pinned revision paper', authors: 'Review Team', category: 'In review', reviewComments: [], tags: [], fr: 'Revision manuscript.', notes: {}, pageNotes: {}, questions: [], addedAt: stamp, updatedAt: stamp, readPage: 1 });
+    data.categoryOrder = ['In review'].concat((data.categoryOrder || []).filter(name => name !== 'In review'));
+    localStorage.setItem('readingRoom.v1', JSON.stringify(data));
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.locator('.paper-category-tab[data-category-name="Topic 12"] .paper-category-open').click();
+  await page.waitForFunction(() => document.querySelector('.paper-category-tab.is-selected')?.dataset.categoryName === 'Topic 12');
+  check('selecting a distant category keeps it visible instead of returning to pinned In review', await page.locator('.paper-category-rail').evaluate(rail => {
+    const selected = rail.querySelector('.paper-category-tab.is-selected');
+    const railBox = rail.getBoundingClientRect(), selectedBox = selected.getBoundingClientRect();
+    return rail.scrollLeft > 0 && selectedBox.left >= railBox.left - 1 && selectedBox.right <= railBox.right + 1;
+  }));
   check('reading wall has no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

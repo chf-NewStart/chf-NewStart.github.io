@@ -795,7 +795,7 @@
     if(duplicateNoticeMessage){panel.classList.remove('hidden');panel.classList.add('done');button.classList.add('hidden');byId('duplicateNoticeTitle').textContent='Library cleaned';byId('duplicateNoticeCopy').textContent=duplicateNoticeMessage;return;}
     panel.classList.add('hidden');panel.classList.remove('done');button.classList.remove('hidden');
   }
-  var librarySelectionId=null,LIBRARY_SORT_KEY='readingRoom.librarySort',shelfPressUntil=0;
+  var librarySelectionId=null,LIBRARY_SORT_KEY='readingRoom.librarySort',shelfPressUntil=0,revealShelfCategoryOnRender=false;
   var librarySortMode='touched';
   try{var savedLibrarySort=localStorage.getItem(LIBRARY_SORT_KEY);if(['touched','added','title','author','progress'].indexOf(savedLibrarySort)>=0)librarySortMode=savedLibrarySort;}catch(e){}
   byId('librarySort').value=librarySortMode;
@@ -856,6 +856,12 @@
   function focusShelfBook(id){
     var books=byId('shelf').querySelectorAll('[data-shelf-paper]');for(var i=0;i<books.length;i++)if(books[i].dataset.shelfPaper===id){try{books[i].focus({preventScroll:true});}catch(e){books[i].focus();}break;}
   }
+  function revealSelectedShelfCategory(categoryRail){
+    var active=categoryRail&&categoryRail.querySelector('.paper-category-tab.is-selected');if(!active)return;
+    var start=active.offsetLeft,end=start+active.offsetWidth,visibleStart=categoryRail.scrollLeft,visibleEnd=visibleStart+categoryRail.clientWidth,pad=7;
+    if(start<visibleStart+pad)categoryRail.scrollLeft=Math.max(0,start-pad);
+    else if(end>visibleEnd-pad)categoryRail.scrollLeft=Math.max(0,end-categoryRail.clientWidth+pad);
+  }
   function inferredSourceCredit(ch){
     var source=filenameTitle(ch.sourceName||''),yearAt=source.search(/(?:19|20)\d{2}/);
     if(yearAt<2)return '';
@@ -886,7 +892,7 @@
     var q=byId('librarySearch').value.trim().toLowerCase();
     var list=state.chapters.filter(function(ch){return !q||paperHaystack(ch).includes(q);}).sort(compareShelfPapers);
     byId('libraryCount').textContent=!state.chapters.length&&libraryDriveRestoreArmed?'Drive library waiting':(q?list.length+' of ':'')+state.chapters.length+(state.chapters.length===1?' paper':' papers');renderDuplicateNotice();
-    var shelf=byId('shelf');shelf.innerHTML='';
+    var shelf=byId('shelf'),oldCategoryRail=shelf.querySelector('.paper-category-rail'),categoryScroll=oldCategoryRail?oldCategoryRail.scrollLeft:0;shelf.innerHTML='';
     if(!list.length){
       if(libraryHydrating){shelf.innerHTML='<div class="shelf-loading" role="status" aria-live="polite"><span class="shelf-loading-mark" aria-hidden="true"></span><div><b>Opening your library</b><span>Restoring papers and review work…</span></div></div>';return;}
       if(!state.chapters.length&&libraryDriveRestoreArmed&&gdriveOn()){shelf.innerHTML='<div class="shelf-drive-restore" role="status" aria-live="polite"><span class="shelf-drive-mark" aria-hidden="true">☁</span><div><b>Your library is in Google Drive</b><span>'+(libraryDriveRestoreMessage?esc(libraryDriveRestoreMessage):'Google needs one tap before Phloem can restore it on this device.')+'</span><button class="button" id="restoreDriveLibraryBtn" type="button">Restore library</button><small>Your papers and review work are not gone. This gives Google permission to open the private app folder.</small></div></div>';return;}
@@ -924,7 +930,7 @@
       categoryTab.ondragover=function(e){if(draggingPaperId){e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move';categoryTab.classList.add('paper-drop-target');categoryTab.classList.remove('drop-before','drop-after');return;}if(!draggingCategory||draggingCategory.toLowerCase()===group.label.toLowerCase())return;e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move';var rect=categoryTab.getBoundingClientRect(),after=e.clientX>rect.left+rect.width/2;categoryTab.classList.toggle('drop-before',!after);categoryTab.classList.toggle('drop-after',after);};
       categoryTab.ondragleave=function(e){if(!categoryTab.contains(e.relatedTarget))categoryTab.classList.remove('drop-before','drop-after','paper-drop-target');};
       categoryTab.ondrop=function(e){e.preventDefault();if(draggingPaperId){var paper=find(draggingPaperId),needsMove=paper&&shelfPaperCategory(paper).toLowerCase()!==group.label.toLowerCase();if(paper)librarySelectionId=paper.id;if(needsMove){setShelfPaperCategory(paper,group.label);persist();}clearShelfDrag();if(paper)renderShelf();return;}var moving=draggingCategory||(e.dataTransfer&&e.dataTransfer.getData('text/plain')),rect=categoryTab.getBoundingClientRect(),after=e.clientX>rect.left+rect.width/2;clearShelfDrag();if(moving&&placeShelfCategory(moving,group.label,after))renderShelf();};
-      categoryOpen.type='button';categoryOpen.className='paper-category-open';categoryOpen.setAttribute('aria-pressed',isOpen?'true':'false');categoryOpen.innerHTML='<span class="paper-category-mark">'+esc(group.label)+'</span><span class="paper-category-count">'+group.papers.length+'</span>'+(isReviewCategory?'<span class="paper-category-pin">Pinned</span>':'');categoryOpen.onclick=function(){if(!isOpen){librarySelectionId=group.papers[0].id;renderShelf();}};
+      categoryOpen.type='button';categoryOpen.className='paper-category-open';categoryOpen.setAttribute('aria-pressed',isOpen?'true':'false');categoryOpen.innerHTML='<span class="paper-category-mark">'+esc(group.label)+'</span><span class="paper-category-count">'+group.papers.length+'</span>'+(isReviewCategory?'<span class="paper-category-pin">Pinned</span>':'');categoryOpen.onclick=function(){if(!isOpen){librarySelectionId=group.papers[0].id;revealShelfCategoryOnRender=true;renderShelf();}};
       categoryEdit.type='button';categoryEdit.className='paper-category-edit';categoryEdit.textContent='✎';categoryEdit.title='Rename '+group.label;categoryEdit.setAttribute('aria-label','Rename category '+group.label);categoryEdit.onclick=function(){var answer=prompt('Rename category “'+group.label+'”',group.label);if(answer===null)return;var next=categoryLabel(answer),stamp=now(),orderBefore=shelfCategoryNames(),seenOrder={};state.chapters.forEach(function(ch){if(shelfPaperCategory(ch).toLowerCase()===group.label.toLowerCase()){setShelfPaperCategory(ch,next);ch.updatedAt=stamp;}});state.categoryOrder=orderBefore.map(function(label){return label.toLowerCase()===group.label.toLowerCase()?next:label;}).filter(function(label){var key=label.toLowerCase();if(seenOrder[key])return false;seenOrder[key]=true;return true;});state.categoryOrderUpdatedAt=stamp;persist();renderShelf();};
       categoryReorder.className='paper-category-reorder';categoryPrev.type='button';categoryPrev.className='paper-category-step prev';categoryPrev.textContent='‹';categoryPrev.disabled=groupIndex===0;categoryPrev.setAttribute('aria-label','Move category '+group.label+' left');categoryPrev.onclick=function(e){e.stopPropagation();if(stepShelfCategory(group.label,-1)){renderShelf();focusCategoryGrip(group.label);}};categoryNext.type='button';categoryNext.className='paper-category-step next';categoryNext.textContent='›';categoryNext.disabled=groupIndex===grouped.length-1;categoryNext.setAttribute('aria-label','Move category '+group.label+' right');categoryNext.onclick=function(e){e.stopPropagation();if(stepShelfCategory(group.label,1)){renderShelf();focusCategoryGrip(group.label);}};categoryReorder.appendChild(categoryPrev);categoryReorder.appendChild(categoryNext);
       if(!isReviewCategory)categoryTab.appendChild(categoryGrip);categoryTab.appendChild(categoryOpen);if(!isReviewCategory){categoryTab.appendChild(categoryEdit);categoryTab.appendChild(categoryReorder);}categoryRail.appendChild(categoryTab);
@@ -964,7 +970,7 @@
     });
     caseEl.onclick=function(e){if(Date.now()<shelfPressUntil)return;if(!e.target.closest('.paper-category-menu')&&!e.target.closest('.paper-category-move'))closeCategoryMenus();};
     caseEl.querySelector('#newCategoryBtn').onclick=function(){var answer=prompt('Create a category from the selected paper.',shelfPaperCategory(selected)==='Unsorted'?'':shelfPaperCategory(selected));if(answer===null||!String(answer).trim())return;setShelfPaperCategory(selected,answer);persist();renderShelf();};
-    noteSurface.appendChild(pile);caseEl.appendChild(categoryRail);caseEl.appendChild(noteSurface);shelf.appendChild(caseEl);if(!reviewWorkspaceOpen)shelf.appendChild(renderOpenPaper(selected,stats,BOOK_SPINES[paperVisualHash(selected)%BOOK_SPINES.length]));
+    noteSurface.appendChild(pile);caseEl.appendChild(categoryRail);caseEl.appendChild(noteSurface);shelf.appendChild(caseEl);categoryRail.scrollLeft=categoryScroll;if(revealShelfCategoryOnRender){revealShelfCategoryOnRender=false;revealSelectedShelfCategory(categoryRail);}if(!reviewWorkspaceOpen)shelf.appendChild(renderOpenPaper(selected,stats,BOOK_SPINES[paperVisualHash(selected)%BOOK_SPINES.length]));
   }
   byId('librarySearch').oninput = renderShelf;
   byId('librarySort').onchange=function(){librarySortMode=this.value;try{localStorage.setItem(LIBRARY_SORT_KEY,librarySortMode);}catch(e){}renderShelf();};

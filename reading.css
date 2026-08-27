@@ -923,7 +923,9 @@
     .review-scope-key .general::before { background: #5b7e4d; }
     .review-scope-key .section::before { background: #32708b; }
     .review-scope-key .editorial::before { background: #c54f34; }
-    .reviewer-panel-head #clearReviewCommentsBtn { display: block; width: fit-content; margin: 7px 0 0 auto; font-size: .61rem; }
+    .review-replace-note { margin: 7px 3px 0; color: var(--muted); font: .6rem/1.42 var(--sans); }
+    .reviewer-panel-head #clearReviewCommentsBtn { display: block; width: 100%; min-height: 40px; margin: 8px 0 0; border-color: color-mix(in srgb, #c54f34 38%, var(--line)); background: color-mix(in srgb, #c54f34 6%, transparent); color: color-mix(in srgb, #c54f34 82%, var(--ink)); font-size: .66rem; }
+    .reviewer-panel-head #clearReviewCommentsBtn:hover, .reviewer-panel-head #clearReviewCommentsBtn:focus-visible { border-color: #c54f34; background: color-mix(in srgb, #c54f34 12%, var(--surface)); color: #a53d29; }
     .reviewer-panel-head #clearReviewCommentsBtn.hidden { display: none; }
     .reviewer-locate-status { min-height: 0; margin: 8px 0 0; color: var(--muted); font-size: .65rem; line-height: 1.45; }
     .reviewer-locate-status:empty { display: none; }

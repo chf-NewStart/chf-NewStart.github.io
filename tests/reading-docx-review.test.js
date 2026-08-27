@@ -72,7 +72,9 @@ async function run() {
   check('review responses and resolved state persist on the chapter', source.includes('comment.response=area.value') && source.includes('comment.resolved=!comment.resolved'));
   check('AI classifies reviewer concerns without seeing or drafting author responses', source.includes('This task is classification only. Do not draft, rewrite, evaluate, summarize, or complete an author response') && !source.includes('Existing author response:'));
   check('the response field is explicitly author-written', source.includes('Your response · written by you') && source.includes('Write your response here…'));
-  check('the current review can be cleared without removing the paper', html.includes('id="clearReviewCommentsBtn"') && source.includes('ch.reviewComments=[];ch.reviewReports=[]') && source.includes('Your paper, reading notes, and personal highlights will stay'));
+  check('the current review can be visibly cleared without removing the paper', html.includes('class="soft-button review-clear-button hidden"') && source.includes('ch.reviewComments=[];ch.reviewReports=[]') && source.includes('ch.reviewClearedAt=stamp;ch.reviewUpdatedAt=stamp') && source.includes('Your paper, reading notes, and personal highlights will stay'));
+  check('choosing another reviewer file safely replaces the old review automatically', html.includes('id="reviewReplaceNote"') && source.includes('pendingReviewReplace=(ch.reviewComments||[]).length>0') && source.includes('ch.reviewComments=replaceCurrent?comments') && source.indexOf('await locateReviewsWithAi(ch,matchable') < source.indexOf('ch.reviewComments=replaceCurrent?comments'));
+  check('review deletion timestamps stop synced comments from reappearing', source.includes('function reviewStateStamp') && source.includes('if(localReviewAt>remoteReviewAt)copyReviewState(remote,local)') && source.includes('if(remoteReviewAt>localReviewAt){copyReviewState(local,remote)'));
   check('unlinked feedback is located only through an explicit AI action', html.includes('id="locateReviewsBtn"') && source.includes('locateReviewsWithAi') && source.includes('locateReviewBatchWithAi'));
   check('the review flow clearly supports one combined Word file', html.includes('id="reviewCombinedFile"') && html.includes('Commented Word manuscript') && source.includes("if(!parsed.comments.length)"));
   check('the review flow clearly supports a manuscript plus separate comments', html.includes('id="reviewPaperFile"') && html.includes('id="reviewCommentsFile"') && source.includes('importSourceFile(paper,null,null,button,true)') && source.includes('importReviewerFile(target,comments,button)'));
@@ -202,7 +204,9 @@ async function run() {
     extractFunction('shelfPaperCategory'),
     extractFunction('shelfCategoryNames'),
     extractFunction('reviewWorkspaceStats'),
-    extractFunction('reviewWorkspaceFiles')
+    extractFunction('reviewWorkspaceFiles'),
+    extractFunction('reviewStateStamp'),
+    extractFunction('copyReviewState')
   ].join('\n'), workspaceContext);
   check('In review stays pinned ahead of user-ordered categories', workspaceContext.shelfCategoryNames().join('|') === 'In review|Notes|Academic');
   const workspacePaper = {
@@ -217,6 +221,11 @@ async function run() {
   const workspaceStats = workspaceContext.reviewWorkspaceStats(workspacePaper);
   check('revision progress counts open and completed work by scope', workspaceStats.total === 4 && workspaceStats.open === 2 && workspaceStats.levels.section.open === 0 && workspaceStats.levels.specific.open === 1);
   check('reviewer file pairing deduplicates source document names', workspaceContext.reviewWorkspaceFiles(workspacePaper).join('|') === 'Reviewer 1.docx|Reviewer 2.docx');
+  const clearedReview = { reviewComments: [], reviewReports: [], reviewClearedAt: 300, reviewUpdatedAt: 300 };
+  const staleReview = { reviewComments: [{ id: 'old', addedAt: 100 }], reviewReports: [{ id: 'report', addedAt: 100 }], updatedAt: 500 };
+  check('a clear tombstone is newer than stale comments even when the stale paper was touched later', workspaceContext.reviewStateStamp(clearedReview) > workspaceContext.reviewStateStamp(staleReview));
+  workspaceContext.copyReviewState(staleReview, clearedReview);
+  check('copying the newer cleared review state removes stale synced comments', staleReview.reviewComments.length === 0 && staleReview.reviewClearedAt === 300);
 
   const functionSource = extractFunction('docxZipEntries');
   const context = { ArrayBuffer, Uint8Array, DataView, TextDecoder, Blob, Response, DecompressionStream };

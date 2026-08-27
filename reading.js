@@ -4367,7 +4367,7 @@
   }
   function pdfReviewAtPoint(pageEl,clientX,clientY){
     var page=+pageEl.dataset.page||currentPage,view=pdfViews[page-1],base=pageEl.getBoundingClientRect();if(!view||!base.width||!base.height)return null;var x=(clientX-base.left)/base.width,y=(clientY-base.top)/base.height,hit=null,hitArea=Infinity;
-    (view.reviewHits||[]).forEach(function(entry){(entry.rects||[]).some(function(rect){var padY=Math.max(.004,rect.h*.28),padX=.004;if(x>=rect.x-padX&&x<=rect.x+rect.w+padX&&y>=rect.y-padY&&y<=rect.y+rect.h+padY){var area=rect.w*rect.h;if(area<hitArea){hit={comment:entry.comment,page:entry.page||page,anchor:entry.anchor};hitArea=area;}return true;}return false;});});return hit;
+    (view.reviewHits||[]).forEach(function(entry){(entry.rects||[]).some(function(rect){var padY=Math.max(.004,rect.h*.28),padX=.004;if(x>=rect.x-padX&&x<=rect.x+rect.w+padX&&y>=rect.y-padY&&y<=rect.y+rect.h+padY){var area=rect.w*rect.h;if(area<hitArea){hit={comment:entry.comment,comments:entry.comments||[entry.comment],page:entry.page||page,anchor:entry.anchor};hitArea=area;}return true;}return false;});});return hit;
   }
   byId('pdfFrame').addEventListener('click',function(e){
     if(pendingSelection)return;

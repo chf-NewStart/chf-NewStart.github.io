@@ -576,7 +576,7 @@
     .pdf-frame.cream.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.9) sepia(.28); }
     /* Zen reading: nothing on screen but the paper. */
     body.zen .masthead, body.zen .reader-tools, body.zen .comfort-bar, body.zen .find-bar,
-    body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer, body.zen .notebook-tuck { display: none !important; }
+    body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer, body.zen .notebook-tuck, body.zen .notebook-reopen { display: none !important; }
     body.zen main { min-height: 100vh; }
     body.zen #readerPage { height: 100vh; height: 100dvh; }
     body.zen .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
@@ -587,6 +587,10 @@
     body.zen .document-pane { scrollbar-width: none; }
     body.zen .document-pane::-webkit-scrollbar { display: none; }
     .zen-exit:hover, .zen-exit:focus-visible, .zen-exit:active { opacity: 1; color: var(--ink); }
+    /* Still hands mean the reader is reading: the floating circles sink to a shadow
+       of themselves, video-player style, and any movement or touch wakes them. They
+       stay tappable while faded so one tap still exits — never a wake-then-tap dance. */
+    body.zen.zen-idle .zen-exit { opacity: .08; }
     /* The guide keeps a seat in zen: same faint circle as the exit, one slot below.
        When the guide is on, the accent shows through even at rest opacity. */
     .zen-guide { top: calc(60px + env(safe-area-inset-top)); font-size: .78rem; }

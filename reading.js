@@ -1750,9 +1750,25 @@
   byId('guideGrip').addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
   /* Zen reading: every bar, note and button leaves; the paper gets the whole screen.
      The guide, zoom, gestures and lookup keep working on top of it. */
-  var zenOn=false,zenViaFullscreen=false;
+  var zenOn=false,zenViaFullscreen=false,zenIdleTimer=0,zenWakeLock=null;
+  function zenWake(){
+    if(!zenOn)return;
+    document.body.classList.remove('zen-idle');clearTimeout(zenIdleTimer);
+    zenIdleTimer=setTimeout(function(){if(zenOn)document.body.classList.add('zen-idle');},3200);
+  }
+  ['pointermove','pointerdown','wheel','touchstart','keydown'].forEach(function(type){document.addEventListener(type,zenWake,{passive:true});});
+  /* Long stretches of hands-off reading are exactly when a tablet decides to lock
+     its screen; zen holds a wake lock for as long as it owns the room. */
+  function holdZenWake(){
+    if(!zenOn||!navigator.wakeLock||document.visibilityState!=='visible')return;
+    navigator.wakeLock.request('screen').then(function(lock){zenWakeLock=lock;lock.addEventListener('release',function(){zenWakeLock=null;});},function(){});
+  }
+  function dropZenWake(){if(zenWakeLock){zenWakeLock.release().catch(function(){});zenWakeLock=null;}}
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')holdZenWake();});
   function setZen(on){
     zenOn=!!on;document.body.classList.toggle('zen',zenOn);
+    if(zenOn){zenWake();holdZenWake();}
+    else{clearTimeout(zenIdleTimer);document.body.classList.remove('zen-idle');dropZenWake();}
     byId('zenBtn').classList.toggle('active',zenOn);byId('zenBtn').setAttribute('aria-pressed',String(zenOn));
     if(zenOn){toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false');}
     /* Leaving zen keeps the paper at full width: the notebook stays tucked away

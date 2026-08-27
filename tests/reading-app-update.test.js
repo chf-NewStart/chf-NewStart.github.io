@@ -3,6 +3,8 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'reading.html'), 'utf8');
+const css = fs.readFileSync(path.join(ROOT, 'reading.css'), 'utf8');
+const js = fs.readFileSync(path.join(ROOT, 'reading.js'), 'utf8');
 const worker = fs.readFileSync(path.join(ROOT, 'reading-sw.js'), 'utf8');
 
 let failures = 0;
@@ -21,5 +23,10 @@ check('service worker URL carries the same cache version', workerVersion === cac
 check('worker script bypasses the browser update cache', html.includes("updateViaCache:'none'"));
 check('older controlled tabs reload when the new worker takes over', html.includes("addEventListener('controllerchange'"));
 check('first-time visitors are not needlessly reloaded', html.includes('if(!hadController||reloading)return'));
+check('obsolete promo video is not part of the live reader', !html.includes('carrel-app-demo.mp4') && !html.includes('<video'));
+check('first paint uses a quiet library loading state', html.includes('class="shelf-loading"') && html.includes('Opening your library'));
+check('empty-library pitch waits until restoration settles', css.includes('body.library-ready:not(.has-papers) .hero') && js.includes("document.body.classList.toggle('library-ready',!libraryHydrating)"));
+check('startup waits for seeding and Drive restoration', js.includes('Promise.allSettled(startupLibraryWork)'));
+check('old empty-shelf message is gone', !js.includes('Your shelf is waiting'));
 
 process.exit(failures ? 1 : 0);

@@ -78,9 +78,10 @@
     main { min-height: calc(100vh - 68px); min-height: calc(100dvh - 68px); }
     .page { max-width: 1240px; margin: 0 auto; padding: 46px 28px 90px; }
     .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .15em; font-size: .67rem; font-weight: 750; }
-    .hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr); gap: 40px; align-items: end; margin-bottom: 42px; }
-    /* The pitch is for first visits; a working library goes straight to the shelf. */
-    body.has-papers .hero, body.has-papers .demo { display: none; }
+    .hero { display: none; grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr); gap: 40px; align-items: end; margin-bottom: 42px; }
+    /* The pitch appears only after startup proves this is genuinely an empty first
+       visit. Returning libraries never flash onboarding while Drive is restoring. */
+    body.library-ready:not(.has-papers) .hero { display: grid; }
     body.has-papers #libraryPage { padding-top: 22px; }
     .hero h1 { margin: 8px 0 12px; max-width: 780px; font: 500 clamp(2.5rem, 6vw, 5.4rem)/.98 var(--serif); letter-spacing: -.055em; }
     .hero h1 em { color: var(--accent); font-weight: inherit; }
@@ -88,16 +89,6 @@
     .hero-card { border-top: 1px solid var(--ink); padding-top: 14px; display: grid; gap: 12px; }
     .hero-card .step { display: grid; grid-template-columns: 26px 1fr; gap: 8px; font-size: .8rem; line-height: 1.4; }
     .hero-card .step b { color: var(--accent); }
-
-    /* Nothing of the demo travels until it is asked for: the poster stands in, and
-       preload="none" keeps the 11MB off a first paint. */
-    /* Keep the composited video surface out of the first paint until local storage
-       tells us this is genuinely an empty library. Otherwise Chromium can leave a
-       black rectangle behind after the parent is hidden on a returning visit. */
-    .demo { max-width: 720px; margin: 0 0 34px; display: none; gap: 10px; }
-    body.library-ready:not(.has-papers) .demo { display: grid; }
-    .demo video { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-2); box-shadow: var(--shadow); }
-    .demo figcaption { color: var(--muted); font: .78rem/1.55 var(--sans); }
 
     .link-status { grid-column: 1 / -1; min-height: 0; color: var(--muted); font-size: .7rem; }
     .link-status:not(:empty) { padding: 1px 3px 2px; }
@@ -146,6 +137,12 @@
     .shelf-empty { grid-column: 1 / -1; align-self: stretch; display: grid; place-items: center; min-height: 360px; padding: 48px 24px; text-align: center; color: var(--muted); }
     .shelf-empty div { max-width: 460px; }
     .shelf-empty b { display: block; margin-bottom: 8px; color: var(--ink); font: 500 1.45rem var(--serif); }
+    .shelf-loading { grid-column: 1 / -1; align-self: stretch; min-height: 360px; display: flex; align-items: center; justify-content: center; gap: 13px; padding: 48px 24px; color: var(--muted); }
+    .shelf-loading div { display: grid; gap: 3px; }
+    .shelf-loading b { color: var(--ink); font: 500 1.1rem var(--serif); }
+    .shelf-loading span:not(.shelf-loading-mark) { font-size: .72rem; }
+    .shelf-loading-mark { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 28%, transparent); animation: shelf-breathe 1.4s ease-out infinite; }
+    @keyframes shelf-breathe { 70%, 100% { box-shadow: 0 0 0 10px transparent; opacity: .62; } }
 
     .bookcase { position: relative; min-width: 0; height: var(--shelf-height); min-height: 0; display: flex; flex-direction: column; padding: 23px 20px 26px; background:
       radial-gradient(ellipse at 14% 8%, rgba(255,255,255,.54), transparent 36%),
@@ -571,6 +568,7 @@
     @media (prefers-reduced-motion: reduce) {
       .pdf-frame.column-book-flow .pdf-page.book-turning { animation-duration: .01ms; }
       .pdf-frame.column-book-spread.spread-turning { animation-duration: .01ms; }
+      .shelf-loading-mark { animation: none; }
       .guide-tool.guide-discovery, #mMore.guide-discovery, .guide-tool.guide-discovery .guide-discovery-note { animation: none; }
       .guide-tool.guide-discovery .guide-discovery-note { opacity: 1; transform: none; }
     }

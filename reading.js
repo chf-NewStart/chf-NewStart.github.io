@@ -34,6 +34,9 @@
   var pristineLibrary = false;
   try { pristineLibrary = localStorage.getItem(KEY) === null; } catch(e){}
   var state = loadState();
+  /* Until async first-run seeding and Drive restoration settle, an empty local state
+     is unknown—not an empty library. Keep onboarding out of that reload interval. */
+  var libraryHydrating = state.chapters.length === 0;
   var currentId = null, currentPage = 1, pdfDoc = null, pdfLib = null, pdfRendering = false, pdfRenderPending = false;
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var selectionAnchor = null, selectionNoteTarget = null;
@@ -753,12 +756,15 @@
   function renderShelf(){
     updateConnectionsNav();
     document.body.classList.toggle('has-papers',state.chapters.length>0);
-    document.body.classList.add('library-ready');
+    document.body.classList.toggle('library-ready',!libraryHydrating);
     var q=byId('librarySearch').value.trim().toLowerCase();
     var list=state.chapters.filter(function(ch){return !q||paperHaystack(ch).includes(q);}).sort(compareShelfPapers);
     byId('libraryCount').textContent=(q?list.length+' of ':'')+state.chapters.length+(state.chapters.length===1?' paper':' papers');renderDuplicateNotice();
     var shelf=byId('shelf');shelf.innerHTML='';
-    if(!list.length){shelf.innerHTML='<div class="shelf-empty"><div><b>'+(state.chapters.length?'No paper found':'Your shelf is waiting')+'</b>'+(state.chapters.length?'Try another title, author, or tag.':'Paste a PDF link, drop in a file, or connect a private GitHub folder to place the first book.')+'</div></div>';return;}
+    if(!list.length){
+      if(libraryHydrating){shelf.innerHTML='<div class="shelf-loading" role="status" aria-live="polite"><span class="shelf-loading-mark" aria-hidden="true"></span><div><b>Opening your library</b><span>Restoring papers and review work…</span></div></div>';return;}
+      shelf.innerHTML='<div class="shelf-empty"><div><b>'+(state.chapters.length?'No paper found':'Start with a paper')+'</b>'+(state.chapters.length?'Try another title, author, or tag.':'Add a PDF or Word draft, or bring a manuscript and its reviewer comments together.')+'</div></div>';return;
+    }
     if(!librarySelectionId||!list.some(function(ch){return ch.id===librarySelectionId;}))librarySelectionId=list[0].id;
     var selected=list.find(function(ch){return ch.id===librarySelectionId;})||list[0],stats=shelfPaperStats(selected);
     var caseEl=document.createElement('section');caseEl.className='bookcase';caseEl.setAttribute('aria-label','Reading wall');caseEl.innerHTML='<div class="pile-head"><strong>Reading wall</strong><button class="paper-category-add" id="newCategoryBtn" type="button" title="Create a category from the selected paper">＋ Category</button></div>';
@@ -4899,7 +4905,9 @@
   Object.keys(state.merged||{}).forEach(function(dropId){queueDuplicateStorage(state.merged[dropId],dropId);});
   var startupDuplicateRepair=repairDuplicateStorage();
   var startupStarterGuide=seedStarterGuide();
-  syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupDuplicateRepair.then(function(){gdriveSync();});}
+  var startupLibraryWork=[startupStarterGuide];
+  syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupLibraryWork.push(startupDuplicateRepair.then(function(){return gdriveSync();}));}
+  Promise.allSettled(startupLibraryWork).then(function(){libraryHydrating=false;renderShelf();updateReviewBadge();});
   /* A refresh drops you back into the paper you were reading, not the library. */
   try{var lastOpen=resolvedPaperId(localStorage.getItem(LAST_OPEN_KEY));if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){return startupDuplicateRepair;}).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
   if(location.protocol==='file:') byId('launchDialog').showModal();

@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=60">
+  <link rel="stylesheet" href="/reading.css?v=61">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -51,21 +51,11 @@
           <p>A guide for wandering eyes, a spotlight for busy pages, notes beside the paragraph, and spaced review that keeps what you understood. Calm by design — and your library quietly stays your own.</p>
         </div>
         <div class="hero-card" aria-label="How Phloem works">
-          <div class="step"><b>01</b><span>Paste a PDF link, drop a file, or pick one from a private GitHub folder.</span></div>
-          <div class="step"><b>02</b><span>Page notes, highlights, and AI questions stay attached to the paper.</span></div>
-          <div class="step"><b>03</b><span>Shared tags reveal a small network instead of another filing cabinet.</span></div>
+          <div class="step"><b>01</b><span>Add a PDF or Word draft—or pair a manuscript with its reviewer comments.</span></div>
+          <div class="step"><b>02</b><span>Comments, notes, highlights, and AI questions stay beside the original paper.</span></div>
+          <div class="step"><b>03</b><span>Private Drive sync carries your library and original files between devices.</span></div>
         </div>
       </div>
-
-      <figure class="demo">
-        <video controls playsinline preload="none" width="1280" height="800"
-               poster="/assets/carrel-promo/carrel-app-demo-poster.jpg"
-               aria-label="Ninety-second Phloem demo, no narration">
-          <source src="/assets/carrel-promo/carrel-app-demo.mp4" type="video/mp4">
-          <a href="/assets/carrel-promo/carrel-app-demo.mp4">Download the demo</a> — your browser cannot play it here.
-        </video>
-        <figcaption>Ninety seconds, no narration: a paper opens, the guide follows your pointer, a column snaps to full width, and the same page reflows to read like a book on a phone.</figcaption>
-      </figure>
 
       <div class="command-bar" id="pdfLinkDrop">
         <button class="button primary" id="importPdfBtn">＋ Add to library</button>
@@ -85,7 +75,12 @@
         <label class="library-sort"><span>Sort</span><select id="librarySort" aria-label="Sort library"><option value="touched">Last touched</option><option value="added">Recently added</option><option value="title">Title A–Z</option><option value="author">Author A–Z</option><option value="progress">Reading progress</option></select></label>
         <input class="search" id="librarySearch" type="search" placeholder="Search titles, authors, tags…" aria-label="Search library">
       </div>
-      <div class="living-shelf" id="shelf"></div>
+      <div class="living-shelf" id="shelf">
+        <div class="shelf-loading" role="status" aria-live="polite">
+          <span class="shelf-loading-mark" aria-hidden="true"></span>
+          <div><b>Opening your library</b><span>Restoring papers and review work…</span></div>
+        </div>
+      </div>
       <p class="support-line hidden" id="supportLine">Phloem is free, and built to make papers easier to focus on. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">a coffee is always appreciated ☕</a></p>
       <p class="support-line">Phloem is part of <a id="homeLink" href="/">houfu72.com ↗</a></p>
     </section>
@@ -638,9 +633,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=60',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=61',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=60" defer></script>
+<script src="/reading.js?v=61" defer></script>
 </body>
 </html>

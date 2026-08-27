@@ -616,7 +616,15 @@
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     .highlight-layer { z-index: 1; pointer-events: none; }
     .saved-highlight { position: absolute; border-radius: 4px 3px 5px 2px; mix-blend-mode: multiply; }
+    .review-comment-highlight { position: absolute; border-bottom: 2px solid rgba(197,79,52,.78); border-radius: 3px; background: rgba(255,202,108,.34); mix-blend-mode: multiply; }
+    .review-comment-highlight.review-level-section { border-bottom-color: rgba(50,112,139,.82); background: rgba(105,185,218,.24); }
+    .review-comment-highlight.review-level-editorial { border-bottom-color: rgba(197,79,52,.9); background: rgba(243,119,91,.22); }
+    .review-comment-highlight.review-level-general { border-bottom-color: rgba(91,126,77,.84); background: rgba(128,179,105,.22); }
+    .review-comment-highlight.review-marker-first::after, .review-page-marker::after { content: attr(data-review-label); position: absolute; right: 0; top: 50%; min-width: 18px; padding: 2px 4px; border-radius: 999px; transform: translate(45%,-50%); background: #bb5039; color: #fff; box-shadow: 0 1px 4px rgba(31,29,24,.24); font: 700 8px/1 var(--sans); letter-spacing: .01em; text-align: center; white-space: nowrap; }
+    .review-page-marker { position: absolute; border: 1px solid rgba(187,80,57,.62); border-radius: 999px 2px 2px 999px; background: rgba(255,226,167,.82); box-shadow: 0 1px 5px rgba(31,29,24,.18); }
+    .review-page-marker::after { inset: 50% auto auto 50%; transform: translate(-50%,-50%); background: transparent; color: #873927; box-shadow: none; }
     .pdf-frame.dark-paper .saved-highlight { mix-blend-mode: screen; opacity: .78; }
+    .pdf-frame.dark-paper :is(.review-comment-highlight,.review-page-marker) { mix-blend-mode: screen; opacity: .86; }
     .hl-yellow { background: rgba(255, 216, 61, .62) !important; }
     .hl-mint { background: rgba(92, 213, 145, .52) !important; }
     .hl-coral { background: rgba(255, 126, 105, .5) !important; }

@@ -120,6 +120,7 @@
   function runAi(system,user,maxTokens,onProgress){return runAiMessages([{role:'system',content:system},{role:'user',content:user}],maxTokens,onProgress);}
   var REVIEW_LEVEL_LABELS={general:'General',section:'Section',specific:'Specific',editorial:'Editorial / typo'};
   var REVIEW_TOPIC_LABELS={writing:'Writing',structure:'Structure',methods:'Methods',statistics:'Statistics',modeling:'Modeling',evidence:'Evidence',figures:'Figure / table',consistency:'Consistency',claims:'Claims',references:'References',other:'Other'};
+  var REVIEW_WORKSPACE_CATEGORY='Under review';
   function normalizeReviewLevel(value,comment){
     value=String(value||'').toLowerCase().replace(/[^a-z]+/g,'');
     if(value==='sectional'||value==='sectionwide')value='section';
@@ -656,6 +657,12 @@
   function shelfPaperCategory(ch){return String(ch.category||'').trim()||'Unsorted';}
   function categoryLabel(value){value=String(value||'').trim().replace(/\s+/g,' ').slice(0,48);return value||'Unsorted';}
   function setShelfPaperCategory(ch,value){var label=categoryLabel(value);if(label.toLowerCase()==='unsorted')delete ch.category;else ch.category=label;ch.updatedAt=now();return label;}
+  function placeInReviewWorkspace(ch){
+    if(!ch)return;
+    var previous=shelfPaperCategory(ch);if(previous.toLowerCase()!==REVIEW_WORKSPACE_CATEGORY.toLowerCase()&&previous.toLowerCase()!=='unsorted'&&!ch.reviewPreviousCategory)ch.reviewPreviousCategory=previous;
+    setShelfPaperCategory(ch,REVIEW_WORKSPACE_CATEGORY);ch.reviewWorkspace=true;
+    var order=(state.categoryOrder||[]).filter(function(label){return String(label||'').toLowerCase()!==REVIEW_WORKSPACE_CATEGORY.toLowerCase();});order.unshift(REVIEW_WORKSPACE_CATEGORY);state.categoryOrder=order;state.categoryOrderUpdatedAt=now();
+  }
   function shelfCategoryNames(){var raw=[],existing={},names=[],seen={};state.chapters.forEach(function(ch){var label=shelfPaperCategory(ch),key=label.toLowerCase();if(!existing[key]){existing[key]=label;raw.push(label);}});(state.categoryOrder||[]).forEach(function(label){var key=String(label||'').toLowerCase();if(existing[key]&&!seen[key]){seen[key]=true;names.push(existing[key]);}});raw.forEach(function(label){var key=label.toLowerCase();if(!seen[key]){seen[key]=true;names.push(label);}});return names;}
   function saveShelfCategoryOrder(order){var existing=shelfCategoryNames(),known={},saved=[];existing.forEach(function(label){known[label.toLowerCase()]=label;});(order||[]).forEach(function(label){var key=String(label||'').toLowerCase();if(known[key]&&saved.every(function(item){return item.toLowerCase()!==key;}))saved.push(known[key]);});existing.forEach(function(label){if(saved.every(function(item){return item.toLowerCase()!==label.toLowerCase();}))saved.push(label);});state.categoryOrder=saved;state.categoryOrderUpdatedAt=now();persist();}
   function placeShelfCategory(moving,target,after){var names=shelfCategoryNames(),from=names.findIndex(function(label){return label.toLowerCase()===String(moving||'').toLowerCase();});if(from<0)return false;var item=names.splice(from,1)[0],to=names.findIndex(function(label){return label.toLowerCase()===String(target||'').toLowerCase();});if(to<0){names.push(item);}else names.splice(to+(after?1:0),0,item);saveShelfCategoryOrder(names);return true;}
@@ -930,8 +937,8 @@
   byId('addReviewBtn').onclick = function(){closeAddDialog();resetReviewImport();byId('reviewImportDialog').showModal();};
   byId('reviewCombinedBtn').onclick=function(){byId('reviewCombinedFile').click();};
   byId('reviewCombinedFile').onchange=async function(){
-    var file=this.files&&this.files[0],button=byId('reviewCombinedBtn'),status=byId('reviewImportStatus');this.value='';if(!file)return;var old=button.innerHTML;button.disabled=true;status.textContent='Checking the Word comments…';
-    try{var bytes=await file.arrayBuffer(),parsed=await parseDocx(bytes,file.name);if(!parsed.comments.length){status.textContent='No Word comments were found in that file. If the feedback is separate, use the 2-file option.';return;}byId('reviewImportDialog').close();await importDocx(file,button,false,bytes);}
+    var file=this.files&&this.files[0],button=byId('reviewCombinedBtn'),status=byId('reviewImportStatus');this.value='';if(!file)return;var old=button.innerHTML,stamp=now();button.disabled=true;status.textContent='Checking the Word comments…';
+    try{var bytes=await file.arrayBuffer(),parsed=await parseDocx(bytes,file.name);if(!parsed.comments.length){status.textContent='No Word comments were found in that file. If the feedback is separate, use the 2-file option.';return;}byId('reviewImportDialog').close();if(await importDocx(file,button,false,bytes)){var target=state.chapters.filter(function(ch){return ch.sourceName===file.name&&ch.updatedAt>=stamp-1000;}).sort(function(a,b){return (+b.updatedAt||0)-(+a.updatedAt||0);})[0];if(target){placeInReviewWorkspace(target);touch(target);renderShelf();}}}
     catch(e){status.textContent=e.message||'Phloem could not read that commented manuscript.';}
     finally{button.disabled=false;button.innerHTML=old;}
   };
@@ -943,7 +950,7 @@
   byId('reviewCommentsFile').onchange=function(){reviewPairComments=this.files&&this.files[0]||null;byId('reviewCommentsName').textContent=reviewPairComments?reviewPairComments.name:'Word or text document';updateReviewPairReady();};
   byId('reviewPairImportBtn').onclick=async function(){
     var paper=reviewPairPaper,comments=reviewPairComments,button=this,status=byId('reviewImportStatus');if(!paper||!comments)return;if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first so Phloem can locate the separate comments.';return;}var stamp=now();button.disabled=true;status.textContent='Importing the manuscript…';
-    try{var added=await importSourceFile(paper,null,null,button,true);if(!added)throw new Error('The manuscript could not be imported.');var target=state.chapters.filter(function(ch){return ch.sourceName===paper.name&&ch.updatedAt>=stamp-1000;}).sort(function(a,b){return (+b.updatedAt||0)-(+a.updatedAt||0);})[0];if(!target)throw new Error('Phloem could not identify the imported manuscript.');byId('reviewImportDialog').close();await openReader(target.id);switchTab('reviewsPanel');if(innerWidth>720)setNotebookCollapsed(false,true);await importReviewerFile(target,comments,button);}
+    try{var added=await importSourceFile(paper,null,null,button,true);if(!added)throw new Error('The manuscript could not be imported.');var target=state.chapters.filter(function(ch){return ch.sourceName===paper.name&&ch.updatedAt>=stamp-1000;}).sort(function(a,b){return (+b.updatedAt||0)-(+a.updatedAt||0);})[0];if(!target)throw new Error('Phloem could not identify the imported manuscript.');placeInReviewWorkspace(target);touch(target);renderShelf();byId('reviewImportDialog').close();await openReader(target.id);switchTab('reviewsPanel');if(innerWidth>720)setNotebookCollapsed(false,true);await importReviewerFile(target,comments,button);}
     catch(e){status.textContent=e.message||'Phloem could not import that review package.';}
     finally{button.disabled=false;button.textContent='Import paper & comments';}
   };
@@ -3370,15 +3377,27 @@
     if(comment&&comment.para!==null&&comment.para!==undefined)return reviewParagraphPage(ch,+comment.para);
     return null;
   }
+  function pdfReviewSpanMatch(view,quote){
+    if(!view||!view.text||!quote)return[];var entries=[],joined='',cursor=0;
+    view.text.querySelectorAll('span').forEach(function(span){if(span.querySelector&&span.querySelector('span'))return;var value=reviewNormalizedText(span.textContent);if(!value)return;if(joined){joined+=' ';cursor++;}var start=cursor;joined+=value;cursor=joined.length;entries.push({span:span,start:start,end:cursor});});
+    var wanted=reviewNormalizedText(quote),at=wanted?joined.indexOf(wanted):-1;if(at<0){var words=wanted.split(' ');for(var width=Math.min(12,words.length);width>=Math.min(4,words.length)&&at<0;width--)for(var i=0;i+width<=words.length;i++){var phrase=words.slice(i,i+width).join(' '),found=joined.indexOf(phrase);if(found>=0){wanted=phrase;at=found;break;}}}
+    if(at<0)return[];var end=at+wanted.length;return entries.filter(function(entry){return entry.end>at&&entry.start<end;}).map(function(entry){return entry.span;});
+  }
+  function pdfReviewRects(view,spans){
+    var base=view&&view.holder&&view.holder.getBoundingClientRect();if(!base||!base.width||!base.height)return[];
+    return mergeHighlightRects((spans||[]).map(function(span){var rect=span.getBoundingClientRect(),x=Math.max(0,(rect.left-base.left-1.5)/base.width),y=Math.max(0,(rect.top-base.top+rect.height*.12)/base.height);return{x:x,y:y,w:Math.min(1-x,(rect.width+3)/base.width),h:Math.min(1-y,(rect.height*.76)/base.height)};}).filter(function(rect){return rect.w>0&&rect.h>0&&rect.x<1&&rect.y<1;}));
+  }
+  function renderPdfReviewMarkers(ch,pageNum,view){
+    view.reviewHits=[];var pageOnly=0,comments=(ch.reviewComments||[]).filter(function(comment){return !comment.resolved&&comment.anchored&&reviewCommentPage(ch,comment)===+pageNum;});
+    comments.forEach(function(comment){var spans=comment.quote?pdfReviewSpanMatch(view,comment.quote):[],rects=pdfReviewRects(view,spans),pageMarker=!rects.length&&comment.anchorMethod==='ai-pdf-page';if(pageMarker){rects=[{x:.935,y:.026+pageOnly*.044,w:.052,h:.032}];pageOnly++;}if(!rects.length)return;var number=(ch.reviewComments||[]).indexOf(comment)+1;view.reviewHits.push({comment:comment,rects:rects});rects.forEach(function(rect,index){var marker=document.createElement('div');marker.className=(pageMarker?'review-page-marker':'review-comment-highlight')+' review-level-'+normalizeReviewLevel(comment.level,comment)+(index===0?' review-marker-first':'');marker.dataset.reviewLabel='R'+number;marker.style.left=(rect.x*100)+'%';marker.style.top=(rect.y*100)+'%';marker.style.width=(rect.w*100)+'%';marker.style.height=(rect.h*100)+'%';view.highlights.appendChild(marker);});});
+  }
+  function refreshPdfReviewMarkers(){if(readerMode!=='pdf')return;renderedPages.slice().forEach(function(page){renderPdfHighlights(page);});}
   function clearPdfReviewFocus(){document.querySelectorAll('.review-focus-span').forEach(function(span){span.classList.remove('review-focus-span');});}
   function renderPdfReviewFocus(pageNum){
     var ch=find(currentId),comment=reviewerById(ch,reviewFocusId);if(!ch||!comment||readerMode!=='pdf'||reviewCommentPage(ch,comment)!==+pageNum)return;clearPdfReviewFocus();if(!comment.quote)return;
     var tries=0;(function attempt(){
       var view=pdfViews[pageNum-1];if(!view||!view.rendered){if(view)renderPdfPageAt(pageNum);if(tries++<24)setTimeout(attempt,180);return;}
-      var entries=[],joined='',cursor=0;view.text.querySelectorAll('span').forEach(function(span){if(span.querySelector&&span.querySelector('span'))return;var value=reviewNormalizedText(span.textContent);if(!value)return;if(joined){joined+=' ';cursor++;}var start=cursor;joined+=value;cursor=joined.length;entries.push({span:span,start:start,end:cursor});});
-      var wanted=reviewNormalizedText(comment.quote),at=wanted?joined.indexOf(wanted):-1;
-      if(at<0){var words=wanted.split(' ');for(var width=Math.min(12,words.length);width>=Math.min(4,words.length)&&at<0;width--)for(var i=0;i+width<=words.length;i++){var phrase=words.slice(i,i+width).join(' '),found=joined.indexOf(phrase);if(found>=0){wanted=phrase;at=found;break;}}}
-      if(at<0)return;var end=at+wanted.length;entries.forEach(function(entry){if(entry.end>at&&entry.start<end)entry.span.classList.add('review-focus-span');});
+      pdfReviewSpanMatch(view,comment.quote).forEach(function(span){span.classList.add('review-focus-span');});
     })();
   }
   async function focusReviewerPassage(ch,id){
@@ -3391,7 +3410,7 @@
   }
   function showReviewerComment(ch,id){
     reviewFocusId=id;renderReviewerPanel(ch);switchTab('reviewsPanel');if(innerWidth<=720)toggleSheet(true);else setNotebookCollapsed(false,true);
-    requestAnimationFrame(function(){var card=byId('readerReviewList').querySelector('[data-review-card="'+CSS.escape(id)+'"]');if(card)card.scrollIntoView({block:'nearest',behavior:'smooth'});byId('textDocument').querySelectorAll('.review-comment-anchor').forEach(function(anchor){anchor.classList.toggle('is-focused',anchor.dataset.reviewCommentId===id);});});
+    requestAnimationFrame(function(){var card=byId('readerReviewList').querySelector('[data-review-card="'+CSS.escape(id)+'"]');if(card)card.scrollIntoView({block:'nearest',behavior:'smooth'});byId('textDocument').querySelectorAll('.review-comment-anchor').forEach(function(anchor){anchor.classList.toggle('is-focused',anchor.dataset.reviewCommentId===id);});var page=reviewCommentPage(ch,reviewerById(ch,id));if(ch.kind==='pdf'&&readerMode==='pdf'&&page)renderPdfReviewFocus(page);});
   }
   function reviewManuscriptText(ch){return ch&&ch.kind==='pdf'?(ch.readerText||ch.fr||''):(ch&&ch.fr||'');}
   function reviewSearchTerms(comment){
@@ -3443,16 +3462,41 @@
       pieces.forEach(function(piece){var prefix=reviewer?'Reviewer context: '+reviewer+'\n\n':'';if(current&&current.length+piece.length+2>limit)flush();if(!current&&prefix)current=prefix;current+=(current?'\n\n':'')+piece;});
     });flush();return chunks;
   }
+  function reviewReportUnits(text){
+    var paragraphs=paras(text),units=[],current=null,reviewer='Reviewer',group='',serial=0,hasRoles=/\[(?:REVIEWER TEXT|AUTHOR RESPONSE)\]/i.test(text),numbered=0;
+    function finish(){if(!current)return;current.text=String(current.text||'').trim();current.response=String(current.response||'').trim();if(current.text)units.push(current);current=null;}
+    function begin(content,number){current={inputId:'review-'+(++serial),reviewer:reviewer,group:group,number:number||'',text:content,response:''};if(number)numbered++;}
+    paragraphs.forEach(function(paragraph){
+      var roleMatch=paragraph.match(/^\[(REVIEWER TEXT|AUTHOR RESPONSE)\]\s*/i),role=roleMatch&&/AUTHOR/i.test(roleMatch[1])?'response':'reviewer',content=paragraph.replace(/^\[(?:REVIEWER TEXT|AUTHOR RESPONSE)\]\s*/i,'').trim(),heading,section,rest,number;
+      if(!content)return;
+      heading=content.match(/^reviewer\s+(\d+)\b/i);if(heading){finish();reviewer='Reviewer '+heading[1];group='';return;}
+      if(/^(?:comments?\s+(?:for|to)\s+(?:the\s+)?authors?|manuscript\s*:)/i.test(content)||/^please see the attached pdf/i.test(content))return;
+      if(/^page\s+\d+\s*$/i.test(content))return;
+      if(/^reply to comment\s*$/i.test(content)){finish();return;}
+      section=content.match(/^(major concerns|minor comments|recommendations for strengthening the analysis|internal inconsistencies and corrections|closing comment)\b\s*[:.-]?\s*(.*)$/i);
+      if(section){finish();group=section[1];rest=String(section[2]||'').trim();if(!rest)return;content=rest;}
+      if(role==='response'&&hasRoles){if(current)current.response+=(current.response?'\n\n':'')+content;return;}
+      number=content.match(/^(\d{1,3})\.\s*(.*)$/s);if(number){finish();begin((number[1]+'. '+number[2]).trim(),number[1]);return;}
+      if(current&&current.response)finish();
+      if(current&&current.number)current.text+='\n\n'+content;
+      else{finish();begin(content,'');}
+    });finish();units.numberedCount=numbered;units.hasRoles=hasRoles;return units;
+  }
+  function fallbackReviewLevel(unit){var text=[unit&&unit.group,unit&&unit.text].join(' ');if(/minor comments|internal inconsistencies|typo|grammar|spelling|terminology|caption|notation|correct(?:ed|ion)?\b/i.test(text))return'editorial';if(/\b(?:section|subsection)\s+[\dA-Z]/i.test(text)&&!/(?:p{1,2}\.?|pages?|figure|table|equation|eq\.)\s*\d/i.test(text))return'section';if(/(?:p{1,2}\.?|pages?|figure|table|equation|eq\.)\s*\d/i.test(text))return'specific';return'general';}
+  function fallbackReviewTopic(unit){var text=String(unit&&unit.text||'');if(/figure|table|caption|plot|diagram/i.test(text))return'figures';if(/statistic|uncertaint|confidence interval|standard deviation|rmse|sample count|replicat|autocorrel/i.test(text))return'statistics';if(/model|parameter|equation|simulation|cfd|kinetic|compartment/i.test(text))return'modeling';if(/method|experiment|protocol|calibrat|probe|measurement/i.test(text))return'methods';if(/reference|citation|literature/i.test(text))return'references';if(/claim|interpret|conclu|predict|validat/i.test(text))return'claims';if(/typo|grammar|spelling|wording|terminology|notation/i.test(text))return'writing';return'other';}
+  function fallbackReviewLocation(unit){var text=String(unit&&unit.text||''),found=[],seen={},matches=text.match(/(?:\b(?:p{1,2}\.?|pages?)\s*\d{1,3}(?:\s*[-–—]\s*\d{1,3})?|\b(?:section|figure|table|equation|eq\.)\s*[A-Z]?\d+(?:\.\d+)?)/gi)||[];matches.forEach(function(value){var key=value.toLowerCase();if(!seen[key]&&found.length<4){seen[key]=1;found.push(value);}});return found.join(' · ');}
+  function reviewUnitRecord(unit,classification){classification=classification||{};return{author:String(unit.reviewer||'Reviewer'),text:String(unit.text||'').trim(),response:String(unit.response||'').trim(),level:normalizeReviewLevel(classification.level||classification.scope||fallbackReviewLevel(unit)),topic:normalizeReviewTopic(classification.topic||classification.category||fallbackReviewTopic(unit)),locationHint:String(classification.locationHint||classification.location||fallbackReviewLocation(unit)).trim()};}
   async function extractReviewerReportWithAi(text,onProgress){
-    var chunks=reviewReportChunks(text),all=[],seen={},system='Extract actionable reviewer concerns from a response-to-reviewers document. Reviewer comments and author replies may be interleaved. Do not turn author replies, private task notes, generic praise, section labels, recommendations, or confidential comments to the editor into reviewer concerns. Split numbered or bulleted minor issues into separate concerns, but keep a multi-sentence concern together. Pair an existing author reply with its concern when the reply is present. Classify level as exactly one of: general (manuscript-wide), section (a whole section or subsection), specific (a passage, claim, method, equation, figure, table, or result), editorial (typo, grammar, formatting, citation, or simple consistency correction). Classify topic as exactly one of: writing, structure, methods, statistics, modeling, evidence, figures, consistency, claims, references, other. Preserve explicit manuscript page, section, figure, table, and equation references in locationHint. Ignore standalone Page N labels that number the reviewer report itself. Return only JSON: {"reviewer":"Reviewer name","comments":[{"reviewer":"Reviewer name","text":"reviewer concern","response":"existing author response or empty","level":"general|section|specific|editorial","topic":"writing|structure|methods|statistics|modeling|evidence|figures|consistency|claims|references|other","locationHint":"explicit location or empty"}]}.',failed=0;
-    for(var c=0;c<chunks.length;c++){
-      if(onProgress)onProgress('Classifying review section '+(c+1)+' of '+chunks.length+'…');
-      try{
-        var result=await runAi(system,'Response-to-reviewers section:\n\n'+chunks[c],3200,onProgress),data=reviewAiJson(result.text),reviewer=String(data&&data.reviewer||'Reviewer'),items=Array.isArray(data&&data.comments)?data.comments:[];
-        items.forEach(function(item){item=typeof item==='string'?{text:item}:item||{};var text=String(item.comment||item.text||'').trim(),key=reviewNormalizedText(text);if(!text||!key)return;var record={author:String(item.reviewer||item.author||reviewer||'Reviewer'),text:text,response:String(item.response||'').trim(),level:normalizeReviewLevel(item.level||item.scope),topic:normalizeReviewTopic(item.topic||item.category),locationHint:String(item.locationHint||item.location||item.target||'').trim()};if(seen[key]!==undefined){var old=all[seen[key]];if(!old.response&&record.response)old.response=record.response;if(!old.locationHint&&record.locationHint)old.locationHint=record.locationHint;return;}seen[key]=all.length;all.push(record);});
-      }catch(e){failed++;}
+    var units=reviewReportUnits(text),all=[],seen={},system='Classify pre-separated reviewer concerns. Return exactly one result for every inputId, in the same order; never merge, summarize away, or omit numbered concerns. Mark generic praise, section labels, private task notes, recommendations to the editor, and other non-concerns as actionable false. Classify level as exactly one of: general (manuscript-wide), section (a whole section or subsection), specific (a passage, claim, method, equation, figure, table, or result), editorial (typo, grammar, formatting, citation, or simple consistency correction). Classify topic as exactly one of: writing, structure, methods, statistics, modeling, evidence, figures, consistency, claims, references, other. Preserve explicit manuscript page, section, figure, table, and equation references in locationHint. Return only JSON: {"items":[{"inputId":"exact supplied id","actionable":true,"level":"general|section|specific|editorial","topic":"writing|structure|methods|statistics|modeling|evidence|figures|consistency|claims|references|other","locationHint":"explicit manuscript location or empty"}]}.',failed=0,batchSize=6;
+    if(!units.length)return[];
+    for(var start=0;start<units.length;start+=batchSize){
+      var batch=units.slice(start,start+batchSize),payload=batch.map(function(unit){return '[INPUT '+unit.inputId+']\nReviewer: '+unit.reviewer+'\nGroup: '+(unit.group||'none')+'\nNumber: '+(unit.number||'none')+'\nReviewer text:\n'+unit.text+'\nExisting author response:\n'+(unit.response||'none');}).join('\n\n'),byId={};
+      if(onProgress)onProgress('Classifying review items '+(start+1)+'–'+Math.min(units.length,start+batch.length)+' of '+units.length+'…');
+      try{var result=await runAi(system,payload,1900,onProgress),data=reviewAiJson(result.text),items=Array.isArray(data&&data.items)?data.items:[];items.forEach(function(item){if(item&&item.inputId)byId[String(item.inputId)]=item;});}
+      catch(e){failed++;}
+      batch.forEach(function(unit){var classification=byId[unit.inputId],keep=unit.number||!classification||classification.actionable!==false;if(!keep)return;var record=reviewUnitRecord(unit,classification),key=reviewNormalizedText(record.text);if(!key||seen[key])return;seen[key]=1;all.push(record);});
     }
-    if(failed)throw new Error('AI could not reliably read '+failed+' of '+chunks.length+' review sections, so no partial import was saved. Try a cloud model for this long report.');return all.slice(0,160);
+    if(!all.length&&failed)throw new Error('AI could not classify this reviewer report. Try a cloud model for this long document.');return all.slice(0,160);
   }
   async function importReviewerFile(ch,file,button){
     var status=byId('reviewerLocateStatus'),old=button.textContent;if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}button.disabled=true;button.textContent='Reading review…';
@@ -3460,9 +3504,10 @@
       if(ch.kind==='pdf'&&!reviewManuscriptText(ch)&&pdfDoc){status.textContent='Preparing the manuscript text…';await ensureReaderData(pdfDoc,ch);}
       if(!paras(reviewManuscriptText(ch)).length)throw new Error('This paper has no readable manuscript text to match against.');
       var report=await reviewReportText(file);if(!report.trim())throw new Error('That reviewer file contains no readable text.');status.textContent='Separating the reviewer comments…';var extracted=await extractReviewerReportWithAi(report,function(message){status.textContent=message;});if(!extracted.length)throw new Error('AI could not find actionable reviewer comments in that file.');
-      var reportId=uid('report'),comments=extracted.map(function(item){return{id:uid('rr'),sourceId:reportId,author:item.author,date:'',text:item.text,level:normalizeReviewLevel(item.level),topic:normalizeReviewTopic(item.topic),locationHint:item.locationHint||'',para:null,page:null,start:0,end:0,quote:'',anchors:[],anchored:false,replies:[],response:item.response||'',resolved:false,sourceName:file.name,addedAt:now()};});ch.reviewComments=(ch.reviewComments||[]).concat(comments);ch.reviewReports=Array.isArray(ch.reviewReports)?ch.reviewReports:[];var linked=0,matchable=comments.filter(function(comment){return comment.level!=='general';});
+      ch.reviewReports=Array.isArray(ch.reviewReports)?ch.reviewReports:[];var priorReport=ch.reviewReports.find(function(report){return String(report.name||'').toLowerCase()===String(file.name||'').toLowerCase();}),reportId=priorReport?priorReport.id:uid('report'),priorComments=(ch.reviewComments||[]).filter(function(comment){return comment.sourceId===reportId;}),priorByText={};priorComments.forEach(function(comment){priorByText[reviewNormalizedText(comment.text)]=comment;});
+      var comments=extracted.map(function(item){var record={id:uid('rr'),sourceId:reportId,author:item.author,date:'',text:item.text,level:normalizeReviewLevel(item.level),topic:normalizeReviewTopic(item.topic),locationHint:item.locationHint||'',para:null,page:null,start:0,end:0,quote:'',anchors:[],anchored:false,replies:[],response:item.response||'',resolved:false,sourceName:file.name,addedAt:now()},prior=priorByText[reviewNormalizedText(item.text)];if(prior){record.id=prior.id;record.response=prior.response||record.response;record.resolved=!!prior.resolved;record.replies=prior.replies||[];}return record;});ch.reviewComments=(ch.reviewComments||[]).filter(function(comment){return comment.sourceId!==reportId;}).concat(comments);ch.reviewReports=ch.reviewReports.filter(function(report){return report.id!==reportId;});var linked=0,matchable=comments.filter(function(comment){return comment.level!=='general';});
       for(var i=0;i<matchable.length;i++){status.textContent='Matching comment '+(i+1)+' of '+matchable.length+' to the manuscript…';try{if(await locateOneReviewWithAi(ch,matchable[i],function(message){status.textContent=message;}))linked++;}catch(e){}}
-      var levels={};comments.forEach(function(comment){levels[comment.level]=(levels[comment.level]||0)+1;});ch.reviewReports.push({id:reportId,name:file.name,addedAt:now(),comments:comments.length,levels:levels});touch(ch);if(readerMode==='text')renderText(ch);renderReviewerPanel(ch);renderPdfReviewFocus(currentPage);updateReviewBadge();status.textContent='Imported '+comments.length+' reviewer concern'+(comments.length===1?'':'s')+' · '+linked+' linked to the PDF · '+(comments.length-matchable.length)+' manuscript-wide.';
+      var levels={};comments.forEach(function(comment){levels[comment.level]=(levels[comment.level]||0)+1;});ch.reviewReports.push({id:reportId,name:file.name,addedAt:now(),comments:comments.length,levels:levels});placeInReviewWorkspace(ch);touch(ch);if(readerMode==='text')renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();renderPdfReviewFocus(currentPage);updateReviewBadge();status.textContent='Imported '+comments.length+' reviewer concern'+(comments.length===1?'':'s')+' · '+linked+' linked to the PDF · filed in '+REVIEW_WORKSPACE_CATEGORY+'.';
     }catch(e){status.textContent=e.message||'Phloem could not import that reviewer file.';}
     finally{button.disabled=false;button.textContent=old;}
   }
@@ -3470,7 +3515,7 @@
     var pending=(ch.reviewComments||[]).filter(function(comment){return !comment.anchored&&comment.text&&comment.level!=='general';}),status=byId('reviewerLocateStatus');if(!pending.length)return;
     if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}
     button.disabled=true;var found=0;
-    try{for(var i=0;i<pending.length;i++){status.textContent='Locating '+(i+1)+' of '+pending.length+'…';try{if(await locateOneReviewWithAi(ch,pending[i],function(message){status.textContent=message;}))found++;}catch(e){status.textContent=e.message||'AI could not locate that comment.';}}touch(ch);renderText(ch);renderReviewerPanel(ch);status.textContent=found?'Linked '+found+' comment'+(found===1?'':'s')+' to the manuscript.':'No confident passage matches were found.';}
+    try{for(var i=0;i<pending.length;i++){status.textContent='Locating '+(i+1)+' of '+pending.length+'…';try{if(await locateOneReviewWithAi(ch,pending[i],function(message){status.textContent=message;}))found++;}catch(e){status.textContent=e.message||'AI could not locate that comment.';}}touch(ch);renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();status.textContent=found?'Linked '+found+' comment'+(found===1?'':'s')+' to the manuscript.':'No confident passage matches were found.';}
     finally{button.disabled=false;}
   }
   function renderReviewerPanel(ch){
@@ -3484,7 +3529,7 @@
     }).join('');
     list.querySelectorAll('[data-show-review]').forEach(function(button){button.onclick=function(){focusReviewerPassage(ch,button.dataset.showReview);};});
     list.querySelectorAll('[data-review-response]').forEach(function(area){area.oninput=function(){var comment=reviewerById(ch,area.dataset.reviewResponse);if(!comment)return;comment.response=area.value;comment.updatedAt=now();touch(ch);};});
-    list.querySelectorAll('[data-resolve-review]').forEach(function(button){button.onclick=function(){var comment=reviewerById(ch,button.dataset.resolveReview);if(!comment)return;comment.resolved=!comment.resolved;comment.updatedAt=now();touch(ch);renderText(ch);renderReviewerPanel(ch);updateReviewBadge();};});
+    list.querySelectorAll('[data-resolve-review]').forEach(function(button){button.onclick=function(){var comment=reviewerById(ch,button.dataset.resolveReview);if(!comment)return;comment.resolved=!comment.resolved;comment.updatedAt=now();touch(ch);renderText(ch);renderReviewerPanel(ch);refreshPdfReviewMarkers();updateReviewBadge();};});
     locate.onclick=function(){locateUnlinkedReviews(ch,locate);};
   }
   byId('importReviewFileBtn').onclick=function(){var ch=find(currentId);if(!ch)return;pendingReviewTargetId=ch.id;byId('reviewerLocateStatus').textContent='';byId('reviewFile').click();};
@@ -3884,10 +3929,15 @@
     list.forEach(function(h){(h.rects||[]).some(function(r){var padY=Math.max(.004,r.h*.3),padX=.004;if(x>=r.x-padX&&x<=r.x+r.w+padX&&y>=r.y-padY&&y<=r.y+r.h+padY){if(!hit||(h.at||0)>=(hit.at||0))hit=h;return true;}return false;});});
     return hit?{page:page,item:hit}:null;
   }
+  function pdfReviewAtPoint(pageEl,clientX,clientY){
+    var page=+pageEl.dataset.page||currentPage,view=pdfViews[page-1],base=pageEl.getBoundingClientRect();if(!view||!base.width||!base.height)return null;var x=(clientX-base.left)/base.width,y=(clientY-base.top)/base.height,hit=null,hitArea=Infinity;
+    (view.reviewHits||[]).forEach(function(entry){(entry.rects||[]).some(function(rect){var padY=Math.max(.004,rect.h*.28),padX=.004;if(x>=rect.x-padX&&x<=rect.x+rect.w+padX&&y>=rect.y-padY&&y<=rect.y+rect.h+padY){var area=rect.w*rect.h;if(area<hitArea){hit=entry.comment;hitArea=area;}return true;}return false;});});return hit;
+  }
   byId('pdfFrame').addEventListener('click',function(e){
     if(pendingSelection)return;
     var s=window.getSelection&&window.getSelection();if(s&&!s.isCollapsed)return;
     var pageEl=e.target.closest('.pdf-page');if(!pageEl)return;
+    var review=pdfReviewAtPoint(pageEl,e.clientX,e.clientY);if(review){showReviewerComment(find(currentId),review.id);return;}
     var hit=pdfHighlightAtPoint(pageEl,e.clientX,e.clientY);if(!hit)return;
     if(highlightMode)removeHighlight('pdf',hit.page,hit.item.id);
     else openHighlightCard({kind:'pdf',page:hit.page,id:hit.item.id},{left:e.clientX,right:e.clientX,top:e.clientY,bottom:e.clientY});
@@ -3956,6 +4006,7 @@
     (pageNum?[pageNum]:renderedPages.slice()).forEach(function(n){
       var view=pdfViews[n-1];if(!view)return;view.highlights.innerHTML='';
       ((ch.highlights||{})[String(n)]||[]).forEach(function(h){mergeHighlightRects(h.rects||[]).forEach(function(r){var d=document.createElement('div');d.className='saved-highlight hl-'+(h.color||'yellow');d.style.left=(r.x*100)+'%';d.style.top=(r.y*100)+'%';d.style.width=(r.w*100)+'%';d.style.height=(r.h*100)+'%';d.title=(h.text||'Highlight')+(h.note?'\n✎ '+h.note:'');view.highlights.appendChild(d);});});
+      renderPdfReviewMarkers(ch,n,view);
     });
   }
 

@@ -41,9 +41,10 @@ resume probing, and honest per-paper transfer states.
 
 `reading-docx-review.test.js` covers the unified PDF/Word Add flow, its explicit
 one-file and paper-plus-comments reviewer paths, DOCX archive extraction, Word
-comment-range highlights, long response-letter chunking, scope/topic
-classification, PDF-first review navigation, strict AI passage validation,
-the reviewer sidebar, response and resolved state, and original Word-file roaming.
+comment-range highlights, lossless numbered-concern segmentation, automatic
+Under review filing, scope/topic classification, persistent clickable PDF review
+marks, strict AI passage validation, the reviewer sidebar, response and resolved
+state, and original Word-file roaming.
 
 `reading-extension-local-pdf.test.js` covers extension imports for local
 `file://` PDFs, Chrome's permission-denied path, HTTP errors, and the direct file

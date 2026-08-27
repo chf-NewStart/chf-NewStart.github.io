@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=58">
+  <link rel="stylesheet" href="/reading.css?v=59">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -298,7 +298,7 @@
             <div class="reviewer-panel-head">
               <span class="panel-eyebrow">Revision desk</span>
               <h3>Reviewer comments</h3>
-              <p class="hint">Comments are classified by scope and topic. Selecting a linked comment opens its highlighted place in the original PDF; your source files stay untouched.</p>
+              <p class="hint">Comments are classified by scope and topic. R-marked passages stay visible on the original PDF; select either the mark or the comment to move between them.</p>
               <button class="soft-button" id="importReviewFileBtn" type="button">＋ Import reviewer Word file</button>
               <input class="hidden" id="reviewFile" type="file" accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
               <button class="soft-button hidden" id="locateReviewsBtn" type="button">✦ Locate unlinked comments with AI</button>
@@ -421,7 +421,7 @@
       <p class="review-import-lede">How did the feedback arrive?</p>
       <div class="review-import-options">
         <button class="review-import-option" id="reviewCombinedBtn" type="button"><span class="review-import-number">1 file</span><strong>Commented Word manuscript</strong><small>The paper and Word comments are together in one <code>.docx</code>.</small></button>
-        <button class="review-import-option" id="reviewPairModeBtn" type="button" aria-expanded="false" aria-controls="reviewPairFields"><span class="review-import-number">2 files</span><strong>Paper + reviewer report</strong><small>A PDF or Word manuscript, plus a separate comments document.</small></button>
+        <button class="review-import-option" id="reviewPairModeBtn" type="button" aria-expanded="false" aria-controls="reviewPairFields"><span class="review-import-number">2 files</span><strong>Paper + reviewer report</strong><small>Kept together automatically in the Under review folder.</small></button>
       </div>
       <input class="hidden" id="reviewCombinedFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
       <div class="review-pair-fields hidden" id="reviewPairFields">
@@ -638,9 +638,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=58',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=59',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=58" defer></script>
+<script src="/reading.js?v=59" defer></script>
 </body>
 </html>

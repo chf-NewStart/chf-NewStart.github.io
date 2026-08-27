@@ -946,7 +946,7 @@
     .review-link-mode .text-button { flex: 0 0 auto; color: var(--accent-dark); }
     .review-link-undo { display: block; margin: 7px 0 0 auto; color: var(--accent); font-size: .62rem; }
     .review-quality-summary { margin: 10px 0 0; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--paper) 84%, var(--cream)); color: var(--ink); font: 700 .62rem/1.4 var(--sans); }
-    .review-quality-summary.needs-checking { border-color: color-mix(in srgb, #b8791f 42%, var(--line)); background: color-mix(in srgb, #f2d98f 14%, var(--paper)); }
+    .review-quality-summary.needs-passage { border-color: color-mix(in srgb, #b8791f 42%, var(--line)); background: color-mix(in srgb, #f2d98f 14%, var(--paper)); }
     .task-progress { position: relative; overflow: hidden; width: 100%; height: 5px; margin-top: 8px; border-radius: 999px; background: color-mix(in srgb, var(--line) 64%, transparent); }
     .task-progress i { display: block; width: var(--task-progress, 0%); height: 100%; border-radius: inherit; background: var(--accent); transition: width .25s ease; }
     .task-progress.indeterminate i { width: 36%; animation: task-progress-scan 1.15s ease-in-out infinite; }
@@ -969,7 +969,7 @@
     .reviewer-comment-card.resolved { opacity: .58; }
     .reviewer-card-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 10px; color: var(--muted); font-size: .59rem; font-weight: 750; letter-spacing: .055em; text-transform: uppercase; }
     .reviewer-classification { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 9px; }
-    .reviewer-chip.review-needs-checking { box-shadow: inset 0 0 0 1px color-mix(in srgb, #b8791f 48%, var(--line)); background: color-mix(in srgb, #f2d98f 18%, var(--surface-2)); color: #8a5b18; }
+    .reviewer-chip.review-needs-passage { box-shadow: inset 0 0 0 1px color-mix(in srgb, #b8791f 48%, var(--line)); background: color-mix(in srgb, #f2d98f 18%, var(--surface-2)); color: #8a5b18; }
     .reviewer-chip.review-linked-by-user { box-shadow: inset 0 0 0 1px color-mix(in srgb, #32708b 35%, var(--line)); background: color-mix(in srgb, #69b9da 16%, var(--surface-2)); color: #285f76; }
     .reviewer-chip { border-radius: 999px; padding: 4px 7px; background: var(--surface-2); color: var(--muted); font: 750 .55rem/1 var(--sans); }
     .reviewer-chip.level { background: color-mix(in srgb, var(--yellow) 20%, var(--surface-2)); color: var(--ink); }

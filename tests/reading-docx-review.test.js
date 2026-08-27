@@ -184,9 +184,9 @@ async function run() {
   check('DeepSeek review calls request strict JSON output', source.includes("if(/return only json/i.test(system))deepseekBody.response_format={type:'json_object'}"));
   check('exact quoted passages bypass AI without weakening validation', source.includes('function locateReviewFromExactQuote') && source.includes("'Exact manuscript text'") && source.includes('var remaining=comments.filter'));
   check('review imports record classification, location, and total timing', source.includes('classificationMs:classificationMs,locationMs:locationMs,totalMs:totalMs') && source.includes('elapsedLabel(totalMs)'));
-  check('weak passage matches stay unresolved instead of becoming highlights', source.includes("+comment.matchConfidence>=.72") && source.includes("comment.locationStatus=confident?'confident':'needs-checking'") && source.includes('Needs checking · no confident passage yet'));
+  check('weak passage matches stay unresolved instead of becoming highlights', source.includes("+comment.matchConfidence>=.72") && source.includes("comment.locationStatus=confident?'confident':'needs-checking'") && source.includes('No passage linked yet'));
   check('multi-location comments require every quoted passage to validate', source.includes('anchors.every(function(anchor)') && source.includes('comment.matchConfidence=Math.min.apply'));
-  check('reviewers see an honest confidence summary', html.includes('id="reviewQualitySummary"') && source.includes("+' confidently located · '") && source.includes("+' need checking'"));
+  check('reviewers see actionable passage state instead of model confidence', html.includes('id="reviewQualitySummary"') && source.includes("+' passage'") && source.includes('without a passage') && !extractFunction('renderReviewerPanel').includes('confidently') && !extractFunction('renderReviewerPanel').includes('classificationAudit'));
   check('re-importing the same reviewer report replaces an incomplete extraction', source.includes("comment.sourceId!==reportId") && source.includes("report.id!==reportId") && source.includes('priorByText[reviewNormalizedText(item.text)]'));
 
   const classificationContext = {

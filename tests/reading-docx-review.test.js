@@ -70,6 +70,7 @@ async function run() {
   check('the reader sidebar has a dedicated Reviews tab', html.includes('data-tab="reviewsPanel"') && html.includes('id="readerReviewList"'));
   check('Word comment ranges become manuscript highlights', source.includes("name==='commentRangeStart'") && source.includes("name==='commentRangeEnd'") && css.includes('.review-comment-anchor'));
   check('review responses and resolved state persist on the chapter', source.includes('comment.response=area.value') && source.includes('comment.resolved=!comment.resolved'));
+  check('the current review can be cleared without removing the paper', html.includes('id="clearReviewCommentsBtn"') && source.includes('ch.reviewComments=[];ch.reviewReports=[]') && source.includes('Your paper, reading notes, and personal highlights will stay'));
   check('unlinked feedback is located only through an explicit AI action', html.includes('id="locateReviewsBtn"') && source.includes('locateReviewsWithAi') && source.includes('locateReviewBatchWithAi'));
   check('the review flow clearly supports one combined Word file', html.includes('id="reviewCombinedFile"') && html.includes('Commented Word manuscript') && source.includes("if(!parsed.comments.length)"));
   check('the review flow clearly supports a manuscript plus separate comments', html.includes('id="reviewPaperFile"') && html.includes('id="reviewCommentsFile"') && source.includes('importSourceFile(paper,null,null,button,true)') && source.includes('importReviewerFile(target,comments,button)'));
@@ -90,6 +91,7 @@ async function run() {
   check('AI-selected PDF pages require a drawable passage', source.includes('if(!range&&explicit.indexOf(page)<0)return') && source.includes('never return a page with an empty quote'));
   check('older page-only links are repaired from real PDF text', source.includes('function repairPdfReviewQuotes') && source.includes('repairPdfReviewQuotes(ch)') && source.includes('reviewNeedsPassage(ch,comment)'));
   check('PDF quote mapping respects words split across text-layer spans', source.includes('function pdfReviewSpanNeedsSpace') && source.includes('pdfReviewSpanNeedsSpace(previous,span)'));
+  check('review scope colors are explained and carried onto PDF badges', html.includes('class="review-scope-key"') && css.includes('.review-level-section.review-marker-first::after') && css.includes('.review-level-general.review-marker-first::after'));
   check('original Word drafts use the same resumable Drive roaming path', source.includes("name:'docx-'+ch.id+'.docx'") && source.includes('binarySourceSpec(ch)'));
 
   const reviewContext = {};
@@ -97,6 +99,8 @@ async function run() {
     extractFunction('paras'),
     extractFunction('reviewNormalizedText'),
     extractFunction('reviewQuoteRange'),
+    extractFunction('reviewSentenceRanges'),
+    extractFunction('reviewSentenceRange'),
     extractFunction('reviewSearchTerms'),
     extractFunction('reviewLocalPdfQuote'),
     extractFunction('reviewExplicitPages'),
@@ -111,6 +115,10 @@ async function run() {
   check('one comment can seed both manuscript locations it explicitly compares', JSON.stringify(dualRefs) === JSON.stringify([6, 15]), dualRefs.join(','));
   const fuzzyQuote = reviewContext.reviewQuoteRange('The model reconstructs the oxygen distribution from a local constraint.', 'model “reconstructs” the oxygen distribution');
   check('quote validation tolerates punctuation but still returns source text', fuzzyQuote && fuzzyQuote.quote.includes('model reconstructs'));
+  const sentenceText = 'Repeated simulations were required to fit predictions to experimental data. Although compartmental models describe heterogeneity, current approaches still struggle to capture these systems accurately. For example, the next model adds population balances.';
+  const clippedRange = { start: sentenceText.indexOf('predictions'), end: sentenceText.indexOf('the next model') + 8, quote: '' };
+  const completeSentence = reviewContext.reviewSentenceRange(sentenceText, clippedRange, { text: 'Current compartmental approaches struggle to capture system complexity accurately.' });
+  check('PDF review highlights snap to one complete relevant sentence', completeSentence.quote.startsWith('Although') && completeSentence.quote.endsWith('accurately.') && !completeSentence.quote.includes('For example'));
   const localPassage = reviewContext.reviewLocalPdfQuote('Background material is summarized first. Probe position changed the measured oxygen concentration gradient across the vessel. The conclusion follows.', { text: 'Please clarify how probe position affects the oxygen concentration gradient.' });
   check('page-only references gain a conservative local passage highlight', localPassage.includes('Probe position changed'));
   const unrelatedPassage = reviewContext.reviewLocalPdfQuote('The statistical analysis used a standard confidence interval.', { text: 'Please clarify the oxygen sensor placement and spatial concentration gradient.' });

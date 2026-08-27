@@ -499,7 +499,10 @@
     .find-bar .step-btn:hover { border-color: var(--accent); }
     .para.find-flash { background: color-mix(in srgb, var(--yellow) 34%, transparent); }
     .text-layer span.find-span { background: color-mix(in srgb, var(--yellow) 55%, transparent); border-radius: 3px; }
-    .text-layer span.review-focus-span { background: color-mix(in srgb, var(--yellow) 68%, transparent); border-radius: 3px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 26%, transparent); }
+    .text-layer span.review-focus-span { background: rgba(255,202,108,.58); border-radius: 3px; box-shadow: 0 0 0 2px rgba(184,121,31,.28); }
+    .text-layer span.review-focus-general { background: rgba(128,179,105,.48); box-shadow: 0 0 0 2px rgba(91,126,77,.3); }
+    .text-layer span.review-focus-section { background: rgba(105,185,218,.48); box-shadow: 0 0 0 2px rgba(50,112,139,.3); }
+    .text-layer span.review-focus-editorial { background: rgba(243,119,91,.44); box-shadow: 0 0 0 2px rgba(197,79,52,.3); }
     .progress-rail { flex: 0 0 auto; height: 4px; background: var(--surface-2); }
     .progress-rail i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .18s ease-out; }
     .comfort-bar { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--yellow) 12%, var(--surface)); }
@@ -614,11 +617,15 @@
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     .highlight-layer { z-index: 1; pointer-events: none; }
     .saved-highlight { position: absolute; border-radius: 4px 3px 5px 2px; mix-blend-mode: multiply; }
-    .review-comment-highlight { position: absolute; border-bottom: 2px solid rgba(197,79,52,.78); border-radius: 3px; background: rgba(255,202,108,.34); mix-blend-mode: multiply; }
+    .review-comment-highlight { position: absolute; border-bottom: 2px solid rgba(184,121,31,.88); border-radius: 3px; background: rgba(255,202,108,.34); mix-blend-mode: multiply; }
     .review-comment-highlight.review-level-section { border-bottom-color: rgba(50,112,139,.82); background: rgba(105,185,218,.24); }
     .review-comment-highlight.review-level-editorial { border-bottom-color: rgba(197,79,52,.9); background: rgba(243,119,91,.22); }
     .review-comment-highlight.review-level-general { border-bottom-color: rgba(91,126,77,.84); background: rgba(128,179,105,.22); }
     .review-comment-highlight.review-marker-first::after, .review-page-marker::after { content: attr(data-review-label); position: absolute; right: 0; top: 50%; min-width: 18px; padding: 2px 4px; border-radius: 999px; transform: translate(45%,-50%); background: #bb5039; color: #fff; box-shadow: 0 1px 4px rgba(31,29,24,.24); font: 700 8px/1 var(--sans); letter-spacing: .01em; text-align: center; white-space: nowrap; }
+    .review-comment-highlight.review-level-specific.review-marker-first::after { background: #b8791f; }
+    .review-comment-highlight.review-level-section.review-marker-first::after { background: #32708b; }
+    .review-comment-highlight.review-level-editorial.review-marker-first::after { background: #c54f34; }
+    .review-comment-highlight.review-level-general.review-marker-first::after { background: #5b7e4d; }
     .review-page-marker { position: absolute; border: 1px solid rgba(187,80,57,.62); border-radius: 999px 2px 2px 999px; background: rgba(255,226,167,.82); box-shadow: 0 1px 5px rgba(31,29,24,.18); }
     .review-page-marker::after { inset: 50% auto auto 50%; transform: translate(-50%,-50%); background: transparent; color: #873927; box-shadow: none; }
     .pdf-frame.dark-paper .saved-highlight { mix-blend-mode: screen; opacity: .78; }
@@ -865,6 +872,14 @@
     .tab-panel .hint { margin: 0 0 14px; color: var(--muted); font-size: .7rem; line-height: 1.5; }
     .reviewer-panel-head { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
     .reviewer-panel-head .soft-button { width: 100%; margin-top: 2px; white-space: normal; }
+    .review-scope-key { display: flex; flex-wrap: wrap; gap: 5px 10px; margin: -5px 0 12px; color: var(--muted); font: 700 .55rem/1.2 var(--sans); }
+    .review-scope-key span { display: inline-flex; align-items: center; gap: 5px; }
+    .review-scope-key span::before { width: 8px; height: 8px; border-radius: 50%; background: #b8791f; content: ""; }
+    .review-scope-key .general::before { background: #5b7e4d; }
+    .review-scope-key .section::before { background: #32708b; }
+    .review-scope-key .editorial::before { background: #c54f34; }
+    .reviewer-panel-head #clearReviewCommentsBtn { display: block; width: fit-content; margin: 7px 0 0 auto; font-size: .61rem; }
+    .reviewer-panel-head #clearReviewCommentsBtn.hidden { display: none; }
     .reviewer-locate-status { min-height: 0; margin: 8px 0 0; color: var(--muted); font-size: .65rem; line-height: 1.45; }
     .reviewer-locate-status:empty { display: none; }
     .task-progress { position: relative; overflow: hidden; width: 100%; height: 5px; margin-top: 8px; border-radius: 999px; background: color-mix(in srgb, var(--line) 64%, transparent); }
@@ -884,6 +899,9 @@
     .reviewer-classification { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 9px; }
     .reviewer-chip { border-radius: 999px; padding: 4px 7px; background: var(--surface-2); color: var(--muted); font: 750 .55rem/1 var(--sans); }
     .reviewer-chip.level { background: color-mix(in srgb, var(--yellow) 20%, var(--surface-2)); color: var(--ink); }
+    .reviewer-chip.level.review-level-general { background: color-mix(in srgb, #80b369 24%, var(--surface-2)); }
+    .reviewer-chip.level.review-level-section { background: color-mix(in srgb, #69b9da 24%, var(--surface-2)); }
+    .reviewer-chip.level.review-level-editorial { background: color-mix(in srgb, #f3775b 22%, var(--surface-2)); }
     .reviewer-location { margin: -2px 0 9px; color: var(--muted); font: .62rem/1.4 var(--sans); }
     .reviewer-comment-card blockquote { margin: 0 0 10px; padding: 8px 10px; border-left: 3px solid var(--yellow); background: color-mix(in srgb, var(--yellow) 10%, transparent); color: var(--muted); font: italic .72rem/1.48 var(--serif); }
     .reviewer-comment-text { margin: 0 0 10px; white-space: pre-wrap; color: var(--ink); font: .8rem/1.52 var(--serif); }

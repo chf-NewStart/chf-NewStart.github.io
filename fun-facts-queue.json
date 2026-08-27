@@ -1,14 +1,6 @@
 [
   {
     "fact": {
-      "tag": "RECORDS",
-      "title": "The biggest tree weighs more than a fleet of blue whales",
-      "fact": "General Sherman, a giant sequoia in California, is the largest single-stemmed tree on Earth by volume — a trunk of roughly 1,500 cubic meters, still adding wood every year after some 2,000+ years.",
-      "detail": "Sequoias are fire-adapted: their thick spongy bark shrugs off flames, and heat helps open their cones. The species survives natural burns that kill the competition around it."
-    }
-  },
-  {
-    "fact": {
       "tag": "EARTH",
       "title": "The Sahara fertilizes the Amazon",
       "fact": "Satellites tracking dust plumes show tens of millions of tonnes of Saharan dust crossing the Atlantic every year — and the phosphorus riding along helps replenish what Amazon rains keep washing out of the soil.",

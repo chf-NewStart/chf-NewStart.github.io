@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "RECORDS",
+            title: "The biggest tree weighs more than a fleet of blue whales",
+            fact: "General Sherman, a giant sequoia in California, is the largest single-stemmed tree on Earth by volume — a trunk of roughly 1,500 cubic meters, still adding wood every year after some 2,000+ years.",
+            detail: "Sequoias are fire-adapted: their thick spongy bark shrugs off flames, and heat helps open their cones. The species survives natural burns that kill the competition around it."
+        },
+        {
             tag: "BIOLOGY",
             title: "Lichens have survived open space",
             fact: "Lichens — a working partnership between a fungus and an alga — were strapped to the outside of a space capsule in European Space Agency experiments, exposed to vacuum, radiation, and temperature swings, and revived on return to Earth.",

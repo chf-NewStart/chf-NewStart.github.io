@@ -70,6 +70,8 @@ async function run() {
   check('the reader sidebar has a dedicated Reviews tab', html.includes('data-tab="reviewsPanel"') && html.includes('id="readerReviewList"'));
   check('Word comment ranges become manuscript highlights', source.includes("name==='commentRangeStart'") && source.includes("name==='commentRangeEnd'") && css.includes('.review-comment-anchor'));
   check('review responses and resolved state persist on the chapter', source.includes('comment.response=area.value') && source.includes('comment.resolved=!comment.resolved'));
+  check('AI classifies reviewer concerns without seeing or drafting author responses', source.includes('This task is classification only. Do not draft, rewrite, evaluate, summarize, or complete an author response') && !source.includes('Existing author response:'));
+  check('the response field is explicitly author-written', source.includes('Your response · written by you') && source.includes('Write your response here…'));
   check('the current review can be cleared without removing the paper', html.includes('id="clearReviewCommentsBtn"') && source.includes('ch.reviewComments=[];ch.reviewReports=[]') && source.includes('Your paper, reading notes, and personal highlights will stay'));
   check('unlinked feedback is located only through an explicit AI action', html.includes('id="locateReviewsBtn"') && source.includes('locateReviewsWithAi') && source.includes('locateReviewBatchWithAi'));
   check('the review flow clearly supports one combined Word file', html.includes('id="reviewCombinedFile"') && html.includes('Commented Word manuscript') && source.includes("if(!parsed.comments.length)"));

@@ -55,6 +55,10 @@ picker fallback.
 version, bypasses the browser's worker-script cache, and upgrades already-open
 older copies without making first-time visitors reload twice.
 
+`reading-persistence.test.js` covers reload-safe library metadata, isolation of
+malformed saved records, IndexedDB safety-copy restoration, and recovery of an
+original PDF whose metadata disappeared.
+
 Run with Node 18+ and Playwright's bundled Chromium:
 
 ```sh
@@ -71,6 +75,7 @@ node tests/reading-gdrive-large-pdf.test.js
 node tests/reading-docx-review.test.js
 node tests/reading-extension-local-pdf.test.js
 node tests/reading-app-update.test.js
+node tests/reading-persistence.test.js
 ```
 
 Exit code 0 means every check passed. If your Chromium lives in a nonstandard

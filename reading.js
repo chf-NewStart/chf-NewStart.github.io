@@ -35,6 +35,7 @@
     {cover:'#a7c8e7',ink:'#234f91'},
     {cover:'#df8d80',ink:'#234f91'}
   ];
+  var stateLoadIssue='',stateLoadFailed=false,stateLoadRaw='';
   var pristineLibrary = false;
   try { pristineLibrary = localStorage.getItem(KEY) === null; } catch(e){}
   var state = loadState();
@@ -191,14 +192,14 @@
     if(!String(comment&&comment.response||'').trim()||comment&&comment.responseWrittenByUser||!report||report.shared)return false;var responseAt=+comment.updatedAt||+comment.addedAt||0,reportAt=+report.addedAt||0;return!!reportAt&&(!responseAt||responseAt<=reportAt);
   }
   function normalize(ch){
-    ch.notes = ch.notes || {}; ch.pageNotes = ch.pageNotes || {}; ch.tags = ch.tags || [];
-    ch.questions = ch.questions || []; ch.highlights = ch.highlights || {}; ch.textHighlights = ch.textHighlights || [];
+    ch.notes = ch.notes&&typeof ch.notes==='object'&&!Array.isArray(ch.notes)?ch.notes:{}; ch.pageNotes = ch.pageNotes&&typeof ch.pageNotes==='object'&&!Array.isArray(ch.pageNotes)?ch.pageNotes:{}; ch.tags = Array.isArray(ch.tags)?ch.tags:[];
+    ch.questions = Array.isArray(ch.questions)?ch.questions:[]; ch.highlights = ch.highlights&&typeof ch.highlights==='object'&&!Array.isArray(ch.highlights)?ch.highlights:{}; ch.textHighlights = Array.isArray(ch.textHighlights)?ch.textHighlights:[];
     if(!Array.isArray(ch.aiThreads))ch.aiThreads=[];
     if(!ch.aiThreads.length&&ch.questions.length)ch.aiThreads=ch.questions.slice(0,12).map(function(q){return {id:'legacy-'+(q.id||uid('q')),contextLabel:q.contextLabel||'Earlier question',contextText:q.excerpt||'',messages:[{role:'user',content:q.question||'',at:q.at||now()},{role:'assistant',content:q.answer||'',at:q.at||now()}],createdAt:q.at||now(),updatedAt:q.at||now()};});
     ch.aiThreads=ch.aiThreads.filter(function(t){return t&&t.id&&Array.isArray(t.messages);}).slice(0,12);if(ch.activeAiThreadId&&!ch.aiThreads.some(function(t){return t.id===ch.activeAiThreadId;}))ch.activeAiThreadId='';if(!ch.activeAiThreadId&&ch.aiThreads[0])ch.activeAiThreadId=ch.aiThreads[0].id;
-    ch.readerHighlights = ch.readerHighlights || []; ch.readerNotes = ch.readerNotes || {}; ch.termLookups = ch.termLookups || {}; ch.reviews = ch.reviews || {};
-    if(!Array.isArray(ch.reviewComments))ch.reviewComments=[];
-    if(!Array.isArray(ch.reviewReports))ch.reviewReports=[];ch.reviewUpdatedAt=+ch.reviewUpdatedAt||0;ch.reviewClearedAt=+ch.reviewClearedAt||0;var legacyReviewReports={},reviewReportsById={};ch.reviewReports.forEach(function(report){reviewReportsById[String(report.id||'')]=report;if(!report.extractorVersion||report.extractorVersion<3)legacyReviewReports[report.id]=1;});
+    ch.readerHighlights = Array.isArray(ch.readerHighlights)?ch.readerHighlights:[]; ch.readerNotes = ch.readerNotes&&typeof ch.readerNotes==='object'&&!Array.isArray(ch.readerNotes)?ch.readerNotes:{}; ch.termLookups = ch.termLookups&&typeof ch.termLookups==='object'&&!Array.isArray(ch.termLookups)?ch.termLookups:{}; ch.reviews = ch.reviews&&typeof ch.reviews==='object'&&!Array.isArray(ch.reviews)?ch.reviews:{};
+    ch.reviewComments=Array.isArray(ch.reviewComments)?ch.reviewComments.filter(function(comment){return comment&&typeof comment==='object';}):[];
+    ch.reviewReports=Array.isArray(ch.reviewReports)?ch.reviewReports.filter(function(report){return report&&typeof report==='object';}):[];ch.reviewUpdatedAt=+ch.reviewUpdatedAt||0;ch.reviewClearedAt=+ch.reviewClearedAt||0;var legacyReviewReports={},reviewReportsById={};ch.reviewReports.forEach(function(report){reviewReportsById[String(report.id||'')]=report;if(!report.extractorVersion||report.extractorVersion<3)legacyReviewReports[report.id]=1;});
     ch.reviewComments.forEach(function(comment){comment.text=trimReviewRecommendationTail(comment.text);comment.replies=Array.isArray(comment.replies)?comment.replies:[];comment.anchors=Array.isArray(comment.anchors)?comment.anchors:(comment.anchored&&comment.para!==null&&comment.para!==undefined?[{para:comment.para,start:comment.start,end:comment.end,quote:comment.quote||'',method:comment.anchorMethod||'ai'}]:[]);comment.anchors=comment.anchors.map(function(anchor){return{para:+anchor.para,start:+anchor.start||0,end:+anchor.end||0,quote:String(anchor.quote||''),method:String(anchor.method||comment.anchorMethod||'ai'),manual:!!anchor.manual};}).filter(function(anchor){return Number.isInteger(anchor.para)&&anchor.para>=0&&anchor.end>anchor.start;});comment.response=String(comment.response||'');if(reviewResponseWasImported(comment,reviewReportsById[String(comment.sourceId||'')])){comment.response='';comment.importedResponseRemoved=true;}comment.responseWrittenByUser=!!comment.response&&(!!comment.responseWrittenByUser||!comment.importedResponseRemoved);comment.locationHint=String(comment.locationHint||'');comment.level=normalizeReviewLevel(comment.level,comment);comment.topic=normalizeReviewTopic(comment.topic);comment.page=+comment.page||null;comment.manualReviewLink=!!comment.manualReviewLink;comment.manualLocationRejected=!!comment.manualLocationRejected;comment.pdfAnchors=Array.isArray(comment.pdfAnchors)?comment.pdfAnchors.map(function(anchor){return{page:+anchor.page||null,quote:String(anchor.quote||''),confidence:Math.max(0,Math.min(1,+anchor.confidence||0)),method:String(anchor.method||'ai-pdf-page'),manual:!!anchor.manual||String(anchor.method||'').indexOf('manual-')===0};}).filter(function(anchor){return anchor.page;}):[];if(!comment.pdfAnchors.length&&comment.page)comment.pdfAnchors=[{page:comment.page,quote:String(comment.quote||''),confidence:Math.max(0,Math.min(1,+comment.matchConfidence||0)),method:String(comment.anchorMethod||'ai-pdf-page'),manual:comment.manualReviewLink}];comment.legacyImport=!!legacyReviewReports[comment.sourceId];if(comment.legacyImport&&!comment.manualReviewLink){comment.anchored=false;comment.page=null;comment.quote='';comment.pdfAnchors=[];}comment.resolved=!!comment.resolved;});
     ch.addedAt = ch.addedAt || now(); ch.updatedAt = ch.updatedAt || ch.addedAt;
     ch.readPage = ch.readPage || 1; ch.kind = ch.kind || (ch.pageTexts ? 'pdf' : 'text');
@@ -299,9 +300,13 @@
     });keep.updatedAt=Math.max(stamp,keep.updatedAt||0);if(derivedData(keep))saveDerivedSoon(keep);});
     if(plans.length)state.chapters=state.chapters.filter(function(ch){return !state.deleted[ch.id];});return plans;
   }
+  function emptyState(){return{chapters:[],deleted:{},merged:{},categoryOrder:[],categoryOrderUpdatedAt:0,savedAt:0};}
+  function normalizeStateCandidate(candidate){
+    if(!candidate||!Array.isArray(candidate.chapters))return null;var original=candidate.chapters.length,chapters=[],failed=0;
+    candidate.chapters.forEach(function(ch){try{if(!ch||typeof ch!=='object'||!ch.id)throw new Error('invalid paper record');chapters.push(normalize(ch));}catch(e){failed++;}});candidate.chapters=chapters;candidate.deleted=candidate.deleted&&typeof candidate.deleted==='object'?candidate.deleted:{};candidate.merged=candidate.merged&&typeof candidate.merged==='object'?candidate.merged:{};candidate.categoryOrder=Array.isArray(candidate.categoryOrder)?candidate.categoryOrder:[];candidate.categoryOrderUpdatedAt=+candidate.categoryOrderUpdatedAt||0;candidate.savedAt=+candidate.savedAt||0;candidate.chapters=candidate.chapters.filter(function(ch){return!candidate.deleted[ch.id];});return{state:candidate,failed:failed,original:original};
+  }
   function loadState(){
-    try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.chapters)) { s.chapters.forEach(normalize);s.deleted=s.deleted||{};s.merged=s.merged||{};s.categoryOrder=Array.isArray(s.categoryOrder)?s.categoryOrder:[];s.categoryOrderUpdatedAt=+s.categoryOrderUpdatedAt||0;s.chapters=s.chapters.filter(function(ch){return !s.deleted[ch.id];});if(migrateReviewWorkspaceLabels(s,true))localStorage.setItem(KEY,JSON.stringify(s));return s; } } catch(e){}
-    return { chapters: [], deleted: {}, merged: {}, categoryOrder: [], categoryOrderUpdatedAt: 0 };
+    try{stateLoadRaw=localStorage.getItem(KEY)||'';if(!stateLoadRaw)return emptyState();var prepared=normalizeStateCandidate(JSON.parse(stateLoadRaw));if(!prepared)throw new Error('saved library has an invalid shape');if(prepared.failed){stateLoadIssue=prepared.failed+' saved paper record'+(prepared.failed===1?' could':'s could')+' not be read';stateLoadFailed=prepared.original>0&&!prepared.state.chapters.length;}if(migrateReviewWorkspaceLabels(prepared.state,true)&&!stateLoadFailed)localStorage.setItem(KEY,JSON.stringify(prepared.state));return prepared.state;}catch(e){stateLoadIssue=e&&e.message||'saved library could not be read';stateLoadFailed=!!stateLoadRaw;return emptyState();}
   }
   function migrateReviewWorkspaceLabels(target,touchRecords){
     if(!target)return false;var changed=false,legacy=LEGACY_REVIEW_WORKSPACE_CATEGORY.toLowerCase(),stamp=now();
@@ -310,20 +315,30 @@
   }
   /* localStorage is deliberately only for small, frequently edited state. Rebuildable PDF
      text lives beside the PDFs in IndexedDB, while encrypted sync may still carry it. */
-  var storageWarned = false;
+  var storageWarned = false,stateSnapshotTimer=null,stateSnapshotPending='',stateSnapshotWrite=Promise.resolve(false);
   var DERIVED_FIELDS=['pageLines','pageParagraphs','pageTexts','readerText','readerV','fr','termLookups','figCount'];
   function localState(){
     var copy=Object.assign({},state);copy.chapters=state.chapters.map(function(ch){var item=Object.assign({},ch);if(item.kind==='pdf')DERIVED_FIELDS.forEach(function(field){delete item[field];});return item;});return copy;
   }
+  function flushStateSnapshot(){
+    clearTimeout(stateSnapshotTimer);stateSnapshotTimer=null;var serialized=stateSnapshotPending;stateSnapshotPending='';if(!serialized)return stateSnapshotWrite;stateSnapshotWrite=stateSnapshotWrite.catch(function(){return false;}).then(function(){return putStateSnapshot(serialized);});return stateSnapshotWrite;
+  }
+  function queueStateSnapshot(serialized,immediate){stateSnapshotPending=serialized;clearTimeout(stateSnapshotTimer);if(immediate)return flushStateSnapshot();stateSnapshotTimer=setTimeout(flushStateSnapshot,350);return stateSnapshotWrite;}
   function persist(schedule){
-    try { localStorage.setItem(KEY, JSON.stringify(localState()));storageWarned=false; }
-    catch(e){
-      if (!storageWarned) {
-        storageWarned = true;
-        showError('Phloem could not save the newest change because this browser’s small note store is full. Remove a finished paper or turn on encrypted GitHub sync, then try that edit once more.','Phloem needs a little room');
+    if(stateLoadFailed&&!state.chapters.length)return false;var serialized='',savedLocally=false;state.savedAt=now();
+    try{serialized=JSON.stringify(localState());localStorage.setItem(KEY,serialized);savedLocally=true;stateLoadFailed=false;storageWarned=false;}
+    catch(e){}
+    if(serialized){
+      var snapshot=queueStateSnapshot(serialized,!savedLocally);
+      if(!savedLocally&&!storageWarned){
+        storageWarned=true;
+        Promise.resolve(snapshot).then(function(kept){
+          showError(kept?'Your newest change is safe in Phloem’s device recovery copy, but the browser’s small note store is full. Remove a finished paper or turn on sync to make more room.':'Phloem could not save the newest change because this browser’s local storage is full. Remove a finished paper or turn on sync, then try that edit once more.',kept?'Saved to recovery storage':'Phloem needs a little room');
+        });
       }
     }
     if (schedule !== false) scheduleSync();
+    return savedLocally;
   }
   function find(id){ return state.chapters.find(function(ch){ return ch.id === id; }); }
   function touch(ch){ ch.updatedAt = now(); persist(); }
@@ -617,11 +632,11 @@
   /* The standalone app can sit open for days while deploys pass it by; the service
      worker fetches reading.html network-first, so one reload is all "update" takes.
      Flush the save first — reload mid-debounce would drop the newest edit. */
-  byId('refreshBtn').onclick = function(){ persist(false); location.reload(); };
+  byId('refreshBtn').onclick = async function(){ persist(false);await flushStateSnapshot();location.reload(); };
 
   /* IndexedDB keeps actual PDFs local without choking localStorage. ArrayBuffers are
      more reliable than Blob records in older iPhone Safari; memory is a last-resort fallback. */
-  var memoryPdfs={},memoryDerived={},derivedTimers={};
+  var memoryPdfs={},memoryDerived={},memoryStateSnapshot='',derivedTimers={};
   function db(){
     return new Promise(function(resolve, reject){
       var req = indexedDB.open('marginFiles', 2);
@@ -629,6 +644,13 @@
       req.onsuccess = function(){ resolve(req.result); }; req.onerror = function(){ reject(req.error); };
     });
   }
+  async function putStateSnapshot(serialized,key){
+    key=key||'latest';if(!serialized)return false;if(key==='latest')memoryStateSnapshot=serialized;try{var d=await db();await new Promise(function(res,rej){var r=d.transaction('derived','readwrite').objectStore('derived').put(serialized,'state:snapshot:'+key);r.onsuccess=res;r.onerror=function(){rej(r.error);};});return true;}catch(e){return false;}
+  }
+  async function getStateSnapshot(key){
+    key=key||'latest';try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('derived').objectStore('derived').get('state:snapshot:'+key);r.onsuccess=function(){res(r.result||'');};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}return key==='latest'?memoryStateSnapshot:'';
+  }
+  async function storedSourceKeys(){try{var d=await db();return await new Promise(function(res,rej){var r=d.transaction('pdfs').objectStore('pdfs').getAllKeys();r.onsuccess=function(){res(r.result||[]);};r.onerror=function(){rej(r.error);};});}catch(e){return Object.keys(memoryPdfs);}}
   async function pdfBytes(value){if(value instanceof ArrayBuffer)return value.slice(0);if(ArrayBuffer.isView(value))return value.buffer.slice(value.byteOffset,value.byteOffset+value.byteLength);if(value&&value.arrayBuffer)return value.arrayBuffer();throw new Error('The saved source file is not readable.');}
   async function pdfFingerprint(value){
     if(!(window.crypto&&window.crypto.subtle&&window.crypto.subtle.digest))return '';
@@ -690,6 +712,21 @@
     try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('derived').objectStore('derived').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
     return memoryDerived[id]||null;
   }
+  async function restoreStateSnapshot(){
+    if(stateLoadIssue&&stateLoadRaw)await putStateSnapshot(stateLoadRaw,'failed-load');var raw=await getStateSnapshot(),prepared=null;try{prepared=normalizeStateCandidate(JSON.parse(raw||''));}catch(e){}if(!prepared||!prepared.state.chapters.length)return false;var saved=prepared.state,savedAt=+saved.savedAt||0,localAt=+state.savedAt||0;if(!stateLoadIssue&&savedAt<=localAt)return false;var changed=mergeState(saved);if(savedAt>localAt)state.savedAt=savedAt;if(changed){stateLoadFailed=false;stateLoadIssue='';persist(false);renderShelf();updateReviewBadge();var status=byId('libraryImportStatus');if(status)status.textContent='Recovered your library from this device’s safety copy.';}return changed;
+  }
+  async function recoverStoredSources(){
+    var keys=await storedSourceKeys(),recovered=0;
+    for(var i=0;i<keys.length;i++){
+      var id=String(keys[i]||'');if(!id||find(id)||state.deleted&&state.deleted[id]||state.merged&&state.merged[id])continue;var stored=await getPdf(id);if(!stored)continue;var bytes;try{bytes=stored instanceof ArrayBuffer?stored:await pdfBytes(stored);}catch(e){continue;}var head=new Uint8Array(bytes,0,Math.min(5,bytes.byteLength)),magic='';for(var h=0;h<head.length;h++)magic+=String.fromCharCode(head[h]);
+      if(magic.indexOf('%PDF-')===0){var derived=await getDerived(id),pageCount=derived&&Array.isArray(derived.pageTexts)?derived.pageTexts.length:0;state.chapters.push(normalize({id:id,title:'Recovered paper '+(recovered+1),authors:'',kind:'pdf',sourceName:'recovered-'+id+'.pdf',pageCount:pageCount,fileSize:bytes.byteLength,notes:{},pageNotes:{},tags:['recovered'],questions:[],addedAt:1,updatedAt:1,readPage:1}));recovered++;continue;}
+      if(head[0]===0x50&&head[1]===0x4b&&/^w/.test(id)){
+        try{var parsed=await parseDocx(bytes,'recovered-'+id+'.docx'),word=normalize({id:id,title:parsed.title||'Recovered Word draft '+(recovered+1),authors:parsed.authors||'',kind:'text',sourceType:'docx',sourceName:'recovered-'+id+'.docx',fileSize:bytes.byteLength,fr:parsed.paragraphs.join('\n\n'),docxParagraphKinds:parsed.kinds,reviewComments:parsed.comments,trackedChanges:parsed.trackedChanges,notes:{},pageNotes:{},tags:['recovered'],questions:[],addedAt:1,updatedAt:1,readPage:1});state.chapters.push(word);recovered++;}catch(e){}
+      }
+    }
+    if(recovered){stateLoadFailed=false;persist(false);renderShelf();updateReviewBadge();var status=byId('libraryImportStatus');if(status)status.textContent='Recovered '+recovered+' original file'+(recovered===1?'':'s')+' from this device. Google Drive can restore their latest names, notes, and review work.';}return recovered;
+  }
+  async function recoverStartupLibrary(){var restored=await restoreStateSnapshot(),recovered=await recoverStoredSources();return!!restored||recovered>0;}
   function mergeDerivedInto(ch,saved){var changed=false;if(!ch||!saved)return changed;DERIVED_FIELDS.forEach(function(field){var incoming=saved[field],current=ch[field];if(incoming===undefined)return;if(field==='termLookups'&&incoming&&typeof incoming==='object'){var merged=Object.assign({},incoming,current||{});if(Object.keys(merged).length!==Object.keys(current||{}).length){ch[field]=merged;changed=true;}return;}if(current===undefined||current===null||(Array.isArray(incoming)&&(!Array.isArray(current)||incoming.length>current.length))){ch[field]=incoming;changed=true;}});return changed;}
   async function hydrateDerived(ch){
     if(!ch||ch.kind!=='pdf')return ch;var saved=await getDerived(ch.id);if(saved)mergeDerivedInto(ch,saved);if(repairPdfReviewQuotes(ch))persist(false);return ch;
@@ -5383,13 +5420,13 @@
   toggleSheet(false);
   /* Loading Google's script ahead of time keeps the first tap's token renewal inside
      the tap's own permission window. */
-  Object.keys(state.merged||{}).forEach(function(dropId){queueDuplicateStorage(state.merged[dropId],dropId);});
-  var startupDuplicateRepair=repairDuplicateStorage();
-  var startupStarterGuide=seedStarterGuide();
-  var startupLibraryWork=[startupStarterGuide];
+  var startupStateRecovery=recoverStartupLibrary();
+  var startupDuplicateRepair=startupStateRecovery.then(function(){Object.keys(state.merged||{}).forEach(function(dropId){queueDuplicateStorage(state.merged[dropId],dropId);});return repairDuplicateStorage();});
+  var startupStarterGuide=startupStateRecovery.then(function(){return seedStarterGuide();});
+  var startupLibraryWork=[startupStateRecovery,startupStarterGuide];
   renderSharedAiPass();syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupLibraryWork.push(startupDuplicateRepair.then(function(){return gdriveSync();}));}
   Promise.allSettled(startupLibraryWork).then(function(){libraryHydrating=false;renderShelf();updateReviewBadge();});
   /* A refresh drops you back into the paper you were reading, not the library. */
-  try{var lastOpen=resolvedPaperId(localStorage.getItem(LAST_OPEN_KEY));if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived)).then(function(){return startupDuplicateRepair;}).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
+  startupStateRecovery.then(function(){try{var lastOpen=resolvedPaperId(localStorage.getItem(LAST_OPEN_KEY));if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}});startupStateRecovery.then(function(){return Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived));}).then(function(){return startupDuplicateRepair;}).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
   if(location.protocol==='file:') byId('launchDialog').showModal();
 })();

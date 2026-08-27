@@ -23,14 +23,14 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=94">
+  <link rel="stylesheet" href="/reading.css?v=95">
 </head>
 <body class="library-view">
   <header class="masthead">
     <button class="brand" id="brandBtn" aria-label="Open library"><strong>Phloem</strong><span>Breathe · Focus · Read</span></button>
     <nav class="nav" aria-label="Main navigation">
       <button class="nav-btn active" data-view="libraryPage">Library</button>
-      <button class="nav-btn" data-view="reviewPage">Review</button>
+      <button class="nav-btn" data-view="reviewPage">Revision</button>
       <button class="nav-btn" data-view="connectionsPage">Connections</button>
       <button class="nav-btn" id="installNav">Install app</button>
     </nav>
@@ -100,10 +100,10 @@
     </section>
 
     <section id="reviewPage" class="page hidden">
-      <div class="section-head"><h2>Review</h2><span class="count" id="reviewCount"></span></div>
-      <div class="review-mode-tabs" role="tablist" aria-label="Review type">
-        <button class="review-mode active" id="reviewerModeBtn" type="button" role="tab" aria-selected="true">Reviewer comments <span id="reviewerCount"></span></button>
-        <button class="review-mode" id="memoryModeBtn" type="button" role="tab" aria-selected="false">Memory cards</button>
+      <div class="section-head"><h2>Revision desk</h2><span class="count" id="reviewCount"></span></div>
+      <div class="review-mode-tabs" role="tablist" aria-label="Revision desk view">
+        <button class="review-mode active" id="reviewerModeBtn" type="button" role="tab" aria-selected="true">Comments <span id="reviewerCount"></span></button>
+        <button class="review-mode" id="memoryModeBtn" type="button" role="tab" aria-selected="false">Memory</button>
       </div>
       <div id="reviewerDesk"></div>
       <div class="hidden" id="memoryReview">
@@ -683,9 +683,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=94',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=95',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=94" defer></script>
+<script src="/reading.js?v=95" defer></script>
 </body>
 </html>

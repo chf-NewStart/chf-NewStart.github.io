@@ -103,7 +103,7 @@ function check(name, condition, extra) {
   await page.waitForFunction(() => !document.getElementById('selectionCard').classList.contains('hidden'));
 
   check('selection card has no Ask AI shortcut', await page.locator('#selectionAsk').count() === 0);
-  check('selection card offers two primary actions', await page.locator('#selectionCard .selection-action').count() === 2);
+  check('selection card offers two primary actions', await page.locator('#selectionCard .selection-action:visible').count() === 2);
   check('selection card stays compact', await page.locator('#selectionCard').evaluate(element => element.getBoundingClientRect().width <= 362));
   check('selected text still offers Define', await page.locator('#selectionExplain').isVisible());
   check('AI thread is hidden before a note exists', !(await page.locator('#selectionNoteAi').isVisible()));

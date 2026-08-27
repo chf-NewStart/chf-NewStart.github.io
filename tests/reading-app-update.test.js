@@ -27,11 +27,15 @@ check('obsolete promo video is not part of the live reader', !html.includes('car
 check('first paint uses a quiet library loading state', html.includes('class="shelf-loading"') && html.includes('Opening your library'));
 check('empty-library pitch waits until restoration settles', css.includes('body.library-ready:not(.has-papers) .hero') && js.includes("document.body.classList.toggle('library-ready',!libraryHydrating)"));
 check('startup waits for seeding and Drive restoration', js.includes('Promise.allSettled(startupLibraryWork)'));
+check('an empty Drive-backed reload pauses on an explicit recovery gate', js.includes('libraryDriveRestoreArmed') && js.includes('Your library is in Google Drive') && js.includes('id="restoreDriveLibraryBtn"'));
+check('an unreadable Drive library is never overwritten by an empty local state', js.includes('Phloem did not overwrite it') && js.indexOf('await got.json()') < js.indexOf("uploadType=media"));
 check('old empty-shelf message is gone', !js.includes('Your shelf is waiting'));
 check('on-device Gemini has an explicit preparation action', html.includes('id="aiPrepareLocal"') && js.includes('function prepareBrowserAi'));
 check('saving Automatic starts preparation from the user click', js.includes("if(id==='auto'&&browserLanguageModel())startLocalAiPreparation()"));
 check('download startup no longer reports a misleading zero percent', js.includes('Chrome is starting the on-device Gemini download') && !js.includes("Math.round((e.loaded||0)*100)"));
 check('AI work exposes accessible progress rails', html.includes('id="aiKeyProgress" role="progressbar"') && html.includes('id="reviewerProgress" role="progressbar"') && css.includes('.task-progress.indeterminate'));
 check('review classification and matching report batch progress', js.includes("onProgress('Classified '") && js.includes("done/comments.length"));
+check('the global reviewer queue is a compact searchable revision desk', html.includes('<h2>Revision desk</h2>') && js.includes("reviewInboxLimit=12") && js.includes('revisionInboxSearch') && css.includes('.revision-card-copy.is-collapsed'));
+check('opening a revision-desk item follows its verified passage', js.includes("if(comment&&reviewHasDisplayablePassage(ch,comment))return focusReviewerPassage(ch,commentId)"));
 
 process.exit(failures ? 1 : 0);

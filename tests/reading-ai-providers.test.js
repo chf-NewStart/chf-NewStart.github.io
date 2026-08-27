@@ -46,6 +46,7 @@ function check(name, condition, extra) {
     };
   });
   await localPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
+  await localPage.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
   check('guide default dimness is 55%', await localPage.locator('#guideDimRange').inputValue() === '55');
   if (await localPage.locator('#notebookReopen').isVisible()) await localPage.click('#notebookReopen');
   await localPage.click('[data-tab="aiPanel"]');
@@ -79,6 +80,7 @@ function check(name, condition, extra) {
     localStorage.setItem('readingRoom.ai.v1', 'legacy-test-key');
   });
   await deepSeekPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
+  await deepSeekPage.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
   if (await deepSeekPage.locator('#notebookReopen').isVisible()) await deepSeekPage.click('#notebookReopen');
   await deepSeekPage.click('[data-tab="aiPanel"]');
   await deepSeekPage.click('#aiUseCurrent');

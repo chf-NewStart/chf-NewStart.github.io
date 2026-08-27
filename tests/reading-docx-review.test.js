@@ -72,7 +72,7 @@ async function run() {
   check('Word comment ranges become manuscript highlights', source.includes("name==='commentRangeStart'") && source.includes("name==='commentRangeEnd'") && css.includes('.review-comment-anchor'));
   check('review responses and resolved state persist on the chapter', source.includes('comment.response=area.value') && source.includes('comment.resolved=!comment.resolved'));
   check('AI classifies reviewer concerns without seeing or drafting author responses', source.includes('This task is classification only. Do not draft, rewrite, evaluate, summarize, or complete an author response') && !source.includes('Existing author response:'));
-  check('revision-note fields explicitly exclude AI-written answers', source.includes('Your revision note · never written by AI') && source.includes('Write your own revision note here…') && html.includes('AI only classifies and locates feedback; it never writes'));
+  check('revision-note fields explicitly exclude AI-written answers', source.includes('Your revision note · only what you type') && source.includes('Write your own revision note here…') && html.includes('AI only classifies and locates feedback; it never writes'));
   check('re-imports use stable and conservative fuzzy matching before replacing review work', source.includes('function matchPriorReviewComments') && extractFunction('importReviewerFile').includes('priorMatches=matchPriorReviewComments(extracted,priorComments)') && extractFunction('applySharedReview').includes('matchPriorReviewComments(records,previous)'));
   check('the current review can be visibly cleared without removing the paper', html.includes('class="soft-button review-clear-button hidden"') && source.includes('ch.reviewComments=[];ch.reviewReports=[]') && source.includes('ch.reviewClearedAt=stamp;ch.reviewUpdatedAt=stamp') && source.includes('Your paper, reading notes, and personal highlights will stay'));
   check('choosing another reviewer file safely replaces the old review automatically', html.includes('id="reviewReplaceNote"') && source.includes('pendingReviewReplace=(ch.reviewComments||[]).length>0') && source.includes('ch.reviewComments=replaceCurrent?comments') && source.indexOf('await locateReviewsWithAi(ch,matchable') < source.indexOf('ch.reviewComments=replaceCurrent?comments'));
@@ -128,7 +128,7 @@ async function run() {
   const preserved = manualContext.preserveManualReviewLocation(refreshedComment, savedManual);
   savedManual.pdfAnchors[0].quote = 'Mutated after copy';
   check('manual reviewer locations are copied by value during re-import', preserved && refreshedComment.page === 7 && refreshedComment.pdfAnchors[0].quote === 'Exact selected sentence.' && refreshedComment.manualReviewLink === true);
-  const priorConcern = { id: 'r-old', author: 'Reviewer 2', text: 'The authors should distinguish the nominal twenty-liter vessel volume from the actual 13.5–14 L working volume throughout the manuscript. This is important for interpreting the scale.', response: 'Check every volume mention before resubmission.', resolved: false };
+  const priorConcern = { id: 'r-old', author: 'Reviewer 2', text: 'The authors should distinguish the nominal twenty-liter vessel volume from the actual 13.5–14 L working volume throughout the manuscript. This is important for interpreting the scale.', response: 'Check every volume mention before resubmission.', responseWrittenByUser: true, resolved: false };
   const revisedConcern = { id: 'r-new', author: 'Reviewer 2', text: 'Distinguish the nominal twenty-liter vessel volume from the actual 13.5–14 L working volume throughout the manuscript.', response: '', resolved: false };
   const priorMatch = manualContext.matchPriorReviewComments([revisedConcern], [priorConcern])[0];
   manualContext.restorePriorReviewWork(revisedConcern, priorMatch);
@@ -145,8 +145,8 @@ async function run() {
     { anchor: { quote: 'oxygen measurements were collected at three reactor heights' }, rects: [{ x: .18, y: .2, w: .6, h: .03 }], pageMarker: false }
   );
   check('a combined passage marker lists every linked review number once', markerLabel === 'R 1, 2, 3' && sameMarker);
-  check('explicit manuscript pages guide candidate search without becoming unverified anchors', source.includes('explicit.concat(ranked.slice(0,8)') && !extractFunction('applyPdfReviewMatches').includes('explicit.forEach(function(page)') && extractFunction('applyPdfReviewMatches').includes('if(!range)return'));
-  check('older merged-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:3') && source.includes('Word line-breaks merged into one comment'));
+  check('explicit manuscript pages guide candidate search without becoming unverified anchors', extractFunction('reviewCandidatePdfPages').includes('constraints.explicitPages') && extractFunction('reviewCandidatePdfPages').includes('reviewPdfPageMeetsConstraints') && !extractFunction('applyPdfReviewMatches').includes('explicit.forEach(function(page)') && extractFunction('applyPdfReviewMatches').includes('if(!range)return'));
+  check('older flat imports visibly ask for a structured re-import', source.includes('extractorVersion:4') && source.includes('restore its numbered concern hierarchy'));
   check('legacy summary matches are suppressed until the source report is re-imported', source.includes('comment.legacyImport=!!legacyReviewReports') && source.includes("if(comment.legacyImport&&!comment.manualReviewLink){comment.anchored=false"));
   check('broad restructuring feedback is not forced onto a coincidental passage', source.includes('function stabilizedReviewLevel') && source.includes("level='section'") && source.includes('Section-wide · no single passage named'));
   check('PDF matches must use candidate pages and a confidence threshold', source.includes('reviewCandidatePdfPages') && source.includes('confidence<.55') && source.includes('allowed=pageCandidates.some'));
@@ -170,6 +170,12 @@ async function run() {
     extractFunction('reviewTrimStructuralPrefix'),
     extractFunction('reviewSentenceRange'),
     extractFunction('reviewSearchTerms'),
+    extractFunction('reviewExplicitDocumentTargets'),
+    extractFunction('reviewTargetPattern'),
+    extractFunction('reviewPageTargetKeys'),
+    extractFunction('reviewPdfLocationConstraints'),
+    extractFunction('reviewPdfPageMeetsConstraints'),
+    extractFunction('reviewPdfAnchorsMeetConstraints'),
     extractFunction('reviewQuotedPassages'),
     extractFunction('reviewLocalPdfQuote'),
     extractFunction('repairPdfReviewQuotes'),
@@ -212,6 +218,9 @@ async function run() {
   const numberedReport = '[REVIEWER TEXT] Reviewer 1\n\n[REVIEWER TEXT] Major concerns\n\n' + Array.from({ length: 25 }, (_, i) => '[REVIEWER TEXT] ' + (i + 1) + '. Concern ' + (i + 1) + ' must remain a separate reviewer issue.\n\n[AUTHOR RESPONSE] Response ' + (i + 1) + '.').join('\n\n');
   const numberedUnits = reviewContext.reviewReportUnits(numberedReport);
   check('all 25 numbered reviewer concerns survive deterministic segmentation', numberedUnits.filter(unit => unit.number).length === 25 && numberedUnits.every(unit => unit.response), numberedUnits.length + ' units');
+  const splitNumberReport = '[REVIEWER TEXT] Reviewer 3\n\n[REVIEWER TEXT] Internal inconsistencies and corrections\n\n[REVIEWER TEXT] 1.\n\n[REVIEWER TEXT] Correct the impeller diameter in Section 3.1.\n\n[REVIEWER TEXT] 2.\n\n[REVIEWER TEXT] Figure 6 uses an inconsistent legend.';
+  const splitNumberUnits = reviewContext.reviewReportUnits(splitNumberReport);
+  check('number-only Word paragraphs stay attached to the following concern', splitNumberUnits.length === 2 && splitNumberUnits[0].number === '1' && splitNumberUnits[0].text.includes('impeller diameter') && splitNumberUnits[1].number === '2' && splitNumberUnits[1].group === 'Internal inconsistencies and corrections', splitNumberUnits.map(unit => unit.text).join(' | '));
   const softBreakReport = '[REVIEWER TEXT] 4. Exchange-rate scaling needs justification\nExplain the physical basis.\n5. CFD geometry is inconsistent\nCorrect the impeller diameter.\nMinor comments\nCorrect batch to fed-batch in the abstract.\nUse nominal and working volume consistently.\nOverall recommendation\nMajor revision is recommended.';
   const softBreakUnits = reviewContext.reviewReportUnits(softBreakReport);
   check('Word soft line-breaks cannot merge several numbered and minor concerns', softBreakUnits.some(unit => unit.number === '4' && !unit.text.includes('5. CFD')) && softBreakUnits.some(unit => unit.number === '5' && !unit.text.includes('Minor comments')) && softBreakUnits.filter(unit => unit.group.toLowerCase() === 'minor comments').length === 2 && Math.max(...softBreakUnits.map(unit => unit.text.length)) < 180, softBreakUnits.map(unit => unit.text).join(' | '));
@@ -221,7 +230,7 @@ async function run() {
   check('a journal recommendation tail is removed from the actionable geometry concern', trimmedRecommendation === geometryConcern && !trimmedRecommendation.includes('Major Revision'));
   const recommendationUnits = reviewContext.reviewReportUnits('[REVIEWER TEXT] ' + geometryConcern + '\n' + recommendationTail + '\n\n[AUTHOR RESPONSE] Ittisak can run a quick H/D simulation.');
   check('soft-break recommendation summaries do not absorb the author response or become another concern', recommendationUnits.length === 1 && recommendationUnits[0].text === geometryConcern && recommendationUnits[0].response.includes('H/D simulation'), recommendationUnits.map(unit => unit.text).join(' | '));
-  const shareContext = { now: () => 900, normalizeReviewLevel: value => value, normalizeReviewTopic: value => value, TextEncoder, TextDecoder, Blob, Response, CompressionStream, DecompressionStream, btoa, atob };
+  const shareContext = { now: () => 900, normalizeReviewLevel: value => value, normalizeReviewTopic: value => value, reviewHasDisplayablePassage: () => true, TextEncoder, TextDecoder, Blob, Response, btoa, atob };
   vm.runInNewContext([
     extractFunction('reviewNormalizedText'),
     extractFunction('reviewPdfAnchors'),
@@ -229,15 +238,17 @@ async function run() {
     extractFunction('sharedReviewRecords'),
     extractFunction('reviewShareBase64'),
     extractFunction('reviewShareBytes'),
+    extractFunction('validateSharedReview'),
     extractFunction('encodeSharedReview'),
     extractFunction('decodeSharedReview')
   ].join('\n'), shareContext);
-  const sharePaper = { kind: 'pdf', title: 'Private manuscript', sourceName: 'paper.pdf', pageCount: 12, contentHash: 'a'.repeat(64), reviewShareId: 'review-layer-1', notes: { 1: 'private note' }, questions: [{ answer: 'private AI answer' }], reviewComments: [{ author: 'Reviewer 2', text: 'Correct this terminology.', level: 'editorial', topic: 'writing', response: 'Corrected.', resolved: true, pdfAnchors: [{ page: 4, quote: 'batch fermentation experiments', confidence: .94, method: 'ai-pdf-quote' }] }] };
+  const sharePaper = { kind: 'pdf', title: 'Private manuscript', sourceName: 'paper.pdf', pageCount: 12, contentHash: 'a'.repeat(64), reviewShareId: 'review-layer-1', notes: { 1: 'private note' }, questions: [{ answer: 'private AI answer' }], reviewComments: [{ author: 'Reviewer 2', sourceGroup: 'Major concerns', sourceNumber: '4', text: 'Correct this terminology.', level: 'editorial', topic: 'writing', response: 'Corrected.', responseWrittenByUser: true, resolved: true, pdfAnchors: [{ page: 4, quote: 'batch fermentation experiments', confidence: .94, method: 'ai-pdf-quote' }] }] };
   const sharedPayload = shareContext.reviewSharePayload(sharePaper), sharedJson = JSON.stringify(sharedPayload), sharedRecords = shareContext.sharedReviewRecords(sharedPayload);
   check('the share payload carries review state and locations but no manuscript, notes, or AI data', sharedPayload.paper.contentHash === 'a'.repeat(64) && sharedPayload.comments[0].pdfAnchors[0].page === 4 && sharedPayload.comments[0].response === 'Corrected.' && !sharedJson.includes('private note') && !sharedJson.includes('private AI answer') && !sharedJson.includes('pdfBytes'));
   check('a received review reconstructs clickable PDF anchors and response state', sharedRecords[0].pdfAnchors[0].method === 'shared-pdf-quote' && sharedRecords[0].quote === 'batch fermentation experiments' && sharedRecords[0].response === 'Corrected.' && sharedRecords[0].resolved === true);
+  check('shared review layers preserve reviewer group and concern number', sharedRecords[0].sourceGroup === 'Major concerns' && sharedRecords[0].sourceNumber === '4');
   const encodedShare = await shareContext.encodeSharedReview(sharedPayload), decodedShare = await shareContext.decodeSharedReview(encodedShare);
-  check('compressed review links round-trip without losing their PDF fingerprint or anchors', decodedShare.paper.contentHash === sharedPayload.paper.contentHash && decodedShare.comments[0].pdfAnchors[0].quote === 'batch fermentation experiments' && encodedShare.length < sharedJson.length);
+  check('review links round-trip without losing their PDF fingerprint or anchors', decodedShare.paper.contentHash === sharedPayload.paper.contentHash && decodedShare.comments[0].pdfAnchors[0].quote === 'batch fermentation experiments' && encodedShare.startsWith('j.'));
   check('AI classification is keyed to stable input ids rather than freeform summaries', source.includes('Return exactly one result for every inputId') && source.includes('unit.number||!classification'));
   check('AI classification is checked against local review rules', source.includes('function reviewClassificationAudit') && source.includes('classificationAudit:checked.audit') && source.includes('confidence from 0 to 1'));
   check('passage matching batches comments by stable ids', source.includes('Return exactly one item for every commentId') && source.includes('reviewLocationBatches(comments,config.size)'));
@@ -249,7 +260,7 @@ async function run() {
   check('DeepSeek review calls request strict JSON output', source.includes("if(/return only json/i.test(system))deepseekBody.response_format={type:'json_object'}"));
   check('exact quoted passages bypass AI without weakening validation', source.includes('function locateReviewFromExactQuote') && source.includes("'Exact manuscript text'") && source.includes('var remaining=comments.filter'));
   check('review imports record classification, location, and total timing', source.includes('classificationMs:classificationMs,locationMs:locationMs,totalMs:totalMs') && source.includes('elapsedLabel(totalMs)'));
-  check('weak passage matches stay unresolved instead of becoming highlights', source.includes("+comment.matchConfidence>=.72") && source.includes("comment.locationStatus=confident?'confident':'needs-checking'") && source.includes('No passage linked yet'));
+  check('weak passage matches stay unresolved instead of becoming highlights', source.includes("+comment.matchConfidence>=.72") && source.includes("comment.locationStatus=confident?'confident':'needs-checking'") && source.includes('No verified passage yet'));
   check('multi-location comments require every quoted passage to validate', source.includes('anchors.every(function(anchor)') && source.includes('comment.matchConfidence=Math.min.apply'));
   check('reviewers see actionable passage state instead of model confidence', html.includes('id="reviewQualitySummary"') && source.includes("+' passage'") && source.includes('without a passage') && !extractFunction('renderReviewerPanel').includes('confidently') && !extractFunction('renderReviewerPanel').includes('classificationAudit'));
   check('the one missing passage is directly filterable and shown after an unsuccessful locate pass', source.includes("levelOrder=['all','needs'") && source.includes("level==='needs'?'Needs passage'") && source.includes("reviewFilter==='needs'?reviewNeedsPassage") && source.includes("if(result.needsChecking)reviewFilter='needs'"));

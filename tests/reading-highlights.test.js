@@ -23,7 +23,9 @@ function check(name, cond, extra) {
 
 (async () => {
   await new Promise(r => server.listen(8124, r));
-  const browser = await chromium.launch({ headless: true });
+  const launch = { headless: true };
+  if (process.env.CHROME_PATH) launch.executablePath = process.env.CHROME_PATH;
+  const browser = await chromium.launch(launch);
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
@@ -43,7 +45,7 @@ function check(name, cond, extra) {
   await page.waitForTimeout(1000);
 
   const hl = () => page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].textHighlights);
-  const cardHidden = () => page.evaluate(() => document.getElementById('highlightCard').classList.contains('hidden'));
+  const cardHidden = () => page.evaluate(() => document.getElementById('selectionCard').classList.contains('hidden'));
 
   check('mark rendered', await page.locator('#textDocument mark[data-hl-id]').count() === 1);
 
@@ -52,16 +54,16 @@ function check(name, cond, extra) {
   await page.waitForTimeout(200);
   check('card opens on click (marker off)', !(await cardHidden()));
   check('highlight still present', (await hl()).length === 1);
-  check('quote shown', (await page.locator('#highlightCardQuote').textContent()).includes('beta gamma'));
+  check('quote shown', (await page.locator('#selectionExcerpt').textContent()).includes('beta gamma'));
 
   // 2. Type a note -> saved on the highlight, sidebar shows it
-  await page.fill('#highlightCardNote', 'key definition to remember');
+  await page.fill('#selectionNote', 'key definition to remember');
   await page.waitForTimeout(200);
   check('note stored on highlight', (await hl())[0].note === 'key definition to remember');
   check('sidebar shows note', await page.evaluate(() => document.getElementById('noteIndex').textContent.includes('key definition to remember')));
 
   // 3. Recolor via card swatch
-  await page.click('#highlightCard [data-card-color="mint"]');
+  await page.click('#selectionCard [data-card-color="mint"]');
   await page.waitForTimeout(200);
   check('color stored', (await hl())[0].color === 'mint');
   check('mark re-rendered with new color', await page.evaluate(() => !!document.querySelector('#textDocument mark.hl-mint')));
@@ -79,7 +81,7 @@ function check(name, cond, extra) {
   // 5. Remove via card, then undo restores it with note intact
   await page.locator('#textDocument mark[data-hl-id]').first().click();
   await page.waitForTimeout(150);
-  await page.click('#highlightCardRemove');
+  await page.click('#selectionRemoveHighlight');
   await page.waitForTimeout(200);
   check('removed via card', (await hl()).length === 0);
   check('card closed after remove', await cardHidden());

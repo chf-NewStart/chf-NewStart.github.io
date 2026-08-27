@@ -988,8 +988,16 @@
   }
   function contentToLines(content){return contentLayout(content).map(function(line){return line.text;});}
   function layoutMedian(values){var a=values.filter(function(n){return Number.isFinite(n)&&n>0;}).sort(function(x,y){return x-y;});return a.length?a[Math.floor(a.length/2)]:0;}
-  /* Two-column pages read left column first, then right — like a human. Lines that span
-     the width (titles, full-width figures) act as separators between banded blocks. */
+  /* Two-column pages read left column first, then right — like a human. Bands are the
+     unit of that ordering, and a new band starts at a full-width line (title, banner)
+     OR at horizontal whitespace that crosses the whole page — the void left by a
+     figure, or the rule under a two-column caption. Captions in journals are often set
+     as two short columns of their own right below the figure: without the whitespace
+     split they pooled into the body's columns and spliced mid-sentence into the text
+     ("…while performing the / adding physical–chemical constraints…"). Lines are
+     y-sorted first, so a gap between consecutive sorted lines only exists where
+     NEITHER column has ink — one column's own paragraph spacing never splits a band
+     because the other column's lines fill the sequence. */
   function orderColumns(lines){
     if(lines.length<8)return lines;
     var left=Math.min.apply(null,lines.map(function(l){return l.x;}));
@@ -1001,15 +1009,25 @@
       if(w<pageW*.58){if(l.x+w/2<mid)leftBand++;else rightBand++;}
     });
     if(leftBand<lines.length*.25||rightBand<lines.length*.2)return lines;
-    var out=[],bufL=[],bufR=[];
-    function flushBands(){out.push.apply(out,bufL);out.push.apply(out,bufR);bufL=[];bufR=[];}
-    lines.forEach(function(l){
-      var w=l.endX-l.x;
-      if(w>=pageW*.58){flushBands();out.push(l);}
-      else if(l.x+w/2<mid)bufL.push(l);
-      else bufR.push(l);
+    var medH=layoutMedian(lines.map(function(l){return l.height;}))||10;
+    function isFull(l){return l.endX-l.x>=pageW*.58;}
+    var sorted=lines.slice().sort(function(a,b){return b.y-a.y||a.x-b.x;});
+    var bands=[],band=[];
+    sorted.forEach(function(l){
+      if(band.length){
+        var prev=band[band.length-1];
+        if(prev.y-l.y>medH*2.1||isFull(l)!==isFull(prev)){bands.push(band);band=[];}
+      }
+      band.push(l);
     });
-    flushBands();
+    if(band.length)bands.push(band);
+    var out=[];
+    bands.forEach(function(b){
+      var bl=[],br=[];
+      b.forEach(function(l){if(l.x+(l.endX-l.x)/2<mid)bl.push(l);else br.push(l);});
+      if(b.length<3||!bl.length||!br.length||b.some(isFull)){out.push.apply(out,b);return;}
+      out.push.apply(out,bl);out.push.apply(out,br);
+    });
     return out;
   }
   /* Paragraph objects: {t:text, k:kind(''|h1|h2|h3|cap), r:[[start,end,flags]...]} with
@@ -1078,8 +1096,11 @@
       /* A superscript (strain names like nifD⁻) can push the rest of its sentence onto
          an offset line starting with "-)" or a bare closer — never a real paragraph. */
       var continuation=/^[)\]},;]|^-[)\]},;]/.test(next.text);
-      if(nextHeading||columnReset)flush();
-      else if((extraGap||indented||shortFinish)&&!continuation)flush();
+      /* Crossing to the next column mid-sentence is not a paragraph: only break at the
+         column edge when the sentence actually closed ("…performing the" flows on to
+         "necessary carbon…" instead of dying at the gutter). */
+      if(nextHeading||columnReset&&/[.!?:][”"')\]]?$/.test(text))flush();
+      else if(!columnReset&&(extraGap||indented||shortFinish)&&!continuation)flush();
     });
     return out;
   }
@@ -1132,7 +1153,7 @@
     (ch.readerHighlights||[]).forEach(function(mark){var quote=String(mark.text||''),found=-1,offset=-1;newParas.some(function(p,i){var at=p.indexOf(quote);if(at>=0){found=i;offset=at;return true;}return false;});if(found<0)found=closest(mark.para||0);mark.para=found;if(offset>=0){mark.start=offset;mark.end=offset+quote.length;}});
   }
   /* Bump when layout-aware segmentation changes; anchored notes/highlights are remapped. */
-  var READER_V=5;
+  var READER_V=6;
   function refreshReaderSegmentation(ch){
     /* Only repairs ancient pre-v3 text; the v4 structured rebuild needs the open PDF
        and happens in ensureReaderData, so this must never stamp v4 on its own. */
@@ -2221,7 +2242,7 @@
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('comfortBar').classList.toggle('pdf-mode',pdf);
     var reflow=byId('reflowBtn');reflow.classList.toggle('hidden',!isPdf);reflow.classList.toggle('to-text',pdf);reflow.setAttribute('aria-pressed',String(isPdf&&!pdf));
-    reflow.innerHTML=pdf?'≣ <span class="wide">Reflow</span>':'⧉ <span class="wide">PDF</span>';
+    reflow.innerHTML=pdf?'Aa <span class="wide">Reflow</span>':'⧉ <span class="wide">PDF</span>';
     reflow.setAttribute('aria-label',pdf?'Switch to reflowed text view':'Back to the PDF view');
     if(!pdf&&ch) renderText(ch);applyPdfFlowMode();applyFocus();loadPageNote();updateProgress();
   }

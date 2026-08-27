@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=75">
+  <link rel="stylesheet" href="/reading.css?v=76">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -493,7 +493,7 @@
       </section>
       <section>
         <h3>AI assistant</h3>
-        <p>Choose one AI mode. Private uses Gemini Nano inside compatible desktop Chrome. Choosing a cloud provider keeps the private first pass when available, then uses that provider to recheck only uncertain review labels and difficult passage matches; other AI questions use the selected provider directly. Cloud providers receive extracted review text and candidate excerpts—never the PDF file itself.</p>
+        <p>Choose one AI mode. Private uses Gemini Nano inside compatible desktop Chrome. Choosing a cloud provider uses that provider for review classification and passage matching, while exact quoted passages are linked locally before any model call. Cloud providers receive extracted review text and candidate excerpts—never the PDF file itself.</p>
         <div class="ai-provider-grid">
           <label class="field-label" for="aiProvider">AI mode</label>
           <select class="field" id="aiProvider">
@@ -641,9 +641,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=75',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=76',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=75" defer></script>
+<script src="/reading.js?v=76" defer></script>
 </body>
 </html>

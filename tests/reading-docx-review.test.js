@@ -114,6 +114,7 @@ async function run() {
     extractFunction('reviewSentenceRanges'),
     extractFunction('reviewSentenceRange'),
     extractFunction('reviewSearchTerms'),
+    extractFunction('reviewQuotedPassages'),
     extractFunction('reviewLocalPdfQuote'),
     extractFunction('reviewExplicitPages'),
     extractFunction('reviewReportChunks'),
@@ -133,6 +134,8 @@ async function run() {
   check('PDF review highlights snap to one complete relevant sentence', completeSentence.quote.startsWith('Although') && completeSentence.quote.endsWith('accurately.') && !completeSentence.quote.includes('For example'));
   const localPassage = reviewContext.reviewLocalPdfQuote('Background material is summarized first. Probe position changed the measured oxygen concentration gradient across the vessel. The conclusion follows.', { text: 'Please clarify how probe position affects the oxygen concentration gradient.' });
   check('page-only references gain a conservative local passage highlight', localPassage.includes('Probe position changed'));
+  const quotedPassages = reviewContext.reviewQuotedPassages({ text: 'Please revise “Probe position changed the measured oxygen concentration gradient across the vessel.” and do not match “too short”.' });
+  check('complete quoted manuscript text is isolated for the no-AI fast path', quotedPassages.length === 1 && quotedPassages[0].startsWith('Probe position'));
   const unrelatedPassage = reviewContext.reviewLocalPdfQuote('The statistical analysis used a standard confidence interval.', { text: 'Please clarify the oxygen sensor placement and spatial concentration gradient.' });
   check('local passage repair refuses unrelated page text', unrelatedPassage === '');
   const longReport = 'Reviewer 1\n\n' + Array.from({ length: 180 }, (_, i) => 'Comment ' + i + ' asks for a specific clarification about methods and evidence.').join('\n\n');
@@ -148,9 +151,10 @@ async function run() {
   check('classification uses parallel cloud specialists but one local worker', source.includes('workerCount=Math.min(local?1:4,batches.length)') && source.includes('reviewClassificationBatches(units,6)'));
   check('missing classification items receive one targeted retry', source.includes('var missing=batch.filter') && source.includes('if(missing.length)try{await ask(missing);'));
   check('invalid passage matches receive one targeted retry', source.includes('if(!passed[prepared[p].id])') && source.includes('if(!textPassed[prepared[t].id])'));
-  check('one selected cloud provider is the explicit high-accuracy review recheck', source.includes('async function reviewAiPlan') && source.includes("if(availability==='available'||availability==='readily')") && source.includes('escalation:readyLocal?chosen:null') && source.includes('refineReviewClassificationsWithAi(extracted'));
+  check('one selected AI mode handles the complete review consistently', source.includes('function reviewAiPlan') && source.includes("route=selected==='auto'") && source.includes('classification:route,location:route'));
   check('DeepSeek review calls request strict JSON output', source.includes("if(/return only json/i.test(system))deepseekBody.response_format={type:'json_object'}"));
-  check('automatic review matching sends hard items directly to the selected cloud provider', source.includes('function reviewShouldEscalateBeforeLocation') && source.includes('var direct=plan.escalation?comments.filter') && source.includes('High-accuracy recheck'));
+  check('exact quoted passages bypass AI without weakening validation', source.includes('function locateReviewFromExactQuote') && source.includes("'Exact manuscript text'") && source.includes('var remaining=comments.filter'));
+  check('review imports record classification, location, and total timing', source.includes('classificationMs:classificationMs,locationMs:locationMs,totalMs:totalMs') && source.includes('elapsedLabel(totalMs)'));
   check('weak passage matches stay unresolved instead of becoming highlights', source.includes("+comment.matchConfidence>=.72") && source.includes("comment.locationStatus=confident?'confident':'needs-checking'") && source.includes('Needs checking · no confident passage yet'));
   check('multi-location comments require every quoted passage to validate', source.includes('anchors.every(function(anchor)') && source.includes('comment.matchConfidence=Math.min.apply'));
   check('reviewers see an honest confidence summary', html.includes('id="reviewQualitySummary"') && source.includes("+' confidently located · '") && source.includes("+' need checking'"));

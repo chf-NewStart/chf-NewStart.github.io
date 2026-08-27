@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=55">
+  <link rel="stylesheet" href="/reading.css?v=56">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -68,13 +68,9 @@
       </figure>
 
       <div class="command-bar" id="pdfLinkDrop">
-        <button class="button primary" id="importPdfBtn">＋ Add papers</button>
-        <button class="soft-button" id="folderPickBtn">⌸ Folder</button>
-        <button class="soft-button" id="linkImportBtn">↗ Link</button>
-        <button class="soft-button" id="githubPickBtn">⌘ GitHub</button>
-        <button class="soft-button" id="newTextBtn">✎ Paste text</button>
-        <button class="soft-button" id="reviewShortcut">Review notes</button>
-        <input class="hidden" type="file" id="pdfFile" accept=".pdf,application/pdf" multiple>
+        <button class="button primary" id="importPdfBtn">＋ Add</button>
+        <button class="soft-button" id="reviewShortcut">Review</button>
+        <input class="hidden" type="file" id="pdfFile" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
         <input class="hidden" type="file" id="pdfFolder" webkitdirectory>
       </div>
       <div class="link-status" id="libraryImportStatus" role="status" aria-live="polite"></div>
@@ -105,8 +101,15 @@
 
     <section id="reviewPage" class="page hidden">
       <div class="section-head"><h2>Review</h2><span class="count" id="reviewCount"></span></div>
-      <p class="hint" id="reviewHint" style="max-width:640px">Highlights, notes and saved questions ripen into cards a day after you make them, then return on a spacing schedule. Explain each one from memory before grading yourself.</p>
-      <div id="reviewCard"></div>
+      <div class="review-mode-tabs" role="tablist" aria-label="Review type">
+        <button class="review-mode active" id="reviewerModeBtn" type="button" role="tab" aria-selected="true">Reviewer comments <span id="reviewerCount"></span></button>
+        <button class="review-mode" id="memoryModeBtn" type="button" role="tab" aria-selected="false">Memory cards</button>
+      </div>
+      <div id="reviewerDesk"></div>
+      <div class="hidden" id="memoryReview">
+        <p class="hint" id="reviewHint" style="max-width:640px">Highlights, notes and saved questions ripen into cards a day after you make them, then return on a spacing schedule. Explain each one from memory before grading yourself.</p>
+        <div id="reviewCard"></div>
+      </div>
     </section>
 
     <section id="readerPage" class="hidden">
@@ -263,6 +266,7 @@
           <button class="sheet-close" id="sheetClose" type="button" aria-label="Close notes">✕</button>
           <div class="tabs" role="tablist">
             <button class="tab active" data-tab="notesPanel" role="tab" aria-selected="true" aria-controls="notesPanel">Notes</button>
+            <button class="tab" id="reviewsTab" data-tab="reviewsPanel" role="tab" aria-selected="false" aria-controls="reviewsPanel">Reviews <span id="readerReviewerCount"></span></button>
             <button class="tab" data-tab="aiPanel" role="tab" aria-selected="false" aria-controls="aiPanel">Discuss</button>
           </div>
           <div class="tab-panel" id="notesPanel" role="tabpanel">
@@ -289,6 +293,18 @@
               <button class="text-button" id="editPaperBtn">Edit paper details</button>
               <button class="text-button danger-text" id="deletePaperBtn">Remove paper</button>
             </div>
+          </div>
+          <div class="tab-panel hidden" id="reviewsPanel" role="tabpanel">
+            <div class="reviewer-panel-head">
+              <span class="panel-eyebrow">Revision desk</span>
+              <h3>Reviewer comments</h3>
+              <p class="hint">Choose a comment to see its passage. A comment-only reviewer file uses your selected AI to split and locate feedback; your source document stays untouched.</p>
+              <button class="soft-button" id="importReviewFileBtn" type="button">＋ Import reviewer Word file</button>
+              <input class="hidden" id="reviewFile" type="file" accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+              <button class="soft-button hidden" id="locateReviewsBtn" type="button">✦ Locate unlinked comments with AI</button>
+              <p class="reviewer-locate-status" id="reviewerLocateStatus" role="status" aria-live="polite"></p>
+            </div>
+            <div class="reviewer-comment-list" id="readerReviewList"></div>
           </div>
           <div class="tab-panel hidden" id="aiPanel" role="tabpanel">
             <div class="ai-panel-head"><div><span class="panel-eyebrow">Reading partner</span><h3>Discuss this paper</h3><p class="hint">Choose what to discuss. Only that context is sent to your selected AI provider.</p></div><button class="text-button" id="aiNewThread" type="button">+ New thread</button></div>
@@ -382,8 +398,24 @@
   </main>
   <div class="sheet-scrim hidden" id="sheetScrim"></div>
 
+  <dialog id="addDialog">
+    <div class="dialog-head"><div><span class="dialog-eyebrow">Bring something to the desk</span><h2>Add to Phloem</h2></div><button class="icon-btn" data-close="addDialog">×</button></div>
+    <div class="dialog-body">
+      <p class="add-dialog-lede">Read a paper, work through reviewer feedback, or keep a passage nearby.</p>
+      <div class="add-source-grid">
+        <button class="add-source" id="addDeviceBtn" type="button"><span class="add-source-icon">↑</span><strong>PDF or Word draft</strong><small>Import from this device</small></button>
+        <button class="add-source" id="addReviewBtn" type="button"><span class="add-source-icon">R</span><strong>Reviewer comments</strong><small>Attach a comment-only Word file</small></button>
+        <button class="add-source" id="folderPickBtn" type="button"><span class="add-source-icon">⌸</span><strong>Folder</strong><small>Add supported documents together</small></button>
+        <button class="add-source" id="linkImportBtn" type="button"><span class="add-source-icon">↗</span><strong>PDF link</strong><small>Save a direct download locally</small></button>
+        <button class="add-source" id="githubPickBtn" type="button"><span class="add-source-icon">⌘</span><strong>GitHub</strong><small>Choose a PDF from your repository</small></button>
+        <button class="add-source" id="newTextBtn" type="button"><span class="add-source-icon">✎</span><strong>Paste text</strong><small>Create a clean reading copy</small></button>
+      </div>
+      <p class="add-dialog-note">Word drafts keep their original file, reviewer comments, replies, and tracked-change summary.</p>
+    </div>
+  </dialog>
+
   <dialog id="textDialog">
-    <div class="dialog-head"><h2 id="textDialogTitle">Add a text</h2><button class="icon-btn" data-close="textDialog">×</button></div>
+    <div class="dialog-head"><h2 id="textDialogTitle">Paste text</h2><button class="icon-btn" data-close="textDialog">×</button></div>
     <div class="dialog-body form-grid">
       <label class="field-label" for="textTitle">Title</label><input class="field" id="textTitle" placeholder="Paper or passage title">
       <label class="field-label" for="textAuthors">Authors</label><input class="field" id="textAuthors" placeholder="Names, year">
@@ -420,7 +452,7 @@
       <p class="settings-lede">Choose how this reading desk syncs, thinks with you, and moves between devices. Your reading settings stay calm and local by default.</p>
       <section>
         <h3>Sync with Google Drive</h3>
-        <p>One tap connects your own Google Drive. Notes, papers, and large books up to 200 MB live in a hidden app folder only Phloem can see. Big uploads continue quietly in chunks, so an interrupted transfer resumes instead of starting over.</p>
+        <p>One tap connects your own Google Drive. Notes, PDFs, Word drafts, and large books up to 200 MB live in a hidden app folder only Phloem can see. Big uploads continue quietly in chunks, so an interrupted transfer resumes instead of starting over.</p>
         <div><button class="button" id="gdriveConnectBtn">Connect Google Drive</button> <button class="soft-button hidden" id="gdriveSyncBtn">Sync now</button> <button class="soft-button hidden" id="gdriveOffBtn">Turn off</button></div>
         <div class="status" id="gdriveStatus"></div>
       </section>
@@ -585,9 +617,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=55',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=56',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=55" defer></script>
+<script src="/reading.js?v=56" defer></script>
 </body>
 </html>

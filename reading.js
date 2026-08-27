@@ -38,7 +38,7 @@
   var pdfZoom = 1, pdfFit = true, darkPdf = false, readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
-  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings();
+  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), reviewFocusId = '', pendingReviewTargetId = '';
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
 
   function byId(id){ return document.getElementById(id); }
@@ -125,6 +125,8 @@
     if(!ch.aiThreads.length&&ch.questions.length)ch.aiThreads=ch.questions.slice(0,12).map(function(q){return {id:'legacy-'+(q.id||uid('q')),contextLabel:q.contextLabel||'Earlier question',contextText:q.excerpt||'',messages:[{role:'user',content:q.question||'',at:q.at||now()},{role:'assistant',content:q.answer||'',at:q.at||now()}],createdAt:q.at||now(),updatedAt:q.at||now()};});
     ch.aiThreads=ch.aiThreads.filter(function(t){return t&&t.id&&Array.isArray(t.messages);}).slice(0,12);if(ch.activeAiThreadId&&!ch.aiThreads.some(function(t){return t.id===ch.activeAiThreadId;}))ch.activeAiThreadId='';if(!ch.activeAiThreadId&&ch.aiThreads[0])ch.activeAiThreadId=ch.aiThreads[0].id;
     ch.readerHighlights = ch.readerHighlights || []; ch.readerNotes = ch.readerNotes || {}; ch.termLookups = ch.termLookups || {}; ch.reviews = ch.reviews || {};
+    if(!Array.isArray(ch.reviewComments))ch.reviewComments=[];
+    ch.reviewComments.forEach(function(comment){comment.replies=Array.isArray(comment.replies)?comment.replies:[];comment.anchors=Array.isArray(comment.anchors)?comment.anchors:(comment.anchored?[{para:comment.para,start:comment.start,end:comment.end,quote:comment.quote||''}]:[]);comment.response=String(comment.response||'');comment.resolved=!!comment.resolved;});
     ch.addedAt = ch.addedAt || now(); ch.updatedAt = ch.updatedAt || ch.addedAt;
     ch.readPage = ch.readPage || 1; ch.kind = ch.kind || (ch.pageTexts ? 'pdf' : 'text');
     return ch;
@@ -541,7 +543,7 @@
       req.onsuccess = function(){ resolve(req.result); }; req.onerror = function(){ reject(req.error); };
     });
   }
-  async function pdfBytes(value){if(value instanceof ArrayBuffer)return value.slice(0);if(ArrayBuffer.isView(value))return value.buffer.slice(value.byteOffset,value.byteOffset+value.byteLength);if(value&&value.arrayBuffer)return value.arrayBuffer();throw new Error('The saved PDF data is not readable.');}
+  async function pdfBytes(value){if(value instanceof ArrayBuffer)return value.slice(0);if(ArrayBuffer.isView(value))return value.buffer.slice(value.byteOffset,value.byteOffset+value.byteLength);if(value&&value.arrayBuffer)return value.arrayBuffer();throw new Error('The saved source file is not readable.');}
   async function pdfFingerprint(value){
     if(!(window.crypto&&window.crypto.subtle&&window.crypto.subtle.digest))return '';
     var bytes=value instanceof ArrayBuffer?value:await pdfBytes(value),digest=await window.crypto.subtle.digest('SHA-256',bytes),hex='';
@@ -559,14 +561,19 @@
     try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('pdfs').objectStore('pdfs').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
     return memoryPdfs[id]||null;
   }
-  async function downloadPaperPdf(ch,button){
-    if(!ch||ch.kind!=='pdf')return;var original=button&&button.textContent;if(button){button.disabled=true;button.textContent='Getting…';}
+  function originalSourceFilename(ch){
+    var fallback=String(ch.title||'document').replace(/[\u0000-\u001f\u007f/\\<>:"|?*]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120)||'document';
+    if(ch.sourceType==='docx'){var word=String(ch.sourceName||fallback+'.docx');return /\.docx$/i.test(word)?word:word+'.docx';}
+    return notebookPdfFilename(ch);
+  }
+  async function downloadOriginalFile(ch,button){
+    var spec=binarySourceSpec(ch);if(!ch||!spec)return;var original=button&&button.textContent;if(button){button.disabled=true;button.textContent='Getting…';}
     try{
       var stored=await getPdf(ch.id);
-      if(!stored&&gdriveOn())stored=await gdriveFetchPdf(ch.id,true,function(loaded,total){if(button&&total)button.textContent=Math.min(99,Math.round(loaded/total*100))+'%';});
-      if(!stored){showError('The original PDF is not stored on this device yet. Open or re-add it here first, then download it from the library.','PDF not on this device');return;}
-      var blob=stored instanceof Blob?stored:new Blob([stored],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=notebookPdfFilename(ch);document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},5000);showReaderToast('Original PDF downloaded');
-    }catch(e){showError('Phloem could not download this PDF. Re-add the local file and try again.','Could not download PDF');}
+      if(!stored&&gdriveOn())stored=await gdriveFetchSource(ch,true,function(loaded,total){if(button&&total)button.textContent=Math.min(99,Math.round(loaded/total*100))+'%';});
+      if(!stored){showError('The original '+spec.label+' is not stored on this device yet. Re-add it here or sync it from Drive first.','Original file not on this device');return;}
+      var blob=stored instanceof Blob?stored:new Blob([stored],{type:spec.mime}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=originalSourceFilename(ch);document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},5000);showReaderToast('Original '+spec.label+' downloaded');
+    }catch(e){showError('Phloem could not download this '+spec.label+'. Re-add the local file and try again.','Could not download file');}
     finally{if(button){button.disabled=false;button.textContent=original;}}
   }
   async function seedStarterGuide(){
@@ -637,7 +644,7 @@
   function saveShelfCategoryOrder(order){var existing=shelfCategoryNames(),known={},saved=[];existing.forEach(function(label){known[label.toLowerCase()]=label;});(order||[]).forEach(function(label){var key=String(label||'').toLowerCase();if(known[key]&&saved.every(function(item){return item.toLowerCase()!==key;}))saved.push(known[key]);});existing.forEach(function(label){if(saved.every(function(item){return item.toLowerCase()!==label.toLowerCase();}))saved.push(label);});state.categoryOrder=saved;state.categoryOrderUpdatedAt=now();persist();}
   function placeShelfCategory(moving,target,after){var names=shelfCategoryNames(),from=names.findIndex(function(label){return label.toLowerCase()===String(moving||'').toLowerCase();});if(from<0)return false;var item=names.splice(from,1)[0],to=names.findIndex(function(label){return label.toLowerCase()===String(target||'').toLowerCase();});if(to<0){names.push(item);}else names.splice(to+(after?1:0),0,item);saveShelfCategoryOrder(names);return true;}
   function stepShelfCategory(label,delta){var names=shelfCategoryNames(),from=names.findIndex(function(name){return name.toLowerCase()===String(label||'').toLowerCase();}),to=from+delta;if(from<0||to<0||to>=names.length)return false;var swap=names[to];names[to]=names[from];names[from]=swap;saveShelfCategoryOrder(names);return true;}
-  function paperHaystack(ch){ return [ch.title,ch.authors,shelfPaperCategory(ch),(ch.tags||[]).join(' '),ch.sourceName,ch.sourceUrl].join(' ').toLowerCase(); }
+  function paperHaystack(ch){ return [ch.title,ch.authors,shelfPaperCategory(ch),(ch.tags||[]).join(' '),ch.sourceName,ch.sourceUrl,(ch.reviewComments||[]).map(function(comment){return [comment.author,comment.text,comment.response].join(' ');}).join(' ')].join(' ').toLowerCase(); }
   function connectionsReady(){
     var seen={},linked=false;
     state.chapters.forEach(function(c){(c.tags||[]).forEach(function(t){t=String(t).toLowerCase().trim();if(!t)return;if(seen[t])linked=true;seen[t]=true;});});
@@ -681,14 +688,15 @@
     return '<div class="reading-thread-bridge" aria-hidden="true"><svg class="reading-thread-svg" viewBox="0 0 180 520" preserveAspectRatio="none"><defs><linearGradient id="readingThreadGradient" x1="0" y1="0" x2="180" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" style="stop-color:var(--muted);stop-opacity:.24"/><stop offset=".58" style="stop-color:#b89b50;stop-opacity:.62"/><stop offset="1" style="stop-color:var(--yellow)"/></linearGradient></defs><path class="thread-halo" d="'+path+'"/><path class="reading-thread" pathLength="1" d="'+path+'"/><circle class="thread-spark" cx="176" cy="260" r="5.5"/></svg></div>';
   }
   function renderOpenPaper(ch,stats,cover){
-    var tags=(ch.tags||[]).slice(0,4),kind=ch.kind==='pdf'?'PDF paper':'text note',source=ch.authors||ch.sourceName||'No authors yet',title=String(ch.title||'Untitled'),titleClass=title.length>118?' very-long':(title.length>72?' long':'');
+    var tags=(ch.tags||[]).slice(0,4),kind=ch.kind==='pdf'?'PDF paper':ch.sourceType==='docx'?'Word draft':'text note',source=ch.authors||ch.sourceName||'No authors yet',title=String(ch.title||'Untitled'),titleClass=title.length>118?' very-long':(title.length>72?' long':'');
     var progressLabel=ch.kind==='pdf'?(stats.total?'Page '+stats.page+' of '+stats.total:'Page '+stats.page):(stats.total+' paragraph'+(stats.total===1?'':'s'));
-    var drive=ch.kind==='pdf'?gdrivePaperStatus(ch):null,driveMarkup=drive?'<div class="cover-cloud '+drive.tone+'" id="paperDriveStatus" data-paper-id="'+esc(ch.id)+'" role="status" aria-label="'+esc(drive.label)+'"><span class="cover-cloud-dot" aria-hidden="true"></span><span class="cover-cloud-label">'+esc(drive.label)+'</span><span class="cover-cloud-track" aria-hidden="true"><i style="--cloud-progress:'+drive.progress+'%"></i></span></div>':'';
+    var drive=binarySourceSpec(ch)?gdrivePaperStatus(ch):null,driveMarkup=drive?'<div class="cover-cloud '+drive.tone+'" id="paperDriveStatus" data-paper-id="'+esc(ch.id)+'" role="status" aria-label="'+esc(drive.label)+'"><span class="cover-cloud-dot" aria-hidden="true"></span><span class="cover-cloud-label">'+esc(drive.label)+'</span><span class="cover-cloud-track" aria-hidden="true"><i style="--cloud-progress:'+drive.progress+'%"></i></span></div>':'';
     var detail=document.createElement('div');detail.className='open-book-wrap';detail.id='selectedPaper';detail.setAttribute('aria-live','polite');
-    detail.innerHTML='<span class="cover-focus-guide" aria-hidden="true"><span>Focus guide</span></span><article class="closed-book" aria-label="Selected paper: '+esc(title)+'">'+renderBookPunches(ch,false)+'<div class="closed-book-inner"><div class="closed-book-kicker">'+esc(kind)+' · field notebook</div><h3 class="closed-book-title'+titleClass+'">'+esc(title)+'</h3><p class="closed-book-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div>'+driveMarkup+'<div class="cover-record"><div class="cover-stat"><span>Marks</span><b>'+stats.notes+'</b></div><div class="cover-stat"><span>Questions</span><b>'+stats.questions+'</b></div><div class="cover-stat"><span>Last opened</span><b>'+esc(shelfDate(ch).replace(/^Touched /,''))+'</b></div></div><div class="cover-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="cover-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div><div class="cover-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button>'+(ch.kind==='pdf'?'<button class="soft-button download-paper" type="button" aria-label="Download original PDF for '+esc(title)+'">↓ PDF</button>':'')+'<button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div></div></article>';
+    var sourceSpec=binarySourceSpec(ch),downloadMarkup=sourceSpec?'<button class="soft-button download-paper" type="button" aria-label="Download original '+esc(sourceSpec.label)+' for '+esc(title)+'">↓ '+(ch.sourceType==='docx'?'Word':'PDF')+'</button>':'';
+    detail.innerHTML='<span class="cover-focus-guide" aria-hidden="true"><span>Focus guide</span></span><article class="closed-book" aria-label="Selected paper: '+esc(title)+'">'+renderBookPunches(ch,false)+'<div class="closed-book-inner"><div class="closed-book-kicker">'+esc(kind)+' · field notebook</div><h3 class="closed-book-title'+titleClass+'">'+esc(title)+'</h3><p class="closed-book-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div>'+driveMarkup+'<div class="cover-record"><div class="cover-stat"><span>Marks</span><b>'+stats.notes+'</b></div><div class="cover-stat"><span>Questions</span><b>'+stats.questions+'</b></div><div class="cover-stat"><span>Last opened</span><b>'+esc(shelfDate(ch).replace(/^Touched /,''))+'</b></div></div><div class="cover-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="cover-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div><div class="cover-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button>'+downloadMarkup+'<button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div></div></article>';
     var closed=detail.querySelector('.closed-book'),palette=cover||BOOK_SPINES[0];closed.style.setProperty('--cover',palette.cover);closed.style.setProperty('--cover-ink',palette.ink);
     detail.querySelector('.open-selected').onclick=function(){openReader(ch.id);};
-    var downloadButton=detail.querySelector('.download-paper');if(downloadButton)downloadButton.onclick=function(){downloadPaperPdf(ch,downloadButton);};
+    var downloadButton=detail.querySelector('.download-paper');if(downloadButton)downloadButton.onclick=function(){downloadOriginalFile(ch,downloadButton);};
     detail.querySelector('.remove-paper').onclick=function(){removePaper(ch,false);};
     return detail;
   }
@@ -815,7 +823,7 @@
 
   /* Review: everything you marked comes back for a self-test on a spacing schedule.
      Grading yourself honestly is the whole trick — recall beats rereading. */
-  var REVIEW_STEPS=[1,3,7,14,30,60], reviewQueue=[], reviewIndex=0;
+  var REVIEW_STEPS=[1,3,7,14,30,60], reviewQueue=[], reviewIndex=0, reviewPageMode='reviewers';
   function reviewItemList(){
     var items=[];
     state.chapters.forEach(function(ch){
@@ -848,11 +856,22 @@
     rec.last=now();ch.reviews[item.key]=rec;touch(ch);
   }
   function updateReviewBadge(){
-    document.querySelectorAll('[data-view="reviewPage"]').forEach(function(b){b.textContent='Review';});
-    byId('reviewShortcut').textContent='Review notes';
+    var open=state.chapters.reduce(function(total,ch){return total+(ch.reviewComments||[]).filter(function(comment){return !comment.resolved;}).length;},0);
+    document.querySelectorAll('[data-view="reviewPage"]').forEach(function(b){b.textContent=open?'Review · '+open:'Review';});
+    byId('reviewShortcut').textContent=open?'Reviewer comments · '+open:'Review notes';
+  }
+  function reviewerReviewItems(){var items=[];state.chapters.forEach(function(ch){(ch.reviewComments||[]).forEach(function(comment){items.push({ch:ch,comment:comment});});});return items.sort(function(a,b){return Number(a.comment.resolved)-Number(b.comment.resolved)||(+b.ch.updatedAt||0)-(+a.ch.updatedAt||0);});}
+  function setReviewPageMode(mode){
+    reviewPageMode=mode;var reviewers=mode==='reviewers';byId('reviewerModeBtn').classList.toggle('active',reviewers);byId('reviewerModeBtn').setAttribute('aria-selected',String(reviewers));byId('memoryModeBtn').classList.toggle('active',!reviewers);byId('memoryModeBtn').setAttribute('aria-selected',String(!reviewers));byId('reviewerDesk').classList.toggle('hidden',!reviewers);byId('memoryReview').classList.toggle('hidden',reviewers);if(reviewers)renderReviewerInbox();else showReviewCard();
+  }
+  function renderReviewerInbox(){
+    var box=byId('reviewerDesk'),items=reviewerReviewItems(),open=items.filter(function(item){return !item.comment.resolved;}).length;byId('reviewCount').textContent=items.length?(open+' open · '+items.length+' total'):'';byId('reviewerCount').textContent=items.length?'· '+open:'';
+    if(!items.length){box.innerHTML='<div class="empty">No reviewer comments yet. Add a commented Word draft, or attach a comment-only reviewer file to a manuscript.</div>';return;}
+    box.innerHTML='<div class="reviewer-inbox">'+items.map(function(item){var comment=item.comment;return '<article class="reviewer-inbox-card'+(comment.resolved?' resolved':'')+'"><span class="review-eyebrow">'+esc(comment.author||'Reviewer')+' · '+esc(item.ch.title||'Untitled')+'</span><p>'+esc(comment.text||'')+'</p>'+(comment.quote&&comment.anchored?'<blockquote>'+esc(comment.quote)+'</blockquote>':'')+'<button class="text-button" type="button" data-open-review-paper="'+esc(item.ch.id)+'" data-open-review-comment="'+esc(comment.id)+'">Open beside draft →</button></article>';}).join('')+'</div>';
+    box.querySelectorAll('[data-open-review-paper]').forEach(function(button){button.onclick=function(){var chapterId=button.dataset.openReviewPaper,commentId=button.dataset.openReviewComment;openReader(chapterId).then(function(){showReviewerComment(find(chapterId),commentId);});};});
   }
   function renderReview(){
-    reviewQueue=dueReviewList().slice(0,20);reviewIndex=0;updateReviewBadge();showReviewCard();
+    reviewQueue=dueReviewList().slice(0,20);reviewIndex=0;updateReviewBadge();var hasReviewers=reviewerReviewItems().length;if(!hasReviewers&&reviewPageMode==='reviewers')reviewPageMode='memory';setReviewPageMode(reviewPageMode);
   }
   function showReviewCard(){
     var box=byId('reviewCard'),item=reviewQueue[reviewIndex];
@@ -884,13 +903,18 @@
     showReviewCard();
   }
   byId('reviewShortcut').onclick=function(){showPage('reviewPage');};
-  byId('importPdfBtn').onclick = function(){ if(location.protocol==='file:'){ byId('launchDialog').showModal(); return; } byId('pdfFile').click(); };
+  byId('reviewerModeBtn').onclick=function(){setReviewPageMode('reviewers');};
+  byId('memoryModeBtn').onclick=function(){setReviewPageMode('memory');};
+  function closeAddDialog(){if(byId('addDialog').open)byId('addDialog').close();}
+  byId('importPdfBtn').onclick = function(){byId('addDialog').showModal();};
+  byId('addDeviceBtn').onclick = function(){ if(location.protocol==='file:'){ closeAddDialog();byId('launchDialog').showModal(); return; } closeAddDialog();byId('pdfFile').click(); };
+  byId('addReviewBtn').onclick = function(){var target=find(librarySelectionId)||state.chapters[0];closeAddDialog();if(!target){byId('libraryImportStatus').textContent='Add and select the manuscript first, then attach its reviewer comments.';return;}pendingReviewTargetId=target.id;byId('reviewFile').click();};
   byId('pdfFile').onchange = function(){ var files=Array.prototype.slice.call(this.files||[]); this.value=''; if(files.length)importDropped([],files); };
-  byId('folderPickBtn').onclick = function(){ if(location.protocol==='file:'){ byId('launchDialog').showModal(); return; } byId('pdfFolder').click(); };
+  byId('folderPickBtn').onclick = function(){ if(location.protocol==='file:'){ closeAddDialog();byId('launchDialog').showModal(); return; } closeAddDialog();byId('pdfFolder').click(); };
   byId('pdfFolder').onchange = function(){ var files=Array.prototype.slice.call(this.files||[]); this.value=''; if(files.length)importDropped([],files); };
   if(!('webkitdirectory' in byId('pdfFolder')))byId('folderPickBtn').classList.add('hidden');
   byId('linkImportBtn').onclick=function(){
-    byId('pdfUrlStatus').textContent='';byId('linkDialog').showModal();setTimeout(function(){byId('pdfUrl').focus();},0);
+    closeAddDialog();byId('pdfUrlStatus').textContent='';byId('linkDialog').showModal();setTimeout(function(){byId('pdfUrl').focus();},0);
   };
 
   function cleanPdfUrl(value){
@@ -940,38 +964,39 @@
     };
   })();
   /* A whole folder can land on the drop zone: walk it (subfolders too), pull out the
-     PDFs, and import them one by one with a running count. Capped at 40 per drop. */
-  var DROP_PDF_CAP=40;
+     PDFs and Word drafts, and import them one by one with a running count. */
+  var DROP_FILE_CAP=40;
+  function supportedDocument(file){return !!file&&(file.type==='application/pdf'||file.type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document'||/\.(?:pdf|docx)$/i.test(file.name||''));}
   function entryFile(entry){return new Promise(function(res,rej){entry.file(res,rej);});}
   function readAllEntries(reader){return new Promise(function(res,rej){var all=[];(function next(){reader.readEntries(function(batch){if(!batch.length)return res(all);all=all.concat(batch);next();},rej);})();});}
-  async function collectPdfEntries(entry,found,depth){
-    if(found.length>=DROP_PDF_CAP||depth>6)return;
-    if(entry.isFile){if(/\.pdf$/i.test(entry.name))found.push(entry);return;}
+  async function collectDocumentEntries(entry,found,depth){
+    if(found.length>=DROP_FILE_CAP||depth>6)return;
+    if(entry.isFile){if(/\.(?:pdf|docx)$/i.test(entry.name))found.push(entry);return;}
     if(entry.isDirectory){
       try{var children=await readAllEntries(entry.createReader());}catch(e){return;}
-      for(var i=0;i<children.length&&found.length<DROP_PDF_CAP;i++)await collectPdfEntries(children[i],found,depth+1);
+      for(var i=0;i<children.length&&found.length<DROP_FILE_CAP;i++)await collectDocumentEntries(children[i],found,depth+1);
     }
   }
   async function importDropped(entries,files){
-    var status=byId('libraryImportStatus'),pdfFiles=[];
+    var status=byId('libraryImportStatus'),documents=[];
     try{
       if(entries.length){
         var found=[];status.textContent='Looking through the drop…';
-        for(var i=0;i<entries.length;i++)await collectPdfEntries(entries[i],found,0);
-        for(var j=0;j<found.length;j++){try{pdfFiles.push(await entryFile(found[j]));}catch(e){}}
+        for(var i=0;i<entries.length;i++)await collectDocumentEntries(entries[i],found,0);
+        for(var j=0;j<found.length;j++){try{documents.push(await entryFile(found[j]));}catch(e){}}
       }else{
-        pdfFiles=files.filter(function(f){return f.type==='application/pdf'||/\.pdf$/i.test(f.name);});
-        if(pdfFiles.length>DROP_PDF_CAP){status.textContent='Importing the first '+DROP_PDF_CAP+' of '+pdfFiles.length+' PDFs…';pdfFiles=pdfFiles.slice(0,DROP_PDF_CAP);}
+        documents=files.filter(supportedDocument);
+        if(documents.length>DROP_FILE_CAP){status.textContent='Importing the first '+DROP_FILE_CAP+' of '+documents.length+' documents…';documents=documents.slice(0,DROP_FILE_CAP);}
       }
     }catch(e){}
-    if(!pdfFiles.length){status.textContent='No PDFs in that drop — a PDF file, a folder of PDFs, or a direct link all work.';return;}
-    if(pdfFiles.length===1){status.textContent='';importPdf(pdfFiles[0]);return;}
+    if(!documents.length){status.textContent='No supported documents there — add a PDF or a Word .docx draft.';return;}
+    if(documents.length===1){status.textContent='';importSourceFile(documents[0]);return;}
     var ok=0;
-    for(var k=0;k<pdfFiles.length;k++){
-      status.textContent='Importing '+(k+1)+' / '+pdfFiles.length+' · '+pdfFiles[k].name;
-      try{if(await importPdf(pdfFiles[k],null,null,null,true))ok++;}catch(e){}
+    for(var k=0;k<documents.length;k++){
+      status.textContent='Importing '+(k+1)+' / '+documents.length+' · '+documents[k].name;
+      try{if(await importSourceFile(documents[k],null,null,null,true))ok++;}catch(e){}
     }
-    status.textContent='Imported '+ok+' of '+pdfFiles.length+' papers.';
+    status.textContent='Imported '+ok+' of '+documents.length+' documents.';
   }
   document.addEventListener('paste',function(e){
     if(byId('libraryPage').classList.contains('hidden')||!e.clipboardData||e.target===byId('pdfUrl')||/^(INPUT|TEXTAREA)$/.test(e.target.tagName)||e.target.isContentEditable)return;
@@ -1410,7 +1435,108 @@
   }
   /* The real title lives inside the PDF: document metadata when it is sane, otherwise
      the largest text near the top of page one. Filenames are the fallback, not the name. */
-  function filenameTitle(name){return String(name||'').replace(/\.pdf$/i,'').replace(/[_-]+/g,' ');}
+  function filenameTitle(name){return String(name||'').replace(/\.(?:pdf|docx?)$/i,'').replace(/[_-]+/g,' ');}
+  function docxAttr(node,name){
+    if(!node||!node.attributes)return '';
+    for(var i=0;i<node.attributes.length;i++){var attr=node.attributes[i];if(attr.localName===name||attr.name===name||attr.name.split(':').pop()===name)return attr.value||'';}
+    return '';
+  }
+  function docxElements(root,name){
+    if(!root)return [];
+    var all=root.getElementsByTagNameNS?root.getElementsByTagNameNS('*',name):root.getElementsByTagName(name),out=[];
+    for(var i=0;i<all.length;i++)if((all[i].localName||all[i].nodeName.split(':').pop())===name)out.push(all[i]);
+    return out;
+  }
+  function docxXml(entries,path){
+    if(!entries[path])return null;
+    var xml=new TextDecoder('utf-8').decode(entries[path]),doc=new DOMParser().parseFromString(xml,'application/xml');
+    if(docxElements(doc,'parsererror').length)throw new Error('The Word file contains unreadable XML.');
+    return doc;
+  }
+  async function docxZipEntries(value){
+    var bytes=value instanceof ArrayBuffer?new Uint8Array(value):new Uint8Array(await pdfBytes(value)),view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),eocd=-1;
+    for(var at=bytes.length-22;at>=Math.max(0,bytes.length-65557);at--)if(view.getUint32(at,true)===0x06054b50){eocd=at;break;}
+    if(eocd<0)throw new Error('This does not look like a valid Word .docx file.');
+    var count=view.getUint16(eocd+10,true),offset=view.getUint32(eocd+16,true),wanted={'word/document.xml':1,'word/comments.xml':1,'word/commentsExtended.xml':1,'docProps/core.xml':1},entries={};
+    for(var i=0;i<count&&offset+46<=bytes.length;i++){
+      if(view.getUint32(offset,true)!==0x02014b50)throw new Error('The Word archive directory is damaged.');
+      var flags=view.getUint16(offset+8,true),method=view.getUint16(offset+10,true),compressedSize=view.getUint32(offset+20,true),plainSize=view.getUint32(offset+24,true),nameLength=view.getUint16(offset+28,true),extraLength=view.getUint16(offset+30,true),commentLength=view.getUint16(offset+32,true),localOffset=view.getUint32(offset+42,true),name=new TextDecoder('utf-8').decode(bytes.slice(offset+46,offset+46+nameLength));
+      if(wanted[name]){
+        if(flags&1)throw new Error('Password-protected Word files cannot be imported yet.');
+        if(plainSize>64*1024*1024)throw new Error('This Word file expands beyond Phloem’s safe import limit.');
+        if(localOffset+30>bytes.length||view.getUint32(localOffset,true)!==0x04034b50)throw new Error('The Word archive contains a damaged entry.');
+        var localNameLength=view.getUint16(localOffset+26,true),localExtraLength=view.getUint16(localOffset+28,true),start=localOffset+30+localNameLength+localExtraLength,end=start+compressedSize;
+        if(end>bytes.length)throw new Error('The Word archive is incomplete.');
+        var packed=bytes.slice(start,end),plain;
+        if(method===0)plain=packed;
+        else if(method===8){
+          if(typeof DecompressionStream==='undefined')throw new Error('This browser cannot unpack Word drafts yet. Use a current Chrome, Edge, or Safari.');
+          try{plain=new Uint8Array(await new Response(new Blob([packed]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());}
+          catch(e){throw new Error('The Word file could not be decompressed.');}
+        }else throw new Error('This Word file uses an unsupported compression method.');
+        entries[name]=plain;
+      }
+      offset+=46+nameLength+extraLength+commentLength;
+    }
+    if(!entries['word/document.xml'])throw new Error('This Word file has no readable document body.');
+    return entries;
+  }
+  function docxNodeText(root){
+    var out='';
+    (function walk(node){
+      if(node.nodeType!==1)return;
+      var name=node.localName||node.nodeName.split(':').pop();
+      if(name==='t'||name==='delText'){out+=node.textContent||'';return;}
+      if(name==='tab'){out+='\t';return;}if(name==='br'||name==='cr'){out+='\n';return;}
+      for(var child=node.firstChild;child;child=child.nextSibling)walk(child);
+    })(root);
+    return out.replace(/[ \t]+\n/g,'\n').trim();
+  }
+  function docxParagraphKind(paragraph){
+    var style=docxElements(paragraph,'pStyle')[0],value=(docxAttr(style,'val')||'').toLowerCase().replace(/[ _-]/g,'');
+    if(value==='title'||value==='heading1'||value==='headingone')return 'h1';
+    if(value==='subtitle'||value==='heading2'||value==='headingtwo')return 'h2';
+    if(value==='heading3'||value==='headingthree')return 'h3';return '';
+  }
+  async function parseDocx(value,filename){
+    var entries=await docxZipEntries(value),documentXml=docxXml(entries,'word/document.xml'),commentsXml=docxXml(entries,'word/comments.xml'),extendedXml=docxXml(entries,'word/commentsExtended.xml'),coreXml=docxXml(entries,'docProps/core.xml'),comments={},paraToComment={},tracked={insertions:0,deletions:0,deletedText:[]};
+    if(commentsXml)docxElements(commentsXml,'comment').forEach(function(node){
+      var id=docxAttr(node,'id'),firstPara=docxElements(node,'p')[0],paraId=docxAttr(firstPara,'paraId');
+      comments[id]={id:'wc-'+id,sourceId:id,author:docxAttr(node,'author')||'Reviewer',date:docxAttr(node,'date')||'',text:docxNodeText(node),para:null,start:0,end:0,quote:'',replies:[],response:'',resolved:false,sourceResolved:false};if(paraId)paraToComment[paraId]=id;
+    });
+    if(extendedXml)docxElements(extendedXml,'commentEx').forEach(function(node){
+      var id=paraToComment[docxAttr(node,'paraId')],parent=paraToComment[docxAttr(node,'paraIdParent')];if(!id||!comments[id])return;
+      if(parent&&parent!==id)comments[id].parentId=parent;comments[id].sourceResolved=/^(?:1|true)$/i.test(docxAttr(node,'done'));
+    });
+    var active={},paragraphs=[],kinds=[],anchors={};
+    docxElements(documentXml,'p').forEach(function(paragraph){
+      var raw='',localAnchors={},references={};
+      function append(text){if(!text)return;var start=raw.length;raw+=text;Object.keys(active).forEach(function(id){var anchor=localAnchors[id]||(localAnchors[id]={start:start,end:start});anchor.end=raw.length;});}
+      function walk(node,deleted){
+        if(node.nodeType!==1)return;var name=node.localName||node.nodeName.split(':').pop(),id;
+        if(name==='commentRangeStart'){id=docxAttr(node,'id');active[id]=true;if(!localAnchors[id])localAnchors[id]={start:raw.length,end:raw.length};return;}
+        if(name==='commentRangeEnd'){id=docxAttr(node,'id');delete active[id];return;}
+        if(name==='commentReference'){id=docxAttr(node,'id');references[id]=raw.length;return;}
+        if(name==='ins'){tracked.insertions++;for(var child=node.firstChild;child;child=child.nextSibling)walk(child,false);return;}
+        if(name==='del'){
+          tracked.deletions++;var removed=docxNodeText(node);if(removed&&tracked.deletedText.length<200)tracked.deletedText.push(removed.slice(0,500));
+          for(var deletedChild=node.firstChild;deletedChild;deletedChild=deletedChild.nextSibling)walk(deletedChild,true);return;
+        }
+        if(name==='t'){if(!deleted)append(node.textContent||'');return;}
+        if(name==='delText')return;
+        if(name==='tab'){if(!deleted)append('\t');return;}if(name==='br'||name==='cr'){if(!deleted)append('\n');return;}
+        for(var child=node.firstChild;child;child=child.nextSibling)walk(child,deleted);
+      }
+      walk(paragraph,false);var leading=(raw.match(/^\s*/)||[''])[0].length,text=raw.trim();if(!text)return;var paraIndex=paragraphs.length;
+      Object.keys(references).forEach(function(id){if(!localAnchors[id])localAnchors[id]={start:references[id],end:references[id]};});
+      Object.keys(localAnchors).forEach(function(id){var anchor=localAnchors[id],start=Math.max(0,Math.min(text.length,anchor.start-leading)),end=Math.max(start,Math.min(text.length,anchor.end-leading));if(end===start){start=0;end=text.length;}(anchors[id]=anchors[id]||[]).push({para:paraIndex,start:start,end:end,quote:text.slice(start,end)});});
+      paragraphs.push(text);kinds.push(docxParagraphKind(paragraph));
+    });
+    var roots=[];Object.keys(comments).forEach(function(id){var comment=comments[id],ranges=anchors[id]||[];comment.anchored=!!ranges.length;comment.resolved=!!comment.sourceResolved;if(ranges.length){comment.anchors=ranges;Object.assign(comment,ranges[0]);comment.quote=ranges.map(function(anchor){return anchor.quote;}).join(' … ');comment.anchorMethod='word';}if(comment.parentId&&comments[comment.parentId])comments[comment.parentId].replies.push({author:comment.author,date:comment.date,text:comment.text,sourceId:comment.sourceId});else if(comment.text)roots.push(comment);});
+    var title='',creator='';if(coreXml){var titleNode=docxElements(coreXml,'title')[0],creatorNode=docxElements(coreXml,'creator')[0];title=titleNode&&titleNode.textContent.trim()||'';creator=creatorNode&&creatorNode.textContent.trim()||'';}
+    if(!title){for(var i=0;i<paragraphs.length;i++)if(kinds[i]==='h1'){title=paragraphs[i];break;}}
+    return {title:title||filenameTitle(filename),authors:creator,paragraphs:paragraphs,kinds:kinds,comments:roots,trackedChanges:tracked};
+  }
   function hasHanScript(text){return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/.test(String(text||''));}
   function hasCompactScript(text){return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]/.test(String(text||''));}
   function plausibleTitleLength(text){var length=String(text||'').length;return length>=(hasCompactScript(text)?2:8)&&length<=220;}
@@ -1529,6 +1655,27 @@
     return imported;
   }
 
+  function mergeImportedReviewState(incoming,existing){
+    var old={},byText={};(existing||[]).forEach(function(comment){old[String(comment.sourceId||comment.id)]=comment;byText[String(comment.author||'')+'|'+String(comment.text||'')+'|'+String(comment.quote||'')]=comment;});
+    return (incoming||[]).map(function(comment){var prior=old[String(comment.sourceId||comment.id)]||byText[String(comment.author||'')+'|'+String(comment.text||'')+'|'+String(comment.quote||'')];if(prior){comment.response=prior.response||'';comment.resolved=!!prior.resolved;comment.updatedAt=prior.updatedAt||0;if(prior.anchored&&prior.anchorMethod==='ai'&&!comment.anchored){comment.para=prior.para;comment.start=prior.start;comment.end=prior.end;comment.quote=prior.quote;comment.anchors=prior.anchors||[{para:prior.para,start:prior.start,end:prior.end,quote:prior.quote||''}];comment.anchored=true;comment.anchorMethod='ai';comment.locatedProvider=prior.locatedProvider||'';}}return comment;});
+  }
+  async function importDocx(file,progressBtn,stayPut,preparedBytes){
+    var btn=progressBtn||byId('importPdfBtn'),old=btn.textContent,imported=false;btn.disabled=true;btn.textContent='Reading Word…';
+    try{
+      var bytes=preparedBytes instanceof ArrayBuffer?preparedBytes:await file.arrayBuffer(),head=new Uint8Array(bytes,0,Math.min(4,bytes.byteLength));
+      if(head[0]!==0x50||head[1]!==0x4b)throw new Error('This does not look like a Word .docx file. Save it as .docx and try again.');
+      var hashPromise=pdfFingerprint(bytes).catch(function(){return '';}),parsed=await parseDocx(bytes,file.name),contentHash=await hashPromise;
+      if(!parsed.paragraphs.length)throw new Error('The Word draft does not contain readable manuscript text.');
+      var wordDrafts=state.chapters.filter(function(ch){return ch.sourceType==='docx';}),existing=contentHash&&wordDrafts.find(function(ch){return ch.contentHash===contentHash;});if(!existing)existing=wordDrafts.find(function(ch){return identityText(ch.sourceName)===identityText(file.name);});var id=existing?existing.id:uid('w'),keepPromise=putPdf(id,bytes),ch=existing||normalize({id:id,kind:'text',sourceType:'docx',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now(),readPage:1});
+      ch.title=parsed.title||ch.title||filenameTitle(file.name);ch.authors=parsed.authors||ch.authors||'';ch.sourceName=file.name;ch.sourceType='docx';ch.fileSize=bytes.byteLength;if(contentHash)ch.contentHash=contentHash;ch.fr=parsed.paragraphs.join('\n\n');ch.docxParagraphKinds=parsed.kinds;ch.reviewComments=mergeImportedReviewState(parsed.comments,existing&&existing.reviewComments);ch.trackedChanges=parsed.trackedChanges;ch.updatedAt=now();
+      if(!existing)state.chapters.push(ch);persist();renderShelf();updateReviewBadge();var kept=await keepPromise;if(gdriveOn())gdriveSetPdfState(id,{state:'queued',size:bytes.byteLength});if(!stayPut)await openReader(id);
+      var openCount=ch.reviewComments.filter(function(comment){return !comment.resolved;}).length,changeCount=(ch.trackedChanges.insertions||0)+(ch.trackedChanges.deletions||0);showReaderToast((existing?'Word draft refreshed':'Word draft added')+(openCount?' · '+openCount+' reviewer comment'+(openCount===1?'':'s'):'')+(changeCount?' · '+changeCount+' tracked change'+(changeCount===1?'':'s'):''));if(!kept)showReaderToast('Draft opened, but this browser may not keep the original file after closing the tab.');imported=true;
+    }catch(e){showError(e.message||'Phloem could not read this Word draft.','Could not import Word draft');}
+    finally{btn.disabled=false;btn.textContent=old;}
+    return imported;
+  }
+  function importSourceFile(file,sourcePath,sourceUrl,progressBtn,stayPut,preparedBytes){return /\.docx$/i.test(file&&file.name||'')||file&&file.type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document'?importDocx(file,progressBtn,stayPut,preparedBytes):importPdf(file,sourcePath,sourceUrl,progressBtn,stayPut,preparedBytes);}
+
   /* PDFs pushed by the "Read in Phloem" browser extension: its content script relays
      the fetched bytes with a window.postMessage. Only same-window senders qualify
      (a page that merely opened this tab can never fake that), and the payload must
@@ -1556,7 +1703,7 @@
   });
 
   /* text import and edit */
-  byId('newTextBtn').onclick=function(){ editingId=null; byId('textDialogTitle').textContent='Add a text'; byId('textTitle').value=''; byId('textAuthors').value=''; byId('textBody').value=''; byId('textDialog').showModal(); };
+  byId('newTextBtn').onclick=function(){ closeAddDialog();editingId=null; byId('textDialogTitle').textContent='Paste text'; byId('textTitle').value=''; byId('textAuthors').value=''; byId('textBody').value=''; byId('textDialog').showModal(); };
   byId('saveTextBtn').onclick=function(){
     var body=byId('textBody').value.trim(); if(!body){ byId('textBody').focus(); return; }
     var ch=editingId ? find(editingId) : normalize({id:uid('t'),kind:'text',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now()});
@@ -2289,11 +2436,11 @@
     /* pdfViews must go too: renderPdfPage's spot-preserving rebuild otherwise measures
        the PREVIOUS paper's pages — an extension import into an open reader landed the
        new paper mid-page, at wherever the old one had been scrolled. */
-    var ch=find(id); if(!ch) return; hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; pdfViews=[]; pdfBuildKey=''; columnBookTurning=false;columnBookQueuedTarget=0;columnBookFits=true;columnBookMinLeft=0;columnBookMaxLeft=0;columnBookAutoZoomed=false;columnBookManualZoom=false;columnBookFitToken=''; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} restorePdfZoom(ch); setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); highlightHistory=[]; highlightFuture=[]; lastAskSelection=null; toggleFindBar(false); linkReturnSpot=null; byId('linkReturn').classList.add('hidden');
+    var ch=find(id); if(!ch) return; hideLookup();setRecall(false);if(ch.kind==='pdf')await hydrateDerived(ch); currentId=id;reviewFocusId=''; currentPage=ch.readPage||1; pdfDoc=null; pdfOutline=null; pdfViews=[]; pdfBuildKey=''; columnBookTurning=false;columnBookQueuedTarget=0;columnBookFits=true;columnBookMinLeft=0;columnBookMaxLeft=0;columnBookAutoZoomed=false;columnBookManualZoom=false;columnBookFitToken=''; try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} restorePdfZoom(ch); setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); highlightHistory=[]; highlightFuture=[]; lastAskSelection=null; toggleFindBar(false); linkReturnSpot=null; byId('linkReturn').classList.add('hidden');
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
-    byId('paperTags').value=(ch.tags||[]).join(', '); renderNoteIndex();
+    byId('paperTags').value=(ch.tags||[]).join(', ');byId('reviewerLocateStatus').textContent='';renderNoteIndex();renderReviewerPanel(ch);
     byId('evidenceList').classList.add('hidden');byId('evidenceList').innerHTML='';
     aiContext=null;aiThreadDraft=false;byId('contextCard').classList.add('hidden');byId('aiStatus').textContent='';restoreActiveAiThread(ch);renderQa();
     /* One history layer per open paper: the system back gesture then returns to the
@@ -2304,7 +2451,8 @@
       if(!(history.state&&history.state.phloem))history.pushState({phloem:'reader'},'');
       else if(history.state.phloem==='sheet')history.replaceState({phloem:'reader'},'');
     }catch(e){}}
-    readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('notesPanel');
+    readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage');
+    if((ch.reviewComments||[]).length){if(innerWidth>720)setNotebookCollapsed(false,false);switchTab('reviewsPanel');}else switchTab('notesPanel');
     if(ch.kind==='pdf'){
       try{
         if(preparedDoc)pdfDoc=preparedDoc;
@@ -3114,8 +3262,10 @@
   function renderText(ch){
     var isPdfReader=ch.kind==='pdf'&&readerMode==='text',source=isPdfReader?(ch.readerText||readerTextFromPages(ch.pageLines||[],ch.pageParagraphs||[])||ch.fr):ch.fr;
     var fr=paras(source),en=isPdfReader?[]:paras(ch.en||''),noteMap=isPdfReader?ch.readerNotes:ch.notes,marks=isPdfReader?ch.readerHighlights:ch.textHighlights,scope=isPdfReader?'reader':'text';
+    var reviewComments=ch.reviewComments||[],docxKinds=!isPdfReader&&ch.sourceType==='docx'?(ch.docxParagraphKinds||[]):[];
     var starts=isPdfReader?paraPageStarts(ch):null,startAt={};(starts||[]).forEach(function(s){startAt[s.para]=s.page;});
-    var out=(isPdfReader?'<div class="reader-kicker">Reader view · headers and footers removed</div>':'')+'<h1>'+esc(ch.title||'Untitled')+'</h1><div class="byline">'+esc(ch.authors||ch.sourceName||'')+'</div>';
+    var openReviews=reviewComments.filter(function(comment){return !comment.resolved;}).length,tracked=ch.trackedChanges||{},reviewBanner=reviewComments.length?'<button class="docx-review-banner" id="openReaderReviews" type="button"><span>Revision desk</span><strong>'+openReviews+' open of '+reviewComments.length+' reviewer comment'+(reviewComments.length===1?'':'s')+'</strong>'+(tracked.insertions||tracked.deletions?'<small>'+((tracked.insertions||0)+(tracked.deletions||0))+' tracked changes recorded in the original</small>':'')+'</button>':'';
+    var out=(isPdfReader?'<div class="reader-kicker">Reader view · headers and footers removed</div>':'')+'<h1>'+esc(ch.title||'Untitled')+'</h1><div class="byline">'+esc(ch.authors||ch.sourceName||'')+'</div>'+reviewBanner;
     var meta=null;
     if(isPdfReader&&ch.pageParagraphs){
       if(readerMetaCache.id!==ch.id||readerMetaCache.v!==ch.readerV)readerMetaCache={id:ch.id,v:ch.readerV,meta:readerStructure(ch.pageLines||[],ch.pageParagraphs).meta};
@@ -3123,26 +3273,29 @@
     }
     fr.forEach(function(p,i){
       var n=noteMap[i]||'',m=meta&&meta[i]||null;
-      var kind=m?m.k:(p.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(p)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(p))?'h3':'');
+      var kind=m?m.k:(docxKinds[i]||(p.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(p)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(p))?'h3':''));
       var cls=kind==='h1'?' reader-heading reader-h1':kind==='h2'?' reader-heading reader-h2':kind==='h3'?' reader-heading reader-h3':kind==='cap'?' reader-cap':kind==='eq'?' reader-eq':'';
       if(startAt[i])out+='<div class="page-marker">Page '+startAt[i]+'<button type="button" data-goto-page="'+startAt[i]+'">view page</button></div>';
       var fig=m&&m.f!==undefined?'<figure class="reader-fig"><img data-fig="'+esc(ch.id)+':'+m.f+'" alt="'+(kind==='eq'?'Equation from the paper':'Figure from the paper')+'" loading="lazy"></figure>':'';
       /* With the typeset crop on screen, the extracted symbol soup would only echo it. */
       if(kind==='eq'&&fig)cls+=' eq-figured';
-      out+='<section class="para'+cls+'">'+fig+'<div class="original" data-para-index="'+i+'">'+styledTextHtml(p,marks,m&&m.r,i)+'</div>'+(en[i]?'<div class="translation">'+esc(en[i])+'</div>':'')+'<button class="para-action" data-note="'+i+'">'+(n?'Edit margin note •':'Add margin note')+'</button><textarea class="inline-note '+(n?'':'hidden')+'" data-note-area="'+i+'" data-note-scope="'+scope+'" placeholder="Note on this paragraph…">'+esc(n)+'</textarea></section>';
+      out+='<section class="para'+cls+'">'+fig+'<div class="original" data-para-index="'+i+'">'+styledTextHtml(p,marks,m&&m.r,i,reviewComments)+'</div>'+(en[i]?'<div class="translation">'+esc(en[i])+'</div>':'')+'<button class="para-action" data-note="'+i+'">'+(n?'Edit margin note •':'Add margin note')+'</button><textarea class="inline-note '+(n?'':'hidden')+'" data-note-area="'+i+'" data-note-scope="'+scope+'" placeholder="Note on this paragraph…">'+esc(n)+'</textarea></section>';
     });
     byId('textDocument').classList.toggle('reader-document',isPdfReader);byId('textDocument').innerHTML=out;
     if(meta)loadFigureImages();
+    var reviewsButton=byId('openReaderReviews');if(reviewsButton)reviewsButton.onclick=function(){switchTab('reviewsPanel');if(innerWidth<=720)toggleSheet(true);else setNotebookCollapsed(false,true);};
     byId('textDocument').querySelectorAll('[data-note]').forEach(function(b){ b.onclick=function(){ var ta=byId('textDocument').querySelector('[data-note-area="'+b.dataset.note+'"]'); ta.classList.toggle('hidden'); if(!ta.classList.contains('hidden')) ta.focus(); }; });
     byId('textDocument').querySelectorAll('[data-goto-page]').forEach(function(b){b.onclick=function(){gotoPdfPage(+b.dataset.gotoPage);};});
     byId('textDocument').onclick=function(e){
+      var reviewEl=e.target.closest('[data-review-comment-id]');
+      if(reviewEl&&!String(getSelection&&getSelection()||'')){showReviewerComment(ch,reviewEl.dataset.reviewCommentId);return;}
       var markEl=e.target.closest('mark[data-hl-id]');
       if(markEl&&!String(getSelection&&getSelection()||'')){
         if(highlightMode)removeHighlight(scope,null,markEl.dataset.hlId);
         else openHighlightCard({kind:scope,page:null,id:markEl.dataset.hlId},markEl.getBoundingClientRect());
         return;
       }
-      if(e.target.closest('button, textarea, a, mark, img'))return;
+      if(e.target.closest('button, textarea, a, mark, img, [data-review-comment-id]'))return;
       if(String(getSelection&&getSelection()||''))return;
       var section=e.target.closest('.para');if(!section)return;
       var idx=[].indexOf.call(paraSections(),section);
@@ -3150,21 +3303,91 @@
     };
     byId('textDocument').querySelectorAll('[data-note-area]').forEach(function(ta){ ta.oninput=function(){ var c=find(currentId),i=ta.dataset.noteArea,map=ta.dataset.noteScope==='reader'?c.readerNotes:c.notes;if(ta.value.trim())map[i]=ta.value;else delete map[i];touch(c);renderNoteIndex(); }; });
   }
-  function styledTextHtml(text,marks,runs,paraIndex){
+  function reviewerDate(value){if(!value)return '';try{return new Intl.DateTimeFormat(undefined,{year:'numeric',month:'short',day:'numeric'}).format(new Date(value));}catch(e){return '';}}
+  function reviewerById(ch,id){return (ch&&ch.reviewComments||[]).find(function(comment){return comment.id===id;});}
+  async function focusReviewerPassage(ch,id){
+    var comment=reviewerById(ch,id);if(!comment||!comment.anchored)return;reviewFocusId=id;
+    if(ch.kind==='pdf'&&readerMode==='pdf'){
+      try{if((!ch.readerText||!ch.fr)&&pdfDoc)await ensureReaderData(pdfDoc,ch);}catch(e){}
+      readerMode='text';updateReaderMode();
+    }else renderText(ch);
+    jumpToParagraph(comment.para);requestAnimationFrame(function(){var anchor=byId('textDocument').querySelector('[data-review-comment-id="'+CSS.escape(id)+'"]');if(anchor)anchor.scrollIntoView({block:'center',behavior:'smooth'});});if(innerWidth<=720)toggleSheet(false);
+  }
+  function showReviewerComment(ch,id){
+    reviewFocusId=id;renderReviewerPanel(ch);switchTab('reviewsPanel');if(innerWidth<=720)toggleSheet(true);else setNotebookCollapsed(false,true);
+    requestAnimationFrame(function(){var card=byId('readerReviewList').querySelector('[data-review-card="'+CSS.escape(id)+'"]');if(card)card.scrollIntoView({block:'nearest',behavior:'smooth'});byId('textDocument').querySelectorAll('.review-comment-anchor').forEach(function(anchor){anchor.classList.toggle('is-focused',anchor.dataset.reviewCommentId===id);});});
+  }
+  function reviewManuscriptText(ch){return ch&&ch.kind==='pdf'?(ch.readerText||ch.fr||''):(ch&&ch.fr||'');}
+  function reviewCandidateParagraphs(ch,comment){
+    var words=String(comment.text||'').toLowerCase().match(/[\p{L}\p{N}]{4,}/gu)||[],wanted={};words.forEach(function(word){wanted[word]=1;});
+    var all=paras(reviewManuscriptText(ch)).map(function(text,index){var score=0;(text.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu)||[]).forEach(function(word){if(wanted[word])score++;});return{index:index,text:text,score:score};}),picked=all.slice().sort(function(a,b){return b.score-a.score||a.index-b.index;}).slice(0,16),seen={};picked.forEach(function(item){seen[item.index]=1;});
+    for(var i=0;i<8&&all.length;i++){var sample=all[Math.min(all.length-1,Math.round(i*(all.length-1)/7))];if(!seen[sample.index]){picked.push(sample);seen[sample.index]=1;}}
+    return picked.slice(0,24).sort(function(a,b){return a.index-b.index;});
+  }
+  async function locateOneReviewWithAi(ch,comment,onProgress){
+    var candidates=reviewCandidateParagraphs(ch,comment),numbered=candidates.map(function(item){return '['+item.index+'] '+item.text.slice(0,360);}).join('\n\n'),system='You locate reviewer feedback in a manuscript. Choose the one paragraph the comment most directly refers to. Return only JSON: {"paragraph": number, "quote": "an exact short quote copied from that paragraph"}. If none fit, use null for paragraph.',user='Reviewer comment:\n'+comment.text+'\n\nCandidate manuscript paragraphs:\n'+numbered,result=await runAi(system,user,450,onProgress),match=String(result.text||'').match(/\{[\s\S]*\}/),data=match?JSON.parse(match[0]):null,index=data&&data.paragraph!==null&&data.paragraph!==undefined&&Number.isInteger(+data.paragraph)?+data.paragraph:null,text=index===null?'':paras(reviewManuscriptText(ch))[index]||'';
+    if(index===null||!text)return false;var quote=String(data.quote||'').trim(),start=quote?text.indexOf(quote):-1;if(start<0){quote=text;start=0;}comment.para=index;comment.start=start;comment.end=start+quote.length;comment.quote=quote;comment.anchors=[{para:index,start:start,end:start+quote.length,quote:quote}];comment.anchored=true;comment.anchorMethod='ai';comment.locatedProvider=result.provider||'AI';comment.updatedAt=now();return true;
+  }
+  async function reviewReportText(file){
+    if(/\.docx$/i.test(file.name||'')){var parsed=await parseDocx(await file.arrayBuffer(),file.name),body=parsed.paragraphs.join('\n\n'),bubbles=(parsed.comments||[]).map(function(comment){return (comment.author||'Reviewer')+': '+comment.text;}).join('\n\n');return [body,bubbles].filter(Boolean).join('\n\nReviewer comments:\n\n');}
+    return file.text();
+  }
+  async function extractReviewerReportWithAi(text,onProgress){
+    var system='Turn a reviewer report into a clean list of actionable reviewer comments. Preserve the reviewer wording. Exclude salutations, section labels, and generic thanks. Return only JSON: {"reviewer":"name or Reviewer","comments":["comment one","comment two"]}.',user='Reviewer report:\n\n'+String(text||'').slice(0,30000),result=await runAi(system,user,2600,onProgress),match=String(result.text||'').match(/\{[\s\S]*\}/),data=match?JSON.parse(match[0]):null,reviewer=String(data&&data.reviewer||'Reviewer'),items=Array.isArray(data&&data.comments)?data.comments:[];
+    return items.map(function(item){return{author:String(item&&item.author||reviewer),text:String(item&&item.comment||item&&item.text||item||'').trim()};}).filter(function(item){return item.text;}).slice(0,80);
+  }
+  async function importReviewerFile(ch,file,button){
+    var status=byId('reviewerLocateStatus'),old=button.textContent;if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}button.disabled=true;button.textContent='Reading review…';
+    try{
+      if(ch.kind==='pdf'&&!reviewManuscriptText(ch)&&pdfDoc){status.textContent='Preparing the manuscript text…';await ensureReaderData(pdfDoc,ch);}
+      if(!paras(reviewManuscriptText(ch)).length)throw new Error('This paper has no readable manuscript text to match against.');
+      var report=await reviewReportText(file);if(!report.trim())throw new Error('That reviewer file contains no readable text.');status.textContent='Separating the reviewer comments…';var extracted=await extractReviewerReportWithAi(report,function(message){status.textContent=message;});if(!extracted.length)throw new Error('AI could not find actionable reviewer comments in that file.');
+      var comments=extracted.map(function(item){return{id:uid('rr'),sourceId:uid('report'),author:item.author,date:'',text:item.text,para:null,start:0,end:0,quote:'',anchors:[],anchored:false,replies:[],response:'',resolved:false,sourceName:file.name,addedAt:now()};});ch.reviewComments=(ch.reviewComments||[]).concat(comments);ch.reviewReports=Array.isArray(ch.reviewReports)?ch.reviewReports:[];ch.reviewReports.push({name:file.name,addedAt:now(),comments:comments.length});var linked=0;
+      for(var i=0;i<comments.length;i++){status.textContent='Matching comment '+(i+1)+' of '+comments.length+' to the manuscript…';try{if(await locateOneReviewWithAi(ch,comments[i],function(message){status.textContent=message;}))linked++;}catch(e){}}
+      touch(ch);renderText(ch);renderReviewerPanel(ch);updateReviewBadge();status.textContent='Imported '+comments.length+' reviewer comment'+(comments.length===1?'':'s')+' · '+linked+' linked to highlighted passages.';
+    }catch(e){status.textContent=e.message||'Phloem could not import that reviewer file.';}
+    finally{button.disabled=false;button.textContent=old;}
+  }
+  async function locateUnlinkedReviews(ch,button){
+    var pending=(ch.reviewComments||[]).filter(function(comment){return !comment.anchored&&comment.text;}),status=byId('reviewerLocateStatus');if(!pending.length)return;
+    if(!hasAiRoute()){status.textContent='Set up the built-in or a cloud AI in Desk settings first.';return;}
+    button.disabled=true;var found=0;
+    try{for(var i=0;i<pending.length;i++){status.textContent='Locating '+(i+1)+' of '+pending.length+'…';try{if(await locateOneReviewWithAi(ch,pending[i],function(message){status.textContent=message;}))found++;}catch(e){status.textContent=e.message||'AI could not locate that comment.';}}touch(ch);renderText(ch);renderReviewerPanel(ch);status.textContent=found?'Linked '+found+' comment'+(found===1?'':'s')+' to the manuscript.':'No confident passage matches were found.';}
+    finally{button.disabled=false;}
+  }
+  function renderReviewerPanel(ch){
+    ch=ch||find(currentId);var comments=ch&&ch.reviewComments||[],list=byId('readerReviewList'),count=byId('readerReviewerCount'),locate=byId('locateReviewsBtn');count.textContent=comments.length?'· '+comments.filter(function(comment){return !comment.resolved;}).length:'';
+    if(!comments.length){list.innerHTML='<div class="notebook-empty">This document has no reviewer comments.</div>';locate.classList.add('hidden');return;}
+    var unlinked=comments.filter(function(comment){return !comment.anchored;}).length;locate.classList.toggle('hidden',!unlinked);locate.textContent='✦ Locate '+unlinked+' unlinked comment'+(unlinked===1?'':'s')+' with AI';
+    list.innerHTML=comments.map(function(comment,index){var replies=(comment.replies||[]).map(function(reply){return '<div class="reviewer-reply"><b>'+esc(reply.author||'Reply')+'</b><p>'+esc(reply.text||'')+'</p></div>';}).join(''),where=comment.anchored?'<button class="reviewer-show-passage" type="button" data-show-review="'+esc(comment.id)+'">Show highlighted passage →</button>':'<span class="reviewer-unlinked">Passage not linked yet</span>';
+      return '<article class="reviewer-comment-card'+(comment.resolved?' resolved':'')+(comment.id===reviewFocusId?' focused':'')+'" data-review-card="'+esc(comment.id)+'"><div class="reviewer-card-head"><span>R'+(index+1)+' · '+esc(comment.author||'Reviewer')+'</span><span>'+esc(reviewerDate(comment.date))+'</span></div>'+(comment.quote&&comment.anchored?'<blockquote>'+esc(comment.quote)+'</blockquote>':'')+'<p class="reviewer-comment-text">'+esc(comment.text||'')+'</p>'+replies+where+'<label class="field-label" for="review-response-'+esc(comment.id)+'">Response draft</label><textarea class="reviewer-response" id="review-response-'+esc(comment.id)+'" data-review-response="'+esc(comment.id)+'" placeholder="Draft your response to the reviewer…">'+esc(comment.response||'')+'</textarea><button class="reviewer-resolve" type="button" data-resolve-review="'+esc(comment.id)+'">'+(comment.resolved?'Reopen comment':'Mark resolved')+'</button></article>';
+    }).join('');
+    list.querySelectorAll('[data-show-review]').forEach(function(button){button.onclick=function(){focusReviewerPassage(ch,button.dataset.showReview);};});
+    list.querySelectorAll('[data-review-response]').forEach(function(area){area.oninput=function(){var comment=reviewerById(ch,area.dataset.reviewResponse);if(!comment)return;comment.response=area.value;comment.updatedAt=now();touch(ch);};});
+    list.querySelectorAll('[data-resolve-review]').forEach(function(button){button.onclick=function(){var comment=reviewerById(ch,button.dataset.resolveReview);if(!comment)return;comment.resolved=!comment.resolved;comment.updatedAt=now();touch(ch);renderText(ch);renderReviewerPanel(ch);updateReviewBadge();};});
+    locate.onclick=function(){locateUnlinkedReviews(ch,locate);};
+  }
+  byId('importReviewFileBtn').onclick=function(){var ch=find(currentId);if(!ch)return;pendingReviewTargetId=ch.id;byId('reviewerLocateStatus').textContent='';byId('reviewFile').click();};
+  byId('reviewFile').onchange=function(){var file=this.files&&this.files[0],targetId=pendingReviewTargetId||currentId;this.value='';pendingReviewTargetId='';if(!file||!targetId)return;var start=function(){var ch=find(targetId);if(!ch)return;switchTab('reviewsPanel');if(innerWidth>720)setNotebookCollapsed(false,true);importReviewerFile(ch,file,byId('importReviewFileBtn'));};if(currentId===targetId&&!byId('readerPage').classList.contains('hidden'))start();else openReader(targetId).then(start);};
+  function styledTextHtml(text,marks,runs,paraIndex,reviewComments){
     var sel=(marks||[]).filter(function(h){return h.para===paraIndex;});
-    if(!sel.length&&!(runs&&runs.length))return esc(text);
+    var reviews=[];(reviewComments||[]).forEach(function(comment){var ranges=Array.isArray(comment.anchors)&&comment.anchors.length?comment.anchors:[comment];ranges.forEach(function(range){if(comment.anchored&&range.para===paraIndex&&range.end>range.start)reviews.push({comment:comment,start:range.start,end:range.end});});});
+    if(!sel.length&&!(runs&&runs.length)&&!reviews.length)return esc(text);
     var cuts={0:1};cuts[text.length]=1;
     sel.forEach(function(h){cuts[Math.max(0,Math.min(text.length,h.start))]=1;cuts[Math.max(0,Math.min(text.length,h.end))]=1;});
+    reviews.forEach(function(review){cuts[Math.max(0,Math.min(text.length,review.start))]=1;cuts[Math.max(0,Math.min(text.length,review.end))]=1;});
     (runs||[]).forEach(function(r){cuts[Math.max(0,Math.min(text.length,r[0]))]=1;cuts[Math.max(0,Math.min(text.length,r[1]))]=1;});
     var points=Object.keys(cuts).map(Number).sort(function(a,b){return a-b;}),out='';
     for(var i=0;i<points.length-1;i++){
       var a=points[i],b=points[i+1];if(b<=a)continue;
-      var seg=esc(text.slice(a,b)),flags=0,mark=null;
+      var seg=esc(text.slice(a,b)),flags=0,mark=null,review=null;
       (runs||[]).forEach(function(r){if(r[0]<=a&&r[1]>=b)flags|=r[2];});
       sel.forEach(function(h){if(!mark&&h.start<=a&&h.end>=b)mark=h;});
+      reviews.forEach(function(item){if(!review&&item.start<=a&&item.end>=b)review=item.comment;});
       if(flags&2)seg='<i>'+seg+'</i>';
       if(flags&1)seg='<b>'+seg+'</b>';
       if(mark)seg='<mark class="hl-'+esc(mark.color||'yellow')+(mark.note?' hl-noted':'')+'" data-hl-id="'+esc(mark.id||'')+'"'+(mark.note?' title="✎ '+esc(mark.note)+'"':'')+'>'+seg+'</mark>';
+      if(review)seg='<span class="review-comment-anchor'+(review.resolved?' resolved':'')+(review.id===reviewFocusId?' is-focused':'')+'" data-review-comment-id="'+esc(review.id)+'" title="'+esc((review.author||'Reviewer')+': '+String(review.text||'').slice(0,160))+'">'+seg+'</span>';
       out+=seg;
     }
     return out;
@@ -3315,8 +3538,8 @@
   byId('savePaperDetails').onclick=function(){var ch=find(currentId);if(!ch)return;ch.title=byId('paperTitleEdit').value.trim()||'Untitled';ch.authors=byId('paperAuthorsEdit').value.trim();ch.tags=byId('paperTagsEdit').value.split(',').map(function(t){return t.trim();}).filter(Boolean).filter(function(t,i,a){return a.indexOf(t)===i;});touch(ch);byId('readerTitle').textContent=ch.title;byId('readerMeta').textContent=ch.authors||ch.sourceName||'';byId('paperTags').value=ch.tags.join(', ');byId('paperDialog').close();if(readerMode==='text')renderText(ch);};
   async function removePaper(ch,leaveReader){
     if(!ch)return false;var githubCopy=ch.sourcePath?' The PDF in your GitHub papers/ folder will stay there.':'';
-    if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Phloem? Its notes, highlights, Q&A, and local PDF will be removed.'+githubCopy))return false;
-    state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);deleteFigures(ch.id);gdriveDeletePdf(ch.id);persist();
+    if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Phloem? Its notes, highlights, reviewer work, and local original file will be removed.'+githubCopy))return false;
+    state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);deleteFigures(ch.id);gdriveDeleteSource(ch);persist();
     if(currentId===ch.id){currentId=null;pdfDoc=null;}renderShelf();if(leaveReader)showPage('libraryPage');return true;
   }
   byId('deletePaperBtn').onclick=function(){removePaper(find(currentId),true);};
@@ -3623,7 +3846,7 @@
   }
   byId('recallBtn').onclick=function(){setRecall(!recallActive);};
   byId('recallDone').onclick=function(){setRecall(false);};
-  function switchTab(id){ if(id!=='notesPanel'&&recallActive)setRecall(false);document.querySelectorAll('.tab').forEach(function(t){var on=t.dataset.tab===id;t.classList.toggle('active',on);t.setAttribute('aria-selected',String(on));}); ['notesPanel','aiPanel'].forEach(function(p){byId(p).classList.toggle('hidden',p!==id);});syncMobileSheetButtons(); }
+  function switchTab(id){ if(id!=='notesPanel'&&recallActive)setRecall(false);document.querySelectorAll('.tab').forEach(function(t){var on=t.dataset.tab===id;t.classList.toggle('active',on);t.setAttribute('aria-selected',String(on));}); ['notesPanel','reviewsPanel','aiPanel'].forEach(function(p){byId(p).classList.toggle('hidden',p!==id);});syncMobileSheetButtons(); }
   document.querySelectorAll('.tab').forEach(function(t){ t.onclick=function(){ switchTab(t.dataset.tab); }; });
 
   /* Screenshot OCR -> text AI context, plus current-page questions. */
@@ -4030,29 +4253,33 @@
     return gdriveTokenPending;
   }
   async function gdriveListAll(token){
-    var r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size)',{headers:{Authorization:'Bearer '+token}});
+    var r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size,appProperties)',{headers:{Authorization:'Bearer '+token}});
     if(r.status===401){gdriveToken=null;gdriveSaveAuth();var stale=new Error('Google signed this device out — Phloem reconnects on your next tap.');stale.auth=true;throw stale;}
     if(!r.ok)throw new Error('Drive list failed ('+r.status+')');
     return ((await r.json()).files)||[];
   }
-  /* Papers ride along in the same hidden folder. Large books use Drive's resumable
+  /* Original PDFs and Word drafts ride along in the same hidden folder. Large files use Drive's resumable
      protocol: an 8 MB chunk completes at a time, and the private session URL plus the
      confirmed byte offset stay on this device so a refresh or network break continues
      instead of restarting a 100+ MB upload. */
   var GDRIVE_PDF_LIMIT=200*1024*1024,GDRIVE_CHUNK_BYTES=8*1024*1024,GDRIVE_UPLOADS_KEY='readingRoom.gdriveUploads.v1';
   var gdriveRoaming=false,gdrivePdfStates={},gdriveUploads={};
   try{gdriveUploads=JSON.parse(localStorage.getItem(GDRIVE_UPLOADS_KEY)||'{}')||{};}catch(e){gdriveUploads={};}
+  function binarySourceSpec(ch){
+    if(!ch)return null;if(ch.kind==='pdf')return{name:'pdf-'+ch.id+'.pdf',mime:'application/pdf',label:'PDF'};
+    if(ch.sourceType==='docx')return{name:'docx-'+ch.id+'.docx',mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',label:'Word draft'};return null;
+  }
   function gdriveFormatBytes(value){var n=+value||0;if(!n)return 'size unknown';if(n<1048576)return Math.max(1,Math.round(n/1024))+' KB';return(n/1048576).toFixed(n<10485760?1:0)+' MB';}
   function gdrivePaperStatus(ch){
     var stateInfo=gdrivePdfStates[ch.id],size=gdriveFormatBytes((stateInfo&&stateInfo.size)||ch.fileSize),label='',tone='local',progress=Math.max(0,Math.min(100,stateInfo?(+stateInfo.progress||0):0));
     if(!gdriveOn())label='This device only · '+size;
-    else if(!stateInfo){label='Drive · checking this PDF';tone='checking';}
+    else if(!stateInfo){label='Drive · checking this file';tone='checking';}
     else if(stateInfo.state==='synced'){label='Available on your devices · '+size;tone='synced';progress=100;}
     else if(stateInfo.state==='uploading'){label='Uploading to Drive · '+progress+'%';tone='uploading';}
     else if(stateInfo.state==='fetching'){label='Downloading from Drive · '+progress+'%';tone='fetching';}
     else if(stateInfo.state==='queued'){label='Waiting to upload · '+size;tone='queued';}
     else if(stateInfo.state==='too-large'){label='Over Phloem’s 200 MB sync limit · this device only';tone='paused';}
-    else if(stateInfo.state==='missing'){label='PDF is not in Drive yet';tone='paused';}
+    else if(stateInfo.state==='missing'){label='Original file is not in Drive yet';tone='paused';}
     else{label='Drive transfer paused · tap the cloud to retry';tone='paused';}
     return {label:label,tone:tone,progress:progress};
   }
@@ -4069,33 +4296,35 @@
   function gdriveRememberUpload(id,item){gdriveUploads[id]=item;gdriveSaveUploads();return item;}
   function gdriveUploadError(response,label){var error=new Error(label+' ('+response.status+')');if(response.status===401)error.auth=true;if(response.status===404||response.status===410)error.expired=true;return error;}
   function gdriveRangeNext(response,fallback,limit){var range=response.headers.get('Range')||response.headers.get('range')||'',match=range.match(/bytes=\d+-(\d+)/i),next=match?+match[1]+1:fallback;return Math.max(0,Math.min(limit,next));}
-  async function gdriveStartPdfUpload(token,ch,total){
-    var response=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,size',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':'application/pdf','X-Upload-Content-Length':String(total)},body:JSON.stringify({name:'pdf-'+ch.id+'.pdf',parents:['appDataFolder']})});
-    if(!response.ok)throw gdriveUploadError(response,'Drive could not start the PDF upload');var session=response.headers.get('Location')||response.headers.get('location');if(!session)throw new Error('Drive did not return a resumable upload address');
+  async function gdriveStartPdfUpload(token,ch,total,remote){
+    var spec=binarySourceSpec(ch);if(!spec)throw new Error('This document has no original file to upload.');
+    var metadata={name:spec.name,appProperties:{phloemHash:ch.contentHash||''}};if(!remote)metadata.parents=['appDataFolder'];
+    var uploadUrl='https://www.googleapis.com/upload/drive/v3/files'+(remote?'/'+remote.id:'')+'?uploadType=resumable&fields=id,name,size',response=await fetch(uploadUrl,{method:remote?'PATCH':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':spec.mime,'X-Upload-Content-Length':String(total)},body:JSON.stringify(metadata)});
+    if(!response.ok)throw gdriveUploadError(response,'Drive could not start the file upload');var session=response.headers.get('Location')||response.headers.get('location');if(!session)throw new Error('Drive did not return a resumable upload address');
     return gdriveRememberUpload(ch.id,{session:session,next:0,size:total,hash:ch.contentHash||'',at:now()});
   }
   async function gdriveResumePdfUpload(token,item,total){
     var response=await fetch(item.session,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Range':'bytes */'+total}});
     if(response.status===308)return {complete:false,next:gdriveRangeNext(response,0,total)};
     if(response.ok)return {complete:true,next:total};
-    throw gdriveUploadError(response,'Drive could not resume the PDF upload');
+    throw gdriveUploadError(response,'Drive could not resume the file upload');
   }
-  async function gdriveUploadPdf(token,ch,bytes,onProgress){
-    var total=bytes.byteLength;
+  async function gdriveUploadPdf(token,ch,bytes,onProgress,remote){
+    var total=bytes.byteLength,spec=binarySourceSpec(ch);if(!spec)throw new Error('This document has no original file to upload.');
     for(var restart=0;restart<2;restart++){
       var item=gdriveUploads[ch.id];
       if(item&&(+item.size!==total||(item.hash||'')!==(ch.contentHash||'')||now()-(+item.at||0)>6*86400000)){gdriveForgetUpload(ch.id);item=null;}
-      if(!item)item=await gdriveStartPdfUpload(token,ch,total);
+      if(!item)item=await gdriveStartPdfUpload(token,ch,total,remote);
       else{
         try{var resumed=await gdriveResumePdfUpload(token,item,total);if(resumed.complete){gdriveForgetUpload(ch.id);if(onProgress)onProgress(total,total);return true;}item.next=resumed.next;item.at=now();gdriveRememberUpload(ch.id,item);}
         catch(resumeError){if(resumeError.expired){gdriveForgetUpload(ch.id);continue;}throw resumeError;}
       }
       if(onProgress)onProgress(item.next,total);var expired=false;
       while(item.next<total){
-        var start=item.next,end=Math.min(total,start+GDRIVE_CHUNK_BYTES),response=await fetch(item.session,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/pdf','Content-Range':'bytes '+start+'-'+(end-1)+'/'+total},body:bytes.slice(start,end)});
+        var start=item.next,end=Math.min(total,start+GDRIVE_CHUNK_BYTES),response=await fetch(item.session,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':spec.mime,'Content-Range':'bytes '+start+'-'+(end-1)+'/'+total},body:bytes.slice(start,end)});
         if(response.status===308)item.next=gdriveRangeNext(response,end,total);
         else if(response.ok)item.next=total;
-        else{var chunkError=gdriveUploadError(response,'Drive paused the PDF upload');if(chunkError.expired){gdriveForgetUpload(ch.id);expired=true;break;}throw chunkError;}
+        else{var chunkError=gdriveUploadError(response,'Drive paused the file upload');if(chunkError.expired){gdriveForgetUpload(ch.id);expired=true;break;}throw chunkError;}
         item.at=now();if(item.next<total)gdriveRememberUpload(ch.id,item);if(onProgress)onProgress(item.next,total);
       }
       if(expired)continue;
@@ -4108,25 +4337,26 @@
     var sent=0,failed=0,skipped=0,have={};files.forEach(function(file){have[file.name]=file;});
     try{
       for(var i=0;i<state.chapters.length;i++){
-        var ch=state.chapters[i];if(ch.kind!=='pdf')continue;var name='pdf-'+ch.id+'.pdf',remote=have[name];
-        if(remote){gdriveForgetUpload(ch.id);gdriveSetPdfState(ch.id,{state:'synced',size:+remote.size||ch.fileSize});continue;}
+        var ch=state.chapters[i],spec=binarySourceSpec(ch);if(!spec)continue;var name=spec.name,remote=have[name],remoteHash=remote&&remote.appProperties&&remote.appProperties.phloemHash,localState=gdrivePdfStates[ch.id],needsRefresh=!!remote&&((localState&&localState.state==='queued')||(+remote.size||0)!==+ch.fileSize||(remoteHash&&ch.contentHash&&remoteHash!==ch.contentHash));
+        if(remote&&!needsRefresh){gdriveForgetUpload(ch.id);gdriveSetPdfState(ch.id,{state:'synced',size:+remote.size||ch.fileSize});continue;}
         var stored=await getPdf(ch.id);if(!stored){gdriveSetPdfState(ch.id,{state:'missing',size:ch.fileSize});continue;}
         var bytes=stored instanceof ArrayBuffer?stored:await pdfBytes(stored);
         if(bytes.byteLength>GDRIVE_PDF_LIMIT){skipped++;gdriveSetPdfState(ch.id,{state:'too-large',size:bytes.byteLength});continue;}
         gdriveSetPdfState(ch.id,{state:'queued',size:bytes.byteLength});
         try{
-          await gdriveUploadPdf(token,ch,bytes,function(done,total){var percent=Math.min(100,Math.round(done/total*100));gdriveSetPdfState(ch.id,{state:'uploading',size:total,progress:percent});byId('gdriveStatus').textContent='Uploading '+(ch.title||ch.sourceName||'paper')+'… '+percent+'%';syncUi('☁ Drive · '+percent+'%');});
-          sent++;have[name]={name:name,size:String(bytes.byteLength)};gdriveSetPdfState(ch.id,{state:'synced',size:bytes.byteLength,progress:100});
+          await gdriveUploadPdf(token,ch,bytes,function(done,total){var percent=Math.min(100,Math.round(done/total*100));gdriveSetPdfState(ch.id,{state:'uploading',size:total,progress:percent});byId('gdriveStatus').textContent='Uploading '+(ch.title||ch.sourceName||'paper')+'… '+percent+'%';syncUi('☁ Drive · '+percent+'%');},remote);
+          sent++;have[name]={name:name,size:String(bytes.byteLength),appProperties:{phloemHash:ch.contentHash||''}};gdriveSetPdfState(ch.id,{state:'synced',size:bytes.byteLength,progress:100});
         }catch(uploadError){if(uploadError&&uploadError.auth)throw uploadError;failed++;gdriveSetPdfState(ch.id,{state:'paused',size:bytes.byteLength});}
       }
       return {sent:sent,failed:failed,skipped:skipped};
     }finally{gdriveRoaming=false;}
   }
-  async function gdriveFetchPdf(id,interactive,onProgress){
+  async function gdriveFetchSource(chOrId,interactive,onProgress){
     if(!gdriveOn())return null;
+    var ch=typeof chOrId==='string'?find(resolvedPaperId(chOrId)):chOrId,id=ch&&ch.id,spec=binarySourceSpec(ch);if(!id||!spec)return null;
     try{
-      id=resolvedPaperId(id);var token=await gdriveGetToken(interactive===true),files=await gdriveListAll(token),hit=null,names=['pdf-'+id+'.pdf'];
-      Object.keys(state.merged||{}).forEach(function(dropId){if(resolvedPaperId(dropId)===id)names.push('pdf-'+dropId+'.pdf');});
+      var token=await gdriveGetToken(interactive===true),files=await gdriveListAll(token),hit=null,names=[spec.name];
+      if(ch.kind==='pdf')Object.keys(state.merged||{}).forEach(function(dropId){if(resolvedPaperId(dropId)===id)names.push('pdf-'+dropId+'.pdf');});
       files.some(function(f){if(names.indexOf(f.name)>=0){hit=f;return true;}return false;});
       if(!hit){var absent=find(id);gdriveSetPdfState(id,{state:'missing',size:absent&&absent.fileSize});return null;}
       var r=await fetch('https://www.googleapis.com/drive/v3/files/'+hit.id+'?alt=media',{headers:{Authorization:'Bearer '+token}});
@@ -4143,14 +4373,15 @@
         bytes=all.buffer;
       }else bytes=await r.arrayBuffer();
       if(!bytes||bytes.byteLength<100)return null;
-      await putPdf(id,bytes);var ch=find(id);if(ch&&!ch.contentHash)rememberPdfFingerprint(ch,bytes);gdriveSetPdfState(id,{state:'synced',size:bytes.byteLength,progress:100});return bytes;
+      await putPdf(id,bytes);if(ch.kind==='pdf'&&!ch.contentHash)rememberPdfFingerprint(ch,bytes);gdriveSetPdfState(id,{state:'synced',size:bytes.byteLength,progress:100});return bytes;
     }catch(e){var failed=find(id);gdriveSetPdfState(id,{state:'paused',size:failed&&failed.fileSize});return null;}
   }
-  async function gdriveDeletePdf(id){
-    gdriveForgetUpload(id);delete gdrivePdfStates[id];if(!gdriveOn())return;
+  function gdriveFetchPdf(id,interactive,onProgress){return gdriveFetchSource(id,interactive,onProgress);}
+  async function gdriveDeleteSource(ch){
+    if(!ch)return;var id=ch.id,spec=binarySourceSpec(ch);gdriveForgetUpload(id);delete gdrivePdfStates[id];if(!gdriveOn()||!spec)return;
     try{
-      var token=await gdriveGetToken(false),files=await gdriveListAll(token),name='pdf-'+id+'.pdf';
-      for(var i=0;i<files.length;i++)if(files[i].name===name)await fetch('https://www.googleapis.com/drive/v3/files/'+files[i].id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
+      var token=await gdriveGetToken(false),files=await gdriveListAll(token);
+      for(var i=0;i<files.length;i++)if(files[i].name===spec.name)await fetch('https://www.googleapis.com/drive/v3/files/'+files[i].id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
     }catch(e){}
   }
   async function gdrivePruneMergedPdfs(token){
@@ -4172,7 +4403,7 @@
       files.some(function(f){if(f.name===GDRIVE_FILE){fileId=f.id;return true;}return false;});
       if(fileId){
         var got=await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',{headers:{Authorization:'Bearer '+token}});
-        if(got.ok){try{var remote=await got.json();if(remote&&Array.isArray(remote.chapters)&&mergeState(remote)){persist(false);renderShelf();}}catch(parseError){}}
+        if(got.ok){try{var remote=await got.json();if(remote&&Array.isArray(remote.chapters)&&mergeState(remote)){persist(false);renderShelf();updateReviewBadge();}}catch(parseError){}}
       }
       await repairDuplicateStorage();
       var payload=JSON.stringify({chapters:await chaptersForSync(),deleted:state.deleted||{},merged:state.merged||{},categoryOrder:state.categoryOrder||[],categoryOrderUpdatedAt:state.categoryOrderUpdatedAt||0}),up;
@@ -4184,10 +4415,10 @@
         up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:body});
       }
       if(!up.ok){var upErr=new Error('Drive upload failed ('+up.status+')');if(up.status===401)upErr.auth=true;throw upErr;}
-      byId('gdriveStatus').textContent='Library synced — checking papers…';
+      byId('gdriveStatus').textContent='Library synced — checking original files…';
       var roam=await gdriveRoamPdfs(token,files);
       await gdrivePruneMergedPdfs(token);
-      byId('gdriveStatus').textContent='Synced with your Google Drive.'+(roam.sent?' '+roam.sent+' paper'+(roam.sent===1?'':'s')+' uploaded.':'')+(roam.failed?' '+roam.failed+' upload'+(roam.failed===1?'':'s')+' paused — Phloem resumes on the next sync.':'')+(roam.skipped?' '+roam.skipped+' file'+(roam.skipped===1?' is':'s are')+' over the 200 MB sync limit.':'');
+      byId('gdriveStatus').textContent='Synced with your Google Drive.'+(roam.sent?' '+roam.sent+' original file'+(roam.sent===1?'':'s')+' uploaded.':'')+(roam.failed?' '+roam.failed+' upload'+(roam.failed===1?'':'s')+' paused — Phloem resumes on the next sync.':'')+(roam.skipped?' '+roam.skipped+' file'+(roam.skipped===1?' is':'s are')+' over the 200 MB sync limit.':'');
       syncUi('☁ Drive · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));byId('syncSignal').title='';
     }catch(e){
       /* A token Google no longer honors is not the user's problem: drop it and take
@@ -4239,7 +4470,7 @@
     byId('gdriveConnectBtn').textContent=gdriveOn()?'Sign in again':'Connect Google Drive';
     byId('gdriveConnectBtn').classList.toggle('button',!gdriveOn());byId('gdriveConnectBtn').classList.toggle('soft-button',gdriveOn());
     byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
-    byId('gdriveStatus').textContent=gdriveOn()?'Connected'+(gdriveEmail?' as '+gdriveEmail:'')+' — your library syncs automatically. Papers follow you between devices.':'Not connected.';
+    byId('gdriveStatus').textContent=gdriveOn()?'Connected'+(gdriveEmail?' as '+gdriveEmail:'')+' — your library syncs automatically. PDFs and Word drafts follow you between devices.':'Not connected.';
     syncUi();refreshInstallUi();
   }
   function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(on?'☁ '+syncCfg.repo:gdriveOn()?'☁ Google Drive':'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}
@@ -4362,7 +4593,7 @@
 
   var lastSyncToast='';
   var githubPath='papers';
-  byId('githubPickBtn').onclick=openGithubPicker;byId('githubRefresh').onclick=function(){listGithubPapers(githubPath);};
+  byId('githubPickBtn').onclick=function(){closeAddDialog();openGithubPicker();};byId('githubRefresh').onclick=function(){listGithubPapers(githubPath);};
   function openGithubPicker(){if(!syncCfg){fillSettings();byId('settingsDialog').showModal();byId('syncStatus').textContent='Connect GitHub first, then Phloem can show PDFs from papers/.';return;}byId('githubDialog').showModal();listGithubPapers(githubPath);}
   function renderGithubCrumbs(){
     var crumbs=byId('githubCrumbs');crumbs.innerHTML='';
@@ -4405,7 +4636,7 @@
     saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Gemini Nano will be used when this browser supports it.':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');
   };
   byId('backupBtn').onclick=function(){var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='phloem-reading-backup.json';a.click();URL.revokeObjectURL(a.href);};
-  byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
+  byId('restoreBtn').onclick=function(){byId('restoreFile').click();};byId('restoreFile').onchange=function(){var f=this.files[0];this.value='';if(!f)return;f.text().then(function(t){var inc=JSON.parse(t);if(!inc||!Array.isArray(inc.chapters))throw new Error();mergeState(inc);persist();renderShelf();updateReviewBadge();byId('syncStatus').textContent='Backup merged into this library.';}).catch(function(){byId('syncStatus').textContent='That backup file is not valid.';});};
 
   /* Installable app: capture the browser's install prompt where one exists, and explain
      the Share-sheet path on iOS, which never fires one. */

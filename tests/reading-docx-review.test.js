@@ -114,7 +114,7 @@ async function run() {
   savedManual.pdfAnchors[0].quote = 'Mutated after copy';
   check('manual reviewer locations are copied by value during re-import', preserved && refreshedComment.page === 7 && refreshedComment.pdfAnchors[0].quote === 'Exact selected sentence.' && refreshedComment.manualReviewLink === true);
   check('explicit manuscript pages guide candidate search without becoming unverified anchors', source.includes('explicit.concat(ranked.slice(0,8)') && !extractFunction('applyPdfReviewMatches').includes('explicit.forEach(function(page)') && extractFunction('applyPdfReviewMatches').includes('if(!range)return'));
-  check('older nine-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:2') && source.includes('This review used the older summary importer'));
+  check('older merged-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:3') && source.includes('Word line-breaks merged into one comment'));
   check('legacy summary matches are suppressed until the source report is re-imported', source.includes('comment.legacyImport=!!legacyReviewReports') && source.includes("if(comment.legacyImport&&!comment.manualReviewLink){comment.anchored=false"));
   check('broad restructuring feedback is not forced onto a coincidental passage', source.includes('function stabilizedReviewLevel') && source.includes("level='section'") && source.includes('Section-wide · no single passage named'));
   check('PDF matches must use candidate pages and a confidence threshold', source.includes('reviewCandidatePdfPages') && source.includes('confidence<.55') && source.includes('allowed=pageCandidates.some'));
@@ -135,6 +135,7 @@ async function run() {
     extractFunction('reviewNormalizedText'),
     extractFunction('reviewQuoteRange'),
     extractFunction('reviewSentenceRanges'),
+    extractFunction('reviewTrimStructuralPrefix'),
     extractFunction('reviewSentenceRange'),
     extractFunction('reviewSearchTerms'),
     extractFunction('reviewQuotedPassages'),
@@ -142,6 +143,7 @@ async function run() {
     extractFunction('repairPdfReviewQuotes'),
     extractFunction('reviewExplicitPages'),
     extractFunction('reviewReportChunks'),
+    extractFunction('reviewReportParagraphs'),
     extractFunction('reviewReportUnits')
   ].join('\n'), reviewContext);
   const pageRefs = reviewContext.reviewExplicitPages({ text: 'See pp. 18–20 and page 31.' }, 34);
@@ -156,6 +158,10 @@ async function run() {
   const clippedRange = { start: sentenceText.indexOf('predictions'), end: sentenceText.indexOf('the next model') + 8, quote: '' };
   const completeSentence = reviewContext.reviewSentenceRange(sentenceText, clippedRange, { text: 'Current compartmental approaches struggle to capture system complexity accurately.' });
   check('PDF review highlights snap to one complete relevant sentence', completeSentence.quote.startsWith('Although') && completeSentence.quote.endsWith('accurately.') && !completeSentence.quote.includes('For example'));
+  const flattenedTitlePage = 'Probe Location Matters: Oxygen Gradient Measurements and CFD-Informed Modeling. Marc G. Aucoin1, Hector Budman1,** 1Department of Chemical Engineering, University of Waterloo, Waterloo, ON, Canada **Corresponding author: hbudman@uwaterloo.ca * equal contributions 1 Abstract In the modeling of smaller scale bioreactors such as the 15-20 L system studied here, the process is generally assumed to be well mixed. Oxygen gradients were then measured throughout the vessel.';
+  const oversizedTitleRange = { start: flattenedTitlePage.indexOf('Marc G. Aucoin'), end: flattenedTitlePage.indexOf('well mixed.') + 'well mixed.'.length, quote: '' };
+  const trimmedTitlePassage = reviewContext.reviewSentenceRange(flattenedTitlePage, oversizedTitleRange, { text: 'The scale is described variously as a 15–20 L system and a 20 L bioreactor. Distinguish vessel and working volume consistently.' });
+  check('flattened title-page metadata is trimmed before reviewer highlighting', trimmedTitlePassage.quote.startsWith('In the modeling') && trimmedTitlePassage.quote.endsWith('well mixed.') && !/Department|University|Aucoin|Budman/.test(trimmedTitlePassage.quote), trimmedTitlePassage.quote);
   const localPassage = reviewContext.reviewLocalPdfQuote('Background material is summarized first. Probe position changed the measured oxygen concentration gradient across the vessel. The conclusion follows.', { text: 'Please clarify how probe position affects the oxygen concentration gradient.' });
   check('page-only references gain a conservative local passage highlight', localPassage.includes('Probe position changed'));
   const falseTitlePassage = reviewContext.reviewLocalPdfQuote('Probe Location Matters: Oxygen Gradient Measurements and CFD-Informed Modeling Challenge the Well-Mixed Assumption in Bench-Scale Bioreactors Ittisak Promma, Danny Kang, Zahra Negahban, Valerie Ward, Nasser Mohieddin Abukhdeir, Marc G. Aucoin, Hector Budman Department of Chemical Engineering, University of Waterloo, Waterloo, ON, Canada.', { text: 'The scale is described variously as a 15–20 L system, a 20 L bioreactor and a 19.5 L vessel operated at 13.5–14 L. Nominal vessel volume and actual working volume should be distinguished consistently (pp. 1, 3–4).' });
@@ -173,6 +179,9 @@ async function run() {
   const numberedReport = '[REVIEWER TEXT] Reviewer 1\n\n[REVIEWER TEXT] Major concerns\n\n' + Array.from({ length: 25 }, (_, i) => '[REVIEWER TEXT] ' + (i + 1) + '. Concern ' + (i + 1) + ' must remain a separate reviewer issue.\n\n[AUTHOR RESPONSE] Response ' + (i + 1) + '.').join('\n\n');
   const numberedUnits = reviewContext.reviewReportUnits(numberedReport);
   check('all 25 numbered reviewer concerns survive deterministic segmentation', numberedUnits.filter(unit => unit.number).length === 25 && numberedUnits.every(unit => unit.response), numberedUnits.length + ' units');
+  const softBreakReport = '[REVIEWER TEXT] 4. Exchange-rate scaling needs justification\nExplain the physical basis.\n5. CFD geometry is inconsistent\nCorrect the impeller diameter.\nMinor comments\nCorrect batch to fed-batch in the abstract.\nUse nominal and working volume consistently.\nOverall recommendation\nMajor revision is recommended.';
+  const softBreakUnits = reviewContext.reviewReportUnits(softBreakReport);
+  check('Word soft line-breaks cannot merge several numbered and minor concerns', softBreakUnits.some(unit => unit.number === '4' && !unit.text.includes('5. CFD')) && softBreakUnits.some(unit => unit.number === '5' && !unit.text.includes('Minor comments')) && softBreakUnits.filter(unit => unit.group.toLowerCase() === 'minor comments').length === 2 && Math.max(...softBreakUnits.map(unit => unit.text.length)) < 180, softBreakUnits.map(unit => unit.text).join(' | '));
   check('AI classification is keyed to stable input ids rather than freeform summaries', source.includes('Return exactly one result for every inputId') && source.includes('unit.number||!classification'));
   check('AI classification is checked against local review rules', source.includes('function reviewClassificationAudit') && source.includes('classificationAudit:checked.audit') && source.includes('confidence from 0 to 1'));
   check('passage matching batches comments by stable ids', source.includes('Return exactly one item for every commentId') && source.includes('reviewLocationBatches(comments,config.size)'));

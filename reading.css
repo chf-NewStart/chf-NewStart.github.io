@@ -543,10 +543,10 @@
     .find-bar .step-btn:hover { border-color: var(--accent); }
     .para.find-flash { background: color-mix(in srgb, var(--yellow) 34%, transparent); }
     .text-layer span.find-span { background: color-mix(in srgb, var(--yellow) 55%, transparent); border-radius: 3px; }
-    .text-layer span.review-focus-span { background: rgba(255,202,108,.58); border-radius: 3px; box-shadow: 0 0 0 2px rgba(184,121,31,.28); }
-    .text-layer span.review-focus-general { background: rgba(128,179,105,.48); box-shadow: 0 0 0 2px rgba(91,126,77,.3); }
-    .text-layer span.review-focus-section { background: rgba(105,185,218,.48); box-shadow: 0 0 0 2px rgba(50,112,139,.3); }
-    .text-layer span.review-focus-editorial { background: rgba(243,119,91,.44); box-shadow: 0 0 0 2px rgba(197,79,52,.3); }
+    .text-layer span.review-focus-span { background: rgba(255,202,108,.22); border-radius: 3px; box-shadow: 0 0 0 2px rgba(184,121,31,.3); }
+    .text-layer span.review-focus-general { background: rgba(128,179,105,.2); box-shadow: 0 0 0 2px rgba(91,126,77,.32); }
+    .text-layer span.review-focus-section { background: rgba(105,185,218,.2); box-shadow: 0 0 0 2px rgba(50,112,139,.32); }
+    .text-layer span.review-focus-editorial { background: rgba(243,119,91,.2); box-shadow: 0 0 0 2px rgba(197,79,52,.32); }
     .progress-rail { flex: 0 0 auto; height: 4px; background: var(--surface-2); }
     .progress-rail i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .18s ease-out; }
     .comfort-bar { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--yellow) 12%, var(--surface)); }

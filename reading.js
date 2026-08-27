@@ -3280,6 +3280,7 @@
     if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
     if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
+    if(e.key==='Escape'&&reviewFocusId){e.preventDefault();dismissReviewerFocus();return;}
     if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undoHighlight();return;}
     if((e.metaKey||e.ctrlKey)&&((e.shiftKey&&e.key.toLowerCase()==='z')||(!e.shiftKey&&e.key.toLowerCase()==='y'))){e.preventDefault();redoHighlight();return;}
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
@@ -3407,6 +3408,7 @@
       }
       if(e.target.closest('button, textarea, a, mark, img, [data-review-comment-id]'))return;
       if(String(getSelection&&getSelection()||''))return;
+      dismissReviewerFocus();
       var section=e.target.closest('.para');if(!section)return;
       var idx=[].indexOf.call(paraSections(),section);
       if(idx>=0)setFocusPara(idx,false);
@@ -3513,6 +3515,9 @@
   }
   function refreshPdfReviewMarkers(){if(readerMode!=='pdf')return;renderedPages.slice().forEach(function(page){renderPdfHighlights(page);});}
   function clearPdfReviewFocus(){document.querySelectorAll('.review-focus-span').forEach(function(span){span.classList.remove('review-focus-span','review-focus-general','review-focus-section','review-focus-specific','review-focus-editorial');});}
+  function dismissReviewerFocus(){
+    if(!reviewFocusId)return false;reviewFocusId='';reviewFocusPage=0;reviewFocusAnchorIndex=-1;clearPdfReviewFocus();document.querySelectorAll('.review-comment-anchor.is-focused').forEach(function(anchor){anchor.classList.remove('is-focused');});document.querySelectorAll('.reviewer-comment-card.focused').forEach(function(card){card.classList.remove('focused');});return true;
+  }
   function focusedPdfReviewAnchor(ch,comment,page){
     var anchors=reviewPdfAnchors(ch,comment),chosen=reviewFocusAnchorIndex>=0?anchors[reviewFocusAnchorIndex]:null;return chosen&&chosen.page===+page?chosen:(anchors.find(function(anchor){return anchor.page===+page;})||null);
   }
@@ -4327,10 +4332,10 @@
   }
   byId('pdfFrame').addEventListener('click',function(e){
     if(pendingSelection)return;
-    var pageEl=e.target.closest('.pdf-page');if(!pageEl)return;
+    var pageEl=e.target.closest('.pdf-page');if(!pageEl){if(dismissReviewerFocus())e.stopPropagation();return;}
     var review=pdfReviewAtPoint(pageEl,e.clientX,e.clientY);if(review){showReviewerComment(find(currentId),review.comment.id,review.page);return;}
     var s=window.getSelection&&window.getSelection();if(s&&!s.isCollapsed)return;
-    var hit=pdfHighlightAtPoint(pageEl,e.clientX,e.clientY);if(!hit)return;
+    var hit=pdfHighlightAtPoint(pageEl,e.clientX,e.clientY);if(!hit){if(dismissReviewerFocus())e.stopPropagation();return;}
     if(highlightMode)removeHighlight('pdf',hit.page,hit.item.id);
     else openHighlightCard({kind:'pdf',page:hit.page,id:hit.item.id},{left:e.clientX,right:e.clientX,top:e.clientY,bottom:e.clientY});
   });

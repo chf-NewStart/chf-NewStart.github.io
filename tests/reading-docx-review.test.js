@@ -93,6 +93,7 @@ async function run() {
   check('workspace maintenance reuses the safe review and paper deletion flows', extractFunction('renderReviewWorkspaceCard').includes('startReviewerFileReplacement(ch)') && extractFunction('renderReviewWorkspaceCard').includes('clearReviewComments(ch)') && extractFunction('renderReviewWorkspaceCard').includes('removePaper(ch,false)'));
   check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.comment.id,review.page)') && source.indexOf('var review=pdfReviewAtPoint') < source.indexOf("if(s&&!s.isCollapsed)return") && css.includes('.review-comment-highlight'));
   check('review comments navigate back to their highlighted passages', source.includes(".reviewer-comment-card.has-passage") && source.includes('focusReviewerPassage(ch,card.dataset.reviewCard)'));
+  check('long reviewer comments collapse without hiding the response workflow', source.includes('data-review-comment-toggle') && source.includes('Show full comment') && css.includes('.reviewer-comment-text.is-collapsed') && css.includes('-webkit-line-clamp: 7'));
   check('one reviewer concern can link every distinct PDF passage it cites', source.includes('comment.pdfAnchors=valid') && source.includes('"matches"') && source.includes('up to four') && source.includes('reviewer-passage-links'));
   check('readers can reject a wrong AI passage and select the correction on the paper', html.includes('id="selectionLinkReview"') && source.includes('function removeReviewerPassage') && source.includes('function linkSelectionToReview') && source.includes("method:'manual-pdf-selection'") && source.includes('Wrong passage'));
   check('review comments support multiple user-selected passages', source.includes('data-review-add-passage') && source.includes('Add another passage') && source.includes('pdfAnchors.push') && source.includes('textAnchors.push'));
@@ -145,6 +146,7 @@ async function run() {
     extractFunction('repairPdfReviewQuotes'),
     extractFunction('reviewExplicitPages'),
     extractFunction('reviewReportChunks'),
+    extractFunction('trimReviewRecommendationTail'),
     extractFunction('reviewReportParagraphs'),
     extractFunction('reviewReportUnits')
   ].join('\n'), reviewContext);
@@ -184,6 +186,12 @@ async function run() {
   const softBreakReport = '[REVIEWER TEXT] 4. Exchange-rate scaling needs justification\nExplain the physical basis.\n5. CFD geometry is inconsistent\nCorrect the impeller diameter.\nMinor comments\nCorrect batch to fed-batch in the abstract.\nUse nominal and working volume consistently.\nOverall recommendation\nMajor revision is recommended.';
   const softBreakUnits = reviewContext.reviewReportUnits(softBreakReport);
   check('Word soft line-breaks cannot merge several numbered and minor concerns', softBreakUnits.some(unit => unit.number === '4' && !unit.text.includes('5. CFD')) && softBreakUnits.some(unit => unit.number === '5' && !unit.text.includes('Minor comments')) && softBreakUnits.filter(unit => unit.group.toLowerCase() === 'minor comments').length === 2 && Math.max(...softBreakUnits.map(unit => unit.text.length)) < 180, softBreakUnits.map(unit => unit.text).join(' | '));
+  const geometryConcern = 'A critical aspect missing from the discussion is the impact of the bioreactor geometry. The authors should discuss whether an H/D ratio closer to 1 would still produce this gradient.';
+  const recommendationTail = 'In conclusion, the manuscript addresses a relevant topic. However, several methodological and visual improvements are necessary, and I recommend a Major Revision.';
+  const trimmedRecommendation = reviewContext.trimReviewRecommendationTail(geometryConcern + '\n' + recommendationTail);
+  check('a journal recommendation tail is removed from the actionable geometry concern', trimmedRecommendation === geometryConcern && !trimmedRecommendation.includes('Major Revision'));
+  const recommendationUnits = reviewContext.reviewReportUnits('[REVIEWER TEXT] ' + geometryConcern + '\n' + recommendationTail + '\n\n[AUTHOR RESPONSE] Ittisak can run a quick H/D simulation.');
+  check('soft-break recommendation summaries do not absorb the author response or become another concern', recommendationUnits.length === 1 && recommendationUnits[0].text === geometryConcern && recommendationUnits[0].response.includes('H/D simulation'), recommendationUnits.map(unit => unit.text).join(' | '));
   const shareContext = { now: () => 900, normalizeReviewLevel: value => value, normalizeReviewTopic: value => value, TextEncoder, TextDecoder, Blob, Response, CompressionStream, DecompressionStream, btoa, atob };
   vm.runInNewContext([
     extractFunction('reviewNormalizedText'),

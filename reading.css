@@ -982,6 +982,8 @@
     .reviewer-location { margin: -2px 0 9px; color: var(--muted); font: .62rem/1.4 var(--sans); }
     .reviewer-comment-card blockquote { margin: 0 0 10px; padding: 8px 10px; border-left: 3px solid var(--yellow); background: color-mix(in srgb, var(--yellow) 10%, transparent); color: var(--muted); font: italic .72rem/1.48 var(--serif); }
     .reviewer-comment-text { margin: 0 0 10px; white-space: pre-wrap; color: var(--ink); font: .8rem/1.52 var(--serif); }
+    .reviewer-comment-text.is-collapsed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 7; white-space: normal; }
+    .reviewer-comment-toggle { display: block; margin: -3px 0 12px; color: var(--accent); font-size: .63rem; font-weight: 750; }
     .reviewer-reply { margin: 8px 0; padding: 9px 10px; border-radius: 8px; background: var(--surface-2); }
     .reviewer-reply b { display: block; margin-bottom: 3px; color: var(--muted); font-size: .62rem; }
     .reviewer-reply p { margin: 0; font: .72rem/1.45 var(--serif); }

@@ -435,14 +435,24 @@
     try { localStorage.setItem('readingRoom.theme', dark ? 'dark' : 'light'); } catch(e){}
     applyTheme(dark);
   };
+  var historyEcho=0,navFromPop=false;
   function showPage(id){
+    var wasReading=!byId('readerPage').classList.contains('hidden');
     ['libraryPage','reviewPage','connectionsPage','readerPage'].forEach(function(v){ byId(v).classList.toggle('hidden', v !== id); });
+    document.documentElement.classList.toggle('reading-root', id === 'readerPage');
     document.querySelectorAll('.nav-btn[data-view]').forEach(function(b){ b.classList.toggle('active', b.dataset.view === id); });
     document.body.classList.toggle('library-view', id === 'libraryPage');
     /* The reader is an app screen, not a document: while it is open the page itself must
        never scroll, or the toolbar slides under the sticky masthead. */
     document.body.classList.toggle('reading', id === 'readerPage');
-    if (id !== 'readerPage') { toggleSheet(false); hideLookup(); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){} }
+    if (id !== 'readerPage') { toggleSheet(false); hideLookup(); byId('linkReturn').classList.add('hidden'); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){} }
+    /* Any exit that bypasses the back button (masthead, brand, deleting the open
+       paper) still consumes the reader's history layer, or the next system back
+       would be silently dead. A sheet layer mid-consume reads as 'sheet' here and
+       the extra back below settles both layers; the echoes are swallowed. */
+    if (wasReading && id !== 'readerPage' && !navFromPop) {
+      try{ if(history.state&&history.state.phloem){ history.back(); historyEcho++; } }catch(e){}
+    }
     if (id === 'readerPage' && innerWidth <= 720) { toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false'); }
     if (id === 'libraryPage') renderShelf();
     if (id === 'reviewPage') renderReview();
@@ -477,15 +487,40 @@
   byId('readerBack').onclick = function(){
     /* Leaving through our own button consumes the reader's history layer too, so the
        next system back does not have to be pressed twice. */
+    /* Not an echo: this back IS the exit — the popstate handler performs it. */
     if(history.state&&history.state.phloem==='reader'){try{history.back();return;}catch(e){}}
     pdfDoc = null; showPage('libraryPage');
   };
+  /* The system back gesture peels UI layer by layer, and the machine self-heals:
+     every history.back() the app issues is counted, and its popstate echo is
+     swallowed instead of read as a user gesture — repairing the stack if the user
+     reopened the sheet inside the async window. Entries that stop matching the
+     screen are re-stamped rather than trusted, a forward-press onto a dead app
+     entry bounces straight back, and leaving the reader closes any open dialog. */
   addEventListener('popstate',function(e){
     var st=e.state&&e.state.phloem;
     var sheetOpen=byId('notebook').classList.contains('sheet-open');
     var readerOpen=!byId('readerPage').classList.contains('hidden');
-    if(sheetOpen&&st!=='sheet'){toggleSheet(false,true);return;}
-    if(readerOpen&&!st){setDrift(0);if(zenOn)setZen(false);pdfDoc=null;showPage('libraryPage');}
+    if(historyEcho>0){
+      historyEcho--;
+      if(sheetOpen&&st!=='sheet'){try{history.pushState({phloem:'sheet'},'');}catch(err){}}
+      return;
+    }
+    if(sheetOpen&&st!=='sheet'){
+      toggleSheet(false,true);
+      if(readerOpen&&!st){try{history.replaceState({phloem:'reader'},'');}catch(err){}}
+      return;
+    }
+    if(readerOpen){
+      if(!st){
+        document.querySelectorAll('dialog[open]').forEach(function(d){try{d.close();}catch(err){}});
+        setDrift(0);if(zenOn)setZen(false);pdfDoc=null;
+        navFromPop=true;try{showPage('libraryPage');}finally{navFromPop=false;}
+      }
+      else if(st==='sheet'&&!sheetOpen){try{history.replaceState({phloem:'reader'},'');}catch(err){}}
+      return;
+    }
+    if(st){try{history.back();historyEcho++;}catch(err){}}
   });
 
   /* modal helpers */
@@ -2044,7 +2079,7 @@
        stack never drifts from what is on screen. */
     try{
       if(willOpen&&!wasOpen&&innerWidth<=720&&!(history.state&&history.state.phloem==='sheet'))history.pushState({phloem:'sheet'},'');
-      else if(!willOpen&&wasOpen&&!fromHistory&&history.state&&history.state.phloem==='sheet')history.back();
+      else if(!willOpen&&wasOpen&&!fromHistory&&history.state&&history.state.phloem==='sheet'){history.back();historyEcho++;}
     }catch(e){}
   }
   function toggleMobileTab(id){var same=id==='aiPanel'?!byId('aiPanel').classList.contains('hidden'):!byId('notesPanel').classList.contains('hidden');if(same&&byId('notebook').classList.contains('sheet-open'))toggleSheet(false);else{switchTab(id);toggleSheet(true);
@@ -2261,9 +2296,13 @@
     byId('evidenceList').classList.add('hidden');byId('evidenceList').innerHTML='';
     aiContext=null;aiThreadDraft=false;byId('contextCard').classList.add('hidden');byId('aiStatus').textContent='';restoreActiveAiThread(ch);renderQa();
     /* One history layer per open paper: the system back gesture then returns to the
-       library instead of leaving the app mid-read. A stale layer left by exiting
-       through the masthead is reused, never stacked. */
-    if(byId('readerPage').classList.contains('hidden')&&!(history.state&&history.state.phloem)){try{history.pushState({phloem:'reader'},'');}catch(e){}}
+       library instead of leaving the app mid-read. A leftover layer (a reload that
+       restored a 'sheet' entry, an exit that raced its consume) is re-stamped and
+       reused, never stacked. */
+    if(byId('readerPage').classList.contains('hidden')){try{
+      if(!(history.state&&history.state.phloem))history.pushState({phloem:'reader'},'');
+      else if(history.state.phloem==='sheet')history.replaceState({phloem:'reader'},'');
+    }catch(e){}}
     readerMode=ch.kind==='pdf'?'pdf':'text'; applyComfort(); updateReaderMode(); showPage('readerPage'); switchTab('notesPanel');
     if(ch.kind==='pdf'){
       try{
@@ -2316,6 +2355,7 @@
     byId('tocBtn').classList.toggle('hidden',!pdf||!(pdfOutline&&pdfOutline.length));
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('comfortBar').classList.toggle('pdf-mode',pdf);
+    if(!pdf)byId('linkReturn').classList.add('hidden');
     var reflow=byId('reflowBtn');reflow.classList.toggle('hidden',!isPdf);reflow.classList.toggle('to-text',pdf);reflow.setAttribute('aria-pressed',String(isPdf&&!pdf));
     reflow.innerHTML=pdf?'Aa <span class="wide">Reader view</span>':'⧉ <span class="wide">PDF</span>';
     reflow.setAttribute('aria-label',pdf?'Switch to Reader view':'Back to the PDF view');
@@ -3712,7 +3752,9 @@
      Enter sends, Shift+Enter makes a new line. */
   function growQuestionBox(){var input=byId('aiQuestion');input.style.height='auto';input.style.height=Math.min(128,input.scrollHeight)+'px';}
   byId('aiQuestion').addEventListener('input',growQuestionBox);
-  byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;
+  /* keyCode 229 is Safari's IME-composition marker: its Enter-commit arrives with
+     isComposing already false, so both guards are needed for CJK typing. */
+  byId('aiQuestion').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();askAi();}}; byId('aiAskBtn').onclick=askAi;
   byId('aiNewThread').onclick=function(){aiThreadDraft=true;renderQa();byId('aiStatus').textContent=aiContext&&aiContext.text?'New thread with this context.':'New thread — pick a context, then ask.';byId('aiQuestion').focus({preventScroll:true});};
   byId('aiThreadPicker').onchange=function(){
     var ch=find(currentId);if(!ch)return;if(!this.value){aiThreadDraft=true;renderQa();byId('aiStatus').textContent='New thread — pick or keep the context, then ask.';return;}
@@ -4227,7 +4269,9 @@
   };
   function importSetup(){
     var m=location.hash.match(/^#(?:phloem|carrel|margin)-setup=(.+)$/);if(!m)return;
-    history.replaceState(null,'',location.pathname+location.search);
+    /* Strip only the hash: wiping the phloem history state mid-read would break the
+       back gesture's layer accounting. */
+    history.replaceState(history.state&&history.state.phloem?{phloem:history.state.phloem}:null,'',location.pathname+location.search);
     try{
       var cfg=decodeSetup(m[1]),linkedSync=cfg.github&&cfg.github.repo&&cfg.github.token&&cfg.github.pass?cfg.github:(cfg.repo&&cfg.token&&cfg.pass?{repo:cfg.repo,token:cfg.token,pass:cfg.pass}:null),linkedAi=cfg.aiSettings&&cfg.aiSettings.providers?cfg.aiSettings:null,parts=[];
       if(linkedAi)parts.push(aiKeyCount(linkedAi)+' saved AI '+(aiKeyCount(linkedAi)===1?'key':'keys')+' and provider settings');

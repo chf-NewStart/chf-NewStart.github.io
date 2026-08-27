@@ -39,8 +39,9 @@
     .hidden { display: none !important; }
     body.reading { overflow: hidden; }
     /* While reading, the root scroller is pinned at 0, so pull-to-refresh is always
-       armed — one accidental drag would reload the app over an open note. */
-    html, body { overscroll-behavior-y: none; }
+       armed — one accidental drag would reload the app over an open note. Scoped to
+       the reader: in the library the refresh gesture stays a feature. */
+    html.reading-root, html.reading-root body { overscroll-behavior-y: none; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
     .masthead {
@@ -1171,6 +1172,9 @@
       .reader-tools .soft-button, .reader-tools .guide-tool .soft-button, .comfort-bar .step-btn, .comfort-bar .toggle, .guide-color, .find-bar .step-btn, .zoom-tools button { min-height: 44px; }
       .reader-tools .guide-tool .guide-tool-menu { min-width: 42px; }
       .reader-toast { left: 12px; right: 12px; width: fit-content; margin-inline: auto; bottom: calc(66px + env(safe-area-inset-bottom)); }
+      /* One shelf above the toast: both land after a link jump, and an opaque
+         button over the "Jumped to p. N" toast would swallow it. */
+      .link-return { bottom: calc(114px + env(safe-area-inset-bottom)); }
       .lookup-photo-link { height: 126px; }
       .pdf-frame { min-width: 100%; margin: 0 auto; padding: 8px 0 24px; gap: 10px; }
       .text-document { width: calc(100% - 16px); margin: 8px auto; padding: 28px 22px; }

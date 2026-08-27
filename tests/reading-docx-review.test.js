@@ -92,7 +92,8 @@ async function run() {
   check('the revision workspace pairs files, progress, recency, and one continuation action', source.includes('function renderReviewWorkspaceCard') && source.includes('review-workspace-pair') && source.includes('review-workspace-scopes') && source.includes('Continue review&nbsp; →') && source.includes('shelfDate(ch)'));
   check('revision maintenance stays in a secondary Manage menu', source.includes('review-workspace-manage-toggle') && source.includes('data-review-workspace-replace') && source.includes('data-review-workspace-clear') && source.includes('data-review-workspace-delete') && css.includes('.review-workspace-menu button.danger'));
   check('workspace maintenance reuses the safe review and paper deletion flows', extractFunction('renderReviewWorkspaceCard').includes('startReviewerFileReplacement(ch)') && extractFunction('renderReviewWorkspaceCard').includes('clearReviewComments(ch)') && extractFunction('renderReviewWorkspaceCard').includes('removePaper(ch,false)'));
-  check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerComment(find(currentId),review.comment.id,review.page)') && source.indexOf('var review=pdfReviewAtPoint') < source.indexOf("if(s&&!s.isCollapsed)return") && css.includes('.review-comment-highlight'));
+  check('PDF review matches remain visible and clickable on the paper', source.includes('renderPdfReviewMarkers') && source.includes('pdfReviewAtPoint') && source.includes('showReviewerPassageGroup(find(currentId),review)') && source.indexOf('var review=pdfReviewAtPoint') < source.indexOf("if(s&&!s.isCollapsed)return") && css.includes('.review-comment-highlight'));
+  check('overlapping PDF review matches collapse into one numbered passage group', source.includes('function reviewMarkerEntriesBelongTogether') && source.includes("label='R '+shown.join(', ')") && source.includes('This passage · ') && source.includes('data-review-show-all') && css.includes('.review-level-mixed'));
   check('review comments navigate back to their highlighted passages', source.includes(".reviewer-comment-card.has-passage") && source.includes('focusReviewerPassage(ch,card.dataset.reviewCard)'));
   check('review passage focus dismisses on blank paper clicks and Escape', source.includes('function dismissReviewerFocus') && extractFunction('dismissReviewerFocus').includes("reviewFocusId=''") && source.includes("if(!pageEl){if(dismissReviewerFocus())e.stopPropagation();return;}") && source.includes("if(e.key==='Escape'&&reviewFocusId)"));
   check('long reviewer comments collapse without hiding the response workflow', source.includes('data-review-comment-toggle') && source.includes('Show full comment') && css.includes('.reviewer-comment-text.is-collapsed') && css.includes('-webkit-line-clamp: 7'));
@@ -117,7 +118,10 @@ async function run() {
     extractFunction('reviewCommentSimilarity'),
     extractFunction('reviewAuthorsCompatible'),
     extractFunction('matchPriorReviewComments'),
-    extractFunction('restorePriorReviewWork')
+    extractFunction('restorePriorReviewWork'),
+    extractFunction('reviewRectOverlap'),
+    extractFunction('reviewMarkerEntriesBelongTogether'),
+    extractFunction('reviewMarkerLabel')
   ].join('\n'), manualContext);
   const savedManual = { page: 7, quote: 'Exact selected sentence.', pdfAnchors: [{ page: 7, quote: 'Exact selected sentence.', method: 'manual-pdf-selection', manual: true }], anchored: true, matchConfidence: 1, manualReviewLink: true };
   const refreshedComment = { page: null, quote: '', pdfAnchors: [], anchored: false };
@@ -134,6 +138,13 @@ async function run() {
     [{ id: 'layer-1', sourceId: 'layer', author: 'Reviewer', text: 'Clarify the oxygen probe calibration.', response: 'Calibration note' }, { id: 'layer-2', sourceId: 'layer', author: 'Reviewer', text: 'Correct the figure caption.', response: 'Caption note' }]
   );
   check('reordered shared comments cannot move a revision note onto the wrong concern', reorderedMatches[0].response === 'Caption note' && reorderedMatches[1].response === 'Calibration note');
+  const markerComments = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  const markerLabel = manualContext.reviewMarkerLabel({ reviewComments: markerComments }, markerComments);
+  const sameMarker = manualContext.reviewMarkerEntriesBelongTogether(
+    { anchor: { quote: 'Dissolved oxygen measurements were collected at three reactor heights.' }, rects: [{ x: .1, y: .2, w: .7, h: .03 }], pageMarker: false },
+    { anchor: { quote: 'oxygen measurements were collected at three reactor heights' }, rects: [{ x: .18, y: .2, w: .6, h: .03 }], pageMarker: false }
+  );
+  check('a combined passage marker lists every linked review number once', markerLabel === 'R 1, 2, 3' && sameMarker);
   check('explicit manuscript pages guide candidate search without becoming unverified anchors', source.includes('explicit.concat(ranked.slice(0,8)') && !extractFunction('applyPdfReviewMatches').includes('explicit.forEach(function(page)') && extractFunction('applyPdfReviewMatches').includes('if(!range)return'));
   check('older merged-comment imports visibly ask for a replacement re-import', source.includes('extractorVersion:3') && source.includes('Word line-breaks merged into one comment'));
   check('legacy summary matches are suppressed until the source report is re-imported', source.includes('comment.legacyImport=!!legacyReviewReports') && source.includes("if(comment.legacyImport&&!comment.manualReviewLink){comment.anchored=false"));

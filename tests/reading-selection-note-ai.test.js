@@ -127,8 +127,38 @@ function check(name, condition, extra) {
   check('note is saved on the highlight', await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].textHighlights[0].note === 'This is the bridge between the data sources.'));
   check('AI thread appears after note text exists', await page.locator('#selectionNoteAi').isVisible());
 
+  await page.evaluate(() => {
+    window.__aiPrompts = [];
+    window.LanguageModel = {
+      availability: async () => 'available',
+      create: async () => ({
+        prompt: async (text) => {
+          window.__aiPrompts.push(text);
+          return 'No. It adds a **secondary criterion**, not the objective function itself.\n\n- The base objective \\(Z_{opt}\\) is already fixed\n- It minimizes the *L1-norm* of \\(\\sum_i |v_i|\\)';
+        },
+        destroy() {}
+      })
+    };
+  });
   await page.click('#selectionNoteAi');
   check('thread opens inside the note card', await page.locator('#selectionAiBox').isVisible());
+  await page.waitForFunction(() => document.querySelector('#selectionAiThread .ai-turn.rich'));
+  check('starting a thread asks the note itself', await page.evaluate(() => (window.__aiPrompts[0] || '').includes('This is the bridge between the data sources.')));
+  check('the note becomes the first turn of the thread', await page.locator('#selectionAiThread .ai-turn.you').first().textContent().then(text => text.includes('bridge between the data sources')));
+  check('the box stays empty for a follow-up instead of a retype', await page.locator('#selectionAiQuestion').inputValue() === '');
+  check('bold Markdown renders instead of printing stars', await page.locator('#selectionAiThread .ai-turn.rich strong').first().textContent().then(text => text === 'secondary criterion'));
+  check('italic Markdown renders too', await page.locator('#selectionAiThread .ai-turn.rich em').first().textContent().then(text => text === 'L1-norm'));
+  check('bullets render as a list', await page.locator('#selectionAiThread .ai-turn.rich li').count() === 2);
+  check('LaTeX renders as notation', await page.locator('#selectionAiThread .ai-math sub').first().textContent().then(text => text === 'opt') && await page.locator('#selectionAiThread .ai-math').first().textContent().then(text => text.startsWith('Z')));
+  check('no raw Markdown or TeX delimiters survive', await page.locator('#selectionAiThread').textContent().then(text => !text.includes('**') && !text.includes('\\(') && !text.includes('_{')));
+  check('a reply can never inject live markup', await page.locator('#selectionAiThread .ai-turn.rich').evaluate(turn => turn.querySelector('script') === null));
+
+  await page.click('#selectionAiNew');
+  await page.waitForFunction(() => window.__aiPrompts.length > 1);
+  check('New thread asks the note again rather than an empty box', await page.evaluate(() => (window.__aiPrompts[1] || '').includes('This is the bridge between the data sources.')));
+  await page.waitForFunction(() => document.querySelectorAll('#aiThreadPicker option').length === 3);
+  check('New thread keeps the earlier conversation alongside it', await page.locator('#aiThreadPicker option').count() === 3);
+  check('saved threads reach the library', await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].aiThreads.length === 2));
   check('saved note is visible inside its thread', await page.locator('#selectionAiNoteText').textContent().then(text => text === 'This is the bridge between the data sources.'));
   check('generic context banner is replaced by the note itself', !(await page.locator('#selectionContext').isVisible()));
   check('thread returns to the note', await page.locator('#selectionAiBack').textContent().then(text => text.includes('Note')));

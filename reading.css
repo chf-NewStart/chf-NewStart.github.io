@@ -1087,6 +1087,25 @@
     .ai-turn { max-width: 92%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 12px 12px 12px 3px; background: var(--paper); overflow-wrap: anywhere; white-space: pre-wrap; color: var(--ink); font: .78rem/1.5 var(--serif); }
     .ai-turn.you { justify-self: end; border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); border-radius: 12px 12px 3px 12px; background: var(--accent-soft); font-family: var(--sans); }
     .ai-turn.pending { color: var(--muted); font-style: italic; }
+    /* A rendered reply carries its own block structure, so pre-wrap would double every gap. */
+    .ai-turn.rich { white-space: normal; }
+    .ai-turn.rich > :first-child { margin-top: 0; }
+    .ai-turn.rich > :last-child { margin-bottom: 0; }
+    .ai-turn.rich p { margin: 0 0 .55em; }
+    .ai-turn.rich ul, .ai-turn.rich ol { margin: .45em 0; padding-left: 1.15em; }
+    .ai-turn.rich li { margin: .18em 0; }
+    .ai-turn.rich .ai-heading { margin: .6em 0 .3em; font: 700 .78rem/1.4 var(--sans); letter-spacing: .01em; }
+    .ai-turn.rich blockquote { margin: .5em 0; padding-left: .6em; border-left: 2px solid var(--line); color: var(--muted); }
+    .ai-turn.rich hr { margin: .7em 0; border: 0; border-top: 1px solid var(--line); }
+    .ai-turn.rich a { color: var(--blue); }
+    .ai-turn.rich code, .review-a.rich code { padding: .05em .3em; border-radius: 4px; background: color-mix(in srgb, var(--ink) 8%, transparent); font: .92em/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .ai-turn.rich .ai-code, .review-a.rich .ai-code { margin: .5em 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; background: color-mix(in srgb, var(--ink) 5%, transparent); font: .72rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+    .ai-math { font-family: var(--serif); font-style: italic; white-space: nowrap; }
+    .ai-math sub, .ai-math sup { font-size: .72em; font-style: normal; }
+    .ai-math.block { display: block; margin: .5em 0; text-align: center; white-space: normal; }
+    .review-a.rich { white-space: normal; }
+    .review-a.rich p { margin: 0 0 .55em; }
+    .review-a.rich ul, .review-a.rich ol { margin: .45em 0; padding-left: 1.15em; }
     .ai-thread-empty { padding: 11px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font: .72rem/1.45 var(--serif); }
     .evidence-list { display: grid; gap: 8px; margin-top: 14px; }
     .evidence-head { color: var(--muted); font-size: .68rem; line-height: 1.5; }

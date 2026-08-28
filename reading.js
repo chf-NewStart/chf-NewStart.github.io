@@ -62,6 +62,59 @@
   function uid(prefix){ return prefix + now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function esc(s){ return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function paras(text){ return String(text || '').split(/\n\s*\n/).map(function(p){ return p.trim(); }).filter(Boolean); }
+  /* Model replies arrive as light Markdown carrying TeX fragments (**bold**, - bullets, \(Z_{opt}\)).
+     The thread shows them as formatted prose instead of raw stars and backslashes. Every character is
+     escaped before a single tag is added, so a reply can only ever produce the small set of elements
+     built here — never live markup from the model or from the paper it quotes. */
+  var TEX_SYMBOLS={alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',varepsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',vartheta:'ϑ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',rho:'ρ',sigma:'σ',tau:'τ',upsilon:'υ',phi:'φ',varphi:'φ',chi:'χ',psi:'ψ',omega:'ω',Gamma:'Γ',Delta:'Δ',Theta:'Θ',Lambda:'Λ',Xi:'Ξ',Pi:'Π',Sigma:'Σ',Upsilon:'Υ',Phi:'Φ',Psi:'Ψ',Omega:'Ω',times:'×',cdot:'·',cdots:'⋯',ldots:'…',dots:'…',pm:'±',mp:'∓',leq:'≤',le:'≤',geq:'≥',ge:'≥',neq:'≠',ne:'≠',approx:'≈',equiv:'≡',sim:'∼',propto:'∝',ll:'≪',gg:'≫',infty:'∞',partial:'∂',nabla:'∇',sum:'∑',prod:'∏',int:'∫',in:'∈',notin:'∉',subset:'⊂',subseteq:'⊆',supset:'⊃',supseteq:'⊇',cup:'∪',cap:'∩',emptyset:'∅',forall:'∀',exists:'∃',neg:'¬',land:'∧',lor:'∨',to:'→',rightarrow:'→',longrightarrow:'⟶',leftarrow:'←',Rightarrow:'⇒',Leftrightarrow:'⇔',mapsto:'↦',circ:'∘',perp:'⊥',angle:'∠',prime:'′',ast:'*',vert:'|',Vert:'‖',lVert:'‖',rVert:'‖',langle:'⟨',rangle:'⟩',cong:'≅',because:'∵',therefore:'∴'};
+  function texScript(mark,body){var tag=mark==='^'?'sup':'sub';return '<'+tag+'>'+body+'</'+tag+'>';}
+  function texToHtml(source){
+    /* Backslash-escaped braces and scripts are parked as sentinels first, so the structural
+       passes below cannot mistake a literal { or _ for notation. */
+    var s=esc(source).replace(/\\\\/g,' ').replace(/\\&amp;/g,'&amp;').replace(/\\([%$#])/g,'$1').replace(/\\([{}_^])/g,function(match,ch){return '\u0002'+ch.charCodeAt(0)+'\u0002';});
+    s=s.replace(/\\(?:left|right|displaystyle|limits|nolimits|bigg?[lrm]?|Bigg?[lrm]?)\b/g,'').replace(/\\(?:quad|qquad)\b/g,' ').replace(/\\[,;:!]/g,' ');
+    s=s.replace(/\\(?:text|textrm|textbf|textit|mathrm|mathbf|mathit|mathsf|mathcal|mathbb|operatorname)\s*\{([^{}]*)\}/g,'$1');
+    s=s.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g,'($1)/($2)').replace(/\\sqrt\s*\{([^{}]*)\}/g,'√($1)');
+    s=s.replace(/\\([A-Za-z]+)/g,function(match,name){return TEX_SYMBOLS[name]||name;});
+    s=s.replace(/([_^])\{([^{}]*)\}/g,function(match,mark,body){return texScript(mark,body);}).replace(/([_^])([A-Za-z0-9])/g,function(match,mark,body){return texScript(mark,body);});
+    return s.replace(/[{}]/g,'').replace(/\u0002(\d+)\u0002/g,function(match,code){return String.fromCharCode(+code);}).trim();
+  }
+  function inlineMarkdown(line){
+    return String(line).replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/\*\*([^\n*]+)\*\*/g,'<strong>$1</strong>').replace(/__([^\n_]+)__/g,'<strong>$1</strong>')
+      .replace(/(^|[\s(])\*([^\n*]+)\*(?=$|[\s).,;:!?])/g,'$1<em>$2</em>')
+      .replace(/(^|[\s(])_([^\n_]+)_(?=$|[\s).,;:!?])/g,'$1<em>$2</em>');
+  }
+  function richText(text){
+    var kept=[],src=String(text||'').replace(/\r\n?/g,'\n');
+    function keep(html){kept.push(html);return '\u0000'+(kept.length-1)+'\u0000';}
+    src=src.replace(/```[A-Za-z0-9+#.-]*\n?([\s\S]*?)```/g,function(match,body){return keep('<pre class="ai-code">'+esc(body.replace(/\n$/,''))+'</pre>');});
+    src=src.replace(/`([^`\n]+)`/g,function(match,body){return keep('<code>'+esc(body)+'</code>');});
+    src=src.replace(/\$\$([\s\S]+?)\$\$/g,function(match,body){return keep('<span class="ai-math block">'+texToHtml(body)+'</span>');});
+    src=src.replace(/\\\[([\s\S]+?)\\\]/g,function(match,body){return keep('<span class="ai-math block">'+texToHtml(body)+'</span>');});
+    src=src.replace(/\\\(([\s\S]+?)\\\)/g,function(match,body){return keep('<span class="ai-math">'+texToHtml(body)+'</span>');});
+    /* A bare $ pair is only notation when it carries notation, which leaves prices alone. */
+    src=src.replace(/\$(?!\s)([^$\n]+?)\$/g,function(match,body){return /[\\_^{]/.test(body)?keep('<span class="ai-math">'+texToHtml(body)+'</span>'):match;});
+    var html='',list='',para=[];
+    function closePara(){if(para.length){html+='<p>'+para.map(function(line){return inlineMarkdown(line);}).join('<br>')+'</p>';para=[];}}
+    function closeList(){if(list){html+='</'+list+'>';list='';}}
+    esc(src).split('\n').forEach(function(raw){
+      var line=raw.trim(),match;
+      if(!line){closePara();closeList();return;}
+      if(/^(?:-{3,}|\*{3,}|_{3,})$/.test(line)){closePara();closeList();html+='<hr>';return;}
+      if((match=line.match(/^#{1,6}\s+(.+)$/))){closePara();closeList();html+='<h4 class="ai-heading">'+inlineMarkdown(match[1])+'</h4>';return;}
+      if((match=line.match(/^[-*+•]\s+(.+)$/))){closePara();if(list!=='ul'){closeList();html+='<ul>';list='ul';}html+='<li>'+inlineMarkdown(match[1])+'</li>';return;}
+      if((match=line.match(/^\d+[.)]\s+(.+)$/))){closePara();if(list!=='ol'){closeList();html+='<ol>';list='ol';}html+='<li>'+inlineMarkdown(match[1])+'</li>';return;}
+      if((match=line.match(/^&gt;\s*(.*)$/))){closePara();closeList();html+='<blockquote>'+inlineMarkdown(match[1])+'</blockquote>';return;}
+      closeList();para.push(line);
+    });
+    closePara();closeList();
+    return html.replace(/\u0000(\d+)\u0000/g,function(match,index){return kept[+index]||'';});
+  }
+  function aiTurnHtml(role,content){
+    var mine=role==='user';
+    return '<div class="ai-turn'+(mine?' you':' rich')+'">'+(mine?esc(content):richText(content))+'</div>';
+  }
   function defaultAiSettings(){
     var providers={};Object.keys(AI_PROVIDERS).forEach(function(id){providers[id]={key:'',model:AI_PROVIDERS[id].model||'',endpoint:AI_PROVIDERS[id].endpoint||''};});
     return{provider:'auto',providers:providers};
@@ -400,8 +453,9 @@
     if(!selection||!selection.text||!ownNote||!useSelectionForAi(selection,note,true))return;clearPendingSelection(true);
     var ch=find(currentId),savedText=String(aiContext&&aiContext.text||'').slice(0,16000),match=ch&&(ch.aiThreads||[]).find(function(thread){return thread.contextLabel===aiContext.label&&thread.contextText===savedText;});
     if(match){ch.activeAiThreadId=match.id;aiThreadDraft=false;}else aiThreadDraft=true;renderQa();
-    var card=byId('selectionCard');card.classList.remove('note-open');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');byId('selectionContext').classList.add('hidden');byId('selectionAiNoteText').textContent=ownNote;byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Your question will start a thread from this note.';renderSelectionAiThread();placeSelectionCard();
+    var card=byId('selectionCard');card.classList.remove('note-open');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');byId('selectionContext').classList.add('hidden');byId('selectionAiNoteText').textContent=ownNote;byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Asking your note…';renderSelectionAiThread();placeSelectionCard();
     requestAnimationFrame(function(){byId('selectionAiQuestion').focus({preventScroll:true});});
+    if(!match)askSelectionNote();
   }
 
   /* A selection stays on the paper while this small, source-labelled reference card
@@ -1050,7 +1104,7 @@
     if(!item){box.innerHTML='<div class="empty">Nothing to review right now. Highlights, notes and saved questions ripen into cards a day after you make them.</div>';return;}
     var where=esc(item.ch.title||'Untitled')+(item.page?' · p. '+item.page:'');
     var body=item.kind==='qa'
-      ?'<div class="review-q">'+esc(item.content)+'</div><button class="soft-button" id="reviewReveal" type="button">Show the saved answer</button><div class="review-a hidden" id="reviewAnswer">'+esc(item.answer)+'</div>'
+      ?'<div class="review-q">'+esc(item.content)+'</div><button class="soft-button" id="reviewReveal" type="button">Show the saved answer</button><div class="review-a rich hidden" id="reviewAnswer">'+richText(item.answer)+'</div>'
       :item.kind==='highlight'
       /* the quote IS the front of the card: recall why it mattered; a note the
          reader attached to the highlight becomes the hidden back to check against */
@@ -4702,7 +4756,7 @@
     ch.aiThreads=ch.aiThreads||[];ch.aiThreads.unshift(thread);ch.aiThreads=ch.aiThreads.slice(0,12);ch.activeAiThreadId=thread.id;aiThreadDraft=false;return thread;
   }
   function aiThreadMessages(ch,thread){
-    var system='You are a concise research reading partner in an ongoing conversation. Answer from the supplied excerpt and remember the earlier turns in this thread. Distinguish what the excerpt says from your inference. If context is insufficient, say so. Prefer short plain paragraphs or compact bullets; no headings or decorative markdown.';
+    var system='You are a concise research reading partner in an ongoing conversation. Answer from the supplied excerpt and remember the earlier turns in this thread. Distinguish what the excerpt says from your inference. If context is insufficient, say so. Prefer short plain paragraphs or compact bullets. Keep formatting light: **bold** only for the phrase that matters, "- " bullets, and inline LaTeX such as \\(Z_{opt}\\) only where real notation helps.';
     var context='Paper: '+(ch.title||'Untitled')+'\nReference context ('+(thread.contextLabel||'context')+'):\n'+String(thread.contextText||'').slice(0,16000),history=(thread.messages||[]).slice(-20).map(function(m){return {role:m.role,content:m.content};});
     if(history[0]&&history[0].role==='user')history[0].content=context+'\n\nQuestion: '+history[0].content;else history.unshift({role:'user',content:context});return [{role:'system',content:system}].concat(history);
   }
@@ -4710,15 +4764,21 @@
   function renderSelectionAiThread(pending){
     var ch=find(currentId),box=byId('selectionAiThread');if(!ch||!box)return;var thread=aiThreadDraft?null:activeAiThread(ch),html='';
     if(thread)html+='<div class="ai-thread-meta">'+esc(thread.contextLabel||'Passage thread')+' · '+new Date(thread.createdAt||thread.updatedAt||now()).toLocaleDateString()+'</div>';
-    (thread&&thread.messages||[]).forEach(function(message){html+='<div class="ai-turn'+(message.role==='user'?' you':'')+'">'+esc(message.content)+'</div>';});if(pending)html+='<div class="ai-turn pending">'+esc(pending)+'</div>';
+    (thread&&thread.messages||[]).forEach(function(message){html+=aiTurnHtml(message.role,message.content);});if(pending)html+='<div class="ai-turn pending">'+esc(pending)+'</div>';
     if(!html)html='<div class="ai-thread-empty">Ask a question, test your note, or keep thinking with the passage beside you.</div>';box.innerHTML=html;byId('selectionAiSend').textContent=thread&&thread.messages.length?'Reply':'Ask';
     requestAnimationFrame(function(){box.scrollTop=box.scrollHeight;placeSelectionCard();});
   }
   function showAiSetupStatus(targetId,message){
     var status=byId(targetId),button=document.createElement('button');status.textContent=(message||'Choose an AI provider in settings.')+' ';button.className='text-button';button.type='button';button.textContent='Open settings';button.onclick=function(){fillSettings();byId('settingsDialog').showModal();};status.appendChild(button);
   }
-  async function askSelectionAi(){
-    var ch=find(currentId),input=byId('selectionAiQuestion'),q=input.value.trim();if(!q||!ch||!aiContext||!aiContext.text)return;
+  /* Opening a thread on a note is itself the question: the note goes to the model as the
+     first turn instead of asking the reader to retype what they just wrote. */
+  function askSelectionNote(){
+    var note=String(byId('selectionAiNoteText').textContent||'').trim();if(!note)return false;
+    var input=byId('selectionAiQuestion');input.value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent='Asking your note…';askSelectionAi(note);return true;
+  }
+  async function askSelectionAi(preset){
+    var ch=find(currentId),input=byId('selectionAiQuestion'),q=String(preset||input.value).trim();if(!q||!ch||!aiContext||!aiContext.text)return;
     if(!hasAiRoute()){showAiSetupStatus('selectionAiStatus','On-device Gemini is not available here. Choose a cloud provider and add its key.');return;}
     var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch);created=true;}
     var sentAt=now();thread.messages.push({role:'user',content:q,at:sentAt});thread.updatedAt=sentAt;input.value='';growSelectionAiQuestion();renderSelectionAiThread('Thinking…');renderQa('Thinking…');
@@ -4729,13 +4789,13 @@
       ch.questions.unshift({id:uid('q'),threadId:thread.id,question:q,answer:result.text,provider:result.provider,contextLabel:thread.contextLabel,excerpt:thread.contextText.slice(0,1200),at:now()});ch.questions=ch.questions.slice(0,40);touch(ch);byId('selectionAiStatus').textContent='Saved in this note thread · '+result.provider+'.';setTaskProgress('selectionAiProgress',100);renderSelectionAiThread();renderQa();
     }catch(error){
       if(thread.messages[thread.messages.length-1]&&thread.messages[thread.messages.length-1].role==='user'&&thread.messages[thread.messages.length-1].content===q)thread.messages.pop();if(created&&!thread.messages.length){ch.aiThreads=ch.aiThreads.filter(function(item){return item.id!==thread.id;});ch.activeAiThreadId=ch.aiThreads[0]?ch.aiThreads[0].id:'';aiThreadDraft=true;}
-      input.value=q;growSelectionAiQuestion();setTaskProgress('selectionAiProgress',false);if(error&&error.aiSetup)showAiSetupStatus('selectionAiStatus',error.message);else byId('selectionAiStatus').textContent=error.message||'AI request failed';renderSelectionAiThread();renderQa();
+      if(!preset){input.value=q;growSelectionAiQuestion();}setTaskProgress('selectionAiProgress',false);if(error&&error.aiSetup)showAiSetupStatus('selectionAiStatus',error.message);else byId('selectionAiStatus').textContent=error.message||'AI request failed';renderSelectionAiThread();renderQa();
     }button.disabled=false;
   }
   byId('selectionAiQuestion').addEventListener('input',growSelectionAiQuestion);
   byId('selectionAiQuestion').onkeydown=function(event){if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();askSelectionAi();}};
-  byId('selectionAiSend').onclick=askSelectionAi;
-  byId('selectionAiNew').onclick=function(){aiThreadDraft=true;byId('selectionAiStatus').textContent='New thread from this note.';renderSelectionAiThread();byId('selectionAiQuestion').focus({preventScroll:true});};
+  byId('selectionAiSend').onclick=function(){askSelectionAi();};
+  byId('selectionAiNew').onclick=function(){aiThreadDraft=true;renderSelectionAiThread();if(!askSelectionNote())byId('selectionAiStatus').textContent='New thread — write a note first.';byId('selectionAiQuestion').focus({preventScroll:true});};
   byId('selectionAiBack').onclick=function(){byId('selectionCard').classList.remove('ai-open');byId('selectionCard').classList.add('note-open');byId('selectionAiBox').classList.add('hidden');byId('selectionContext').classList.add('hidden');byId('selectionEyebrow').textContent='Note on highlight';setSelectionAction('selectionAddNote');refreshSelectionNoteThread();placeSelectionCard();};
   async function askAi(){
     var ch=find(currentId),q=byId('aiQuestion').value.trim();if(!q)return;
@@ -4759,7 +4819,7 @@
     var ch=find(currentId),box=byId('qaList');if(!ch||!box)return;var threads=ch.aiThreads||[],thread=aiThreadDraft?null:activeAiThread(ch),row=byId('aiThreadPickerRow'),picker=byId('aiThreadPicker');
     row.classList.toggle('hidden',!threads.length);picker.innerHTML='';if(threads.length){var fresh=document.createElement('option');fresh.value='';fresh.textContent='New thread';picker.appendChild(fresh);threads.forEach(function(t){var option=document.createElement('option');option.value=t.id;option.textContent=aiThreadTitle(t);picker.appendChild(option);});picker.value=thread?thread.id:'';}
     var html='';if(thread)html+='<div class="ai-thread-meta">'+esc(thread.contextLabel||'Context')+' · '+new Date(thread.createdAt||thread.updatedAt||now()).toLocaleDateString()+'</div>';
-    (thread&&thread.messages||[]).forEach(function(m){html+='<div class="ai-turn'+(m.role==='user'?' you':'')+'">'+esc(m.content)+'</div>';});if(pending)html+='<div class="ai-turn pending">'+esc(pending)+'</div>';
+    (thread&&thread.messages||[]).forEach(function(m){html+=aiTurnHtml(m.role,m.content);});if(pending)html+='<div class="ai-turn pending">'+esc(pending)+'</div>';
     if(!html)html='<div class="ai-thread-empty">Start a question here. Your next messages will stay in the same conversation until you choose New thread.</div>';box.innerHTML=html;
     byId('aiAskBtn').textContent=thread&&thread.messages.length?'Reply':'Ask';byId('aiQuestion').placeholder=thread&&thread.messages.length?'Ask a follow-up…':'What does this mean?';
   }

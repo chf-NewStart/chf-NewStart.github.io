@@ -126,6 +126,7 @@ function check(name, condition, extra) {
   await page.fill('#selectionNote', 'This is the bridge between the data sources.');
   check('note is saved on the highlight', await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].textHighlights[0].note === 'This is the bridge between the data sources.'));
   check('AI thread appears after note text exists', await page.locator('#selectionNoteAi').isVisible());
+  check('a note with no thread yet offers to start one', await page.locator('#selectionNoteAi').textContent().then(text => text.includes('Start AI thread')));
 
   await page.evaluate(() => {
     window.__aiPrompts = [];
@@ -169,12 +170,14 @@ function check(name, condition, extra) {
   await page.click('#selectionAiBack');
   check('back restores the note editor', await page.locator('#selectionNote').isVisible());
   check('note survives the thread round trip', await page.locator('#selectionNote').inputValue().then(value => value.includes('bridge between')));
+  check('a note that already has a thread offers to open it', await page.locator('#selectionNoteAi').textContent().then(text => text.includes('Open AI thread')));
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.fill('#selectionNote', 'This is the bridge between the data sources. The second signal matters too.');
   await page.click('#selectionClose');
   await page.click('#textDocument mark[data-hl-id]');
   await page.waitForFunction(() => document.getElementById('selectionCard').classList.contains('note-open'));
+  check('reopening the highlight never re-offers a fresh thread', await page.locator('#selectionNoteAi').textContent().then(text => text.includes('Open AI thread')));
   await page.click('#selectionNoteAi');
   await page.waitForFunction(() => !document.getElementById('selectionAiBox').classList.contains('hidden'));
   check('reopening a note returns to its thread', await page.locator('#selectionAiStatus').textContent().then(text => text.includes('Thread reopened')));

@@ -14,8 +14,9 @@ device setup link even when GitHub sync is not configured.
 card: no immediate AI shortcut, automatic highlight support for a note, and an
 AI thread that appears only after the note contains text. It also covers the
 thread itself: opening one sends the note as the question with nothing to
-retype, reopening a note — even an edited one — returns to its own thread
-instead of starting another, and the reply renders its Markdown and LaTeX as
+retype, a note that already has a thread offers to open it rather than start
+one, reopening a note — even an edited one — returns to that thread instead of
+starting another, and the reply renders its Markdown and LaTeX as
 formatted prose rather than raw stars and backslashes.
 
 `reading-library-stack.test.js` covers the fixed category-highlighter rail and

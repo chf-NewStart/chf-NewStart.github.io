@@ -434,9 +434,18 @@
   /* A thread belongs to the highlight its note lives on, not to the wording of the context
      it started from: editing the note, or any nearby note, must still reopen that thread. */
   function selectionNoteRef(){var target=selectionNoteTarget;return target&&target.id?target.kind+':'+(target.page||'')+':'+target.id:'';}
+  /* Threads saved before the highlight was recorded on them are recognised by the passage
+     they quote, so an older conversation is offered as one to reopen rather than as a new one. */
+  function noteThreadFor(ch,noteRef,passage){
+    var threads=ch&&ch.aiThreads||[],quoted=passage?'“'+passage+'”':'';
+    return (noteRef&&threads.find(function(thread){return thread.noteRef===noteRef;}))||(quoted&&threads.find(function(thread){return !thread.noteRef&&String(thread.contextText||'').indexOf(quoted)>=0;}))||null;
+  }
   function refreshSelectionNoteThread(){
-    var note=String(selectionNoteTarget&&selectionNoteTarget.item&&selectionNoteTarget.item.note||'').trim(),card=byId('selectionCard');
-    byId('selectionNoteAi').classList.toggle('hidden',!note);if(!card.classList.contains('ai-open'))byId('selectionContext').classList.add('hidden');
+    var target=selectionNoteTarget,item=target&&target.item,note=String(item&&item.note||'').trim(),card=byId('selectionCard'),button=byId('selectionNoteAi');
+    button.classList.toggle('hidden',!note);
+    /* The label is the promise: a note that already has a thread reopens it, never restarts it. */
+    button.textContent=note&&noteThreadFor(find(currentId),selectionNoteRef(),String(item&&item.text||''))?'✦ Open AI thread':'✦ Start AI thread';
+    if(!card.classList.contains('ai-open'))byId('selectionContext').classList.add('hidden');
   }
   function setSelectionAction(id){document.querySelectorAll('#selectionCard .selection-action').forEach(function(button){var active=button.id===id;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});}
   function syncReviewLinkSelectionAction(selection){
@@ -454,8 +463,7 @@
   function openSelectionInAi(){
     var selection=pendingSelection||lastAskSelection,ownNote=String(selectionNoteTarget&&selectionNoteTarget.item&&selectionNoteTarget.item.note||'').trim(),note=notesForSelection(selection);
     if(!selection||!selection.text||!ownNote||!useSelectionForAi(selection,note,true))return;clearPendingSelection(true);
-    var ch=find(currentId),savedText=String(aiContext&&aiContext.text||'').slice(0,16000),noteRef=selectionNoteRef(),threads=ch&&ch.aiThreads||[];
-    var match=noteRef&&threads.find(function(thread){return thread.noteRef===noteRef;})||threads.find(function(thread){return !thread.noteRef&&thread.contextLabel===aiContext.label&&thread.contextText===savedText;});
+    var ch=find(currentId),noteRef=selectionNoteRef(),match=noteThreadFor(ch,noteRef,selection.text||'');
     if(match){if(noteRef&&!match.noteRef)match.noteRef=noteRef;ch.activeAiThreadId=match.id;aiThreadDraft=false;persist(false);}else aiThreadDraft=true;renderQa();
     var card=byId('selectionCard');card.classList.remove('note-open');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');byId('selectionContext').classList.add('hidden');byId('selectionAiNoteText').textContent=ownNote;byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Asking your note…';renderSelectionAiThread();placeSelectionCard();
     requestAnimationFrame(function(){byId('selectionAiQuestion').focus({preventScroll:true});});

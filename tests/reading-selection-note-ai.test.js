@@ -170,6 +170,18 @@ function check(name, condition, extra) {
   check('back restores the note editor', await page.locator('#selectionNote').isVisible());
   check('note survives the thread round trip', await page.locator('#selectionNote').inputValue().then(value => value.includes('bridge between')));
 
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.fill('#selectionNote', 'This is the bridge between the data sources. The second signal matters too.');
+  await page.click('#selectionClose');
+  await page.click('#textDocument mark[data-hl-id]');
+  await page.waitForFunction(() => document.getElementById('selectionCard').classList.contains('note-open'));
+  await page.click('#selectionNoteAi');
+  await page.waitForFunction(() => !document.getElementById('selectionAiBox').classList.contains('hidden'));
+  check('reopening a note returns to its thread', await page.locator('#selectionAiStatus').textContent().then(text => text.includes('Thread reopened')));
+  check('reopening an edited note never re-asks the model', await page.evaluate(() => window.__aiPrompts.length === 2));
+  check('the reopened thread still holds its earlier turns', await page.locator('#selectionAiThread .ai-turn').count() === 2);
+  check('reopening starts no extra thread', await page.locator('#aiThreadPicker option').count() === 3);
+
   check('note-first flow has no page errors', errors.length === 0, errors.join('; '));
   await browser.close();
   server.close();

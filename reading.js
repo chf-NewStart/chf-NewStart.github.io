@@ -431,6 +431,9 @@
     add('Paper note',(ch.pageNotes||{}).document);return parts;
   }
   function notesForSelection(selection){return relatedNotesForSelection(selection).map(function(note){return note.label+':\n'+note.value;}).join('\n\n');}
+  /* A thread belongs to the highlight its note lives on, not to the wording of the context
+     it started from: editing the note, or any nearby note, must still reopen that thread. */
+  function selectionNoteRef(){var target=selectionNoteTarget;return target&&target.id?target.kind+':'+(target.page||'')+':'+target.id:'';}
   function refreshSelectionNoteThread(){
     var note=String(selectionNoteTarget&&selectionNoteTarget.item&&selectionNoteTarget.item.note||'').trim(),card=byId('selectionCard');
     byId('selectionNoteAi').classList.toggle('hidden',!note);if(!card.classList.contains('ai-open'))byId('selectionContext').classList.add('hidden');
@@ -451,8 +454,9 @@
   function openSelectionInAi(){
     var selection=pendingSelection||lastAskSelection,ownNote=String(selectionNoteTarget&&selectionNoteTarget.item&&selectionNoteTarget.item.note||'').trim(),note=notesForSelection(selection);
     if(!selection||!selection.text||!ownNote||!useSelectionForAi(selection,note,true))return;clearPendingSelection(true);
-    var ch=find(currentId),savedText=String(aiContext&&aiContext.text||'').slice(0,16000),match=ch&&(ch.aiThreads||[]).find(function(thread){return thread.contextLabel===aiContext.label&&thread.contextText===savedText;});
-    if(match){ch.activeAiThreadId=match.id;aiThreadDraft=false;}else aiThreadDraft=true;renderQa();
+    var ch=find(currentId),savedText=String(aiContext&&aiContext.text||'').slice(0,16000),noteRef=selectionNoteRef(),threads=ch&&ch.aiThreads||[];
+    var match=noteRef&&threads.find(function(thread){return thread.noteRef===noteRef;})||threads.find(function(thread){return !thread.noteRef&&thread.contextLabel===aiContext.label&&thread.contextText===savedText;});
+    if(match){if(noteRef&&!match.noteRef)match.noteRef=noteRef;ch.activeAiThreadId=match.id;aiThreadDraft=false;persist(false);}else aiThreadDraft=true;renderQa();
     var card=byId('selectionCard');card.classList.remove('note-open');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');byId('selectionContext').classList.add('hidden');byId('selectionAiNoteText').textContent=ownNote;byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Asking your note…';renderSelectionAiThread();placeSelectionCard();
     requestAnimationFrame(function(){byId('selectionAiQuestion').focus({preventScroll:true});});
     if(!match)askSelectionNote();
@@ -4751,8 +4755,9 @@
     };
   });
   function aiThreadTitle(thread){var first=(thread.messages||[]).find(function(m){return m.role==='user'&&m.content;});var title=String(first&&first.content||thread.contextLabel||'New thread').replace(/\s+/g,' ').trim();return title.length>54?title.slice(0,51)+'…':title;}
-  function newAiThread(ch){
+  function newAiThread(ch,noteRef){
     var thread={id:uid('thread'),contextLabel:aiContext.label||'Context',contextText:String(aiContext.text||'').slice(0,16000),messages:[],createdAt:now(),updatedAt:now()};
+    if(noteRef)thread.noteRef=noteRef;
     ch.aiThreads=ch.aiThreads||[];ch.aiThreads.unshift(thread);ch.aiThreads=ch.aiThreads.slice(0,12);ch.activeAiThreadId=thread.id;aiThreadDraft=false;return thread;
   }
   function aiThreadMessages(ch,thread){
@@ -4780,7 +4785,7 @@
   async function askSelectionAi(preset){
     var ch=find(currentId),input=byId('selectionAiQuestion'),q=String(preset||input.value).trim();if(!q||!ch||!aiContext||!aiContext.text)return;
     if(!hasAiRoute()){showAiSetupStatus('selectionAiStatus','On-device Gemini is not available here. Choose a cloud provider and add its key.');return;}
-    var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch);created=true;}
+    var thread=aiThreadDraft?null:activeAiThread(ch),created=false;if(!thread){thread=newAiThread(ch,selectionNoteRef());created=true;}
     var sentAt=now();thread.messages.push({role:'user',content:q,at:sentAt});thread.updatedAt=sentAt;input.value='';growSelectionAiQuestion();renderSelectionAiThread('Thinking…');renderQa('Thinking…');
     var button=byId('selectionAiSend');button.disabled=true;byId('selectionAiStatus').textContent='Thinking…';setTaskProgress('selectionAiProgress',null);
     try{

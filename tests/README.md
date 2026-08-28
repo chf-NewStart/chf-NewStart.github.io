@@ -13,9 +13,10 @@ device setup link even when GitHub sync is not configured.
 `reading-selection-note-ai.test.js` covers the compact, note-first selection
 card: no immediate AI shortcut, automatic highlight support for a note, and an
 AI thread that appears only after the note contains text. It also covers the
-thread itself: opening or restarting one sends the note as the question with
-nothing to retype, and the reply renders its Markdown and LaTeX as formatted
-prose rather than raw stars and backslashes.
+thread itself: opening one sends the note as the question with nothing to
+retype, reopening a note — even an edited one — returns to its own thread
+instead of starting another, and the reply renders its Markdown and LaTeX as
+formatted prose rather than raw stars and backslashes.
 
 `reading-library-stack.test.js` covers the fixed category-highlighter rail and
 soft reading wall: the two-column handwritten sticky grid, category

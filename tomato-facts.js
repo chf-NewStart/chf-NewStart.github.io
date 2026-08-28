@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "EARTH",
+            title: "The Sahara fertilizes the Amazon",
+            fact: "Satellites tracking dust plumes show tens of millions of tonnes of Saharan dust crossing the Atlantic every year — and the phosphorus riding along helps replenish what Amazon rains keep washing out of the soil.",
+            detail: "Much of the richest dust comes from the Bodélé Depression in Chad, an ancient dried lakebed of ground-up mineral sediment. One continent’s dead lake feeds another continent’s rainforest."
+        },
+        {
             tag: "RECORDS",
             title: "The biggest tree weighs more than a fleet of blue whales",
             fact: "General Sherman, a giant sequoia in California, is the largest single-stemmed tree on Earth by volume — a trunk of roughly 1,500 cubic meters, still adding wood every year after some 2,000+ years.",

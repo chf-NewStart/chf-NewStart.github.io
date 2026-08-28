@@ -1,14 +1,6 @@
 [
   {
     "fact": {
-      "tag": "EARTH",
-      "title": "The Sahara fertilizes the Amazon",
-      "fact": "Satellites tracking dust plumes show tens of millions of tonnes of Saharan dust crossing the Atlantic every year — and the phosphorus riding along helps replenish what Amazon rains keep washing out of the soil.",
-      "detail": "Much of the richest dust comes from the Bodélé Depression in Chad, an ancient dried lakebed of ground-up mineral sediment. One continent’s dead lake feeds another continent’s rainforest."
-    }
-  },
-  {
-    "fact": {
       "tag": "BOTANY",
       "title": "Bananas curve because they grow against gravity",
       "fact": "Banana fruit start out pointing down, then bend upward as they grow, reaching for light past the plant’s huge leaves. The curve is negative gravitropism — growth steered against gravity — frozen into the fruit’s shape.",

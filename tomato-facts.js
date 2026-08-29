@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "BOTANY",
+            title: "Bananas curve because they grow against gravity",
+            fact: "Banana fruit start out pointing down, then bend upward as they grow, reaching for light past the plant’s huge leaves. The curve is negative gravitropism — growth steered against gravity — frozen into the fruit’s shape.",
+            detail: "The whole hand of bananas does it together, which is why they fan upward around the stalk. Straight bananas mostly mean the fruit grew unobstructed toward light from the start."
+        },
+        {
             tag: "EARTH",
             title: "The Sahara fertilizes the Amazon",
             fact: "Satellites tracking dust plumes show tens of millions of tonnes of Saharan dust crossing the Atlantic every year — and the phosphorus riding along helps replenish what Amazon rains keep washing out of the soil.",
@@ -574,6 +580,7 @@
     // matched automatically. The daily fact-hunter job adds entries here
     // whenever a new fact introduces a strange word.
     const GLOSSARY = {
+        "gravitropism": "growth steered by gravity — roots grow with it, shoots against it",
         "chitin": "the tough material that builds fungal cell walls and insect shells",
         "aril": "a fleshy extra coat that grows around some seeds",
         "corm": "a swollen underground stem base a plant regrows from, like a bulb",

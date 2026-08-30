@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "BOTANY",
+            title: "A sunflower is hundreds of flowers in a trench coat",
+            fact: "The big “flower” is an inflorescence: the outer petals are individual ray florets, and the dark center is packed with hundreds of tiny disc florets, each one a complete flower that becomes a single seed.",
+            detail: "The florets are laid down in interlocking spirals whose counts land on Fibonacci numbers — commonly 34 and 55, or 55 and 89 — the packing pattern that fits the most florets into the disc."
+        },
+        {
+            tag: "BOTANY",
             title: "Bananas curve because they grow against gravity",
             fact: "Banana fruit start out pointing down, then bend upward as they grow, reaching for light past the plant’s huge leaves. The curve is negative gravitropism — growth steered against gravity — frozen into the fruit’s shape.",
             detail: "The whole hand of bananas does it together, which is why they fan upward around the stalk. Straight bananas mostly mean the fruit grew unobstructed toward light from the start."
@@ -580,6 +586,8 @@
     // matched automatically. The daily fact-hunter job adds entries here
     // whenever a new fact introduces a strange word.
     const GLOSSARY = {
+        "inflorescence": "a cluster of flowers arranged on one stem, acting as a unit",
+        "floret": "one tiny complete flower inside a larger composite flower head",
         "gravitropism": "growth steered by gravity — roots grow with it, shoots against it",
         "chitin": "the tough material that builds fungal cell walls and insect shells",
         "aril": "a fleshy extra coat that grows around some seeds",

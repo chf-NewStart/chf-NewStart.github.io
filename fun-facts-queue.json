@@ -1,18 +1,6 @@
 [
   {
     "fact": {
-      "tag": "BOTANY",
-      "title": "A sunflower is hundreds of flowers in a trench coat",
-      "fact": "The big “flower” is an inflorescence: the outer petals are individual ray florets, and the dark center is packed with hundreds of tiny disc florets, each one a complete flower that becomes a single seed.",
-      "detail": "The florets are laid down in interlocking spirals whose counts land on Fibonacci numbers — commonly 34 and 55, or 55 and 89 — the packing pattern that fits the most florets into the disc."
-    },
-    "glossary": {
-      "floret": "one tiny complete flower inside a larger composite flower head",
-      "inflorescence": "a cluster of flowers arranged on one stem, acting as a unit"
-    }
-  },
-  {
-    "fact": {
       "tag": "MATH · BOTANY",
       "title": "Romanesco is a vegetable-shaped fractal",
       "fact": "Romanesco’s spiraling cones repeat themselves at smaller and smaller scales — a natural fractal you can buy at a market. It’s a cultivar of the same species as broccoli and cauliflower, Brassica oleracea.",

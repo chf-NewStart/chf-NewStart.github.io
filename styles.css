@@ -907,6 +907,12 @@ footer {
     max-width: 470px;
     justify-self: end;
     padding: 0 0 8px 34px;
+    /* Keep the falling arcade sprites in the hero, but give the project index
+       a quiet reading plate so a glider can never land behind its copy. */
+    background: linear-gradient(90deg, #030c08, #040f0b 72%, #06110d);
+    box-shadow: -18px 0 34px rgba(3, 8, 6, 0.28);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
 }
 
 .launchpad-status {
@@ -922,8 +928,59 @@ footer {
 }
 
 .launchpad-link {
+    --launchpad-arrow-bg: transparent;
+    --launchpad-arrow-border: transparent;
+    --launchpad-arrow-color: var(--accent);
+    --launchpad-cursor-animation: none;
+    --launchpad-cursor-opacity: 0;
+    --launchpad-fill-opacity: 0;
+    --launchpad-reveal: 100%;
+    position: relative;
+    overflow: hidden;
     color: inherit;
     text-decoration: none;
+    isolation: isolate;
+}
+
+/* A contained terminal-selection effect replaces loose pixels around the
+   labels. The permanent inner gutter leaves the cursor room to blink without
+   ever sitting on top of a letter. */
+.launchpad-link::before,
+.launchpad-link::after {
+    position: absolute;
+    pointer-events: none;
+    content: '';
+}
+
+.launchpad-link::before {
+    inset: 0;
+    z-index: 0;
+    opacity: var(--launchpad-fill-opacity);
+    background:
+        repeating-linear-gradient(0deg, rgba(118, 247, 165, 0.035) 0 1px, transparent 1px 4px),
+        linear-gradient(90deg, rgba(9, 31, 20, 0.98), rgba(4, 16, 11, 0.97) 78%, rgba(4, 13, 10, 0.95));
+    box-shadow: inset 3px 0 0 var(--accent), inset 0 0 24px rgba(118, 247, 165, 0.055);
+    clip-path: inset(0 var(--launchpad-reveal) 0 0);
+    transition: clip-path 220ms steps(6, end), opacity 100ms ease;
+}
+
+.launchpad-link::after {
+    top: 50%;
+    left: 7px;
+    z-index: 2;
+    width: 2px;
+    height: 18px;
+    opacity: var(--launchpad-cursor-opacity);
+    background: var(--accent);
+    box-shadow: 0 0 5px rgba(118, 247, 165, 0.65);
+    transform: translateY(-50%);
+    animation: var(--launchpad-cursor-animation);
+}
+
+.launchpad-link > *,
+.launchpad-card-top > * {
+    position: relative;
+    z-index: 1;
 }
 
 .launchpad-feature {
@@ -931,10 +988,9 @@ footer {
     position: relative;
     z-index: 1;
     gap: 13px;
-    padding: 28px 0 30px;
+    padding: 28px 18px 30px;
     border-bottom: 1px solid var(--line);
     background: transparent;
-    transition: background 180ms ease;
 }
 
 .launchpad-feature-meta,
@@ -956,9 +1012,16 @@ footer {
 
 .launchpad-feature-meta i,
 .launchpad-card-top i {
-    color: var(--accent);
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 1px solid var(--launchpad-arrow-border);
+    color: var(--launchpad-arrow-color);
+    background: var(--launchpad-arrow-bg);
     font-style: normal;
-    transition: transform 180ms ease;
+    box-shadow: 3px 3px 0 rgba(118, 247, 165, 0);
+    transition: color 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease, transform 180ms ease;
 }
 
 .launchpad-title-row {
@@ -1012,11 +1075,10 @@ footer {
     align-content: center;
     column-gap: 14px;
     row-gap: 5px;
-    padding: 16px 0;
+    padding: 16px 18px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
     background: transparent;
-    transition: background 180ms ease;
 }
 
 .launchpad-card:nth-child(even) {
@@ -1063,20 +1125,47 @@ footer {
     line-height: 1.45;
 }
 
-.launchpad-feature:hover,
-.launchpad-feature:focus-visible,
-.launchpad-card:hover,
-.launchpad-card:focus-visible {
-    background: linear-gradient(90deg, rgba(118, 247, 165, 0.08), transparent 72%);
+.launchpad-link:focus-visible {
+    --launchpad-arrow-bg: var(--accent);
+    --launchpad-arrow-border: var(--accent);
+    --launchpad-arrow-color: var(--bg-deep);
+    --launchpad-cursor-animation: launchpadCursor 820ms steps(2, end) infinite;
+    --launchpad-cursor-opacity: 0.9;
+    --launchpad-fill-opacity: 1;
+    --launchpad-reveal: 0%;
+}
+
+.launchpad-link:focus-visible::before {
+    box-shadow:
+        inset 3px 0 0 var(--accent),
+        inset 0 0 0 2px var(--accent),
+        inset 0 0 24px rgba(118, 247, 165, 0.055);
 }
 
 .hero-launchpad .launchpad-link:focus-visible {
-    outline-offset: 4px;
+    outline-offset: -3px;
 }
 
-.launchpad-link:hover i,
 .launchpad-link:focus-visible i {
-    transform: translateX(3px);
+    box-shadow: 3px 3px 0 rgba(118, 247, 165, 0.16);
+    transform: translateX(2px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .launchpad-link:hover {
+        --launchpad-arrow-bg: var(--accent);
+        --launchpad-arrow-border: var(--accent);
+        --launchpad-arrow-color: var(--bg-deep);
+        --launchpad-cursor-animation: launchpadCursor 820ms steps(2, end) infinite;
+        --launchpad-cursor-opacity: 0.9;
+        --launchpad-fill-opacity: 1;
+        --launchpad-reveal: 0%;
+    }
+
+    .launchpad-link:hover i {
+        box-shadow: 3px 3px 0 rgba(118, 247, 165, 0.16);
+        transform: translateX(2px);
+    }
 }
 
 .scroll-cue {
@@ -2512,9 +2601,12 @@ iframe {
     transition: border-color 180ms ease, transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
 }
 
-.gc-card:nth-last-child(2),
-.gc-card:last-child {
+.gc-project-card {
     grid-column: span 3;
+    border-color: rgba(118, 247, 165, 0.2);
+    background:
+        radial-gradient(circle at 10% 0%, rgba(118, 247, 165, 0.055), transparent 20rem),
+        linear-gradient(145deg, rgba(14, 30, 24, 0.9), rgba(5, 13, 10, 0.94));
 }
 
 .gc-featured {
@@ -2545,19 +2637,12 @@ iframe {
     box-shadow: 0 18px 54px rgba(85, 227, 255, 0.13);
 }
 
-/* A row of its own under the flagship. Taking a whole row rather than half of
-   one keeps every other row exactly full: the three that follow still span 2,
-   and the last two still span 3. */
-.gc-gomoku-card {
-    grid-column: 1 / -1;
-}
-
-.gc-gomoku-card:hover {
-    box-shadow: 0 18px 44px rgba(168, 120, 210, 0.12);
+.gc-qi-card:hover {
+    box-shadow: 0 18px 44px rgba(118, 247, 165, 0.1);
 }
 
 .gc-reading-card:hover {
-    box-shadow: 0 18px 44px rgba(69, 215, 186, 0.1);
+    box-shadow: 0 18px 44px rgba(118, 247, 165, 0.1);
 }
 
 .gc-journal-card:hover {
@@ -2596,6 +2681,21 @@ iframe {
     pointer-events: none;
     content: '';
     background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.16) 4px);
+}
+
+/* Product screenshots should read as real interfaces, not CRT footage. Give
+   the paired cards a shared green frame and edge vignette while reserving the
+   scanline treatment above for the arcade artwork. */
+.gc-project-card .gc-visual {
+    border-bottom-color: rgba(118, 247, 165, 0.2);
+    background: #06100c;
+}
+
+.gc-project-card .gc-visual::after {
+    background:
+        linear-gradient(180deg, rgba(3, 8, 6, 0.02), transparent 58%, rgba(3, 8, 6, 0.3)),
+        linear-gradient(90deg, rgba(3, 8, 6, 0.24), transparent 12%, transparent 88%, rgba(3, 8, 6, 0.24));
+    box-shadow: inset 0 0 0 1px rgba(118, 247, 165, 0.08);
 }
 
 .gc-life-visual {
@@ -2747,29 +2847,109 @@ iframe {
     to { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
 }
 
-.gc-gomoku-visual {
-    height: 260px;
-    background: #07060d;
+.gc-qi-visual,
+.gc-phloem-visual {
+    height: 210px;
 }
 
-/* Anchored left, not centred: as the card narrows, cover eats the right-hand
-   side first, and the guru and what he is shouting are what must survive. */
-.gc-gomoku-visual img {
+.gc-qi-visual {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    background: #06100c;
+}
+
+.gc-qi-gomoku,
+.gc-qi-go {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.gc-qi-gomoku::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    background: linear-gradient(90deg, transparent 58%, rgba(4, 16, 11, 0.78));
+}
+
+.gc-qi-gomoku img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: left top;
-    filter: saturate(0.95) brightness(0.92);
+    object-position: left center;
+    filter: grayscale(0.34) saturate(0.72) brightness(0.82) contrast(1.08);
     transition: filter 220ms ease, transform 500ms ease;
 }
 
-.gc-gomoku-card:hover .gc-gomoku-visual img {
-    filter: saturate(1.1) brightness(1.03);
+.gc-qi-card:hover .gc-qi-gomoku img {
+    filter: grayscale(0.18) saturate(0.86) brightness(0.94) contrast(1.06);
     transform: scale(1.012);
 }
 
-.gc-gomoku-card .gc-icon {
-    color: #b388f0;
+.gc-qi-go {
+    border-left: 1px solid rgba(118, 247, 165, 0.18);
+    background:
+        radial-gradient(circle at 26% 31%, #050706 0 8px, #314039 9px, transparent 10px),
+        radial-gradient(circle at 67% 27%, #f5f1e5 0 8px, #aaa99f 9px, transparent 10px),
+        radial-gradient(circle at 42% 61%, #f5f1e5 0 8px, #aaa99f 9px, transparent 10px),
+        radial-gradient(circle at 74% 70%, #050706 0 8px, #314039 9px, transparent 10px),
+        linear-gradient(rgba(118, 247, 165, 0.17) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(118, 247, 165, 0.17) 1px, transparent 1px),
+        radial-gradient(circle at 50% 44%, rgba(118, 247, 165, 0.1), transparent 72%),
+        #0a1c14;
+    background-size: auto, auto, auto, auto, 24px 24px, 24px 24px, auto, auto;
+    transition: filter 220ms ease;
+}
+
+.gc-qi-card:hover .gc-qi-go {
+    filter: brightness(1.12) saturate(1.08);
+}
+
+.gc-qi-mark,
+.gc-qi-games {
+    position: absolute;
+    z-index: 1;
+    font-family: var(--mono);
+}
+
+.gc-qi-mark {
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: rgba(237, 247, 241, 0.88);
+    font-size: clamp(2.8rem, 5.8vw, 4.9rem);
+    line-height: 1;
+    text-shadow: 0 0 26px rgba(118, 247, 165, 0.22), 0 2px 0 #06100c;
+}
+
+.gc-qi-games {
+    right: 12px;
+    bottom: 11px;
+    color: rgba(118, 247, 165, 0.66);
+    font-size: 0.54rem;
+    letter-spacing: 0.1em;
+}
+
+.gc-phloem-visual {
+    background: #06100c;
+}
+
+.gc-phloem-visual img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    filter: saturate(0.76) brightness(0.86) contrast(1.05);
+    transition: filter 220ms ease, transform 500ms ease;
+}
+
+.gc-reading-card:hover .gc-phloem-visual img {
+    filter: saturate(0.92) brightness(0.96) contrast(1.03);
+    transform: scale(1.012);
+}
+
+.gc-qi-card .gc-icon {
+    color: var(--accent);
 }
 
 .gc-visual-badge {
@@ -2783,15 +2963,25 @@ iframe {
     background: rgba(3, 10, 7, 0.84);
     font-size: 0.58rem;
     letter-spacing: 0.08em;
-}.gc-reading-card .gc-icon {
-    color: #45d7ba;
-}.gc-journal-card .gc-icon {
+}
+
+.gc-reading-card .gc-icon {
+    color: var(--accent);
+}
+
+.gc-journal-card .gc-icon {
     color: #a98fff;
-}.gc-finance-card .gc-icon {
+}
+
+.gc-finance-card .gc-icon {
     color: #efb74d;
-}.gc-message-card .gc-icon {
+}
+
+.gc-message-card .gc-icon {
     color: #4dbef0;
-}.gc-attachment-card .gc-icon {
+}
+
+.gc-attachment-card .gc-icon {
     color: #ef6fa6;
 }
 
@@ -3064,7 +3254,8 @@ textarea {
 .tomato-rain {
     position: absolute;
     inset: 0;
-    z-index: 3;
+    /* Above the background veil, below the hero copy and project launcher. */
+    z-index: 1;
     overflow: hidden;
     pointer-events: none;
     /* Keep the bodies' churn from invalidating layout or paint outside the
@@ -3118,6 +3309,10 @@ textarea {
 
 @keyframes statusPulse {
     50% { opacity: 0.45; transform: scale(0.8); }
+}
+
+@keyframes launchpadCursor {
+    50% { opacity: 0.34; }
 }
 
 @keyframes panelIn {
@@ -3238,8 +3433,7 @@ textarea {
     }
 
     .gc-card,
-    .gc-card:nth-last-child(2),
-    .gc-card:last-child {
+    .gc-project-card {
         grid-column: span 1;
     }
 
@@ -3393,12 +3587,12 @@ textarea {
     }
 
     .launchpad-feature {
-        padding: 16px 0;
+        padding: 16px 18px;
     }
 
     .launchpad-card {
         min-height: 76px;
-        padding: 12px 0;
+        padding: 12px 18px;
     }
 }
 
@@ -3420,13 +3614,16 @@ textarea {
         overflow-y: hidden;
         overscroll-behavior-inline: contain;
         scroll-snap-type: x mandatory;
-        scrollbar-width: thin;
+        scrollbar-width: none;
+    }
+
+    .arcade-grid::-webkit-scrollbar {
+        display: none;
     }
 
     .gc-card,
     .gc-featured,
-    .gc-card:nth-last-child(2),
-    .gc-card:last-child {
+    .gc-project-card {
         min-width: 0;
         flex: 0 0 calc(100% - 18px);
         grid-column: auto;
@@ -3733,10 +3930,9 @@ textarea {
         justify-content: center;
     }
 
-    /* On a phone the card is a swipe pane, so the banner loses most of its
-       width to cover — shorter here, or it crops down to just his hat. */
-    .gc-gomoku-visual {
-        height: 150px;
+    .gc-qi-visual,
+    .gc-phloem-visual {
+        height: 140px;
     }
 
     .contact-links li {

@@ -97,8 +97,15 @@ def render(duration: float) -> np.ndarray:
         (67, 64, 60),
     ]
 
+    # The ten bars are a loop, not the whole piece: cycle them until the score
+    # covers the cut. Rendering exactly once left anything longer than ~34s
+    # silent for the remainder, which is how the 91s demo ended up scored for
+    # only its first third.
     bar_duration = 4 * BEAT
-    for bar, ((root, chord), phrase) in enumerate(zip(progression, melody)):
+    bar_count = max(len(progression), math.ceil(duration / bar_duration))
+    for bar in range(bar_count):
+        root, chord = progression[bar % len(progression)]
+        phrase = melody[bar % len(melody)]
         bar_start = bar * bar_duration
         add_piano(left, right, root, bar_start, 3.25, 0.24, -0.08)
         add_piano(left, right, root + 12, bar_start + 2 * BEAT, 2.2, 0.10, 0.10)

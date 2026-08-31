@@ -16,6 +16,13 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "MATH · BOTANY",
+            title: "Romanesco is a vegetable-shaped fractal",
+            fact: "Romanesco’s spiraling cones repeat themselves at smaller and smaller scales — a natural fractal you can buy at a market. It’s a cultivar of the same species as broccoli and cauliflower, Brassica oleracea.",
+            detail: "Researchers modeling its genetics showed the spirals come from buds that try to become flowers, fail, and instead spawn more bud-making shoots — a growth program stuck in a loop, printing cones of cones of cones.",
+            source: "Azpeitia et al., Science (2021)"
+        },
+        {
             tag: "BOTANY",
             title: "A sunflower is hundreds of flowers in a trench coat",
             fact: "The big “flower” is an inflorescence: the outer petals are individual ray florets, and the dark center is packed with hundreds of tiny disc florets, each one a complete flower that becomes a single seed.",
@@ -586,6 +593,7 @@
     // matched automatically. The daily fact-hunter job adds entries here
     // whenever a new fact introduces a strange word.
     const GLOSSARY = {
+        "fractal": "a shape whose parts repeat the whole pattern at smaller and smaller scales",
         "inflorescence": "a cluster of flowers arranged on one stem, acting as a unit",
         "floret": "one tiny complete flower inside a larger composite flower head",
         "gravitropism": "growth steered by gravity — roots grow with it, shoots against it",

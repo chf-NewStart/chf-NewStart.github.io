@@ -1,18 +1,6 @@
 [
   {
     "fact": {
-      "tag": "MATH · BOTANY",
-      "title": "Romanesco is a vegetable-shaped fractal",
-      "fact": "Romanesco’s spiraling cones repeat themselves at smaller and smaller scales — a natural fractal you can buy at a market. It’s a cultivar of the same species as broccoli and cauliflower, Brassica oleracea.",
-      "detail": "Researchers modeling its genetics showed the spirals come from buds that try to become flowers, fail, and instead spawn more bud-making shoots — a growth program stuck in a loop, printing cones of cones of cones.",
-      "source": "Azpeitia et al., Science (2021)"
-    },
-    "glossary": {
-      "fractal": "a shape whose parts repeat the whole pattern at smaller and smaller scales"
-    }
-  },
-  {
-    "fact": {
       "tag": "RECORDS",
       "title": "A 400-year-old grapevine still produces a harvest",
       "fact": "The Old Vine in Maribor, Slovenia, has been growing against the same house for more than four centuries — through sieges, fires, and phylloxera — and its grapes are still picked each year at a city festival.",

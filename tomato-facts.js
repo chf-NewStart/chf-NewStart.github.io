@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "RECORDS",
+            title: "A 400-year-old grapevine still produces a harvest",
+            fact: "The Old Vine in Maribor, Slovenia, has been growing against the same house for more than four centuries — through sieges, fires, and phylloxera — and its grapes are still picked each year at a city festival.",
+            detail: "The wine, a dark local variety, is bottled in tiny amounts and given as a protocol gift. Guinness certifies it as the world’s oldest fruit-bearing grapevine."
+        },
+        {
             tag: "MATH · BOTANY",
             title: "Romanesco is a vegetable-shaped fractal",
             fact: "Romanesco’s spiraling cones repeat themselves at smaller and smaller scales — a natural fractal you can buy at a market. It’s a cultivar of the same species as broccoli and cauliflower, Brassica oleracea.",

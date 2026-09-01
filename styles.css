@@ -919,6 +919,7 @@ footer {
     display: inline-flex;
     align-items: center;
     gap: 7px;
+    padding-inline-end: 16px;
     color: var(--accent);
 }
 

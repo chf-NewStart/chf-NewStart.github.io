@@ -66,3 +66,12 @@ test('the permanent collection is reachable from both homepage entrances', () =>
     assert.match(understoryHtml, /src="\/tomato-facts\.js"/);
     assert.match(understoryHtml, /src="understory\.js"/);
 });
+
+test('the collection is a hook-first semantic field ledger', () => {
+    assert.match(understoryHtml, /<table class="fact-ledger">/);
+    const hookColumn = understoryHtml.indexOf('Philosophical hook');
+    const mechanismColumn = understoryHtml.indexOf('Natural mechanism');
+    assert.ok(hookColumn > -1 && hookColumn < mechanismColumn);
+    assert.match(understorySource, /element\('td', `hook-cell/);
+    assert.match(understorySource, /detailCell\.colSpan = 3/);
+});

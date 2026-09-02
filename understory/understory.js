@@ -3,6 +3,7 @@
 
     const facts = Array.isArray(window.UNDERSTORY_FACTS) ? window.UNDERSTORY_FACTS : [];
     const grid = document.getElementById('factGrid');
+    const ledgerShell = document.querySelector('.ledger-shell');
     const search = document.getElementById('factSearch');
     const clearSearch = document.getElementById('clearSearch');
     const resultCount = document.getElementById('resultCount');
@@ -187,7 +188,7 @@
 
     function matchesQuery(fact) {
         if (!query) return true;
-        const reflection = reflections[fact.title];
+        const reflection = reflections[fact.title] || fallbackReflectionFor(fact);
         const haystack = [
             fact.tag,
             fact.title,
@@ -209,6 +210,32 @@
         return { label: 'collection note', className: '' };
     }
 
+    function fallbackReflectionFor(fact) {
+        const prompts = {
+            research: {
+                lens: 'measurement / life',
+                question: 'What becomes visible—and what disappears—when a living process is turned into numbers?'
+            },
+            evolution: {
+                lens: 'history / form',
+                question: 'What forgotten history had to happen for this living form to exist?'
+            },
+            human: {
+                lens: 'nature / interpretation',
+                question: 'Where does nature end and the human story about it begin?'
+            },
+            food: {
+                lens: 'ordinary / strange',
+                question: 'How much hidden machinery sits inside an ordinary appetite?'
+            },
+            living: {
+                lens: 'life / definition',
+                question: 'What does this ask us to reconsider about being alive?'
+            }
+        };
+        return prompts[categoryFor(fact)];
+    }
+
     function element(tag, className, text) {
         const node = document.createElement(tag);
         if (className) node.className = className;
@@ -216,18 +243,36 @@
         return node;
     }
 
-    function makeCard(fact, index) {
-        const reflection = reflections[fact.title];
+    function makeRows(fact, index) {
+        const reflection = reflections[fact.title] || fallbackReflectionFor(fact);
+        const hasCuratedReflection = Boolean(reflections[fact.title]);
         const isSaved = saved.has(fact.title);
         const isOpen = expanded.has(fact.title);
         const seen = loadSeen();
         const evidence = evidenceFor(fact);
-        const card = element('article', `fact-card${isSaved ? ' saved' : ''}${isOpen ? ' open' : ''}`);
-        card.id = slugify(fact.title);
-        card.dataset.index = String(index);
+        const slug = slugify(fact.title);
+        const fragment = document.createDocumentFragment();
 
-        const top = element('div', 'fact-card-top');
-        top.appendChild(element('p', 'fact-meta', `${String(index + 1).padStart(2, '0')} / ${fact.tag}`));
+        const row = element('tr', `fact-row${isSaved ? ' saved' : ''}${isOpen ? ' open' : ''}`);
+        row.id = slug;
+        row.dataset.index = String(index);
+
+        const hookCell = element('td', `hook-cell${hasCuratedReflection ? '' : ' hook-derived'}`);
+        hookCell.appendChild(element('p', 'hook-lens', reflection.lens));
+        hookCell.appendChild(element('p', 'hook-question', reflection.question));
+        row.appendChild(hookCell);
+
+        const observationCell = element('td', 'observation-cell');
+        observationCell.appendChild(element('p', 'fact-meta', `${String(index + 1).padStart(2, '0')} / ${fact.tag}`));
+        observationCell.appendChild(element('h3', '', fact.title));
+        observationCell.appendChild(element('p', 'fact-summary', fact.fact));
+        row.appendChild(observationCell);
+
+        const fieldCell = element('td', 'field-cell');
+        const fieldStatus = element('div', 'field-status');
+        fieldStatus.appendChild(element('span', `fact-state ${evidence.className}`, evidence.label));
+        fieldStatus.appendChild(element('span', 'fact-read', seen[fact.title] ? 'read before' : 'unread'));
+        fieldCell.appendChild(fieldStatus);
 
         const saveButton = element('button', 'save-button');
         saveButton.type = 'button';
@@ -237,33 +282,39 @@
         const saveIcon = element('span', '', isSaved ? '★' : '☆');
         saveIcon.setAttribute('aria-hidden', 'true');
         saveButton.append(saveIcon, element('span', 'save-label', isSaved ? 'SAVED' : 'SAVE'));
-        top.appendChild(saveButton);
-        card.appendChild(top);
 
-        const heading = element('h3');
-        const titleButton = element('button', 'fact-title-button');
-        titleButton.type = 'button';
-        titleButton.dataset.openTitle = fact.title;
-        titleButton.setAttribute('aria-expanded', String(isOpen));
-        titleButton.setAttribute('aria-controls', `${card.id}-detail`);
-        titleButton.append(element('span', '', fact.title), element('span', 'fact-toggle', '+'));
-        titleButton.lastElementChild.setAttribute('aria-hidden', 'true');
-        heading.appendChild(titleButton);
-        card.appendChild(heading);
-        card.appendChild(element('p', 'fact-summary', fact.fact));
+        const openButton = element('button', 'row-open-button');
+        openButton.type = 'button';
+        openButton.dataset.openTitle = fact.title;
+        openButton.setAttribute('aria-expanded', String(isOpen));
+        openButton.setAttribute('aria-controls', `${slug}-detail`);
+        openButton.setAttribute('aria-label', `${isOpen ? 'Close' : 'Open'} details for “${fact.title}”`);
+        openButton.append(element('span', '', isOpen ? 'CLOSE' : 'OPEN'), element('span', 'fact-toggle', '+'));
+        openButton.lastElementChild.setAttribute('aria-hidden', 'true');
 
-        const detail = element('div', 'fact-detail');
-        detail.id = `${card.id}-detail`;
-        detail.hidden = !isOpen;
-        if (fact.detail) detail.appendChild(element('p', 'fact-detail-copy', fact.detail));
-        if (fact.note) detail.appendChild(element('p', 'fact-project', `Why I care: ${fact.note}`));
+        const fieldActions = element('div', 'field-actions');
+        fieldActions.append(saveButton, openButton);
+        fieldCell.appendChild(fieldActions);
+        row.appendChild(fieldCell);
+        fragment.appendChild(row);
 
-        if (reflection) {
-            const thought = element('div', 'reflection');
-            thought.append(element('span', '', `The thought it opens · ${reflection.lens}`));
-            thought.append(element('p', '', reflection.question));
-            detail.appendChild(thought);
-        }
+        const detailRow = element('tr', 'fact-detail-row');
+        detailRow.id = `${slug}-detail`;
+        detailRow.hidden = !isOpen;
+        const detailCell = element('td', 'fact-detail-cell');
+        detailCell.colSpan = 3;
+        const detail = element('div', 'fact-detail-panel');
+
+        const detailMarker = element('div', 'detail-marker');
+        detailMarker.append(element('span', '', `${String(index + 1).padStart(2, '0')} / FIELD NOTE`));
+        detailMarker.append(element('span', '', hasCuratedReflection ? 'QUESTION ATTACHED' : 'OBSERVATION'));
+        detail.appendChild(detailMarker);
+
+        const detailCopy = element('div', 'detail-copy');
+        detailCopy.appendChild(element('p', 'detail-label', 'MECHANISM / CONTEXT'));
+        if (fact.quote) detailCopy.appendChild(element('blockquote', 'fact-quote', fact.quote));
+        if (fact.detail) detailCopy.appendChild(element('p', 'fact-detail-copy', fact.detail));
+        if (fact.note) detailCopy.appendChild(element('p', 'fact-project', `Why I care: ${fact.note}`));
 
         if (fact.source) {
             if (fact.url) {
@@ -271,18 +322,16 @@
                 source.href = fact.url;
                 source.target = '_blank';
                 source.rel = 'noopener noreferrer';
-                detail.appendChild(source);
+                detailCopy.appendChild(source);
             } else {
-                detail.appendChild(element('span', 'source-label', `Source · ${fact.source}`));
+                detailCopy.appendChild(element('span', 'source-label', `Source · ${fact.source}`));
             }
         }
-        card.appendChild(detail);
-
-        const bottom = element('div', 'fact-bottom');
-        bottom.appendChild(element('span', `fact-state ${evidence.className}`, evidence.label));
-        bottom.appendChild(element('span', 'fact-read', seen[fact.title] ? 'read before' : 'unread'));
-        card.appendChild(bottom);
-        return card;
+        detail.appendChild(detailCopy);
+        detailCell.appendChild(detail);
+        detailRow.appendChild(detailCell);
+        fragment.appendChild(detailRow);
+        return fragment;
     }
 
     function filteredFacts() {
@@ -293,8 +342,8 @@
 
     function render() {
         const visible = filteredFacts();
-        grid.replaceChildren(...visible.map(({ fact, index }) => makeCard(fact, index)));
-        grid.hidden = visible.length === 0;
+        grid.replaceChildren(...visible.map(({ fact, index }) => makeRows(fact, index)));
+        ledgerShell.hidden = visible.length === 0;
         emptyState.hidden = visible.length !== 0;
         resultCount.textContent = `Showing ${visible.length} of ${facts.length} notes`;
         savedCount.textContent = String(saved.size);
@@ -336,7 +385,10 @@
             card.classList.remove('spotlight');
             requestAnimationFrame(() => card.classList.add('spotlight'));
         }
-        if (scroll) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (scroll) {
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            card.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+        }
         if (shouldOpen) history.replaceState(null, '', `#${card.id}`);
     }
 

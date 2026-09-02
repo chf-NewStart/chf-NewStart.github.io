@@ -11,8 +11,13 @@
     const specimenCount = document.getElementById('specimenCount');
     const emptyState = document.getElementById('emptyState');
     const filterButtons = [...document.querySelectorAll('[data-filter]')];
+    const researchGrid = document.getElementById('researchGrid');
+    const researchProgress = document.getElementById('researchProgress');
+    const researchEmpty = document.getElementById('researchEmpty');
+    const researchFilterButtons = [...document.querySelectorAll('.research-filter')];
     const SAVED_KEY = 'understory.saved.v1';
     const SEEN_KEY = 'tomatoFunFactSeenCounts';
+    const RESEARCH_REVIEW_KEY = 'understory.tomatoDfba.review.v1';
 
     const reflections = {
         'The biggest tree weighs more than a fleet of blue whales': {
@@ -125,9 +130,112 @@
         }
     };
 
+    const researchThreads = [
+        {
+            id: 'developmental-objectives',
+            lens: 'purpose / modeling',
+            question: 'A model does not discover what a tomato wants. So who chooses its purpose?',
+            title: 'Three lives are written into one fruit',
+            basis: 'implemented assumption',
+            observation: 'The objective changes with age: DNA and protein through DPA 15, starch and cell wall through DPA 35, then sugars, acids, and lycopene during ripening.',
+            check: 'Compare the two DPA boundaries and every objective weight with the nine developmental stages in Colombié et al.; then test whether the conclusions survive different weights.',
+            notebookPage: 21,
+            source: {
+                label: 'Colombié et al. (2015)',
+                url: 'https://doi.org/10.1111/tpj.12685'
+            }
+        },
+        {
+            id: 'vytop-glutamine',
+            lens: 'calibration / evidence',
+            question: 'When does a reasonable estimate quietly become a fact inside a model?',
+            title: 'Glutamine is pegged to four percent of sucrose',
+            basis: 'explicit notebook TODO',
+            observation: 'The VYTOP calibration sets glutamine export to about 4% of sucrose by moles. The notebook itself flags this value for verification against the source paper.',
+            check: 'Recover the exact VYTOP condition, units, tissue basis, and glutamine-to-sucrose ratio. Record whether it is measured, fitted, or inferred before keeping 0.04.',
+            notebookPage: 20,
+            source: {
+                label: 'Gerlin et al. (2022)',
+                url: 'https://doi.org/10.1093/plphys/kiab548'
+            }
+        },
+        {
+            id: 'plant-mass-per-fruit',
+            lens: 'scale / translation',
+            question: 'How much of a whole plant can honestly be assigned to one fruit?',
+            title: 'Eight grams of plant dry mass stands behind each fruit',
+            basis: 'explicit notebook TODO',
+            observation: 'Vegetative fluxes are converted from per-plant-dry-mass to per-fruit values with PLANT_DW_PER_FRUIT = 8.0 g, estimated from a typical plant and fruit count.',
+            check: 'Measure plant dry mass and the number of simultaneously active fruits in the actual experiment. Propagate their variation instead of treating eight grams as exact.',
+            notebookPage: 20
+        },
+        {
+            id: 'greenhouse-environment',
+            lens: 'world / representation',
+            question: 'Can a digital twin be called situated when its weather never changes?',
+            title: 'The first greenhouse has perfectly flat weather',
+            basis: 'prototype assumption',
+            observation: 'Across 46 simulated days the nutrient tank, daily PPFD, and photoperiod are constants; fixed fractions route nitrate, ammonium, and potassium toward fruit.',
+            check: 'Replace the constant arrays with timestamped sensor and fertigation records, and justify the three fruit-allocation fractions from measurement or literature.',
+            notebookPage: 20
+        },
+        {
+            id: 'kalman-trust',
+            lens: 'knowledge / uncertainty',
+            question: 'When prediction and observation disagree, which one has earned our trust?',
+            title: 'Q and R decide whether the model or camera wins',
+            basis: 'sensitivity experiment',
+            observation: 'A ten-state Kalman filter joins hourly metabolic predictions to fruit diameter and dry-weight observations. The notebook compares Q ×0.01, ×1, and ×100 to expose how strongly measurements can correct the model.',
+            check: 'Estimate process and measurement covariance from repeated data, tune them on calibration plants, then report performance on held-out plants rather than choosing them by visual fit.',
+            notebookPage: 34
+        },
+        {
+            id: 'error-as-diagnosis',
+            lens: 'error / meaning',
+            question: 'Can the distance between a plant and its prediction become a diagnosis?',
+            title: 'Residuals are asked to identify nutrient stress',
+            basis: 'diagnostic proposal',
+            observation: 'The notebook pairs negative biomass innovation with near-saturated nutrient utilization: actual growth below prediction signals underperformance, while an active bound names a possible bottleneck.',
+            check: 'Challenge the rule with controlled nutrient stresses. Validate the 0.85 utilization and −2 mmol deficit thresholds, and measure false alarms under ordinary biological variation.',
+            notebookPage: 36
+        },
+        {
+            id: 'boundary-direction',
+            lens: 'rules / consequences',
+            question: 'How can one forbidden doorway change an imagined organism by a thousandfold?',
+            title: 'A backward amino-acid route inflated biomass by more than 1,000×',
+            basis: 'bug found',
+            observation: 'Before phloem exports were made export-only, the glutamine maximization step could back-import alanine at 1,000 mmol g⁻¹ h⁻¹, producing an enormous downstream biomass artifact.',
+            check: 'Audit every exchange direction, compartment, objective, and finite bound after model merging. Turn the current COBRA warnings into failing validation checks.',
+            notebookPage: 17
+        },
+        {
+            id: 'fast-mode',
+            lens: 'time / approximation',
+            question: 'What disappears when an entire day is represented by four moments?',
+            title: 'Fast mode samples midnight, 6 a.m., noon, and 6 p.m.',
+            basis: 'computational shortcut',
+            observation: 'For quick greenhouse runs, four hours per DPA are simulated and their deltas are multiplied by six. The full 24-hour mode is noted to take about thirty minutes.',
+            check: 'Run fast and full modes from identical initial states. Compare biomass, pools, limiting constraints, and dawn/dusk behavior—not only the final total.',
+            notebookPage: 50
+        },
+        {
+            id: 'tiny-light-effect',
+            lens: 'surprise / explanation',
+            question: 'When a strong cause leaves almost no trace, which hidden constraint is speaking louder?',
+            title: 'Fifteen percent less edge light barely changes final biomass',
+            basis: 'result to explain',
+            observation: 'In the 24-plant prototype, centre columns finish at 40.03 mmol and edge columns at 39.99 mmol despite PPFD scaling from 0.97 in the centre to 0.85 at the walls.',
+            check: 'Repeat this comparison before Kalman updates, inspect active bounds, and test a wider PPFD range. Determine whether carbon is non-limiting or measurement corrections erase the gradient.',
+            notebookPage: 58
+        }
+    ];
+
     let activeFilter = 'curated';
     let query = '';
     let saved = loadSet(SAVED_KEY);
+    let researchFilter = 'all';
+    let researchReview = loadObject(RESEARCH_REVIEW_KEY);
     const expanded = new Set();
 
     function loadSet(key) {
@@ -143,6 +251,21 @@
         try {
             localStorage.setItem(key, JSON.stringify([...value]));
         } catch (_) { /* Device storage can be unavailable in private mode. */ }
+    }
+
+    function loadObject(key) {
+        try {
+            const value = JSON.parse(localStorage.getItem(key));
+            return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    function saveObject(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (_) { /* Review still works for this visit without device storage. */ }
     }
 
     function loadSeen() {
@@ -241,6 +364,107 @@
         if (className) node.className = className;
         if (text !== undefined) node.textContent = text;
         return node;
+    }
+
+    function researchStateFor(id) {
+        return ['open', 'checking', 'checked'].includes(researchReview[id])
+            ? researchReview[id]
+            : 'open';
+    }
+
+    function researchSource(label, url) {
+        const link = element('a', 'research-source', label);
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        return link;
+    }
+
+    function makeResearchRow(thread, index) {
+        const state = researchStateFor(thread.id);
+        const row = element('tr', `research-row review-${state}`);
+
+        const hookCell = element('td', 'research-hook-cell');
+        hookCell.append(
+            element('p', 'research-lens', thread.lens),
+            element('p', 'research-question', thread.question)
+        );
+        row.appendChild(hookCell);
+
+        const modelCell = element('td', 'research-model-cell');
+        modelCell.append(
+            element('p', 'research-index', `${String(index + 1).padStart(2, '0')} / ${thread.basis}`),
+            element('h3', '', thread.title),
+            element('p', 'research-observation', thread.observation)
+        );
+        row.appendChild(modelCell);
+
+        const checkCell = element('td', 'research-check-cell');
+        checkCell.append(
+            element('p', 'research-check-label', 'NEXT CHECK'),
+            element('p', 'research-check-copy', thread.check)
+        );
+        const sources = element('div', 'research-sources');
+        sources.appendChild(researchSource(`Notebook p. ${thread.notebookPage} ↗`, `/game/jun22greenhouse.pdf#page=${thread.notebookPage}`));
+        if (thread.source) sources.appendChild(researchSource(`${thread.source.label} ↗`, thread.source.url));
+        checkCell.appendChild(sources);
+        row.appendChild(checkCell);
+
+        const stateCell = element('td', 'research-state-cell');
+        const labels = {
+            open: ['TO CHECK', 'Start checking'],
+            checking: ['CHECKING', 'Mark checked'],
+            checked: ['CHECKED', 'Reopen topic']
+        };
+        const reviewButton = element('button', `review-button ${state}`, labels[state][0]);
+        reviewButton.type = 'button';
+        reviewButton.dataset.reviewTopic = thread.id;
+        reviewButton.setAttribute('aria-label', `${labels[state][1]}: ${thread.title}`);
+        reviewButton.title = `${labels[state][1]} · click to cycle`;
+        stateCell.appendChild(reviewButton);
+        row.appendChild(stateCell);
+        return row;
+    }
+
+    function updateResearchFilters() {
+        researchFilterButtons.forEach((button) => {
+            const active = button.dataset.researchFilter === researchFilter;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', String(active));
+        });
+    }
+
+    function renderResearch() {
+        const states = researchThreads.map((thread) => researchStateFor(thread.id));
+        const checked = states.filter((state) => state === 'checked').length;
+        const checking = states.filter((state) => state === 'checking').length;
+        const visible = researchThreads.filter((thread) => (
+            researchFilter === 'all' || researchStateFor(thread.id) === researchFilter
+        ));
+
+        researchGrid.replaceChildren(...visible.map((thread) => (
+            makeResearchRow(thread, researchThreads.indexOf(thread))
+        )));
+        researchGrid.closest('table').hidden = visible.length === 0;
+        researchEmpty.hidden = visible.length !== 0;
+        researchProgress.textContent = `${checked} of ${researchThreads.length} checked · ${checking} being investigated`;
+    }
+
+    function setResearchFilter(filter) {
+        researchFilter = filter;
+        updateResearchFilters();
+        renderResearch();
+    }
+
+    function cycleResearchState(id) {
+        const order = ['open', 'checking', 'checked'];
+        const current = order.indexOf(researchStateFor(id));
+        const next = order[(current + 1) % order.length];
+        if (next === 'open') delete researchReview[id];
+        else researchReview[id] = next;
+        saveObject(RESEARCH_REVIEW_KEY, researchReview);
+        renderResearch();
+        document.querySelector(`[data-review-topic="${CSS.escape(id)}"]`)?.focus();
     }
 
     function makeRows(fact, index) {
@@ -422,6 +646,15 @@
         button.addEventListener('click', () => setFilter(button.dataset.filter));
     });
 
+    document.querySelectorAll('[data-research-filter]').forEach((button) => {
+        button.addEventListener('click', () => setResearchFilter(button.dataset.researchFilter));
+    });
+
+    researchGrid.addEventListener('click', (event) => {
+        const reviewButton = event.target.closest('[data-review-topic]');
+        if (reviewButton) cycleResearchState(reviewButton.dataset.reviewTopic);
+    });
+
     document.querySelector('[data-filter-link="saved"]')?.addEventListener('click', () => {
         window.setTimeout(() => setFilter('saved'), 0);
     });
@@ -476,6 +709,7 @@
     });
 
     render();
+    renderResearch();
 
     if (location.hash) {
         const card = facts.find((fact) => `#${slugify(fact.title)}` === location.hash);

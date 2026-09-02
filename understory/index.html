@@ -55,6 +55,7 @@
                 <p class="hero-lede">Natural facts, living strategies, and the questions hiding inside them.</p>
                 <div class="hero-actions">
                     <button class="primary-action" id="surpriseButton" type="button">follow a random root <span aria-hidden="true">↘</span></button>
+                    <a class="secondary-action" href="#tomato-dfba">tomato dFBA trail <span aria-hidden="true">↓</span></a>
                     <span class="specimen-count" id="specimenCount">Loading the collection…</span>
                 </div>
             </div>
@@ -126,6 +127,56 @@
                 <p>Try another word or open a different part of the collection.</p>
                 <button type="button" id="resetButton">Show all notes</button>
             </div>
+        </section>
+
+        <section class="paper-trail" id="tomato-dfba" aria-labelledby="paperTrailTitle">
+            <div class="paper-trail-heading">
+                <div>
+                    <p class="eyebrow">MY RESEARCH NOTEBOOK / TOMATO dFBA</p>
+                    <h2 id="paperTrailTitle">The model under the tomato.</h2>
+                </div>
+                <div class="paper-trail-intro">
+                    <p>A return-later shelf drawn from the <em>jun22greenhouse</em> notebook. These are not all conclusions: some are implemented ideas, some are explicit assumptions, and some are results that deserve suspicion.</p>
+                    <a href="/game/jun22greenhouse.pdf" target="_blank" rel="noopener noreferrer">Open the notebook PDF <span aria-hidden="true">↗</span></a>
+                </div>
+            </div>
+
+            <div class="paper-trail-tools">
+                <p id="researchProgress" aria-live="polite">Loading the paper trail…</p>
+                <div class="research-filters" role="group" aria-label="Filter tomato dFBA review topics">
+                    <button class="research-filter active" type="button" data-research-filter="all" aria-pressed="true">All threads</button>
+                    <button class="research-filter" type="button" data-research-filter="open" aria-pressed="false">Still open</button>
+                    <button class="research-filter" type="button" data-research-filter="checking" aria-pressed="false">Checking</button>
+                    <button class="research-filter" type="button" data-research-filter="checked" aria-pressed="false">Checked</button>
+                </div>
+            </div>
+
+            <div class="research-ledger-shell">
+                <table class="research-ledger">
+                    <caption>Questions, notebook observations, and next checks from the tomato dFBA model.</caption>
+                    <colgroup>
+                        <col class="research-hook-column">
+                        <col class="research-model-column">
+                        <col class="research-check-column">
+                        <col class="research-state-column">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th scope="col"><span>01</span> The interesting question</th>
+                            <th scope="col"><span>02</span> What the notebook does</th>
+                            <th scope="col"><span>03</span> What to check next</th>
+                            <th scope="col"><span>04</span> Review</th>
+                        </tr>
+                    </thead>
+                    <tbody id="researchGrid"></tbody>
+                </table>
+                <div class="research-empty" id="researchEmpty" hidden>
+                    <p>No threads have this review state yet.</p>
+                    <button type="button" data-research-filter="all">Show every thread</button>
+                </div>
+            </div>
+
+            <p class="paper-trail-note"><span>WORKING RULE</span> A simulation result becomes a biological claim only after its assumptions, units, sensitivity, and independent measurements survive inspection.</p>
         </section>
 
         <section class="framing-note" aria-labelledby="framingTitle">

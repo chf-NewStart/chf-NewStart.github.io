@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "FOOD SCIENCE",
+            title: "White chocolate contains no cocoa solids",
+            fact: "White chocolate is cocoa butter, sugar, and milk — all of the cacao bean’s fat, none of its dark solids. That’s why it’s ivory-colored and why it tastes of dairy and vanilla rather than of chocolate itself.",
+            detail: "Regulations in many countries set minimums (around 20% cocoa butter) before the label “white chocolate” is allowed. The brown flavor compounds live in the roasted solids, which white chocolate leaves out entirely."
+        },
+        {
             tag: "RECORDS",
             title: "A 400-year-old grapevine still produces a harvest",
             fact: "The Old Vine in Maribor, Slovenia, has been growing against the same house for more than four centuries — through sieges, fires, and phylloxera — and its grapes are still picked each year at a city festival.",

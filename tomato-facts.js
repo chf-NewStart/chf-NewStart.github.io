@@ -186,21 +186,24 @@
             title: 'Fruit is a bribe',
             fact: 'Plants can’t walk, so they pay couriers. Sweet, colorful fruit evolved to lure animals into swallowing seeds and dropping them somewhere new—fertilizer included. Darwin ran the experiments himself, germinating seeds that had passed through birds to prove they survive the trip.',
             detail: 'In the Origin’s chapters on dispersal, Darwin soaked seeds in seawater for weeks, fed them to fish and birds, and raised plants from seeds recovered from droppings and pellets. From three tablespoonfuls of pond mud he grew 537 plants—his point being that seeds travel in far more ways than anyone assumed.',
-            source: 'Darwin, On the Origin of Species (1859), ch. 12'
+            source: 'Darwin, On the Origin of Species (1859), ch. 12',
+            url: 'https://darwin-online.org.uk/Variorum/1859/1859-362-c-1861.html'
         },
         {
             tag: 'EVOLUTION',
             title: 'Chilies are spicy on purpose—but not for birds',
             fact: 'Capsaicin fires the heat sensor in mammal mouths, but birds’ version of the receptor doesn’t respond at all. That’s the point: mammals grind seeds with their teeth, while birds swallow them whole and fly them far away. The chili picked its courier.',
             detail: 'In field and lab tests with wild chilies, desert rodents refused the spicy fruit while curve-billed thrashers ate it freely—and seeds that passed through the birds germinated just fine. Capsaicin triggers the mammalian TRPV1 heat receptor; the bird version of the channel simply doesn’t bind it.',
-            source: 'Tewksbury & Nabhan, Nature (2001)'
+            source: 'Tewksbury & Nabhan, Nature (2001)',
+            url: 'https://doi.org/10.1038/35086653'
         },
         {
             tag: 'HYPOTHESIS',
             title: 'Avocados may be haunted by extinct giants',
             fact: 'A fruit with a giant seed wants a giant mouth. One long-standing hypothesis says avocados evolved for megafauna like giant ground sloths that swallowed them whole—animals that vanished about 10,000 years ago, leaving the avocado waiting for a partner that no longer exists.',
             detail: 'The idea comes from Janzen and Martin’s 1982 paper, wonderfully titled “Neotropical Anachronisms: The Fruits the Gomphotheres Ate.” Nothing left in the avocado’s native range can swallow one whole—humans became its replacement dispersal partner, and we’ve done a spectacular job.',
-            source: 'Janzen & Martin, Science (1982)'
+            source: 'Janzen & Martin, Science (1982)',
+            url: 'https://doi.org/10.1126/science.215.4528.19'
         },
         {
             tag: 'BOTANY',
@@ -345,14 +348,17 @@
             tag: 'BOTANY',
             title: 'Orchid seeds are dust that needs a fungus',
             fact: 'A single orchid seed pod can hold hundreds of thousands to millions of seeds, each nearly weightless and carrying no food reserves at all. To germinate, an orchid seed must be adopted by a soil fungus that feeds it.',
-            detail: 'It’s a numbers game: make seeds light as dust and the wind carries them anywhere, but strip out the packed lunch and almost none survive. The rare seed that lands on the right fungus lets the fungus grow into it—then eats its host from the inside.'
+            detail: 'It’s a numbers game: make seeds light as dust and the wind carries them anywhere, but strip out the packed lunch and almost none survive. The rare seed that lands on the right fungus lets the fungus grow into it—then eats its host from the inside.',
+            source: 'Royal Botanic Gardens, Kew',
+            url: 'https://www.kew.org/read-and-watch/orchid-seeds-natures-tiny-treasures'
         },
         {
             tag: 'RECORDS',
             title: 'A 2,000-year-old seed grew into a tree',
             fact: 'A Judean date palm seed recovered from Masada—roughly two millennia old—was planted in 2005 and germinated. The tree was nicknamed Methuselah, and it’s alive and well.',
             detail: 'Methuselah turned out to be male. Researchers have since sprouted more ancient seeds, including females—one, named Hannah, flowered, was pollinated by Methuselah, and has produced actual dates: a two-thousand-year gap between generations.',
-            source: 'Sallon et al., Science (2008)'
+            source: 'Sallon et al., Science (2008)',
+            url: 'https://doi.org/10.1126/science.1153600'
         },
         {
             tag: 'RECORDS',
@@ -382,28 +388,33 @@
             tag: 'RECORDS',
             title: 'A forest in Utah is one single tree',
             fact: 'Pando is a quaking aspen clone with tens of thousands of trunks sharing one root system—genetically a single tree spread over about 40 hectares, weighing on the order of 6,000 tonnes. It’s one of the heaviest organisms known.',
-            detail: '“Pando” is Latin for “I spread.” Surveys suggest the giant is slowly shrinking: deer and cattle browse the young shoots faster than the clone replaces its aging trunks, so parts of it are fenced off to let new stems escape the grazers.'
+            detail: '“Pando” is Latin for “I spread.” Surveys suggest the giant is slowly shrinking: deer and cattle browse the young shoots faster than the clone replaces its aging trunks, so parts of it are fenced off to let new stems escape the grazers.',
+            source: 'DeWoody et al. (2008)',
+            url: 'https://www.fs.usda.gov/NFGEL/documents/publications/DeWoody_etal_pando_2008.pdf'
         },
         {
             tag: 'BEHAVIOR',
             title: 'Venus flytraps can count',
             fact: 'A flytrap doesn’t snap on the first touch. It waits for a second trigger-hair signal within about 20 seconds before closing, and only starts pumping digestive juices after roughly five—counting to avoid wasting energy on raindrops.',
             detail: 'The snap itself takes about a tenth of a second—among the fastest movements in the plant kingdom—powered by the leaf flipping from convex to concave like a popped contact lens. More touches after closing tell the plant how big its meal is, scaling the digestive effort.',
-            source: 'Böhm et al., Current Biology (2016)'
+            source: 'Böhm et al., Current Biology (2016)',
+            url: 'https://doi.org/10.1016/j.cub.2015.11.057'
         },
         {
             tag: 'BEHAVIOR',
             title: 'Grown-up sunflowers all face east',
             fact: 'Young sunflowers track the sun across the sky, swinging east to west and back overnight. Mature flowers stop and lock facing east—the morning sun warms them faster, and warm flowers attract measurably more pollinators.',
             detail: 'The tracking is growth in disguise: the stem’s east side elongates by day and the west side by night, rocking the head back and forth on a circadian rhythm. In experiments, east-facing heads warmed faster at dawn and drew several times more pollinator visits than heads turned west.',
-            source: 'Atamian et al., Science (2016)'
+            source: 'Atamian et al., Science (2016)',
+            url: 'https://doi.org/10.1126/science.aaf9793'
         },
         {
             tag: 'CHEMISTRY',
             title: 'Coffee plants drug their pollinators',
             fact: 'Caffeine is a natural insecticide—but coffee and citrus flowers also lace their nectar with tiny doses of it. At those levels caffeine boosts a bee’s memory of the flower’s scent, making the bee more likely to come back. Loyalty, chemically induced.',
             detail: 'In the experiments, honeybees fed caffeinated nectar were far more likely to remember a floral scent a full day later. The dosing is shrewd: nectar caffeine stays below the concentration bees can taste as bitter—the customer never notices the additive.',
-            source: 'Wright et al., Science (2013)'
+            source: 'Wright et al., Science (2013)',
+            url: 'https://doi.org/10.1126/science.1228806'
         },
         {
             tag: 'CHEMISTRY',
@@ -598,6 +609,10 @@
             url: 'https://doi.org/10.1111/tpj.12685'
         }
     ];
+
+    // The random popup and the permanent Understory library share this exact
+    // collection. New daily facts therefore appear in both places at once.
+    window.UNDERSTORY_FACTS = facts;
 
     // Plain-language definitions for the jargon that sneaks into the facts.
     // Matching terms get a dotted underline; hover, tap, or focus shows the
@@ -813,6 +828,7 @@
                     <button class="tomato-fact-button" type="button" data-action="details"
                             aria-expanded="false" aria-controls="tomatoFactDetails">details</button>
                     <button class="tomato-fact-button" type="button" data-action="another">show another</button>
+                    <a class="tomato-fact-button tomato-fact-library" href="/understory/">browse the understory</a>
                     <button class="tomato-fact-button primary" type="button" data-action="close">got it</button>
                 </div>
             </section>`;
@@ -1102,9 +1118,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        buildDialog();
         const tomatoButton = document.getElementById('tomatoToggle');
         if (tomatoButton) {
+            buildDialog();
             tomatoButton.addEventListener('click', (event) => {
                 if (!event.shiftKey) openDialog();
             });

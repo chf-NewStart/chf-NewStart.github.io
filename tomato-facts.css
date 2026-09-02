@@ -227,8 +227,12 @@
 }
 
 .tomato-fact-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 8px 13px;
     font-size: 0.74rem;
+    text-decoration: none;
 }
 
 .tomato-fact-button.primary {

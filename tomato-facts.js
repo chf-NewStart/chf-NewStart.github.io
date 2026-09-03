@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "HISTORY",
+            title: "Ancient athletes were crowned with celery",
+            fact: "Winners at the ancient Nemean Games in Greece received wreaths of wild celery — a plant with funerary associations, worn as a crown of victory. Olympia had olive, Delphi had laurel, Nemea had celery.",
+            detail: "The Isthmian Games near Corinth also used celery crowns before switching to pine. A vegetable crown sounds comic now, but these garlands outranked any prize money in prestige."
+        },
+        {
             tag: "FOOD SCIENCE",
             title: "White chocolate contains no cocoa solids",
             fact: "White chocolate is cocoa butter, sugar, and milk — all of the cacao bean’s fat, none of its dark solids. That’s why it’s ivory-colored and why it tastes of dairy and vanilla rather than of chocolate itself.",

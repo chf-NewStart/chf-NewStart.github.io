@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "KITCHEN SCIENCE",
+            title: "Kiwifruit dissolves meat, gelatin, and your tongue’s patience",
+            fact: "Kiwis carry actinidin, a protein-digesting enzyme in the same job family as pineapple’s bromelain. It tenderizes meat in marinades, keeps gelatin from setting, and gives your tongue that prickly feeling after a few too many.",
+            detail: "Cooks exploit it deliberately: a little puréed kiwi is a classic fast tenderizer for tough cuts. Heat denatures the enzyme, which is why cooked or canned kiwi behaves itself in desserts."
+        },
+        {
             tag: "HISTORY",
             title: "Ancient athletes were crowned with celery",
             fact: "Winners at the ancient Nemean Games in Greece received wreaths of wild celery — a plant with funerary associations, worn as a crown of victory. Olympia had olive, Delphi had laurel, Nemea had celery.",

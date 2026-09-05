@@ -16,6 +16,13 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "PHYSICS",
+            title: "Dandelion seeds fly on a ring of air",
+            fact: "A dandelion seed’s fluffy parachute is mostly empty space — over 90% air gaps — yet it flies farther than a solid disc would. The bristles conjure a stable ring of swirling air just above the parachute that boosts its drag.",
+            detail: "Researchers filming seeds in a wind tunnel found this “separated vortex ring” hovering above the pappus, a flight mechanism unknown in engineering until a weed demonstrated it. It helps seeds ride the wind for kilometers.",
+            source: "Cummins et al., Nature (2018)"
+        },
+        {
             tag: "KITCHEN SCIENCE",
             title: "Kiwifruit dissolves meat, gelatin, and your tongue’s patience",
             fact: "Kiwis carry actinidin, a protein-digesting enzyme in the same job family as pineapple’s bromelain. It tenderizes meat in marinades, keeps gelatin from setting, and gives your tongue that prickly feeling after a few too many.",
@@ -632,6 +639,7 @@
     // matched automatically. The daily fact-hunter job adds entries here
     // whenever a new fact introduces a strange word.
     const GLOSSARY = {
+        "pappus": "the parachute of fine bristles on a dandelion-type seed",
         "fractal": "a shape whose parts repeat the whole pattern at smaller and smaller scales",
         "inflorescence": "a cluster of flowers arranged on one stem, acting as a unit",
         "floret": "one tiny complete flower inside a larger composite flower head",

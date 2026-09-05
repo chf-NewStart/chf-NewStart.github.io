@@ -646,7 +646,7 @@ footer {
     pointer-events: none;
     content: '';
     /* The live tissue remains the hero artwork; a broad, uneven veil gives the
-       editorial copy and open project index enough contrast without turning
+       editorial copy and research preview enough contrast without turning
        either side into another opaque panel. */
     background:
         linear-gradient(90deg, rgba(3, 8, 6, 0.74) 0%, rgba(3, 8, 6, 0.5) 42%, rgba(3, 8, 6, 0.24) 72%, rgba(3, 8, 6, 0.38) 100%),
@@ -907,8 +907,8 @@ footer {
     max-width: 470px;
     justify-self: end;
     padding: 0 0 8px 34px;
-    /* Keep the falling arcade sprites in the hero, but give the project index
-       a quiet reading plate so a glider can never land behind its copy. */
+    /* Give the research evidence a quiet reading plate when the optional
+       falling sprites are running. */
     background: linear-gradient(90deg, #030c08, #040f0b 72%, #06110d);
     box-shadow: -18px 0 34px rgba(3, 8, 6, 0.28);
     -webkit-backdrop-filter: none;
@@ -926,6 +926,96 @@ footer {
 .launchpad-status > span:first-child {
     font-size: 0.48rem;
     text-shadow: 0 0 12px var(--accent);
+}
+
+.research-preview {
+    display: grid;
+    gap: 16px;
+    padding: 24px 18px 4px;
+}
+
+.research-preview-eyebrow {
+    margin: 0;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.09em;
+}
+
+.research-preview h2 {
+    max-width: 24ch;
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(1.45rem, 2vw, 1.9rem);
+    font-weight: 500;
+    line-height: 1.16;
+    letter-spacing: -0.025em;
+}
+
+.research-preview-summary {
+    max-width: 52ch;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.58;
+}
+
+.research-preview-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.research-preview-metrics > div {
+    min-width: 0;
+    padding: 11px 10px 11px 0;
+}
+
+.research-preview-metrics > div + div {
+    padding-left: 12px;
+    border-left: 1px solid var(--line);
+}
+
+.research-preview-metrics dt {
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.research-preview-metrics dd {
+    margin: 3px 0 0;
+    color: var(--muted-deep);
+    font-size: 0.58rem;
+    line-height: 1.35;
+}
+
+.research-preview-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+}
+
+.research-preview-links a {
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-decoration: underline;
+    text-decoration-color: rgba(157, 172, 159, 0.36);
+    text-underline-offset: 4px;
+}
+
+.research-preview-links a:hover {
+    color: var(--accent);
+}
+
+.research-preview-links .research-preview-primary {
+    color: var(--accent);
+    font-weight: 600;
 }
 
 .launchpad-link {
@@ -3670,6 +3760,28 @@ textarea {
         margin-top: 18px;
     }
 
+    .hero-actions {
+        margin-top: 24px;
+    }
+
+    .research-preview {
+        gap: 11px;
+        padding-top: 15px;
+    }
+
+    .research-preview h2 {
+        font-size: 1.35rem;
+    }
+
+    .research-preview-summary {
+        font-size: 0.76rem;
+        line-height: 1.45;
+    }
+
+    .research-preview-metrics > div {
+        padding-block: 8px;
+    }
+
     .launchpad-feature {
         padding: 16px 18px;
     }
@@ -3777,6 +3889,14 @@ textarea {
     .hero-launchpad {
         width: 100%;
         max-width: none;
+    }
+
+    .hero-research {
+        padding-left: 20px;
+    }
+
+    .research-preview {
+        padding-inline: 0;
     }
 
     .scroll-cue {

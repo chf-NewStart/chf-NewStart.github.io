@@ -24,17 +24,9 @@ function loadFacts() {
 
 function loadReflections() {
     const match = understorySource.match(
-        /const reflections = (\{[\s\S]*?\n    \});\n\n    const researchThreads/
+        /const reflections = (\{[\s\S]*?\n    \});\n\n    let activeFilter/
     );
     assert.ok(match, 'the reflection map remains readable');
-    return vm.runInNewContext(`(${match[1]})`);
-}
-
-function loadResearchThreads() {
-    const match = understorySource.match(
-        /const researchThreads = (\[[\s\S]*?\n    \]);\n\n    let activeFilter/
-    );
-    assert.ok(match, 'the tomato dFBA research trail remains readable');
     return vm.runInNewContext(`(${match[1]})`);
 }
 
@@ -84,19 +76,9 @@ test('the collection is a hook-first semantic field ledger', () => {
     assert.match(understorySource, /detailCell\.colSpan = 3/);
 });
 
-test('the tomato dFBA notebook has a persistent, checkable paper trail', () => {
-    const threads = loadResearchThreads();
-    assert.equal(threads.length, 9);
-    assert.equal(new Set(threads.map((thread) => thread.id)).size, threads.length);
-    threads.forEach((thread) => {
-        assert.ok(thread.question);
-        assert.ok(thread.observation);
-        assert.ok(thread.check);
-        assert.ok(thread.notebookPage);
-    });
-    assert.match(understoryHtml, /id="tomato-dfba"/);
-    assert.match(understoryHtml, /<table class="research-ledger">/);
-    assert.match(understoryHtml, /href="\/game\/jun22greenhouse\.pdf"/);
-    assert.match(understorySource, /understory\.tomatoDfba\.review\.v1/);
-    assert.match(understorySource, /function cycleResearchState/);
+test('unpublished research material stays out of the public site tree', () => {
+    const publicSource = [homeHtml, understoryHtml, understorySource].join('\n');
+    assert.doesNotMatch(publicSource, /const researchThreads|notebookPage|research-ledger/);
+    const publicGameFiles = fs.readdirSync(path.join(root, 'game'));
+    assert.equal(publicGameFiles.some((name) => /greenhouse/i.test(name)), false);
 });

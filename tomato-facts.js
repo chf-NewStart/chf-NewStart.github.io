@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "RECORDS",
+            title: "Champion pumpkins gain a bowling ball of weight per day",
+            fact: "Record-chasing giant pumpkins put on 15–20+ kilograms per day at their peak — you can practically watch them inflate. The world record has blown past 1,200 kg: a single fruit heavier than a small car.",
+            detail: "Growers pamper a single pumpkin per vine with pruning, buried vines for extra roots, and shade to keep the skin from hardening too fast. Grow too quickly, though, and the fruit can literally split open overnight."
+        },
+        {
             tag: "PHYSICS",
             title: "Dandelion seeds fly on a ring of air",
             fact: "A dandelion seed’s fluffy parachute is mostly empty space — over 90% air gaps — yet it flies farther than a solid disc would. The bristles conjure a stable ring of swirling air just above the parachute that boosts its drag.",

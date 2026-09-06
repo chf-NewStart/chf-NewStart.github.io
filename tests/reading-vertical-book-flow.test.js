@@ -56,6 +56,24 @@ function check(name, condition, extra) {
   check('column zoom becomes a readable text-fit action', await page.locator('#colZoomBtn').textContent() === 'Text');
   check('vertical text fit never shrinks below page fit', await page.locator('#zoomLabel').textContent().then(text => text === 'Fit' || parseInt(text, 10) >= 100), await page.locator('#zoomLabel').textContent());
 
+  const guideCanvasBox = await page.locator('.pdf-page.book-active canvas').boundingBox();
+  const guideMouseX = guideCanvasBox.x + guideCanvasBox.width * .55;
+  const guideMouseY = guideCanvasBox.y + guideCanvasBox.height * .42;
+  check('the iPad viewport still advertises touch-style hover capability', !(await page.evaluate(() => matchMedia('(hover: hover)').matches)));
+  await page.mouse.click(guideMouseX, guideMouseY);
+  await page.waitForTimeout(340);
+  check('a connected mouse click pins the guide on iPad', await page.locator('#paneSpotlight').evaluate(overlay => overlay.classList.contains('locked')));
+  const pinnedGuidePosition = await page.locator('#guideBand').evaluate(band => ({ left: band.getBoundingClientRect().left, top: band.getBoundingClientRect().top }));
+  await page.mouse.move(guideMouseX - 70, guideMouseY + 80);
+  await page.waitForTimeout(100);
+  check('the pinned guide no longer follows the mouse', await page.locator('#guideBand').evaluate((band, before) => Math.abs(band.getBoundingClientRect().left - before.left) < 1 && Math.abs(band.getBoundingClientRect().top - before.top) < 1, pinnedGuidePosition));
+  await page.mouse.click(guideMouseX - 35, guideMouseY + 40);
+  await page.waitForTimeout(340);
+  check('the next connected-mouse click releases the guide', await page.locator('#paneSpotlight').evaluate(overlay => !overlay.classList.contains('locked')));
+  await page.touchscreen.tap(guideMouseX, guideMouseY);
+  await page.waitForTimeout(340);
+  check('a finger tap still repositions without pinning the guide', await page.locator('#paneSpotlight').evaluate(overlay => !overlay.classList.contains('locked')));
+
   await page.click('#mNext');
   await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('2 /'));
   await page.waitForTimeout(350);

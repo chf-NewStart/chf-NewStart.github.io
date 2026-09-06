@@ -5,6 +5,7 @@ const fs = require('fs');
 const pathmod = require('path');
 
 const ROOT = require('path').resolve(__dirname, '..');
+const readerSource = fs.readFileSync(pathmod.join(ROOT, 'reading.js'), 'utf8');
 const server = http.createServer((req, res) => {
   const p = pathmod.join(ROOT, req.url.split('?')[0] === '/' ? 'reading.html' : req.url.split('?')[0]);
   fs.readFile(p, (err, data) => {
@@ -48,6 +49,14 @@ function check(name, cond, extra) {
   const cardHidden = () => page.evaluate(() => document.getElementById('selectionCard').classList.contains('hidden'));
 
   check('mark rendered', await page.locator('#textDocument mark[data-hl-id]').count() === 1);
+  const markerInk = await page.locator('#textDocument mark[data-hl-id]').evaluate(mark => {
+    const range = document.createRange(); range.selectNodeContents(mark);
+    const text = range.getBoundingClientRect(), ink = mark.getBoundingClientRect(), style = getComputedStyle(mark);
+    return { gradient: style.backgroundImage.includes('linear-gradient'), lowerBleed: ink.bottom - text.bottom };
+  });
+  check('text highlight looks like translucent marker ink', markerInk.gradient, JSON.stringify(markerInk));
+  check('text highlight extends beneath letter descenders', markerInk.lowerBleed > 1, JSON.stringify(markerInk));
+  check('PDF highlights restore the full line box around descenders', readerSource.includes('function paperHighlightRect') && readerSource.includes('r.h*.28'));
 
   // 1. Click mark with marker OFF -> card opens, highlight stays
   await page.locator('#textDocument mark[data-hl-id]').first().click();

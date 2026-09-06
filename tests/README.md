@@ -53,7 +53,8 @@ validation, the reviewer sidebar, response and resolved state, and original
 Word-file roaming.
 
 `reading-extension-local-pdf.test.js` covers extension imports for local
-`file://` PDFs, Chrome's permission-denied path, HTTP errors, and the direct file
+`file://` PDFs, Chrome's permission-denied path, HTTP errors, APS browser-check
+recovery, acknowledged app handoff, stale receiver upgrades, and the direct file
 picker fallback.
 
 `reading-app-update.test.js` keeps the reader bundle and offline worker on one

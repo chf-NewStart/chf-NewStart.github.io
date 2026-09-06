@@ -675,7 +675,10 @@
     #zenBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     .highlight-layer { z-index: 1; pointer-events: none; }
-    .saved-highlight { position: absolute; border-radius: 4px 3px 5px 2px; mix-blend-mode: multiply; }
+    /* Marker ink should cross the whole letterform, including descenders, with the
+       soft density changes of one translucent stroke on paper. */
+    .saved-highlight { position: absolute; border-radius: 3px 6px 4px 5px; mix-blend-mode: multiply; box-shadow: inset 0 1px rgba(255,255,255,.16), inset 0 -1px rgba(63,48,10,.05); transform: rotate(-.08deg); transform-origin: center; }
+    .saved-highlight:nth-child(even) { border-radius: 6px 3px 5px 2px; transform: rotate(.08deg); }
     .review-comment-highlight { position: absolute; border-bottom: 2px solid rgba(184,121,31,.88); border-radius: 3px; background: rgba(255,202,108,.34); mix-blend-mode: multiply; }
     .review-comment-highlight.review-level-section { border-bottom-color: rgba(50,112,139,.82); background: rgba(105,185,218,.24); }
     .review-comment-highlight.review-level-editorial { border-bottom-color: rgba(197,79,52,.9); background: rgba(243,119,91,.22); }
@@ -699,10 +702,10 @@
     .review-page-marker.review-level-mixed::after { color: #49355e; }
     .pdf-frame.dark-paper .saved-highlight { mix-blend-mode: screen; opacity: .78; }
     .pdf-frame.dark-paper :is(.review-comment-highlight,.review-page-marker) { mix-blend-mode: screen; opacity: .86; }
-    .hl-yellow { background: rgba(255, 216, 61, .62) !important; }
-    .hl-mint { background: rgba(92, 213, 145, .52) !important; }
-    .hl-coral { background: rgba(255, 126, 105, .5) !important; }
-    .hl-blue { background: rgba(91, 169, 255, .46) !important; }
+    .hl-yellow { background: linear-gradient(178deg, rgba(255,229,104,.42) 0%, rgba(255,216,61,.66) 18%, rgba(247,203,39,.59) 82%, rgba(255,224,88,.4) 100%) !important; }
+    .hl-mint { background: linear-gradient(178deg, rgba(125,228,169,.35) 0%, rgba(92,213,145,.56) 18%, rgba(67,196,121,.5) 82%, rgba(120,225,164,.34) 100%) !important; }
+    .hl-coral { background: linear-gradient(178deg, rgba(255,157,139,.34) 0%, rgba(255,126,105,.54) 18%, rgba(239,102,82,.48) 82%, rgba(255,151,130,.33) 100%) !important; }
+    .hl-blue { background: linear-gradient(178deg, rgba(126,190,255,.32) 0%, rgba(91,169,255,.5) 18%, rgba(69,148,237,.44) 82%, rgba(122,187,255,.3) 100%) !important; }
     .text-layer { z-index: 2; line-height: 1; text-align: initial; text-size-adjust: none; forced-color-adjust: none; caret-color: var(--ink); }
     .text-layer :is(span, br) { position: absolute; color: transparent; white-space: pre; cursor: text; transform-origin: 0 0; }
     .text-layer span.markedContent { top: 0; height: 0; }
@@ -887,7 +890,7 @@
     .page-marker::after { content: ""; flex: 1; height: 1px; background: var(--line); }
     .page-marker button { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font: inherit; letter-spacing: inherit; }
     .page-marker button:hover { border-color: var(--accent); color: var(--accent); }
-    .original mark { padding: .02em .05em; color: inherit; border-radius: 4px 2px 4px 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+    .original mark { margin: 0 -.01em; padding: .03em .07em .13em; color: inherit; border-radius: 4px 7px 3px 5px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
     .review-comment-anchor { padding: .03em .06em; border-bottom: 2px solid color-mix(in srgb, var(--yellow) 76%, #b07721); border-radius: 3px; background: color-mix(in srgb, var(--yellow) 17%, transparent); cursor: pointer; box-decoration-break: clone; -webkit-box-decoration-break: clone; transition: background .16s ease, box-shadow .16s ease; }
     .review-comment-anchor.review-level-general { border-bottom-color: #5b7e4d; background: rgba(128,179,105,.18); }
     .review-comment-anchor.review-level-section { border-bottom-color: #32708b; background: rgba(105,185,218,.2); }

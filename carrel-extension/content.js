@@ -8,6 +8,8 @@ var pageReady = document.readyState !== 'loading';
 var importOverlay = null;
 var importOverlayTimer = 0;
 var activeTransfer = 0;
+var receiverReady = false;
+var HANDOFF_PROTOCOL = 2;
 
 function validPending(p) {
   return !!(p && p.b64 && p.at && p.at !== delivered && Date.now() - p.at <= 5 * 60 * 1000);
@@ -53,7 +55,11 @@ function deliver(p) {
   if (Date.now() - p.at > 5 * 60 * 1000) { chrome.storage.local.remove('phloemPending'); hideImporting(); return; }
   showImporting(p);
   delivered = p.at;
-  chrome.storage.local.remove('phloemPending');
+  /* Current Phloem pages acknowledge the transfer after the PDF has really
+     opened. Keep the parked bytes until then so a navigation or import failure
+     cannot turn into an empty Phloem tab. Older cached pages have no handshake;
+     for those, retain the original deliver-once behavior. */
+  if (!receiverReady) chrome.storage.local.remove('phloemPending');
   /* Measure first, then decode directly into the final buffer. The previous
      parts array temporarily doubled a large book's memory footprint. */
   var total = p.b64.reduce(function (sum, c) {
@@ -87,16 +93,26 @@ chrome.storage.local.get('phloemPending', function (r) { queueDelivery(r && r.ph
 chrome.storage.onChanged.addListener(function (changes, area) {
   if (area === 'local' && changes.phloemPending && changes.phloemPending.newValue) queueDelivery(changes.phloemPending.newValue);
 });
-chrome.runtime.onMessage.addListener(function (message) {
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   if (!message || message.type !== 'phloem-deliver-pending') return;
+  if (sendResponse) sendResponse({ protocol: HANDOFF_PROTOCOL });
   chrome.storage.local.get('phloemPending', function (r) { queueDelivery(r && r.phloemPending); });
 });
 window.addEventListener('message', function (event) {
   if (event.source !== window || !event.data) return;
+  if (event.data.type === 'phloem-ext-ready' && event.data.protocol >= HANDOFF_PROTOCOL) {
+    receiverReady = true;
+    if (queuedPending && queuedPending.at !== delivered) deliver(queuedPending);
+    return;
+  }
   if (event.data.type === 'phloem-ext-import-accepted' && event.data.transferId === activeTransfer) {
     clearTimeout(importOverlayTimer);
     importOverlayTimer = setTimeout(hideImporting, 90000);
     return;
   }
-  if (event.data.type === 'phloem-ext-import-complete' && (!event.data.transferId || event.data.transferId === activeTransfer)) hideImporting();
+  if (event.data.type === 'phloem-ext-import-complete' && (!event.data.transferId || event.data.transferId === activeTransfer)) {
+    if (event.data.ok) chrome.storage.local.remove('phloemPending');
+    queuedPending = null;
+    hideImporting();
+  }
 });

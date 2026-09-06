@@ -1,6 +1,6 @@
 # Read in Phloem — browser extension
 
-Current store package: **1.1.15**
+Current store package: **1.1.17**
 
 Send any PDF on the web or your computer straight to [Phloem](https://houfu72.com/reading.html),
 the free local-first paper reading desk. Right-click a PDF link → **Read link in
@@ -16,8 +16,11 @@ the bundled field guide; extension updates and existing libraries stay untouched
 
 - `background.js` — fetches the PDF the user asked for, checks it really is a
   PDF, parks the bytes in extension storage, and focuses/opens the Phloem tab.
+  If APS challenges an extension-origin download, it transparently retries from
+  the paper's same-origin article page and closes the temporary helper tab.
 - `content.js` — runs only on `houfu72.com/reading.html`; picks the parked
-  bytes up and hands them to the page with `window.postMessage`.
+  bytes up and hands them to the page with an acknowledged `window.postMessage`
+  handoff. The pending copy stays recoverable until Phloem confirms the PDF opened.
 - Phloem itself verifies the `%PDF` magic and imports through its normal
 pipeline (deduped by source URL, real title extracted from the PDF).
 
@@ -37,14 +40,18 @@ passed into Phloem metadata or optional sync.
   a local PDF after you explicitly enable Chrome's file-URL switch.
 - `activeTab` — to identify the current PDF only when you click the extension. It
   grants no passive browsing access and shows no install warning.
+- `scripting` — when a supported publisher challenges the background download,
+  to retry that selected PDF from the publisher's own article page. It does not
+  read article text or modify the page.
 - `storage` + `unlimitedStorage` — the fetched PDF is handed over through
   extension storage (including large scanned books up to the extension's
   practical 200 MB memory guard).
 - `contextMenus` — the right-click entries.
 - `notifications` — "that link isn't a PDF" and download failures.
 
-Nothing is collected, logged, or sent anywhere. The only network request the
-extension ever makes is the download of the PDF you explicitly asked for.
+Nothing is collected, logged, or sent anywhere. Network activity is limited to
+the PDF you explicitly asked for and, only when its publisher requires a browser
+check, that PDF's same-site article page.
 
 ## Developing / installing unpacked
 

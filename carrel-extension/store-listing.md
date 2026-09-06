@@ -37,16 +37,25 @@ right-click menu. The extension runs only when the user selects one of these com
 Reads the current tab's URL only after the user clicks the extension button, so it can
 identify the PDF the user explicitly chose. It does not inspect tabs passively.
 
+### scripting justification
+
+Some publishers block a background extension request with a browser verification
+page. After the user explicitly chooses such a PDF, this permission lets the
+extension retry that PDF as a same-origin request from the publisher's article
+page. The extension does not read article text or modify the page, and any
+temporary helper tab is closed immediately after the PDF transfer.
+
 ### storage justification
 
 Temporarily stores the user-selected PDF bytes so the background worker can hand
-them to the Phloem tab. The pending copy is deleted immediately after delivery.
+them to the Phloem tab. The pending copy is deleted after Phloem confirms that the
+PDF opened successfully.
 
 ### unlimitedStorage justification
 
 PDFs can exceed Chrome storage’s normal quota. This permission prevents a
 user-selected paper from failing while it is temporarily transferred to Phloem;
-the temporary copy is deleted after delivery.
+the temporary copy is deleted after the app confirms a successful import.
 
 ### notifications justification
 
@@ -56,6 +65,7 @@ fails, the file is too large, or local-file access must be enabled.
 ### Host permission justification
 
 Required only to fetch the PDF URL the user explicitly selects from any website,
-including authenticated campus or library sites, and to read a user-opened local
-PDF after Chrome’s separate file-URL permission is enabled. The extension does not
-inspect pages or browse passively.
+including authenticated campus or library sites; to perform the same-site retry
+described above when a supported publisher requires it; and to read a user-opened
+local PDF after Chrome’s separate file-URL permission is enabled. The extension
+does not inspect article content or browse passively.

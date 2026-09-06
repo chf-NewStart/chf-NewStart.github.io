@@ -1967,6 +1967,10 @@
     var imported=await importPdf({name:name},'',String(e.data.sourceUrl||'').slice(0,600),null,false,bytes);
     finishExtensionImport(imported);
   });
+  /* Tell the document-start extension relay that the app-side listener exists.
+     This prevents the queued PDF from being posted into the small gap before a
+     freshly opened or refreshed Phloem page is ready to receive it. */
+  window.postMessage({type:'phloem-ext-ready',protocol:2},location.origin);
 
   /* text import and edit */
   byId('newTextBtn').onclick=function(){ closeAddDialog();editingId=null; byId('textDialogTitle').textContent='Paste text'; byId('textTitle').value=''; byId('textAuthors').value=''; byId('textBody').value=''; byId('textDialog').showModal(); };
@@ -2169,6 +2173,17 @@
      this one faint seat beside the exit so dense passages don't cost a round trip. */
   byId('zenGuide').onclick=function(){byId('focusBtn').onclick();};
   byId('zenTheme').onclick=function(){byId('themeBtn').onclick();};
+  /* An iPad keeps reporting itself as a touch-only device even while a paired mouse
+     is producing real mouse pointer events. Remember the input behind the click so
+     mouse clicks can still pin the guide without changing how finger taps behave. */
+  var guidePointerType='',guidePointerAt=0;
+  function rememberGuidePointer(e){if(e&&e.pointerType){guidePointerType=e.pointerType;guidePointerAt=Date.now();}}
+  function guideClickCanPin(e){
+    var type=e&&e.pointerType;
+    if(!type&&Date.now()-guidePointerAt<1000)type=guidePointerType;
+    return type?type==='mouse'||type==='pen':matchMedia('(hover: hover)').matches;
+  }
+  byId('documentPane').addEventListener('pointerdown',rememberGuidePointer,true);
   byId('focusBtn').onclick=function(){
     dismissGuideDiscovery();
     var turningOn=!comfort.focus,seen=false;
@@ -2178,13 +2193,14 @@
     showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page'):'Reading guide off');
   };
   byId('documentPane').addEventListener('pointermove',function(e){
+    rememberGuidePointer(e);
     if(!comfort.focus||comfort.guideLock||e.pointerType==='touch')return;setReadingGuide(e.clientX,e.clientY,e.target);
   });
   byId('documentPane').addEventListener('click',function(e){
     if(Date.now()<columnBookSuppressClickUntil){e.preventDefault();e.stopImmediatePropagation();return;}
     if(!comfort.focus)return;
     var selection=window.getSelection&&window.getSelection();if(selection&&!selection.isCollapsed)return;
-    if(!matchMedia('(hover: hover)').matches){setReadingGuide(e.clientX,e.clientY,e.target);return;}
+    if(!guideClickCanPin(e)){setReadingGuide(e.clientX,e.clientY,e.target);return;}
     /* Laptop: a click pins the guide to its line so trips to the notebook or toolbar
        don't drag it away; the next click releases it. The toggle waits a beat so a
        double-click can cancel it and flip the guide's width instead. */
@@ -2203,7 +2219,7 @@
      and one-column width, right where you clicked. Double-clicking a word still just
      selects the word. */
   byId('documentPane').addEventListener('dblclick',function(e){
-    if(readerMode!=='pdf'||!matchMedia('(hover: hover)').matches)return;
+    if(readerMode!=='pdf'||!guideClickCanPin(e))return;
     clearTimeout(guideLockClickTimer);
     var selection=window.getSelection&&window.getSelection();
     if(selection&&!selection.isCollapsed)return;
@@ -4379,6 +4395,13 @@
     sorted.forEach(function(r){var last=out[out.length-1];if(last){var sameLine=Math.abs((r.y+r.h/2)-(last.y+last.h/2))<Math.max(r.h,last.h)*.58,gap=r.x-(last.x+last.w);if(sameLine&&gap<Math.max(.008,Math.max(r.h,last.h)*.72)){var right=Math.max(last.x+last.w,r.x+r.w),bottom=Math.max(last.y+last.h,r.y+r.h);last.x=Math.min(last.x,r.x);last.y=Math.min(last.y,r.y);last.w=right-last.x;last.h=bottom-last.y;return;}}out.push({x:r.x,y:r.y,w:r.w,h:r.h});});
     return out;
   }
+  /* Stored PDF selections used to keep only the middle 76% of the browser's line
+     rectangle. Restore that missing paper area at paint time so existing highlights
+     cover g/y descenders too; the slightly heavier lower bleed feels like marker ink. */
+  function paperHighlightRect(r){
+    var top=Math.max(0,r.y-r.h*.14),bottom=Math.min(1,r.y+r.h+r.h*.28);
+    return{x:r.x,y:top,w:r.w,h:Math.max(0,bottom-top)};
+  }
   function isWordPart(text,index){
     var c=text.charAt(index);if(/[\p{L}\p{N}_]/u.test(c))return true;
     return /['’\-]/.test(c)&&index>0&&index<text.length-1&&/[\p{L}\p{N}]/u.test(text.charAt(index-1))&&/[\p{L}\p{N}]/u.test(text.charAt(index+1));
@@ -4601,7 +4624,7 @@
     var ch=find(currentId);if(!ch)return;
     (pageNum?[pageNum]:renderedPages.slice()).forEach(function(n){
       var view=pdfViews[n-1];if(!view)return;view.highlights.innerHTML='';
-      ((ch.highlights||{})[String(n)]||[]).forEach(function(h){mergeHighlightRects(h.rects||[]).forEach(function(r){var d=document.createElement('div');d.className='saved-highlight hl-'+(h.color||'yellow');d.style.left=(r.x*100)+'%';d.style.top=(r.y*100)+'%';d.style.width=(r.w*100)+'%';d.style.height=(r.h*100)+'%';d.title=(h.text||'Highlight')+(h.note?'\n✎ '+h.note:'');view.highlights.appendChild(d);});});
+      ((ch.highlights||{})[String(n)]||[]).forEach(function(h){mergeHighlightRects(h.rects||[]).forEach(function(stored){var r=paperHighlightRect(stored),d=document.createElement('div');d.className='saved-highlight hl-'+(h.color||'yellow');d.style.left=(r.x*100)+'%';d.style.top=(r.y*100)+'%';d.style.width=(r.w*100)+'%';d.style.height=(r.h*100)+'%';d.title=(h.text||'Highlight')+(h.note?'\n✎ '+h.note:'');view.highlights.appendChild(d);});});
       renderPdfReviewMarkers(ch,n,view);
     });
   }

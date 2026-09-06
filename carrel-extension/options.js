@@ -5,6 +5,7 @@ var PHLOEM = 'https://houfu72.com/reading.html';
    storage quota. It comfortably covers large scanned books while staying finite. */
 var MAX_BYTES = 200 * 1024 * 1024;
 var MAX_MB = Math.round(MAX_BYTES / (1024 * 1024));
+var HANDOFF_PROTOCOL = 2;
 
 async function refreshFileAccess() {
   var status = document.getElementById('fileStatus');
@@ -63,7 +64,8 @@ async function revealPhloem() {
     var tabs = await chrome.tabs.query({ url: PHLOEM + '*' });
     if (tabs.length) {
       try {
-        await chrome.tabs.sendMessage(tabs[0].id, { type: 'phloem-deliver-pending' });
+        var receiver = await chrome.tabs.sendMessage(tabs[0].id, { type: 'phloem-deliver-pending', protocol: HANDOFF_PROTOCOL });
+        if (!receiver || receiver.protocol !== HANDOFF_PROTOCOL) await chrome.tabs.reload(tabs[0].id);
       } catch (e) {
         await chrome.tabs.reload(tabs[0].id);
       }

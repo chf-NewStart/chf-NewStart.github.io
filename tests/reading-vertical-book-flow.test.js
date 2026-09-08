@@ -91,12 +91,53 @@ function pagesAreComplete(metrics) {
 async function waitForCompleteFit(page, count) {
   await page.waitForFunction(expected => {
     const pane = document.getElementById('documentPane'), paneRect = pane.getBoundingClientRect();
+    const frame = document.getElementById('pdfFrame');
     const papers = Array.from(pane.querySelectorAll('.pdf-page.book-active'));
-    return papers.length === expected && papers.every(paper => {
+    return frame.dataset.pagedReady === 'true' && !frame.hasAttribute('aria-busy') && papers.length === expected && papers.every(paper => {
       const rect = paper.getBoundingClientRect(), sheet = paper.querySelector('.pdf-sheet');
       return !paper.classList.contains('book-cropped') && !sheet.style.transform && paper.offsetWidth === sheet.offsetWidth && paper.offsetHeight === sheet.offsetHeight && rect.left >= paneRect.left - 2 && rect.right <= paneRect.right + 2 && rect.top >= paneRect.top - 2 && rect.bottom <= paneRect.bottom + 2;
     });
   }, count);
+}
+
+async function waitForPagedReady(page) {
+  await page.waitForFunction(() => {
+    const frame = document.getElementById('pdfFrame');
+    return frame.dataset.pagedReady === 'true' && !frame.hasAttribute('aria-busy');
+  });
+}
+
+/* Playwright's touchscreen API intentionally exposes taps rather than a free-moving
+   finger. Dispatch real Touch objects so the reader's touchstart/move/end path—not its
+   mouse/pointer fallback—owns these page curls and two-finger gestures. */
+async function dispatchTouches(page, selector, type, touches, changedTouches) {
+  await page.locator(selector).evaluate((target, payload) => {
+    function makeTouch(point) {
+      return new Touch({
+        identifier: point.id,
+        target,
+        clientX: point.x,
+        clientY: point.y,
+        pageX: point.x,
+        pageY: point.y,
+        screenX: point.x,
+        screenY: point.y,
+        radiusX: 3,
+        radiusY: 3,
+        force: point.force === undefined ? .65 : point.force
+      });
+    }
+    const active = payload.touches.map(makeTouch);
+    const changed = payload.changedTouches.map(makeTouch);
+    target.dispatchEvent(new TouchEvent(payload.type, {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      touches: active,
+      targetTouches: active,
+      changedTouches: changed
+    }));
+  }, { type, touches, changedTouches: changedTouches === undefined ? touches : changedTouches });
 }
 
 (async () => {
@@ -146,15 +187,17 @@ async function waitForCompleteFit(page, count) {
   check('narrow Book fallback uses physical single-leaf arrows and keyboard', await page.locator('.book-turning').count() === 0);
 
   await page.waitForFunction(() => !document.getElementById('pdfFrame').dataset.curlState);
-  await page.locator('#documentPane').evaluate(pane => {
-    function touch(x, y) { return new Touch({ identifier: 7, target: pane, clientX: x, clientY: y, pageX: x, pageY: y, screenX: x, screenY: y, radiusX: 2, radiusY: 2, force: 1 }); }
-    const rect = pane.getBoundingClientRect(), y = rect.top + rect.height * .5;
-    pane.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [touch(rect.right - 65, y)], targetTouches: [touch(rect.right - 65, y)], changedTouches: [touch(rect.right - 65, y)] }));
-    pane.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: [touch(rect.left + 85, y + 2)], targetTouches: [touch(rect.left + 85, y + 2)], changedTouches: [touch(rect.left + 85, y + 2)] }));
-    pane.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [], targetTouches: [], changedTouches: [touch(rect.left + 85, y + 2)] }));
-  });
-  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('3 /'));
-  check('a leftward swipe turns forward', true);
+  /* The visual curl is gone one frame before its queued fit releases the turn lock. */
+  await page.waitForTimeout(120);
+  const phoneTouchBox = await page.locator('.pdf-page[data-page="2"] canvas').boundingBox();
+  const phoneTouchStart = { id: 7, x: phoneTouchBox.x + phoneTouchBox.width - 5, y: phoneTouchBox.y + phoneTouchBox.height * .55 };
+  const phoneTouchEnd = { id: 7, x: phoneTouchStart.x - phoneTouchBox.width * .97, y: phoneTouchStart.y + 2 };
+  await dispatchTouches(page, '.pdf-page[data-page="2"] canvas', 'touchstart', [phoneTouchStart]);
+  await dispatchTouches(page, '.pdf-page[data-page="2"] canvas', 'touchmove', [phoneTouchEnd]);
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'dragging' && document.getElementById('pdfFrame').dataset.curlSource === '2' && document.getElementById('pdfFrame').dataset.curlBack === '2' && document.querySelector('.book-curl-under-single[data-page="3"]'));
+  await dispatchTouches(page, '.pdf-page[data-page="2"] canvas', 'touchend', [], [phoneTouchEnd]);
+  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('a phone finger physically folds the next page into view', await page.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
 
   await page.click('#mMore');
   await page.click('#comfortBtn');
@@ -415,6 +458,7 @@ async function waitForCompleteFit(page, count) {
   await curl.mouse.up();
   await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
   check('releasing past the spine completes exactly one physical spread', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+  await waitForCompleteFit(curl, 2);
 
   /* The final even page has a deliberately blank facing leaf. It still needs the
      full page box while revealed underneath a physical curl; otherwise the desk
@@ -432,6 +476,7 @@ async function waitForCompleteFit(page, count) {
   await curl.mouse.up();
   await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('6 /') && !document.getElementById('pdfFrame').dataset.curlState);
   check('the last physical fold lands on the even final page with its blank mate', await curl.locator('#bookBlankLeaf.book-blank-right').count() === 1 && await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+  await waitForCompleteFit(curl, 1);
 
   const finalLeftBox = await curl.locator('.pdf-page[data-page="6"].book-spread-left').boundingBox();
   start = { x: finalLeftBox.x + 5, y: finalLeftBox.y + 22 };
@@ -440,6 +485,7 @@ async function waitForCompleteFit(page, count) {
   await curl.mouse.up();
   await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
   check('the final left leaf can be folded back to the preceding spread', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+  await waitForCompleteFit(curl, 2);
 
   const leftBox = await curl.locator('.pdf-page.book-spread-left').boundingBox();
   start = { x: leftBox.x + 5, y: leftBox.y + 22 };
@@ -450,6 +496,7 @@ async function waitForCompleteFit(page, count) {
   await curl.mouse.up();
   await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
   check('the left outer edge folds the previous sheet back into place', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+  await waitForCompleteFit(curl, 2);
 
   rightBox = await curl.locator('.pdf-page.book-spread-right').boundingBox();
   start = { x: rightBox.x + rightBox.width - 5, y: rightBox.y + rightBox.height - 18 };
@@ -474,6 +521,7 @@ async function waitForCompleteFit(page, count) {
   });
   check('Page arrows lift a centered physical sheet instead of the old stiff card', automaticSingleCurl.direction === 'next' && automaticSingleCurl.label.startsWith('3 /') && automaticSingleCurl.overlays === 1 && automaticSingleCurl.legacy === 0 && automaticSingleCurl.overlap < 2 && automaticSingleCurl.tipOffset < 24 && automaticSingleCurl.backOpacity < .4 && automaticSingleCurl.underHidden === 'true' && automaticSingleCurl.underInert, JSON.stringify(automaticSingleCurl));
   await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await waitForCompleteFit(curl, 1);
 
   let singleBox = await curl.locator('.pdf-page[data-page="4"].book-single').boundingBox();
   start = { x: singleBox.x + 5, y: singleBox.y + 24 };
@@ -483,6 +531,7 @@ async function waitForCompleteFit(page, count) {
   await curl.mouse.up();
   await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('3 /') && !document.getElementById('pdfFrame').dataset.curlState);
   check('the single page’s left edge folds directly back to the preceding sheet', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+  await waitForCompleteFit(curl, 1);
 
   singleBox = await curl.locator('.pdf-page[data-page="3"].book-single').boundingBox();
   start = { x: singleBox.x + singleBox.width - 5, y: singleBox.y + singleBox.height - 18 };
@@ -499,6 +548,7 @@ async function waitForCompleteFit(page, count) {
   await curl.mouse.move(start.x - singleBox.width * .96,start.y - 88,{steps:18});await curl.mouse.up();
   await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4 /') && !document.getElementById('pdfFrame').dataset.curlState);
   check('a committed single-page drag advances exactly one sheet', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+  await waitForCompleteFit(curl, 1);
 
   /* If responsive fitting rebuilds the page while an arrow curl is running, the turn
      still lands—but it must never resurrect the retired rigid-card animation. */
@@ -525,6 +575,249 @@ async function waitForCompleteFit(page, count) {
   const reducedSingle = await curl.locator('#pdfFrame').evaluate(frame => ({state:frame.dataset.curlState||'',origin:frame.dataset.curlOrigin||'',artifacts:frame.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length}));
   check('reduced motion changes a single page without staging a curl', !reducedSingle.state && !reducedSingle.origin && reducedSingle.artifacts === 0, JSON.stringify(reducedSingle));
   await curlContext.close();
+
+  /* Touch-only tablets must manipulate the same paper geometry directly. A separate
+     coarse-pointer context keeps this honest: synthetic TouchEvents never pass through
+     the desktop pointer handlers exercised above. */
+  const touchContext = await browser.newContext({ viewport: { width: 1366, height: 1024 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+  const touch = await touchContext.newPage();
+  touch.setDefaultTimeout(15000);
+  touch.on('pageerror', error => errors.push(error.message));
+  await touch.addInitScript(() => {
+    localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {} }));
+    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ pdfLayout: 'book', guideOrientation: 'row', focus: false, guideDim: 55 }));
+  });
+  await touch.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  await touch.setInputFiles('#pdfFile', PDF);
+  await touch.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('book-cover') && document.querySelector('.pdf-page[data-page="1"] canvas')?.width > 0);
+  await waitForCompleteFit(touch, 1);
+  const touchCapabilities = await touch.evaluate(() => ({ coarse: matchMedia('(pointer: coarse)').matches, touchPoints: navigator.maxTouchPoints, spread: document.getElementById('pdfFrame').classList.contains('book-spread'), touchAction: getComputedStyle(document.getElementById('documentPane')).touchAction }));
+  check('the tablet regression runs through a coarse touch Book spread', touchCapabilities.coarse && touchCapabilities.touchPoints > 0 && touchCapabilities.spread && touchCapabilities.touchAction === 'none', JSON.stringify(touchCapabilities));
+  await touch.evaluate(() => {
+    window.__touchLegacyTurnSeen = false;
+    window.__touchLegacyObserver = new MutationObserver(() => {
+      if (document.querySelector('.pdf-page.book-turning')) window.__touchLegacyTurnSeen = true;
+    });
+    window.__touchLegacyObserver.observe(document.getElementById('pdfFrame'), { attributes: true, attributeFilter: ['class'], subtree: true });
+  });
+
+  const touchIntentBox = await touch.locator('.pdf-page[data-page="1"] canvas').boundingBox();
+  const stillFinger = { id: 29, x: touchIntentBox.x + touchIntentBox.width * .5, y: touchIntentBox.y + touchIntentBox.height * .5 };
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchstart', [stillFinger]);
+  await touch.waitForTimeout(340);
+  check('resting a finger on tablet paper does not arm or turn a leaf', !(await touch.locator('#pdfFrame').getAttribute('data-curl-state')) && (await touch.locator('#pageNumber').textContent()).startsWith('1 /'));
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchend', [], [stillFinger]);
+  const verticalStart = { id: 30, x: touchIntentBox.x + touchIntentBox.width * .52, y: touchIntentBox.y + touchIntentBox.height * .38 };
+  const verticalMove = { id: 30, x: verticalStart.x + 6, y: verticalStart.y + 94 };
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchstart', [verticalStart]);
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchmove', [verticalMove]);
+  check('vertical tablet motion is not mistaken for a page turn', !(await touch.locator('#pdfFrame').getAttribute('data-curl-state')) && (await touch.locator('#pageNumber').textContent()).startsWith('1 /'));
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchend', [], [verticalMove]);
+
+  /* Open the cover with a finger in three stages. Progress and the crease tip must keep
+     moving with the finger before release; the page counter remains on the old spread. */
+  let touchBox = await touch.locator('.pdf-page[data-page="1"].book-spread-right').boundingBox();
+  let fingerStart = { id: 31, x: touchBox.x + touchBox.width - 5, y: touchBox.y + touchBox.height * .72 };
+  let fingerOne = { id: 31, x: fingerStart.x - touchBox.width * .30, y: fingerStart.y - 18 };
+  let fingerTwo = { id: 31, x: fingerStart.x - touchBox.width * .62, y: fingerStart.y - 64 };
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchstart', [fingerStart]);
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchmove', [fingerOne]);
+  await touch.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'dragging' && +document.getElementById('pdfFrame').dataset.curlProgress > .08);
+  const coverTouchOne = await touch.locator('#pdfFrame').evaluate(frame => ({ progress: +frame.dataset.curlProgress, tipLeft: parseFloat(frame.querySelector('.book-curl-tip').style.left) }));
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchmove', [fingerTwo]);
+  await touch.waitForFunction(previous => +document.getElementById('pdfFrame').dataset.curlProgress > previous + .08, coverTouchOne.progress);
+  const coverTouchTwo = await touch.locator('#pdfFrame').evaluate(frame => ({
+    state: frame.dataset.curlState,
+    direction: frame.dataset.curlDirection,
+    source: frame.dataset.curlSource,
+    back: frame.dataset.curlBack,
+    progress: +frame.dataset.curlProgress,
+    tipLeft: parseFloat(frame.querySelector('.book-curl-tip').style.left),
+    under: !!frame.querySelector('.book-curl-under-right[data-page="3"]'),
+    overlay: !!frame.querySelector('.book-curl-overlay[data-back-page="2"]'),
+    clipped: !!frame.querySelector('.book-curl-front[data-page="1"]')?.style.clipPath,
+    label: document.getElementById('pageNumber').textContent,
+    legacy: frame.querySelectorAll('.book-turning').length
+  }));
+  check('an iPad finger continuously bends the cover with its physical back and under-page', coverTouchTwo.state === 'dragging' && coverTouchTwo.direction === 'next' && coverTouchTwo.source === '1' && coverTouchTwo.back === '2' && coverTouchTwo.progress > coverTouchOne.progress && coverTouchTwo.tipLeft < coverTouchOne.tipLeft - 30 && coverTouchTwo.under && coverTouchTwo.overlay && coverTouchTwo.clipped && coverTouchTwo.label.startsWith('1 /') && coverTouchTwo.legacy === 0, JSON.stringify({ first: coverTouchOne, second: coverTouchTwo }));
+  const coverCommit = { id: 31, x: fingerStart.x - touchBox.width * .97, y: fingerStart.y - 78 };
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchmove', [coverCommit]);
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchend', [], [coverCommit]);
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('releasing the touch cover past its threshold opens one spread cleanly', await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+  await waitForCompleteFit(touch, 2);
+
+  /* A held partial fold loses its flick velocity and returns to the same spread. This
+     catches touchend paths that accidentally invoke the retired compact card turn. */
+  touchBox = await touch.locator('.pdf-page[data-page="3"].book-spread-right').boundingBox();
+  fingerStart = { id: 32, x: touchBox.x + touchBox.width - 5, y: touchBox.y + touchBox.height - 22 };
+  fingerTwo = { id: 32, x: fingerStart.x - touchBox.width * .66, y: fingerStart.y - 74 };
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchstart', [fingerStart]);
+  await touch.waitForTimeout(60);
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchmove', [fingerTwo]);
+  await touch.waitForFunction(() => {
+    const frame = document.getElementById('pdfFrame'), progress = +frame.dataset.curlProgress;
+    return frame.dataset.curlState === 'dragging' && frame.dataset.curlSource === '3' && frame.dataset.curlBack === '4' && progress > .2 && progress < .4 && document.querySelector('.book-curl-under-right[data-page="5"]');
+  });
+  await touch.waitForTimeout(360);
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchend', [], [fingerTwo]);
+  await touch.waitForFunction(() => !document.getElementById('pdfFrame').dataset.curlState);
+  check('a shallow held tablet fold springs back without changing the spread', (await touch.locator('#pageNumber').textContent()).startsWith('2–3 /') && await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+
+  touchBox = await touch.locator('.pdf-page[data-page="3"].book-spread-right').boundingBox();
+  fingerStart = { id: 33, x: touchBox.x + touchBox.width - 5, y: touchBox.y + touchBox.height * .58 };
+  const spreadCommit = { id: 33, x: fingerStart.x - touchBox.width * .97, y: fingerStart.y - 58 };
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchstart', [fingerStart]);
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchmove', [spreadCommit]);
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchend', [], [spreadCommit]);
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('a committed tablet fold advances exactly one physical spread', await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+  await waitForCompleteFit(touch, 2);
+
+  touchBox = await touch.locator('.pdf-page[data-page="4"].book-spread-left').boundingBox();
+  fingerStart = { id: 34, x: touchBox.x + 5, y: touchBox.y + touchBox.height * .42 };
+  const spreadBack = { id: 34, x: fingerStart.x + touchBox.width * .97, y: fingerStart.y + 52 };
+  await dispatchTouches(touch, '.pdf-page[data-page="4"] canvas', 'touchstart', [fingerStart]);
+  await dispatchTouches(touch, '.pdf-page[data-page="4"] canvas', 'touchmove', [spreadBack]);
+  await touch.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlDirection === 'prev' && document.getElementById('pdfFrame').dataset.curlSource === '4' && document.getElementById('pdfFrame').dataset.curlBack === '3' && document.querySelector('.book-curl-under-left[data-page="2"]'));
+  await dispatchTouches(touch, '.pdf-page[data-page="4"] canvas', 'touchend', [], [spreadBack]);
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('the left page follows a tablet finger back to the preceding spread', await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+  await waitForCompleteFit(touch, 2);
+
+  /* Page mode is a stack rather than a bound spread: its outgoing ink appears faintly
+     on the moving reverse while the destination occupies the exact same paper box. */
+  await touch.evaluate(() => document.querySelector('[data-pdf-layout="page"]').click());
+  await touch.waitForFunction(() => document.querySelector('[data-pdf-layout="page"]').getAttribute('aria-pressed') === 'true' && document.querySelectorAll('.pdf-page.book-active').length === 1 && !document.getElementById('pdfFrame').classList.contains('book-spread'));
+  await waitForCompleteFit(touch, 1);
+  touchBox = await touch.locator('.pdf-page[data-page="2"].book-single').boundingBox();
+  fingerStart = { id: 35, x: touchBox.x + touchBox.width - 5, y: touchBox.y + touchBox.height * .66 };
+  fingerOne = { id: 35, x: fingerStart.x - touchBox.width * .28, y: fingerStart.y - 14 };
+  fingerTwo = { id: 35, x: fingerStart.x - touchBox.width * .64, y: fingerStart.y - 68 };
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchstart', [fingerStart]);
+  await touch.waitForTimeout(60);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchmove', [fingerOne]);
+  await touch.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'dragging' && +document.getElementById('pdfFrame').dataset.curlProgress > .08);
+  const pageTouchOne = await touch.locator('#pdfFrame').evaluate(frame => ({ progress: +frame.dataset.curlProgress, tipLeft: parseFloat(frame.querySelector('.book-curl-tip').style.left) }));
+  await touch.waitForTimeout(60);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchmove', [fingerTwo]);
+  await touch.waitForFunction(previous => +document.getElementById('pdfFrame').dataset.curlProgress > previous + .08, pageTouchOne.progress);
+  const pageTouchTwo = await touch.locator('#pdfFrame').evaluate(frame => {
+    const source = frame.querySelector('.book-curl-front[data-page="2"]'), under = frame.querySelector('.book-curl-under-single[data-page="3"]'), sr = source.getBoundingClientRect(), ur = under.getBoundingClientRect();
+    return { source: frame.dataset.curlSource, back: frame.dataset.curlBack, progress: +frame.dataset.curlProgress, tipLeft: parseFloat(frame.querySelector('.book-curl-tip').style.left), overlap: Math.max(Math.abs(sr.left-ur.left),Math.abs(sr.top-ur.top),Math.abs(sr.right-ur.right),Math.abs(sr.bottom-ur.bottom)), reverseOpacity: parseFloat(getComputedStyle(frame.querySelector('.book-curl-back-canvas')).opacity), label: document.getElementById('pageNumber').textContent, legacy: frame.querySelectorAll('.book-turning').length };
+  });
+  check('a Page-mode finger gets a live loose-sheet fold with the next page underneath', pageTouchTwo.source === '2' && pageTouchTwo.back === '2' && pageTouchTwo.progress > pageTouchOne.progress && pageTouchTwo.tipLeft < pageTouchOne.tipLeft - 30 && pageTouchTwo.overlap < 2 && pageTouchTwo.reverseOpacity < .4 && pageTouchTwo.label.startsWith('2 /') && pageTouchTwo.legacy === 0, JSON.stringify({ first: pageTouchOne, second: pageTouchTwo }));
+  await touch.waitForTimeout(360);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchend', [], [fingerTwo]);
+  await touch.waitForFunction(() => !document.getElementById('pdfFrame').dataset.curlState);
+  check('a shallow Page-mode touch fold cancels on the same sheet', (await touch.locator('#pageNumber').textContent()).startsWith('2 /') && await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+
+  touchBox = await touch.locator('.pdf-page[data-page="2"].book-single').boundingBox();
+  fingerStart = { id: 36, x: touchBox.x + touchBox.width - 5, y: touchBox.y + touchBox.height * .54 };
+  const pageCommit = { id: 36, x: fingerStart.x - touchBox.width * .97, y: fingerStart.y - 46 };
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchstart', [fingerStart]);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchmove', [pageCommit]);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchend', [], [pageCommit]);
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('a committed Page-mode finger advances exactly one loose sheet', await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+  await waitForCompleteFit(touch, 1);
+
+  touchBox = await touch.locator('.pdf-page[data-page="3"].book-single').boundingBox();
+  fingerStart = { id: 37, x: touchBox.x + 5, y: touchBox.y + touchBox.height * .45 };
+  const pageBack = { id: 37, x: fingerStart.x + touchBox.width * .97, y: fingerStart.y + 42 };
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchstart', [fingerStart]);
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchmove', [pageBack]);
+  await touch.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlDirection === 'prev' && document.getElementById('pdfFrame').dataset.curlSource === '3' && document.getElementById('pdfFrame').dataset.curlBack === '3' && document.querySelector('.book-curl-under-single[data-page="2"]'));
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchend', [], [pageBack]);
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('Page mode also folds backward under a tablet finger', await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+  await waitForCompleteFit(touch, 1);
+
+  /* Two fingers still own pinch-zoom, and an enlarged sheet still pans with one finger.
+     Neither gesture may be mistaken for a turn by the new coarse-pointer curl path. */
+  touchBox = await touch.locator('.pdf-page[data-page="2"] canvas').boundingBox();
+  const pinchA = { id: 41, x: touchBox.x + touchBox.width * .42, y: touchBox.y + touchBox.height * .5 };
+  const pinchB = { id: 42, x: touchBox.x + touchBox.width * .58, y: touchBox.y + touchBox.height * .5 };
+  const pinchWideA = { id: 41, x: touchBox.x + touchBox.width * .32, y: pinchA.y - 10 };
+  const pinchWideB = { id: 42, x: touchBox.x + touchBox.width * .68, y: pinchB.y + 10 };
+  /* The second finger arrives after the first has made a still-unclaimed page gesture,
+     matching an actual pinch more closely than beginning with two simultaneous contacts. */
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchstart', [pinchA]);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchstart', [pinchA, pinchB], [pinchB]);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchmove', [pinchWideA, pinchWideB]);
+  const livePinch = await touch.locator('#pdfFrame').evaluate(frame => ({ transform: frame.style.transform, curl: frame.dataset.curlState || '', label: document.getElementById('pageNumber').textContent }));
+  check('two fingers retain the live pinch preview without lifting a page', /scale\((?:1\.[1-9]|[2-9])/.test(livePinch.transform) && !livePinch.curl && livePinch.label.startsWith('2 /'), JSON.stringify(livePinch));
+  /* Lift only the second finger: the first one must hand directly from pinch to pan,
+     even while the enlarged PDF canvas is being rebuilt underneath it. */
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchend', [pinchWideA], [pinchWideB]);
+  await touch.waitForFunction(() => {
+    const pane = document.getElementById('documentPane');
+    return !document.getElementById('pdfFrame').style.transform && document.getElementById('zoomLabel').textContent.endsWith('%') && (pane.scrollWidth > pane.clientWidth + 20 || pane.scrollHeight > pane.clientHeight + 20);
+  });
+  const beforePan = await touch.locator('#documentPane').evaluate(pane => ({ left: pane.scrollLeft, top: pane.scrollTop, maxLeft: pane.scrollWidth-pane.clientWidth, maxTop: pane.scrollHeight-pane.clientHeight, rect: (() => { const r=pane.getBoundingClientRect();return { left:r.left, top:r.top, width:r.width, height:r.height }; })() }));
+  const panMove = { id: pinchWideA.id, x: pinchWideA.x + (beforePan.left > 12 ? 72 : -72), y: pinchWideA.y + (beforePan.top > 12 ? 58 : -58) };
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchmove', [panMove]);
+  const livePan = await touch.locator('#documentPane').evaluate((pane, before) => ({ left: pane.scrollLeft, top: pane.scrollTop, moved: Math.hypot(pane.scrollLeft-before.left,pane.scrollTop-before.top), curl: document.getElementById('pdfFrame').dataset.curlState || '', label: document.getElementById('pageNumber').textContent }), beforePan);
+  check('one finger still pans an enlarged Page instead of starting a curl', livePan.moved > 10 && !livePan.curl && livePan.label.startsWith('2 /'), JSON.stringify(livePan));
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchend', [], [panMove]);
+  await waitForPagedReady(touch);
+
+  /* Once that enlarged page reaches its outer scroll boundary, continued finger travel
+     becomes the same physical page curl instead of the old translated-card preview. */
+  const zoomEdge = await touch.locator('#documentPane').evaluate(pane => {
+    pane.scrollLeft = pane.scrollWidth - pane.clientWidth;
+    const rect = pane.getBoundingClientRect();
+    return { right: rect.right, top: rect.top, height: rect.height };
+  });
+  const zoomEdgeStart = { id: 44, x: zoomEdge.right - 28, y: zoomEdge.top + zoomEdge.height * .52 };
+  const zoomEdgeMove = { id: 44, x: zoomEdgeStart.x - 300, y: zoomEdgeStart.y - 24 };
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchstart', [zoomEdgeStart]);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchmove', [zoomEdgeMove]);
+  await touch.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'dragging' && +document.getElementById('pdfFrame').dataset.curlProgress > .04 && document.getElementById('pdfFrame').dataset.curlOrigin === 'finger' && document.getElementById('pdfFrame').dataset.curlSource === '2' && document.querySelector('.book-curl-under-single[data-page="3"]'));
+  const zoomEdgeCurl = await touch.locator('#pdfFrame').evaluate((frame, fingerX) => {
+    const frameRect = frame.getBoundingClientRect(), tip = frame.querySelector('.book-curl-tip');
+    return { progress: +frame.dataset.curlProgress, tipOffset: Math.abs(frameRect.left + parseFloat(tip.style.left) - fingerX), legacy: frame.querySelectorAll('.book-turning').length };
+  }, zoomEdgeMove.x);
+  check('an enlarged Page hands its claimed outer edge directly to the finger', zoomEdgeCurl.progress > .04 && zoomEdgeCurl.tipOffset < 48 && zoomEdgeCurl.legacy === 0, JSON.stringify(zoomEdgeCurl));
+  await touch.waitForTimeout(180);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchend', [], [zoomEdgeMove]);
+  await touch.waitForFunction(() => !document.getElementById('pdfFrame').dataset.curlState);
+  check('a held zoom-edge curl settles back without changing pages', (await touch.locator('#pageNumber').textContent()).startsWith('2 /'));
+
+  const interiorPan = await touch.locator('#documentPane').evaluate(pane => {
+    const maxLeft = pane.scrollWidth - pane.clientWidth;
+    pane.scrollLeft = Math.max(0, maxLeft - 140);
+    const rect = pane.getBoundingClientRect();
+    return { x: rect.left + rect.width * .5, y: rect.top + rect.height * .48 };
+  });
+  const interiorStart = { id: 45, x: interiorPan.x, y: interiorPan.y };
+  const interiorAtEdge = { id: 45, x: interiorStart.x - 180, y: interiorStart.y - 4 };
+  const interiorPastEdge = { id: 45, x: interiorStart.x - 300, y: interiorStart.y - 7 };
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchstart', [interiorStart]);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchmove', [interiorAtEdge]);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchmove', [interiorPastEdge]);
+  check('an interior pan cannot unexpectedly become a page curl at the boundary', !(await touch.locator('#pdfFrame').getAttribute('data-curl-state')) && (await touch.locator('#pageNumber').textContent()).startsWith('2 /'));
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchend', [], [interiorPastEdge]);
+
+  /* iPadOS can cancel every contact when the app switches, rotates, or a system gesture
+     wins. That must revert the preview instead of accidentally committing its zoom. */
+  touchBox = await touch.locator('.pdf-page[data-page="2"] canvas').boundingBox();
+  const cancelZoom = await touch.locator('#zoomLabel').textContent();
+  const cancelA = { id: 46, x: touchBox.x + touchBox.width * .43, y: touchBox.y + touchBox.height * .48 };
+  const cancelB = { id: 47, x: touchBox.x + touchBox.width * .57, y: touchBox.y + touchBox.height * .48 };
+  const cancelWideA = { id: 46, x: cancelA.x - 55, y: cancelA.y - 12 };
+  const cancelWideB = { id: 47, x: cancelB.x + 55, y: cancelB.y + 12 };
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchstart', [cancelA, cancelB]);
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchmove', [cancelWideA, cancelWideB]);
+  check('a live two-finger preview is present before iPadOS cancels it', (await touch.locator('#pdfFrame').getAttribute('style') || '').includes('transform'));
+  await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchcancel', [], [cancelWideA, cancelWideB]);
+  await waitForPagedReady(touch);
+  const canceledPinch = await touch.locator('#pdfFrame').evaluate(frame => ({ transform: frame.style.transform, curl: frame.dataset.curlState || '', label: document.getElementById('pageNumber').textContent, zoom: document.getElementById('zoomLabel').textContent }));
+  check('touchcancel reverts the pinch without turning or changing zoom', !canceledPinch.transform && !canceledPinch.curl && canceledPinch.label.startsWith('2 /') && canceledPinch.zoom === cancelZoom, JSON.stringify(canceledPinch));
+
+  const touchLegacy = await touch.evaluate(() => { window.__touchLegacyObserver.disconnect(); return window.__touchLegacyTurnSeen; });
+  check('tablet Page and Book gestures never revive the legacy rigid-card turn', !touchLegacy && await touch.locator('.book-turning').count() === 0);
+  await touchContext.close();
 
   const migrationContext = await browser.newContext({ viewport: { width: 900, height: 700 } });
   const migration = await migrationContext.newPage();

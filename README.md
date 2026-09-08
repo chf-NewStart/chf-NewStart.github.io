@@ -96,7 +96,9 @@ Each page is self-contained and keeps its data in the visitor's own browser
   horizontal trackpad turns sweep a physical leaf from the outer midpoint,
   showing its reverse and the page beneath. With a mouse or pen, pick up either outer edge: the corner,
   reverse print, fold ridge and shadow follow the pointer, then fall back or turn
-  according to where it is released. Narrow reading panes temporarily show one
+  according to where it is released. On iPad, a one-finger horizontal pull bends
+  and carries the same live sheet under the fingertip; pinch zoom and long-press
+  text selection remain available. Narrow reading panes temporarily show one
   complete page and restore the spread when there is room; arrows, keyboard and
   swipes follow the usual left-to-right book direction.
 

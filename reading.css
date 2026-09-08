@@ -597,6 +597,9 @@
     .comfort-bar.pdf-mode .text-only { display: none !important; }
     .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
     .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; touch-action: manipulation; overscroll-behavior: contain; }
+    /* Page and Book own their iPad gestures: the first move must stay with our live
+       curl/pan/pinch handlers or Safari can claim it before the paper starts folding. */
+    .document-pane.paged-pdf-flow { touch-action: none; }
     #pageNumber, .mobile-bar .m-page { cursor: pointer; }
     html[data-theme="dark"] .document-pane { background: #111516; }
     /* Pages stack in one continuous vertical scroll, like paper on a desk. */
@@ -647,7 +650,7 @@
        copy across the pointer-controlled crease, so the sheet follows the hand instead
        of playing a disconnected card-flip after release. */
     .pdf-frame.book-curl-active { position: relative; isolation: isolate; filter: none; overflow: visible; }
-    .document-pane.turning-book-leaf { user-select: none; -webkit-user-select: none; }
+    .document-pane.turning-book-leaf { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .pdf-frame.paged-pdf-flow .pdf-page.book-curl-front { display: block; z-index: 5; pointer-events: none; will-change: clip-path; }
     .pdf-frame.paged-pdf-flow .pdf-page.book-curl-under,
     .pdf-frame.paged-pdf-flow .book-blank-leaf.book-curl-under { display: block; visibility: visible; z-index: 0; pointer-events: none; }

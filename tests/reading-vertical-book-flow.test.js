@@ -5,8 +5,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const PDF = process.env.PHLOEM_VERTICAL_BOOK_TEST_PDF || path.join(ROOT, 'assets', 'phloem-guide', 'phloem-field-guide.pdf');
-const PORT = +(process.env.PHLOEM_VERTICAL_BOOK_TEST_PORT || 8134);
+const PDF = path.join(ROOT, 'assets', 'phloem-guide', 'phloem-field-guide.pdf');
+const PORT = +(process.env.PHLOEM_BOOK_TEST_PORT || 8134);
 const server = http.createServer((req, res) => {
   const pathname = req.url.split('?')[0] === '/' ? '/reading.html' : req.url.split('?')[0];
   const file = path.join(ROOT, pathname);
@@ -24,226 +24,571 @@ function check(name, condition, extra) {
   if (!condition) failures++;
 }
 
+/* A deliberately tiny PDF with a real internal annotation from page 1 to page 3.
+   Keeping it in memory exercises PDF.js's destination path without another fixture. */
+function linkedPdfBuffer() {
+  function stream(text) {
+    return '<< /Length ' + Buffer.byteLength(text, 'ascii') + ' >>\nstream\n' + text + '\nendstream';
+  }
+  const objects = [null,
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R] /Count 3 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << /Font << /F1 10 0 R >> >> /Contents 4 0 R /Annots [9 0 R] >>',
+    stream('BT\n/F1 18 Tf\n40 330 Td\n(Jump to page 3) Tj\nET'),
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << /Font << /F1 10 0 R >> >> /Contents 6 0 R >>',
+    stream('BT\n/F1 18 Tf\n40 330 Td\n(Page 2) Tj\nET'),
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << /Font << /F1 10 0 R >> >> /Contents 8 0 R >>',
+    stream('BT\n/F1 18 Tf\n40 330 Td\n(Page 3 destination) Tj\nET'),
+    '<< /Type /Annot /Subtype /Link /Rect [36 310 230 354] /Border [0 0 1] /Dest [7 0 R /Fit] >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  for (let i = 1; i < objects.length; i++) {
+    offsets[i] = Buffer.byteLength(pdf, 'ascii');
+    pdf += i + ' 0 obj\n' + objects[i] + '\nendobj\n';
+  }
+  const xref = Buffer.byteLength(pdf, 'ascii');
+  pdf += 'xref\n0 ' + objects.length + '\n0000000000 65535 f \n';
+  for (let i = 1; i < objects.length; i++) pdf += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+  pdf += 'trailer\n<< /Size ' + objects.length + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n';
+  return Buffer.from(pdf, 'ascii');
+}
+
+async function fullPageMetrics(page) {
+  return page.locator('#documentPane').evaluate(pane => {
+    const papers = Array.from(pane.querySelectorAll('.pdf-page.book-active'));
+    const paneRect = pane.getBoundingClientRect();
+    return {
+      count: papers.length,
+      pages: papers.map(paper => {
+        const sheet = paper.querySelector('.pdf-sheet');
+        const paperRect = paper.getBoundingClientRect();
+        const sheetRect = sheet.getBoundingClientRect();
+        return {
+          page: +paper.dataset.page,
+          left: paperRect.left,
+          right: paperRect.right,
+          top: paperRect.top,
+          bottom: paperRect.bottom,
+          holderWidth: paper.offsetWidth,
+          holderHeight: paper.offsetHeight,
+          sheetWidth: sheet.offsetWidth,
+          sheetHeight: sheet.offsetHeight,
+          transform: sheet.style.transform,
+          cropped: paper.classList.contains('book-cropped')
+        };
+      }),
+      pane: { left: paneRect.left, right: paneRect.right, top: paneRect.top, bottom: paneRect.bottom }
+    };
+  });
+}
+
+function pagesAreComplete(metrics) {
+  return metrics.pages.every(page => !page.cropped && !page.transform && page.holderWidth === page.sheetWidth && page.holderHeight === page.sheetHeight && page.left >= metrics.pane.left - 2 && page.right <= metrics.pane.right + 2 && page.top >= metrics.pane.top - 2 && page.bottom <= metrics.pane.bottom + 2);
+}
+
+async function waitForCompleteFit(page, count) {
+  await page.waitForFunction(expected => {
+    const pane = document.getElementById('documentPane'), paneRect = pane.getBoundingClientRect();
+    const papers = Array.from(pane.querySelectorAll('.pdf-page.book-active'));
+    return papers.length === expected && papers.every(paper => {
+      const rect = paper.getBoundingClientRect(), sheet = paper.querySelector('.pdf-sheet');
+      return !paper.classList.contains('book-cropped') && !sheet.style.transform && paper.offsetWidth === sheet.offsetWidth && paper.offsetHeight === sheet.offsetHeight && rect.left >= paneRect.left - 2 && rect.right <= paneRect.right + 2 && rect.top >= paneRect.top - 2 && rect.bottom <= paneRect.bottom + 2;
+    });
+  }, count);
+}
+
 (async () => {
   await new Promise(resolve => server.listen(PORT, resolve));
   const launch = { headless: true };
   if (process.env.CHROME_PATH) launch.executablePath = process.env.CHROME_PATH;
   const browser = await chromium.launch(launch);
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-  page.setDefaultTimeout(process.env.PHLOEM_VERTICAL_BOOK_TEST_PDF ? 30000 : 7000);
+  page.setDefaultTimeout(15000);
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => {
     localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {} }));
-    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ guideOrientation: 'column', focus: false, guideDim: 55 }));
+    /* Explicit old two-page users migrate to Book. */
+    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ pdfDirection: 'vertical', verticalPages: 'two', guideOrientation: 'column', focus: false, guideDim: 55 }));
   });
 
   await page.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await page.setInputFiles('#pdfFile', PDF);
-  await page.waitForFunction(() => document.querySelector('.pdf-page.book-active canvas')?.width > 0);
-  await page.waitForFunction(() => localStorage.getItem('readingRoom.guideDiscoverySeen.v1') === '1');
+  await page.waitForFunction(() => document.querySelector('.pdf-page.book-active canvas')?.width > 0 && document.getElementById('zoomLabel').textContent === 'Fit');
+  await waitForCompleteFit(page, 1);
 
-  check('a first PDF opens cleanly with the guide off', await page.locator('#focusBtn').getAttribute('aria-pressed') === 'false' && !(await page.locator('#paneSpotlight').evaluate(overlay => overlay.classList.contains('on'))));
-  check('first entrance quietly points to the guide instead', await page.locator('#mMore').evaluate(button => button.classList.contains('guide-discovery')) && (await page.locator('#guideDiscoveryNote').textContent()).includes('one column'));
-  await page.click('#mMore');
-  check('the guide itself is cued when mobile tools open', await page.locator('#guideTool').evaluate(tool => tool.classList.contains('guide-discovery')));
-  await page.evaluate(() => localStorage.setItem('readingRoom.guideAdjustSeen.v1', '1'));
-  await page.click('#focusBtn');
-  await page.click('#mMore');
-  check('column flow opens as a single-page book', await page.locator('#documentPane').evaluate(pane => pane.classList.contains('column-book-flow')));
-  check('only the current book leaf is visible', await page.locator('.pdf-page').evaluateAll(pages => pages.filter(page => getComputedStyle(page).display !== 'none').length === 1));
-  check('right-to-left page arrows are visible', await page.locator('#mPrev').textContent() === '→' && await page.locator('#mNext').textContent() === '←');
-  check('column zoom becomes a readable text-fit action', await page.locator('#colZoomBtn').textContent() === 'Text');
-  check('vertical text fit never shrinks below page fit', await page.locator('#zoomLabel').textContent().then(text => text === 'Fit' || parseInt(text, 10) >= 100), await page.locator('#zoomLabel').textContent());
+  check('the old explicit two-page preference migrates to Book', await page.locator('[data-pdf-layout="book"]').getAttribute('aria-pressed') === 'true');
+  check('a phone keeps the Book preference but shows one page', await page.locator('#documentPane').evaluate(pane => pane.classList.contains('paged-pdf-flow') && !pane.classList.contains('book-spread')) && await page.locator('.pdf-page.book-active').count() === 1);
+  check('the guide cue no longer conflates columns with book layout', !(await page.locator('#guideDiscoveryNote').textContent()).includes('Vertical book'));
+  check('paged arrows use familiar left-to-right direction', await page.locator('#mPrev').textContent() === '←' && await page.locator('#mNext').textContent() === '→');
+  const mobilePage = await fullPageMetrics(page);
+  check('mobile Book fallback keeps the complete authored page', pagesAreComplete(mobilePage), JSON.stringify(mobilePage));
 
-  const guideCanvasBox = await page.locator('.pdf-page.book-active canvas').boundingBox();
-  const guideMouseX = guideCanvasBox.x + guideCanvasBox.width * .55;
-  const guideMouseY = guideCanvasBox.y + guideCanvasBox.height * .42;
-  check('the iPad viewport still advertises touch-style hover capability', !(await page.evaluate(() => matchMedia('(hover: hover)').matches)));
-  await page.mouse.click(guideMouseX, guideMouseY);
-  await page.waitForTimeout(340);
-  check('a connected mouse click pins the guide on iPad', await page.locator('#paneSpotlight').evaluate(overlay => overlay.classList.contains('locked')));
-  const pinnedGuidePosition = await page.locator('#guideBand').evaluate(band => ({ left: band.getBoundingClientRect().left, top: band.getBoundingClientRect().top }));
-  await page.mouse.move(guideMouseX - 70, guideMouseY + 80);
-  await page.waitForTimeout(100);
-  check('the pinned guide no longer follows the mouse', await page.locator('#guideBand').evaluate((band, before) => Math.abs(band.getBoundingClientRect().left - before.left) < 1 && Math.abs(band.getBoundingClientRect().top - before.top) < 1, pinnedGuidePosition));
-  await page.mouse.click(guideMouseX - 35, guideMouseY + 40);
-  await page.waitForTimeout(340);
-  check('the next connected-mouse click releases the guide', await page.locator('#paneSpotlight').evaluate(overlay => !overlay.classList.contains('locked')));
-  await page.touchscreen.tap(guideMouseX, guideMouseY);
-  await page.waitForTimeout(340);
-  check('a finger tap still repositions without pinning the guide', await page.locator('#paneSpotlight').evaluate(overlay => !overlay.classList.contains('locked')));
+  /* Consecutive input must queue relative turns, not repeatedly request the page that
+     was current when the first asynchronous render began. */
+  await page.evaluate(() => { document.getElementById('mNext').click(); document.getElementById('mNext').click(); });
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlSource === '1' && document.querySelector('.book-curl-under-single[data-page="2"]'));
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlSource === '2' && document.getElementById('mPageLabel').textContent.startsWith('2 /'));
+  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('rapid Next input advances two physical one-page leaves', await page.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0, await page.locator('#mPageLabel').textContent());
 
-  await page.click('#mNext');
-  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('2 /'));
-  await page.waitForTimeout(350);
-  check('left arrow turns forward to the next leaf', await page.locator('.pdf-page.book-active').getAttribute('data-page') === '2');
-
-  await page.keyboard.press('ArrowLeft');
-  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('3 /'));
-  check('left keyboard arrow follows right-to-left reading order', true);
+  await page.once('dialog', dialog => dialog.accept('2'));
+  await page.click('#mPageLabel');
+  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('2 /') && !document.getElementById('pdfFrame').dataset.curlState);
   await page.keyboard.press('ArrowRight');
-  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('2 /'));
-  check('right keyboard arrow returns to the previous leaf', true);
+  await page.waitForFunction(() => { const frame=document.getElementById('pdfFrame'),progress=+frame.dataset.curlProgress;return frame.dataset.curlOrigin==='middle'&&frame.dataset.curlDirection==='next'&&frame.dataset.curlSource==='2'&&frame.dataset.curlBack==='2'&&progress>.05&&progress<.9&&document.querySelector('.book-curl-under-single[data-page="3"]')&&document.getElementById('mPageLabel').textContent.startsWith('2 /'); });
+  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlDirection === 'prev' && document.getElementById('pdfFrame').dataset.curlSource === '3' && document.getElementById('pdfFrame').dataset.curlBack === '3' && document.querySelector('.book-curl-under-single[data-page="2"]'));
+  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('2 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('narrow Book fallback uses physical single-leaf arrows and keyboard', await page.locator('.book-turning').count() === 0);
 
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => !document.getElementById('pdfFrame').dataset.curlState);
   await page.locator('#documentPane').evaluate(pane => {
-    pane.scrollLeft = 0;
     function touch(x, y) { return new Touch({ identifier: 7, target: pane, clientX: x, clientY: y, pageX: x, pageY: y, screenX: x, screenY: y, radiusX: 2, radiusY: 2, force: 1 }); }
-    const y = pane.getBoundingClientRect().top + pane.clientHeight * .5;
-    pane.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [touch(90, y)], targetTouches: [touch(90, y)], changedTouches: [touch(90, y)] }));
-    pane.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: [touch(205, y + 3)], targetTouches: [touch(205, y + 3)], changedTouches: [touch(205, y + 3)] }));
-    pane.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [], targetTouches: [], changedTouches: [touch(205, y + 3)] }));
+    const rect = pane.getBoundingClientRect(), y = rect.top + rect.height * .5;
+    pane.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [touch(rect.right - 65, y)], targetTouches: [touch(rect.right - 65, y)], changedTouches: [touch(rect.right - 65, y)] }));
+    pane.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: [touch(rect.left + 85, y + 2)], targetTouches: [touch(rect.left + 85, y + 2)], changedTouches: [touch(rect.left + 85, y + 2)] }));
+    pane.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [], targetTouches: [], changedTouches: [touch(rect.left + 85, y + 2)] }));
   });
   await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('3 /'));
-  check('swiping a leaf right turns forward like a bound book', true);
-
-  await page.waitForFunction(() => document.querySelectorAll('.pdf-page.book-turning').length === 0);
-  const paneBox = await page.locator('#documentPane').boundingBox();
-  const canvasBox = await page.locator('.pdf-page.book-active canvas').boundingBox();
-  const dragX = Math.max(paneBox.x + 28, Math.min(paneBox.x + paneBox.width - 132, canvasBox.x + canvasBox.width * .42));
-  const dragY = Math.max(paneBox.y + 45, Math.min(paneBox.y + paneBox.height - 45, canvasBox.y + canvasBox.height * .46));
-  await page.mouse.move(dragX, dragY);
-  await page.mouse.down();
-  await page.mouse.move(dragX + 105, dragY + 3, { steps: 5 });
-  await page.mouse.up();
-  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('4 /'));
-  check('dragging a leaf right with a mouse turns forward', true);
-
-  await page.waitForFunction(() => document.querySelectorAll('.pdf-page.book-turning').length === 0);
-  await page.locator('#documentPane').evaluate(pane => {
-    pane.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: 90, deltaY: 0, deltaMode: 0 }));
-  });
-  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('3 /'));
-  check('a horizontal trackpad gesture turns back without skipping leaves', true);
+  check('a leftward swipe turns forward', true);
 
   await page.click('#mMore');
   await page.click('#comfortBtn');
-  await page.click('button[data-guide-orientation="row"]');
-  check('guide direction no longer changes the PDF layout', await page.locator('#documentPane').evaluate(pane => pane.classList.contains('column-book-flow')) && await page.locator('#paneSpotlight').getAttribute('data-guide-orientation') === 'row');
-  await page.click('button[data-pdf-direction="horizontal"]');
-  await page.waitForFunction(() => !document.getElementById('documentPane').classList.contains('column-book-flow'));
-  check('Normal PDF restores the continuous downward scroller', true);
-  await page.click('button[data-pdf-direction="vertical"]');
-  await page.waitForFunction(() => document.getElementById('documentPane').classList.contains('column-book-flow'));
-  await page.click('button[data-guide-orientation="column"]');
-  check('Vertical book can be restored without reopening the PDF', true);
-  if (process.env.PHLOEM_VERTICAL_BOOK_TEST_PDF) {
-    for (let target = 4; target <= 20; target++) {
-      await page.click('#mNext');
-      await page.waitForFunction(pageNo => document.getElementById('mPageLabel').textContent.startsWith(pageNo + ' /'), target);
-    }
-    await page.waitForFunction(() => parseInt(document.getElementById('zoomLabel').textContent, 10) >= 200);
-    await page.waitForFunction(() => document.querySelectorAll('.pdf-page.book-turning').length === 0);
-    check('the scanned Chinese text block is enlarged on a phone', parseInt(await page.locator('#zoomLabel').textContent(), 10) >= 200, await page.locator('#zoomLabel').textContent());
-    const guidePosition = await page.locator('#guideBand').evaluate(band => {
-      const guide = band.getBoundingClientRect();
-      const active = document.querySelector('.pdf-page.book-active');
-      const paper = active.getBoundingClientRect();
-      const canvas = active.querySelector('canvas');
-      const sample = document.createElement('canvas');
-      const scale = Math.min(1, 300 / Math.max(canvas.width, canvas.height));
-      sample.width = Math.round(canvas.width * scale); sample.height = Math.round(canvas.height * scale);
-      const context = sample.getContext('2d', { willReadFrequently: true }); context.drawImage(canvas, 0, 0, sample.width, sample.height);
-      const data = context.getImageData(0, 0, sample.width, sample.height).data;
-      const tones = [];
-      for (let y = 2; y < sample.height; y += 3) for (let x = 2; x < sample.width; x += 3) { const i = (y * sample.width + x) * 4; tones.push(data[i] * .299 + data[i + 1] * .587 + data[i + 2] * .114); }
-      tones.sort((a, b) => a - b); const paperTone = tones[Math.floor(tones.length * .62)] || 235; const threshold = Math.max(72, Math.min(150, paperTone - 68));
-      const xs = [];
-      for (let y = 0; y < sample.height; y++) for (let x = 0; x < sample.width; x++) { const i = (y * sample.width + x) * 4, lum = data[i] * .299 + data[i + 1] * .587 + data[i + 2] * .114; if (data[i + 3] > 200 && lum < threshold) xs.push(x / sample.width); }
-      xs.sort((a, b) => a - b);
-      return { center: (guide.left + guide.width / 2 - paper.left) / paper.width, inkRight: xs[Math.floor(xs.length * .985)] };
-    });
-    check('the vertical guide begins over the book text rather than its outer margin', Math.abs(guidePosition.center - guidePosition.inkRight) < .12, JSON.stringify(guidePosition));
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('column-book-comfort') && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 1);
-    await page.waitForFunction(() => {
-      const pane = document.getElementById('documentPane').getBoundingClientRect(), paper = document.querySelector('.pdf-page.book-active').getBoundingClientRect();
-      return paper.left - pane.left > pane.width * .12 && pane.right - paper.right > pane.width * .12 && paper.top - pane.top >= 16 && pane.bottom - paper.bottom >= 16;
-    });
-    const comfortPage = await page.locator('#documentPane').evaluate(pane => {
-      const paneRect = pane.getBoundingClientRect(), paper = document.querySelector('.pdf-page.book-active').getBoundingClientRect();
-      return { width: paper.width, height: paper.height, paneWidth: paneRect.width, paneHeight: paneRect.height, leftSpace: paper.left - paneRect.left, rightSpace: paneRect.right - paper.right, topSpace: paper.top - paneRect.top, bottomSpace: paneRect.bottom - paper.bottom };
-    });
-    check('Vertical book defaults to a calmer one-page view', await page.locator('[data-vertical-pages="one"]').getAttribute('aria-pressed') === 'true' && (await page.locator('#pageNumber').textContent()).startsWith('20 /'), JSON.stringify(comfortPage));
-    check('the comfort page is cropped and centered with breathing room', comfortPage.leftSpace > comfortPage.paneWidth * .12 && comfortPage.rightSpace > comfortPage.paneWidth * .12 && comfortPage.topSpace >= 16 && comfortPage.bottomSpace >= 16, JSON.stringify(comfortPage));
-    const onePagePaper = await page.locator('.pdf-page.book-active').evaluate(paper => ({ background: getComputedStyle(paper).backgroundColor, wash: getComputedStyle(paper, '::after').backgroundColor, isolation: getComputedStyle(paper).isolation, blend: getComputedStyle(paper.querySelector('canvas')).mixBlendMode }));
-    check('one-page cream is blended within its paper leaf', onePagePaper.isolation === 'isolate' && onePagePaper.blend === 'multiply' && onePagePaper.wash.endsWith('0.06)'), JSON.stringify(onePagePaper));
-    const comfortZoom = parseInt(await page.locator('#zoomLabel').textContent(), 10);
-    await page.click('#zoomIn');
-    await page.waitForFunction(before => parseInt(document.getElementById('zoomLabel').textContent, 10) > before && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 1, comfortZoom);
-    check('manual zoom stays available when one page needs larger type', parseInt(await page.locator('#zoomLabel').textContent(), 10) > comfortZoom, await page.locator('#zoomLabel').textContent());
-    await page.click('#colZoomBtn');
-    await page.waitForFunction(before => parseInt(document.getElementById('zoomLabel').textContent, 10) <= before, comfortZoom);
-    await page.setViewportSize({ width: 1100, height: 800 });
-    await page.click('button[data-vertical-pages="two"]');
-    await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('column-book-spread') && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 2);
-    await page.waitForFunction(() => {
-      const pane = document.getElementById('documentPane').getBoundingClientRect();
-      const pages = Array.from(document.querySelectorAll('.pdf-page.book-active')).map(page => page.getBoundingClientRect());
-      if (pages.length !== 2) return false;
-      const width = Math.max(...pages.map(rect => rect.right)) - Math.min(...pages.map(rect => rect.left));
-      const height = Math.max(...pages.map(rect => rect.height));
-      return width <= pane.width * .99 && height > pane.height * .68 && height <= pane.height * .99;
-    });
-    const spread = await page.locator('#documentPane').evaluate(pane => {
-      const pages = Array.from(document.querySelectorAll('.pdf-page.book-active'));
-      const paneRect = pane.getBoundingClientRect();
-      const rects = pages.map(page => page.getBoundingClientRect());
-      return {
-        count: pages.length,
-        width: Math.max(...rects.map(rect => rect.right)) - Math.min(...rects.map(rect => rect.left)),
-        height: Math.max(...rects.map(rect => rect.height)),
-        paneWidth: paneRect.width,
-        paneHeight: paneRect.height,
-        topSpace: Math.min(...rects.map(rect => rect.top)) - paneRect.top,
-        bottomSpace: paneRect.bottom - Math.max(...rects.map(rect => rect.bottom)),
-        gutter: Math.max(...rects.map(rect => rect.left)) - Math.min(...rects.map(rect => rect.right)),
-        cropRatios: pages.map(page => page.offsetWidth / page.querySelector('.pdf-sheet').offsetWidth)
-      };
-    });
-    check('a normal laptop pane shows the requested right-to-left two-page spread', spread.count === 2 && (await page.locator('#pageNumber').textContent()).includes('20–21'), JSON.stringify(spread));
-    check('the spread cuts scan margins without crowding the viewport', spread.cropRatios.some(ratio => ratio < .8) && spread.width > spread.paneWidth * .48 && spread.height > spread.paneHeight * .68 && spread.topSpace >= 20 && spread.bottomSpace >= 20 && spread.gutter >= 20, JSON.stringify(spread));
-    const spreadPaper = await page.locator('.pdf-page.book-active').evaluateAll(pages => pages.map(paper => ({ background: getComputedStyle(paper).backgroundColor, wash: getComputedStyle(paper, '::after').backgroundColor, isolation: getComputedStyle(paper).isolation, blend: getComputedStyle(paper.querySelector('canvas')).mixBlendMode })));
-    check('both spread leaves retain an equally visible cream treatment', spreadPaper.length === 2 && spreadPaper.every(style => style.background === onePagePaper.background && style.isolation === 'isolate' && style.blend === 'multiply' && style.wash.endsWith('0.12)')), JSON.stringify(spreadPaper));
-    if (process.env.PHLOEM_VERTICAL_BOOK_SPREAD_SCREENSHOT) await page.screenshot({ path: process.env.PHLOEM_VERTICAL_BOOK_SPREAD_SCREENSHOT });
-    await page.click('#nextPage');
-    await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('22–23 /'));
-    check('one page turn advances the whole two-page spread', true);
-    if (process.env.PHLOEM_VERTICAL_BOOK_SCREENSHOT) {
-      if (await page.locator('#focusBtn').getAttribute('aria-pressed') === 'true') await page.click('#focusBtn');
-      await page.click('button[data-vertical-pages="one"]');
-      if (await page.locator('#comfortBtn').getAttribute('aria-expanded') === 'true') await page.click('#comfortBtn');
-      await page.click('#notebookTuck');
-      await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('column-book-comfort') && document.querySelectorAll('.pdf-page.book-active.book-cropped').length === 1);
-      await page.waitForTimeout(500);
-      await page.screenshot({ path: process.env.PHLOEM_VERTICAL_BOOK_SCREENSHOT });
-    }
-  } else {
-    const desktop = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-    desktop.on('pageerror', error => errors.push(error.message));
-    await desktop.addInitScript(() => {
-      if (sessionStorage.getItem('guideDesktopSeeded')) return;
-      sessionStorage.setItem('guideDesktopSeeded', '1');
-      localStorage.clear();
-      localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {} }));
-      localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ guideOrientation: 'row', focus: false, guideDim: 55 }));
-    });
-    await desktop.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
-    await desktop.setInputFiles('#pdfFile', PDF);
-    await desktop.waitForFunction(() => localStorage.getItem('readingRoom.guideDiscoverySeen.v1') === '1');
-    const desktopCue = await desktop.locator('#guideDiscoveryNote').boundingBox();
-    const desktopGuide = await desktop.locator('#guideTool').boundingBox();
-    check('desktop cue sits beside the Guide control without covering the PDF', desktopCue && desktopGuide && desktopCue.y >= desktopGuide.y + desktopGuide.height && desktopCue.x + desktopCue.width <= 1280, JSON.stringify(desktopCue));
-    check('desktop first entrance also leaves the guide disabled', await desktop.locator('#focusBtn').getAttribute('aria-pressed') === 'false');
-    await desktop.reload({ waitUntil: 'load' });
-    await desktop.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0);
-    await desktop.waitForTimeout(700);
-    check('the Guide cue does not repeat on later entrances', !(await desktop.locator('#guideTool').evaluate(tool => tool.classList.contains('guide-discovery'))));
-    await desktop.close();
-  }
-  check('vertical book flow has no page errors', errors.length === 0, errors.join('; '));
+  await page.click('[data-guide-orientation="row"]');
+  check('Guide direction is independent of Book layout', await page.locator('#documentPane').evaluate(pane => pane.classList.contains('paged-pdf-flow')) && await page.locator('#paneSpotlight').getAttribute('data-guide-orientation') === 'row');
+  await page.click('[data-pdf-layout="page"]');
+  await page.waitForFunction(() => document.getElementById('documentPane').classList.contains('paged-pdf-flow') && !document.getElementById('documentPane').classList.contains('book-spread'));
+  check('Page is an explicit one-page layout', await page.locator('.pdf-page.book-active').count() === 1 && await page.locator('[data-pdf-layout="page"]').getAttribute('aria-pressed') === 'true');
+  await page.click('#mNext');
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlOrigin === 'middle' && document.getElementById('pdfFrame').dataset.curlSource === '3' && document.getElementById('pdfFrame').dataset.curlBack === '3' && document.querySelector('.book-curl-under-single[data-page="4"]'));
+  await page.waitForFunction(() => document.getElementById('mPageLabel').textContent.startsWith('4 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('explicit Page mode uses the same physical single-page turn', await page.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+  await page.click('[data-pdf-layout="scroll"]');
+  await page.waitForFunction(() => !document.getElementById('documentPane').classList.contains('paged-pdf-flow'));
+  check('Scroll restores the continuous downward reader', await page.locator('.pdf-page').evaluateAll(pages => pages.filter(page => getComputedStyle(page).display !== 'none').length > 1));
+  await page.click('[data-pdf-layout="book"]');
 
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('book-spread') && document.querySelectorAll('.pdf-page.book-active').length === 2);
+  if (await page.locator('#comfortBtn').getAttribute('aria-expanded') === 'true') await page.click('#comfortBtn');
+  await page.once('dialog', dialog => dialog.accept('1'));
+  await page.click('#pageNumber');
+  await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('book-cover') && document.querySelectorAll('.pdf-page.book-active').length === 1 && !document.querySelector('.pdf-page.book-turning'));
+  await waitForCompleteFit(page, 1);
+  check('the cover occupies the right-hand leaf before opening', await page.locator('.pdf-page[data-page="1"]').evaluate(paper => paper.classList.contains('book-spread-right')) && await page.locator('#bookBlankLeaf').evaluate(blank => blank.classList.contains('book-placeholder-left')));
+
+  await page.click('#nextPage');
+  await page.waitForFunction(() => {
+    const frame = document.getElementById('pdfFrame'), progress = +frame.dataset.curlProgress;
+    return frame.dataset.curlState === 'settling' && frame.dataset.curlOrigin === 'middle' && progress > .05 && progress < .95;
+  });
+  const coverTurn = await page.locator('#pdfFrame').evaluate(frame => {
+    const paper = frame.querySelector('.pdf-page[data-page="1"]'), paperRect = paper.getBoundingClientRect(), frameRect = frame.getBoundingClientRect();
+    return {
+      gridColumn: getComputedStyle(paper).gridColumnStart,
+      source: frame.dataset.curlSource,
+      back: frame.dataset.curlBack,
+      direction: frame.dataset.curlDirection,
+      origin: frame.dataset.curlOrigin,
+      under: !!frame.querySelector('.book-curl-under[data-page="3"]'),
+      overlay: !!frame.querySelector('.book-curl-overlay'),
+      front: paper.classList.contains('book-curl-front'),
+      legacy: !!frame.querySelector('.book-flip-next'),
+      label: document.getElementById('pageNumber').textContent,
+      tipOffset: Math.abs(parseFloat(frame.querySelector('.book-curl-tip').style.top) - (paperRect.top - frameRect.top + paperRect.height / 2))
+    };
+  });
+  check('the arrow physically sweeps the cover from its outer middle edge', coverTurn.gridColumn === '2' && coverTurn.source === '1' && coverTurn.back === '2' && coverTurn.direction === 'next' && coverTurn.origin === 'middle' && coverTurn.under && coverTurn.overlay && coverTurn.front && !coverTurn.legacy && coverTurn.label.startsWith('1 /') && coverTurn.tipOffset < 24, JSON.stringify(coverTurn));
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState && !document.querySelector('.book-curl-overlay'));
+  await page.waitForFunction(() => document.getElementById('zoomLabel').textContent === 'Fit' && !document.getElementById('pdfFrame').dataset.curlState);
+  await waitForCompleteFit(page, 2);
+  const spread = await fullPageMetrics(page);
+  const sorted = spread.pages.slice().sort((a, b) => a.left - b.left);
+  check('Book uses conventional 2–3 page parity', (await page.locator('#pageNumber').textContent()).startsWith('2–3 /') && sorted.map(p => p.page).join(',') === '2,3', JSON.stringify(spread));
+  check('both spread pages preserve their full PDF boxes', pagesAreComplete(spread), JSON.stringify(spread));
+  check('the two leaves meet at a physical center seam', Math.abs(sorted[0].right - sorted[1].left) <= 2, String(sorted[1].left - sorted[0].right));
+
+  /* A queued resize/fit must never land after a deliberate zoom and undo it. */
+  await page.evaluate(() => { document.getElementById('zoomLabel').click(); document.getElementById('zoomIn').click(); document.getElementById('zoomIn').click(); });
+  await page.waitForTimeout(450);
+  check('manual zoom wins over an in-flight Fit', (await page.locator('#zoomLabel').textContent()).endsWith('%'), await page.locator('#zoomLabel').textContent());
+  await page.click('#nextPage');
+  await page.waitForFunction(() => { const frame = document.getElementById('pdfFrame'), progress = +frame.dataset.curlProgress; return frame.dataset.curlState === 'settling' && frame.dataset.curlOrigin === 'middle' && frame.dataset.curlSource === '3' && progress > .05 && progress < .9; });
+  check('automatic physical turns remain available in a manually zoomed Book', await page.locator('#documentPane').evaluate(pane => pane.scrollWidth > pane.clientWidth + 2));
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await page.click('#prevPage');
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await page.evaluate(() => document.getElementById('zoomLabel').click());
+  await page.waitForFunction(() => document.getElementById('zoomLabel').textContent === 'Fit');
+  await waitForCompleteFit(page, 2);
+
+  await page.locator('#nextPage').click();
+  await page.waitForFunction(() => { const frame = document.getElementById('pdfFrame'), progress = +frame.dataset.curlProgress; return frame.dataset.curlState === 'settling' && frame.dataset.curlOrigin === 'middle' && frame.dataset.curlDirection === 'next' && progress > .05 && progress < .9; });
+  const arrowCurl = await page.locator('#pdfFrame').evaluate(frame => ({ source: frame.dataset.curlSource, back: frame.dataset.curlBack, under: !!frame.querySelector('.book-curl-under[data-page="5"]'), label: document.getElementById('pageNumber').textContent, overlays: frame.querySelectorAll('.book-curl-overlay').length, legacy: frame.querySelectorAll('.book-turning').length }));
+  check('the toolbar arrow turns one physical sheet with its reverse and under-page', arrowCurl.source === '3' && arrowCurl.back === '4' && arrowCurl.under && arrowCurl.label.startsWith('2–3 /') && arrowCurl.overlays === 1 && arrowCurl.legacy === 0, JSON.stringify(arrowCurl));
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForFunction(() => { const frame = document.getElementById('pdfFrame'), progress = +frame.dataset.curlProgress; return frame.dataset.curlState === 'settling' && frame.dataset.curlOrigin === 'middle' && frame.dataset.curlDirection === 'prev' && progress > .05 && progress < .9; });
+  const keyCurl = await page.locator('#pdfFrame').evaluate(frame => ({ source: frame.dataset.curlSource, back: frame.dataset.curlBack, under: !!frame.querySelector('.book-curl-under[data-page="2"]'), label: document.getElementById('pageNumber').textContent }));
+  check('the keyboard arrow uses the same physical backward fold', keyCurl.source === '4' && keyCurl.back === '3' && keyCurl.under && keyCurl.label.startsWith('4–5 /'), JSON.stringify(keyCurl));
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+
+  await page.click('#prevPage');
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlSource === '2' && document.getElementById('pdfFrame').dataset.curlBack === '1' && document.querySelector('#bookBlankLeaf.book-curl-under-left'));
+  const automaticCoverBlank = await page.locator('#bookBlankLeaf').evaluate(blank => {
+    const rect = blank.getBoundingClientRect(), sourceRect = document.querySelector('.pdf-page[data-page="2"]').getBoundingClientRect();
+    return { width: rect.width, height: rect.height, sourceWidth: sourceRect.width, sourceHeight: sourceRect.height, background: getComputedStyle(blank).backgroundColor, hidden: blank.getAttribute('aria-hidden'), inert: blank.hasAttribute('inert') };
+  });
+  check('closing onto the cover reveals a page-sized, toned blank board leaf', Math.abs(automaticCoverBlank.width - automaticCoverBlank.sourceWidth) < 2 && Math.abs(automaticCoverBlank.height - automaticCoverBlank.sourceHeight) < 2 && automaticCoverBlank.background !== 'rgb(255, 255, 255)' && automaticCoverBlank.hidden === 'true' && automaticCoverBlank.inert, JSON.stringify(automaticCoverBlank));
+  await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('book-cover') && !document.getElementById('pdfFrame').dataset.curlState);
+  await page.evaluate(() => { document.getElementById('nextPage').click(); document.getElementById('nextPage').click(); });
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlSource === '1');
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlSource === '3' && document.getElementById('pageNumber').textContent.startsWith('2–3 /'));
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('rapid Next input queues two physical spreads in order', await page.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0, await page.locator('#pageNumber').textContent());
+
+  await page.once('dialog', dialog => dialog.accept('1'));
+  await page.click('#pageNumber');
+  await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('book-cover') && !document.getElementById('pdfFrame').dataset.curlState);
+  await page.click('#nextPage');
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'settling' && document.getElementById('pdfFrame').dataset.curlSource === '1' && document.getElementById('pageNumber').textContent.startsWith('1 /'));
+  /* Queue another Book turn, then leave for Page while the first physical fold is
+     still alive. A stale queued turn must not surface after the layout switch. */
+  await page.evaluate(() => {
+    document.getElementById('nextPage').click();
+    document.querySelector('[data-pdf-layout="page"]').click();
+  });
+  await page.waitForTimeout(800);
+  const leftDuringTurn = await page.evaluate(() => ({
+    label: document.getElementById('pageNumber').textContent,
+    pagePressed: document.querySelector('[data-pdf-layout="page"]').getAttribute('aria-pressed'),
+    turning: document.querySelectorAll('.pdf-page.book-turning').length,
+    curlState: document.getElementById('pdfFrame').dataset.curlState || '',
+    artifacts: document.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front').length
+  }));
+  check('leaving Book cancels its in-flight and queued physical turns', leftDuringTurn.pagePressed === 'true' && leftDuringTurn.label.startsWith('1 /') && leftDuringTurn.turning === 0 && !leftDuringTurn.curlState && leftDuringTurn.artifacts === 0, JSON.stringify(leftDuringTurn));
+  await page.evaluate(() => document.querySelector('[data-pdf-layout="book"]').click());
+  await page.waitForTimeout(500);
+  check('returning to Book does not replay the cancelled turn', (await page.locator('#pageNumber').textContent()).startsWith('1 /') && await page.locator('#pdfFrame').evaluate(frame => frame.classList.contains('book-cover')), await page.locator('#pageNumber').textContent());
+  await page.click('#nextPage');
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+
+  await page.locator('.pdf-page.book-spread-right').click({ position: { x: 12, y: 12 } });
+  check('either leaf can become the active note page without moving the spread', (await page.locator('#pageNumber').textContent()).startsWith('2–3 /') && (await page.locator('#noteHeading').textContent()) === 'Page 3 note');
+
+  await page.locator('#nextPage').click();
+  await page.waitForFunction(() => { const frame = document.getElementById('pdfFrame'), progress = +frame.dataset.curlProgress; return frame.dataset.curlState === 'settling' && frame.dataset.curlSource === '3' && progress > .05 && progress < .9; });
+  await page.setViewportSize({ width: 1410, height: 880 });
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('a resize may interrupt the animation but cannot lose the requested arrow turn', await page.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+  await waitForCompleteFit(page, 2);
+  await page.locator('#nextPage').click();
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlBack === '6' && document.querySelector('#bookBlankLeaf.book-curl-under-right'));
+  const automaticFinalBlank = await page.locator('#bookBlankLeaf').evaluate(blank => {
+    const rect = blank.getBoundingClientRect(), source = document.querySelector('.pdf-page[data-page="5"]'), sourceRect = source.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, sourceWidth: sourceRect.width, sourceHeight: sourceRect.height };
+  });
+  check('the arrow reveals a full blank mate beneath the final physical leaf', Math.abs(automaticFinalBlank.width - automaticFinalBlank.sourceWidth) < 2 && Math.abs(automaticFinalBlank.height - automaticFinalBlank.sourceHeight) < 2, JSON.stringify(automaticFinalBlank));
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('6 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  const ending = await page.locator('#pdfFrame').evaluate(frame => {
+    const page = frame.querySelector('.pdf-page.book-active'), blank = frame.querySelector('.book-blank-right');
+    const pr = page.getBoundingClientRect(), br = blank.getBoundingClientRect();
+    return { page: +page.dataset.page, pageLeft: pr.left, pageRight: pr.right, blankLeft: br.left, blankRight: br.right, blankDisplay: getComputedStyle(blank).display };
+  });
+  check('an even final page sits on the left with a blank facing leaf', ending.page === 6 && ending.blankDisplay !== 'none' && Math.abs(ending.pageRight - ending.blankLeft) <= 2 && await page.locator('#nextPage').isDisabled(), JSON.stringify(ending));
+  const finalProgress = await page.locator('#progressRail').evaluate((rail) => ({ now: rail.getAttribute('aria-valuenow'), width: document.getElementById('progressFill').style.width }));
+  check('the final physical spread reports complete reading progress', finalProgress.now === '100' && finalProgress.width === '100%', JSON.stringify(finalProgress));
+
+  await page.click('#prevPage');
+  await page.waitForFunction(() => { const frame = document.getElementById('pdfFrame'), progress = +frame.dataset.curlProgress; return frame.dataset.curlState === 'settling' && frame.dataset.curlOrigin === 'middle' && frame.dataset.curlDirection === 'prev' && progress > .05 && progress < .9; });
+  const automaticFinalPrevious = await page.locator('#pdfFrame').evaluate(frame => ({ source: frame.dataset.curlSource, back: frame.dataset.curlBack, under: !!frame.querySelector('.book-curl-under[data-page="4"]'), label: document.getElementById('pageNumber').textContent }));
+  check('the final left page physically folds back onto the preceding spread', automaticFinalPrevious.source === '6' && automaticFinalPrevious.back === '5' && automaticFinalPrevious.under && automaticFinalPrevious.label.startsWith('6 /'), JSON.stringify(automaticFinalPrevious));
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+
+  /* A direct destination supersedes an automatic leaf already in flight; the canceled
+     destination must never flash or replay after the requested jump lands. */
+  await page.click('#nextPage');
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlSource === '5' && +document.getElementById('pdfFrame').dataset.curlProgress > .05);
+  await page.once('dialog', dialog => dialog.accept('3'));
+  await page.click('#pageNumber');
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('a page jump supersedes an in-flight arrow curl without replaying it', await page.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0 && !(await page.locator('#pageNumber').textContent()).startsWith('6 /'));
+  check('jumping to an odd page opens its containing spread and keeps it active', (await page.locator('#noteHeading').textContent()) === 'Page 3 note');
+
+  await page.setViewportSize({ width: 800, height: 700 });
+  await page.waitForFunction(() => !document.getElementById('pdfFrame').classList.contains('book-spread') && document.querySelectorAll('.pdf-page.book-active').length === 1);
+  const fallback = await fullPageMetrics(page);
+  check('Book responsively falls back to one complete page without changing the preference', await page.locator('[data-pdf-layout="book"]').getAttribute('aria-pressed') === 'true' && pagesAreComplete(fallback), JSON.stringify(fallback));
+
+  await page.setViewportSize({ width: 1180, height: 360 });
+  await page.waitForFunction(() => !document.getElementById('pdfFrame').classList.contains('book-spread') && document.querySelectorAll('.pdf-page.book-active').length === 1 && document.getElementById('zoomLabel').textContent === 'Fit');
+  await page.waitForTimeout(650);
+  const shortLandscape = await fullPageMetrics(page);
+  check('a short landscape pane still fits every authored page edge', pagesAreComplete(shortLandscape), JSON.stringify(shortLandscape));
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('book-spread') && document.getElementById('pageNumber').textContent.startsWith('2–3 /'));
+  check('the spread returns when the pane has room again', true);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.click('#nextPage');
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /'));
+  const reducedArtifacts = await page.locator('#pdfFrame').evaluate(frame => ({ state: frame.dataset.curlState || '', origin: frame.dataset.curlOrigin || '', active: frame.classList.contains('book-curl-active'), artifacts: frame.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length }));
+  check('reduced motion swaps spreads without staging a physical animation', !reducedArtifacts.state && !reducedArtifacts.origin && !reducedArtifacts.active && reducedArtifacts.artifacts === 0, JSON.stringify(reducedArtifacts));
+
+  /* A real desktop pointer owns a Book corner continuously. This has its own context:
+     changing the viewport of the mobile-emulated page above does not change its hover
+     and pointer capabilities. */
+  const curlContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const curl = await curlContext.newPage();
+  curl.setDefaultTimeout(15000);
+  curl.on('pageerror', error => errors.push(error.message));
+  await curl.addInitScript(() => {
+    localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {} }));
+    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ pdfLayout: 'book', guideOrientation: 'row', focus: false, guideDim: 55 }));
+  });
+  await curl.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  await curl.setInputFiles('#pdfFile', PDF);
+  await curl.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('book-cover') && document.querySelector('.pdf-page[data-page="1"] canvas')?.width > 0);
+  await waitForCompleteFit(curl, 1);
+  await curl.evaluate(() => { window.__bookCurlClicks = 0; document.getElementById('pdfFrame').addEventListener('click', () => window.__bookCurlClicks++); });
+  const coverBoxForCurl = await curl.locator('.pdf-page[data-page="1"].book-spread-right').boundingBox();
+  const coverGrab = { x: coverBoxForCurl.x + coverBoxForCurl.width - 5, y: coverBoxForCurl.y + coverBoxForCurl.height - 18 };
+  await curl.mouse.move(coverGrab.x, coverGrab.y);await curl.mouse.down();
+  await curl.mouse.move(coverGrab.x - coverBoxForCurl.width * .96, coverGrab.y - 80, { steps: 18 });
+  await curl.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlBack === '2' && document.querySelector('.book-curl-under[data-page="3"]'));
+  await curl.mouse.up();
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.querySelector('.book-turning') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('the cover physically opens with page 2 on its back and page 3 underneath', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0 && await curl.evaluate(() => window.__bookCurlClicks === 0));
+  await waitForCompleteFit(curl, 2);
+
+  let rightBox = await curl.locator('.pdf-page.book-spread-right').boundingBox();
+  let start = { x: rightBox.x + rightBox.width - 5, y: rightBox.y + rightBox.height - 18 };
+  await curl.mouse.move(start.x, start.y);
+  await curl.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'ready');
+  check('only the physical outer edge advertises a grabbable next leaf', await curl.locator('#pdfFrame').getAttribute('data-curl-direction') === 'next' && await curl.locator('.book-curl-ready-next').count() === 1);
+  await curl.mouse.move(rightBox.x + rightBox.width * .5, start.y);
+  check('moving away from the edge clears the page pickup', !(await curl.locator('#pdfFrame').getAttribute('data-curl-state')) && await curl.locator('.book-curl-ready-next').count() === 0);
+
+  /* Hold a shallow fold long enough to remove flick velocity. The page number must stay
+     on the old spread throughout direct manipulation and after the canceled settle. */
+  await curl.mouse.move(start.x, start.y);
+  await curl.mouse.down();
+  await curl.mouse.move(start.x - rightBox.width * .70, start.y - 96, { steps: 16 });
+  await curl.waitForFunction(() => +document.getElementById('pdfFrame').dataset.curlProgress > .3);
+  await curl.waitForFunction(() => document.querySelector('.book-curl-back-canvas')?.width > 0 && !document.querySelector('.book-curl-back-fallback'));
+  const partialCurl = await curl.locator('#pdfFrame').evaluate(frame => ({
+    state: frame.dataset.curlState,
+    direction: frame.dataset.curlDirection,
+    progress: +frame.dataset.curlProgress,
+    source: frame.dataset.curlSource,
+    back: frame.dataset.curlBack,
+    overlay: !!frame.querySelector('.book-curl-overlay'),
+    backPixels: frame.querySelector('.book-curl-back-canvas')?.width || 0,
+    under: frame.querySelectorAll('.book-curl-under').length,
+    clipped: !!frame.querySelector('.book-curl-front')?.style.clipPath,
+    label: document.getElementById('pageNumber').textContent
+  }));
+  check('the held corner exposes a live reverse page, crease, and under-page', partialCurl.state === 'dragging' && partialCurl.direction === 'next' && partialCurl.source === '3' && partialCurl.back === '4' && partialCurl.overlay && partialCurl.backPixels > 0 && partialCurl.under === 1 && partialCurl.clipped && partialCurl.label.startsWith('2–3 /'), JSON.stringify(partialCurl));
+  await curl.waitForTimeout(180);
+  await curl.mouse.up();
+  await curl.waitForFunction(() => !document.getElementById('pdfFrame').dataset.curlState);
+  check('a shallow held fold falls back without changing the spread', (await curl.locator('#pageNumber').textContent()).startsWith('2–3 /') && await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+
+  rightBox = await curl.locator('.pdf-page.book-spread-right').boundingBox();
+  start = { x: rightBox.x + rightBox.width - 5, y: rightBox.y + rightBox.height * .5 };
+  await curl.mouse.move(start.x, start.y);await curl.mouse.down();
+  await curl.mouse.move(start.x + 72, start.y + 3, { steps: 6 });await curl.mouse.up();
+  await curl.waitForFunction(() => !document.getElementById('pdfFrame').dataset.curlState);
+  check('pulling the right edge outward cannot turn the book backward', (await curl.locator('#pageNumber').textContent()).startsWith('2–3 /') && await curl.locator('.book-curl-overlay').count() === 0);
+
+  rightBox = await curl.locator('.pdf-page.book-spread-right').boundingBox();
+  start = { x: rightBox.x + rightBox.width - 5, y: rightBox.y + rightBox.height - 18 };
+  await curl.mouse.move(start.x, start.y);
+  await curl.mouse.down();
+  await curl.mouse.move(start.x - rightBox.width * .96, start.y - 105, { steps: 18 });
+  check('the page counter waits while a committed-size fold is still held', (await curl.locator('#pageNumber').textContent()).startsWith('2–3 /'));
+  await curl.mouse.up();
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('releasing past the spine completes exactly one physical spread', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+
+  /* The final even page has a deliberately blank facing leaf. It still needs the
+     full page box while revealed underneath a physical curl; otherwise the desk
+     flashes through during the last turn. */
+  rightBox = await curl.locator('.pdf-page.book-spread-right').boundingBox();
+  start = { x: rightBox.x + rightBox.width - 5, y: rightBox.y + rightBox.height - 18 };
+  await curl.mouse.move(start.x, start.y);await curl.mouse.down();
+  await curl.mouse.move(start.x - rightBox.width * .96, start.y - 105, { steps: 18 });
+  await curl.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'dragging' && document.querySelector('#bookBlankLeaf.book-curl-under-right'));
+  const finalBlankCurl = await curl.locator('#bookBlankLeaf').evaluate((blank, expected) => {
+    const rect = blank.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, expectedWidth: expected.width, expectedHeight: expected.height };
+  }, rightBox);
+  check('the final blank facing leaf stays page-sized underneath the curl', Math.abs(finalBlankCurl.width - rightBox.width) < 2 && Math.abs(finalBlankCurl.height - rightBox.height) < 2, JSON.stringify(finalBlankCurl));
+  await curl.mouse.up();
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('6 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('the last physical fold lands on the even final page with its blank mate', await curl.locator('#bookBlankLeaf.book-blank-right').count() === 1 && await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+
+  const finalLeftBox = await curl.locator('.pdf-page[data-page="6"].book-spread-left').boundingBox();
+  start = { x: finalLeftBox.x + 5, y: finalLeftBox.y + 22 };
+  await curl.mouse.move(start.x, start.y);await curl.mouse.down();
+  await curl.mouse.move(start.x + finalLeftBox.width * .96, start.y + 94, { steps: 18 });
+  await curl.mouse.up();
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('the final left leaf can be folded back to the preceding spread', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+
+  const leftBox = await curl.locator('.pdf-page.book-spread-left').boundingBox();
+  start = { x: leftBox.x + 5, y: leftBox.y + 22 };
+  await curl.mouse.move(start.x, start.y);
+  await curl.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlDirection === 'prev');
+  await curl.mouse.down();
+  await curl.mouse.move(start.x + leftBox.width * .96, start.y + 94, { steps: 18 });
+  await curl.mouse.up();
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('the left outer edge folds the previous sheet back into place', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+
+  rightBox = await curl.locator('.pdf-page.book-spread-right').boundingBox();
+  start = { x: rightBox.x + rightBox.width - 5, y: rightBox.y + rightBox.height - 18 };
+  await curl.mouse.move(start.x, start.y);await curl.mouse.down();
+  await curl.mouse.move(start.x - rightBox.width * .62, start.y - 40, { steps: 10 });
+  await curl.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'dragging');
+  await curl.evaluate(() => document.querySelector('[data-pdf-layout="page"]').click());
+  await curl.waitForFunction(() => document.querySelector('[data-pdf-layout="page"]').getAttribute('aria-pressed') === 'true' && !document.getElementById('pdfFrame').dataset.curlState);
+  const labelAfterModeSwitch = await curl.locator('#pageNumber').textContent();
+  await curl.mouse.up();await curl.waitForTimeout(480);
+  check('leaving Book mid-drag removes the fold and ignores the late pointer release', await curl.locator('#pageNumber').textContent() === labelAfterModeSwitch && await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0, labelAfterModeSwitch);
+
+  /* Page is a centered stack of loose sheets. Its controls use the same fold geometry,
+     with faint outgoing ink on the reverse and the destination directly underneath. */
+  check('switching from the spread preserves page 3 as a single complete sheet', labelAfterModeSwitch.startsWith('3 /'));
+  await waitForCompleteFit(curl, 1);
+  await curl.click('#nextPage');
+  await curl.waitForFunction(() => { const frame=document.getElementById('pdfFrame'),progress=+frame.dataset.curlProgress;return frame.dataset.curlState==='settling'&&frame.dataset.curlOrigin==='middle'&&frame.dataset.curlSource==='3'&&frame.dataset.curlBack==='3'&&progress>.05&&progress<.9&&document.querySelector('.book-curl-under-single[data-page="4"]'); });
+  const automaticSingleCurl = await curl.locator('#pdfFrame').evaluate(frame => {
+    const source=frame.querySelector('.pdf-page[data-page="3"]'),under=frame.querySelector('.book-curl-under-single[data-page="4"]'),sr=source.getBoundingClientRect(),ur=under.getBoundingClientRect(),fr=frame.getBoundingClientRect();
+    return { direction:frame.dataset.curlDirection,label:document.getElementById('pageNumber').textContent,overlays:frame.querySelectorAll('.book-curl-overlay.book-curl-single').length,legacy:frame.querySelectorAll('.book-turning').length,overlap:Math.max(Math.abs(sr.left-ur.left),Math.abs(sr.top-ur.top),Math.abs(sr.right-ur.right),Math.abs(sr.bottom-ur.bottom)),tipOffset:Math.abs(parseFloat(frame.querySelector('.book-curl-tip').style.top)-(sr.top-fr.top+sr.height/2)),backOpacity:parseFloat(getComputedStyle(frame.querySelector('.book-curl-back-canvas')).opacity),underHidden:under.getAttribute('aria-hidden'),underInert:under.hasAttribute('inert')};
+  });
+  check('Page arrows lift a centered physical sheet instead of the old stiff card', automaticSingleCurl.direction === 'next' && automaticSingleCurl.label.startsWith('3 /') && automaticSingleCurl.overlays === 1 && automaticSingleCurl.legacy === 0 && automaticSingleCurl.overlap < 2 && automaticSingleCurl.tipOffset < 24 && automaticSingleCurl.backOpacity < .4 && automaticSingleCurl.underHidden === 'true' && automaticSingleCurl.underInert, JSON.stringify(automaticSingleCurl));
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4 /') && !document.getElementById('pdfFrame').dataset.curlState);
+
+  let singleBox = await curl.locator('.pdf-page[data-page="4"].book-single').boundingBox();
+  start = { x: singleBox.x + 5, y: singleBox.y + 24 };
+  await curl.mouse.move(start.x,start.y);await curl.mouse.down();
+  await curl.mouse.move(start.x + singleBox.width * .96,start.y + 88,{steps:18});
+  await curl.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'dragging' && document.getElementById('pdfFrame').dataset.curlDirection === 'prev' && document.getElementById('pdfFrame').dataset.curlSource === '4' && document.getElementById('pdfFrame').dataset.curlBack === '4' && document.querySelector('.book-curl-under-single[data-page="3"]'));
+  await curl.mouse.up();
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('the single page’s left edge folds directly back to the preceding sheet', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+
+  singleBox = await curl.locator('.pdf-page[data-page="3"].book-single').boundingBox();
+  start = { x: singleBox.x + singleBox.width - 5, y: singleBox.y + singleBox.height - 18 };
+  await curl.mouse.move(start.x,start.y);await curl.mouse.down();
+  await curl.mouse.move(start.x - singleBox.width * .70,start.y - 86,{steps:16});
+  await curl.waitForFunction(() => +document.getElementById('pdfFrame').dataset.curlProgress > .3 && document.querySelector('.book-curl-under-single[data-page="4"]'));
+  await curl.waitForTimeout(180);await curl.mouse.up();
+  await curl.waitForFunction(() => !document.getElementById('pdfFrame').dataset.curlState);
+  check('a shallow single-page fold falls back without navigating', (await curl.locator('#pageNumber').textContent()).startsWith('3 /') && await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+
+  singleBox = await curl.locator('.pdf-page[data-page="3"].book-single').boundingBox();
+  start = { x: singleBox.x + singleBox.width - 5, y: singleBox.y + singleBox.height - 18 };
+  await curl.mouse.move(start.x,start.y);await curl.mouse.down();
+  await curl.mouse.move(start.x - singleBox.width * .96,start.y - 88,{steps:18});await curl.mouse.up();
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('a committed single-page drag advances exactly one sheet', await curl.locator('.book-curl-overlay,.book-curl-under,.book-curl-front').count() === 0);
+
+  /* If responsive fitting rebuilds the page while an arrow curl is running, the turn
+     still lands—but it must never resurrect the retired rigid-card animation. */
+  await curl.evaluate(() => {
+    window.__singleLegacyTurnSeen = false;
+    window.__singleLegacyTurnObserver = new MutationObserver(() => {
+      if (document.querySelector('.pdf-page.book-turning')) window.__singleLegacyTurnSeen = true;
+    });
+    window.__singleLegacyTurnObserver.observe(document.getElementById('pdfFrame'), { attributes: true, attributeFilter: ['class'], subtree: true });
+  });
+  await curl.click('#nextPage');
+  await curl.waitForFunction(() => { const frame=document.getElementById('pdfFrame'),progress=+frame.dataset.curlProgress;return frame.dataset.curlState==='settling'&&frame.dataset.curlSource==='4'&&progress>.05&&progress<.9; });
+  await curl.setViewportSize({ width: 1380, height: 870 });
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  const interruptedSingle = await curl.evaluate(() => {
+    window.__singleLegacyTurnObserver.disconnect();
+    return { legacySeen: window.__singleLegacyTurnSeen, artifacts: document.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length };
+  });
+  check('a Page resize never falls back to the old stiff card', !interruptedSingle.legacySeen && interruptedSingle.artifacts === 0, JSON.stringify(interruptedSingle));
+
+  await curl.emulateMedia({ reducedMotion: 'reduce' });
+  await curl.click('#nextPage');
+  await curl.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('6 /'));
+  const reducedSingle = await curl.locator('#pdfFrame').evaluate(frame => ({state:frame.dataset.curlState||'',origin:frame.dataset.curlOrigin||'',artifacts:frame.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length}));
+  check('reduced motion changes a single page without staging a curl', !reducedSingle.state && !reducedSingle.origin && reducedSingle.artifacts === 0, JSON.stringify(reducedSingle));
+  await curlContext.close();
+
+  const migrationContext = await browser.newContext({ viewport: { width: 900, height: 700 } });
+  const migration = await migrationContext.newPage();
+  await migration.addInitScript(() => {
+    const oldPaper = { id: 'old_vertical_zoom', kind: 'pdf', title: 'Old vertical paper', zoom: 2.6, notes: {}, pageNotes: {}, tags: [], questions: [], addedAt: 1, updatedAt: 1, readPage: 1 };
+    const otherPaper = { id: 'preserved_scroll_zoom', kind: 'pdf', title: 'Another paper', zoom: 1.6, zoomPreferenceV: 2, notes: {}, pageNotes: {}, tags: [], questions: [], addedAt: 1, updatedAt: 1, readPage: 1 };
+    localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [oldPaper, otherPaper], deleted: {}, merged: {} }));
+    localStorage.setItem('readingRoom.lastOpen.v1', oldPaper.id);
+    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ pdfDirection: 'vertical', verticalPages: 'one', guideOrientation: 'column', focus: false, guideDim: 55 }));
+  });
+  await migration.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  await migration.waitForFunction(() => document.querySelector('[data-pdf-layout="page"]').getAttribute('aria-pressed') === 'true');
+  const migratedLayout = await migration.locator('[data-pdf-layout="page"]').getAttribute('aria-pressed');
+  check('an old one-page vertical preference migrates to Page', migratedLayout === 'true', migratedLayout);
+  const migratedPaper = await migration.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(chapter => chapter.id === 'old_vertical_zoom'));
+  check('legacy crop auto-zoom is not reused as a Scroll preference', migratedPaper.zoom === 0 && migratedPaper.zoomPreferenceV === 2, JSON.stringify({ zoom: migratedPaper.zoom, version: migratedPaper.zoomPreferenceV }));
+  const preservedPaper = await migration.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(chapter => chapter.id === 'preserved_scroll_zoom'));
+  check('legacy migration preserves other papers’ deliberate Scroll zoom', preservedPaper.zoom === 1.6 && preservedPaper.zoomPreferenceV === 2, JSON.stringify({ zoom: preservedPaper.zoom, version: preservedPaper.zoomPreferenceV }));
+  await migrationContext.close();
+
+  const guideMigrationContext = await browser.newContext({ viewport: { width: 900, height: 700 } });
+  const guideMigration = await guideMigrationContext.newPage();
+  await guideMigration.addInitScript(() => {
+    localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {} }));
+    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ guideOrientation: 'column', focus: false, guideDim: 55 }));
+  });
+  await guideMigration.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  check('an old column Guide alone no longer opts the reader into Book', await guideMigration.locator('[data-pdf-layout="scroll"]').getAttribute('aria-pressed') === 'true');
+  await guideMigrationContext.close();
+
+  const linkContext = await browser.newContext({ viewport: { width: 1000, height: 760 } });
+  const linked = await linkContext.newPage();
+  linked.on('pageerror', error => errors.push(error.message));
+  await linked.addInitScript(() => {
+    localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {} }));
+    localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ pdfLayout: 'page', guideOrientation: 'row', focus: false, guideDim: 55 }));
+  });
+  await linked.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  await linked.setInputFiles('#pdfFile', { name: 'linked-pages.pdf', mimeType: 'application/pdf', buffer: linkedPdfBuffer() });
+  await linked.waitForFunction(() => document.querySelector('.pdf-page[data-page="1"].book-active .pdf-link') && document.getElementById('pageNumber').textContent.startsWith('1 /'));
+  await linked.evaluate(() => { for (let i = 0; i < 4; i++) document.getElementById('zoomIn').click(); });
+  await linked.waitForFunction(() => document.getElementById('documentPane').scrollHeight > document.getElementById('documentPane').clientHeight + 100 && !document.querySelector('.pdf-page.book-turning'));
+  await linked.waitForTimeout(700);
+  const returnSpot = await linked.locator('#documentPane').evaluate(pane => {
+    pane.scrollLeft = Math.min(137, pane.scrollWidth - pane.clientWidth);
+    pane.scrollTop = Math.min(211, pane.scrollHeight - pane.clientHeight);
+    return { left: pane.scrollLeft, top: pane.scrollTop };
+  });
+  /* Activate the transparent PDF annotation directly; Playwright's forced pointer click
+     can target the canvas beneath this zero-content overlay in headless Chromium. */
+  await linked.locator('.pdf-page[data-page="1"] .pdf-link').evaluate(link => link.click());
+  await linked.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('3 /'));
+  await linked.waitForFunction(() => document.getElementById('readerToast').textContent.includes('Jumped to p. 3'));
+  const linkedPaper = await linked.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(chapter => chapter.sourceName === 'linked-pages.pdf'));
+  check('the last leaf of an odd-length paper is persisted as read-through progress', linkedPaper.readThroughPage === 3, JSON.stringify({ page: linkedPaper.readPage, through: linkedPaper.readThroughPage }));
+  await linked.keyboard.press('Backspace');
+  await linked.waitForFunction(spot => {
+    const pane = document.getElementById('documentPane');
+    return document.getElementById('pageNumber').textContent.startsWith('1 /') && Math.abs(pane.scrollLeft - spot.left) < 3 && Math.abs(pane.scrollTop - spot.top) < 3;
+  }, returnSpot);
+  check('Backspace after an internal PDF link restores its source page and pan position', true);
+  await linkContext.close();
+
+  check('the paged reader has no page errors', errors.length === 0, errors.join('; '));
   await browser.close();
   server.close();
   process.exit(failures ? 1 : 0);

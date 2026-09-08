@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=103">
+  <link rel="stylesheet" href="/reading.css?v=107">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -176,16 +176,11 @@
         <div class="comfort-section comfort-pdf pdf-only" aria-label="PDF reading layout">
           <span class="comfort-section-title">PDF</span>
           <div class="comfort-section-body">
-            <div class="group"><span class="group-label">Reading</span>
-              <div class="guide-scope" role="group" aria-label="PDF reading direction">
-                <button class="toggle" type="button" data-pdf-direction="horizontal" aria-pressed="true">Normal</button>
-                <button class="toggle" type="button" data-pdf-direction="vertical" aria-pressed="false" title="Cropped pages in traditional right-to-left order">Vertical book</button>
-              </div>
-            </div>
-            <div class="group vertical-pages-group" id="verticalPagesGroup" hidden><span class="group-label">View</span>
-              <div class="guide-scope" role="group" aria-label="Vertical book page view">
-                <button class="toggle" type="button" data-vertical-pages="one" aria-pressed="true">1 page</button>
-                <button class="toggle" type="button" data-vertical-pages="two" aria-pressed="false" title="Show a traditional two-page spread on a wide screen">2 pages</button>
+            <div class="group"><span class="group-label">Layout</span>
+              <div class="guide-scope" role="group" aria-label="PDF page layout">
+                <button class="toggle" type="button" data-pdf-layout="scroll" aria-pressed="true" title="Continuous pages that scroll downward">Scroll</button>
+                <button class="toggle" type="button" data-pdf-layout="page" aria-pressed="false" title="One complete page at a time, fitted without cropping">Page</button>
+                <button class="toggle" type="button" data-pdf-layout="book" aria-pressed="false" title="Facing pages; drag an outer corner to turn the sheet; narrow panes show one complete page">Book</button>
               </div>
             </div>
           </div>
@@ -683,9 +678,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=103',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=107',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=103" defer></script>
+<script src="/reading.js?v=107" defer></script>
 </body>
 </html>

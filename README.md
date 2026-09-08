@@ -75,9 +75,9 @@ Each page is self-contained and keeps its data in the visitor's own browser
 - `reading.html` — **Phloem** ("Breathe, Focus, Read"), a local-first paper desk
   for slow, focused reading — named for the plant tissue that carries sugars
   from the leaves to the fruit, which is also what a reading desk is for.
-  Single hand-written file, no framework; PDFs render with vendored pdf.js in one
-  continuous scroll (lazy rendering, canvas memory capped, far pages freed so a
-  675-page textbook stays light on a phone).
+  Single hand-written file, no framework; PDFs render with vendored pdf.js (lazy
+  rendering, canvas memory capped, far pages freed so a 675-page textbook stays
+  light on a phone).
 
   **Reading.** Pinch to zoom with a live preview re-rendered crisply under your
   fingers; double-tap between Fit and 160%; on a laptop, double-click a blank
@@ -88,6 +88,17 @@ Each page is self-contained and keeps its data in the visitor's own browser
   chapter outline; the PDF's own links work — citations jump to their
   reference (Backspace comes back), URLs open in a new tab; zoom, page,
   scroll position and the open paper itself all survive a refresh.
+
+  **Page layouts.** Scroll keeps the continuous desk view. Page fits one complete
+  authored PDF page at a time and turns it like a loose sheet, with faint ink showing
+  through the lifted back and the next page waiting underneath. Book joins two uncropped pages at a center seam,
+  starts with page 1 on the right, then pairs 2–3, 4–5 and so on. Arrows, keys and
+  horizontal trackpad turns sweep a physical leaf from the outer midpoint,
+  showing its reverse and the page beneath. With a mouse or pen, pick up either outer edge: the corner,
+  reverse print, fold ridge and shadow follow the pointer, then fall back or turn
+  according to where it is released. Narrow reading panes temporarily show one
+  complete page and restore the spread when there is room; arrows, keyboard and
+  swipes follow the usual left-to-right book direction.
 
   **Ebook mode.** On phones, Reflow rebuilds the paper as an ebook instead of
   a flat text dump: heading tiers recovered from the PDF's font sizes, bold

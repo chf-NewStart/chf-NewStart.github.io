@@ -28,11 +28,14 @@ notes, persisted category order, selection, search, and mobile fit.
 `reading-pdf-zoom.test.js` covers the one-time migration from the legacy 50%
 initial PDF scale to Fit while preserving deliberate per-paper zoom choices.
 
-`reading-vertical-book-flow.test.js` covers the single-leaf phone and cropped
-two-page desktop right-to-left PDF flows, book-direction controls and swipe
-gesture, scanned-text fitting, guide placement, the independent PDF/guide
-direction choices, and switching back to the continuous scroller. Set
-`PHLOEM_VERTICAL_BOOK_TEST_PDF` to exercise it against a particular scanned book.
+`reading-vertical-book-flow.test.js` covers the uncropped Page and Book layouts,
+old-setting migration, phone fallback, conventional cover/spread parity, final
+blank leaves, the center seam, automatic midpoint curls from arrows and keys,
+physical single-page stacks, direct mouse page curls with a real backside and
+under-page, curl cancel/commit thresholds, mid-drag cleanup,
+left-to-right arrows and swipes, rapid-turn queuing and cancellation, internal-
+link return, independent PDF/Guide choices, reduced motion, and switching back
+to Scroll.
 
 `reading-pdf-authors.test.js` covers full page-one author extraction, repair of
 older blank credits, and preservation of manually edited author fields.

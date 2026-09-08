@@ -2657,11 +2657,137 @@
     currentPage=target;updatePageChrome();scrollToPdfPage(target,behavior||'smooth');
     await renderPdfPageAt(target);
   }
-  /* Table of contents from the PDF's own outline; chapters resolve to pages on tap. */
-  var pdfOutline=null;
+  /* Prefer the PDF's bookmark tree. Publishers sometimes print a beautiful contents
+     spread without embedding any bookmarks, though, so the fallback below reads that
+     spread's text layer and turns its printed page references into real PDF pages. */
+  var pdfOutline=null,pdfOutlineInferred=false;
+  function romanPageNumber(value){
+    var s=String(value||'').toLowerCase();if(!/^m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$/.test(s)||!s)return 0;
+    var values={i:1,v:5,x:10,l:50,c:100,d:500,m:1000},total=0,last=0;
+    for(var i=s.length-1;i>=0;i--){var n=values[s[i]];total+=n<last?-n:n;last=Math.max(last,n);}
+    return total;
+  }
+  function tocLabelNumber(value){var s=String(value||'').trim();return /^\d{1,4}$/.test(s)?+s:romanPageNumber(s);}
+  function cleanTocLine(value){return String(value||'').replace(/[\u00b7.]{2,}/g,' ').replace(/\s+/g,' ').trim();}
+  function parsePrintedTocEntry(line){
+    var text=cleanTocLine(line&&line.text!==undefined?line.text:line),match=text.match(/^(.+?)\s+([0-9]{1,4}|[ivxlcdm]{1,12})$/i);
+    if(!match)return null;
+    var title=match[1].replace(/[\s.:\-\u2013\u2014]+$/,'').trim(),label=match[2];
+    if(!/[A-Za-z\u00c0-\u024f]/.test(title)||/^(?:table\s+of\s+)?contents$/i.test(title)||/^(?:page|chapter|section|part)$/i.test(title))return null;
+    /* A lone capital I is usually the name of "Part I", not a roman page reference. */
+    if(label==='I'&&!/^\d/.test(title))return null;
+    var section=title.match(/^(\d+(?:\.\d+){0,4})\.?\s+\S/),depth=section?Math.min(2,section[1].split('.').length-1):0;
+    return{title:title,pageLabel:label.toLowerCase(),printedPage:tocLabelNumber(label),arabic:/^\d+$/.test(label),depth:depth,x:+line.x||0,endX:+line.endX||0,y:+line.y||0,height:+line.height||10};
+  }
+  function printedTocPage(layout,sourcePage){
+    var lines=(layout||[]).map(function(line){var copy=Object.assign({},line);copy.text=cleanTocLine(copy.text);return copy;}).filter(function(line){return line.text;});
+    var heading='',headingRoman=0,entries=[];
+    lines.forEach(function(line){
+      var head=line.text.match(/^(?:table\s+of\s+)?contents(?:\s+([ivxlcdm]+|\d+))?$/i);
+      if(head){heading=line.text;if(head[1]&&romanPageNumber(head[1]))headingRoman=romanPageNumber(head[1]);return;}
+      var entry=parsePrintedTocEntry(line);if(entry){entry.sourcePage=sourcePage;entries.push(entry);}
+    });
+    var numbered=entries.filter(function(entry){return /^\d+(?:\.\d+)*\s/.test(entry.title);}).length;
+    /* Requiring several page-ended lines prevents an ordinary page that merely says
+       "contents" from becoming a bogus navigation menu. Continuation pages generally
+       carry a small CONTENTS header; number-heavy spreads are accepted without one. */
+    if(entries.length<3||(!heading&&(numbered<3||numbered<entries.length*.45)))return null;
+    return{entries:entries,heading:heading,romanOffset:headingRoman?sourcePage-headingRoman:null};
+  }
+  async function pdfDestinationPage(doc,dest){
+    try{
+      if(typeof dest==='string')dest=await doc.getDestination(dest);
+      if(!Array.isArray(dest)||!dest.length)return 0;
+      var first=dest[0],index=first&&typeof first==='object'?await doc.getPageIndex(first):+first;
+      return Number.isFinite(index)&&index>=0&&index<doc.numPages?index+1:0;
+    }catch(e){return 0;}
+  }
+  async function attachTocLinkTargets(doc,page,entries){
+    var annotations=[];try{annotations=await page.getAnnotations({intent:'display'});}catch(e){}
+    annotations=annotations.filter(function(a){return a&&a.subtype==='Link'&&a.dest&&a.rect;});
+    if(!annotations.length)return;
+    var targets=await Promise.all(annotations.map(function(a){return pdfDestinationPage(doc,a.dest);}));
+    entries.forEach(function(entry){
+      var best=-1,bestScore=Infinity;
+      annotations.forEach(function(a,index){
+        if(!targets[index])return;var rect=a.rect,loY=Math.min(rect[1],rect[3]),hiY=Math.max(rect[1],rect[3]);
+        var dy=entry.y<loY?loY-entry.y:(entry.y>hiY?entry.y-hiY:0);if(dy>Math.max(6,entry.height*1.25))return;
+        var loX=Math.min(rect[0],rect[2]),hiX=Math.max(rect[0],rect[2]),overlap=Math.min(entry.endX,hiX)-Math.max(entry.x,loX);
+        var score=dy+(overlap>0?0:Math.min(Math.abs(entry.x-hiX),Math.abs(entry.endX-loX))*.08);
+        if(score<bestScore){best=index;bestScore=score;}
+      });
+      if(best>=0)entry.phloemPage=targets[best];
+    });
+  }
+  function edgePrintedNumbers(page,layout){
+    var view=page&&page.view||[0,0,0,0],bottom=Math.min(+view[1]||0,+view[3]||0),top=Math.max(+view[1]||0,+view[3]||0),height=Math.max(1,top-bottom);
+    return(layout||[]).filter(function(line){return /^\d{1,4}$/.test(String(line.text||'').trim())&&(line.y<=bottom+height*.18||line.y>=top-height*.18);}).map(function(line){return+String(line.text).trim();});
+  }
+  function tocTitleKey(value){return cleanTocLine(value).replace(/^\d+(?:\.\d+)*\.?\s+/,'').replace(/^(?:chapter|part)\s+[ivxlcdm\d]+\s*/i,'').toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/g,' ').trim();}
+  function tocTitleOnPage(entry,layout){
+    var key=tocTitleKey(entry.title);if(key.length<5)return false;
+    var heights=(layout||[]).map(function(line){return+line.height||0;}).filter(Boolean).sort(function(a,b){return a-b;}),median=heights.length?heights[Math.floor(heights.length/2)]:0;
+    return(layout||[]).some(function(line){var text=tocTitleKey(line.text);return text&&(text===key||text.indexOf(key)>=0||key.indexOf(text)>=0)&&(+line.height||0)>=median*1.12;});
+  }
+  function mostLikelyTocOffset(entries){
+    var votes={};entries.forEach(function(entry){if(entry.arabic&&entry.phloemPage){var offset=entry.phloemPage-entry.printedPage;votes[offset]=(votes[offset]||0)+1;}});
+    var best=null,count=0;Object.keys(votes).forEach(function(offset){if(votes[offset]>count){best=+offset;count=votes[offset];}});return best;
+  }
+  async function inferTocArabicOffset(doc,entries,startPage){
+    var linked=mostLikelyTocOffset(entries);if(linked!==null)return linked;
+    var candidates=entries.filter(function(entry){return entry.arabic&&entry.depth===0&&entry.printedPage<=80;}).slice(0,5),votes={};
+    var end=Math.min(doc.numPages,startPage+48);
+    for(var pageNo=startPage;pageNo<=end;pageNo++){
+      if(doc!==pdfDoc)return null;
+      var page,layout;try{page=await doc.getPage(pageNo);layout=contentLayout(await page.getTextContent({includeMarkedContent:true}));}catch(e){continue;}
+      edgePrintedNumbers(page,layout).forEach(function(label){var offset=pageNo-label;if(offset>=0)votes[offset]=(votes[offset]||0)+2;});
+      candidates.forEach(function(entry){if(tocTitleOnPage(entry,layout)){var offset=pageNo-entry.printedPage;if(offset>=0)votes[offset]=(votes[offset]||0)+3;}});
+      var best=null,count=0;Object.keys(votes).forEach(function(offset){if(votes[offset]>count){best=+offset;count=votes[offset];}});
+      if(count>=4)return best;
+    }
+    var winner=null,total=0;Object.keys(votes).forEach(function(offset){if(votes[offset]>total){winner=+offset;total=votes[offset];}});return total>=3?winner:null;
+  }
+  function nestPrintedToc(entries){
+    var root=[],parents=[];
+    entries.forEach(function(entry){
+      if(!entry.phloemPage)return;var item={title:entry.title,phloemPage:entry.phloemPage,items:[]},depth=entry.depth;
+      while(depth>0&&!parents[depth-1])depth--;
+      (depth?parents[depth-1].items:root).push(item);parents[depth]=item;parents.length=depth+1;
+    });
+    return root;
+  }
+  async function inferPdfOutline(doc){
+    var gathered=[],romanOffsets=[],found=false,misses=0,lastTocPage=0,scanLimit=Math.min(doc.numPages,24);
+    for(var pageNo=1;pageNo<=scanLimit;pageNo++){
+      if(doc!==pdfDoc)return[];
+      var page,layout,parsed;try{page=await doc.getPage(pageNo);layout=contentLayout(await page.getTextContent({includeMarkedContent:true}));parsed=printedTocPage(layout,pageNo);}catch(e){parsed=null;}
+      if(parsed){found=true;misses=0;lastTocPage=pageNo;if(parsed.romanOffset!==null)romanOffsets.push(parsed.romanOffset);await attachTocLinkTargets(doc,page,parsed.entries);gathered=gathered.concat(parsed.entries);}
+      else if(found&&++misses>=2)break;
+    }
+    if(gathered.length<3)return[];
+    var labels=null;try{labels=await doc.getPageLabels();}catch(e){}
+    if(labels&&labels.length){
+      gathered.forEach(function(entry){
+        if(entry.phloemPage)return;var wanted=entry.pageLabel,candidates=[];
+        labels.forEach(function(label,index){if(String(label||'').trim().toLowerCase()===wanted)candidates.push(index+1);});
+        entry.phloemPage=candidates.find(function(page){return page>entry.sourcePage;})||candidates[0]||0;
+      });
+    }
+    var arabicOffset=await inferTocArabicOffset(doc,gathered,Math.min(doc.numPages,lastTocPage+1));
+    var romanOffset=romanOffsets.length?romanOffsets.sort(function(a,b){return a-b;})[Math.floor(romanOffsets.length/2)]:null;
+    gathered.forEach(function(entry){
+      if(entry.phloemPage)return;
+      var offset=entry.arabic?arabicOffset:romanOffset;if(offset!==null){var target=entry.printedPage+offset;if(target>0&&target<=doc.numPages)entry.phloemPage=target;}
+    });
+    return nestPrintedToc(gathered);
+  }
   async function loadPdfOutline(){
-    pdfOutline=null;byId('tocList').innerHTML='';
-    try{if(pdfDoc)pdfOutline=await pdfDoc.getOutline();}catch(e){}
+    var doc=pdfDoc,outline=null,inferred=false;pdfOutline=null;pdfOutlineInferred=false;byId('tocList').innerHTML='';
+    try{if(doc)outline=await doc.getOutline();}catch(e){}
+    if(doc&&!(outline&&outline.length)){try{outline=await inferPdfOutline(doc);inferred=!!outline.length;}catch(e){outline=[];}}
+    if(doc!==pdfDoc)return;
+    pdfOutline=outline;pdfOutlineInferred=inferred;
+    byId('tocBtn').title=pdfOutlineInferred?'Table of contents read from the PDF pages':'Table of contents';
     byId('tocBtn').classList.toggle('hidden',readerMode!=='pdf'||!(pdfOutline&&pdfOutline.length));
   }
   function renderToc(){
@@ -2682,6 +2808,7 @@
   }
   async function tocGo(item){
     try{
+      if(item.phloemPage){byId('tocDialog').close();gotoPdfPage(item.phloemPage);return;}
       var dest=item.dest;
       if(typeof dest==='string')dest=await pdfDoc.getDestination(dest);
       if(!Array.isArray(dest)||!dest.length)throw new Error('no destination');

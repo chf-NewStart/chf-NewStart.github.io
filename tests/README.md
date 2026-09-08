@@ -37,6 +37,10 @@ direction choices, and switching back to the continuous scroller. Set
 `reading-pdf-authors.test.js` covers full page-one author extraction, repair of
 older blank credits, and preservation of manually edited author fields.
 
+`reading-pdf-toc.test.js` covers navigation inferred from a printed contents
+page when the PDF has no embedded bookmark tree, including printed-to-PDF page
+offsets and numbered section hierarchy.
+
 `reading-typography.test.js` covers the Reflow-only Book/Clean typeface control,
 its immediate effect on long-form text, and persistence across reloads.
 
@@ -80,6 +84,7 @@ node tests/reading-library-stack.test.js
 node tests/reading-pdf-zoom.test.js
 node tests/reading-vertical-book-flow.test.js
 node tests/reading-pdf-authors.test.js
+node tests/reading-pdf-toc.test.js
 node tests/reading-typography.test.js
 node tests/reading-gdrive-large-pdf.test.js
 node tests/reading-docx-review.test.js

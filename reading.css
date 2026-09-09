@@ -725,14 +725,28 @@
     /* In dark mode, cream becomes warm dark paper: the same inversion, minus the blue cast. */
     .pdf-frame.cream.dark-paper .pdf-page { background: #1d1813; }
     .pdf-frame.cream.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.9) sepia(.28); }
-    /* Zen reading: nothing on screen but the paper. */
+    /* Zen reading: the paper owns the room, with a faint edge rail for the few
+       controls that matter mid-read. Each detailed choice opens to the left so the
+       outer page corners stay clear for turning. */
     body.zen .masthead, body.zen .reader-tools, body.zen .comfort-bar, body.zen .find-bar,
     body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer, body.zen .notebook-tuck, body.zen .notebook-reopen { display: none !important; }
     body.zen main { min-height: 100vh; }
-    body.zen #readerPage { height: 100vh; height: 100dvh; }
+    body.zen #readerPage { height: calc(100vh - var(--kb-inset, 0px)); height: calc(100dvh - var(--kb-inset, 0px)); }
     body.zen .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
-    .zen-exit { position: fixed; z-index: 48; top: calc(10px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); width: 42px; height: 42px; padding: 0; display: none; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 74%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease; }
-    body.zen .zen-exit { display: flex; }
+    .zen-dock { position: fixed; z-index: 48; top: calc(10px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); display: none; flex-direction: column; align-items: flex-end; gap: 8px; }
+    body.zen .zen-dock { display: flex; }
+    .zen-tool { position: relative; display: flex; justify-content: flex-end; }
+    .zen-exit { position: relative; z-index: 2; width: 44px; height: 44px; padding: 0; display: flex; flex: 0 0 44px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease, color .2s ease, background .2s ease; }
+    .zen-popout { position: absolute; z-index: 1; top: 50%; right: calc(100% + 9px); min-height: 50px; transform: translateY(-50%); border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
+    .zen-layout-menu { display: flex; gap: 5px; padding: 5px; }
+    .zen-popout-option { min-width: 68px; min-height: 44px; padding: 6px 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: 11px; background: transparent; color: var(--muted); font-size: .68rem; font-weight: 700; }
+    .zen-popout-option:hover, .zen-popout-option:focus-visible { border-color: var(--line); background: var(--surface-2); color: var(--ink); }
+    .zen-popout-option[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); background: var(--accent-soft); color: var(--ink); }
+    .zen-popout-option span:first-child { font-size: .9rem; letter-spacing: -.12em; }
+    .zen-dim-menu { width: min(264px, calc(100vw - 76px)); padding: 9px 11px; display: grid; grid-template-columns: auto minmax(92px, 1fr) 38px; align-items: center; gap: 9px; }
+    .zen-dim-menu label { color: var(--muted); font-size: .62rem; font-weight: 700; white-space: nowrap; }
+    .zen-dim-menu input { width: 100%; min-height: 28px; accent-color: var(--accent); touch-action: none; }
+    .zen-dim-menu output { color: var(--ink); font-size: .64rem; font-variant-numeric: tabular-nums; text-align: right; }
     /* A scrollbar is chrome, and zen hides chrome: the wheel, the trackpad and the
        Space drift still scroll — the paper just keeps its whole edge. */
     body.zen .document-pane { scrollbar-width: none; }
@@ -742,10 +756,12 @@
        of themselves, video-player style, and any movement or touch wakes them. They
        stay tappable while faded so one tap still exits — never a wake-then-tap dance. */
     body.zen.zen-idle .zen-exit { opacity: .08; }
-    /* The guide keeps a seat in zen: same faint circle as the exit, one slot below.
-       When the guide is on, the accent shows through even at rest opacity. */
-    .zen-guide { top: calc(60px + env(safe-area-inset-top)); font-size: .78rem; }
-    .zen-theme { top: calc(110px + env(safe-area-inset-top)); font-size: 1.02rem; }
+    body.zen .zen-dock.popout-open .zen-exit, body.zen.zen-idle .zen-tool.popout-open .zen-exit { opacity: .72; }
+    .zen-tool.popout-open .zen-exit { border-color: color-mix(in srgb, var(--accent) 36%, var(--line)); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--ink); }
+    /* When the guide is on, its accent shows through even at rest opacity. */
+    .zen-guide { font-size: .78rem; }
+    .zen-theme { font-size: 1.02rem; }
+    .zen-refresh { font-size: 1.05rem; }
     .zen-guide.active { color: var(--accent); opacity: .55; }
     .zen-guide.active:hover, .zen-guide.active:focus-visible { color: var(--accent); }
     #zenBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
@@ -853,7 +869,7 @@
     .marker-swatch[data-highlight-color="mint"], .marker-swatch[data-card-color="mint"] { background: #5cd591; }
     .marker-swatch[data-highlight-color="coral"], .marker-swatch[data-card-color="coral"] { background: #ff7e69; }
     .marker-swatch[data-highlight-color="blue"], .marker-swatch[data-card-color="blue"] { background: #5ba9ff; }
-    .selection-card { position: fixed; z-index: 45; width: min(360px, calc(100vw - 24px)); border: 1px solid var(--line); border-radius: 15px; background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 18px 54px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
+    .selection-card { position: fixed; z-index: 45; width: min(360px, calc(100vw - 24px)); max-height: min(700px, calc(var(--visual-viewport-height, 100dvh) - 24px)); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 15px; background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 18px 54px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
     .selection-card.note-open { width: min(390px, calc(100vw - 24px)); }
     .selection-card.ai-open { width: min(470px, calc(100vw - 24px)); }
     .selection-card.ai-open .selection-actions, .selection-card.ai-open .selection-secondary, .selection-card.ai-open .selection-saved-tools, .selection-card.ai-open .selection-note { display: none !important; }
@@ -902,6 +918,16 @@
     .selection-ai-row textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
     .selection-ai-row .button { min-height: 38px; padding: 8px 13px; }
     .selection-ai-status { display: block; min-height: 1em; margin-top: 6px; color: var(--muted); font-size: .61rem; }
+    /* iPad uses the desktop breakpoint, but its software keyboard still covers the
+       lower layout viewport. Lift this fixed workspace into the visual viewport. */
+    @media (min-width: 721px) {
+      body.keyboard-open .selection-card { top: auto !important; bottom: calc(var(--kb-inset, 0px) + max(12px, env(safe-area-inset-bottom))); max-height: calc(var(--visual-viewport-height, 100dvh) - 24px); }
+    }
+    /* Sub-16px focused fields make iOS zoom the whole reader, amplifying the keyboard
+       jump and moving the selected passage. Keep touch editing optically steady. */
+    @media (hover: none) and (pointer: coarse) {
+      #selectionNote, #selectionAiQuestion { font-size: 16px; }
+    }
     .mini-note .hl-note { display: block; margin-top: 3px; color: var(--ink); font-style: normal; }
     .reader-toast { position: fixed; z-index: 40; left: 22px; bottom: 22px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--ink); color: var(--surface); box-shadow: var(--shadow); font-size: .72rem; font-weight: 650; pointer-events: none; }
     .link-return { position: fixed; z-index: 41; left: 50%; bottom: calc(66px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 10px 15px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-size: .72rem; font-weight: 700; }

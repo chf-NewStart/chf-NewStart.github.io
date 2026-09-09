@@ -402,9 +402,28 @@
           </div>
         </aside>
       </aside>
-      <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading">✕</button>
-      <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-pressed="false" aria-label="Toggle the reading guide" title="Reading guide (G)">▰</button>
-      <button class="zen-exit zen-theme" id="zenTheme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
+      <div class="zen-dock" id="zenDock" role="toolbar" aria-label="Zen reading controls">
+        <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading" title="Leave zen reading">✕</button>
+        <div class="zen-tool" id="zenLayoutTool">
+          <button class="zen-exit" id="zenLayout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout. Choose layout" title="Switch page layout"><span aria-hidden="true">⇄</span></button>
+          <div class="zen-popout zen-layout-menu hidden" id="zenLayoutMenu" role="group" aria-label="Page layout">
+            <button class="zen-popout-option" type="button" data-zen-pdf-layout="scroll" aria-pressed="true"><span aria-hidden="true">↕</span><span>Scroll</span></button>
+            <button class="zen-popout-option" type="button" data-zen-pdf-layout="page" aria-pressed="false"><span aria-hidden="true">▯</span><span>Page</span></button>
+            <button class="zen-popout-option" type="button" data-zen-pdf-layout="book" aria-pressed="false"><span aria-hidden="true">▯▯</span><span>Book</span></button>
+          </div>
+        </div>
+        <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-pressed="false" aria-label="Toggle the reading guide" title="Reading guide (G)">▰</button>
+        <div class="zen-tool" id="zenDimTool">
+          <button class="zen-exit" id="zenDim" type="button" aria-expanded="false" aria-controls="zenDimMenu" aria-haspopup="true" aria-label="Adjust reading guide dimness" title="Guide dimness"><span aria-hidden="true">◐</span></button>
+          <div class="zen-popout zen-dim-menu hidden" id="zenDimMenu" role="group" aria-label="Reading guide dimness">
+            <label for="zenGuideDimRange">Outside dimness</label>
+            <input id="zenGuideDimRange" type="range" min="20" max="85" step="5" value="55" aria-label="Dimness outside the focused lines">
+            <output id="zenGuideDimValue" for="zenGuideDimRange">55%</output>
+          </div>
+        </div>
+        <button class="zen-exit zen-theme" id="zenTheme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
+        <button class="zen-exit zen-refresh" id="zenRefresh" type="button" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
+      </div>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
     </section>
   </main>

@@ -409,17 +409,28 @@
     selectionAnchor=null;activeCardRef=null;selectionNoteTarget=null;var card=byId('selectionCard');card.classList.add('hidden');card.classList.remove('ai-open','note-open');
     byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
   }
+  function readerVisualViewport(){
+    var vv=window.visualViewport,left=vv?vv.offsetLeft:0,top=vv?vv.offsetTop:0,width=vv?vv.width:innerWidth,height=vv?vv.height:innerHeight;
+    return{left:left,top:top,right:left+width,bottom:top+height,width:width,height:height};
+  }
   function placeSelectionCard(rect){
     if(rect)selectionAnchor={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width||Math.max(0,rect.right-rect.left)};
     var card=byId('selectionCard');if(!selectionAnchor||card.classList.contains('hidden'))return;
-    if(innerWidth<=720){card.style.left='';card.style.top='';return;}
+    if(innerWidth<=720){card.style.left='';card.style.top='';card.style.maxHeight='';card.style.maxWidth='';return;}
+    var viewport=readerVisualViewport();
+    card.style.maxHeight=Math.max(80,Math.min(700,viewport.height-24))+'px';card.style.maxWidth=Math.max(260,viewport.width-24)+'px';
+    if(document.body.classList.contains('keyboard-open'))card.style.top='';
     requestAnimationFrame(function(){
       if(card.classList.contains('hidden')||!selectionAnchor)return;
+      viewport=readerVisualViewport();
       var box=card.getBoundingClientRect(),gap=12,center=selectionAnchor.left+(selectionAnchor.width||0)/2;
-      var left=Math.max(gap,Math.min(center-box.width/2,innerWidth-box.width-gap)),top=selectionAnchor.bottom+gap;
-      if(top+box.height>innerHeight-gap)top=selectionAnchor.top-box.height-gap;
-      top=Math.max(gap,Math.min(top,innerHeight-box.height-gap));
-      card.style.left=Math.round(left)+'px';card.style.top=Math.round(top)+'px';
+      var left=Math.max(viewport.left+gap,Math.min(center-box.width/2,viewport.right-box.width-gap));
+      card.style.left=Math.round(left)+'px';
+      if(document.body.classList.contains('keyboard-open'))return;
+      var top=selectionAnchor.bottom+gap;
+      if(top+box.height>viewport.bottom-gap)top=selectionAnchor.top-box.height-gap;
+      top=Math.max(viewport.top+gap,Math.min(top,viewport.bottom-box.height-gap));
+      card.style.top=Math.round(top)+'px';
     });
   }
   function relatedNotesForSelection(selection){
@@ -480,10 +491,10 @@
     if(innerWidth<=720){card.style.left='';card.style.top='';return;}
     requestAnimationFrame(function(){
       if(card.classList.contains('hidden')||!lookupAnchor)return;
-      var box=card.getBoundingClientRect(),gap=12,left=lookupAnchor.right+gap;
-      if(left+box.width>innerWidth-gap)left=lookupAnchor.left-box.width-gap;
-      left=Math.max(gap,Math.min(left,innerWidth-box.width-gap));
-      var top=Math.max(gap,Math.min(lookupAnchor.top-18,innerHeight-box.height-gap));
+      var viewport=readerVisualViewport(),box=card.getBoundingClientRect(),gap=12,left=lookupAnchor.right+gap;
+      if(left+box.width>viewport.right-gap)left=lookupAnchor.left-box.width-gap;
+      left=Math.max(viewport.left+gap,Math.min(left,viewport.right-box.width-gap));
+      var top=Math.max(viewport.top+gap,Math.min(lookupAnchor.top-18,viewport.bottom-box.height-gap));
       card.style.left=Math.round(left)+'px';card.style.top=Math.round(top)+'px';
     });
   }
@@ -638,25 +649,42 @@
   addEventListener('scroll', function(){
     if (document.body.classList.contains('reading') && (scrollY || scrollX)) scrollTo(0, 0);
   }, { passive: true });
-  /* iOS never tells the layout about the on-screen keyboard, so the bottom half of the
-     reader — the Ask box included — vanished behind it. The visual viewport does know:
-     shrink the reader by the keyboard's height and keep the focused input in view. */
+  /* iOS keeps its software keyboard outside the layout viewport. The visual viewport
+     is the truthful rectangle, including on iPad where the reader uses desktop CSS. */
   if (window.visualViewport) {
     var kbRaf = null;
+    function keyboardEditable(element){
+      if(!element||element.disabled||element.readOnly)return false;
+      if(element.isContentEditable)return true;
+      if(element.tagName==='TEXTAREA')return true;
+      if(element.tagName!=='INPUT')return false;
+      return /^(text|search|email|url|tel|number|password)$/i.test(element.type||'text');
+    }
     var syncKeyboardInset = function(){
       kbRaf = null;
-      var vv = window.visualViewport;
-      var inset = document.body.classList.contains('reading') ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0;
+      var vv = window.visualViewport,active=document.activeElement;
+      var layoutHeight=Math.max(innerHeight,document.documentElement.clientHeight||0);
+      var inset = document.body.classList.contains('reading')&&keyboardEditable(active) ? Math.max(0,Math.round(layoutHeight-vv.height-vv.offsetTop)) : 0;
       if (inset < 60) inset = 0; /* small deltas are browser chrome, not a keyboard */
       document.documentElement.style.setProperty('--kb-inset', inset + 'px');
+      document.documentElement.style.setProperty('--visual-viewport-height',Math.round(vv.height)+'px');
+      document.body.classList.toggle('keyboard-open',!!inset);
+      placeLookupCard();placeSelectionCard();
       if (inset) setTimeout(function(){
         var ae = document.activeElement;
-        if (ae && ae.closest && ae.closest('.tab-panel, .find-bar, .notebook, .selection-card')) { try { ae.scrollIntoView({ block: 'nearest' }); } catch(e){} }
+        if (ae && ae.closest && ae.closest('.tab-panel, .find-bar, .notebook, .selection-card')) {
+          placeSelectionCard();
+          try { ae.scrollIntoView({ block: 'nearest' }); } catch(e){}
+        }
       }, 60);
     };
+    var scheduleKeyboardInset=function(){if(!kbRaf)kbRaf=requestAnimationFrame(syncKeyboardInset);};
     ['resize', 'scroll'].forEach(function(name){
-      window.visualViewport.addEventListener(name, function(){ if (!kbRaf) kbRaf = requestAnimationFrame(syncKeyboardInset); });
+      window.visualViewport.addEventListener(name,scheduleKeyboardInset);
     });
+    document.addEventListener('focusin',function(){scheduleKeyboardInset();setTimeout(scheduleKeyboardInset,180);});
+    document.addEventListener('focusout',function(){scheduleKeyboardInset();setTimeout(scheduleKeyboardInset,180);});
+    scheduleKeyboardInset();
   }
   document.querySelectorAll('.nav-btn[data-view]').forEach(function(b){ b.onclick = function(){ showPage(b.dataset.view); }; });
   byId('brandBtn').onclick = function(){ showPage('libraryPage'); };
@@ -705,7 +733,8 @@
   /* The standalone app can sit open for days while deploys pass it by; the service
      worker fetches reading.html network-first, so one reload is all "update" takes.
      Flush the save first — reload mid-debounce would drop the newest edit. */
-  byId('refreshBtn').onclick = async function(){ persist(false);await flushStateSnapshot();location.reload(); };
+  async function refreshPhloem(){persist(false);await flushStateSnapshot();location.reload();}
+  byId('refreshBtn').onclick = refreshPhloem;
 
   /* IndexedDB keeps actual PDFs local without choking localStorage. ArrayBuffers are
      more reliable than Blob records in older iPhone Safari; memory is a last-resort fallback. */
@@ -2066,6 +2095,8 @@
     document.querySelectorAll('[data-reading-typeface]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.readingTypeface===comfort.typeface));});
     byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=driftLabel();
     byId('guideDimRange').value=String(comfort.guideDim);byId('guideDimValue').textContent=comfort.guideDim+'%';
+    byId('zenGuideDimRange').value=String(comfort.guideDim);byId('zenGuideDimValue').textContent=comfort.guideDim+'%';
+    byId('guideDimRange').setAttribute('aria-valuetext',comfort.guideDim+' percent');byId('zenGuideDimRange').setAttribute('aria-valuetext',comfort.guideDim+' percent');
     byId('pdfFrame').classList.toggle('cream',comfort.tone==='cream');document.body.classList.toggle('cream-tone',comfort.tone==='cream');
     byId('creamBtn').setAttribute('aria-pressed',String(comfort.tone==='cream'));
     var guideOverlay=byId('paneSpotlight');
@@ -2075,6 +2106,9 @@
     document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
     document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideOrientation===comfort.guideOrientation));});
     document.querySelectorAll('[data-pdf-layout]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.pdfLayout===comfort.pdfLayout));});
+    document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.zenPdfLayout===comfort.pdfLayout));});
+    var layoutName=comfort.pdfLayout.charAt(0).toUpperCase()+comfort.pdfLayout.slice(1);
+    byId('zenLayout').setAttribute('aria-label','Page layout: '+layoutName+'. Choose layout');
     document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideScope===comfort.guideScope));});
     document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideSize===comfort.guideSize));});
     byId('guideSpanGroup').hidden=comfort.guideOrientation==='column';
@@ -2096,17 +2130,26 @@
   document.querySelectorAll('[data-reading-typeface]').forEach(function(btn){btn.onclick=function(){comfort.typeface=btn.dataset.readingTypeface;applyComfort();showReaderToast(btn.textContent+' reading typeface');};});
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
   byId('creamBtn').onclick=function(){comfort.tone=comfort.tone==='cream'?'white':'cream';applyComfort();showReaderToast(comfort.tone==='cream'?'Cream paper · easier on the eyes':'White paper');};
-  document.querySelectorAll('[data-pdf-layout]').forEach(function(btn){btn.onclick=function(){
-    comfort.pdfLayout=btn.dataset.pdfLayout;pagedFitToken='';pagedManualZoom=false;guideOffset=null;applyComfort();
+  function setPdfLayout(layout){
+    if(['scroll','page','book'].indexOf(layout)<0)return;
+    comfort.pdfLayout=layout;pagedFitToken='';pagedManualZoom=false;guideOffset=null;applyComfort();
     if(comfort.pdfLayout==='scroll')showReaderToast('Scroll view · continuous pages');
     else if(comfort.pdfLayout==='page')showReaderToast('Page view · one complete page, no cropping');
     else showReaderToast(bookSpread()?'Book view · two full pages at the spine':'Book view · one full page until there is room for a spread');
-  };});
+  }
+  document.querySelectorAll('[data-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.pdfLayout);};});
   document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideColor.charAt(0).toUpperCase()+btn.dataset.guideColor.slice(1)+' reading guide');};});
   document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.onclick=function(){comfort.guideOrientation=btn.dataset.guideOrientation;comfort.focus=true;guideOffset=null;applyComfort();placeGuide();showReaderToast(comfort.guideOrientation==='column'?'Vertical guide · follows one top-to-bottom column':'Row guide · follows one horizontal passage');};});
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide '+(comfort.guideOrientation==='column'?'width':'height')+' · '+btn.dataset.guideSize.toUpperCase());};});
-  byId('guideDimRange').oninput=function(){comfort.guideDim=Math.max(20,Math.min(85,+this.value||55));byId('guideDimValue').textContent=comfort.guideDim+'%';byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();};
+  function setGuideDim(value){
+    comfort.guideDim=Math.max(20,Math.min(85,+value||55));
+    ['guideDimRange','zenGuideDimRange'].forEach(function(id){var range=byId(id);range.value=String(comfort.guideDim);range.setAttribute('aria-valuetext',comfort.guideDim+' percent');});
+    byId('guideDimValue').textContent=byId('zenGuideDimValue').textContent=comfort.guideDim+'%';
+    byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();
+  }
+  byId('guideDimRange').oninput=function(){setGuideDim(this.value);};
+  byId('zenGuideDimRange').oninput=function(){setGuideDim(this.value);};
   byId('comfortReset').onclick=function(){Object.assign(comfort,DEFAULT_COMFORT);if(driftSpeed)driftSpeed=DEFAULT_COMFORT.driftSpeed;applyComfort();showReaderToast('Reading settings reset · cream paper · guide off');};
   function setComfortBarOpen(open){var bar=byId('comfortBar'),btn=byId('comfortBtn');bar.classList.toggle('hidden',!open);byId('guideTool').classList.toggle('settings-open',open);btn.setAttribute('aria-expanded',String(open));}
   byId('comfortBtn').onclick=function(){dismissGuideDiscovery();setComfortBarOpen(byId('comfortBar').classList.contains('hidden'));};
@@ -2188,10 +2231,32 @@
     var zg=byId('zenGuide');zg.classList.toggle('active',on);zg.setAttribute('aria-pressed',String(on));
     if(on)requestAnimationFrame(placeGuide);
   }
-  /* Zen strips the toolbars, but the guide is a reading aid, not chrome — it keeps
-     this one faint seat beside the exit so dense passages don't cost a round trip. */
-  byId('zenGuide').onclick=function(){byId('focusBtn').onclick();};
-  byId('zenTheme').onclick=function(){byId('themeBtn').onclick();};
+  function closeZenPopouts(returnFocus){
+    var openTrigger=null,closed=false;
+    [['zenLayout','zenLayoutMenu','zenLayoutTool'],['zenDim','zenDimMenu','zenDimTool']].forEach(function(parts){
+      var trigger=byId(parts[0]),menu=byId(parts[1]),tool=byId(parts[2]);
+      if(!menu.classList.contains('hidden')){closed=true;if(!openTrigger)openTrigger=trigger;}
+      menu.classList.add('hidden');tool.classList.remove('popout-open');trigger.setAttribute('aria-expanded','false');
+    });
+    byId('zenDock').classList.remove('popout-open');
+    if(returnFocus&&openTrigger)openTrigger.focus();
+    return closed;
+  }
+  function toggleZenPopout(triggerId,menuId,toolId){
+    var trigger=byId(triggerId),menu=byId(menuId),opening=menu.classList.contains('hidden');
+    closeZenPopouts(false);
+    if(opening){menu.classList.remove('hidden');byId(toolId).classList.add('popout-open');byId('zenDock').classList.add('popout-open');trigger.setAttribute('aria-expanded','true');}
+    zenWake();
+  }
+  /* Zen keeps a small edge rail: direct guide/theme actions, plus sideways choices
+     for settings that need more than one tap target. */
+  byId('zenLayout').onclick=function(){toggleZenPopout('zenLayout','zenLayoutMenu','zenLayoutTool');};
+  document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.zenPdfLayout);closeZenPopouts(true);};});
+  byId('zenGuide').onclick=function(){closeZenPopouts(false);byId('focusBtn').onclick();};
+  byId('zenDim').onclick=function(){toggleZenPopout('zenDim','zenDimMenu','zenDimTool');};
+  byId('zenTheme').onclick=function(){closeZenPopouts(false);byId('themeBtn').onclick();};
+  byId('zenRefresh').onclick=refreshPhloem;
+  document.addEventListener('pointerdown',function(event){if(zenOn&&!event.target.closest('.zen-tool')&&!event.target.closest('#zenDock'))closeZenPopouts(false);},true);
   /* An iPad keeps reporting itself as a touch-only device even while a paired mouse
      is producing real mouse pointer events. Remember the input behind the click so
      mouse clicks can still pin the guide without changing how finger taps behave. */
@@ -2367,7 +2432,7 @@
   function setZen(on){
     zenOn=!!on;document.body.classList.toggle('zen',zenOn);
     if(zenOn){zenWake();holdZenWake();}
-    else{clearTimeout(zenIdleTimer);document.body.classList.remove('zen-idle');dropZenWake();}
+    else{closeZenPopouts(false);clearTimeout(zenIdleTimer);document.body.classList.remove('zen-idle');dropZenWake();}
     byId('zenBtn').classList.toggle('active',zenOn);byId('zenBtn').setAttribute('aria-pressed',String(zenOn));
     if(zenOn){toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false');}
     /* Leaving zen keeps the paper at full width: the notebook stays tucked away
@@ -2450,7 +2515,7 @@
     range.addEventListener('pointerup',stopRangeDrag);
     range.addEventListener('pointercancel',stopRangeDrag);
   }
-  wireTouchRange(byId('driftRange'));wireTouchRange(byId('guideDimRange'));
+  wireTouchRange(byId('driftRange'));wireTouchRange(byId('guideDimRange'));wireTouchRange(byId('zenGuideDimRange'));
   byId('documentPane').addEventListener('touchstart',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('touchmove',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('wheel',function(){holdDrift(1500);},{passive:true});
@@ -2973,6 +3038,7 @@
     byId('tocBtn').classList.toggle('hidden',!pdf||!(pdfOutline&&pdfOutline.length));
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('comfortBar').classList.toggle('pdf-mode',pdf);
+    byId('zenLayoutTool').classList.toggle('hidden',!pdf);if(!pdf&&byId('zenLayout').getAttribute('aria-expanded')==='true')closeZenPopouts(false);
     if(!pdf)byId('linkReturn').classList.add('hidden');
     var reflow=byId('reflowBtn');reflow.classList.toggle('hidden',!isPdf);reflow.classList.toggle('to-text',pdf);reflow.setAttribute('aria-pressed',String(isPdf&&!pdf));
     reflow.innerHTML=pdf?'Aa <span class="wide">Reader view</span>':'⧉ <span class="wide">PDF</span>';
@@ -4064,6 +4130,7 @@
     if(e.key==='Escape'&&!byId('lookupCard').classList.contains('hidden')){e.preventDefault();hideLookup();return;}
     if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
     if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
+    if(e.key==='Escape'&&zenOn&&closeZenPopouts(true)){e.preventDefault();return;}
     if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
     if(e.key==='Escape'&&reviewFocusId){e.preventDefault();dismissReviewerFocus();return;}

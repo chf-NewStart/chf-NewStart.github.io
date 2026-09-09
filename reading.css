@@ -152,6 +152,55 @@
     .living-shelf.library-list-mode { min-height: 0; display: block; overflow: visible; background: color-mix(in srgb, var(--surface) 94%, var(--paper)); }
     .living-shelf.library-list-mode::before { opacity: .16; }
     html:not([data-theme="dark"]) body.library-view .living-shelf.library-list-mode { background: color-mix(in srgb, var(--surface) 94%, var(--paper)); }
+    .living-shelf.library-search-mode { min-height: 0; display: block; overflow: visible; background: color-mix(in srgb, var(--surface) 93%, var(--paper)); }
+    .living-shelf.library-search-mode::before { opacity: .13; }
+    html:not([data-theme="dark"]) body.library-view .living-shelf.library-search-mode { background: color-mix(in srgb, var(--surface) 93%, var(--paper)); }
+
+    /* A query turns the decorative shelf into a small research index. Each saved
+       thought keeps its paper and exact return point, so search retrieves context
+       rather than merely narrowing a row of covers. */
+    .library-thinking-results { width: 100%; padding: 18px; }
+    .library-thinking-intro { min-height: 86px; display: grid; grid-template-columns: minmax(250px, .8fr) minmax(300px, 1.2fr); align-items: center; gap: 28px; padding: 15px 18px 17px; border-bottom: 1px solid color-mix(in srgb, var(--line) 78%, transparent); }
+    .library-thinking-intro span { color: var(--accent-dark); font: 800 .57rem/1 var(--sans); letter-spacing: .13em; text-transform: uppercase; }
+    .library-thinking-intro h3 { margin: 7px 0 0; color: var(--ink); font: 500 1.36rem/1.12 var(--serif); }
+    .library-thinking-intro p { max-width: 620px; margin: 0; color: var(--muted); font: .72rem/1.52 var(--sans); }
+    .library-thinking-controls { min-height: 45px; display: flex; align-items: center; padding: 0 18px; border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); background: color-mix(in srgb, var(--surface-2) 34%, transparent); }
+    .library-thinking-select-all-wrap { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font: 700 .63rem/1 var(--sans); cursor: pointer; }
+    .library-thinking-select-all, .library-thinking-select { width: 19px; height: 19px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+    .library-thinking-groups { display: grid; gap: 14px; margin-top: 14px; }
+    .library-thinking-group { overflow: hidden; border: 1px solid color-mix(in srgb, var(--line) 86%, transparent); border-radius: 15px; background: color-mix(in srgb, var(--paper) 92%, transparent); box-shadow: 0 8px 22px color-mix(in srgb, var(--ink) 7%, transparent); }
+    .library-thinking-group.is-selected { border-color: color-mix(in srgb, var(--accent) 62%, var(--line)); box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 12%, transparent); }
+    .library-thinking-group-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 15px 18px 13px; border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent); background: color-mix(in srgb, var(--surface-2) 48%, transparent); }
+    .library-thinking-select-wrap { flex: 0 0 30px; min-width: 30px; min-height: 44px; display: grid; place-items: center; margin: -8px -6px -8px -8px; cursor: pointer; }
+    .library-thinking-identity { min-width: 0; flex: 1 1 auto; }
+    .library-thinking-group-head h3 { margin: 0; color: var(--ink); font: 500 1.08rem/1.22 var(--serif); }
+    .library-thinking-group-head p { margin: 3px 0 0; overflow: hidden; color: var(--muted); font: .66rem/1.35 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+    .library-thinking-group-head > span { flex: 0 0 auto; max-width: 180px; overflow: hidden; padding: 5px 9px; border-radius: 999px; background: color-mix(in srgb, var(--blue) 9%, transparent); color: var(--blue); font: 700 .57rem/1 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+    .library-thinking-hit-list { display: grid; }
+    .library-thinking-hit { --thought-accent: #e3ba2f; position: relative; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 22px; padding: 16px 18px 17px 22px; border-bottom: 1px solid color-mix(in srgb, var(--line) 68%, transparent); }
+    .library-thinking-hit:last-child { border-bottom: 0; }
+    .library-thinking-hit::before { content: ""; position: absolute; left: 0; top: 13px; bottom: 13px; width: 4px; border-radius: 0 4px 4px 0; background: var(--thought-accent); opacity: .8; }
+    .library-thinking-hit.thought-mint { --thought-accent: #48b995; }
+    .library-thinking-hit.thought-coral { --thought-accent: #e16a54; }
+    .library-thinking-hit.thought-blue { --thought-accent: #55a6c5; }
+    .library-thinking-hit.is-paper-match { --thought-accent: var(--muted); }
+    .library-thinking-copy { min-width: 0; display: grid; gap: 9px; }
+    .library-thinking-hit-meta { min-width: 0; display: flex; align-items: baseline; gap: 10px; }
+    .library-thinking-hit-meta > span { flex: 0 0 auto; color: var(--muted); font: 800 .56rem/1 var(--sans); letter-spacing: .09em; text-transform: uppercase; }
+    .library-thinking-paper { min-width: 0; overflow: hidden; color: var(--ink); font: 650 .69rem/1.25 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+    .library-thinking-excerpt { margin: 0; padding: 0 0 0 12px; border-left: 1px solid color-mix(in srgb, var(--thought-accent) 60%, var(--line)); color: var(--ink); font: 500 .93rem/1.48 var(--serif); }
+    .library-thinking-note { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px; color: var(--muted); font: .72rem/1.48 var(--sans); }
+    .library-thinking-note b { margin-top: 1px; padding: 4px 7px; border-radius: 6px; background: color-mix(in srgb, var(--thought-accent) 13%, var(--surface-2)); color: var(--ink); font: 750 .55rem/1 var(--sans); letter-spacing: .05em; white-space: nowrap; }
+    .library-thinking-note span { padding-top: 1px; }
+    .library-thinking-context { margin: 0; color: var(--muted); font: .72rem/1.45 var(--sans); }
+    .library-thinking-copy mark { margin: 0 -1px; padding: 0 1px; border-radius: 2px; background: color-mix(in srgb, var(--thought-accent) 30%, transparent); color: inherit; }
+    .library-thinking-open { min-width: 136px; min-height: 44px; justify-content: center; border-color: color-mix(in srgb, var(--thought-accent) 44%, var(--line)); background: color-mix(in srgb, var(--thought-accent) 8%, var(--surface)); white-space: nowrap; }
+    .library-thinking-open:hover, .library-thinking-open:focus-visible { border-color: color-mix(in srgb, var(--thought-accent) 75%, var(--line)); color: var(--ink); }
+    .library-thinking-open:focus-visible { outline: 2px solid color-mix(in srgb, var(--thought-accent) 72%, var(--ink)); outline-offset: 2px; }
+    .library-thinking-more { min-height: 44px; justify-self: start; margin: 6px 18px 10px; color: var(--accent-dark); font-weight: 700; }
+    .library-thinking-empty { min-height: 150px; display: grid; place-content: center; gap: 8px; padding: 28px; color: var(--muted); text-align: center; }
+    .library-thinking-empty b { color: var(--ink); font: 500 1.04rem/1.2 var(--serif); }
+    .library-thinking-empty span { font: .7rem/1.45 var(--sans); }
 
     /* List mode is the practical twin of the reading wall: one global, sortable scan
        of every category, while the row itself remains a single generous open target. */
@@ -1547,6 +1596,22 @@
          shorter selected notebook, so choosing papers never means crossing a wall of
          full-size cards before the detail appears. */
       .living-shelf { border-radius: 18px; }
+      .library-thinking-results { padding: 9px; }
+      .library-thinking-intro { min-height: 0; grid-template-columns: 1fr; gap: 8px; padding: 14px 12px 15px; }
+      .library-thinking-intro h3 { font-size: 1.17rem; }
+      .library-thinking-intro p { font-size: .68rem; }
+      .library-thinking-groups { gap: 10px; margin-top: 9px; }
+      .library-thinking-group-head { align-items: flex-start; padding: 13px 12px 11px; }
+      .library-thinking-group-head h3 { font-size: 1rem; }
+      .library-thinking-group-head p { max-width: calc(100vw - 150px); }
+      .library-thinking-group-head > span { max-width: 104px; }
+      .library-thinking-hit { grid-template-columns: minmax(0, 1fr); gap: 13px; padding: 15px 12px 14px 17px; }
+      .library-thinking-hit-meta { align-items: flex-start; flex-direction: column; gap: 5px; }
+      .library-thinking-paper { max-width: 100%; white-space: normal; }
+      .library-thinking-excerpt { font-size: .87rem; }
+      .library-thinking-note { grid-template-columns: 1fr; gap: 5px; }
+      .library-thinking-note b { width: fit-content; }
+      .library-thinking-open { width: 100%; min-height: 44px; }
       .library-list { padding: 5px 0 10px; }
       .library-list-categories { padding: 6px 11px 10px; }
       .library-list-categories-label { position: sticky; left: 0; z-index: 2; align-self: stretch; display: inline-flex; align-items: center; padding-right: 7px; background: color-mix(in srgb, var(--surface) 96%, transparent); }

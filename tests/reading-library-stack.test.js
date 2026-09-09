@@ -137,8 +137,10 @@ function check(name, condition, extra) {
   check('sticky drag target receives the moved paper', await page.locator('.category-note-grid .paper-sticky-note').count() === 3);
 
   await page.fill('#librarySearch', 'Metabolic models');
-  check('search finds papers by category name', await page.locator('.category-note-grid .paper-sticky-note').count() === 3);
+  await page.waitForSelector('.library-thinking-group');
+  check('search finds papers by category name', await page.locator('.library-thinking-group').count() === 3);
   await page.fill('#librarySearch', '');
+  await page.waitForSelector('.bookcase');
 
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.waitForTimeout(100);

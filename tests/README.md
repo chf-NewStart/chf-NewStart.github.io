@@ -30,6 +30,10 @@ global list with category filters, row metadata, existing search and sort
 controls, multi-select moves into existing or newly created categories,
 one-click opening, and a non-clipping phone layout.
 
+`reading-library-thinking-search.test.js` covers library search across ordinary
+page notes, highlighted passages, reviewer work, paired highlight notes, exact
+page opening, responsive results, and List-mode category and bulk-move controls.
+
 `reading-pdf-zoom.test.js` covers the one-time migration from the legacy 50%
 initial PDF scale to Fit while preserving deliberate per-paper zoom choices.
 
@@ -97,6 +101,7 @@ node tests/reading-ai-providers.test.js
 node tests/reading-selection-note-ai.test.js
 node tests/reading-library-stack.test.js
 node tests/reading-library-list.test.js
+node tests/reading-library-thinking-search.test.js
 node tests/reading-pdf-zoom.test.js
 node tests/reading-vertical-book-flow.test.js
 node tests/reading-pdf-authors.test.js

@@ -225,9 +225,12 @@ function check(name, condition, extra) {
   ].join('|'), JSON.stringify(titleOrder));
 
   await page.fill('#librarySearch', 'plant physiology');
-  check('the existing search finds matching rows by category', await page.locator('.library-list-row').count() === 2);
-  check('search keeps the selected sort order', await page.locator('.library-list-title').evaluateAll(elements => elements.map(element => element.textContent.trim()).join('|')) === 'Root architecture under drought|Zinc signaling in roots');
+  await page.waitForSelector('.library-thinking-group');
+  check('the existing search still finds papers by category', await page.locator('.library-thinking-group').count() === 2);
+  check('search keeps the selected sort order', await page.locator('.library-thinking-group-head h3').evaluateAll(elements => elements.map(element => element.textContent.trim()).join('|')) === 'Root architecture under drought|Zinc signaling in roots');
   await page.fill('#librarySearch', '');
+  await page.waitForSelector('.library-list-row');
+  check('clearing search restores the saved List view', await page.locator('.library-list-row').count() === 5 && await page.locator('#libraryViewToggle [data-library-view="list"]').getAttribute('aria-pressed') === 'true');
 
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('.library-list-row');

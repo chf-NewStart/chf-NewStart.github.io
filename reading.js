@@ -2273,8 +2273,14 @@
     var turningOn=!comfort.focus,seen=false;
     if(turningOn){try{seen=localStorage.getItem('readingRoom.guideAdjustSeen.v1')==='1';}catch(e){}if(!seen){comfort.guide='yellow';comfort.guideScope='page';}}
     comfort.focus=turningOn;applyComfort();
-    if(comfort.focus&&!zenOn&&!seen){setComfortBarOpen(true);requestAnimationFrame(function(){var bar=byId('comfortBar'),group=byId('guideDimGroup'),barRect=bar.getBoundingClientRect(),groupRect=group.getBoundingClientRect();if(bar.scrollWidth>bar.clientWidth)bar.scrollTo({left:Math.max(0,bar.scrollLeft+groupRect.left-barRect.left-12),behavior:'smooth'});});try{localStorage.setItem('readingRoom.guideAdjustSeen.v1','1');}catch(e){}}
-    showReaderToast(comfort.focus?(matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page'):'Reading guide off');
+    var message='Reading guide off';
+    if(comfort.focus&&!zenOn&&!seen){
+      try{localStorage.setItem('readingRoom.guideAdjustSeen.v1','1');}catch(e){}
+      message='Guide on · Settings adjusts dimness and size';
+    }else if(comfort.focus){
+      message=matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page';
+    }
+    showReaderToast(message);
   };
   byId('documentPane').addEventListener('pointermove',function(e){
     rememberGuidePointer(e);
@@ -2953,6 +2959,9 @@
        the PREVIOUS paper's pages — an extension import into an open reader landed the
        new paper mid-page, at wherever the old one had been scrolled. */
     var ch=find(id); if(!ch) return false;
+    /* A paper should open as a paper, not as its configuration screen. Keep the
+       reader's chosen values, but make the Settings tray an intentional action. */
+    setComfortBarOpen(false);
     var openEpoch=++pdfOpenEpoch;
     hideLookup();setRecall(false);invalidatePagedTurns();pdfBuildId++;zoomSerial++;if(pageObserver)pageObserver.disconnect();pdfDoc=null;
     if(ch.kind==='pdf'){

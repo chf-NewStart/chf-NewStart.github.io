@@ -47,6 +47,7 @@ function check(name, condition, extra) {
   await page.waitForFunction(() => document.querySelector('#textDocument .original'));
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && !document.getElementById('notesPanel').classList.contains('hidden') && document.getElementById('aiPanel').classList.contains('hidden'));
   check('reader opens to notes instead of AI', await page.evaluate(() => !document.getElementById('notesPanel').classList.contains('hidden') && document.getElementById('aiPanel').classList.contains('hidden')));
+  check('paper opens without the reading settings tray', await page.evaluate(() => document.getElementById('comfortBar').classList.contains('hidden') && document.getElementById('comfortBtn').getAttribute('aria-expanded') === 'false' && !document.getElementById('guideTool').classList.contains('settings-open')));
   check('guide and reading settings share one toolbar control', await page.locator('#guideTool').count() === 1 && await page.getByRole('button', { name: 'Reading', exact: true }).count() === 0);
   check('guide no longer offers competing styles', await page.locator('[data-guide-style]').count() === 0);
   await page.click('#comfortBtn');
@@ -54,9 +55,10 @@ function check(name, condition, extra) {
   check('legacy tint settings migrate to line focus', await page.locator('.guide-shade-top').evaluate(element => getComputedStyle(element).opacity === '0.7'));
   check('retired guide style is removed from saved settings', await page.evaluate(() => !Object.prototype.hasOwnProperty.call(JSON.parse(localStorage.getItem('readingRoom.comfort.v1')), 'guideStyle')));
   await page.click('#comfortBtn');
-  await page.evaluate(() => localStorage.setItem('readingRoom.guideAdjustSeen.v1', '1'));
   await page.click('#focusBtn');
   check('main half toggles the whole guide control on', await page.locator('#guideTool').evaluate(element => element.classList.contains('active')) && await page.locator('#focusBtn').getAttribute('aria-pressed') === 'true');
+  check('first guide use keeps the settings tray folded', await page.evaluate(() => document.getElementById('comfortBar').classList.contains('hidden') && document.getElementById('comfortBtn').getAttribute('aria-expanded') === 'false' && !document.getElementById('guideTool').classList.contains('settings-open')));
+  check('first guide use briefly points toward Settings', await page.locator('#readerToast').textContent().then(text => text.includes('Settings adjusts dimness and size')));
   await page.click('#comfortBtn');
   await page.click('button[data-guide-orientation="column"]');
   await page.waitForFunction(() => {
@@ -70,7 +72,7 @@ function check(name, condition, extra) {
   const verticalGuide = await page.locator('#guideBand').evaluate((band) => {
     const guide = band.getBoundingClientRect();
     const pane = document.getElementById('paneSpotlight').getBoundingClientRect();
-    return { tall: guide.height > pane.height * .65, narrow: guide.width < pane.width * .18, center: (guide.left + guide.width / 2 - pane.left) / pane.width };
+    return { tall: guide.height > pane.height * .65, narrow: guide.width < pane.width * .2, center: (guide.left + guide.width / 2 - pane.left) / pane.width };
   });
   check('column guide is tall and narrow', verticalGuide.tall && verticalGuide.narrow, JSON.stringify(verticalGuide));
   check('column guide begins on the right side', verticalGuide.center > .55, verticalGuide.center.toFixed(2));
@@ -89,6 +91,13 @@ function check(name, condition, extra) {
   check('legacy comfort settings default to row flow', await page.locator('#paneSpotlight').getAttribute('data-guide-orientation') === 'row');
   await page.click('#comfortBtn');
   await page.click('#focusBtn');
+  await page.click('#comfortBtn');
+  await page.click('#readerBack');
+  await page.waitForFunction(() => document.getElementById('readerPage').classList.contains('hidden') && !document.getElementById('libraryPage').classList.contains('hidden'));
+  await page.locator('#selectedPaper .open-selected').click();
+  await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && document.querySelector('#textDocument .original'));
+  check('reopening a paper folds a previously open settings tray', await page.evaluate(() => document.getElementById('comfortBar').classList.contains('hidden') && document.getElementById('comfortBtn').getAttribute('aria-expanded') === 'false' && !document.getElementById('guideTool').classList.contains('settings-open')));
+  check('folding the tray preserves its saved reading values', await page.locator('#guideDimRange').inputValue() === '70' && await page.locator('button[data-guide-orientation="row"]').getAttribute('aria-pressed') === 'true');
   await page.evaluate(() => {
     const paragraph = document.querySelector('#textDocument .original');
     const node = paragraph.firstChild;

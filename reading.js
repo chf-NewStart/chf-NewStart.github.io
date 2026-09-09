@@ -3534,7 +3534,7 @@
       var sourceNo=spread?(direction>0?fromPages[fromPages.length-1]:fromPages[0]):fromPages[0];
       if(!leaf||+leaf.dataset.page!==sourceNo)return null;
       /* A spread exposes the following physical leaf beneath the turned sheet. The
-         one-page viewport reads as a stack of loose sheets instead: faint ink from the
+         one-page viewport keeps one virtually bound leaf in view: faint ink from the
          outgoing page shows through its back while the destination sits underneath. */
       var backNo=spread?(direction>0?toPages[0]:toPages[toPages.length-1]):sourceNo;
       var underNo=spread?(direction>0?(toPages[1]||0):(toPages.length>1?toPages[0]:0)):toPages[0];
@@ -3640,17 +3640,42 @@
       points.forEach(function(a){points.forEach(function(b){var d=Math.hypot(a.x-b.x,a.y-b.y);if(d>distance){distance=d;pair=[a,b];}});});
       return{a:pair[0],b:pair[1],length:distance};
     }
+    /* A straight reflected fold is a good local paper curl, but by itself it can cross
+       the bound edge halfway down the sheet and make the page look peeled out of the
+       book. Keep the horizontal finger travel exact and limit only the vertical bow so
+       the crease reaches the spine through a top/bottom corner. This is the inextensible
+       spine constraint a full paper mesh would enforce, without turning the reader into
+       a physics simulation. */
+    function bindCurlToSpine(g,freeX,freeY){
+      var width=g.width,height=g.height,cornerY=g.corner.y;
+      /* Mirror backward turns into the same coordinate system: binding at x=0,
+         loose edge starting at x=width and finishing at x=-width. */
+      var localFreeX=g.direction>0?freeX:width-freeX;
+      var span=Math.max(0,width*width-localFreeX*localFreeX),vertical=cornerY-freeY;
+      if(Math.abs(vertical)<.001)return{x:freeX,y:cornerY,limited:false,spineY:null};
+      var edgeDistance=vertical>0?height-cornerY:cornerY;
+      var maxVertical=Math.max(0,Math.sqrt(edgeDistance*edgeDistance+span)-edgeDistance);
+      var boundVertical=Math.sign(vertical)*Math.min(Math.abs(vertical),maxVertical);
+      var boundY=cornerY-boundVertical,spineY=null;
+      if(Math.abs(boundVertical)>.001)spineY=cornerY+span/(2*boundVertical)-boundVertical/2;
+      return{x:freeX,y:boundY,limited:Math.abs(boundY-freeY)>.5,spineY:spineY};
+    }
     function drawBookCurl(g,freeX,freeY){
       if(bookCurl!==g||!g.staged)return;
       freeX=g.direction>0?Math.max(-g.width,Math.min(g.width,freeX)):Math.max(0,Math.min(g.width*2,freeX));
       freeY=Math.max(-g.height*.18,Math.min(g.height*1.18,freeY));
+      var bound=bindCurlToSpine(g,freeX,freeY);freeY=bound.y;
       g.freeX=freeX;g.freeY=freeY;
       var progress=g.direction>0?(g.width-freeX)/(g.width*2):freeX/(g.width*2);progress=Math.max(0,Math.min(1,progress));g.progress=progress;
       frame.dataset.curlProgress=progress.toFixed(3);frame.style.setProperty('--book-curl-progress',progress.toFixed(3));
+      frame.dataset.curlBinding=g.direction>0?'left':'right';frame.dataset.curlSpineLimited=bound.limited?'true':'false';frame.dataset.curlSpineY=bound.spineY===null?'none':bound.spineY.toFixed(1);
       if(progress<.001){g.sourceView.holder.style.clipPath='';g.sourceView.holder.style.visibility='';g.overlay.style.opacity='0';g.fx.style.opacity='0';return;}
       var cx=g.corner.x,cy=g.corner.y,dx=cx-freeX,dy=cy-freeY,length=Math.max(.001,Math.hypot(dx,dy)),nx=dx/length,ny=dy/length,mx=(cx+freeX)/2,my=(cy+freeY)/2,line=nx*mx+ny*my;
       var front=clipCurlHalf(g.width,g.height,nx,ny,line,false),fold=clipCurlHalf(g.width,g.height,nx,ny,line,true);
-      g.sourceView.holder.style.clipPath=curlPolygon(front);g.sourceView.holder.style.visibility=progress>.998?'hidden':'';
+      /* Keep a diagonally folded spine-corner sliver present through the final settling
+         frames. Hiding the source on x-progress alone briefly exposed the under-page
+         before the constrained vertical curl had returned to its grab height. */
+      g.sourceView.holder.style.clipPath=curlPolygon(front);g.sourceView.holder.style.visibility=progress>=1?'hidden':'';
       g.overlay.style.opacity='1';g.overlay.style.clipPath=curlPolygon(fold);
       var a=1-2*nx*nx,b=-2*nx*ny,d=1-2*ny*ny,tx=2*nx*line,ty=2*ny*line;
       g.overlay.style.transform='matrix('+[a,b,b,d,tx,ty].map(function(n){return n.toFixed(6);}).join(',')+')';
@@ -3686,7 +3711,7 @@
       if(g.overlay&&g.overlay.remove)g.overlay.remove();if(g.fx&&g.fx.remove)g.fx.remove();
       try{if(pane.hasPointerCapture&&pane.hasPointerCapture(g.pointerId))pane.releasePointerCapture(g.pointerId);}catch(err){}
       if(bookCurl===g)bookCurl=null;bookCurlOwned=false;if(g.automatic)automaticBookCurlRunning=false;pane.classList.remove('turning-book-leaf','dragging-book-leaf');frame.classList.remove('book-curl-active');
-      delete frame.dataset.curlState;delete frame.dataset.curlDirection;delete frame.dataset.curlSource;delete frame.dataset.curlBack;delete frame.dataset.curlProgress;delete frame.dataset.curlOrigin;frame.style.removeProperty('--book-curl-progress');
+      delete frame.dataset.curlState;delete frame.dataset.curlDirection;delete frame.dataset.curlSource;delete frame.dataset.curlBack;delete frame.dataset.curlProgress;delete frame.dataset.curlOrigin;delete frame.dataset.curlBinding;delete frame.dataset.curlSpineLimited;delete frame.dataset.curlSpineY;frame.style.removeProperty('--book-curl-progress');
       clearCurlReady();
       if(!deferAutomaticDone)finishAutomaticBookCurl(g,false);
     }

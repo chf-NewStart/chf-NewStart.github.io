@@ -90,15 +90,17 @@ Each page is self-contained and keeps its data in the visitor's own browser
   scroll position and the open paper itself all survive a refresh.
 
   **Page layouts.** Scroll keeps the continuous desk view. Page fits one complete
-  authored PDF page at a time and turns it like a loose sheet, with faint ink showing
-  through the lifted back and the next page waiting underneath. Book joins two uncropped pages at a center seam,
+  authored PDF page at a time and turns it from a virtual side binding, with faint ink
+  showing through the lifted back and the next page waiting underneath. Book joins two uncropped pages at a center seam,
   starts with page 1 on the right, then pairs 2–3, 4–5 and so on. Arrows, keys and
   horizontal trackpad turns sweep a physical leaf from the outer midpoint,
   showing its reverse and the page beneath. With a mouse or pen, pick up either outer edge: the corner,
-  reverse print, fold ridge and shadow follow the pointer, then fall back or turn
+  reverse print, fold ridge and shadow follow the pointer while the opposite edge stays
+  attached to its spine, then fall back or turn
   according to where it is released. On iPad, a one-finger horizontal pull bends
   and carries the same live sheet under the fingertip; pinch zoom and long-press
-  text selection remain available. Narrow reading panes temporarily show one
+  text selection remain available. Even deep diagonal pulls keep the page attached at
+  its left or right binding instead of peeling the whole sheet away. Narrow reading panes temporarily show one
   complete page and restore the spread when there is room; arrows, keyboard and
   swipes follow the usual left-to-right book direction.
 

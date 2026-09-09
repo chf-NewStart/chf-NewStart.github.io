@@ -661,8 +661,8 @@
     .book-curl-overlay { position: absolute; z-index: 8; overflow: visible; pointer-events: none; transform-origin: 0 0; will-change: transform, clip-path, filter; background: #fdfdfb; outline: 1px solid rgba(63,54,39,.09); }
     .book-curl-back-sheet { position: absolute; inset: 0; overflow: hidden; transform: scaleX(-1); transform-origin: center; background: inherit; }
     .book-curl-back-canvas { display: block; max-width: none; background: #fff; opacity: .88; }
-    /* Page mode behaves like a stack of loose sheets: the outgoing print shows faintly
-       through its own back while the next authored page is exposed underneath. */
+    /* Page mode keeps a single leaf at a virtual side binding: the outgoing print shows
+       faintly through its own back while the next authored page is exposed underneath. */
     .book-curl-overlay.book-curl-single .book-curl-back-canvas { opacity: .23; filter: grayscale(.18) contrast(.76); }
     .book-curl-back-fallback .book-curl-back-canvas { opacity: .2; filter: grayscale(.25) contrast(.72); }
     .book-curl-back-wash { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(56,47,32,.18), rgba(255,255,255,.22) 9%, rgba(255,255,255,.07) 72%, rgba(45,37,24,.11)); mix-blend-mode: multiply; }

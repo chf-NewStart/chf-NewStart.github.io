@@ -140,6 +140,46 @@ async function dispatchTouches(page, selector, type, touches, changedTouches) {
   }, { type, touches, changedTouches: changedTouches === undefined ? touches : changedTouches });
 }
 
+async function dispatchTouchTap(page, selector, touch) {
+  await dispatchTouches(page, selector, 'touchstart', [touch]);
+  await page.waitForTimeout(32);
+  await dispatchTouches(page, selector, 'touchend', [], [touch]);
+}
+
+async function waitForBottomCornerCurl(page, tappedY) {
+  const handle = await page.waitForFunction(expectedY => {
+    const frame = document.getElementById('pdfFrame'), progress = +frame.dataset.curlProgress;
+    if (frame.dataset.curlState !== 'settling' || frame.dataset.curlOrigin !== 'bottom-corner' || progress <= .04 || progress >= .96) return false;
+    const under = frame.querySelector('.book-curl-under'), overlay = frame.querySelector('.book-curl-overlay'), front = frame.querySelector('.book-curl-front'), probe = frame.querySelector('.book-curl-tip');
+    const frameRect = frame.getBoundingClientRect(), frontRect = front?.getBoundingClientRect(), probeTop = parseFloat(probe?.style.top), probeClientY = frameRect.top + probeTop;
+    return {
+      state: frame.dataset.curlState,
+      origin: frame.dataset.curlOrigin,
+      direction: frame.dataset.curlDirection,
+      source: frame.dataset.curlSource,
+      back: frame.dataset.curlBack,
+      progress,
+      under: under?.dataset.page || '',
+      underClass: under?.className || '',
+      overlayBack: overlay?.dataset.backPage || '',
+      front: front?.dataset.page || '',
+      probeDisplay: probe ? getComputedStyle(probe).display : 'missing',
+      probeClientY,
+      tapYError: Math.abs(probeClientY - expectedY),
+      bottomEdgeError: frontRect ? Math.abs(probeClientY - frontRect.bottom) : Infinity,
+      legacy: frame.querySelectorAll('.book-turning').length,
+      label: document.getElementById('pageNumber').textContent
+    };
+  }, tappedY);
+  const metrics = await handle.jsonValue();
+  await handle.dispose();
+  return metrics;
+}
+
+function bottomCornerProbeStartsAtTap(metrics) {
+  return metrics.probeDisplay === 'none' && Number.isFinite(metrics.probeClientY) && metrics.tapYError < 32 && metrics.bottomEdgeError < 44;
+}
+
 /* A bound leaf may bend diagonally, but its whole spine edge must remain in the
    stationary front half. Sample that edge as well as its two corners so a clip that
    merely happens to touch the spine at one point cannot satisfy the regression. */
@@ -243,6 +283,44 @@ async function curlFxMetrics(page) {
   check('paged arrows use familiar left-to-right direction', await page.locator('#mPrev').textContent() === '←' && await page.locator('#mNext').textContent() === '→');
   const mobilePage = await fullPageMetrics(page);
   check('mobile Book fallback keeps the complete authored page', pagesAreComplete(mobilePage), JSON.stringify(mobilePage));
+
+  /* The unavailable previous corner on page 1 remains ordinary page content. It must
+     neither stage a phantom leaf nor steal the next intentional double-tap zoom. */
+  await page.evaluate(() => {
+    const frame = document.getElementById('pdfFrame');
+    window.__unavailableCornerCurlSeen = false;
+    window.__unavailableCornerObserver = new MutationObserver(() => {
+      if (frame.dataset.curlState || frame.querySelector('.book-curl-overlay')) window.__unavailableCornerCurlSeen = true;
+    });
+    window.__unavailableCornerObserver.observe(frame, { attributes: true, attributeFilter: ['data-curl-state'], childList: true, subtree: true });
+  });
+  const unavailableCornerBox = await page.locator('.pdf-page[data-page="1"].book-single').boundingBox();
+  const unavailablePreviousCorner = { id: 5, x: unavailableCornerBox.x + 12, y: unavailableCornerBox.y + unavailableCornerBox.height - 12 };
+  await dispatchTouchTap(page, '.pdf-page[data-page="1"] canvas', unavailablePreviousCorner);
+  await page.waitForTimeout(90);
+  const unavailableFirstTap = await page.locator('#pdfFrame').evaluate(frame => ({ curlSeen: window.__unavailableCornerCurlSeen, label: document.getElementById('mPageLabel').textContent, artifacts: frame.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length }));
+  check('an unavailable first-page bottom-left corner remains inert after its first tap', !unavailableFirstTap.curlSeen && unavailableFirstTap.label.startsWith('1 /') && unavailableFirstTap.artifacts === 0, JSON.stringify(unavailableFirstTap));
+
+  await dispatchTouchTap(page, '.pdf-page[data-page="1"] canvas', { ...unavailablePreviousCorner, id: 8 });
+  await page.waitForFunction(() => {
+    const frame = document.getElementById('pdfFrame');
+    return document.getElementById('zoomLabel').textContent !== 'Fit' && document.getElementById('mPageLabel').textContent.startsWith('1 /') && !frame.dataset.curlState && frame.dataset.pagedReady === 'true' && !frame.hasAttribute('aria-busy');
+  });
+  const unavailableBoundary = await page.locator('#pdfFrame').evaluate(frame => {
+    window.__unavailableCornerObserver.disconnect();
+    return {
+      curlSeen: window.__unavailableCornerCurlSeen,
+      zoom: document.getElementById('zoomLabel').textContent,
+      label: document.getElementById('mPageLabel').textContent,
+      artifacts: frame.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length,
+      ready: frame.dataset.pagedReady,
+      busy: frame.hasAttribute('aria-busy')
+    };
+  });
+  check('the unavailable corner remains an ordinary first tap for double-tap zoom', !unavailableBoundary.curlSeen && unavailableBoundary.zoom !== 'Fit' && unavailableBoundary.label.startsWith('1 /') && unavailableBoundary.artifacts === 0 && unavailableBoundary.ready === 'true' && !unavailableBoundary.busy, JSON.stringify(unavailableBoundary));
+  await page.evaluate(() => document.getElementById('zoomLabel').click());
+  await page.waitForFunction(() => document.getElementById('zoomLabel').textContent === 'Fit');
+  await waitForCompleteFit(page, 1);
 
   /* Consecutive input must queue relative turns, not repeatedly request the page that
      was current when the first asynchronous render began. */
@@ -725,6 +803,39 @@ async function curlFxMetrics(page) {
   check('releasing the touch cover past its threshold opens one spread cleanly', await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
   await waitForCompleteFit(touch, 2);
 
+  /* A bottom corner is a tap target, not a direction lock: decisive vertical travel
+     must still cancel the tap before its release can queue an automatic turn. */
+  touchBox = await touch.locator('.pdf-page[data-page="3"].book-spread-right').boundingBox();
+  const cornerVerticalStart = { id: 48, x: touchBox.x + touchBox.width - 12, y: touchBox.y + touchBox.height - 12 };
+  const cornerVerticalMove = { id: 48, x: cornerVerticalStart.x - 1, y: cornerVerticalStart.y - 12 };
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchstart', [cornerVerticalStart]);
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchmove', [cornerVerticalMove]);
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchend', [], [cornerVerticalMove]);
+  await touch.waitForTimeout(560);
+  check('vertical movement from a Book corner remains a gesture rather than a tap turn', (await touch.locator('#pageNumber').textContent()).startsWith('2–3 /') && !(await touch.locator('#pdfFrame').getAttribute('data-curl-state')) && await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+
+  /* Quick taps on the two physical outer corners reuse the paper curl and return to
+     the same spread after advancing and reversing exactly once. */
+  touchBox = await touch.locator('.pdf-page[data-page="3"].book-spread-right').boundingBox();
+  const bookCornerNext = { id: 49, x: touchBox.x + touchBox.width - 12, y: touchBox.y + touchBox.height - 12 };
+  await dispatchTouchTap(touch, '.pdf-page[data-page="3"] canvas', bookCornerNext);
+  const bookCornerNextCurl = await waitForBottomCornerCurl(touch, bookCornerNext.y);
+  check('a Book bottom-right tap animates the next physical spread from that corner', bookCornerNextCurl.direction === 'next' && bookCornerNextCurl.source === '3' && bookCornerNextCurl.back === '4' && bookCornerNextCurl.front === '3' && bookCornerNextCurl.overlayBack === '4' && bookCornerNextCurl.under === '5' && bookCornerNextCurl.underClass.includes('book-curl-under-right') && bookCornerNextCurl.label.startsWith('2–3 /') && bookCornerNextCurl.legacy === 0 && bottomCornerProbeStartsAtTap(bookCornerNextCurl), JSON.stringify(bookCornerNextCurl));
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await waitForCompleteFit(touch, 2);
+  const bookCornerNextFinal = await touch.locator('#pdfFrame').evaluate(frame => ({ pages: Array.from(frame.querySelectorAll('.pdf-page.book-active')).map(page => page.dataset.page).join(','), artifacts: frame.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length }));
+  check('the Book bottom-right tap advances exactly one spread', bookCornerNextFinal.pages === '4,5' && bookCornerNextFinal.artifacts === 0, JSON.stringify(bookCornerNextFinal));
+
+  touchBox = await touch.locator('.pdf-page[data-page="4"].book-spread-left').boundingBox();
+  const bookCornerPrevious = { id: 50, x: touchBox.x + 12, y: touchBox.y + touchBox.height - 12 };
+  await dispatchTouchTap(touch, '.pdf-page[data-page="4"] canvas', bookCornerPrevious);
+  const bookCornerPreviousCurl = await waitForBottomCornerCurl(touch, bookCornerPrevious.y);
+  check('a Book bottom-left tap animates the previous physical spread from that corner', bookCornerPreviousCurl.direction === 'prev' && bookCornerPreviousCurl.source === '4' && bookCornerPreviousCurl.back === '3' && bookCornerPreviousCurl.front === '4' && bookCornerPreviousCurl.overlayBack === '3' && bookCornerPreviousCurl.under === '2' && bookCornerPreviousCurl.underClass.includes('book-curl-under-left') && bookCornerPreviousCurl.label.startsWith('4–5 /') && bookCornerPreviousCurl.legacy === 0 && bottomCornerProbeStartsAtTap(bookCornerPreviousCurl), JSON.stringify(bookCornerPreviousCurl));
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await waitForCompleteFit(touch, 2);
+  const bookCornerPreviousFinal = await touch.locator('#pdfFrame').evaluate(frame => ({ pages: Array.from(frame.querySelectorAll('.pdf-page.book-active')).map(page => page.dataset.page).join(','), artifacts: frame.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length }));
+  check('the Book bottom-left tap returns exactly one spread', bookCornerPreviousFinal.pages === '2,3' && bookCornerPreviousFinal.artifacts === 0, JSON.stringify(bookCornerPreviousFinal));
+
   /* Pull the bottom loose corner hard toward the opposite top side. A free half-plane
      fold would cut through the left binding here; the constrained fold must instead
      meet a spine corner while every point on the binding remains stationary. */
@@ -789,6 +900,26 @@ async function curlFxMetrics(page) {
   await touch.evaluate(() => document.querySelector('[data-pdf-layout="page"]').click());
   await touch.waitForFunction(() => document.querySelector('[data-pdf-layout="page"]').getAttribute('aria-pressed') === 'true' && document.querySelectorAll('.pdf-page.book-active').length === 1 && !document.getElementById('pdfFrame').classList.contains('book-spread'));
   await waitForCompleteFit(touch, 1);
+
+  touchBox = await touch.locator('.pdf-page[data-page="2"].book-single').boundingBox();
+  const pageCornerNext = { id: 51, x: touchBox.x + touchBox.width - 12, y: touchBox.y + touchBox.height - 12 };
+  await dispatchTouchTap(touch, '.pdf-page[data-page="2"] canvas', pageCornerNext);
+  const pageCornerNextCurl = await waitForBottomCornerCurl(touch, pageCornerNext.y);
+  check('a Page bottom-right tap animates the next bound leaf from that corner', pageCornerNextCurl.direction === 'next' && pageCornerNextCurl.source === '2' && pageCornerNextCurl.back === '2' && pageCornerNextCurl.front === '2' && pageCornerNextCurl.overlayBack === '2' && pageCornerNextCurl.under === '3' && pageCornerNextCurl.underClass.includes('book-curl-under-single') && pageCornerNextCurl.label.startsWith('2 /') && pageCornerNextCurl.legacy === 0 && bottomCornerProbeStartsAtTap(pageCornerNextCurl), JSON.stringify(pageCornerNextCurl));
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await waitForCompleteFit(touch, 1);
+  const pageCornerNextFinal = await touch.locator('#pdfFrame').evaluate(frame => ({ pages: Array.from(frame.querySelectorAll('.pdf-page.book-active')).map(page => page.dataset.page).join(','), artifacts: frame.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length }));
+  check('the Page bottom-right tap advances exactly one page', pageCornerNextFinal.pages === '3' && pageCornerNextFinal.artifacts === 0, JSON.stringify(pageCornerNextFinal));
+
+  touchBox = await touch.locator('.pdf-page[data-page="3"].book-single').boundingBox();
+  const pageCornerPrevious = { id: 52, x: touchBox.x + 12, y: touchBox.y + touchBox.height - 12 };
+  await dispatchTouchTap(touch, '.pdf-page[data-page="3"] canvas', pageCornerPrevious);
+  const pageCornerPreviousCurl = await waitForBottomCornerCurl(touch, pageCornerPrevious.y);
+  check('a Page bottom-left tap animates the previous bound leaf from that corner', pageCornerPreviousCurl.direction === 'prev' && pageCornerPreviousCurl.source === '3' && pageCornerPreviousCurl.back === '3' && pageCornerPreviousCurl.front === '3' && pageCornerPreviousCurl.overlayBack === '3' && pageCornerPreviousCurl.under === '2' && pageCornerPreviousCurl.underClass.includes('book-curl-under-single') && pageCornerPreviousCurl.label.startsWith('3 /') && pageCornerPreviousCurl.legacy === 0 && bottomCornerProbeStartsAtTap(pageCornerPreviousCurl), JSON.stringify(pageCornerPreviousCurl));
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await waitForCompleteFit(touch, 1);
+  const pageCornerPreviousFinal = await touch.locator('#pdfFrame').evaluate(frame => ({ pages: Array.from(frame.querySelectorAll('.pdf-page.book-active')).map(page => page.dataset.page).join(','), artifacts: frame.querySelectorAll('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').length }));
+  check('the Page bottom-left tap returns exactly one page', pageCornerPreviousFinal.pages === '2' && pageCornerPreviousFinal.artifacts === 0, JSON.stringify(pageCornerPreviousFinal));
 
   /* Page mode uses the same attached-sheet geometry even though it shows one leaf.
      Keep this cancellation separate so the following shallow/commit checks still

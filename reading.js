@@ -3168,7 +3168,7 @@
   function savePagedPosition(){var ch=find(currentId);if(ch&&ch.kind==='pdf'){ch.readPage=currentPage;ch.readThroughPage=Math.max(+ch.readThroughPage||0,pagedPageNos(currentPage).slice(-1)[0]);ch.updatedAt=now();persist(false);}}
   function clearPagedTurnClasses(views){views.forEach(function(view){if(view)view.holder.classList.remove('book-turning','book-flip-next','book-flip-prev','book-flip-single','book-flip-cover','book-stay-left','book-stay-right');});}
   function pagedTurnStillValid(epoch,doc,id,layout,spread){return epoch===pagedTurnEpoch&&pdfDoc===doc&&currentId===id&&pagedPdfFlow()&&comfort.pdfLayout===layout&&bookSpread()===spread;}
-  async function turnPagedPage(target,animate,epoch,turnStyle){
+  async function turnPagedPage(target,animate,epoch,turnStyle,turnOriginYRatio){
     if(!pdfDoc||!pagedPdfFlow()||epoch!==pagedTurnEpoch)return;
     target=Math.max(1,Math.min(pdfDoc.numPages,target));
     var turnDoc=pdfDoc,turnId=currentId,turnLayout=comfort.pdfLayout,turnSpread=bookSpread();
@@ -3179,10 +3179,10 @@
     var fromStart=fromPages[0],toStart=toPages[0],forward=toStart>fromStart;
     var adjacent=turnSpread?(Math.abs(toStart-fromStart)<=2||Math.min(fromStart,toStart)===1):Math.abs(target-currentPage)===1;
     var oldViews=fromPages.map(function(n){return pdfViews[n-1];}),reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-    /* Buttons, keys and trackpads should turn the same sheet a finger or pointer can
-       hold. A synthetic hand starts at the outer midpoint and sweeps horizontally. */
+    /* Buttons, keys and trackpads start at the outer midpoint. A bottom-corner tap can
+       pass its leaf-relative height so the automatic sheet lifts from where it was touched. */
     if(animate!==false&&adjacent&&!reduceMotion&&turnStyle!=='compact'){
-      var curlResult=await runAutomaticBookCurl(target,epoch);
+      var curlResult=await runAutomaticBookCurl(target,epoch,turnOriginYRatio);
       if(curlResult&&curlResult.started&&(curlResult.committed||curlResult.reason==='superseded'||!pagedTurnStillValid(epoch,turnDoc,turnId,turnLayout,turnSpread)))return;
       if(!pagedTurnStillValid(epoch,turnDoc,turnId,turnLayout,turnSpread))return;
     }
@@ -3209,17 +3209,17 @@
     pagedTurnPromise=(async function(){
       while(pagedTurnQueue.length&&epoch===pagedTurnEpoch&&pdfDoc&&pagedPdfFlow()){
         var turn=pagedTurnQueue.shift(),target=turn.step?(turn.step>0?pagedNextTarget():pagedPreviousTarget()):turn.target;
-        await turnPagedPage(target,turn.animate,epoch,turn.style);
+        await turnPagedPage(target,turn.animate,epoch,turn.style,turn.originYRatio);
       }
     })().finally(function(){if(epoch===pagedTurnEpoch){pagedTurning=false;if(pagedTurnQueue.length)drainPagedTurns();}});
     return pagedTurnPromise;
   }
-  function requestPagedStep(direction,animate,style){
+  function requestPagedStep(direction,animate,style,originYRatio){
     if(!pdfDoc||!pagedPdfFlow())return Promise.resolve();
     /* A second arrow press queues behind an automatic leaf already in flight. Direct
        pointer paper is canceled because the explicit navigation command takes over. */
     if(!automaticBookCurlRunning)cancelActiveBookCurl(true,'navigation');
-    pagedTurnQueue.push({step:direction<0?-1:1,animate:animate,style:style});return drainPagedTurns();
+    pagedTurnQueue.push({step:direction<0?-1:1,animate:animate,style:style,originYRatio:originYRatio});return drainPagedTurns();
   }
   function requestPagedTarget(target,animate){
     if(!pdfDoc||!pagedPdfFlow())return Promise.resolve();
@@ -3473,8 +3473,9 @@
     pagedWheelConsumed=true;pagedWheelSum=0;
     requestPagedStep(forward?1:-1,true);
   },{passive:false});
-  /* Touch: one finger bends and turns the actual leaf, while two fingers pinch with a
-     live preview for both scale and travel. Double-tap still hops between Fit and 160%. */
+  /* Touch: one finger bends and turns the actual leaf, and a quick outer bottom-corner
+     tap lifts it automatically. Two fingers pinch with a live preview for both scale and
+     travel. Double-tap away from those reserved corners still hops between Fit and 160%. */
   (function(){
     var pane=byId('documentPane'),frame=byId('pdfFrame');
     var pinch=null,tapStart=null,lastTapAt=0,lastTapX=0,lastTapY=0,bookSwipe=null,bookCurl=null,curlReadyLeaf=null,curlSerial=0;
@@ -3749,7 +3750,7 @@
       if(immediate||!g.staged)cleanupBookCurl(g);else if(!g.settling)settleBookCurl(g,false);
       return true;
     };
-    runAutomaticBookCurl=function(target,turnEpoch){
+    runAutomaticBookCurl=function(target,turnEpoch,originYRatio){
       if(bookCurl||!pdfDoc||!pagedPdfFlow()||turnEpoch!==pagedTurnEpoch||!pagedCurlGeometryReady())return Promise.resolve(null);
       target=Math.max(1,Math.min(pdfDoc.numPages,target));
       var fromPages=pagedPageNos(currentPage),toPages=pagedPageNos(target);
@@ -3758,11 +3759,13 @@
       var spread=bookSpread(),sourceNo=spread?(direction>0?fromPages[fromPages.length-1]:fromPages[0]):fromPages[0],sourceView=pdfViews[sourceNo-1];
       if(!sourceView||sourceView.buildId!==pdfBuildId||!sourceView.holder.isConnected||!sourceView.holder.classList.contains('book-active'))return Promise.resolve(null);
       var rect=sourceView.holder.getBoundingClientRect(),plan=makeCurlPlan(direction,target,sourceView.holder,rect);if(!plan)return Promise.resolve(null);
-      var startX=direction>0?rect.right:rect.left,startY=rect.top+rect.height/2;
-      var g=Object.assign(plan,{serial:++curlSerial,pointerId:-1,startX:startX,startY:startY,lastX:startX,lastY:startY,lastT:performance.now(),vx:0,moved:true,staged:false,settling:false,automatic:true,turnEpoch:turnEpoch,doc:pdfDoc,documentId:currentId,buildId:pdfBuildId,sourceView:sourceView});
+      /* Keep a finger-picked origin attached to the same place on the leaf even if
+         rendering or a visual-viewport adjustment moves the page before staging. */
+      var cornerOrigin=Number.isFinite(originYRatio),startX=direction>0?rect.right:rect.left,startY=cornerOrigin?rect.top+rect.height*Math.max(0,Math.min(1,originYRatio)):rect.top+rect.height/2;
+      var g=Object.assign(plan,{serial:++curlSerial,pointerId:-1,startX:startX,startY:startY,lastX:startX,lastY:startY,lastT:performance.now(),vx:0,moved:true,staged:false,settling:false,automatic:true,automaticOrigin:cornerOrigin?'bottom-corner':'middle',turnEpoch:turnEpoch,doc:pdfDoc,documentId:currentId,buildId:pdfBuildId,sourceView:sourceView});
       var done=new Promise(function(resolve){g.autoResolve=resolve;});
       clearCurlReady();bookCurl=g;bookCurlOwned=true;automaticBookCurlRunning=true;g.preparePromise=warmCurlPlan(g);
-      stageBookCurl(g);frame.dataset.curlOrigin='middle';drawBookCurl(g,g.corner.x,g.corner.y);
+      stageBookCurl(g);frame.dataset.curlOrigin=g.automaticOrigin;drawBookCurl(g,g.corner.x,g.corner.y);
       requestAnimationFrame(function(){if(bookCurl===g)settleBookCurl(g,true);});
       return done;
     };
@@ -3826,6 +3829,31 @@
         if((!spread||leaf.classList.contains('book-spread-left'))&&touch.clientX<=rect.left+edge)return -1;
       }
       return 0;
+    }
+    /* Reserve only the real outer bottom corners, not invisible pane overlays. A corner
+       tap is deliberately stricter than a swipe so links, footer text, marks and a
+       long-press selection keep their ordinary PDF behavior. */
+    function touchBottomCorner(touch,target){
+      if(!touch||!target||!target.closest||!pagedPdfFlow()||pagedTurning||bookCurl||!touchCurlGeometryReady()||pendingSelection||touchCurlBlockedTarget(target)||target.closest('.text-layer span'))return null;
+      var leaf=target.closest('.pdf-page.book-active');if(!leaf)return null;
+      var pageNo=+leaf.dataset.page,view=pageNo&&pdfViews[pageNo-1];
+      if(!view||view.holder!==leaf||view.buildId!==pdfBuildId)return null;
+      var rect=leaf.getBoundingClientRect();
+      if(touch.clientX<rect.left||touch.clientX>rect.right||touch.clientY<rect.top||touch.clientY>rect.bottom)return null;
+      var zoneX=Math.min(72,Math.max(48,rect.width*.12)),zoneY=Math.min(72,Math.max(52,rect.height*.1));
+      if(touch.clientY<rect.bottom-zoneY)return null;
+      var direction=0;
+      if(!bookSpread()){
+        if(touch.clientX<=rect.left+zoneX)direction=-1;
+        else if(touch.clientX>=rect.right-zoneX)direction=1;
+      }else{
+        if(leaf.classList.contains('book-spread-left')&&touch.clientX<=rect.left+zoneX)direction=-1;
+        else if(leaf.classList.contains('book-spread-right')&&touch.clientX>=rect.right-zoneX)direction=1;
+      }
+      /* At the first and last leaf there is no paper to turn. Leave that corner's
+         ordinary tap behavior alone instead of consuming it as a no-op navigation. */
+      if(!direction||!touchCurlPlan(direction))return null;
+      return{direction:direction,yRatio:Math.max(0,Math.min(1,(touch.clientY-rect.top)/Math.max(1,rect.height)))};
     }
     function warmTouchTurns(){
       [1,-1].forEach(function(direction){var plan=touchCurlPlan(direction);if(plan)warmCurlPlan(plan);});
@@ -3909,13 +3937,15 @@
       if(readerMode!=='pdf'||!pdfDoc)return;
       stopPanMomentum();
       if(e.touches.length===1){
-        var t=e.touches[0];tapStart={x:t.clientX,y:t.clientY,at:Date.now()};
+        var t=e.touches[0];tapStart={id:t.identifier,target:e.target,x:t.clientX,y:t.clientY,at:Date.now(),maxTravel:0,cornerDirection:0,cornerOriginYRatio:null};
         if(bookCurl||pagedTurning){bookSwipe=null;panGesture=null;tapStart=null;lastTapAt=0;return;}
         if(pagedPdfFlow()&&!touchCurlGeometryReady()){bookSwipe=null;panGesture=null;tapStart=null;return;}
         var noOverflow=pane.scrollWidth<=pane.clientWidth+2&&pane.scrollHeight<=pane.clientHeight+2;
         var settledPagedFit=pagedPdfFlow()&&touchCurlGeometryReady()&&pagedFits&&(!pagedManualZoom||noOverflow);
         if(settledPagedFit){
           if(touchCurlBlockedTarget(e.target)){bookSwipe=null;return;}
+          var corner=touchBottomCorner(t,e.target);
+          if(corner){tapStart.cornerDirection=corner.direction;tapStart.cornerOriginYRatio=corner.yRatio;}
           bookSwipe={id:t.identifier,target:e.target,direction:touchEdgeDirection(t),x:t.clientX,y:t.clientY,startT:e.timeStamp,lastX:t.clientX,lastY:t.clientY,moved:false};panGesture=null;warmTouchTurns();return;
         }
         bookSwipe=null;
@@ -3930,13 +3960,14 @@
       frame.style.willChange='transform';
     },{passive:false});
     pane.addEventListener('touchmove',function(e){
+      if(tapStart&&e.touches.length===1){var tapTouch=touchById(e.touches,tapStart.id)||e.touches[0];tapStart.maxTravel=Math.max(tapStart.maxTravel||0,Math.hypot(tapTouch.clientX-tapStart.x,tapTouch.clientY-tapStart.y));}
       if(bookSwipe&&!pinch&&e.touches.length===1){
         var bt=touchById(e.touches,bookSwipe.id)||e.touches[0],bdx=bt.clientX-bookSwipe.x,bdy=bt.clientY-bookSwipe.y;
         bookSwipe.lastX=bt.clientX;bookSwipe.lastY=bt.clientY;
         if(bookCurl&&bookCurl.inputType==='touch'){
           e.preventDefault();moveTouchBookCurl(bookCurl,bt,e.timeStamp);return;
         }
-        if(Math.abs(bdy)>10&&Math.abs(bdy)>Math.abs(bdx)*1.08){bookSwipe=null;return;}
+        if(Math.abs(bdy)>10&&Math.abs(bdy)>Math.abs(bdx)*1.08){bookSwipe=null;tapStart=null;lastTapAt=0;return;}
         var directional=bookSwipe.direction>0?-bdx:bdx;
         if(Math.abs(bdx)>10&&Math.abs(bdx)>Math.abs(bdy)*1.08&&(!bookSwipe.direction||directional>10)){
           if(e.timeStamp-bookSwipe.startT>280&&bookSwipe.target&&bookSwipe.target.closest&&bookSwipe.target.closest('.text-layer span')){bookSwipe=null;return;}
@@ -4006,8 +4037,13 @@
     ['gesturestart','gesturechange'].forEach(function(name){pane.addEventListener(name,function(e){if(readerMode==='pdf'&&pdfDoc)e.preventDefault();});});
     pane.addEventListener('touchend',function(e){
       if(readerMode!=='pdf'||!pdfDoc||pinch||e.touches.length||!e.changedTouches||e.changedTouches.length!==1)return;
-      var t=e.changedTouches[0],at=Date.now();
-      if(!tapStart||Math.hypot(t.clientX-tapStart.x,t.clientY-tapStart.y)>24||at-tapStart.at>320){lastTapAt=0;return;}
+      var t=e.changedTouches[0],at=Date.now(),tapTravel=tapStart?Math.max(tapStart.maxTravel||0,Math.hypot(t.clientX-tapStart.x,t.clientY-tapStart.y)):Infinity;
+      if(!tapStart||tapStart.id!==t.identifier||tapTravel>24||at-tapStart.at>320){lastTapAt=0;return;}
+      var cornerDirection=tapStart.cornerDirection,releaseCorner=cornerDirection&&tapTravel<=14&&at-tapStart.at<=300?touchBottomCorner(t,tapStart.target):null;
+      if(releaseCorner&&releaseCorner.direction===cornerDirection&&touchCurlPlan(cornerDirection)){
+        var originYRatio=tapStart.cornerOriginYRatio;tapStart=null;lastTapAt=0;pagedSuppressClickUntil=Date.now()+520;e.preventDefault();
+        requestPagedStep(cornerDirection,true,undefined,originYRatio);return;
+      }
       if(at-lastTapAt<350&&Math.hypot(t.clientX-lastTapX,t.clientY-lastTapY)<48){
         lastTapAt=0;
         var sel=window.getSelection&&window.getSelection();

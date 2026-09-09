@@ -98,8 +98,9 @@ Each page is self-contained and keeps its data in the visitor's own browser
   reverse print, fold ridge and shadow follow the pointer while the opposite edge stays
   attached to its spine, then fall back or turn
   according to where it is released. On iPad, a one-finger horizontal pull bends
-  and carries the same live sheet under the fingertip; pinch zoom and long-press
-  text selection remain available. Even deep diagonal pulls keep the page attached at
+  and carries the same live sheet under the fingertip; a quick tap on the outer
+  bottom-left or bottom-right corner flips backward or forward from that corner.
+  Pinch zoom and long-press text selection remain available. Even deep diagonal pulls keep the page attached at
   its left or right binding instead of peeling the whole sheet away. Narrow reading panes temporarily show one
   complete page and restore the spread when there is room; arrows, keyboard and
   swipes follow the usual left-to-right book direction.

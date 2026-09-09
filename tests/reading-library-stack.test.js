@@ -140,6 +140,40 @@ function check(name, condition, extra) {
   check('search finds papers by category name', await page.locator('.category-note-grid .paper-sticky-note').count() === 3);
   await page.fill('#librarySearch', '');
 
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.waitForTimeout(100);
+  const tabletSelectedPaper = await page.locator('#selectedPaper').evaluate(element => {
+    const box = target => target && target.getBoundingClientRect();
+    const wrap = box(element);
+    const cover = box(element.querySelector('.closed-book'));
+    const title = box(element.querySelector('.closed-book-title'));
+    const actions = box(element.querySelector('.cover-actions'));
+    const guideElement = element.querySelector('.cover-focus-guide');
+    const guide = box(guideElement);
+    return {
+      wrapHeight: wrap.height,
+      coverTop: cover.top,
+      coverBottom: cover.bottom,
+      coverHeight: cover.height,
+      titleHeight: title.height,
+      titleInside: title.top >= cover.top && title.bottom <= cover.bottom,
+      actionsHeight: actions.height,
+      actionsInside: actions.top >= cover.top && actions.bottom <= cover.bottom,
+      guideDisplay: getComputedStyle(guideElement).display,
+      guideHeight: guide.height
+    };
+  });
+  check('tablet-width wall keeps the selected-paper cover expanded instead of collapsing to its focus guide',
+    tabletSelectedPaper.coverHeight >= 420
+      && tabletSelectedPaper.wrapHeight > tabletSelectedPaper.coverHeight
+      && tabletSelectedPaper.titleHeight > 0
+      && tabletSelectedPaper.titleInside
+      && tabletSelectedPaper.actionsHeight >= 40
+      && tabletSelectedPaper.actionsInside
+      && tabletSelectedPaper.guideDisplay === 'none'
+      && tabletSelectedPaper.guideHeight === 0,
+    JSON.stringify(tabletSelectedPaper));
+
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(100);
   const mobile = await page.locator('.bookcase').boundingBox();

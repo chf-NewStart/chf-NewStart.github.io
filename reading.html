@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=111">
+  <link rel="stylesheet" href="/reading.css?v=114">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -78,6 +78,10 @@
       <div class="section-head">
         <h2>Your library</h2><span class="count" id="libraryCount"></span>
         <label class="library-sort"><span>Sort</span><select id="librarySort" aria-label="Sort library"><option value="touched">Last touched</option><option value="added">Recently added</option><option value="title">Title A–Z</option><option value="author">Author A–Z</option><option value="progress">Reading progress</option></select></label>
+        <div class="library-view-toggle" id="libraryViewToggle" role="group" aria-label="Library view">
+          <button class="library-view-option" type="button" data-library-view="wall" aria-pressed="true" title="Browse the visual reading wall"><span aria-hidden="true">▦</span> Wall</button>
+          <button class="library-view-option" type="button" data-library-view="list" aria-pressed="false" title="Scan every paper in a compact list"><span aria-hidden="true">☷</span> List</button>
+        </div>
         <input class="search" id="librarySearch" type="search" placeholder="Search titles, authors, tags…" aria-label="Search library">
       </div>
       <div class="living-shelf" id="shelf">
@@ -697,9 +701,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=111',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=114',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=111" defer></script>
+<script src="/reading.js?v=114" defer></script>
 </body>
 </html>

@@ -195,6 +195,28 @@ async function curlSpineMetrics(page, sourceSelector) {
   }, sourceSelector);
 }
 
+async function curlFxMetrics(page) {
+  return page.locator('#pdfFrame').evaluate(frame => {
+    const fx = frame.querySelector('.book-curl-fx');
+    const tip = fx?.querySelector('.book-curl-tip');
+    const cast = fx?.querySelector('.book-curl-cast');
+    const ridge = fx?.querySelector('.book-curl-ridge');
+    function visible(element) {
+      if (!element) return false;
+      const style = getComputedStyle(element), rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && +style.opacity > .05 && rect.width > 0 && rect.height > 0;
+    }
+    return {
+      direction: frame.dataset.curlDirection || '',
+      origin: frame.dataset.curlOrigin || '',
+      tipDisplay: tip ? getComputedStyle(tip).display : 'missing',
+      tipVisible: visible(tip),
+      castVisible: visible(cast),
+      ridgeVisible: visible(ridge)
+    };
+  });
+}
+
 (async () => {
   await new Promise(resolve => server.listen(PORT, resolve));
   const launch = { headless: true };
@@ -805,6 +827,8 @@ async function curlSpineMetrics(page, sourceSelector) {
     return { source: frame.dataset.curlSource, back: frame.dataset.curlBack, progress: +frame.dataset.curlProgress, tipLeft: parseFloat(frame.querySelector('.book-curl-tip').style.left), overlap: Math.max(Math.abs(sr.left-ur.left),Math.abs(sr.top-ur.top),Math.abs(sr.right-ur.right),Math.abs(sr.bottom-ur.bottom)), reverseOpacity: parseFloat(getComputedStyle(frame.querySelector('.book-curl-back-canvas')).opacity), label: document.getElementById('pageNumber').textContent, legacy: frame.querySelectorAll('.book-turning').length };
   });
   check('a Page-mode finger gets a live bound-leaf fold with the next page underneath', pageTouchTwo.source === '2' && pageTouchTwo.back === '2' && pageTouchTwo.progress > pageTouchOne.progress && pageTouchTwo.tipLeft < pageTouchOne.tipLeft - 30 && pageTouchTwo.overlap < 2 && pageTouchTwo.reverseOpacity < .4 && pageTouchTwo.label.startsWith('2 /') && pageTouchTwo.legacy === 0, JSON.stringify({ first: pageTouchOne, second: pageTouchTwo }));
+  const pageTouchFx = await curlFxMetrics(touch);
+  check('a forward iPad fold keeps paper lighting without drawing a fingertip mark', pageTouchFx.direction === 'next' && pageTouchFx.origin === 'finger' && pageTouchFx.tipDisplay === 'none' && !pageTouchFx.tipVisible && pageTouchFx.castVisible && pageTouchFx.ridgeVisible, JSON.stringify(pageTouchFx));
   await touch.waitForTimeout(360);
   await dispatchTouches(touch, '.pdf-page[data-page="2"] canvas', 'touchend', [], [fingerTwo]);
   await touch.waitForFunction(() => !document.getElementById('pdfFrame').dataset.curlState);
@@ -825,10 +849,12 @@ async function curlSpineMetrics(page, sourceSelector) {
   const pageBack = { id: 37, x: touchBox.x + touchBox.width * 1.18, y: touchBox.y + touchBox.height * .86 };
   await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchstart', [fingerStart]);
   await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchmove', [pageBack]);
-  await touch.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlDirection === 'prev' && document.getElementById('pdfFrame').dataset.curlSource === '3' && document.getElementById('pdfFrame').dataset.curlBack === '3' && document.querySelector('.book-curl-under-single[data-page="2"]'));
+  await touch.waitForFunction(() => document.getElementById('pdfFrame').dataset.curlState === 'dragging' && document.getElementById('pdfFrame').dataset.curlDirection === 'prev' && document.getElementById('pdfFrame').dataset.curlSpineLimited === 'true' && document.getElementById('pdfFrame').dataset.curlSource === '3' && document.getElementById('pdfFrame').dataset.curlBack === '3' && document.querySelector('.book-curl-under-single[data-page="2"]'));
   const pageBackSpine = await curlSpineMetrics(touch, '.book-curl-front[data-page="3"]');
   const pageBackBoundaryError = Math.min(Math.abs(pageBackSpine.spineY), Math.abs(pageBackSpine.spineY - pageBackSpine.height));
   check('a deep diagonal Page pull also stays attached along the entire right binding', pageBackSpine.binding === 'right' && pageBackSpine.limited === 'true' && pageBackSpine.progress > .5 && pageBackSpine.progress < .7 && pageBackBoundaryError <= 1.5 && pageBackSpine.attachedCorners === 2 && pageBackSpine.attachedSamples === pageBackSpine.sampleCount, JSON.stringify(pageBackSpine));
+  const pageBackFx = await curlFxMetrics(touch);
+  check('a backward iPad fold has no grey fingertip mark either', pageBackFx.direction === 'prev' && pageBackFx.origin === 'finger' && pageBackFx.tipDisplay === 'none' && !pageBackFx.tipVisible && pageBackFx.castVisible && pageBackFx.ridgeVisible, JSON.stringify(pageBackFx));
   await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchend', [], [pageBack]);
   await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2 /') && !document.getElementById('pdfFrame').dataset.curlState);
   check('Page mode also folds backward under a tablet finger', await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);

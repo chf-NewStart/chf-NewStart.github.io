@@ -670,7 +670,10 @@
     .book-curl-fx i { position: absolute; display: block; pointer-events: none; transform-origin: center; }
     .book-curl-cast { height: clamp(48px,7vw,94px); border-radius: 50%; background: linear-gradient(to bottom, transparent 2%, rgba(27,22,15,.05) 22%, rgba(27,22,15,.3) 53%, rgba(27,22,15,.08) 72%, transparent 100%); filter: blur(5px); mix-blend-mode: multiply; }
     .book-curl-ridge { height: clamp(20px,2.9vw,42px); border-radius: 50%; background: linear-gradient(to bottom, rgba(38,31,21,.13), rgba(255,255,255,.68) 42%, rgba(255,255,255,.9) 51%, rgba(50,40,25,.25) 61%, transparent 94%); filter: blur(.45px); }
-    .book-curl-tip { width: 88px; height: 25px; margin: 0; border-radius: 50%; background: radial-gradient(ellipse at 50% 48%, rgba(255,255,255,.72), rgba(255,255,255,.2) 42%, rgba(37,29,18,.25) 68%, transparent 76%); filter: blur(1px); }
+    /* The crease and cast shadow already explain the paper's contact point. A separate
+       fingertip halo reads as a grey mark—especially on a backward iPad turn. Keep the
+       geometry probe nonvisual so the paper stays directly beneath the reader's hand. */
+    .book-curl-fx > .book-curl-tip { display: none; }
     .pdf-frame.dark-paper .book-curl-overlay { background: #15191a; outline-color: rgba(255,255,255,.08); }
     .pdf-frame.dark-paper .book-curl-back-canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.88); background: #171717; opacity: .8; }
     .pdf-frame.dark-paper .book-curl-overlay.book-curl-single .book-curl-back-canvas { opacity: .22; filter: invert(.91) hue-rotate(180deg) grayscale(.3) contrast(.72) brightness(.78); }

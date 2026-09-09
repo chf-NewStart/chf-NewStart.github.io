@@ -32,7 +32,8 @@ initial PDF scale to Fit while preserving deliberate per-paper zoom choices.
 old-setting migration, phone fallback, conventional cover/spread parity, final
 blank leaves, the center seam, automatic midpoint curls from arrows and keys,
 physical single-page stacks, direct mouse page curls with a real backside and
-under-page, spine-bound diagonal folds, iPad-style touch curls that follow the finger in Page and Book,
+under-page, spine-bound diagonal folds, and iPad-style Page/Book touch curls that
+follow the finger without an artificial fingertip halo,
 touch intent/pinch/pan preservation, OS touch-cancel cleanup and zoom-edge curl
 handoff, curl cancel/commit thresholds, mid-drag cleanup,
 left-to-right arrows and swipes, rapid-turn queuing and cancellation, internal-

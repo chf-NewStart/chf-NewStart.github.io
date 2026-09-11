@@ -1,5 +1,7 @@
-let chromium;
-try { chromium = require('playwright').chromium; } catch (e) { chromium = require('playwright-core').chromium; }
+let playwright;
+try { playwright = require('playwright'); } catch (e) { playwright = require('playwright-core'); }
+const browserName = process.env.PHLOEM_BROWSER || 'chromium';
+const browserType = playwright[browserName];
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -23,7 +25,7 @@ function check(name, condition, extra) {
   if (!condition) failures++;
 }
 
-/* Chromium cannot open a software keyboard in headless mode. This keeps the browser's
+/* Headless browsers cannot open a software keyboard. This keeps the browser's
    real layout and input behavior while giving the reader the same visualViewport
    resize/scroll contract that iPadOS sends when its keyboard covers the lower screen. */
 function installVisualViewportMock() {
@@ -78,13 +80,16 @@ function seedZenReader() {
   localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({
     pdfLayout: 'scroll', guideOrientation: 'row', focus: false, guideDim: 70
   }));
+  localStorage.setItem('readingRoom.theme', 'light');
+  localStorage.setItem('readingRoom.paperAppearance.v1', 'cream');
 }
 
 (async () => {
   await new Promise(resolve => server.listen(PORT, resolve));
+  if (!browserType) throw new Error('Unknown Playwright browser: ' + browserName);
   const launch = { headless: true };
-  if (process.env.CHROME_PATH) launch.executablePath = process.env.CHROME_PATH;
-  const browser = await chromium.launch(launch);
+  if (browserName === 'chromium' && process.env.CHROME_PATH) launch.executablePath = process.env.CHROME_PATH;
+  const browser = await browserType.launch(launch);
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2, serviceWorkers: 'block' });
   const page = await context.newPage();
   page.setDefaultTimeout(8000);
@@ -112,6 +117,22 @@ function seedZenReader() {
   check('Zen exposes one compact layout switch', zenLayoutVisible && zenDockState.expanded === 'false', JSON.stringify(zenDockState));
   check('Zen keeps layout choices collapsed until requested', !(await page.locator('#zenLayoutMenu').isVisible()));
   check('Zen refresh uses the same save-safe reload path as the masthead', await page.evaluate(() => document.getElementById('zenRefresh').onclick === document.getElementById('refreshBtn').onclick));
+  const zenPaperState = await page.locator('#zenPaperAppearance').evaluate(button => {
+    const rect = button.getBoundingClientRect();
+    return { visible: getComputedStyle(button).display !== 'none', width: rect.width, height: rect.height, label: button.getAttribute('aria-label'), state: button.dataset.paperState };
+  });
+  check('Zen includes a full-size paper appearance shortcut', zenPaperState.visible && zenPaperState.width >= 44 && zenPaperState.height >= 44 && zenPaperState.state === 'cream' && /cream/i.test(zenPaperState.label), JSON.stringify(zenPaperState));
+  await page.click('#zenPaperAppearance');
+  const zenPaperChanged = await page.evaluate(() => ({
+    theme: document.documentElement.dataset.theme || 'light',
+    body: document.body.dataset.paperAppearance,
+    frame: document.getElementById('pdfFrame').dataset.paperAppearance,
+    setting: document.querySelector('[data-paper-appearance="inverted"]').getAttribute('aria-pressed'),
+    saved: localStorage.getItem('readingRoom.paperAppearance.v1')
+  }));
+  check('Zen changes paper appearance without changing the interface theme', zenPaperChanged.theme === 'light' && zenPaperChanged.body === 'inverted' && zenPaperChanged.frame === 'inverted' && zenPaperChanged.setting === 'true' && zenPaperChanged.saved === 'inverted', JSON.stringify(zenPaperChanged));
+  await page.click('#zenTheme');
+  check('Zen interface theme changes without resetting the paper', await page.evaluate(() => document.documentElement.dataset.theme === 'dark' && document.getElementById('pdfFrame').dataset.paperAppearance === 'inverted'));
 
   if (zenLayoutVisible) await page.click('#zenLayout');
   else await page.locator('#zenLayout').evaluate(button => button.click());
@@ -129,9 +150,15 @@ function seedZenReader() {
   await page.keyboard.press('Escape');
   check('Escape closes the Zen layout popout without leaving Zen', !(await page.locator('#zenLayoutMenu').isVisible()) && await page.locator('#zenLayout').getAttribute('aria-expanded') === 'false' && await page.locator('body').evaluate(body => body.classList.contains('zen')));
 
+  check('Zen has no separate floating dimness tool', await page.locator('#zenDim, #zenDimTool').count() === 0);
+  check('Guide owns the hidden dimness control', await page.locator('#zenGuideMenu #zenGuideDimRange').count() === 1 && !(await page.locator('#zenGuideDimRange').isVisible()));
   check('Zen guide dimness starts in sync with Reading settings', await page.locator('#zenGuideDimRange').inputValue() === '70' && await page.locator('#zenGuideDimValue').textContent() === '70%' && await page.locator('#guideDimRange').inputValue() === '70');
-  await page.click('#zenDim');
-  check('guide dimness opens as an on-demand Zen popout', await page.locator('#zenDimMenu').isVisible() && await page.locator('#zenDim').getAttribute('aria-expanded') === 'true');
+  await page.locator('#zenGuide').focus();
+  await page.locator('#zenGuide').press('Enter');
+  check('Guide expands its own controls beside the Zen dock', await page.locator('#zenGuideMenu').isVisible() && await page.locator('#zenGuide').getAttribute('aria-expanded') === 'true');
+  await page.click('#zenGuideToggle');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('readingRoom.comfort.v1')).focus === true);
+  check('the Guide popout contains the real on/off control', await page.locator('#zenGuideToggle').getAttribute('aria-pressed') === 'true' && /on/i.test(await page.locator('#zenGuideToggleLabel').textContent()));
   await page.locator('#zenGuideDimRange').evaluate(input => {
     input.value = '80';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -144,6 +171,9 @@ function seedZenReader() {
     opacity: document.getElementById('paneSpotlight').style.getPropertyValue('--guide-dim-opacity')
   }));
   check('Zen dimness stays synchronized with the desk control and guide', dimState.zenValue === '80%' && dimState.deskValue === '80%' && dimState.deskRange === '80' && dimState.opacity === '0.80', JSON.stringify(dimState));
+  await page.locator('#zenGuideDimRange').focus();
+  await page.keyboard.press('Escape');
+  check('Escape closes Guide controls, returns focus, and stays in Zen', !(await page.locator('#zenGuideMenu').isVisible()) && await page.locator('#zenGuide').getAttribute('aria-expanded') === 'false' && await page.evaluate(() => document.activeElement === document.getElementById('zenGuide') && document.body.classList.contains('zen')));
 
   await page.click('#zenExit');
   await page.waitForFunction(() => !document.body.classList.contains('zen'));

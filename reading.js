@@ -2461,6 +2461,12 @@
   byId('leadLoose').onclick=function(){stepComfort('leading',0.1,1.2,2.6,1);};
   document.querySelectorAll('[data-reading-typeface]').forEach(function(btn){btn.onclick=function(){comfort.typeface=btn.dataset.readingTypeface;applyComfort();showReaderToast(btn.textContent+' reading typeface');};});
   byId('airyBtn').onclick=function(){comfort.airy=!comfort.airy;applyComfort();};
+  var PAPER_APPEARANCE_ORDER=['original','cream','inverted'];
+  function paperAppearanceLabel(value){return value==='original'?'Original colors':value==='inverted'?'Inverted':'Cream';}
+  function syncPaperAppearanceShortcuts(){
+    var at=PAPER_APPEARANCE_ORDER.indexOf(paperAppearance),next=PAPER_APPEARANCE_ORDER[(Math.max(0,at)+1)%PAPER_APPEARANCE_ORDER.length],currentLabel=paperAppearanceLabel(paperAppearance),nextLabel=paperAppearanceLabel(next);
+    ['paperAppearanceBtn','zenPaperAppearance'].forEach(function(id){var button=byId(id);if(!button)return;button.dataset.paperState=paperAppearance;button.setAttribute('aria-label','Paper appearance: '+currentLabel+'. Change to '+nextLabel);button.title='Paper: '+currentLabel+' · next '+nextLabel;});
+  }
   function setPaperAppearance(value,announce){
     if(['original','cream','inverted'].indexOf(value)<0)return;
     paperAppearance=value;comfort.tone=value==='cream'?'cream':'white';
@@ -2468,7 +2474,9 @@
     applyPaperAppearance();saveComfortSoon();
     if(announce!==false)showReaderToast(value==='original'?'Original paper colors':value==='cream'?'Cream paper · softer white':'Inverted paper');
   }
+  function cyclePaperAppearance(){var at=PAPER_APPEARANCE_ORDER.indexOf(paperAppearance);setPaperAppearance(PAPER_APPEARANCE_ORDER[(Math.max(0,at)+1)%PAPER_APPEARANCE_ORDER.length]);}
   document.querySelectorAll('[data-paper-appearance]').forEach(function(btn){btn.onclick=function(){setPaperAppearance(btn.dataset.paperAppearance);};});
+  byId('paperAppearanceBtn').onclick=cyclePaperAppearance;
   function setPdfLayout(layout,restoreSpot){
     if(['scroll','page','book'].indexOf(layout)<0)return;
     cancelPdfPositionRestore();
@@ -2581,13 +2589,13 @@
   function applyFocus(){
     var overlay=byId('paneSpotlight'),btn=byId('focusBtn'),on=!!comfort.focus;
     overlay.classList.toggle('on',on);overlay.classList.toggle('locked',!!comfort.guideLock);btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',String(on));byId('guideTool').classList.toggle('active',on);
-    var zg=byId('zenGuide');zg.classList.toggle('active',on);zg.setAttribute('aria-pressed',String(on));
+    var zg=byId('zenGuide'),toggle=byId('zenGuideToggle'),label=byId('zenGuideToggleLabel');zg.classList.toggle('active',on);zg.setAttribute('aria-label','Reading guide '+(on?'on':'off')+'. Open guide controls');zg.title='Guide controls · G turns guide '+(on?'off':'on');toggle.setAttribute('aria-pressed',String(on));label.textContent=on?'Guide on':'Guide off';
     syncTouchDockStates();
     if(on)requestAnimationFrame(placeGuide);
   }
   function closeZenPopouts(returnFocus){
     var openTrigger=null,closed=false;
-    [['zenLayout','zenLayoutMenu','zenLayoutTool'],['zenDim','zenDimMenu','zenDimTool']].forEach(function(parts){
+    [['zenLayout','zenLayoutMenu','zenLayoutTool'],['zenGuide','zenGuideMenu','zenGuideTool']].forEach(function(parts){
       var trigger=byId(parts[0]),menu=byId(parts[1]),tool=byId(parts[2]);
       if(!menu.classList.contains('hidden')){closed=true;if(!openTrigger)openTrigger=trigger;}
       menu.classList.add('hidden');tool.classList.remove('popout-open');trigger.setAttribute('aria-expanded','false');
@@ -2606,8 +2614,9 @@
      for settings that need more than one tap target. */
   byId('zenLayout').onclick=function(){toggleZenPopout('zenLayout','zenLayoutMenu','zenLayoutTool');};
   document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.zenPdfLayout);closeZenPopouts(true);};});
-  byId('zenGuide').onclick=function(){closeZenPopouts(false);byId('focusBtn').onclick();};
-  byId('zenDim').onclick=function(){toggleZenPopout('zenDim','zenDimMenu','zenDimTool');};
+  byId('zenGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
+  byId('zenGuideToggle').onclick=function(){byId('focusBtn').onclick();zenWake();};
+  byId('zenPaperAppearance').onclick=function(){closeZenPopouts(false);cyclePaperAppearance();};
   byId('zenTheme').onclick=function(){closeZenPopouts(false);byId('themeBtn').onclick();};
   byId('zenRefresh').onclick=refreshPhloem;
   document.addEventListener('pointerdown',function(event){if(zenOn&&!event.target.closest('.zen-tool')&&!event.target.closest('#zenDock'))closeZenPopouts(false);},true);
@@ -3670,6 +3679,7 @@
     if(doc){doc.classList.toggle('paper-original',paperAppearance==='original');doc.classList.toggle('paper-cream',cream);doc.classList.toggle('paper-inverted',inverted);}
     document.body.dataset.paperAppearance=paperAppearance;
     document.querySelectorAll('[data-paper-appearance]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.paperAppearance===paperAppearance));});
+    syncPaperAppearanceShortcuts();
   }
   /* Continuous vertical scroll: every page has a placeholder box up front, and real
      pixels arrive lazily as pages approach the viewport. Far-away canvases are freed

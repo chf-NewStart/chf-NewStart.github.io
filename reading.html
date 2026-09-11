@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=118">
+  <link rel="stylesheet" href="/reading.css?v=119">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -37,6 +37,7 @@
     <div class="head-actions">
       <button class="cloud" id="syncSignal" type="button" title="Sync now">this device</button>
       <button class="icon-btn" id="themeBtn" aria-label="Switch to night reading">☾</button>
+      <button class="icon-btn paper-appearance-shortcut" id="paperAppearanceBtn" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
       <button class="icon-btn" id="refreshBtn" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
     </div>
@@ -438,15 +439,18 @@
             <button class="zen-popout-option" type="button" data-zen-pdf-layout="book" aria-pressed="false"><span aria-hidden="true">▯▯</span><span>Book</span></button>
           </div>
         </div>
-        <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-pressed="false" aria-label="Toggle the reading guide" title="Reading guide (G)">▰</button>
-        <div class="zen-tool" id="zenDimTool">
-          <button class="zen-exit" id="zenDim" type="button" aria-expanded="false" aria-controls="zenDimMenu" aria-haspopup="true" aria-label="Adjust reading guide dimness" title="Guide dimness"><span aria-hidden="true">◐</span></button>
-          <div class="zen-popout zen-dim-menu hidden" id="zenDimMenu" role="group" aria-label="Reading guide dimness">
-            <label for="zenGuideDimRange">Outside dimness</label>
-            <input id="zenGuideDimRange" type="range" min="20" max="85" step="5" value="55" aria-label="Dimness outside the focused lines">
-            <output id="zenGuideDimValue" for="zenGuideDimRange">55%</output>
+        <div class="zen-tool" id="zenGuideTool">
+          <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-expanded="false" aria-controls="zenGuideMenu" aria-haspopup="true" aria-label="Reading guide off. Open guide controls" title="Guide controls (G toggles)">▰</button>
+          <div class="zen-popout zen-guide-menu hidden" id="zenGuideMenu" role="group" aria-label="Reading guide controls">
+            <button class="zen-popout-option zen-guide-toggle" id="zenGuideToggle" type="button" aria-pressed="false"><span aria-hidden="true">▰</span><span id="zenGuideToggleLabel">Guide off</span></button>
+            <div class="zen-guide-dim-control">
+              <label for="zenGuideDimRange">Outside dimness</label>
+              <input id="zenGuideDimRange" type="range" min="20" max="85" step="5" value="55" aria-label="Dimness outside the focused lines">
+              <output id="zenGuideDimValue" for="zenGuideDimRange">55%</output>
+            </div>
           </div>
         </div>
+        <button class="zen-exit zen-paper paper-appearance-shortcut" id="zenPaperAppearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
         <button class="zen-exit zen-theme" id="zenTheme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
         <button class="zen-exit zen-refresh" id="zenRefresh" type="button" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
       </div>
@@ -723,9 +727,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=118',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=119',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=118" defer></script>
+<script src="/reading.js?v=119" defer></script>
 </body>
 </html>

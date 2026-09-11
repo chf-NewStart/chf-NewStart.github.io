@@ -113,12 +113,13 @@ Each page is self-contained and keeps its data in the visitor's own browser
   vocabulary, and headers/footers/TOC dot leaders stripped.
 
   **Focus.** A reading guide band (yellow/green/blue, full-page or column width,
-  S/M/L height) that tints or — in Line focus — masks everything except the lines
-  under it, draggable by its ≡ handle and anchored to the pane so layout changes
-  never move it off your line; ⛶ Zen mode strips every bar and panel (F to
-  toggle); auto-scroll drifts the page at a tunable 0.5–20 px/s crawl that pauses
-  when you touch the paper; cream paper warms the page in light mode and removes
-  the blue cast in dark mode.
+  S/M/L height) masks everything except the lines under it, is draggable by its ≡
+  handle, and stays anchored to the pane through layout changes. ⛶ Zen mode strips
+  every bar and panel (F to toggle); its Guide button expands to keep on/off and
+  outside dimness together. Auto-scroll drifts at a tunable 0.5–20 px/s crawl and
+  pauses when you touch the paper. Paper appearance is independent from the room
+  theme: the masthead and Zen shortcuts cycle Original, Cream, and Inverted while
+  the full choices remain in Reading Settings.
 
   **Marks.** A four-color marker with persistent highlights, page and paragraph
   notes, a whole-paper find bar (`/`), selection lookups (Wikipedia

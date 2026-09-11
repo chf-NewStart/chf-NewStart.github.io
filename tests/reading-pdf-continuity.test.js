@@ -207,6 +207,11 @@ function samePdfVerticalAnchor(before, after, tolerance) {
     paper: document.getElementById('pdfFrame').dataset.paperAppearance
   }));
   check('the fixture begins with a light interface and cream paper', initialSurfaces.theme === 'light' && initialSurfaces.paper === 'cream', JSON.stringify(initialSurfaces));
+  const paperShortcut = await page.locator('#paperAppearanceBtn').evaluate(button => {
+    const rect = button.getBoundingClientRect(), theme = document.getElementById('themeBtn').getBoundingClientRect();
+    return { visible: getComputedStyle(button).display !== 'none', state: button.dataset.paperState, label: button.getAttribute('aria-label'), besideTheme: document.getElementById('themeBtn').nextElementSibling === button, gap: Math.round(rect.left - theme.right) };
+  });
+  check('the reader puts its current paper appearance beside the interface theme', paperShortcut.visible && paperShortcut.state === 'cream' && /cream/i.test(paperShortcut.label) && paperShortcut.besideTheme && paperShortcut.gap <= 12, JSON.stringify(paperShortcut));
   await page.click('#themeBtn');
   const darkCream = await page.evaluate(() => ({
     theme: document.documentElement.dataset.theme || 'light',
@@ -214,14 +219,21 @@ function samePdfVerticalAnchor(before, after, tolerance) {
   }));
   check('changing the interface theme leaves the paper appearance alone', darkCream.theme === 'dark' && darkCream.paper === 'cream', JSON.stringify(darkCream));
 
-  await page.click('#comfortBtn');
-  await page.locator('[data-paper-appearance="inverted"]').click();
+  const quickPaperStates = [];
+  for (let click = 0; click < 3; click++) {
+    await page.click('#paperAppearanceBtn');
+    quickPaperStates.push(await page.evaluate(() => {
+      const state = document.body.dataset.paperAppearance;
+      return { state, frame: document.getElementById('pdfFrame').dataset.paperAppearance, saved: localStorage.getItem('readingRoom.paperAppearance.v1'), selected: document.querySelector('[data-paper-appearance="' + state + '"]').getAttribute('aria-pressed'), theme: document.documentElement.dataset.theme || 'light' };
+    }));
+  }
+  check('the masthead shortcut cycles Inverted, Original, and Cream everywhere', quickPaperStates.map(item => item.state).join(',') === 'inverted,original,cream' && quickPaperStates.every(item => item.state === item.frame && item.state === item.saved && item.selected === 'true' && item.theme === 'dark'), JSON.stringify(quickPaperStates));
+  await page.click('#paperAppearanceBtn');
   const darkInverted = await page.evaluate(() => ({
     theme: document.documentElement.dataset.theme || 'light',
     paper: document.getElementById('pdfFrame').dataset.paperAppearance
   }));
   check('changing paper appearance leaves the dark interface alone', darkInverted.theme === 'dark' && darkInverted.paper === 'inverted', JSON.stringify(darkInverted));
-  await page.click('#comfortBtn');
   await page.click('#themeBtn');
   const lightInverted = await page.evaluate(() => ({
     theme: document.documentElement.dataset.theme || 'light',

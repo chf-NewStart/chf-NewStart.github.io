@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=115">
+  <link rel="stylesheet" href="/reading.css?v=118">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -78,12 +78,14 @@
       <div class="section-head">
         <h2>Your library</h2><span class="count" id="libraryCount" role="status" aria-live="polite"></span>
         <label class="library-sort"><span>Sort</span><select id="librarySort" aria-label="Sort library"><option value="touched">Last touched</option><option value="added">Recently added</option><option value="title">Title A–Z</option><option value="author">Author A–Z</option><option value="progress">Reading progress</option></select></label>
+        <button class="library-offline-filter" id="libraryOfflineFilter" type="button" aria-pressed="false" title="Show papers available without a network connection"><span aria-hidden="true">↓</span> Offline</button>
         <div class="library-view-toggle" id="libraryViewToggle" role="group" aria-label="Library view">
           <button class="library-view-option" type="button" data-library-view="wall" aria-pressed="true" title="Browse the visual reading wall"><span aria-hidden="true">▦</span> Wall</button>
           <button class="library-view-option" type="button" data-library-view="list" aria-pressed="false" title="Scan every paper in a compact list"><span aria-hidden="true">☷</span> List</button>
         </div>
         <input class="search" id="librarySearch" type="search" placeholder="Search papers, notes & highlights…" aria-label="Search papers, notes, and highlights">
       </div>
+      <section class="continue-reading hidden" id="continueReading" aria-labelledby="continueReadingTitle"></section>
       <div class="living-shelf" id="shelf">
         <div class="shelf-loading" role="status" aria-live="polite">
           <span class="shelf-loading-mark" aria-hidden="true"></span>
@@ -122,13 +124,13 @@
         <div class="title"><strong id="readerTitle"></strong><span id="readerMeta"></span></div>
         <button class="soft-button hidden" id="tocBtn" type="button" title="Table of contents">☰ <span class="wide">Contents</span></button>
         <button class="soft-button hidden" id="prevPage" aria-label="Previous page">←</button>
-        <span id="pageNumber" class="cloud" title="Jump to a page"></span>
+        <button id="pageNumber" class="cloud" type="button" title="Jump to a page" aria-label="Jump to a page"></button>
         <button class="soft-button hidden" id="nextPage" aria-label="Next page">→</button>
         <div class="zoom-tools hidden" id="zoomTools" aria-label="PDF zoom controls">
           <button id="zoomOut" aria-label="Zoom out">−</button>
           <button id="zoomLabel" aria-label="Fit PDF to width">Fit</button>
           <button id="zoomIn" aria-label="Zoom in">＋</button>
-          <button id="colZoomBtn" aria-label="Zoom to one column" title="Zoom to one column (C) — taps cycle left · right · full width">Col</button>
+          <button id="colZoomBtn" aria-label="Column view: Full width" title="Column view (C) — cycles Full width, Left, and Right">Column · Full width</button>
         </div>
         <button class="soft-button hidden" id="reflowBtn" type="button" aria-pressed="false" aria-label="Switch to Reader view" title="Reader view · the paper rebuilt as clean, phone-friendly text">Aa <span class="wide">Reader view</span></button>
         <div class="guide-tool" id="guideTool" role="group" aria-label="Reading guide and settings">
@@ -149,7 +151,7 @@
         </div>
 
       </div>
-      <div class="comfort-bar hidden" id="comfortBar">
+      <div class="comfort-bar hidden" id="comfortBar" aria-label="Reading settings">
         <div class="comfort-section comfort-text text-only" aria-label="Text settings">
           <span class="comfort-section-title">Text</span>
           <div class="comfort-section-body">
@@ -232,9 +234,13 @@
             <span class="value" id="driftValue">4 px/s</span>
           </div>
         </div>
-        <div class="comfort-section comfort-paper" aria-label="Paper settings">
+        <div class="comfort-section comfort-paper" aria-label="Paper appearance">
           <span class="comfort-section-title">Paper</span>
-          <button class="toggle" id="creamBtn" type="button" aria-pressed="false">Cream</button>
+          <div class="guide-scope" role="group" aria-label="Paper appearance">
+            <button class="toggle" type="button" data-paper-appearance="original" aria-pressed="false">Original colors</button>
+            <button class="toggle" id="creamBtn" type="button" data-paper-appearance="cream" aria-pressed="true">Cream</button>
+            <button class="toggle" type="button" data-paper-appearance="inverted" aria-pressed="false">Inverted</button>
+          </div>
         </div>
         <button class="toggle comfort-reset" id="comfortReset" type="button">Reset all</button>
       </div>
@@ -261,7 +267,7 @@
         <div class="notebook-resizer" id="notebookResizer" role="separator" aria-label="Resize notes panel" aria-controls="notebook" aria-orientation="vertical" aria-valuemin="280" aria-valuemax="620" aria-valuenow="360" title="Drag to resize notes · push far right to tuck away · double-click to reset" tabindex="0"></div>
         <button class="notebook-reopen" id="notebookReopen" type="button" aria-label="Show the notes panel" aria-expanded="true" title="Show notes">❮</button>
         <button class="notebook-tuck" id="notebookTuck" type="button" aria-label="Tuck the notes panel away" title="Tuck notes away">❯</button>
-        <aside class="notebook" id="notebook">
+        <aside class="notebook" id="notebook" tabindex="-1">
           <button class="sheet-close" id="sheetClose" type="button" aria-label="Close notes">✕</button>
           <div class="tabs" role="tablist">
             <button class="tab active" data-tab="notesPanel" role="tab" aria-selected="true" aria-controls="notesPanel">Notes</button>
@@ -354,6 +360,22 @@
         <button id="mNotes" type="button" aria-expanded="false">✎ Notes</button>
         <button id="mAsk" type="button" aria-expanded="false">✦ Discuss</button>
         <button id="mMore" type="button" aria-expanded="false" aria-label="More tools">⋯</button>
+      </div>
+      <div class="touch-dock" id="touchDock" role="toolbar" aria-label="Touch reading controls" aria-orientation="vertical" data-side="right">
+        <button class="touch-dock-action" id="touchGuide" data-touch-action="guide" type="button" aria-label="Guide" aria-pressed="false"><span aria-hidden="true">▰</span><small>Guide</small></button>
+        <button class="touch-dock-action" id="touchHighlight" data-touch-action="highlight" type="button" aria-label="Highlight" aria-pressed="false"><span aria-hidden="true">✦</span><small>Mark</small></button>
+        <button class="touch-dock-action" id="touchNotes" data-touch-action="notes" type="button" aria-label="Notes" aria-controls="notebook" aria-expanded="false"><span aria-hidden="true">✎</span><small>Notes</small></button>
+        <div class="touch-dock-more">
+          <button class="touch-dock-action" id="touchMore" data-touch-action="more" type="button" aria-label="More" aria-haspopup="dialog" aria-expanded="false" aria-controls="touchDockMenu"><span aria-hidden="true">⋯</span><small>More</small></button>
+          <div class="touch-dock-menu hidden" id="touchDockMenu" role="dialog" aria-label="More touch reading controls">
+            <button id="touchUndo" type="button"><span aria-hidden="true">↶</span> Undo mark</button>
+            <button id="touchFind" type="button"><span aria-hidden="true">⌕</span> Find</button>
+            <button id="touchDiscuss" type="button"><span aria-hidden="true">✦</span> Discuss</button>
+            <button id="touchSettings" type="button" aria-controls="comfortBar" aria-expanded="false"><span aria-hidden="true">⌔</span> Reading settings</button>
+            <button id="touchPinNotes" type="button" aria-pressed="false"><span aria-hidden="true">▥</span> Keep notes beside page</button>
+            <button id="touchDockMove" data-touch-dock-move type="button"><span aria-hidden="true">⇆</span> Move dock left</button>
+          </div>
+        </div>
       </div>
       <button id="linkReturn" class="link-return hidden" type="button">↩ Back to where you were</button>
       <aside class="selection-card hidden" id="selectionCard" aria-label="Actions for selected text">
@@ -701,9 +723,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=115',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=118',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=115" defer></script>
+<script src="/reading.js?v=118" defer></script>
 </body>
 </html>

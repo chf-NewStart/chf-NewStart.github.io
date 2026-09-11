@@ -154,7 +154,7 @@ function check(name, condition, extra) {
     const parent = element.getBoundingClientRect(), children = Array.from(element.children).map(child => child.getBoundingClientRect());
     return { parent: { left: parent.left, right: parent.right }, children: children.map(rect => ({ left: rect.left, right: rect.right, width: rect.width })) };
   });
-  check('Continue, PDF, and Remove all fit the mobile notebook', mobileActions.children.length === 3 && mobileActions.children.every(rect => rect.left >= mobileActions.parent.left - 1 && rect.right <= mobileActions.parent.right + 1), JSON.stringify(mobileActions));
+  check('Continue, Offline, PDF, and Remove all fit the mobile notebook', mobileActions.children.length === 4 && mobileActions.children.every(rect => rect.left >= mobileActions.parent.left - 1 && rect.right <= mobileActions.parent.right + 1), JSON.stringify(mobileActions));
   check('export has no page errors', errors.length === 0, errors.join('; '));
 
   await context.close();

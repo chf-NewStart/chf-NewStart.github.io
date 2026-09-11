@@ -34,6 +34,27 @@ one-click opening, and a non-clipping phone layout.
 page notes, highlighted passages, reviewer work, paired highlight notes, exact
 page opening, responsive results, and List-mode category and bulk-move controls.
 
+`reading-find-highlight.test.js` covers exact, persistent in-paper Find ink,
+individual-occurrence arrows, saved-marker cleanup, PDF/Reader switching, Page
+rebuilds, and phrases split between PDF.js text-layer spans.
+
+`reading-ipad-touch-dock.test.js` covers the coarse-touch iPad dock, 52px Guide,
+Highlight, Notes, and More targets, persisted left/right placement, temporary
+notes that preserve PDF size and position, the explicit wide-landscape pinned
+panel, portrait fallback, keyboard-safe page-note editing, adaptive settings,
+dialog focus/return, and 44px touch targets. Set `PHLOEM_BROWSER=webkit` to run
+the same workflow against Playwright WebKit.
+
+`reading-pdf-continuity.test.js` covers exact PDF-point cursor persistence across
+reload and rotation-like resizing, explicit Left/Right/Full column states,
+vertical passage preservation while changing column widths, the keyboard page
+jump, and independent interface and paper appearance. It runs in Chromium by
+default and in WebKit with `PHLOEM_BROWSER=webkit`.
+
+`reading-library-return-offline.test.js` covers the three-item Continue reading
+row, `lastOpenedAt` ordering, durable IndexedDB-backed Offline filtering, and
+separate local-reading and Drive-backup states.
+
 `reading-pdf-zoom.test.js` covers the one-time migration from the legacy 50%
 initial PDF scale to Fit while preserving deliberate per-paper zoom choices.
 
@@ -102,6 +123,12 @@ node tests/reading-selection-note-ai.test.js
 node tests/reading-library-stack.test.js
 node tests/reading-library-list.test.js
 node tests/reading-library-thinking-search.test.js
+node tests/reading-find-highlight.test.js
+node tests/reading-ipad-touch-dock.test.js
+PHLOEM_BROWSER=webkit node tests/reading-ipad-touch-dock.test.js
+node tests/reading-pdf-continuity.test.js
+PHLOEM_BROWSER=webkit node tests/reading-pdf-continuity.test.js
+node tests/reading-library-return-offline.test.js
 node tests/reading-pdf-zoom.test.js
 node tests/reading-vertical-book-flow.test.js
 node tests/reading-pdf-authors.test.js

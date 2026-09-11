@@ -61,14 +61,14 @@ function check(name, condition, extra) {
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].authors);
+  await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
   paper = await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0]);
   check('older blank author credit repairs on open', paper.authors === EXPECTED_AUTHORS, paper.authors);
 
-  await page.evaluate(() => {
-    const state = JSON.parse(localStorage.getItem('readingRoom.v1'));
-    state.chapters[0].authors = 'Curated Author Credit';
-    localStorage.setItem('readingRoom.v1', JSON.stringify(state));
-  });
+  if (!(await page.locator('#editPaperBtn').isVisible())) await page.click('#notebookReopen');
+  await page.click('#editPaperBtn');
+  await page.fill('#paperAuthorsEdit', 'Curated Author Credit');
+  await page.click('#savePaperDetails');
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
   await page.waitForTimeout(300);

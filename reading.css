@@ -20,15 +20,8 @@
          this the browser paints its daylight scrollbar down a dark page. */
       color-scheme: dark;
     }
-    /* Soft paper removes white glare without putting a yellow wash over the PDF.
-       Depth comes from neutral lightness; night palettes are untouched. */
-    html:not([data-theme="dark"]) body.cream-tone {
-      --paper: #f1f0ec; --surface: #f8f7f3; --surface-2: #e8e6e0; --line: #d2cfc7;
-    }
-    html:not([data-theme="dark"]) body.cream-tone .document-pane { background: #d7d5cf; }
-    html:not([data-theme="dark"]) body.cream-tone .document-pane.paged-pdf-flow { background:
-      radial-gradient(ellipse at 50% 45%, rgba(255,255,255,.36), transparent 58%), #d0cec7; }
-    html[data-theme="dark"] body.cream-tone .text-document { background: #1d1813; }
+    /* Paper appearance is scoped to the document surface. It never changes the room's
+       interface palette, so original figures can sit faithfully inside dark chrome. */
     html { background: var(--paper); color: var(--ink); color-scheme: light; }
     body { margin: 0; min-height: 100vh; font-family: var(--sans); background-color: var(--paper); color: var(--ink); }
     html:not([data-theme="dark"]) body.library-view { background-image:
@@ -123,7 +116,27 @@
     .library-sort span { font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
     .library-sort select { min-height: 34px; max-width: 168px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding: 6px 20px 6px 2px; color: var(--ink); outline: none; }
     .library-sort select:focus { border-color: var(--accent); }
+    .library-offline-filter { min-height: 36px; padding: 6px 11px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: 700 .65rem/1 var(--sans); white-space: nowrap; }
+    .library-offline-filter:hover, .library-offline-filter:focus-visible { border-color: var(--accent); color: var(--ink); outline: none; }
+    .library-offline-filter[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+    .library-offline-filter:disabled { opacity: .5; cursor: progress; }
     .library-view-toggle { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--surface-2) 74%, transparent); white-space: nowrap; }
+    .continue-reading { margin: 0 0 18px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 82%, var(--paper)); }
+    .continue-reading-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 2px 10px; }
+    .continue-reading-head h3 { margin: 0; font: 500 1.02rem/1.1 var(--serif); }
+    .continue-reading-head span { color: var(--muted); font: .64rem/1.2 var(--sans); }
+    .continue-reading-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+    .continue-reading-card { min-width: 0; min-height: 126px; padding: 13px 14px 12px; display: flex; flex-direction: column; align-items: stretch; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); text-align: left; box-shadow: 0 5px 14px color-mix(in srgb, var(--ink) 5%, transparent); }
+    .continue-reading-card:hover, .continue-reading-card:focus-visible { border-color: var(--accent); outline: none; transform: translateY(-1px); }
+    .continue-reading-kicker { color: var(--accent); font: 800 .52rem/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
+    .continue-reading-card strong { margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 .85rem/1.25 var(--serif); }
+    .continue-reading-card > small { margin-top: 3px; overflow: hidden; color: var(--muted); font: .59rem/1.25 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+    .continue-reading-progress { height: 3px; margin-top: auto; overflow: hidden; border-radius: 99px; background: var(--surface-2); }
+    .continue-reading-progress i { display: block; width: var(--continue-progress); height: 100%; background: var(--accent); }
+    .continue-reading-meta { margin-top: 7px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font: .56rem/1.2 var(--sans); }
+    .continue-reading-meta b { font-weight: 700; }
+    .continue-reading-availability { margin-top: 4px; display: grid; gap: 2px; }
+    .continue-reading-availability em { overflow: hidden; color: var(--muted); font: .52rem/1.2 var(--sans); font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
     .library-view-option { min-height: 30px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 650 .68rem/1 var(--sans); }
     .library-view-option span { font-size: .86rem; line-height: 1; }
     .library-view-option:hover { color: var(--ink); }
@@ -609,7 +622,12 @@
     .closed-book-byline { max-width: 100%; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: .92rem/1.5 var(--serif); opacity: .78; }
     .closed-book .paper-tags { max-width: 100%; margin-top: 14px; }
     .closed-book .tag { border: 1px solid color-mix(in srgb, var(--cover-ink) 16%, transparent); background: rgba(255,255,255,.24); color: inherit; }
-    .cover-cloud { width: 100%; margin-top: 13px; display: grid; grid-template-columns: 9px minmax(0, 1fr); align-items: center; gap: 7px; color: inherit; font: 650 .64rem/1.25 var(--sans); }
+    .cover-availability { width: 100%; margin-top: 13px; display: grid; gap: 5px; }
+    .cover-local, .cover-cloud { width: 100%; display: grid; grid-template-columns: 9px minmax(0, 1fr); align-items: center; gap: 7px; color: inherit; font: 650 .64rem/1.25 var(--sans); }
+    .cover-local-dot { width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 50%; opacity: .64; }
+    .cover-local.downloaded .cover-local-dot, .cover-local.readable .cover-local-dot, .cover-local.readable-original .cover-local-dot { border-color: transparent; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 13%, transparent); }
+    .cover-local.needed .cover-local-dot { border-radius: 2px; transform: rotate(45deg); }
+    .cover-local.checking .cover-local-dot { border-right-color: transparent; animation: cloudTransferSpin .8s linear infinite; }
     .cover-cloud-dot { width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 50%; opacity: .64; }
     .cover-cloud-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .78; }
     .cover-cloud.synced .cover-cloud-dot { border-color: transparent; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 13%, transparent); }
@@ -628,9 +646,10 @@
     .cover-progress > div { display: flex; justify-content: space-between; gap: 12px; font: 650 .64rem/1 var(--sans); }
     .cover-progress-track { height: 4px; margin-top: 9px; border-radius: 99px; background: rgba(255,255,255,.34); overflow: hidden; }
     .cover-progress-track i { display: block; width: var(--paper-progress); height: 100%; background: currentColor; opacity: .72; }
-    .cover-actions { position: static; width: 100%; margin-top: 20px; display: flex; gap: 12px; }
+    .cover-actions { position: static; width: 100%; margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
     .cover-actions .button, .cover-actions .soft-button { min-height: 45px; border-radius: 10px; }
     .cover-actions .button { flex: 1; }
+    .cover-actions .open-selected, .cover-actions .download-offline { flex: 1 1 180px; }
     .cover-actions .soft-button { border-color: color-mix(in srgb, var(--cover-ink) 28%, transparent); background: rgba(255,255,255,.18); }
     .cover-actions .download-paper { min-width: 76px; }
     .cover-actions .remove-paper:hover, .cover-actions .remove-paper:focus-visible { border-color: #9d4038; background: #9d4038; color: white; }
@@ -688,7 +707,13 @@
     .find-bar .step-btn { min-width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
     .find-bar .step-btn:hover { border-color: var(--accent); }
     .para.find-flash { background: color-mix(in srgb, var(--yellow) 34%, transparent); }
-    .text-layer span.find-span { background: color-mix(in srgb, var(--yellow) 55%, transparent); border-radius: 3px; }
+    .para.eq-figured.find-flash .reader-fig { border-radius: 5px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 70%, var(--accent)); }
+    span.find-target { padding: 0; border-radius: 3px; background: color-mix(in srgb, var(--yellow) 44%, transparent); color: inherit; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+    span.find-target.find-current { background: color-mix(in srgb, var(--yellow) 78%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 58%, transparent); }
+    .text-layer span.find-target { position: static; padding: 0; color: transparent; white-space: inherit; }
+    .text-layer span.find-span { background: color-mix(in srgb, var(--yellow) 42%, transparent); border-radius: 3px; }
+    .text-layer span.find-span.find-current-span { background: color-mix(in srgb, var(--yellow) 68%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 52%, transparent); }
+    .text-layer span.find-span.find-piece-host { background: transparent; box-shadow: none; }
     .text-layer span.review-focus-span { background: rgba(255,202,108,.22); border-radius: 3px; box-shadow: 0 0 0 2px rgba(184,121,31,.3); }
     .text-layer span.review-focus-general { background: rgba(128,179,105,.2); box-shadow: 0 0 0 2px rgba(91,126,77,.32); }
     .text-layer span.review-focus-section { background: rgba(105,185,218,.2); box-shadow: 0 0 0 2px rgba(50,112,139,.32); }
@@ -730,6 +755,7 @@
        curl/pan/pinch handlers or Safari can claim it before the paper starts folding. */
     .document-pane.paged-pdf-flow { touch-action: none; }
     #pageNumber, .mobile-bar .m-page { cursor: pointer; }
+    #pageNumber { padding: 2px 8px; border: 0; background: transparent; font: inherit; }
     html[data-theme="dark"] .document-pane { background: #111516; }
     /* Pages stack in one continuous vertical scroll, like paper on a desk. */
     .pdf-frame { width: max-content; min-width: 100%; min-height: 100%; margin: 0 auto; padding: 16px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
@@ -840,6 +866,7 @@
     .pdf-link:hover { background: rgba(64, 137, 174, .16); box-shadow: 0 0 0 1px rgba(64, 137, 174, .4); }
     .pdf-frame.dark-paper .pdf-page { background: #171717; }
     .pdf-frame.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.92); }
+    .pdf-frame[data-paper-appearance="original"] .pdf-page canvas { filter: none; mix-blend-mode: normal; }
     /* Soft paper: neutral off-white rather than the old yellow/sepia tint. */
     .pdf-frame.cream:not(.dark-paper) .pdf-page { background: #f4f2ec; }
     .pdf-frame.cream:not(.dark-paper) .pdf-page canvas { mix-blend-mode: multiply; filter: saturate(.96) contrast(1.01); }
@@ -851,9 +878,6 @@
     .pdf-frame.dark-paper .book-blank-leaf.book-curl-under { background: #171717; }
     .pdf-frame.cream.dark-paper .book-blank-right { background: #1d1813; }
     .pdf-frame.cream.dark-paper .book-blank-leaf.book-curl-under { background: #1d1813; }
-    /* In dark mode, cream becomes warm dark paper: the same inversion, minus the blue cast. */
-    .pdf-frame.cream.dark-paper .pdf-page { background: #1d1813; }
-    .pdf-frame.cream.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.9) sepia(.28); }
     /* Zen reading: the paper owns the room, with a faint edge rail for the few
        controls that matter mid-read. Each detailed choice opens to the left so the
        outer page corners stay clear for turning. */
@@ -1090,6 +1114,9 @@
     .dl-note { font-size: .8rem; min-height: 1.2em; }
     .text-document { --read-size: 1.02rem; --read-leading: 1.72; --read-measure: 780px; --read-spacing: normal; --read-font: var(--serif);
       width: min(var(--read-measure), calc(100% - 36px)); min-height: calc(100% - 36px); margin: 18px auto; padding: clamp(32px, 7vw, 78px); background: var(--surface); box-shadow: 0 10px 45px rgba(0,0,0,.12); }
+    .text-document.paper-original { --surface: #fff; --surface-2: #f0f0ed; --ink: #20272d; --muted: #6e7477; --line: #d9d8d2; color: var(--ink); }
+    .text-document.paper-cream { --surface: #f7f3e9; --surface-2: #eae3d3; --ink: #292821; --muted: #706d61; --line: #d8cfbb; color: var(--ink); }
+    .text-document.paper-inverted { --surface: #17191a; --surface-2: #282c2d; --ink: #eceee9; --muted: #a7adaa; --line: #3a4041; color: var(--ink); }
     .text-document.reader-document { width: min(var(--read-measure), calc(100% - 36px)); }
     .reader-kicker { margin-bottom: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: .14em; font: 700 .63rem var(--sans); }
     .text-document h1 { margin: 0 0 12px; font: 500 clamp(1.8rem, 4vw, 3rem)/1.08 var(--read-font); }
@@ -1565,6 +1592,109 @@
       .open-book-wrap { padding: 38px 26px 30px; }
       .open-book { min-height: 510px; }
     }
+
+    /* iPads should not inherit the mouse-sized desktop chrome merely because their
+       CSS viewport is wider than a phone. JS adds this class from the pointer
+       capability (including iPads with a paired trackpad), while the phone keeps its
+       purpose-built bottom bar. The rail sits at the chosen hand's edge and leaves
+       the lower page corners free for physical page turns. */
+    .touch-dock { display: none; }
+    body.touch-tablet-reader.reading:not(.zen) .touch-dock {
+      position: fixed; z-index: 49; top: max(96px, calc(13dvh + env(safe-area-inset-top))); right: max(12px, env(safe-area-inset-right));
+      display: flex; flex-direction: column; gap: 4px; padding: 5px;
+      border: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-radius: 18px;
+      background: color-mix(in srgb, var(--surface) 82%, transparent); box-shadow: 0 12px 34px rgba(24,27,27,.16);
+      -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    }
+    body.touch-tablet-reader.reading:not(.zen)[data-tablet-dock-side="left"] .touch-dock { left: max(12px, env(safe-area-inset-left)); right: auto; }
+    .touch-dock-action {
+      width: 52px; height: 52px; min-width: 52px; min-height: 52px; padding: 4px 2px;
+      display: grid; place-items: center; align-content: center; gap: 1px;
+      border: 1px solid transparent; border-radius: 13px; background: transparent; color: var(--muted);
+      font: 700 .9rem/1 var(--sans); touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    .touch-dock-action small { font: 700 .52rem/1.1 var(--sans); letter-spacing: .01em; }
+    .touch-dock-action:active, .touch-dock-action:focus-visible,
+    .touch-dock-action[aria-pressed="true"], .touch-dock-action[aria-expanded="true"] {
+      border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); background: var(--accent-soft); color: var(--ink);
+    }
+    .touch-dock-more { position: relative; }
+    .touch-dock-menu {
+      position: absolute; z-index: 2; right: calc(100% + 11px); bottom: 0; width: 226px; padding: 6px;
+      display: grid; gap: 3px; border: 1px solid var(--line); border-radius: 15px;
+      background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 16px 44px rgba(20,24,25,.2);
+      -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+    }
+    body.touch-tablet-reader[data-tablet-dock-side="left"] .touch-dock-menu { left: calc(100% + 11px); right: auto; }
+    .touch-dock-menu button {
+      min-height: 44px; padding: 8px 11px; display: flex; align-items: center; gap: 9px;
+      border: 0; border-radius: 10px; background: transparent; color: var(--ink); text-align: left;
+      font: 650 .72rem/1.25 var(--sans); touch-action: manipulation;
+    }
+    .touch-dock-menu button:active, .touch-dock-menu button:focus-visible, .touch-dock-menu button[aria-pressed="true"] { background: var(--surface-2); }
+    .touch-dock-menu button:disabled { opacity: .42; }
+    .touch-dock-menu button span { width: 18px; color: var(--accent); text-align: center; }
+    body.touch-tablet-reader .reader-tools .soft-button,
+    body.touch-tablet-reader .reader-tools .guide-tool .soft-button,
+    body.touch-tablet-reader .find-bar .step-btn,
+    body.touch-tablet-reader .zoom-tools button { min-width: 44px; min-height: 44px; height: 44px; }
+    body.touch-tablet-reader .marker-swatch { width: 44px; height: 44px; }
+    body.touch-tablet-reader .comfort-bar {
+      position: fixed; z-index: 50; top: max(72px, calc(env(safe-area-inset-top) + 12px)); right: max(82px, calc(env(safe-area-inset-right) + 82px));
+      width: min(680px, calc(100vw - 112px)); max-height: calc(100dvh - 92px); overflow: auto; overscroll-behavior: contain;
+      display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 18px;
+      background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 20px 62px rgba(12,16,18,.28);
+      -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+    }
+    body.touch-tablet-reader[data-tablet-dock-side="left"] .comfort-bar { left: max(82px, calc(env(safe-area-inset-left) + 82px)); right: auto; }
+    body.touch-tablet-reader .comfort-section { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: start; }
+    body.touch-tablet-reader .comfort-section-title { min-height: 44px; }
+    body.touch-tablet-reader .comfort-section-body, body.touch-tablet-reader .comfort-guide .comfort-section-body { flex-wrap: wrap; }
+    body.touch-tablet-reader .comfort-bar :is(button, .step-btn, .toggle, .guide-color) { min-width: 44px; min-height: 44px; }
+    body.touch-tablet-reader .comfort-bar input[type="range"] { min-height: 44px; }
+    body.touch-tablet-reader .notebook .tab { min-height: 44px; }
+    body.touch-tablet-reader.tablet-notes-pinned :is(.notebook-tuck, .notebook-reopen) { width: 44px; min-width: 44px; }
+    body.touch-tablet-reader :is(#pageNote, #paperTags, #aiQuestion, #findInput, #selectionNote, #selectionAiQuestion) { font-size: 16px; }
+
+    @media (min-width: 721px) and (orientation: portrait) {
+      body.touch-tablet-reader .comfort-bar,
+      body.touch-tablet-reader[data-tablet-dock-side="left"] .comfort-bar {
+        top: auto; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); left: 10px;
+        width: auto; max-height: min(66dvh, 680px); border-radius: 20px;
+      }
+    }
+
+    /* The default tablet notebook floats above the page. Its closed state still lives
+       in the DOM so typed notes survive, but visibility makes it genuinely absent to
+       hit testing and accessibility. Because the reader grid is one column before
+       and after opening it, Notes never changes page scale or the reader's place. */
+    body.tablet-notes-overlay .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
+    body.tablet-notes-overlay .notebook-resizer,
+    body.tablet-notes-overlay .notebook-tuck,
+    body.tablet-notes-overlay .notebook-reopen { display: none !important; }
+    body.tablet-notes-overlay .reader-layout.notebook-collapsed .notebook { display: flex; }
+    body.tablet-notes-overlay .notebook {
+      position: fixed; z-index: 46; top: max(12px, env(safe-area-inset-top)); bottom: calc(12px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px)));
+      left: auto; right: calc(76px + env(safe-area-inset-right)); width: min(420px, 44vw); height: auto; max-height: none;
+      border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 20px 62px rgba(12,16,18,.3);
+      opacity: 0; visibility: hidden; pointer-events: none; transform: translateX(calc(100% + 100px));
+      transition: transform .24s ease, opacity .18s ease, visibility 0s linear .24s;
+    }
+    body.tablet-notes-overlay[data-tablet-dock-side="left"] .notebook { left: calc(76px + env(safe-area-inset-left)); right: auto; transform: translateX(calc(-100% - 100px)); }
+    body.tablet-notes-overlay .notebook.sheet-open { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition-delay: 0s; }
+    body.tablet-notes-overlay .sheet-close { position: absolute; z-index: 4; top: 9px; right: 9px; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); }
+    body.tablet-notes-overlay .notebook .tabs { margin-right: 52px; }
+    body.tablet-notes-overlay .sheet-scrim { display: block; position: fixed; z-index: 45; inset: 0; background: rgba(12,16,18,.34); }
+    body.tablet-notes-overlay.keyboard-open .touch-dock { opacity: .18; }
+    @media (orientation: portrait) {
+      body.tablet-notes-overlay .notebook,
+      body.tablet-notes-overlay[data-tablet-dock-side="left"] .notebook {
+        top: auto; right: 10px; bottom: calc(10px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px))); left: 10px;
+        width: auto; height: min(64dvh, 650px); max-height: calc(100dvh - var(--kb-inset, 0px) - 20px);
+        border-radius: 20px; transform: translateY(calc(100% + 24px));
+      }
+      body.tablet-notes-overlay .notebook.sheet-open { transform: none; }
+    }
     @media (max-width: 720px) {
       .masthead { height: 60px; padding: 0 12px; gap: 8px; }
       .cloud-pass-banner { align-items: flex-start; padding: 9px 12px; }
@@ -1591,7 +1721,12 @@
       .library-health .soft-button { width: 100%; margin-left: 0; }
       .section-head { align-items: center; flex-wrap: wrap; }
       .section-head .library-sort { margin-left: auto; }
+      .library-offline-filter { min-height: 44px; }
       .search { flex: 1 1 100%; width: 100%; margin-left: 0; }
+      .continue-reading { margin-bottom: 12px; padding: 11px; overflow: hidden; }
+      .continue-reading-head span { display: none; }
+      .continue-reading-cards { grid-template-columns: repeat(3, minmax(220px, 78vw)); overflow-x: auto; padding: 1px 1px 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+      .continue-reading-card { min-height: 122px; scroll-snap-align: start; }
       /* The phone shelf is one compact object: a scrollable reading wall stays above a
          shorter selected notebook, so choosing papers never means crossing a wall of
          full-size cards before the detail appears. */

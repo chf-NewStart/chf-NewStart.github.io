@@ -93,6 +93,8 @@ function check(name, condition, extra) {
   await page.click('#focusBtn');
   await page.click('#comfortBtn');
   await page.click('#readerBack');
+  check('Back folds an open reading-settings layer before leaving the paper', await page.locator('#comfortBar').evaluate(bar => bar.classList.contains('hidden')));
+  await page.click('#readerBack');
   await page.waitForFunction(() => document.getElementById('readerPage').classList.contains('hidden') && !document.getElementById('libraryPage').classList.contains('hidden'));
   await page.locator('#selectedPaper .open-selected').click();
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && document.querySelector('#textDocument .original'));

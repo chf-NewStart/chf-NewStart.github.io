@@ -26,7 +26,10 @@ check('large PDFs start a resumable Drive upload', source.includes('uploadType=r
 check('large uploads are split into Drive-compatible chunks', chunk && (+chunk[1] * 1024 * 1024) % (256 * 1024) === 0, chunk && chunk[1] + ' MB');
 check('upload progress is checkpointed locally', source.includes("GDRIVE_UPLOADS_KEY='readingRoom.gdriveUploads.v1'") && source.includes('gdriveRememberUpload(ch.id,item)'));
 check('an interrupted session asks Drive for its confirmed offset', source.includes("'Content-Range':'bytes */'+total") && resumedAt === 8388608, resumedAt);
-check('paper cards expose queued, transferring, synced, and paused states', ['Waiting to upload', 'Uploading to Drive', 'Available on your devices', 'Drive transfer paused'].every(text => source.includes(text)));
+check('paper cards expose queued, transferring, synced, and paused backup states', ['Backup upload pending', 'Backing up to Drive', 'Synced to Drive', 'Drive transfer paused'].every(text => source.includes(text)));
+check('a Drive-only original is labeled as remotely stored rather than missing', source.includes("remote?{state:'remote'") && source.includes("state==='remote'") && source.includes('Stored in Drive'));
+check('offline availability waits for the IndexedDB write to commit', source.includes('transaction.oncomplete=res') && source.includes("localSourceReady[id]=true"));
+check('backup labels never make an unverified local-availability promise', !source.includes('Available on your devices'));
 check('settings explain large-book sync and recovery', html.includes('large books up to 200 MB') && html.includes('resumes instead of starting over'));
 
 process.exit(failures ? 1 : 0);

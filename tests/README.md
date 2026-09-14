@@ -2,8 +2,8 @@
 
 Headless regression tests for `reading.html` (the Phloem reader). They serve the
 repo over a local HTTP port, seed `localStorage` with a small paper, and drive a
-real Chromium through the highlight workflows: marker strokes, click-to-erase,
-the highlight card (recolor, per-highlight notes, remove), and undo/redo.
+real Chromium through the highlight workflows: marker strokes, explicit
+edit-card erasure, recoloring, per-highlight notes, and undo/redo.
 
 `reading-ai-providers.test.js` covers the AI provider router: keyless on-device
 Gemini, migration of an existing DeepSeek key, current model selection, saved
@@ -44,6 +44,14 @@ notes that preserve PDF size and position, the explicit wide-landscape pinned
 panel, portrait fallback, keyboard-safe page-note editing, adaptive settings,
 dialog focus/return, and 44px touch targets. Set `PHLOEM_BROWSER=webkit` to run
 the same workflow against Playwright WebKit.
+
+`reading-selection-touch.test.js` covers exact partial native selections across
+adjacent PDF.js text spans in Chromium and WebKit, the absence of release-time
+or delayed touch auto-save, cancelled fine-pointer Marker strokes, explicit
+pending-selection saves through Mark, the idle Mark color palette, and color
+choices that remain independent from desktop marker mode. It also covers
+edit-card-only erasure of saved PDF highlights plus mouse, keyboard, and touch
+input separation on hybrid hardware while desktop Marker remains on.
 
 `reading-pdf-continuity.test.js` covers exact PDF-point cursor persistence across
 reload and rotation-like resizing, explicit Left/Right/Full column states,
@@ -126,6 +134,8 @@ node tests/reading-library-thinking-search.test.js
 node tests/reading-find-highlight.test.js
 node tests/reading-ipad-touch-dock.test.js
 PHLOEM_BROWSER=webkit node tests/reading-ipad-touch-dock.test.js
+node tests/reading-selection-touch.test.js
+PHLOEM_BROWSER=webkit node tests/reading-selection-touch.test.js
 node tests/reading-pdf-continuity.test.js
 PHLOEM_BROWSER=webkit node tests/reading-pdf-continuity.test.js
 node tests/reading-library-return-offline.test.js

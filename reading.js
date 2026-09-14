@@ -11,6 +11,7 @@
   var AI_PASS_SESSION_KEY = 'readingRoom.ai.reviewPass.v1';
   var AI_PASS_SERVICE_KEY = 'readingRoom.ai.passService.v1';
   var PAPER_APPEARANCE_KEY = 'readingRoom.paperAppearance.v1';
+  var HIGHLIGHT_COLOR_KEY = 'readingRoom.highlightColor.v1';
   var AI_PROVIDERS = {
     gemini:{label:'Gemini API',model:'gemini-3.6-flash'},
     deepseek:{label:'DeepSeek',model:'deepseek-v4-flash'},
@@ -56,6 +57,7 @@
   var localAiPreparePromise = null;
   var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), sharedAiPass = loadSharedAiPass(), reviewFocusId = '', reviewFocusPage = 0, reviewFocusAnchorIndex = -1, reviewFilter = 'all', reviewPassageGroupIds = [], reviewLinkTargetId = '', reviewLinkUndo = null, pendingReviewTargetId = '', pendingReviewReplace = false, reviewPairPaper = null, reviewPairComments = null, pendingSharedReview = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
+  try { var savedHighlightColor=localStorage.getItem(HIGHLIGHT_COLOR_KEY);if(['yellow','mint','coral','blue'].indexOf(savedHighlightColor)>=0)highlightColor=savedHighlightColor; } catch(e){}
 
   function byId(id){ return document.getElementById(id); }
   function now(){ return Date.now(); }
@@ -421,7 +423,7 @@
   function hideSelectionCard(){
     hideLookup();
     selectionAnchor=null;activeCardRef=null;selectionNoteTarget=null;var card=byId('selectionCard');card.classList.add('hidden');card.classList.remove('ai-open','note-open');
-    byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
+    byId('selectionAiBox').classList.add('hidden');byId('selectionCreateHighlight').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
   }
   function readerVisualViewport(){
     var vv=window.visualViewport,left=vv?vv.offsetLeft:0,top=vv?vv.offsetTop:0,width=vv?vv.width:innerWidth,height=vv?vv.height:innerHeight;
@@ -437,8 +439,13 @@
     requestAnimationFrame(function(){
       if(card.classList.contains('hidden')||!selectionAnchor)return;
       viewport=readerVisualViewport();
-      var box=card.getBoundingClientRect(),gap=12,center=selectionAnchor.left+(selectionAnchor.width||0)/2;
-      var left=Math.max(viewport.left+gap,Math.min(center-box.width/2,viewport.right-box.width-gap));
+      var box=card.getBoundingClientRect(),gap=12,center=selectionAnchor.left+(selectionAnchor.width||0)/2,leftEdge=viewport.left+gap,rightEdge=viewport.right-gap;
+      /* The iPad dock floats above the page. Keep the passage card beside it, never
+         underneath it, without narrowing or reflowing the paper itself. */
+      var dock=byId('touchDock'),dockBox=dock&&getComputedStyle(dock).display!=='none'?dock.getBoundingClientRect():null;
+      if(dockBox&&dockBox.width){if(document.body.dataset.tabletDockSide==='left')leftEdge=Math.max(leftEdge,dockBox.right+gap);else rightEdge=Math.min(rightEdge,dockBox.left-gap);}
+      if(rightEdge-leftEdge<box.width){leftEdge=viewport.left+gap;rightEdge=viewport.right-gap;}
+      var left=Math.max(leftEdge,Math.min(center-box.width/2,rightEdge-box.width));
       card.style.left=Math.round(left)+'px';
       if(document.body.classList.contains('keyboard-open'))return;
       var top=selectionAnchor.bottom+gap;
@@ -481,7 +488,7 @@
     if(!selection||!selection.text)return;hideLookup();hideHighlightCard();selectionNoteTarget=null;byId('selectionEyebrow').textContent='Selected passage';
     byId('selectionCard').classList.remove('ai-open','note-open');byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
     byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionAiNoteText').textContent='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
-    var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';
+    var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';byId('selectionCreateHighlight').classList.remove('hidden');syncHighlightColorUi();
     byId('selectionSecondary').classList.remove('hidden');
     byId('selectionAddNote').textContent='Add note';syncReviewLinkSelectionAction(selection);setSelectionAction('');byId('selectionCard').classList.remove('hidden');placeSelectionCard(rect);
   }
@@ -490,7 +497,7 @@
     if(!selection||!selection.text||!ownNote||!useSelectionForAi(selection,note,true))return;clearPendingSelection(true);
     var ch=find(currentId),noteRef=selectionNoteRef(),match=noteThreadFor(ch,noteRef,selection.text||'');
     if(match){if(noteRef&&!match.noteRef)match.noteRef=noteRef;ch.activeAiThreadId=match.id;aiThreadDraft=false;persist(false);}else aiThreadDraft=true;renderQa();
-    var card=byId('selectionCard');card.classList.remove('note-open');card.classList.add('ai-open');byId('selectionAiBox').classList.remove('hidden');byId('selectionContext').classList.add('hidden');byId('selectionAiNoteText').textContent=ownNote;byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Asking your note…';renderSelectionAiThread();placeSelectionCard();
+    var card=byId('selectionCard');card.classList.remove('note-open');card.classList.add('ai-open');byId('selectionCreateHighlight').classList.add('hidden');byId('selectionAiBox').classList.remove('hidden');byId('selectionContext').classList.add('hidden');byId('selectionAiNoteText').textContent=ownNote;byId('selectionAiQuestion').value='';growSelectionAiQuestion();byId('selectionAiStatus').textContent=match?'Thread reopened.':'Asking your note…';renderSelectionAiThread();placeSelectionCard();
     requestAnimationFrame(function(){byId('selectionAiQuestion').focus({preventScroll:true});});
     if(!match)askSelectionNote();
   }
@@ -603,7 +610,9 @@
   byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
   document.addEventListener('pointerdown',function(e){
     if(!e.target.closest('#lookupCard'))hideLookup();
-    if(!e.target.closest('#selectionCard')&&!e.target.closest('.text-layer,.original'))hideSelectionCard();
+    if(!e.target.closest('#selectionCard,#touchDock,#markerTools')&&!e.target.closest('.text-layer,.original'))clearPendingSelection();
+    if(!e.target.closest('#markerTools'))setHighlightPaletteOpen(false);
+    if(!e.target.closest('#touchMarkerTool'))setTouchHighlightPaletteOpen(false);
   },true);
   window.addEventListener('resize',function(){placeLookupCard();placeSelectionCard();});
 
@@ -2677,6 +2686,7 @@
      and one-column width, right where you clicked. Double-clicking a word still just
      selects the word. */
   byId('documentPane').addEventListener('dblclick',function(e){
+    if(e.target.closest('.text-layer span,.original'))return;
     if(readerMode!=='pdf'||!guideClickCanPin(e))return;
     clearTimeout(guideLockClickTimer);
     var selection=window.getSelection&&window.getSelection();
@@ -2934,7 +2944,9 @@
   function syncTouchDockStates(){
     var guide=byId('touchGuide'),marker=byId('touchHighlight'),notes=byId('touchNotes'),undo=byId('touchUndo');if(!guide)return;
     guide.classList.toggle('active',!!comfort.focus);guide.setAttribute('aria-pressed',String(!!comfort.focus));
-    marker.classList.toggle('active',!!highlightMode);marker.setAttribute('aria-pressed',String(!!highlightMode));
+    marker.classList.toggle('active',!!pendingSelection);
+    if(pendingSelection){marker.removeAttribute('aria-expanded');marker.removeAttribute('aria-controls');}
+    else{marker.setAttribute('aria-controls','touchHighlightPalette');marker.setAttribute('aria-expanded',String(!byId('touchHighlightPalette').classList.contains('hidden')));}
     var notesPanel=byId('notesPanel'),notesSelected=notesPanel&&!notesPanel.classList.contains('hidden');
     var notesOpen=!!notesSelected&&(temporaryNotebookMode()?byId('notebook').classList.contains('sheet-open'):!notebookCollapsed);
     notes.classList.toggle('active',notesOpen);notes.setAttribute('aria-expanded',String(notesOpen));
@@ -3071,18 +3083,25 @@
     }
     syncTouchDockStates();
   }
-  byId('touchGuide').onclick=function(){byId('focusBtn').click();syncTouchDockStates();};
-  byId('touchHighlight').onclick=function(){byId('highlightBtn').click();syncTouchDockStates();};
+  byId('touchGuide').onclick=function(){clearPendingSelection();byId('focusBtn').click();syncTouchDockStates();};
+  byId('touchHighlight').onclick=function(){
+    closeTouchDockMore(false);
+    if(pendingSelection){setTouchHighlightPaletteOpen(false);commitPendingHighlight();}
+    else setTouchHighlightPaletteOpen(byId('touchHighlightPalette').classList.contains('hidden'));
+    syncTouchDockStates();
+  };
   byId('touchNotes').onclick=function(){
     /* If a passage card is already open, Note belongs to that passage. Otherwise the
        same button opens the page notebook without changing the paper beneath it. */
-    if(!byId('selectionCard').classList.contains('hidden')&&(pendingSelection||selectionNoteTarget)){byId('selectionAddNote').click();return;}
+    setTouchHighlightPaletteOpen(false);
+    if(pendingSelection||(!byId('selectionCard').classList.contains('hidden')&&selectionNoteTarget)){byId('selectionAddNote').click();return;}
+    clearPendingSelection();
     /* WebKit intentionally does not focus buttons on a pointer click. Focus the known
        opener so the temporary dialog has a dependable return target on iPad Safari. */
     try{this.focus({preventScroll:true});}catch(e){try{this.focus();}catch(err){}}
     toggleTouchPanel('notesPanel');
   };
-  byId('touchMore').onclick=function(){var open=byId('touchDockMenu').classList.contains('hidden');closeTouchDockMore(false);if(open){byId('touchDockMenu').classList.remove('hidden');this.setAttribute('aria-expanded','true');var first=byId('touchDockMenu').querySelector('button:not([disabled])');if(first)first.focus();}};
+  byId('touchMore').onclick=function(){var open=byId('touchDockMenu').classList.contains('hidden');clearPendingSelection();setTouchHighlightPaletteOpen(false);closeTouchDockMore(false);if(open){byId('touchDockMenu').classList.remove('hidden');this.setAttribute('aria-expanded','true');var first=byId('touchDockMenu').querySelector('button:not([disabled])');if(first)first.focus();}};
   byId('touchUndo').onclick=function(){undoHighlight();syncTouchDockStates();closeTouchDockMore(false);};
   byId('touchFind').onclick=function(){byId('findBtn').click();closeTouchDockMore(false);};
   byId('touchDiscuss').onclick=function(){toggleTouchPanel('aiPanel');closeTouchDockMore(false);};
@@ -4763,6 +4782,7 @@
       }
       if(at-lastTapAt<350&&Math.hypot(t.clientX-lastTapX,t.clientY-lastTapY)<48){
         lastTapAt=0;
+        if(t.target&&t.target.closest&&t.target.closest('.text-layer span,.original'))return;
         var sel=window.getSelection&&window.getSelection();
         if(sel&&!sel.isCollapsed)return;
         if(touchInteractiveTarget(t.target))return;
@@ -4776,6 +4796,8 @@
   })();
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;
+    if(e.key==='Escape'&&!byId('touchHighlightPalette').classList.contains('hidden')){e.preventDefault();setTouchHighlightPaletteOpen(false);byId('touchHighlight').focus();return;}
+    if(e.key==='Escape'&&!byId('highlightPalette').classList.contains('hidden')){e.preventDefault();setHighlightPaletteOpen(false);byId('highlightColorBtn').focus();return;}
     if(e.key==='Escape'&&!byId('touchDockMenu').classList.contains('hidden')){e.preventDefault();closeTouchDockMore(true);return;}
     if(e.key==='Escape'&&!byId('comfortBar').classList.contains('hidden')){e.preventDefault();setComfortBarOpen(false,true);return;}
     if(e.key==='Escape'&&temporaryNotebookMode()&&byId('notebook').classList.contains('sheet-open')){e.preventDefault();toggleSheet(false);return;}
@@ -4918,8 +4940,7 @@
       if(reviewEl&&!String(getSelection&&getSelection()||'')){showReviewerComment(ch,reviewEl.dataset.reviewCommentId);return;}
       var markEl=e.target.closest('mark[data-hl-id]');
       if(markEl&&!String(getSelection&&getSelection()||'')){
-        if(highlightMode)removeHighlight(scope,null,markEl.dataset.hlId);
-        else openHighlightCard({kind:scope,page:null,id:markEl.dataset.hlId},markEl.getBoundingClientRect());
+        openHighlightCard({kind:scope,page:null,id:markEl.dataset.hlId},markEl.getBoundingClientRect());
         return;
       }
       if(e.target.closest('button, textarea, a, mark, img, [data-review-comment-id]'))return;
@@ -5679,22 +5700,48 @@
   }
 
   /* Selectable PDF/text layers and a direct, color marker interaction. */
-  var markerPointerDown=false,selectionPointerDown=false,snappingSelection=false;
+  var markerPointerDown=false,selectionPointerDown=false,selectionPointerType='',lastHighlightPointerType='',selectionInputType='',suppressHighlightAutoCommit=false;
   /* The last real selection survives page turns and sheet-opening taps, so "My selection"
      in Ask AI still works after the on-screen selection has collapsed. */
   var lastAskSelection=null;
-  function clearPendingSelection(keepCard){clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');if(!keepCard)hideSelectionCard();var s=window.getSelection&&window.getSelection();if(s)s.removeAllRanges();}
+  function coarseHighlightUi(){return !!(coarsePointer.matches||matchMedia('(any-pointer: coarse)').matches||navigator.maxTouchPoints>1);}
+  function fineHighlightUi(){return !!(matchMedia('(pointer: fine)').matches||matchMedia('(any-pointer: fine)').matches);}
+  function highlightColorLabel(color){return color==='mint'?'Mint':color==='coral'?'Coral':color==='blue'?'Blue':'Yellow';}
+  function setHighlightPaletteOpen(on){
+    var palette=byId('highlightPalette'),button=byId('highlightColorBtn');if(!palette||!button)return;
+    palette.classList.toggle('hidden',!on);button.setAttribute('aria-expanded',String(!!on));
+  }
+  function setTouchHighlightPaletteOpen(on){
+    var palette=byId('touchHighlightPalette'),button=byId('touchHighlight');if(!palette||!button)return;
+    on=!!on&&!pendingSelection;palette.classList.toggle('hidden',!on);
+    if(pendingSelection){button.removeAttribute('aria-expanded');button.removeAttribute('aria-controls');}
+    else{button.setAttribute('aria-controls','touchHighlightPalette');button.setAttribute('aria-expanded',String(on));}
+  }
+  function syncHighlightColorUi(){
+    var label=highlightColorLabel(highlightColor),mode=!!highlightMode,pending=!!pendingSelection;
+    document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(x){var selected=x.dataset.highlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
+    document.querySelectorAll('[data-selection-highlight-color]').forEach(function(x){var selected=x.dataset.selectionHighlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
+    var tools=byId('markerTools'),colorButton=byId('highlightColorBtn'),touchButton=byId('touchHighlight'),markerButton=byId('highlightBtn'),selectionButton=byId('selectionHighlight');
+    if(tools)tools.dataset.highlightColor=highlightColor;
+    if(colorButton){colorButton.dataset.highlightColor=highlightColor;colorButton.setAttribute('aria-label','Highlight color: '+label+'. Choose color');}
+    if(touchButton){touchButton.dataset.highlightColor=highlightColor;touchButton.setAttribute('aria-label',pending?'Highlight selected passage in '+label:'Highlight color: '+label+'. Choose color');}
+    if(markerButton){markerButton.setAttribute('aria-label',(mode?'Marker mode on':'Marker mode off')+'. Current color '+label);markerButton.title=coarseHighlightUi()?'Select text, then use Mark; choose color with the button beside it':'Keep Marker on for several highlights';}
+    if(selectionButton){selectionButton.dataset.highlightColor=highlightColor;selectionButton.setAttribute('aria-label','Highlight selected passage in '+label);}
+  }
+  function clearPendingSelection(keepCard,preserveNativeSelection){clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');if(!keepCard)hideSelectionCard();var s=window.getSelection&&window.getSelection();if(s&&!preserveNativeSelection)s.removeAllRanges();syncHighlightColorUi();syncTouchDockStates();}
   function scheduleHighlightCommit(delay){clearTimeout(highlightCommitTimer);highlightCommitTimer=setTimeout(function(){if(highlightMode)commitPendingHighlight();},delay);}
-  /* Dragging native selection handles never sets markerPointerDown, so on touch the
-     commit fuse must outlast a thumb's pauses or it captures one word of a sentence. */
-  function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');if(highlightMode&&!markerPointerDown)scheduleHighlightCommit(coarsePointer.matches?2000:550);}
+  /* Coarse-pointer readers keep their native selection alive until an explicit Mark
+     tap. This leaves iPad handles free to refine either edge without a save timer. */
+  function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');var inputType=selectionPointerType||selectionInputType;if(highlightMode&&!markerPointerDown&&inputType!=='touch'&&!suppressHighlightAutoCommit)scheduleHighlightCommit(550);syncHighlightColorUi();syncTouchDockStates();}
   function setHighlightColor(color){
     highlightColor=['yellow','mint','coral','blue'].indexOf(color)>=0?color:'yellow';
-    document.querySelectorAll('[data-highlight-color]').forEach(function(x){x.classList.toggle('selected',x.dataset.highlightColor===highlightColor);});
+    try{localStorage.setItem(HIGHLIGHT_COLOR_KEY,highlightColor);}catch(e){}
+    syncHighlightColorUi();
   }
   function setHighlightMode(on){
     highlightMode=!!on;var btn=byId('highlightBtn');if(!btn)return;
-    btn.classList.toggle('active',highlightMode);btn.setAttribute('aria-pressed',String(highlightMode));btn.textContent=highlightMode?'✦ Marker on':'✦ Marker';byId('highlightPalette').classList.toggle('hidden',!highlightMode);document.body.classList.toggle('marker-on',highlightMode);syncTouchDockStates();
+    if(!highlightMode)clearTimeout(highlightCommitTimer);
+    btn.classList.toggle('active',highlightMode);btn.setAttribute('aria-pressed',String(highlightMode));byId('highlightBtnLabel').textContent=highlightMode?'Marker on':'Marker';document.body.classList.toggle('marker-on',highlightMode);syncHighlightColorUi();syncTouchDockStates();
   }
   function normalizedPassage(value){return String(value||'').replace(/\s+/g,' ').trim();}
   function rectSetMatch(a,b){
@@ -5727,6 +5774,7 @@
   function reopenExistingHighlight(selection,anchor){
     var ref=existingHighlightRef(selection);if(!ref)return false;
     clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');
+    syncHighlightColorUi();syncTouchDockStates();
     if(!selectionPointerDown)openHighlightCard(ref,anchor);
     return true;
   }
@@ -5742,45 +5790,10 @@
     var top=Math.max(0,r.y-r.h*.14),bottom=Math.min(1,r.y+r.h+r.h*.28);
     return{x:r.x,y:top,w:r.w,h:Math.max(0,bottom-top)};
   }
-  function isWordPart(text,index){
-    var c=text.charAt(index);if(/[\p{L}\p{N}_]/u.test(c))return true;
-    return /['’\-]/.test(c)&&index>0&&index<text.length-1&&/[\p{L}\p{N}]/u.test(text.charAt(index-1))&&/[\p{L}\p{N}]/u.test(text.charAt(index+1));
-  }
-  function adjacentTextNode(node,root,direction){
-    var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);walker.currentNode=node;var next;
-    while((next=direction<0?walker.previousNode():walker.nextNode())){if((next.nodeValue||'').length)return next;}return null;
-  }
-  function textNodesTouch(left,right){
-    var a=document.createRange(),b=document.createRange();a.selectNodeContents(left);b.selectNodeContents(right);
-    var ar=a.getBoundingClientRect(),br=b.getBoundingClientRect(),height=Math.min(ar.height,br.height);
-    if(!ar.width||!br.width||!height)return false;
-    var sameLine=Math.abs((ar.top+ar.bottom)/2-(br.top+br.bottom)/2)<=Math.max(ar.height,br.height)*.38,gap=br.left-ar.right;
-    return sameLine&&br.left>=ar.left-1&&gap>=-Math.max(2,height*.08)&&gap<=Math.max(2,height*.13);
-  }
-  function snapSelectionToWords(selection){
-    if(snappingSelection||!selection||selection.isCollapsed||!selection.rangeCount)return;
-    var range=selection.getRangeAt(0).cloneRange(),startNode=range.startContainer,endNode=range.endContainer;
-    if(startNode.nodeType!==3||endNode.nodeType!==3)return;
-    var startRoot=startNode.parentElement&&startNode.parentElement.closest('.text-layer,.original'),endRoot=endNode.parentElement&&endNode.parentElement.closest('.text-layer,.original');if(!startRoot||startRoot!==endRoot)return;
-    var start=range.startOffset,end=range.endOffset,startText=startNode.nodeValue||'',endText=endNode.nodeValue||'',changed=false,neighbor,neighborText;
-    while(start>0&&isWordPart(startText,start-1)){start--;changed=true;}
-    while(end<endText.length&&isWordPart(endText,end)){end++;changed=true;}
-    while(start===0&&startText.length&&isWordPart(startText,0)){
-      neighbor=adjacentTextNode(startNode,startRoot,-1);neighborText=neighbor&&neighbor.nodeValue||'';
-      if(!neighbor||!neighborText.length||!isWordPart(neighborText,neighborText.length-1)||!textNodesTouch(neighbor,startNode))break;
-      startNode=neighbor;startText=neighborText;start=startText.length;while(start>0&&isWordPart(startText,start-1))start--;changed=true;
-    }
-    while(end===endText.length&&endText.length&&isWordPart(endText,endText.length-1)){
-      neighbor=adjacentTextNode(endNode,endRoot,1);neighborText=neighbor&&neighbor.nodeValue||'';
-      if(!neighbor||!neighborText.length||!isWordPart(neighborText,0)||!textNodesTouch(endNode,neighbor))break;
-      endNode=neighbor;endText=neighborText;end=0;while(end<endText.length&&isWordPart(endText,end))end++;changed=true;
-    }
-    if(!changed)return;range.setStart(startNode,start);range.setEnd(endNode,end);snappingSelection=true;selection.removeAllRanges();selection.addRange(range);snappingSelection=false;
-  }
-  function captureSelection(){
-    if(snappingSelection||byId('readerPage').classList.contains('hidden'))return;
+  function captureSelection(anchor){
+    if(byId('readerPage').classList.contains('hidden'))return;
     var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
-    var range=selection.getRangeAt(0),text=selection.toString().replace(/\s+/g,' ').trim(),selectionRect=range.getBoundingClientRect();if(!text)return;
+    var range=selection.getRangeAt(0),text=selection.toString().replace(/\s+/g,' ').trim(),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:range.getBoundingClientRect();if(!text)return;
     if(readerMode==='pdf'){
       var host=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;
       var page=host&&host.closest?host.closest('.pdf-page'):null;if(!page||!byId('pdfFrame').contains(page)||!page.querySelector('.text-layer').contains(range.commonAncestorContainer))return;
@@ -5793,25 +5806,44 @@
       var ch=find(currentId),textSelection={kind:ch&&ch.kind==='pdf'?'reader':'text',para:+original.dataset.paraIndex,start:before.toString().length,end:through.toString().length,text:text};if(!reviewLinkTargetId&&reopenExistingHighlight(textSelection,selectionRect))return;setPendingSelection(textSelection);if(!selectionPointerDown&&!highlightMode)showSelectionCard(textSelection,selectionRect);
     }
   }
-  document.addEventListener('selectionchange',captureSelection);
+  document.addEventListener('selectionchange',function(){captureSelection();});
   byId('documentPane').addEventListener('pointerdown',function(e){
     if(bookCurlOwned)return;
     if(!e.target.closest('.text-layer,.original'))return;
-    hideSelectionCard();
+    /* Do not collapse an existing native range here: on iPad this pointer may be a
+       selection-handle adjustment. A plain new press has no range to preserve. */
+    var nativeSelection=window.getSelection&&window.getSelection();
+    if(nativeSelection&&!nativeSelection.isCollapsed&&nativeSelection.rangeCount)hideSelectionCard();else clearPendingSelection(false,true);
+    selectionPointerType=e.pointerType||'';selectionInputType=selectionPointerType||selectionInputType;suppressHighlightAutoCommit=false;
     selectionPointerDown=true;document.body.classList.add('selecting-paper');
     if(highlightMode){markerPointerDown=true;clearTimeout(highlightCommitTimer);}
   });
-  function finishPaperSelection(cancelled){
-    if(!selectionPointerDown&&!markerPointerDown)return;var commit=highlightMode&&markerPointerDown;
+  function finishPaperSelection(cancelled,e){
+    if(!selectionPointerDown&&!markerPointerDown)return;var pointerType=selectionPointerType||(e&&e.pointerType)||'',commit=!cancelled&&highlightMode&&markerPointerDown&&pointerType!=='touch';
     selectionPointerDown=false;markerPointerDown=false;document.body.classList.remove('selecting-paper');
-    if(cancelled)return;setTimeout(function(){var selection=window.getSelection&&window.getSelection();snapSelectionToWords(selection);captureSelection();if(commit)scheduleHighlightCommit(60);},0);
+    if(cancelled)suppressHighlightAutoCommit=true;
+    var fineInput=pointerType==='mouse'||pointerType==='pen'||(!pointerType&&!coarseHighlightUi()),anchor=fineInput&&e&&Number.isFinite(e.clientX)?{left:e.clientX,right:e.clientX,top:e.clientY,bottom:e.clientY,width:0}:null;
+    setTimeout(function(){
+      captureSelection(anchor);
+      var nativeSelection=window.getSelection&&window.getSelection();
+      if((!nativeSelection||nativeSelection.isCollapsed)&&pendingSelection&&!selectionNoteTarget)clearPendingSelection();
+      if(commit&&pendingSelection)scheduleHighlightCommit(60);
+      if(selectionPointerType===pointerType)selectionPointerType='';
+    },0);
   }
-  document.addEventListener('pointerup',function(){finishPaperSelection(false);});
-  document.addEventListener('pointercancel',function(){finishPaperSelection(true);});
-  byId('highlightBtn').onclick=function(){
-    if(pendingSelection){commitPendingHighlight();return;}setHighlightMode(!highlightMode);
+  document.addEventListener('pointerup',function(e){finishPaperSelection(false,e);});
+  document.addEventListener('pointercancel',function(e){finishPaperSelection(true,e);});
+  document.addEventListener('pointerdown',function(e){if(e.pointerType){lastHighlightPointerType=e.pointerType;selectionInputType=e.pointerType;}},true);
+  document.addEventListener('keydown',function(){selectionInputType='keyboard';},true);
+  byId('highlightBtn').onclick=function(e){
+    var pointerType=e&&e.pointerType||'',touchInput=pointerType?pointerType==='touch':!fineHighlightUi()&&(lastHighlightPointerType==='touch'||(!lastHighlightPointerType&&coarseHighlightUi()));
+    if(touchInput){if(pendingSelection)commitPendingHighlight();else showReaderToast('Select a passage, then tap Mark');return;}
+    setHighlightMode(!highlightMode);
   };
-  document.querySelectorAll('[data-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.highlightColor);if(!highlightMode)setHighlightMode(true);};});
+  byId('highlightColorBtn').onclick=function(){setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(byId('highlightPalette').classList.contains('hidden'));};
+  document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(b){b.onclick=function(e){var touchPalette=!!b.closest('#touchHighlightPalette'),returnFocus=e.detail===0;setHighlightColor(b.dataset.highlightColor);if(touchPalette)setTouchHighlightPaletteOpen(false);else setHighlightPaletteOpen(false);if(returnFocus)(touchPalette?byId('touchHighlight'):byId('highlightColorBtn')).focus();};});
+  document.querySelectorAll('[data-selection-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.selectionHighlightColor);setSelectionAction('selectionHighlight');commitPendingHighlight();};});
+  syncHighlightColorUi();
   function savePendingHighlight(note,keepCard){
     clearTimeout(highlightCommitTimer);var ch=find(currentId),h=pendingSelection;if(!ch||!h)return;
     var existing=existingHighlightRef(h);if(existing){clearPendingSelection(true);openHighlightCard(existing,selectionAnchor);return{kind:existing.kind,page:existing.page,id:existing.id,item:existing.item,selection:h,existing:true};}
@@ -5843,6 +5875,7 @@
   byId('selectionLinkReview').onclick=function(){linkSelectionToReview(pendingSelection);};
   byId('selectionAddNote').onclick=function(){
     var target=ensureSelectionNoteTarget();if(!target)return;setSelectionAction('selectionAddNote');byId('selectionEyebrow').textContent='Note on highlight';byId('selectionCard').classList.add('note-open');byId('selectionNoteBox').classList.remove('hidden');
+    byId('selectionCreateHighlight').classList.add('hidden');
     byId('selectionHighlight').textContent='Highlighted ✓';byId('selectionHighlight').disabled=true;byId('selectionAddNote').textContent='Editing note';
     refreshSelectionNoteThread();placeSelectionCard();requestAnimationFrame(function(){byId('selectionNote').focus({preventScroll:true});});
   };
@@ -5899,8 +5932,7 @@
     var review=pdfReviewAtPoint(pageEl,e.clientX,e.clientY);if(review){showReviewerPassageGroup(find(currentId),review);return;}
     var s=window.getSelection&&window.getSelection();if(s&&!s.isCollapsed)return;
     var hit=pdfHighlightAtPoint(pageEl,e.clientX,e.clientY);if(!hit){if(dismissReviewerFocus())e.stopPropagation();return;}
-    if(highlightMode)removeHighlight('pdf',hit.page,hit.item.id);
-    else openHighlightCard({kind:'pdf',page:hit.page,id:hit.item.id},{left:e.clientX,right:e.clientX,top:e.clientY,bottom:e.clientY});
+    openHighlightCard({kind:'pdf',page:hit.page,id:hit.item.id},{left:e.clientX,right:e.clientX,top:e.clientY,bottom:e.clientY});
   });
   /* One shared undo trail for marker work: strokes, erasures and recolors all rewind
      in order (⌘Z) and roll forward again (⇧⌘Z / ⌘Y). Cleared when another paper opens. */
@@ -5912,7 +5944,7 @@
     if(action.op==='recolor'){
       var rec=list.find(function(h){return h.id===action.item.id;});if(!rec)return false;
       rec.color=undoing?action.from:action.to;
-      if(activeCardRef&&activeCardRef.id===rec.id)document.querySelectorAll('[data-card-color]').forEach(function(b){b.classList.toggle('selected',b.dataset.cardColor===rec.color);});
+      if(activeCardRef&&activeCardRef.id===rec.id)document.querySelectorAll('[data-card-color]').forEach(function(b){var selected=b.dataset.cardColor===rec.color;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});
     }else{
       var insert=(action.op==='add')?undoing===false:undoing===true;
       if(insert){if(!list.find(function(h){return h.id===action.item.id;}))list.push(action.item);}
@@ -5946,10 +5978,11 @@
     hideLookup();hideSelectionCard();activeCardRef=ref;
     var selection=ref.kind==='pdf'?{kind:'pdf',page:+ref.page||currentPage,text:rec.text||'',rects:rec.rects||[]}:{kind:ref.kind,para:+rec.para||0,start:+rec.start||0,end:+rec.end||0,text:rec.text||''};
     lastAskSelection=selection;selectionNoteTarget={kind:ref.kind,page:ref.page,id:ref.id,item:rec,selection:selection};pendingSelection=null;byId('highlightBtn').classList.remove('ready');
-    var card=byId('selectionCard');card.classList.remove('ai-open');card.classList.add('note-open');byId('selectionAiBox').classList.add('hidden');byId('selectionContext').classList.add('hidden');byId('selectionEyebrow').textContent=rec.note?'Note on highlight':'Saved highlight';byId('selectionExcerpt').textContent='“'+selection.text+'”';
+    syncHighlightColorUi();syncTouchDockStates();
+    var card=byId('selectionCard');card.classList.remove('ai-open');card.classList.add('note-open');byId('selectionCreateHighlight').classList.add('hidden');byId('selectionAiBox').classList.add('hidden');byId('selectionContext').classList.add('hidden');byId('selectionEyebrow').textContent=rec.note?'Note on highlight':'Saved highlight';byId('selectionExcerpt').textContent='“'+selection.text+'”';
     byId('selectionSecondary').classList.remove('hidden');byId('selectionSavedTools').classList.remove('hidden');byId('selectionNoteBox').classList.remove('hidden');byId('selectionNote').value=rec.note||'';byId('selectionNoteStatus').textContent=rec.note?'Saved with this highlight':'Add a note if you want to remember why it matters';
     byId('selectionHighlight').disabled=true;byId('selectionHighlight').textContent='Highlighted ✓';byId('selectionAddNote').textContent='Note';setSelectionAction('selectionHighlight');refreshSelectionNoteThread();
-    document.querySelectorAll('[data-card-color]').forEach(function(b){b.classList.toggle('selected',b.dataset.cardColor===(rec.color||'yellow'));});
+    document.querySelectorAll('[data-card-color]').forEach(function(b){var selected=b.dataset.cardColor===(rec.color||'yellow');b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});
     card.classList.remove('hidden');placeSelectionCard(anchor||{left:innerWidth/2,right:innerWidth/2,top:innerHeight/2,bottom:innerHeight/2});
   }
   byId('selectionRemoveHighlight').onclick=function(){if(activeCardRef)removeHighlight(activeCardRef.kind,activeCardRef.page,activeCardRef.id);};
@@ -5958,7 +5991,7 @@
     var to=b.dataset.cardColor;if(to===(rec.color||'yellow'))return;
     recordHighlightAction({op:'recolor',kind:activeCardRef.kind,page:activeCardRef.page,item:rec,from:rec.color||'yellow',to:to});
     rec.color=to;var ch=find(currentId);if(ch)touch(ch);
-    document.querySelectorAll('[data-card-color]').forEach(function(x){x.classList.toggle('selected',x===b);});
+    document.querySelectorAll('[data-card-color]').forEach(function(x){var selected=x===b;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
     refreshHighlightViews(activeCardRef.kind,activeCardRef.page);
   };});
   function renderPdfHighlights(pageNum){

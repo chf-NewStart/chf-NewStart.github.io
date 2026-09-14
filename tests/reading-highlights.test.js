@@ -113,17 +113,32 @@ function check(name, cond, extra) {
   await page.waitForTimeout(150);
   check('Escape closes card', await cardHidden());
 
-  // 7. Marker on: click erases directly; undo restores; new stroke after undo clears redo
+  // 7. Picking the marker color is independent from persistent marker mode.
+  await page.click('#highlightColorBtn');
+  check('the independent marker color palette opens', await page.locator('#highlightPalette').isVisible()
+    && await page.locator('#highlightColorBtn').getAttribute('aria-expanded') === 'true');
+  await page.click('#highlightPalette [data-highlight-color="coral"]');
+  await page.waitForTimeout(100);
+  check('choosing a color does not implicitly enable marker mode', await page.locator('#highlightBtn').getAttribute('aria-pressed') === 'false'
+    && !await page.locator('body').evaluate(body => body.classList.contains('marker-on')));
+
+  // 8. Marker on: an existing mark still opens its edit card; only the
+  //    card's explicit eraser removes it.
   await page.click('#highlightBtn');
   await page.waitForTimeout(150);
   await page.locator('#textDocument mark[data-hl-id]').first().click();
   await page.waitForTimeout(200);
-  check('marker-on click erases', (await hl()).length === 0);
+  check('marker-on click keeps the existing highlight', (await hl()).length === 1);
+  check('marker-on click opens the highlight edit card', !(await cardHidden()));
+  check('opening an existing highlight does not disarm the marker', await page.locator('#highlightBtn').getAttribute('aria-pressed') === 'true');
+  await page.click('#selectionRemoveHighlight');
+  await page.waitForTimeout(200);
+  check('the explicit card eraser removes the highlight', (await hl()).length === 0);
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(200);
-  check('undo restores erased highlight', (await hl()).length === 1);
+  check('undo restores the explicitly erased highlight', (await hl()).length === 1);
 
-  // 8. Drag a new highlight with marker on, then undo removes only that one
+  // 9. Drag a new highlight with marker on, then undo removes only that one
   const para = page.locator('#textDocument .original').nth(1);
   const box = await para.boundingBox();
   await page.mouse.move(box.x + 5, box.y + 8);

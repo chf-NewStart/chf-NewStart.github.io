@@ -930,10 +930,10 @@
     #zenBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     .highlight-layer { z-index: 1; pointer-events: none; }
-    /* Marker ink should cross the whole letterform, including descenders, with the
-       soft density changes of one translucent stroke on paper. */
-    .saved-highlight { position: absolute; border-radius: 3px 6px 4px 5px; mix-blend-mode: multiply; box-shadow: inset 0 1px rgba(255,255,255,.16), inset 0 -1px rgba(63,48,10,.05); transform: rotate(-.08deg); transform-origin: center; }
-    .saved-highlight:nth-child(even) { border-radius: 6px 3px 5px 2px; transform: rotate(.08deg); }
+    /* Marker ink still crosses the whole letterform, but its nearly straight, softly
+       uneven edge reads as one restrained pass rather than a rounded label. */
+    .saved-highlight { position: absolute; border-radius: 2px 4px 3px 2px; opacity: .86; mix-blend-mode: multiply; clip-path: polygon(.2% 4%,99.7% 1%,100% 95%,.3% 99%); box-shadow: inset 0 .5px rgba(255,255,255,.13), inset 0 -.5px rgba(63,48,10,.035); transform: rotate(-.035deg); transform-origin: center; }
+    .saved-highlight:nth-child(even) { border-radius: 4px 2px 2px 3px; clip-path: polygon(.3% 1%,99.8% 4%,99.6% 99%,0 95%); transform: rotate(.035deg); }
     .review-comment-highlight { position: absolute; border-bottom: 2px solid rgba(184,121,31,.88); border-radius: 3px; background: rgba(255,202,108,.34); mix-blend-mode: multiply; }
     .review-comment-highlight.review-level-section { border-bottom-color: rgba(50,112,139,.82); background: rgba(105,185,218,.24); }
     .review-comment-highlight.review-level-editorial { border-bottom-color: rgba(197,79,52,.9); background: rgba(243,119,91,.22); }
@@ -1018,20 +1018,40 @@
     .zoom-tools button:last-child { border-right: 0; }
     .zoom-tools button:hover { background: var(--surface-2); }
     #zoomLabel { min-width: 50px; }
-    .marker-tools { position: relative; display: flex; align-items: center; flex: 0 0 auto; }
-    #highlightBtn { transition: background .16s, border-color .16s, transform .16s; }
-    #highlightBtn.active { border-color: #c49b14; background: #ffd83d; color: #30270b; box-shadow: 0 0 0 3px rgba(255,216,61,.18); }
-    #highlightBtn.ready:not(.active) { border-color: #c49b14; box-shadow: inset 0 -3px 0 #ffd83d; }
+    .marker-tools { --marker-current-color: #ffd83d; position: relative; z-index: 13; display: inline-flex; align-items: stretch; flex: 0 0 auto; overflow: visible; border: 1px solid transparent; border-radius: 10px; transition: border-color .16s, background .16s, box-shadow .16s; }
+    :is(#markerTools,#highlightColorBtn,#touchHighlight)[data-highlight-color="yellow"] { --marker-current-color: #ffd83d; }
+    :is(#markerTools,#highlightColorBtn,#touchHighlight)[data-highlight-color="mint"] { --marker-current-color: #5cd591; }
+    :is(#markerTools,#highlightColorBtn,#touchHighlight)[data-highlight-color="coral"] { --marker-current-color: #ff7e69; }
+    :is(#markerTools,#highlightColorBtn,#touchHighlight)[data-highlight-color="blue"] { --marker-current-color: #5ba9ff; }
+    .marker-tools:hover, .marker-tools:focus-within { border-color: var(--line); background: color-mix(in srgb, var(--surface-2) 74%, transparent); }
+    body.marker-on .marker-tools { border-color: color-mix(in srgb, var(--marker-current-color) 72%, #20272d); box-shadow: 0 0 0 3px color-mix(in srgb, var(--marker-current-color) 16%, transparent); }
+    .reader-tools .marker-tools > .soft-button { min-height: 32px; border: 0; border-radius: 0; background: transparent; color: var(--muted); }
+    .reader-tools .marker-tools > #highlightBtn { padding: 6px 9px; border-radius: 9px 0 0 9px; }
+    .reader-tools .marker-tools > .marker-color-trigger { width: 34px; min-width: 34px; padding: 0 5px; gap: 2px; border-left: 1px solid color-mix(in srgb, var(--line) 78%, transparent); border-radius: 0 9px 9px 0; }
+    .reader-tools .marker-tools > .soft-button:hover, .reader-tools .marker-tools > .soft-button:focus-visible, .reader-tools .marker-tools > .marker-color-trigger[aria-expanded="true"] { border: 0; background: color-mix(in srgb, var(--surface-2) 82%, transparent); color: var(--ink); outline: none; }
+    .reader-tools .marker-tools > .marker-color-trigger:hover, .reader-tools .marker-tools > .marker-color-trigger:focus-visible, .reader-tools .marker-tools > .marker-color-trigger[aria-expanded="true"] { border-left: 1px solid color-mix(in srgb, var(--line) 78%, transparent); }
+    #highlightBtn { transition: background .16s, color .16s, box-shadow .16s; }
+    #highlightBtn.active { background: var(--marker-current-color); color: #20272d; box-shadow: none; }
+    #highlightBtn.ready:not(.active) { box-shadow: inset 0 -3px 0 var(--marker-current-color); }
+    .marker-current-dot { width: 11px; height: 11px; flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--ink) 24%, transparent); border-radius: 50%; background: var(--marker-current-color); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+    .marker-color-chevron { color: var(--muted); font-size: .58rem; line-height: 1; transform: translateY(-1px); }
     #textDocument mark { cursor: pointer; }
     #textDocument mark:hover { outline: 1.5px dashed var(--ink); outline-offset: 1px; }
     #textDocument mark.hl-noted { border-bottom: 2px dotted color-mix(in srgb, var(--ink) 55%, transparent); }
-    .marker-palette { display: flex; gap: 5px; margin-left: 6px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
-    .marker-swatch { width: 24px; height: 24px; padding: 0; border: 2px solid var(--surface); border-radius: 50%; box-shadow: 0 0 0 1px var(--line); }
-    .marker-swatch.selected { box-shadow: 0 0 0 2px var(--ink); transform: scale(.88); }
-    .marker-swatch[data-highlight-color="yellow"], .marker-swatch[data-card-color="yellow"] { background: #ffd83d; }
-    .marker-swatch[data-highlight-color="mint"], .marker-swatch[data-card-color="mint"] { background: #5cd591; }
-    .marker-swatch[data-highlight-color="coral"], .marker-swatch[data-card-color="coral"] { background: #ff7e69; }
-    .marker-swatch[data-highlight-color="blue"], .marker-swatch[data-card-color="blue"] { background: #5ba9ff; }
+    @media (hover: hover) and (pointer: fine) {
+      body.marker-on :is(.text-layer,.text-layer *,.original,.original *) { cursor: crosshair; }
+    }
+    .marker-palette { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: flex; align-items: center; gap: 0; margin: 0; padding: 5px 6px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 12px 34px rgba(20,24,25,.18); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+    .marker-swatch { --marker-swatch-color: #ffd83d; width: 36px; min-width: 36px; max-width: 36px; height: 36px; min-height: 36px; flex: 0 0 36px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; box-shadow: none; }
+    .marker-swatch::before { content: ""; width: 20px; height: 20px; border: 2px solid var(--surface); border-radius: 50%; background: var(--marker-swatch-color); box-shadow: 0 0 0 1px var(--line); transition: box-shadow .14s ease; }
+    .marker-swatch:hover::before { box-shadow: 0 0 0 2px color-mix(in srgb, var(--muted) 72%, transparent); }
+    .marker-swatch:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 68%, transparent); outline-offset: -2px; }
+    .marker-swatch.selected, .marker-swatch[aria-pressed="true"] { transform: none; }
+    .marker-swatch.selected::before, .marker-swatch[aria-pressed="true"]::before { box-shadow: 0 0 0 2px var(--ink); }
+    .marker-swatch:is([data-highlight-color="yellow"],[data-card-color="yellow"],[data-selection-highlight-color="yellow"]) { --marker-swatch-color: #ffd83d; }
+    .marker-swatch:is([data-highlight-color="mint"],[data-card-color="mint"],[data-selection-highlight-color="mint"]) { --marker-swatch-color: #5cd591; }
+    .marker-swatch:is([data-highlight-color="coral"],[data-card-color="coral"],[data-selection-highlight-color="coral"]) { --marker-swatch-color: #ff7e69; }
+    .marker-swatch:is([data-highlight-color="blue"],[data-card-color="blue"],[data-selection-highlight-color="blue"]) { --marker-swatch-color: #5ba9ff; }
     .selection-card { position: fixed; z-index: 45; width: min(360px, calc(100vw - 24px)); max-height: min(700px, calc(var(--visual-viewport-height, 100dvh) - 24px)); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 15px; background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 18px 54px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
     .selection-card.note-open { width: min(390px, calc(100vw - 24px)); }
     .selection-card.ai-open { width: min(470px, calc(100vw - 24px)); }
@@ -1047,6 +1067,9 @@
     .selection-action.active { border-color: color-mix(in srgb, var(--accent) 58%, var(--line)); background: var(--accent-soft); color: var(--accent-dark); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 13%, transparent); }
     .selection-action:disabled { cursor: default; opacity: .42; }
     .selection-action:disabled:hover { border-color: var(--line); background: var(--surface); }
+    .selection-create-highlight { min-height: 42px; display: flex; align-items: center; gap: 8px; margin: 0 14px 8px; padding: 2px 4px 2px 10px; border: 1px solid color-mix(in srgb, var(--line) 78%, transparent); border-radius: 11px; background: color-mix(in srgb, var(--yellow) 7%, var(--surface)); }
+    .selection-create-highlight > span { flex: 0 0 auto; color: var(--muted); font: 750 .58rem/1 var(--sans); letter-spacing: .055em; text-transform: uppercase; white-space: nowrap; }
+    .selection-create-colors { display: flex; align-items: center; gap: 0; margin-left: auto; }
     .selection-context { margin: 0 14px 9px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent-soft) 70%, transparent); color: var(--muted); font-size: .62rem; line-height: 1.35; }
     .selection-context-copy { min-width: 0; }
     .selection-context-copy::before { content: "✦"; margin-right: 6px; color: var(--accent); }
@@ -1103,6 +1126,12 @@
     .lookup-selection { display: block; overflow: hidden; color: var(--muted); font: italic .78rem/1.3 var(--serif); text-overflow: ellipsis; white-space: nowrap; }
     .lookup-close { flex: 0 0 auto; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); }
     .lookup-close:hover { color: var(--ink); }
+    @media (any-pointer: coarse) {
+      .marker-swatch { width: 44px; min-width: 44px; max-width: 44px; height: 44px; min-height: 44px; flex-basis: 44px; }
+      .marker-swatch::before { width: 22px; height: 22px; }
+      .selection-card .selection-action, .selection-card .selection-explain, .selection-card .selection-note-ai, .selection-card .selection-ai-head .text-button, .selection-card .selection-ai-row .button { min-height: 44px; }
+      .selection-card .selection-remove, .selection-card .lookup-close { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
+    }
     .lookup-photo-link { display: block; height: 170px; overflow: hidden; background: var(--surface-2); }
     .lookup-photo { width: 100%; height: 100%; display: block; object-fit: cover; }
     .lookup-body { padding: 15px 16px 16px; }
@@ -1624,11 +1653,22 @@
       font: 700 .9rem/1 var(--sans); touch-action: manipulation; -webkit-tap-highlight-color: transparent;
     }
     .touch-dock-action small { font: 700 .52rem/1.1 var(--sans); letter-spacing: .01em; }
-    .touch-dock-action:active, .touch-dock-action:focus-visible,
+    .touch-dock-action:active, .touch-dock-action:focus-visible, .touch-dock-action.active,
     .touch-dock-action[aria-pressed="true"], .touch-dock-action[aria-expanded="true"] {
       border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); background: var(--accent-soft); color: var(--ink);
     }
-    .touch-dock-more { position: relative; }
+    .touch-dock-marker, .touch-dock-more { position: relative; width: 52px; height: 52px; flex: 0 0 52px; }
+    #touchHighlight { --marker-current-color: #ffd83d; }
+    .touch-marker-glyph { position: relative; }
+    .touch-marker-glyph::after { content: ""; position: absolute; right: -7px; bottom: -3px; width: 8px; height: 8px; border: 1px solid color-mix(in srgb, var(--ink) 34%, var(--surface)); border-radius: 50%; background: var(--marker-current-color); box-shadow: 0 0 0 1px color-mix(in srgb, var(--surface) 84%, transparent); }
+    .touch-highlight-palette {
+      position: absolute; z-index: 3; right: calc(100% + 11px); top: 50%; width: max-content; padding: 8px;
+      display: grid; grid-template-columns: repeat(4,44px); align-items: center; gap: 0; border: 1px solid var(--line); border-radius: 15px;
+      background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 16px 44px rgba(20,24,25,.2);
+      -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); transform: translateY(-50%);
+    }
+    .touch-highlight-palette > strong { grid-column: 1 / -1; padding: 2px 6px 6px; color: var(--muted); font: 750 .57rem/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+    body.touch-tablet-reader[data-tablet-dock-side="left"] .touch-highlight-palette { left: calc(100% + 11px); right: auto; }
     .touch-dock-menu {
       position: absolute; z-index: 2; right: calc(100% + 11px); bottom: 0; width: 226px; padding: 6px;
       display: grid; gap: 3px; border: 1px solid var(--line); border-radius: 15px;
@@ -1648,7 +1688,9 @@
     body.touch-tablet-reader .reader-tools .guide-tool .soft-button,
     body.touch-tablet-reader .find-bar .step-btn,
     body.touch-tablet-reader .zoom-tools button { min-width: 44px; min-height: 44px; height: 44px; }
-    body.touch-tablet-reader .marker-swatch { width: 44px; height: 44px; }
+    /* Cards and popovers may float above the full-width paper, but keep one control
+       rail free so their actions never land beneath the reader's chosen-hand dock. */
+    body.touch-tablet-reader.reading:not(.zen) :is(.selection-card,.lookup-card) { max-width: calc(100vw - 100px - env(safe-area-inset-left) - env(safe-area-inset-right)) !important; }
     body.touch-tablet-reader .comfort-bar {
       position: fixed; z-index: 50; top: max(72px, calc(env(safe-area-inset-top) + 12px)); right: max(82px, calc(env(safe-area-inset-right) + 82px));
       width: min(680px, calc(100vw - 112px)); max-height: calc(100dvh - 92px); overflow: auto; overscroll-behavior: contain;

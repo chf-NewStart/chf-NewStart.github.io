@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=119">
+  <link rel="stylesheet" href="/reading.css?v=120">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -141,13 +141,14 @@
         </div>
         <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F) · Space auto-scrolls">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
-        <div class="marker-tools">
-          <button class="soft-button" id="highlightBtn" type="button" aria-pressed="false">✦ Marker</button>
-          <div class="marker-palette hidden" id="highlightPalette" aria-label="Highlight color">
-            <button class="marker-swatch selected" data-highlight-color="yellow" aria-label="Yellow highlight"></button>
-            <button class="marker-swatch" data-highlight-color="mint" aria-label="Mint highlight"></button>
-            <button class="marker-swatch" data-highlight-color="coral" aria-label="Coral highlight"></button>
-            <button class="marker-swatch" data-highlight-color="blue" aria-label="Blue highlight"></button>
+        <div class="marker-tools" id="markerTools">
+          <button class="soft-button" id="highlightBtn" type="button" aria-pressed="false" aria-label="Marker mode off. Current color Yellow" title="Keep Marker on for several highlights"><span class="marker-glyph" aria-hidden="true">✦</span> <span id="highlightBtnLabel">Marker</span></button>
+          <button class="soft-button marker-color-trigger" id="highlightColorBtn" type="button" aria-expanded="false" aria-controls="highlightPalette" aria-label="Highlight color: Yellow. Choose color" title="Choose highlight color"><span class="marker-current-dot" aria-hidden="true"></span><span class="marker-color-chevron" aria-hidden="true">⌄</span></button>
+          <div class="marker-palette hidden" id="highlightPalette" role="group" aria-label="Highlight color">
+            <button class="marker-swatch selected" data-highlight-color="yellow" type="button" aria-label="Yellow highlight color" aria-pressed="true"></button>
+            <button class="marker-swatch" data-highlight-color="mint" type="button" aria-label="Mint highlight color" aria-pressed="false"></button>
+            <button class="marker-swatch" data-highlight-color="coral" type="button" aria-label="Coral highlight color" aria-pressed="false"></button>
+            <button class="marker-swatch" data-highlight-color="blue" type="button" aria-label="Blue highlight color" aria-pressed="false"></button>
           </div>
         </div>
 
@@ -364,7 +365,16 @@
       </div>
       <div class="touch-dock" id="touchDock" role="toolbar" aria-label="Touch reading controls" aria-orientation="vertical" data-side="right">
         <button class="touch-dock-action" id="touchGuide" data-touch-action="guide" type="button" aria-label="Guide" aria-pressed="false"><span aria-hidden="true">▰</span><small>Guide</small></button>
-        <button class="touch-dock-action" id="touchHighlight" data-touch-action="highlight" type="button" aria-label="Highlight" aria-pressed="false"><span aria-hidden="true">✦</span><small>Mark</small></button>
+        <div class="touch-dock-marker" id="touchMarkerTool">
+          <button class="touch-dock-action" id="touchHighlight" data-touch-action="highlight" type="button" aria-label="Highlight color: Yellow. Choose color" aria-expanded="false" aria-controls="touchHighlightPalette"><span class="touch-marker-glyph" aria-hidden="true">✦</span><small>Mark</small></button>
+          <div class="touch-highlight-palette hidden" id="touchHighlightPalette" role="group" aria-label="Highlight color">
+            <strong>Highlight color</strong>
+            <button class="marker-swatch selected" data-highlight-color="yellow" type="button" aria-label="Yellow highlight color" aria-pressed="true"></button>
+            <button class="marker-swatch" data-highlight-color="mint" type="button" aria-label="Mint highlight color" aria-pressed="false"></button>
+            <button class="marker-swatch" data-highlight-color="coral" type="button" aria-label="Coral highlight color" aria-pressed="false"></button>
+            <button class="marker-swatch" data-highlight-color="blue" type="button" aria-label="Blue highlight color" aria-pressed="false"></button>
+          </div>
+        </div>
         <button class="touch-dock-action" id="touchNotes" data-touch-action="notes" type="button" aria-label="Notes" aria-controls="notebook" aria-expanded="false"><span aria-hidden="true">✎</span><small>Notes</small></button>
         <div class="touch-dock-more">
           <button class="touch-dock-action" id="touchMore" data-touch-action="more" type="button" aria-label="More" aria-haspopup="dialog" aria-expanded="false" aria-controls="touchDockMenu"><span aria-hidden="true">⋯</span><small>More</small></button>
@@ -389,16 +399,25 @@
           <button class="selection-action" id="selectionHighlight" type="button" aria-pressed="false">Highlight</button>
           <button class="selection-action" id="selectionAddNote" type="button" aria-pressed="false">Add note</button>
         </div>
+        <div class="selection-create-highlight" id="selectionCreateHighlight">
+          <span>Highlight with</span>
+          <div class="selection-create-colors" role="group" aria-label="Highlight selected passage with color">
+            <button class="marker-swatch selected" data-selection-highlight-color="yellow" type="button" aria-label="Highlight selected passage in yellow" aria-pressed="true"></button>
+            <button class="marker-swatch" data-selection-highlight-color="mint" type="button" aria-label="Highlight selected passage in mint" aria-pressed="false"></button>
+            <button class="marker-swatch" data-selection-highlight-color="coral" type="button" aria-label="Highlight selected passage in coral" aria-pressed="false"></button>
+            <button class="marker-swatch" data-selection-highlight-color="blue" type="button" aria-label="Highlight selected passage in blue" aria-pressed="false"></button>
+          </div>
+        </div>
         <div class="selection-context hidden" id="selectionContext"><span class="selection-context-copy" id="selectionContextText"></span></div>
         <div class="selection-secondary" id="selectionSecondary">
           <button class="selection-explain" id="selectionExplain" type="button" aria-label="Look up a definition"><span aria-hidden="true">⌕</span> Define</button>
         </div>
         <div class="selection-saved-tools hidden" id="selectionSavedTools">
           <div class="selection-saved-colors" role="group" aria-label="Highlight color">
-            <button class="marker-swatch" data-card-color="yellow" type="button" aria-label="Yellow"></button>
-            <button class="marker-swatch" data-card-color="mint" type="button" aria-label="Mint"></button>
-            <button class="marker-swatch" data-card-color="coral" type="button" aria-label="Coral"></button>
-            <button class="marker-swatch" data-card-color="blue" type="button" aria-label="Blue"></button>
+            <button class="marker-swatch" data-card-color="yellow" type="button" aria-label="Yellow highlight color" aria-pressed="false"></button>
+            <button class="marker-swatch" data-card-color="mint" type="button" aria-label="Mint highlight color" aria-pressed="false"></button>
+            <button class="marker-swatch" data-card-color="coral" type="button" aria-label="Coral highlight color" aria-pressed="false"></button>
+            <button class="marker-swatch" data-card-color="blue" type="button" aria-label="Blue highlight color" aria-pressed="false"></button>
           </div>
           <button class="text-button selection-remove" id="selectionRemoveHighlight" type="button" aria-label="Remove highlight" title="Remove highlight"><span class="eraser-icon" aria-hidden="true"></span></button>
         </div>
@@ -727,9 +746,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=119',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=120',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=119" defer></script>
+<script src="/reading.js?v=120" defer></script>
 </body>
 </html>

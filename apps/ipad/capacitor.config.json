@@ -1,0 +1,10 @@
+{
+  "appId": "com.houfu72.phloem",
+  "appName": "Phloem",
+  "webDir": "www",
+  "backgroundColor": "#f3f0e8",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f3f0e8"
+  }
+}

@@ -1,0 +1,43 @@
+/* Loaded after reading.css, only in the bundled iPad reader. */
+html.phloem-native .native-unavailable {
+  display: none !important;
+}
+
+/* The shared dialog also imports .phloem-review files. Leave the confirmation
+   button visible in that mode, where the download control has class hidden. */
+html.phloem-native .native-review-share:has(#reviewShareDownload:not(.hidden)) #reviewSharePrimary {
+  display: none !important;
+}
+
+html.phloem-native .native-local-settings p {
+  max-width: 60ch;
+}
+
+html.phloem-native .native-local-settings p + p {
+  margin-top: 12px;
+}
+
+/* The home-screen title bar is no longer supplied by Safari. Preserve the
+   reader's safe-area-aware docks, and keep its main header below the status bar. */
+html.phloem-native body:not(.zen) .masthead {
+  padding-top: env(safe-area-inset-top);
+  height: calc(68px + env(safe-area-inset-top));
+}
+
+html.phloem-native body.reading:not(.zen) .masthead {
+  height: calc(58px + env(safe-area-inset-top));
+}
+
+@media (min-width: 721px) {
+  /* The visible header and reader must still sum to the available viewport. */
+  html.phloem-native body.reading:not(.zen) #readerPage {
+    height: calc(100vh - 58px - env(safe-area-inset-top) - var(--kb-inset, 0px));
+    height: calc(100dvh - 58px - env(safe-area-inset-top) - var(--kb-inset, 0px));
+  }
+}
+
+@media (max-width: 720px) {
+  html.phloem-native body:not(.reading) .masthead {
+    height: calc(60px + env(safe-area-inset-top));
+  }
+}

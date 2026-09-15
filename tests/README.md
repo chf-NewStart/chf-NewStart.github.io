@@ -45,6 +45,13 @@ panel, portrait fallback, keyboard-safe page-note editing, adaptive settings,
 dialog focus/return, and 44px touch targets. Set `PHLOEM_BROWSER=webkit` to run
 the same workflow against Playwright WebKit.
 
+`reading-ipad-header.test.js` covers tablet masthead button fit, separation from
+the reader's Library row, root viewport offsets, and Zen/phone/library transitions.
+
+`reading-book-guide.test.js` covers dragging the guide between facing pages,
+holding its page through the gutter, matching page-note context, and retaining
+Page and Scroll behavior. Both tests also accept `PHLOEM_BROWSER=webkit`.
+
 `reading-selection-touch.test.js` covers exact partial native selections across
 adjacent PDF.js text spans in Chromium and WebKit, the absence of release-time
 or delayed touch auto-save, cancelled fine-pointer Marker strokes, explicit
@@ -133,6 +140,8 @@ node tests/reading-library-list.test.js
 node tests/reading-library-thinking-search.test.js
 node tests/reading-find-highlight.test.js
 node tests/reading-ipad-touch-dock.test.js
+node tests/reading-ipad-header.test.js
+node tests/reading-book-guide.test.js
 PHLOEM_BROWSER=webkit node tests/reading-ipad-touch-dock.test.js
 node tests/reading-selection-touch.test.js
 PHLOEM_BROWSER=webkit node tests/reading-selection-touch.test.js

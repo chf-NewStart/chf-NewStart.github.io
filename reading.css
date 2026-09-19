@@ -32,7 +32,11 @@
     button { cursor: pointer; }
     a { color: inherit; }
     .hidden { display: none !important; }
-    body.reading { overflow: hidden; }
+    /* Keep the reading screen attached to the viewport. iPadOS can move the root
+       scroller during focus/viewport changes even with overflow:hidden; a sticky
+       masthead would then cover the reader's Library/title row. Only the document
+       pane should scroll while a paper is open. */
+    body.reading { position: fixed; inset: 0; min-height: 0; overflow: hidden; }
     /* While reading, the root scroller is pinned at 0, so pull-to-refresh is always
        armed — one accidental drag would reload the app over an open note. Scoped to
        the reader: in the library the refresh gesture stays a feature. */
@@ -1616,6 +1620,19 @@
          the bookmark is only useful beside the desktop two-column shelf. */
       .closed-book { min-height: 560px; }
       .cover-focus-guide { display: none; }
+    }
+
+    /* Tablet portrait still needs every navigation and appearance button. The
+       desktop tagline and unbounded sync label used to push the last actions
+       outside the screen before the phone layout took over at 720px. */
+    @media (min-width: 721px) and (max-width: 1100px) {
+      .masthead { gap: 10px; padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right)); }
+      .brand span { display: none; }
+      .nav { flex: 0 0 auto; gap: 2px; }
+      .nav-btn { min-height: 44px; padding-inline: 7px; font-size: .8rem; white-space: nowrap; }
+      .head-actions { min-width: 0; gap: 6px; }
+      .head-actions .cloud { min-width: 44px; min-height: 44px; overflow: hidden; text-overflow: ellipsis; }
+      .masthead .icon-btn { flex: 0 0 44px; width: 44px; min-height: 44px; }
     }
 
     @media (max-width: 900px) {

@@ -2420,7 +2420,7 @@
   }
   /* The guide anchors to the pane, not the screen: zen mode and bar toggles move the
      pane, and a pane-relative anchor keeps the band over the same line of text. */
-  var focusPara=null, pageStartCache={}, guideOffset=null;
+  var focusPara=null, pageStartCache={}, guideOffset=null, guideSurface=null;
   function paraSections(){ return byId('textDocument').querySelectorAll('.para'); }
   function applyComfort(){
     var doc=byId('textDocument');
@@ -2535,7 +2535,22 @@
     var surface=null;
     if(readerMode==='pdf'){
       surface=target&&target.closest?target.closest('.pdf-page'):null;
-      if(!surface&&pagedPdfFlow()&&pdfViews.length)surface=pdfViews[currentPage-1]&&pdfViews[currentPage-1].holder;
+      if(pagedPdfFlow()&&pdfViews.length){
+        var pages=pagedPageNos(currentPage),visible=pages.map(function(n){return pdfViews[n-1]&&pdfViews[n-1].holder;}).filter(function(holder){return holder&&holder.classList.contains('book-active');});
+        if(surface&&visible.indexOf(surface)<0)surface=null;
+        /* The handle owns pointer capture, so its target cannot identify the leaf
+           underneath the finger. Hit-test only the one or two displayed pages. */
+        if(!surface){
+          var paneRect=byId('documentPane').getBoundingClientRect();
+          if(clientX>=paneRect.left&&clientX<=paneRect.right&&clientY>=paneRect.top&&clientY<=paneRect.bottom){
+            surface=visible.find(function(holder){var r=holder.getBoundingClientRect();return r.width>0&&r.height>0&&clientX>=r.left&&clientX<=r.right&&clientY>=r.top&&clientY<=r.bottom;})||null;
+          }
+        }
+        /* Keep the last leaf while crossing the gutter or moving beyond the paper.
+           An old leaf cannot survive a turn, rebuild, or opening another document. */
+        if(!surface&&visible.indexOf(guideSurface)>=0)surface=guideSurface;
+        if(!surface)surface=pdfViews[currentPage-1]&&pdfViews[currentPage-1].holder;
+      }
       if(!surface&&pdfViews.length){
         var pane=byId('documentPane'),paneRect=pane.getBoundingClientRect();
         surface=pdfViews[pdfPageIndexAtY(pane.scrollTop+(clientY-paneRect.top))].holder;
@@ -2581,7 +2596,14 @@
       overlay.style.setProperty('--guide-h',guideHeight+'px');
       comfort.guideY=Math.max(.05,Math.min(.95,(clientY-rect.top)/Math.max(1,rect.height)));
     }
+    guideSurface=surface;
     overlay.classList.add('placed');
+    /* Moving the handle onto the other leaf selects its notes/context without
+       navigating or refitting the spread. Pointer hover alone does not do this. */
+    if(guideDragging&&readerMode==='pdf'&&pagedPdfFlow()&&!pagedTurning&&!bookCurlOwned){
+      var pageNo=+surface.dataset.page;
+      if(pageNo&&pageNo!==currentPage){currentPage=pageNo;syncPagedPages();updatePageChrome();savePagedPosition();}
+    }
     saveComfortSoon();
     return true;
   }
@@ -2652,6 +2674,7 @@
     }else if(comfort.focus){
       message=matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page';
     }
+    if(comfort.focus&&bookSpread()&&!matchMedia('(hover: hover)').matches)message='Reading guide on · tap either page or drag the ⠿ handle across the spine';
     showReaderToast(message);
   };
   byId('documentPane').addEventListener('pointermove',function(e){

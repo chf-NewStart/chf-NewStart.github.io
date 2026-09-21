@@ -111,7 +111,7 @@ async function waitForPagedReady(page) {
    finger. Dispatch real Touch objects so the reader's touchstart/move/end path—not its
    mouse/pointer fallback—owns these page curls and two-finger gestures. */
 async function dispatchTouches(page, selector, type, touches, changedTouches) {
-  await page.locator(selector).evaluate((target, payload) => {
+  return page.locator(selector).evaluate((target, payload) => {
     function makeTouch(point) {
       return new Touch({
         identifier: point.id,
@@ -129,14 +129,16 @@ async function dispatchTouches(page, selector, type, touches, changedTouches) {
     }
     const active = payload.touches.map(makeTouch);
     const changed = payload.changedTouches.map(makeTouch);
-    target.dispatchEvent(new TouchEvent(payload.type, {
+    const event = new TouchEvent(payload.type, {
       bubbles: true,
       cancelable: true,
       composed: true,
       touches: active,
       targetTouches: active,
       changedTouches: changed
-    }));
+    });
+    const dispatched = target.dispatchEvent(event);
+    return { defaultPrevented: event.defaultPrevented, dispatched };
   }, { type, touches, changedTouches: changedTouches === undefined ? touches : changedTouches });
 }
 
@@ -368,7 +370,18 @@ async function curlFxMetrics(page) {
   await page.click('[data-pdf-layout="scroll"]');
   await page.waitForFunction(() => !document.getElementById('documentPane').classList.contains('paged-pdf-flow'));
   check('Scroll restores the continuous downward reader', await page.locator('.pdf-page').evaluateAll(pages => pages.filter(page => getComputedStyle(page).display !== 'none').length > 1));
+  const nativeScrollStart = await page.locator('#documentPane').evaluate(pane => {
+    const rect = pane.getBoundingClientRect();
+    return { id: 9, x: rect.left + rect.width * .5, y: rect.top + rect.height * .55, top: pane.scrollTop, touchAction: getComputedStyle(pane).touchAction };
+  });
+  const nativeScrollMove = { id: nativeScrollStart.id, x: nativeScrollStart.x + 4, y: nativeScrollStart.y + 96 };
+  await dispatchTouches(page, '#documentPane', 'touchstart', [nativeScrollStart]);
+  const nativeScrollEvent = await dispatchTouches(page, '#documentPane', 'touchmove', [nativeScrollMove]);
+  const nativeScrollAfter = await page.locator('#documentPane').evaluate(pane => pane.scrollTop);
+  check('Scroll leaves one-finger movement to native iPad momentum', nativeScrollStart.touchAction.includes('pan-y') && !nativeScrollEvent.defaultPrevented && Math.abs(nativeScrollAfter-nativeScrollStart.top) < 1, JSON.stringify({ touchAction: nativeScrollStart.touchAction, prevented: nativeScrollEvent.defaultPrevented, before: nativeScrollStart.top, after: nativeScrollAfter }));
+  await dispatchTouches(page, '#documentPane', 'touchend', [], [nativeScrollMove]);
   await page.click('[data-pdf-layout="book"]');
+  await page.waitForFunction(() => document.querySelector('[data-pdf-layout="book"]').getAttribute('aria-pressed') === 'true');
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('book-spread') && document.querySelectorAll('.pdf-page.book-active').length === 2);
@@ -748,7 +761,7 @@ async function curlFxMetrics(page) {
   await touch.waitForFunction(() => document.getElementById('pdfFrame').classList.contains('book-cover') && document.querySelector('.pdf-page[data-page="1"] canvas')?.width > 0);
   await waitForCompleteFit(touch, 1);
   const touchCapabilities = await touch.evaluate(() => ({ coarse: matchMedia('(pointer: coarse)').matches, touchPoints: navigator.maxTouchPoints, spread: document.getElementById('pdfFrame').classList.contains('book-spread'), touchAction: getComputedStyle(document.getElementById('documentPane')).touchAction }));
-  check('the tablet regression runs through a coarse touch Book spread', touchCapabilities.coarse && touchCapabilities.touchPoints > 0 && touchCapabilities.spread && touchCapabilities.touchAction === 'none', JSON.stringify(touchCapabilities));
+  check('the tablet regression runs through a coarse touch Book spread with native vertical panning', touchCapabilities.coarse && touchCapabilities.touchPoints > 0 && touchCapabilities.spread && touchCapabilities.touchAction === 'pan-y', JSON.stringify(touchCapabilities));
   await touch.evaluate(() => {
     window.__touchLegacyTurnSeen = false;
     window.__touchLegacyObserver = new MutationObserver(() => {
@@ -766,9 +779,15 @@ async function curlFxMetrics(page) {
   const verticalStart = { id: 30, x: touchIntentBox.x + touchIntentBox.width * .52, y: touchIntentBox.y + touchIntentBox.height * .38 };
   const verticalMove = { id: 30, x: verticalStart.x + 6, y: verticalStart.y + 94 };
   await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchstart', [verticalStart]);
-  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchmove', [verticalMove]);
-  check('vertical tablet motion is not mistaken for a page turn', !(await touch.locator('#pdfFrame').getAttribute('data-curl-state')) && (await touch.locator('#pageNumber').textContent()).startsWith('1 /'));
+  const verticalMoveEvent = await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchmove', [verticalMove]);
+  check('vertical tablet motion stays native and is not mistaken for a page turn', !verticalMoveEvent.defaultPrevented && !(await touch.locator('#pdfFrame').getAttribute('data-curl-state')) && (await touch.locator('#pageNumber').textContent()).startsWith('1 /'), JSON.stringify(verticalMoveEvent));
   await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchend', [], [verticalMove]);
+  const fitInteriorStart = { id: 62, x: touchIntentBox.x + touchIntentBox.width * .55, y: touchIntentBox.y + touchIntentBox.height * .52 };
+  const fitInteriorMove = { id: 62, x: fitInteriorStart.x - 110, y: fitInteriorStart.y + 3 };
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchstart', [fitInteriorStart]);
+  const fitInteriorMoveEvent = await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchmove', [fitInteriorMove]);
+  await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchend', [], [fitInteriorMove]);
+  check('an interior horizontal swipe no longer steals the page from its outer edge', !fitInteriorMoveEvent.defaultPrevented && !(await touch.locator('#pdfFrame').getAttribute('data-curl-state')) && (await touch.locator('#pageNumber').textContent()).startsWith('1 /'), JSON.stringify(fitInteriorMoveEvent));
 
   /* Open the cover with a finger in three stages. Progress and the crease tip must keep
      moving with the finger before release; the page counter remains on the old spread. */
@@ -801,6 +820,52 @@ async function curlFxMetrics(page) {
   await dispatchTouches(touch, '.pdf-page[data-page="1"] canvas', 'touchend', [], [coverCommit]);
   await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
   check('releasing the touch cover past its threshold opens one spread cleanly', await touch.locator('.book-curl-overlay,.book-curl-under,.book-curl-front,.book-turning').count() === 0);
+  await waitForCompleteFit(touch, 2);
+
+  /* Book can become the same true page-width reader as Scroll. Vertical travel stays
+     native there, and the visible outer edge still turns without first restoring Fit. */
+  await touch.evaluate(() => document.getElementById('zoomLabel').click());
+  await touch.waitForFunction(() => {
+    const pane = document.getElementById('documentPane'), frame = document.getElementById('pdfFrame');
+    return document.getElementById('zoomLabel').textContent === 'Width' && frame.dataset.pagedReady === 'true' && pane.scrollHeight > pane.clientHeight + 20;
+  });
+  const widthBook = await touch.locator('#documentPane').evaluate(pane => {
+    const pages = Array.from(document.querySelectorAll('.pdf-page.book-active'));
+    pane.scrollLeft = Math.max(0, pane.scrollWidth-pane.clientWidth);
+    pane.scrollTop = Math.max(0, (pane.scrollHeight-pane.clientHeight)/2);
+    const paneRect = pane.getBoundingClientRect(), leaf = document.querySelector('.pdf-page[data-page="3"].book-spread-right'), leafRect = leaf.getBoundingClientRect();
+    const visibleLeft = Math.max(paneRect.left, leafRect.left), visibleRight = Math.min(paneRect.right, leafRect.right);
+    return {
+      label: document.getElementById('zoomLabel').textContent,
+      touchAction: getComputedStyle(pane).touchAction,
+      maxLeft: pane.scrollWidth-pane.clientWidth,
+      maxTop: pane.scrollHeight-pane.clientHeight,
+      pageWidth: pages[0].offsetWidth,
+      paneWidth: pane.clientWidth,
+      top: pane.scrollTop,
+      vertical: { id: 60, x: (visibleLeft+visibleRight)/2, y: paneRect.top+paneRect.height*.4 },
+      edge: { id: 61, x: Math.min(paneRect.right-3, leafRect.right-10), y: Math.max(leafRect.top+30, Math.min(leafRect.bottom-30, paneRect.top+paneRect.height*.5)) }
+    };
+  });
+  check('Book Width makes one page fill the pane with direct vertical overflow', widthBook.label === 'Width' && widthBook.touchAction === 'pan-y' && widthBook.maxLeft > 20 && widthBook.maxTop > 20 && widthBook.pageWidth >= widthBook.paneWidth*.95, JSON.stringify(widthBook));
+  const widthVerticalMove = { id: widthBook.vertical.id, x: widthBook.vertical.x+5, y: widthBook.vertical.y+92 };
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchstart', [widthBook.vertical]);
+  const widthVerticalEvent = await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchmove', [widthVerticalMove]);
+  const widthVerticalAfter = await touch.locator('#documentPane').evaluate(pane => pane.scrollTop);
+  check('Book Width yields vertical movement to iPadOS instead of replaying touch deltas', !widthVerticalEvent.defaultPrevented && Math.abs(widthVerticalAfter-widthBook.top) < 1 && !(await touch.locator('#pdfFrame').getAttribute('data-curl-state')), JSON.stringify({ prevented: widthVerticalEvent.defaultPrevented, before: widthBook.top, after: widthVerticalAfter }));
+  await dispatchTouches(touch, '.pdf-page[data-page="3"] canvas', 'touchend', [], [widthVerticalMove]);
+
+  await dispatchTouchTap(touch, '.pdf-page[data-page="3"] canvas', widthBook.edge);
+  await touch.waitForFunction(() => {
+    const frame = document.getElementById('pdfFrame'), progress = +frame.dataset.curlProgress;
+    return frame.dataset.curlState === 'settling' && frame.dataset.curlOrigin === 'edge' && frame.dataset.curlDirection === 'next' && frame.dataset.curlSource === '3' && progress > .04 && progress < .96;
+  });
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('4–5 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  check('a visible outer-edge tap still flips Book while Width is active', (await touch.locator('#zoomLabel').textContent()) === 'Width');
+  await touch.click('#prevPage');
+  await touch.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('2–3 /') && !document.getElementById('pdfFrame').dataset.curlState);
+  await touch.click('#zoomLabel');
+  await touch.waitForFunction(() => document.getElementById('zoomLabel').textContent === 'Fit');
   await waitForCompleteFit(touch, 2);
 
   /* A bottom corner is a tap target, not a direction lock: decisive vertical travel

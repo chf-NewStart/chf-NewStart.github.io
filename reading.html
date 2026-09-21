@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=120">
+  <link rel="stylesheet" href="/reading.css?v=122">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -188,7 +188,7 @@
               <div class="guide-scope" role="group" aria-label="PDF page layout">
                 <button class="toggle" type="button" data-pdf-layout="scroll" aria-pressed="true" title="Continuous pages that scroll downward">Scroll</button>
                 <button class="toggle" type="button" data-pdf-layout="page" aria-pressed="false" title="One complete page at a time, fitted without cropping">Page</button>
-                <button class="toggle" type="button" data-pdf-layout="book" aria-pressed="false" title="Facing pages; drag an outer corner to turn the sheet; narrow panes show one complete page">Book</button>
+                <button class="toggle" type="button" data-pdf-layout="book" aria-pressed="false" title="Facing pages; tap or pull a visible outer edge to turn; tap Fit for a full-width page">Book</button>
               </div>
             </div>
           </div>
@@ -389,6 +389,10 @@
         </div>
       </div>
       <button id="linkReturn" class="link-return hidden" type="button">↩ Back to where you were</button>
+      <aside class="pdf-reference-preview hidden" id="pdfReferencePreview" role="tooltip" aria-live="polite">
+        <span class="pdf-reference-preview-label" id="pdfReferencePreviewLabel">Linked passage</span>
+        <p id="pdfReferencePreviewText">Finding the linked passage…</p>
+      </aside>
       <aside class="selection-card hidden" id="selectionCard" aria-label="Actions for selected text">
         <div class="lookup-head">
           <div><span class="lookup-eyebrow" id="selectionEyebrow">Selected passage</span><span class="lookup-selection" id="selectionExcerpt"></span></div>
@@ -746,9 +750,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=120',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=122',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=120" defer></script>
+<script src="/reading.js?v=122" defer></script>
 </body>
 </html>

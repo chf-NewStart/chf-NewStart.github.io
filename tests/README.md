@@ -38,12 +38,25 @@ page opening, responsive results, and List-mode category and bulk-move controls.
 individual-occurrence arrows, saved-marker cleanup, PDF/Reader switching, Page
 rebuilds, and phrases split between PDF.js text-layer spans.
 
+`reading-pdf-links.test.js` covers real pointer hit-testing for PDF annotations,
+phone-sized superscript citations, safe external URLs, blocked script actions,
+destination-aware reference previews, exact named `/FitR` line jumps, and
+Backspace return to the citation.
+
 `reading-ipad-touch-dock.test.js` covers the coarse-touch iPad dock, 52px Guide,
 Highlight, Notes, and More targets, persisted left/right placement, temporary
 notes that preserve PDF size and position, the explicit wide-landscape pinned
 panel, portrait fallback, keyboard-safe page-note editing, adaptive settings,
 dialog focus/return, and 44px touch targets. Set `PHLOEM_BROWSER=webkit` to run
 the same workflow against Playwright WebKit.
+
+`reading-ipad-header.test.js` covers tablet masthead button fit, separation from
+the reader's Library row and landscape Settings sheet, root viewport offsets,
+and Zen/phone/library transitions.
+
+`reading-book-guide.test.js` covers dragging the guide between facing pages,
+holding its page through the gutter, matching page-note context, and retaining
+Page and Scroll behavior. Both tests also accept `PHLOEM_BROWSER=webkit`.
 
 `reading-selection-touch.test.js` covers exact partial native selections across
 adjacent PDF.js text spans in Chromium and WebKit, the absence of release-time
@@ -71,10 +84,11 @@ old-setting migration, phone fallback, conventional cover/spread parity, final
 blank leaves, the center seam, automatic midpoint curls from arrows and keys,
 physical single-page stacks, direct mouse page curls with a real backside and
 under-page, spine-bound diagonal folds, and iPad-style Page/Book touch curls that
-follow the finger without an artificial fingertip halo, bottom-corner tap turns,
-touch intent/pinch/pan preservation, OS touch-cancel cleanup and zoom-edge curl
+follow the finger without an artificial fingertip halo, visible-edge tap turns,
+native vertical scroll ownership, full-width Book zoom, pinch/horizontal-pan
+preservation, OS touch-cancel cleanup and zoom-edge curl
 handoff, curl cancel/commit thresholds, mid-drag cleanup,
-left-to-right arrows and swipes, rapid-turn queuing and cancellation, internal-
+left-to-right arrows and edge pulls, rapid-turn queuing and cancellation, internal-
 link return, independent PDF/Guide choices, reduced motion, and switching back
 to Scroll.
 
@@ -133,11 +147,14 @@ node tests/reading-library-list.test.js
 node tests/reading-library-thinking-search.test.js
 node tests/reading-find-highlight.test.js
 node tests/reading-ipad-touch-dock.test.js
+node tests/reading-ipad-header.test.js
+node tests/reading-book-guide.test.js
 PHLOEM_BROWSER=webkit node tests/reading-ipad-touch-dock.test.js
 node tests/reading-selection-touch.test.js
 PHLOEM_BROWSER=webkit node tests/reading-selection-touch.test.js
 node tests/reading-pdf-continuity.test.js
 PHLOEM_BROWSER=webkit node tests/reading-pdf-continuity.test.js
+node tests/reading-pdf-links.test.js
 node tests/reading-library-return-offline.test.js
 node tests/reading-pdf-zoom.test.js
 node tests/reading-vertical-book-flow.test.js

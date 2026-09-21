@@ -32,7 +32,11 @@
     button { cursor: pointer; }
     a { color: inherit; }
     .hidden { display: none !important; }
-    body.reading { overflow: hidden; }
+    /* Keep the reading screen attached to the viewport. iPadOS can move the root
+       scroller during focus/visual-viewport changes even with overflow:hidden; that
+       makes the sticky masthead drift over the paper and leaves touch geometry stale.
+       Only the document pane should scroll while a paper is open. */
+    body.reading { position: fixed; inset: 0; min-height: 0; overflow: hidden; }
     /* While reading, the root scroller is pinned at 0, so pull-to-refresh is always
        armed — one accidental drag would reload the app over an open note. Scoped to
        the reader: in the library the refresh gesture stays a feature. */
@@ -757,10 +761,12 @@
     /* On the PDF itself only the guide settings apply; typography belongs to Reader view. */
     .comfort-bar.pdf-mode .text-only { display: none !important; }
     .reader-layout { --notebook-width: 360px; position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--notebook-width); }
-    .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; touch-action: manipulation; overscroll-behavior: contain; }
-    /* Page and Book own their iPad gestures: the first move must stay with our live
-       curl/pan/pinch handlers or Safari can claim it before the paper starts folding. */
-    .document-pane.paged-pdf-flow { touch-action: none; }
+    /* Native kinetic scrolling is markedly smoother than replaying touch deltas in JS,
+       especially inside an iPad WKWebView. One finger therefore belongs to the scroll
+       container; the reader only claims a horizontal drag that begins on a page edge,
+       plus its own two-finger PDF pinch. */
+    .document-pane { min-width: 0; overflow: auto; background: #d8d6d0; touch-action: pan-x pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+    .document-pane.paged-pdf-flow { touch-action: pan-y; }
     #pageNumber, .mobile-bar .m-page { cursor: pointer; }
     #pageNumber { padding: 2px 8px; border: 0; background: transparent; font: inherit; }
     html[data-theme="dark"] .document-pane { background: #111516; }
@@ -865,12 +871,20 @@
       .pdf-frame.paged-pdf-flow .pdf-page.book-turning { animation-duration: .01ms; }
       .book-curl-grip { transition: none; }
       .shelf-loading-mark { animation: none; }
+      .pane-spotlight :is(.guide-band, .guide-shade) { transition: none; }
       .guide-tool.guide-discovery, #mMore.guide-discovery, .guide-tool.guide-discovery .guide-discovery-note { animation: none; }
       .guide-tool.guide-discovery .guide-discovery-note { opacity: 1; transform: none; }
     }
-    .pdf-links { position: absolute; inset: 0; pointer-events: none; }
-    .pdf-link { position: absolute; pointer-events: auto; border-radius: 3px; }
+    /* PDF.js text stays selectable everywhere except the authored link rectangles.
+       The link layer must sit above that transparent text or spans intercept both the
+       click and hover before the annotation can see them. */
+    .pdf-links { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
+    .pdf-link { position: absolute; pointer-events: auto; border-radius: 3px; touch-action: manipulation; }
     .pdf-link:hover { background: rgba(64, 137, 174, .16); box-shadow: 0 0 0 1px rgba(64, 137, 174, .4); }
+    .pdf-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; background: rgba(64, 137, 174, .16); }
+    .pdf-destination-flash { position: absolute; z-index: 5; min-width: 34px; min-height: 14px; border: 1px solid rgba(64,137,174,.78); border-radius: 4px; background: rgba(91,169,255,.23); box-shadow: 0 0 0 4px rgba(91,169,255,.1); pointer-events: none; animation: pdf-destination-flash 2.4s ease-out both; }
+    @keyframes pdf-destination-flash { 0%,18% { opacity: 1; } 100% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .pdf-destination-flash { animation: none; } }
     .pdf-frame.dark-paper .pdf-page { background: #171717; }
     .pdf-frame.dark-paper .pdf-page canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.92); }
     .pdf-frame[data-paper-appearance="original"] .pdf-page canvas { filter: none; mix-blend-mode: normal; }
@@ -1117,6 +1131,9 @@
     .mini-note .hl-note { display: block; margin-top: 3px; color: var(--ink); font-style: normal; }
     .reader-toast { position: fixed; z-index: 40; left: 22px; bottom: 22px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--ink); color: var(--surface); box-shadow: var(--shadow); font-size: .72rem; font-weight: 650; pointer-events: none; }
     .link-return { position: fixed; z-index: 41; left: 50%; bottom: calc(66px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 10px 15px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-size: .72rem; font-weight: 700; }
+    .pdf-reference-preview { position: fixed; z-index: 43; width: min(360px, calc(100vw - 24px)); padding: 12px 14px 13px; border: 1px solid color-mix(in srgb, var(--blue) 38%, var(--line)); border-radius: 13px; background: color-mix(in srgb, var(--surface) 97%, transparent); color: var(--ink); box-shadow: 0 16px 45px rgba(20,24,25,.22); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); pointer-events: none; }
+    .pdf-reference-preview-label { display: block; margin-bottom: 5px; color: var(--blue); font-size: .57rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .pdf-reference-preview p { margin: 0; color: var(--ink); font: .8rem/1.46 var(--serif); }
     .lookup-card { position: fixed; z-index: 44; width: min(370px, calc(100vw - 24px)); max-height: min(540px, calc(100dvh - 24px)); overflow-y: auto; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 22px 70px rgba(20,24,25,.26); backdrop-filter: blur(18px); }
     .selection-card > .lookup-card { position: static; z-index: auto; left: auto; right: auto; top: auto; bottom: auto; width: 100%; max-height: none; overflow: visible; border: 0; border-top: 1px solid var(--line); border-radius: 0 0 15px 15px; background: color-mix(in srgb, var(--surface-2) 45%, transparent); box-shadow: none; backdrop-filter: none; }
     .selection-card > .lookup-card .lookup-photo-link { height: 145px; }
@@ -1618,6 +1635,19 @@
       .cover-focus-guide { display: none; }
     }
 
+    /* Tablet portrait still needs every navigation and appearance button. The
+       desktop tagline and an unbounded sync label otherwise push the final actions
+       outside the screen before the phone layout takes over at 720px. */
+    @media (min-width: 721px) and (max-width: 1100px) {
+      .masthead { gap: 10px; padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right)); }
+      .brand span { display: none; }
+      .nav { flex: 0 0 auto; gap: 2px; }
+      .nav-btn { min-height: 44px; padding-inline: 7px; font-size: .8rem; white-space: nowrap; }
+      .head-actions { min-width: 0; gap: 6px; }
+      .head-actions .cloud { min-width: 44px; min-height: 44px; overflow: hidden; text-overflow: ellipsis; }
+      .masthead .icon-btn { flex: 0 0 44px; width: 44px; min-height: 44px; }
+    }
+
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; }
       .hero-card { display: none; }
@@ -1692,8 +1722,10 @@
        rail free so their actions never land beneath the reader's chosen-hand dock. */
     body.touch-tablet-reader.reading:not(.zen) :is(.selection-card,.lookup-card) { max-width: calc(100vw - 100px - env(safe-area-inset-left) - env(safe-area-inset-right)) !important; }
     body.touch-tablet-reader .comfort-bar {
-      position: fixed; z-index: 50; top: max(72px, calc(env(safe-area-inset-top) + 12px)); right: max(82px, calc(env(safe-area-inset-right) + 82px));
-      width: min(680px, calc(100vw - 112px)); max-height: calc(100dvh - 92px); overflow: auto; overscroll-behavior: contain;
+      /* In landscape this panel begins below both app bars, leaving its Settings
+         trigger exposed so an iPad reader can always close it with the same tap. */
+      position: fixed; z-index: 50; top: max(132px, calc(env(safe-area-inset-top) + 132px)); right: max(82px, calc(env(safe-area-inset-right) + 82px));
+      width: min(680px, calc(100vw - 112px)); max-height: calc(100dvh - 152px); overflow: auto; overscroll-behavior: contain;
       display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 18px;
       background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 20px 62px rgba(12,16,18,.28);
       -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);

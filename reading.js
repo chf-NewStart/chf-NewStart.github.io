@@ -653,8 +653,8 @@
        never scroll, or the toolbar slides under the sticky masthead. */
     document.body.classList.toggle('reading', id === 'readerPage');
     if (id !== 'readerPage') {
-      pdfOpenEpoch++;pdfDoc=null;
-      toggleSheet(false); hideLookup(); byId('linkReturn').classList.add('hidden'); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){}
+      pdfOpenEpoch++;invalidatePdfLinkNavigation(true);pdfDoc=null;
+      toggleSheet(false); hideLookup(); hidePdfReferencePreview(); byId('linkReturn').classList.add('hidden'); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){}
     }
     /* Any exit that bypasses the back button (masthead, brand, deleting the open
        paper) still consumes the reader's history layer, or the next system back
@@ -2420,7 +2420,7 @@
   }
   /* The guide anchors to the pane, not the screen: zen mode and bar toggles move the
      pane, and a pane-relative anchor keeps the band over the same line of text. */
-  var focusPara=null, pageStartCache={}, guideOffset=null;
+  var focusPara=null, pageStartCache={}, guideOffset=null, guideSurface=null;
   function paraSections(){ return byId('textDocument').querySelectorAll('.para'); }
   function applyComfort(){
     var doc=byId('textDocument');
@@ -2535,7 +2535,22 @@
     var surface=null;
     if(readerMode==='pdf'){
       surface=target&&target.closest?target.closest('.pdf-page'):null;
-      if(!surface&&pagedPdfFlow()&&pdfViews.length)surface=pdfViews[currentPage-1]&&pdfViews[currentPage-1].holder;
+      if(pagedPdfFlow()&&pdfViews.length){
+        var pages=pagedPageNos(currentPage),visible=pages.map(function(n){return pdfViews[n-1]&&pdfViews[n-1].holder;}).filter(function(holder){return holder&&holder.classList.contains('book-active');});
+        if(surface&&visible.indexOf(surface)<0)surface=null;
+        /* The Guide handle owns pointer capture, so its event target cannot identify
+           the leaf below the finger. Hit-test only the displayed page or spread. */
+        if(!surface){
+          var paneRect=byId('documentPane').getBoundingClientRect();
+          if(clientX>=paneRect.left&&clientX<=paneRect.right&&clientY>=paneRect.top&&clientY<=paneRect.bottom){
+            surface=visible.find(function(holder){var r=holder.getBoundingClientRect();return r.width>0&&r.height>0&&clientX>=r.left&&clientX<=r.right&&clientY>=r.top&&clientY<=r.bottom;})||null;
+          }
+        }
+        /* Keep the last leaf while the handle crosses the gutter. A stale leaf cannot
+           survive a page turn or rebuild because it will no longer be in `visible`. */
+        if(!surface&&visible.indexOf(guideSurface)>=0)surface=guideSurface;
+        if(!surface)surface=pdfViews[currentPage-1]&&pdfViews[currentPage-1].holder;
+      }
       if(!surface&&pdfViews.length){
         var pane=byId('documentPane'),paneRect=pane.getBoundingClientRect();
         surface=pdfViews[pdfPageIndexAtY(pane.scrollTop+(clientY-paneRect.top))].holder;
@@ -2581,7 +2596,17 @@
       overlay.style.setProperty('--guide-h',guideHeight+'px');
       comfort.guideY=Math.max(.05,Math.min(.95,(clientY-rect.top)/Math.max(1,rect.height)));
     }
+    guideSurface=surface;
     overlay.classList.add('placed');
+    /* Crossing the spine with the Guide selects that leaf for notes and discussion;
+       the visible spread itself stays exactly where it is. WebKit can paint and mark a
+       spread ready one microtask before the page-turn promise clears `pagedTurning`.
+       A leaf in the current spread is only note context, so it remains safe to select
+       during that tail end of the turn; never let the guide select another spread. */
+    if(guideDragging&&readerMode==='pdf'&&pagedPdfFlow()&&!bookCurlOwned){
+      var pageNo=+surface.dataset.page;
+      if(pageNo&&pagedPageNos(currentPage).indexOf(pageNo)>=0&&pageNo!==currentPage){currentPage=pageNo;syncPagedPages();updatePageChrome();}
+    }
     saveComfortSoon();
     return true;
   }
@@ -2652,6 +2677,7 @@
     }else if(comfort.focus){
       message=matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page';
     }
+    if(comfort.focus&&bookSpread()&&!matchMedia('(hover: hover)').matches)message='Reading guide on · tap either page or drag the ⠿ handle across the spine';
     showReaderToast(message);
   };
   byId('documentPane').addEventListener('pointermove',function(e){
@@ -2816,6 +2842,7 @@
   function endGuideDrag(e){
     if(!guideDragging)return;guideDragging=false;byId('paneSpotlight').classList.remove('dragging');
     if(this.hasPointerCapture&&this.hasPointerCapture(e.pointerId))this.releasePointerCapture(e.pointerId);
+    if(readerMode==='pdf'&&pagedPdfFlow())savePagedPosition();
   }
   byId('guideGrip').addEventListener('pointerup',endGuideDrag);
   byId('guideGrip').addEventListener('pointercancel',endGuideDrag);
@@ -3135,8 +3162,7 @@
   var pageTrackTick=false;
   ['pointerdown','touchstart'].forEach(function(type){byId('documentPane').addEventListener(type,function(){cancelPdfPositionRestore();},{capture:true,passive:true});});
   byId('documentPane').addEventListener('scroll',function(){
-    if(!pageTrackTick){pageTrackTick=true;requestAnimationFrame(function(){pageTrackTick=false;trackCurrentPage();if(comfort.focus&&!guideDragging)placeGuide();});}
-    updateProgress();
+    if(!pageTrackTick){pageTrackTick=true;requestAnimationFrame(function(){pageTrackTick=false;trackCurrentPage();updateProgress();if(comfort.focus&&!guideDragging)placeGuide();});}
     clearTimeout(scrollSaveTimer);
     scrollSaveTimer=setTimeout(function(){
       if(restoringPdfPosition)return;saveCurrentReadingPosition();
@@ -3312,31 +3338,149 @@
   byId('findPrev').onclick=function(){gotoFindMatch(findIndex-1);};
   byId('findNext').onclick=function(){gotoFindMatch(findIndex+1);};
 
-  var linkReturnSpot=null;
+  var linkReturnSpot=null,pdfLinkNavigationToken=0,pdfReferencePreviewToken=0,pdfReferencePreviewAnchor=null,pdfDestinationFlashTimer=null;
+  function invalidatePdfLinkNavigation(clearReturn){
+    pdfLinkNavigationToken++;
+    if(clearReturn){linkReturnSpot=null;clearPdfDestinationFlash();var button=byId('linkReturn');if(button)button.classList.add('hidden');}
+  }
+  function pdfDestNumber(value){return value===null||value===undefined?null:(Number.isFinite(+value)?+value:null);}
+  function pdfDestType(dest){var type=dest&&dest[1];return String(type&&type.name||type||'').replace(/^\//,'');}
+  async function resolvePdfDestination(doc,dest){
+    var array=typeof dest==='string'?await doc.getDestination(dest):dest;
+    if(!Array.isArray(array)||array[0]===null||array[0]===undefined)throw new Error('missing PDF destination');
+    var first=array[0],index=first&&typeof first==='object'?await doc.getPageIndex(first):+first;
+    if(!Number.isFinite(index)||index<0||index>=doc.numPages)throw new Error('invalid PDF destination');
+    var type=pdfDestType(array),resolved={array:array,name:typeof dest==='string'?dest:'',type:type,page:index+1,left:null,right:null,top:null,bottom:null,hasPoint:false};
+    if(type==='XYZ'){resolved.left=pdfDestNumber(array[2]);resolved.top=pdfDestNumber(array[3]);resolved.hasPoint=resolved.left!==null||resolved.top!==null;}
+    else if(type==='FitH'||type==='FitBH'){resolved.top=pdfDestNumber(array[2]);resolved.hasPoint=resolved.top!==null;}
+    else if(type==='FitV'||type==='FitBV'){resolved.left=pdfDestNumber(array[2]);resolved.hasPoint=resolved.left!==null;}
+    else if(type==='FitR'){
+      resolved.left=pdfDestNumber(array[2]);resolved.bottom=pdfDestNumber(array[3]);resolved.right=pdfDestNumber(array[4]);resolved.top=pdfDestNumber(array[5]);resolved.hasPoint=resolved.left!==null||resolved.right!==null||resolved.top!==null||resolved.bottom!==null;
+    }
+    var page=await doc.getPage(resolved.page),box=page&&page.view||[0,0,1,1];resolved.pageBox=box.map(function(n){return+n||0;});
+    resolved.unitViewport=page&&page.getViewport?page.getViewport({scale:1}):null;
+    return resolved;
+  }
+  function pdfDestinationPoint(resolved){
+    if(!resolved||!resolved.hasPoint)return null;
+    var box=resolved.pageBox||[0,0,1,1],fitRect=resolved.type==='FitR',x=fitRect&&resolved.left!==null&&resolved.right!==null?(resolved.left+resolved.right)/2:(resolved.left!==null?resolved.left:(resolved.right!==null?resolved.right:(box[0]+box[2])/2)),y=fitRect&&resolved.top!==null&&resolved.bottom!==null?(resolved.top+resolved.bottom)/2:(resolved.top!==null?resolved.top:(resolved.bottom!==null?resolved.bottom:box[3]));
+    return Number.isFinite(x)&&Number.isFinite(y)?{x:x,y:y}:null;
+  }
+  function pdfDestinationGeometry(resolved,view){
+    if(!resolved||!view||!view.viewport||!view.viewport.convertToViewportPoint)return null;
+    var viewport=view.viewport,point=pdfDestinationPoint(resolved);if(!point)return null;
+    var converted=viewport.convertToViewportPoint(point.x,point.y),left=converted[0],top=converted[1]-8,width=Math.max(34,view.pageWidth*.44),height=16;
+    if(resolved.type==='FitR'&&resolved.left!==null&&resolved.right!==null&&resolved.top!==null&&resolved.bottom!==null&&viewport.convertToViewportRectangle){
+      var rect=viewport.convertToViewportRectangle([resolved.left,resolved.bottom,resolved.right,resolved.top]),rawHeight=Math.abs(rect[3]-rect[1]);left=Math.min(rect[0],rect[2]);top=Math.min(rect[1],rect[3])-(rawHeight<14?(14-rawHeight)/2:0);width=Math.max(34,Math.abs(rect[2]-rect[0]));height=Math.max(14,rawHeight);
+    }else{
+      left=Math.max(0,Math.min(view.pageWidth-34,left));width=Math.min(width,Math.max(34,view.pageWidth-left));
+    }
+    width=Math.min(view.pageWidth,width);height=Math.min(view.pageHeight,height);left=Math.max(0,Math.min(Math.max(0,view.pageWidth-width),left));top=Math.max(0,Math.min(Math.max(0,view.pageHeight-height),top));
+    return{left:left,top:top,width:width,height:height};
+  }
+  function clearPdfDestinationFlash(){
+    clearTimeout(pdfDestinationFlashTimer);byId('pdfFrame').querySelectorAll('.pdf-destination-flash').forEach(function(mark){mark.remove();});
+  }
+  function flashPdfDestination(resolved){
+    clearPdfDestinationFlash();
+    var view=resolved&&pdfViews[resolved.page-1],geometry=pdfDestinationGeometry(resolved,view);if(!view||!geometry)return;
+    var point=pdfDestinationPoint(resolved),mark=document.createElement('span');mark.className='pdf-destination-flash';mark.setAttribute('aria-hidden','true');mark.dataset.page=String(resolved.page);if(point)mark.dataset.pdfY=String(point.y);mark.style.left=geometry.left+'px';mark.style.top=geometry.top+'px';mark.style.width=geometry.width+'px';mark.style.height=geometry.height+'px';view.sheet.appendChild(mark);
+    pdfDestinationFlashTimer=setTimeout(function(){if(mark.isConnected)mark.remove();},2500);
+  }
+  function hidePdfReferencePreview(){
+    pdfReferencePreviewToken++;if(pdfReferencePreviewAnchor&&pdfReferencePreviewAnchor.getAttribute('aria-describedby')==='pdfReferencePreview')pdfReferencePreviewAnchor.removeAttribute('aria-describedby');pdfReferencePreviewAnchor=null;var preview=byId('pdfReferencePreview');if(preview)preview.classList.add('hidden');
+  }
+  function placePdfReferencePreview(anchor){
+    var preview=byId('pdfReferencePreview');if(!preview||!anchor||!anchor.isConnected)return;
+    var rect=anchor.getBoundingClientRect(),gap=9,pad=12,width=preview.offsetWidth||340,height=preview.offsetHeight||90,left=Math.max(pad,Math.min(innerWidth-width-pad,rect.left+rect.width/2-width/2));
+    var top=rect.top-height-gap;if(top<pad)top=Math.min(innerHeight-height-pad,rect.bottom+gap);preview.style.left=Math.max(pad,left)+'px';preview.style.top=Math.max(pad,top)+'px';
+  }
+  function nearestPdfLink(layer,clientX,clientY){
+    if(!layer||!Number.isFinite(clientX)||!Number.isFinite(clientY))return null;
+    var layerRect=layer.getBoundingClientRect(),scaleX=layer.offsetWidth?layerRect.width/layer.offsetWidth:1,scaleY=layer.offsetHeight?layerRect.height/layer.offsetHeight:1,best=null,bestScore=Infinity;
+    layer.querySelectorAll('.pdf-link').forEach(function(link){
+      var hit=link.getBoundingClientRect();if(clientX<hit.left-.5||clientX>hit.right+.5||clientY<hit.top-.5||clientY>hit.bottom+.5)return;
+      var sourceLeft=layerRect.left+(+link.dataset.pdfSourceLeft||0)*scaleX,sourceTop=layerRect.top+(+link.dataset.pdfSourceTop||0)*scaleY,sourceRight=sourceLeft+(+link.dataset.pdfSourceWidth||0)*scaleX,sourceBottom=sourceTop+(+link.dataset.pdfSourceHeight||0)*scaleY;
+      var dx=clientX<sourceLeft?sourceLeft-clientX:(clientX>sourceRight?clientX-sourceRight:0),dy=clientY<sourceTop?sourceTop-clientY:(clientY>sourceBottom?clientY-sourceBottom:0),cx=(sourceLeft+sourceRight)/2,cy=(sourceTop+sourceBottom)/2;
+      var score=dx*dx+dy*dy+(Math.pow(clientX-cx,2)+Math.pow(clientY-cy,2))*.0001;if(score<bestScore){best=link;bestScore=score;}
+    });
+    return best;
+  }
+  function pdfReferenceEntryNumber(text){var match=String(text||'').trim().match(/^(?:\[\s*(\d{1,3})\s*\]|(\d{1,3})[.)]?)(?=\s|[A-Z])/);return match?+(match[1]||match[2]):null;}
+  function pdfReferenceEntryStart(text){return pdfReferenceEntryNumber(text)!==null;}
+  function pdfPreviewSnippet(lines,resolved){
+    lines=(lines||[]).filter(function(line){return line&&String(line.text||'').trim();});if(!lines.length)return'';
+    var viewport=resolved&&resolved.unitViewport,point=pdfDestinationPoint(resolved),target=null,rect=null;
+    function visualPoint(x,y){
+      if(viewport&&viewport.convertToViewportPoint){var converted=viewport.convertToViewportPoint(x,y);return{x:converted[0],y:converted[1]};}
+      return{x:x,y:-y};
+    }
+    if(point)target=visualPoint(point.x,point.y);
+    if(viewport&&resolved.type==='FitR'&&resolved.left!==null&&resolved.right!==null&&resolved.top!==null&&resolved.bottom!==null&&viewport.convertToViewportRectangle){
+      var convertedRect=viewport.convertToViewportRectangle([resolved.left,resolved.bottom,resolved.right,resolved.top]);rect={left:Math.min(convertedRect[0],convertedRect[2]),right:Math.max(convertedRect[0],convertedRect[2]),top:Math.min(convertedRect[1],convertedRect[3]),bottom:Math.max(convertedRect[1],convertedRect[3])};
+    }
+    var candidates=lines.map(function(line,index){
+      var start=visualPoint(line.x,line.y),end=visualPoint(line.endX,line.y);return{line:line,index:index,left:Math.min(start.x,end.x),right:Math.max(start.x,end.x),y:(start.y+end.y)/2,height:Math.max(1,line.height||8)};
+    }),median=layoutMedian(candidates.map(function(item){return item.height;}))||8;
+    function xDistance(item){
+      if(rect){return item.right<rect.left?rect.left-item.right:(item.left>rect.right?item.left-rect.right:0);}
+      if(!target)return 0;return target.x<item.left?item.left-target.x:(target.x>item.right?target.x-item.right:0);
+    }
+    var boundary=!!(target&&((resolved.type==='FitR'&&(!rect||rect.bottom-rect.top<Math.max(1,median*.35)))||resolved.type==='FitH'||resolved.type==='FitBH')),namedNumberMatch=String(resolved.name||'').match(/(?:l?bc|ref|bib)[^\d]*(\d{1,3})$/i),namedNumber=namedNumberMatch?+namedNumberMatch[1]:null;
+    var best=null,bestScore=Infinity;if(namedNumber!==null)candidates.forEach(function(item){
+      if(pdfReferenceEntryNumber(item.line.text)!==namedNumber)return;var score=xDistance(item)*.16+(target?Math.abs(item.y-target.y):item.index);if(score<bestScore){best=item;bestScore=score;}
+    });
+    if(!best)candidates.forEach(function(item){
+      var dy=target?item.y-target.y:item.index;if(boundary&&dy<-Math.max(1,median*.22))return;
+      var score=(target?(boundary?Math.max(0,dy):Math.abs(dy)):item.index)+xDistance(item)*.16;if(score<bestScore){best=item;bestScore=score;}
+    });
+    if(!best){candidates.forEach(function(item){var score=(target?Math.abs(item.y-target.y):item.index)+xDistance(item)*.16;if(score<bestScore){best=item;bestScore=score;}});}if(!best)return'';
+    var columnLeft=rect?rect.left:best.left-median,columnRight=rect?rect.right:best.right+median;
+    var column=candidates.filter(function(item){return item.right>=columnLeft-median&&item.left<=columnRight+median;}).sort(function(a,b){return a.y-b.y||a.left-b.left;}),start=column.indexOf(best);if(start<0)start=0;
+    var chosen=[];for(var i=start;i<column.length&&chosen.length<4;i++){
+      var item=column[i],text=String(item.line.text||'').replace(/\s+/g,' ').trim();if(!text)continue;
+      var previous=chosen[chosen.length-1],onlyHeading=chosen.length===1&&/^references?$/i.test(chosen[0].text);
+      if(chosen.length&&!onlyHeading&&(pdfReferenceEntryStart(text)||item.y-previous.y>median*2.4))break;
+      chosen.push({text:text,y:item.y});
+    }
+    if(chosen.length>1&&/^references?$/i.test(chosen[0].text))chosen.shift();
+    return chosen.map(function(line){return line.text;}).join(' ').slice(0,520);
+  }
+  async function showPdfReferencePreview(anchor,dest){
+    if(!pdfDoc||!anchor)return;if(pdfReferencePreviewAnchor&&pdfReferencePreviewAnchor!==anchor&&pdfReferencePreviewAnchor.getAttribute('aria-describedby')==='pdfReferencePreview')pdfReferencePreviewAnchor.removeAttribute('aria-describedby');var preview=byId('pdfReferencePreview'),label=byId('pdfReferencePreviewLabel'),copy=byId('pdfReferencePreviewText'),token=++pdfReferencePreviewToken,doc=pdfDoc,id=currentId,epoch=pdfOpenEpoch;pdfReferencePreviewAnchor=anchor;anchor.setAttribute('aria-describedby','pdfReferencePreview');
+    preview.classList.remove('hidden');label.textContent='Linked passage';copy.textContent='Finding the linked passage…';placePdfReferencePreview(anchor);
+    try{
+      var resolved=await resolvePdfDestination(doc,dest);if(token!==pdfReferencePreviewToken||doc!==pdfDoc||id!==currentId||epoch!==pdfOpenEpoch||pdfReferencePreviewAnchor!==anchor)return;
+      var page=await doc.getPage(resolved.page),content=await page.getTextContent({includeMarkedContent:true});if(token!==pdfReferencePreviewToken||doc!==pdfDoc||id!==currentId||epoch!==pdfOpenEpoch||pdfReferencePreviewAnchor!==anchor)return;
+      var snippet=pdfPreviewSnippet(contentLayout(content),resolved),isReference=/^(?:l?bc|ref|bib)/i.test(resolved.name)||pdfReferenceEntryStart(snippet);
+      label.textContent=(isReference?'Reference':'Linked passage')+' · p. '+resolved.page;copy.textContent=snippet||'The PDF links here, but does not expose readable text at that spot.';placePdfReferencePreview(anchor);
+    }catch(e){if(token===pdfReferencePreviewToken&&doc===pdfDoc&&id===currentId&&epoch===pdfOpenEpoch&&pdfReferencePreviewAnchor===anchor){label.textContent='Linked passage unavailable';copy.textContent='This PDF does not include a usable destination for the link.';placePdfReferencePreview(anchor);}}
+  }
   async function followPdfDest(dest){
     if(!pdfDoc)return;
-    var originDoc=pdfDoc,originId=currentId,originEpoch=pdfOpenEpoch;
+    var originDoc=pdfDoc,originId=currentId,originEpoch=pdfOpenEpoch,pane=byId('documentPane'),priorReturn=linkReturnSpot&&linkReturnSpot.id===currentId&&linkReturnSpot.epoch===pdfOpenEpoch?linkReturnSpot:null;
+    if(!priorReturn)linkReturnSpot={top:pane.scrollTop,left:pane.scrollLeft,page:currentPage,id:originId,epoch:originEpoch};
+    var navigationToken=++pdfLinkNavigationToken;hidePdfReferencePreview();clearPdfDestinationFlash();
+    function stillCurrent(){return navigationToken===pdfLinkNavigationToken&&pdfDoc===originDoc&&currentId===originId&&pdfOpenEpoch===originEpoch;}
     try{
-      var d=typeof dest==='string'?await originDoc.getDestination(dest):dest;
-      if(pdfDoc!==originDoc||currentId!==originId||pdfOpenEpoch!==originEpoch)return;
-      if(!d||!d[0])return;
-      var idx=await originDoc.getPageIndex(d[0]);
-      if(pdfDoc!==originDoc||currentId!==originId||pdfOpenEpoch!==originEpoch)return;
-      var pane=byId('documentPane');
-      linkReturnSpot={top:pane.scrollTop,left:pane.scrollLeft,page:currentPage,id:originId,epoch:originEpoch};
-      await gotoPdfPage(idx+1);
-      if(pdfDoc!==originDoc||currentId!==originId||pdfOpenEpoch!==originEpoch)return;
+      var resolved=await resolvePdfDestination(originDoc,dest);
+      if(!stillCurrent())return;
+      if(await gotoPdfPage(resolved.page,'auto')===false||!stillCurrent())return;
+      var point=pdfDestinationPoint(resolved);
+      if(point&&(await placePdfReadingPosition({page:resolved.page,x:.5,y:0,screenX:.5,screenY:.4,pdfX:point.x,pdfY:point.y},false,true))===false)return;
+      if(!stillCurrent())return;flashPdfDestination(resolved);
+      var exact=!!point,message='Jumped to p. '+resolved.page+(exact?' at the linked passage':'');
       /* A phone has no Backspace: the way back is a button that waits above the bar. */
-      if(matchMedia('(hover: none)').matches){byId('linkReturn').classList.remove('hidden');showReaderToast('Jumped to p. '+(idx+1));}
-      else showReaderToast('Jumped to p. '+(idx+1)+' · Backspace comes back');
-    }catch(destError){if(pdfDoc===originDoc&&currentId===originId&&pdfOpenEpoch===originEpoch)showReaderToast('That PDF link could not be opened');}
+      if(matchMedia('(hover: none)').matches){byId('linkReturn').classList.remove('hidden');showReaderToast(message);}
+      else showReaderToast(message+' · Backspace comes back');
+    }catch(destError){if(stillCurrent()){if(!priorReturn)linkReturnSpot=null;showReaderToast('That PDF link does not include a usable destination');}}
   }
   async function returnFromLink(){
     if(!linkReturnSpot)return;
-    var spot=linkReturnSpot,pane=byId('documentPane'),originDoc=pdfDoc;linkReturnSpot=null;byId('linkReturn').classList.add('hidden');
+    var spot=linkReturnSpot,pane=byId('documentPane'),originDoc=pdfDoc,navigationToken=++pdfLinkNavigationToken;linkReturnSpot=null;clearPdfDestinationFlash();byId('linkReturn').classList.add('hidden');
     if(spot.id!==currentId||spot.epoch!==pdfOpenEpoch)return;
     if(pagedPdfFlow()&&spot.page)await gotoPdfPage(spot.page,'auto');
-    if(pdfDoc!==originDoc||spot.id!==currentId||spot.epoch!==pdfOpenEpoch)return;
+    if(navigationToken!==pdfLinkNavigationToken||pdfDoc!==originDoc||spot.id!==currentId||spot.epoch!==pdfOpenEpoch)return;
     pane.scrollTop=spot.top;pane.scrollLeft=spot.left;showReaderToast('Back where you were');
   }
   byId('linkReturn').onclick=returnFromLink;
@@ -3557,7 +3701,7 @@
        reader's chosen values, but make the Settings tray an intentional action. */
     setComfortBarOpen(false);
     var openEpoch=++pdfOpenEpoch;cancelPdfPositionRestore();
-    hideLookup();setRecall(false);invalidatePagedTurns();pdfBuildId++;zoomSerial++;if(pageObserver)pageObserver.disconnect();pdfDoc=null;
+    hideLookup();hidePdfReferencePreview();invalidatePdfLinkNavigation(true);setRecall(false);invalidatePagedTurns();pdfBuildId++;zoomSerial++;if(pageObserver)pageObserver.disconnect();pdfDoc=null;
     if(ch.kind==='pdf'){
       await hydrateDerived(ch);
       if(openEpoch!==pdfOpenEpoch)return false;
@@ -3910,7 +4054,7 @@
   }
   function currentBuildKey(){var pane=byId('documentPane');return pdfDoc?[currentId,pdfDoc.numPages,pdfFit,pdfZoom,comfort.pdfLayout,bookSpread(),pane.clientWidth,pane.clientHeight].join('|'):'';}
   async function buildPdfScroll(){
-    if(!pdfDoc)return;cancelActiveBookCurl(true,'rebuild');var buildDoc=pdfDoc,buildId=++pdfBuildId,frame=byId('pdfFrame');setPagedReady(false);
+    if(!pdfDoc)return;hidePdfReferencePreview();cancelActiveBookCurl(true,'rebuild');var buildDoc=pdfDoc,buildId=++pdfBuildId,frame=byId('pdfFrame');setPagedReady(false);
     var first=await buildDoc.getPage(1),natural=first.getViewport({scale:1}),scale=pageScale(natural),builtZoom=currentZoom();
     if(buildId!==pdfBuildId||pdfDoc!==buildDoc)return;
     /* Nearby pages that were already rendered get carried over as scaled snapshots, so a
@@ -3973,18 +4117,52 @@
       /* The PDF's own link annotations: citations jump to their reference, outline
          links jump between sections, URLs open in a new tab. */
       try{
-        if(!view.links){view.links=document.createElement('div');view.links.className='pdf-links';view.sheet.appendChild(view.links);}
+        if(!view.links){
+          view.links=document.createElement('div');view.links.className='pdf-links';view.sheet.appendChild(view.links);
+          view.links.addEventListener('pointermove',function(ev){
+            if(ev.pointerType==='touch')return;var link=nearestPdfLink(view.links,ev.clientX,ev.clientY);
+            if(link&&link.dataset.pdfLinkKind==='internal'){if(pdfReferencePreviewAnchor!==link)showPdfReferencePreview(link,link._pdfDestination);}
+            else if(pdfReferencePreviewAnchor&&view.links.contains(pdfReferencePreviewAnchor))hidePdfReferencePreview();
+          });
+          view.links.addEventListener('pointerleave',function(){if(pdfReferencePreviewAnchor&&view.links.contains(pdfReferencePreviewAnchor))hidePdfReferencePreview();});
+          /* Expanded phone targets overlap in dense runs such as [1,2,3]. Route the
+             physical pointer to the nearest authored rectangle instead of whichever
+             transparent anchor happens to be later in DOM order. */
+          view.links.addEventListener('click',function(ev){
+            var actual=ev.target.closest&&ev.target.closest('.pdf-link');if(!actual||!view.links.contains(actual))return;
+            var nearest=nearestPdfLink(view.links,ev.clientX,ev.clientY);if(!nearest||nearest===actual)return;
+            ev.preventDefault();ev.stopImmediatePropagation();
+            if(nearest.dataset.pdfLinkKind==='internal')followPdfDest(nearest._pdfDestination);
+            else{var opened=window.open(nearest.href,'_blank','noopener,noreferrer');if(opened)opened.opener=null;}
+          },true);
+        }
         view.links.innerHTML='';
         var annots=await page.getAnnotations({intent:'display'});if(view.buildId!==pdfBuildId||view.buildId!==renderBuildId||pdfDoc!==renderDoc||currentId!==renderId)return;
-        annots.forEach(function(a){
+        var linkSpecs=[],seenLinks=Object.create(null);
+        annots.forEach(function(a,annotationIndex){
           if(a.subtype!=='Link'||!a.rect||(!a.url&&!a.dest))return;
           var r=viewport.convertToViewportRectangle(a.rect);
           var left=Math.min(r[0],r[2]),top=Math.min(r[1],r[3]),wd=Math.abs(r[2]-r[0]),ht=Math.abs(r[3]-r[1]);
-          if(wd<2||ht<2)return;
-          var el=document.createElement('a');el.className='pdf-link';
-          el.style.left=left+'px';el.style.top=top+'px';el.style.width=wd+'px';el.style.height=ht+'px';
-          if(a.url){el.href=a.url;el.target='_blank';el.rel='noopener';el.title=a.url;}
-          else{el.href='#';el.title='Jump there · Backspace comes back';el.onclick=function(ev){ev.preventDefault();ev.stopPropagation();followPdfDest(a.dest);};}
+          if(!Number.isFinite(left)||!Number.isFinite(top)||!Number.isFinite(wd)||!Number.isFinite(ht)||wd<=0||ht<=0)return;
+          var identity=a.url?'url:'+a.url:(typeof a.dest==='string'?'dest:'+a.dest:'direct:'+annotationIndex),key=identity+'|'+[left,top,wd,ht].map(function(n){return n.toFixed(2);}).join('|');if(seenLinks[key])return;seenLinks[key]=true;
+          linkSpecs.push({annotation:a,left:left,top:top,width:wd,height:ht,cx:left+wd/2,cy:top+ht/2});
+        });
+        linkSpecs.forEach(function(spec){
+          var a=spec.annotation,left=spec.left,top=spec.top,wd=spec.width,ht=spec.height;
+          /* Superscript citations can scale below two CSS pixels on a phone. Keep every
+             valid authored rectangle and enlarge it around its center. Dense citation
+             runs intentionally overlap; the layer's pointer router resolves the nearest
+             authored rectangle, which preserves both a useful target and exact intent. */
+          var coarse=coarsePointer.matches,hitWidth=Math.max(coarse?24:8,wd),hitHeight=Math.max(coarse?24:14,ht),hitLeft=left-(hitWidth-wd)/2,hitRight=hitLeft+hitWidth,hitTop=top-(hitHeight-ht)/2,hitBottom=hitTop+hitHeight;
+          hitLeft=Math.max(0,hitLeft);hitTop=Math.max(0,hitTop);hitRight=Math.min(viewport.width,hitRight);hitBottom=Math.min(viewport.height,hitBottom);hitWidth=Math.max(1,hitRight-hitLeft);hitHeight=Math.max(1,hitBottom-hitTop);
+          var el=document.createElement('a');el.className='pdf-link';el.style.left=hitLeft+'px';el.style.top=hitTop+'px';el.style.width=hitWidth+'px';el.style.height=hitHeight+'px';el.dataset.pdfSourceLeft=String(left);el.dataset.pdfSourceTop=String(top);el.dataset.pdfSourceWidth=String(wd);el.dataset.pdfSourceHeight=String(ht);
+          if(a.url){el.href=a.url;el.target='_blank';el.rel='noopener noreferrer';el.title=a.url;el.dataset.pdfLinkKind='external';el.setAttribute('aria-label','Open '+a.url);el.onclick=function(ev){ev.stopPropagation();};el.ondblclick=function(ev){ev.stopPropagation();};}
+          else{
+            el.href='#';el.title='Open linked passage · Backspace comes back';el.dataset.pdfLinkKind='internal';el._pdfDestination=a.dest;if(typeof a.dest==='string')el.dataset.pdfDestination=a.dest;el.setAttribute('aria-label','Open linked passage');
+            el.onfocus=function(){showPdfReferencePreview(el,a.dest);};el.onblur=function(){if(pdfReferencePreviewAnchor===el)hidePdfReferencePreview();};
+            el.onclick=function(ev){ev.preventDefault();ev.stopPropagation();followPdfDest(a.dest);};
+          }
+          el.onpointerleave=function(ev){if(pdfReferencePreviewAnchor&&view.links.contains(pdfReferencePreviewAnchor)&&!nearestPdfLink(view.links,ev.clientX,ev.clientY))hidePdfReferencePreview();};
           view.links.appendChild(el);
         });
       }catch(annotError){}
@@ -4012,6 +4190,14 @@
     var view=pdfViews[n-1];if(!view)return;if(pagedPdfFlow()){requestPagedTarget(n,false);return;}var pane=byId('documentPane');
     pane.scrollTo({top:pane.scrollTop+view.holder.getBoundingClientRect().top-pane.getBoundingClientRect().top-10,behavior:behavior||'smooth'});
   }
+  function updateZoomChrome(){
+    var button=byId('zoomLabel'),paged=pagedPdfFlow(),label=paged&&!pagedManualZoom?'Fit':paged&&pdfFit?'Width':pdfFit?'Fit':Math.round(pdfZoom*100)+'%';
+    button.textContent=label;
+    if(paged){
+      button.setAttribute('aria-label',pagedManualZoom?'Fit the complete '+(bookSpread()?'spread':'page'):'Fill the pane with one page width');
+      button.title=pagedManualZoom?'Fit the complete '+(bookSpread()?'spread':'page'):'Full page width · vertical scroll';
+    }else{button.setAttribute('aria-label','Fit PDF to width');button.title='Fit PDF to width';}
+  }
   function updatePageChrome(){
     if(!pdfDoc)return;
     var paged=pagedPdfFlow(),visible=paged?pagedPageNos(currentPage):[currentPage],firstVisible=visible[0],lastVisible=visible[visible.length-1];
@@ -4022,7 +4208,7 @@
     byId('prevPage').textContent='←';byId('nextPage').textContent='→';byId('mPrev').textContent='←';byId('mNext').textContent='→';
     byId('prevPage').setAttribute('aria-label','Previous '+(bookSpread()?'spread':'page'));byId('nextPage').setAttribute('aria-label','Next '+(bookSpread()?'spread':'page'));
     byId('mPrev').setAttribute('aria-label','Previous '+(bookSpread()?'spread':'page'));byId('mNext').setAttribute('aria-label','Next '+(bookSpread()?'spread':'page'));
-    byId('zoomLabel').textContent=paged&&!pagedManualZoom?'Fit':pdfFit?'Fit':Math.round(pdfZoom*100)+'%';syncColumnZoomUi();
+    updateZoomChrome();syncColumnZoomUi();
     loadPageNote();updateProgress();
   }
   var pageSettleTimer=null;
@@ -4068,22 +4254,32 @@
     var restoreSerial=++pdfPositionRestoreSerial,restoreDoc=pdfDoc,restoreId=currentId,restoreEpoch=pdfOpenEpoch,target=Math.max(1,Math.min(pdfDoc.numPages,position.page));restoringPdfPosition=true;
     function stillCurrent(){return restoreSerial===pdfPositionRestoreSerial&&pdfDoc===restoreDoc&&currentId===restoreId&&pdfOpenEpoch===restoreEpoch;}
     function stopped(){if(restoreSerial===pdfPositionRestoreSerial)restoringPdfPosition=false;return false;}
+    function placeAnchor(usePdfPoint){
+      var pane=byId('documentPane'),view=pdfViews[target-1],holder=view&&view.holder;if(!holder)return false;
+      var paneRect=pane.getBoundingClientRect(),rect=holder.getBoundingClientRect(),localX=position.x*rect.width,localY=position.y*rect.height;
+      if(usePdfPoint&&Number.isFinite(position.pdfX)&&Number.isFinite(position.pdfY)&&view.viewport&&view.viewport.convertToViewportPoint){try{var point=view.viewport.convertToViewportPoint(position.pdfX,position.pdfY);localX=point[0]*rect.width/view.viewport.width;localY=point[1]*rect.height/view.viewport.height;}catch(e){}}
+      var desiredX=paneRect.left+pane.clientWidth*position.screenX,desiredY=paneRect.top+pane.clientHeight*position.screenY;
+      if(restoreHorizontal!==false)pane.scrollLeft=Math.max(0,pane.scrollLeft+(rect.left+localX-desiredX));
+      pane.scrollTop=Math.max(0,pane.scrollTop+(rect.top+localY-desiredY));return true;
+    }
     currentPage=target;syncPagedPages();updatePageChrome();
     await renderPdfPage();if(!stillCurrent())return stopped();
     if(pagedPdfFlow()){
       await Promise.all(pagedPageNos(target).map(renderPdfPageAt));
       if(!stillCurrent())return stopped();
       await fitPagedPages(target,false);
-    }else await renderPdfPageAt(target);
+    }else{
+      /* A width change rebuilds correctly sized holders before their canvases finish.
+         Restore against that known page geometry immediately, so slower WebKit/iPad
+         rasterization cannot leave the old scroll offset on the newly narrow paper. */
+      var provisionalView=pdfViews[target-1];
+      if(provisionalView&&!provisionalView.rendered&&!placeAnchor(false))return stopped();
+      await renderPdfPageAt(target);
+    }
     if(!stillCurrent())return stopped();
     await pdfLayoutFrames();
     if(!stillCurrent())return stopped();
-    var pane=byId('documentPane'),view=pdfViews[target-1],holder=view&&view.holder;if(!holder){restoringPdfPosition=false;return false;}
-    var paneRect=pane.getBoundingClientRect(),rect=holder.getBoundingClientRect(),localX=position.x*rect.width,localY=position.y*rect.height;
-    if(Number.isFinite(position.pdfX)&&Number.isFinite(position.pdfY)&&view.viewport&&view.viewport.convertToViewportPoint){try{var point=view.viewport.convertToViewportPoint(position.pdfX,position.pdfY);localX=point[0]*rect.width/view.viewport.width;localY=point[1]*rect.height/view.viewport.height;}catch(e){}}
-    var desiredX=paneRect.left+pane.clientWidth*position.screenX,desiredY=paneRect.top+pane.clientHeight*position.screenY;
-    if(restoreHorizontal!==false)pane.scrollLeft=Math.max(0,pane.scrollLeft+(rect.left+localX-desiredX));
-    pane.scrollTop=Math.max(0,pane.scrollTop+(rect.top+localY-desiredY));currentPage=target;updatePageChrome();updateProgress();
+    if(!placeAnchor(true)){restoringPdfPosition=false;return false;}currentPage=target;updatePageChrome();updateProgress();
     await pdfLayoutFrames();if(!stillCurrent())return stopped();restoringPdfPosition=false;rememberStablePdfPosition(capturePdfReadingPosition()||position);
     if(announce)showReaderToast('Picked up at the exact reading spot');return true;
   }
@@ -4152,7 +4348,7 @@
     var newZoom=Math.max(pagedPdfFlow()?.05:.5,Math.min(4,+value||1));
     if(!exactFit&&Math.abs(newZoom-1)<=.05)newZoom=1;
     pdfFit=newZoom===1;pdfZoom=pdfFit?1:newZoom;
-    byId('zoomLabel').textContent=pagedPdfFlow()&&!pagedManualZoom?'Fit':pdfFit?'Fit':Math.round(pdfZoom*100)+'%';
+    updateZoomChrome();
     var ch=find(currentId);
     var storedZoom=pdfFit?0:pdfZoom;
     if(persistChoice!==false&&ch&&ch.kind==='pdf'&&(ch.zoom!==storedZoom||ch.zoomPreferenceV!==PDF_ZOOM_PREFERENCE_VERSION)){ch.zoom=storedZoom;ch.zoomPreferenceV=PDF_ZOOM_PREFERENCE_VERSION;persist(false);}
@@ -4188,7 +4384,21 @@
   byId('zoomOut').onclick=function(){setUserZoom(currentZoom()/1.2);};
   byId('zoomIn').onclick=function(){setUserZoom(currentZoom()*1.2);};
   byId('colZoomBtn').onclick=function(){cycleColumnZoom();};
-  byId('zoomLabel').onclick=function(){if(pagedPdfFlow()){pagedManualZoom=false;pagedFitToken='';invalidatePagedFit();fitPagedPages(currentPage,true);}else setUserZoom(1);};
+  function resetPagedZoomToFit(){
+    pagedManualZoom=false;pagedFitToken='';invalidatePagedFit();updateZoomChrome();return fitPagedPages(currentPage,true);
+  }
+  function pagedWidthZoom(){
+    /* Exactly the same one-page width baseline as Scroll, regardless of the authored
+       page's aspect ratio or the whole-spread Fit scale we are leaving. */
+    return 1;
+  }
+  function togglePagedWidthZoom(anchorX,anchorY){
+    if(pagedManualZoom)return resetPagedZoomToFit();
+    var result=setUserZoom(pagedWidthZoom(),anchorX,anchorY);
+    showReaderToast('Full-width page · scroll vertically · turn from the outer edge');
+    return result;
+  }
+  byId('zoomLabel').onclick=function(){if(pagedPdfFlow())togglePagedWidthZoom();else setUserZoom(1);};
   /* A horizontal trackpad gesture follows an ordinary left-bound book: travel right to
      reveal later pages. Enlarged pages pan first and only turn at their outer edge. */
   var pagedWheelSum=0,pagedWheelTimer=null,pagedWheelConsumed=false;
@@ -4209,27 +4419,25 @@
     pagedWheelConsumed=true;pagedWheelSum=0;
     requestPagedStep(forward?1:-1,true);
   },{passive:false});
-  /* Touch: one finger bends and turns the actual leaf, and a quick outer bottom-corner
-     tap lifts it automatically. Two fingers pinch with a live preview for both scale and
-     travel. Double-tap away from those reserved corners still hops between Fit and 160%. */
+  /* Touch: the page interior keeps native vertical scrolling. A horizontal pull or quick
+     tap that begins on the physical outer edge owns the leaf; two fingers own PDF zoom.
+     This separation is what makes the reader feel like an iPad scroll view instead of a
+     JavaScript imitation with a page-turn gesture competing everywhere. */
   (function(){
     var pane=byId('documentPane'),frame=byId('pdfFrame');
     var pinch=null,tapStart=null,lastTapAt=0,lastTapX=0,lastTapY=0,bookSwipe=null,bookCurl=null,curlReadyLeaf=null,curlSerial=0;
-    /* When the page is zoomed (horizontal overflow exists), one-finger panning is taken
-       over completely: native iOS panning keeps applying its own sideways delta while the
-       finger is down, so correcting it after the fact can never win. The custom pan moves
-       freely in both axes — a zoomed page is a flat surface to roam, and the old lock to
-       one axis is what made reaching the other half of a page impossible — with a momentum
-       fling on release. Un-zoomed pages keep native scrolling, where sideways drift cannot
-       happen anyway. Long-press text selection is left native. */
+    /* Native iPad momentum owns vertical travel. Only horizontal overflow needs a small
+       custom pan, because it must hand an already-visible outer edge to the paper curl.
+       Vertical intent is released before preventDefault(), leaving Safari/WKWebView to do
+       the scrolling and deceleration it is much better at. Long-press selection stays native. */
     var panGesture=null,panVel=null,panRaf=null;
     function stopPanMomentum(){panVel=null;if(panRaf){cancelAnimationFrame(panRaf);panRaf=null;}}
     function panMomentumTick(ts){
       panRaf=null;if(!panVel)return;
       var dt=Math.min(64,ts-panVel.t);panVel.t=ts;
-      pane.scrollLeft-=panVel.vx*dt;pane.scrollTop-=panVel.vy*dt;
-      var decay=Math.exp(-dt/320);panVel.vx*=decay;panVel.vy*=decay;
-      if(Math.hypot(panVel.vx,panVel.vy)>.02)panRaf=requestAnimationFrame(panMomentumTick);
+      pane.scrollLeft-=panVel.vx*dt;
+      var decay=Math.exp(-dt/320);panVel.vx*=decay;
+      if(Math.abs(panVel.vx)>.02)panRaf=requestAnimationFrame(panMomentumTick);
       else panVel=null;
     }
     function startPan(t,ts,allowEdge){
@@ -4246,7 +4454,11 @@
        context. The visible spread itself does not jump because both pages share one pair. */
     pane.addEventListener('pointerdown',function(e){
       if(!pagedPdfFlow()||pagedTurning||!e.target.closest)return;var holder=e.target.closest('.pdf-page.book-active');if(!holder)return;
-      var pageNo=+holder.dataset.page;if(!pageNo||pageNo===currentPage)return;currentPage=pageNo;syncPagedPages();updatePageChrome();savePagedPosition();
+      var pageNo=+holder.dataset.page;if(!pageNo)return;
+      if(pageNo!==currentPage){currentPage=pageNo;syncPagedPages();updatePageChrome();savePagedPosition();}
+      /* A touch selects one physical leaf for both its note and its guide. Do this on
+         pointer-down so a suppressed/synthesized click cannot leave the band behind. */
+      if(comfort.focus&&!guideDragging&&e.pointerType==='touch')setReadingGuide(e.clientX,e.clientY,holder);
     },true);
     /* A Book leaf is manipulated like paper rather than treated as a swipe target. The
        grabbed outer edge stays attached to the pointer; the old page is clipped along
@@ -4497,8 +4709,9 @@
       var rect=sourceView.holder.getBoundingClientRect(),plan=makeCurlPlan(direction,target,sourceView.holder,rect);if(!plan)return Promise.resolve(null);
       /* Keep a finger-picked origin attached to the same place on the leaf even if
          rendering or a visual-viewport adjustment moves the page before staging. */
-      var cornerOrigin=Number.isFinite(originYRatio),startX=direction>0?rect.right:rect.left,startY=cornerOrigin?rect.top+rect.height*Math.max(0,Math.min(1,originYRatio)):rect.top+rect.height/2;
-      var g=Object.assign(plan,{serial:++curlSerial,pointerId:-1,startX:startX,startY:startY,lastX:startX,lastY:startY,lastT:performance.now(),vx:0,moved:true,staged:false,settling:false,automatic:true,automaticOrigin:cornerOrigin?'bottom-corner':'middle',turnEpoch:turnEpoch,doc:pdfDoc,documentId:currentId,buildId:pdfBuildId,sourceView:sourceView});
+      var edgeOrigin=Number.isFinite(originYRatio),startX=direction>0?rect.right:rect.left,startY=edgeOrigin?rect.top+rect.height*Math.max(0,Math.min(1,originYRatio)):rect.top+rect.height/2;
+      var automaticOrigin=edgeOrigin?(originYRatio>=.8?'bottom-corner':'edge'):'middle';
+      var g=Object.assign(plan,{serial:++curlSerial,pointerId:-1,startX:startX,startY:startY,lastX:startX,lastY:startY,lastT:performance.now(),vx:0,moved:true,staged:false,settling:false,automatic:true,automaticOrigin:automaticOrigin,turnEpoch:turnEpoch,doc:pdfDoc,documentId:currentId,buildId:pdfBuildId,sourceView:sourceView});
       var done=new Promise(function(resolve){g.autoResolve=resolve;});
       clearCurlReady();bookCurl=g;bookCurlOwned=true;automaticBookCurlRunning=true;g.preparePromise=warmCurlPlan(g);
       stageBookCurl(g);frame.dataset.curlOrigin=g.automaticOrigin;drawBookCurl(g,g.corner.x,g.corner.y);
@@ -4566,18 +4779,17 @@
       }
       return 0;
     }
-    /* Reserve only the real outer bottom corners, not invisible pane overlays. A corner
-       tap is deliberately stricter than a swipe so links, footer text, marks and a
-       long-press selection keep their ordinary PDF behavior. */
-    function touchBottomCorner(touch,target){
-      if(!touch||!target||!target.closest||!pagedPdfFlow()||pagedTurning||bookCurl||!touchCurlGeometryReady()||pendingSelection||touchCurlBlockedTarget(target)||target.closest('.text-layer span'))return null;
+    /* Reserve only a visible leaf's physical outer edge, never a pane overlay. Text,
+       links and saved marks keep their ordinary tap behavior; a drag may still begin
+       over PDF text once horizontal intent is clear, preserving long-press selection. */
+    function touchPageEdge(touch,target){
+      if(!touch||!target||!target.closest||!pagedPdfFlow()||pagedTurning||bookCurl||!touchCurlGeometryReady()||pendingSelection||touchCurlBlockedTarget(target))return null;
       var leaf=target.closest('.pdf-page.book-active');if(!leaf)return null;
       var pageNo=+leaf.dataset.page,view=pageNo&&pdfViews[pageNo-1];
       if(!view||view.holder!==leaf||view.buildId!==pdfBuildId)return null;
       var rect=leaf.getBoundingClientRect();
       if(touch.clientX<rect.left||touch.clientX>rect.right||touch.clientY<rect.top||touch.clientY>rect.bottom)return null;
-      var zoneX=Math.min(72,Math.max(48,rect.width*.12)),zoneY=Math.min(72,Math.max(52,rect.height*.1));
-      if(touch.clientY<rect.bottom-zoneY)return null;
+      var zoneX=Math.min(72,Math.max(48,rect.width*.12));
       var direction=0;
       if(!bookSpread()){
         if(touch.clientX<=rect.left+zoneX)direction=-1;
@@ -4586,10 +4798,10 @@
         if(leaf.classList.contains('book-spread-left')&&touch.clientX<=rect.left+zoneX)direction=-1;
         else if(leaf.classList.contains('book-spread-right')&&touch.clientX>=rect.right-zoneX)direction=1;
       }
-      /* At the first and last leaf there is no paper to turn. Leave that corner's
-         ordinary tap behavior alone instead of consuming it as a no-op navigation. */
+      /* At the first and last leaf there is no paper to turn. Leave that edge's
+         ordinary interaction alone instead of consuming it as no-op navigation. */
       if(!direction||!touchCurlPlan(direction))return null;
-      return{direction:direction,yRatio:Math.max(0,Math.min(1,(touch.clientY-rect.top)/Math.max(1,rect.height)))};
+      return{direction:direction,yRatio:Math.max(0,Math.min(1,(touch.clientY-rect.top)/Math.max(1,rect.height))),tappable:!target.closest('.text-layer span')};
     }
     function warmTouchTurns(){
       [1,-1].forEach(function(direction){var plan=touchCurlPlan(direction);if(plan)warmCurlPlan(plan);});
@@ -4636,6 +4848,9 @@
         /* Small long-press drift over PDF text belongs to native word selection. A
            prompt move claims pan; a contact that rested first is left to Safari. */
         if(e.timeStamp-g.startT>280&&g.target&&g.target.closest&&g.target.closest('.text-layer span')){panGesture=null;return;}
+        /* Vertical travel never enters the synthetic pan loop. With touch-action:pan-y
+           this return happens before cancellation, so iPadOS keeps direct scrolling. */
+        if(Math.abs(totalY)>Math.abs(totalX)*1.08){panGesture=null;return;}
         g.claimed=true;tapStart=null;lastTapAt=0;
       }
       e.preventDefault();
@@ -4653,15 +4868,14 @@
         }else{g.edgePull=0;delete g.edgeStartX;delete g.edgeStartY;delete g.edgeStartT;}
         pane.scrollLeft=Math.max(0,Math.min(liveMaxLeft,pane.scrollLeft-dx));
       }else pane.scrollLeft-=dx;
-      pane.scrollTop-=dy;
       var blend=Math.min(1,dt/50);
-      g.vx=g.vx*(1-blend)+(dx/dt)*blend;g.vy=g.vy*(1-blend)+(dy/dt)*blend;
+      g.vx=g.vx*(1-blend)+(dx/dt)*blend;g.vy=0;
       g.lastX=t.clientX;g.lastY=t.clientY;g.lastT=e.timeStamp;
     }
     function endPanGesture(e){
       if(!panGesture||(e.touches&&e.touches.length))return;
       var g=panGesture;panGesture=null;
-      var vx=g.vx,vy=g.vy,speed=Math.hypot(vx,vy);
+      var vx=g.vx,vy=0,speed=Math.abs(vx);
       if(speed<.25)return;
       if(speed>3.5){vx*=3.5/speed;vy*=3.5/speed;}
       panVel={vx:vx,vy:vy,t:performance.now()};
@@ -4673,19 +4887,25 @@
       if(readerMode!=='pdf'||!pdfDoc)return;
       stopPanMomentum();
       if(e.touches.length===1){
-        var t=e.touches[0];tapStart={id:t.identifier,target:e.target,x:t.clientX,y:t.clientY,at:Date.now(),maxTravel:0,cornerDirection:0,cornerOriginYRatio:null};
+        var t=e.touches[0];tapStart={id:t.identifier,target:e.target,x:t.clientX,y:t.clientY,at:Date.now(),maxTravel:0,edgeDirection:0,edgeOriginYRatio:null};
         if(bookCurl||pagedTurning){bookSwipe=null;panGesture=null;tapStart=null;lastTapAt=0;return;}
         if(pagedPdfFlow()&&!touchCurlGeometryReady()){bookSwipe=null;panGesture=null;tapStart=null;return;}
         var noOverflow=pane.scrollWidth<=pane.clientWidth+2&&pane.scrollHeight<=pane.clientHeight+2;
         var settledPagedFit=pagedPdfFlow()&&touchCurlGeometryReady()&&pagedFits&&(!pagedManualZoom||noOverflow);
-        if(settledPagedFit){
+        if(pagedPdfFlow()){
           if(touchCurlBlockedTarget(e.target)){bookSwipe=null;return;}
-          var corner=touchBottomCorner(t,e.target);
-          if(corner){tapStart.cornerDirection=corner.direction;tapStart.cornerOriginYRatio=corner.yRatio;}
-          bookSwipe={id:t.identifier,target:e.target,direction:touchEdgeDirection(t),x:t.clientX,y:t.clientY,startT:e.timeStamp,lastX:t.clientX,lastY:t.clientY,moved:false};panGesture=null;warmTouchTurns();return;
+          var edge=touchPageEdge(t,e.target);
+          if(edge){
+            if(edge.tappable){tapStart.edgeDirection=edge.direction;tapStart.edgeOriginYRatio=edge.yRatio;}
+            bookSwipe={id:t.identifier,target:e.target,direction:edge.direction,x:t.clientX,y:t.clientY,startT:e.timeStamp,lastX:t.clientX,lastY:t.clientY,moved:false};
+            panGesture=null;warmTouchTurns();return;
+          }
+          if(settledPagedFit){bookSwipe=null;panGesture=null;return;}
         }
         bookSwipe=null;
-        panGesture=(pane.scrollWidth>pane.clientWidth+1||pane.scrollHeight>pane.clientHeight+1)?startPan(t,e.timeStamp):null;
+        /* Scroll view is wholly native. Page/Book need custom horizontal panning only
+           while enlarged; it releases a vertical-dominant first move immediately. */
+        panGesture=pagedPdfFlow()&&pane.scrollWidth>pane.clientWidth+2?startPan(t,e.timeStamp):null;
         return;
       }
       if(e.touches.length!==2)return;
@@ -4725,12 +4945,9 @@
       if(releaseTouchBookCurl(e)){bookSwipe=null;tapStart=null;lastTapAt=0;e.preventDefault();return;}
       if(e.touches&&e.touches.length)return;
       if(!bookSwipe)return;
-      var g=bookSwipe,t=touchById(e.changedTouches,g.id),dx=t?t.clientX-g.x:g.lastX-g.x,dy=t?t.clientY-g.y:g.lastY-g.y;bookSwipe=null;
+      var g=bookSwipe;bookSwipe=null;
       if(g.moved){
         tapStart=null;lastTapAt=0;e.preventDefault();
-        /* A broad swipe remains convenient away from the edge, but its release invokes
-           the same physical midpoint curl as an arrow—never the retired rigid card. */
-        if(!g.direction&&Math.abs(dx)>=64&&Math.abs(dx)>Math.abs(dy)*1.05)requestPagedStep(dx<0?1:-1,true);
       }
     }
     pane.addEventListener('touchend',endBookSwipe,{passive:false});
@@ -4761,7 +4978,7 @@
       /* A finger still resting after a pinch may pan, but must lift and touch again
          before it can own a page edge; this avoids arming against stale fit geometry. */
       if(e.touches&&e.touches.length===1){
-        bookSwipe=null;panGesture=startPan(e.touches[0],e.timeStamp,false);
+        bookSwipe=null;panGesture=pagedPdfFlow()?startPan(e.touches[0],e.timeStamp,false):null;
       }
     }
     pane.addEventListener('touchend',endPinch);
@@ -4775,10 +4992,10 @@
       if(readerMode!=='pdf'||!pdfDoc||pinch||e.touches.length||!e.changedTouches||e.changedTouches.length!==1)return;
       var t=e.changedTouches[0],at=Date.now(),tapTravel=tapStart?Math.max(tapStart.maxTravel||0,Math.hypot(t.clientX-tapStart.x,t.clientY-tapStart.y)):Infinity;
       if(!tapStart||tapStart.id!==t.identifier||tapTravel>24||at-tapStart.at>320){lastTapAt=0;return;}
-      var cornerDirection=tapStart.cornerDirection,releaseCorner=cornerDirection&&tapTravel<=14&&at-tapStart.at<=300?touchBottomCorner(t,tapStart.target):null;
-      if(releaseCorner&&releaseCorner.direction===cornerDirection&&touchCurlPlan(cornerDirection)){
-        var originYRatio=tapStart.cornerOriginYRatio;tapStart=null;lastTapAt=0;pagedSuppressClickUntil=Date.now()+520;e.preventDefault();
-        requestPagedStep(cornerDirection,true,undefined,originYRatio);return;
+      var edgeDirection=tapStart.edgeDirection,releaseEdge=edgeDirection&&tapTravel<=14&&at-tapStart.at<=300?touchPageEdge(t,tapStart.target):null;
+      if(releaseEdge&&releaseEdge.tappable&&releaseEdge.direction===edgeDirection&&touchCurlPlan(edgeDirection)){
+        var originYRatio=tapStart.edgeOriginYRatio;tapStart=null;lastTapAt=0;pagedSuppressClickUntil=Date.now()+520;e.preventDefault();
+        requestPagedStep(edgeDirection,true,undefined,originYRatio);return;
       }
       if(at-lastTapAt<350&&Math.hypot(t.clientX-lastTapX,t.clientY-lastTapY)<48){
         lastTapAt=0;
@@ -4788,14 +5005,14 @@
         if(touchInteractiveTarget(t.target))return;
         e.preventDefault();
         if(pagedPdfFlow()){
-          if(!pagedManualZoom)setUserZoom(Math.min(2.4,currentZoom()*1.7),t.clientX,t.clientY);
-          else{pagedManualZoom=false;pagedFitToken='';invalidatePagedFit();fitPagedPages(currentPage,true);}
+          togglePagedWidthZoom(t.clientX,t.clientY);
         }else setUserZoom(currentZoom()<=1.01?1.6:1,t.clientX,t.clientY);
       }else{lastTapAt=at;lastTapX=t.clientX;lastTapY=t.clientY;}
     },{passive:false});
   })();
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;
+    if(e.key==='Escape'&&!byId('pdfReferencePreview').classList.contains('hidden')){e.preventDefault();hidePdfReferencePreview();return;}
     if(e.key==='Escape'&&!byId('touchHighlightPalette').classList.contains('hidden')){e.preventDefault();setTouchHighlightPaletteOpen(false);byId('touchHighlight').focus();return;}
     if(e.key==='Escape'&&!byId('highlightPalette').classList.contains('hidden')){e.preventDefault();setHighlightPaletteOpen(false);byId('highlightColorBtn').focus();return;}
     if(e.key==='Escape'&&!byId('touchDockMenu').classList.contains('hidden')){e.preventDefault();closeTouchDockMore(true);return;}
@@ -4843,7 +5060,7 @@
     var pane=byId('documentPane');
     if(e.key==='+'||e.key==='='){e.preventDefault();setUserZoom(currentZoom()*1.2);}
     else if(e.key==='-'||e.key==='_'){e.preventDefault();setUserZoom(currentZoom()/1.2);}
-    else if(e.key==='0'){e.preventDefault();if(pagedPdfFlow()){pagedManualZoom=false;pagedFitToken='';invalidatePagedFit();fitPagedPages(currentPage,true);}else setUserZoom(1);}
+    else if(e.key==='0'){e.preventDefault();if(pagedPdfFlow())resetPagedZoomToFit();else setUserZoom(1);}
     else if(e.key==='ArrowDown'){e.preventDefault();pane.scrollBy({top:74});}
     else if(e.key==='ArrowUp'){e.preventDefault();pane.scrollBy({top:-74});}
     else if(e.key==='PageDown'||(e.key===' '&&e.shiftKey)){e.preventDefault();if(pagedPdfFlow())byId('nextPage').click();else pane.scrollBy({top:pane.clientHeight*.85,behavior:'smooth'});}

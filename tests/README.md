@@ -40,8 +40,9 @@ rebuilds, and phrases split between PDF.js text-layer spans.
 
 `reading-pdf-links.test.js` covers real pointer hit-testing for PDF annotations,
 phone-sized superscript citations, safe external URLs, blocked script actions,
-destination-aware reference previews, exact named `/FitR` line jumps, and
-Backspace return to the citation.
+destination-aware reference previews, exact named `/FitR` line jumps, a
+temporary box around the complete referenced entry, and Backspace return to the
+citation.
 
 `reading-ipad-touch-dock.test.js` covers the coarse-touch iPad dock, 52px Guide,
 Highlight, Notes, and More targets, persisted left/right placement, temporary

@@ -115,8 +115,17 @@ function linkedPdfBuffer() {
   const refABox = await refA.boundingBox();
   await page.touchscreen.tap(refABox.x + refABox.width / 2, refABox.y + refABox.height / 2);
   await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('3 /') && document.querySelector('.pdf-destination-flash[data-pdf-y="596"]'));
-  const firstJump = await page.evaluate(() => ({ top: parseFloat(document.querySelector('.pdf-destination-flash').style.top), scroll: document.getElementById('documentPane').scrollTop, toast: document.getElementById('readerToast').textContent }));
-  check('click jumps to and flashes the first exact reference line', Number.isFinite(firstJump.top) && firstJump.top < 400 && /linked passage/.test(firstJump.toast), JSON.stringify(firstJump));
+  const firstJump = await page.evaluate(() => {
+    const flash = document.querySelector('.pdf-destination-flash');
+    const spans = [...document.querySelectorAll('.pdf-page[data-page="3"] .text-layer span')];
+    const rectFor = text => { const span = spans.find(node => node.textContent.includes(text)); return span && span.getBoundingClientRect(); };
+    const box = flash.getBoundingClientRect(), alpha = rectFor('Alpha reference'), continuation = rectFor('Alpha continuation'), next = rectFor('Beta reference');
+    const contains = rect => rect && box.left <= rect.left + 1 && box.right >= rect.right - 1 && box.top <= rect.top + 1 && box.bottom >= rect.bottom - 1;
+    const overlaps = rect => rect && box.left < rect.right && box.right > rect.left && box.top < rect.bottom && box.bottom > rect.top;
+    return { top: parseFloat(flash.style.top), scroll: document.getElementById('documentPane').scrollTop, toast: document.getElementById('readerToast').textContent, kind: flash.dataset.pdfFlashKind, lines: +flash.dataset.pdfReferenceLines, containsAlpha: contains(alpha), containsContinuation: contains(continuation), overlapsNext: overlaps(next) };
+  });
+  check('click highlights the complete reference entry without including the next reference', firstJump.kind === 'reference' && firstJump.lines === 2 && firstJump.containsAlpha && firstJump.containsContinuation && !firstJump.overlapsNext, JSON.stringify(firstJump));
+  check('click keeps the exact reference jump and return affordance', Number.isFinite(firstJump.top) && firstJump.top < 400 && /linked passage/.test(firstJump.toast), JSON.stringify(firstJump));
 
   await page.keyboard.press('Backspace');
   await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('1 /'));

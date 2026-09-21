@@ -883,6 +883,7 @@
     .pdf-link:hover { background: rgba(64, 137, 174, .16); box-shadow: 0 0 0 1px rgba(64, 137, 174, .4); }
     .pdf-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; background: rgba(64, 137, 174, .16); }
     .pdf-destination-flash { position: absolute; z-index: 5; min-width: 34px; min-height: 14px; border: 1px solid rgba(64,137,174,.78); border-radius: 4px; background: rgba(91,169,255,.23); box-shadow: 0 0 0 4px rgba(91,169,255,.1); pointer-events: none; animation: pdf-destination-flash 2.4s ease-out both; }
+    .pdf-destination-flash.pdf-reference-flash { border-radius: 6px; background: rgba(91,169,255,.14); box-shadow: 0 0 0 3px rgba(91,169,255,.09), inset 3px 0 rgba(64,137,174,.5); }
     @keyframes pdf-destination-flash { 0%,18% { opacity: 1; } 100% { opacity: 0; } }
     @media (prefers-reduced-motion: reduce) { .pdf-destination-flash { animation: none; } }
     .pdf-frame.dark-paper .pdf-page { background: #171717; }

@@ -3378,13 +3378,28 @@
     width=Math.min(view.pageWidth,width);height=Math.min(view.pageHeight,height);left=Math.max(0,Math.min(Math.max(0,view.pageWidth-width),left));top=Math.max(0,Math.min(Math.max(0,view.pageHeight-height),top));
     return{left:left,top:top,width:width,height:height};
   }
+  function pdfReferenceEntryGeometry(passage,view){
+    if(!passage||!passage.isReference||!passage.items.length||!view||!view.viewport||!view.viewport.convertToViewportRectangle)return null;
+    var left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
+    passage.items.forEach(function(item){
+      var line=item.line||{},x=+line.x,y=+line.y,endX=+line.endX,height=Math.max(1,+line.height||8);if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(endX))return;
+      /* Text coordinates describe a baseline. Include the font box above it and a
+         small descender below it, then unite every continuation line into one box. */
+      var rect=view.viewport.convertToViewportRectangle([x,y-height*.18,endX,y+height]),x0=Math.min(rect[0],rect[2]),x1=Math.max(rect[0],rect[2]),y0=Math.min(rect[1],rect[3]),y1=Math.max(rect[1],rect[3]);
+      left=Math.min(left,x0);top=Math.min(top,y0);right=Math.max(right,x1);bottom=Math.max(bottom,y1);
+    });
+    if(!Number.isFinite(left)||!Number.isFinite(top)||right<=left||bottom<=top)return null;
+    var padX=Math.max(4,Math.min(8,view.pageWidth*.008)),padY=Math.max(3,Math.min(6,view.pageHeight*.006));left-=padX;right+=padX;top-=padY;bottom+=padY;
+    left=Math.max(0,left);top=Math.max(0,top);right=Math.min(view.pageWidth,right);bottom=Math.min(view.pageHeight,bottom);
+    return{left:left,top:top,width:Math.max(1,right-left),height:Math.max(1,bottom-top)};
+  }
   function clearPdfDestinationFlash(){
     clearTimeout(pdfDestinationFlashTimer);byId('pdfFrame').querySelectorAll('.pdf-destination-flash').forEach(function(mark){mark.remove();});
   }
-  function flashPdfDestination(resolved){
+  function flashPdfDestination(resolved,passage){
     clearPdfDestinationFlash();
-    var view=resolved&&pdfViews[resolved.page-1],geometry=pdfDestinationGeometry(resolved,view);if(!view||!geometry)return;
-    var point=pdfDestinationPoint(resolved),mark=document.createElement('span');mark.className='pdf-destination-flash';mark.setAttribute('aria-hidden','true');mark.dataset.page=String(resolved.page);if(point)mark.dataset.pdfY=String(point.y);mark.style.left=geometry.left+'px';mark.style.top=geometry.top+'px';mark.style.width=geometry.width+'px';mark.style.height=geometry.height+'px';view.sheet.appendChild(mark);
+    var view=resolved&&pdfViews[resolved.page-1],referenceGeometry=pdfReferenceEntryGeometry(passage,view),geometry=referenceGeometry||pdfDestinationGeometry(resolved,view);if(!view||!geometry)return;
+    var point=pdfDestinationPoint(resolved),mark=document.createElement('span');mark.className='pdf-destination-flash'+(referenceGeometry?' pdf-reference-flash':'');mark.setAttribute('aria-hidden','true');mark.dataset.page=String(resolved.page);mark.dataset.pdfFlashKind=referenceGeometry?'reference':'destination';if(referenceGeometry)mark.dataset.pdfReferenceLines=String(passage.items.length);if(point)mark.dataset.pdfY=String(point.y);mark.style.left=geometry.left+'px';mark.style.top=geometry.top+'px';mark.style.width=geometry.width+'px';mark.style.height=geometry.height+'px';view.sheet.appendChild(mark);
     pdfDestinationFlashTimer=setTimeout(function(){if(mark.isConnected)mark.remove();},2500);
   }
   function hidePdfReferencePreview(){
@@ -3408,7 +3423,7 @@
   }
   function pdfReferenceEntryNumber(text){var match=String(text||'').trim().match(/^(?:\[\s*(\d{1,3})\s*\]|(\d{1,3})[.)]?)(?=\s|[A-Z])/);return match?+(match[1]||match[2]):null;}
   function pdfReferenceEntryStart(text){return pdfReferenceEntryNumber(text)!==null;}
-  function pdfPreviewSnippet(lines,resolved){
+  function pdfDestinationPassage(lines,resolved){
     lines=(lines||[]).filter(function(line){return line&&String(line.text||'').trim();});if(!lines.length)return'';
     var viewport=resolved&&resolved.unitViewport,point=pdfDestinationPoint(resolved),target=null,rect=null;
     function visualPoint(x,y){
@@ -3436,15 +3451,22 @@
     });
     if(!best){candidates.forEach(function(item){var score=(target?Math.abs(item.y-target.y):item.index)+xDistance(item)*.16;if(score<bestScore){best=item;bestScore=score;}});}if(!best)return'';
     var columnLeft=rect?rect.left:best.left-median,columnRight=rect?rect.right:best.right+median;
-    var column=candidates.filter(function(item){return item.right>=columnLeft-median&&item.left<=columnRight+median;}).sort(function(a,b){return a.y-b.y||a.left-b.left;}),start=column.indexOf(best);if(start<0)start=0;
-    var chosen=[];for(var i=start;i<column.length&&chosen.length<4;i++){
+    var column=candidates.filter(function(item){return item.right>=columnLeft-median&&item.left<=columnRight+median;}).sort(function(a,b){return a.y-b.y||a.left-b.left;}),start=column.indexOf(best),namedReference=/^(?:l?bc|ref|bib)/i.test(String(resolved&&resolved.name||'')),referencePage=lines.some(function(line){return /^references?$/i.test(String(line.text||'').trim());});if(start<0)start=0;
+    /* A few publishers point into the middle of an entry. Walk back to its numbered
+       first line when the destination or page identifies this as a bibliography. */
+    if((namedReference||referencePage)&&!pdfReferenceEntryStart(column[start].line.text))for(var before=start-1;before>=0&&column[before+1].y-column[before].y<=median*2.4;before--){if(pdfReferenceEntryStart(column[before].line.text)){start=before;break;}}
+    var chosen=[];for(var i=start;i<column.length;i++){
       var item=column[i],text=String(item.line.text||'').replace(/\s+/g,' ').trim();if(!text)continue;
       var previous=chosen[chosen.length-1],onlyHeading=chosen.length===1&&/^references?$/i.test(chosen[0].text);
       if(chosen.length&&!onlyHeading&&(pdfReferenceEntryStart(text)||item.y-previous.y>median*2.4))break;
-      chosen.push({text:text,y:item.y});
+      chosen.push({line:item.line,text:text,left:item.left,right:item.right,y:item.y,height:item.height});
     }
     if(chosen.length>1&&/^references?$/i.test(chosen[0].text))chosen.shift();
-    return chosen.map(function(line){return line.text;}).join(' ').slice(0,520);
+    var text=chosen.map(function(line){return line.text;}).join(' '),isReference=namedReference||!!(referencePage&&chosen[0]&&pdfReferenceEntryStart(chosen[0].text));
+    return{text:text,items:chosen,isReference:isReference};
+  }
+  function pdfPreviewSnippet(lines,resolved){
+    var passage=pdfDestinationPassage(lines,resolved);return passage&&passage.items?passage.items.slice(0,4).map(function(line){return line.text;}).join(' ').slice(0,520):'';
   }
   async function showPdfReferencePreview(anchor,dest){
     if(!pdfDoc||!anchor)return;if(pdfReferencePreviewAnchor&&pdfReferencePreviewAnchor!==anchor&&pdfReferencePreviewAnchor.getAttribute('aria-describedby')==='pdfReferencePreview')pdfReferencePreviewAnchor.removeAttribute('aria-describedby');var preview=byId('pdfReferencePreview'),label=byId('pdfReferencePreviewLabel'),copy=byId('pdfReferencePreviewText'),token=++pdfReferencePreviewToken,doc=pdfDoc,id=currentId,epoch=pdfOpenEpoch;pdfReferencePreviewAnchor=anchor;anchor.setAttribute('aria-describedby','pdfReferencePreview');
@@ -3468,7 +3490,9 @@
       if(await gotoPdfPage(resolved.page,'auto')===false||!stillCurrent())return;
       var point=pdfDestinationPoint(resolved);
       if(point&&(await placePdfReadingPosition({page:resolved.page,x:.5,y:0,screenX:.5,screenY:.4,pdfX:point.x,pdfY:point.y},false,true))===false)return;
-      if(!stillCurrent())return;flashPdfDestination(resolved);
+      if(!stillCurrent())return;
+      var passage=null;try{var destinationPage=await originDoc.getPage(resolved.page),content=await destinationPage.getTextContent({includeMarkedContent:true});passage=pdfDestinationPassage(contentLayout(content),resolved);}catch(textError){}
+      if(!stillCurrent())return;flashPdfDestination(resolved,passage);
       var exact=!!point,message='Jumped to p. '+resolved.page+(exact?' at the linked passage':'');
       /* A phone has no Backspace: the way back is a button that waits above the bar. */
       if(matchMedia('(hover: none)').matches){byId('linkReturn').classList.remove('hidden');showReaderToast(message);}

@@ -903,13 +903,15 @@
     /* Zen reading: the paper owns the room, with a faint edge rail for the few
        controls that matter mid-read. Each detailed choice opens to the left so the
        outer page corners stay clear for turning. */
-    body.zen .masthead, body.zen .reader-tools, body.zen .comfort-bar, body.zen .find-bar,
+    body.zen .masthead, body.zen .reader-tools, body.zen .comfort-bar,
     body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer, body.zen .notebook-tuck, body.zen .notebook-reopen { display: none !important; }
     body.zen main { min-height: 100vh; }
     body.zen #readerPage { height: calc(100vh - var(--kb-inset, 0px)); height: calc(100dvh - var(--kb-inset, 0px)); }
     body.zen .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
     .zen-dock { position: fixed; z-index: 48; top: calc(10px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); display: none; flex-direction: column; align-items: flex-end; gap: 8px; }
     body.zen .zen-dock { display: flex; }
+    body.zen .find-bar:not(.hidden) { position: fixed; z-index: 47; top: calc(62px + env(safe-area-inset-top)); right: calc(68px + env(safe-area-inset-right)); width: min(560px, calc(100vw - 96px - env(safe-area-inset-left) - env(safe-area-inset-right))); padding: 8px 10px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
+    body.zen .find-bar input { max-width: none; }
     .zen-tool { position: relative; display: flex; justify-content: flex-end; }
     .zen-exit { position: relative; z-index: 2; width: 44px; height: 44px; padding: 0; display: flex; flex: 0 0 44px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease, color .2s ease, background .2s ease; }
     .zen-popout { position: absolute; z-index: 1; top: 50%; right: calc(100% + 9px); min-height: 50px; transform: translateY(-50%); border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
@@ -933,16 +935,24 @@
        of themselves, video-player style, and any movement or touch wakes them. They
        stay tappable while faded so one tap still exits — never a wake-then-tap dance. */
     body.zen.zen-idle .zen-exit { opacity: .08; }
-    body.zen .zen-dock.popout-open .zen-exit, body.zen.zen-idle .zen-tool.popout-open .zen-exit { opacity: .72; }
+    body.zen .zen-dock.popout-open .zen-exit, body.zen .zen-dock.find-open .zen-exit, body.zen.zen-idle .zen-tool.popout-open .zen-exit { opacity: .72; }
     .zen-tool.popout-open .zen-exit { border-color: color-mix(in srgb, var(--accent) 36%, var(--line)); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--ink); }
     /* When the guide is on, its accent shows through even at rest opacity. */
     .zen-guide { font-size: .78rem; }
+    .zen-find { font-size: 1.05rem; }
+    .zen-find.active { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--accent); opacity: .72; }
     .zen-paper { font-size: .78rem; }
     .zen-theme { font-size: 1.02rem; }
     .zen-refresh { font-size: 1.05rem; }
     .zen-guide.active { color: var(--accent); opacity: .55; }
     .zen-guide.active:hover, .zen-guide.active:focus-visible { color: var(--accent); }
     #zenBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+    @media (max-width: 560px) {
+      body.zen .find-bar:not(.hidden) { left: max(10px, env(safe-area-inset-left)); right: calc(66px + env(safe-area-inset-right)); width: auto; display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 7px; }
+      body.zen .find-bar input { grid-column: 1 / -1; width: 100%; min-height: 44px; font-size: 16px; }
+      body.zen .find-bar .count { min-width: 0; align-self: center; }
+      body.zen .find-bar .step-btn { width: 44px; min-width: 44px; height: 44px; }
+    }
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     .highlight-layer { z-index: 1; pointer-events: none; }
     /* Marker ink still crosses the whole letterform, but its nearly straight, softly
@@ -1135,6 +1145,7 @@
     .pdf-reference-preview { position: fixed; z-index: 43; width: min(360px, calc(100vw - 24px)); padding: 12px 14px 13px; border: 1px solid color-mix(in srgb, var(--blue) 38%, var(--line)); border-radius: 13px; background: color-mix(in srgb, var(--surface) 97%, transparent); color: var(--ink); box-shadow: 0 16px 45px rgba(20,24,25,.22); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); pointer-events: none; }
     .pdf-reference-preview-label { display: block; margin-bottom: 5px; color: var(--blue); font-size: .57rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
     .pdf-reference-preview p { margin: 0; color: var(--ink); font: .8rem/1.46 var(--serif); }
+    .pdf-reference-preview.external p { overflow-wrap: anywhere; font-family: var(--sans); }
     .lookup-card { position: fixed; z-index: 44; width: min(370px, calc(100vw - 24px)); max-height: min(540px, calc(100dvh - 24px)); overflow-y: auto; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 22px 70px rgba(20,24,25,.26); backdrop-filter: blur(18px); }
     .selection-card > .lookup-card { position: static; z-index: auto; left: auto; right: auto; top: auto; bottom: auto; width: 100%; max-height: none; overflow: visible; border: 0; border-top: 1px solid var(--line); border-radius: 0 0 15px 15px; background: color-mix(in srgb, var(--surface-2) 45%, transparent); box-shadow: none; backdrop-filter: none; }
     .selection-card > .lookup-card .lookup-photo-link { height: 145px; }

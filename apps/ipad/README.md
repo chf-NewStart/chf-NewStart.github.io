@@ -23,7 +23,7 @@ npm run ios:open
 
 In Xcode:
 
-1. Select the **App** target, then **Signing & Capabilities**. Select your Team and keep automatic signing enabled. If Xcode cannot register `com.houfu72.phloem` for your account, choose an identifier you control and update `appId` in `capacitor.config.json` to match, then sync again.
+1. Confirm the **App** target shows Version **0.1.0** and Build **2**, the next Apple upload prepared by this checkout. Then open **Signing & Capabilities**, select your Team, and keep automatic signing enabled. If Xcode cannot register `com.houfu72.phloem` for your account, choose an identifier you control and update `appId` in `capacitor.config.json` to match, then sync again.
 2. Connect your iPad, trust the Mac, and enable Developer Mode on the iPad if Xcode requests it.
 3. Choose your iPad as the run destination and press **Run**. You can also choose an installed iPad simulator first.
 4. Import a disposable test PDF. Try Book mode, move the guide across both pages, enter Zen, search, highlight, and add a note.
@@ -55,7 +55,7 @@ When you explicitly use Define, the selected term goes to Wikipedia/Wikimedia. O
 These checks remain; the Node tests do not establish native behavior:
 
 - Import small, large, scanned, and two-column PDFs. Check file-picker cancellation and repeated imports. Test DOCX if that format will ship.
-- Drag the guide between pages, turn pages rapidly, follow internal and external PDF links, hover or focus citations, search, select text, and highlight. Recheck the reported Book-guide/header and reference-link fixes on physical hardware.
+- Drag the guide between pages, turn pages rapidly, follow internal and external PDF links, hover or focus citations, switch link previews off and back on, search from Zen mode, select text, and highlight. Recheck the reported Book-guide/header and reference-link fixes on physical hardware.
 - Rotate, resize in multitasking, and show the keyboard. Check toolbar clipping, safe-area spacing, Zen controls, and touch targets.
 - Force-quit/reopen, suspend/resume, reboot, and install an updated build over the old one. Confirm documents, last page, notes, and highlights survive.
 - Launch and read in airplane mode, including OCR. Verify PDF workers/WASM in WKWebView. Test unusual fonts/CJK PDFs; the shared reader currently has no separate PDF.js cMap/standard-font packs.

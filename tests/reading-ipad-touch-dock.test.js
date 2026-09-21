@@ -281,6 +281,13 @@ async function dockPhysicalSide(page) {
     check('Escape closes More and returns focus to its trigger', !await tablet.locator('#touchDockMenu').isVisible() && await tablet.locator('#touchMore').evaluate(button => document.activeElement === button));
 
     await tablet.locator(ACTION_SELECTORS.more).first().click();
+    await tablet.locator('#touchFind').click();
+    await tablet.waitForFunction(() => !document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('findInput'));
+    check('Find opens from the iPad dock after its More dialog closes', !await tablet.locator('#touchDockMenu').isVisible() && await tablet.locator('#findBar').isVisible());
+    await tablet.keyboard.press('Escape');
+    check('Escape closes iPad Find and returns focus to the visible dock trigger', !await tablet.locator('#findBar').isVisible() && await tablet.locator('#touchMore').evaluate(button => document.activeElement === button));
+
+    await tablet.locator(ACTION_SELECTORS.more).first().click();
     const beforeSettings = await readingPlace(tablet);
     await tablet.locator('#touchSettings').click();
     await tablet.waitForTimeout(120);

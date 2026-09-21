@@ -1,5 +1,7 @@
-let chromium;
-try { chromium = require('playwright').chromium; } catch (e) { chromium = require('playwright-core').chromium; }
+let playwright;
+try { playwright = require('playwright'); } catch (e) { playwright = require('playwright-core'); }
+const browserName = process.env.PHLOEM_BROWSER || 'chromium';
+const browserType = playwright[browserName];
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -34,8 +36,8 @@ function linkedPdfBuffer() {
   const objects = [null,
     '<< /Type /Catalog /Pages 2 0 R /Names << /Dests 12 0 R >> >>',
     '<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R 16 0 R] /Count 4 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 700] /Resources << /Font << /F1 15 0 R >> >> /Contents 4 0 R /Annots [9 0 R 10 0 R 11 0 R 13 0 R 14 0 R] >>',
-    stream('BT\n/F1 16 Tf\n40 620 Td\n(Citations [1,2]) Tj\n0 -50 Td\n(Tiny citation [3]) Tj\n0 -50 Td\n(Safe external link) Tj\n0 -50 Td\n(Unsafe script link) Tj\nET'),
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 700] /Resources << /Font << /F1 15 0 R >> >> /Contents 4 0 R /Annots [9 0 R 10 0 R 11 0 R 13 0 R 14 0 R 18 0 R] >>',
+    stream('BT\n/F1 16 Tf\n40 620 Td\n(Citations [1,2]) Tj\n0 -50 Td\n(Tiny citation [3]) Tj\n0 -50 Td\n(Safe external link) Tj\n0 -50 Td\n(Unsafe script link) Tj\n0 -50 Td\n(Email link) Tj\nET'),
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 700] /Resources << /Font << /F1 15 0 R >> >> /Contents 6 0 R >>',
     stream('BT\n/F1 16 Tf\n40 620 Td\n(Intervening page) Tj\nET'),
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 700] /Resources << /Font << /F1 15 0 R >> >> /Contents 8 0 R >>',
@@ -48,7 +50,8 @@ function linkedPdfBuffer() {
     '<< /Type /Annot /Subtype /Link /Rect [40 465 180 488] /Border [0 0 0] /A << /S /URI /URI (javascript:alert\\(1\\)) >> >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 700] /Resources << /Font << /F1 15 0 R >> >> /Contents 17 0 R >>',
-    stream('BT\n/F1 16 Tf\n40 620 Td\n(Page after the references.) Tj\nET')
+    stream('BT\n/F1 16 Tf\n40 620 Td\n(Page after the references.) Tj\nET'),
+    '<< /Type /Annot /Subtype /Link /Rect [40 415 180 438] /Border [0 0 0] /A << /S /URI /URI (mailto:test@example.com) >> >>'
   ];
   let pdf = '%PDF-1.4\n';
   const offsets = [0];
@@ -65,23 +68,51 @@ function linkedPdfBuffer() {
 
 (async () => {
   await new Promise((resolve, reject) => { server.once('error', reject);server.listen(PORT, '127.0.0.1', resolve); });
+  if (!browserType) throw new Error('Unknown Playwright browser: ' + browserName);
   const executablePath = process.env.CHROME_PATH || undefined;
-  const browser = await chromium.launch({ headless: true, executablePath });
+  const launch = { headless: true };
+  if (browserName === 'chromium' && executablePath) launch.executablePath = executablePath;
+  const browser = await browserType.launch(launch);
   const page = await browser.newPage({ viewport: { width: 1000, height: 760 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 });
   const errors = [];
+  const thirdPartyRequests = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => { if (new URL(request.url()).hostname === 'example.com') thirdPartyRequests.push(request.url()); });
   await page.addInitScript(() => {
     localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {} }));
     localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ pdfLayout: 'scroll', guideOrientation: 'row', focus: false, guideDim: 55 }));
   });
   await page.goto('http://127.0.0.1:' + PORT + '/reading.html', { waitUntil: 'load' });
   await page.setInputFiles('#pdfFile', { name: 'linked-references.pdf', mimeType: 'application/pdf', buffer: linkedPdfBuffer() });
-  await page.waitForFunction(() => document.querySelectorAll('.pdf-page[data-page="1"] .pdf-link').length === 4);
+  await page.waitForFunction(() => document.querySelectorAll('.pdf-page[data-page="1"] .pdf-link').length === 5);
 
   const kinds = await page.locator('.pdf-page[data-page="1"] .pdf-link').evaluateAll(links => links.map(link => ({ kind: link.dataset.pdfLinkKind, dest: link.dataset.pdfDestination || '', href: link.href, rel: link.rel, target: link.target })));
-  check('safe URL and three internal destinations render while unsafe JavaScript stays absent', kinds.length === 4 && kinds.filter(link => link.kind === 'internal').length === 3 && kinds.filter(link => link.kind === 'external').length === 1, JSON.stringify(kinds));
-  const external = kinds.find(link => link.kind === 'external');
+  check('safe URLs and three internal destinations render while unsafe JavaScript stays absent', kinds.length === 5 && kinds.filter(link => link.kind === 'internal').length === 3 && kinds.filter(link => link.kind === 'external').length === 2, JSON.stringify(kinds));
+  const external = kinds.find(link => link.href === 'https://example.com/paper');
   check('safe external PDF URLs retain protected new-tab behavior', external && external.href === 'https://example.com/paper' && external.target === '_blank' && /noopener/.test(external.rel) && /noreferrer/.test(external.rel), JSON.stringify(external));
+
+  const externalLink = page.locator('.pdf-link[data-pdf-link-kind="external"][href^="https://example.com"]');
+  await externalLink.hover();
+  await page.waitForFunction(() => !document.getElementById('pdfReferencePreview').classList.contains('hidden'));
+  const externalPreview = await page.locator('#pdfReferencePreview').evaluate(card => ({ label: card.querySelector('.pdf-reference-preview-label').textContent, text: card.querySelector('p').textContent, external: card.classList.contains('external') }));
+  check('external PDF links get a text-only host and URL preview', externalPreview.external && externalPreview.label === 'External link · example.com' && externalPreview.text === 'https://example.com/paper', JSON.stringify(externalPreview));
+  check('showing an external preview does not request third-party content', thirdPartyRequests.length === 0, JSON.stringify(thirdPartyRequests));
+  await page.locator('.pdf-link[href^="mailto:"]').hover();
+  check('unsupported preview schemes clear the previous link preview', await page.locator('#pdfReferencePreview').evaluate(card => card.classList.contains('hidden')));
+
+  const previewDefault = await page.locator('#pdfLinkPreviewBtn').getAttribute('aria-pressed');
+  check('PDF link previews default on with a pressed-state toggle', previewDefault === 'true', previewDefault);
+  await page.locator('#pdfLinkPreviewBtn').evaluate(button => button.click());
+  await page.waitForTimeout(700);
+  const previewOff = await page.evaluate(() => ({ pressed: document.getElementById('pdfLinkPreviewBtn').getAttribute('aria-pressed'), label: document.getElementById('pdfLinkPreviewBtn').textContent, stored: JSON.parse(localStorage.getItem('readingRoom.comfort.v1')).linkPreviews, hidden: document.getElementById('pdfReferencePreview').classList.contains('hidden') }));
+  check('the preview toggle turns previews off and persists locally', previewOff.pressed === 'false' && previewOff.label === 'Previews off' && previewOff.stored === false && previewOff.hidden, JSON.stringify(previewOff));
+  const disabledRef = page.locator('.pdf-link[data-pdf-destination="refA"]');
+  await disabledRef.scrollIntoViewIfNeeded();
+  const disabledRefBox = await disabledRef.boundingBox();
+  await page.mouse.move(disabledRefBox.x + disabledRefBox.width / 2, disabledRefBox.y + disabledRefBox.height / 2);
+  await page.waitForTimeout(180);
+  check('internal reference hover stays quiet while previews are off', await page.locator('#pdfReferencePreview').evaluate(card => card.classList.contains('hidden')));
+  await page.locator('#pdfLinkPreviewBtn').evaluate(button => button.click());
 
   await page.setViewportSize({ width: 360, height: 740 });
   /* The reader intentionally debounces both window- and pane-resize rebuilds. Wait
@@ -148,6 +179,13 @@ function linkedPdfBuffer() {
   await page.keyboard.press('Backspace');
   await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('1 /'));
   check('rapid citation jumps preserve the original Backspace return spot', true);
+  await page.locator('#pdfLinkPreviewBtn').evaluate(button => button.click());
+  const previewsOffRef = page.locator('.pdf-link[data-pdf-destination="refA"]');
+  await previewsOffRef.scrollIntoViewIfNeeded();
+  const previewsOffBox = await previewsOffRef.boundingBox();
+  await page.touchscreen.tap(previewsOffBox.x + previewsOffBox.width / 2, previewsOffBox.y + previewsOffBox.height / 2);
+  await page.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('3 /') && document.querySelector('.pdf-destination-flash[data-pdf-y="596"]'));
+  check('turning previews off does not disable link navigation', await page.locator('#pdfReferencePreview').evaluate(card => card.classList.contains('hidden')));
   check('citation interactions produce no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

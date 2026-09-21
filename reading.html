@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=123">
+  <link rel="stylesheet" href="/reading.css?v=124">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -191,6 +191,9 @@
                 <button class="toggle" type="button" data-pdf-layout="book" aria-pressed="false" title="Facing pages; tap or pull a visible outer edge to turn; tap Fit for a full-width page">Book</button>
               </div>
             </div>
+            <div class="group"><span class="group-label">Links</span>
+              <button class="toggle" id="pdfLinkPreviewBtn" type="button" aria-pressed="true" title="Show a local preview when a PDF link is hovered or focused">Previews on</button>
+            </div>
           </div>
         </div>
         <div class="comfort-section comfort-guide" aria-label="Guide settings">
@@ -246,9 +249,9 @@
         </div>
         <button class="toggle comfort-reset" id="comfortReset" type="button">Reset all</button>
       </div>
-      <div class="find-bar hidden" id="findBar">
+      <div class="find-bar hidden" id="findBar" role="search" aria-label="Find in this paper">
         <input id="findInput" type="search" placeholder="Find in this paper…" aria-label="Find in this paper">
-        <span class="count" id="findCount"></span>
+        <span class="count" id="findCount" role="status" aria-live="polite"></span>
         <button class="step-btn" id="findPrev" type="button" aria-label="Previous match">↑</button>
         <button class="step-btn" id="findNext" type="button" aria-label="Next match">↓</button>
       </div>
@@ -454,6 +457,7 @@
       </aside>
       <div class="zen-dock" id="zenDock" role="toolbar" aria-label="Zen reading controls">
         <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading" title="Leave zen reading">✕</button>
+        <button class="zen-exit zen-find" id="zenFind" type="button" aria-expanded="false" aria-controls="findBar" aria-keyshortcuts="/" aria-label="Find in this paper" title="Find in this paper (/)">⌕</button>
         <div class="zen-tool" id="zenLayoutTool">
           <button class="zen-exit" id="zenLayout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout. Choose layout" title="Switch page layout"><span aria-hidden="true">⇄</span></button>
           <div class="zen-popout zen-layout-menu hidden" id="zenLayoutMenu" role="group" aria-label="Page layout">
@@ -750,9 +754,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=123',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=124',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=123" defer></script>
+<script src="/reading.js?v=124" defer></script>
 </body>
 </html>

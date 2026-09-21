@@ -150,3 +150,11 @@ test('Capacitor configuration uses bundled assets instead of a remote server', a
   assert.equal(config.webDir, 'www');
   assert.equal(config.server?.url, undefined);
 });
+
+test('Xcode Debug and Release agree on the next Apple build identity', async () => {
+  const project = await readFile(path.join(defaultRepoRoot, 'apps/ipad/ios/App/App.xcodeproj/project.pbxproj'), 'utf8');
+  const builds = [...project.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map(match => match[1]);
+  const versions = [...project.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map(match => match[1]);
+  assert.deepEqual(builds, ['2', '2']);
+  assert.deepEqual(versions, ['0.1.0', '0.1.0']);
+});

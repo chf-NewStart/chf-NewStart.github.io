@@ -117,6 +117,30 @@ function seedZenReader() {
   check('Zen exposes one compact layout switch', zenLayoutVisible && zenDockState.expanded === 'false', JSON.stringify(zenDockState));
   check('Zen keeps layout choices collapsed until requested', !(await page.locator('#zenLayoutMenu').isVisible()));
   check('Zen refresh uses the same save-safe reload path as the masthead', await page.evaluate(() => document.getElementById('zenRefresh').onclick === document.getElementById('refreshBtn').onclick));
+  const zenFindTarget = await page.locator('#zenFind').evaluate(button => {
+    const rect = button.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, label: button.getAttribute('aria-label'), controls: button.getAttribute('aria-controls') };
+  });
+  check('Zen exposes a full-size Find control', zenFindTarget.width >= 44 && zenFindTarget.height >= 44 && /find/i.test(zenFindTarget.label) && zenFindTarget.controls === 'findBar', JSON.stringify(zenFindTarget));
+  await page.click('#zenFind');
+  await page.waitForFunction(() => !document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('findInput'));
+  const zenFindPanel = await page.locator('#findBar').evaluate(bar => {
+    const rect = bar.getBoundingClientRect();
+    return { position: getComputedStyle(bar).position, left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: innerWidth, height: innerHeight, zen: document.body.classList.contains('zen'), expanded: document.getElementById('zenFind').getAttribute('aria-expanded') };
+  });
+  check('Zen Find opens a viewport-contained floating search panel without leaving Zen', zenFindPanel.position === 'fixed' && zenFindPanel.left >= -0.5 && zenFindPanel.top >= -0.5 && zenFindPanel.right <= zenFindPanel.width + 0.5 && zenFindPanel.bottom <= zenFindPanel.height + 0.5 && zenFindPanel.zen && zenFindPanel.expanded === 'true', JSON.stringify(zenFindPanel));
+  await page.fill('#findInput', 'Phloem');
+  await page.waitForFunction(() => /\d+\s*\/\s*\d+/.test(document.getElementById('findCount').textContent) && !!document.querySelector('.find-target,.find-span'));
+  check('Find searches and paints results while Zen remains active', await page.evaluate(() => document.body.classList.contains('zen') && /\d+\s*\/\s*\d+/.test(document.getElementById('findCount').textContent) && !!document.querySelector('.find-target,.find-span')));
+  await page.keyboard.press('Escape');
+  check('Escape closes Find, returns focus, and leaves Zen active', await page.evaluate(() => document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('zenFind') && document.body.classList.contains('zen') && document.getElementById('zenFind').getAttribute('aria-expanded') === 'false'));
+  await page.locator('#highlightBtn').evaluate(button => button.click());
+  await page.keyboard.press('/');
+  await page.waitForFunction(() => !document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('findInput'));
+  await page.locator('#findNext').focus();
+  await page.keyboard.press('Escape');
+  check('Escape from a Zen Find step control closes only Find', await page.evaluate(() => document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('zenFind') && document.body.classList.contains('zen') && document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true'));
+  await page.locator('#highlightBtn').evaluate(button => button.click());
   const zenPaperState = await page.locator('#zenPaperAppearance').evaluate(button => {
     const rect = button.getBoundingClientRect();
     return { visible: getComputedStyle(button).display !== 'none', width: rect.width, height: rect.height, label: button.getAttribute('aria-label'), state: button.dataset.paperState };
@@ -236,9 +260,28 @@ function seedZenReader() {
   await keyboardPage.evaluate(() => window.__setVisualViewport({ height: 768, offsetTop: 0 }));
   await keyboardPage.waitForFunction(() => !document.body.classList.contains('keyboard-open') && getComputedStyle(document.documentElement).getPropertyValue('--kb-inset').trim() === '0px');
   check('keyboard dismissal restores the normal viewport state', true);
+  await keyboardContext.close();
+
+  const phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3, serviceWorkers: 'block' });
+  const phonePage = await phoneContext.newPage();
+  phonePage.setDefaultTimeout(8000);
+  phonePage.on('pageerror', error => errors.push(error.message));
+  await phonePage.addInitScript(seedReader);
+  await phonePage.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  await phonePage.waitForFunction(() => document.querySelector('#textDocument .original') && !document.getElementById('readerPage').classList.contains('hidden'));
+  await phonePage.evaluate(() => document.getElementById('zenBtn').click());
+  await phonePage.click('#zenFind');
+  const phoneFind = await phonePage.locator('#findBar').evaluate(bar => {
+    const panel = bar.getBoundingClientRect(), input = document.getElementById('findInput'), previous = document.getElementById('findPrev').getBoundingClientRect(), next = document.getElementById('findNext').getBoundingClientRect();
+    return { left: panel.left, right: panel.right, top: panel.top, bottom: panel.bottom, width: innerWidth, height: innerHeight, inputFont: parseFloat(getComputedStyle(input).fontSize), previous: { width: previous.width, height: previous.height }, next: { width: next.width, height: next.height } };
+  });
+  check('phone Zen Find stays onscreen with keyboard-safe text and touch targets', phoneFind.left >= -0.5 && phoneFind.top >= -0.5 && phoneFind.right <= phoneFind.width + 0.5 && phoneFind.bottom <= phoneFind.height + 0.5 && phoneFind.inputFont >= 16 && phoneFind.previous.width >= 44 && phoneFind.previous.height >= 44 && phoneFind.next.width >= 44 && phoneFind.next.height >= 44, JSON.stringify(phoneFind));
+  await phonePage.fill('#findInput', 'Paragraph');
+  await phonePage.waitForFunction(() => /\d+\s*\/\s*\d+/.test(document.getElementById('findCount').textContent) && !!document.querySelector('.find-target'));
+  check('phone Find searches without leaving Zen', await phonePage.evaluate(() => document.body.classList.contains('zen')));
+  await phoneContext.close();
 
   check('Zen and iPad controls have no page errors', errors.length === 0, errors.join('; '));
-  await keyboardContext.close();
   await browser.close();
   server.close();
   process.exit(failures ? 1 : 0);

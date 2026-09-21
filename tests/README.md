@@ -40,9 +40,10 @@ rebuilds, and phrases split between PDF.js text-layer spans.
 
 `reading-pdf-links.test.js` covers real pointer hit-testing for PDF annotations,
 phone-sized superscript citations, safe external URLs, blocked script actions,
-destination-aware reference previews, exact named `/FitR` line jumps, a
-temporary box around the complete referenced entry, and Backspace return to the
-citation.
+safe text-only external URL previews without third-party requests, the persisted
+preview switch, destination-aware reference previews, exact named `/FitR` line
+jumps, a temporary box around the complete referenced entry, and Backspace
+return to the citation.
 
 `reading-ipad-touch-dock.test.js` covers the coarse-touch iPad dock, 52px Guide,
 Highlight, Notes, and More targets, persisted left/right placement, temporary
@@ -54,6 +55,11 @@ the same workflow against Playwright WebKit.
 `reading-ipad-header.test.js` covers tablet masthead button fit, separation from
 the reader's Library row and landscape Settings sheet, root viewport offsets,
 and Zen/phone/library transitions.
+
+`reading-zen-ipad.test.js` covers the iPad Zen control dock, its responsive Find
+panel and search highlighting, Escape/focus behavior, guide and layout popouts,
+paper appearance, and software-keyboard-safe note editing. Set
+`PHLOEM_BROWSER=webkit` to exercise the same flow in WebKit.
 
 `reading-book-guide.test.js` covers dragging the guide between facing pages,
 holding its page through the gutter, matching page-note context, and retaining
@@ -147,8 +153,12 @@ node tests/reading-library-stack.test.js
 node tests/reading-library-list.test.js
 node tests/reading-library-thinking-search.test.js
 node tests/reading-find-highlight.test.js
+node tests/reading-pdf-links.test.js
+PHLOEM_BROWSER=webkit node tests/reading-pdf-links.test.js
 node tests/reading-ipad-touch-dock.test.js
 node tests/reading-ipad-header.test.js
+node tests/reading-zen-ipad.test.js
+PHLOEM_BROWSER=webkit node tests/reading-zen-ipad.test.js
 node tests/reading-book-guide.test.js
 PHLOEM_BROWSER=webkit node tests/reading-ipad-touch-dock.test.js
 node tests/reading-selection-touch.test.js

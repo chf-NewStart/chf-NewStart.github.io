@@ -8,10 +8,12 @@ The Xcode project is generated and configured for iPad. The web bundle and autom
 
 Requirements: a Mac with [Xcode 26 or newer](https://capacitorjs.com/docs/ios), Node.js 22 or newer, and an Apple Account for Xcode signing. This project uses Swift Package Manager, so CocoaPods is not required. The deployment target is iPadOS 15; test the actual features on the oldest OS you intend to support before release.
 
-Clone the prototype branch into a new folder:
+Clone the current `main` branch into a new folder. The native bundle is built
+from the reader files in that checkout, so this is also how the next iPad build
+receives the latest reader fixes:
 
 ```sh
-git clone --branch feat/phloem-ipad-prototype --single-branch https://github.com/chf-NewStart/chf-NewStart.github.io.git phloem-ipad
+git clone https://github.com/chf-NewStart/chf-NewStart.github.io.git phloem-ipad
 cd phloem-ipad/apps/ipad
 npm ci
 npm test
@@ -53,7 +55,7 @@ When you explicitly use Define, the selected term goes to Wikipedia/Wikimedia. O
 These checks remain; the Node tests do not establish native behavior:
 
 - Import small, large, scanned, and two-column PDFs. Check file-picker cancellation and repeated imports. Test DOCX if that format will ship.
-- Drag the guide between pages, turn pages rapidly, search, select text, and highlight. Recheck the reported Book-guide/header issues; this prototype does not include the separate pending web-fix PR.
+- Drag the guide between pages, turn pages rapidly, follow internal and external PDF links, hover or focus citations, search, select text, and highlight. Recheck the reported Book-guide/header and reference-link fixes on physical hardware.
 - Rotate, resize in multitasking, and show the keyboard. Check toolbar clipping, safe-area spacing, Zen controls, and touch targets.
 - Force-quit/reopen, suspend/resume, reboot, and install an updated build over the old one. Confirm documents, last page, notes, and highlights survive.
 - Launch and read in airplane mode, including OCR. Verify PDF workers/WASM in WKWebView. Test unusual fonts/CJK PDFs; the shared reader currently has no separate PDF.js cMap/standard-font packs.
@@ -64,7 +66,7 @@ DOCX parsing uses `DecompressionStream`, and native CSS includes `:has()`. Full 
 
 ## Before charging for it
 
-1. Fix reading/guide/header issues found on iPad, including accessibility and large-document performance.
+1. Keep validating reading/guide/header behavior on iPad, including accessibility and large-document performance.
 2. Add durable native storage, complete document-and-notes backup/restore, tested migration, and native Files export. Add an Open In/share extension if in scope.
 3. Replace the generated Capacitor app icon with the final Phloem icon. Review the actual archive's dependency notices and rights for the personal font/guide.
 4. Run a small TestFlight, prepare screenshots and accurate privacy/support information, and configure the paid app in App Store Connect. App Review evaluates the complete app experience.

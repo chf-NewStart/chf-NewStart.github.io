@@ -14,11 +14,20 @@
   var HIGHLIGHT_COLOR_KEY = 'readingRoom.highlightColor.v1';
   var AI_PROVIDERS = {
     gemini:{label:'Gemini API',model:'gemini-3.6-flash'},
-    deepseek:{label:'DeepSeek',model:'deepseek-v4-flash'},
+    deepseek:{label:'DeepSeek',model:'deepseek-flash'},
     openai:{label:'OpenAI',model:'gpt-5-mini'},
-    anthropic:{label:'Anthropic',model:'claude-sonnet-4-20250514'},
+    anthropic:{label:'Anthropic',model:'claude-sonnet-4-6'},
     compatible:{label:'OpenAI-compatible',model:'',endpoint:''}
   };
+  var NATIVE_AI_CONSENT_VERSION = 1;
+  function nativeAiPlugin(){return window.PHLOEM_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemAI||null;}
+  function nativeAiDestination(id){return{id:'',gemini:'generativelanguage.googleapis.com',deepseek:'api.deepseek.com',openai:'api.openai.com',anthropic:'api.anthropic.com'}[id]||'';}
+  function nativeAiPrivacy(id){return{
+    gemini:{url:'https://ai.google.dev/gemini-api/terms',label:'Google Gemini terms and data use',detail:'Google’s data use depends on your API plan; unpaid Gemini services may use submitted content to improve Google products and may involve human review.'},
+    deepseek:{url:'https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html',label:'DeepSeek privacy policy',detail:'DeepSeek says it collects prompts and related technical data and may process and store personal data in the People’s Republic of China.'},
+    openai:{url:'https://platform.openai.com/docs/models/default-usage-policies-by-endpoint',label:'OpenAI API data controls',detail:'OpenAI says API data is not used for model training unless the API customer opts in; abuse-monitoring logs may retain prompts and responses for up to 30 days by default.'},
+    anthropic:{url:'https://privacy.anthropic.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data',label:'Anthropic API data retention',detail:'Anthropic says commercial API inputs and outputs are not used for training by default and are normally deleted within 30 days, subject to policy, legal, or agreed exceptions.'}
+  }[id]||{url:'',label:'Provider privacy information',detail:'Review the provider’s terms and privacy policy before sending reading context.'};}
   var STARTER_GUIDE_URL = '/assets/phloem-guide/phloem-field-guide.pdf';
   var STARTER_GUIDE_ID = 'phloem-field-guide-v1';
   var PDF_ZOOM_PREFERENCE_VERSION = 2;
@@ -119,7 +128,7 @@
     return '<div class="ai-turn'+(mine?' you':' rich')+'">'+(mine?esc(content):richText(content))+'</div>';
   }
   function defaultAiSettings(){
-    var providers={};Object.keys(AI_PROVIDERS).forEach(function(id){providers[id]={key:'',model:AI_PROVIDERS[id].model||'',endpoint:AI_PROVIDERS[id].endpoint||''};});
+    var providers={};Object.keys(AI_PROVIDERS).forEach(function(id){providers[id]={key:'',keyPresent:false,model:AI_PROVIDERS[id].model||'',endpoint:AI_PROVIDERS[id].endpoint||''};});
     return{provider:'auto',providers:providers};
   }
   function loadAiSettings(){
@@ -129,11 +138,14 @@
       cfg.provider=saved.provider==='browser'?'auto':(saved.provider||'auto');
       Object.keys(cfg.providers).forEach(function(id){if(saved.providers[id])cfg.providers[id]=Object.assign(cfg.providers[id],saved.providers[id]);});
     }
-    var legacy='';try{legacy=localStorage.getItem(LEGACY_AI_KEY)||'';}catch(e){}
+    if(cfg.providers.deepseek.model==='deepseek-v4-flash')cfg.providers.deepseek.model='deepseek-flash';
+    if(cfg.providers.anthropic.model==='claude-sonnet-4-20250514')cfg.providers.anthropic.model='claude-sonnet-4-6';
+    var legacy='';if(!window.PHLOEM_NATIVE)try{legacy=localStorage.getItem(LEGACY_AI_KEY)||'';}catch(e){}
     if(legacy&&!cfg.providers.deepseek.key){cfg.providers.deepseek.key=legacy;if(!saved)cfg.provider='deepseek';try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg));}catch(e){}}
+    if(window.PHLOEM_NATIVE){var scrubbed=false;Object.keys(cfg.providers).forEach(function(id){if(cfg.providers[id].key)scrubbed=true;cfg.providers[id].key='';cfg.providers[id].keyPresent=!!cfg.providers[id].keyPresent;});if(cfg.provider==='auto'||cfg.provider==='compatible')cfg.provider='openai';if(scrubbed)try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg));localStorage.removeItem(LEGACY_AI_KEY);}catch(e){}}
     if(!AI_PROVIDERS[cfg.provider]&&cfg.provider!=='auto')cfg.provider='auto';return cfg;
   }
-  function saveAiSettings(){try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(aiSettings));}catch(e){} }
+  function saveAiSettings(){try{var saved=aiSettings;if(window.PHLOEM_NATIVE){saved=JSON.parse(JSON.stringify(aiSettings));Object.keys(saved.providers||{}).forEach(function(id){saved.providers[id].key='';});}localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(saved));}catch(e){} }
   function normalizePassEndpoint(value){
     value=String(value||'').trim().replace(/\/+$/,'');if(!value)return'';try{var url=new URL(value);if(url.protocol!=='https:'&&!(url.protocol==='http:'&&(url.hostname==='localhost'||url.hostname==='127.0.0.1')))return'';return url.origin+url.pathname.replace(/\/+$/,'');}catch(e){return'';}
   }
@@ -157,7 +169,7 @@
   function browserLanguageModel(){return window.LanguageModel||(window.ai&&window.ai.languageModel)||null;}
   function cloudAiRoute(preferred){
     var ids=preferred&&preferred!=='auto'?[preferred]:['gemini','deepseek','openai','anthropic','compatible'];
-    for(var i=0;i<ids.length;i++){var id=ids[i],cfg=aiSettings.providers[id]||{};if(AI_PROVIDERS[id]&&cfg.key&&cfg.model&&(id!=='compatible'||cfg.endpoint))return{id:id,label:AI_PROVIDERS[id].label,cfg:cfg};}
+    for(var i=0;i<ids.length;i++){var id=ids[i],cfg=aiSettings.providers[id]||{},credential=cfg.key||(nativeAiPlugin()&&cfg.keyPresent);if(AI_PROVIDERS[id]&&credential&&cfg.model&&(id!=='compatible'||cfg.endpoint))return{id:id,label:AI_PROVIDERS[id].label,cfg:cfg};}
     return null;
   }
   function activeAiRoute(skipBrowser){var selected=aiSettings.provider||'auto';if(selected==='auto')return!skipBrowser&&browserLanguageModel()?{id:'browser',label:'Gemini Nano (on device)',cfg:{}}:null;return cloudAiRoute(selected);}
@@ -230,6 +242,7 @@
   }
   async function runAiMessages(messages,maxTokens,onProgress,routeOverride){
     aiSettings=loadAiSettings();var route=routeOverride||activeAiRoute(false);if(!route)throw aiSetupError('Choose an AI provider and add its API key in settings.');
+    var nativePlugin=nativeAiPlugin();if(nativePlugin){if(route.id==='browser'||route.id==='compatible'||route.id==='review-pass')throw aiSetupError('Choose Gemini API, DeepSeek, OpenAI, or Anthropic in iPad settings.');aiProgress(onProgress,'Asking '+route.label+'…');try{return await nativePlugin.request({provider:route.id,model:route.cfg.model,messages:messages,maxTokens:maxTokens,consentVersion:NATIVE_AI_CONSENT_VERSION});}catch(error){throw aiSetupError(error&&error.message||'The native AI request failed.');}}
     if(route.id==='browser')return runBrowserAi(messages,onProgress);
     aiProgress(onProgress,'Asking '+route.label+'…');return runCloudAi(route,messages,maxTokens);
   }
@@ -440,10 +453,12 @@
       if(card.classList.contains('hidden')||!selectionAnchor)return;
       viewport=readerVisualViewport();
       var box=card.getBoundingClientRect(),gap=12,center=selectionAnchor.left+(selectionAnchor.width||0)/2,leftEdge=viewport.left+gap,rightEdge=viewport.right-gap;
-      /* The iPad dock floats above the page. Keep the passage card beside it, never
-         underneath it, without narrowing or reflowing the paper itself. */
-      var dock=byId('touchDock'),dockBox=dock&&getComputedStyle(dock).display!=='none'?dock.getBoundingClientRect():null;
-      if(dockBox&&dockBox.width){if(document.body.dataset.tabletDockSide==='left')leftEdge=Math.max(leftEdge,dockBox.right+gap);else rightEdge=Math.min(rightEdge,dockBox.left-gap);}
+      /* Touch and Zen docks float above the paper. Keep the passage card beside the
+         active edge rail without narrowing or reflowing the document itself. */
+      var zenDock=byId('zenDock'),zenDockBox=document.body.classList.contains('zen')&&zenDock&&getComputedStyle(zenDock).display!=='none'?zenDock.getBoundingClientRect():null;
+      var dock=byId('touchDock'),dockBox=!zenDockBox&&dock&&getComputedStyle(dock).display!=='none'?dock.getBoundingClientRect():null;
+      if(zenDockBox&&zenDockBox.width)rightEdge=Math.min(rightEdge,zenDockBox.left-gap);
+      else if(dockBox&&dockBox.width){if(document.body.dataset.tabletDockSide==='left')leftEdge=Math.max(leftEdge,dockBox.right+gap);else rightEdge=Math.min(rightEdge,dockBox.left-gap);}
       if(rightEdge-leftEdge<box.width){leftEdge=viewport.left+gap;rightEdge=viewport.right-gap;}
       var left=Math.max(leftEdge,Math.min(center-box.width/2,rightEdge-box.width));
       card.style.left=Math.round(left)+'px';
@@ -610,8 +625,8 @@
   byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
   document.addEventListener('pointerdown',function(e){
     if(!e.target.closest('#lookupCard'))hideLookup();
-    if(!e.target.closest('#selectionCard,#touchDock,#markerTools')&&!e.target.closest('.text-layer,.original'))clearPendingSelection();
-    if(!e.target.closest('#markerTools'))setHighlightPaletteOpen(false);
+    if(!e.target.closest('#selectionCard,#touchDock,#markerTools,#zenMarkerTool')&&!e.target.closest('.text-layer,.original'))clearPendingSelection();
+    if(!e.target.closest('#markerTools,#zenMarkerTool'))setHighlightPaletteOpen(false);
     if(!e.target.closest('#touchMarkerTool'))setTouchHighlightPaletteOpen(false);
   },true);
   window.addEventListener('resize',function(){placeLookupCard();placeSelectionCard();});
@@ -1028,17 +1043,23 @@
     if(duplicateNoticeMessage){panel.classList.remove('hidden');panel.classList.add('done');button.classList.add('hidden');byId('duplicateNoticeTitle').textContent='Library cleaned';byId('duplicateNoticeCopy').textContent=duplicateNoticeMessage;return;}
     panel.classList.add('hidden');panel.classList.remove('done');button.classList.remove('hidden');
   }
-  var librarySelectionId=null,LIBRARY_SORT_KEY='readingRoom.librarySort',LIBRARY_VIEW_KEY='readingRoom.libraryView',LIBRARY_OFFLINE_KEY='readingRoom.offlineOnly.v1',shelfPressUntil=0,revealShelfCategoryOnRender=false;
-  var librarySortMode='touched',libraryViewMode='wall',libraryOfflineOnly=false,libraryListCategory='all',libraryListSelected={},librarySearchTimer=0;
+  var librarySelectionId=null,LIBRARY_SORT_KEY='readingRoom.librarySort',LIBRARY_VIEW_KEY='readingRoom.libraryView',LIBRARY_NOTE_STYLE_KEY='readingRoom.libraryNoteStyle',LIBRARY_OFFLINE_KEY='readingRoom.offlineOnly.v1',shelfPressUntil=0,revealShelfCategoryOnRender=false;
+  var librarySortMode='touched',libraryViewMode='wall',libraryNoteStyle='clean',libraryOfflineOnly=false,libraryListCategory='all',libraryListSelected={},librarySearchTimer=0;
   try{
-    var savedLibrarySort=localStorage.getItem(LIBRARY_SORT_KEY),savedLibraryView=localStorage.getItem(LIBRARY_VIEW_KEY);libraryOfflineOnly=localStorage.getItem(LIBRARY_OFFLINE_KEY)==='1';
+    var savedLibrarySort=localStorage.getItem(LIBRARY_SORT_KEY),savedLibraryView=localStorage.getItem(LIBRARY_VIEW_KEY),savedLibraryNoteStyle=localStorage.getItem(LIBRARY_NOTE_STYLE_KEY);libraryOfflineOnly=localStorage.getItem(LIBRARY_OFFLINE_KEY)==='1';
     if(['touched','added','title','author','progress'].indexOf(savedLibrarySort)>=0)librarySortMode=savedLibrarySort;
     if(['wall','list'].indexOf(savedLibraryView)>=0)libraryViewMode=savedLibraryView;
+    if(['clean','handwritten'].indexOf(savedLibraryNoteStyle)>=0)libraryNoteStyle=savedLibraryNoteStyle;
   }catch(e){}
   byId('librarySort').value=librarySortMode;
   function syncLibraryViewControl(){
     document.querySelectorAll('[data-library-view]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.libraryView===libraryViewMode));});
   }
+  function syncLibraryNoteStyleControl(){
+    document.documentElement.dataset.libraryNoteStyle=libraryNoteStyle;
+    document.querySelectorAll('[data-library-note-style]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.libraryNoteStyle===libraryNoteStyle));});
+  }
+  syncLibraryNoteStyleControl();
   function localReadingAvailability(ch){
     var durable=!!localSourceReady[ch.id],known=durable||localSourceScanDone;
     if(ch.kind==='pdf')return{available:durable,known:known,state:durable?'downloaded':known?'needed':'checking',label:durable?'Downloaded on this device':known?'Download needed':'Checking this device'};
@@ -1390,6 +1411,9 @@
   byId('librarySort').onchange=function(){librarySortMode=this.value;try{localStorage.setItem(LIBRARY_SORT_KEY,librarySortMode);}catch(e){}renderShelf();};
   document.querySelectorAll('[data-library-view]').forEach(function(button){
     button.onclick=function(){var next=button.dataset.libraryView;if(next===libraryViewMode)return;libraryListSelected={};libraryViewMode=next;try{localStorage.setItem(LIBRARY_VIEW_KEY,libraryViewMode);}catch(e){}syncLibraryViewControl();renderShelf();};
+  });
+  document.querySelectorAll('[data-library-note-style]').forEach(function(button){
+    button.onclick=function(){var next=button.dataset.libraryNoteStyle;if(next===libraryNoteStyle)return;libraryNoteStyle=next;try{localStorage.setItem(LIBRARY_NOTE_STYLE_KEY,libraryNoteStyle);}catch(e){}syncLibraryNoteStyleControl();};
   });
   byId('cleanDuplicatesBtn').onclick=async function(){
     var button=this,old=button.textContent;button.disabled=true;button.textContent='Checking PDFs…';await backfillPdfFingerprints();
@@ -2629,14 +2653,26 @@
     syncTouchDockStates();
     if(on)requestAnimationFrame(placeGuide);
   }
+  function syncZenMarkerUi(){
+    var trigger=byId('zenMarker'),menu=byId('zenMarkerMenu'),tool=byId('zenMarkerTool'),toggle=byId('zenMarkerToggle'),label=byId('zenMarkerToggleLabel');if(!trigger)return;
+    var colorLabel=highlightColorLabel(highlightColor),pending=!!pendingSelection,persistent=fineHighlightUi();
+    tool.dataset.highlightColor=trigger.dataset.highlightColor=highlightColor;trigger.classList.toggle('active',!!highlightMode);trigger.classList.toggle('ready',pending);
+    toggle.classList.toggle('hidden',!persistent);toggle.setAttribute('aria-pressed',String(!!highlightMode));label.textContent=highlightMode?'Marker on':'Marker off';
+    trigger.setAttribute('aria-label',pending?'Highlight selected passage in '+colorLabel:persistent?(highlightMode?'Marker mode on':'Marker mode off')+'. Current color '+colorLabel+'. Open marker controls':'Marker. Current color '+colorLabel+'. Open colors');
+    trigger.title=pending?'Highlight selection in '+colorLabel:(persistent?'Marker controls · ':'Highlight color · ')+colorLabel;
+    if(pending){menu.classList.add('hidden');tool.classList.remove('popout-open');trigger.removeAttribute('aria-expanded');trigger.removeAttribute('aria-controls');}
+    else{trigger.setAttribute('aria-controls','zenMarkerMenu');trigger.setAttribute('aria-expanded',String(!menu.classList.contains('hidden')));}
+    byId('zenDock').classList.toggle('popout-open',!!byId('zenDock').querySelector('.zen-popout:not(.hidden)'));
+  }
   function closeZenPopouts(returnFocus){
     var openTrigger=null,closed=false;
-    [['zenLayout','zenLayoutMenu','zenLayoutTool'],['zenGuide','zenGuideMenu','zenGuideTool']].forEach(function(parts){
+    [['zenLayout','zenLayoutMenu','zenLayoutTool'],['zenGuide','zenGuideMenu','zenGuideTool'],['zenMarker','zenMarkerMenu','zenMarkerTool']].forEach(function(parts){
       var trigger=byId(parts[0]),menu=byId(parts[1]),tool=byId(parts[2]);
       if(!menu.classList.contains('hidden')){closed=true;if(!openTrigger)openTrigger=trigger;}
       menu.classList.add('hidden');tool.classList.remove('popout-open');trigger.setAttribute('aria-expanded','false');
     });
     byId('zenDock').classList.remove('popout-open');
+    syncZenMarkerUi();
     if(returnFocus&&openTrigger)openTrigger.focus();
     return closed;
   }
@@ -2653,6 +2689,8 @@
   document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.zenPdfLayout);closeZenPopouts(true);};});
   byId('zenGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
   byId('zenGuideToggle').onclick=function(){byId('focusBtn').onclick();zenWake();};
+  byId('zenMarker').onclick=function(){if(pendingSelection){closeZenPopouts(false);commitPendingHighlight();zenWake();return;}toggleZenPopout('zenMarker','zenMarkerMenu','zenMarkerTool');};
+  byId('zenMarkerToggle').onclick=function(){setHighlightMode(!highlightMode);zenWake();};
   byId('zenPaperAppearance').onclick=function(){closeZenPopouts(false);cyclePaperAppearance();};
   byId('zenTheme').onclick=function(){closeZenPopouts(false);byId('themeBtn').onclick();};
   byId('zenFind').onclick=function(){closeZenPopouts(false);toggleFindBar(undefined,false,byId('zenFind'));zenWake();};
@@ -5086,9 +5124,8 @@
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
     if(e.key==='Escape'&&!byId('lookupCard').classList.contains('hidden')){e.preventDefault();hideLookup();return;}
     if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
-    if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
-    if(e.key==='Escape'&&!byId('findBar').classList.contains('hidden')){e.preventDefault();toggleFindBar(false,true);return;}
     if(e.key==='Escape'&&zenOn&&closeZenPopouts(true)){e.preventDefault();return;}
+    if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
     if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
     if(e.key==='Escape'&&reviewFocusId){e.preventDefault();dismissReviewerFocus();return;}
@@ -6005,6 +6042,7 @@
     if(touchButton){touchButton.dataset.highlightColor=highlightColor;touchButton.setAttribute('aria-label',pending?'Highlight selected passage in '+label:'Highlight color: '+label+'. Choose color');}
     if(markerButton){markerButton.setAttribute('aria-label',(mode?'Marker mode on':'Marker mode off')+'. Current color '+label);markerButton.title=coarseHighlightUi()?'Select text, then use Mark; choose color with the button beside it':'Keep Marker on for several highlights';}
     if(selectionButton){selectionButton.dataset.highlightColor=highlightColor;selectionButton.setAttribute('aria-label','Highlight selected passage in '+label);}
+    syncZenMarkerUi();
   }
   function clearPendingSelection(keepCard,preserveNativeSelection){clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');if(!keepCard)hideSelectionCard();var s=window.getSelection&&window.getSelection();if(s&&!preserveNativeSelection)s.removeAllRanges();syncHighlightColorUi();syncTouchDockStates();}
   function scheduleHighlightCommit(delay){clearTimeout(highlightCommitTimer);highlightCommitTimer=setTimeout(function(){if(highlightMode)commitPendingHighlight();},delay);}
@@ -6119,7 +6157,7 @@
     setHighlightMode(!highlightMode);
   };
   byId('highlightColorBtn').onclick=function(){setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(byId('highlightPalette').classList.contains('hidden'));};
-  document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(b){b.onclick=function(e){var touchPalette=!!b.closest('#touchHighlightPalette'),returnFocus=e.detail===0;setHighlightColor(b.dataset.highlightColor);if(touchPalette)setTouchHighlightPaletteOpen(false);else setHighlightPaletteOpen(false);if(returnFocus)(touchPalette?byId('touchHighlight'):byId('highlightColorBtn')).focus();};});
+  document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(b){b.onclick=function(e){var touchPalette=!!b.closest('#touchHighlightPalette'),zenPalette=!!b.closest('#zenMarkerMenu'),returnFocus=e.detail===0;setHighlightColor(b.dataset.highlightColor);if(touchPalette)setTouchHighlightPaletteOpen(false);else if(zenPalette)closeZenPopouts(false);else setHighlightPaletteOpen(false);if(returnFocus)(touchPalette?byId('touchHighlight'):zenPalette?byId('zenMarker'):byId('highlightColorBtn')).focus();};});
   document.querySelectorAll('[data-selection-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.selectionHighlightColor);setSelectionAction('selectionHighlight');commitPendingHighlight();};});
   syncHighlightColorUi();
   function savePendingHighlight(note,keepCard){
@@ -6907,21 +6945,28 @@
 
   /* encrypted GitHub state sync + PDF picker */
   function aiProviderNote(id){
+    if(nativeAiPlugin()){if(id==='compatible')return 'Custom AI endpoints are not enabled in the iPad 1.1 preview.';return 'Your API key is stored in iOS Keychain and is never placed in Phloem backups. When you deliberately use AI, '+AI_PROVIDERS[id].label+' receives the selected passage, current page, or guide text you chose, your question, and—for reviewer tools—extracted reviewer text plus candidate excerpts. The original PDF file is not uploaded.';}
     if(id==='auto')return 'Private mode keeps review text on this device and never falls back to a cloud provider. Choose one of the providers below when you want high-accuracy review rechecks.';
     if(id==='compatible')return 'For OpenRouter, a local model gateway, or another service that accepts OpenAI-style chat completions. The endpoint must allow browser requests (CORS).';
     return 'For reviewer files, exact quoted passages are linked locally first; '+AI_PROVIDERS[id].label+' handles classification and the remaining passage matches in parallel. Other AI questions also use '+AI_PROVIDERS[id].label+'. The key is excluded from library sync and backups.';
   }
   function renderAiProviderFields(){
-    var id=byId('aiProvider').value,cfg=aiSettings.providers[id]||{},cloud=id!=='auto',prepare=byId('aiPrepareLocal');byId('aiCloudFields').classList.toggle('hidden',!cloud);byId('aiEndpointFields').classList.toggle('hidden',id!=='compatible');byId('aiProviderNote').textContent=aiProviderNote(id);prepare.classList.toggle('hidden',id!=='auto'||!browserLanguageModel());prepare.disabled=false;prepare.textContent='Prepare on-device Gemini';setTaskProgress('aiKeyProgress',false);
-    if(cloud){byId('aiKey').value=cfg.key||'';byId('aiKey').placeholder=AI_PROVIDERS[id].label+' API key';byId('aiModel').value=cfg.model||AI_PROVIDERS[id].model||'';byId('aiEndpoint').value=cfg.endpoint||'';}refreshAiSettingsStatus(id);
+    var id=byId('aiProvider').value,cfg=aiSettings.providers[id]||{},cloud=id!=='auto',prepare=byId('aiPrepareLocal'),nativePlugin=nativeAiPlugin();byId('aiCloudFields').classList.toggle('hidden',!cloud);byId('aiEndpointFields').classList.toggle('hidden',id!=='compatible');byId('aiProviderNote').textContent=aiProviderNote(id);prepare.classList.toggle('hidden',!!nativePlugin||id!=='auto'||!browserLanguageModel());prepare.disabled=false;prepare.textContent='Prepare on-device Gemini';setTaskProgress('aiKeyProgress',false);
+    var nativeConsent=byId('nativeAiConsent');nativeConsent.classList.toggle('hidden',!nativePlugin||!cloud);if(nativePlugin&&cloud){var privacy=nativeAiPrivacy(id),policy=byId('nativeAiProviderPolicy');byId('nativeAiDisclosure').textContent='Before enabling '+AI_PROVIDERS[id].label+': the context described above will be sent securely to '+nativeAiDestination(id)+' only when you press an AI action. Phloem does not receive it. '+privacy.detail+' Do not send confidential, sensitive, or third-party personal information.';policy.href=privacy.url;policy.textContent=privacy.label;byId('nativeAiConsentCheck').checked=false;byId('aiKeyRemove').classList.toggle('hidden',!cfg.keyPresent);}
+    else byId('aiKeyRemove').classList.add('hidden');
+    if(cloud){byId('aiKey').value=nativePlugin?'':cfg.key||'';byId('aiKey').placeholder=nativePlugin&&cfg.keyPresent?'Key stored in iOS Keychain · enter only to replace':AI_PROVIDERS[id].label+' API key';byId('aiModel').value=cfg.model||AI_PROVIDERS[id].model||'';byId('aiEndpoint').value=cfg.endpoint||'';}refreshAiSettingsStatus(id);
   }
   async function refreshAiSettingsStatus(id){
-    var status=byId('aiKeyStatus');if(id!=='auto'){var cfg=aiSettings.providers[id]||{};status.textContent=cfg.key?'Ready to use '+AI_PROVIDERS[id].label+'.':'Add a key and save to use '+AI_PROVIDERS[id].label+'.';return;}
+    var status=byId('aiKeyStatus');if(id!=='auto'){var cfg=aiSettings.providers[id]||{},nativePlugin=nativeAiPlugin(),ready=cfg.key||(nativePlugin&&cfg.keyPresent);status.textContent=ready?'Ready to use '+AI_PROVIDERS[id].label+'.':nativePlugin?'No key stored. Review the disclosure, then save to enter it in an iOS secure prompt.':'Add a key, review the disclosure, and save to use '+AI_PROVIDERS[id].label+'.';return;}
     var api=browserLanguageModel();if(!api){status.textContent='Gemini Nano is unavailable in this browser. Choose a cloud provider below to use AI.';return;}status.textContent='Checking on-device Gemini…';
     try{var availability=api.availability?await api.availability():api.capabilities?(await api.capabilities()).available:'available',prepare=byId('aiPrepareLocal');if(byId('aiProvider').value!=='auto')return;if(availability==='available'||availability==='readily'){status.textContent='On-device Gemini is ready. Your reading context stays on this device.';prepare.textContent='Gemini ready';prepare.disabled=true;setTaskProgress('aiKeyProgress',false);}else if(availability==='downloadable'||availability==='after-download'||availability==='downloading'){status.textContent=availability==='downloading'?'Chrome is downloading Gemini in the background. Press Prepare to show its progress here.':'Press Prepare on-device Gemini now so a long review does not have to wait for Chrome’s first download.';}else status.textContent='Gemini Nano cannot run on this device. Choose a cloud provider to use AI.';}
     catch(e){if(byId('aiProvider').value==='auto')status.textContent='Could not start on-device Gemini. Choose a cloud provider to use AI.';}
   }
-  function fillAiSettings(){aiSettings=loadAiSettings();byId('aiProvider').value=aiSettings.provider||'auto';renderAiProviderFields();}
+  function fillAiSettings(){
+    aiSettings=loadAiSettings();byId('aiProvider').value=aiSettings.provider||'auto';renderAiProviderFields();
+    var plugin=nativeAiPlugin();if(!plugin||!plugin.status)return;
+    plugin.status().then(function(result){var present={};(result.providers||[]).forEach(function(id){present[id]=true;});['gemini','deepseek','openai','anthropic'].forEach(function(id){var cfg=aiSettings.providers[id]||{};cfg.key='';cfg.keyPresent=!!present[id];aiSettings.providers[id]=cfg;});saveAiSettings();renderAiProviderFields();}).catch(function(){byId('aiKeyStatus').textContent='Phloem could not check iOS Keychain. Close settings and try again.';});
+  }
   function fillPassSettings(){
     var service='';try{service=localStorage.getItem(AI_PASS_SERVICE_KEY)||'';}catch(e){}byId('aiPassService').value=service;byId('aiPassOwnerCode').value='';renderSharedAiPass();if(!loadSharedAiPass())byId('aiPassStatus').textContent=service?'Ready to make a one-review link. Your approval code is never saved here.':'Add the address of your private pass service once it is deployed.';
   }
@@ -7107,18 +7152,20 @@
   }
 
   /* keys, backup, restore */
-  byId('aiProvider').onchange=function(){aiSettings.provider=this.value;renderAiProviderFields();};
+  byId('aiProvider').onchange=function(){aiSettings.provider=this.value;if(byId('nativeAiConsentCheck'))byId('nativeAiConsentCheck').checked=false;renderAiProviderFields();};
   function startLocalAiPreparation(){var button=byId('aiPrepareLocal'),status=byId('aiKeyStatus');button.disabled=true;button.textContent='Preparing…';setTaskProgress('aiKeyProgress',null);prepareBrowserAi(function(message,progress){status.textContent=message;setTaskProgress('aiKeyProgress',progress);}).then(function(){button.textContent='Gemini ready';button.disabled=true;setTaskProgress('aiKeyProgress',100);},function(error){status.textContent=error.message||'Chrome could not prepare on-device Gemini.';button.textContent='Try preparing again';button.disabled=false;setTaskProgress('aiKeyProgress',false);});}
   byId('aiPrepareLocal').onclick=startLocalAiPreparation;
-  byId('aiKeySave').onclick=function(){
+  byId('aiKeySave').onclick=async function(){
     var id=byId('aiProvider').value;aiSettings.provider=id;
     if(id!=='auto'){
       var key=byId('aiKey').value.trim(),model=byId('aiModel').value.trim(),endpoint=byId('aiEndpoint').value.trim();if(!model){byId('aiKeyStatus').textContent='Add a model name first.';return;}
       if(id==='compatible'){if(!endpoint){byId('aiKeyStatus').textContent='Add the full chat-completions endpoint first.';return;}try{var parsed=new URL(endpoint);if(parsed.protocol!=='https:'&&!(parsed.protocol==='http:'&&(parsed.hostname==='localhost'||parsed.hostname==='127.0.0.1')))throw new Error();}catch(e){byId('aiKeyStatus').textContent='Use an HTTPS endpoint, or HTTP only for localhost.';return;}}
-      aiSettings.providers[id]={key:key,model:model,endpoint:id==='compatible'?endpoint:''};if(id==='deepseek'){if(key)localStorage.setItem(LEGACY_AI_KEY,key);else localStorage.removeItem(LEGACY_AI_KEY);}
+      var nativePlugin=nativeAiPlugin();if(nativePlugin){if(id==='compatible'){byId('aiKeyStatus').textContent='Custom endpoints are not enabled in the iPad 1.1 preview.';return;}if(!byId('nativeAiConsentCheck').checked){byId('aiKeyStatus').textContent='Review and accept the data-sharing disclosure first.';return;}var saveButton=this,hasKey=!!(aiSettings.providers[id]||{}).keyPresent;saveButton.disabled=true;byId('aiKeyStatus').textContent=hasKey?'Saving AI settings…':'Waiting for the secure iOS API key prompt…';try{var result=await nativePlugin.configure({provider:id,consentVersion:NATIVE_AI_CONSENT_VERSION,consentGranted:true});aiSettings.providers[id]={key:'',keyPresent:!!result.hasCredential,model:model,endpoint:''};saveAiSettings();byId('nativeAiConsentCheck').checked=false;byId('aiKeyStatus').textContent='Ready to use '+AI_PROVIDERS[id].label+'. The key is stored in iOS Keychain.';byId('aiKeyRemove').classList.toggle('hidden',!result.hasCredential);}catch(error){byId('aiKeyStatus').textContent=error&&error.message||'The API key could not be saved securely.';}finally{saveButton.disabled=false;}return;}
+      aiSettings.providers[id]={key:key,keyPresent:false,model:model,endpoint:id==='compatible'?endpoint:''};if(id==='deepseek'){if(key)localStorage.setItem(LEGACY_AI_KEY,key);else localStorage.removeItem(LEGACY_AI_KEY);}
     }
     saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Asking Chrome to prepare Gemini now…':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');if(id==='auto'&&browserLanguageModel())startLocalAiPreparation();else setTaskProgress('aiKeyProgress',false);
   };
+  byId('aiKeyRemove').onclick=async function(){var nativePlugin=nativeAiPlugin(),id=byId('aiProvider').value;if(!nativePlugin||!AI_PROVIDERS[id]||!confirm('Remove the saved '+AI_PROVIDERS[id].label+' API key from this iPad?'))return;this.disabled=true;try{await nativePlugin.removeCredential({provider:id});var cfg=aiSettings.providers[id]||{};cfg.key='';cfg.keyPresent=false;aiSettings.providers[id]=cfg;saveAiSettings();byId('aiKey').value='';byId('aiKeyStatus').textContent='The '+AI_PROVIDERS[id].label+' key was removed from iOS Keychain.';this.classList.add('hidden');}catch(error){byId('aiKeyStatus').textContent=error&&error.message||'The saved key could not be removed.';}finally{this.disabled=false;}};
   byId('cloudPassRemove').onclick=function(){saveSharedAiPass(null);if(byId('settingsDialog').open)fillPassSettings();};
   byId('aiPassCreate').onclick=async function(){
     var button=this,status=byId('aiPassStatus'),endpoint=normalizePassEndpoint(byId('aiPassService').value),ownerCode=byId('aiPassOwnerCode').value.trim();if(!endpoint){status.textContent='Add a valid HTTPS pass service URL first.';return;}if(!ownerCode){status.textContent='Enter your approval code. It is sent once and never saved.';return;}button.disabled=true;button.textContent='Making pass…';status.textContent='Creating a single-use review grant…';

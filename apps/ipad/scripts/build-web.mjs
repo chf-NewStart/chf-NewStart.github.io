@@ -59,18 +59,7 @@ export function nativeReaderJs(source) {
   js = replaceOnce(js, /function gdriveOn\(\)\{return !!\(gdriveCfg&&gdriveCfg\.on\);\}/,
     'function gdriveOn(){return !window.PHLOEM_NATIVE&&!!(gdriveCfg&&gdriveCfg.on);}',
     'Drive enabled check', 'reading.js');
-  js = replaceOnce(js, /function activeAiRoute\(skipBrowser\)\{/,
-    'function activeAiRoute(skipBrowser){if(window.PHLOEM_NATIVE)return null;',
-    'active AI route', 'reading.js');
-  js = replaceOnce(js, /function reviewAiPlan\(\)\{/,
-    "function reviewAiPlan(){if(window.PHLOEM_NATIVE)return{mode:'none',classification:null,location:null};",
-    'review AI plan', 'reading.js');
-  js = replaceOnce(js, /async function finishSharedReviewPass\(route\)\{/,
-    'async function finishSharedReviewPass(route){if(window.PHLOEM_NATIVE)return;',
-    'review-pass completion', 'reading.js');
-  return replaceOnce(js, /async function runAiMessages\(messages,maxTokens,onProgress,routeOverride\)\{/,
-    "async function runAiMessages(messages,maxTokens,onProgress,routeOverride){\n    if(window.PHLOEM_NATIVE)throw aiSetupError('AI is not available in this iPad preview.');",
-    'AI execution entry point', 'reading.js');
+  return js;
 }
 
 function cleanAssetUrl(value, base = '/') {
@@ -174,7 +163,7 @@ export async function buildWeb({ repoRoot = defaultRepoRoot, outDir = path.join(
       sourceHtmlSha256: createHash('sha256').update(sourceHtml).digest('hex'),
       sourceReaderJsSha256: createHash('sha256').update(js).digest('hex'),
       serviceWorker: 'disabled in the native HTML only',
-      cloudRoutes: 'Native bundle disables saved GitHub sync startup, Drive sync availability, AI selection, review planning, AI execution and review-pass completion. Stored credentials are not erased.',
+      cloudRoutes: 'Native bundle disables saved GitHub/Drive sync. Optional AI requests use the registered native Keychain and network bridge after explicit provider consent.',
       storage: 'Prototype uses the reader browser storage in the app webview; native persistence is a separate milestone.',
       files: inventory.sort((a, b) => a.path.localeCompare(b.path)),
       thirdPartyNotices: entries.some(entry => entry.destination.startsWith('licenses/')) ? 'See licenses/; review dependency licensing before distribution.' : 'Upstream vendored third-party notices are incomplete. Restore and review those notices before distribution.',

@@ -84,6 +84,10 @@
           <button class="library-view-option" type="button" data-library-view="wall" aria-pressed="true" title="Browse the visual reading wall"><span aria-hidden="true">▦</span> Wall</button>
           <button class="library-view-option" type="button" data-library-view="list" aria-pressed="false" title="Scan every paper in a compact list"><span aria-hidden="true">☷</span> List</button>
         </div>
+        <div class="library-note-style-toggle" id="libraryNoteStyleToggle" role="group" aria-label="Reading wall card typography">
+          <button class="library-note-style-option" type="button" data-library-note-style="clean" aria-pressed="true" title="Use clean professional type on reading wall cards"><span aria-hidden="true">Aa</span> Clean</button>
+          <button class="library-note-style-option" type="button" data-library-note-style="handwritten" aria-pressed="false" title="Use handwritten type on reading wall cards"><span aria-hidden="true">✎</span> Handwritten</button>
+        </div>
         <input class="search" id="librarySearch" type="search" placeholder="Search papers, notes & highlights…" aria-label="Search papers, notes, and highlights">
       </div>
       <section class="continue-reading hidden" id="continueReading" aria-labelledby="continueReadingTitle"></section>
@@ -455,7 +459,7 @@
           </div>
         </aside>
       </aside>
-      <div class="zen-dock" id="zenDock" role="toolbar" aria-label="Zen reading controls">
+      <div class="zen-dock" id="zenDock" role="toolbar" aria-label="Zen reading controls" aria-orientation="vertical">
         <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading" title="Leave zen reading">✕</button>
         <button class="zen-exit zen-find" id="zenFind" type="button" aria-expanded="false" aria-controls="findBar" aria-keyshortcuts="/" aria-label="Find in this paper" title="Find in this paper (/)">⌕</button>
         <div class="zen-tool" id="zenLayoutTool">
@@ -474,6 +478,19 @@
               <label for="zenGuideDimRange">Outside dimness</label>
               <input id="zenGuideDimRange" type="range" min="20" max="85" step="5" value="55" aria-label="Dimness outside the focused lines">
               <output id="zenGuideDimValue" for="zenGuideDimRange">55%</output>
+            </div>
+          </div>
+        </div>
+        <div class="zen-tool" id="zenMarkerTool" data-highlight-color="yellow">
+          <button class="zen-exit zen-marker" id="zenMarker" type="button" aria-expanded="false" aria-controls="zenMarkerMenu" aria-label="Marker mode off. Current color Yellow. Open marker controls" title="Marker controls"><span class="zen-marker-glyph" aria-hidden="true">✦</span><span class="zen-marker-current-dot" aria-hidden="true"></span></button>
+          <div class="zen-popout zen-marker-menu hidden" id="zenMarkerMenu" role="group" aria-label="Marker controls">
+            <button class="zen-popout-option zen-marker-toggle" id="zenMarkerToggle" type="button" aria-pressed="false"><span aria-hidden="true">✦</span><span id="zenMarkerToggleLabel">Marker off</span></button>
+            <div class="zen-marker-colors" role="group" aria-label="Highlight color">
+              <span>Color</span>
+              <button class="marker-swatch selected" data-highlight-color="yellow" type="button" aria-label="Yellow highlight color" aria-pressed="true"></button>
+              <button class="marker-swatch" data-highlight-color="mint" type="button" aria-label="Mint highlight color" aria-pressed="false"></button>
+              <button class="marker-swatch" data-highlight-color="coral" type="button" aria-label="Coral highlight color" aria-pressed="false"></button>
+              <button class="marker-swatch" data-highlight-color="blue" type="button" aria-label="Blue highlight color" aria-pressed="false"></button>
             </div>
           </div>
         </div>
@@ -616,7 +633,12 @@
               <input class="field" id="aiEndpoint" type="url" placeholder="https://example.com/v1/chat/completions" autocomplete="off" spellcheck="false">
             </div>
           </div>
-          <div><button class="soft-button" id="aiKeySave">Save AI settings</button> <button class="soft-button hidden" id="aiPrepareLocal" type="button">Prepare on-device Gemini</button></div>
+          <div class="native-ai-consent hidden" id="nativeAiConsent">
+            <p id="nativeAiDisclosure"></p>
+            <p><a id="nativeAiProviderPolicy" href="#" target="_blank" rel="noopener noreferrer">Provider privacy information</a> · <a href="https://houfu72.com/phloem-ipad/privacy.html" target="_blank" rel="noopener noreferrer">Phloem privacy policy</a></p>
+            <label><input id="nativeAiConsentCheck" type="checkbox"> I agree to send only the described reading context to this provider when I deliberately use an AI feature.</label>
+          </div>
+          <div><button class="soft-button" id="aiKeySave">Save AI settings</button> <button class="soft-button hidden" id="aiKeyRemove" type="button">Remove saved key</button> <button class="soft-button hidden" id="aiPrepareLocal" type="button">Prepare on-device Gemini</button></div>
         </div>
         <div class="status" id="aiKeyStatus"></div>
         <div class="task-progress hidden" id="aiKeyProgress" role="progressbar" aria-label="On-device Gemini preparation progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>

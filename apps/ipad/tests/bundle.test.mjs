@@ -61,66 +61,99 @@ test('rejects a changed service-worker guard rather than silently shipping it', 
   assert.throws(() => nativeHtml(html.replace('</body>', "<script>navigator.serviceWorker.register('/another-worker.js')</script></body>")), /registration count/);
 });
 
-test('saved credentials cannot start native sync or AI, including explicit AI route overrides', async () => {
+test('native packaging blocks browser sync credentials without disabling the native AI bridge', async () => {
   const original = await readFile(path.join(defaultRepoRoot, 'reading.js'), 'utf8');
   const js = nativeReaderJs(original);
   const syncLoad = js.match(/  try \{ if\(!window\.PHLOEM_NATIVE\)syncCfg = .*?catch\(e\)\{\}/)?.[0];
   const drive = js.match(/  function gdriveOn\(\)\{[^\n]+\}/)?.[0];
-  const active = js.match(/  function activeAiRoute\(skipBrowser\)\{[^\n]+\}/)?.[0];
-  const review = js.match(/  function reviewAiPlan\(\)\{[^\n]*[\s\S]*?\n  \}/)?.[0];
-  const finish = js.match(/  async function finishSharedReviewPass\(route\)\{[^\n]*[\s\S]*?\n  \}/)?.[0];
-  const execute = js.match(/  async function runAiMessages\([^\n]+\{[\s\S]*?\n  \}/)?.[0];
-  assert.ok(syncLoad && drive && active && review && finish && execute, 'exercise actual transformed production functions');
+  assert.ok(syncLoad && drive, 'exercise actual transformed sync functions');
+  assert.match(js, /function nativeAiPlugin\(\)/);
+  assert.match(js, /nativePlugin\.request\(\{provider:route\.id/);
+  assert.doesNotMatch(js, /AI is not available in this iPad preview/);
   const savedSync = JSON.stringify({ repo: 'sample/private-library', token: 'test-token', pass: 'test-pass' });
   const savedData = new Map([['readingRoom.sync.v1', savedSync], ['readingRoom.v1', 'test-notes']]);
-  let reads = 0, calls = 0, completionRequests = 0, clearedPasses = 0;
-  const existingPass = { id: 'review-pass', label: 'Shared pass', cfg: { endpoint: 'https://example.test', token: 'test-pass', jobId: 'test-job' } };
+  let reads = 0;
   const context = vm.createContext({
     window: { PHLOEM_NATIVE: true }, SYNC_KEY: 'readingRoom.sync.v1', syncCfg: null,
     localStorage: { getItem(key) { reads++; return savedData.get(key); }, setItem() { assert.fail('must not write stored credentials'); }, removeItem() { assert.fail('must not delete stored credentials'); } },
-    gdriveCfg: { on: true, tok: 'existing-drive-token' },
-    aiSettings: { provider: 'deepseek' },
-    cloudAiRoute: () => ({ id: 'deepseek', label: 'DeepSeek', cfg: { key: 'existing-api-key' } }),
-    browserLanguageModel: () => ({}), loadAiSettings: () => ({ provider: 'deepseek' }),
-    sharedReviewPassRoute: () => existingPass,
-    normalizePassEndpoint: endpoint => endpoint,
-    fetch: async () => { completionRequests++; return {}; },
-    saveSharedAiPass: value => { assert.equal(value, null); clearedPasses++; },
-    aiSetupError: message => new Error(message), aiProgress() {},
-    runCloudAi: () => { calls++; return 'cloud reply'; }, runBrowserAi: () => { calls++; return 'browser reply'; },
+    gdriveCfg: { on: true, tok: 'existing-drive-token' }
   });
-  vm.runInContext([syncLoad, drive, active, review, finish, execute].join('\n'), context);
+  vm.runInContext([syncLoad, drive].join('\n'), context);
   assert.equal(context.syncCfg, null);
   assert.equal(reads, 0, 'native startup must not read the GitHub sync configuration');
   assert.equal(context.gdriveOn(), false);
-  assert.equal(context.activeAiRoute(false), null);
-  const nativePlan = context.reviewAiPlan();
-  assert.equal(nativePlan.mode, 'none');
-  assert.equal(nativePlan.classification, null);
-  assert.equal(nativePlan.location, null);
-  await assert.rejects(context.runAiMessages([], 100), /AI is not available in this iPad preview/);
-  await assert.rejects(context.runAiMessages([], 100, null, { id: 'review-pass', cfg: { token: 'test-pass' } }), /AI is not available in this iPad preview/);
-  await context.finishSharedReviewPass(existingPass);
-  assert.equal(completionRequests, 0, 'native preview must not send review-pass completion requests');
-  assert.equal(clearedPasses, 0, 'native preview must not clear an existing pass');
-  assert.equal(calls, 0);
   assert.equal(savedData.get('readingRoom.sync.v1'), savedSync);
   assert.equal(savedData.get('readingRoom.v1'), 'test-notes');
-  // The guard is conditional: the same bundled functions retain web behavior
-  // if deliberately exercised outside the native environment.
   context.window.PHLOEM_NATIVE = false;
   vm.runInContext(syncLoad, context);
   assert.equal(context.syncCfg.token, 'test-token');
   assert.equal(context.gdriveOn(), true);
-  assert.equal(context.activeAiRoute(false).id, 'deepseek');
-  assert.equal(await context.runAiMessages([], 100), 'cloud reply');
-  assert.equal(calls, 1);
-  assert.equal(context.reviewAiPlan().classification, existingPass);
-  await context.finishSharedReviewPass(existingPass);
-  assert.equal(completionRequests, 1);
-  assert.equal(clearedPasses, 1);
   assert.throws(() => nativeReaderJs(original.replace('function gdriveOn(){', 'function gdriveOn() {')), /Drive enabled check/);
-  assert.throws(() => nativeReaderJs(original.replace('function reviewAiPlan(){', 'function reviewAiPlan() {')), /review AI plan/);
+});
+
+test('native AI metadata never exposes a key and requests cross the registered bridge', async () => {
+  const source = await readFile(path.join(defaultRepoRoot, 'reading.js'), 'utf8');
+  const pick = expression => {
+    const match = source.match(expression);
+    assert.ok(match, `missing source match: ${expression}`);
+    return match[0];
+  };
+  const functions = [
+    pick(/  function nativeAiPlugin\(\)\{[^\n]+\}/),
+    pick(/  function defaultAiSettings\(\)\{[\s\S]*?\n  \}/),
+    pick(/  function loadAiSettings\(\)\{[\s\S]*?\n  \}/),
+    pick(/  function saveAiSettings\(\)\{[^\n]+\}/),
+    pick(/  function cloudAiRoute\(preferred\)\{[\s\S]*?\n  \}/),
+    pick(/  function activeAiRoute\(skipBrowser\)\{[^\n]+\}/),
+    pick(/  async function runAiMessages\(messages,maxTokens,onProgress,routeOverride\)\{[\s\S]*?\n  \}/)
+  ].join('\n');
+  const persisted = {
+    provider: 'openai',
+    providers: {
+      openai: { key: 'must-be-scrubbed', keyPresent: true, model: 'gpt-test', endpoint: '' }
+    }
+  };
+  let saved = null;
+  const bridgeCalls = [];
+  const context = vm.createContext({
+    window: { PHLOEM_NATIVE: true, Capacitor: { Plugins: { PhloemAI: {
+      async request(payload) { bridgeCalls.push(payload); return { text: 'Native reply', provider: 'OpenAI' }; }
+    } } } },
+    AI_SETTINGS_KEY: 'readingRoom.ai.providers.v1', LEGACY_AI_KEY: 'readingRoom.ai.v1',
+    NATIVE_AI_CONSENT_VERSION: 1,
+    AI_PROVIDERS: {
+      gemini: { label: 'Gemini API', model: 'gemini-test' },
+      deepseek: { label: 'DeepSeek', model: 'deepseek-test' },
+      openai: { label: 'OpenAI', model: 'gpt-test' },
+      anthropic: { label: 'Anthropic', model: 'claude-test' },
+      compatible: { label: 'OpenAI-compatible', model: '', endpoint: '' }
+    },
+    localStorage: {
+      getItem(key) { return key === 'readingRoom.ai.providers.v1' ? JSON.stringify(persisted) : 'legacy-key-must-not-load'; },
+      setItem(key, value) { saved = { key, value }; }
+    },
+    browserLanguageModel: () => null,
+    aiSettings: null,
+    aiSetupError: message => Object.assign(new Error(message), { aiSetup: true }),
+    aiProgress() {},
+    runBrowserAi: () => assert.fail('native requests must not use browser AI'),
+    runCloudAi: () => assert.fail('native requests must not expose keys to browser fetch')
+  });
+  vm.runInContext(functions, context);
+  context.aiSettings = context.loadAiSettings();
+  assert.equal(context.aiSettings.provider, 'openai');
+  assert.equal(context.aiSettings.providers.openai.key, '');
+  assert.equal(context.aiSettings.providers.openai.keyPresent, true);
+  context.saveAiSettings();
+  assert.equal(saved.key, 'readingRoom.ai.providers.v1');
+  assert.equal(JSON.parse(saved.value).providers.openai.key, '');
+  const result = await context.runAiMessages([{ role: 'user', content: 'Explain this.' }], 240);
+  assert.equal(result.text, 'Native reply');
+  assert.deepEqual(JSON.parse(JSON.stringify(bridgeCalls)), [{
+    provider: 'openai', model: 'gpt-test', messages: [{ role: 'user', content: 'Explain this.' }],
+    maxTokens: 240, consentVersion: 1
+  }]);
+  assert.equal(JSON.stringify(bridgeCalls).includes('must-be-scrubbed'), false);
 });
 
 test('missing or new unreviewed dependencies fail without erasing the existing output', async t => {
@@ -155,6 +188,36 @@ test('Xcode Debug and Release agree on the next Apple build identity', async () 
   const project = await readFile(path.join(defaultRepoRoot, 'apps/ipad/ios/App/App.xcodeproj/project.pbxproj'), 'utf8');
   const builds = [...project.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map(match => match[1]);
   const versions = [...project.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map(match => match[1]);
-  assert.deepEqual(builds, ['2', '2']);
-  assert.deepEqual(versions, ['0.1.0', '0.1.0']);
+  assert.deepEqual(builds, ['8', '8']);
+  assert.deepEqual(versions, ['1.1.0', '1.1.0']);
+});
+
+test('native AI security and privacy declarations remain attached to the app target', async () => {
+  const appRoot = path.join(defaultRepoRoot, 'apps/ipad/ios/App');
+  const plugin = await readFile(path.join(appRoot, 'App/PhloemAIPlugin.swift'), 'utf8');
+  const adapter = await readFile(path.join(defaultRepoRoot, 'apps/ipad/native/ipad.js'), 'utf8');
+  const reader = await readFile(path.join(defaultRepoRoot, 'reading.js'), 'utf8');
+  const privacy = await readFile(path.join(appRoot, 'App/PrivacyInfo.xcprivacy'), 'utf8');
+  const project = await readFile(path.join(appRoot, 'App.xcodeproj/project.pbxproj'), 'utf8');
+  assert.match(plugin, /kSecAttrAccessibleWhenUnlockedThisDeviceOnly/);
+  assert.match(plugin, /URLSessionConfiguration\.ephemeral/);
+  assert.match(plugin, /request\.url\?\.host == expectedHost/);
+  assert.match(plugin, /UIAlertController\(/);
+  assert.match(plugin, /field\.isSecureTextEntry = true/);
+  assert.match(adapter, /hide\(byId\('aiKey'\)\)/);
+  assert.doesNotMatch(reader, /nativePlugin\.configure\(\{provider:id,key:/);
+  for (const host of ['generativelanguage.googleapis.com', 'api.deepseek.com', 'api.openai.com', 'api.anthropic.com']) {
+    assert.match(plugin, new RegExp(host.replaceAll('.', '\\.')));
+  }
+  assert.match(privacy, /NSPrivacyCollectedDataTypeOtherUserContent/);
+  assert.match(privacy, /NSPrivacyCollectedDataTypeUserID/);
+  assert.match(privacy, /<key>NSPrivacyTracking<\/key>\s*<false\/>/);
+  assert.match(project, /PrivacyInfo\.xcprivacy in Resources/);
+});
+
+test('native provider defaults avoid retired compatibility model names', async () => {
+  const reader = await readFile(path.join(defaultRepoRoot, 'reading.js'), 'utf8');
+  assert.match(reader, /deepseek:\{label:'DeepSeek',model:'deepseek-flash'\}/);
+  assert.match(reader, /anthropic:\{label:'Anthropic',model:'claude-sonnet-4-6'\}/);
+  assert.doesNotMatch(reader, /anthropic:\{label:'Anthropic',model:'claude-sonnet-4-20250514'\}/);
 });

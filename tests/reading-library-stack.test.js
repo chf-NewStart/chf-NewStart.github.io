@@ -56,11 +56,19 @@ function check(name, condition, extra) {
   const firstTwoNotes = await page.locator('.category-note-grid .paper-sticky-note').evaluateAll(elements => elements.slice(0, 2).map(element => ({ x: element.getBoundingClientRect().x, y: element.getBoundingClientRect().y, width: element.getBoundingClientRect().width })));
   check('sticky notes return to two per row', firstTwoNotes.length === 2 && Math.abs(firstTwoNotes[0].y - firstTwoNotes[1].y) < 2 && firstTwoNotes[1].x > firstTwoNotes[0].x, JSON.stringify(firstTwoNotes));
   check('sticky notes are compact instead of full-sheet width', firstTwoNotes.every(note => note.width < 230), JSON.stringify(firstTwoNotes));
-  check('sticky keeps the handwritten title and author', await page.locator('[data-shelf-paper="paper_models"]').textContent().then(text => text.includes('Constraint models') && text.includes('Dev Rao')));
-  check('sticky title uses the Houfu handwriting face', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('Houfu Hand')));
-  check('Chinese sticky title uses a Kai typeface', await page.locator('[data-shelf-paper="paper_field"] .book-title').evaluate(element => element.classList.contains('is-han') && getComputedStyle(element).fontFamily.includes('Kaiti TC')));
-  check('Chinese sticky author uses the same Kai typeface', await page.locator('[data-shelf-paper="paper_field"] .book-author').evaluate(element => element.classList.contains('is-han') && getComputedStyle(element).fontFamily.includes('Kaiti TC')));
-  check('category is a large handwritten highlighter', await page.locator('.paper-category-mark').evaluate(element => parseFloat(getComputedStyle(element).fontSize) >= 17 && getComputedStyle(element, '::before').backgroundImage !== 'none'));
+  check('sticky keeps the paper title and author', await page.locator('[data-shelf-paper="paper_models"]').textContent().then(text => text.includes('Constraint models') && text.includes('Dev Rao')));
+  check('clean professional card type is the default', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('DM Sans') && getComputedStyle(element).fontWeight === '650'));
+  check('clean type is selected accessibly', await page.locator('[data-library-note-style="clean"]').getAttribute('aria-pressed') === 'true' && await page.locator('[data-library-note-style="handwritten"]').getAttribute('aria-pressed') === 'false');
+  check('category keeps its highlighter with regular type', await page.locator('.paper-category-mark').evaluate(element => getComputedStyle(element).fontFamily.includes('DM Sans') && getComputedStyle(element, '::before').backgroundImage !== 'none'));
+  await page.locator('[data-library-note-style="handwritten"]').click();
+  check('handwriting remains available as an explicit option', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('Houfu Hand')));
+  check('Chinese cards use a Kai face in handwritten mode', await page.locator('[data-shelf-paper="paper_field"] .book-title').evaluate(element => element.classList.contains('is-han') && getComputedStyle(element).fontFamily.includes('Kaiti TC')));
+  check('the card typography choice is saved locally', await page.evaluate(() => localStorage.getItem('readingRoom.libraryNoteStyle')) === 'handwritten');
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('.paper-category-tab.is-selected');
+  check('handwritten card type survives a reload', await page.locator('[data-library-note-style="handwritten"]').getAttribute('aria-pressed') === 'true' && await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('Houfu Hand')));
+  await page.locator('[data-library-note-style="clean"]').click();
+  check('switching back restores professional card type', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('DM Sans')));
   check('category rail is fixed outside the scrolling note surface', await page.evaluate(() => {
     const rail = document.querySelector('.paper-category-rail');
     const surface = document.querySelector('.paper-note-surface');
@@ -76,7 +84,7 @@ function check(name, condition, extra) {
     bookcase: getComputedStyle(document.querySelector('.bookcase')).backgroundColor,
     noteSurface: getComputedStyle(document.querySelector('.paper-note-surface')).backgroundColor,
     stickyPaper: getComputedStyle(document.querySelector('.paper-sticky-note')).backgroundImage,
-    handwriting: getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color
+    cardInk: getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color
   }));
   await page.click('#themeBtn');
   const nightWall = await page.evaluate(() => {
@@ -89,18 +97,18 @@ function check(name, condition, extra) {
       bookcase: pixel(getComputedStyle(document.querySelector('.bookcase')).backgroundColor),
       noteSurface: pixel(getComputedStyle(document.querySelector('.paper-note-surface')).backgroundColor),
       stickyPaper: getComputedStyle(document.querySelector('.paper-sticky-note')).backgroundImage,
-      handwriting: getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color
+      cardInk: getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color
     };
   });
   check('night reading wall uses a deep green canvas instead of the gray daylight mix', nightWall.bookcase.every(channel => channel < 45), JSON.stringify(nightWall.bookcase));
   check('night sticky well is dark enough to recede behind the notes', nightWall.noteSurface.every(channel => channel < 50), JSON.stringify(nightWall.noteSurface));
   check('night mode preserves the sticky-note paper colors', nightWall.stickyPaper === dayWall.stickyPaper);
-  check('night mode preserves the blue handwritten ink', nightWall.handwriting === dayWall.handwriting);
+  check('night mode preserves the blue card ink', nightWall.cardInk === dayWall.cardInk);
   await page.click('#themeBtn');
   check('daylight wall materials stay unchanged after a night-mode round trip', await page.evaluate(expected => {
     return getComputedStyle(document.querySelector('.bookcase')).backgroundColor === expected.bookcase
       && getComputedStyle(document.querySelector('.paper-note-surface')).backgroundColor === expected.noteSurface
-      && getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color === expected.handwriting;
+      && getComputedStyle(document.querySelector('.paper-sticky-note .book-title')).color === expected.cardInk;
   }, dayWall));
 
   await page.locator('[data-shelf-paper="paper_models"]').click({ position: { x: 120, y: 20 } });

@@ -84,6 +84,50 @@ function seedZenReader() {
   localStorage.setItem('readingRoom.paperAppearance.v1', 'cream');
 }
 
+/* Build a real browser Range inside the rendered PDF text layer and send the same
+   touch pointer lifecycle used when an iPad selection handle is released. */
+async function selectPdfPassage(page) {
+  return page.evaluate(() => {
+    const spans = Array.from(document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span'));
+    const span = spans.find(candidate => candidate.firstChild
+      && candidate.firstChild.nodeType === Node.TEXT_NODE
+      && candidate.firstChild.nodeValue.trim().length >= 8);
+    if (!span) return null;
+    const node = span.firstChild;
+    const leadingWhitespace = node.nodeValue.search(/\S/);
+    const start = Math.max(0, leadingWhitespace);
+    const end = Math.min(node.nodeValue.length, start + 8);
+    const box = span.getBoundingClientRect();
+    span.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, cancelable: true, pointerType: 'touch', pointerId: 71,
+      isPrimary: true, button: 0, buttons: 1,
+      clientX: box.left + 2, clientY: (box.top + box.bottom) / 2
+    }));
+    const range = document.createRange();
+    range.setStart(node, start);
+    range.setEnd(node, end);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
+    document.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, cancelable: true, pointerType: 'touch', pointerId: 71,
+      isPrimary: true, button: 0, buttons: 0,
+      clientX: box.left + Math.min(box.width - 2, 30), clientY: (box.top + box.bottom) / 2
+    }));
+    return selection.toString().replace(/\s+/g, ' ').trim();
+  });
+}
+
+async function storedPdfHighlights(page) {
+  return page.evaluate(() => {
+    const id = localStorage.getItem('readingRoom.lastOpen.v1');
+    const state = JSON.parse(localStorage.getItem('readingRoom.v1'));
+    const chapter = state.chapters.find(item => item.id === id);
+    return chapter && chapter.highlights && chapter.highlights['1'] || [];
+  });
+}
+
 (async () => {
   await new Promise(resolve => server.listen(PORT, resolve));
   if (!browserType) throw new Error('Unknown Playwright browser: ' + browserName);
@@ -141,6 +185,87 @@ function seedZenReader() {
   await page.keyboard.press('Escape');
   check('Escape from a Zen Find step control closes only Find', await page.evaluate(() => document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('zenFind') && document.body.classList.contains('zen') && document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true'));
   await page.locator('#highlightBtn').evaluate(button => button.click());
+
+  const zenMarker = page.locator('#zenMarker');
+  const zenMarkerMenu = page.locator('#zenMarkerMenu');
+  const zenMarkerState = await zenMarker.evaluate(button => {
+    const rect = button.getBoundingClientRect();
+    return {
+      visible: getComputedStyle(button).display !== 'none' && getComputedStyle(button).visibility !== 'hidden',
+      width: rect.width,
+      height: rect.height,
+      expanded: button.getAttribute('aria-expanded'),
+      controls: button.getAttribute('aria-controls'),
+      hasPopup: button.getAttribute('aria-haspopup'),
+      toggleVisible: !document.getElementById('zenMarkerToggle').classList.contains('hidden')
+    };
+  });
+  check('coarse-touch Zen exposes a full-size selection-first Marker', zenMarkerState.visible
+    && zenMarkerState.width >= 44 && zenMarkerState.height >= 44
+    && zenMarkerState.expanded === 'false' && zenMarkerState.controls === 'zenMarkerMenu'
+    && zenMarkerState.hasPopup === null && !zenMarkerState.toggleVisible,
+  JSON.stringify(zenMarkerState));
+
+  await zenMarker.focus();
+  await zenMarker.press('Enter');
+  const zenColorTargets = await zenMarkerMenu.locator('[data-highlight-color]').evaluateAll(buttons => buttons.map(button => {
+    const rect = button.getBoundingClientRect();
+    return { color: button.dataset.highlightColor, width: rect.width, height: rect.height };
+  }));
+  check('coarse-touch Zen opens color controls with 44px targets', await zenMarkerMenu.isVisible()
+    && await zenMarker.getAttribute('aria-expanded') === 'true'
+    && zenColorTargets.length === 4
+    && zenColorTargets.every(target => target.width >= 44 && target.height >= 44), JSON.stringify(zenColorTargets));
+
+  const zenMint = zenMarkerMenu.locator('[data-highlight-color="mint"]');
+  await zenMint.focus();
+  await zenMint.press('Enter');
+  const zenColorState = await page.evaluate(() => ({
+    saved: localStorage.getItem('readingRoom.highlightColor.v1'),
+    trigger: document.getElementById('zenMarker').dataset.highlightColor,
+    desktop: document.getElementById('highlightColorBtn').dataset.highlightColor,
+    touch: document.getElementById('touchHighlight').dataset.highlightColor,
+    zenPressed: document.querySelector('#zenMarkerMenu [data-highlight-color="mint"]').getAttribute('aria-pressed'),
+    desktopPressed: document.querySelector('#highlightPalette [data-highlight-color="mint"]').getAttribute('aria-pressed'),
+    markerMode: document.getElementById('highlightBtn').getAttribute('aria-pressed'),
+    active: document.activeElement && document.activeElement.id
+  }));
+  check('Zen color choice closes, restores focus, and synchronizes without arming Marker',
+    !(await zenMarkerMenu.isVisible()) && await zenMarker.getAttribute('aria-expanded') === 'false'
+    && zenColorState.saved === 'mint' && zenColorState.trigger === 'mint'
+    && zenColorState.desktop === 'mint' && zenColorState.touch === 'mint'
+    && zenColorState.zenPressed === 'true' && zenColorState.desktopPressed === 'true'
+    && zenColorState.markerMode === 'false' && zenColorState.active === 'zenMarker',
+  JSON.stringify(zenColorState));
+
+  const zenSelectedText = await selectPdfPassage(page);
+  await page.waitForFunction(() => document.getElementById('zenMarker').classList.contains('ready'));
+  const zenPendingState = await zenMarker.evaluate(button => ({
+    label: button.getAttribute('aria-label'),
+    expanded: button.getAttribute('aria-expanded'),
+    controls: button.getAttribute('aria-controls')
+  }));
+  check('a pending Zen selection becomes one clear Mark action', !!zenSelectedText
+    && /Highlight selected passage in Mint/.test(zenPendingState.label || '')
+    && zenPendingState.expanded === null && zenPendingState.controls === null,
+  JSON.stringify({ text: zenSelectedText, state: zenPendingState }));
+  const zenCardClearance = await page.evaluate(() => {
+    const card = document.getElementById('selectionCard').getBoundingClientRect();
+    const dock = document.getElementById('zenDock').getBoundingClientRect();
+    return { cardRight: card.right, dockLeft: dock.left, gap: dock.left - card.right };
+  });
+  check('the selection card stays clear of the Zen control rail', zenCardClearance.gap >= 10, JSON.stringify(zenCardClearance));
+  await zenMarker.click();
+  await page.waitForTimeout(120);
+  const zenSavedHighlights = await storedPdfHighlights(page);
+  check('one Zen Marker tap saves the existing selection in the chosen color', zenSavedHighlights.length === 1
+    && zenSavedHighlights[0].text === zenSelectedText && zenSavedHighlights[0].color === 'mint',
+  JSON.stringify(zenSavedHighlights));
+  check('after saving, Zen Marker restores its accessible color-popup state',
+    await zenMarker.getAttribute('aria-expanded') === 'false'
+    && await zenMarker.getAttribute('aria-controls') === 'zenMarkerMenu'
+    && (await zenMarker.getAttribute('aria-label') || '').includes('Open colors'));
+
   const zenPaperState = await page.locator('#zenPaperAppearance').evaluate(button => {
     const rect = button.getBoundingClientRect();
     return { visible: getComputedStyle(button).display !== 'none', width: rect.width, height: rect.height, label: button.getAttribute('aria-label'), state: button.dataset.paperState };
@@ -202,6 +327,59 @@ function seedZenReader() {
   await page.click('#zenExit');
   await page.waitForFunction(() => !document.body.classList.contains('zen'));
   await context.close();
+
+  const fineContext = await browser.newContext({ viewport: { width: 1180, height: 780 }, hasTouch: false, isMobile: false, serviceWorkers: 'block' });
+  const finePage = await fineContext.newPage();
+  finePage.setDefaultTimeout(8000);
+  finePage.on('pageerror', error => errors.push(error.message));
+  /* Keep Escape in the document under test. WebKit otherwise consumes the first
+     key at browser-fullscreen level before the reader can close its open popout. */
+  await finePage.addInitScript(() => {
+    Object.defineProperty(Element.prototype, 'requestFullscreen', { configurable: true, value: undefined });
+  });
+  await finePage.addInitScript(seedReader);
+  await finePage.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  await finePage.waitForFunction(() => document.querySelector('#textDocument .original') && !document.getElementById('readerPage').classList.contains('hidden'));
+  await finePage.click('#zenBtn');
+  await finePage.waitForFunction(() => document.body.classList.contains('zen'));
+
+  const fineZenMarker = finePage.locator('#zenMarker');
+  const fineZenMarkerMenu = finePage.locator('#zenMarkerMenu');
+  await fineZenMarker.focus();
+  await fineZenMarker.press('Enter');
+  const fineToggleState = await finePage.locator('#zenMarkerToggle').evaluate(button => {
+    const rect = button.getBoundingClientRect();
+    return { visible: getComputedStyle(button).display !== 'none', width: rect.width, height: rect.height };
+  });
+  check('fine-pointer Zen exposes the persistent Marker toggle', fineToggleState.visible
+    && fineToggleState.width >= 44 && fineToggleState.height >= 44, JSON.stringify(fineToggleState));
+  await finePage.locator('#zenMarkerToggle').focus();
+  await finePage.locator('#zenMarkerToggle').press('Enter');
+  check('the fine-pointer Zen toggle synchronizes persistent Marker mode',
+    await finePage.locator('#zenMarkerToggle').getAttribute('aria-pressed') === 'true'
+    && await finePage.locator('#highlightBtn').getAttribute('aria-pressed') === 'true'
+    && await finePage.locator('body').evaluate(body => body.classList.contains('marker-on')));
+
+  await finePage.keyboard.press('Escape');
+  const fineEscapeOnce = await finePage.evaluate(() => ({
+    menuHidden: document.getElementById('zenMarkerMenu').classList.contains('hidden'),
+    expanded: document.getElementById('zenMarker').getAttribute('aria-expanded'),
+    markerPressed: document.getElementById('highlightBtn').getAttribute('aria-pressed'),
+    active: document.activeElement && document.activeElement.id,
+    zen: document.body.classList.contains('zen')
+  }));
+  check('Escape closes the open Zen Marker popup before disabling Marker', fineEscapeOnce.menuHidden
+    && fineEscapeOnce.expanded === 'false' && fineEscapeOnce.markerPressed === 'true'
+    && fineEscapeOnce.active === 'zenMarker' && fineEscapeOnce.zen, JSON.stringify(fineEscapeOnce));
+  await finePage.keyboard.press('Escape');
+  const fineEscapeTwice = await finePage.evaluate(() => ({
+    markerPressed: document.getElementById('highlightBtn').getAttribute('aria-pressed'),
+    markerClass: document.body.classList.contains('marker-on'),
+    zen: document.body.classList.contains('zen')
+  }));
+  check('a second Escape disables persistent Marker while keeping Zen open', fineEscapeTwice.markerPressed === 'false'
+    && !fineEscapeTwice.markerClass && fineEscapeTwice.zen, JSON.stringify(fineEscapeTwice));
+  await fineContext.close();
 
   const keyboardContext = await browser.newContext({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2, serviceWorkers: 'block' });
   const keyboardPage = await keyboardContext.newPage();

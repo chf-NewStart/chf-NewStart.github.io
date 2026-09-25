@@ -20,7 +20,8 @@ starting another, and the reply renders its Markdown and LaTeX as
 formatted prose rather than raw stars and backslashes.
 
 `reading-library-stack.test.js` covers the fixed category-highlighter rail and
-soft reading wall: the two-column handwritten sticky grid, category
+soft reading wall: the two-column clean-by-default sticky grid, optional persisted
+handwritten typography, category
 creation/renaming, searchable and scrollable move picker, overflow scrolling for
 many category highlighters, drag-to-reorder categories, drag-to-file sticky
 notes, persisted category order, selection, search, and mobile fit.
@@ -58,7 +59,8 @@ and Zen/phone/library transitions.
 
 `reading-zen-ipad.test.js` covers the iPad Zen control dock, its responsive Find
 panel and search highlighting, Escape/focus behavior, guide and layout popouts,
-paper appearance, and software-keyboard-safe note editing. Set
+Marker controls and selection-first saving, paper appearance, and
+software-keyboard-safe note editing. Set
 `PHLOEM_BROWSER=webkit` to exercise the same flow in WebKit.
 
 `reading-book-guide.test.js` covers dragging the guide between facing pages,

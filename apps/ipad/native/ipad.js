@@ -1,4 +1,4 @@
-/* Small UI adapter for the first iPad build; the web reader remains shared. */
+/* Small UI adapter for the iPad app; the web reader remains shared. */
 (function () {
   'use strict';
   if (!window.PHLOEM_NATIVE) return;
@@ -24,17 +24,30 @@
 
   /* Keep every shared-reader element in the DOM: its state/rendering functions
      still reference them. CSS does not allow later web renders to reveal them. */
-  ['gdriveConnectBtn', 'syncSaveBtn', 'aiKeySave', 'aiPassCreate',
+  ['gdriveConnectBtn', 'syncSaveBtn', 'aiPassCreate',
     'syncLinkBtn', 'installBtn2'].forEach(hideSection);
   ['installNav', 'installDialog', 'launchDialog', 'cloudPassBanner',
     'githubPickBtn', 'githubDialog', 'folderPickBtn', 'pdfFolder',
-    'selectionNoteAi', 'selectionAiBox', 'touchDiscuss', 'aiPanel',
-    'locateReviewsBtn', 'reviewPairModeBtn', 'reviewPairFields',
     'notebookLmBtn', 'notebookPackageDialog', 'notebookLmStatus',
     'supportLine'].forEach(function (id) { hide(byId(id)); disable(byId(id)); });
-  document.querySelectorAll('[data-tab="aiPanel"],.notebook-listen').forEach(hide);
-  document.querySelectorAll('#aiPanel button,#aiPanel input,#aiPanel textarea,' +
-    '#selectionAiBox button,#selectionAiBox textarea').forEach(disable);
+  document.querySelectorAll('.notebook-listen').forEach(hide);
+
+  var providerSelect = byId('aiProvider');
+  if (providerSelect) {
+    ['auto', 'compatible'].forEach(function (value) {
+      var option = providerSelect.querySelector('option[value="' + value + '"]');
+      if (option) option.remove();
+    });
+    if (!providerSelect.value) providerSelect.value = 'openai';
+  }
+  var aiHeading = document.querySelector('#aiKeySave') && byId('aiKeySave').closest('section');
+  if (aiHeading) {
+    var intro = aiHeading.querySelector('p');
+    if (intro) intro.textContent = 'Choose a cloud provider and bring your own API key. iOS asks for the key in a native secure prompt and stores it in Keychain, never in a Phloem backup. Before saving, Phloem shows exactly what reading context leaves this iPad and where it goes.';
+  }
+  hide(document.querySelector('label[for="aiKey"]'));
+  hide(byId('aiKey'));
+  disable(byId('aiKey'));
 
   /* A review file can still be exported/imported locally. Only the generated
      web link is unavailable: capacitor://localhost is not a public address.
@@ -61,16 +74,34 @@
     heading.textContent = 'Saved on this iPad';
     var description = document.createElement('p');
     description.textContent = 'Papers, highlights, and notes are stored in this app’s web storage. ' +
-      'Cloud sync and AI are not available in this preview. Keep your original files and export your notes regularly.';
+      'Cloud sync is unavailable in this preview. Optional AI uses a provider you choose, only after you accept its data-sharing disclosure; provider keys stay in iOS Keychain.';
     var lookupNote = document.createElement('p');
     lookupNote.textContent = 'Define uses Wikipedia and Wikimedia online when you ask for a lookup. ' +
       'Your selected term is sent to those services.';
     localSection.append(heading, description, lookupNote);
     if (window.PHLOEM_NATIVE_BLOCKED_SETUP) {
       var blockedNote = document.createElement('p');
-      blockedNote.textContent = 'That device setup or AI pass link was not imported. This preview does not accept cloud credentials.';
+      blockedNote.textContent = 'That device setup or AI pass link was not imported. Add an AI key manually so it can be stored in iOS Keychain.';
       localSection.appendChild(blockedNote);
     }
+    var privacySection = document.createElement('section');
+    privacySection.className = 'native-privacy-settings';
+    var privacyHeading = document.createElement('h3');
+    privacyHeading.textContent = 'Privacy & support';
+    var privacyCopy = document.createElement('p');
+    privacyCopy.textContent = 'Review what stays on this iPad, what leaves it when you choose an online feature, and how to remove an AI key.';
+    var privacyLink = document.createElement('a');
+    privacyLink.href = 'https://houfu72.com/phloem-ipad/privacy.html';
+    privacyLink.target = '_blank';
+    privacyLink.rel = 'noopener noreferrer';
+    privacyLink.textContent = 'Privacy policy ↗';
+    var supportLink = document.createElement('a');
+    supportLink.href = 'https://houfu72.com/phloem-ipad/support.html';
+    supportLink.target = '_blank';
+    supportLink.rel = 'noopener noreferrer';
+    supportLink.textContent = 'Support ↗';
+    privacySection.append(privacyHeading, privacyCopy, privacyLink, document.createTextNode(' · '), supportLink);
+    settings.appendChild(privacySection);
     settings.prepend(localSection);
   }
 
@@ -87,14 +118,14 @@
     refresh.title = 'Reload reader';
     refresh.setAttribute('aria-label', 'Save and reload reader');
   }
-  text(byId('buildStamp'), 'Phloem for iPad · development preview');
+  text(byId('buildStamp'), 'Phloem for iPad · 1.1 AI development preview');
   hide(byId('storageNote')); // Browser persistence promises do not describe native durability.
   text(document.querySelector('.hero-card .step:nth-child(2) span'),
     'Move the guide, turn the page, and keep notes beside the paper.');
   text(document.querySelector('.hero-card .step:nth-child(3) span'),
     'Your library stays on this iPad. No account needed for reading.');
   text(document.querySelector('#reviewsPanel .reviewer-panel-head > .hint'),
-    'Read imported Word comments beside the paper. Link a comment to a selected passage yourself. AI matching is not available in this preview.');
+    'Read imported Word comments beside the paper. Link them yourself, or use your configured AI provider to help match passages.');
 
   var home = byId('homeLink');
   if (home) {
@@ -106,20 +137,6 @@
   if (define) {
     define.title = 'Look up the selected term online using Wikipedia and Wikimedia';
     define.setAttribute('aria-label', 'Define selected term online');
-  }
-
-  /* The shared lookup suggests AI when Wikipedia has no matching entry. Keep
-     the lookup useful without advertising a cloud configuration we disabled. */
-  var aiSetup = byId('lookupAiSetup');
-  if (aiSetup) {
-    hide(aiSetup);
-    disable(aiSetup);
-    new MutationObserver(function () {
-      if (!aiSetup.classList.contains('hidden')) {
-        text(byId('lookupDefinition'), 'Wikipedia has no matching entry for this phrase. ' +
-          'Try a shorter term. AI explanations are not available in this iPad preview.');
-      }
-    }).observe(aiSetup, { attributes: true, attributeFilter: ['class'] });
   }
 
   /* Capacitor Browser opens a separate Safari view, leaving the local app and

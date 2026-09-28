@@ -180,6 +180,19 @@ async function stylusTouch(page, type, point, options = {}) {
   }, { type, point, options });
 }
 
+async function chooseEraser(page) {
+  await page.evaluate(() => document.querySelector('#touchHighlightPalette [data-highlight-eraser]').click());
+}
+
+async function undo(page) {
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(120);
+}
+
+function highlightIdentity(items) {
+  return items.map(item => ({ id: item.id, note: item.note || '', text: item.text, color: item.color })).sort((a, b) => a.id.localeCompare(b.id));
+}
+
 (async () => {
   let browser;
   try {
@@ -383,6 +396,139 @@ async function stylusTouch(page, type, point, options = {}) {
     check('the stylus TouchEvent cancellation path never commits a partial stroke', (await highlights(page, 'reader')).length === 2
       && await page.locator('.pencil-highlight-preview').count() === 0
       && !await page.locator('body').evaluate(body => body.classList.contains('pencil-highlighting')));
+
+    const readerBeta = await wordPoint(page, 'beta', 'start', 'reader');
+    const readerBetaEnd = await wordPoint(page, 'beta', 'end', 'reader');
+    await stroke(page, readerBeta, readerBetaEnd);
+    check('a Pencil subset of a Reader highlight reopens it instead of layering another highlight', (await highlights(page, 'reader')).length === 2
+      && !await page.locator('#selectionCard').evaluate(card => card.classList.contains('hidden')));
+    await page.keyboard.press('Escape');
+    await stroke(page, readerBeta, await wordPoint(page, 'delta', 'end', 'reader'));
+    check('a partly overlapping Pencil Reader stroke does not double-highlight its existing passage', (await highlights(page, 'reader')).length === 2
+      && !await page.locator('#selectionCard').evaluate(card => card.classList.contains('hidden')));
+    await page.keyboard.press('Escape');
+    await stroke(page, readerBeta, { x: readerBeta.x + 6, y: readerBeta.y });
+    check('small Pencil jitter over a Reader highlight still opens its card without duplication', (await highlights(page, 'reader')).length === 2
+      && !await page.locator('#selectionCard').evaluate(card => card.classList.contains('hidden')));
+    await page.locator('#selectionNote').fill('Keep this Reader note when undoing erasure.');
+    await page.waitForTimeout(100);
+    const readerBeforeErase = highlightIdentity(await highlights(page, 'reader'));
+    await page.locator('#selectionRemoveHighlight').click();
+    check('the Reader highlight card Remove button deletes its selected highlight', (await highlights(page, 'reader')).length === 1);
+    await undo(page);
+    check('Undo of the Reader Remove button restores the same highlight and its note', JSON.stringify(highlightIdentity(await highlights(page, 'reader'))) === JSON.stringify(readerBeforeErase));
+
+    await chooseEraser(page);
+    check('the touch palette exposes a pressed Eraser and labels the dock action Erase', await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
+      && await page.locator('#touchHighlightPalette [data-highlight-eraser]').getAttribute('aria-pressed') === 'true'
+      && /Erase/.test(await page.locator('#touchHighlight').textContent()));
+    const fingerDown = await pointer(page, 'pointerdown', readerBeta, { pointerType: 'touch', pointerId: 94 });
+    const fingerMove = await pointer(page, 'pointermove', readerBetaEnd, { pointerType: 'touch', pointerId: 94 });
+    await pointer(page, 'pointerup', readerBetaEnd, { pointerType: 'touch', pointerId: 94 });
+    check('Eraser leaves finger gestures available for native scrolling without deleting anything', !fingerDown.prevented && !fingerMove.prevented
+      && JSON.stringify(highlightIdentity(await highlights(page, 'reader'))) === JSON.stringify(readerBeforeErase));
+    await pointer(page, 'pointerdown', readerBeta);
+    await stylusTouch(page, 'touchstart', readerBeta);
+    await pointer(page, 'pointermove', reflowTheta);
+    await stylusTouch(page, 'touchmove', reflowTheta);
+    await stylusTouch(page, 'touchend', reflowTheta, { palmOnly: true });
+    check('an eraser sweep and a lifting palm do not delete anything before Pencil lifts', (await highlights(page, 'reader')).length === 2);
+    await stylusTouch(page, 'touchcancel', reflowTheta);
+    await pointer(page, 'pointerup', reflowTheta);
+    check('paired stylus touch cancellation discards the entire pending Reader eraser sweep', JSON.stringify(highlightIdentity(await highlights(page, 'reader'))) === JSON.stringify(readerBeforeErase));
+    await stroke(page, readerBeta, readerBeta);
+    check('a Pencil eraser tap removes the complete Reader highlight, not just the touched letter', (await highlights(page, 'reader')).length === 1
+      && (await highlights(page, 'reader'))[0].text.replace(/\s/g, '') === 'deltaepsilonzetaetatheta');
+    await undo(page);
+    check('Undo of a Pencil eraser tap restores the Reader highlight and its note', JSON.stringify(highlightIdentity(await highlights(page, 'reader'))) === JSON.stringify(readerBeforeErase));
+    await stylusTouch(page, 'touchstart', readerBeta);
+    await stylusTouch(page, 'touchmove', reflowTheta);
+    await stylusTouch(page, 'touchend', reflowTheta);
+    await page.waitForTimeout(120);
+    check('stylus TouchEvent fallback erases every Reader highlight crossed by one sweep', (await highlights(page, 'reader')).length === 0);
+    await undo(page);
+    check('one Undo restores all Reader highlights erased in the same sweep with notes and identities intact', JSON.stringify(highlightIdentity(await highlights(page, 'reader'))) === JSON.stringify(readerBeforeErase));
+    await page.evaluate(() => document.querySelector('#touchHighlightPalette [data-highlight-color="mint"]').click());
+    check('choosing a highlight color exits Eraser and restores the Mark dock label', !await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
+      && await page.locator('#touchHighlightPalette [data-highlight-eraser]').getAttribute('aria-pressed') === 'false'
+      && /Mark/.test(await page.locator('#touchHighlight').textContent()));
+
+    await page.evaluate(() => document.getElementById('reflowBtn').click());
+    await waitForPdf(page);
+    const pdfBeta = await wordPoint(page, 'beta', 'start');
+    const pdfBetaEnd = await wordPoint(page, 'beta', 'end');
+    await stroke(page, pdfBeta, pdfBetaEnd);
+    check('a Pencil subset of a PDF highlight reopens it without another layer', (await highlights(page)).length === 3
+      && !await page.locator('#selectionCard').evaluate(card => card.classList.contains('hidden')));
+    await page.keyboard.press('Escape');
+    await stroke(page, pdfBeta, await wordPoint(page, 'delta', 'end'));
+    check('a partly overlapping Pencil PDF stroke does not double-highlight the existing passage', (await highlights(page)).length === 3
+      && !await page.locator('#selectionCard').evaluate(card => card.classList.contains('hidden')));
+    await page.keyboard.press('Escape');
+    await stroke(page, pdfBeta, { x: pdfBeta.x + 6, y: pdfBeta.y });
+    check('small Pencil jitter over a PDF highlight opens its card without duplication', (await highlights(page)).length === 3
+      && !await page.locator('#selectionCard').evaluate(card => card.classList.contains('hidden')));
+    await page.keyboard.press('Escape');
+    await stroke(page, pdfBeta, pdfBeta);
+    const pdfBeforeErase = highlightIdentity(await highlights(page));
+    const removeButtonPoint = await page.locator('#selectionRemoveHighlight').evaluate(button => {
+      const rect = button.getBoundingClientRect();
+      return { x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 };
+    });
+    await stylusTouch(page, 'touchstart', removeButtonPoint);
+    check('a rapid Pencil touch on the Remove control is not swallowed as the preceding stroke', !await stylusTouch(page, 'touchend', removeButtonPoint));
+    await page.locator('#selectionRemoveHighlight').click();
+    check('the PDF highlight card Remove button deletes its selected highlight', (await highlights(page)).length === 2);
+    await undo(page);
+    check('Undo of the PDF Remove button restores its highlight and earlier note', JSON.stringify(highlightIdentity(await highlights(page))) === JSON.stringify(pdfBeforeErase));
+
+    const pdfOverlap = await wordPoint(page, 'Iota', 'end');
+    await chooseEraser(page);
+    await stroke(page, pdfOverlap, pdfBeta, { cancel: true });
+    check('a cancelled PDF eraser sweep preserves every overlapping highlight and note', JSON.stringify(highlightIdentity(await highlights(page))) === JSON.stringify(pdfBeforeErase));
+    await pointer(page, 'pointerdown', pdfOverlap);
+    await stylusTouch(page, 'touchstart', pdfOverlap);
+    await pointer(page, 'pointerup', pdfOverlap);
+    await stylusTouch(page, 'touchend', pdfOverlap);
+    await pointer(page, 'click', pdfOverlap);
+    await page.waitForTimeout(120);
+    check('one Pencil eraser tap removes every overlapping PDF layer at the touched passage', (await highlights(page)).length === 1
+      && (await highlights(page))[0].text.replace(/\s/g, '') === 'Alphabetagamma');
+    await undo(page);
+    check('paired Pointer and stylus release records one undoable PDF eraser action', JSON.stringify(highlightIdentity(await highlights(page))) === JSON.stringify(pdfBeforeErase));
+    await stroke(page, pdfOverlap, pdfBeta);
+    check('a Pencil PDF eraser sweep removes both separated and overlapping touched highlights', (await highlights(page)).length === 0);
+    await undo(page);
+    check('one Undo restores every PDF highlight from a multi-highlight eraser sweep', JSON.stringify(highlightIdentity(await highlights(page))) === JSON.stringify(pdfBeforeErase));
+    await page.keyboard.press('Control+Shift+z');
+    await page.waitForTimeout(120);
+    check('one Redo reapplies the complete PDF multi-highlight eraser sweep', (await highlights(page)).length === 0);
+    await undo(page);
+    check('Undo after Redo restores the same PDF highlight identities and notes again', JSON.stringify(highlightIdentity(await highlights(page))) === JSON.stringify(pdfBeforeErase));
+    await chooseEraser(page);
+    check('tapping the selected Eraser turns it off without editing any stored highlights', !await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
+      && JSON.stringify(highlightIdentity(await highlights(page))) === JSON.stringify(pdfBeforeErase));
+    await page.reload({ waitUntil: 'load' });
+    await waitForPdf(page);
+    check('restored PDF and Reader highlights and their notes persist through reload after erasing', JSON.stringify(highlightIdentity(await highlights(page))) === JSON.stringify(pdfBeforeErase)
+      && JSON.stringify(highlightIdentity(await highlights(page, 'reader'))) === JSON.stringify(readerBeforeErase));
+    await chooseEraser(page);
+    const fingerFromEraser = await nativeTouchSelection(page, 'Iota', 'lambda');
+    await page.waitForTimeout(750);
+    check('native finger selection while Eraser is active returns to Mark without losing the exact selection', !await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
+      && /Mark/.test(await page.locator('#touchHighlight').textContent())
+      && await page.evaluate(() => getSelection().toString()) === fingerFromEraser
+      && (await highlights(page)).length === 3);
+    await page.locator('#touchHighlight').click();
+    await page.waitForTimeout(120);
+    check('the pending finger Mark action still saves an overlapping selection after leaving Eraser', (await highlights(page)).length === 4
+      && (await highlights(page)).some(item => item.text === fingerFromEraser.replace(/\s+/g, ' ').trim()));
+    await undo(page);
+    await chooseEraser(page);
+    if (process.env.PHLOEM_ERASER_SCREENSHOT) {
+      await page.locator('#touchHighlight').click();
+      await page.screenshot({ path: process.env.PHLOEM_ERASER_SCREENSHOT });
+    }
     check(browserName + ' Pencil workflows have no page errors', errors.length === 0, errors.join('; '));
   } finally {
     if (browser) await browser.close();

@@ -1005,6 +1005,7 @@
     .text-layer ::selection, .original ::selection { background: rgba(64, 137, 174, .34); }
     .pencil-highlight-preview { position: fixed; z-index: 7; overflow: hidden; pointer-events: none; }
     .pencil-highlight-preview i { position: absolute; border-radius: 2px; opacity: .8; }
+    .saved-highlight.erasing-highlight, #textDocument mark.erasing-highlight { opacity: .25; outline: 1px dashed var(--ink); }
     /* A translucent reading ruler that follows the pointer (or the ⠿ handle / last tap).
        Row flow follows one horizontal passage; column flow follows one top-to-bottom
        column for traditional right-to-left books. */
@@ -1081,7 +1082,19 @@
     @media (hover: hover) and (pointer: fine) {
       body.marker-on :is(.text-layer,.text-layer *,.original,.original *) { cursor: crosshair; }
     }
-    .marker-palette { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: flex; align-items: center; gap: 0; margin: 0; padding: 5px 6px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 12px 34px rgba(20,24,25,.18); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+    .marker-palette { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; justify-items: center; gap: 0; width: 224px; margin: 0; padding: 8px; border: 1px solid var(--line); border-radius: 15px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 12px 34px rgba(20,24,25,.18); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+    .highlight-eraser { grid-column: 1 / -1; width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin-top: 4px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: 650 .7rem/1.25 var(--sans); touch-action: manipulation; }
+    .highlight-eraser:hover, .highlight-eraser:focus-visible { border-color: var(--accent); background: var(--surface-2); }
+    .highlight-eraser[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+    .highlight-eraser[aria-pressed="true"]::after { content: "On"; margin-left: auto; color: var(--accent-dark); font-size: .6rem; }
+    .highlight-tool-hint { grid-column: 1 / -1; margin: 8px 6px 4px; color: var(--muted); font: 500 .65rem/1.45 var(--sans); }
+    body.highlight-erasing .marker-tools { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    body.highlight-erasing #highlightBtn, body.highlight-erasing #touchHighlight, body.highlight-erasing #zenMarker { background: var(--accent-soft); color: var(--ink); opacity: 1; }
+    body.highlight-erasing :is(.marker-glyph,.touch-marker-glyph,.zen-marker-glyph) { display: inline-block; width: 16px; height: 10px; border: 1.5px solid currentColor; border-radius: 2px; background: linear-gradient(90deg, #ef8f85 0 56%, var(--surface) 56%); transform: rotate(-34deg); font-size: 0; }
+    body.highlight-erasing :is(.marker-current-dot,.zen-marker-current-dot), body.highlight-erasing .touch-marker-glyph::after { visibility: hidden; }
+    @media (hover: hover) and (pointer: fine) {
+      body.highlight-erasing :is(.text-layer,.text-layer *,.original,.original *) { cursor: crosshair; }
+    }
     .marker-swatch { --marker-swatch-color: #ffd83d; width: 36px; min-width: 36px; max-width: 36px; height: 36px; min-height: 36px; flex: 0 0 36px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; box-shadow: none; }
     .marker-swatch::before { content: ""; width: 20px; height: 20px; border: 2px solid var(--surface); border-radius: 50%; background: var(--marker-swatch-color); box-shadow: 0 0 0 1px var(--line); transition: box-shadow .14s ease; }
     .marker-swatch:hover::before { box-shadow: 0 0 0 2px color-mix(in srgb, var(--muted) 72%, transparent); }
@@ -1118,10 +1131,10 @@
     .selection-explain { display: inline-flex; align-items: center; gap: 4px; padding: 2px 0; border: 0; border-bottom: 1px dotted color-mix(in srgb, var(--muted) 55%, transparent); border-radius: 0; background: transparent; color: var(--muted); font-size: .62rem; font-weight: 650; }
     .selection-explain span { font-size: .86rem; line-height: .7; }
     .selection-explain:hover { color: var(--ink); border-bottom-color: var(--ink); background: transparent; }
-    .selection-saved-tools { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 16px 12px; }
+    .selection-saved-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 16px 12px; }
     .selection-saved-colors { display: flex; align-items: center; gap: 7px; }
-    .selection-remove { display: grid; width: 32px; height: 32px; padding: 0; place-items: center; border: 1px solid transparent; border-radius: 9px; color: var(--muted); }
-    .eraser-icon { position: relative; display: block; width: 16px; height: 10px; overflow: hidden; border: 1.5px solid currentColor; border-radius: 2px; background: linear-gradient(90deg, #ef8f85 0 56%, var(--surface) 56%); transform: rotate(-34deg); }
+    .selection-remove { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font: 650 .64rem/1.25 var(--sans); white-space: nowrap; }
+    .eraser-icon { position: relative; display: block; flex: 0 0 16px; width: 16px; height: 10px; overflow: hidden; border: 1.5px solid currentColor; border-radius: 2px; background: linear-gradient(90deg, #ef8f85 0 56%, var(--surface) 56%); transform: rotate(-34deg); }
     .eraser-icon::after { content: ""; position: absolute; top: -1px; bottom: -1px; left: 54%; border-left: 1.5px solid currentColor; }
     .selection-remove:hover { border-color: var(--line); background: var(--surface-2); color: var(--accent); }
     .selection-note { padding: 12px 14px 14px; }
@@ -1174,7 +1187,9 @@
       .marker-swatch { width: 44px; min-width: 44px; max-width: 44px; height: 44px; min-height: 44px; flex-basis: 44px; }
       .marker-swatch::before { width: 22px; height: 22px; }
       .selection-card .selection-action, .selection-card .selection-explain, .selection-card .selection-note-ai, .selection-card .selection-ai-head .text-button, .selection-card .selection-ai-row .button { min-height: 44px; }
-      .selection-card .selection-remove, .selection-card .lookup-close { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
+      .selection-card .selection-remove { flex-basis: 100%; min-height: 44px; }
+      .selection-card .selection-saved-colors { flex: 1; justify-content: space-between; gap: 0; }
+      .selection-card .lookup-close { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
     }
     .lookup-photo-link { display: block; height: 170px; overflow: hidden; background: var(--surface-2); }
     .lookup-photo { width: 100%; height: 100%; display: block; object-fit: cover; }

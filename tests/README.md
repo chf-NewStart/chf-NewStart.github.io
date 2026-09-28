@@ -82,6 +82,10 @@ undo/redo, reload persistence, guide-click suppression, and unchanged explicit
 finger highlighting. It also exercises the iPad stylus TouchEvent fallback and
 palm input separation. Run with `PHLOEM_BROWSER=webkit` for WebKit coverage;
 synthetic pen events supplement, but do not replace, a physical Apple Pencil test.
+Pencil-only partial-overlap and tap-jitter checks prevent stacked ink without
+changing explicit finger selections. Eraser tests cover whole-highlight removal,
+legacy overlapping layers, cancellation, paired stylus events, palm/finger
+separation, grouped Undo, and preservation of highlight identities and notes.
 
 `reading-pdf-continuity.test.js` covers exact PDF-point cursor persistence across
 reload and rotation-like resizing, explicit Left/Right/Full column states,

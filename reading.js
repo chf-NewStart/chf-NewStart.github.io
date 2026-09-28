@@ -2660,6 +2660,7 @@
     toggle.classList.toggle('hidden',!persistent);toggle.setAttribute('aria-pressed',String(!!highlightMode));label.textContent=highlightMode?'Marker on':'Marker off';
     trigger.setAttribute('aria-label',pending?'Highlight selected passage in '+colorLabel:persistent?(highlightMode?'Marker mode on':'Marker mode off')+'. Current color '+colorLabel+'. Open marker controls':'Marker. Current color '+colorLabel+'. Open colors');
     trigger.title=pending?'Highlight selection in '+colorLabel:(persistent?'Marker controls · ':'Highlight color · ')+colorLabel;
+    if(highlightEraseMode){trigger.classList.add('active');trigger.setAttribute('aria-label','Eraser on. Open highlight tools');trigger.title='Eraser on · choose a color to highlight again';}
     if(pending){menu.classList.add('hidden');tool.classList.remove('popout-open');trigger.removeAttribute('aria-expanded');trigger.removeAttribute('aria-controls');}
     else{trigger.setAttribute('aria-controls','zenMarkerMenu');trigger.setAttribute('aria-expanded',String(!menu.classList.contains('hidden')));}
     byId('zenDock').classList.toggle('popout-open',!!byId('zenDock').querySelector('.zen-popout:not(.hidden)'));
@@ -3017,7 +3018,7 @@
   function syncTouchDockStates(){
     var guide=byId('touchGuide'),marker=byId('touchHighlight'),notes=byId('touchNotes'),undo=byId('touchUndo');if(!guide)return;
     guide.classList.toggle('active',!!comfort.focus);guide.setAttribute('aria-pressed',String(!!comfort.focus));
-    marker.classList.toggle('active',!!pendingSelection);
+    marker.classList.toggle('active',!!pendingSelection||!!highlightEraseMode);
     if(pendingSelection){marker.removeAttribute('aria-expanded');marker.removeAttribute('aria-controls');}
     else{marker.setAttribute('aria-controls','touchHighlightPalette');marker.setAttribute('aria-expanded',String(!byId('touchHighlightPalette').classList.contains('hidden')));}
     var notesPanel=byId('notesPanel'),notesSelected=notesPanel&&!notesPanel.classList.contains('hidden');
@@ -3791,6 +3792,7 @@
        new paper mid-page, at wherever the old one had been scrolled. */
     if(currentId&&!byId('readerPage').classList.contains('hidden'))saveCurrentReadingPosition(false);
     var ch=find(id); if(!ch) return false;
+    setHighlightEraseMode(false);
     /* A paper should open as a paper, not as its configuration screen. Keep the
        reader's chosen values, but make the Settings tray an intentional action. */
     setComfortBarOpen(false);
@@ -5125,6 +5127,7 @@
     if(e.key==='Escape'&&!byId('lookupCard').classList.contains('hidden')){e.preventDefault();hideLookup();return;}
     if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
     if(e.key==='Escape'&&zenOn&&closeZenPopouts(true)){e.preventDefault();return;}
+    if(e.key==='Escape'&&highlightEraseMode){e.preventDefault();setHighlightEraseMode(false);showReaderToast('Eraser off');return;}
     if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
     if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
@@ -6034,15 +6037,24 @@
   }
   function syncHighlightColorUi(){
     var label=highlightColorLabel(highlightColor),mode=!!highlightMode,pending=!!pendingSelection;
-    document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(x){var selected=x.dataset.highlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
+    document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(x){var selected=!highlightEraseMode&&x.dataset.highlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
     document.querySelectorAll('[data-selection-highlight-color]').forEach(function(x){var selected=x.dataset.selectionHighlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
     var tools=byId('markerTools'),colorButton=byId('highlightColorBtn'),touchButton=byId('touchHighlight'),markerButton=byId('highlightBtn'),selectionButton=byId('selectionHighlight');
     if(tools)tools.dataset.highlightColor=highlightColor;
     if(colorButton){colorButton.dataset.highlightColor=highlightColor;colorButton.setAttribute('aria-label','Highlight color: '+label+'. Choose color');}
-    if(touchButton){touchButton.dataset.highlightColor=highlightColor;touchButton.setAttribute('aria-label',pending?'Highlight selected passage in '+label:'Highlight color: '+label+'. Choose color');}
-    if(markerButton){markerButton.setAttribute('aria-label',(mode?'Marker mode on':'Marker mode off')+'. Current color '+label);markerButton.title=coarseHighlightUi()?'Select text, then use Mark; choose color with the button beside it':'Keep Marker on for several highlights';}
+    if(touchButton){touchButton.dataset.highlightColor=highlightColor;touchButton.querySelector('small').textContent=highlightEraseMode?'Erase':'Mark';touchButton.setAttribute('aria-label',highlightEraseMode?'Eraser on. Open highlight tools':pending?'Highlight selected passage in '+label:'Highlight color: '+label+'. Choose color');}
+    if(markerButton){markerButton.setAttribute('aria-label',highlightEraseMode?'Eraser on. Turn eraser off':(mode?'Marker mode on':'Marker mode off')+'. Current color '+label);markerButton.title=highlightEraseMode?'Turn eraser off':coarseHighlightUi()?'Select text, then use Mark; choose color with the button beside it':'Keep Marker on for several highlights';}
     if(selectionButton){selectionButton.dataset.highlightColor=highlightColor;selectionButton.setAttribute('aria-label','Highlight selected passage in '+label);}
+    document.querySelectorAll('[data-highlight-eraser]').forEach(function(b){b.setAttribute('aria-pressed',String(!!highlightEraseMode));});
+    document.body.classList.toggle('highlight-erasing',!!highlightEraseMode);
+    byId('highlightBtnLabel').textContent=highlightEraseMode?'Erase':highlightMode?'Marker on':'Marker';
     syncZenMarkerUi();
+  }
+  var highlightEraseMode=false;
+  function setHighlightEraseMode(on,preserveSelection){
+    if(!preserveSelection)clearPendingSelection();highlightEraseMode=!!on;
+    if(highlightEraseMode)setHighlightMode(false);
+    syncHighlightColorUi();syncTouchDockStates();
   }
   function clearPendingSelection(keepCard,preserveNativeSelection){if(pencilStroke)finishPencilStroke(true);clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');if(!keepCard)hideSelectionCard();var s=window.getSelection&&window.getSelection();if(s&&!preserveNativeSelection)s.removeAllRanges();syncHighlightColorUi();syncTouchDockStates();}
   function scheduleHighlightCommit(delay){clearTimeout(highlightCommitTimer);highlightCommitTimer=setTimeout(function(){if(highlightMode)commitPendingHighlight();},delay);}
@@ -6050,11 +6062,13 @@
      tap. This leaves iPad handles free to refine either edge without a save timer. */
   function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');var inputType=selectionPointerType||selectionInputType;if(highlightMode&&!markerPointerDown&&inputType!=='touch'&&!suppressHighlightAutoCommit)scheduleHighlightCommit(550);syncHighlightColorUi();syncTouchDockStates();}
   function setHighlightColor(color){
+    if(highlightEraseMode)setHighlightEraseMode(false);
     highlightColor=['yellow','mint','coral','blue'].indexOf(color)>=0?color:'yellow';
     try{localStorage.setItem(HIGHLIGHT_COLOR_KEY,highlightColor);}catch(e){}
     syncHighlightColorUi();
   }
   function setHighlightMode(on){
+    if(on&&highlightEraseMode)setHighlightEraseMode(false);
     highlightMode=!!on;var btn=byId('highlightBtn');if(!btn)return;
     if(!highlightMode)clearTimeout(highlightCommitTimer);
     btn.classList.toggle('active',highlightMode);btn.setAttribute('aria-pressed',String(highlightMode));byId('highlightBtnLabel').textContent=highlightMode?'Marker on':'Marker';document.body.classList.toggle('marker-on',highlightMode);syncHighlightColorUi();syncTouchDockStates();
@@ -6094,6 +6108,25 @@
     if(!selectionPointerDown)openHighlightCard(ref,anchor);
     return true;
   }
+  /* A Pencil stroke over any part of saved ink edits that mark instead of layering
+     another record over it. Keep explicit finger/mouse selections independent. */
+  function pencilExistingHighlightRef(selection){
+    var exact=existingHighlightRef(selection);if(exact)return exact;
+    var ch=find(currentId);if(!ch)return null;
+    var page=selection.kind==='pdf'&&byId('pdfFrame').querySelector('.pdf-page[data-page="'+selection.page+'"]'),width=page?page.getBoundingClientRect().width:1;
+    var best=null,bestScore=0;
+    highlightListFor(ch,selection.kind,selection.page).forEach(function(item){
+      var score=0;
+      if(selection.kind==='pdf'){
+        (selection.rects||[]).forEach(function(a){(item.rects||[]).forEach(function(b){
+          var overlapX=Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)-3/width,overlapY=Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y);
+          if(overlapX>1/width&&overlapY>Math.min(a.h,b.h)*.5)score+=overlapX*overlapY;
+        });});
+      }else if(+item.para===+selection.para)score=Math.max(0,Math.min(selection.end,item.end)-Math.max(selection.start,item.start));
+      if(score>bestScore){bestScore=score;best={kind:selection.kind,page:selection.kind==='pdf'?String(selection.page):null,id:item.id,item:item};}
+    });
+    return best;
+  }
   function mergeHighlightRects(rects){
     var sorted=rects.slice().sort(function(a,b){return Math.abs(a.y-b.y)>.002?a.y-b.y:a.x-b.x;}),out=[];
     sorted.forEach(function(r){var last=out[out.length-1];if(last){var sameLine=Math.abs((r.y+r.h/2)-(last.y+last.h/2))<Math.max(r.h,last.h)*.58,gap=r.x-(last.x+last.w);if(sameLine&&gap<Math.max(.008,Math.max(r.h,last.h)*.72)){var right=Math.max(last.x+last.w,r.x+r.w),bottom=Math.max(last.y+last.h,r.y+r.h);last.x=Math.min(last.x,r.x);last.y=Math.min(last.y,r.y);last.w=right-last.x;last.h=bottom-last.y;return;}}out.push({x:r.x,y:r.y,w:r.w,h:r.h});});
@@ -6124,6 +6157,7 @@
     if(pencilStroke||byId('readerPage').classList.contains('hidden'))return;
     var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
     var range=selection.getRangeAt(0),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:range.getBoundingClientRect(),passage=paperSelectionFromRange(range);if(!passage)return;
+    if(highlightEraseMode)setHighlightEraseMode(false,true);
     if(!reviewLinkTargetId&&reopenExistingHighlight(passage,selectionRect))return;
     setPendingSelection(passage);if(!selectionPointerDown&&!highlightMode)showSelectionCard(passage,selectionRect);
   }
@@ -6132,7 +6166,39 @@
      finger/mouse selection paths intact and save through the existing highlight and
      undo pipeline. A DOM Range gives us exact PDF geometry without iOS selection
      handles or Scribble deciding what the Pencil gesture means. */
-  var pencilStroke=null,pencilSuppressClickUntil=0;
+  var pencilStroke=null,pencilSuppressClickUntil=0,pencilSuppressedTouchId=null;
+  function eraserTargets(host){
+    var ch=find(currentId),page=host.closest('.pdf-page'),base=page&&page.getBoundingClientRect(),kind=readerMode==='pdf'?'pdf':ch.kind==='pdf'?'reader':'text';
+    return highlightListFor(ch,kind,page&&page.dataset.page).filter(function(item){return kind==='pdf'||+item.para===+host.dataset.paraIndex;}).map(function(item,index){
+      var rects=[];
+      if(kind==='pdf')rects=(item.rects||[]).map(function(r){r=paperHighlightRect(r);return{left:base.left+r.x*base.width,right:base.left+(r.x+r.w)*base.width,top:base.top+r.y*base.height,bottom:base.top+(r.y+r.h)*base.height};});
+      else{
+        var walker=document.createTreeWalker(host,NodeFilter.SHOW_TEXT),node,offset=0,range=document.createRange(),started=false;
+        while((node=walker.nextNode())){
+          if(!started&&item.start<offset+node.length){range.setStart(node,Math.max(0,item.start-offset));started=true;}
+          if(started&&item.end<=offset+node.length){range.setEnd(node,Math.max(0,item.end-offset));rects=Array.from(range.getClientRects());break;}
+          offset+=node.length;
+        }
+      }
+      return{kind:kind,page:page?String(page.dataset.page):null,item:item,rects:rects};
+    });
+  }
+  function eraserCrossesRect(a,b,r){
+    /* Segment/rectangle clipping catches fast sweeps even between pointer samples. */
+    var low=0,high=1,pad=2;
+    return [['x','left','right'],['y','top','bottom']].every(function(axis){
+      var start=a[axis[0]],delta=b[axis[0]]-start,min=r[axis[1]]-pad,max=r[axis[2]]+pad;
+      if(Math.abs(delta)<.001)return start>=min&&start<=max;
+      var first=(min-start)/delta,last=(max-start)/delta;if(first>last){var swap=first;first=last;last=swap;}
+      low=Math.max(low,first);high=Math.min(high,last);return low<=high;
+    });
+  }
+  function collectEraserHits(g,x,y){
+    var next={x:x,y:y};
+    g.targets.forEach(function(ref){if(!g.erased.has(ref.item.id)&&ref.rects.some(function(r){return eraserCrossesRect(g.last,next,r);}))g.erased.set(ref.item.id,ref);});
+    g.last=next;
+    g.host.closest('.pdf-page,.original').querySelectorAll('[data-hl-id]').forEach(function(el){el.classList.toggle('erasing-highlight',g.erased.has(el.dataset.hlId));});
+  }
   function pencilTextPoint(host,x,y){
     var point=null;
     if(document.caretPositionFromPoint){var caret=document.caretPositionFromPoint(x,y);if(caret)point={node:caret.offsetNode,offset:caret.offset};}
@@ -6160,21 +6226,24 @@
     return best;
   }
   function pencilStrokeValid(g){
-    return g&&g.documentId===currentId&&g.mode===readerMode&&g.host.isConnected&&g.host.contains(g.start.node)&&!byId('readerPage').classList.contains('hidden');
+    return g&&g.documentId===currentId&&g.mode===readerMode&&g.host.isConnected&&(g.erasing||g.host.contains(g.start.node))&&!byId('readerPage').classList.contains('hidden');
   }
   function startPencilStroke(e,id,source){
     if(pencilStroke||bookCurlOwned||pagedTurning||reviewLinkTargetId||guideDragging||selectionPointerDown||e.button>0)return false;
     var target=e.target,host=target&&target.closest&&target.closest(readerMode==='pdf'?'.text-layer':'.original');
+    if(!host&&highlightEraseMode&&readerMode==='pdf'){var page=target.closest('.pdf-page');host=page&&page.querySelector('.text-layer');}
     if(!host||!byId('documentPane').contains(host)||target.closest('a,button,input,textarea,[contenteditable="true"]'))return false;
-    var start=pencilTextPoint(host,e.clientX,e.clientY);if(!start)return false;
+    var start=highlightEraseMode?null:pencilTextPoint(host,e.clientX,e.clientY);if(!start&&!highlightEraseMode)return false;
     clearPendingSelection();clearTimeout(guideLockClickTimer);holdDrift(1200);
     var preview=document.createElement('div');preview.className='pencil-highlight-preview';preview.setAttribute('aria-hidden','true');document.body.appendChild(preview);
-    pencilStroke={id:id,source:source,touchId:source==='touch'?id:null,documentId:currentId,mode:readerMode,host:host,start:start,x:e.clientX,y:e.clientY,moved:false,range:null,preview:preview};
+    pencilStroke={id:id,source:source,touchId:source==='touch'?id:null,documentId:currentId,mode:readerMode,host:host,start:start,x:e.clientX,y:e.clientY,moved:false,range:null,preview:preview,erasing:highlightEraseMode};
+    if(highlightEraseMode){pencilStroke.targets=eraserTargets(host);pencilStroke.erased=new Map();pencilStroke.last={x:e.clientX,y:e.clientY};collectEraserHits(pencilStroke,e.clientX,e.clientY);}
     selectionInputType='pen';suppressHighlightAutoCommit=true;document.body.classList.add('pencil-highlighting');
     return true;
   }
   function movePencilStroke(e){
     var g=pencilStroke;if(!pencilStrokeValid(g)){finishPencilStroke(true);return;}
+    if(g.erasing){collectEraserHits(g,e.clientX,e.clientY);return;}
     if(Math.hypot(e.clientX-g.x,e.clientY-g.y)<5&&!g.moved)return;
     g.moved=true;
     var end=pencilTextPoint(g.host,e.clientX,e.clientY);if(!end)return;
@@ -6188,10 +6257,12 @@
   function finishPencilStroke(cancelled){
     var g=pencilStroke;if(!g)return;
     var valid=!cancelled&&pencilStrokeValid(g),passage=valid&&g.moved&&g.range?paperSelectionFromRange(g.range):null;
-    pencilStroke=null;g.preview.remove();document.body.classList.remove('pencil-highlighting');pencilSuppressClickUntil=Date.now()+500;
+    pencilStroke=null;g.preview.remove();document.body.classList.remove('pencil-highlighting');pencilSuppressClickUntil=Date.now()+500;pencilSuppressedTouchId=g.touchId;
+    document.querySelectorAll('.erasing-highlight').forEach(function(el){el.classList.remove('erasing-highlight');});
     clearTimeout(highlightCommitTimer);suppressHighlightAutoCommit=true;
-    if(passage){setPendingSelection(passage);commitPendingHighlight();}
-    else if(valid&&!g.moved){
+    if(g.erasing){if(valid)eraseHighlightGroup(Array.from(g.erased.values()));return;}
+    if(passage){var existing=pencilExistingHighlightRef(passage);if(existing)openHighlightCard(existing,g.range.getBoundingClientRect());else{setPendingSelection(passage);commitPendingHighlight();}}
+    else if(valid){
       /* Preventing the stylus TouchEvent also removes WebKit's ordinary tap. Keep
          saved highlights and reviewer notes reachable with the Pencil itself. */
       var ch=find(currentId),target=g.start.node.parentElement;
@@ -6209,7 +6280,7 @@
   function ownPencilEvent(e){if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();}
   byId('documentPane').addEventListener('pointerdown',function(e){
     if(pencilStroke){if(e.pointerType==='touch'||e.pointerType==='pen')ownPencilEvent(e);return;}
-    if(e.pointerType==='pen'&&startPencilStroke(e,e.pointerId,'pointer'))ownPencilEvent(e);
+    if((e.pointerType==='pen'||highlightEraseMode&&e.pointerType==='mouse')&&startPencilStroke(e,e.pointerId,'pointer'))ownPencilEvent(e);
   },true);
   document.addEventListener('pointermove',function(e){
     var g=pencilStroke;if(!g)return;
@@ -6243,7 +6314,7 @@
       var t=Array.from(e.changedTouches||[]).find(function(t){return t.identifier===g.touchId;});
       if(t){if(type==='touchend')movePencilStroke(t);finishPencilStroke(type==='touchcancel');}
       ownPencilEvent(e);
-    }else if(stylusTouch(e.changedTouches)&&Date.now()<pencilSuppressClickUntil)ownPencilEvent(e);
+    }else{var ended=stylusTouch(e.changedTouches);if(ended&&ended.identifier===pencilSuppressedTouchId&&byId('documentPane').contains(ended.target)&&Date.now()<pencilSuppressClickUntil)ownPencilEvent(e);}
   },{capture:true,passive:false});});
   byId('documentPane').addEventListener('click',function(e){if(Date.now()<pencilSuppressClickUntil)ownPencilEvent(e);},true);
   window.addEventListener('blur',function(){finishPencilStroke(true);});
@@ -6282,11 +6353,13 @@
   document.addEventListener('pointerdown',function(e){if(e.pointerType){lastHighlightPointerType=e.pointerType;selectionInputType=e.pointerType;}},true);
   document.addEventListener('keydown',function(){selectionInputType='keyboard';},true);
   byId('highlightBtn').onclick=function(e){
+    if(highlightEraseMode){setHighlightEraseMode(false);return;}
     var pointerType=e&&e.pointerType||'',touchInput=pointerType?pointerType==='touch':!fineHighlightUi()&&(lastHighlightPointerType==='touch'||(!lastHighlightPointerType&&coarseHighlightUi()));
     if(touchInput){if(pendingSelection)commitPendingHighlight();else showReaderToast('Drag Apple Pencil across text, or select a passage and tap Mark');return;}
     setHighlightMode(!highlightMode);
   };
   byId('highlightColorBtn').onclick=function(){setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(byId('highlightPalette').classList.contains('hidden'));};
+  document.querySelectorAll('[data-highlight-eraser]').forEach(function(b){b.onclick=function(){setHighlightEraseMode(!highlightEraseMode);setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(false);closeZenPopouts(false);showReaderToast(highlightEraseMode?'Eraser on · sweep Pencil over highlights · Undo restores them':'Eraser off');};});
   document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(b){b.onclick=function(e){var touchPalette=!!b.closest('#touchHighlightPalette'),zenPalette=!!b.closest('#zenMarkerMenu'),returnFocus=e.detail===0;setHighlightColor(b.dataset.highlightColor);if(touchPalette)setTouchHighlightPaletteOpen(false);else if(zenPalette)closeZenPopouts(false);else setHighlightPaletteOpen(false);if(returnFocus)(touchPalette?byId('touchHighlight'):zenPalette?byId('zenMarker'):byId('highlightColorBtn')).focus();};});
   document.querySelectorAll('[data-selection-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.selectionHighlightColor);setSelectionAction('selectionHighlight');commitPendingHighlight();};});
   syncHighlightColorUi();
@@ -6360,6 +6433,13 @@
     showReaderToast('Highlight removed');
     return true;
   }
+  function eraseHighlightGroup(refs){
+    var ch=find(currentId);if(!ch)return;
+    var entries=refs.map(function(ref){var list=highlightListFor(ch,ref.kind,ref.page),index=list.findIndex(function(item){return item.id===ref.item.id;});return index<0?null:{kind:ref.kind,page:ref.page,item:list[index],index:index};}).filter(Boolean);
+    if(!entries.length)return;
+    var action={op:'erase',entries:entries};recordHighlightAction(action);applyHighlightAction(action,false);
+    showReaderToast(entries.length===1?'Highlight erased · Undo to restore':entries.length+' highlights erased · Undo to restore');
+  }
   function pdfHighlightAtPoint(pageEl,clientX,clientY){
     var ch=find(currentId);if(!ch)return null;
     var page=+pageEl.dataset.page||currentPage,list=(ch.highlights||{})[String(page)]||[];
@@ -6386,6 +6466,18 @@
   function recordHighlightAction(action){highlightHistory.push(action);if(highlightHistory.length>100)highlightHistory.shift();highlightFuture=[];syncTouchDockStates();}
   function applyHighlightAction(action,undoing){
     var ch=find(currentId);if(!ch)return false;
+    if(action.op==='erase'){
+      /* One eraser stroke is one reversible edit, including pre-existing stacked
+         ink. Keep the original records, notes, IDs and stacking order for Undo. */
+      action.entries.slice().sort(function(a,b){return a.index-b.index;}).forEach(function(entry){
+        var list=highlightListFor(ch,entry.kind,entry.page),index=list.findIndex(function(item){return item.id===entry.item.id;});
+        if(undoing){if(index<0)list.splice(Math.min(entry.index,list.length),0,entry.item);}
+        else if(index>=0)list.splice(index,1);
+      });
+      clearPendingSelection();touch(ch);
+      var refreshed=new Set();action.entries.forEach(function(entry){var key=entry.kind+':'+entry.page;if(!refreshed.has(key)){refreshed.add(key);refreshHighlightViews(entry.kind,entry.page);}});
+      return true;
+    }
     var list=highlightListFor(ch,action.kind,action.page);
     if(action.op==='recolor'){
       var rec=list.find(function(h){return h.id===action.item.id;});if(!rec)return false;
@@ -6408,12 +6500,12 @@
   function undoHighlight(){
     var action=highlightHistory.pop();
     if(!action){showReaderToast('Nothing to undo');return;}
-    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();
+    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();
   }
   function redoHighlight(){
     var action=highlightFuture.pop();
     if(!action){showReaderToast('Nothing to redo');return;}
-    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();
+    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();
   }
   /* A saved highlight reuses the same passage card as a fresh selection. Its small
      management row adds recolor/remove without sending the reader to another UI. */
@@ -6444,7 +6536,7 @@
     var ch=find(currentId);if(!ch)return;
     (pageNum?[pageNum]:renderedPages.slice()).forEach(function(n){
       var view=pdfViews[n-1];if(!view)return;view.highlights.innerHTML='';
-      ((ch.highlights||{})[String(n)]||[]).forEach(function(h){mergeHighlightRects(h.rects||[]).forEach(function(stored){var r=paperHighlightRect(stored),d=document.createElement('div');d.className='saved-highlight hl-'+(h.color||'yellow');d.style.left=(r.x*100)+'%';d.style.top=(r.y*100)+'%';d.style.width=(r.w*100)+'%';d.style.height=(r.h*100)+'%';d.title=(h.text||'Highlight')+(h.note?'\n✎ '+h.note:'');view.highlights.appendChild(d);});});
+      ((ch.highlights||{})[String(n)]||[]).forEach(function(h){mergeHighlightRects(h.rects||[]).forEach(function(stored){var r=paperHighlightRect(stored),d=document.createElement('div');d.className='saved-highlight hl-'+(h.color||'yellow');d.dataset.hlId=h.id;d.style.left=(r.x*100)+'%';d.style.top=(r.y*100)+'%';d.style.width=(r.w*100)+'%';d.style.height=(r.h*100)+'%';d.title=(h.text||'Highlight')+(h.note?'\n✎ '+h.note:'');view.highlights.appendChild(d);});});
       renderPdfReviewMarkers(ch,n,view);
     });
   }

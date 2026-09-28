@@ -29,6 +29,7 @@ After changing the shared reader or native adapter, run `npm run ios:sync` befor
 ## Included in 1.1
 
 - Shared PDF/Word reader, Book mode, guide, Zen mode, search, highlights, notes, review workflows, and document import.
+- Direct Apple Pencil text highlighting: drag across a passage and lift to save in the selected Mark color; use Undo or tap the saved highlight to edit it. Finger selection, scrolling, and page gestures remain available. PDFs need a selectable text layer; scanned pages need OCR first.
 - Bundled PDF.js, English OCR, fonts, and the Phloem field guide. Local reading does not load the website.
 - Optional bring-your-own-key AI through fixed native integrations for OpenAI and Anthropic. Gemini and DeepSeek are held from the public 1.1 release pending provider-compatibility work.
 - API keys entered in a native iOS secure prompt and stored with Keychain using `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`; stored keys are never returned to JavaScript or included in Phloem backup files.

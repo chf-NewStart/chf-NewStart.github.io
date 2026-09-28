@@ -20,9 +20,13 @@ Version target: **1.1.0 (8)**. Version 1.0 build 7 is Ready for Distribution. If
 - [x] Public 1.1 provider scope is OpenAI and Anthropic; Gemini and DeepSeek are blocked in both the native UI and bridge.
 - [x] Automated bundle/security tests pass.
 - [x] Xcode Debug simulator build succeeds without code signing.
+- [x] Apple Pencil direct text highlighting uses existing highlight storage, colors, notes, and Undo/redo; automated Pointer/Touch stylus workflows pass in Chromium and WebKit.
+- [x] Existing highlight, native touch selection, note/AI, PDF link, reading guide, iPad dock, and Zen regressions pass. The Book/Page suite has one Scroll-layout timing assertion that fails identically on the unchanged baseline; other page-turn and pinch checks pass.
+- [x] Updated bundled reader builds in Xcode Release for the iPad simulator. Physical Apple Pencil behavior remains an unchecked device gate below.
 
 ## Physical iPad and live-provider gate
 
+- [ ] Test Apple Pencil on a physical iPad: direct highlighting in PDF/Reader, all Mark colors, reverse and multiline strokes, Undo/redo, highlight notes, relaunch, palm contact, and interruption/background cancellation. Confirm finger text selection, scrolling, pinch zoom, page turns, guide, and Zen still work. Scanned PDFs require a selectable OCR text layer.
 - [ ] Install as an update over build 7 on a physical iPad; confirm the library, last page, highlights, notes, and review work survive.
 - [ ] On a clean install, confirm no AI provider is ready and no credential is present.
 - [ ] For OpenAI and Anthropic, use a disposable API key and non-sensitive sample PDF: reject consent, accept consent, send a passage question, use current-page and guide contexts, run reviewer classification/matching, handle an invalid key, handle rate limiting, then remove the key.

@@ -6044,7 +6044,7 @@
     if(selectionButton){selectionButton.dataset.highlightColor=highlightColor;selectionButton.setAttribute('aria-label','Highlight selected passage in '+label);}
     syncZenMarkerUi();
   }
-  function clearPendingSelection(keepCard,preserveNativeSelection){clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');if(!keepCard)hideSelectionCard();var s=window.getSelection&&window.getSelection();if(s&&!preserveNativeSelection)s.removeAllRanges();syncHighlightColorUi();syncTouchDockStates();}
+  function clearPendingSelection(keepCard,preserveNativeSelection){if(pencilStroke)finishPencilStroke(true);clearTimeout(highlightCommitTimer);pendingSelection=null;byId('highlightBtn').classList.remove('ready');if(!keepCard)hideSelectionCard();var s=window.getSelection&&window.getSelection();if(s&&!preserveNativeSelection)s.removeAllRanges();syncHighlightColorUi();syncTouchDockStates();}
   function scheduleHighlightCommit(delay){clearTimeout(highlightCommitTimer);highlightCommitTimer=setTimeout(function(){if(highlightMode)commitPendingHighlight();},delay);}
   /* Coarse-pointer readers keep their native selection alive until an explicit Mark
      tap. This leaves iPad handles free to refine either edge without a save timer. */
@@ -6106,22 +6106,152 @@
     var top=Math.max(0,r.y-r.h*.14),bottom=Math.min(1,r.y+r.h+r.h*.28);
     return{x:r.x,y:top,w:r.w,h:Math.max(0,bottom-top)};
   }
-  function captureSelection(anchor){
-    if(byId('readerPage').classList.contains('hidden'))return;
-    var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
-    var range=selection.getRangeAt(0),text=selection.toString().replace(/\s+/g,' ').trim(),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:range.getBoundingClientRect();if(!text)return;
+  function paperSelectionFromRange(range){
+    var text=range.toString().replace(/\s+/g,' ').trim();if(!text)return null;
     if(readerMode==='pdf'){
       var host=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;
       var page=host&&host.closest?host.closest('.pdf-page'):null;if(!page||!byId('pdfFrame').contains(page)||!page.querySelector('.text-layer').contains(range.commonAncestorContainer))return;
       var base=page.getBoundingClientRect(),rects=Array.from(range.getClientRects()).filter(function(r){return r.width>1&&r.height>1;}).map(function(r){var x=Math.max(0,(r.left-base.left-1.5)/base.width),y=Math.max(0,(r.top-base.top+r.height*.12)/base.height);return{x:x,y:y,w:Math.min(1-x,(r.width+3)/base.width),h:Math.min(1-y,(r.height*.76)/base.height)};}).filter(function(r){return r.x<1&&r.y<1;});rects=mergeHighlightRects(rects);
-      if(rects.length){var pdfSelection={kind:'pdf',page:+page.dataset.page||currentPage,text:text,rects:rects};if(!reviewLinkTargetId&&reopenExistingHighlight(pdfSelection,selectionRect))return;setPendingSelection(pdfSelection);if(!selectionPointerDown&&!highlightMode)showSelectionCard(pdfSelection,selectionRect);}
+      if(rects.length)return{kind:'pdf',page:+page.dataset.page||currentPage,text:text,rects:rects};
     }else{
       var original=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;original=original&&original.closest('.original');if(!original||!byId('textDocument').contains(original))return;
       var startOwner=range.startContainer.nodeType===1?range.startContainer:range.startContainer.parentElement,endOwner=range.endContainer.nodeType===1?range.endContainer:range.endContainer.parentElement;if(!original.contains(startOwner)||!original.contains(endOwner))return;
       var before=document.createRange();before.selectNodeContents(original);before.setEnd(range.startContainer,range.startOffset);var through=document.createRange();through.selectNodeContents(original);through.setEnd(range.endContainer,range.endOffset);
-      var ch=find(currentId),textSelection={kind:ch&&ch.kind==='pdf'?'reader':'text',para:+original.dataset.paraIndex,start:before.toString().length,end:through.toString().length,text:text};if(!reviewLinkTargetId&&reopenExistingHighlight(textSelection,selectionRect))return;setPendingSelection(textSelection);if(!selectionPointerDown&&!highlightMode)showSelectionCard(textSelection,selectionRect);
+      var ch=find(currentId);return{kind:ch&&ch.kind==='pdf'?'reader':'text',para:+original.dataset.paraIndex,start:before.toString().length,end:through.toString().length,text:text};
     }
   }
+  function captureSelection(anchor){
+    if(pencilStroke||byId('readerPage').classList.contains('hidden'))return;
+    var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
+    var range=selection.getRangeAt(0),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:range.getBoundingClientRect(),passage=paperSelectionFromRange(range);if(!passage)return;
+    if(!reviewLinkTargetId&&reopenExistingHighlight(passage,selectionRect))return;
+    setPendingSelection(passage);if(!selectionPointerDown&&!highlightMode)showSelectionCard(passage,selectionRect);
+  }
+
+  /* Pencil owns only a stroke that starts on selectable paper text. Keep the normal
+     finger/mouse selection paths intact and save through the existing highlight and
+     undo pipeline. A DOM Range gives us exact PDF geometry without iOS selection
+     handles or Scribble deciding what the Pencil gesture means. */
+  var pencilStroke=null,pencilSuppressClickUntil=0;
+  function pencilTextPoint(host,x,y){
+    var point=null;
+    if(document.caretPositionFromPoint){var caret=document.caretPositionFromPoint(x,y);if(caret)point={node:caret.offsetNode,offset:caret.offset};}
+    else if(document.caretRangeFromPoint){var caretRange=document.caretRangeFromPoint(x,y);if(caretRange)point={node:caretRange.startContainer,offset:caretRange.startOffset};}
+    function distance(rect){return Math.hypot(Math.max(rect.left-x,0,x-rect.right),Math.max(rect.top-y,0,y-rect.bottom));}
+    if(point&&point.node.nodeType===3&&host.contains(point.node)&&point.node.length){
+      var probe=document.createRange(),index=Math.min(point.offset,point.node.length-1);probe.setStart(point.node,index);probe.setEnd(point.node,index+1);
+      if(Array.from(probe.getClientRects()).some(function(r){return r.width>0&&r.height>0&&distance(r)<=10;}))return point;
+    }
+    /* Transparent/transformed PDF.js spans can defeat native caret hit-testing.
+       Inspect only nearby text runs, then choose the closest character boundary. */
+    var walker=document.createTreeWalker(host,NodeFilter.SHOW_TEXT),node,best=null,bestDistance=12;
+    while((node=walker.nextNode())){
+      if(!node.textContent.trim())continue;
+      var run=document.createRange();run.selectNodeContents(node);
+      if(!Array.from(run.getClientRects()).some(function(r){return r.width>0&&r.height>0&&distance(r)<=12;}))continue;
+      for(var i=0;i<node.length;i++){
+        run.setStart(node,i);run.setEnd(node,i+1);
+        Array.from(run.getClientRects()).forEach(function(r){
+          var d=distance(r);if(r.width<=0||r.height<=0||d>=bestDistance)return;
+          bestDistance=d;best={node:node,offset:i+(x>(r.left+r.right)/2?1:0)};
+        });
+      }
+    }
+    return best;
+  }
+  function pencilStrokeValid(g){
+    return g&&g.documentId===currentId&&g.mode===readerMode&&g.host.isConnected&&g.host.contains(g.start.node)&&!byId('readerPage').classList.contains('hidden');
+  }
+  function startPencilStroke(e,id,source){
+    if(pencilStroke||bookCurlOwned||pagedTurning||reviewLinkTargetId||guideDragging||selectionPointerDown||e.button>0)return false;
+    var target=e.target,host=target&&target.closest&&target.closest(readerMode==='pdf'?'.text-layer':'.original');
+    if(!host||!byId('documentPane').contains(host)||target.closest('a,button,input,textarea,[contenteditable="true"]'))return false;
+    var start=pencilTextPoint(host,e.clientX,e.clientY);if(!start)return false;
+    clearPendingSelection();clearTimeout(guideLockClickTimer);holdDrift(1200);
+    var preview=document.createElement('div');preview.className='pencil-highlight-preview';preview.setAttribute('aria-hidden','true');document.body.appendChild(preview);
+    pencilStroke={id:id,source:source,touchId:source==='touch'?id:null,documentId:currentId,mode:readerMode,host:host,start:start,x:e.clientX,y:e.clientY,moved:false,range:null,preview:preview};
+    selectionInputType='pen';suppressHighlightAutoCommit=true;document.body.classList.add('pencil-highlighting');
+    return true;
+  }
+  function movePencilStroke(e){
+    var g=pencilStroke;if(!pencilStrokeValid(g)){finishPencilStroke(true);return;}
+    if(Math.hypot(e.clientX-g.x,e.clientY-g.y)<5&&!g.moved)return;
+    g.moved=true;
+    var end=pencilTextPoint(g.host,e.clientX,e.clientY);if(!end)return;
+    var a=document.createRange(),b=document.createRange();a.setStart(g.start.node,g.start.offset);a.collapse(true);b.setStart(end.node,end.offset);b.collapse(true);
+    var backwards=a.compareBoundaryPoints(Range.START_TO_START,b)>0,range=document.createRange();
+    range.setStart(backwards?end.node:g.start.node,backwards?end.offset:g.start.offset);range.setEnd(backwards?g.start.node:end.node,backwards?g.start.offset:end.offset);g.range=range;
+    var box=g.host.getBoundingClientRect(),fragment=document.createDocumentFragment();
+    Array.from(range.getClientRects()).forEach(function(r){if(r.width<=1||r.height<=1)return;var ink=document.createElement('i');ink.className='hl-'+highlightColor;ink.style.cssText='left:'+(r.left-box.left)+'px;top:'+(r.top-box.top)+'px;width:'+r.width+'px;height:'+r.height+'px';fragment.appendChild(ink);});
+    g.preview.style.cssText='left:'+box.left+'px;top:'+box.top+'px;width:'+box.width+'px;height:'+box.height+'px';g.preview.replaceChildren(fragment);
+  }
+  function finishPencilStroke(cancelled){
+    var g=pencilStroke;if(!g)return;
+    var valid=!cancelled&&pencilStrokeValid(g),passage=valid&&g.moved&&g.range?paperSelectionFromRange(g.range):null;
+    pencilStroke=null;g.preview.remove();document.body.classList.remove('pencil-highlighting');pencilSuppressClickUntil=Date.now()+500;
+    clearTimeout(highlightCommitTimer);suppressHighlightAutoCommit=true;
+    if(passage){setPendingSelection(passage);commitPendingHighlight();}
+    else if(valid&&!g.moved){
+      /* Preventing the stylus TouchEvent also removes WebKit's ordinary tap. Keep
+         saved highlights and reviewer notes reachable with the Pencil itself. */
+      var ch=find(currentId),target=g.start.node.parentElement;
+      if(g.mode==='pdf'){
+        var page=g.host.closest('.pdf-page'),review=page&&pdfReviewAtPoint(page,g.x,g.y),hit=page&&pdfHighlightAtPoint(page,g.x,g.y);
+        if(review)showReviewerPassageGroup(ch,review);
+        else if(hit)openHighlightCard({kind:'pdf',page:hit.page,id:hit.item.id},{left:g.x,right:g.x,top:g.y,bottom:g.y});
+      }else{
+        var reviewEl=target.closest('[data-review-comment-id]'),mark=target.closest('mark[data-hl-id]');
+        if(reviewEl)showReviewerComment(ch,reviewEl.dataset.reviewCommentId);
+        else if(mark)openHighlightCard({kind:ch.kind==='pdf'?'reader':'text',page:null,id:mark.dataset.hlId},mark.getBoundingClientRect());
+      }
+    }
+  }
+  function ownPencilEvent(e){if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();}
+  byId('documentPane').addEventListener('pointerdown',function(e){
+    if(pencilStroke){if(e.pointerType==='touch'||e.pointerType==='pen')ownPencilEvent(e);return;}
+    if(e.pointerType==='pen'&&startPencilStroke(e,e.pointerId,'pointer'))ownPencilEvent(e);
+  },true);
+  document.addEventListener('pointermove',function(e){
+    var g=pencilStroke;if(!g)return;
+    if(g.source==='pointer'&&g.id===e.pointerId){movePencilStroke(e);ownPencilEvent(e);}
+    else if(e.pointerType==='touch')ownPencilEvent(e);
+  },true);
+  ['pointerup','pointercancel'].forEach(function(type){document.addEventListener(type,function(e){
+    var g=pencilStroke;if(!g)return;
+    if(g.source==='pointer'&&g.id===e.pointerId){if(type==='pointerup')movePencilStroke(e);finishPencilStroke(type==='pointercancel');ownPencilEvent(e);}
+    else if(e.pointerType==='touch')ownPencilEvent(e);
+  },true);});
+  document.addEventListener('lostpointercapture',function(e){if(pencilStroke&&pencilStroke.source==='pointer'&&pencilStroke.id===e.pointerId)finishPencilStroke(true);},true);
+  /* WKWebView sends Touch events alongside Pencil Pointer events. Cancel native
+     scrolling before it claims the stylus, without changing finger touch-action.
+     touchType also supports Safari's stylus-only Touch event path. */
+  function stylusTouch(list){return Array.from(list||[]).find(function(t){return t.touchType==='stylus';});}
+  byId('documentPane').addEventListener('touchstart',function(e){
+    var t=stylusTouch(e.changedTouches);
+    if(!pencilStroke&&t)startPencilStroke(t,t.identifier,'touch');
+    if(pencilStroke&&t&&pencilStroke.touchId===null)pencilStroke.touchId=t.identifier;
+    if(pencilStroke)ownPencilEvent(e);
+  },{capture:true,passive:false});
+  document.addEventListener('touchmove',function(e){
+    var g=pencilStroke;if(!g)return;
+    if(g.source==='touch'){var t=Array.from(e.changedTouches||[]).find(function(t){return t.identifier===g.id;});if(t)movePencilStroke(t);}
+    ownPencilEvent(e);
+  },{capture:true,passive:false});
+  ['touchend','touchcancel'].forEach(function(type){document.addEventListener(type,function(e){
+    var g=pencilStroke;
+    if(g){
+      var t=Array.from(e.changedTouches||[]).find(function(t){return t.identifier===g.touchId;});
+      if(t){if(type==='touchend')movePencilStroke(t);finishPencilStroke(type==='touchcancel');}
+      ownPencilEvent(e);
+    }else if(stylusTouch(e.changedTouches)&&Date.now()<pencilSuppressClickUntil)ownPencilEvent(e);
+  },{capture:true,passive:false});});
+  byId('documentPane').addEventListener('click',function(e){if(Date.now()<pencilSuppressClickUntil)ownPencilEvent(e);},true);
+  window.addEventListener('blur',function(){finishPencilStroke(true);});
+  window.addEventListener('pagehide',function(){finishPencilStroke(true);});
+  window.addEventListener('resize',function(){finishPencilStroke(true);});
+  byId('documentPane').addEventListener('scroll',function(){finishPencilStroke(true);},{passive:true});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')finishPencilStroke(true);});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')finishPencilStroke(true);},true);
   document.addEventListener('selectionchange',function(){captureSelection();});
   byId('documentPane').addEventListener('pointerdown',function(e){
     if(bookCurlOwned)return;
@@ -6153,7 +6283,7 @@
   document.addEventListener('keydown',function(){selectionInputType='keyboard';},true);
   byId('highlightBtn').onclick=function(e){
     var pointerType=e&&e.pointerType||'',touchInput=pointerType?pointerType==='touch':!fineHighlightUi()&&(lastHighlightPointerType==='touch'||(!lastHighlightPointerType&&coarseHighlightUi()));
-    if(touchInput){if(pendingSelection)commitPendingHighlight();else showReaderToast('Select a passage, then tap Mark');return;}
+    if(touchInput){if(pendingSelection)commitPendingHighlight();else showReaderToast('Drag Apple Pencil across text, or select a passage and tap Mark');return;}
     setHighlightMode(!highlightMode);
   };
   byId('highlightColorBtn').onclick=function(){setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(byId('highlightPalette').classList.contains('hidden'));};

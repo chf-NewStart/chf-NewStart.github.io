@@ -75,6 +75,14 @@ choices that remain independent from desktop marker mode. It also covers
 edit-card-only erasure of saved PDF highlights plus mouse, keyboard, and touch
 input separation on hybrid hardware while desktop Marker remains on.
 
+`reading-pencil-highlight.test.js` covers coordinate-driven Pencil highlights in
+PDF and Reader views with Marker off: live color ink, reverse multiline strokes,
+discarding a previous pending selection, cancellation, tap/deduplication safety,
+undo/redo, reload persistence, guide-click suppression, and unchanged explicit
+finger highlighting. It also exercises the iPad stylus TouchEvent fallback and
+palm input separation. Run with `PHLOEM_BROWSER=webkit` for WebKit coverage;
+synthetic pen events supplement, but do not replace, a physical Apple Pencil test.
+
 `reading-pdf-continuity.test.js` covers exact PDF-point cursor persistence across
 reload and rotation-like resizing, explicit Left/Right/Full column states,
 vertical passage preservation while changing column widths, the keyboard page
@@ -165,6 +173,8 @@ node tests/reading-book-guide.test.js
 PHLOEM_BROWSER=webkit node tests/reading-ipad-touch-dock.test.js
 node tests/reading-selection-touch.test.js
 PHLOEM_BROWSER=webkit node tests/reading-selection-touch.test.js
+node tests/reading-pencil-highlight.test.js
+PHLOEM_BROWSER=webkit node tests/reading-pencil-highlight.test.js
 node tests/reading-pdf-continuity.test.js
 PHLOEM_BROWSER=webkit node tests/reading-pdf-continuity.test.js
 node tests/reading-pdf-links.test.js

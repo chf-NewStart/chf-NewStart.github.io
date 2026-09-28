@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=125">
+  <link rel="stylesheet" href="/reading.css?v=126">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -376,6 +376,7 @@
           <button class="touch-dock-action" id="touchHighlight" data-touch-action="highlight" type="button" aria-label="Highlight color: Yellow. Choose color" aria-expanded="false" aria-controls="touchHighlightPalette"><span class="touch-marker-glyph" aria-hidden="true">✦</span><small>Mark</small></button>
           <div class="touch-highlight-palette hidden" id="touchHighlightPalette" role="group" aria-label="Highlight color">
             <strong>Highlight color</strong>
+            <p class="pencil-hint">Drag Apple Pencil across text to highlight. With a finger, select text, then tap Mark.</p>
             <button class="marker-swatch selected" data-highlight-color="yellow" type="button" aria-label="Yellow highlight color" aria-pressed="true"></button>
             <button class="marker-swatch" data-highlight-color="mint" type="button" aria-label="Mint highlight color" aria-pressed="false"></button>
             <button class="marker-swatch" data-highlight-color="coral" type="button" aria-label="Coral highlight color" aria-pressed="false"></button>
@@ -776,9 +777,9 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=125',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=126',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=125" defer></script>
+<script src="/reading.js?v=126" defer></script>
 </body>
 </html>

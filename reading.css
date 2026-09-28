@@ -1003,6 +1003,8 @@
     .text-layer :is(span, br) { position: absolute; color: transparent; white-space: pre; cursor: text; transform-origin: 0 0; }
     .text-layer span.markedContent { top: 0; height: 0; }
     .text-layer ::selection, .original ::selection { background: rgba(64, 137, 174, .34); }
+    .pencil-highlight-preview { position: fixed; z-index: 7; overflow: hidden; pointer-events: none; }
+    .pencil-highlight-preview i { position: absolute; border-radius: 2px; opacity: .8; }
     /* A translucent reading ruler that follows the pointer (or the ⠿ handle / last tap).
        Row flow follows one horizontal passage; column flow follows one top-to-bottom
        column for traditional right-to-left books. */
@@ -1727,6 +1729,7 @@
       -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); transform: translateY(-50%);
     }
     .touch-highlight-palette > strong { grid-column: 1 / -1; padding: 2px 6px 6px; color: var(--muted); font: 750 .57rem/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+    .touch-highlight-palette > .pencil-hint { grid-column: 1 / -1; max-width: 184px; margin: 6px; color: var(--muted); font: 500 .7rem/1.45 var(--sans); }
     body.touch-tablet-reader[data-tablet-dock-side="left"] .touch-highlight-palette { left: calc(100% + 11px); right: auto; }
     .touch-dock-menu {
       position: absolute; z-index: 2; right: calc(100% + 11px); bottom: 0; width: 226px; padding: 6px;

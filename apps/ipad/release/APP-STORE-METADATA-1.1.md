@@ -12,6 +12,7 @@ Phloem 1.1 adds an optional AI reading partner for users 18 and older. With your
 
 Also new:
 
+- Highlight selectable text with Apple Pencil: drag across a passage and lift to save. Choose a color with Mark and undo through the reader controls.
 - Clean, professional note lettering is now the default, with a Handwritten switch when you want the original style.
 - AI is off by default and sends text only after a provider-specific disclosure and your explicit consent.
 - API keys are entered in a secure iOS prompt, stored in Keychain, and excluded from Phloem backups.
@@ -92,6 +93,7 @@ These answers reflect that prompts use the user's provider account/API key and a
 Please test both an update from App Store version 1.0 and a clean install of 1.1:
 
 - Existing papers, last page, highlights, notes, and reviewer work survive the update.
+- With Apple Pencil, drag forward/backward across one or more text lines in PDF and Reader layouts, then lift. Verify color, Undo, notes, and relaunch persistence. Check finger selection, scrolling, pinch zoom, page turns, palm contact, cancelled strokes, and scanned PDFs separately on a physical iPad.
 - Clean note lettering is the default; Clean and Handwritten switches visibly change saved wall notes and persist after relaunch.
 - AI remains off until disclosure, 18+ confirmation, consent, and secure key entry are complete.
 - OpenAI and Anthropic each handle Passage/Page/Guide discussion and reviewer assistance.

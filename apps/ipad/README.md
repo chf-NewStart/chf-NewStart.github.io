@@ -1,6 +1,6 @@
 # Phloem for iPad
 
-This Capacitor app packages the Phloem paper reader for iPad. App Store version 1.0 build 7 is the live no-AI release. This checkout is the **1.1.0 build 8 release-candidate track** for the next update.
+This Capacitor app packages the Phloem paper reader for iPad. App Store version 1.0 build 7 is the live no-AI release. This checkout is the **1.1.0 build 10 release-candidate track** for the next update. App Store Connect has already received builds 8 and 9; the latest Pencil/eraser changes require a fresh build 10 archive, not another upload of an existing build 8 or 9 archive.
 
 The 1.1 target compiles for the iPad simulator and its automated bundle/security checks pass. It is not release-ready until the physical-iPad, provider, privacy, TestFlight, and media gates in [`release/RELEASE-CHECKLIST-1.1.md`](release/RELEASE-CHECKLIST-1.1.md) pass.
 
@@ -19,12 +19,14 @@ npm run ios:open
 
 In Xcode:
 
-1. Confirm the **App** target shows Version **1.1.0** and Build **8**.
+1. Confirm the **App** target shows Version **1.1.0** and Build **10**.
 2. Under **Signing & Capabilities**, select the correct Team and keep automatic signing enabled.
 3. Connect a physical iPad, trust the Mac, enable Developer Mode if requested, and choose it as the run destination.
 4. Use disposable documents and provider keys for the release checklist. Do not test with confidential or third-party personal data.
 
 After changing the shared reader or native adapter, run `npm run ios:sync` before building. `ios:open` alone does not rebuild the bundled web app.
+
+For TestFlight, create a new Release archive after syncing and confirm Organizer shows **1.1.0 (10)** before distributing it. Changing the project build number does not update older archives. If build 10 has also been uploaded, use the next unused build number and archive again.
 
 ## Included in 1.1
 

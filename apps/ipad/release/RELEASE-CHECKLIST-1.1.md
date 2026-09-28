@@ -1,6 +1,6 @@
 # Phloem 1.1 release checklist
 
-Version target: **1.1.0 (8)**. Version 1.0 build 7 is Ready for Distribution. If build 8 has ever been uploaded to App Store Connect, increment the project build number before the next upload.
+Version target: **1.1.0 (10)**. Version 1.0 build 7 is Ready for Distribution. App Store Connect has already received builds 8 and 9 and rejects another upload using those build numbers. Sync the current reader and create a fresh build 10 Release archive; retrying or selecting an old build 8 or 9 archive cannot include this build-number change. If build 10 has also been uploaded, increment to the next unused build number before creating another archive.
 
 ## Implemented and locally verified
 
@@ -49,7 +49,7 @@ Version target: **1.1.0 (8)**. Version 1.0 build 7 is Ready for Distribution. If
 
 ## TestFlight, media, and submission gate
 
-- [ ] Archive a signed Release build and upload it to internal TestFlight.
+- [ ] Run `npm run ios:sync`, archive a signed Release build, confirm Organizer shows **1.1.0 (10)**, and upload that new archive to internal TestFlight. Do not retry a build 8 or 9 archive.
 - [ ] Test the exact TestFlight binary on a physical iPad, including a fresh install and update from 1.0.
 - [ ] Capture new screenshots from the exact 1.1 UI. Do not add marketing frames that make screenshots look like app previews.
 - [ ] If adding an app preview, use only full-screen app footage at Apple's accepted dimensions; narration/text overlays are optional, external device frames are not.

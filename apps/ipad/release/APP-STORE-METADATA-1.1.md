@@ -1,6 +1,6 @@
 # Phloem 1.1 App Store package
 
-Target: **version 1.1.0, build 8**. If build 8 has ever been uploaded to App Store Connect, increment the build number first. Use internal TestFlight before App Review and choose manual or phased release.
+Target: **version 1.1.0, build 10**. App Store Connect has already received builds 8 and 9. Sync and create a new build 10 Release archive for the latest Pencil/eraser changes; do not retry uploading an existing build 8 or 9 archive. If build 10 has also been uploaded, increment to the next unused build number and archive again. Use internal TestFlight before App Review and choose manual or phased release.
 
 ## Promotional text
 
@@ -108,8 +108,8 @@ Send feedback with the iPad model, iPadOS version, build number, provider, and s
 1. Publish the privacy and support pages.
 2. Create version 1.1.0 in the existing App Store Connect record.
 3. Re-answer App Privacy and the current age-rating questionnaire.
-4. Archive with Xcode 26 or later and the current iPadOS SDK; generate and inspect the archive privacy report.
-5. Upload build 8 (or the next unused build number) to internal TestFlight.
+4. Run `npm run ios:sync`, then create a fresh Release archive with Xcode 26 or later and the current iPadOS SDK; generate and inspect the archive privacy report.
+5. Confirm the new archive shows **1.1.0 (10)** and upload it to internal TestFlight. Builds 8 and 9 have already been uploaded and cannot be reused; if build 10 is also used, increment the project build number and create another new archive.
 6. Complete the physical-iPad and live-provider checklist against the exact TestFlight binary.
 7. Capture screenshots from that binary and paste the final metadata and reviewer-only key.
 8. Add for Review and submit. Prefer manual release or a phased release for the first AI-enabled update.

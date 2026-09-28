@@ -34,11 +34,12 @@
 
   var providerSelect = byId('aiProvider');
   if (providerSelect) {
-    ['auto', 'compatible'].forEach(function (value) {
+    ['auto', 'compatible', 'gemini', 'deepseek'].forEach(function (value) {
       var option = providerSelect.querySelector('option[value="' + value + '"]');
       if (option) option.remove();
     });
     if (!providerSelect.value) providerSelect.value = 'openai';
+    if (typeof providerSelect.onchange === 'function') providerSelect.onchange();
   }
   var aiHeading = document.querySelector('#aiKeySave') && byId('aiKeySave').closest('section');
   if (aiHeading) {
@@ -74,7 +75,7 @@
     heading.textContent = 'Saved on this iPad';
     var description = document.createElement('p');
     description.textContent = 'Papers, highlights, and notes are stored in this app’s web storage. ' +
-      'Cloud sync is unavailable in this preview. Optional AI uses a provider you choose, only after you accept its data-sharing disclosure; provider keys stay in iOS Keychain.';
+      'Cloud sync is unavailable in this release. Optional AI uses a provider you choose, only after you accept its data-sharing disclosure; provider keys stay in iOS Keychain.';
     var lookupNote = document.createElement('p');
     lookupNote.textContent = 'Define uses Wikipedia and Wikimedia online when you ask for a lookup. ' +
       'Your selected term is sent to those services.';
@@ -118,7 +119,7 @@
     refresh.title = 'Reload reader';
     refresh.setAttribute('aria-label', 'Save and reload reader');
   }
-  text(byId('buildStamp'), 'Phloem for iPad · 1.1 AI development preview');
+  text(byId('buildStamp'), 'Phloem for iPad · Version 1.1');
   hide(byId('storageNote')); // Browser persistence promises do not describe native durability.
   text(document.querySelector('.hero-card .step:nth-child(2) span'),
     'Move the guide, turn the page, and keep notes beside the paper.');
@@ -126,6 +127,8 @@
     'Your library stays on this iPad. No account needed for reading.');
   text(document.querySelector('#reviewsPanel .reviewer-panel-head > .hint'),
     'Read imported Word comments beside the paper. Link them yourself, or use your configured AI provider to help match passages.');
+  text(document.querySelector('#aiPanel .ai-panel-head .hint'),
+    'You are interacting with AI. Choose what to discuss, do not send sensitive text, and verify important claims. Only the chosen context is sent.');
 
   var home = byId('homeLink');
   if (home) {
@@ -163,7 +166,7 @@
     } else if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
       window.open(url.href, '_blank', 'noopener,noreferrer');
     } else {
-      window.alert('External links are unavailable in this preview build.');
+      window.alert('External links are unavailable in this app.');
     }
   }, true);
 })();

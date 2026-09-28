@@ -26,12 +26,24 @@
   <main>
     <p class="eyebrow">Phloem for iPad</p>
     <h1>Your papers. Your reading space.</h1>
-    <p class="meta">Privacy policy · Updated 16 September 2026</p>
+    <p class="meta">Privacy policy · Updated 28 September 2026</p>
     <p>Phloem for iPad is a paper reader made by Houfu Chen. This policy describes the iPad app. The Phloem website and browser extension have their own features and privacy information.</p>
 
     <h2>What stays in the app</h2>
     <p>Imported PDF and Word originals, extracted text, highlights, reading notes, reviewer comments, reading positions, and preferences are stored in the app on your iPad. Document rendering, text extraction, and the app’s OCR run on the device. Ordinary reading does not upload your library to a developer-operated service.</p>
-    <p>The current iPad build has no Phloem account, advertising, or integrated analytics service. Cloud AI and Google Drive/GitHub sync are unavailable in this build.</p>
+    <p>Phloem has no Phloem account, advertising, or integrated analytics service. Google Drive and GitHub sync are unavailable in the iPad app. In version 1.1 and later, optional cloud AI is available only after you choose a provider and complete the setup described below.</p>
+
+    <h2>Optional AI in version 1.1 and later</h2>
+    <p>AI is off by default and is available only to people who confirm they are 18 or older. To turn it on, you choose one supported provider, review a provider-specific disclosure, give your affirmative consent, and enter your own provider API key in a native iOS secure prompt. The key is stored in this iPad’s Keychain with this-device-only protection. Phloem’s web interface cannot read it back, and Phloem does not include it in library backups or exports.</p>
+    <p>An AI request is made only when you deliberately use an AI feature. Depending on the action, Phloem sends the selected passage, current-page text, or guide context; your question and earlier turns in the same Phloem discussion; or extracted reviewer text and candidate excerpts chosen locally for reviewer assistance. Phloem does not send the original PDF or Word file, the rest of your library, unrelated highlights or notes, or keys for other providers.</p>
+    <p>The request goes directly from your iPad to the provider over HTTPS. Phloem does not operate an AI proxy and the developer does not receive your prompt or the provider’s response. The provider receives your API key and normal connection information, and the key can associate the request with your provider account.</p>
+    <p>You can choose:</p>
+    <ul>
+      <li><strong>OpenAI API</strong> at <code>api.openai.com</code>. OpenAI states that API data is not used to train its models unless the API customer opts in; default abuse-monitoring logs may retain prompts, responses, and related metadata for up to 30 days, subject to exceptions. See <a href="https://developers.openai.com/api/docs/guides/your-data" target="_blank" rel="noopener noreferrer">OpenAI API data controls</a>.</li>
+      <li><strong>Anthropic API</strong> at <code>api.anthropic.com</code>. Anthropic states that commercial API inputs and outputs are not used to train its models by default. Standard inputs and outputs are normally deleted within 30 days, but policy-flagged content, safety classifications, feedback, and legal, contractual, or feature-specific records can be retained longer. Data is stored in the United States and may be routed or processed in other supported regions. See <a href="https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data" target="_blank" rel="noopener noreferrer">Anthropic’s retention information</a>, <a href="https://privacy.claude.com/en/articles/7996868-is-my-data-used-for-model-training" target="_blank" rel="noopener noreferrer">training information</a>, and <a href="https://privacy.claude.com/en/articles/7996890-where-are-your-servers-located-do-you-host-your-models-on-eu-servers" target="_blank" rel="noopener noreferrer">processing-region information</a>.</li>
+    </ul>
+    <p>Provider terms, eligibility, processing regions, retention, training choices, and deletion controls apply independently of Phloem and can change. Do not send confidential, sensitive, or unpublished material unless you are satisfied that your chosen provider and plan are appropriate for it.</p>
+    <p>Removing a saved key in Settings stops future requests to that provider and removes Phloem’s local consent receipt. It does not delete requests the provider already received. Use the provider’s account and privacy controls for those records.</p>
 
     <h2>When information leaves your iPad</h2>
     <ul>
@@ -42,17 +54,17 @@
     </ul>
 
     <h2>Your backups and exports</h2>
-    <p>A complete library backup includes originals, notes, highlights, reading progress, and reviewer work. Backups are not encrypted by Phloem. Anyone who receives the file can read its contents. Reading preferences and cloud credentials are excluded. A review-layer export contains comments, linked excerpts, and revision notes; it does not include the original PDF.</p>
-    <p>The app creates a temporary local file for the share sheet and attempts to remove it when sharing finishes or is cancelled. Interrupted temporary exports are cleared when the native exporter starts again. Copies saved or shared elsewhere remain under your control and the destination’s policies.</p>
+    <p>The portable JSON library backup contains notes, highlights, reading progress, reviewer work, and document metadata. It does not contain the original PDF or Word files or AI API keys. The backup is not encrypted by Phloem, so anyone who receives it can read its contents. Keep your original documents separately. A review-layer export contains comments, linked excerpts, and revision notes; it does not include the original document.</p>
+    <p>Copies you save or share elsewhere remain under your control and the destination’s policies.</p>
 
     <h2>Retention, deletion, and your choices</h2>
     <p>Your library remains in the app until you remove papers or delete the app’s data. Removing a paper removes its local original and associated reading work from the active library. Recovery storage and device backups can retain earlier copies; this is not a secure-erasure feature.</p>
     <p>Deleting the app removes its local app data, but does not delete files you exported, originals in Files, email attachments, or existing device backups. iPadOS may include app data in device backups according to your settings. Manage those copies in the relevant app or service. Keep an exported backup before deleting or reinstalling Phloem.</p>
-    <p>You can read locally imported papers without using Define, PDF links, or external websites. No Phloem account needs to be deleted. For a request about support correspondence, email us from the address used to contact us. Support messages remain in the support mailbox while needed to handle the conversation; you can request deletion of those messages, subject to any retention required by law.</p>
+    <p>You can read locally imported papers without configuring AI or using Define, PDF links, or external websites. No Phloem account needs to be deleted. For a request about support correspondence, email us from the address used to contact us. Support messages remain in the support mailbox while needed to handle the conversation; you can request deletion of those messages, subject to any retention required by law.</p>
 
     <h2>Contact and updates</h2>
     <p class="contact">For privacy questions or requests, contact Houfu Chen at <a href="mailto:houfuchen0702@gmail.com?subject=Phloem%20for%20iPad%20privacy" target="_blank" rel="noopener">houfuchen0702@gmail.com</a>.</p>
-    <p>Changes to the app’s data practices will be reflected in this policy and its updated date. This policy is bundled with the app so it can be read offline.</p>
+    <p>Changes to the app’s data practices will be reflected in this policy and its updated date.</p>
     <nav aria-label="Related information"><a href="support.html">Phloem for iPad support</a></nav>
   </main>
 </body>

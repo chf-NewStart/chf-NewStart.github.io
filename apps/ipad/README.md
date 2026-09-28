@@ -1,6 +1,6 @@
 # Phloem for iPad
 
-This Capacitor app packages the Phloem paper reader for iPad. App Store version 1.0 build 7 remains the no-AI release currently in review. This checkout is the separate **1.1.0 build 8 development track**; do not upload it over the active 1.0 review.
+This Capacitor app packages the Phloem paper reader for iPad. App Store version 1.0 build 7 is the live no-AI release. This checkout is the **1.1.0 build 8 release-candidate track** for the next update.
 
 The 1.1 target compiles for the iPad simulator and its automated bundle/security checks pass. It is not release-ready until the physical-iPad, provider, privacy, TestFlight, and media gates in [`release/RELEASE-CHECKLIST-1.1.md`](release/RELEASE-CHECKLIST-1.1.md) pass.
 
@@ -26,18 +26,18 @@ In Xcode:
 
 After changing the shared reader or native adapter, run `npm run ios:sync` before building. `ios:open` alone does not rebuild the bundled web app.
 
-## Included in 1.1 development
+## Included in 1.1
 
 - Shared PDF/Word reader, Book mode, guide, Zen mode, search, highlights, notes, review workflows, and document import.
 - Bundled PDF.js, English OCR, fonts, and the Phloem field guide. Local reading does not load the website.
-- Optional bring-your-own-key AI through fixed native integrations for Gemini, DeepSeek, OpenAI, and Anthropic.
+- Optional bring-your-own-key AI through fixed native integrations for OpenAI and Anthropic. Gemini and DeepSeek are held from the public 1.1 release pending provider-compatibility work.
 - API keys entered in a native iOS secure prompt and stored with Keychain using `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`; stored keys are never returned to JavaScript or included in Phloem backup files.
 - Native `URLSession` requests with ephemeral storage, HTTPS-only fixed provider hosts, redirect host enforcement, payload validation, and no custom endpoints.
 - A provider-specific disclosure and affirmative consent before a key is enabled. Removing a key also removes that provider's local consent receipt.
 - A privacy manifest declaring optional AI user content, the provider account identifier, and no tracking.
 - Wikipedia/Wikimedia lookups and external links only when the user deliberately opens those online features.
 
-Chrome on-device AI, Drive/GitHub sync, credential setup links, AI-pass links, website installation controls, and arbitrary OpenAI-compatible endpoints remain unavailable in the iPad app.
+Gemini API, DeepSeek, Chrome on-device AI, Drive/GitHub sync, credential setup links, AI-pass links, website installation controls, and arbitrary OpenAI-compatible endpoints remain unavailable in the iPad app.
 
 ## What AI sends
 

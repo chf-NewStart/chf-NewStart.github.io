@@ -15,8 +15,34 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     private static let keychainService = "com.houfu72.phloem.ai"
-    private static let consentVersion = 1
-    private static let supportedProviders = Set(["gemini", "deepseek", "openai", "anthropic"])
+    private static let consentVersion = 2
+    private static let installMarkerKey = "phloem.ai.install-marker.v1"
+    private static let knownProviders = Set(["gemini", "deepseek", "openai", "anthropic"])
+    private static let supportedProviders = Set(["openai", "anthropic"])
+
+    override func load() {
+        super.load()
+        let defaults = UserDefaults.standard
+
+        // Keychain items can survive an uninstall while app-local preferences do not.
+        // Clear orphaned credentials on a genuinely fresh installation so reinstalling
+        // Phloem cannot silently re-enable AI with an old key.
+        if !defaults.bool(forKey: Self.installMarkerKey) {
+            for provider in Self.knownProviders {
+                try? deleteCredential(provider: provider)
+                defaults.removeObject(forKey: consentKey(provider))
+                defaults.removeObject(forKey: legacyConsentKey(provider))
+            }
+            defaults.set(true, forKey: Self.installMarkerKey)
+        }
+
+        // Earlier development builds exposed providers that are held from 1.1.
+        for provider in Self.knownProviders.subtracting(Self.supportedProviders) {
+            try? deleteCredential(provider: provider)
+            defaults.removeObject(forKey: consentKey(provider))
+            defaults.removeObject(forKey: legacyConsentKey(provider))
+        }
+    }
 
     private struct ConfigureInput: Decodable {
         let provider: String
@@ -200,7 +226,7 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
             let alert = UIAlertController(
-                title: "Add (self.providerLabel(provider)) API key",
+                title: "Add \(self.providerLabel(provider)) API key",
                 message: "The key goes straight into iOS Keychain. Phloem’s web interface cannot read it back.",
                 preferredStyle: .alert
             )
@@ -256,8 +282,6 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func providerLabel(_ provider: String) -> String {
         switch provider {
-        case "gemini": return "Gemini API"
-        case "deepseek": return "DeepSeek"
         case "openai": return "OpenAI"
         case "anthropic": return "Anthropic"
         default: return "AI"
@@ -266,8 +290,6 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func providerDestination(_ provider: String) -> String {
         switch provider {
-        case "gemini": return "generativelanguage.googleapis.com"
-        case "deepseek": return "api.deepseek.com"
         case "openai": return "api.openai.com"
         case "anthropic": return "api.anthropic.com"
         default: return ""
@@ -282,32 +304,6 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
         let body: Any
 
         switch provider {
-        case "gemini":
-            let modelCharacters = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._"))
-            guard let encodedModel = model.addingPercentEncoding(withAllowedCharacters: modelCharacters),
-                  let endpoint = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(encodedModel):generateContent") else {
-                throw PluginError.invalidModel
-            }
-            url = endpoint
-            headers["x-goog-api-key"] = key
-            body = [
-                "system_instruction": ["parts": [["text": system]]],
-                "contents": turns.map { ["role": $0.role == "assistant" ? "model" : "user", "parts": [["text": $0.content]]] },
-                "generationConfig": ["maxOutputTokens": maxTokens]
-            ]
-        case "deepseek":
-            url = URL(string: "https://api.deepseek.com/chat/completions")!
-            headers["Authorization"] = "Bearer \(key)"
-            var payload: [String: Any] = [
-                "model": model,
-                "max_tokens": maxTokens,
-                "thinking": ["type": "disabled"],
-                "messages": messages.map { ["role": $0.role, "content": $0.content] }
-            ]
-            if system.lowercased().contains("return only json") {
-                payload["response_format"] = ["type": "json_object"]
-            }
-            body = payload
         case "openai":
             url = URL(string: "https://api.openai.com/v1/responses")!
             headers["Authorization"] = "Bearer \(key)"
@@ -342,12 +338,6 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw PluginError.invalidResponse
         }
-        if provider == "gemini" {
-            let candidates = json["candidates"] as? [[String: Any]]
-            let content = candidates?.first?["content"] as? [String: Any]
-            let parts = content?["parts"] as? [[String: Any]]
-            return parts?.compactMap { $0["text"] as? String }.joined() ?? ""
-        }
         if provider == "openai" {
             if let text = json["output_text"] as? String, !text.isEmpty { return text }
             let output = json["output"] as? [[String: Any]] ?? []
@@ -360,9 +350,7 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
             return content.filter { ($0["type"] as? String) == "text" }
                 .compactMap { $0["text"] as? String }.joined()
         }
-        let choices = json["choices"] as? [[String: Any]]
-        let message = choices?.first?["message"] as? [String: Any]
-        return message?["content"] as? String ?? ""
+        throw PluginError.invalidProvider
     }
 
     private func providerErrorMessage(_ data: Data) -> String {
@@ -373,6 +361,10 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func consentKey(_ provider: String) -> String {
+        "phloem.ai.consent.\(provider).v2"
+    }
+
+    private func legacyConsentKey(_ provider: String) -> String {
         "phloem.ai.consent.\(provider).v1"
     }
 

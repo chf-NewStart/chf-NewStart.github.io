@@ -58,16 +58,16 @@ function check(name, condition, extra) {
   check('sticky notes are compact instead of full-sheet width', firstTwoNotes.every(note => note.width < 230), JSON.stringify(firstTwoNotes));
   check('sticky keeps the paper title and author', await page.locator('[data-shelf-paper="paper_models"]').textContent().then(text => text.includes('Constraint models') && text.includes('Dev Rao')));
   check('clean professional card type is the default', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('DM Sans') && getComputedStyle(element).fontWeight === '650'));
-  check('clean type is selected accessibly', await page.locator('[data-library-note-style="clean"]').getAttribute('aria-pressed') === 'true' && await page.locator('[data-library-note-style="handwritten"]').getAttribute('aria-pressed') === 'false');
+  check('clean type is selected accessibly', await page.locator('button[data-library-note-style="clean"]').getAttribute('aria-pressed') === 'true' && await page.locator('button[data-library-note-style="handwritten"]').getAttribute('aria-pressed') === 'false');
   check('category keeps its highlighter with regular type', await page.locator('.paper-category-mark').evaluate(element => getComputedStyle(element).fontFamily.includes('DM Sans') && getComputedStyle(element, '::before').backgroundImage !== 'none'));
-  await page.locator('[data-library-note-style="handwritten"]').click();
+  await page.locator('button[data-library-note-style="handwritten"]').click();
   check('handwriting remains available as an explicit option', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('Houfu Hand')));
   check('Chinese cards use a Kai face in handwritten mode', await page.locator('[data-shelf-paper="paper_field"] .book-title').evaluate(element => element.classList.contains('is-han') && getComputedStyle(element).fontFamily.includes('Kaiti TC')));
   check('the card typography choice is saved locally', await page.evaluate(() => localStorage.getItem('readingRoom.libraryNoteStyle')) === 'handwritten');
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('.paper-category-tab.is-selected');
-  check('handwritten card type survives a reload', await page.locator('[data-library-note-style="handwritten"]').getAttribute('aria-pressed') === 'true' && await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('Houfu Hand')));
-  await page.locator('[data-library-note-style="clean"]').click();
+  check('handwritten card type survives a reload', await page.locator('button[data-library-note-style="handwritten"]').getAttribute('aria-pressed') === 'true' && await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('Houfu Hand')));
+  await page.locator('button[data-library-note-style="clean"]').click();
   check('switching back restores professional card type', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('DM Sans')));
   check('category rail is fixed outside the scrolling note surface', await page.evaluate(() => {
     const rail = document.querySelector('.paper-category-rail');

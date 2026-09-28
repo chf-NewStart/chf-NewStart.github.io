@@ -120,7 +120,7 @@ test('native AI metadata never exposes a key and requests cross the registered b
       async request(payload) { bridgeCalls.push(payload); return { text: 'Native reply', provider: 'OpenAI' }; }
     } } } },
     AI_SETTINGS_KEY: 'readingRoom.ai.providers.v1', LEGACY_AI_KEY: 'readingRoom.ai.v1',
-    NATIVE_AI_CONSENT_VERSION: 1,
+    NATIVE_AI_CONSENT_VERSION: 2,
     AI_PROVIDERS: {
       gemini: { label: 'Gemini API', model: 'gemini-test' },
       deepseek: { label: 'DeepSeek', model: 'deepseek-test' },
@@ -151,7 +151,7 @@ test('native AI metadata never exposes a key and requests cross the registered b
   assert.equal(result.text, 'Native reply');
   assert.deepEqual(JSON.parse(JSON.stringify(bridgeCalls)), [{
     provider: 'openai', model: 'gpt-test', messages: [{ role: 'user', content: 'Explain this.' }],
-    maxTokens: 240, consentVersion: 1
+    maxTokens: 240, consentVersion: 2
   }]);
   assert.equal(JSON.stringify(bridgeCalls).includes('must-be-scrubbed'), false);
 });
@@ -206,9 +206,19 @@ test('native AI security and privacy declarations remain attached to the app tar
   assert.match(plugin, /field\.isSecureTextEntry = true/);
   assert.match(adapter, /hide\(byId\('aiKey'\)\)/);
   assert.doesNotMatch(reader, /nativePlugin\.configure\(\{provider:id,key:/);
-  for (const host of ['generativelanguage.googleapis.com', 'api.deepseek.com', 'api.openai.com', 'api.anthropic.com']) {
+  for (const host of ['api.openai.com', 'api.anthropic.com']) {
     assert.match(plugin, new RegExp(host.replaceAll('.', '\\.')));
   }
+  for (const heldHost of ['generativelanguage.googleapis.com', 'api.deepseek.com']) {
+    assert.doesNotMatch(plugin, new RegExp(heldHost.replaceAll('.', '\\.')));
+  }
+  assert.match(plugin, /supportedProviders = Set\(\["openai", "anthropic"\]\)/);
+  assert.match(adapter, /'gemini', 'deepseek'/);
+  assert.match(adapter, /providerSelect\.onchange\(\)/);
+  assert.match(reader, /\['auto','compatible','gemini','deepseek'\]\.indexOf\(cfg\.provider\)/);
+  assert.match(plugin, /consentVersion = 2/);
+  assert.match(privacy, /NSPrivacyAccessedAPICategoryUserDefaults/);
+  assert.match(privacy, /CA92\.1/);
   assert.match(privacy, /NSPrivacyCollectedDataTypeOtherUserContent/);
   assert.match(privacy, /NSPrivacyCollectedDataTypeUserID/);
   assert.match(privacy, /<key>NSPrivacyTracking<\/key>\s*<false\/>/);

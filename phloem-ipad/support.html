@@ -40,30 +40,44 @@
     </ol>
     <p>If a PDF link cannot be imported, download the PDF with your browser first, then choose that file in Phloem. Some websites block direct downloads or require a login.</p>
 
-    <h2>Save and restore a complete backup</h2>
+    <h2>Save and restore a portable backup</h2>
     <ol>
-      <li>Open Settings, then choose <strong>Save complete backup</strong>.</li>
-      <li>Keep Phloem open while it prepares the file. In the iPad share sheet, choose <strong>Save to Files</strong> or another destination you trust.</li>
-      <li>To restore, open Settings → <strong>Restore from Files</strong> and select the backup.</li>
+      <li>Open Settings, then choose <strong>Download backup</strong>.</li>
+      <li>Save the JSON file somewhere you trust.</li>
+      <li>To restore, open Settings → <strong>Restore backup</strong> and select that JSON file.</li>
     </ol>
-    <p>A complete backup includes original documents and your reading work. Restoring adds separate copies and keeps existing papers. Older metadata-only backups do not contain PDF or Word originals; Phloem asks before restoring those notes.</p>
-    <p>The current backup limits are 80 MiB of original files in total, 64 MiB per original, 16 MiB of metadata, and 2,000 papers. A missing original stops a complete backup. Re-import that original and try again. For a large library, keep original files separately and contact support before removing papers to reduce its size.</p>
-    <p>Backups are unencrypted. Store them somewhere appropriate for the contents of your papers and notes. Closing or cancelling the share sheet does not save a backup.</p>
+    <p>The portable backup contains your notes, highlights, reading progress, reviewer work, and document metadata. It does not contain original PDF or Word files or AI API keys. Keep your original documents separately and re-import them when needed after a restore.</p>
+    <p>Backups are unencrypted. Store them somewhere appropriate for the contents of your papers and notes. Restoring merges the saved reading data into the library already on the iPad.</p>
 
     <h2>If something is missing or will not open</h2>
     <ul>
-      <li><strong>Missing original:</strong> re-import the same PDF or Word file from Files. A restored older backup may contain only the notes.</li>
-      <li><strong>Storage warning:</strong> free space on your iPad, keep the original files, and try saving a backup again. Avoid deleting or reinstalling Phloem before securing a backup.</li>
-      <li><strong>Export did not finish:</strong> close any open share sheet, keep Phloem in the foreground, and retry. If it still fails, note the error and contact support.</li>
+      <li><strong>Missing original:</strong> re-import the same PDF or Word file from Files. A restored portable backup contains reading data, not the original document.</li>
+      <li><strong>Storage warning:</strong> free space on your iPad, keep the original files, and try the action again. Avoid deleting or reinstalling Phloem before saving a portable backup.</li>
+      <li><strong>Export did not finish:</strong> keep Phloem in the foreground and retry. If it still fails, note the error and contact support.</li>
       <li><strong>Definition unavailable:</strong> Define uses Wikipedia and Wikimedia online. Try a shorter phrase and check your connection. Your highlights do not depend on a lookup succeeding.</li>
     </ul>
 
+    <h2>Use optional AI in version 1.1 and later</h2>
+    <ol>
+      <li>Open Settings → <strong>AI assistant</strong> and choose OpenAI or Anthropic. AI setup is for users who are 18 or older.</li>
+      <li>Review the provider-specific disclosure and privacy link, choose a model if needed, then check the consent box.</li>
+      <li>Tap <strong>Save AI settings</strong> and enter your own API key in the secure iOS prompt.</li>
+      <li>Open a paper and deliberately choose an AI action. Only the reading context described in the disclosure is sent to the provider you selected.</li>
+    </ol>
+    <p>Phloem stores the key in this iPad’s Keychain and does not place it in Phloem backups. To stop future requests, return to Settings, select that provider, and tap <strong>Remove saved key</strong>. This also removes the local consent receipt.</p>
+    <ul>
+      <li><strong>AI says setup is incomplete:</strong> confirm the selected provider has a saved key and that the model name is valid for your provider account.</li>
+      <li><strong>Invalid key or billing error:</strong> create or check the key and billing directly with the provider. A ChatGPT or Claude consumer subscription does not necessarily include API usage.</li>
+      <li><strong>Rate limit or timeout:</strong> wait and retry once. If it continues, check the provider status and the limits on your API account.</li>
+      <li><strong>Sensitive paper:</strong> do not use an AI action unless your provider and plan are appropriate for the text being sent. Ordinary local reading does not require AI.</li>
+    </ul>
+
     <h2>What this iPad build supports</h2>
-    <p>Local reading, notes, highlights, imported reviewer comments, original-file sharing, and complete library backups are available. Cloud AI, Chrome’s on-device AI, and Google Drive/GitHub sync are unavailable. Files saved locally can be read without a network connection; Define, PDF URL imports, external links, and cloud file providers can require one.</p>
+    <p>Local reading, notes, highlights, imported reviewer comments, original-file sharing, and portable metadata backups are available. Version 1.1 and later also supports optional bring-your-own-key AI through OpenAI or Anthropic. Chrome’s on-device AI and Google Drive/GitHub sync are unavailable. Files saved locally can be read without a network connection; AI, Define, PDF URL imports, external links, and cloud file providers can require one.</p>
 
     <h2>About Phloem</h2>
     <p>Created by Houfu Chen. Phloem icon artwork by <a href="https://www.linkedin.com/in/itpromma/" target="_blank" rel="noopener noreferrer">Promma</a>.</p>
-    <p class="meta">Support information updated 16 September 2026. This page is bundled with the app and can be read offline.</p>
+    <p class="meta">Support information updated 28 September 2026.</p>
     <nav aria-label="Related information"><a href="privacy.html">Privacy policy</a></nav>
   </main>
 </body>

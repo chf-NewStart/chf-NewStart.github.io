@@ -1,8 +1,8 @@
 # Phloem 1.1 AI privacy and App Store draft
 
-Status: release-candidate draft for version 1.1.0 (16). Build 12 added DeepSeek and the corrected icon; build 13 collapses the consent panel after native setup succeeds and remembers valid native receipts when Settings reopens. Build 14 added local freehand PDF handwriting and was archived locally. Build 15 adds rendering-only centerline and pressure smoothing without modifying saved ink points, gestures, or data destinations; its historical signed archive has been verified locally. Build 16 retains that repair and adds a dedicated Zen Undo button using the shared local handwriting/highlight history, disabled when the history is empty. Its signed archive is verified locally, including version/build metadata, strict code signature, and bundled-source matches; upload and physical-device verification remain pending. The uploaded build 11 archive does not contain these changes. Version 1.0 build 7 is live; publish the prepared public policy before external TestFlight or App Review. Upload, live DeepSeek requests, and physical-device behavior remain release gates, not verified results.
+Status: release-candidate draft for **version 1.1.0 (18)**. Build 12 added DeepSeek and the corrected icon; build 13 fixed consent-panel persistence; builds 14–16 added PDF handwriting, continuous ink rendering, and Zen Undo. Build 17 added hold-to-straighten, eight ink colors, and unified PDF erasers, with a verified signed archive. Build 18 fixes mutually exclusive Pen/Highlighter selection through normal, touch, and Zen controls, visible selected/pressed states, and cancellation when switching during a stroke. Dedicated switching checks pass 113/113 in Chromium and WebKit. The fresh signed build 18 archive has verified version/build metadata, strict signature, and bundled-source matches after native transforms; build 17's archive lacks this fix. Upload, real Pencil behavior, and live-provider requests remain release gates, not verified results. Version 1.0 build 7 is live. Public privacy/support updates were verified live; recheck their reachability and shipping-provider terms before submission.
 
-Write mode and Zen Undo do not add an AI request or new network destination. Zen Undo uses the existing local edit history. Handwriting is stored as page-anchored vectors and erase history in the app's library/recovery storage and JSON backups. It is not transcribed or sent to an AI provider by these features. The shared browser sync format can carry the vectors; native iPad Drive/GitHub sync remains disabled. Export original PDF remains the unannotated original, not an export of handwritten notes.
+Write mode, hold-to-straighten, expanded colors, unified PDF erasing, Zen Undo, and build 18's tool-switching fix do not add an AI request or new network destination. Holding a long open stroke for 600 ms straightens it locally; its endpoint can be adjusted before lifting. Both PDF erasers remove whole ink strokes and text highlights with one Undo per sweep; the text Reader's eraser is unchanged. Handwriting is stored as page-anchored vectors and erase history in the app's library/recovery storage and JSON backups. It is not transcribed or sent to an AI provider by these features. The shared browser sync format can carry the vectors; native iPad Drive/GitHub sync remains disabled. Export original PDF remains the unannotated original, not an export of handwritten notes.
 
 ## Data flow
 
@@ -43,9 +43,9 @@ Use conservative answers unless counsel or Apple confirms a narrower treatment:
 
 The AI flow is ongoing after initial consent, so it should not rely on Apple's “optional disclosure” exception. Keep App Store Connect answers consistent with `PrivacyInfo.xcprivacy` and the public privacy policy.
 
-## Public policy update required before 1.1 submission
+## Public policy verification before 1.1 submission
 
-Update `phloem-ipad/privacy.html` after 1.0 is accepted/released and before 1.1 is submitted. The revised page must:
+The updated `phloem-ipad/privacy.html` and support page were verified live. Before 1.1 submission, recheck that the privacy page continues to:
 
 1. Identify OpenAI, Anthropic, and DeepSeek and the exact data categories above.
 2. Explain that the user chooses the provider and initiates each transfer.

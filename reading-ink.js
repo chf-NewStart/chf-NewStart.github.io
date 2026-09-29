@@ -2,7 +2,7 @@
 (function (global) {
   'use strict';
   var NS = 'http://www.w3.org/2000/svg';
-  var COLORS = { black: '#20313b', blue: '#245bc1', red: '#ba3f35' };
+  var COLORS = { black: '#20313b', blue: '#245bc1', red: '#ba3f35', green: '#24734b', purple: '#7842a3', orange: '#c26a1c', teal: '#157d86', gray: '#687782' };
   function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
   function stamp(stroke) { return +stroke.updatedAt || +stroke.at || 0; }
   function normalize(pages, deleted) {
@@ -16,7 +16,7 @@
         if (!raw || typeof raw.id !== 'string' || !raw.id || raw.id === '__proto__' || raw.id === 'constructor' || !Array.isArray(raw.points) || !raw.points.length) return;
         if (!raw.points.every(function (p) { return Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]) && (p[2] === undefined || Number.isFinite(p[2])); })) return;
         var at = Number.isFinite(raw.at) && raw.at > 0 ? raw.at : 0;
-        var item = { id: raw.id, color: Object.hasOwn ? (Object.hasOwn(COLORS, raw.color) ? raw.color : 'black') : (['black','blue','red'].indexOf(raw.color) >= 0 ? raw.color : 'black'), width: Number.isFinite(raw.width) ? clamp(raw.width, .5, 12) : 3,
+        var item = { id: raw.id, color: Object.prototype.hasOwnProperty.call(COLORS, raw.color) ? raw.color : 'black', width: Number.isFinite(raw.width) ? clamp(raw.width, .5, 12) : 3,
           points: raw.points.map(function (p) { return [clamp(p[0], 0, 1), clamp(p[1], 0, 1), clamp(p[2] === undefined ? .5 : p[2], 0, 1)]; }), at: at, updatedAt: Number.isFinite(raw.updatedAt) && raw.updatedAt > 0 ? raw.updatedAt : at };
         if ((tombstones[item.id] || 0) >= stamp(item) && tombstones[item.id]) return;
         var old = records.get(item.id);
@@ -127,20 +127,46 @@
     var gesture=null,suppressUntil=0,lastTouch=null,frame=0;
     function own(event) { if(event.cancelable)event.preventDefault();event.stopImmediatePropagation(); }
     function valid(g) { var context=options.getContext();return context&&context.id===g.context.id&&g.sheet.isConnected&&g.holder.isConnected; }
-    function clearPreview(g) { if(g.preview)g.preview.remove();g.sheet.querySelectorAll('.pdf-ink-erasing').forEach(function(el){el.classList.remove('pdf-ink-erasing');}); }
+    function sameRect(g) { var rect=g.sheet.getBoundingClientRect();return Math.abs(rect.width-g.rect.width)<=1&&Math.abs(rect.height-g.rect.height)<=1&&Math.abs(rect.left-g.rect.left)<=1&&Math.abs(rect.top-g.rect.top)<=1; }
+    function clearHold(g) { clearTimeout(g.holdTimer);g.holdTimer=0; }
+    function clearPreview(g) {
+      if(g.preview)g.preview.remove();g.sheet.querySelectorAll('.pdf-ink-erasing').forEach(function(el){el.classList.remove('pdf-ink-erasing');});
+      if(g.tool==='eraser'&&options.onEraseCancel)options.onEraseCancel();
+    }
     function finish(cancelled) {
-      var g=gesture;if(!g)return;gesture=null;cancelAnimationFrame(frame);frame=0;clearPreview(g);suppressUntil=Date.now()+500;lastTouch=g.touchId;
+      var g=gesture;if(!g)return;gesture=null;clearHold(g);cancelAnimationFrame(frame);frame=0;suppressUntil=Date.now()+500;lastTouch=g.touchId;
       try{if(g.source==='pointer'&&g.holder.hasPointerCapture(g.id))g.holder.releasePointerCapture(g.id);}catch(e){}
       document.body.classList.remove('pdf-ink-drawing');
-      if(!cancelled&&valid(g)){if(g.tool==='eraser'){if(g.erased.size)options.onErase(g.page,Array.from(g.erased));}else if(g.points.length)options.onCommit(g.page,{color:g.color,width:g.width,points:g.points});}
+      // External highlight candidates must still exist when the compound erase
+      // commits. Even an ink-empty sweep may have hit a text highlight.
+      try{if(!cancelled&&valid(g)){if(g.tool==='eraser')options.onErase(g.page,Array.from(g.erased));else if(g.points.length)options.onCommit(g.page,{color:g.color,width:g.width,points:g.points});}}
+      finally{clearPreview(g);}
     }
     function paint() {
       frame=0;var g=gesture;if(!g||g.tool==='eraser')return;
       g.preview.replaceChildren(strokeNode({color:g.color,width:g.width,points:g.points},g.aspect));
     }
+    function holdLine(g,p) {
+      if(g.straight||g.points.length<2)return;
+      var first=g.points[0],last=g.points[g.points.length-1],span=Math.hypot((last[0]-first[0])*g.rect.width,(last[1]-first[1])*g.rect.height);
+      // Don't turn dots, tiny letters, closed loops or a paused scribble into
+      // accidental rulers. Endpoint drift inside 4 CSS pixels is hand jitter.
+      if(span<24||g.travel>span*2){clearHold(g);g.holdAnchor=null;return;}
+      if(g.holdTimer&&g.holdAnchor&&Math.hypot(p.x-g.holdAnchor.x,p.y-g.holdAnchor.y)<4)return;
+      clearHold(g);g.holdAnchor=p;
+      g.holdTimer=setTimeout(function(){
+        g.holdTimer=0;if(gesture!==g)return;
+        if(!valid(g)||!sameRect(g)){finish(true);return;}
+        var start=g.points[0],end=g.points[g.points.length-1];
+        var pressure=g.points.reduce(function(sum,point){return sum+point[2];},0)/g.points.length;
+        g.straight=true;g.linePressure=pressure;g.points=[[start[0],start[1],pressure],[end[0],end[1],pressure]];
+        g.preview.classList.add('pdf-ink-straight');
+        if(!frame)frame=requestAnimationFrame(paint);
+      },600);
+    }
     function move(event, force) {
       var g=gesture;if(!g)return;if(!valid(g)){finish(true);return;}
-      var rect=g.sheet.getBoundingClientRect();if(Math.abs(rect.width-g.rect.width)>1||Math.abs(rect.height-g.rect.height)>1||Math.abs(rect.left-g.rect.left)>1||Math.abs(rect.top-g.rect.top)>1){finish(true);return;}
+      var rect=g.sheet.getBoundingClientRect();if(!sameRect(g)){finish(true);return;}
       var x=clamp(event.clientX,rect.left,rect.right),y=clamp(event.clientY,rect.top,rect.bottom),p={x:x,y:y};
       if(g.tool==='eraser'){
         (options.getStrokes(g.page)||[]).forEach(function(stroke){
@@ -148,13 +174,16 @@
           for(var i=0;i<pts.length;i++){if(segmentsNear(g.last,p,pts[Math.max(0,i-1)],pts[i],r)){hit=true;break;}}
           if(hit)g.erased.add(stroke.id);
         });
-        g.sheet.querySelectorAll('[data-ink-id]').forEach(function(el){el.classList.toggle('pdf-ink-erasing',g.erased.has(el.dataset.inkId));});g.last=p;return;
+        g.sheet.querySelectorAll('[data-ink-id]').forEach(function(el){el.classList.toggle('pdf-ink-erasing',g.erased.has(el.dataset.inkId));});
+        if(options.onErasePreview)options.onErasePreview(g.page,g.last,p);g.last=p;return;
       }
       if(!force&&g.last&&Math.hypot(x-g.last.x,y-g.last.y)<.65)return;
       var pressure=Number.isFinite(event.pressure)&&event.pressure>0?event.pressure:Number.isFinite(event.force)&&event.force>0?event.force:(g.points.length?g.points[g.points.length-1][2]:.5);
       var point=[Math.round((x-rect.left)/rect.width*100000)/100000,Math.round((y-rect.top)/rect.height*100000)/100000,Math.round(clamp(pressure,0,1)*100)/100];
       var previous=g.points[g.points.length-1];if(previous&&previous[0]===point[0]&&previous[1]===point[1])return;
-      g.points.push(point);g.last=p;
+      if(g.straight){point[2]=g.linePressure;g.points[1]=point;}
+      else{g.travel+=g.points.length?Math.hypot(x-g.last.x,y-g.last.y):0;g.points.push(point);holdLine(g,p);}
+      g.last=p;
       // Bound only the in-flight sampling density; never truncate saved handwriting.
       if(g.points.length>4096)g.points=g.points.filter(function(_,i,list){return i%2===0||i===list.length-1;});
       if(!frame)frame=requestAnimationFrame(paint);
@@ -166,7 +195,7 @@
       if(!rect||!rect.width||!rect.height||event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)return false;
       options.onStart(+holder.dataset.page);
       var preview=svg('g');preview.classList.add('pdf-ink-preview');layer(sheet).appendChild(preview);
-      gesture={context:context,id:id,source:source,touchId:source==='touch'?id:null,holder:holder,sheet:sheet,rect:rect,aspect:(sheet.offsetHeight||1)/(sheet.offsetWidth||1),page:+holder.dataset.page,tool:options.getTool(),color:options.getColor(),width:options.getWidth(),points:[],erased:new Set(),preview:preview,last:{x:event.clientX,y:event.clientY}};
+      gesture={context:context,id:id,source:source,touchId:source==='touch'?id:null,holder:holder,sheet:sheet,rect:rect,aspect:(sheet.offsetHeight||1)/(sheet.offsetWidth||1),page:+holder.dataset.page,tool:options.getTool(),color:options.getColor(),width:options.getWidth(),points:[],erased:new Set(),preview:preview,last:{x:event.clientX,y:event.clientY},travel:0,holdTimer:0,holdAnchor:null,straight:false};
       document.body.classList.add('pdf-ink-drawing');move(event,true);
       try{if(source==='pointer')holder.setPointerCapture(id);}catch(e){}return true;
     }

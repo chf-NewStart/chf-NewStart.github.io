@@ -71,7 +71,7 @@ test('valid normalized vectors preserve geometry, pressure, style, identity, and
 });
 
 test('each supported pen color and width round-trips', () => {
-  for (const color of ['black', 'blue', 'red']) {
+  for (const color of ['black', 'blue', 'red', 'green', 'purple', 'orange', 'teal', 'gray']) {
     for (const width of [1.5, 3, 5]) {
       const saved = stroke(`${color}-${width}`, 100, { color, width });
       const result = page(ink.normalize({ 1: [saved] }, {}))[0];

@@ -2695,7 +2695,7 @@
   document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.zenPdfLayout);closeZenPopouts(true);};});
   byId('zenGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
   byId('zenGuideToggle').onclick=function(){byId('focusBtn').onclick();zenWake();};
-  byId('zenMarker').onclick=function(){if(pendingSelection){closeZenPopouts(false);commitPendingHighlight();zenWake();return;}toggleZenPopout('zenMarker','zenMarkerMenu','zenMarkerTool');};
+  byId('zenMarker').onclick=function(){if(pdfWriteMode)setPdfWriteMode(false);if(pendingSelection){closeZenPopouts(false);commitPendingHighlight();zenWake();return;}toggleZenPopout('zenMarker','zenMarkerMenu','zenMarkerTool');};
   byId('zenMarkerToggle').onclick=function(){setHighlightMode(!highlightMode);zenWake();};
   byId('zenPaperAppearance').onclick=function(){closeZenPopouts(false);cyclePaperAppearance();};
   byId('zenTheme').onclick=function(){closeZenPopouts(false);byId('themeBtn').onclick();};
@@ -3165,6 +3165,7 @@
   }
   byId('touchGuide').onclick=function(){clearPendingSelection();byId('focusBtn').click();syncTouchDockStates();};
   byId('touchHighlight').onclick=function(){
+    if(pdfWriteMode)setPdfWriteMode(false);
     closeTouchDockMore(false);
     if(pendingSelection){setTouchHighlightPaletteOpen(false);commitPendingHighlight();}
     else setTouchHighlightPaletteOpen(byId('touchHighlightPalette').classList.contains('hidden'));
@@ -6051,7 +6052,7 @@
   }
   function syncHighlightColorUi(){
     var label=highlightColorLabel(highlightColor),mode=!!highlightMode,pending=!!pendingSelection;
-    document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(x){var selected=!highlightEraseMode&&x.dataset.highlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
+    document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(x){var selected=!pdfWriteMode&&!highlightEraseMode&&x.dataset.highlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
     document.querySelectorAll('[data-selection-highlight-color]').forEach(function(x){var selected=x.dataset.selectionHighlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
     var tools=byId('markerTools'),colorButton=byId('highlightColorBtn'),touchButton=byId('touchHighlight'),markerButton=byId('highlightBtn'),selectionButton=byId('selectionHighlight');
     if(tools)tools.dataset.highlightColor=highlightColor;
@@ -6066,6 +6067,7 @@
   }
   var highlightEraseMode=false;
   function setHighlightEraseMode(on,preserveSelection){
+    if(pdfInkController)pdfInkController.cancel();
     if(on&&pdfWriteMode)setPdfWriteMode(false);
     if(!preserveSelection)clearPendingSelection();highlightEraseMode=!!on;
     if(highlightEraseMode)setHighlightMode(false);
@@ -6198,31 +6200,49 @@
     var ch=find(currentId),available=!!(window.PhloemInk&&ch&&ch.kind==='pdf'&&readerMode==='pdf'),active=available&&pdfWriteMode;
     document.querySelectorAll('[data-pdf-write-toggle]').forEach(function(button){button.classList.toggle('hidden',!available);button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(!!active));});
     var toolbar=byId('pdfInkToolbar');if(!toolbar)return;toolbar.classList.toggle('hidden',!active);document.body.classList.toggle('pdf-ink-active',!!active);
-    document.querySelectorAll('[data-pdf-ink-tool]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.pdfInkTool===pdfInkTool));});
-    document.querySelectorAll('[data-pdf-ink-color]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.pdfInkColor===pdfInkColor));});
-    document.querySelectorAll('[data-pdf-ink-width]').forEach(function(button){button.setAttribute('aria-pressed',String(+button.dataset.pdfInkWidth===pdfInkWidth));});
+    document.querySelectorAll('[data-pdf-ink-tool]').forEach(function(button){button.setAttribute('aria-pressed',String(!!active&&button.dataset.pdfInkTool===pdfInkTool));});
+    document.querySelectorAll('[data-pdf-ink-color]').forEach(function(button){button.setAttribute('aria-pressed',String(!!active&&button.dataset.pdfInkColor===pdfInkColor));});
+    document.querySelectorAll('[data-pdf-ink-width]').forEach(function(button){button.setAttribute('aria-pressed',String(!!active&&+button.dataset.pdfInkWidth===pdfInkWidth));});
     byId('pdfInkUndo').disabled=!(highlightHistory&&highlightHistory.length);byId('pdfInkRedo').disabled=!(highlightFuture&&highlightFuture.length);
   }
   function setPdfWriteMode(on){
     if(pdfInkController)pdfInkController.cancel();
     var ch=find(currentId);pdfWriteMode=!!(on&&window.PhloemInk&&ch&&ch.kind==='pdf'&&readerMode==='pdf');
     if(pdfWriteMode){pdfInkTool='pen';finishPencilStroke(true);setHighlightEraseMode(false);setHighlightMode(false);clearPendingSelection();setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(false);closeZenPopouts(false);setDrift(0);}
-    syncPdfInkUi();
+    syncHighlightColorUi();syncTouchDockStates();
   }
   function commitPdfInk(page,stroke){
     var ch=find(currentId);if(!ch)return;var stamp=pdfInkStamp(ch),item=Object.assign({id:uid('ink'),at:stamp,updatedAt:stamp},stroke);ch.pdfInk=ch.pdfInk||{};var list=ch.pdfInk[page]||(ch.pdfInk[page]=[]);list.push(item);recordHighlightAction({kind:'ink',op:'add',page:page,entries:[{item:item,index:list.length-1}]});touch(ch);renderPdfInk(page);syncPdfInkUi();
   }
+  var pdfEraseGesture=null;
+  function clearPdfErasePreview(){
+    if(pdfEraseGesture&&pdfEraseGesture.host.isConnected)pdfEraseGesture.host.querySelectorAll('.erasing-highlight').forEach(function(el){el.classList.remove('erasing-highlight');});
+    pdfEraseGesture=null;
+  }
+  function previewPdfErase(page,from,to){
+    var view=pdfViews[page-1],host=view&&view.sheet.closest('.pdf-page');if(!host)return;
+    if(!pdfEraseGesture)pdfEraseGesture={host:host,targets:eraserTargets(host),erased:new Map(),radius:10};
+    pdfEraseGesture.last=from;collectEraserHits(pdfEraseGesture,to.x,to.y);
+  }
   function erasePdfInk(page,ids){
-    var ch=find(currentId);if(!ch)return;var wanted=new Set(ids),list=(ch.pdfInk||{})[page]||[],entries=[];list.forEach(function(item,index){if(wanted.has(item.id))entries.push({item:item,index:index});});if(!entries.length)return;
-    var stamp=pdfInkStamp(ch);ch.pdfInkDeleted=ch.pdfInkDeleted||{};entries.forEach(function(entry){ch.pdfInkDeleted[entry.item.id]=stamp;});ch.pdfInk[page]=list.filter(function(item){return !wanted.has(item.id);});recordHighlightAction({kind:'ink',op:'erase',page:page,entries:entries});touch(ch);renderPdfInk(page);syncPdfInkUi();
+    var ch=find(currentId);if(!ch)return;
+    var wanted=new Set(ids),list=(ch.pdfInk||{})[page]||[],entries=[],actions=[];
+    list.forEach(function(item,index){if(wanted.has(item.id))entries.push({item:item,index:index});});
+    if(entries.length)actions.push({kind:'ink',op:'erase',page:page,entries:entries});
+    var marks=highlightEraseEntries(ch,pdfEraseGesture?Array.from(pdfEraseGesture.erased.values()):[]);
+    if(marks.length)actions.push({op:'erase',entries:marks});
+    if(!actions.length)return;
+    // A single sweep is one edit even when it touches both annotation layers.
+    var action={kind:'annotations',op:'erase',actions:actions};recordHighlightAction(action);applyHighlightAction(action,false);syncPdfInkUi();
+    showReaderToast('Annotations erased · Undo to restore');
   }
   if(window.PhloemInk)pdfInkController=window.PhloemInk.create({
     pane:byId('documentPane'),
     canStart:function(page){return !!(pdfViews[page-1]&&pdfViews[page-1].rendered);},
-    getContext:function(){var ch=find(currentId);return pdfWriteMode&&readerMode==='pdf'&&ch&&ch.kind==='pdf'&&!byId('readerPage').classList.contains('hidden')&&!bookCurlOwned&&!pagedTurning&&!reviewLinkTargetId&&!guideDragging&&!recallActive?{id:currentId}:null;},
-    getTool:function(){return pdfInkTool;},getColor:function(){return pdfInkColor;},getWidth:function(){return pdfInkWidth;},getStrokes:function(page){var ch=find(currentId);return ch&&(ch.pdfInk||{})[page]||[];},
-    onStart:function(page){clearPendingSelection();clearTimeout(guideLockClickTimer);hidePdfReferencePreview();holdDrift(1200);if(currentPage!==page){currentPage=page;updatePageChrome();loadPageNote();}selectionInputType='pen';suppressHighlightAutoCommit=true;},
-    onCommit:commitPdfInk,onErase:erasePdfInk
+    getContext:function(){var ch=find(currentId);return (pdfWriteMode||highlightEraseMode)&&readerMode==='pdf'&&ch&&ch.kind==='pdf'&&!byId('readerPage').classList.contains('hidden')&&!bookCurlOwned&&!pagedTurning&&!reviewLinkTargetId&&!guideDragging&&!recallActive?{id:currentId}:null;},
+    getTool:function(){return highlightEraseMode?'eraser':pdfInkTool;},getColor:function(){return pdfInkColor;},getWidth:function(){return pdfInkWidth;},getStrokes:function(page){var ch=find(currentId);return ch&&(ch.pdfInk||{})[page]||[];},
+    onStart:function(page){clearPdfErasePreview();clearPendingSelection();clearTimeout(guideLockClickTimer);hidePdfReferencePreview();holdDrift(1200);if(currentPage!==page){currentPage=page;updatePageChrome();loadPageNote();}selectionInputType='pen';suppressHighlightAutoCommit=true;},
+    onCommit:commitPdfInk,onErase:erasePdfInk,onErasePreview:previewPdfErase,onEraseCancel:clearPdfErasePreview
   });
   document.querySelectorAll('[data-pdf-write-toggle]').forEach(function(button){button.onclick=function(){setPdfWriteMode(!pdfWriteMode);showReaderToast(pdfWriteMode?'Write on the PDF with Pencil · fingers still scroll':'Write mode off · Pencil highlights text');};});
   document.querySelectorAll('[data-pdf-ink-tool]').forEach(function(button){button.onclick=function(){if(pdfInkController)pdfInkController.cancel();pdfInkTool=button.dataset.pdfInkTool;syncPdfInkUi();};});
@@ -6231,7 +6251,10 @@
   byId('pdfInkDone').onclick=function(){setPdfWriteMode(false);};byId('pdfInkUndo').onclick=undoHighlight;byId('pdfInkRedo').onclick=redoHighlight;
   function eraserTargets(host){
     var ch=find(currentId),page=host.closest('.pdf-page'),base=page&&page.getBoundingClientRect(),kind=readerMode==='pdf'?'pdf':ch.kind==='pdf'?'reader':'text';
-    return highlightListFor(ch,kind,page&&page.dataset.page).filter(function(item){return kind==='pdf'||+item.para===+host.dataset.paraIndex;}).map(function(item,index){
+    // Hit testing must not create empty highlight lists, especially on scanned
+    // pages or when a sweep is cancelled without making an edit.
+    var list=kind==='pdf'?(ch.highlights||{})[page&&page.dataset.page]||[]:kind==='reader'?ch.readerHighlights||[]:ch.textHighlights||[];
+    return list.filter(function(item){return kind==='pdf'||+item.para===+host.dataset.paraIndex;}).map(function(item,index){
       var rects=[];
       if(kind==='pdf')rects=(item.rects||[]).map(function(r){r=paperHighlightRect(r);return{left:base.left+r.x*base.width,right:base.left+(r.x+r.w)*base.width,top:base.top+r.y*base.height,bottom:base.top+(r.y+r.h)*base.height};});
       else{
@@ -6245,9 +6268,9 @@
       return{kind:kind,page:page?String(page.dataset.page):null,item:item,rects:rects};
     });
   }
-  function eraserCrossesRect(a,b,r){
+  function eraserCrossesRect(a,b,r,radius){
     /* Segment/rectangle clipping catches fast sweeps even between pointer samples. */
-    var low=0,high=1,pad=2;
+    var low=0,high=1,pad=radius===undefined?2:radius;
     return [['x','left','right'],['y','top','bottom']].every(function(axis){
       var start=a[axis[0]],delta=b[axis[0]]-start,min=r[axis[1]]-pad,max=r[axis[2]]+pad;
       if(Math.abs(delta)<.001)return start>=min&&start<=max;
@@ -6257,7 +6280,7 @@
   }
   function collectEraserHits(g,x,y){
     var next={x:x,y:y};
-    g.targets.forEach(function(ref){if(!g.erased.has(ref.item.id)&&ref.rects.some(function(r){return eraserCrossesRect(g.last,next,r);}))g.erased.set(ref.item.id,ref);});
+    g.targets.forEach(function(ref){if(!g.erased.has(ref.item.id)&&ref.rects.some(function(r){return eraserCrossesRect(g.last,next,r,g.radius);}))g.erased.set(ref.item.id,ref);});
     g.last=next;
     g.host.closest('.pdf-page,.original').querySelectorAll('[data-hl-id]').forEach(function(el){el.classList.toggle('erasing-highlight',g.erased.has(el.dataset.hlId));});
   }
@@ -6291,7 +6314,7 @@
     return g&&g.documentId===currentId&&g.mode===readerMode&&g.host.isConnected&&(g.erasing||g.host.contains(g.start.node))&&!byId('readerPage').classList.contains('hidden');
   }
   function startPencilStroke(e,id,source){
-    if(pdfWriteMode&&readerMode==='pdf')return false;
+    if(readerMode==='pdf'&&(pdfWriteMode||highlightEraseMode&&pdfInkController))return false;
     if(pencilStroke||bookCurlOwned||pagedTurning||reviewLinkTargetId||guideDragging||selectionPointerDown||e.button>0)return false;
     var target=e.target,host=target&&target.closest&&target.closest(readerMode==='pdf'?'.text-layer':'.original');
     if(!host&&highlightEraseMode&&readerMode==='pdf'){var page=target.closest('.pdf-page');host=page&&page.querySelector('.text-layer');}
@@ -6416,13 +6439,14 @@
   document.addEventListener('pointerdown',function(e){if(e.pointerType){lastHighlightPointerType=e.pointerType;selectionInputType=e.pointerType;}},true);
   document.addEventListener('keydown',function(){selectionInputType='keyboard';},true);
   byId('highlightBtn').onclick=function(e){
+    if(pdfWriteMode)setPdfWriteMode(false);
     if(highlightEraseMode){setHighlightEraseMode(false);return;}
     var pointerType=e&&e.pointerType||'',touchInput=pointerType?pointerType==='touch':!fineHighlightUi()&&(lastHighlightPointerType==='touch'||(!lastHighlightPointerType&&coarseHighlightUi()));
     if(touchInput){if(pendingSelection)commitPendingHighlight();else showReaderToast('Drag Apple Pencil across text, or select a passage and tap Mark');return;}
     setHighlightMode(!highlightMode);
   };
   byId('highlightColorBtn').onclick=function(){setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(byId('highlightPalette').classList.contains('hidden'));};
-  document.querySelectorAll('[data-highlight-eraser]').forEach(function(b){b.onclick=function(){setHighlightEraseMode(!highlightEraseMode);setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(false);closeZenPopouts(false);showReaderToast(highlightEraseMode?'Eraser on · sweep Pencil over highlights · Undo restores them':'Eraser off');};});
+  document.querySelectorAll('[data-highlight-eraser]').forEach(function(b){b.onclick=function(){setHighlightEraseMode(!highlightEraseMode);setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(false);closeZenPopouts(false);showReaderToast(highlightEraseMode?'Eraser on · sweep over highlights or handwriting · Undo restores them':'Eraser off');};});
   document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(b){b.onclick=function(e){var touchPalette=!!b.closest('#touchHighlightPalette'),zenPalette=!!b.closest('#zenMarkerMenu'),returnFocus=e.detail===0;setHighlightColor(b.dataset.highlightColor);if(touchPalette)setTouchHighlightPaletteOpen(false);else if(zenPalette)closeZenPopouts(false);else setHighlightPaletteOpen(false);if(returnFocus)(touchPalette?byId('touchHighlight'):zenPalette?byId('zenMarker'):byId('highlightColorBtn')).focus();};});
   document.querySelectorAll('[data-selection-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.selectionHighlightColor);setSelectionAction('selectionHighlight');commitPendingHighlight();};});
   syncHighlightColorUi();
@@ -6444,6 +6468,7 @@
     clearPendingSelection(keepCard);renderNoteIndex();return saved;
   }
   function commitPendingHighlight(){
+    if(pdfWriteMode)setPdfWriteMode(false);
     var saved=savePendingHighlight('',false);if(saved)showReaderToast(saved.existing?'Already highlighted · reopened':'Passage highlighted');return saved;
   }
   function ensureSelectionNoteTarget(){
@@ -6496,9 +6521,12 @@
     showReaderToast('Highlight removed');
     return true;
   }
+  function highlightEraseEntries(ch,refs){
+    return refs.map(function(ref){var list=highlightListFor(ch,ref.kind,ref.page),index=list.findIndex(function(item){return item.id===ref.item.id;});return index<0?null:{kind:ref.kind,page:ref.page,item:list[index],index:index};}).filter(Boolean);
+  }
   function eraseHighlightGroup(refs){
     var ch=find(currentId);if(!ch)return;
-    var entries=refs.map(function(ref){var list=highlightListFor(ch,ref.kind,ref.page),index=list.findIndex(function(item){return item.id===ref.item.id;});return index<0?null:{kind:ref.kind,page:ref.page,item:list[index],index:index};}).filter(Boolean);
+    var entries=highlightEraseEntries(ch,refs);
     if(!entries.length)return;
     var action={op:'erase',entries:entries};recordHighlightAction(action);applyHighlightAction(action,false);
     showReaderToast(entries.length===1?'Highlight erased · Undo to restore':entries.length+' highlights erased · Undo to restore');
@@ -6529,6 +6557,9 @@
   function recordHighlightAction(action){highlightHistory.push(action);if(highlightHistory.length>100)highlightHistory.shift();highlightFuture=[];syncTouchDockStates();syncPdfInkUi();}
   function applyHighlightAction(action,undoing){
     var ch=find(currentId);if(!ch)return false;
+    if(action.kind==='annotations'){
+      action.actions.forEach(function(edit){applyHighlightAction(edit,undoing);});return true;
+    }
     if(action.kind==='ink'){
       if(pdfInkController)pdfInkController.cancel();var stamp=pdfInkStamp(ch);ch.pdfInk=ch.pdfInk||{};ch.pdfInkDeleted=ch.pdfInkDeleted||{};var inkList=ch.pdfInk[action.page]||(ch.pdfInk[action.page]=[]),insert=action.op==='add'?!undoing:undoing;
       action.entries.forEach(function(entry){var index=inkList.findIndex(function(item){return item.id===entry.item.id;});if(insert){var restored=Object.assign({},entry.item,{updatedAt:stamp});if(index<0)inkList.splice(Math.min(entry.index,inkList.length),0,restored);else inkList[index]=restored;}else{if(index>=0)inkList.splice(index,1);ch.pdfInkDeleted[entry.item.id]=stamp;}});
@@ -6569,13 +6600,13 @@
     if(pdfInkController)pdfInkController.cancel();
     var action=highlightHistory.pop();
     if(!action){showReaderToast('Nothing to undo');return;}
-    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.kind==='ink'?'Handwriting change undone':action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();syncPdfInkUi();
+    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.kind==='annotations'?'Erased annotations restored':action.kind==='ink'?'Handwriting change undone':action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();syncPdfInkUi();
   }
   function redoHighlight(){
     if(pdfInkController)pdfInkController.cancel();
     var action=highlightFuture.pop();
     if(!action){showReaderToast('Nothing to redo');return;}
-    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.kind==='ink'?'Handwriting change redone':action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();syncPdfInkUi();
+    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.kind==='annotations'?'Annotations erased':action.kind==='ink'?'Handwriting change redone':action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();syncPdfInkUi();
   }
   /* A saved highlight reuses the same passage card as a fresh selection. Its small
      management row adds recolor/remove without sending the reader to another UI. */

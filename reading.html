@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=132">
+  <link rel="stylesheet" href="/reading.css?v=134">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -162,13 +162,8 @@
       <div class="pdf-ink-toolbar hidden" id="pdfInkToolbar" role="region" aria-label="Write on PDF" aria-describedby="pdfInkHint">
         <div class="pdf-ink-controls" role="toolbar" aria-label="PDF ink tools">
           <div class="pdf-ink-group" role="group" aria-label="Ink tool">
-            <button data-pdf-ink-tool="pen" type="button" aria-pressed="true" title="Write with Pencil"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg>Pen</button>
-            <button data-pdf-ink-tool="eraser" type="button" aria-pressed="false" title="Remove whole ink strokes"><span class="eraser-icon" aria-hidden="true"></span>Eraser</button>
-          </div>
-          <div class="pdf-ink-group pdf-ink-colors" role="group" aria-label="Ink color">
-            <button data-pdf-ink-color="black" type="button" aria-label="Black ink" aria-pressed="true" title="Black ink"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-color="blue" type="button" aria-label="Blue ink" aria-pressed="false" title="Blue ink"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-color="red" type="button" aria-label="Red ink" aria-pressed="false" title="Red ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-tool="pen" type="button" aria-pressed="true" title="Write with Pencil; hold to straighten a line"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg>Pen</button>
+            <button data-pdf-ink-tool="eraser" type="button" aria-pressed="false" title="Remove whole handwriting strokes and text highlights"><span class="eraser-icon" aria-hidden="true"></span>Eraser</button>
           </div>
           <div class="pdf-ink-group pdf-ink-widths" role="group" aria-label="Ink width">
             <button data-pdf-ink-width="1.5" type="button" aria-label="Fine ink" aria-pressed="false" title="Fine"><span aria-hidden="true"></span></button>
@@ -182,8 +177,18 @@
             </div>
             <button class="pdf-ink-done" id="pdfInkDone" type="button" title="Finish writing and return to reading">Done</button>
           </div>
+          <div class="pdf-ink-group pdf-ink-colors" role="group" aria-label="Ink color">
+            <button data-pdf-ink-color="black" type="button" aria-label="Black ink" aria-pressed="true" title="Black ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="blue" type="button" aria-label="Blue ink" aria-pressed="false" title="Blue ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="red" type="button" aria-label="Red ink" aria-pressed="false" title="Red ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="green" type="button" aria-label="Green ink" aria-pressed="false" title="Green ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="purple" type="button" aria-label="Purple ink" aria-pressed="false" title="Purple ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="orange" type="button" aria-label="Orange ink" aria-pressed="false" title="Orange ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="teal" type="button" aria-label="Teal ink" aria-pressed="false" title="Teal ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="gray" type="button" aria-label="Gray ink" aria-pressed="false" title="Gray ink"><span aria-hidden="true"></span></button>
+          </div>
         </div>
-        <p id="pdfInkHint">Pencil writes · fingers scroll · eraser removes whole ink strokes</p>
+        <p id="pdfInkHint">Hold Pencil to straighten · fingers scroll<br>Eraser removes whole strokes &amp; text highlights</p>
       </div>
       <div class="comfort-bar hidden" id="comfortBar" aria-label="Reading settings">
         <div class="comfort-section comfort-text text-only" aria-label="Text settings">
@@ -815,10 +820,10 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=132',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=134',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=132" defer></script>
-<script src="/reading.js?v=132" defer></script>
+<script src="/reading-ink.js?v=134" defer></script>
+<script src="/reading.js?v=134" defer></script>
 </body>
 </html>

@@ -36,6 +36,7 @@ test('bundles a local reader with all runtime dependencies and preserves website
   assert.match(html, /if\(window\.PHLOEM_NATIVE\|\|!\('serviceWorker' in navigator\)/);
   assert.ok(html.indexOf('/native/environment.js') < html.indexOf('navigator.serviceWorker'));
   assert.ok(html.indexOf('/native/ipad.js') > html.indexOf('<script src="/reading.js'));
+  assert.ok(html.indexOf('<script src="/reading-ink.js') >= 0 && html.indexOf('<script src="/reading-ink.js') < html.indexOf('<script src="/reading.js'), 'local handwriting must load before chapter normalization');
   assert.equal((html.match(/<script\b[^>]*\bsrc=["']https?:/g) || []).length, 0, 'app shell must not load its code from a live website');
   for (const file of readerFiles.filter(file => file !== 'reading.js')) assert.equal(hash(await readFile(path.join(outDir, file))), hash(await readFile(path.join(defaultRepoRoot, file))));
   assert.equal(await readFile(path.join(outDir, 'reading.js'), 'utf8'), nativeReaderJs(before[1].toString()));
@@ -108,16 +109,18 @@ test('native AI metadata never exposes a key and requests cross the registered b
     pick(/  async function runAiMessages\(messages,maxTokens,onProgress,routeOverride\)\{[\s\S]*?\n  \}/)
   ].join('\n');
   const persisted = {
-    provider: 'openai',
+    provider: 'deepseek',
     providers: {
-      openai: { key: 'must-be-scrubbed', keyPresent: true, model: 'gpt-test', endpoint: '' }
+      deepseek: { key: 'must-be-scrubbed', keyPresent: true, model: 'deepseek-test', endpoint: '' },
+      openai: { key: '', keyPresent: true, model: 'gpt-test', endpoint: '' },
+      anthropic: { key: '', keyPresent: true, model: 'claude-test', endpoint: '' }
     }
   };
   let saved = null;
   const bridgeCalls = [];
   const context = vm.createContext({
     window: { PHLOEM_NATIVE: true, Capacitor: { Plugins: { PhloemAI: {
-      async request(payload) { bridgeCalls.push(payload); return { text: 'Native reply', provider: 'OpenAI' }; }
+      async request(payload) { bridgeCalls.push(payload); return { text: 'Native reply', provider: payload.provider }; }
     } } } },
     AI_SETTINGS_KEY: 'readingRoom.ai.providers.v1', LEGACY_AI_KEY: 'readingRoom.ai.v1',
     NATIVE_AI_CONSENT_VERSION: 2,
@@ -130,7 +133,8 @@ test('native AI metadata never exposes a key and requests cross the registered b
     },
     localStorage: {
       getItem(key) { return key === 'readingRoom.ai.providers.v1' ? JSON.stringify(persisted) : 'legacy-key-must-not-load'; },
-      setItem(key, value) { saved = { key, value }; }
+      setItem(key, value) { saved = { key, value }; },
+      removeItem(key) { assert.equal(key, 'readingRoom.ai.v1'); }
     },
     browserLanguageModel: () => null,
     aiSettings: null,
@@ -141,19 +145,33 @@ test('native AI metadata never exposes a key and requests cross the registered b
   });
   vm.runInContext(functions, context);
   context.aiSettings = context.loadAiSettings();
-  assert.equal(context.aiSettings.provider, 'openai');
-  assert.equal(context.aiSettings.providers.openai.key, '');
-  assert.equal(context.aiSettings.providers.openai.keyPresent, true);
+  assert.equal(context.aiSettings.provider, 'deepseek', 'an enabled DeepSeek choice must survive startup');
+  assert.equal(context.aiSettings.providers.deepseek.key, '');
+  assert.equal(context.aiSettings.providers.deepseek.keyPresent, true, 'native credential metadata must survive startup');
   context.saveAiSettings();
   assert.equal(saved.key, 'readingRoom.ai.providers.v1');
-  assert.equal(JSON.parse(saved.value).providers.openai.key, '');
-  const result = await context.runAiMessages([{ role: 'user', content: 'Explain this.' }], 240);
-  assert.equal(result.text, 'Native reply');
-  assert.deepEqual(JSON.parse(JSON.stringify(bridgeCalls)), [{
-    provider: 'openai', model: 'gpt-test', messages: [{ role: 'user', content: 'Explain this.' }],
+  assert.equal(JSON.parse(saved.value).providers.deepseek.key, '');
+  for (const provider of ['deepseek', 'openai', 'anthropic']) {
+    persisted.provider = provider;
+    const result = await context.runAiMessages([{ role: 'user', content: 'Explain this.' }], 240);
+    assert.equal(result.text, 'Native reply');
+    assert.equal(result.provider, provider);
+  }
+  assert.deepEqual(JSON.parse(JSON.stringify(bridgeCalls)), ['deepseek', 'openai', 'anthropic'].map(provider => ({
+    provider, model: persisted.providers[provider].model, messages: [{ role: 'user', content: 'Explain this.' }],
     maxTokens: 240, consentVersion: 2
-  }]);
+  })));
   assert.equal(JSON.stringify(bridgeCalls).includes('must-be-scrubbed'), false);
+  for (const provider of ['gemini', 'compatible', 'browser']) {
+    await assert.rejects(context.runAiMessages([], 240, null, {
+      id: provider, label: provider, cfg: { key: 'never-send-this', model: 'test', endpoint: 'https://example.invalid' }
+    }), /Choose|not enabled|not supported|unavailable/i);
+  }
+  assert.equal(bridgeCalls.length, 3, 'unsupported native routes must never cross the bridge');
+  context.window.Capacitor.Plugins.PhloemAI = null;
+  await assert.rejects(context.runAiMessages([], 240, null, {
+    id: 'deepseek', label: 'DeepSeek', cfg: { key: 'must-not-fallback-to-web', model: 'deepseek-test' }
+  }), /native|bridge|unavailable|restart|reopen/i);
 });
 
 test('missing or new unreviewed dependencies fail without erasing the existing output', async t => {
@@ -188,8 +206,23 @@ test('Xcode Debug and Release agree on the next Apple build identity', async () 
   const project = await readFile(path.join(defaultRepoRoot, 'apps/ipad/ios/App/App.xcodeproj/project.pbxproj'), 'utf8');
   const builds = [...project.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map(match => match[1]);
   const versions = [...project.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map(match => match[1]);
-  assert.deepEqual(builds, ['10', '10']);
+  assert.deepEqual(builds, ['16', '16']);
   assert.deepEqual(versions, ['1.1.0', '1.1.0']);
+});
+
+test('the App Store icon is the reviewed opaque Phloem artwork, not the starter icon', async () => {
+  const iconRoot = path.join(defaultRepoRoot, 'apps/ipad/ios/App/App/Assets.xcassets/AppIcon.appiconset');
+  const catalog = JSON.parse(await readFile(path.join(iconRoot, 'Contents.json'), 'utf8'));
+  const entry = catalog.images.find(image => image.platform === 'ios' && image.size === '1024x1024');
+  assert.ok(entry?.filename, 'the catalog must include the iOS marketing icon');
+  const png = await readFile(path.join(iconRoot, entry.filename));
+  assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(png.toString('ascii', 12, 16), 'IHDR');
+  assert.equal(png.readUInt32BE(16), 1024);
+  assert.equal(png.readUInt32BE(20), 1024);
+  assert.equal(png[25], 2, 'the App Store icon must be RGB without an alpha channel');
+  // Update this hash only after reviewing an intentional Phloem artwork change.
+  assert.equal(hash(png), 'f683753359b3f452e53c59a3bf84cc154628982972cdef0314e2587f26bbbb31');
 });
 
 test('native AI security and privacy declarations remain attached to the app target', async () => {
@@ -206,16 +239,17 @@ test('native AI security and privacy declarations remain attached to the app tar
   assert.match(plugin, /field\.isSecureTextEntry = true/);
   assert.match(adapter, /hide\(byId\('aiKey'\)\)/);
   assert.doesNotMatch(reader, /nativePlugin\.configure\(\{provider:id,key:/);
-  for (const host of ['api.openai.com', 'api.anthropic.com']) {
+  for (const host of ['api.openai.com', 'api.anthropic.com', 'api.deepseek.com']) {
     assert.match(plugin, new RegExp(host.replaceAll('.', '\\.')));
   }
-  for (const heldHost of ['generativelanguage.googleapis.com', 'api.deepseek.com']) {
+  for (const heldHost of ['generativelanguage.googleapis.com']) {
     assert.doesNotMatch(plugin, new RegExp(heldHost.replaceAll('.', '\\.')));
   }
-  assert.match(plugin, /supportedProviders = Set\(\["openai", "anthropic"\]\)/);
-  assert.match(adapter, /'gemini', 'deepseek'/);
+  const supported = plugin.match(/supportedProviders = Set\(\[([^\]]+)\]\)/)?.[1].match(/"([^"]+)"/g).map(value => JSON.parse(value));
+  assert.deepEqual(supported?.sort(), ['anthropic', 'deepseek', 'openai']);
+  assert.match(adapter, /\['auto', 'compatible', 'gemini'\]/);
   assert.match(adapter, /providerSelect\.onchange\(\)/);
-  assert.match(reader, /\['auto','compatible','gemini','deepseek'\]\.indexOf\(cfg\.provider\)/);
+  assert.match(reader, /\['auto','compatible','gemini'\]\.indexOf\(cfg\.provider\)/);
   assert.match(plugin, /consentVersion = 2/);
   assert.match(privacy, /NSPrivacyAccessedAPICategoryUserDefaults/);
   assert.match(privacy, /CA92\.1/);

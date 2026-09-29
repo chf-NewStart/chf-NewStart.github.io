@@ -88,11 +88,11 @@ function check(name, condition, extra) {
   await deepSeekPage.click('#aiAskBtn');
   await deepSeekPage.waitForFunction(() => document.getElementById('qaList').textContent.includes('DeepSeek answer'));
   check('legacy key migrates to DeepSeek', authorization === 'Bearer legacy-test-key', authorization);
-  check('DeepSeek uses current default model', requestBody && requestBody.model === 'deepseek-v4-flash', requestBody && requestBody.model);
+  check('DeepSeek uses current default model', requestBody && requestBody.model === 'deepseek-flash', requestBody && requestBody.model);
   check('thread history reaches provider', requestBody && requestBody.messages && requestBody.messages.some(message => message.role === 'user' && message.content.includes('Summarize this.')));
   await deepSeekPage.click('#settingsBtn');
   check('migrated provider appears in settings', await deepSeekPage.locator('#aiProvider').inputValue() === 'deepseek');
-  check('editable model appears in settings', await deepSeekPage.locator('#aiModel').inputValue() === 'deepseek-v4-flash');
+  check('editable model appears in settings', await deepSeekPage.locator('#aiModel').inputValue() === 'deepseek-flash');
   await deepSeekContext.close();
 
   const setupSourceContext = await browser.newContext();

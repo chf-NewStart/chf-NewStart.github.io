@@ -18,7 +18,7 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
     private static let consentVersion = 2
     private static let installMarkerKey = "phloem.ai.install-marker.v1"
     private static let knownProviders = Set(["gemini", "deepseek", "openai", "anthropic"])
-    private static let supportedProviders = Set(["openai", "anthropic"])
+    private static let supportedProviders = Set(["deepseek", "openai", "anthropic"])
 
     override func load() {
         super.load()
@@ -144,10 +144,16 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func status(_ call: CAPPluginCall) {
         do {
             var providers: [String] = []
+            var consentedProviders: [String] = []
             for provider in Self.supportedProviders.sorted() where try credential(provider: provider) != nil {
                 providers.append(provider)
+                if validConsent(for: provider) {
+                    consentedProviders.append(provider)
+                }
             }
-            call.resolve(["providers": providers])
+            call.resolve(["providers": providers,
+                          "consentedProviders": consentedProviders,
+                          "consentVersion": Self.consentVersion])
         } catch {
             call.reject(error.localizedDescription, "AI_STATUS_FAILED", error)
         }
@@ -282,6 +288,7 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func providerLabel(_ provider: String) -> String {
         switch provider {
+        case "deepseek": return "DeepSeek"
         case "openai": return "OpenAI"
         case "anthropic": return "Anthropic"
         default: return "AI"
@@ -290,6 +297,7 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func providerDestination(_ provider: String) -> String {
         switch provider {
+        case "deepseek": return "api.deepseek.com"
         case "openai": return "api.openai.com"
         case "anthropic": return "api.anthropic.com"
         default: return ""
@@ -304,6 +312,19 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
         let body: Any
 
         switch provider {
+        case "deepseek":
+            url = URL(string: "https://api.deepseek.com/chat/completions")!
+            headers["Authorization"] = "Bearer \(key)"
+            var deepseekBody: [String: Any] = [
+                "model": model,
+                "max_tokens": maxTokens,
+                "thinking": ["type": "disabled"],
+                "messages": messages.map { ["role": $0.role, "content": $0.content] }
+            ]
+            if system.range(of: "return only json", options: .caseInsensitive) != nil {
+                deepseekBody["response_format"] = ["type": "json_object"]
+            }
+            body = deepseekBody
         case "openai":
             url = URL(string: "https://api.openai.com/v1/responses")!
             headers["Authorization"] = "Bearer \(key)"
@@ -337,6 +358,14 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
     private func responseText(provider: String, data: Data) throws -> String {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw PluginError.invalidResponse
+        }
+        if provider == "deepseek" {
+            guard let choices = json["choices"] as? [[String: Any]],
+                  let message = choices.first?["message"] as? [String: Any],
+                  let text = message["content"] as? String else {
+                throw PluginError.invalidResponse
+            }
+            return text
         }
         if provider == "openai" {
             if let text = json["output_text"] as? String, !text.isEmpty { return text }

@@ -12,6 +12,7 @@
   var AI_PASS_SERVICE_KEY = 'readingRoom.ai.passService.v1';
   var PAPER_APPEARANCE_KEY = 'readingRoom.paperAppearance.v1';
   var HIGHLIGHT_COLOR_KEY = 'readingRoom.highlightColor.v1';
+  var pdfInkController=null,pdfWriteMode=false,pdfInkTool='pen',pdfInkColor='black',pdfInkWidth=3;
   var AI_PROVIDERS = {
     gemini:{label:'Gemini API',model:'gemini-3.6-flash'},
     deepseek:{label:'DeepSeek',model:'deepseek-flash'},
@@ -20,11 +21,12 @@
     compatible:{label:'OpenAI-compatible',model:'',endpoint:''}
   };
   var NATIVE_AI_CONSENT_VERSION = 2;
+  var nativeAiConsentedProviders = {}, nativeAiSettingsEpoch = 0;
   function nativeAiPlugin(){return window.PHLOEM_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemAI||null;}
   function nativeAiDestination(id){return{id:'',gemini:'generativelanguage.googleapis.com',deepseek:'api.deepseek.com',openai:'api.openai.com',anthropic:'api.anthropic.com'}[id]||'';}
   function nativeAiPrivacy(id){return{
     gemini:{url:'https://ai.google.dev/gemini-api/terms',label:'Google Gemini terms and data use',detail:'Google’s data use depends on your API plan; unpaid Gemini services may use submitted content to improve Google products and may involve human review.'},
-    deepseek:{url:'https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html',label:'DeepSeek privacy policy',detail:'DeepSeek says it collects prompts and related technical data and may process and store personal data in the People’s Republic of China.'},
+    deepseek:{url:'https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html',label:'DeepSeek privacy policy',detail:'DeepSeek’s published policy describes processing and storage in China, retention for service and other stated purposes, and possible model improvement use. Phloem cannot guarantee no training or a fixed deletion period for API content. Review your DeepSeek account terms before sending sensitive material.'},
     openai:{url:'https://developers.openai.com/api/docs/guides/your-data',label:'OpenAI API data controls',detail:'OpenAI says API data is not used for model training unless the API customer opts in; abuse-monitoring logs may retain prompts and responses for up to 30 days by default.'},
     anthropic:{url:'https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data',label:'Anthropic API data retention',detail:'Anthropic says API inputs and outputs are not used for training by default. Standard content is normally deleted within 30 days, but safety, feedback, legal, contractual, or feature-specific exceptions can last longer.'}
   }[id]||{url:'',label:'Provider privacy information',detail:'Review the provider’s terms and privacy policy before sending reading context.'};}
@@ -142,7 +144,7 @@
     if(cfg.providers.anthropic.model==='claude-sonnet-4-20250514')cfg.providers.anthropic.model='claude-sonnet-4-6';
     var legacy='';if(!window.PHLOEM_NATIVE)try{legacy=localStorage.getItem(LEGACY_AI_KEY)||'';}catch(e){}
     if(legacy&&!cfg.providers.deepseek.key){cfg.providers.deepseek.key=legacy;if(!saved)cfg.provider='deepseek';try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg));}catch(e){}}
-    if(window.PHLOEM_NATIVE){var scrubbed=false;Object.keys(cfg.providers).forEach(function(id){if(cfg.providers[id].key)scrubbed=true;cfg.providers[id].key='';cfg.providers[id].keyPresent=!!cfg.providers[id].keyPresent;if((id==='gemini'||id==='deepseek')&&cfg.providers[id].keyPresent){cfg.providers[id].keyPresent=false;scrubbed=true;}});if(['auto','compatible','gemini','deepseek'].indexOf(cfg.provider)>=0){cfg.provider='openai';scrubbed=true;}if(scrubbed)try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg));localStorage.removeItem(LEGACY_AI_KEY);}catch(e){}}
+    if(window.PHLOEM_NATIVE){var scrubbed=false;Object.keys(cfg.providers).forEach(function(id){if(cfg.providers[id].key)scrubbed=true;cfg.providers[id].key='';cfg.providers[id].keyPresent=!!cfg.providers[id].keyPresent;if(id==='gemini'&&cfg.providers[id].keyPresent){cfg.providers[id].keyPresent=false;scrubbed=true;}});if(['auto','compatible','gemini'].indexOf(cfg.provider)>=0){cfg.provider='openai';scrubbed=true;}if(scrubbed)try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg));localStorage.removeItem(LEGACY_AI_KEY);}catch(e){}}
     if(!AI_PROVIDERS[cfg.provider]&&cfg.provider!=='auto')cfg.provider='auto';return cfg;
   }
   function saveAiSettings(){try{var saved=aiSettings;if(window.PHLOEM_NATIVE){saved=JSON.parse(JSON.stringify(aiSettings));Object.keys(saved.providers||{}).forEach(function(id){saved.providers[id].key='';});}localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(saved));}catch(e){} }
@@ -242,7 +244,7 @@
   }
   async function runAiMessages(messages,maxTokens,onProgress,routeOverride){
     aiSettings=loadAiSettings();var route=routeOverride||activeAiRoute(false);if(!route)throw aiSetupError('Choose an AI provider and add its API key in settings.');
-    var nativePlugin=nativeAiPlugin();if(nativePlugin){if(route.id!=='openai'&&route.id!=='anthropic')throw aiSetupError('Choose OpenAI or Anthropic in iPad settings.');aiProgress(onProgress,'Asking '+route.label+'…');try{return await nativePlugin.request({provider:route.id,model:route.cfg.model,messages:messages,maxTokens:maxTokens,consentVersion:NATIVE_AI_CONSENT_VERSION});}catch(error){throw aiSetupError(error&&error.message||'The native AI request failed.');}}
+    var nativePlugin=nativeAiPlugin();if(window.PHLOEM_NATIVE&&!nativePlugin)throw aiSetupError('The secure iPad AI connection is unavailable. Close and reopen Phloem, then try again.');if(nativePlugin){if(route.id!=='deepseek'&&route.id!=='openai'&&route.id!=='anthropic')throw aiSetupError('Choose DeepSeek, OpenAI, or Anthropic in iPad settings.');aiProgress(onProgress,'Asking '+route.label+'…');try{return await nativePlugin.request({provider:route.id,model:route.cfg.model,messages:messages,maxTokens:maxTokens,consentVersion:NATIVE_AI_CONSENT_VERSION});}catch(error){throw aiSetupError(error&&error.message||'The native AI request failed.');}}
     if(route.id==='browser')return runBrowserAi(messages,onProgress);
     aiProgress(onProgress,'Asking '+route.label+'…');return runCloudAi(route,messages,maxTokens);
   }
@@ -276,6 +278,7 @@
   }
   function newerPdfPosition(first,second){var a=normalizedPdfPosition(first),b=normalizedPdfPosition(second);return !a?b:!b?a:((b.updatedAt||0)>(a.updatedAt||0)?b:a);}
   function normalize(ch){
+    if(window.PhloemInk&&(ch.kind==='pdf'||ch.pdfInk||ch.pdfInkDeleted)){var ink=window.PhloemInk.normalize(ch.pdfInk,ch.pdfInkDeleted);ch.pdfInk=ink.pages;ch.pdfInkDeleted=ink.deleted;}
     ch.notes = ch.notes&&typeof ch.notes==='object'&&!Array.isArray(ch.notes)?ch.notes:{}; ch.pageNotes = ch.pageNotes&&typeof ch.pageNotes==='object'&&!Array.isArray(ch.pageNotes)?ch.pageNotes:{}; ch.tags = Array.isArray(ch.tags)?ch.tags:[];
     ch.questions = Array.isArray(ch.questions)?ch.questions:[]; ch.highlights = ch.highlights&&typeof ch.highlights==='object'&&!Array.isArray(ch.highlights)?ch.highlights:{}; ch.textHighlights = Array.isArray(ch.textHighlights)?ch.textHighlights:[];
     if(!Array.isArray(ch.aiThreads))ch.aiThreads=[];
@@ -363,6 +366,7 @@
   function titleQuality(ch){var title=String(ch.title||''),score=Math.min(title.length,220);if(!title||/^untitled$/i.test(title))score-=500;if(ch.sourceName&&title===filenameTitle(ch.sourceName))score-=120;if(ch.kind==='pdf'&&pdfTitleLooksGenerated(title))score-=160;return score;}
   function mergeDuplicateRecord(keep,extra){
     normalize(keep);normalize(extra);
+    mergePdfInk(keep,keep,extra);
     Object.keys(extra).forEach(function(k){if(k!=='id'&&(keep[k]===undefined||keep[k]===null||keep[k]===''))keep[k]=extra[k];});
     if(titleQuality(extra)>titleQuality(keep))keep.title=extra.title;
     if(String(extra.authors||'').length>String(keep.authors||'').length)keep.authors=extra.authors;
@@ -659,6 +663,7 @@
   var historyEcho=0,navFromPop=false;
   function showPage(id){
     var wasReading=!byId('readerPage').classList.contains('hidden');
+    if(id!=='readerPage')setPdfWriteMode(false);
     if(wasReading&&id!=='readerPage')saveCurrentReadingPosition(false);
     ['libraryPage','reviewPage','connectionsPage','readerPage'].forEach(function(v){ byId(v).classList.toggle('hidden', v !== id); });
     document.documentElement.classList.toggle('reading-root', id === 'readerPage');
@@ -1134,7 +1139,7 @@
     var local=localReadingAvailability(ch),localMarkup='<div class="cover-local '+local.state+'" id="paperLocalStatus" data-paper-id="'+esc(ch.id)+'" data-local-availability="'+local.state+'" role="status"><span class="cover-local-dot" aria-hidden="true"></span><span>'+esc(local.label)+'</span></div>';
     var drive=binarySourceSpec(ch)?gdrivePaperStatus(ch):null,driveMarkup=drive?'<div class="cover-cloud '+drive.tone+'" id="paperDriveStatus" data-paper-id="'+esc(ch.id)+'" data-backup-status="'+esc(drive.tone)+'" role="status" aria-label="'+esc(drive.label)+'"><span class="cover-cloud-dot" aria-hidden="true"></span><span class="cover-cloud-label">'+esc(drive.label)+'</span><span class="cover-cloud-track" aria-hidden="true"><i style="--cloud-progress:'+drive.progress+'%"></i></span></div>':'';
     var detail=document.createElement('div');detail.className='open-book-wrap';detail.id='selectedPaper';detail.setAttribute('aria-live','polite');
-    var sourceSpec=binarySourceSpec(ch),downloadMarkup=sourceSpec?'<button class="soft-button download-paper" type="button" aria-label="Export original '+esc(sourceSpec.label)+' for '+esc(title)+'">Export '+(ch.sourceType==='docx'?'Word':'PDF')+'</button>':'',offlineMarkup=ch.kind==='pdf'&&!local.available?'<button class="soft-button download-offline" type="button"'+(local.known?'':' disabled')+'>'+(local.known?'Download for offline':'Checking device…')+'</button>':'';
+    var sourceSpec=binarySourceSpec(ch),downloadMarkup=sourceSpec?'<button class="soft-button download-paper" type="button" title="Original file only; handwriting stays in Phloem and library backups" aria-label="Export original '+esc(sourceSpec.label)+' for '+esc(title)+'">Export original '+(ch.sourceType==='docx'?'Word':'PDF')+'</button>':'',offlineMarkup=ch.kind==='pdf'&&!local.available?'<button class="soft-button download-offline" type="button"'+(local.known?'':' disabled')+'>'+(local.known?'Download for offline':'Checking device…')+'</button>':'';
     detail.innerHTML='<span class="cover-focus-guide" aria-hidden="true"><span>Focus guide</span></span><article class="closed-book" aria-label="Selected paper: '+esc(title)+'">'+renderBookPunches(ch,false)+'<div class="closed-book-inner"><div class="closed-book-kicker">'+esc(kind)+' · field notebook</div><h3 class="closed-book-title'+titleClass+'">'+esc(title)+'</h3><p class="closed-book-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div><div class="cover-availability" aria-label="Reading and backup availability">'+localMarkup+driveMarkup+'</div><div class="cover-record"><div class="cover-stat"><span>Marks</span><b>'+stats.notes+'</b></div><div class="cover-stat"><span>Questions</span><b>'+stats.questions+'</b></div><div class="cover-stat"><span>Last opened</span><b>'+esc(openedDate(ch))+'</b></div></div><div class="cover-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="cover-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div><div class="cover-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button>'+offlineMarkup+downloadMarkup+'<button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div></div></article>';
     var closed=detail.querySelector('.closed-book'),palette=cover||BOOK_SPINES[0];closed.style.setProperty('--cover',palette.cover);closed.style.setProperty('--cover-ink',palette.ink);
     detail.querySelector('.open-selected').onclick=function(){openReader(ch.id);};
@@ -3024,7 +3029,8 @@
     var notesPanel=byId('notesPanel'),notesSelected=notesPanel&&!notesPanel.classList.contains('hidden');
     var notesOpen=!!notesSelected&&(temporaryNotebookMode()?byId('notebook').classList.contains('sheet-open'):!notebookCollapsed);
     notes.classList.toggle('active',notesOpen);notes.setAttribute('aria-expanded',String(notesOpen));
-    if(undo)undo.disabled=!(highlightHistory&&highlightHistory.length);
+    if(undo){undo.disabled=!(highlightHistory&&highlightHistory.length);undo.innerHTML='<span aria-hidden="true">↶</span> Undo last edit';}
+    var zenUndo=byId('zenUndo');if(zenUndo)zenUndo.disabled=!(highlightHistory&&highlightHistory.length);syncPdfInkUi();
   }
   function syncTabletReaderUi(){
     var notebook=byId('notebook'),wasOverlay=document.body.classList.contains('tablet-notes-overlay'),wasPinned=document.body.classList.contains('tablet-notes-pinned'),sheetWasOpen=notebook.classList.contains('sheet-open');
@@ -3177,6 +3183,7 @@
   };
   byId('touchMore').onclick=function(){var open=byId('touchDockMenu').classList.contains('hidden');clearPendingSelection();setTouchHighlightPaletteOpen(false);closeTouchDockMore(false);if(open){byId('touchDockMenu').classList.remove('hidden');this.setAttribute('aria-expanded','true');var first=byId('touchDockMenu').querySelector('button:not([disabled])');if(first)first.focus();}};
   byId('touchUndo').onclick=function(){undoHighlight();syncTouchDockStates();closeTouchDockMore(false);};
+  byId('zenUndo').onclick=function(){closeZenPopouts(false);undoHighlight();};
   byId('touchFind').onclick=function(){closeTouchDockMore(false);toggleFindBar(true,false,byId('touchMore'));};
   byId('touchDiscuss').onclick=function(){toggleTouchPanel('aiPanel');closeTouchDockMore(false);};
   byId('touchSettings').onclick=function(){var open=byId('comfortBar').classList.contains('hidden');closeTouchDockMore(false);setComfortBarOpen(open,false,byId('touchMore'));};
@@ -3787,6 +3794,7 @@
     pdfZoom=saved>0?Math.max(.5,Math.min(4,saved)):1;pdfFit=pdfZoom===1;scrollPdfZoom=pdfZoom;scrollPdfFit=pdfFit;
   }
   async function openReader(id,preparedDoc){
+    setPdfWriteMode(false);
     /* pdfViews must go too: renderPdfPage's spot-preserving rebuild otherwise measures
        the PREVIOUS paper's pages — an extension import into an open reader landed the
        new paper mid-page, at wherever the old one had been scrolled. */
@@ -3877,6 +3885,7 @@
   }
   function updateReaderMode(){
     var ch=find(currentId), isPdf=ch&&ch.kind==='pdf', pdf=readerMode==='pdf'&&isPdf;
+    if(!pdf)setPdfWriteMode(false);syncPdfInkUi();
     byId('pdfFrame').classList.toggle('hidden',!pdf); byId('textDocument').classList.toggle('hidden',pdf);
     byId('prevPage').classList.toggle('hidden',!pdf); byId('nextPage').classList.toggle('hidden',!pdf); byId('pageNumber').classList.toggle('hidden',!pdf);
     byId('zoomTools').classList.toggle('hidden',!pdf);
@@ -4150,6 +4159,7 @@
   }
   function currentBuildKey(){var pane=byId('documentPane');return pdfDoc?[currentId,pdfDoc.numPages,pdfFit,pdfZoom,comfort.pdfLayout,bookSpread(),pane.clientWidth,pane.clientHeight].join('|'):'';}
   async function buildPdfScroll(){
+    if(pdfInkController)pdfInkController.cancel();
     if(!pdfDoc)return;hidePdfReferencePreview();cancelActiveBookCurl(true,'rebuild');var buildDoc=pdfDoc,buildId=++pdfBuildId,frame=byId('pdfFrame');setPagedReady(false);
     var first=await buildDoc.getPage(1),natural=first.getViewport({scale:1}),scale=pageScale(natural),builtZoom=currentZoom();
     if(buildId!==pdfBuildId||pdfDoc!==buildDoc)return;
@@ -4263,7 +4273,7 @@
           view.links.appendChild(el);
         });
       }catch(annotError){}
-      view.rendered=true;view.renderFailures=0;renderedPages.push(n);renderPdfHighlights(n);renderPdfReviewFocus(n);freeFarPages();
+      view.rendered=true;view.renderFailures=0;renderedPages.push(n);renderPdfHighlights(n);renderPdfInk(n);renderPdfReviewFocus(n);freeFarPages();syncPdfInkUi();
       var activeFind=findMatches[findIndex],findQuery=byId('findInput').value.trim();
       if(activeFind&&activeFind.page===n&&findQuery&&!byId('findBar').classList.contains('hidden'))flashPdfFind(n,findQuery,activeFind.occurrence,findPaintToken);
     }catch(e){view.renderFailures=(+view.renderFailures||0)+1;}
@@ -4279,6 +4289,7 @@
       if(Math.abs(n-currentPage)<=(tight?3:5))return true;
       var view=pdfViews[n-1];if(!view)return false;
       view.canvas.width=0;view.canvas.height=0;view.text.innerHTML='';view.highlights.innerHTML='';view.rendered=false;
+      var inkLayer=view.sheet.querySelector('.pdf-ink-layer');if(inkLayer)inkLayer.remove();
       if(pageObserver){pageObserver.unobserve(view.holder);pageObserver.observe(view.holder);}
       return false;
     });
@@ -5128,6 +5139,7 @@
     if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
     if(e.key==='Escape'&&zenOn&&closeZenPopouts(true)){e.preventDefault();return;}
     if(e.key==='Escape'&&highlightEraseMode){e.preventDefault();setHighlightEraseMode(false);showReaderToast('Eraser off');return;}
+    if(e.key==='Escape'&&pdfWriteMode){e.preventDefault();setPdfWriteMode(false);showReaderToast('Write mode off');return;}
     if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
     if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
@@ -6026,10 +6038,12 @@
   function fineHighlightUi(){return !!(matchMedia('(pointer: fine)').matches||matchMedia('(any-pointer: fine)').matches);}
   function highlightColorLabel(color){return color==='mint'?'Mint':color==='coral'?'Coral':color==='blue'?'Blue':'Yellow';}
   function setHighlightPaletteOpen(on){
+    if(on&&pdfWriteMode)setPdfWriteMode(false);
     var palette=byId('highlightPalette'),button=byId('highlightColorBtn');if(!palette||!button)return;
     palette.classList.toggle('hidden',!on);button.setAttribute('aria-expanded',String(!!on));
   }
   function setTouchHighlightPaletteOpen(on){
+    if(on&&pdfWriteMode)setPdfWriteMode(false);
     var palette=byId('touchHighlightPalette'),button=byId('touchHighlight');if(!palette||!button)return;
     on=!!on&&!pendingSelection;palette.classList.toggle('hidden',!on);
     if(pendingSelection){button.removeAttribute('aria-expanded');button.removeAttribute('aria-controls');}
@@ -6052,6 +6066,7 @@
   }
   var highlightEraseMode=false;
   function setHighlightEraseMode(on,preserveSelection){
+    if(on&&pdfWriteMode)setPdfWriteMode(false);
     if(!preserveSelection)clearPendingSelection();highlightEraseMode=!!on;
     if(highlightEraseMode)setHighlightMode(false);
     syncHighlightColorUi();syncTouchDockStates();
@@ -6062,12 +6077,14 @@
      tap. This leaves iPad handles free to refine either edge without a save timer. */
   function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');var inputType=selectionPointerType||selectionInputType;if(highlightMode&&!markerPointerDown&&inputType!=='touch'&&!suppressHighlightAutoCommit)scheduleHighlightCommit(550);syncHighlightColorUi();syncTouchDockStates();}
   function setHighlightColor(color){
+    if(pdfWriteMode)setPdfWriteMode(false);
     if(highlightEraseMode)setHighlightEraseMode(false);
     highlightColor=['yellow','mint','coral','blue'].indexOf(color)>=0?color:'yellow';
     try{localStorage.setItem(HIGHLIGHT_COLOR_KEY,highlightColor);}catch(e){}
     syncHighlightColorUi();
   }
   function setHighlightMode(on){
+    if(on&&pdfWriteMode)setPdfWriteMode(false);
     if(on&&highlightEraseMode)setHighlightEraseMode(false);
     highlightMode=!!on;var btn=byId('highlightBtn');if(!btn)return;
     if(!highlightMode)clearTimeout(highlightCommitTimer);
@@ -6167,6 +6184,51 @@
      undo pipeline. A DOM Range gives us exact PDF geometry without iOS selection
      handles or Scribble deciding what the Pencil gesture means. */
   var pencilStroke=null,pencilSuppressClickUntil=0,pencilSuppressedTouchId=null;
+  /* Handwriting belongs to PDF page coordinates, not selectable text. Its separate
+     vector layer survives zoom/OCR and shares the normal chronological Undo trail. */
+  function mergePdfInk(target,first,second){
+    if(!window.PhloemInk)return false;var before=JSON.stringify([target.pdfInk,target.pdfInkDeleted]),merged=window.PhloemInk.merge(first.pdfInk,first.pdfInkDeleted,second.pdfInk,second.pdfInkDeleted);target.pdfInk=merged.pages;target.pdfInkDeleted=merged.deleted;return before!==JSON.stringify([target.pdfInk,target.pdfInkDeleted]);
+  }
+  function pdfInkStamp(ch){var stamp=now();Object.values(ch.pdfInkDeleted||{}).forEach(function(t){stamp=Math.max(stamp,t+1);});Object.values(ch.pdfInk||{}).forEach(function(list){list.forEach(function(s){stamp=Math.max(stamp,(s.updatedAt||s.at||0)+1);});});return stamp;}
+  function renderPdfInk(page){
+    var ch=find(currentId);if(!ch||!window.PhloemInk)return;
+    (page?[+page]:renderedPages.slice()).forEach(function(n){var view=pdfViews[n-1];if(view&&view.rendered)window.PhloemInk.render(view.sheet,(ch.pdfInk||{})[n]||[]);});
+  }
+  function syncPdfInkUi(){
+    var ch=find(currentId),available=!!(window.PhloemInk&&ch&&ch.kind==='pdf'&&readerMode==='pdf'),active=available&&pdfWriteMode;
+    document.querySelectorAll('[data-pdf-write-toggle]').forEach(function(button){button.classList.toggle('hidden',!available);button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(!!active));});
+    var toolbar=byId('pdfInkToolbar');if(!toolbar)return;toolbar.classList.toggle('hidden',!active);document.body.classList.toggle('pdf-ink-active',!!active);
+    document.querySelectorAll('[data-pdf-ink-tool]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.pdfInkTool===pdfInkTool));});
+    document.querySelectorAll('[data-pdf-ink-color]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.pdfInkColor===pdfInkColor));});
+    document.querySelectorAll('[data-pdf-ink-width]').forEach(function(button){button.setAttribute('aria-pressed',String(+button.dataset.pdfInkWidth===pdfInkWidth));});
+    byId('pdfInkUndo').disabled=!(highlightHistory&&highlightHistory.length);byId('pdfInkRedo').disabled=!(highlightFuture&&highlightFuture.length);
+  }
+  function setPdfWriteMode(on){
+    if(pdfInkController)pdfInkController.cancel();
+    var ch=find(currentId);pdfWriteMode=!!(on&&window.PhloemInk&&ch&&ch.kind==='pdf'&&readerMode==='pdf');
+    if(pdfWriteMode){pdfInkTool='pen';finishPencilStroke(true);setHighlightEraseMode(false);setHighlightMode(false);clearPendingSelection();setTouchHighlightPaletteOpen(false);setHighlightPaletteOpen(false);closeZenPopouts(false);setDrift(0);}
+    syncPdfInkUi();
+  }
+  function commitPdfInk(page,stroke){
+    var ch=find(currentId);if(!ch)return;var stamp=pdfInkStamp(ch),item=Object.assign({id:uid('ink'),at:stamp,updatedAt:stamp},stroke);ch.pdfInk=ch.pdfInk||{};var list=ch.pdfInk[page]||(ch.pdfInk[page]=[]);list.push(item);recordHighlightAction({kind:'ink',op:'add',page:page,entries:[{item:item,index:list.length-1}]});touch(ch);renderPdfInk(page);syncPdfInkUi();
+  }
+  function erasePdfInk(page,ids){
+    var ch=find(currentId);if(!ch)return;var wanted=new Set(ids),list=(ch.pdfInk||{})[page]||[],entries=[];list.forEach(function(item,index){if(wanted.has(item.id))entries.push({item:item,index:index});});if(!entries.length)return;
+    var stamp=pdfInkStamp(ch);ch.pdfInkDeleted=ch.pdfInkDeleted||{};entries.forEach(function(entry){ch.pdfInkDeleted[entry.item.id]=stamp;});ch.pdfInk[page]=list.filter(function(item){return !wanted.has(item.id);});recordHighlightAction({kind:'ink',op:'erase',page:page,entries:entries});touch(ch);renderPdfInk(page);syncPdfInkUi();
+  }
+  if(window.PhloemInk)pdfInkController=window.PhloemInk.create({
+    pane:byId('documentPane'),
+    canStart:function(page){return !!(pdfViews[page-1]&&pdfViews[page-1].rendered);},
+    getContext:function(){var ch=find(currentId);return pdfWriteMode&&readerMode==='pdf'&&ch&&ch.kind==='pdf'&&!byId('readerPage').classList.contains('hidden')&&!bookCurlOwned&&!pagedTurning&&!reviewLinkTargetId&&!guideDragging&&!recallActive?{id:currentId}:null;},
+    getTool:function(){return pdfInkTool;},getColor:function(){return pdfInkColor;},getWidth:function(){return pdfInkWidth;},getStrokes:function(page){var ch=find(currentId);return ch&&(ch.pdfInk||{})[page]||[];},
+    onStart:function(page){clearPendingSelection();clearTimeout(guideLockClickTimer);hidePdfReferencePreview();holdDrift(1200);if(currentPage!==page){currentPage=page;updatePageChrome();loadPageNote();}selectionInputType='pen';suppressHighlightAutoCommit=true;},
+    onCommit:commitPdfInk,onErase:erasePdfInk
+  });
+  document.querySelectorAll('[data-pdf-write-toggle]').forEach(function(button){button.onclick=function(){setPdfWriteMode(!pdfWriteMode);showReaderToast(pdfWriteMode?'Write on the PDF with Pencil · fingers still scroll':'Write mode off · Pencil highlights text');};});
+  document.querySelectorAll('[data-pdf-ink-tool]').forEach(function(button){button.onclick=function(){if(pdfInkController)pdfInkController.cancel();pdfInkTool=button.dataset.pdfInkTool;syncPdfInkUi();};});
+  document.querySelectorAll('[data-pdf-ink-color]').forEach(function(button){button.onclick=function(){if(pdfInkController)pdfInkController.cancel();pdfInkColor=button.dataset.pdfInkColor;pdfInkTool='pen';syncPdfInkUi();};});
+  document.querySelectorAll('[data-pdf-ink-width]').forEach(function(button){button.onclick=function(){if(pdfInkController)pdfInkController.cancel();pdfInkWidth=+button.dataset.pdfInkWidth;pdfInkTool='pen';syncPdfInkUi();};});
+  byId('pdfInkDone').onclick=function(){setPdfWriteMode(false);};byId('pdfInkUndo').onclick=undoHighlight;byId('pdfInkRedo').onclick=redoHighlight;
   function eraserTargets(host){
     var ch=find(currentId),page=host.closest('.pdf-page'),base=page&&page.getBoundingClientRect(),kind=readerMode==='pdf'?'pdf':ch.kind==='pdf'?'reader':'text';
     return highlightListFor(ch,kind,page&&page.dataset.page).filter(function(item){return kind==='pdf'||+item.para===+host.dataset.paraIndex;}).map(function(item,index){
@@ -6229,6 +6291,7 @@
     return g&&g.documentId===currentId&&g.mode===readerMode&&g.host.isConnected&&(g.erasing||g.host.contains(g.start.node))&&!byId('readerPage').classList.contains('hidden');
   }
   function startPencilStroke(e,id,source){
+    if(pdfWriteMode&&readerMode==='pdf')return false;
     if(pencilStroke||bookCurlOwned||pagedTurning||reviewLinkTargetId||guideDragging||selectionPointerDown||e.button>0)return false;
     var target=e.target,host=target&&target.closest&&target.closest(readerMode==='pdf'?'.text-layer':'.original');
     if(!host&&highlightEraseMode&&readerMode==='pdf'){var page=target.closest('.pdf-page');host=page&&page.querySelector('.text-layer');}
@@ -6463,9 +6526,14 @@
   /* One shared undo trail for marker work: strokes, erasures and recolors all rewind
      in order (⌘Z) and roll forward again (⇧⌘Z / ⌘Y). Cleared when another paper opens. */
   var highlightHistory=[],highlightFuture=[];
-  function recordHighlightAction(action){highlightHistory.push(action);if(highlightHistory.length>100)highlightHistory.shift();highlightFuture=[];syncTouchDockStates();}
+  function recordHighlightAction(action){highlightHistory.push(action);if(highlightHistory.length>100)highlightHistory.shift();highlightFuture=[];syncTouchDockStates();syncPdfInkUi();}
   function applyHighlightAction(action,undoing){
     var ch=find(currentId);if(!ch)return false;
+    if(action.kind==='ink'){
+      if(pdfInkController)pdfInkController.cancel();var stamp=pdfInkStamp(ch);ch.pdfInk=ch.pdfInk||{};ch.pdfInkDeleted=ch.pdfInkDeleted||{};var inkList=ch.pdfInk[action.page]||(ch.pdfInk[action.page]=[]),insert=action.op==='add'?!undoing:undoing;
+      action.entries.forEach(function(entry){var index=inkList.findIndex(function(item){return item.id===entry.item.id;});if(insert){var restored=Object.assign({},entry.item,{updatedAt:stamp});if(index<0)inkList.splice(Math.min(entry.index,inkList.length),0,restored);else inkList[index]=restored;}else{if(index>=0)inkList.splice(index,1);ch.pdfInkDeleted[entry.item.id]=stamp;}});
+      touch(ch);renderPdfInk(action.page);return true;
+    }
     if(action.op==='erase'){
       /* One eraser stroke is one reversible edit, including pre-existing stacked
          ink. Keep the original records, notes, IDs and stacking order for Undo. */
@@ -6498,14 +6566,16 @@
     return true;
   }
   function undoHighlight(){
+    if(pdfInkController)pdfInkController.cancel();
     var action=highlightHistory.pop();
     if(!action){showReaderToast('Nothing to undo');return;}
-    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();
+    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.kind==='ink'?'Handwriting change undone':action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();syncPdfInkUi();
   }
   function redoHighlight(){
+    if(pdfInkController)pdfInkController.cancel();
     var action=highlightFuture.pop();
     if(!action){showReaderToast('Nothing to redo');return;}
-    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();
+    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.kind==='ink'?'Handwriting change redone':action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();syncPdfInkUi();
   }
   /* A saved highlight reuses the same passage card as a fresh selection. Its small
      management row adds recolor/remove without sending the reader to another UI. */
@@ -7172,22 +7242,31 @@
     if(id==='compatible')return 'For OpenRouter, a local model gateway, or another service that accepts OpenAI-style chat completions. The endpoint must allow browser requests (CORS).';
     return 'For reviewer files, exact quoted passages are linked locally first; '+AI_PROVIDERS[id].label+' handles classification and the remaining passage matches in parallel. Other AI questions also use '+AI_PROVIDERS[id].label+'. The key is excluded from library sync and backups.';
   }
+  function renderNativeAiConsent(id,review){
+    var cfg=aiSettings.providers[id]||{},nativeCloud=!!nativeAiPlugin()&&!!AI_PROVIDERS[id],enabled=nativeCloud&&cfg.keyPresent&&!!nativeAiConsentedProviders[id];
+    byId('nativeAiConsent').classList.toggle('hidden',!nativeCloud||(enabled&&!review));
+    byId('nativeAiEnabled').classList.toggle('hidden',!enabled);
+    byId('nativeAiConsentLabel').classList.toggle('hidden',!!enabled);
+    byId('nativeAiReviewConsent').setAttribute('aria-expanded',String(!!(enabled&&review)));
+    byId('nativeAiReviewConsent').textContent=review?'Hide data sharing':'Review data sharing';
+    if(enabled){byId('nativeAiEnabledText').textContent=AI_PROVIDERS[id].label+' AI enabled. Your age confirmation and data-sharing consent are saved.';byId('nativeAiConsentCheck').checked=false;}
+    byId('aiKeyRemove').classList.toggle('hidden',!nativeCloud||!cfg.keyPresent);
+  }
   function renderAiProviderFields(){
     var id=byId('aiProvider').value,cfg=aiSettings.providers[id]||{},cloud=id!=='auto',prepare=byId('aiPrepareLocal'),nativePlugin=nativeAiPlugin();byId('aiCloudFields').classList.toggle('hidden',!cloud);byId('aiEndpointFields').classList.toggle('hidden',id!=='compatible');byId('aiProviderNote').textContent=aiProviderNote(id);prepare.classList.toggle('hidden',!!nativePlugin||id!=='auto'||!browserLanguageModel());prepare.disabled=false;prepare.textContent='Prepare on-device Gemini';setTaskProgress('aiKeyProgress',false);
-    var nativeConsent=byId('nativeAiConsent');nativeConsent.classList.toggle('hidden',!nativePlugin||!cloud);if(nativePlugin&&cloud){var privacy=nativeAiPrivacy(id),policy=byId('nativeAiProviderPolicy');byId('nativeAiDisclosure').textContent='Before enabling '+AI_PROVIDERS[id].label+': you must be 18 or older. The context described above will be sent securely to '+nativeAiDestination(id)+' only when you press an AI action. Phloem does not receive it. '+privacy.detail+' AI output may be inaccurate; verify important claims. Do not send confidential, sensitive, or third-party personal information.';policy.href=privacy.url;policy.textContent=privacy.label;byId('nativeAiConsentCheck').checked=false;byId('aiKeyRemove').classList.toggle('hidden',!cfg.keyPresent);}
-    else byId('aiKeyRemove').classList.add('hidden');
+    renderNativeAiConsent(id);if(nativePlugin&&cloud){var privacy=nativeAiPrivacy(id),policy=byId('nativeAiProviderPolicy');byId('nativeAiDisclosure').textContent='Before enabling '+AI_PROVIDERS[id].label+': you must be 18 or older. The context described above will be sent securely to '+nativeAiDestination(id)+' only when you press an AI action. Phloem does not receive it. '+privacy.detail+' AI output may be inaccurate; verify important claims. Do not send confidential, sensitive, or third-party personal information.';policy.href=privacy.url;policy.textContent=privacy.label;}
     if(cloud){byId('aiKey').value=nativePlugin?'':cfg.key||'';byId('aiKey').placeholder=nativePlugin&&cfg.keyPresent?'Key stored in iOS Keychain · enter only to replace':AI_PROVIDERS[id].label+' API key';byId('aiModel').value=cfg.model||AI_PROVIDERS[id].model||'';byId('aiEndpoint').value=cfg.endpoint||'';}refreshAiSettingsStatus(id);
   }
   async function refreshAiSettingsStatus(id){
-    var status=byId('aiKeyStatus');if(id!=='auto'){var cfg=aiSettings.providers[id]||{},nativePlugin=nativeAiPlugin(),ready=cfg.key||(nativePlugin&&cfg.keyPresent);status.textContent=ready?'Ready to use '+AI_PROVIDERS[id].label+'.':nativePlugin?'No key stored. Review the disclosure, then save to enter it in an iOS secure prompt.':'Add a key, review the disclosure, and save to use '+AI_PROVIDERS[id].label+'.';return;}
+    var status=byId('aiKeyStatus');if(id!=='auto'){var cfg=aiSettings.providers[id]||{},nativePlugin=nativeAiPlugin(),ready=nativePlugin?cfg.keyPresent&&nativeAiConsentedProviders[id]:cfg.key;status.textContent=ready?'Ready to use '+AI_PROVIDERS[id].label+'.':nativePlugin?(cfg.keyPresent?'Key stored. Review and accept the data-sharing disclosure, then save to enable AI.':'No key stored. Review the disclosure, then save to enter it in an iOS secure prompt.'):'Add a key, review the disclosure, and save to use '+AI_PROVIDERS[id].label+'.';return;}
     var api=browserLanguageModel();if(!api){status.textContent='Gemini Nano is unavailable in this browser. Choose a cloud provider below to use AI.';return;}status.textContent='Checking on-device Gemini…';
     try{var availability=api.availability?await api.availability():api.capabilities?(await api.capabilities()).available:'available',prepare=byId('aiPrepareLocal');if(byId('aiProvider').value!=='auto')return;if(availability==='available'||availability==='readily'){status.textContent='On-device Gemini is ready. Your reading context stays on this device.';prepare.textContent='Gemini ready';prepare.disabled=true;setTaskProgress('aiKeyProgress',false);}else if(availability==='downloadable'||availability==='after-download'||availability==='downloading'){status.textContent=availability==='downloading'?'Chrome is downloading Gemini in the background. Press Prepare to show its progress here.':'Press Prepare on-device Gemini now so a long review does not have to wait for Chrome’s first download.';}else status.textContent='Gemini Nano cannot run on this device. Choose a cloud provider to use AI.';}
     catch(e){if(byId('aiProvider').value==='auto')status.textContent='Could not start on-device Gemini. Choose a cloud provider to use AI.';}
   }
   function fillAiSettings(){
-    aiSettings=loadAiSettings();byId('aiProvider').value=aiSettings.provider||'auto';renderAiProviderFields();
+    var statusEpoch=++nativeAiSettingsEpoch;aiSettings=loadAiSettings();byId('aiProvider').value=aiSettings.provider||'auto';byId('nativeAiConsentCheck').checked=false;renderAiProviderFields();
     var plugin=nativeAiPlugin();if(!plugin||!plugin.status)return;
-    plugin.status().then(function(result){var present={};(result.providers||[]).forEach(function(id){present[id]=true;});['gemini','deepseek','openai','anthropic'].forEach(function(id){var cfg=aiSettings.providers[id]||{};cfg.key='';cfg.keyPresent=!!present[id];aiSettings.providers[id]=cfg;});saveAiSettings();renderAiProviderFields();}).catch(function(){byId('aiKeyStatus').textContent='Phloem could not check iOS Keychain. Close settings and try again.';});
+    plugin.status().then(function(result){if(statusEpoch!==nativeAiSettingsEpoch)return;var present={};nativeAiConsentedProviders={};(result.providers||[]).forEach(function(id){present[id]=true;});if(result.consentVersion===NATIVE_AI_CONSENT_VERSION)(result.consentedProviders||[]).forEach(function(id){if(present[id])nativeAiConsentedProviders[id]=true;});['gemini','deepseek','openai','anthropic'].forEach(function(id){var cfg=aiSettings.providers[id]||{};cfg.key='';cfg.keyPresent=!!present[id];aiSettings.providers[id]=cfg;});saveAiSettings();var id=byId('aiProvider').value;renderNativeAiConsent(id);refreshAiSettingsStatus(id);}).catch(function(){if(statusEpoch===nativeAiSettingsEpoch)byId('aiKeyStatus').textContent='Phloem could not check iOS Keychain. Close settings and try again.';});
   }
   function fillPassSettings(){
     var service='';try{service=localStorage.getItem(AI_PASS_SERVICE_KEY)||'';}catch(e){}byId('aiPassService').value=service;byId('aiPassOwnerCode').value='';renderSharedAiPass();if(!loadSharedAiPass())byId('aiPassStatus').textContent=service?'Ready to make a one-review link. Your approval code is never saved here.':'Add the address of your private pass service once it is deployed.';
@@ -7223,6 +7302,7 @@
     (inc.chapters||[]).forEach(function(remote){
       if(!remote||!remote.id||state.deleted[remote.id])return;normalize(remote);var local=find(remote.id);
       if(!local){state.chapters.push(remote);if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;return;}
+      if(mergePdfInk(local,local,remote))changed=true;remote.pdfInk=local.pdfInk;remote.pdfInkDeleted=local.pdfInkDeleted;
       var localReviewAt=reviewStateStamp(local),remoteReviewAt=reviewStateStamp(remote),cursor=newerPdfPosition(local.pdfPosition,remote.pdfPosition),lastOpened=Math.max(+local.lastOpenedAt||0,+remote.lastOpenedAt||0),readThrough=Math.max(+local.readThroughPage||0,+remote.readThroughPage||0);
       if((remote.updatedAt||0)>(local.updatedAt||0)){if(localReviewAt>remoteReviewAt)copyReviewState(remote,local);if(cursor){remote.pdfPosition=cursor;remote.readPage=cursor.page;if(Number.isFinite(cursor.zoom)){remote.zoom=cursor.zoom;remote.zoomPreferenceV=PDF_ZOOM_PREFERENCE_VERSION;}}remote.lastOpenedAt=lastOpened;remote.readThroughPage=readThrough||remote.readThroughPage;state.chapters[state.chapters.indexOf(local)]=remote;if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;return;}
       if(cursor&&(!local.pdfPosition||(cursor.updatedAt||0)>(local.pdfPosition.updatedAt||0))){local.pdfPosition=cursor;local.readPage=cursor.page;if(Number.isFinite(cursor.zoom)){local.zoom=cursor.zoom;local.zoomPreferenceV=PDF_ZOOM_PREFERENCE_VERSION;}changed=true;}
@@ -7375,6 +7455,7 @@
 
   /* keys, backup, restore */
   byId('aiProvider').onchange=function(){aiSettings.provider=this.value;if(byId('nativeAiConsentCheck'))byId('nativeAiConsentCheck').checked=false;renderAiProviderFields();};
+  byId('nativeAiReviewConsent').onclick=function(){renderNativeAiConsent(byId('aiProvider').value,this.getAttribute('aria-expanded')!=='true');};
   function startLocalAiPreparation(){var button=byId('aiPrepareLocal'),status=byId('aiKeyStatus');button.disabled=true;button.textContent='Preparing…';setTaskProgress('aiKeyProgress',null);prepareBrowserAi(function(message,progress){status.textContent=message;setTaskProgress('aiKeyProgress',progress);}).then(function(){button.textContent='Gemini ready';button.disabled=true;setTaskProgress('aiKeyProgress',100);},function(error){status.textContent=error.message||'Chrome could not prepare on-device Gemini.';button.textContent='Try preparing again';button.disabled=false;setTaskProgress('aiKeyProgress',false);});}
   byId('aiPrepareLocal').onclick=startLocalAiPreparation;
   byId('aiKeySave').onclick=async function(){
@@ -7382,12 +7463,23 @@
     if(id!=='auto'){
       var key=byId('aiKey').value.trim(),model=byId('aiModel').value.trim(),endpoint=byId('aiEndpoint').value.trim();if(!model){byId('aiKeyStatus').textContent='Add a model name first.';return;}
       if(id==='compatible'){if(!endpoint){byId('aiKeyStatus').textContent='Add the full chat-completions endpoint first.';return;}try{var parsed=new URL(endpoint);if(parsed.protocol!=='https:'&&!(parsed.protocol==='http:'&&(parsed.hostname==='localhost'||parsed.hostname==='127.0.0.1')))throw new Error();}catch(e){byId('aiKeyStatus').textContent='Use an HTTPS endpoint, or HTTP only for localhost.';return;}}
-      var nativePlugin=nativeAiPlugin();if(nativePlugin){if(id==='compatible'){byId('aiKeyStatus').textContent='Custom endpoints are not enabled in the iPad app.';return;}if(!byId('nativeAiConsentCheck').checked){byId('aiKeyStatus').textContent='Review and accept the data-sharing disclosure first.';return;}var saveButton=this,hasKey=!!(aiSettings.providers[id]||{}).keyPresent;saveButton.disabled=true;byId('aiKeyStatus').textContent=hasKey?'Saving AI settings…':'Waiting for the secure iOS API key prompt…';try{var result=await nativePlugin.configure({provider:id,consentVersion:NATIVE_AI_CONSENT_VERSION,consentGranted:true});aiSettings.providers[id]={key:'',keyPresent:!!result.hasCredential,model:model,endpoint:''};saveAiSettings();byId('nativeAiConsentCheck').checked=false;byId('aiKeyStatus').textContent='Ready to use '+AI_PROVIDERS[id].label+'. The key is stored in iOS Keychain.';byId('aiKeyRemove').classList.toggle('hidden',!result.hasCredential);}catch(error){byId('aiKeyStatus').textContent=error&&error.message||'The API key could not be saved securely.';}finally{saveButton.disabled=false;}return;}
+      var nativePlugin=nativeAiPlugin();if(nativePlugin){
+        if(id==='compatible'){byId('aiKeyStatus').textContent='Custom endpoints are not enabled in the iPad app.';return;}
+        var saveButton=this,hasKey=!!(aiSettings.providers[id]||{}).keyPresent,consented=hasKey&&!!nativeAiConsentedProviders[id];
+        if(!consented&&!byId('nativeAiConsentCheck').checked){byId('aiKeyStatus').textContent='Review and accept the data-sharing disclosure first.';return;}
+        ++nativeAiSettingsEpoch;saveButton.disabled=true;byId('aiKeyStatus').textContent=hasKey?'Saving AI settings…':'Waiting for the secure iOS API key prompt…';
+        try{
+          if(!consented){var result=await nativePlugin.configure({provider:id,consentVersion:NATIVE_AI_CONSENT_VERSION,consentGranted:true});if(!result.hasCredential)throw new Error('No API key was saved. Please try again.');nativeAiConsentedProviders[id]=true;}
+          ++nativeAiSettingsEpoch;aiSettings.providers[id]={key:'',keyPresent:true,model:model,endpoint:''};saveAiSettings();
+          if(byId('aiProvider').value===id){byId('nativeAiConsentCheck').checked=false;renderNativeAiConsent(id);byId('aiKeyStatus').textContent='Ready to use '+AI_PROVIDERS[id].label+'. The key is stored in iOS Keychain.';}
+        }catch(error){if(byId('aiProvider').value===id)byId('aiKeyStatus').textContent=error&&error.message||'The API key could not be saved securely.';}
+        finally{saveButton.disabled=false;}return;
+      }
       aiSettings.providers[id]={key:key,keyPresent:false,model:model,endpoint:id==='compatible'?endpoint:''};if(id==='deepseek'){if(key)localStorage.setItem(LEGACY_AI_KEY,key);else localStorage.removeItem(LEGACY_AI_KEY);}
     }
     saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Asking Chrome to prepare Gemini now…':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');if(id==='auto'&&browserLanguageModel())startLocalAiPreparation();else setTaskProgress('aiKeyProgress',false);
   };
-  byId('aiKeyRemove').onclick=async function(){var nativePlugin=nativeAiPlugin(),id=byId('aiProvider').value;if(!nativePlugin||!AI_PROVIDERS[id]||!confirm('Remove the saved '+AI_PROVIDERS[id].label+' API key from this iPad?'))return;this.disabled=true;try{await nativePlugin.removeCredential({provider:id});var cfg=aiSettings.providers[id]||{};cfg.key='';cfg.keyPresent=false;aiSettings.providers[id]=cfg;saveAiSettings();byId('aiKey').value='';byId('aiKeyStatus').textContent='The '+AI_PROVIDERS[id].label+' key was removed from iOS Keychain.';this.classList.add('hidden');}catch(error){byId('aiKeyStatus').textContent=error&&error.message||'The saved key could not be removed.';}finally{this.disabled=false;}};
+  byId('aiKeyRemove').onclick=async function(){var nativePlugin=nativeAiPlugin(),id=byId('aiProvider').value;if(!nativePlugin||!AI_PROVIDERS[id]||!confirm('Remove the saved '+AI_PROVIDERS[id].label+' API key from this iPad?'))return;++nativeAiSettingsEpoch;this.disabled=true;try{await nativePlugin.removeCredential({provider:id});++nativeAiSettingsEpoch;var cfg=aiSettings.providers[id]||{};cfg.key='';cfg.keyPresent=false;delete nativeAiConsentedProviders[id];aiSettings.providers[id]=cfg;saveAiSettings();if(byId('aiProvider').value===id){byId('aiKey').value='';byId('nativeAiConsentCheck').checked=false;renderNativeAiConsent(id);byId('aiKeyStatus').textContent='The '+AI_PROVIDERS[id].label+' key was removed from iOS Keychain.';}}catch(error){if(byId('aiProvider').value===id)byId('aiKeyStatus').textContent=error&&error.message||'The saved key could not be removed.';}finally{this.disabled=false;}};
   byId('cloudPassRemove').onclick=function(){saveSharedAiPass(null);if(byId('settingsDialog').open)fillPassSettings();};
   byId('aiPassCreate').onclick=async function(){
     var button=this,status=byId('aiPassStatus'),endpoint=normalizePassEndpoint(byId('aiPassService').value),ownerCode=byId('aiPassOwnerCode').value.trim();if(!endpoint){status.textContent='Add a valid HTTPS pass service URL first.';return;}if(!ownerCode){status.textContent='Enter your approval code. It is sent once and never saved.';return;}button.disabled=true;button.textContent='Making pass…';status.textContent='Creating a single-use review grant…';

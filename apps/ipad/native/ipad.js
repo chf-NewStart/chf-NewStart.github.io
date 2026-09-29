@@ -34,7 +34,7 @@
 
   var providerSelect = byId('aiProvider');
   if (providerSelect) {
-    ['auto', 'compatible', 'gemini', 'deepseek'].forEach(function (value) {
+    ['auto', 'compatible', 'gemini'].forEach(function (value) {
       var option = providerSelect.querySelector('option[value="' + value + '"]');
       if (option) option.remove();
     });

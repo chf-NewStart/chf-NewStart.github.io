@@ -2,14 +2,15 @@
    already stored on this device open with no network (subway mode). Every other path on
    the site is left completely untouched. Served stale-while-revalidate: instant loads
    from cache, refreshed in the background for the next visit. */
-var CACHE = 'phloem-shell-v127';
+var CACHE = 'phloem-shell-v132';
 /* The app itself is network-first: online opens always get the newest deploy, the cache
    only answers when the network can't. Libraries and fonts stay stale-while-revalidate. */
-var NETWORK_FIRST = ['/reading.html', '/reading.css', '/reading.js', '/carrel.webmanifest'];
+var NETWORK_FIRST = ['/reading.html', '/reading.css', '/reading.js', '/reading-ink.js', '/carrel.webmanifest'];
 var SHELL = [
   '/reading.html',
   '/reading.css',
   '/reading.js',
+  '/reading-ink.js',
   '/carrel.webmanifest',
   '/vendor/pdfjs/pdf.min.js',
   '/vendor/pdfjs/pdf.worker.compat.js',

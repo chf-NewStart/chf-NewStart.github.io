@@ -1,10 +1,12 @@
 # Phloem 1.1 AI privacy and App Store draft
 
-Status: release-candidate draft for version 1.1. Version 1.0 build 7 is live; publish the prepared public policy before external TestFlight or App Review.
+Status: release-candidate draft for version 1.1.0 (16). Build 12 added DeepSeek and the corrected icon; build 13 collapses the consent panel after native setup succeeds and remembers valid native receipts when Settings reopens. Build 14 added local freehand PDF handwriting and was archived locally. Build 15 adds rendering-only centerline and pressure smoothing without modifying saved ink points, gestures, or data destinations; its historical signed archive has been verified locally. Build 16 retains that repair and adds a dedicated Zen Undo button using the shared local handwriting/highlight history, disabled when the history is empty. Its signed archive is verified locally, including version/build metadata, strict code signature, and bundled-source matches; upload and physical-device verification remain pending. The uploaded build 11 archive does not contain these changes. Version 1.0 build 7 is live; publish the prepared public policy before external TestFlight or App Review. Upload, live DeepSeek requests, and physical-device behavior remain release gates, not verified results.
+
+Write mode and Zen Undo do not add an AI request or new network destination. Zen Undo uses the existing local edit history. Handwriting is stored as page-anchored vectors and erase history in the app's library/recovery storage and JSON backups. It is not transcribed or sent to an AI provider by these features. The shared browser sync format can carry the vectors; native iPad Drive/GitHub sync remains disabled. Export original PDF remains the unannotated original, not an export of handwritten notes.
 
 ## Data flow
 
-AI is off until a user confirms they are 18 or older, chooses OpenAI or Anthropic, enters their own API key, reads the provider-specific disclosure, and checks the consent box. A native receipt records the disclosure version, provider, destination host, and consent time. The user can remove the saved key in Settings; that also removes the consent receipt.
+AI is off until a user confirms they are 18 or older, chooses OpenAI, Anthropic, or DeepSeek, enters their own API key, reads the provider-specific disclosure, and checks the consent box. A native receipt records the disclosure version, provider, destination host, and consent time. The user can remove the saved key in Settings; that also removes the consent receipt. Adding a provider never enables it or transfers another provider's consent automatically.
 
 When the user deliberately invokes an AI feature, the app sends the minimum text needed for that action directly from the iPad to the chosen provider:
 
@@ -21,7 +23,11 @@ The provider receives its API key and ordinary connection information. The API k
 - **OpenAI:** `api.openai.com`. [OpenAI API data controls](https://developers.openai.com/api/docs/guides/your-data). OpenAI states that API data is not used for training unless the API customer opts in; default abuse-monitoring logs may retain customer content and related metadata for up to 30 days, subject to exceptions. OpenAI advises users to be cautious with third-party products that request an API key; Phloem never embeds a developer key, collects the user's key in a native secure prompt, stores it with this-device-only Keychain protection, and does not return it to the web layer.
 - **Anthropic:** `api.anthropic.com`. [Anthropic API retention](https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data), [training use](https://privacy.claude.com/en/articles/7996868-is-my-data-used-for-model-training), and [processing regions](https://privacy.claude.com/en/articles/7996890-where-are-your-servers-located-do-you-host-your-models-on-eu-servers). Anthropic states that commercial API data is not used for training by default. Standard inputs and outputs are normally deleted within 30 days; policy-flagged content, safety classifications, feedback, and legal, contractual, or feature-specific records can be retained longer. Data is stored in the United States and may be routed or processed elsewhere.
 
-Gemini and DeepSeek are held from the public 1.1 UI and rejected by the native bridge. Current Gemini terms are not a clean fit for a general consumer app, and DeepSeek's API terms prohibit exposing keys in client-side code. Revisit them only with a compatible architecture and a fresh terms review.
+- **DeepSeek:** `api.deepseek.com`, using direct HTTPS requests to `/chat/completions`. [DeepSeek privacy policy](https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html) and [Open Platform terms](https://cdn.deepseek.com/policies/en-US/deepseek-open-platform-terms-of-service.html), reviewed 28 September 2026. The published policy describes processing/storage in China, service-dependent retention, and model/technology improvement use. It distinguishes developer end-user processing; it is not a clear API-specific no-training or fixed-retention guarantee. Phloem makes neither promise. Users must assess their account terms before sending sensitive material.
+
+DeepSeek's terms require API-key protection and prohibit exposure in browser or other client-side code. The integration uses the same native secure entry, this-device-only Keychain, and native requests as the other providers: no key in bundled code, JavaScript, backups, or Phloem servers. This is a technical safeguard, not a claim of provider endorsement or legal clearance. Reconfirm provider/account conditions, regional availability, and permitted factual provider identification before public release.
+
+Gemini and arbitrary custom endpoints remain held from the public 1.1 UI and rejected by the native bridge; this change does not expand their scope.
 
 Provider policies can change. Re-read the shipping-provider sources on the day the App Store submission is finalized.
 
@@ -30,7 +36,7 @@ Provider policies can change. Re-read the shipping-provider sources on the day t
 Use conservative answers unless counsel or Apple confirms a narrower treatment:
 
 - **Data collected:** Yes, because the selected third-party AI provider can retain data beyond servicing the live request.
-- **User Content → Other User Content:** collected only when AI is used; used for App Functionality; linked to the user because the request uses the user's provider account/API key; not used for tracking.
+- **User Content → Other User Content:** collected only when AI is used; used for App Functionality; linked to the user because the request uses the user's provider account/API key; not used for tracking. Before submission, assess whether the provider's permitted secondary use requires additional purposes, including Other Purposes; do not assume App Functionality is the only purpose for DeepSeek.
 - **Identifiers → User ID:** the provider API key/account identifier is used for App Functionality; linked to the user; not used for tracking.
 - **Tracking:** No.
 - **Advertising/marketing/analytics:** No by Phloem. Provider security and service-operation processing is described in the public policy; reconfirm the selected providers' current terms before publishing the answer.
@@ -41,7 +47,7 @@ The AI flow is ongoing after initial consent, so it should not rely on Apple's �
 
 Update `phloem-ipad/privacy.html` after 1.0 is accepted/released and before 1.1 is submitted. The revised page must:
 
-1. Identify OpenAI and Anthropic and the exact data categories above.
+1. Identify OpenAI, Anthropic, and DeepSeek and the exact data categories above.
 2. Explain that the user chooses the provider and initiates each transfer.
 3. Explain that the key is entered in a native secure prompt, stored in local Keychain, and cannot be read back through Phloem's web interface.
 4. State provider-controlled retention, training, processing-region, and deletion limitations without promising more than provider terms support.
@@ -51,4 +57,4 @@ Update `phloem-ipad/privacy.html` after 1.0 is accepted/released and before 1.1 
 
 ## Review-note draft
 
-“AI is optional, restricted to users who confirm they are 18 or older, and disabled by default. To enable it, the user selects OpenAI or Anthropic, reviews a provider-specific disclosure identifying the text sent and destination, affirmatively consents, and enters their API key in a native iOS secure prompt. The key is stored in iOS Keychain and cannot be read back through the web interface or included in backups. AI requests go directly to the selected provider over HTTPS only when the user invokes an AI feature; the original document file is never uploaded. The AI workspace identifies itself as AI, warns that output can be inaccurate, and asks users to verify important claims. Settings includes controls to remove the key and revoke the local consent receipt. No AI data is used for tracking, advertising, or Phloem analytics.”
+“AI is optional, restricted to users who confirm they are 18 or older, and disabled by default. To enable it, the user selects OpenAI, Anthropic, or DeepSeek, reviews a provider-specific disclosure identifying the text sent and destination, affirmatively consents, and enters their API key in a native iOS secure prompt. The key is stored in iOS Keychain and cannot be read back through the web interface or included in backups. AI requests go directly to the selected provider over HTTPS only when the user invokes an AI feature; the original document file is never uploaded. DeepSeek setup separately discloses processing in China and provider-controlled retention and training conditions. The AI workspace identifies itself as AI, warns that output can be inaccurate, and asks users to verify important claims. Settings includes controls to remove the key and revoke the local consent receipt. Phloem does not use AI data for tracking, advertising, or analytics.”

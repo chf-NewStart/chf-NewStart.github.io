@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=127">
+  <link rel="stylesheet" href="/reading.css?v=132">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -157,7 +157,33 @@
             <p class="highlight-tool-hint">Erase: tap or sweep with Pencil to remove whole highlights. Choose a color to mark again. Undo restores.</p>
           </div>
         </div>
-
+        <button class="soft-button hidden" id="pdfWriteBtn" data-pdf-write-toggle type="button" aria-pressed="false" aria-controls="pdfInkToolbar" aria-label="Write on PDF with Pencil" title="Write handwritten notes directly on this PDF"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg><span>Write</span></button>
+      </div>
+      <div class="pdf-ink-toolbar hidden" id="pdfInkToolbar" role="region" aria-label="Write on PDF" aria-describedby="pdfInkHint">
+        <div class="pdf-ink-controls" role="toolbar" aria-label="PDF ink tools">
+          <div class="pdf-ink-group" role="group" aria-label="Ink tool">
+            <button data-pdf-ink-tool="pen" type="button" aria-pressed="true" title="Write with Pencil"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg>Pen</button>
+            <button data-pdf-ink-tool="eraser" type="button" aria-pressed="false" title="Remove whole ink strokes"><span class="eraser-icon" aria-hidden="true"></span>Eraser</button>
+          </div>
+          <div class="pdf-ink-group pdf-ink-colors" role="group" aria-label="Ink color">
+            <button data-pdf-ink-color="black" type="button" aria-label="Black ink" aria-pressed="true" title="Black ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="blue" type="button" aria-label="Blue ink" aria-pressed="false" title="Blue ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="red" type="button" aria-label="Red ink" aria-pressed="false" title="Red ink"><span aria-hidden="true"></span></button>
+          </div>
+          <div class="pdf-ink-group pdf-ink-widths" role="group" aria-label="Ink width">
+            <button data-pdf-ink-width="1.5" type="button" aria-label="Fine ink" aria-pressed="false" title="Fine"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-width="3" type="button" aria-label="Medium ink" aria-pressed="true" title="Medium"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-width="5" type="button" aria-label="Bold ink" aria-pressed="false" title="Bold"><span aria-hidden="true"></span></button>
+          </div>
+          <div class="pdf-ink-finish-group">
+            <div class="pdf-ink-group" role="group" aria-label="Ink history">
+              <button id="pdfInkUndo" type="button" aria-label="Undo last edit" title="Undo last edit" disabled><span class="pdf-ink-history-icon" aria-hidden="true">↶</span></button>
+              <button id="pdfInkRedo" type="button" aria-label="Redo last edit" title="Redo last edit" disabled><span class="pdf-ink-history-icon" aria-hidden="true">↷</span></button>
+            </div>
+            <button class="pdf-ink-done" id="pdfInkDone" type="button" title="Finish writing and return to reading">Done</button>
+          </div>
+        </div>
+        <p id="pdfInkHint">Pencil writes · fingers scroll · eraser removes whole ink strokes</p>
       </div>
       <div class="comfort-bar hidden" id="comfortBar" aria-label="Reading settings">
         <div class="comfort-section comfort-text text-only" aria-label="Text settings">
@@ -386,6 +412,7 @@
             <p class="pencil-hint highlight-tool-hint">Drag Pencil to highlight. Erase: tap or sweep whole highlights. Choose a color to mark again. Undo restores.</p>
           </div>
         </div>
+        <button class="touch-dock-action hidden" id="touchWrite" data-pdf-write-toggle type="button" aria-label="Write on PDF with Pencil" aria-pressed="false" aria-controls="pdfInkToolbar"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg><small>Write</small></button>
         <button class="touch-dock-action" id="touchNotes" data-touch-action="notes" type="button" aria-label="Notes" aria-controls="notebook" aria-expanded="false"><span aria-hidden="true">✎</span><small>Notes</small></button>
         <div class="touch-dock-more">
           <button class="touch-dock-action" id="touchMore" data-touch-action="more" type="button" aria-label="More" aria-haspopup="dialog" aria-expanded="false" aria-controls="touchDockMenu"><span aria-hidden="true">⋯</span><small>More</small></button>
@@ -500,6 +527,8 @@
             <p class="highlight-tool-hint">Erase: tap or sweep with Pencil to remove whole highlights. Choose a color to mark again. Undo restores.</p>
           </div>
         </div>
+        <button class="zen-exit hidden" id="zenWrite" data-pdf-write-toggle type="button" aria-label="Write on PDF with Pencil" aria-pressed="false" aria-controls="pdfInkToolbar" title="Write on PDF"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg></button>
+        <button class="zen-exit zen-undo" id="zenUndo" type="button" aria-label="Undo last handwriting or highlight edit" aria-keyshortcuts="Meta+Z Control+Z" title="Undo last handwriting or highlight edit" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4 3 9l5 5M3 9h10a7 7 0 0 1 0 14" transform="translate(0 -2)"/></svg><span aria-hidden="true">Undo</span></button>
         <button class="zen-exit zen-paper paper-appearance-shortcut" id="zenPaperAppearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
         <button class="zen-exit zen-theme" id="zenTheme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
         <button class="zen-exit zen-refresh" id="zenRefresh" type="button" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
@@ -639,10 +668,14 @@
               <input class="field" id="aiEndpoint" type="url" placeholder="https://example.com/v1/chat/completions" autocomplete="off" spellcheck="false">
             </div>
           </div>
+          <div class="native-ai-enabled hidden" id="nativeAiEnabled">
+            <p id="nativeAiEnabledText" role="status"></p>
+            <button class="soft-button" id="nativeAiReviewConsent" type="button" aria-controls="nativeAiConsent" aria-expanded="false">Review data sharing</button>
+          </div>
           <div class="native-ai-consent hidden" id="nativeAiConsent">
             <p id="nativeAiDisclosure"></p>
             <p><a id="nativeAiProviderPolicy" href="#" target="_blank" rel="noopener noreferrer">Provider privacy information</a> · <a href="https://houfu72.com/phloem-ipad/privacy.html" target="_blank" rel="noopener noreferrer">Phloem privacy policy</a></p>
-            <label><input id="nativeAiConsentCheck" type="checkbox"> I confirm I am 18 or older and agree to send only the described reading context to this provider when I deliberately use an AI feature.</label>
+            <label id="nativeAiConsentLabel"><input id="nativeAiConsentCheck" type="checkbox"> I confirm I am 18 or older and agree to send only the described reading context to this provider when I deliberately use an AI feature.</label>
           </div>
           <div><button class="soft-button" id="aiKeySave">Save AI settings</button> <button class="soft-button hidden" id="aiKeyRemove" type="button">Remove saved key</button> <button class="soft-button hidden" id="aiPrepareLocal" type="button">Prepare on-device Gemini</button></div>
         </div>
@@ -782,9 +815,10 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=127',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=132',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading.js?v=127" defer></script>
+<script src="/reading-ink.js?v=132" defer></script>
+<script src="/reading.js?v=132" defer></script>
 </body>
 </html>

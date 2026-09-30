@@ -122,6 +122,15 @@ async function checkSpreadDrag(page, label) {
   console.log('PASS  ' + label + ': both directions, gutter/outside hold, note context, cancellation, explicit tap');
 }
 
+async function checkZenGripOnLeft(page) {
+  const state = await metrics(page);
+  assert(Math.abs(state.grip.left - (state.band.left + 8)) <= 1,
+    'Zen row guide grip stays 8px from the band left edge: ' + JSON.stringify(state));
+  assert(state.grip.right < state.band.left + state.band.width / 2,
+    'Zen row guide grip stays away from the right-side dock');
+  console.log('PASS  Zen row guide grip stays on the left, clear of the dock');
+}
+
 (async () => {
   let browser;
   try {
@@ -155,6 +164,7 @@ async function checkSpreadDrag(page, label) {
     await ready(page, [2, 3]);
     await page.waitForFunction(() => document.body.classList.contains('zen'));
     await page.evaluate(() => document.querySelector('[data-guide-orientation="row"]').click());
+    await checkZenGripOnLeft(page);
     await checkSpreadDrag(page, 'Zen Book row guide');
 
     // A previous spread or curl copy must not pull the guide onto a hidden page.

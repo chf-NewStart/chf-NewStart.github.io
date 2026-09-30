@@ -126,7 +126,7 @@ function paper(fields, stamp) {
     const durable = document.querySelector('[data-continue-paper="pdf-durable"]');
     return document.body.classList.contains('library-ready')
       && offline && !offline.disabled
-      && document.querySelectorAll('.continue-reading-card').length === 3
+      && document.querySelectorAll('.continue-reading-card').length === 5
       && durable && durable.dataset.localAvailability === 'downloaded';
   });
 
@@ -135,12 +135,12 @@ function paper(fields, stamp) {
     local: card.getAttribute('data-local-availability'),
     backup: card.getAttribute('data-backup-status')
   })));
-  check('Continue reading shows exactly three papers', returnCards.length === 3, JSON.stringify(returnCards));
+  check('Continue reading shows every paper when fewer than six exist', returnCards.length === 5, JSON.stringify(returnCards));
   check('Continue reading follows lastOpenedAt instead of the wall’s updatedAt order',
-    returnCards.map(card => card.id).join(',') === 'pdf-durable,text-recent,pdf-missing',
+    returnCards.map(card => card.id).join(',') === 'pdf-durable,text-recent,pdf-missing,word-readable,text-older',
     returnCards.map(card => card.id).join(','));
   check('a future updatedAt does not displace a more recently opened paper',
-    !returnCards.some(card => card.id === 'word-readable'));
+    returnCards.findIndex(card => card.id === 'word-readable') === 3);
 
   const durableCard = returnCards.find(card => card.id === 'pdf-durable');
   const missingCard = returnCards.find(card => card.id === 'pdf-missing');

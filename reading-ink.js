@@ -18,6 +18,8 @@
         var at = Number.isFinite(raw.at) && raw.at > 0 ? raw.at : 0;
         var item = { id: raw.id, color: Object.prototype.hasOwnProperty.call(COLORS, raw.color) ? raw.color : 'black', width: Number.isFinite(raw.width) ? clamp(raw.width, .5, 12) : 3,
           points: raw.points.map(function (p) { return [clamp(p[0], 0, 1), clamp(p[1], 0, 1), clamp(p[2] === undefined ? .5 : p[2], 0, 1)]; }), at: at, updatedAt: Number.isFinite(raw.updatedAt) && raw.updatedAt > 0 ? raw.updatedAt : at };
+        if(raw.style==='natural')item.style='natural';
+        if(raw.shape==='line')item.shape='line';
         if ((tombstones[item.id] || 0) >= stamp(item) && tombstones[item.id]) return;
         var old = records.get(item.id);
         if (!old || stamp(item) > stamp(old.item) || (stamp(item) === stamp(old.item) && JSON.stringify([page,item]) > JSON.stringify([old.page,old.item]))) records.set(item.id, {page: page, item: item});
@@ -52,7 +54,7 @@
     pressure=points[points.length-1].filtered;
     for(var i=points.length-1;i>=0;i--){
       var next=points[Math.min(points.length-1,i+1)],p=points[i],step=Math.hypot(p.x-next.x,p.y-next.y);
-      pressure+=(p.filtered-pressure)*(1-Math.exp(-step/smoothLength));p.r=stroke.width*unit*(.55+.9*pressure)/2;
+      pressure+=(p.filtered-pressure)*(1-Math.exp(-step/smoothLength));p.r=stroke.width*unit*(stroke.style==='natural'?.7+.45*pressure:.55+.9*pressure)/2;
     }
     function dot(p){return 'M '+num(p.x-p.r)+' '+num(p.y)+' a '+num(p.r)+' '+num(p.r)+' 0 1 0 '+num(2*p.r)+' 0 a '+num(p.r)+' '+num(p.r)+' 0 1 0 '+num(-2*p.r)+' 0 Z';}
     if(points.length===1)return dot(points[0]);
@@ -71,6 +73,21 @@
     for(var i=1;i<points.length;i++){
       var a=centerline[centerline.length-1],b=points[i-1],c=i===points.length-1?points[i]:midpoint(points[i-1],points[i]);
       curve(a,b,c,0);
+    }
+    // Natural ink gently tapers only the ends, in page units rather than sample
+    // counts. Insert taper boundaries even for sparsely sampled straight strokes.
+    // Stored points and ruler-style held lines remain untouched.
+    if(stroke.style==='natural'&&stroke.shape!=='line'){
+      var distances=[0];for(var j=1;j<centerline.length;j++)distances.push(distances[j-1]+Math.hypot(centerline[j].x-centerline[j-1].x,centerline[j].y-centerline[j-1].y));
+      var total=distances[distances.length-1],taper=Math.min(Math.max(3,stroke.width*2)*unit,total*.2),shaped=[];
+      function tapered(p,d){var f=taper?Math.min(1,d/taper,(total-d)/taper):1;return{x:p.x,y:p.y,r:p.r*(.55+.45*Math.max(0,f))};}
+      for(var j=0;j<centerline.length;j++){
+        if(j){var a=centerline[j-1],b=centerline[j],start=distances[j-1],end=distances[j];
+          [taper,total-taper].forEach(function(d){if(d>start&&d<end){var t=(d-start)/(end-start);shaped.push(tapered({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,r:a.r+(b.r-a.r)*t},d));}});
+        }
+        shaped.push(tapered(centerline[j],distances[j]));
+      }
+      centerline=shaped;
     }
     // Display-only simplification bounds geometry and pressure error together.
     // Dense/coalesced input must not mean thousands of redundant SVG capsules.
@@ -139,20 +156,22 @@
       document.body.classList.remove('pdf-ink-drawing');
       // External highlight candidates must still exist when the compound erase
       // commits. Even an ink-empty sweep may have hit a text highlight.
-      try{if(!cancelled&&valid(g)){if(g.tool==='eraser')options.onErase(g.page,Array.from(g.erased));else if(g.points.length)options.onCommit(g.page,{color:g.color,width:g.width,points:g.points});}}
+      try{if(!cancelled&&valid(g)){if(g.tool==='eraser')options.onErase(g.page,Array.from(g.erased));else if(g.points.length){var stroke={color:g.color,width:g.width,points:g.points};if(g.style==='natural')stroke.style='natural';if(g.straight)stroke.shape='line';options.onCommit(g.page,stroke);}}}
       finally{clearPreview(g);}
     }
     function paint() {
       frame=0;var g=gesture;if(!g||g.tool==='eraser')return;
-      g.preview.replaceChildren(strokeNode({color:g.color,width:g.width,points:g.points},g.aspect));
+      g.preview.replaceChildren(strokeNode({color:g.color,width:g.width,points:g.points,style:g.style,shape:g.straight?'line':null},g.aspect));
     }
     function holdLine(g,p) {
       if(g.straight||g.points.length<2)return;
+      // Once a candidate is armed, ordinary stationary Pencil jitter must not
+      // inflate travel until it fails the handwriting/loop guard below.
+      if(g.holdTimer&&g.holdAnchor&&Math.hypot(p.x-g.holdAnchor.x,p.y-g.holdAnchor.y)<=6)return;
       var first=g.points[0],last=g.points[g.points.length-1],span=Math.hypot((last[0]-first[0])*g.rect.width,(last[1]-first[1])*g.rect.height);
       // Don't turn dots, tiny letters, closed loops or a paused scribble into
-      // accidental rulers. Endpoint drift inside 4 CSS pixels is hand jitter.
+      // accidental rulers. Endpoint drift inside 6 CSS pixels is hand jitter.
       if(span<24||g.travel>span*2){clearHold(g);g.holdAnchor=null;return;}
-      if(g.holdTimer&&g.holdAnchor&&Math.hypot(p.x-g.holdAnchor.x,p.y-g.holdAnchor.y)<4)return;
       clearHold(g);g.holdAnchor=p;
       g.holdTimer=setTimeout(function(){
         g.holdTimer=0;if(gesture!==g)return;
@@ -161,6 +180,7 @@
         var pressure=g.points.reduce(function(sum,point){return sum+point[2];},0)/g.points.length;
         g.straight=true;g.linePressure=pressure;g.points=[[start[0],start[1],pressure],[end[0],end[1],pressure]];
         g.preview.classList.add('pdf-ink-straight');
+        if(options.onStraighten)options.onStraighten();
         if(!frame)frame=requestAnimationFrame(paint);
       },600);
     }
@@ -182,7 +202,11 @@
       var point=[Math.round((x-rect.left)/rect.width*100000)/100000,Math.round((y-rect.top)/rect.height*100000)/100000,Math.round(clamp(pressure,0,1)*100)/100];
       var previous=g.points[g.points.length-1];if(previous&&previous[0]===point[0]&&previous[1]===point[1])return;
       if(g.straight){point[2]=g.linePressure;g.points[1]=point;}
-      else{g.travel+=g.points.length?Math.hypot(x-g.last.x,y-g.last.y):0;g.points.push(point);holdLine(g,p);}
+      else{
+        var resting=g.holdTimer&&g.holdAnchor&&Math.hypot(x-g.holdAnchor.x,y-g.holdAnchor.y)<=6;
+        if(!resting)g.travel+=g.points.length?Math.hypot(x-g.last.x,y-g.last.y):0;
+        g.points.push(point);holdLine(g,p);
+      }
       g.last=p;
       // Bound only the in-flight sampling density; never truncate saved handwriting.
       if(g.points.length>4096)g.points=g.points.filter(function(_,i,list){return i%2===0||i===list.length-1;});
@@ -196,6 +220,7 @@
       options.onStart(+holder.dataset.page);
       var preview=svg('g');preview.classList.add('pdf-ink-preview');layer(sheet).appendChild(preview);
       gesture={context:context,id:id,source:source,touchId:source==='touch'?id:null,holder:holder,sheet:sheet,rect:rect,aspect:(sheet.offsetHeight||1)/(sheet.offsetWidth||1),page:+holder.dataset.page,tool:options.getTool(),color:options.getColor(),width:options.getWidth(),points:[],erased:new Set(),preview:preview,last:{x:event.clientX,y:event.clientY},travel:0,holdTimer:0,holdAnchor:null,straight:false};
+      gesture.style=options.getStyle&&options.getStyle()==='natural'?'natural':'clean';
       document.body.classList.add('pdf-ink-drawing');move(event,true);
       try{if(source==='pointer')holder.setPointerCapture(id);}catch(e){}return true;
     }

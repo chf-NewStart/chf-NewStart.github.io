@@ -84,6 +84,16 @@ const browserName = process.env.PHLOEM_BROWSER || 'chromium';
         check('small Pencil jitter does not keep postponing the hold', straight());
         pointer('pointerup', 299, 109);
         check('the held line ends at the latest jitter sample, not an old hold anchor', commits[0]?.points[1][0] === .299 && commits[0]?.points[1][1] === .109);
+        reset(); draw();
+        for(let i=0;i<120;i++){pointer('pointermove',300+(i%2?2:-2),110+(i%2?1:-1));tick(5);}
+        check('dense stationary Pencil jitter cannot disqualify an already armed hold', straight());
+        pointer('pointerup',302,111);
+        check('held lines retain their ruler shape marker for rendering and backups', commits[0]?.shape === 'line' && commits[0]?.points.length === 2);
+        reset();draw();
+        for(let i=0;i<100;i++){pointer('pointermove',300+(i%2?2:-2),110+(i%2?1:-1));tick(5);}
+        pointer('pointermove',340,120);tick(599);
+        check('moving after dense jitter starts a fresh hold instead of snapping early',!straight());
+        tick(1);check('earlier resting jitter does not prevent the next endpoint from snapping',straight());
         reset(); pointer('pointerdown', 100, 100); tick(1600); pointer('pointerup', 100, 100);
         check('a held dot remains a single-point dot', commits.length === 1 && commits[0].points.length === 1);
         reset(); pointer('pointerdown', 100, 100); pointer('pointermove', 109, 102); pointer('pointermove', 114, 100); tick(800);

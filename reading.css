@@ -136,8 +136,9 @@
     .continue-reading-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 2px 10px; }
     .continue-reading-head h3 { margin: 0; font: 500 1.02rem/1.1 var(--serif); }
     .continue-reading-head span { color: var(--muted); font: .64rem/1.2 var(--sans); }
-    .continue-reading-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
-    .continue-reading-card { min-width: 0; min-height: 126px; padding: 13px 14px 12px; display: flex; flex-direction: column; align-items: stretch; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); text-align: left; box-shadow: 0 5px 14px color-mix(in srgb, var(--ink) 5%, transparent); }
+    .continue-reading-cards { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 18px) / 3); gap: 9px; overflow-x: auto; padding: 2px 1px 8px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+    .continue-reading-cards:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .continue-reading-card { min-width: 0; min-height: 126px; padding: 13px 14px 12px; display: flex; flex-direction: column; align-items: stretch; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); text-align: left; box-shadow: 0 5px 14px color-mix(in srgb, var(--ink) 5%, transparent); scroll-snap-align: start; }
     .continue-reading-card:hover, .continue-reading-card:focus-visible { border-color: var(--accent); outline: none; transform: translateY(-1px); }
     .continue-reading-kicker { color: var(--accent); font: 800 .52rem/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
     .continue-reading-card strong { margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 .85rem/1.25 var(--serif); }
@@ -695,6 +696,10 @@
     body.reading #readerPage { height: calc(100vh - 58px); height: calc(100dvh - 58px - var(--kb-inset, 0px)); }
     .reader-tools { flex: 0 0 auto; min-height: 50px; padding: 6px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px; border-bottom: 1px solid var(--line); background: var(--surface); }
     .reader-tools .title { min-width: 0; margin-right: auto; }
+    .reader-title-button { display: block; max-width: 100%; padding: 2px 0; border: 0; border-radius: 4px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+    .reader-title-button:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+    .reader-title-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    #renamePaperForm .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
     .reader-tools .title strong { display: block; max-width: min(38vw, 520px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 .9rem var(--serif); }
     .reader-tools .title span { display: block; color: var(--muted); font-size: .63rem; }
     .reader-tools .soft-button { min-height: 34px; padding: 6px 9px; border-color: transparent; background: transparent; color: var(--muted); }
@@ -799,7 +804,7 @@
     .pdf-write-icon { display: inline-block; flex: 0 0 18px; width: 18px; height: 18px; vertical-align: middle; }
     .pdf-ink-toolbar {
       position: fixed; z-index: 44; left: 50%; bottom: calc(18px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px)));
-      width: 480px; max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)); container-type: inline-size;
+      width: max-content; max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
       max-height: min(40vh, 320px); max-height: min(40dvh, 320px); overflow: auto; transform: translateX(-50%); padding: 7px;
       border: 1px solid var(--line); border-radius: 17px; background: color-mix(in srgb, var(--surface) 97%, transparent);
       box-shadow: 0 10px 34px rgba(20,24,25,.18); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
@@ -817,9 +822,8 @@
     .pdf-ink-toolbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .pdf-ink-toolbar button[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 38%, var(--line)); background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(20,24,25,.07); }
     .pdf-ink-toolbar button:disabled { opacity: .35; cursor: default; }
-    /* Keep every color one tap away, on its own row rather than in a popover.
-       The palette wraps to two equal rows in narrow Split View and phone Zen. */
-    .pdf-ink-colors { flex: 1 0 100%; display: grid; grid-template-columns: repeat(8, minmax(44px, 1fr)); padding: 0; }
+    /* Match the compact Highlight shelf while keeping all eight colors one tap away. */
+    .pdf-ink-colors { display: flex; padding: 0; }
     .pdf-ink-colors button { padding-inline: 7px; }
     .pdf-ink-colors button span { width: 23px; height: 23px; border: 1px solid rgba(255,255,255,.3); border-radius: 50%; background: var(--pdf-ink-color); }
     [data-pdf-ink-color="black"] { --pdf-ink-color: #20313b; }
@@ -835,18 +839,14 @@
     .pdf-ink-widths [data-pdf-ink-width="1.5"] span { height: 1.5px; }
     .pdf-ink-widths [data-pdf-ink-width="5"] span { height: 5px; }
     .pdf-ink-history-icon { font-size: 1.25rem; line-height: 1; }
-    .pdf-ink-toolbar .pdf-ink-done { padding-inline: 13px; background: var(--accent-soft); color: var(--ink); }
-    .pdf-ink-toolbar p { margin: 6px 8px 2px; color: var(--muted); font: 500 .6875rem/1.35 var(--sans); text-align: center; }
+    .pdf-ink-toolbar .pdf-ink-done { padding-inline: 9px; background: var(--accent-soft); color: var(--ink); }
+    .pdf-ink-toolbar .sr-only { margin: 0; }
     body.touch-tablet-reader .pdf-ink-toolbar { max-width: calc(100vw - 176px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
     body.touch-tablet-reader #pdfWriteBtn { display: none !important; }
     body.zen #zenWrite[aria-pressed="true"] { opacity: 1; color: var(--ink); background: var(--accent-soft); border-color: var(--line); }
-    @container (max-width: 351px) {
-      .pdf-ink-colors { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
-    }
-    @supports not (container-type: inline-size) {
-      @media (max-width: 527px) {
-        .pdf-ink-colors { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
-      }
+    @media (max-width: 527px) {
+      .pdf-ink-group, .pdf-ink-finish-group { display: contents; }
+      .pdf-ink-toolbar button { width: 44px; padding-inline: 0; }
     }
     @media (max-width: 720px) {
       .pdf-ink-toolbar, body.touch-tablet-reader .pdf-ink-toolbar { max-width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); bottom: calc(72px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px))); }
@@ -1961,7 +1961,7 @@
       .search { flex: 1 1 100%; width: 100%; margin-left: 0; }
       .continue-reading { margin-bottom: 12px; padding: 11px; overflow: hidden; }
       .continue-reading-head span { display: none; }
-      .continue-reading-cards { grid-template-columns: repeat(3, minmax(220px, 78vw)); overflow-x: auto; padding: 1px 1px 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+      .continue-reading-cards { grid-auto-columns: minmax(220px, 78vw); padding: 1px 1px 6px; }
       .continue-reading-card { min-height: 122px; scroll-snap-align: start; }
       /* The phone shelf is one compact object: a scrollable reading wall stays above a
          shorter selected notebook, so choosing papers never means crossing a wall of

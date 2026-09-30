@@ -63,7 +63,11 @@ async function outside(page, touch) {
   if (await page.locator('body').evaluate(body => body.classList.contains('zen'))) {
     await activate(page, '#zenLayout', touch);
     await activate(page, '#zenLayout', touch);
-  } else await activate(page, '#readerTitle', touch);
+  } else {
+    // The title is now an explicit Rename action rather than inert chrome.
+    await activate(page, '#readerTitle', touch);
+    await activate(page, '#renamePaperDialog .icon-btn', touch);
+  }
 }
 async function pencilOnPaper(page, palette, label) {
   const layer = page.locator('.pdf-page[data-page="1"] .text-layer');

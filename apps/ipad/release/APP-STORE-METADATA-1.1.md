@@ -1,6 +1,6 @@
 # Phloem 1.1 App Store package
 
-Target: **version 1.1.0, build 21**, reader cache **v137**. The compact bottom Highlight toolbar contains colors, Eraser, Define, Undo, and Done in one row on iPad. Its Ask AI shortcut and extra visible labels/help text have been removed, while accessible descriptions remain. The separate Discuss/AI workspace is unchanged. The Release archive passed local verification on September 30, 2026; distribution export, device testing, and upload remain pending. This is draft metadata, not submitted App Store Connect content.
+Target: **version 1.1.0, build 22**, reader cache **v140**. Both Highlight and Pen use compact bottom toolbars with accessible descriptions instead of visible instruction footers. Pen retains eight colors, three widths, icon-only Pen/Eraser, Undo/Redo, and Done. Highlight retains Define without Ask AI; the separate Discuss/AI workspace is unchanged. The verified build 21 archive lacks the compact Pen bar. Build 22 archive creation, device testing, and upload remain pending. This is draft metadata, not submitted App Store Connect content.
 
 ## Promotional text
 
@@ -12,6 +12,8 @@ Phloem 1.1 adds an optional AI reading partner for users 18 and older. With your
 
 Also new:
 
+- More natural handwriting with gentle pressure changes and tapered ends. Choose Natural or Clean for new ink in reading settings; existing notes keep their appearance. Holding at the end of a line is more tolerant of tiny Pencil movements and confirms when the line straightens.
+- Rename papers directly from the open title or from the library, and scroll through up to six recent papers in Continue reading.
 - Write directly on PDF pages with Apple Pencil, including margins, figures, and scanned or blank pages. Choose eight pen colors and three widths. Hold at the end of a long open stroke to straighten it, adjust the endpoint, then lift. Turn on Write when you want to handwrite; it is off by default.
 - Erase handwriting and text highlights with either PDF eraser; one Undo restores the whole sweep.
 - Switch between Pen and Highlighter with one tool active at a time, including touch and Zen controls.
@@ -133,7 +135,7 @@ Send feedback with the iPad model, iPadOS version, build number, provider, and s
 2. Create version 1.1.0 in the existing App Store Connect record.
 3. Re-answer App Privacy and the current age-rating questionnaire.
 4. Run `npm run ios:sync`, then create a fresh Release archive with Xcode 26 or later and the current iPadOS SDK; generate and inspect the archive privacy report.
-5. Create and verify a fresh **1.1.0 (21)** archive’s metadata, strict signature, and bundled-source matches, then upload it to internal TestFlight after checking for an already-used build number. If 21 is used, increment the project build number and archive again. Build 20 still contains the removed Ask AI toolbar shortcut.
+5. Create and verify a fresh **1.1.0 (22)** archive’s metadata, strict signature, and bundled-source matches, then upload it to internal TestFlight after checking for an already-used build number. If 22 is used, increment the project build number and archive again. Build 21 lacks the compact Pen toolbar.
 6. Complete the physical-iPad and live-provider checklist against the exact TestFlight binary.
 7. Capture screenshots from that binary and paste the final metadata and reviewer-only key.
 8. Add for Review and submit. Prefer manual release or a phased release for the first AI-enabled update.

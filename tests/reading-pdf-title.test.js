@@ -128,6 +128,13 @@ async function storedPaper(page) {
   await page.waitForTimeout(350);
   paper = await storedPaper(page);
   check('a normal curated title remains untouched on later reload', paper.title === CURATED_TITLE, paper.title);
+  await page.locator('#readerTitle').click();
+  await page.locator('#renamePaperTitle').fill('kiab548');
+  await page.locator('#renamePaperTitle').press('Enter');
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0);
+  paper = await storedPaper(page);
+  check('a deliberately chosen filename-like title is not automatically repaired', paper.title === 'kiab548' && paper.titleEditedByUser === true, paper.title);
   check('title recovery has no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

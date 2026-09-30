@@ -87,6 +87,17 @@ test('single-point Pencil dots are valid notes', () => {
   assert.equal(page(result)[0].points.length, 1);
 });
 
+test('natural style and straight-line shape survive normalization, backup and merge', () => {
+  const saved = stroke('natural-line', 130, { style: 'natural', shape: 'line' });
+  const normalized = ink.normalize({ 1: [saved] }, {});
+  assert.deepEqual(plain(page(normalized)[0]), saved);
+  const restored = JSON.parse(JSON.stringify(normalized));
+  assert.deepEqual(plain(page(ink.merge({}, {}, restored.pages, restored.deleted))[0]), saved);
+  const invalid = page(ink.normalize({ 1: [stroke('invalid-style', 100, { style: 'unknown', shape: 'unknown' })] }, {}))[0];
+  assert.equal(invalid.style, undefined);
+  assert.equal(invalid.shape, undefined);
+});
+
 test('malformed stroke records cannot discard neighboring valid notes', () => {
   const result = ink.normalize({ 1: [
     null, false, [], {}, { id: 'missing-points' }, stroke('', 100),

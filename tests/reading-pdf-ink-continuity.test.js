@@ -17,6 +17,7 @@ const browserName = process.env.PHLOEM_BROWSER || 'chromium';
     page.on('pageerror', error => errors.push(error.message));
     await page.setContent('<style>body{margin:0}.pdf-sheet{width:1000px;height:1000px;position:relative}.pdf-ink-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}</style><main id="pane"><div class="pdf-page" data-page="1"><div class="pdf-sheet"></div></div></main>');
     await page.addScriptTag({ path: process.env.PHLOEM_INK_SOURCE || path.resolve(__dirname, '../reading-ink.js') });
+    if(process.env.PHLOEM_NATURAL_PREVIEW)await page.evaluate(()=>{location.hash='natural-preview';});
     const results = await page.evaluate(async () => {
       const results = [], sheet = document.querySelector('.pdf-sheet');
       const check = (name, pass, detail) => results.push({ name, pass: !!pass, detail });
@@ -26,8 +27,9 @@ const browserName = process.env.PHLOEM_BROWSER || 'chromium';
         for (let x = 100, i = 0; x <= 900; x += step, i++) points.push(point(x, 300, typeof pressure === 'function' ? pressure(i, x) : pressure));
         return points;
       };
-      const render = (points, width = 5) => {
+      const render = (points, width = 5, style, shape) => {
         const stroke = { id: 'fixture', color: 'black', width, points, at: 1, updatedAt: 1 };
+        if(style)stroke.style=style;if(shape)stroke.shape=shape;
         const before = JSON.stringify(stroke);
         PhloemInk.render(sheet, [stroke]);
         const nodes = Array.from(sheet.querySelectorAll('.pdf-ink-stroke'));
@@ -126,6 +128,20 @@ const browserName = process.env.PHLOEM_BROWSER || 'chromium';
       check('bounded-work jitter rendering keeps raw coordinates unchanged', noisy.unchanged && jitterPoints.length === 4096);
       check('bounded-work jitter rendering remains finite and filled', noisy.nodes.every(node => !/NaN|Infinity/.test(node.getAttribute('d'))) && Array.from({ length: 781 }, (_, i) => i + 110).every(x => noisy.inside(x, 500)));
 
+      const natural = render(line(4, i => i % 2 ? .85 : .15),5,'natural');
+      check('Natural pressure jitter remains continuous without beading', profile(natural).ripple < .2 && Array.from({length:801},(_,i)=>i+100).every(x=>natural.inside(x,300)));
+      check('Natural rendering preserves every raw pressure and coordinate', natural.unchanged);
+      const naturalLight=profile(render(line(4,.15),5,'natural')),naturalHeavy=profile(render(line(4,.85),5,'natural'));
+      check('Natural pressure remains expressive but gentler than Clean', naturalHeavy.mean/naturalLight.mean > 1.15 && naturalHeavy.mean/naturalLight.mean < heavy.mean/light.mean);
+      const naturalSparse=render([point(100,300),point(900,300)],5,'natural');
+      check('Natural sparse strokes taper both ends without narrowing the middle', widthAt(naturalSparse,100).width < widthAt(naturalSparse,500).width*.8 && widthAt(naturalSparse,900).width < widthAt(naturalSparse,500).width*.8);
+      check('Natural taper has no centerline gaps', Array.from({length:801},(_,i)=>i+100).every(x=>naturalSparse.inside(x,300)));
+      const naturalRuler=render([point(100,300),point(900,300)],5,'natural','line');
+      check('held Natural lines keep steady width instead of tapered ruler ends', Math.abs(widthAt(naturalRuler,100).width-widthAt(naturalRuler,500).width)<.3);
+      const naturalDense=render(densePoints,5,'natural'),naturalPath=naturalDense.nodes[0].getAttribute('d');
+      check('Natural dense ink retains bounded display geometry', (naturalPath.match(/[mM]/g)||[]).length<120 && naturalPath.length<24000 && naturalDense.unchanged);
+      const naturalLoop=render(loopPoints,5,'natural');
+      check('Natural loops remain filled across crossings', loopPoints.every(p=>naturalLoop.inside(p[0]*1000,p[1]*1000)));
       const committed = [];
       const controller = PhloemInk.create({ pane: document.getElementById('pane'), getContext: () => ({ id: 'test' }),
         getTool: () => 'pen', getColor: () => 'black', getWidth: () => 5, getStrokes: () => [],
@@ -158,6 +174,11 @@ const browserName = process.env.PHLOEM_BROWSER || 'chromium';
         { id: 'corner', color: 'black', width: 5, points: cornerPoints.map(p => [p[0], p[1] + .35, p[2]]) },
         { id: 'loop', color: 'red', width: 5, points: loopPoints.map((p, i) => [p[0] + .25, p[1] + .25, i % 2 ? .85 : .15]) }
       ]);
+      if(location.hash==='#natural-preview'){
+        const sample=Array.from({length:401},(_,i)=>point(110+i*1.8,260+55*Math.sin(i/17)+20*Math.sin(i/5),.35+.3*Math.sin(i/31)));
+        PhloemInk.render(sheet,[{id:'clean',color:'black',width:3,points:sample},{id:'natural',color:'black',width:3,style:'natural',points:sample.map(p=>[p[0],p[1]+.3,p[2]])}]);
+        ['Clean','Natural · gentler pressure, tapered ends'].forEach((text,i)=>{const label=document.createElement('div');label.textContent=text;label.style.cssText='position:absolute;left:110px;top:'+(140+i*300)+'px;font:24px system-ui;color:#20313b';sheet.appendChild(label);});
+      }
       return results;
     });
     results.push({ name: 'fixture has no JavaScript errors', pass: errors.length === 0, detail: errors.join('; ') });

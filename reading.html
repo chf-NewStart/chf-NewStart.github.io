@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=137">
+  <link rel="stylesheet" href="/reading.css?v=140">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -126,7 +126,7 @@
     <section id="readerPage" class="hidden">
       <div class="reader-tools">
         <button class="soft-button" id="readerBack">← <span class="wide">Library</span></button>
-        <div class="title"><strong id="readerTitle"></strong><span id="readerMeta"></span></div>
+        <div class="title"><button class="reader-title-button" id="renameReaderTitle" type="button" title="Rename this paper" aria-label="Rename this paper"><strong id="readerTitle"></strong></button><span id="readerMeta"></span></div>
         <button class="soft-button hidden" id="tocBtn" type="button" title="Table of contents">☰ <span class="wide">Contents</span></button>
         <button class="soft-button hidden" id="prevPage" aria-label="Previous page">←</button>
         <button id="pageNumber" class="cloud" type="button" title="Jump to a page" aria-label="Jump to a page"></button>
@@ -153,9 +153,19 @@
       </div>
       <div class="pdf-ink-toolbar hidden" id="pdfInkToolbar" role="region" aria-label="Write on PDF" aria-describedby="pdfInkHint">
         <div class="pdf-ink-controls" role="toolbar" aria-label="PDF ink tools">
+          <div class="pdf-ink-group pdf-ink-colors" role="group" aria-label="Ink color">
+            <button data-pdf-ink-color="black" type="button" aria-label="Black ink" aria-pressed="true" title="Black ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="blue" type="button" aria-label="Blue ink" aria-pressed="false" title="Blue ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="red" type="button" aria-label="Red ink" aria-pressed="false" title="Red ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="green" type="button" aria-label="Green ink" aria-pressed="false" title="Green ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="purple" type="button" aria-label="Purple ink" aria-pressed="false" title="Purple ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="orange" type="button" aria-label="Orange ink" aria-pressed="false" title="Orange ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="teal" type="button" aria-label="Teal ink" aria-pressed="false" title="Teal ink"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-color="gray" type="button" aria-label="Gray ink" aria-pressed="false" title="Gray ink"><span aria-hidden="true"></span></button>
+          </div>
           <div class="pdf-ink-group" role="group" aria-label="Ink tool">
-            <button data-pdf-ink-tool="pen" type="button" aria-pressed="true" title="Write with Pencil; hold to straighten a line"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg>Pen</button>
-            <button data-pdf-ink-tool="eraser" type="button" aria-pressed="false" title="Remove whole handwriting strokes and text highlights"><span class="eraser-icon" aria-hidden="true"></span>Eraser</button>
+            <button data-pdf-ink-tool="pen" type="button" aria-label="Pen" aria-pressed="true" title="Write with Pencil; hold to straighten a line"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg></button>
+            <button data-pdf-ink-tool="eraser" type="button" aria-label="Eraser: remove whole handwriting strokes and text highlights" aria-pressed="false" title="Remove whole handwriting strokes and text highlights"><span class="eraser-icon" aria-hidden="true"></span></button>
           </div>
           <div class="pdf-ink-group pdf-ink-widths" role="group" aria-label="Ink width">
             <button data-pdf-ink-width="1.5" type="button" aria-label="Fine ink" aria-pressed="false" title="Fine"><span aria-hidden="true"></span></button>
@@ -169,18 +179,8 @@
             </div>
             <button class="pdf-ink-done" id="pdfInkDone" type="button" title="Finish writing and return to reading">Done</button>
           </div>
-          <div class="pdf-ink-group pdf-ink-colors" role="group" aria-label="Ink color">
-            <button data-pdf-ink-color="black" type="button" aria-label="Black ink" aria-pressed="true" title="Black ink"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-color="blue" type="button" aria-label="Blue ink" aria-pressed="false" title="Blue ink"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-color="red" type="button" aria-label="Red ink" aria-pressed="false" title="Red ink"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-color="green" type="button" aria-label="Green ink" aria-pressed="false" title="Green ink"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-color="purple" type="button" aria-label="Purple ink" aria-pressed="false" title="Purple ink"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-color="orange" type="button" aria-label="Orange ink" aria-pressed="false" title="Orange ink"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-color="teal" type="button" aria-label="Teal ink" aria-pressed="false" title="Teal ink"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-color="gray" type="button" aria-label="Gray ink" aria-pressed="false" title="Gray ink"><span aria-hidden="true"></span></button>
-          </div>
         </div>
-        <p id="pdfInkHint">Hold Pencil to straighten · fingers scroll<br>Eraser removes whole strokes &amp; text highlights</p>
+        <p class="sr-only" id="pdfInkHint">Hold Pencil to straighten · fingers scroll. Eraser removes whole strokes &amp; text highlights</p>
       </div>
       <div class="highlight-toolbar hidden" id="highlightToolbar" role="region" aria-label="Highlight tools" aria-describedby="highlightHint highlightActionContext">
         <div class="highlight-controls" role="toolbar" aria-label="Highlight tools and history">
@@ -240,6 +240,12 @@
             </div>
             <div class="group"><span class="group-label">Links</span>
               <button class="toggle" id="pdfLinkPreviewBtn" type="button" aria-pressed="true" title="Show a local preview when a PDF link is hovered or focused">Previews on</button>
+            </div>
+            <div class="group"><span class="group-label">New ink</span>
+              <div class="guide-scope" role="group" aria-label="Style for new handwriting">
+                <button class="toggle" type="button" data-pdf-ink-style="natural" aria-pressed="true" title="Gentle pressure and tapered ends; existing notes stay unchanged">Natural</button>
+                <button class="toggle" type="button" data-pdf-ink-style="clean" aria-pressed="false" title="Original clean ink; existing notes stay unchanged">Clean</button>
+              </div>
             </div>
           </div>
         </div>
@@ -594,6 +600,14 @@
     </div>
   </dialog>
 
+  <dialog id="renamePaperDialog" aria-labelledby="renamePaperHeading">
+    <div class="dialog-head"><h2 id="renamePaperHeading">Rename paper</h2><button class="icon-btn" type="button" data-close="renamePaperDialog" aria-label="Close rename">×</button></div>
+    <form class="dialog-body form-grid" id="renamePaperForm">
+      <label class="field-label" for="renamePaperTitle">Name</label><input class="field" id="renamePaperTitle" required maxlength="500" autocomplete="off">
+      <p>Changes the name in Phloem, not the original file.</p>
+      <div class="dialog-actions"><button class="soft-button" type="button" data-close="renamePaperDialog">Cancel</button><button class="button" type="submit">Save name</button></div>
+    </form>
+  </dialog>
   <dialog id="paperDialog">
     <div class="dialog-head"><h2>Paper details</h2><button class="icon-btn" data-close="paperDialog">×</button></div>
     <div class="dialog-body form-grid">
@@ -809,10 +823,10 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=137',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=140',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=137" defer></script>
-<script src="/reading.js?v=137" defer></script>
+<script src="/reading-ink.js?v=140" defer></script>
+<script src="/reading.js?v=140" defer></script>
 </body>
 </html>

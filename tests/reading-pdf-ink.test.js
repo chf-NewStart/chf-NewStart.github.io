@@ -290,9 +290,15 @@ async function checkZenUndo(browser) {
     await touch(page, 'touchend', to);
     await page.waitForTimeout(100);
     let first = (await ink(page))[0];
+    check('new handwriting defaults to saved Natural ink', first?.style === 'natural');
     check('paired Pointer and stylus events save exactly one freehand stroke', (await ink(page)).length === 1 && !!first?.id && !await hasPreview(page));
     check('stroke stores normalized page coordinates and pressure samples', first?.points.length >= 2 && first.points.every(p => p.length === 3 && p[0] >= 0 && p[0] <= 1 && p[1] >= 0 && p[1] <= 1 && p[2] >= 0 && p[2] <= 1) && first.points.some(p => Math.abs(p[2] - .2) < .01) && first.points.some(p => Math.abs(p[2] - .8) < .01), JSON.stringify(first));
     check('writing creates no text highlights and renders a saved SVG stroke', await markCount(page) === 0 && await page.locator('.pdf-ink-stroke[data-ink-id="' + first?.id + '"]').count() === 1);
+    const beforeStyleChange=JSON.stringify(await ink(page));
+    await click(page,'#comfortBtn');
+    await click(page,'[data-pdf-ink-style="clean"]');
+    check('Clean is selectable without rewriting existing Natural notes', await page.locator('[data-pdf-ink-style="clean"]').getAttribute('aria-pressed') === 'true' && JSON.stringify(await ink(page)) === beforeStyleChange);
+    await click(page,'#comfortBtn');
     const beforeFinger = JSON.stringify(await ink(page));
     const fingerDown = await pointer(page, 'pointerdown', from, { pointerType: 'touch', id: 98 });
     const fingerMove = await pointer(page, 'pointermove', to, { pointerType: 'touch', id: 98 });
@@ -419,6 +425,7 @@ async function checkZenUndo(browser) {
     await waitForPdf(page);
     check('all page ink and text highlights survive reload', same((await chapter(page)).pdfInk, JSON.parse(fullInk)) && same((await chapter(page)).highlights, JSON.parse(textMarks)), JSON.stringify({ inkMatches: same((await chapter(page)).pdfInk, JSON.parse(fullInk)), highlightsMatch: same((await chapter(page)).highlights, JSON.parse(textMarks)) }));
     check('Write is safely off after reopening the reader', await page.locator('#pdfWriteBtn').getAttribute('aria-pressed') === 'false');
+    check('chosen ink style survives reopening the app', await page.locator('[data-pdf-ink-style="clean"]').getAttribute('aria-pressed') === 'true');
     await positionPage(page, 1);
     const original = await page.locator('.pdf-page[data-page="1"]').boundingBox();
     await click(page, '#zoomIn');

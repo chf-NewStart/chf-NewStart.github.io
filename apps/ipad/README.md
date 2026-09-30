@@ -1,6 +1,6 @@
 # Phloem for iPad
 
-This checkout targets **1.1.0 build 21**, reader cache **v137**. The bottom Highlight toolbar is now a compact single row of colors, Eraser, Define, Undo, and Done; narrow screens wrap without shrinking touch targets. Ask AI, the redundant Highlight button, and the persistent visible help text have been removed from this bar. The separate Discuss/AI workspace and Pen toolbar are unchanged. Native assets must be synced before building. Build 21's Release archive was created on September 30, 2026 and passed version/build, strict code-signature, and exact bundled-source verification; the historical build 20 still contains the old toolbar. Distribution export, upload, and physical-iPad testing remain pending.
+This checkout targets **1.1.0 build 22**, reader cache **v140**. Both bottom annotation toolbars are compact: Highlight retains colors, Eraser, Define, Undo, and Done; Pen retains all eight colors, icon-only Pen/Eraser, three widths, Undo/Redo, and Done. Pen fits one 60px-high row in iPad landscape and wraps on narrower screens without shrinking 44px touch targets. Instructions remain available to screen readers. Discuss/AI remains unchanged; Natural ink and jitter-tolerant straightening are described below. Native assets must be synced before building. The verified historical build 21 archive does not contain the compact Pen bar. Build 22 archive creation, upload, and physical-iPad testing remain pending.
 
 The 1.1 target compiles for the iPad simulator and its automated bundle/security checks pass. It is not release-ready until the physical-iPad, provider, privacy, TestFlight, and media gates in [`release/RELEASE-CHECKLIST-1.1.md`](release/RELEASE-CHECKLIST-1.1.md) pass.
 
@@ -19,7 +19,7 @@ npm run ios:open
 
 In Xcode:
 
-1. Confirm the **App** target shows Version **1.1.0** and Build **21**.
+1. Confirm the **App** target shows Version **1.1.0** and Build **22**.
 2. Under **Signing & Capabilities**, select the correct Team and keep automatic signing enabled.
 3. Connect a physical iPad, trust the Mac, enable Developer Mode if requested, and choose it as the run destination.
 4. Use disposable documents and provider keys for the release checklist. Do not test with confidential or third-party personal data.
@@ -30,6 +30,8 @@ Historical signed archives **1.1.0 (14)**, **(15)**, and **(16)** were built and
 
 ## Included in 1.1
 
+- Natural ink is the default for new strokes: gentler pressure variation and subtle endpoint tapering, with no texture or random jitter. Settings → PDF → New ink switches between Natural and Clean without expanding the Pen bar. The preference stays on this device; each Natural stroke stores its style in the library and JSON backups. Older strokes retain their Clean appearance. Held straight lines keep a steady width. The 600ms hold now tolerates dense stationary Pencil jitter and shows a confirmation when a line snaps; physical-iPad validation remains required.
+- Rename a paper by tapping its open reader title, choosing Rename on its library wall cover, or using List → Actions → Rename. Custom names persist without changing the original filename or annotations, and are not replaced by automatic PDF-title repair. Continue reading offers up to six recent papers in a horizontally scrollable row.
 - Shared PDF/Word reader, Book mode, guide, Zen mode, search, highlights, notes, review workflows, and document import.
 - Freehand handwriting on PDF pages with Apple Pencil: explicitly turn on **Write**, choose Pen, one of eight colors (black, blue, red, green, purple, orange, teal, gray), and a fine, medium, or broad width. Pressure-sensitive vector strokes stay anchored to each page through zoom and layout changes. Margins, figures, blank pages, and scanned PDFs can be written on without OCR or selectable text. Write is off by default; fingers remain available for scrolling and zooming.
 - Build 18 makes Pen and Highlighter mutually exclusive through normal, touch, and Zen controls, synchronizes visible selected/pressed states, and cancels an unfinished stroke when switching tools. Default Pencil highlighting and native finger text selection remain available.

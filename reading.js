@@ -1082,9 +1082,9 @@
   function renderContinueReading(query,statsFor){
     var section=byId('continueReading');if(!section)return;
     if(libraryHydrating||query||!state.chapters.length){section.classList.add('hidden');section.innerHTML='';return;}
-    var recent=state.chapters.filter(function(ch){return!libraryOfflineOnly||localReadingAvailability(ch).available;}).sort(function(a,b){return(+b.lastOpenedAt||+b.updatedAt||+b.addedAt||0)-(+a.lastOpenedAt||+a.updatedAt||+a.addedAt||0);}).slice(0,3);
+    var recent=state.chapters.filter(function(ch){return!libraryOfflineOnly||localReadingAvailability(ch).available;}).sort(function(a,b){return(+b.lastOpenedAt||+b.updatedAt||+b.addedAt||0)-(+a.lastOpenedAt||+a.updatedAt||+a.addedAt||0);}).slice(0,6);
     if(!recent.length){section.classList.add('hidden');section.innerHTML='';return;}
-    section.classList.remove('hidden');section.innerHTML='<div class="continue-reading-head"><h3 id="continueReadingTitle">Continue reading</h3><span>Your latest places, ready in one tap</span></div><div class="continue-reading-cards"></div>';
+    section.classList.remove('hidden');section.innerHTML='<div class="continue-reading-head"><h3 id="continueReadingTitle">Continue reading</h3><span>Your latest places · scroll for more</span></div><div class="continue-reading-cards" tabindex="0" role="region" aria-label="Recent papers, scroll horizontally for more"></div>';
     var cards=section.querySelector('.continue-reading-cards');recent.forEach(function(ch){
       var stats=statsFor(ch),local=localReadingAvailability(ch),backup=binarySourceSpec(ch)?gdrivePaperStatus(ch):null,button=document.createElement('button'),progress=ch.kind==='pdf'?'Page '+stats.page+(stats.total?' of '+stats.total:''):(stats.page+' of '+stats.total+' paragraphs');
       button.type='button';button.className='continue-reading-card';button.dataset.continuePaper=ch.id;button.dataset.localAvailability=local.state;if(backup)button.dataset.backupStatus=backup.tone;button.setAttribute('aria-label','Continue '+(ch.title||'Untitled')+', '+progress+', '+local.label+(backup?', '+backup.label:''));
@@ -1145,6 +1145,7 @@
     detail.innerHTML='<span class="cover-focus-guide" aria-hidden="true"><span>Focus guide</span></span><article class="closed-book" aria-label="Selected paper: '+esc(title)+'">'+renderBookPunches(ch,false)+'<div class="closed-book-inner"><div class="closed-book-kicker">'+esc(kind)+' · field notebook</div><h3 class="closed-book-title'+titleClass+'">'+esc(title)+'</h3><p class="closed-book-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div><div class="cover-availability" aria-label="Reading and backup availability">'+localMarkup+driveMarkup+'</div><div class="cover-record"><div class="cover-stat"><span>Marks</span><b>'+stats.notes+'</b></div><div class="cover-stat"><span>Questions</span><b>'+stats.questions+'</b></div><div class="cover-stat"><span>Last opened</span><b>'+esc(openedDate(ch))+'</b></div></div><div class="cover-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="cover-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div><div class="cover-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button>'+offlineMarkup+downloadMarkup+'<button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div></div></article>';
     var closed=detail.querySelector('.closed-book'),palette=cover||BOOK_SPINES[0];closed.style.setProperty('--cover',palette.cover);closed.style.setProperty('--cover-ink',palette.ink);
     detail.querySelector('.open-selected').onclick=function(){openReader(ch.id);};
+    var renameButton=document.createElement('button');renameButton.type='button';renameButton.className='soft-button rename-paper';renameButton.textContent='Rename';renameButton.setAttribute('aria-label','Rename '+title);renameButton.onclick=function(){openRenamePaper(ch.id);};detail.querySelector('.cover-actions').insertBefore(renameButton,detail.querySelector('.remove-paper'));
     var offlineButton=detail.querySelector('.download-offline');if(offlineButton)offlineButton.onclick=function(){downloadForOfflineReading(ch,offlineButton);};
     var downloadButton=detail.querySelector('.download-paper');if(downloadButton)downloadButton.onclick=function(){downloadOriginalFile(ch,downloadButton);};
     detail.querySelector('.remove-paper').onclick=function(){removePaper(ch,false);};
@@ -1240,6 +1241,7 @@
     function showActions(ch,details,panel,summary){
       panel.innerHTML='';panel.classList.remove('choosing-category');var label=document.createElement('strong');label.className='library-list-action-label';label.textContent='Paper actions';panel.appendChild(label);
       var move=actionButton(panel,'Move to category…','',function(){showMoveChoices(ch,details,panel,summary);});
+      actionButton(panel,'Rename','rename-paper',function(){details.removeAttribute('open');openRenamePaper(ch.id);});
       var source=binarySourceSpec(ch);
       if(ch.kind==='pdf'&&!localReadingAvailability(ch).available)actionButton(panel,'Download for offline reading','',function(){details.removeAttribute('open');downloadForOfflineReading(ch,this);});
       if(source)actionButton(panel,'Export original '+source.label,'',function(){details.removeAttribute('open');downloadOriginalFile(ch,this);});
@@ -2386,7 +2388,7 @@
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
   var GUIDE_DISCOVERY_KEY='readingRoom.guideDiscoverySeen.v1';
-  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfLayout:'scroll',linkPreviews:true,guideScope:'page',guideSize:'m',guideDim:55,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
+  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfLayout:'scroll',inkStyle:'natural',linkPreviews:true,guideScope:'page',guideSize:'m',guideDim:55,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
   var comfort=Object.assign({},DEFAULT_COMFORT);
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   var migratedLegacyPagedComfort=!!(savedComfort&&!Object.prototype.hasOwnProperty.call(savedComfort,'pdfLayout')&&savedComfort.pdfDirection==='vertical');
@@ -2394,6 +2396,7 @@
   comfort.measure=Math.max(440,Math.min(1100,+comfort.measure||780));
   comfort.leading=Math.max(1.2,Math.min(2.6,+comfort.leading||1.7));
   if(['book','clean'].indexOf(comfort.typeface)<0)comfort.typeface=DEFAULT_COMFORT.typeface;
+  if(['natural','clean'].indexOf(comfort.inkStyle)<0)comfort.inkStyle=DEFAULT_COMFORT.inkStyle;
   if(['yellow','green','blue'].indexOf(comfort.guide)<0)comfort.guide='yellow';
   if(['row','column'].indexOf(comfort.guideOrientation)<0)comfort.guideOrientation='row';
   /* The old "Vertical book" setting mixed page direction with a crop-heavy layout.
@@ -2466,6 +2469,7 @@
     byId('leadValue').textContent=comfort.leading.toFixed(1);
     byId('airyBtn').setAttribute('aria-pressed',String(!!comfort.airy));
     document.querySelectorAll('[data-reading-typeface]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.readingTypeface===comfort.typeface));});
+    document.querySelectorAll('[data-pdf-ink-style]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.pdfInkStyle===comfort.inkStyle));});
     byId('driftRange').value=String(comfort.driftSpeed);byId('driftValue').textContent=driftLabel();
     byId('guideDimRange').value=String(comfort.guideDim);byId('guideDimValue').textContent=comfort.guideDim+'%';
     byId('zenGuideDimRange').value=String(comfort.guideDim);byId('zenGuideDimValue').textContent=comfort.guideDim+'%';
@@ -2530,6 +2534,7 @@
     else showReaderToast(bookSpread()?'Book view · two full pages at the spine':'Book view · one full page until there is room for a spread');
   }
   document.querySelectorAll('[data-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.pdfLayout);};});
+  document.querySelectorAll('[data-pdf-ink-style]').forEach(function(btn){btn.onclick=function(){if(pdfInkController)pdfInkController.cancel();comfort.inkStyle=btn.dataset.pdfInkStyle;applyComfort();showReaderToast(btn.textContent+' ink for new strokes · existing notes unchanged');};});
   byId('pdfLinkPreviewBtn').onclick=function(){comfort.linkPreviews=!comfort.linkPreviews;if(!comfort.linkPreviews)hidePdfReferencePreview();applyComfort();showReaderToast('PDF link previews '+(comfort.linkPreviews?'on':'off'));};
   document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideColor.charAt(0).toUpperCase()+btn.dataset.guideColor.slice(1)+' reading guide');};});
   document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.onclick=function(){comfort.guideOrientation=btn.dataset.guideOrientation;comfort.focus=true;guideOffset=null;applyComfort();placeGuide();showReaderToast(comfort.guideOrientation==='column'?'Vertical guide · follows one top-to-bottom column':'Row guide · follows one horizontal passage');};});
@@ -3855,12 +3860,12 @@
         loadPdfOutline();
         /* Older imports may still wear a filename/publisher code or have no author
            credit. Repair both from the local PDF without replacing a normal title. */
-        if(pdfTitleNeedsRepair(ch.title,ch.sourceName)||!String(ch.authors||'').trim()){
+        if((!ch.titleEditedByUser&&pdfTitleNeedsRepair(ch.title,ch.sourceName))||!String(ch.authors||'').trim()){
           var titleDoc=pdfDoc,titleId=ch.id,titleBefore=ch.title;
           derivePdfDetails(titleDoc).then(function(details){
             var target=find(titleId);
             if(!target)return;var changed=false,titleChanged=false,authorsChanged=false;
-            if(details.title&&target.title===titleBefore&&pdfTitleNeedsRepair(target.title,target.sourceName)&&details.title!==target.title){target.title=details.title;changed=titleChanged=true;}
+            if(details.title&&!target.titleEditedByUser&&target.title===titleBefore&&pdfTitleNeedsRepair(target.title,target.sourceName)&&details.title!==target.title){target.title=details.title;changed=titleChanged=true;}
             if(details.authors&&!String(target.authors||'').trim()){target.authors=details.authors;changed=authorsChanged=true;}
             if(!changed)return;touch(target);
             if(currentId===titleId){byId('readerTitle').textContent=target.title;byId('readerMeta').textContent=target.authors||target.sourceName||'';}
@@ -6005,7 +6010,21 @@
   byId('pageNote').oninput=function(){ var ch=find(currentId), key=noteKey(); if(this.value.trim()) ch.pageNotes[key]=this.value; else delete ch.pageNotes[key]; touch(ch); renderNoteIndex(); };
   byId('paperTags').onchange=function(){ var ch=find(currentId); ch.tags=this.value.split(',').map(function(t){return t.trim();}).filter(Boolean).filter(function(t,i,a){return a.indexOf(t)===i;}); touch(ch); };
   byId('editPaperBtn').onclick=function(){var ch=find(currentId);if(!ch)return;byId('paperTitleEdit').value=ch.title||'';byId('paperAuthorsEdit').value=ch.authors||'';byId('paperTagsEdit').value=(ch.tags||[]).join(', ');byId('paperDialog').showModal();};
-  byId('savePaperDetails').onclick=function(){var ch=find(currentId);if(!ch)return;ch.title=byId('paperTitleEdit').value.trim()||'Untitled';ch.authors=byId('paperAuthorsEdit').value.trim();ch.tags=byId('paperTagsEdit').value.split(',').map(function(t){return t.trim();}).filter(Boolean).filter(function(t,i,a){return a.indexOf(t)===i;});touch(ch);byId('readerTitle').textContent=ch.title;byId('readerMeta').textContent=ch.authors||ch.sourceName||'';byId('paperTags').value=ch.tags.join(', ');byId('paperDialog').close();if(readerMode==='text')renderText(ch);};
+  var renamePaperId=null;
+  function openRenamePaper(id){
+    var ch=find(id);if(!ch)return;renamePaperId=id;var input=byId('renamePaperTitle');input.value=ch.title||'';input.setCustomValidity('');byId('renamePaperDialog').showModal();input.focus();input.select();
+  }
+  byId('renameReaderTitle').onclick=function(){openRenamePaper(currentId);};
+  byId('renamePaperTitle').oninput=function(){this.setCustomValidity('');};
+  byId('renamePaperDialog').addEventListener('close',function(){renamePaperId=null;});
+  byId('renamePaperForm').onsubmit=function(event){
+    event.preventDefault();var ch=find(renamePaperId),input=byId('renamePaperTitle'),title=input.value.trim();if(!ch){byId('renamePaperDialog').close();return;}
+    if(!title){input.setCustomValidity('Enter a name.');input.reportValidity();return;}
+    ch.title=title;ch.titleEditedByUser=true;touch(ch);
+    if(currentId===ch.id){byId('readerTitle').textContent=title;byId('paperTitleEdit').value=title;}
+    byId('renamePaperDialog').close();renderShelf();
+  };
+  byId('savePaperDetails').onclick=function(){var ch=find(currentId);if(!ch)return;var title=byId('paperTitleEdit').value.trim()||'Untitled';if(title!==ch.title)ch.titleEditedByUser=true;ch.title=title;ch.authors=byId('paperAuthorsEdit').value.trim();ch.tags=byId('paperTagsEdit').value.split(',').map(function(t){return t.trim();}).filter(Boolean).filter(function(t,i,a){return a.indexOf(t)===i;});touch(ch);byId('readerTitle').textContent=ch.title;byId('readerMeta').textContent=ch.authors||ch.sourceName||'';byId('paperTags').value=ch.tags.join(', ');byId('paperDialog').close();if(readerMode==='text')renderText(ch);};
   async function removePaper(ch,leaveReader){
     if(!ch)return false;var githubCopy=ch.sourcePath?' The PDF in your GitHub papers/ folder will stay there.':'';
     if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Phloem? Its notes, highlights, reviewer work, and local original file will be removed.'+githubCopy))return false;
@@ -6240,7 +6259,8 @@
     pane:byId('documentPane'),
     canStart:function(page){return !!(pdfViews[page-1]&&pdfViews[page-1].rendered);},
     getContext:function(){var ch=find(currentId);return (pdfWriteMode||highlightEraseMode)&&readerMode==='pdf'&&ch&&ch.kind==='pdf'&&!byId('readerPage').classList.contains('hidden')&&!bookCurlOwned&&!pagedTurning&&!reviewLinkTargetId&&!guideDragging&&!recallActive?{id:currentId}:null;},
-    getTool:function(){return highlightEraseMode?'eraser':pdfInkTool;},getColor:function(){return pdfInkColor;},getWidth:function(){return pdfInkWidth;},getStrokes:function(page){var ch=find(currentId);return ch&&(ch.pdfInk||{})[page]||[];},
+    getTool:function(){return highlightEraseMode?'eraser':pdfInkTool;},getColor:function(){return pdfInkColor;},getWidth:function(){return pdfInkWidth;},getStyle:function(){return comfort.inkStyle;},getStrokes:function(page){var ch=find(currentId);return ch&&(ch.pdfInk||{})[page]||[];},
+    onStraighten:function(){showReaderToast('Straight line · move Pencil to adjust, lift to save');},
     onStart:function(page){clearPdfErasePreview();clearPendingSelection();clearTimeout(guideLockClickTimer);hidePdfReferencePreview();holdDrift(1200);if(currentPage!==page){currentPage=page;updatePageChrome();loadPageNote();}selectionInputType='pen';suppressHighlightAutoCommit=true;},
     onCommit:commitPdfInk,onErase:erasePdfInk,onErasePreview:previewPdfErase,onEraseCancel:clearPdfErasePreview
   });
@@ -7668,7 +7688,7 @@
   (function(){
     var dirty=false;
     state.chapters.forEach(function(ch){
-      if(/<[^>]+>|&#x?[0-9a-f]+;|&[a-z]+;/i.test(ch.title||'')){
+      if(!ch.titleEditedByUser&&/<[^>]+>|&#x?[0-9a-f]+;|&[a-z]+;/i.test(ch.title||'')){
         var cleaned=cleanMetaTitle(ch.title);
         if(cleaned&&cleaned!==ch.title){ch.title=cleaned;dirty=true;}
       }

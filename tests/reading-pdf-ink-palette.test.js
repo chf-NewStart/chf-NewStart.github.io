@@ -55,6 +55,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && a.right > b.x + 1 && a.y <
     await page.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0);
     await page.locator('#pdfWriteBtn').evaluate(button => button.click());
     check('all eight color presets are exposed with accessible names', await page.locator('[data-pdf-ink-color]').evaluateAll(buttons => buttons.length === 8 && buttons.every(button => button.getAttribute('aria-label') && button.title)));
+    check('Pen and Eraser are named icon-only controls', await page.locator('[data-pdf-ink-tool]').evaluateAll(buttons => buttons.length === 2 && buttons.every(button => button.getAttribute('aria-label') && !button.textContent.trim())));
+    check('instructions remain accessible without adding a visible footer', await page.locator('#pdfInkHint').evaluate(hint => hint.classList.contains('sr-only') && hint.getBoundingClientRect().height <= 1 && document.getElementById('pdfInkToolbar').getAttribute('aria-describedby') === hint.id));
     for (const [name, color] of Object.entries(COLORS)) {
       await page.locator('[data-pdf-ink-tool="eraser"]').click();
       await page.locator('[data-pdf-ink-color="' + name + '"]').click();
@@ -85,6 +87,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && a.right > b.x + 1 && a.y <
           && geometry.toolbar.x >= 0 && geometry.toolbar.right <= viewport.width + .5 && geometry.toolbar.y >= 0 && geometry.toolbar.bottom <= viewport.height + .5,
         geometry.scroll ? geometry : undefined);
         check(label + ' does not cover the reading dock', !overlaps(geometry.toolbar, geometry.dock));
+        check(label + ' uses compact rows', geometry.toolbar.height <= (viewport.width >= 1024 ? 61 : viewport.width >= 528 ? 110 : viewport.width >= 390 && !zen ? 160 : 205), geometry.toolbar);
         if (process.env.PHLOEM_PALETTE_SCREENSHOT) await page.screenshot({ path: process.env.PHLOEM_PALETTE_SCREENSHOT + '-' + (zen ? 'zen' : 'reader') + '-' + viewport.width + 'x' + viewport.height + '.png' });
       }
     }

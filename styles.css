@@ -673,7 +673,6 @@ footer {
 .hero-command,
 .section-kicker,
 .signal-topline,
-.hero-stack,
 .explorer-header,
 .gc-meta,
 footer {
@@ -819,51 +818,6 @@ footer {
     color: var(--accent);
 }
 
-.hero-stack {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 42px;
-    margin-bottom: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.hero-stack li,
-.gc-tag {
-    padding: 5px 9px;
-    border: 1px solid var(--line);
-    color: var(--muted-deep);
-    background: rgba(255, 255, 255, 0.015);
-    font-size: 0.7rem;
-}
-
-.hero-stack::before {
-    color: var(--muted);
-    content: 'CORE TOOLS  —';
-}
-
-.hero-stack::before,
-.hero-stack li {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    font-size: 0.62rem;
-    font-weight: 400;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-}
-
-.hero-stack li {
-    color: var(--muted-deep);
-}
-
-.hero-stack li + li::before {
-    margin-right: 10px;
-    color: var(--line-strong);
-    content: '/';
-}
-
 .hero-signal {
     position: relative;
     overflow: visible;
@@ -928,94 +882,17 @@ footer {
     text-shadow: 0 0 12px var(--accent);
 }
 
-.research-preview {
-    display: grid;
-    gap: 16px;
-    padding: 24px 18px 4px;
-}
-
-.research-preview-eyebrow {
-    margin: 0;
+.launchpad-status-link {
     color: var(--accent);
-    font-family: var(--mono);
-    font-size: 0.62rem;
-    letter-spacing: 0.09em;
-}
-
-.research-preview h2 {
-    max-width: 24ch;
-    margin: 0;
-    color: var(--ink);
-    font-size: clamp(1.45rem, 2vw, 1.9rem);
-    font-weight: 500;
-    line-height: 1.16;
-    letter-spacing: -0.025em;
-}
-
-.research-preview-summary {
-    max-width: 52ch;
-    margin: 0;
-    color: var(--muted);
-    font-size: 0.82rem;
-    line-height: 1.58;
-}
-
-.research-preview-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin: 0;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-}
-
-.research-preview-metrics > div {
-    min-width: 0;
-    padding: 11px 10px 11px 0;
-}
-
-.research-preview-metrics > div + div {
-    padding-left: 12px;
-    border-left: 1px solid var(--line);
-}
-
-.research-preview-metrics dt {
-    color: var(--ink);
-    font-family: var(--mono);
-    font-size: 0.86rem;
     font-weight: 600;
-}
-
-.research-preview-metrics dd {
-    margin: 3px 0 0;
-    color: var(--muted-deep);
-    font-size: 0.58rem;
-    line-height: 1.35;
-}
-
-.research-preview-links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px 20px;
-}
-
-.research-preview-links a {
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 0.65rem;
     text-decoration: underline;
-    text-decoration-color: rgba(157, 172, 159, 0.36);
+    text-decoration-color: rgba(118, 247, 165, 0.4);
     text-underline-offset: 4px;
+    transition: text-decoration-color 160ms ease;
 }
 
-.research-preview-links a:hover {
-    color: var(--accent);
-}
-
-.research-preview-links .research-preview-primary {
-    color: var(--accent);
-    font-weight: 600;
+.launchpad-status-link:hover {
+    text-decoration-color: var(--accent);
 }
 
 .launchpad-link {
@@ -1086,8 +963,7 @@ footer {
 
 .launchpad-feature-meta,
 .launchpad-card-top,
-.launchpad-title-row,
-.launchpad-tags {
+.launchpad-title-row {
     display: flex;
     align-items: center;
 }
@@ -1135,19 +1011,6 @@ footer {
     color: var(--muted);
     font-size: 0.85rem;
     line-height: 1.65;
-}
-
-.launchpad-tags {
-    display: none;
-}
-
-.launchpad-tags b {
-    padding: 3px 6px;
-    border: 1px solid var(--line);
-    color: var(--muted-deep);
-    font-family: var(--mono);
-    font-size: 0.56rem;
-    font-weight: 400;
 }
 
 .launchpad-grid {
@@ -1206,51 +1069,6 @@ footer {
     grid-row: 1;
     color: var(--ink-soft);
     font-size: 1rem;
-}
-
-.launchpad-qi-name {
-    display: flex;
-    align-items: center;
-    gap: 0.45em;
-}
-
-.launchpad-qi-pair {
-    position: relative;
-    width: 2rem;
-    height: 1.25rem;
-    flex: 0 0 auto;
-}
-
-.launchpad-qi-pair::before,
-.launchpad-qi-pair::after {
-    position: absolute;
-    content: '';
-    image-rendering: pixelated;
-}
-
-.launchpad-qi-pair::before {
-    top: 0.25rem;
-    left: 0;
-    width: 1rem;
-    height: 0.82rem;
-    border: 1px solid #566860;
-    background: linear-gradient(145deg, #586860 0 20%, #252e2a 20% 67%, #090d0c 67%);
-    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
-    clip-path: polygon(19% 0, 73% 3%, 100% 32%, 88% 77%, 57% 100%, 13% 89%, 0 48%);
-    transform: rotate(-7deg);
-}
-
-.launchpad-qi-pair::after {
-    right: 0;
-    bottom: 0;
-    width: 1rem;
-    height: 1.08rem;
-    background:
-        repeating-conic-gradient(from 222deg at 50% 96%, rgba(101, 83, 52, 0.34) 0 6deg, transparent 6deg 19deg),
-        linear-gradient(145deg, #fffbed 0 28%, #d7c9a8 28% 72%, #8f7953 72%);
-    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
-    clip-path: polygon(42% 0, 58% 0, 58% 7%, 76% 7%, 76% 15%, 91% 15%, 100% 38%, 91% 70%, 70% 90%, 50% 100%, 30% 90%, 9% 70%, 0 38%, 9% 15%, 24% 15%, 24% 7%, 42% 7%);
-    transform: rotate(7deg);
 }
 
 .launchpad-card > span:last-child {
@@ -2493,8 +2311,8 @@ body.monet-page-body::before {
     color: rgba(255, 244, 219, 0.62);
 }
 
-.project-archive {
-    margin-top: 30px;
+.tool-bench {
+    margin-top: 64px;
     padding-top: 28px;
     border-top: 1px solid var(--line);
 }
@@ -3756,30 +3574,8 @@ textarea {
         line-height: 1.55;
     }
 
-    .hero-stack {
-        margin-top: 18px;
-    }
-
     .hero-actions {
         margin-top: 24px;
-    }
-
-    .research-preview {
-        gap: 11px;
-        padding-top: 15px;
-    }
-
-    .research-preview h2 {
-        font-size: 1.35rem;
-    }
-
-    .research-preview-summary {
-        font-size: 0.76rem;
-        line-height: 1.45;
-    }
-
-    .research-preview-metrics > div {
-        padding-block: 8px;
     }
 
     .launchpad-feature {
@@ -3889,14 +3685,6 @@ textarea {
     .hero-launchpad {
         width: 100%;
         max-width: none;
-    }
-
-    .hero-research {
-        padding-left: 20px;
-    }
-
-    .research-preview {
-        padding-inline: 0;
     }
 
     .scroll-cue {

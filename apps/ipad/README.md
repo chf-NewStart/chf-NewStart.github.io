@@ -1,6 +1,6 @@
 # Phloem for iPad
 
-This checkout targets **1.1.0 build 23**, reader cache **v142**. Both bottom annotation toolbars are compact: Highlight retains colors, Eraser, Define, Undo, and Done; Pen retains all eight colors, icon-only Pen/Eraser, three widths, Undo/Redo, and Done. The first size, Fine (1.5), is now the default; existing saved strokes are unchanged. Pen fits one 60px-high row in iPad landscape and wraps on narrower screens without shrinking 44px touch targets. Instructions remain available to screen readers. Discuss/AI remains unchanged; Natural ink and jitter-tolerant straightening are described below. Native assets must be synced before building. Build 23 was archived on September 30, 2026 and passed strict code-signature, version/build, 54 bundled-asset hashes, and exact source comparisons after native transforms. It includes the Pencil-hover fix. Distribution validation/upload and physical-iPad testing remain pending.
+This checkout targets **1.1.0 build 24**, reader cache **v143**. Build 24 moves the reading-guide grip to the band's left edge so it stays clear of the zen dock in zen mode; nothing else about the guide changes. Both bottom annotation toolbars are compact: Highlight retains colors, Eraser, Define, Undo, and Done; Pen retains all eight colors, icon-only Pen/Eraser, three widths, Undo/Redo, and Done. The first size, Fine (1.5), is now the default; existing saved strokes are unchanged. Pen fits one 60px-high row in iPad landscape and wraps on narrower screens without shrinking 44px touch targets. Instructions remain available to screen readers. Discuss/AI remains unchanged; Natural ink and jitter-tolerant straightening are described below. Native assets must be synced before building. Build 23 was archived on September 30, 2026 and passed strict code-signature, version/build, 54 bundled-asset hashes, and exact source comparisons after native transforms. It includes the Pencil-hover fix. Distribution validation/upload and physical-iPad testing remain pending.
 
 Current archive: `/Users/chf/Library/Developer/Xcode/Archives/2026-09-30/Phloem 1.1.0 (23).xcarchive`. Select **1.1.0 (23)** in Xcode Organizer to validate and distribute to App Store Connect. The archive is locally signed; this does not mean Apple has accepted the upload or approved the app.
 
@@ -21,7 +21,7 @@ npm run ios:open
 
 In Xcode:
 
-1. Confirm the **App** target shows Version **1.1.0** and Build **23**.
+1. Confirm the **App** target shows Version **1.1.0** and Build **24**.
 2. Under **Signing & Capabilities**, select the correct Team and keep automatic signing enabled.
 3. Connect a physical iPad, trust the Mac, enable Developer Mode if requested, and choose it as the run destination.
 4. Use disposable documents and provider keys for the release checklist. Do not test with confidential or third-party personal data.

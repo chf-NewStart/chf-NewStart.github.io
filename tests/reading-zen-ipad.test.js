@@ -345,16 +345,16 @@ async function storedPdfHighlights(page) {
   const fineZenMarkerMenu = finePage.locator('#highlightToolbar');
   await fineZenMarker.focus();
   await fineZenMarker.press('Enter');
-  const fineToggleState = await finePage.locator('#highlightToolbar [data-highlight-tool="marker"]').evaluate(button => {
+  const fineToggleState = await finePage.locator('#highlightToolbar [data-highlight-color="yellow"]').evaluate(button => {
     const rect = button.getBoundingClientRect();
     return { visible: getComputedStyle(button).display !== 'none', width: rect.width, height: rect.height };
   });
-  check('fine-pointer Zen exposes Highlight in the shared toolbar', fineToggleState.visible
+  check('fine-pointer Zen exposes a highlight color in the shared toolbar', fineToggleState.visible
     && fineToggleState.width >= 44 && fineToggleState.height >= 44, JSON.stringify(fineToggleState));
-  await finePage.locator('#highlightToolbar [data-highlight-tool="marker"]').focus();
-  await finePage.locator('#highlightToolbar [data-highlight-tool="marker"]').press('Enter');
-  check('the shared Highlight control synchronizes persistent Marker mode',
-    await finePage.locator('#highlightToolbar [data-highlight-tool="marker"]').getAttribute('aria-pressed') === 'true'
+  await finePage.locator('#highlightToolbar [data-highlight-color="yellow"]').focus();
+  await finePage.locator('#highlightToolbar [data-highlight-color="yellow"]').press('Enter');
+  check('choosing a color synchronizes persistent Marker mode',
+    await finePage.locator('#highlightToolbar [data-highlight-color="yellow"]').getAttribute('aria-pressed') === 'true'
     && await finePage.locator('#highlightBtn').getAttribute('aria-pressed') === 'true'
     && await finePage.locator('body').evaluate(body => body.classList.contains('marker-on')));
 

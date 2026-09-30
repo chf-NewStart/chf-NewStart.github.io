@@ -6061,7 +6061,6 @@
     if(markerButton){markerButton.setAttribute('aria-label',highlightEraseMode?'Eraser on. Switch to Marker':(mode?'Marker mode on':'Marker mode off')+'. Current color '+label);markerButton.title=highlightEraseMode?'Switch to Marker and colors':coarseHighlightUi()?'Open highlight colors, or mark selected text':'Toggle Marker and open colors';}
     if(selectionButton){selectionButton.dataset.highlightColor=highlightColor;selectionButton.setAttribute('aria-label','Highlight selected passage in '+label);}
     document.querySelectorAll('[data-highlight-eraser]').forEach(function(b){b.setAttribute('aria-pressed',String(!!highlightEraseMode));});
-    document.querySelectorAll('[data-highlight-tool="marker"]').forEach(function(b){b.setAttribute('aria-pressed',String(highlightToolbarOpen()&&!pdfWriteMode&&!highlightEraseMode));});
     document.body.classList.toggle('highlight-erasing',!!highlightEraseMode);
     byId('highlightBtnLabel').textContent=highlightEraseMode?'Erase':highlightMode?'Marker on':'Marker';
     syncZenMarkerUi();syncMarkerQuickActions();
@@ -6499,7 +6498,6 @@
     setHighlightToolbarOpen(highlightMode,this);
   };
   byId('highlightColorBtn').onclick=function(){setHighlightToolbarOpen(!highlightToolbarOpen(),this);};
-  document.querySelectorAll('[data-highlight-tool="marker"]').forEach(function(b){b.onclick=function(){if(pdfWriteMode)setPdfWriteMode(false);if(highlightEraseMode)setHighlightEraseMode(false);setHighlightMode(fineHighlightUi());setHighlightToolbarOpen(true);};});
   document.querySelectorAll('[data-highlight-eraser]').forEach(function(b){b.onclick=function(){setHighlightEraseMode(!highlightEraseMode);setHighlightToolbarOpen(true);showReaderToast(highlightEraseMode?'Eraser on · sweep over highlights or handwriting · Undo restores them':'Eraser off');};});
   document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.highlightColor);setHighlightMode(fineHighlightUi());};});
   byId('highlightUndo').onclick=undoHighlight;
@@ -7631,8 +7629,8 @@
     });
   }
 
-  /* Marker shortcuts only reuse a passage chosen in this reading session. A deleted
-     highlight or a last selection on another PDF page must never become hidden AI context. */
+  /* Define only reuses a passage chosen in this reading session. A deleted highlight
+     or a last selection on another PDF page must never become hidden lookup context. */
   function markerQuickActionTarget(){
     var ch=find(currentId),selection=pendingSelection||lastAskSelection;if(!ch||!selection||!selection.text)return null;
     if(readerMode==='pdf'){if(selection.kind!=='pdf'||+selection.page!==+currentPage)return null;}
@@ -7643,7 +7641,7 @@
   function syncMarkerQuickActions(){
     var target=markerQuickActionTarget(),text=target&&normalizedPassage(target.selection.text),caption=text?'“'+(text.length>100?text.slice(0,97)+'…':text)+'”':'Select text or tap a highlight.';
     document.querySelectorAll('[data-marker-action-context]').forEach(function(label){label.textContent=caption;label.title=text||'';});
-    document.querySelectorAll('[data-marker-action]').forEach(function(button){button.title=text?(button.dataset.markerAction==='define'?'Define: ':'Ask about: ')+text.slice(0,160):'Select text or tap a highlight first';});
+    document.querySelectorAll('[data-marker-action="define"]').forEach(function(button){button.title=text?'Define: '+text.slice(0,160):'Select text or tap a highlight first';});
   }
   function markerQuickActionAnchor(selection){
     if(selection.kind==='pdf'){
@@ -7654,20 +7652,13 @@
     }
     return{left:innerWidth/2,right:innerWidth/2,top:innerHeight/2,bottom:innerHeight/2};
   }
-  document.querySelectorAll('[data-marker-action]').forEach(function(button){button.onclick=function(){
+  document.querySelectorAll('[data-marker-action="define"]').forEach(function(button){button.onclick=function(){
     var target=markerQuickActionTarget();syncMarkerQuickActions();
     if(!target){showReaderToast('Select text or tap a highlight on this page first');return;}
     var selection=target.selection,anchor=markerQuickActionAnchor(selection);
     setHighlightMode(false);setHighlightToolbarOpen(false);closeZenPopouts(false);
     if(target.ref)openHighlightCard(target.ref,anchor);else showSelectionCard(selection,anchor);
-    if(button.dataset.markerAction==='define'){byId('selectionExplain').click();return;}
-    /* Opening a question is local. The existing Ask button remains the explicit send
-       action, with the same provider setup and consent checks as every other question. */
-    if(!useSelectionForAi(selection,notesForSelection(selection),true))return;
-    clearPendingSelection();switchTab('aiPanel');
-    if(temporaryNotebookMode())toggleSheet(true);else setNotebookCollapsed(false,true);
-    byId('aiStatus').textContent='Selected passage is ready. Write a question, then tap Ask.';
-    requestAnimationFrame(function(){byId('aiQuestion').focus({preventScroll:true});});
+    byId('selectionExplain').click();
   };});
   syncMarkerQuickActions();
 

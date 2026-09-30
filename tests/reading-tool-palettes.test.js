@@ -94,17 +94,26 @@ async function checkBottomToolbar(page, label, pen) {
   const geometry = await page.locator('#highlightToolbar').evaluate(bar => {
     const rect = bar.getBoundingClientRect();
     return { position: getComputedStyle(bar).position, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
-      width: innerWidth, height: innerHeight, scroll: bar.scrollWidth > bar.clientWidth + 1 || bar.scrollHeight > bar.clientHeight + 1,
+      width: innerWidth, height: innerHeight, zen: document.body.classList.contains('zen'), scroll: bar.scrollWidth > bar.clientWidth + 1 || bar.scrollHeight > bar.clientHeight + 1,
       buttons: Array.from(bar.querySelectorAll('button')).map(button => {
         const r = button.getBoundingClientRect(); return { width: r.width, height: r.height, left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+      }), descriptions: Array.from(bar.querySelectorAll('[data-marker-action-context],#highlightHint')).map(element => {
+        const r = element.getBoundingClientRect(), style = getComputedStyle(element);
+        return { width: r.width, height: r.height, available: style.display !== 'none' && style.visibility !== 'hidden' && element.getAttribute('aria-hidden') !== 'true' };
       }) };
   });
   check(label + ' uses the same bottom-screen position as Pen', geometry.position === 'fixed'
-    && Math.abs(geometry.bottom - pen.bottom) <= 1 && geometry.height - geometry.bottom <= 20
+    && Math.abs(geometry.bottom - pen.bottom) <= 1 && geometry.height - geometry.bottom <= (geometry.width <= 720 && !geometry.zen ? 74 : 20)
     && geometry.left >= 0 && geometry.right <= geometry.width && geometry.top > geometry.height / 2, geometry);
-  check(label + ' exposes every tool and color at 44px without scrolling', !geometry.scroll && geometry.buttons.length === 10
+  check(label + ' exposes every tool and color at 44px without scrolling', !geometry.scroll && geometry.buttons.length === 8
     && geometry.buttons.every(button => button.width >= 43.9 && button.height >= 43.9 && button.left >= geometry.left
       && button.right <= geometry.right + .5 && button.top >= geometry.top && button.bottom <= geometry.bottom + .5), geometry);
+  const centers = geometry.buttons.map(button => (button.top + button.bottom) / 2), centerSpread = Math.max(...centers) - Math.min(...centers);
+  check(label + ' keeps the bar to one compact row, or two in narrow views', geometry.width > 720
+    ? geometry.bottom - geometry.top <= 70 && centerSpread <= 1
+    : geometry.bottom - geometry.top <= 120 && centerSpread <= 52, geometry);
+  check(label + ' keeps passage context and instructions accessible without showing extra lines', geometry.descriptions.length === 2
+    && geometry.descriptions.every(description => description.available && description.width <= 1.5 && description.height <= 1.5), geometry.descriptions);
 }
 async function checkPalette(page, touch, surface) {
   const label = (touch ? 'touch ' : 'desktop ') + surface.label;
@@ -191,9 +200,10 @@ async function checkPendingMark(page, surface) {
   const current = await state(page);
   check('touch ' + surface.label + ' commits a pending passage and opens the bottom bar', !current.sticky
     && !current.write && current.markerPalettes.length === 1, current);
-  check('touch ' + surface.label + ' keeps the latest highlight available to both shortcuts',
+  check('touch ' + surface.label + ' keeps the latest highlight available to Define without Ask AI',
     (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()).includes(surface.prefix)
-    && await page.locator('#highlightToolbar [data-marker-action]').count() === 2);
+    && await page.locator('#highlightToolbar [data-marker-action="define"]').count() === 1
+    && await page.locator('#highlightToolbar [data-marker-action="ask"]').count() === 0);
   if (process.env.PHLOEM_TOOL_PALETTE_SCREENSHOT) {
     await page.screenshot({ path: process.env.PHLOEM_TOOL_PALETTE_SCREENSHOT + '-' + surface.label.toLowerCase() + '.png' });
   }
@@ -235,6 +245,23 @@ async function checkPendingMark(page, surface) {
         if (surface.label === 'Zen') await activate(page, '#zenBtn', touch);
         await checkPalette(page, touch, surface);
         if (touch) await checkPendingMark(page, surface);
+      }
+      if (touch) {
+        for (const zen of [false, true]) {
+          if (await page.locator('body').evaluate(body => body.classList.contains('zen')) !== zen) {
+            await page.locator(zen ? '#zenBtn' : '#zenExit').evaluate(button => button.click());
+          }
+          for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 390, height: 844 }, { width: 320, height: 800 }]) {
+            await page.setViewportSize(viewport);
+            await page.waitForTimeout(80);
+            await page.locator('#pdfWriteBtn').evaluate(button => button.click());
+            const pen = await page.locator('#pdfInkToolbar').evaluate(bar => ({ bottom: bar.getBoundingClientRect().bottom }));
+            await page.locator('#highlightColorBtn').evaluate(button => button.click());
+            await checkBottomToolbar(page, (zen ? 'Zen ' : 'Reader ') + viewport.width + '×' + viewport.height, pen);
+            if (process.env.PHLOEM_TOOL_PALETTE_SCREENSHOT) await page.screenshot({ path: process.env.PHLOEM_TOOL_PALETTE_SCREENSHOT + '-' + (zen ? 'zen' : 'reader') + '-' + viewport.width + 'x' + viewport.height + '.png' });
+            await page.locator('#highlightDone').click();
+          }
+        }
       }
       check((touch ? 'touch' : 'desktop') + ' palette interactions have no page errors', errors.length === 0, errors);
       await context.close();

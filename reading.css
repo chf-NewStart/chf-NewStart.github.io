@@ -1180,19 +1180,18 @@
     .marker-swatch:is([data-highlight-color="mint"],[data-card-color="mint"],[data-selection-highlight-color="mint"]) { --marker-swatch-color: #5cd591; }
     .marker-swatch:is([data-highlight-color="coral"],[data-card-color="coral"],[data-selection-highlight-color="coral"]) { --marker-swatch-color: #ff7e69; }
     .marker-swatch:is([data-highlight-color="blue"],[data-card-color="blue"],[data-selection-highlight-color="blue"]) { --marker-swatch-color: #5ba9ff; }
-    /* One bottom tool shelf, shared by the header, touch dock and Zen trigger.
-       Its geometry mirrors the Pen shelf while leaving Pen's styling independent. */
+    /* A compact bottom tool row, shared by the header, touch dock and Zen trigger.
+       Narrow views wrap without shrinking finger targets or changing the Pen shelf. */
     .highlight-toolbar {
       position: fixed; z-index: 44; left: 50%; bottom: calc(18px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px)));
-      width: 480px; max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
+      width: max-content; max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
       max-height: min(40vh, 320px); max-height: min(40dvh, 320px); overflow: auto; transform: translateX(-50%); padding: 7px;
       border: 1px solid var(--line); border-radius: 17px; background: color-mix(in srgb, var(--surface) 97%, transparent);
       box-shadow: 0 10px 34px rgba(20,24,25,.18); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
       user-select: none; -webkit-user-select: none; overscroll-behavior: contain;
     }
     .highlight-controls { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px; }
-    .highlight-secondary-controls { margin-top: 5px; }
-    .highlight-finish-group { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; }
+    .highlight-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; }
     .highlight-group { display: flex; flex: 0 0 auto; align-items: center; gap: 0; padding: 0 3px; border-radius: 11px; background: var(--surface-2); }
     .highlight-toolbar button {
       min-width: 44px; min-height: 44px; padding: 7px 9px; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
@@ -1206,14 +1205,14 @@
     .highlight-toolbar .marker-swatch { width: 44px; min-width: 44px; max-width: 44px; height: 44px; min-height: 44px; flex-basis: 44px; padding: 0; }
     .highlight-toolbar .marker-swatch::before { width: 23px; height: 23px; }
     .highlight-history-icon { font-size: 1.25rem; line-height: 1; }
-    .highlight-toolbar .highlight-done { padding-inline: 13px; background: var(--accent-soft); color: var(--ink); }
-    .highlight-toolbar p { margin: 6px 8px 2px; color: var(--muted); font: 500 .6875rem/1.35 var(--sans); text-align: center; }
-    .highlight-toolbar .highlight-action-context { color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+    .highlight-toolbar [data-marker-action="define"] { padding-inline: 7px; }
+    .highlight-toolbar .highlight-done { padding-inline: 9px; background: var(--accent-soft); color: var(--ink); }
+    .highlight-toolbar .sr-only { margin: 0; }
     body.touch-tablet-reader .highlight-toolbar { max-width: calc(100vw - 176px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
     @media (max-width: 720px) {
       .highlight-toolbar, body.touch-tablet-reader .highlight-toolbar { max-width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); bottom: calc(72px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px))); }
       body.zen .highlight-toolbar { bottom: calc(12px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px))); max-width: calc(100vw - 90px - env(safe-area-inset-left) - env(safe-area-inset-right)); left: max(12px, env(safe-area-inset-left)); transform: none; }
-      .highlight-controls { gap: 4px; }
+      .highlight-controls, .highlight-actions { gap: 4px; }
       .highlight-group { padding-inline: 0; }
     }
     .selection-card { position: fixed; z-index: 45; width: min(360px, calc(100vw - 24px)); max-height: min(700px, calc(var(--visual-viewport-height, 100dvh) - 24px)); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 15px; background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 18px 54px rgba(20,24,25,.2); backdrop-filter: blur(18px); }

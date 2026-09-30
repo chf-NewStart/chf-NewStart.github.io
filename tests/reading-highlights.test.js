@@ -126,7 +126,7 @@ function check(name, cond, extra) {
 
   // 8. Marker on: an existing mark still opens its edit card; only the
   //    card's explicit eraser removes it.
-  await page.click('#highlightToolbar [data-highlight-tool="marker"]');
+  await page.click('#highlightToolbar [data-highlight-color="blue"]');
   await page.waitForTimeout(150);
   await page.locator('#textDocument mark[data-hl-id]').first().click();
   await page.waitForTimeout(200);

@@ -1,6 +1,6 @@
 # Phloem for iPad
 
-This Capacitor app packages the Phloem paper reader for iPad. This checkout targets **1.1.0 build 20**, reader cache **v136**. Build 20 replaces build 19’s edge popovers with one bottom Highlight toolbar matching Pen’s placement, with colors, Eraser, Define, Ask AI, Undo, and Done. Pen’s existing toolbar and the whole-word Pencil endpoint fix are retained. The signed build 20 archive is verified locally; physical-iPad testing and upload remain pending; build 19’s verified archive is historical and lacks this layout correction. Pushing source to Git does not upload this build to Apple or update the installed iPad app.
+This checkout targets **1.1.0 build 21**, reader cache **v137**. The bottom Highlight toolbar is now a compact single row of colors, Eraser, Define, Undo, and Done; narrow screens wrap without shrinking touch targets. Ask AI, the redundant Highlight button, and the persistent visible help text have been removed from this bar. The separate Discuss/AI workspace and Pen toolbar are unchanged. Native assets must be synced before building. Build 21's Release archive was created on September 30, 2026 and passed version/build, strict code-signature, and exact bundled-source verification; the historical build 20 still contains the old toolbar. Distribution export, upload, and physical-iPad testing remain pending.
 
 The 1.1 target compiles for the iPad simulator and its automated bundle/security checks pass. It is not release-ready until the physical-iPad, provider, privacy, TestFlight, and media gates in [`release/RELEASE-CHECKLIST-1.1.md`](release/RELEASE-CHECKLIST-1.1.md) pass.
 
@@ -19,7 +19,7 @@ npm run ios:open
 
 In Xcode:
 
-1. Confirm the **App** target shows Version **1.1.0** and Build **20**.
+1. Confirm the **App** target shows Version **1.1.0** and Build **21**.
 2. Under **Signing & Capabilities**, select the correct Team and keep automatic signing enabled.
 3. Connect a physical iPad, trust the Mac, enable Developer Mode if requested, and choose it as the run destination.
 4. Use disposable documents and provider keys for the release checklist. Do not test with confidential or third-party personal data.
@@ -34,7 +34,7 @@ Historical signed archives **1.1.0 (14)**, **(15)**, and **(16)** were built and
 - Freehand handwriting on PDF pages with Apple Pencil: explicitly turn on **Write**, choose Pen, one of eight colors (black, blue, red, green, purple, orange, teal, gray), and a fine, medium, or broad width. Pressure-sensitive vector strokes stay anchored to each page through zoom and layout changes. Margins, figures, blank pages, and scanned PDFs can be written on without OCR or selectable text. Write is off by default; fingers remain available for scrolling and zooming.
 - Build 18 makes Pen and Highlighter mutually exclusive through normal, touch, and Zen controls, synchronizes visible selected/pressed states, and cancels an unfinished stroke when switching tools. Default Pencil highlighting and native finger text selection remain available.
 - Build 19 opens highlight colors when Marker is selected and keeps them available through color changes and paper interactions in normal, touch, and Zen views. Write still exposes all eight Pen colors immediately. Other controls, dismissal, or switching tools close the relevant palette.
-- Highlight palettes include **Define** and **Ask AI** for the selected passage or the latest selected highlight that still exists on the current page. Ask AI opens the existing question composer and waits for an explicit Ask; Define reuses the existing lookup and its AI fallback, subject to the existing provider setup and consent.
+- The bottom Highlight toolbar includes **Define** for the selected passage or the latest selected highlight still on the current page. It reuses existing lookup and consent-checked AI fallback. Ask AI is available separately through Discuss, not this toolbar.
 - For a long open stroke, pause with Pencil held down for 600 ms to straighten it. Keep Pencil down to adjust the endpoint, then lift to save. Short strokes, dots, and closed loops are not intended to snap.
 - Build 15 smooths the displayed stroke centerline and pressure transitions for continuous-looking handwriting. This is a rendering change, not a rewrite of saved points, pressure samples, stroke IDs, erase history, or backup data; previously saved handwriting also uses the corrected renderer.
 - Long strokes use bounded 64-segment centerline-simplification windows and linear pressure filtering, keeping rendering preparation linear in recorded-point count rather than comparing every point with every other point. This bounds algorithmic work; it is not a measured Apple Pencil latency guarantee.

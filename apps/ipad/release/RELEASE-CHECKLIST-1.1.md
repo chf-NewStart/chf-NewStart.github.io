@@ -1,6 +1,6 @@
 # Phloem 1.1 release checklist
 
-Version target: **1.1.0 (20)**, reader cache **v136**. Build 20 replaces the previous edge popovers with a single bottom Highlight toolbar shared by normal, touch, and Zen controls. Colors, Eraser, Define, Ask AI, Undo, and Done stay together; switching to Pen shows only Pen’s existing toolbar. Build 19’s signed archive is historical. The signed build 20 archive is verified locally; upload and physical-device testing are pending. Check App Store Connect for an already-used build number before uploading; source changes do not update the installed app.
+Version target: **1.1.0 (21)**, reader cache **v137**. Ask AI has been removed from the bottom Highlight toolbar; Define and the separate Discuss/AI workspace remain unchanged. Build 21's Release archive was created on September 30, 2026 and passed native bundle/security tests (13/13), version/build checks, strict code-signature verification, and exact bundled-source comparisons after native transforms. Distribution export, upload, and physical-iPad testing remain pending. Build 20’s archive is historical and still contains the removed button. Check App Store Connect for an already-used build number before uploading; source changes do not update the installed app.
 
 ## Implemented and locally verified
 
@@ -78,7 +78,7 @@ Scope: mutually exclusive Pen and Highlighter through every normal, touch, and Z
 
 - [x] Whole-word Pencil endpoint accuracy passes 53/53 checks in Chromium and WebKit, including reversed strokes and complete endpoint words while preserving exact native finger/mouse selections.
 - [x] Persistent palette behavior passes 70/70 checks in both engines: selecting Marker opens colors; color changes and paper interactions leave them available; outside chrome and tool switches dismiss them. Pen colors remain immediately available. Existing Zen checks pass 44/44 in both engines; tablet header, dock, and Zen screenshots were visually checked.
-- [x] Define/Ask AI shortcuts use the selected passage or the latest selected highlight that still exists on the current page. Ask AI opens the existing question composer without sending; Define uses existing lookup and AI fallback with the existing provider setup and consent.
+- [x] Build 21 removes Ask AI from the Highlight toolbar while retaining Define and the separate Discuss/AI workspace. Historical builds 19–20 had both toolbar shortcuts. Define uses the selected passage or latest selected highlight still on the current page and retains existing lookup, provider setup, and consent behavior.
 - [x] Dedicated shortcut checks pass 43/43 in Chromium and WebKit, including stale/deleted/off-page context and no automatic AI send. Native bundle/security passes 13/13; cache-update coverage passes 19 checks.
 - [ ] On the exact build 19 binary, verify Pencil endpoint accuracy, repeated color changes between marks, and shortcut context in normal/touch/Zen views with a real iPad and Pencil.
 
@@ -121,7 +121,7 @@ Scope: mutually exclusive Pen and Highlighter through every normal, touch, and Z
 - [x] Historical **1.1.0 (18)** was archived at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (18).xcarchive`. Xcode succeeded; version/build metadata, strict signature, and bundled-source matches against build 18 source after native transforms are verified. It lacks build 19's changes.
 - [x] Signed **1.1.0 (19)** archive succeeded at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (19).xcarchive`. Version/build metadata, strict code signature, and exact HTML/JavaScript/CSS/ink-source matches against the synced build 19 source after native transforms are verified.
 - [x] Signed **1.1.0 (20)** archive verified at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-30/Phloem 1.1.0 (20).xcarchive`: Xcode success, version/build, strict code signature, and bundled-source matches after native transforms. Bottom toolbar 113/113, passage actions 43/43, Zen 44/44, and the core annotation regressions pass both Chromium and WebKit; native bundle/security passes 13/13.
-- [ ] Upload the verified **1.1.0 (20)** to internal TestFlight; build 19 lacks the bottom Highlight toolbar. Do not retry an already uploaded build number.
+- [ ] Create and verify **1.1.0 (21)** before uploading it to internal TestFlight; build 20 still contains the removed Ask AI toolbar shortcut. Do not retry an already uploaded build number.
 - [ ] Test the exact TestFlight binary on a physical iPad, including a fresh install and update from 1.0.
 - [ ] Capture new screenshots from the exact 1.1 UI. Do not add marketing frames that make screenshots look like app previews.
 - [ ] If adding an app preview, use only full-screen app footage at Apple's accepted dimensions; narration/text overlays are optional, external device frames are not.

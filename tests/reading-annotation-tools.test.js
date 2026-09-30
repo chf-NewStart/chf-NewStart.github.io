@@ -165,7 +165,7 @@ async function ui(page) {
     inkWidths: document.querySelectorAll('[data-pdf-ink-width][aria-pressed="true"]').length,
     markerSwatches: document.querySelectorAll('.marker-swatch[data-highlight-color][aria-pressed="true"],.marker-swatch[data-highlight-color].selected').length,
     markerActive: document.getElementById('highlightBtn').classList.contains('active') || document.getElementById('zenMarker').classList.contains('active') || document.getElementById('touchHighlight').classList.contains('active'),
-    markerPressed: document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true' || document.querySelector('#highlightToolbar [data-highlight-tool="marker"]').getAttribute('aria-pressed') === 'true',
+    markerPressed: document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true',
     markerPopouts: ['highlightToolbar'].filter(id => !document.getElementById(id).classList.contains('hidden')),
     previews: document.querySelectorAll('.pdf-ink-preview,.pencil-highlight-preview,.pdf-ink-erasing,.erasing-highlight').length
   }));
@@ -224,7 +224,7 @@ async function reset(page, saved) {
         ['Zen Marker color', page => click(page, '#highlightToolbar [data-highlight-color="coral"]'), true]
       ];
       if (touch) markerEntries.push(['touch Mark', page => click(page, '#touchHighlight')], ['touch Mark color', page => click(page, '#highlightToolbar [data-highlight-color="blue"]')]);
-      else markerEntries.push(['shared Highlight tool in Zen', page => click(page, '#highlightToolbar [data-highlight-tool="marker"]'), true]);
+      else markerEntries.push(['shared color activates Highlight in Zen', page => click(page, '#highlightToolbar [data-highlight-color="blue"]'), true]);
       for (const [name, activate, zen] of markerEntries) {
         await reset(page, saved);
         if (zen) await click(page, '#zenBtn');
@@ -233,6 +233,7 @@ async function reset(page, saved) {
         const state = await ui(page);
         check(label + ' ' + name + ' deselects all Write controls', writeIsOff(state), state);
         if (touch) check(label + ' ' + name + ' does not turn on desktop sticky Marker', !state.stickyMarker);
+        if (!touch && name === 'shared color activates Highlight in Zen') check('desktop choosing a shared color explicitly arms sticky Highlight', state.stickyMarker && state.markerPressed);
         await stroke(page, 'Iota', 'kappa', touch);
         const after = await chapter(page);
         check(label + ' ' + name + ' makes exactly one highlight and no handwriting', highlights(after).length === 2 && ink(after).length === 1);

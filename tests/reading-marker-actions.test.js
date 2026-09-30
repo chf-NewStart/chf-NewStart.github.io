@@ -1,4 +1,4 @@
-/* Real reader UI coverage. AI/network is not invoked by opening a quick action;
+/* Real reader UI coverage with cached definitions and no live network calls;
    synthetic pointer input is not a substitute for testing on a physical iPad. */
 let playwright;
 try { playwright = require('playwright'); } catch (_) { playwright = require('playwright-core'); }
@@ -83,7 +83,13 @@ function pdfFixture() {
       await page.addInitScript(seed);
       await page.goto('http://127.0.0.1:' + PORT + '/reading.html', { waitUntil: 'load' });
       await page.waitForSelector('#textDocument mark[data-hl-id]');
-      check(label + ' one shared toolbar has Define and Ask AI', await page.locator('[data-marker-action="define"]').count() === 1 && await page.locator('[data-marker-action="ask"]').count() === 1);
+      check(label + ' shared Highlight toolbar retains Define without Ask AI', await page.locator('#highlightToolbar [data-marker-action="define"]').count() === 1
+        && await page.locator('#highlightToolbar [data-marker-action="ask"]').count() === 0
+        && !/Ask AI/.test(await page.locator('#highlightToolbar').textContent()));
+      check(label + ' compact toolbar uses color swatches instead of a redundant Highlight button', await page.locator('#highlightToolbar [data-highlight-tool="marker"]').count() === 0
+        && await page.locator('#highlightToolbar [data-highlight-color]').count() === 4);
+      check(label + ' main AI panel retains its question composer and Ask button', await page.locator('#aiPanel #aiQuestion').count() === 1
+        && await page.locator('#aiPanel #aiAskBtn').count() === 1 && (await page.locator('#aiAskBtn').textContent()).trim() === 'Ask');
       await palette(page);
       check(label + ' historical highlight is not chosen before reader selects it', (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()).includes('Select text'));
       await tap(page, '#highlightToolbar [data-marker-action="define"]');
@@ -93,33 +99,37 @@ function pdfFixture() {
         await palette(page, surface);
         const description = await page.locator('#highlightToolbar [data-marker-action-context]').textContent();
         check(label + ' ' + surface + ' previews explicitly selected passage', description === '“beta gamma”', description);
-        check(label + ' ' + surface + ' quick actions have 44px targets', await page.locator('#highlightToolbar [data-marker-action]').evaluateAll(buttons => buttons.every(button => button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44)));
+        check(label + ' ' + surface + ' Define has a 44px target', await page.locator('#highlightToolbar [data-marker-action="define"]').evaluate(button => button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44));
         await page.locator('#highlightToolbar [data-marker-action="define"]').click();
         await page.waitForFunction(() => document.getElementById('lookupTitle').textContent === 'Beta gamma definition');
         check(label + ' ' + surface + ' Define reuses cached explicit passage', (await page.locator('#lookupSelection').textContent()) === '“beta gamma”' && outbound.length === 0);
         await tap(page, '#lookupClose');
         if (surface === 'zen') await tap(page, '#zenExit');
       }
-      await palette(page);
-      await page.locator('#highlightToolbar [data-marker-action="ask"]').click();
-      await page.waitForFunction(() => document.activeElement.id === 'aiQuestion');
-      check(label + ' Ask AI opens existing question composer', await page.locator('#aiPanel').isVisible());
-      check(label + ' Ask AI uses explicit passage and related note', (await page.locator('#contextExcerpt').textContent()).includes('“beta gamma”') && (await page.locator('#contextLabel').textContent()).includes('+ note'));
-      const afterAsk = await chapter(page);
-      check(label + ' opening Ask AI sends nothing and saves no thread', outbound.length === 0 && afterAsk.aiThreads.length === 0 && afterAsk.questions.length === 0);
-      check(label + ' saved highlight and note remain intact', afterAsk.textHighlights.length === 1 && afterAsk.textHighlights[0].note === 'A note that must not be sent automatically.');
-      if (touch) await tap(page, '#sheetClose'); else await tap(page, '#notebookTuck');
+      const afterDefine = await chapter(page);
+      check(label + ' cached Define sends nothing and saves no AI thread', outbound.length === 0 && afterDefine.aiThreads.length === 0 && afterDefine.questions.length === 0);
+      check(label + ' saved highlight and note remain intact', afterDefine.textHighlights.length === 1 && afterDefine.textHighlights[0].note === 'A note that must not be sent automatically.');
       await selectAlpha(page); await palette(page);
       check(label + ' pending native selection takes precedence over last highlight', (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()) === '“Alpha”');
       await page.locator('#highlightToolbar [data-marker-action="define"]').click();
       await page.waitForFunction(() => document.getElementById('lookupTitle').textContent === 'Alpha definition');
       check(label + ' Define does not silently create highlight', (await chapter(page)).textHighlights.length === 1);
-      await tap(page, '#lookupClose'); await palette(page); await tap(page, '#highlightToolbar [data-marker-action="ask"]');
-      check(label + ' Ask AI accepts selected text without a saved note', (await page.locator('#contextExcerpt').textContent()).includes('“Alpha”') && (await chapter(page)).textHighlights.length === 1 && outbound.length === 0);
-      if (touch) await tap(page, '#sheetClose'); else await tap(page, '#notebookTuck');
-      await tap(page, '#textDocument mark[data-hl-id]'); await tap(page, '#selectionRemoveHighlight'); await palette(page);
-      await tap(page, '#highlightToolbar [data-marker-action="ask"]');
-      check(label + ' deleted last highlight is never reused', (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()).includes('Select text') && (await page.locator('#readerToast').textContent()).includes('Select text'));
+      await tap(page, '#lookupClose');
+      /* Real clicks collapse the previous native Alpha range before choosing and
+         removing the saved highlight; element.click() omits that browser step. */
+      await page.locator('#textDocument mark[data-hl-id]').click();
+      await page.locator('#selectionRemoveHighlight').click();
+      await page.waitForFunction(() => !document.querySelector('#textDocument mark[data-hl-id]'));
+      await palette(page);
+      await tap(page, '#highlightToolbar [data-marker-action="define"]');
+      const deletedState = await page.evaluate(() => ({
+        context: document.querySelector('#highlightToolbar [data-marker-action-context]').textContent,
+        toast: document.getElementById('readerToast').textContent,
+        lookupHidden: document.getElementById('lookupCard').classList.contains('hidden'),
+        nativeSelection: getSelection().toString()
+      }));
+      check(label + ' deleted last highlight is never reused by Define', deletedState.context.includes('Select text')
+        && deletedState.toast.includes('Select text') && deletedState.lookupHidden, deletedState);
       await tap(page, '#readerBack');
       await page.setInputFiles('#pdfFile', { name: 'marker-actions-pages.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
       await page.waitForSelector('.pdf-page[data-page="1"] .text-layer span');
@@ -131,8 +141,9 @@ function pdfFixture() {
       await tap(page, '#selectionHighlight'); await palette(page);
       check(label + ' newly committed PDF highlight is available immediately', (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()).includes('Boundary marker test'));
       await tap(page, '#nextPage'); await page.waitForFunction(() => document.getElementById('pageNumber').textContent.trim().startsWith('2'));
-      await palette(page); await tap(page, '#highlightToolbar [data-marker-action="ask"]');
-      check(label + ' previous-page PDF highlight cannot leak into quick action', (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()).includes('Select text') && (await page.locator('#readerToast').textContent()).includes('Select text') && outbound.length === 0);
+      await palette(page); await tap(page, '#highlightToolbar [data-marker-action="define"]');
+      check(label + ' previous-page PDF highlight cannot leak into Define', (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()).includes('Select text')
+        && (await page.locator('#readerToast').textContent()).includes('Select text') && !await page.locator('#lookupCard').isVisible() && outbound.length === 0);
       check(label + ' no runtime errors', errors.length === 0, errors);
       await context.close();
     }

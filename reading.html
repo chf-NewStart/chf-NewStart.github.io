@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=136">
+  <link rel="stylesheet" href="/reading.css?v=137">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -182,33 +182,23 @@
         </div>
         <p id="pdfInkHint">Hold Pencil to straighten · fingers scroll<br>Eraser removes whole strokes &amp; text highlights</p>
       </div>
-      <div class="highlight-toolbar hidden" id="highlightToolbar" role="region" aria-label="Highlight tools" aria-describedby="highlightHint">
+      <div class="highlight-toolbar hidden" id="highlightToolbar" role="region" aria-label="Highlight tools" aria-describedby="highlightHint highlightActionContext">
         <div class="highlight-controls" role="toolbar" aria-label="Highlight tools and history">
-          <div class="highlight-group" role="group" aria-label="Highlight tool">
-            <button data-highlight-tool="marker" type="button" aria-pressed="false" title="Highlight text with Pencil"><span aria-hidden="true">✦</span>Highlight</button>
-            <button data-highlight-eraser type="button" aria-pressed="false" title="Remove whole highlights and handwriting strokes"><span class="eraser-icon" aria-hidden="true"></span>Eraser</button>
-          </div>
-          <div class="highlight-finish-group">
-            <div class="highlight-group" role="group" aria-label="Annotation history">
-              <button id="highlightUndo" type="button" aria-label="Undo last edit" title="Undo last edit" disabled><span class="highlight-history-icon" aria-hidden="true">↶</span></button>
-            </div>
-            <button class="highlight-done" id="highlightDone" type="button" title="Finish highlighting and return to reading">Done</button>
-          </div>
-        </div>
-        <div class="highlight-controls highlight-secondary-controls">
           <div class="highlight-group highlight-colors" role="group" aria-label="Highlight color">
             <button class="marker-swatch selected" data-highlight-color="yellow" type="button" aria-label="Yellow highlight color" aria-pressed="true" title="Yellow"></button>
             <button class="marker-swatch" data-highlight-color="mint" type="button" aria-label="Mint highlight color" aria-pressed="false" title="Mint"></button>
             <button class="marker-swatch" data-highlight-color="coral" type="button" aria-label="Coral highlight color" aria-pressed="false" title="Coral"></button>
             <button class="marker-swatch" data-highlight-color="blue" type="button" aria-label="Blue highlight color" aria-pressed="false" title="Blue"></button>
           </div>
-          <div class="highlight-group highlight-quick-actions" role="group" aria-label="Selected passage actions">
-            <button data-marker-action="define" type="button"><span aria-hidden="true">⌕</span>Define</button>
-            <button data-marker-action="ask" type="button"><span aria-hidden="true">✦</span>Ask AI</button>
+          <div class="highlight-actions" role="group" aria-label="Highlight actions">
+            <button data-highlight-eraser type="button" aria-pressed="false" aria-label="Eraser: remove whole highlights and handwriting strokes" title="Eraser: remove whole highlights and handwriting strokes"><span class="eraser-icon" aria-hidden="true"></span></button>
+            <button data-marker-action="define" type="button">Define</button>
+            <button id="highlightUndo" type="button" aria-label="Undo last edit" title="Undo last edit" disabled><span class="highlight-history-icon" aria-hidden="true">↶</span></button>
+            <button class="highlight-done" id="highlightDone" type="button" title="Finish highlighting and return to reading">Done</button>
           </div>
         </div>
-        <p class="highlight-action-context" data-marker-action-context>Select text or tap a highlight.</p>
-        <p id="highlightHint">Pencil highlights whole words · fingers scroll<br>Eraser removes whole highlights &amp; handwriting</p>
+        <p class="sr-only" id="highlightActionContext" data-marker-action-context>Select text or tap a highlight.</p>
+        <p class="sr-only" id="highlightHint">Choose a color to highlight whole words with Pencil. Fingers scroll. Eraser removes whole highlights and handwriting.</p>
       </div>
       <div class="comfort-bar hidden" id="comfortBar" aria-label="Reading settings">
         <div class="comfort-section comfort-text text-only" aria-label="Text settings">
@@ -819,10 +809,10 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=136',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=137',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=136" defer></script>
-<script src="/reading.js?v=136" defer></script>
+<script src="/reading-ink.js?v=137" defer></script>
+<script src="/reading.js?v=137" defer></script>
 </body>
 </html>

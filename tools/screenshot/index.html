@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Crop and resize screenshots to exact App Store dimensions. Private, local processing in your browser.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="theme-color" content="#f4f1e9">
+  <link rel="canonical" href="https://houfu72.com/tools/screenshot/">
+  <link rel="stylesheet" href="./screenshot.css">
+  <script type="module" src="./screenshot.js"></script>
+  <title>Screenshot Studio — Houfu Chen</title>
+</head>
+<body>
+  <header class="top"><a href="/">← Houfu Chen</a><span class="private">● Local only. No uploads.</span></header>
+  <main>
+    <div class="intro"><p class="eyebrow">A SMALL, USEFUL TOOL</p><h1>Screenshot Studio<span>.</span></h1><p>The right size. Nothing stretched.</p></div>
+    <div class="workspace">
+      <section class="preview-area" aria-label="Screenshot preview">
+        <div id="dropZone" class="drop-zone">
+          <div id="empty"><span class="frame-icon" aria-hidden="true">⌗</span><h2>Drop your screenshots here</h2><p>PNG, JPEG, or WebP · up to 30 MB each</p><button id="chooseEmpty" type="button">Choose images</button><p class="quiet">Or paste an image from your clipboard.</p></div>
+          <canvas id="preview" hidden tabindex="0" aria-label="Screenshot crop preview. In Crop mode, drag to position or use arrow keys. Shift plus arrows moves faster." aria-describedby="previewHint"></canvas>
+        </div>
+        <div class="preview-meta"><span id="sourceInfo">Your images never leave this device.</span><span id="previewHint">Fit keeps the whole screenshot.</span></div>
+        <div id="queue" class="queue" aria-label="Loaded screenshots"></div>
+      </section>
+      <aside class="controls" aria-label="Export settings">
+        <div class="section-heading"><h2>Make it fit</h2><button id="add" type="button" class="text-button">+ Images</button></div>
+        <input id="files" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+        <fieldset><legend>01 / Output size</legend><label for="size">iPad App Store</label><select id="size"><option value="2064x2752">2064 × 2752 · Portrait</option><option value="2752x2064">2752 × 2064 · Landscape</option><option value="2048x2732">2048 × 2732 · Portrait</option><option value="2732x2048">2732 × 2048 · Landscape</option></select></fieldset>
+        <fieldset><legend>02 / Composition</legend><div class="segmented"><button id="fit" type="button" aria-pressed="true">Fit · keep all</button><button id="crop" type="button" aria-pressed="false">Crop · fill frame</button></div><p id="modeInfo" class="help">Keep the entire image, with padding where needed.</p>
+          <div id="padding"><label for="background">Padding color <input type="color" id="background" value="#f4f1e9"></label><div class="swatches"><button type="button" data-color="#f4f1e9" aria-label="Warm paper padding">Paper</button><button type="button" data-color="#ffffff" aria-label="White padding">White</button><button type="button" data-color="#172b2a" aria-label="Dark padding">Dark</button></div></div>
+          <div id="cropControls" hidden><label for="zoom">Zoom <output id="zoomValue">100%</output></label><input id="zoom" type="range" min="100" max="300" value="100" step="1"><button id="reset" type="button" class="text-button">Reset crop</button></div>
+        </fieldset>
+        <div class="export"><div class="output-label"><span>PNG · opaque background</span><strong id="outputSize">2064 × 2752 px</strong></div><button id="download" class="primary" type="button" disabled>Download PNG <span aria-hidden="true">↓</span></button><p id="quality" class="help">Preview is scaled down. Export uses the exact dimensions above.</p></div>
+        <p id="status" role="status" aria-live="polite"></p>
+      </aside>
+    </div>
+    <footer><p>Settings are remembered for each image until you close or reload this page. Nothing is saved to a server.</p><p>For the sharpest results, capture at the target device size. Resizing cannot add detail. <a href="https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications" target="_blank" rel="noopener noreferrer">Apple’s screenshot requirements ↗</a></p></footer>
+  </main>
+</body>
+</html>

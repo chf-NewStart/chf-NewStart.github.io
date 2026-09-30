@@ -4234,8 +4234,11 @@
       try{
         if(!view.links){
           view.links=document.createElement('div');view.links.className='pdf-links';view.sheet.appendChild(view.links);
+          view.links.addEventListener('pointerover',function(ev){if(ev.pointerType==='pen'||ev.pointerType==='touch')hidePdfReferencePreview();});
           view.links.addEventListener('pointermove',function(ev){
-            if(ev.pointerType==='touch')return;if(!comfort.linkPreviews){if(pdfReferencePreviewAnchor&&view.links.contains(pdfReferencePreviewAnchor))hidePdfReferencePreview();return;}var link=nearestPdfLink(view.links,ev.clientX,ev.clientY);
+            // Pencil proximity is not a request to read a citation. It must also
+            // invalidate any in-flight preview left by a mouse or keyboard.
+            if(ev.pointerType==='pen'||ev.pointerType==='touch'){hidePdfReferencePreview();return;}if(!comfort.linkPreviews){if(pdfReferencePreviewAnchor&&view.links.contains(pdfReferencePreviewAnchor))hidePdfReferencePreview();return;}var link=nearestPdfLink(view.links,ev.clientX,ev.clientY);
             if(link&&link.dataset.pdfLinkKind==='internal'){if(pdfReferencePreviewAnchor!==link)showPdfReferencePreview(link,link._pdfDestination);}
             else if(link&&link.dataset.pdfLinkKind==='external'){if(pdfReferencePreviewAnchor!==link)showPdfExternalLinkPreview(link,link.href);}
             else if(pdfReferencePreviewAnchor&&view.links.contains(pdfReferencePreviewAnchor))hidePdfReferencePreview();

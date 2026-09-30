@@ -99,6 +99,30 @@ function linkedPdfBuffer() {
   check('showing an external preview does not request third-party content', thirdPartyRequests.length === 0, JSON.stringify(thirdPartyRequests));
   await page.locator('.pdf-link[href^="mailto:"]').hover();
   check('unsupported preview schemes clear the previous link preview', await page.locator('#pdfReferencePreview').evaluate(card => card.classList.contains('hidden')));
+  const previewHidden=()=>page.locator('#pdfReferencePreview').evaluate(card=>card.classList.contains('hidden'));
+  async function pencilHover(selector,type='pointermove'){
+    await page.locator(selector).evaluate((link,type)=>{const r=link.getBoundingClientRect();link.dispatchEvent(new PointerEvent(type,{bubbles:true,pointerType:'pen',pointerId:71,buttons:0,pressure:0,clientX:r.left+r.width/2,clientY:r.top+r.height/2}));},type);
+  }
+  for(const selector of ['.pdf-link[data-pdf-destination="refA"]','.pdf-link[href="https://example.com/paper"]']){
+    await pencilHover(selector,'pointerover');await pencilHover(selector);
+    await page.waitForTimeout(100);
+    check('Pencil hover stays quiet for '+selector,await previewHidden());
+  }
+  const hoverReference=page.locator('.pdf-link[data-pdf-destination="refA"]');
+  await hoverReference.scrollIntoViewIfNeeded();
+  await page.mouse.move(1,1);
+  await hoverReference.evaluate(link=>{link.blur();link.focus();});
+  await page.waitForFunction(()=>!document.getElementById('pdfReferencePreview').classList.contains('hidden'));
+  check('keyboard focus still opens an accessible reference preview',!await previewHidden());
+  await pencilHover('.pdf-link[data-pdf-destination="refA"]','pointerover');
+  check('Pencil entering dismisses an existing preview',await previewHidden());
+  await hoverReference.evaluate(link=>{
+    link.blur();link.focus();
+    const r=link.getBoundingClientRect();link.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'pen',buttons:0,pressure:0,clientX:r.left+r.width/2,clientY:r.top+r.height/2}));
+  });
+  await page.waitForTimeout(180);
+  check('an in-flight reference lookup cannot reopen a preview after Pencil hover',await previewHidden());
+  await hoverReference.evaluate(link=>link.blur());
 
   const previewDefault = await page.locator('#pdfLinkPreviewBtn').getAttribute('aria-pressed');
   check('PDF link previews default on with a pressed-state toggle', previewDefault === 'true', previewDefault);

@@ -1,6 +1,6 @@
 # Phloem 1.1 release checklist
 
-Version target: **1.1.0 (22)**, reader cache **v140**. Pen now matches the compact Highlight toolbar: icon-only Pen/Eraser and screen-reader-only instructions, retaining all eight colors, three widths, Undo/Redo, and Done. Natural ink and jitter-tolerant straightening are local drawing changes; AI behavior is unchanged. Build 21's verified archive is historical and lacks this Pen simplification. Build 22 archive creation, upload, and physical-iPad testing remain pending. Check App Store Connect for an already-used build number before uploading; source changes do not update the installed app.
+Version target: **1.1.0 (22)**, reader cache **v141**. Pen now matches the compact Highlight toolbar: icon-only Pen/Eraser and screen-reader-only instructions, retaining all eight colors, three widths, Undo/Redo, and Done. Natural ink and jitter-tolerant straightening are local drawing changes; AI behavior is unchanged. Build 22 was archived and locally verified on September 30, 2026, including the Pencil-hover fix. Distribution validation, upload, and physical-iPad testing remain pending. Check App Store Connect for an already-used build number before uploading; source changes do not update the installed app.
 
 ## Implemented and locally verified
 
@@ -123,7 +123,8 @@ Scope: mutually exclusive Pen and Highlighter through every normal, touch, and Z
 - [x] Historical **1.1.0 (18)** was archived at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (18).xcarchive`. Xcode succeeded; version/build metadata, strict signature, and bundled-source matches against build 18 source after native transforms are verified. It lacks build 19's changes.
 - [x] Signed **1.1.0 (19)** archive succeeded at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (19).xcarchive`. Version/build metadata, strict code signature, and exact HTML/JavaScript/CSS/ink-source matches against the synced build 19 source after native transforms are verified.
 - [x] Signed **1.1.0 (20)** archive verified at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-30/Phloem 1.1.0 (20).xcarchive`: Xcode success, version/build, strict code signature, and bundled-source matches after native transforms. Bottom toolbar 113/113, passage actions 43/43, Zen 44/44, and the core annotation regressions pass both Chromium and WebKit; native bundle/security passes 13/13.
-- [ ] Create and verify **1.1.0 (22)** before uploading it to internal TestFlight; build 21 lacks the compact Pen toolbar. Do not retry an already uploaded build number.
+- [x] Created **1.1.0 (22)** at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-30/Phloem 1.1.0 (22).xcarchive` with Xcode 27.0. Release archive succeeded; native bundle/security tests pass 13/13. Version/build, strict code signature, all 54 asset hashes, the index/reader entrypoints, and HTML/JavaScript/CSS/ink-source matches after native transforms were verified.
+- [ ] Validate and upload build 22 through Xcode Organizer; do not retry an already uploaded build number. Local verification is not App Store Connect acceptance.
 - [ ] Test the exact TestFlight binary on a physical iPad, including a fresh install and update from 1.0.
 - [ ] Capture new screenshots from the exact 1.1 UI. Do not add marketing frames that make screenshots look like app previews.
 - [ ] If adding an app preview, use only full-screen app footage at Apple's accepted dimensions; narration/text overlays are optional, external device frames are not.

@@ -1,6 +1,8 @@
 # Phloem for iPad
 
-This checkout targets **1.1.0 build 22**, reader cache **v140**. Both bottom annotation toolbars are compact: Highlight retains colors, Eraser, Define, Undo, and Done; Pen retains all eight colors, icon-only Pen/Eraser, three widths, Undo/Redo, and Done. Pen fits one 60px-high row in iPad landscape and wraps on narrower screens without shrinking 44px touch targets. Instructions remain available to screen readers. Discuss/AI remains unchanged; Natural ink and jitter-tolerant straightening are described below. Native assets must be synced before building. The verified historical build 21 archive does not contain the compact Pen bar. Build 22 archive creation, upload, and physical-iPad testing remain pending.
+This checkout targets **1.1.0 build 22**, reader cache **v141**. Both bottom annotation toolbars are compact: Highlight retains colors, Eraser, Define, Undo, and Done; Pen retains all eight colors, icon-only Pen/Eraser, three widths, Undo/Redo, and Done. Pen fits one 60px-high row in iPad landscape and wraps on narrower screens without shrinking 44px touch targets. Instructions remain available to screen readers. Discuss/AI remains unchanged; Natural ink and jitter-tolerant straightening are described below. Native assets must be synced before building. Build 22 was archived on September 30, 2026 and passed strict code-signature, version/build, 54 bundled-asset hashes, and exact source comparisons after native transforms. It includes the Pencil-hover fix. Distribution validation/upload and physical-iPad testing remain pending.
+
+Current archive: `/Users/chf/Library/Developer/Xcode/Archives/2026-09-30/Phloem 1.1.0 (22).xcarchive`. Select **1.1.0 (22)** in Xcode Organizer to validate and distribute to App Store Connect. The archive is locally signed; this does not mean Apple has accepted the upload or approved the app.
 
 The 1.1 target compiles for the iPad simulator and its automated bundle/security checks pass. It is not release-ready until the physical-iPad, provider, privacy, TestFlight, and media gates in [`release/RELEASE-CHECKLIST-1.1.md`](release/RELEASE-CHECKLIST-1.1.md) pass.
 
@@ -30,6 +32,7 @@ Historical signed archives **1.1.0 (14)**, **(15)**, and **(16)** were built and
 
 ## Included in 1.1
 
+- Pencil hover no longer opens PDF reference or external-link previews. It dismisses an existing preview and cancels pending preview results. Mouse hover, keyboard focus, and deliberate link navigation remain available.
 - Natural ink is the default for new strokes: gentler pressure variation and subtle endpoint tapering, with no texture or random jitter. Settings → PDF → New ink switches between Natural and Clean without expanding the Pen bar. The preference stays on this device; each Natural stroke stores its style in the library and JSON backups. Older strokes retain their Clean appearance. Held straight lines keep a steady width. The 600ms hold now tolerates dense stationary Pencil jitter and shows a confirmation when a line snaps; physical-iPad validation remains required.
 - Rename a paper by tapping its open reader title, choosing Rename on its library wall cover, or using List → Actions → Rename. Custom names persist without changing the original filename or annotations, and are not replaced by automatic PDF-title repair. Continue reading offers up to six recent papers in a horizontally scrollable row.
 - Shared PDF/Word reader, Book mode, guide, Zen mode, search, highlights, notes, review workflows, and document import.

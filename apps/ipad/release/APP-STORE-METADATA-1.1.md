@@ -1,6 +1,6 @@
 # Phloem 1.1 App Store package
 
-Target: **version 1.1.0, build 22**, reader cache **v140**. Both Highlight and Pen use compact bottom toolbars with accessible descriptions instead of visible instruction footers. Pen retains eight colors, three widths, icon-only Pen/Eraser, Undo/Redo, and Done. Highlight retains Define without Ask AI; the separate Discuss/AI workspace is unchanged. The verified build 21 archive lacks the compact Pen bar. Build 22 archive creation, device testing, and upload remain pending. This is draft metadata, not submitted App Store Connect content.
+Target: **version 1.1.0, build 22**, reader cache **v141**. Both Highlight and Pen use compact bottom toolbars with accessible descriptions instead of visible instruction footers. Pen retains eight colors, three widths, icon-only Pen/Eraser, Undo/Redo, and Done. Highlight retains Define without Ask AI; the separate Discuss/AI workspace is unchanged. Build 22 was archived and locally verified on September 30, 2026, including the Pencil-hover fix. Device testing, distribution validation, and upload remain pending. This is draft metadata, not submitted App Store Connect content.
 
 ## Promotional text
 

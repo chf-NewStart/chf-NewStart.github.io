@@ -181,7 +181,7 @@ async function stylusTouch(page, type, point, options = {}) {
 }
 
 async function chooseEraser(page) {
-  await page.evaluate(() => document.querySelector('#touchHighlightPalette [data-highlight-eraser]').click());
+  await page.evaluate(() => document.querySelector('#highlightToolbar [data-highlight-eraser]').click());
 }
 
 async function undo(page) {
@@ -371,7 +371,7 @@ function highlightIdentity(items) {
       && !await page.locator('#selectionCard').evaluate(card => card.classList.contains('hidden')));
     await page.keyboard.press('Escape');
 
-    await page.evaluate(() => document.querySelector('#touchHighlightPalette [data-highlight-color="coral"]').click());
+    await page.evaluate(() => document.querySelector('#highlightToolbar [data-highlight-color="coral"]').click());
     const reflowDelta = await wordPoint(page, 'delta', 'start', 'reader');
     const reflowTheta = await wordPoint(page, 'theta', 'end', 'reader');
     const stylusPrevented = await stylusTouch(page, 'touchstart', reflowDelta);
@@ -419,8 +419,9 @@ function highlightIdentity(items) {
     check('Undo of the Reader Remove button restores the same highlight and its note', JSON.stringify(highlightIdentity(await highlights(page, 'reader'))) === JSON.stringify(readerBeforeErase));
 
     await chooseEraser(page);
-    check('the touch palette exposes a pressed Eraser and labels the dock action Erase', await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
-      && await page.locator('#touchHighlightPalette [data-highlight-eraser]').getAttribute('aria-pressed') === 'true'
+    check('the shared toolbar stays visible with a pressed Eraser and labels the dock action Erase', await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
+      && await page.locator('#highlightToolbar').isVisible()
+      && await page.locator('#highlightToolbar [data-highlight-eraser]').getAttribute('aria-pressed') === 'true'
       && /Erase/.test(await page.locator('#touchHighlight').textContent()));
     const fingerDown = await pointer(page, 'pointerdown', readerBeta, { pointerType: 'touch', pointerId: 94 });
     const fingerMove = await pointer(page, 'pointermove', readerBetaEnd, { pointerType: 'touch', pointerId: 94 });
@@ -448,9 +449,9 @@ function highlightIdentity(items) {
     check('stylus TouchEvent fallback erases every Reader highlight crossed by one sweep', (await highlights(page, 'reader')).length === 0);
     await undo(page);
     check('one Undo restores all Reader highlights erased in the same sweep with notes and identities intact', JSON.stringify(highlightIdentity(await highlights(page, 'reader'))) === JSON.stringify(readerBeforeErase));
-    await page.evaluate(() => document.querySelector('#touchHighlightPalette [data-highlight-color="mint"]').click());
+    await page.evaluate(() => document.querySelector('#highlightToolbar [data-highlight-color="mint"]').click());
     check('choosing a highlight color exits Eraser and restores the Mark dock label', !await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
-      && await page.locator('#touchHighlightPalette [data-highlight-eraser]').getAttribute('aria-pressed') === 'false'
+      && await page.locator('#highlightToolbar [data-highlight-eraser]').getAttribute('aria-pressed') === 'false'
       && /Mark/.test(await page.locator('#touchHighlight').textContent()));
 
     await page.evaluate(() => document.getElementById('reflowBtn').click());

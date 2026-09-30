@@ -1,5 +1,6 @@
-let chromium;
-try { chromium = require('playwright').chromium; } catch (e) { chromium = require('playwright-core').chromium; }
+let playwright;
+try { playwright = require('playwright'); } catch (e) { playwright = require('playwright-core'); }
+const browserName = process.env.PHLOEM_BROWSER || 'chromium';
 const http = require('http');
 const fs = require('fs');
 const pathmod = require('path');
@@ -25,8 +26,8 @@ function check(name, cond, extra) {
 (async () => {
   await new Promise(r => server.listen(8124, r));
   const launch = { headless: true };
-  if (process.env.CHROME_PATH) launch.executablePath = process.env.CHROME_PATH;
-  const browser = await chromium.launch(launch);
+  if (browserName === 'chromium' && process.env.CHROME_PATH) launch.executablePath = process.env.CHROME_PATH;
+  const browser = await playwright[browserName].launch(launch);
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
@@ -113,18 +114,19 @@ function check(name, cond, extra) {
   await page.waitForTimeout(150);
   check('Escape closes card', await cardHidden());
 
-  // 7. Picking the marker color is independent from persistent marker mode.
+  // 7. The shared toolbar selects an active Highlight tool and keeps colors ready.
   await page.click('#highlightColorBtn');
-  check('the independent marker color palette opens', await page.locator('#highlightPalette').isVisible()
+  check('the shared Highlight toolbar opens from the color chooser', await page.locator('#highlightToolbar').isVisible()
     && await page.locator('#highlightColorBtn').getAttribute('aria-expanded') === 'true');
-  await page.click('#highlightPalette [data-highlight-color="coral"]');
+  await page.click('#highlightToolbar [data-highlight-color="coral"]');
   await page.waitForTimeout(100);
-  check('choosing a color does not implicitly enable marker mode', await page.locator('#highlightBtn').getAttribute('aria-pressed') === 'false'
-    && !await page.locator('body').evaluate(body => body.classList.contains('marker-on')));
+  check('choosing a color activates desktop Highlight and keeps the shared toolbar open', await page.locator('#highlightBtn').getAttribute('aria-pressed') === 'true'
+    && await page.locator('body').evaluate(body => body.classList.contains('marker-on'))
+    && await page.locator('#highlightToolbar').isVisible());
 
   // 8. Marker on: an existing mark still opens its edit card; only the
   //    card's explicit eraser removes it.
-  await page.click('#highlightBtn');
+  await page.click('#highlightToolbar [data-highlight-tool="marker"]');
   await page.waitForTimeout(150);
   await page.locator('#textDocument mark[data-hl-id]').first().click();
   await page.waitForTimeout(200);

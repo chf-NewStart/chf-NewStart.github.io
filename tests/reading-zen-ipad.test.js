@@ -178,16 +178,16 @@ async function storedPdfHighlights(page) {
   check('Find searches and paints results while Zen remains active', await page.evaluate(() => document.body.classList.contains('zen') && /\d+\s*\/\s*\d+/.test(document.getElementById('findCount').textContent) && !!document.querySelector('.find-target,.find-span')));
   await page.keyboard.press('Escape');
   check('Escape closes Find, returns focus, and leaves Zen active', await page.evaluate(() => document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('zenFind') && document.body.classList.contains('zen') && document.getElementById('zenFind').getAttribute('aria-expanded') === 'false'));
-  await page.locator('#highlightBtn').evaluate(button => button.click());
+  await page.locator('#highlightBtn').evaluate(button => button.dispatchEvent(new PointerEvent('click', { bubbles: true, pointerType: 'mouse', detail: 1 })));
   await page.keyboard.press('/');
   await page.waitForFunction(() => !document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('findInput'));
   await page.locator('#findNext').focus();
   await page.keyboard.press('Escape');
   check('Escape from a Zen Find step control closes only Find', await page.evaluate(() => document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('zenFind') && document.body.classList.contains('zen') && document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true'));
-  await page.locator('#highlightBtn').evaluate(button => button.click());
+  await page.locator('#highlightBtn').evaluate(button => button.dispatchEvent(new PointerEvent('click', { bubbles: true, pointerType: 'mouse', detail: 1 })));
 
   const zenMarker = page.locator('#zenMarker');
-  const zenMarkerMenu = page.locator('#zenMarkerMenu');
+  const zenMarkerMenu = page.locator('#highlightToolbar');
   const zenMarkerState = await zenMarker.evaluate(button => {
     const rect = button.getBoundingClientRect();
     return {
@@ -196,14 +196,13 @@ async function storedPdfHighlights(page) {
       height: rect.height,
       expanded: button.getAttribute('aria-expanded'),
       controls: button.getAttribute('aria-controls'),
-      hasPopup: button.getAttribute('aria-haspopup'),
-      toggleVisible: !document.getElementById('zenMarkerToggle').classList.contains('hidden')
+      hasPopup: button.getAttribute('aria-haspopup')
     };
   });
   check('coarse-touch Zen exposes a full-size selection-first Marker', zenMarkerState.visible
     && zenMarkerState.width >= 44 && zenMarkerState.height >= 44
-    && zenMarkerState.expanded === 'false' && zenMarkerState.controls === 'zenMarkerMenu'
-    && zenMarkerState.hasPopup === null && !zenMarkerState.toggleVisible,
+    && zenMarkerState.expanded === 'false' && zenMarkerState.controls === 'highlightToolbar'
+    && zenMarkerState.hasPopup === null,
   JSON.stringify(zenMarkerState));
 
   await zenMarker.focus();
@@ -225,17 +224,15 @@ async function storedPdfHighlights(page) {
     trigger: document.getElementById('zenMarker').dataset.highlightColor,
     desktop: document.getElementById('highlightColorBtn').dataset.highlightColor,
     touch: document.getElementById('touchHighlight').dataset.highlightColor,
-    zenPressed: document.querySelector('#zenMarkerMenu [data-highlight-color="mint"]').getAttribute('aria-pressed'),
-    desktopPressed: document.querySelector('#highlightPalette [data-highlight-color="mint"]').getAttribute('aria-pressed'),
+    selected: document.querySelector('#highlightToolbar [data-highlight-color="mint"]').getAttribute('aria-pressed'),
     markerMode: document.getElementById('highlightBtn').getAttribute('aria-pressed'),
     active: document.activeElement && document.activeElement.id
   }));
-  check('Zen color choice closes, restores focus, and synchronizes without arming Marker',
-    !(await zenMarkerMenu.isVisible()) && await zenMarker.getAttribute('aria-expanded') === 'false'
+  check('Zen color choice stays open and synchronizes without arming Marker',
+    await zenMarkerMenu.isVisible() && await zenMarker.getAttribute('aria-expanded') === 'true'
     && zenColorState.saved === 'mint' && zenColorState.trigger === 'mint'
     && zenColorState.desktop === 'mint' && zenColorState.touch === 'mint'
-    && zenColorState.zenPressed === 'true' && zenColorState.desktopPressed === 'true'
-    && zenColorState.markerMode === 'false' && zenColorState.active === 'zenMarker',
+    && zenColorState.selected === 'true' && zenColorState.markerMode === 'false',
   JSON.stringify(zenColorState));
 
   const zenSelectedText = await selectPdfPassage(page);
@@ -245,9 +242,10 @@ async function storedPdfHighlights(page) {
     expanded: button.getAttribute('aria-expanded'),
     controls: button.getAttribute('aria-controls')
   }));
-  check('a pending Zen selection becomes one clear Mark action', !!zenSelectedText
+  check('a pending Zen selection offers Mark while retaining its open color controls', !!zenSelectedText
     && /Highlight selected passage in Mint/.test(zenPendingState.label || '')
-    && zenPendingState.expanded === null && zenPendingState.controls === null,
+    && zenPendingState.expanded === 'true' && zenPendingState.controls === 'highlightToolbar'
+    && await zenMarkerMenu.isVisible(),
   JSON.stringify({ text: zenSelectedText, state: zenPendingState }));
   const zenCardClearance = await page.evaluate(() => {
     const card = document.getElementById('selectionCard').getBoundingClientRect();
@@ -261,10 +259,10 @@ async function storedPdfHighlights(page) {
   check('one Zen Marker tap saves the existing selection in the chosen color', zenSavedHighlights.length === 1
     && zenSavedHighlights[0].text === zenSelectedText && zenSavedHighlights[0].color === 'mint',
   JSON.stringify(zenSavedHighlights));
-  check('after saving, Zen Marker restores its accessible color-popup state',
-    await zenMarker.getAttribute('aria-expanded') === 'false'
-    && await zenMarker.getAttribute('aria-controls') === 'zenMarkerMenu'
-    && (await zenMarker.getAttribute('aria-label') || '').includes('Open colors'));
+  check('after saving, Zen Marker keeps the shared color toolbar open',
+    await zenMarker.getAttribute('aria-expanded') === 'true'
+    && await zenMarker.getAttribute('aria-controls') === 'highlightToolbar'
+    && await zenMarkerMenu.isVisible());
 
   const zenPaperState = await page.locator('#zenPaperAppearance').evaluate(button => {
     const rect = button.getBoundingClientRect();
@@ -344,31 +342,31 @@ async function storedPdfHighlights(page) {
   await finePage.waitForFunction(() => document.body.classList.contains('zen'));
 
   const fineZenMarker = finePage.locator('#zenMarker');
-  const fineZenMarkerMenu = finePage.locator('#zenMarkerMenu');
+  const fineZenMarkerMenu = finePage.locator('#highlightToolbar');
   await fineZenMarker.focus();
   await fineZenMarker.press('Enter');
-  const fineToggleState = await finePage.locator('#zenMarkerToggle').evaluate(button => {
+  const fineToggleState = await finePage.locator('#highlightToolbar [data-highlight-tool="marker"]').evaluate(button => {
     const rect = button.getBoundingClientRect();
     return { visible: getComputedStyle(button).display !== 'none', width: rect.width, height: rect.height };
   });
-  check('fine-pointer Zen exposes the persistent Marker toggle', fineToggleState.visible
+  check('fine-pointer Zen exposes Highlight in the shared toolbar', fineToggleState.visible
     && fineToggleState.width >= 44 && fineToggleState.height >= 44, JSON.stringify(fineToggleState));
-  await finePage.locator('#zenMarkerToggle').focus();
-  await finePage.locator('#zenMarkerToggle').press('Enter');
-  check('the fine-pointer Zen toggle synchronizes persistent Marker mode',
-    await finePage.locator('#zenMarkerToggle').getAttribute('aria-pressed') === 'true'
+  await finePage.locator('#highlightToolbar [data-highlight-tool="marker"]').focus();
+  await finePage.locator('#highlightToolbar [data-highlight-tool="marker"]').press('Enter');
+  check('the shared Highlight control synchronizes persistent Marker mode',
+    await finePage.locator('#highlightToolbar [data-highlight-tool="marker"]').getAttribute('aria-pressed') === 'true'
     && await finePage.locator('#highlightBtn').getAttribute('aria-pressed') === 'true'
     && await finePage.locator('body').evaluate(body => body.classList.contains('marker-on')));
 
   await finePage.keyboard.press('Escape');
   const fineEscapeOnce = await finePage.evaluate(() => ({
-    menuHidden: document.getElementById('zenMarkerMenu').classList.contains('hidden'),
+    menuHidden: document.getElementById('highlightToolbar').classList.contains('hidden'),
     expanded: document.getElementById('zenMarker').getAttribute('aria-expanded'),
     markerPressed: document.getElementById('highlightBtn').getAttribute('aria-pressed'),
     active: document.activeElement && document.activeElement.id,
     zen: document.body.classList.contains('zen')
   }));
-  check('Escape closes the open Zen Marker popup before disabling Marker', fineEscapeOnce.menuHidden
+  check('Escape closes the shared Highlight toolbar before disabling Marker', fineEscapeOnce.menuHidden
     && fineEscapeOnce.expanded === 'false' && fineEscapeOnce.markerPressed === 'true'
     && fineEscapeOnce.active === 'zenMarker' && fineEscapeOnce.zen, JSON.stringify(fineEscapeOnce));
   await finePage.keyboard.press('Escape');

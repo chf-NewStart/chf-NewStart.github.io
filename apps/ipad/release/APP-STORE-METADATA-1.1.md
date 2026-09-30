@@ -1,6 +1,6 @@
 # Phloem 1.1 App Store package
 
-Target: **version 1.1.0, build 18**. This local candidate fixes mutually exclusive Pen/Highlighter selection through normal, touch, and Zen controls, including visible selected/pressed states and cancellation when switching during a stroke. It retains build 17's hold-to-straighten, eight ink colors, and unified PDF erasing. Dedicated switching checks pass 113/113 in Chromium and WebKit. The fresh signed build 18 archive has verified version/build metadata, strict signature, and bundled-source matches after native transforms; upload and physical-device validation remain pending. The verified build 17 archive lacks this fix. Check App Store Connect before uploading; if 18 is already used, increment to the next unused build number and archive again. Use internal TestFlight before App Review and choose manual or phased release. This is draft metadata, not submitted App Store Connect content.
+Target: **version 1.1.0, build 20**, reader cache **v136**. The Highlight tools now use one bottom toolbar like Pen: colors, Eraser, Define, Ask AI, Undo, and Done. This corrects build 19’s edge-popover layout while preserving its whole-word highlighting and passage shortcuts. The signed build 20 archive is verified locally; upload and physical-device checks are pending. This is local draft metadata, not submitted App Store Connect content; check build-number availability before upload.
 
 ## Promotional text
 
@@ -17,7 +17,8 @@ Also new:
 - Switch between Pen and Highlighter with one tool active at a time, including touch and Zen controls.
 - Smoother continuous handwriting, including previously saved strokes, without changing your original ink points or notes.
 - Undo the latest handwriting or highlight edit directly from the Zen dock, without leaving focused reading.
-- Highlight selectable text with Apple Pencil: drag across a passage and lift to save. Choose a color with Mark, use Erase to remove highlights, and undo through the reader controls.
+- Highlight selectable text with Apple Pencil: drag across a passage and lift to save, including complete words at each endpoint. Mark opens its colors immediately and keeps them available between marks and color changes.
+- Use Define or Ask AI directly from the highlight palette for your selected passage or latest selected highlight on the current page. Ask AI opens a question composer; sending still requires tapping Ask.
 - Clean, professional note lettering is now the default, with a Handwritten switch when you want the original style.
 - AI is off by default and sends text only after a provider-specific disclosure and your explicit consent.
 - API keys are entered in a secure iOS prompt, stored in Keychain, and excluded from Phloem backups.
@@ -34,6 +35,8 @@ Phloem is a calm, local-first reading desk for research papers on iPad.
 Import PDF and Word documents, read without distractions, and keep your thinking beside the source. Search a paper, highlight passages, write notes, track your place, use the movable reading guide, and switch between focused reading layouts. Clean note lettering is the default, and the Handwritten switch brings back a more personal notebook feel whenever you want it.
 
 For handwritten PDF notes, turn on Write and use Apple Pencil directly on the page. Add ideas in the margins, circle figures, or sketch on scanned and blank pages without OCR. Choose from eight ink colors and three pen widths. Hold Pencil still for about 0.6 seconds after a long open stroke to straighten it, adjust the endpoint before lifting, or keep writing naturally with pressure-sensitive strokes. Your handwriting stays anchored to its PDF page as you zoom and change layouts; fingers remain available for navigation.
+
+For text highlighting, Mark opens its color palette and keeps colors available as you highlight and change colors. Pencil strokes include complete endpoint words. The palette also offers Define and Ask AI for the selected passage or the latest selected highlight still on the current page. Ask AI prepares a question without sending it; Define uses the existing online lookup and may use the configured AI fallback with your existing provider consent.
 
 On PDFs, Write's Eraser and Mark's Erase both remove touched handwriting strokes and text highlights. One Undo restores the whole sweep; the Zen dock also includes Undo without leaving focused reading. The text Reader's highlight eraser is unchanged. Handwriting is saved with the library and in JSON backups. Export original PDF and the PDF in a NotebookLM package remain the unannotated original file; they do not embed Phloem handwriting or highlights.
 
@@ -64,7 +67,7 @@ AI, online definitions, PDF URL imports, external links, and cloud file provider
 - Support URL: `https://houfu72.com/phloem-ipad/support.html`
 - Privacy Policy URL: `https://houfu72.com/phloem-ipad/privacy.html`
 
-The support and privacy pages were verified live; recheck both URLs before external TestFlight or App Review. Build 18 adds no AI transfer or data destination.
+The support and privacy pages were verified live; recheck both URLs before external TestFlight or App Review. Build 19's shortcuts reuse existing lookup/AI destinations and consent; opening Ask AI alone sends no request.
 
 ## App Review Information
 
@@ -83,7 +86,7 @@ Test path:
 3. Open Settings → AI assistant.
 4. Select the provider matching the supplied credential [OpenAI, Anthropic, or DeepSeek], leave the supplied model name, read the provider-specific disclosure, confirm the 18+ consent checkbox, and tap Save AI settings.
 5. Enter the matching dedicated review API key in the native secure prompt: **[PASTE PROVIDER NAME AND REVIEW-ONLY KEY IN APP STORE CONNECT, NOT SOURCE CONTROL]**.
-6. Return to the paper, open Discuss, choose Page, Selection, or Guide, and ask a question. The workspace identifies itself as AI and warns that important claims must be verified.
+6. Return to the paper, open Discuss, choose Page, Selection, or Guide, and ask a question. Also select a passage or tap an existing highlight on the current page, open Mark, and choose Ask AI: confirm the question composer opens without sending until Ask is tapped. Define reuses online lookup and its existing configured-provider fallback. The workspace identifies itself as AI and warns that important claims must be verified.
 7. To revoke access, open Settings → AI assistant, select the configured provider, and tap Remove saved key.
 
 Before any request, the app names the provider, destination, categories of text sent, and purpose, links to the Phloem and provider privacy policies, and requires explicit consent. The key is stored using iOS Keychain with this-device-only protection and is not returned to the web layer, logged, or included in backups. Requests go directly over HTTPS to `api.openai.com`, `api.anthropic.com`, or `api.deepseek.com`; Phloem has no AI proxy. Depending on the action, the app sends the selected passage, current-page or guide text, the user's question and same-thread history, or extracted reviewer text and locally selected candidate excerpts. It never uploads the original PDF or Word file as part of an AI request. DeepSeek has its own disclosure and consent; adding it does not enable it automatically or reuse another provider's key or consent.
@@ -106,9 +109,10 @@ Please test both an update from App Store version 1.0 and a clean install of 1.1
 
 - Existing papers, last page, highlights, notes, and reviewer work survive the update.
 - Turn on Write and test real Pencil handwriting, pressure, dots, fast strokes, all eight colors and three widths. Hold still for 600 ms after a long open stroke, adjust its straightened endpoint before lifting, and confirm short strokes/closed loops do not unexpectedly snap. Confirm Write starts off and switches cleanly back to highlighting.
-- On build 18, switch between Pen and Highlighter through every normal, touch, and Zen control. Confirm only the active tool shows selected/pressed states and switching during a stroke cancels it without saving stray ink. Check default Pencil highlighting and native finger text selection.
+- On build 19, switch between Pen and Highlighter through every normal, touch, and Zen control. Confirm only the active tool shows selected/pressed states and switching during a stroke cancels it without saving stray ink. Check default Pencil highlighting and native finger text selection.
+- Check complete Pencil endpoint words in forward/reverse and multiline highlights. Select Mark, then highlight and change colors repeatedly without reopening its palette. Verify Define/Ask AI use only the selected passage or latest selected highlight still on the current page; deleted/off-page context must not be reused. Opening Ask AI must wait for your question and explicit Ask, while Define retains existing lookup/provider-consent behavior.
 - Sweep each PDF eraser over handwriting and text highlights together. Verify one Undo restores the complete sweep with highlight notes intact, Redo reapplies it, and cancellation restores content. Confirm the text Reader's eraser remains unchanged.
-- In build 18, confirm the retained build 15 continuity repair with slow/fast writing, tight curves, and changing Pencil pressure at several zoom levels. Verify strokes no longer look beaded and that previously saved handwriting, dots, erase/Undo behavior, and JSON backups remain intact.
+- In build 19, confirm the retained build 15 continuity repair with slow/fast writing, tight curves, and changing Pencil pressure at several zoom levels. Verify strokes no longer look beaded and that previously saved handwriting, dots, erase/Undo behavior, and JSON backups remain intact.
 - In Zen, alternate handwriting and text highlight edits, then tap the dock's Undo button repeatedly, including with Write off. Confirm edits reverse in order, erased strokes/highlights can be restored, and the button disables when history is empty. Check reachability and normal navigation in Scroll/Page/Book, portrait/landscape, and Split View on a physical iPad.
 - Write on blank/scanned PDFs without OCR and on mixed-size pages. Test Scroll/Page/Book, both leaves of a spread, zoom, dark paper, finger scrolling/pinch, palm contact, rotation, Split View, cancelled strokes, relaunch, and JSON backup/restore.
 - Confirm handwritten notes stay editable in the library and JSON backup, while Export original PDF still downloads the unannotated original. Test erased strokes stay erased after restoring an older backup.
@@ -129,7 +133,7 @@ Send feedback with the iPad model, iPadOS version, build number, provider, and s
 2. Create version 1.1.0 in the existing App Store Connect record.
 3. Re-answer App Privacy and the current age-rating questionnaire.
 4. Run `npm run ios:sync`, then create a fresh Release archive with Xcode 26 or later and the current iPadOS SDK; generate and inspect the archive privacy report.
-5. Verify the new archive's metadata, signature, and bundled-source matches, confirm it shows **1.1.0 (18)**, and upload it to internal TestFlight. Check for any already used build number; if 18 is used, increment the project build number and archive again. The verified build 17 archive lacks the Pen/Highlighter switching fix.
+5. Verify the fresh **1.1.0 (20)** archive’s metadata, strict signature, and bundled-source matches, then upload it to internal TestFlight after checking for an already-used build number. If 20 is used, increment the project build number and archive again. Build 19 lacks the bottom Highlight toolbar.
 6. Complete the physical-iPad and live-provider checklist against the exact TestFlight binary.
 7. Capture screenshots from that binary and paste the final metadata and reviewer-only key.
 8. Add for Review and submit. Prefer manual release or a phased release for the first AI-enabled update.

@@ -43,6 +43,15 @@ const server = http.createServer((request, response) => {
   });
 });
 function seedReader() {
+  const restored = sessionStorage.getItem('annotationTools.fixture.restore');
+  if (restored) {
+    // Reset after the previous document's lifecycle flush, and make this deliberate
+    // fixture state newer than its IndexedDB safety copy. Rewriting only the old
+    // localStorage snapshot before reload lets recovery leak a prior test's ink.
+    const state = JSON.parse(restored); state.savedAt = Date.now();
+    localStorage.setItem('readingRoom.v1', JSON.stringify(state));
+    sessionStorage.removeItem('annotationTools.fixture.restore');
+  }
   if (localStorage.getItem('annotationTools.fixture.seeded')) return;
   localStorage.setItem('annotationTools.fixture.seeded', '1');
   localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [], deleted: {}, merged: {}, savedAt: Date.now() }));
@@ -141,7 +150,9 @@ async function nativeTouchSelection(page) {
     document.dispatchEvent(new Event('selectionchange'));
     last.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerType: 'touch', pointerId: 82, isPrimary: true, button: 0, buttons: 0 }));
   });
-  await page.waitForFunction(() => document.getElementById('touchHighlight').classList.contains('active'));
+  // A pending native selection is actionable without visually selecting Marker
+  // while the mutually exclusive Write tool is still active.
+  await page.waitForFunction(() => document.getElementById('touchHighlight').getAttribute('aria-label').includes('Highlight selected passage'));
 }
 async function ui(page) {
   return page.evaluate(() => ({
@@ -154,8 +165,8 @@ async function ui(page) {
     inkWidths: document.querySelectorAll('[data-pdf-ink-width][aria-pressed="true"]').length,
     markerSwatches: document.querySelectorAll('.marker-swatch[data-highlight-color][aria-pressed="true"],.marker-swatch[data-highlight-color].selected').length,
     markerActive: document.getElementById('highlightBtn').classList.contains('active') || document.getElementById('zenMarker').classList.contains('active') || document.getElementById('touchHighlight').classList.contains('active'),
-    markerPressed: document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true' || document.getElementById('zenMarkerToggle').getAttribute('aria-pressed') === 'true',
-    markerPopouts: ['highlightPalette', 'touchHighlightPalette', 'zenMarkerMenu'].filter(id => !document.getElementById(id).classList.contains('hidden')),
+    markerPressed: document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true' || document.querySelector('#highlightToolbar [data-highlight-tool="marker"]').getAttribute('aria-pressed') === 'true',
+    markerPopouts: ['highlightToolbar'].filter(id => !document.getElementById(id).classList.contains('hidden')),
     previews: document.querySelectorAll('.pdf-ink-preview,.pencil-highlight-preview,.pdf-ink-erasing,.erasing-highlight').length
   }));
 }
@@ -163,10 +174,12 @@ function writeIsOff(state) { return !state.writeOn && state.writeButtons.every(b
 function writeIsExclusive(state) { return state.writeOn && state.writeButtons.every(button => button.pressed === 'true' && button.active)
   && state.inkTools === 1 && state.inkColors === 1 && state.inkWidths === 1 && !state.stickyMarker && !state.erasing && !state.markerActive && !state.markerPressed && state.markerSwatches === 0 && state.markerPopouts.length === 0; }
 async function reset(page, saved) {
-  await page.evaluate(saved => localStorage.setItem('readingRoom.v1', saved), saved);
+  await page.evaluate(saved => sessionStorage.setItem('annotationTools.fixture.restore', saved), saved);
   await page.reload({ waitUntil: 'load' });
   await waitForPdf(page);
   await positionPage(page);
+  const restored = await chapter(page), expected = JSON.parse(saved).chapters.find(item => item.id === restored.id);
+  if (!expected || !same(annotations(restored), annotations(expected))) throw new Error('Fixture reset did not restore the baseline annotations');
 }
 
 (async () => {
@@ -206,12 +219,12 @@ async function reset(page, saved) {
       const markerEntries = [
         ['header Marker', page => click(page, '#highlightBtn', touch ? 'touch' : 'mouse')],
         ['header color chooser', page => click(page, '#highlightColorBtn')],
-        ['header color', page => click(page, '#highlightPalette [data-highlight-color="mint"]')],
+        ['header color', page => click(page, '#highlightToolbar [data-highlight-color="mint"]')],
         ['Zen Marker opening', page => click(page, '#zenMarker'), true],
-        ['Zen Marker color', page => click(page, '#zenMarkerMenu [data-highlight-color="coral"]'), true]
+        ['Zen Marker color', page => click(page, '#highlightToolbar [data-highlight-color="coral"]'), true]
       ];
-      if (touch) markerEntries.push(['touch Mark', page => click(page, '#touchHighlight')], ['touch Mark color', page => click(page, '#touchHighlightPalette [data-highlight-color="blue"]')]);
-      else markerEntries.push(['Zen Marker toggle', page => click(page, '#zenMarkerToggle'), true]);
+      if (touch) markerEntries.push(['touch Mark', page => click(page, '#touchHighlight')], ['touch Mark color', page => click(page, '#highlightToolbar [data-highlight-color="blue"]')]);
+      else markerEntries.push(['shared Highlight tool in Zen', page => click(page, '#highlightToolbar [data-highlight-tool="marker"]'), true]);
       for (const [name, activate, zen] of markerEntries) {
         await reset(page, saved);
         if (zen) await click(page, '#zenBtn');
@@ -265,7 +278,7 @@ async function reset(page, saved) {
         await setWrite(page);
         await click(page, '#highlightBtn', touch ? 'touch' : 'mouse');
         if (eraseFromWrite) { await setWrite(page); await click(page, '[data-pdf-ink-tool="eraser"]'); }
-        else await click(page, '#touchHighlightPalette [data-highlight-eraser]');
+        else await click(page, '#highlightToolbar [data-highlight-eraser]');
         await stroke(page, 'Alpha', 'beta', touch);
         const erased = await chapter(page);
         check(label + ' shared eraser after switching removes both annotation types from ' + (eraseFromWrite ? 'Write' : 'Marker'), highlights(erased).length === 0 && ink(erased).length === 0, { highlights: highlights(erased), ink: ink(erased), ui: await ui(page) });

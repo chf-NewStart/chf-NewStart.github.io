@@ -227,9 +227,9 @@ async function storedHighlights(page) {
   check(browserName + ' fixture exposes separate adjacent PDF.js spans', fixture.ready && fixture.distinct && fixture.sameLine && fixture.gap <= 3, JSON.stringify(fixture));
 
   const touchMark = page.locator('#touchHighlight');
-  const touchPalette = page.locator('#touchHighlightPalette');
+  const touchPalette = page.locator('#highlightToolbar');
   await touchMark.click();
-  check('touch Mark without a selection opens its color palette', await touchPalette.isVisible()
+  check('touch Mark without a selection opens the shared Highlight toolbar', await touchPalette.isVisible()
     && await touchMark.getAttribute('aria-expanded') === 'true'
     && await touchMark.getAttribute('aria-haspopup') === null);
   check('opening the touch palette does not enable the desktop marker', await page.locator('#highlightBtn').getAttribute('aria-pressed') === 'false'
@@ -256,9 +256,9 @@ async function storedHighlights(page) {
 
   await page.waitForTimeout(2200);
   check('coarse-touch selection does not auto-save after pointer release or a delayed fuse', (await storedHighlights(page)).length === 0);
-  check('pending touch selection advertises only the explicit Mark action', (await touchMark.getAttribute('aria-label') || '').includes('Highlight selected passage')
-    && await touchMark.getAttribute('aria-expanded') === null
-    && await touchMark.getAttribute('aria-controls') === null);
+  check('pending touch selection keeps its explicit Mark action and shared toolbar disclosure', (await touchMark.getAttribute('aria-label') || '').includes('Highlight selected passage')
+    && await touchMark.getAttribute('aria-expanded') === 'true'
+    && await touchMark.getAttribute('aria-controls') === 'highlightToolbar');
 
   await touchMark.click();
   await page.waitForTimeout(180);
@@ -267,8 +267,9 @@ async function storedHighlights(page) {
   check('touch Mark uses the chosen color without arming desktop marker mode', saved[0] && saved[0].color === 'mint'
     && await page.locator('#highlightBtn').getAttribute('aria-pressed') === 'false'
     && !await page.locator('body').evaluate(body => body.classList.contains('marker-on')));
-  check('touch Mark returns to its idle color disclosure after saving', await touchMark.getAttribute('aria-expanded') === 'false'
-    && await touchMark.getAttribute('aria-controls') === 'touchHighlightPalette');
+  check('touch Mark keeps the shared colors ready after saving', await touchMark.getAttribute('aria-expanded') === 'true'
+    && await touchMark.getAttribute('aria-controls') === 'highlightToolbar'
+    && await touchPalette.isVisible());
 
   check(browserName + ' selection workflow has no page errors', errors.length === 0, errors.join('; '));
   await context.close();

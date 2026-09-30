@@ -1005,10 +1005,6 @@
     .zen-guide-dim-control output { color: var(--ink); font-size: .64rem; font-variant-numeric: tabular-nums; text-align: right; }
     .zen-marker { --marker-current-color: #ffd83d; font-size: .86rem; }
     .zen-marker-current-dot { position: absolute; right: 5px; bottom: 5px; width: 8px; height: 8px; border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent); border-radius: 50%; background: var(--marker-current-color); box-shadow: 0 0 0 1.5px var(--surface); }
-    .zen-marker-menu { width: min(264px, calc(100vw - 76px)); padding: 6px; display: grid; gap: 4px; }
-    .zen-marker-toggle { width: 100%; justify-content: flex-start; }
-    .zen-marker-colors { min-height: 44px; display: flex; align-items: center; justify-content: flex-end; gap: 0; padding: 0 3px 0 10px; }
-    .zen-marker-colors > span { margin-right: auto; color: var(--muted); font-size: .62rem; font-weight: 700; }
     /* A scrollbar is chrome, and zen hides chrome: the wheel, the trackpad and the
        Space drift still scroll — the paper just keeps its whole edge. */
     body.zen .document-pane { scrollbar-width: none; }
@@ -1167,12 +1163,6 @@
     @media (hover: hover) and (pointer: fine) {
       body.marker-on :is(.text-layer,.text-layer *,.original,.original *) { cursor: crosshair; }
     }
-    .marker-palette { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; justify-items: center; gap: 0; width: 224px; margin: 0; padding: 8px; border: 1px solid var(--line); border-radius: 15px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 12px 34px rgba(20,24,25,.18); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-    .highlight-eraser { grid-column: 1 / -1; width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin-top: 4px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: 650 .7rem/1.25 var(--sans); touch-action: manipulation; }
-    .highlight-eraser:hover, .highlight-eraser:focus-visible { border-color: var(--accent); background: var(--surface-2); }
-    .highlight-eraser[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
-    .highlight-eraser[aria-pressed="true"]::after { content: "On"; margin-left: auto; color: var(--accent-dark); font-size: .6rem; }
-    .highlight-tool-hint { grid-column: 1 / -1; margin: 8px 6px 4px; color: var(--muted); font: 500 .65rem/1.45 var(--sans); }
     body.highlight-erasing .marker-tools { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
     body.highlight-erasing #highlightBtn, body.highlight-erasing #touchHighlight, body.highlight-erasing #zenMarker { background: var(--accent-soft); color: var(--ink); opacity: 1; }
     body.highlight-erasing :is(.marker-glyph,.touch-marker-glyph,.zen-marker-glyph) { display: inline-block; width: 16px; height: 10px; border: 1.5px solid currentColor; border-radius: 2px; background: linear-gradient(90deg, #ef8f85 0 56%, var(--surface) 56%); transform: rotate(-34deg); font-size: 0; }
@@ -1190,6 +1180,42 @@
     .marker-swatch:is([data-highlight-color="mint"],[data-card-color="mint"],[data-selection-highlight-color="mint"]) { --marker-swatch-color: #5cd591; }
     .marker-swatch:is([data-highlight-color="coral"],[data-card-color="coral"],[data-selection-highlight-color="coral"]) { --marker-swatch-color: #ff7e69; }
     .marker-swatch:is([data-highlight-color="blue"],[data-card-color="blue"],[data-selection-highlight-color="blue"]) { --marker-swatch-color: #5ba9ff; }
+    /* One bottom tool shelf, shared by the header, touch dock and Zen trigger.
+       Its geometry mirrors the Pen shelf while leaving Pen's styling independent. */
+    .highlight-toolbar {
+      position: fixed; z-index: 44; left: 50%; bottom: calc(18px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px)));
+      width: 480px; max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
+      max-height: min(40vh, 320px); max-height: min(40dvh, 320px); overflow: auto; transform: translateX(-50%); padding: 7px;
+      border: 1px solid var(--line); border-radius: 17px; background: color-mix(in srgb, var(--surface) 97%, transparent);
+      box-shadow: 0 10px 34px rgba(20,24,25,.18); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+      user-select: none; -webkit-user-select: none; overscroll-behavior: contain;
+    }
+    .highlight-controls { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px; }
+    .highlight-secondary-controls { margin-top: 5px; }
+    .highlight-finish-group { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; }
+    .highlight-group { display: flex; flex: 0 0 auto; align-items: center; gap: 0; padding: 0 3px; border-radius: 11px; background: var(--surface-2); }
+    .highlight-toolbar button {
+      min-width: 44px; min-height: 44px; padding: 7px 9px; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--muted); font: 650 .7rem/1.2 var(--sans);
+      white-space: nowrap; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    .highlight-toolbar button:hover:not(:disabled), .highlight-toolbar button:focus-visible { border-color: var(--line); background: var(--surface); color: var(--ink); }
+    .highlight-toolbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .highlight-toolbar button[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 38%, var(--line)); background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(20,24,25,.07); }
+    .highlight-toolbar button:disabled { opacity: .35; cursor: default; }
+    .highlight-toolbar .marker-swatch { width: 44px; min-width: 44px; max-width: 44px; height: 44px; min-height: 44px; flex-basis: 44px; padding: 0; }
+    .highlight-toolbar .marker-swatch::before { width: 23px; height: 23px; }
+    .highlight-history-icon { font-size: 1.25rem; line-height: 1; }
+    .highlight-toolbar .highlight-done { padding-inline: 13px; background: var(--accent-soft); color: var(--ink); }
+    .highlight-toolbar p { margin: 6px 8px 2px; color: var(--muted); font: 500 .6875rem/1.35 var(--sans); text-align: center; }
+    .highlight-toolbar .highlight-action-context { color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+    body.touch-tablet-reader .highlight-toolbar { max-width: calc(100vw - 176px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
+    @media (max-width: 720px) {
+      .highlight-toolbar, body.touch-tablet-reader .highlight-toolbar { max-width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); bottom: calc(72px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px))); }
+      body.zen .highlight-toolbar { bottom: calc(12px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px))); max-width: calc(100vw - 90px - env(safe-area-inset-left) - env(safe-area-inset-right)); left: max(12px, env(safe-area-inset-left)); transform: none; }
+      .highlight-controls { gap: 4px; }
+      .highlight-group { padding-inline: 0; }
+    }
     .selection-card { position: fixed; z-index: 45; width: min(360px, calc(100vw - 24px)); max-height: min(700px, calc(var(--visual-viewport-height, 100dvh) - 24px)); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 15px; background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 18px 54px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
     .selection-card.note-open { width: min(390px, calc(100vw - 24px)); }
     .selection-card.ai-open { width: min(470px, calc(100vw - 24px)); }
@@ -1824,15 +1850,6 @@
     #touchHighlight { --marker-current-color: #ffd83d; }
     .touch-marker-glyph { position: relative; }
     .touch-marker-glyph::after { content: ""; position: absolute; right: -7px; bottom: -3px; width: 8px; height: 8px; border: 1px solid color-mix(in srgb, var(--ink) 34%, var(--surface)); border-radius: 50%; background: var(--marker-current-color); box-shadow: 0 0 0 1px color-mix(in srgb, var(--surface) 84%, transparent); }
-    .touch-highlight-palette {
-      position: absolute; z-index: 3; right: calc(100% + 11px); top: 50%; width: max-content; padding: 8px;
-      display: grid; grid-template-columns: repeat(4,44px); align-items: center; gap: 0; border: 1px solid var(--line); border-radius: 15px;
-      background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 16px 44px rgba(20,24,25,.2);
-      -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); transform: translateY(-50%);
-    }
-    .touch-highlight-palette > strong { grid-column: 1 / -1; padding: 2px 6px 6px; color: var(--muted); font: 750 .57rem/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
-    .touch-highlight-palette > .pencil-hint { grid-column: 1 / -1; max-width: 184px; margin: 6px; color: var(--muted); font: 500 .7rem/1.45 var(--sans); }
-    body.touch-tablet-reader[data-tablet-dock-side="left"] .touch-highlight-palette { left: calc(100% + 11px); right: auto; }
     .touch-dock-menu {
       position: absolute; z-index: 2; right: calc(100% + 11px); bottom: 0; width: 226px; padding: 6px;
       display: grid; gap: 3px; border: 1px solid var(--line); border-radius: 15px;

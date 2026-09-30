@@ -1,6 +1,6 @@
 # Phloem 1.1 release checklist
 
-Version target: **1.1.0 (18)**. Version 1.0 build 7 is Ready for Distribution. Build 18 fixes Pen/Highlighter switching while retaining build 17's drawing features. Dedicated switching checks pass 113/113 in Chromium and WebKit. The fresh signed build 18 archive is verified locally; upload and physical-device validation remain pending. Pushing source to Git does not submit the archive to Apple. The verified build 17 archive lacks this fix. Check App Store Connect before uploading; if 18 is already used, increment to the next unused number and create another archive. Historical verification below applies to the named build, not automatically to this candidate.
+Version target: **1.1.0 (20)**, reader cache **v136**. Build 20 replaces the previous edge popovers with a single bottom Highlight toolbar shared by normal, touch, and Zen controls. Colors, Eraser, Define, Ask AI, Undo, and Done stay together; switching to Pen shows only Pen’s existing toolbar. Build 19’s signed archive is historical. The signed build 20 archive is verified locally; upload and physical-device testing are pending. Check App Store Connect for an already-used build number before uploading; source changes do not update the installed app.
 
 ## Implemented and locally verified
 
@@ -44,7 +44,7 @@ Version target: **1.1.0 (18)**. Version 1.0 build 7 is Ready for Distribution. B
 - [x] The final renderer passes 39/39 continuity checks in `tests/reading-pdf-ink-continuity.test.js` in both Chromium and WebKit. Centerline simplification uses bounded 64-segment windows and pressure filtering is linear, keeping long-stroke preparation linear in recorded-point count; this is not a physical-device latency guarantee.
 - [x] Build 15 regressions: handwriting 51/51 in Chromium and WebKit, ink state/merge 27/27, Pencil/highlight eraser 67/67 in both engines, bundle/security 13/13, and cache-update coverage 19 checks. Saved stroke IDs, erasing, chronological Undo/Redo, backup/merge behavior, and cancellation remain covered. Both Pencil suites report no page errors.
 - [x] Fresh signed **1.1.0 (15)** archive built with the final bounded-window renderer. Version/build metadata, strict code signature, and exact bundled-source matches are verified; do not distribute the older build 14 archive for this repair.
-- [ ] With a real Pencil on the current build 18 candidate, confirm the build 15 repair resolves the reported beaded appearance for new and previously saved strokes at several zoom levels. Automated rendering checks do not establish physical-device success.
+- [ ] With a real Pencil on the current build 19 candidate, confirm the build 15 repair resolves the reported beaded appearance for new and previously saved strokes at several zoom levels. Automated rendering checks do not establish physical-device success.
 
 ## Build 16 Zen Undo scope and verification
 
@@ -54,7 +54,7 @@ The Zen dock gains a dedicated **Undo** button backed by the shared chronologica
 - [x] Existing Zen regressions pass 44/44 in both Chromium and WebKit; build 16 ink state/merge passes 27/27, iPad dock passes 47/47, bundle/security checks pass 13/13, and cache-update coverage passes 19 checks.
 - [x] Visually checked screenshots of Zen Undo enabled, disabled, and beside Find in a short viewport; controls remain visible and do not overlap Find.
 - [x] Fresh signed **1.1.0 (16)** archive built successfully. Version/build metadata and strict code signature are verified; archived reader HTML, JavaScript, CSS, and `reading-ink.js` exactly match the synced build 16 source.
-- [ ] On a physical iPad running the exact build 18 binary, confirm the retained Zen Undo is reachable in Scroll/Page/Book, portrait/landscape, and Split View; it reverses handwriting/highlight edits in order without leaving Zen and visibly disables when no edits remain.
+- [ ] On a physical iPad running the exact build 19 binary, confirm the retained Zen Undo is reachable in Scroll/Page/Book, portrait/landscape, and Split View; it reverses handwriting/highlight edits in order without leaving Zen and visibly disables when no edits remain.
 
 ## Build 17 drawing and eraser update
 
@@ -69,16 +69,24 @@ Scope: eight always-accessible ink colors and three widths; hold Pencil still fo
 
 Scope: mutually exclusive Pen and Highlighter through every normal, touch, and Zen entry path, synchronized visible selected/pressed states, and cancellation when switching during a stroke. Default Pencil highlighting and native finger text selection remain available. This local editing fix adds no AI transfer or data destination; build 17's verified feature history remains above.
 
-- [x] Current regressions pass: handwriting/Zen Undo 67/67 and existing Zen 44/44 in Chromium and WebKit; unified eraser 66/66, palette 32/32, and iPad dock 47/47 in WebKit; native bundle/security 13/13 and cache-update coverage 19 checks.
+- [x] Build 18 regressions passed: handwriting/Zen Undo 67/67 and existing Zen 44/44 in Chromium and WebKit; unified eraser 66/66, palette 32/32, and iPad dock 47/47 in WebKit; native bundle/security 13/13 and cache-update coverage 19 checks.
 - [x] Dedicated switching, selected-state, and mid-stroke cancellation checks pass 113/113 in Chromium and WebKit.
-- [x] Fresh signed **1.1.0 (18)** archive succeeds; version/build metadata, strict code signature, and HTML/JavaScript/CSS/ink matches against current source after native transforms are verified. The verified build 17 archive does not contain this fix.
-- [ ] On the exact build 18 binary with a physical iPad and Pencil, exercise every normal/touch/Zen tool entry path and switch during an unfinished stroke; verify only the active tool is selected, cancelled strokes are not saved, and native finger text selection still works.
+- [x] Historical signed **1.1.0 (18)** archive succeeded; version/build metadata, strict code signature, and HTML/JavaScript/CSS/ink matches against build 18 source after native transforms are verified. The verified build 17 archive does not contain this fix.
+- [ ] On the exact build 19 binary with a physical iPad and Pencil, exercise every normal/touch/Zen tool entry path and switch during an unfinished stroke; verify only the active tool is selected, cancelled strokes are not saved, and native finger text selection still works.
+
+## Build 19 highlighting and passage shortcuts
+
+- [x] Whole-word Pencil endpoint accuracy passes 53/53 checks in Chromium and WebKit, including reversed strokes and complete endpoint words while preserving exact native finger/mouse selections.
+- [x] Persistent palette behavior passes 70/70 checks in both engines: selecting Marker opens colors; color changes and paper interactions leave them available; outside chrome and tool switches dismiss them. Pen colors remain immediately available. Existing Zen checks pass 44/44 in both engines; tablet header, dock, and Zen screenshots were visually checked.
+- [x] Define/Ask AI shortcuts use the selected passage or the latest selected highlight that still exists on the current page. Ask AI opens the existing question composer without sending; Define uses existing lookup and AI fallback with the existing provider setup and consent.
+- [x] Dedicated shortcut checks pass 43/43 in Chromium and WebKit, including stale/deleted/off-page context and no automatic AI send. Native bundle/security passes 13/13; cache-update coverage passes 19 checks.
+- [ ] On the exact build 19 binary, verify Pencil endpoint accuracy, repeated color changes between marks, and shortcut context in normal/touch/Zen views with a real iPad and Pencil.
 
 ## Physical iPad and live-provider gate
 
 - [ ] Test **Write** with a real Apple Pencil: default-off behavior, handwriting/diagrams in margins and over figures, dots and fast strokes, pressure changes, all eight colors and three widths, palm contact, and switching back to Mark. For a long open stroke, hold still for 600 ms, adjust the straightened endpoint, then lift; confirm dots and closed loops do not unexpectedly snap.
 - [ ] Test both PDF erasers over handwriting, highlights, and mixed/overlapping content. One Undo must restore the whole sweep with highlight notes intact; Redo, cancellations, relaunch, and backup restore must remain correct. Confirm the text Reader's highlight eraser is unchanged.
-- [ ] In Zen on build 18, use the dedicated Undo button after handwriting, text highlighting, and erasing, including with Write off; check chronological behavior, empty-history disabled state, touch/Pencil reachability, and normal reading/navigation after undoing.
+- [ ] In Zen on build 19, use the dedicated Undo button after handwriting, text highlighting, and erasing, including with Write off; check chronological behavior, empty-history disabled state, touch/Pencil reachability, and normal reading/navigation after undoing.
 - [ ] Write on blank/scanned PDFs without OCR, mixed-size/orientation pages, and different pages in a book spread. Confirm stroke placement survives Scroll/Page/Book changes, zoom/pinch, rotation, Split View, dark-paper appearance, page changes, and returning to the document.
 - [ ] Verify handwriting survives offline relaunch, force quit/reboot, update from an older build, JSON backup/restore, and duplicate-paper merge. Check interrupted/background/cancelled strokes do not become stray ink or corrupt saved strokes. Confirm original-PDF exports remain original and explain where the editable ink backup lives.
 - [ ] Test Apple Pencil text highlighting in PDF/Reader: all Mark colors, reverse and multiline strokes, partial-overlap reopening, jittered taps, fast Remove taps, Erase taps/sweeps over overlapping layers, grouped Undo/Redo with notes intact, relaunch, palm contact, and interruption/background cancellation. Confirm finger text selection, scrolling, pinch zoom, page turns, guide, and Zen still work. Unlike freehand Write, text highlighting requires a selectable text layer; scanned pages need OCR first.
@@ -96,7 +104,7 @@ Scope: mutually exclusive Pen and Highlighter through every normal, touch, and Z
 
 - [x] Re-read DeepSeek's current official platform terms and privacy policy for this integration; document the native key safeguards, China processing disclosure, and absence of an API-specific no-training/fixed-retention promise. Gemini and custom endpoints remain held.
 - [ ] Reconfirm all shipping providers' current account terms, region availability, permitted provider identification, and privacy disclosures on the submission date.
-- [x] Public `phloem-ipad/privacy.html` and `support.html` updates were verified live. Recheck reachability before submission; build 18 adds no data destination.
+- [x] Public `phloem-ipad/privacy.html` and `support.html` updates were verified live. Recheck reachability before submission; build 19's shortcuts reuse existing destinations and consent, and opening Ask AI alone sends nothing.
 - [ ] Update App Store Connect privacy answers: Other User Content and User ID, linked to the user, App Functionality, no tracking; evaluate additional purposes for provider-controlled secondary use (including DeepSeek) before finalizing. Do not assume App Functionality only without that review.
 - [ ] Confirm the archive privacy report matches the App Store Connect answers.
 - [ ] Paste the prepared AI behavior and setup steps into App Review Notes; provide a dedicated working reviewer key or a fully featured demo path, then revoke the key after review.
@@ -110,8 +118,10 @@ Scope: mutually exclusive Pen and Highlighter through every normal, touch, and Z
 - [x] Historical **1.1.0 (15)** was synced and archived with the final renderer at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (15).xcarchive`. Xcode archive succeeded; metadata confirms 1.1.0/build 15; strict code-signature verification passes; archived HTML, reader JavaScript, CSS, and `reading-ink.js` exactly matched the synced build 15 source. It does not contain Zen Undo.
 - [x] Historical **1.1.0 (16)** was synced and archived at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (16).xcarchive`. Xcode archive succeeded; metadata, strict signature, and bundled-source matches were verified against build 16 source. It lacks build 17's drawing and unified-eraser update.
 - [x] Historical **1.1.0 (17)** was archived at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (17).xcarchive`. Xcode succeeded; version/build metadata, strict signature, and bundled-source matches after native transforms are verified. It lacks build 18's Pen/Highlighter switching fix.
-- [x] **1.1.0 (18)** was archived at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (18).xcarchive`. Xcode succeeded; version/build metadata, strict signature, and bundled-source matches against current source after native transforms are verified.
-- [ ] Upload the verified **1.1.0 (18)** archive to internal TestFlight. Do not retry an already uploaded build number.
+- [x] Historical **1.1.0 (18)** was archived at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (18).xcarchive`. Xcode succeeded; version/build metadata, strict signature, and bundled-source matches against build 18 source after native transforms are verified. It lacks build 19's changes.
+- [x] Signed **1.1.0 (19)** archive succeeded at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (19).xcarchive`. Version/build metadata, strict code signature, and exact HTML/JavaScript/CSS/ink-source matches against the synced build 19 source after native transforms are verified.
+- [x] Signed **1.1.0 (20)** archive verified at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-30/Phloem 1.1.0 (20).xcarchive`: Xcode success, version/build, strict code signature, and bundled-source matches after native transforms. Bottom toolbar 113/113, passage actions 43/43, Zen 44/44, and the core annotation regressions pass both Chromium and WebKit; native bundle/security passes 13/13.
+- [ ] Upload the verified **1.1.0 (20)** to internal TestFlight; build 19 lacks the bottom Highlight toolbar. Do not retry an already uploaded build number.
 - [ ] Test the exact TestFlight binary on a physical iPad, including a fresh install and update from 1.0.
 - [ ] Capture new screenshots from the exact 1.1 UI. Do not add marketing frames that make screenshots look like app previews.
 - [ ] If adding an app preview, use only full-screen app footage at Apple's accepted dimensions; narration/text overlays are optional, external device frames are not.

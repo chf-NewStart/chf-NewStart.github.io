@@ -159,7 +159,7 @@ async function reset(page, saved, mode) {
     await writeMode(page);
     await click(page, '[data-pdf-ink-tool="eraser"]');
   } else if (mode === 'marker') {
-    await click(page, '#touchHighlightPalette [data-highlight-eraser]');
+    await click(page, '#highlightToolbar [data-highlight-eraser]');
   }
   await positionPage(page);
 }

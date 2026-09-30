@@ -260,15 +260,15 @@ async function dockPhysicalSide(page) {
     await tablet.locator(ACTION_SELECTORS.guide).first().click();
 
     const touchHighlight = tablet.locator(ACTION_SELECTORS.highlight).first();
-    const touchPalette = tablet.locator('#touchHighlightPalette');
+    const touchPalette = tablet.locator('#highlightToolbar');
     await touchHighlight.click();
-    check('idle Mark opens its color palette instead of arming a persistent touch marker', await touchPalette.isVisible()
+    check('idle Mark opens the shared Highlight toolbar instead of arming a persistent touch marker', await touchPalette.isVisible()
       && await touchHighlight.getAttribute('aria-expanded') === 'true'
       && await tablet.locator('#highlightBtn').getAttribute('aria-pressed') === 'false');
     await touchPalette.locator('[data-highlight-color="mint"]').click();
     check('choosing a touch highlight color does not implicitly enable the desktop marker', await tablet.locator('#highlightBtn').getAttribute('aria-pressed') === 'false'
       && !await tablet.locator('body').evaluate(body => body.classList.contains('marker-on')));
-    if (await touchPalette.isVisible()) await touchHighlight.click();
+    if (await touchPalette.isVisible()) await tablet.locator('#highlightDone').click();
 
     const initialSide = await dockPhysicalSide(tablet);
     check('the dock rests against one reachable side instead of floating over the paper', initialSide.edgeGap <= 20, JSON.stringify(initialSide));

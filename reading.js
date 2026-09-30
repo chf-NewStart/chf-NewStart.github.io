@@ -12,6 +12,7 @@
   var AI_PASS_SERVICE_KEY = 'readingRoom.ai.passService.v1';
   var PAPER_APPEARANCE_KEY = 'readingRoom.paperAppearance.v1';
   var HIGHLIGHT_COLOR_KEY = 'readingRoom.highlightColor.v1';
+  var ICLOUD_KEY = 'readingRoom.icloud.v1';
   var pdfInkController=null,pdfWriteMode=false,pdfInkTool='pen',pdfInkColor='black',pdfInkWidth=1.5;
   var AI_PROVIDERS = {
     gemini:{label:'Gemini API',model:'gemini-3.6-flash'},
@@ -23,6 +24,7 @@
   var NATIVE_AI_CONSENT_VERSION = 2;
   var nativeAiConsentedProviders = {}, nativeAiSettingsEpoch = 0;
   function nativeAiPlugin(){return window.PHLOEM_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemAI||null;}
+  function nativeCloudPlugin(){return window.PHLOEM_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemCloud||null;}
   function nativeAiDestination(id){return{id:'',gemini:'generativelanguage.googleapis.com',deepseek:'api.deepseek.com',openai:'api.openai.com',anthropic:'api.anthropic.com'}[id]||'';}
   function nativeAiPrivacy(id){return{
     gemini:{url:'https://ai.google.dev/gemini-api/terms',label:'Google Gemini terms and data use',detail:'Google’s data use depends on your API plan; unpaid Gemini services may use submitted content to improve Google products and may involve human review.'},
@@ -66,8 +68,9 @@
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
   var localAiPreparePromise = null;
-  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, aiSettings = loadAiSettings(), sharedAiPass = loadSharedAiPass(), reviewFocusId = '', reviewFocusPage = 0, reviewFocusAnchorIndex = -1, reviewFilter = 'all', reviewPassageGroupIds = [], reviewLinkTargetId = '', reviewLinkUndo = null, pendingReviewTargetId = '', pendingReviewReplace = false, reviewPairPaper = null, reviewPairComments = null, pendingSharedReview = null;
+  var readerMode = 'pdf', editingId = null, aiContext = null, aiThreadDraft = false, syncCfg = null, syncing = false, syncTimer = null, iCloudCfg = null, iCloudSyncing = false, iCloudDocumentStates = Object.create(null), iCloudDownloads = Object.create(null), aiSettings = loadAiSettings(), sharedAiPass = loadSharedAiPass(), reviewFocusId = '', reviewFocusPage = 0, reviewFocusAnchorIndex = -1, reviewFilter = 'all', reviewPassageGroupIds = [], reviewLinkTargetId = '', reviewLinkUndo = null, pendingReviewTargetId = '', pendingReviewReplace = false, reviewPairPaper = null, reviewPairComments = null, pendingSharedReview = null;
   try { syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}
+  try { iCloudCfg = JSON.parse(localStorage.getItem(ICLOUD_KEY)); } catch(e){}
   try { var savedHighlightColor=localStorage.getItem(HIGHLIGHT_COLOR_KEY);if(['yellow','mint','coral','blue'].indexOf(savedHighlightColor)>=0)highlightColor=savedHighlightColor; } catch(e){}
 
   function byId(id){ return document.getElementById(id); }
@@ -858,9 +861,14 @@
     var bytes=value instanceof ArrayBuffer?value:await pdfBytes(value);localSourceMutation++;
     try{var d=await db();await new Promise(function(res,rej){var transaction=d.transaction('pdfs','readwrite');transaction.oncomplete=res;transaction.onabort=function(){rej(transaction.error||new Error('PDF storage was aborted'));};transaction.onerror=function(){rej(transaction.error||new Error('PDF storage failed'));};transaction.objectStore('pdfs').put(bytes,id);});delete memoryPdfs[id];localSourceReady[id]=true;scheduleLocalAvailabilityRender();return true;}catch(e){memoryPdfs[id]=bytes;delete localSourceReady[id];scheduleLocalAvailabilityRender();return false;}
   }
-  async function getPdf(id){
+  async function getLocalPdf(id){
     try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('pdfs').objectStore('pdfs').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
     return memoryPdfs[id]||null;
+  }
+  async function getPdf(id){
+    var local=await getLocalPdf(id);if(local)return local;
+    if(iCloudOn())return iCloudDownloadSource(id);
+    return null;
   }
   function originalSourceFilename(ch){
     var fallback=String(ch.title||'document').replace(/[\u0000-\u001f\u007f/\\<>:"|?*]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120)||'document';
@@ -7044,6 +7052,103 @@
     if(!papers.length){x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--muted');x.textAlign='center';x.font='14px DM Sans';x.fillText('Your connection map will grow here.',cx,cy);}
   }
 
+  /* iCloud sync for the native app. CloudKit is a private transport around the same
+     conflict-aware library merge used by backup restore and browser sync. Originals
+     are separate CKAssets and cross the native bridge in bounded chunks. */
+  var ICLOUD_CHUNK_BYTES=512*1024,ICLOUD_DOCUMENT_LIMIT=200*1024*1024;
+  function iCloudOn(){return !!(window.PHLOEM_NATIVE&&iCloudCfg&&iCloudCfg.on&&nativeCloudPlugin());}
+  function iCloudAccountMessage(status){
+    if(status==='noAccount')return'Sign in to iCloud in iPad Settings, then try again.';
+    if(status==='restricted')return'iCloud is restricted on this iPad.';
+    if(status==='temporarilyUnavailable')return'iCloud is temporarily unavailable. Your local library is safe; try again later.';
+    return'Phloem could not determine this iPad’s iCloud status.';
+  }
+  function bytesToBase64(bytes){
+    var binary='',view=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
+    for(var offset=0;offset<view.length;offset+=32768)binary+=String.fromCharCode.apply(null,view.subarray(offset,Math.min(view.length,offset+32768)));
+    return btoa(binary);
+  }
+  function base64Bytes(encoded){var binary=atob(encoded||''),bytes=new Uint8Array(binary.length);for(var i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return bytes;}
+  function iCloudSetStatus(message,signal){var status=byId('icloudStatus');if(status)status.textContent=message;if(signal)syncUi(signal);}
+  function iCloudPaperStatus(ch){
+    var item=iCloudDocumentStates[ch.id],size=gdriveFormatBytes((item&&item.byteCount)||ch.fileSize),label='iCloud sync off · '+size,tone='local',progress=item?Math.max(0,Math.min(100,+item.progress||0)):0;
+    if(iCloudOn()&&!item){label='iCloud · checking';tone='checking';}
+    else if(item&&item.state==='synced'){label='Synced to iCloud · '+size;tone='synced';progress=100;}
+    else if(item&&item.state==='remote'){label='Stored in iCloud · '+size;tone='synced';progress=100;}
+    else if(item&&item.state==='uploading'){label='Uploading to iCloud · '+progress+'%';tone='uploading';}
+    else if(item&&item.state==='fetching'){label='Downloading from iCloud · '+progress+'%';tone='fetching';}
+    else if(item&&item.state==='too-large'){label='Not synced · over Phloem’s 200 MB limit';tone='paused';}
+    else if(item&&item.state==='paused'){label='iCloud transfer paused · tap the cloud to retry';tone='paused';}
+    else if(item&&item.state==='missing'){label='Original not in iCloud';tone='paused';}
+    return{label:label,tone:tone,progress:progress};
+  }
+  function iCloudRefreshPaper(id){
+    var box=byId('paperDriveStatus'),ch=find(id);if(!box||box.dataset.paperId!==id||!ch)return;
+    var view=iCloudPaperStatus(ch),label=box.querySelector('.cover-cloud-label'),fill=box.querySelector('.cover-cloud-track i');
+    box.className='cover-cloud '+view.tone;box.dataset.backupStatus=view.tone;box.setAttribute('aria-label',view.label);if(label)label.textContent=view.label;if(fill)fill.style.setProperty('--cloud-progress',view.progress+'%');
+  }
+  function iCloudSetDocumentState(id,next){iCloudDocumentStates[id]=next||{};iCloudRefreshPaper(id);}
+  async function iCloudUploadSource(ch,stored){
+    var plugin=nativeCloudPlugin(),spec=binarySourceSpec(ch),bytes=stored instanceof ArrayBuffer?stored:await pdfBytes(stored),uploadID='';if(!plugin||!spec)return false;
+    if(bytes.byteLength>ICLOUD_DOCUMENT_LIMIT){iCloudSetDocumentState(ch.id,{state:'too-large',byteCount:bytes.byteLength});return false;}
+    var contentHash=ch.contentHash||'';if(!contentHash)try{contentHash=await pdfFingerprint(bytes);}catch(e){}
+    try{
+      var begun=await plugin.beginUpload({id:ch.id,filename:originalSourceFilename(ch),mimeType:spec.mime,byteCount:bytes.byteLength,contentHash:contentHash});uploadID=begun.uploadID;
+      for(var offset=0;offset<bytes.byteLength;offset+=ICLOUD_CHUNK_BYTES){
+        var end=Math.min(bytes.byteLength,offset+ICLOUD_CHUNK_BYTES);iCloudSetDocumentState(ch.id,{state:'uploading',byteCount:bytes.byteLength,progress:Math.round(offset/bytes.byteLength*100)});
+        await plugin.appendUpload({uploadID:uploadID,data:bytesToBase64(new Uint8Array(bytes,offset,end-offset))});
+      }
+      await plugin.finishUpload({uploadID:uploadID});iCloudSetDocumentState(ch.id,{state:'synced',byteCount:bytes.byteLength,contentHash:contentHash,progress:100});return true;
+    }catch(error){if(uploadID)try{await plugin.cancelUpload({uploadID:uploadID});}catch(e){}iCloudSetDocumentState(ch.id,{state:'paused',byteCount:bytes.byteLength});throw error;}
+  }
+  async function iCloudDownloadSource(id){
+    if(!iCloudOn())return null;if(iCloudDownloads[id])return iCloudDownloads[id];
+    iCloudDownloads[id]=(async function(){
+      var plugin=nativeCloudPlugin(),downloadID='',begun=null;
+      try{
+        begun=await plugin.beginDownload({id:id});if(!begun||!begun.found){iCloudSetDocumentState(id,{state:'missing'});return null;}
+        downloadID=begun.downloadID;var total=+begun.byteCount||0;if(!total||total>ICLOUD_DOCUMENT_LIMIT)throw new Error('This iCloud original is empty or over the 200 MB sync limit.');
+        var bytes=new Uint8Array(total),offset=0;
+        while(offset<total){var chunk=await plugin.readDownload({downloadID:downloadID,offset:offset,length:ICLOUD_CHUNK_BYTES}),part=base64Bytes(chunk.data);bytes.set(part,offset);offset=+chunk.nextOffset||offset+part.length;iCloudSetDocumentState(id,{state:'fetching',byteCount:total,progress:Math.round(offset/total*100)});if(chunk.done)break;}
+        if(offset!==total)throw new Error('The iCloud original did not finish downloading.');
+        await plugin.endDownload({downloadID:downloadID});downloadID='';var kept=await putPdf(id,bytes.buffer);if(!kept)throw new Error('The original downloaded, but this iPad could not keep a durable local copy.');
+        var ch=find(id);if(ch&&begun.contentHash&&!ch.contentHash){ch.contentHash=begun.contentHash;persist(false);}iCloudSetDocumentState(id,{state:'synced',byteCount:total,contentHash:begun.contentHash||'',progress:100});return bytes.buffer;
+      }catch(error){if(downloadID)try{await plugin.endDownload({downloadID:downloadID});}catch(e){}iCloudSetDocumentState(id,{state:'paused',byteCount:begun&&begun.byteCount});return null;}
+    })();
+    try{return await iCloudDownloads[id];}finally{delete iCloudDownloads[id];}
+  }
+  async function iCloudSync(interactive){
+    if(!iCloudOn()||iCloudSyncing)return;iCloudSyncing=true;iCloudSetStatus('Checking your private iCloud library…','☁ iCloud · syncing');
+    var plugin=nativeCloudPlugin(),sent=0,remoteOnly=0,paused=0;
+    try{
+      var account=await plugin.status();if(!account.available)throw new Error(iCloudAccountMessage(account.accountStatus));
+      for(var attempt=0;attempt<3;attempt++){
+        var remote=await plugin.fetchLibrary(),changeTag=remote&&remote.changeTag||'';
+        if(remote&&remote.found){var incoming=JSON.parse(remote.payload);if(!incoming||!Array.isArray(incoming.chapters))throw new Error('The iCloud library has an unexpected format. Phloem did not overwrite it.');if(mergeState(incoming)){persist(false);renderShelf();updateReviewBadge();}}
+        await repairDuplicateStorage();
+        /* OCR/extracted PDF text is rebuildable and can make a snapshot enormous. The
+           native cloud record follows localState(): durable reading work plus metadata,
+           while each original rides separately as a CKAsset. */
+        var snapshot=localState(),payload=JSON.stringify({chapters:snapshot.chapters,deleted:snapshot.deleted||{},merged:snapshot.merged||{},categoryOrder:snapshot.categoryOrder||[],categoryOrderUpdatedAt:snapshot.categoryOrderUpdatedAt||0,savedAt:snapshot.savedAt||now()});
+        try{await plugin.saveLibrary({payload:payload,changeTag:changeTag});break;}catch(error){if(error&&error.code==='ICLOUD_CONFLICT'&&attempt<2)continue;throw error;}
+      }
+      var documents=state.chapters.filter(binarySourceSpec),ids=documents.map(function(ch){return ch.id;}),listed=await plugin.fetchDocuments({ids:ids}),remoteMap={};
+      (listed.documents||[]).forEach(function(item){if(item&&item.id)remoteMap[item.id]=item;});
+      for(var i=0;i<documents.length;i++){
+        var ch=documents[i],remoteDocument=remoteMap[ch.id],stored=await getLocalPdf(ch.id),same=remoteDocument&&(+remoteDocument.byteCount||0)===(+ch.fileSize||0)&&(!ch.contentHash||!remoteDocument.contentHash||remoteDocument.contentHash===ch.contentHash);
+        if(same){iCloudSetDocumentState(ch.id,{state:stored?'synced':'remote',byteCount:+remoteDocument.byteCount||ch.fileSize,contentHash:remoteDocument.contentHash||'',progress:100});if(!stored)remoteOnly++;continue;}
+        if(stored){try{if(await iCloudUploadSource(ch,stored))sent++;}catch(error){paused++;}}
+        else if(remoteDocument){iCloudSetDocumentState(ch.id,{state:'remote',byteCount:+remoteDocument.byteCount||ch.fileSize,contentHash:remoteDocument.contentHash||'',progress:100});remoteOnly++;}
+        else{iCloudSetDocumentState(ch.id,{state:'missing',byteCount:ch.fileSize});paused++;}
+      }
+      var deletedIDs=Object.keys(state.deleted||{});if(deletedIDs.length)await plugin.deleteDocuments({ids:deletedIDs});
+      var summary='Synced with your private iCloud library.'+(sent?' '+sent+' original file'+(sent===1?'':'s')+' uploaded.':'')+(remoteOnly?' '+remoteOnly+' original'+(remoteOnly===1?' is':'s are')+' ready to download when opened.':'')+(paused?' '+paused+' original transfer'+(paused===1?' needs':'s need')+' attention.':'');
+      var transferSignal=paused?'☁ iCloud · attention':'☁ iCloud · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      iCloudSetStatus(summary,transferSignal);byId('syncSignal').title=paused?paused+' original transfer'+(paused===1?' needs':'s need')+' attention.':'';if(!byId('libraryPage').classList.contains('hidden'))renderShelf();
+    }catch(error){var reason=error&&error.message||'iCloud sync failed';iCloudSetStatus(reason,'☁ iCloud · attention');byId('syncSignal').title=reason;if(interactive&&!byId('readerPage').classList.contains('hidden'))showReaderToast('iCloud: '+reason.slice(0,80));}
+    finally{iCloudSyncing=false;}
+  }
+
   /* Google Drive sync — the no-setup path. The library file lives in the account's
      hidden per-app folder (drive.appdata): Phloem can see only its own file, and the
      user's real Drive files are invisible to it. Connecting is a one-time act per
@@ -7159,6 +7264,7 @@
   }
   function gdriveFormatBytes(value){var n=+value||0;if(!n)return 'size unknown';if(n<1048576)return Math.max(1,Math.round(n/1024))+' KB';return(n/1048576).toFixed(n<10485760?1:0)+' MB';}
   function gdrivePaperStatus(ch){
+    if(window.PHLOEM_NATIVE)return iCloudPaperStatus(ch);
     var stateInfo=gdrivePdfStates[ch.id],size=gdriveFormatBytes((stateInfo&&stateInfo.size)||ch.fileSize),label='',tone='local',progress=Math.max(0,Math.min(100,stateInfo?(+stateInfo.progress||0):0));
     if(!gdriveOn())label='Backup not connected · '+size;
     else if(!stateInfo){label='Backup · checking Drive';tone='checking';}
@@ -7385,9 +7491,10 @@
     byId('gdriveConnectBtn').classList.toggle('button',!gdriveOn());byId('gdriveConnectBtn').classList.toggle('soft-button',gdriveOn());
     byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
     byId('gdriveStatus').textContent=gdriveOn()?'Connected'+(gdriveEmail?' as '+gdriveEmail:'')+' — your library syncs automatically. PDFs and Word drafts follow you between devices.':'Not connected.';
+    var cloudEnable=byId('icloudEnableBtn'),cloudSync=byId('icloudSyncBtn'),cloudOff=byId('icloudOffBtn'),cloudDelete=byId('icloudDeleteBtn');if(cloudEnable){cloudEnable.classList.toggle('hidden',iCloudOn());cloudSync.classList.toggle('hidden',!iCloudOn());cloudOff.classList.toggle('hidden',!iCloudOn());cloudDelete.classList.toggle('hidden',!iCloudOn());if(!iCloudOn())byId('icloudStatus').textContent='Off — everything stays on this iPad.';}
     syncUi();refreshInstallUi();
   }
-  function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(on?'☁ '+syncCfg.repo:gdriveOn()?'☁ Google Drive':'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}
+  function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(iCloudOn()?'☁ iCloud':on?'☁ '+syncCfg.repo:gdriveOn()?'☁ Google Drive':'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}
   byId('syncSaveBtn').onclick=function(){var repo=byId('syncRepo').value.trim(),token=byId('syncToken').value.trim(),pass=byId('syncPass').value;if(!/^[^\/\s]+\/[^\/\s]+$/.test(repo)||!token||!pass){byId('syncStatus').textContent='Add the repo as owner/name, its fine-grained token, and a passphrase.';return;}syncCfg={repo:repo,token:token,pass:pass};localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg));fillSettings();doSync();};
   byId('syncOffBtn').onclick=function(){if(!confirm('Turn off GitHub sync on this device? Local notes stay here.'))return;localStorage.removeItem(SYNC_KEY);syncCfg=null;fillSettings();};
   byId('syncNowBtn').onclick=function(){doSync();};
@@ -7468,7 +7575,7 @@
       if(reason!==lastSyncToast&&!byId('readerPage').classList.contains('hidden')){lastSyncToast=reason;showReaderToast('Sync: '+reason.slice(0,80));}
     }syncing=false;
   }
-  function scheduleSync(){if(!syncCfg&&!gdriveOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){doSync();gdriveSync();},4000);}
+  function scheduleSync(){if(!syncCfg&&!gdriveOn()&&!iCloudOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){doSync();gdriveSync();iCloudSync(false);},4000);}
   /* A device link is a direct hand-off, independent of library sync. It always carries
      the AI provider configuration (including every saved key) and includes GitHub
      credentials only when present. Google OAuth sessions are deliberately never copied. */
@@ -7524,9 +7631,26 @@
      background syncs cannot. Settings only open when there is an error to look at. */
   byId('syncSignal').onclick=function(){
     var standingError=byId('syncSignal').title;
-    doSync();gdriveSync(true);
+    doSync();gdriveSync(true);iCloudSync(true);
     if(standingError){fillSettings();byId('settingsDialog').showModal();}
   };
+
+  if(byId('icloudEnableBtn'))byId('icloudEnableBtn').onclick=async function(){
+    var plugin=nativeCloudPlugin(),button=this;if(!plugin){byId('icloudStatus').textContent='The native iCloud bridge is unavailable. Close and reopen the app, then try again.';return;}
+    button.disabled=true;byId('icloudStatus').textContent='Checking this iPad’s iCloud account…';
+    try{var account=await plugin.status();if(!account.available)throw new Error(iCloudAccountMessage(account.accountStatus));iCloudCfg={on:true,enabledAt:now()};localStorage.setItem(ICLOUD_KEY,JSON.stringify(iCloudCfg));fillSettings();await iCloudSync(true);}catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not turn on iCloud sync.';}finally{button.disabled=false;}
+  };
+  if(byId('icloudSyncBtn'))byId('icloudSyncBtn').onclick=function(){iCloudSync(true);};
+  if(byId('icloudOffBtn'))byId('icloudOffBtn').onclick=function(){
+    if(!confirm('Turn off iCloud sync on this iPad? Local papers and notes stay here, and the private iCloud copy is not deleted.'))return;
+    localStorage.removeItem(ICLOUD_KEY);iCloudCfg=null;iCloudDocumentStates=Object.create(null);fillSettings();syncUi();renderShelf();
+  };
+  if(byId('icloudDeleteBtn'))byId('icloudDeleteBtn').onclick=async function(){
+    if(!confirm('Delete Phloem’s entire private iCloud copy?\n\nPapers and notes already on this iPad stay here, but another device may lose its only cloud copy. This cannot be undone.'))return;
+    var button=this;button.disabled=true;byId('icloudStatus').textContent='Deleting the private iCloud copy…';
+    try{await nativeCloudPlugin().deleteCloudData();localStorage.removeItem(ICLOUD_KEY);iCloudCfg=null;iCloudDocumentStates=Object.create(null);fillSettings();syncUi();renderShelf();byId('icloudStatus').textContent='The private iCloud copy was deleted. Your local library stays on this iPad.';}catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not delete the private iCloud copy.';}finally{button.disabled=false;}
+  };
+  if(window.PHLOEM_NATIVE)window.PHLOEM_ICLOUD={enabled:iCloudOn,sync:iCloudSync};
 
   var lastSyncToast='';
   var githubPath='papers';
@@ -7707,7 +7831,7 @@
   var startupDuplicateRepair=startupStateRecovery.then(function(){Object.keys(state.merged||{}).forEach(function(dropId){queueDuplicateStorage(state.merged[dropId],dropId);});return repairDuplicateStorage();});
   var startupStarterGuide=startupStateRecovery.then(function(){return seedStarterGuide();});
   var startupLibraryWork=[startupStateRecovery,startupStarterGuide,startupLocalSourceScan];
-  renderSharedAiPass();syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupLibraryWork.push(startupDuplicateRepair.then(function(){return gdriveSync();}));}
+  renderSharedAiPass();syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupLibraryWork.push(startupDuplicateRepair.then(function(){return gdriveSync();}));}if(iCloudOn())startupLibraryWork.push(startupDuplicateRepair.then(function(){return iCloudSync(false); }));
   Promise.allSettled(startupLibraryWork).then(function(){libraryHydrating=false;renderShelf();updateReviewBadge();});
   /* A refresh drops you back into the paper you were reading, not the library. */
   startupStateRecovery.then(function(){try{var lastOpen=resolvedPaperId(localStorage.getItem(LAST_OPEN_KEY));if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}});startupStateRecovery.then(function(){return Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived));}).then(function(){return startupDuplicateRepair;}).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});

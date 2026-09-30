@@ -19,6 +19,7 @@
 		A11C0DE12FEA000100000001 /* PhloemAIPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11C0DE12FEA000100000011 /* PhloemAIPlugin.swift */; };
 		A11C0DE12FEA000100000002 /* PhloemBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11C0DE12FEA000100000012 /* PhloemBridgeViewController.swift */; };
 		A11C0DE12FEA000100000003 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A11C0DE12FEA000100000013 /* PrivacyInfo.xcprivacy */; };
+		A11C0DE12FEA000100000004 /* PhloemCloudPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11C0DE12FEA000100000014 /* PhloemCloudPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,8 @@
 		A11C0DE12FEA000100000011 /* PhloemAIPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhloemAIPlugin.swift; sourceTree = "<group>"; };
 		A11C0DE12FEA000100000012 /* PhloemBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhloemBridgeViewController.swift; sourceTree = "<group>"; };
 		A11C0DE12FEA000100000013 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A11C0DE12FEA000100000014 /* PhloemCloudPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhloemCloudPlugin.swift; sourceTree = "<group>"; };
+		A11C0DE12FEA000100000015 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,6 +76,8 @@
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				A11C0DE12FEA000100000012 /* PhloemBridgeViewController.swift */,
 				A11C0DE12FEA000100000011 /* PhloemAIPlugin.swift */,
+				A11C0DE12FEA000100000014 /* PhloemCloudPlugin.swift */,
+				A11C0DE12FEA000100000015 /* App.entitlements */,
 				A11C0DE12FEA000100000013 /* PrivacyInfo.xcprivacy */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -122,6 +127,11 @@
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
 						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							com.apple.iCloud = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -172,6 +182,7 @@
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				A11C0DE12FEA000100000002 /* PhloemBridgeViewController.swift in Sources */,
 				A11C0DE12FEA000100000001 /* PhloemAIPlugin.swift in Sources */,
+				A11C0DE12FEA000100000004 /* PhloemCloudPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -311,8 +322,9 @@
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = DCC763A996;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -320,7 +332,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.houfu72.phloem;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -334,8 +346,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = DCC763A996;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -343,7 +356,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.houfu72.phloem;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

@@ -1,8 +1,8 @@
 # Phloem for iPad
 
-This checkout targets **1.1.0 build 24**, reader cache **v143**. Build 24 moves the reading-guide grip to the band's left edge so it stays clear of the zen dock in zen mode; nothing else about the guide changes. Both bottom annotation toolbars are compact: Highlight retains colors, Eraser, Define, Undo, and Done; Pen retains all eight colors, icon-only Pen/Eraser, three widths, Undo/Redo, and Done. The first size, Fine (1.5), is now the default; existing saved strokes are unchanged. Pen fits one 60px-high row in iPad landscape and wraps on narrower screens without shrinking 44px touch targets. Instructions remain available to screen readers. Discuss/AI remains unchanged; Natural ink and jitter-tolerant straightening are described below. Native assets must be synced before building. Build 24 was archived on September 30, 2026 and passed strict code-signature, version/build, 54 bundled-asset hashes, exact source comparisons after native transforms, and left-grip tests in Chromium and WebKit. Distribution validation/upload and physical-iPad testing remain pending.
+This checkout targets **1.2.0 build 25**, reader cache **v144**. Version 1.2 adds opt-in, offline-first iCloud sync for library metadata, notes, highlights, handwriting, progress, PDFs, and Word originals. It uses the user's private CloudKit database, reuses Phloem's conflict-aware merge and deletion tombstones, transfers originals as separate assets in bounded chunks, and downloads a remote original when it is first opened on a device. Local reading remains available with sync off or while iCloud is unavailable. Native assets must be synced before building. The simulator build, native bundle tests, and development-signed archive pass; development/production CloudKit schema deployment, two-device TestFlight validation, privacy-report reconciliation, and China-mainland account testing remain release gates.
 
-Current archive: `/Users/chf/Library/Developer/Xcode/Archives/2026-09-30/Phloem 1.1.0 (24).xcarchive`. Select **1.1.0 (24)** in Xcode Organizer to validate and distribute to App Store Connect. The archive is locally signed; this does not mean Apple has accepted the upload or approved the app.
+The current development-signed archive is `/Users/chf/Library/Developer/Xcode/Archives/2026-09-30/Phloem 1.2.0 (25) iCloud.xcarchive`. Its bundle version and CloudKit entitlements have been verified locally. It is not a distribution-signed/TestFlight artifact; make a fresh distribution archive only after the CloudKit schema and device gates below pass.
 
 The 1.1 target compiles for the iPad simulator and its automated bundle/security checks pass. It is not release-ready until the physical-iPad, provider, privacy, TestFlight, and media gates in [`release/RELEASE-CHECKLIST-1.1.md`](release/RELEASE-CHECKLIST-1.1.md) pass.
 
@@ -21,7 +21,7 @@ npm run ios:open
 
 In Xcode:
 
-1. Confirm the **App** target shows Version **1.1.0** and Build **24**.
+1. Confirm the **App** target shows Version **1.2.0** and Build **25**.
 2. Under **Signing & Capabilities**, select the correct Team and keep automatic signing enabled.
 3. Connect a physical iPad, trust the Mac, enable Developer Mode if requested, and choose it as the run destination.
 4. Use disposable documents and provider keys for the release checklist. Do not test with confidential or third-party personal data.
@@ -30,7 +30,15 @@ After changing the shared reader or native adapter, run `npm run ios:sync` befor
 
 Historical signed archives **1.1.0 (14)**, **(15)**, and **(16)** were built and verified locally. Build 15 added the ink-smoothing fix; build 16 added Zen Undo. They do not contain build 17's new features. The historical **1.1.0 (17)** archive at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (17).xcarchive` has verified version/build metadata, a strict code signature, and exact HTML/JavaScript/CSS/ink-source matches after the native bundle transforms, including the older-iPadOS palette layout fallback. It lacks build 18's Pen/Highlighter switching fix. The historical **1.1.0 (18)** archive at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (18).xcarchive` also passed version/build, strict code-signature, and exact bundled-source verification against the build 18 source after native transforms. The current **1.1.0 (19)** archive at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (19).xcarchive` passes the same checks against build 19 source. Check App Store Connect for an already used build number before uploading; if 19 is used, increment to the next unused number and archive again.
 
-## Included in 1.1
+## New in 1.2
+
+- Optional iCloud sync is off by default. Turning it on merges the library through the private CloudKit database for `iCloud.com.houfu72.phloem`; no Phloem account is created.
+- Notes, highlights, Pencil ink, progress, review work, rename/category metadata, and deletion tombstones use the existing conflict-aware merge instead of replacing a device's local library.
+- PDF and Word originals are separate CloudKit assets up to 200 MB. Existing local originals upload in 512 KB bridge chunks; remote originals stay in iCloud until opened, then become locally available for offline reading.
+- Turning sync off leaves both copies intact. **Delete iCloud copy…** removes the CloudKit library and original assets while preserving the library already stored on that iPad.
+- China-mainland iCloud accounts use the GCBD-operated iCloud service under its separate terms. The in-app privacy link and public policy disclose this; release testing still needs a real China-mainland account/network.
+
+## Included since 1.1
 
 - Pencil hover no longer opens PDF reference or external-link previews. It dismisses an existing preview and cancels pending preview results. Mouse hover, keyboard focus, and deliberate link navigation remain available.
 - Natural ink is the default for new strokes: gentler pressure variation and subtle endpoint tapering, with no texture or random jitter. Settings → PDF → New ink switches between Natural and Clean without expanding the Pen bar. The preference stays on this device; each Natural stroke stores its style in the library and JSON backups. Older strokes retain their Clean appearance. Held straight lines keep a steady width. The 600ms hold now tolerates dense stationary Pencil jitter and shows a confirmation when a line snaps; physical-iPad validation remains required.
@@ -54,7 +62,7 @@ Historical signed archives **1.1.0 (14)**, **(15)**, and **(16)** were built and
 - A privacy manifest declaring optional AI user content, the provider account identifier, and no tracking.
 - Wikipedia/Wikimedia lookups and external links only when the user deliberately opens those online features.
 
-Gemini API, Chrome on-device AI, Drive/GitHub sync, credential setup links, AI-pass links, website installation controls, and arbitrary OpenAI-compatible endpoints remain unavailable in the iPad app.
+Gemini API, Chrome on-device AI, Google Drive/GitHub sync, credential setup links, AI-pass links, website installation controls, and arbitrary OpenAI-compatible endpoints remain unavailable in the iPad app.
 
 ## What AI sends
 
@@ -68,9 +76,9 @@ Phloem does not upload the original PDF or Word file to the AI provider. The cho
 
 ## Local data and migration
 
-PDFs currently use IndexedDB; notes/settings and page-anchored handwriting vectors use localStorage plus recovery snapshots. This is app-local web storage, not a native database or a verified durability guarantee. Safari, the browser extension, and the iPad app have separate storage containers.
+PDFs use IndexedDB; notes/settings and page-anchored handwriting vectors use localStorage plus recovery snapshots. This app-local store remains the offline source of truth. Optional iCloud sync merges durable reading state and copies originals into the user's private CloudKit database. Safari, the browser extension, and the iPad app have separate local storage containers.
 
-The JSON backup includes typed notes, highlights, handwriting vectors, handwriting erase history, and metadata, but not PDF files or API credentials. Ink merge uses stroke IDs, revision timestamps, and erase tombstones so stale backup imports cannot restore erased strokes. The shared browser sync path uses the same merge; Drive/GitHub sync remains unavailable in the native iPad app.
+The JSON backup includes typed notes, highlights, handwriting vectors, handwriting erase history, and metadata, but not PDF files or API credentials. Ink merge uses stroke IDs, revision timestamps, and erase tombstones so stale backup imports cannot restore erased strokes. iCloud uses the same merge; Google Drive/GitHub sync remains unavailable in the native iPad app.
 
 **Export original PDF still exports the unannotated original file.** It does not embed handwriting or Phloem highlights. The NotebookLM package likewise contains the original PDF, not a handwritten-PDF export. Keep a Phloem JSON backup for your editable handwriting and retain the original document separately. Avoid uninstalling the app with the only copy of a paper or annotation inside it. A legacy browser-stored AI key is scrubbed in the native build and must be entered again to move it into Keychain.
 

@@ -41,3 +41,4 @@ html.phloem-native body.reading:not(.zen) .masthead {
     height: calc(60px + env(safe-area-inset-top));
   }
 }
+.phloem-native .native-only{display:block!important}

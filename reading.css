@@ -2182,3 +2182,5 @@
       .reading-thread { stroke-dashoffset: 0; }
       .book-page.left, .book-page.right { opacity: 1; transform: none; }
     }
+/* Native-only controls remain out of the website while staying in the shared DOM. */
+.native-only{display:none!important}

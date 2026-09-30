@@ -74,8 +74,8 @@
     var heading = document.createElement('h3');
     heading.textContent = 'Saved on this iPad';
     var description = document.createElement('p');
-    description.textContent = 'Papers, highlights, and notes are stored in this app’s web storage. ' +
-      'Cloud sync is unavailable in this release. Optional AI uses a provider you choose, only after you accept its data-sharing disclosure; provider keys stay in iOS Keychain.';
+    description.textContent = 'Papers, highlights, and notes always stay available in this app’s local storage. ' +
+      'Optional iCloud sync keeps a private copy in your iCloud account and merges it across your Apple devices. Optional AI uses a provider you choose, only after you accept its data-sharing disclosure; provider keys stay in iOS Keychain.';
     var lookupNote = document.createElement('p');
     lookupNote.textContent = 'Define uses Wikipedia and Wikimedia online when you ask for a lookup. ' +
       'Your selected term is sent to those services.';
@@ -108,10 +108,14 @@
 
   var signal = byId('syncSignal');
   if (signal) {
-    text(signal, 'on this iPad');
-    signal.title = 'Local library settings';
-    signal.setAttribute('aria-label', 'Local library settings');
-    signal.onclick = function () { byId('settingsBtn').click(); };
+    var cloudEnabled = window.PHLOEM_ICLOUD && window.PHLOEM_ICLOUD.enabled();
+    if (!cloudEnabled) text(signal, 'on this iPad');
+    signal.title = cloudEnabled ? 'Sync with iCloud now' : 'Local library and iCloud settings';
+    signal.setAttribute('aria-label', signal.title);
+    signal.onclick = function () {
+      if (window.PHLOEM_ICLOUD && window.PHLOEM_ICLOUD.enabled()) window.PHLOEM_ICLOUD.sync(true);
+      else byId('settingsBtn').click();
+    };
   }
   var refresh = byId('refreshBtn');
   if (refresh) {
@@ -119,12 +123,12 @@
     refresh.title = 'Reload reader';
     refresh.setAttribute('aria-label', 'Save and reload reader');
   }
-  text(byId('buildStamp'), 'Phloem for iPad · Version 1.1');
+  text(byId('buildStamp'), 'Phloem for iPad · Version 1.2');
   hide(byId('storageNote')); // Browser persistence promises do not describe native durability.
   text(document.querySelector('.hero-card .step:nth-child(2) span'),
     'Move the guide, turn the page, and keep notes beside the paper.');
   text(document.querySelector('.hero-card .step:nth-child(3) span'),
-    'Your library stays on this iPad. No account needed for reading.');
+    'Read locally without an account, or turn on private iCloud sync.');
   text(document.querySelector('#reviewsPanel .reviewer-panel-head > .hint'),
     'Read imported Word comments beside the paper. Link them yourself, or use your configured AI provider to help match passages.');
   text(document.querySelector('#aiPanel .ai-panel-head .hint'),

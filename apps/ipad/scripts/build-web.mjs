@@ -163,8 +163,8 @@ export async function buildWeb({ repoRoot = defaultRepoRoot, outDir = path.join(
       sourceHtmlSha256: createHash('sha256').update(sourceHtml).digest('hex'),
       sourceReaderJsSha256: createHash('sha256').update(js).digest('hex'),
       serviceWorker: 'disabled in the native HTML only',
-      cloudRoutes: 'Native bundle disables saved GitHub/Drive sync. Optional AI requests use the registered native Keychain and network bridge after explicit provider consent.',
-      storage: 'Prototype uses the reader browser storage in the app webview; native persistence is a separate milestone.',
+      cloudRoutes: 'Native bundle disables saved GitHub/Drive sync. Optional iCloud sync uses the registered CloudKit bridge and the user private database. Optional AI requests use the registered native Keychain and network bridge after explicit provider consent.',
+      storage: 'Reader state stays in app-local web storage first. Optional iCloud sync merges library snapshots and transfers original documents through CloudKit assets.',
       files: inventory.sort((a, b) => a.path.localeCompare(b.path)),
       thirdPartyNotices: entries.some(entry => entry.destination.startsWith('licenses/')) ? 'See licenses/; review dependency licensing before distribution.' : 'Upstream vendored third-party notices are incomplete. Restore and review those notices before distribution.',
     };

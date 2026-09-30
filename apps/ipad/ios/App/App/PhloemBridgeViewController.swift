@@ -5,5 +5,6 @@ final class PhloemBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(PhloemAIPlugin())
+        bridge?.registerPluginInstance(PhloemCloudPlugin())
     }
 }

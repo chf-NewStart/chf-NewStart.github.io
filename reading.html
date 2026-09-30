@@ -634,6 +634,12 @@
     <div class="dialog-head"><h2>Desk settings</h2><button class="icon-btn" data-close="settingsDialog">×</button></div>
     <div class="dialog-body settings-body">
       <p class="settings-lede">Choose how this reading desk syncs, thinks with you, and moves between devices. Your reading settings stay calm and local by default.</p>
+      <section class="native-only" id="icloudSettings">
+        <h3>Sync with iCloud</h3>
+        <p>Keep your library, notes, highlights, handwriting, progress, PDFs, and Word drafts in your private iCloud database. Reading stays offline-first, and Phloem merges edits instead of replacing this iPad’s library.</p>
+        <div><button class="button" id="icloudEnableBtn" type="button">Turn on iCloud sync</button> <button class="soft-button hidden" id="icloudSyncBtn" type="button">Sync now</button> <button class="soft-button hidden" id="icloudOffBtn" type="button">Turn off</button> <button class="soft-button hidden" id="icloudDeleteBtn" type="button">Delete iCloud copy…</button></div>
+        <div class="status" id="icloudStatus" role="status" aria-live="polite">Off — everything stays on this iPad.</div>
+      </section>
       <section>
         <h3>Sync with Google Drive</h3>
         <p>One tap connects your own Google Drive. Notes, PDFs, Word drafts, and large books up to 200 MB live in a hidden app folder only Phloem can see. Big uploads continue quietly in chunks, so an interrupted transfer resumes instead of starting over.</p>
@@ -827,6 +833,6 @@
   })();
 </script>
 <script src="/reading-ink.js?v=143" defer></script>
-<script src="/reading.js?v=143" defer></script>
+<script src="/reading.js?v=144" defer></script>
 </body>
 </html>

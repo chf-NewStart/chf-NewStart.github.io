@@ -26,12 +26,17 @@
   <main>
     <p class="eyebrow">Phloem for iPad</p>
     <h1>Your papers. Your reading space.</h1>
-    <p class="meta">Privacy policy · Updated 28 September 2026</p>
+    <p class="meta">Privacy policy · Updated 30 September 2026</p>
     <p>Phloem for iPad is a paper reader made by Houfu Chen. This policy describes the iPad app. The Phloem website and browser extension have their own features and privacy information.</p>
 
     <h2>What stays in the app</h2>
     <p>Imported PDF and Word originals, extracted text, highlights, reading notes, reviewer comments, reading positions, and preferences are stored in the app on your iPad. Document rendering, text extraction, and the app’s OCR run on the device. Ordinary reading does not upload your library to a developer-operated service.</p>
-    <p>Phloem has no Phloem account, advertising, or integrated analytics service. Google Drive and GitHub sync are unavailable in the iPad app. In version 1.1 and later, optional cloud AI is available only after you choose a provider and complete the setup described below.</p>
+    <p>Phloem has no Phloem account, advertising, or integrated analytics service. Google Drive and GitHub sync are unavailable in the iPad app. Version 1.2 adds optional iCloud sync, described below. In version 1.1 and later, optional cloud AI is available only after you choose a provider and complete the setup described below.</p>
+
+    <h2>Optional iCloud sync in version 1.2 and later</h2>
+    <p>iCloud sync is off by default. If you turn it on, Phloem sends your library metadata, notes, highlights, handwriting, reading progress, PDF originals, and Word originals to a private CloudKit database in your iCloud account. The data counts against your iCloud storage. Phloem uses it to merge your reading library across compatible Apple devices; the local library remains available when iCloud is unavailable.</p>
+    <p>Apple provides iCloud and applies its iCloud terms and privacy practices. In China mainland, iCloud is operated by AIPO Cloud (Guizhou) Technology Co., Ltd. (GCBD), and iCloud content is subject to the terms and data handling for that service. Review <a href="https://support.apple.com/111754" target="_blank" rel="noopener noreferrer">Apple’s information about iCloud in China mainland</a> and the <a href="https://www.apple.com/legal/internet-services/icloud/en/gcbd-terms.html" target="_blank" rel="noopener noreferrer">iCloud operated by GCBD terms</a> before enabling sync for sensitive material.</p>
+    <p>You can turn sync off without deleting either copy. Settings also provides <strong>Delete iCloud copy</strong>, which removes Phloem’s library record and original-document assets from its private CloudKit database while keeping the copies already stored on that iPad. iCloud recovery systems or backups may retain data for a period under the applicable iCloud terms.</p>
 
     <h2>Optional AI in version 1.1 and later</h2>
     <p>AI is off by default and is available only to people who confirm they are 18 or older. To turn it on, you choose one supported provider, review a provider-specific disclosure, give your affirmative consent, and enter your own provider API key in a native iOS secure prompt. The key is stored in this iPad’s Keychain with this-device-only protection. Phloem’s web interface cannot read it back, and Phloem does not include it in library backups or exports.</p>
@@ -51,6 +56,7 @@
       <li><strong>Define:</strong> requesting a definition can send the selected word or phrase to Wikipedia and a related search term to Wikimedia Commons. The app may also load images from Wikimedia. These services receive the requested term or resource and normal connection information, such as your IP address. Definitions are cached locally, but displaying a cached result’s image may still use the network. See the <a href="https://foundation.wikimedia.org/wiki/Policy:Privacy_policy" target="_blank" rel="noopener noreferrer">Wikimedia privacy policy</a>.</li>
       <li><strong>PDF links and external websites:</strong> importing a PDF URL or requesting another copy from its original link contacts that website. Opening an external link contacts its destination. The website receives the requested URL and normal connection information and applies its own privacy policy.</li>
       <li><strong>Files and sharing:</strong> the system file picker gives Phloem the files you choose. A file provider may download them from your cloud storage. When you export, the iPad share sheet sends the chosen file to the destination you select, which may be another app, person, or cloud service.</li>
+      <li><strong>iCloud sync:</strong> if you turn it on, the reading library and original documents described above are sent to Apple iCloud or, for China-mainland iCloud accounts, the GCBD-operated iCloud service.</li>
       <li><strong>Support:</strong> if you email us, we receive your email address, message, and any attachments you include. We use them to respond and troubleshoot. Do not include confidential papers or a full library backup unless you choose to share them.</li>
     </ul>
 
@@ -60,7 +66,7 @@
 
     <h2>Retention, deletion, and your choices</h2>
     <p>Your library remains in the app until you remove papers or delete the app’s data. Removing a paper removes its local original and associated reading work from the active library. Recovery storage and device backups can retain earlier copies; this is not a secure-erasure feature.</p>
-    <p>Deleting the app removes its local app data, but does not delete files you exported, originals in Files, email attachments, or existing device backups. iPadOS may include app data in device backups according to your settings. Manage those copies in the relevant app or service. Keep an exported backup before deleting or reinstalling Phloem.</p>
+    <p>Deleting the app removes its local app data, but does not automatically delete Phloem’s optional iCloud sync copy, files you exported, originals in Files, email attachments, or existing device backups. Use <strong>Delete iCloud copy</strong> before deleting the app if you want Phloem to request deletion of its CloudKit records. iPadOS may include app data in device backups according to your settings. Manage those copies in the relevant app or service. Keep an exported backup before deleting or reinstalling Phloem.</p>
     <p>You can read locally imported papers without configuring AI or using Define, PDF links, or external websites. No Phloem account needs to be deleted. For a request about support correspondence, email us from the address used to contact us. Support messages remain in the support mailbox while needed to handle the conversation; you can request deletion of those messages, subject to any retention required by law.</p>
 
     <h2>Contact and updates</h2>

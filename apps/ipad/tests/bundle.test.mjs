@@ -206,7 +206,7 @@ test('Xcode Debug and Release agree on the next Apple build identity', async () 
   const project = await readFile(path.join(defaultRepoRoot, 'apps/ipad/ios/App/App.xcodeproj/project.pbxproj'), 'utf8');
   const builds = [...project.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map(match => match[1]);
   const versions = [...project.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map(match => match[1]);
-  assert.deepEqual(builds, ['22', '22']);
+  assert.deepEqual(builds, ['23', '23']);
   assert.deepEqual(versions, ['1.1.0', '1.1.0']);
 });
 

@@ -23,7 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=141">
+  <link rel="stylesheet" href="/reading.css?v=142">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -168,8 +168,8 @@
             <button data-pdf-ink-tool="eraser" type="button" aria-label="Eraser: remove whole handwriting strokes and text highlights" aria-pressed="false" title="Remove whole handwriting strokes and text highlights"><span class="eraser-icon" aria-hidden="true"></span></button>
           </div>
           <div class="pdf-ink-group pdf-ink-widths" role="group" aria-label="Ink width">
-            <button data-pdf-ink-width="1.5" type="button" aria-label="Fine ink" aria-pressed="false" title="Fine"><span aria-hidden="true"></span></button>
-            <button data-pdf-ink-width="3" type="button" aria-label="Medium ink" aria-pressed="true" title="Medium"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-width="1.5" type="button" aria-label="Fine ink" aria-pressed="true" title="Fine"><span aria-hidden="true"></span></button>
+            <button data-pdf-ink-width="3" type="button" aria-label="Medium ink" aria-pressed="false" title="Medium"><span aria-hidden="true"></span></button>
             <button data-pdf-ink-width="5" type="button" aria-label="Bold ink" aria-pressed="false" title="Bold"><span aria-hidden="true"></span></button>
           </div>
           <div class="pdf-ink-finish-group">
@@ -823,10 +823,10 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=141',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=142',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=141" defer></script>
-<script src="/reading.js?v=141" defer></script>
+<script src="/reading-ink.js?v=142" defer></script>
+<script src="/reading.js?v=142" defer></script>
 </body>
 </html>

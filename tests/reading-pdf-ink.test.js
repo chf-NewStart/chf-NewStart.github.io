@@ -291,6 +291,7 @@ async function checkZenUndo(browser) {
     await page.waitForTimeout(100);
     let first = (await ink(page))[0];
     check('new handwriting defaults to saved Natural ink', first?.style === 'natural');
+    check('the first saved stroke uses Fine width by default', first?.width === 1.5);
     check('paired Pointer and stylus events save exactly one freehand stroke', (await ink(page)).length === 1 && !!first?.id && !await hasPreview(page));
     check('stroke stores normalized page coordinates and pressure samples', first?.points.length >= 2 && first.points.every(p => p.length === 3 && p[0] >= 0 && p[0] <= 1 && p[1] >= 0 && p[1] <= 1 && p[2] >= 0 && p[2] <= 1) && first.points.some(p => Math.abs(p[2] - .2) < .01) && first.points.some(p => Math.abs(p[2] - .8) < .01), JSON.stringify(first));
     check('writing creates no text highlights and renders a saved SVG stroke', await markCount(page) === 0 && await page.locator('.pdf-ink-stroke[data-ink-id="' + first?.id + '"]').count() === 1);

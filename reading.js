@@ -12,7 +12,7 @@
   var AI_PASS_SERVICE_KEY = 'readingRoom.ai.passService.v1';
   var PAPER_APPEARANCE_KEY = 'readingRoom.paperAppearance.v1';
   var HIGHLIGHT_COLOR_KEY = 'readingRoom.highlightColor.v1';
-  var pdfInkController=null,pdfWriteMode=false,pdfInkTool='pen',pdfInkColor='black',pdfInkWidth=3;
+  var pdfInkController=null,pdfWriteMode=false,pdfInkTool='pen',pdfInkColor='black',pdfInkWidth=1.5;
   var AI_PROVIDERS = {
     gemini:{label:'Gemini API',model:'gemini-3.6-flash'},
     deepseek:{label:'DeepSeek',model:'deepseek-flash'},

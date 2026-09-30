@@ -1,6 +1,6 @@
 # Phloem 1.1 App Store package
 
-Target: **version 1.1.0, build 22**, reader cache **v141**. Both Highlight and Pen use compact bottom toolbars with accessible descriptions instead of visible instruction footers. Pen retains eight colors, three widths, icon-only Pen/Eraser, Undo/Redo, and Done. Highlight retains Define without Ask AI; the separate Discuss/AI workspace is unchanged. Build 22 was archived and locally verified on September 30, 2026, including the Pencil-hover fix. Device testing, distribution validation, and upload remain pending. This is draft metadata, not submitted App Store Connect content.
+Target: **version 1.1.0, build 23**, reader cache **v142**. Both Highlight and Pen use compact bottom toolbars with accessible descriptions instead of visible instruction footers. Pen retains eight colors, three widths, icon-only Pen/Eraser, Undo/Redo, and Done; Fine is the default size. Highlight retains Define without Ask AI; the separate Discuss/AI workspace is unchanged. Build 23 was archived and locally verified on September 30, 2026, including the Pencil-hover fix and Fine default. Device testing, distribution validation, and upload remain pending. This is draft metadata, not submitted App Store Connect content.
 
 ## Promotional text
 
@@ -135,7 +135,7 @@ Send feedback with the iPad model, iPadOS version, build number, provider, and s
 2. Create version 1.1.0 in the existing App Store Connect record.
 3. Re-answer App Privacy and the current age-rating questionnaire.
 4. Run `npm run ios:sync`, then create a fresh Release archive with Xcode 26 or later and the current iPadOS SDK; generate and inspect the archive privacy report.
-5. Create and verify a fresh **1.1.0 (22)** archive’s metadata, strict signature, and bundled-source matches, then upload it to internal TestFlight after checking for an already-used build number. If 22 is used, increment the project build number and archive again. Build 21 lacks the compact Pen toolbar.
+5. The **1.1.0 (23)** archive's metadata, strict signature, and bundled-source matches have been locally verified. Validate and upload it to internal TestFlight after checking for an already-used build number. If 23 is used, increment the project build number and archive again. Build 22 lacks the Fine default.
 6. Complete the physical-iPad and live-provider checklist against the exact TestFlight binary.
 7. Capture screenshots from that binary and paste the final metadata and reviewer-only key.
 8. Add for Review and submit. Prefer manual release or a phased release for the first AI-enabled update.

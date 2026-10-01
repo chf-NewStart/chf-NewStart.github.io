@@ -34,6 +34,7 @@
          for the stylesheet. -->
     <link rel="preload" href="fonts/dm-sans-var-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="homepage.css">
     <link rel="stylesheet" href="tomato-facts.css">
     <script src="deepseek-config.js" defer></script>
     <script src="tomato-facts.js" defer></script>
@@ -74,147 +75,122 @@
     </script>
     <title data-en="Houfu Chen — Small, Working Worlds" data-zh="陈厚孚 — 小而真实运转的世界">Houfu Chen — Small, Working Worlds</title>
 </head>
-<body class="has-bio-bg">
-        <canvas class="bio-bg" id="bioBg" aria-hidden="true"></canvas>
-        <a class="skip-link" href="#main-content" data-en="Skip to main content" data-zh="跳到主要内容">Skip to main content</a>
-        <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
-        <!-- Sticky Navigation -->
-        <nav class="sticky-nav" aria-label="Primary navigation">
-            <div class="container">
-                <div class="nav-content">
-                    <a class="logo" href="#hero-section" aria-label="Houfu Chen, home">
-                        <span class="logo-mark">HC</span>
-                        <span class="logo-copy"><strong>Houfu Chen</strong><small data-en="research / systems / play" data-zh="研究 / 系统 / 玩">research / systems / play</small></span>
-                    </a>
-                    <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">☰</button>
-                    <div class="nav-links" id="navLinks">
-                        <a href="#about-section" data-en="About" data-zh="关于我">About</a>
-                        <a href="#experience-section" data-en="Experience" data-zh="经历">Experience</a>
-                        <a href="#projects-section" data-en="Work" data-zh="项目">Work</a>
-                        <a href="#games-section" data-en="Tools" data-zh="工具箱">Tools</a>
-                        <a href="#personal-section" data-en="Notes &amp; Life" data-zh="笔记与生活">Notes &amp; Life</a>
-                        <a href="#contact-section" data-en="Contact" data-zh="联系">Contact</a>
-                        <div class="nav-actions">
-                            <a class="nav-icon-link" href="/msg/" target="_blank" rel="noopener noreferrer" aria-label="Leave Houfu a note" title="Leave me a note"><img src="/favicon_io/mail-32x32.png?v=1" width="20" height="20" alt="" aria-hidden="true"></a>
-                            <a class="icon-button" id="arcadeLink" href="https://lifegameproject.com/" target="_blank" rel="noopener noreferrer" aria-label="Play in the arcade" title="Play in the arcade"><img src="/favicon_io/arcade-32x32.png?v=1" width="20" height="20" alt="" aria-hidden="true"></a>
-                            <a class="icon-button monet-icon-button" href="/monet/" aria-label="Explore Monet Light Strokes" title="Explore Monet Light Strokes"><span class="pixel-palette" aria-hidden="true"></span></a>
-                            <button class="icon-button" id="tomatoToggle" type="button"
-                                    aria-label="Show a random fun fact" aria-pressed="false"
-                                    title="Random fun fact (Shift-click: tomato rain)"><img src="/favicon_io/tomato-favicon-32x32.png?v=3" width="20" height="20" alt="" aria-hidden="true"></button>
-                            <button class="language-toggle" id="languageToggle" type="button" aria-label="Switch language">EN / 中文</button>
-                        </div>
+<body class="home-page">
+    <canvas class="bio-bg" id="bioBg" aria-hidden="true" hidden></canvas>
+    <a class="skip-link" href="#main-content"><span  data-en="Skip to main content" data-zh="跳到主要内容">Skip to main content</span></a>
+    <nav class="sticky-nav" aria-label="Primary navigation">
+        <div class="container"><div class="nav-content">
+            <a class="logo" href="#hero-section" aria-label="Houfu Chen, home"><span class="logo-mark">HC</span><span class="logo-copy"><strong>Houfu Chen</strong></span></a>
+            <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">☰</button>
+            <div class="nav-links" id="navLinks">
+                <a href="#projects-section"><span  data-en="Work" data-zh="作品">Work</span></a>
+                <a href="#about-section"><span  data-en="About" data-zh="关于我">About</span></a>
+                <a href="#games-section"><span  data-en="Tools &amp; notes" data-zh="工具与笔记">Tools &amp; notes</span></a>
+                <a href="#contact-section"><span  data-en="Contact" data-zh="联系">Contact</span></a>
+                <div class="nav-actions">
+                    <button class="home-background-toggle" id="backgroundToggle" type="button" aria-pressed="false" aria-controls="bioBg" hidden>
+                        <span class="home-toggle-dot" aria-hidden="true"></span><span  data-en="Living background" data-zh="动态背景">Living background</span><span id="backgroundState" class="home-background-state">Off</span>
+                    </button>
+                    <button class="language-toggle" id="languageToggle" type="button" aria-label="Switch language">EN / 中文</button>
+                </div>
+            </div>
+        </div></div>
+    </nav>
+    <p id="backgroundNotice" class="home-background-notice" role="status" hidden></p>
+    <main id="main-content">
+        <section id="hero-section" class="home-hero">
+            <div class="container hero-layout">
+                <div class="hero-copy">
+                    <p class="home-eyebrow" data-en="RESEARCH / SYSTEMS / PLAY" data-zh="研究 / 系统 / 玩">RESEARCH / SYSTEMS / PLAY</p>
+                    <h1 data-en="Houfu Chen" data-zh="陈厚孚">Houfu Chen</h1>
+                    <p class="home-tagline" data-en="I build small, working worlds." data-zh="我构建小而真实运转的世界。">I build small, working worlds.</p>
+                </div>
+                <div class="home-intro">
+                    <p class="home-affiliation" data-en="PhD researcher · University of Waterloo" data-zh="博士研究员 · 滑铁卢大学">PhD researcher · University of Waterloo</p>
+                    <p class="hero-lede" data-en="I connect sensing, crop-growth models, and control to study greenhouse systems. Along the way, I build tools for reading, learning, and play." data-zh="我将传感、作物生长模型与控制相连接，研究温室系统。在这条路上，我也构建用于阅读、学习和玩耍的工具。">I connect sensing, crop-growth models, and control to study greenhouse systems. Along the way, I build tools for reading, learning, and play.</p>
+                    <div class="hero-actions">
+                        <a class="cta-button" href="#projects-section"><span  data-en="Explore my work" data-zh="看看我的作品">Explore my work</span></a>
+                        <a class="text-link" href="resumes/Houfu_Chen_Resume_2026.pdf" download="Houfu-Chen-CV-2026.pdf"><span  data-en="Download CV ↓" data-zh="下载简历 ↓">Download CV ↓</span></a>
                     </div>
                 </div>
             </div>
-        </nav>
-        <main id="main-content" class="scroll-container">
-            <!-- Hero Section -->
-            <section id="hero-section" class="scroll-section hero-section">
-                <div class="container">
-                    <div class="hero-layout reveal-content">
-                        <div class="hero-copy">
-                            <div class="availability"><span></span><span data-en="PhD researcher · University of Waterloo" data-zh="博士研究员 · 滑铁卢大学">PhD researcher · University of Waterloo</span></div>
-                            <h1 data-en="I build small, working worlds." data-zh="我构建小而真实运转的世界。">I build small, working worlds.</h1>
-                            <p class="hero-lede" data-en="I build computational tools that make complex systems more tangible, testable, and understandable." data-zh="我构建计算工具，让复杂系统变得更可触达、可测试、可理解。">I build computational tools that make complex systems more tangible, testable, and understandable.</p>
-                            <div class="hero-actions">
-                                <a href="#projects-section" class="cta-button" data-en="View research overview" data-zh="查看研究概览">View research overview</a>
-                                <a href="resumes/Houfu_Chen_Resume_2026.pdf" class="text-link hero-cv-link" download="Houfu-Chen-CV-2026.pdf" data-en="Download CV ↓" data-zh="下载简历 ↓">Download CV ↓</a>
-                            </div>
-                        </div>
-                        <aside class="hero-signal hero-launchpad" id="side-projects" aria-label="Quick links to live tools">
-                            <div class="signal-topline">
-                                <span data-en="~/QUICK_LAUNCH" data-zh="~/快速启动">~/QUICK_LAUNCH</span>
-                                <span class="launchpad-status"><span aria-hidden="true">●</span><a class="launchpad-status-link" href="#games-section" data-en="ALL TOOLS" data-zh="全部工具">ALL TOOLS</a></span>
-                            </div>
-                            <a class="launchpad-feature launchpad-link" href="/reading.html">
-                                <span class="launchpad-feature-meta"><span data-en="FEATURED / READ + REVISE" data-zh="精选 / 阅读与修订">FEATURED / READ + REVISE</span><i aria-hidden="true">→</i></span>
-                                <span class="launchpad-title-row"><span class="launchpad-glyph" aria-hidden="true">PH</span><strong>Phloem</strong></span>
-                                <span class="launchpad-description" data-en="A local-first reading and revision desk for PDFs and Word drafts, with focus guides and notes beside the page." data-zh="本地优先的 PDF 与 Word 草稿阅读修订工作台，将专注导读和笔记放在原文旁。">A local-first reading and revision desk for PDFs and Word drafts, with focus guides and notes beside the page.</span>
-                            </a>
-                            <nav class="launchpad-grid" aria-label="Quick links">
-                                <a class="launchpad-card launchpad-link launchpad-teaser" href="https://lifegameproject.com/">
-                                    <span class="launchpad-card-top"><b data-en="02 / PLAY" data-zh="02 / 玩">02 / PLAY</b><i aria-hidden="true">↗</i></span>
-                                    <strong data-en="The Arcade" data-zh="游戏厅">The Arcade</strong>
-                                    <span data-en="Ten playable games at lifegameproject.com." data-zh="lifegameproject.com 上的十款小游戏。">Ten playable games at lifegameproject.com.</span>
-                                </a>
-                                <a class="launchpad-card launchpad-link launchpad-teaser" href="/journal.html">
-                                    <span class="launchpad-card-top"><b data-en="03 / WRITE" data-zh="03 / 记录">03 / WRITE</b><i aria-hidden="true">→</i></span>
-                                    <strong data-en="Journal" data-zh="日记">Journal</strong>
-                                    <span data-en="A quiet, private daily log." data-zh="安静、私密的每日记录。">A quiet, private daily log.</span>
-                                </a>
-                                <a class="launchpad-card launchpad-link launchpad-teaser" href="#games-section">
-                                    <span class="launchpad-card-top"><b data-en="04 / MORE" data-zh="04 / 更多">04 / MORE</b><i aria-hidden="true">↓</i></span>
-                                    <strong data-en="All tools" data-zh="全部工具">All tools</strong>
-                                    <span data-en="Qi, Unclench, Monet Light, The Understory and more — one lab below." data-zh="棋、松肩、莫奈光影、林下札记等——都在下方实验室。">Qi, Unclench, Monet Light, The Understory and more — one lab below.</span>
-                                </a>
-                            </nav>
-                        </aside>
-                    </div>
-                </div>
-                <a class="scroll-cue" href="#about-section" aria-label="Scroll to about section"><span></span><small data-en="SCROLL" data-zh="向下滚动">SCROLL</small></a>
-            </section>
+        </section>
 
-
-            <!-- About Section -->
-            <section id="about-section" class="scroll-section about-section">
+        <section id="projects-section" class="home-section">
             <div class="container">
-                            <div class="section-heading reveal-content">
-                                <div><p class="section-kicker" data-en="01 / PROFILE" data-zh="01 / 简介">01 / PROFILE</p><h2 class="section-title" data-en="Engineer by training. Builder by instinct." data-zh="工程训练，建造本能。">Engineer by training. Builder by instinct.</h2></div>
-                                <p class="section-summary" data-en="I work where computation meets reality: incomplete information, changing conditions, and systems that need to stay useful outside a notebook." data-zh="我的工作位于计算与现实的交界处：不完整的信息、不断变化的条件，以及需要走出笔记本仍然有用的系统。">I work where computation meets reality: incomplete information, changing conditions, and systems that need to stay useful outside a notebook.</p>
-                            </div>
-                            <div class="about-content">
-                                <div class="about-text reveal-content">
-                                                        <div class="profile-text">
-                                                            <p data-en="I’m a PhD researcher and engineer with one practical obsession: putting a working version of the world in my hands, then using it to ask better questions." data-zh="我是一名博士生兼工程师，专注于一件事：把一个真正运转的世界放在手中，再用它提出更好的问题。">
-                                                                I’m a PhD researcher and engineer with one practical obsession: putting a working version of the world in my hands, then using it to ask better questions.
-                                                            </p>
+                <div class="home-section-heading">
+                    <div><p class="home-eyebrow" data-en="01 / SELECTED WORK" data-zh="01 / 精选作品">01 / SELECTED WORK</p><h2  data-en="A few things I’m building." data-zh="我正在构建的一些东西。">A few things I’m building.</h2></div>
+                    <p  data-en="From living systems to everyday tools." data-zh="从生命系统到日常工具。">From living systems to everyday tools.</p>
+                </div>
+                <div class="home-projects">
+                    <article class="home-project">
+                        <a class="home-project-visual home-research-visual" href="#research-overview" aria-label="Explore greenhouse research">
+                            <div class="home-system" aria-hidden="true"><span><span  data-en="Sense" data-zh="感知">Sense</span></span><i>→</i><span><span  data-en="Model" data-zh="建模">Model</span></span><i>→</i><span><span  data-en="Control" data-zh="控制">Control</span></span></div>
+                            <span class="home-visual-caption" data-en="Understanding living systems" data-zh="理解生命系统">Understanding living systems</span>
+                        </a>
+                        <div class="home-project-copy">
+                            <p class="home-eyebrow" data-en="RESEARCH" data-zh="研究">RESEARCH</p>
+                            <h3><a href="#research-overview"><span  data-en="Greenhouse systems" data-zh="温室系统">Greenhouse systems</span></a></h3>
+                            <p  data-en="Computational models that connect sensing, crop physiology, and control." data-zh="连接传感、作物生理与控制的计算模型。">Computational models that connect sensing, crop physiology, and control.</p>
+                            <a class="home-project-link" href="#research-overview"><span  data-en="Research overview ↓" data-zh="研究概览 ↓">Research overview ↓</span></a>
+                        </div>
+                    </article>
+                    <article class="home-project">
+                        <a class="home-project-visual" href="/reading.html" aria-label="Open Phloem"><img src="output/extension/read-in-phloem-1.1.7-store/02-library-night.webp" alt="Phloem’s library with a reading wall and an open paper" width="1280" height="800" loading="lazy" decoding="async"></a>
+                        <div class="home-project-copy">
+                            <p class="home-eyebrow" data-en="READING &amp; WRITING" data-zh="阅读与写作">READING &amp; WRITING</p>
+                            <h3><a href="/reading.html">Phloem</a></h3>
+                            <p  data-en="A local-first desk for PDFs and Word drafts, with focus guides, highlights, and notes beside the page." data-zh="本地优先的 PDF 与 Word 草稿工作台，让专注导读、高亮与笔记陪伴原文。">A local-first desk for PDFs and Word drafts, with focus guides, highlights, and notes beside the page.</p>
+                            <a class="home-project-link" href="/reading.html"><span  data-en="Open Phloem ↗" data-zh="打开 Phloem ↗">Open Phloem ↗</span></a>
+                        </div>
+                    </article>
+                    <article class="home-project">
+                        <a class="home-project-visual home-arcade-visual" href="https://lifegameproject.com/" aria-label="Visit the arcade"><img src="game/life-card.webp" alt="A cellular butterfly from Conway’s Game of Life" width="2130" height="1470" loading="lazy" decoding="async"></a>
+                        <div class="home-project-copy">
+                            <p class="home-eyebrow" data-en="LEARNING THROUGH PLAY" data-zh="在玩耍中学习">LEARNING THROUGH PLAY</p>
+                            <h3><a href="https://lifegameproject.com/"><span  data-en="The Arcade" data-zh="游戏厅">The Arcade</span></a></h3>
+                            <p  data-en="Cellular worlds, board games, and co-op experiments. A home for the playful side of building." data-zh="元胞世界、棋类游戏与双人实验，给构建中爱玩的那一面一个家。">Cellular worlds, board games, and co-op experiments. A home for the playful side of building.</p>
+                            <a class="home-project-link" href="https://lifegameproject.com/"><span  data-en="Enter the arcade ↗" data-zh="进入游戏厅 ↗">Enter the arcade ↗</span></a>
+                        </div>
+                    </article>
+                </div>
+                <details class="home-disclosure" id='research-overview'>
+<summary><span  data-en="Research overview" data-zh="研究概览">Research overview</span><span class="home-plus" aria-hidden="true">+</span></summary>
+<div class="home-disclosure-content"><span id="card-phd"></span><span id="pers-phd"></span><div id="proj-twin" class="home-panel">
+                            <p class="case-study-eyebrow" data-en="FLAGSHIP RESEARCH · UNIVERSITY OF WATERLOO" data-zh="旗舰研究 · 滑铁卢大学">FLAGSHIP RESEARCH · UNIVERSITY OF WATERLOO</p>
+                            <h3 data-en="Computational research for greenhouse systems" data-zh="面向温室系统的计算研究">Computational research for greenhouse systems</h3>
+                            <p class="status-line" data-en="&gt; Active PhD research · public summary only" data-zh="&gt; 博士研究进行中 · 仅公开概览">&gt; Active PhD research · public summary only</p>
+                            <ul class="case-study-grid">
+                                <li>
+<strong data-en="Area" data-zh="领域">Area</strong><span data-en="Computational methods for understanding and working with complex greenhouse systems." data-zh="用于理解和处理复杂温室系统的计算方法。">Computational methods for understanding and working with complex greenhouse systems.</span>
+</li>
+                                <li>
+<strong data-en="Approach" data-zh="方法">Approach</strong><span data-en="Couple greenhouse sensing with crop-growth models and control, so the system can be simulated, diagnosed, and steered — a working twin of the real thing." data-zh="将温室传感与作物生长模型及控制相耦合，使系统可被模拟、诊断与调控——一个真正运转的数字孪生。">Couple greenhouse sensing with crop-growth models and control, so the system can be simulated, diagnosed, and steered — a working twin of the real thing.</span>
+</li>
+                                <li>
+<strong data-en="Why it's hard" data-zh="难点">Why it's hard</strong><span data-en="Partial observability, biological variability, and safety constraints — the settings where estimation and feedback methods earn their keep." data-zh="可观测性有限、生物过程多变、安全约束严格——正是估计与反馈方法大显身手的场景。">Partial observability, biological variability, and safety constraints — the settings where estimation and feedback methods earn their keep.</span>
+</li>
+                                <li>
+<strong data-en="Disclosure" data-zh="公开范围">Disclosure</strong><span data-en="Methods, parameters, data, figures, and results remain private pending publication and IP review." data-zh="论文发表与知识产权审查期间，方法、参数、数据、图表与结果暂不公开。">Methods, parameters, data, figures, and results remain private pending publication and IP review.</span>
+</li>
+                                <li>
+<strong data-en="Next update" data-zh="后续更新">Next update</strong><span data-en="A fuller case study will appear here after the research team clears material for public release." data-zh="研究团队批准公开后，此处将发布更完整的研究案例。">A fuller case study will appear here after the research team clears material for public release.</span>
+</li>
+                            </ul>
+                            <p class="case-study-note" data-en="Supervised by Prof. Nasser Mohieddin Abukhdeir and Prof. Christian Euler · Chemical Engineering" data-zh="化学工程系 · Nasser Mohieddin Abukhdeir 教授与 Christian Euler 教授共同指导">Supervised by Prof. Nasser Mohieddin Abukhdeir and Prof. Christian Euler · Chemical Engineering</p>
+                        </div></div>
+</details>
+            </div>
+        </section>
 
-                                                            <ul>
-                                                                <li>
-                                                                    <span class="list-marker">01</span>
-                                                                    <span data-en="Developing computational tools for complex living systems." data-zh="为复杂生命系统开发计算工具。">
-                                                                        Developing computational tools for complex living systems.
-                                                                    </span>
-                                                                </li>
-                                                                <li>
-                                                                    <span class="list-marker">02</span>
-                                                                    <span data-en="Combining scientific computing, data, and machine learning in reproducible workflows." data-zh="将科学计算、数据与机器学习整合为可复现的工作流。">
-                                                                        Combining scientific computing, data, and machine learning in reproducible workflows.
-                                                                    </span>
-                                                                </li>
-                                                                <li>
-                                                                    <span class="list-marker">03</span>
-                                                                    <span data-en="Turning theoretical models into working systems that can be tested against reality." data-zh="把理论模型变成能够与现实对照测试的工作系统。">
-                                                                        Turning theoretical models into working systems that can be tested against reality.
-                                                                    </span>
-                                                                </li>
-                                                            </ul>
-                                                        </div>
-                                                    </div>
-
-                        <div class="about-explorer reveal-content">
-                            <div class="explorer-menu">
-                                <div class="explorer-header" data-en="~/about_me $ ls" data-zh="~/关于我 $ ls">~/about_me $ ls</div>
-                                <button type="button" class="explorer-btn active" data-panel="card-edu">
-                                    <span class="highlight-icon">[::]</span> <span data-en="Education.log" data-zh="教育背景.log">Education.log</span>
-                                </button>
-                                <button type="button" class="explorer-btn" data-panel="card-industry">
-                                    <span class="highlight-icon">[::]</span> <span data-en="Industry_Exp.log" data-zh="行业经验.log">Industry_Exp.log</span>
-                                </button>
-                                <button type="button" class="explorer-btn" data-panel="card-teach">
-                                    <span class="highlight-icon">[::]</span> <span data-en="Teaching_Research.log" data-zh="教学与研究.log">Teaching_Research.log</span>
-                                </button>
-                                <button type="button" class="explorer-btn" data-panel="card-phd">
-                                    <span class="highlight-icon">[::]</span> <span data-en="Greenhouse_Twin_WIP.log" data-zh="温室数字孪生_WIP.log">Greenhouse_Twin_WIP.log</span>
-                                </button>
-                                <button type="button" class="explorer-btn" data-panel="card-skills">
-                                    <span class="highlight-icon">[::]</span> <span data-en="tech_stack.json" data-zh="技术栈.json">tech_stack.json</span>
-                                </button>
-                            </div>
-
-                            <div class="explorer-content">
-                                <div id="card-edu" class="highlight-card active-card">
-                                    <div class="vertical-accent"></div>
+        <section id="about-section" class="home-section">
+            <div class="container">
+                <div class="home-section-heading">
+                    <div><p class="home-eyebrow" data-en="02 / ABOUT" data-zh="02 / 关于我">02 / ABOUT</p><h2  data-en="Engineer by training. Builder by instinct." data-zh="工程训练，建造本能。">Engineer by training. Builder by instinct.</h2></div>
+                    <p  data-en="My background spans nanotechnology, electrical engineering, scientific computing, and teaching." data-zh="我的背景横跨纳米技术、电气工程、科学计算与教学。">My background spans nanotechnology, electrical engineering, scientific computing, and teaching.</p>
+                </div>
+                <div class="home-about-grid">
+                    <div class="home-education"><div id="card-edu" class="home-panel">
                                     <h3><span data-en="Education" data-zh="教育背景">Education</span></h3>
                                     <ul class="highlight-list">
                                         <li>
@@ -234,7 +210,7 @@
 
                                             <div class="alumni-evidence">
                                                 <button type="button" class="alumni-toggle" id="alumni-toggle" aria-expanded="false" aria-controls="alumni-panel">
-                                                    <span class="alumni-toggle__caret" aria-hidden="true">&#8250;</span>
+                                                    <span class="alumni-toggle__caret" aria-hidden="true">›</span>
                                                     <span class="alumni-toggle__label" data-en="read the quote" data-zh="查看引述">read the quote</span>
                                                 </button>
 
@@ -261,65 +237,114 @@
                                             <span class="details" data-en="Machine Learning Specialization — Stanford University &amp; DeepLearning.AI (2025) · SQL for Data Science — University of California, Davis (2025) · Algorithms and Data Structures Certificate — Stanford Online (2025)" data-zh="机器学习专项课程 — 斯坦福大学与 DeepLearning.AI（2025）· 数据科学 SQL — 加州大学戴维斯分校（2025）· 算法与数据结构证书 — 斯坦福在线（2025）">Machine Learning Specialization — Stanford University &amp; DeepLearning.AI (2025) · SQL for Data Science — University of California, Davis (2025) · Algorithms and Data Structures Certificate — Stanford Online (2025)</span>
                                         </li>
                                     </ul>
-                                </div>
-
-                                <div id="card-industry" class="highlight-card">
-                                    <div class="vertical-accent"></div>
-                                    <h3><span data-en="Industry Experience" data-zh="行业经验">Industry Experience</span></h3>
-                                    <ul class="highlight-list">
-                                        <li><span class="company-link">Ford Motor</span> - <span class="position-text" data-en="SYNC &amp; TCU Network Performance" data-zh="SYNC 与 TCU 网络性能测试">SYNC &amp; TCU Network Performance</span></li>
-                                        <li><span class="company-link">Manulife</span> - <span class="position-text" data-en="QA automation &amp; cross-browser testing" data-zh="自动化测试与跨浏览器测试">QA automation &amp; cross-browser testing</span></li>
-                                        <li><span class="company-link">Teranet</span> - <span class="position-text" data-en="QA Automation" data-zh="自动化测试">QA Automation</span></li>
-                                        <li>Imagine Communications - <span class="position-text" data-en="Quality Assurance" data-zh="质量保证">Quality Assurance</span></li>
-                                    </ul>
-                                </div>
-
-                                <div id="card-teach" class="highlight-card">
-                                    <div class="vertical-accent"></div>
-                                    <h3><span data-en="Teaching &amp; Research" data-zh="教学与研究">Teaching &amp; Research</span></h3>
-                                    <ul class="highlight-list">
-                                        <li>
-                                            <span class="highlight-item-title" data-en="Teaching Assistant" data-zh="助教">Teaching Assistant</span>
-                                            <span class="course-link" data-en="Machine Learning &amp; Python" data-zh="机器学习与Python">Machine Learning &amp; Python</span> <span data-en="at" data-zh="在">at</span> <span class="university-name" data-en="University of Toronto" data-zh="多伦多大学">University of Toronto</span>
-                                        </li>
-                                        <li>
-                                            <span class="highlight-item-title" data-en="Research Assistant" data-zh="研究助理">Research Assistant</span>
-                                            <span class="research-link" data-en="Polymer Semiconductors &amp; Organic Thin-Film Electronics" data-zh="高分子半导体与有机薄膜电子">Polymer Semiconductors &amp; Organic Thin-Film Electronics</span> <span data-en="at" data-zh="在">at</span> <span class="university-name" data-en="University of Waterloo" data-zh="滑铁卢大学">University of Waterloo</span>
-                                        </li>
-                                    </ul>
-                                </div>
-
-                                <div id="card-phd" class="highlight-card">
-                                    <div class="vertical-accent"></div>
-                                    <h3><span data-en="Current PhD Research" data-zh="当前博士研究">Current PhD Research</span></h3>
-
-                                    <p class="status-line" data-en="> Status: Active · full details pending publication" data-zh="> 状态：进行中 · 完整细节待论文发表后公开">
-                                        > Status: Active · full details pending publication
-                                    </p>
-
-                                    <ul class="highlight-list">
-                                        <li data-en="Building computational approaches for complex greenhouse systems — models that connect sensing, crop physiology, and control so a greenhouse can be simulated, diagnosed, and steered." data-zh="构建面向复杂温室系统的计算方法——连接传感、作物生理与控制的模型，使温室可被模拟、诊断与调控。">
-                                            Building computational approaches for complex greenhouse systems — models that connect sensing, crop physiology, and control so a greenhouse can be simulated, diagnosed, and steered.
-                                        </li>
-                                        <li data-en="The hard part: greenhouses are partially observable, biologically variable, and safety-critical — which makes them a natural testbed for state estimation, feedback, and digital-twin methods." data-zh="难点所在：温室可观测性有限、生物过程多变、且不容出错——这使它成为状态估计、反馈控制与数字孪生方法的理想试验场。">
-                                            The hard part: greenhouses are partially observable, biologically variable, and safety-critical — which makes them a natural testbed for state estimation, feedback, and digital-twin methods.
-                                        </li>
-                                        <li>
-                                            <strong data-en="Research themes:" data-zh="研究主题：">Research themes:</strong>
-                                            <span data-en="Scientific computing, modeling, sensing, and machine learning." data-zh="科学计算、建模、传感与机器学习。">Scientific computing, modeling, sensing, and machine learning.</span>
-                                        </li>
-                                        <li>
-                                            <strong data-en="Disclosure:" data-zh="公开范围：">Disclosure:</strong>
-                                            <span data-en="Specific methods, parameters, and data stay private until publication and IP review clear them — the shape above is public, the machinery isn't yet." data-zh="具体方法、参数与数据在论文发表与知识产权审查完成前暂不公开。">Specific methods, parameters, and data stay private until publication and IP review clear them — the shape above is public, the machinery isn't yet.</span>
-                                        </li>
-                                    </ul>
-
-                                    <div class="locked-repo">
-                                        <div class="locked-repo-btn" data-en="[🔒 Private research repository · active work]" data-zh="[🔒 私有研究仓库 · 持续开发中]">[🔒 Private research repository · active work]</div>
-                                    </div>
-                                </div>
-                                <div id="card-skills" class="highlight-card">
-                                    <div class="vertical-accent"></div>
+                                </div></div>
+                    <div id="experience-section" class="home-experience">
+                        <h3  data-en="Experience" data-zh="经历">Experience</h3>
+                        <p  data-en="Research, software testing, and teaching have shaped how I turn ideas into working systems." data-zh="研究、软件测试与教学，塑造了我将想法转化为可用系统的方式。">Research, software testing, and teaching have shaped how I turn ideas into working systems.</p>
+                        <details class="home-disclosure" >
+<summary><span  data-en="Industry · Ford, Manulife &amp; more" data-zh="行业 · 福特、宏利与更多">Industry · Ford, Manulife &amp; more</span><span class="home-plus" aria-hidden="true">+</span></summary>
+<div class="home-disclosure-content"><span id="card-industry"></span><div id="exp-tech" class="home-panel">
+                            <h3 data-en="CAN Tech Industry" data-zh="加拿大科技行业">CAN Tech Industry</h3>
+                            <div class="experience-item">
+                                <h4>
+<span data-en="WiFi Software Testing Engineer (Intern)" data-zh="WiFi 软件测试工程师（实习）">WiFi Software Testing Engineer (Intern)</span> <span>@ Ford Motor Company</span>
+</h4>
+                                <p><em>Ubuntu, iperf3, TCP/IP, Selenium</em></p>
+                                <p><strong data-en="May 2022 – August 2022" data-zh="2022年5月 – 2022年8月">May 2022 – August 2022</strong></p>
+                            </div>
+                            <div class="experience-item">
+                                <h4>
+<span data-en="QA-Developer (Co-op)" data-zh="质量保证开发人员（带薪实习）">QA-Developer (Co-op)</span> <span>@ Manulife</span>
+</h4>
+                                <p><em>JavaScript, React, WebDriver IO</em></p>
+                                <p><strong data-en="January 2020 – April 2020" data-zh="2020年1月 – 2020年4月">January 2020 – April 2020</strong></p>
+                            </div>
+                            <div class="experience-item">
+                                <h4>
+<span data-en="QA Automation Specialist (Co-op)" data-zh="QA自动化专家（带薪实习）">QA Automation Specialist (Co-op)</span> <span>@ Teranet CMS</span>
+</h4>
+                                <p><em>C#, Selenium</em></p>
+                                <p><strong data-en="September 2020 – December 2020" data-zh="2020年9月 – 2020年12月">September 2020 – December 2020</strong></p>
+                            </div>
+                        </div><p  data-en="Also: quality assurance at Imagine Communications." data-zh="其他经历：Imagine Communications 质量保证。">Also: quality assurance at Imagine Communications.</p></div>
+</details>
+                        <details class="home-disclosure" >
+<summary><span  data-en="Teaching · Machine learning &amp; Python" data-zh="教学 · 机器学习与 Python">Teaching · Machine learning &amp; Python</span><span class="home-plus" aria-hidden="true">+</span></summary>
+<div class="home-disclosure-content"><span id="card-teach"></span><div id="exp-teach" class="home-panel">
+                            <h3 data-en="Teaching Experience" data-zh="教学经验">Teaching Experience</h3>
+                            <div class="experience-item">
+                                <h4>APS1070 (Foundations of Data Analytics and ML) <span>@ UofT</span>
+</h4>
+                                <ul class="highlight-list">
+                                    <li data-en="Graded 100+ projects and exams per term" data-zh="每学期批改100多份项目与考试">Graded 100+ projects and exams per term</li>
+                                    <li data-en="Led 10+ Tutorials per term" data-zh="每学期带领10多次辅导课">Led 10+ Tutorials per term</li>
+                                </ul>
+                            </div>
+                            <div class="experience-item">
+                                <h4>CSC108 (Introduction to Computer Programming) <span>@ UofT</span>
+</h4>
+                                <ul class="highlight-list">
+                                    <li data-en="Ran tutorials and office hours on Python fundamentals, debugging, and code style" data-zh="带领辅导课与答疑，讲解 Python 基础、调试与代码规范">Ran tutorials and office hours on Python fundamentals, debugging, and code style</li>
+                                    <li data-en="Assessed projects and exams for courses serving up to 500+ students per term" data-zh="为每学期多达 500 余名学生的课程批改项目与考试">Assessed projects and exams for courses serving up to 500+ students per term</li>
+                                </ul>
+                            </div>
+                            <div class="experience-item">
+                                <h4>MIE370 (Introduction to ML) <span>@ UofT</span>
+</h4>
+                                <ul class="highlight-list">
+                                    <li data-en="Created 2 Projects, 2 Tutorials, 2 Exam Questions" data-zh="创建了2个项目、2次辅导课、2道考试题">Created 2 Projects, 2 Tutorials, 2 Exam Questions</li>
+                                </ul>
+                            </div>
+                        </div></div>
+</details>
+                        <details class="home-disclosure" >
+<summary><span  data-en="Earlier research · Materials &amp; data" data-zh="早期研究 · 材料与数据">Earlier research · Materials &amp; data</span><span class="home-plus" aria-hidden="true">+</span></summary>
+<div class="home-disclosure-content"><div id="exp-research" class="home-panel">
+                            <h3 data-en="Research Experience" data-zh="研究经验">Research Experience</h3>
+                            <div class="experience-item">
+                                <h4>
+<span data-en="Research Assistant" data-zh="研究助理">Research Assistant</span> <span>@ Prof. Yuning Li's Lab, UWaterloo</span>
+</h4>
+                                <p><em>Chromatography, UV-Vis Spectroscopy, Polymer Semiconductors</em></p>
+                                <p><strong data-en="May 2019 – August 2019" data-zh="2019年5月 – 2019年8月">May 2019 – August 2019</strong></p>
+                                <ul class="highlight-list">
+                                    <li data-en="Performed chromatography and UV-vis spectroscopy for polymer semiconductor and organic thin-film research." data-zh="为高分子半导体与有机薄膜研究进行色谱分析与紫外-可见光谱测试。">Performed chromatography and UV-vis spectroscopy for polymer semiconductor and organic thin-film research.</li>
+                                </ul>
+                            </div>
+                            <div class="experience-item">
+                                <h4>
+<span data-en="Research Contributor" data-zh="研究贡献者">Research Contributor</span> <span>@ Jilin Agricultural Science and Technology University</span>
+</h4>
+                                <p><em>Python, PCA, Spectroscopy, Field-Trial Data</em></p>
+                                <p><strong data-en="2025" data-zh="2025年">2025</strong></p>
+                                <ul class="highlight-list">
+                                    <li data-en="Analyzed multi-year field-trial data spanning soil chemistry, fluorescence spectroscopy, FTIR, thermogravimetry, and crop yield using Python and principal component analysis." data-zh="使用 Python 与主成分分析，处理涵盖土壤化学、荧光光谱、红外光谱（FTIR）、热重分析与作物产量的多年田间试验数据。">Analyzed multi-year field-trial data spanning soil chemistry, fluorescence spectroscopy, FTIR, thermogravimetry, and crop yield using Python and principal component analysis.</li>
+                                    <li data-en="Integrated multidimensional measurements into treatment-ranking analyses and supported manuscript structure, statistical interpretation, and technical editing." data-zh="将多维测量整合为处理方案排序分析，并协助论文结构、统计解读与技术编辑。">Integrated multidimensional measurements into treatment-ranking analyses and supported manuscript structure, statistical interpretation, and technical editing.</li>
+                                </ul>
+                            </div>
+                        </div></div>
+</details>
+                        <details class="home-disclosure" >
+<summary><span  data-en="Consulting · FAW-Volkswagen" data-zh="咨询 · 一汽大众">Consulting · FAW-Volkswagen</span><span class="home-plus" aria-hidden="true">+</span></summary>
+<div class="home-disclosure-content"><div id="exp-consulting" class="home-panel">
+                            <h3 data-en="Management / Consulting" data-zh="咨询 / 管理">Management / Consulting</h3>
+                            <div class="experience-item">
+                                <h4>
+                                    <span data-en="Complaints Management &amp; Internal Consulting (Intern)" data-zh="投诉处理与内部咨询（实习）">Complaints Management &amp; Internal Consulting (Intern)</span> <span>@ FAW-Volkswagen</span>
+                                </h4>
+                                <p><em data-en="Dispute Resolution, Risk Prevention" data-zh="纠纷处理，风险防控">Dispute Resolution, Risk Prevention</em></p>
+                                <p><strong data-en="May 2025 – July 2025" data-zh="2025年5月 – 2025年7月">May 2025 – July 2025</strong></p>
+                                <ul class="highlight-list">
+                                    <li data-en="Handled high-risk complaints escalated by frontline agents." data-zh="处理由一线坐席升级的高风险客户投诉。">Handled high-risk complaints escalated by frontline agents.</li>
+                                    <li data-en="Assessed solution fairness and determined fault through cross-functional coordination." data-zh="通过跨职能协同评估处理方案的公平性并判定责任。">Assessed solution fairness and determined fault through cross-functional coordination.</li>
+                                    <li data-en="Built and maintained QBI Kanban boards to track complaint progress." data-zh="构建并维护 QBI 看板以跟踪投诉处理进度。">Built and maintained QBI Kanban boards to track complaint progress.</li>
+                                </ul>
+                            </div>
+                        </div></div>
+</details>
+                        <details class="home-disclosure" >
+<summary><span  data-en="Skills &amp; tools" data-zh="技能与工具">Skills &amp; tools</span><span class="home-plus" aria-hidden="true">+</span></summary>
+<div class="home-disclosure-content"><div id="card-skills" class="home-panel">
                                     <h3><span data-en="System Capabilities" data-zh="系统能力">System Capabilities</span></h3>
 
                                     <ul class="highlight-list">
@@ -340,432 +365,136 @@
                                             <span>React, Node.js, Git, Docker, Linux/Ubuntu, AWS Lambda, API Gateway, REST APIs, Azure, Selenium</span>
                                         </li>
                                     </ul>
-                                </div>
-
-
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-
-
-
-        <section id="experience-section" class="scroll-section experience-section">
-            <div class="container">
-                <div class="section-heading reveal-content">
-                    <div><p class="section-kicker" data-en="02 / EXPERIENCE" data-zh="02 / 经历">02 / EXPERIENCE</p><h2 class="section-title" data-en="Research is the thread. Range is the toolkit." data-zh="研究是主线，跨界是工具。">Research is the thread. Range is the toolkit.</h2></div>
-                    <p class="section-summary" data-en="My current PhD work leads the story; teaching, product engineering, and consulting give me the range to carry ideas into real systems." data-zh="博士研究是我的当前主线；教学、产品工程与咨询经验，则让我能把想法带入真实系统。">My current PhD work leads the story; teaching, product engineering, and consulting give me the range to carry ideas into real systems.</p>
-                </div>
-
-                <div class="about-explorer reveal-content">
-                    <div class="explorer-menu">
-                        <div class="explorer-header" data-en="~/experience $ ls -l" data-zh="~/经历 $ ls -l">~/experience $ ls -l</div>
-
-                        <button type="button" class="explorer-btn active" data-panel="exp-research">
-                            <span class="highlight-icon">[::]</span> <span data-en="Research" data-zh="研究">Research</span>
-                        </button>
-                        <button type="button" class="explorer-btn" data-panel="exp-tech">
-                            <span class="highlight-icon">[::]</span> <span data-en="Industry" data-zh="行业">Industry</span>
-                        </button>
-                        <button type="button" class="explorer-btn" data-panel="exp-teach">
-                            <span class="highlight-icon">[::]</span> <span data-en="Teaching" data-zh="教学">Teaching</span>
-                        </button>
-                        <button type="button" class="explorer-btn" data-panel="exp-consulting">
-                            <span class="highlight-icon">[::]</span> <span data-en="Consulting" data-zh="咨询">Consulting</span>
-                        </button>
-                    </div>
-
-                    <div class="explorer-content">
-
-                        <div id="exp-consulting" class="highlight-card">
-                            <div class="vertical-accent"></div>
-                            <h3 data-en="Management / Consulting" data-zh="咨询 / 管理">Management / Consulting</h3>
-                            <div class="experience-item">
-                                <h4>
-                                    <span data-en="Complaints Management &amp; Internal Consulting (Intern)" data-zh="投诉处理与内部咨询（实习）">Complaints Management &amp; Internal Consulting (Intern)</span> <span>@ FAW-Volkswagen</span>
-                                </h4>
-                                <p><em data-en="Dispute Resolution, Risk Prevention" data-zh="纠纷处理，风险防控">Dispute Resolution, Risk Prevention</em></p>
-                                <p><strong data-en="May 2025 – July 2025" data-zh="2025年5月 – 2025年7月">May 2025 – July 2025</strong></p>
-                                <ul class="highlight-list">
-                                    <li data-en="Handled high-risk complaints escalated by frontline agents." data-zh="处理由一线坐席升级的高风险客户投诉。">Handled high-risk complaints escalated by frontline agents.</li>
-                                    <li data-en="Assessed solution fairness and determined fault through cross-functional coordination." data-zh="通过跨职能协同评估处理方案的公平性并判定责任。">Assessed solution fairness and determined fault through cross-functional coordination.</li>
-                                    <li data-en="Built and maintained QBI Kanban boards to track complaint progress." data-zh="构建并维护 QBI 看板以跟踪投诉处理进度。">Built and maintained QBI Kanban boards to track complaint progress.</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div id="exp-tech" class="highlight-card">
-                            <div class="vertical-accent"></div>
-                            <h3 data-en="CAN Tech Industry" data-zh="加拿大科技行业">CAN Tech Industry</h3>
-                            <div class="experience-item">
-                                <h4><span data-en="WiFi Software Testing Engineer (Intern)" data-zh="WiFi 软件测试工程师（实习）">WiFi Software Testing Engineer (Intern)</span> <span>@ Ford Motor Company</span></h4>
-                                <p><em>Ubuntu, iperf3, TCP/IP, Selenium</em></p>
-                                <p><strong data-en="May 2022 – August 2022" data-zh="2022年5月 – 2022年8月">May 2022 – August 2022</strong></p>
-                            </div>
-                            <div class="experience-item">
-                                <h4><span data-en="QA-Developer (Co-op)" data-zh="质量保证开发人员（带薪实习）">QA-Developer (Co-op)</span> <span>@ Manulife</span></h4>
-                                <p><em>JavaScript, React, WebDriver IO</em></p>
-                                <p><strong data-en="January 2020 – April 2020" data-zh="2020年1月 – 2020年4月">January 2020 – April 2020</strong></p>
-                            </div>
-                            <div class="experience-item">
-                                <h4><span data-en="QA Automation Specialist (Co-op)" data-zh="QA自动化专家（带薪实习）">QA Automation Specialist (Co-op)</span> <span>@ Teranet CMS</span></h4>
-                                <p><em>C#, Selenium</em></p>
-                                <p><strong data-en="September 2020 – December 2020" data-zh="2020年9月 – 2020年12月">September 2020 – December 2020</strong></p>
-                            </div>
-                        </div>
-
-                        <div id="exp-teach" class="highlight-card">
-                            <div class="vertical-accent"></div>
-                            <h3 data-en="Teaching Experience" data-zh="教学经验">Teaching Experience</h3>
-                            <div class="experience-item">
-                                <h4>APS1070 (Foundations of Data Analytics and ML) <span>@ UofT</span></h4>
-                                <ul class="highlight-list">
-                                    <li data-en="Graded 100+ projects and exams per term" data-zh="每学期批改100多份项目与考试">Graded 100+ projects and exams per term</li>
-                                    <li data-en="Led 10+ Tutorials per term" data-zh="每学期带领10多次辅导课">Led 10+ Tutorials per term</li>
-                                </ul>
-                            </div>
-                            <div class="experience-item">
-                                <h4>CSC108 (Introduction to Computer Programming) <span>@ UofT</span></h4>
-                                <ul class="highlight-list">
-                                    <li data-en="Ran tutorials and office hours on Python fundamentals, debugging, and code style" data-zh="带领辅导课与答疑，讲解 Python 基础、调试与代码规范">Ran tutorials and office hours on Python fundamentals, debugging, and code style</li>
-                                    <li data-en="Assessed projects and exams for courses serving up to 500+ students per term" data-zh="为每学期多达 500 余名学生的课程批改项目与考试">Assessed projects and exams for courses serving up to 500+ students per term</li>
-                                </ul>
-                            </div>
-                            <div class="experience-item">
-                                <h4>MIE370 (Introduction to ML) <span>@ UofT</span></h4>
-                                <ul class="highlight-list">
-                                    <li data-en="Created 2 Projects, 2 Tutorials, 2 Exam Questions" data-zh="创建了2个项目、2次辅导课、2道考试题">Created 2 Projects, 2 Tutorials, 2 Exam Questions</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div id="exp-research" class="highlight-card active-card">
-                            <div class="vertical-accent"></div>
-                            <h3 data-en="Research Experience" data-zh="研究经验">Research Experience</h3>
-                            <div class="experience-item">
-                                <h4><span data-en="PhD Researcher" data-zh="博士研究员">PhD Researcher</span> <span>@ University of Waterloo</span></h4>
-                                <p><em data-en="Computational Modeling, Sensing, Machine Learning" data-zh="计算建模、传感、机器学习">Computational Modeling, Sensing, Machine Learning</em></p>
-                                <p><strong data-en="Current" data-zh="当前">Current</strong></p>
-                                <ul class="highlight-list">
-                                    <li data-en="Developing computational approaches for complex greenhouse systems — connecting sensing, crop physiology, and control in one modeling loop." data-zh="开发面向复杂温室系统的计算方法——在同一建模闭环中连接传感、作物生理与控制。">Developing computational approaches for complex greenhouse systems — connecting sensing, crop physiology, and control in one modeling loop.</li>
-                                    <li data-en="Specific methods, data, and results stay private until publication and IP review clear them." data-zh="具体方法、数据与结果在论文发表与知识产权审查完成前暂不公开。">Specific methods, data, and results stay private until publication and IP review clear them.</li>
-                                    <li data-en="Supervised by Prof. Nasser Mohieddin Abukhdeir and Prof. Christian Euler in Chemical Engineering." data-zh="由化学工程系 Nasser Mohieddin Abukhdeir 教授与 Christian Euler 教授共同指导。">Supervised by Prof. Nasser Mohieddin Abukhdeir and Prof. Christian Euler in Chemical Engineering.</li>
-                                </ul>
-                            </div>
-                            <div class="experience-item">
-                                <h4><span data-en="Research Assistant" data-zh="研究助理">Research Assistant</span> <span>@ Prof. Yuning Li's Lab, UWaterloo</span></h4>
-                                <p><em>Chromatography, UV-Vis Spectroscopy, Polymer Semiconductors</em></p>
-                                <p><strong data-en="May 2019 – August 2019" data-zh="2019年5月 – 2019年8月">May 2019 – August 2019</strong></p>
-                                <ul class="highlight-list">
-                                    <li data-en="Performed chromatography and UV-vis spectroscopy for polymer semiconductor and organic thin-film research." data-zh="为高分子半导体与有机薄膜研究进行色谱分析与紫外-可见光谱测试。">Performed chromatography and UV-vis spectroscopy for polymer semiconductor and organic thin-film research.</li>
-                                </ul>
-                            </div>
-                            <div class="experience-item">
-                                <h4><span data-en="Research Contributor" data-zh="研究贡献者">Research Contributor</span> <span>@ Jilin Agricultural Science and Technology University</span></h4>
-                                <p><em>Python, PCA, Spectroscopy, Field-Trial Data</em></p>
-                                <p><strong data-en="2025" data-zh="2025年">2025</strong></p>
-                                <ul class="highlight-list">
-                                    <li data-en="Analyzed multi-year field-trial data spanning soil chemistry, fluorescence spectroscopy, FTIR, thermogravimetry, and crop yield using Python and principal component analysis." data-zh="使用 Python 与主成分分析，处理涵盖土壤化学、荧光光谱、红外光谱（FTIR）、热重分析与作物产量的多年田间试验数据。">Analyzed multi-year field-trial data spanning soil chemistry, fluorescence spectroscopy, FTIR, thermogravimetry, and crop yield using Python and principal component analysis.</li>
-                                    <li data-en="Integrated multidimensional measurements into treatment-ranking analyses and supported manuscript structure, statistical interpretation, and technical editing." data-zh="将多维测量整合为处理方案排序分析，并协助论文结构、统计解读与技术编辑。">Integrated multidimensional measurements into treatment-ranking analyses and supported manuscript structure, statistical interpretation, and technical editing.</li>
-                                </ul>
-                            </div>
-                        </div>
-
+                                </div></div>
+</details>
                     </div>
                 </div>
             </div>
         </section>
 
-
-
-
-
-
-
-
-
-
-
-        <!-- Projects Section -->
-        <section id="projects-section" class="scroll-section projects-section">
+        <section id="games-section" class="home-section">
             <div class="container">
-                <div class="section-heading reveal-content">
-                    <div><p class="section-kicker" data-en="03 / SELECTED WORK" data-zh="03 / 精选项目">03 / SELECTED WORK</p><h2 class="section-title" data-en="Proof lives in the prototype." data-zh="原型就是最好的证明。">Proof lives in the prototype.</h2></div>
-                    <p class="section-summary" data-en="A working method matters only when it survives contact with reality and leaves its evidence visible." data-zh="只有经得起现实检验、并留下清晰证据的方法，才真正有效。">A working method matters only when it survives contact with reality and leaves its evidence visible.</p>
+                <div class="home-section-heading">
+                    <div><p class="home-eyebrow" data-en="03 / TOOLS &amp; NOTES" data-zh="03 / 工具与笔记">03 / TOOLS &amp; NOTES</p><h2  data-en="The rest of the workbench." data-zh="工作台上的其他东西。">The rest of the workbench.</h2></div>
+                    <p  data-en="Small tools, experiments, and things I’m curious about." data-zh="小工具、实验，以及让我好奇的事情。">Small tools, experiments, and things I’m curious about.</p>
                 </div>
-
-                <div class="about-explorer reveal-content">
-                    <div class="explorer-menu">
-                        <div class="explorer-header" data-en="~/selected-systems $ inspect" data-zh="~/精选项目 $ inspect">~/selected-systems $ inspect</div>
-                        <button type="button" class="explorer-btn active" data-panel="proj-twin">
-                            <span class="highlight-icon">[::]</span> <span data-en="Greenhouse_Twin" data-zh="温室数字孪生">Greenhouse_Twin</span>
-                        </button>
-                        <button type="button" class="explorer-btn" data-panel="proj-evac">
-                            <span class="highlight-icon">[::]</span> <span data-en="Smart_Evac_Map" data-zh="智能疏散地图">Smart_Evac_Map</span>
-                        </button>
-                        <button type="button" class="explorer-btn" data-panel="proj-swim">
-                            <span class="highlight-icon">[::]</span> <span data-en="S.W.I.M_Hardware" data-zh="S.W.I.M硬件">S.W.I.M_Hardware</span>
-                        </button>
-                    </div>
-
-                    <div class="explorer-content">
-                        <div id="proj-twin" class="highlight-card active-card">
-                            <div class="vertical-accent"></div>
-                            <p class="case-study-eyebrow" data-en="FLAGSHIP RESEARCH · UNIVERSITY OF WATERLOO" data-zh="旗舰研究 · 滑铁卢大学">FLAGSHIP RESEARCH · UNIVERSITY OF WATERLOO</p>
-                            <h3 data-en="Computational research for greenhouse systems" data-zh="面向温室系统的计算研究">Computational research for greenhouse systems</h3>
-                            <p class="status-line" data-en="> Active PhD research · public summary only" data-zh="> 博士研究进行中 · 仅公开概览">&gt; Active PhD research · public summary only</p>
-                            <ul class="case-study-grid">
-                                <li><strong data-en="Area" data-zh="领域">Area</strong><span data-en="Computational methods for understanding and working with complex greenhouse systems." data-zh="用于理解和处理复杂温室系统的计算方法。">Computational methods for understanding and working with complex greenhouse systems.</span></li>
-                                <li><strong data-en="Approach" data-zh="方法">Approach</strong><span data-en="Couple greenhouse sensing with crop-growth models and control, so the system can be simulated, diagnosed, and steered — a working twin of the real thing." data-zh="将温室传感与作物生长模型及控制相耦合，使系统可被模拟、诊断与调控——一个真正运转的数字孪生。">Couple greenhouse sensing with crop-growth models and control, so the system can be simulated, diagnosed, and steered — a working twin of the real thing.</span></li>
-                                <li><strong data-en="Why it's hard" data-zh="难点">Why it's hard</strong><span data-en="Partial observability, biological variability, and safety constraints — the settings where estimation and feedback methods earn their keep." data-zh="可观测性有限、生物过程多变、安全约束严格——正是估计与反馈方法大显身手的场景。">Partial observability, biological variability, and safety constraints — the settings where estimation and feedback methods earn their keep.</span></li>
-                                <li><strong data-en="Disclosure" data-zh="公开范围">Disclosure</strong><span data-en="Methods, parameters, data, figures, and results remain private pending publication and IP review." data-zh="论文发表与知识产权审查期间，方法、参数、数据、图表与结果暂不公开。">Methods, parameters, data, figures, and results remain private pending publication and IP review.</span></li>
-                                <li><strong data-en="Next update" data-zh="后续更新">Next update</strong><span data-en="A fuller case study will appear here after the research team clears material for public release." data-zh="研究团队批准公开后，此处将发布更完整的研究案例。">A fuller case study will appear here after the research team clears material for public release.</span></li>
-                            </ul>
-                            <p class="case-study-note" data-en="Supervised by Prof. Nasser Mohieddin Abukhdeir and Prof. Christian Euler · Chemical Engineering" data-zh="化学工程系 · Nasser Mohieddin Abukhdeir 教授与 Christian Euler 教授共同指导">Supervised by Prof. Nasser Mohieddin Abukhdeir and Prof. Christian Euler · Chemical Engineering</p>
-                        </div>
-
-                        <div id="proj-evac" class="highlight-card">
-                            <div class="vertical-accent"></div>
-                            <p class="case-study-eyebrow" data-en="ROUTING SYSTEM · OPEN NOTEBOOK" data-zh="路径系统 · 开放笔记">ROUTING SYSTEM · OPEN NOTEBOOK</p>
-                            <h3 data-en="Building Smart Evacuation Maps" data-zh="构建智能疏散地图">Building Smart Evacuation Maps</h3>
-                            <ul class="case-study-grid">
-                                <li><strong data-en="Problem" data-zh="问题">Problem</strong><span data-en="Shortest-path routing can create unsafe crowd concentration during majority evacuations." data-zh="最短路径规划在大规模疏散中可能造成不安全的人群集中。">Shortest-path routing can create unsafe crowd concentration during majority evacuations.</span></li>
-                                <li><strong data-en="Method" data-zh="方法">Method</strong><span data-en="Combine Dijkstra routing, ant-colony-inspired optimization, and LLM-assisted decisions." data-zh="结合 Dijkstra 路径规划、蚁群启发式优化与大语言模型辅助决策。">Combine Dijkstra routing, ant-colony-inspired optimization, and LLM-assisted decisions.</span></li>
-                                <li><strong data-en="Evidence" data-zh="证据">Evidence</strong><span data-en="Outperformed simple Dijkstra in the tested majority-evacuation scenarios." data-zh="在测试的大规模疏散场景中优于简单 Dijkstra 方法。">Outperformed simple Dijkstra in the tested majority-evacuation scenarios.</span></li>
-                            </ul>
-                            <div class="case-study-links">
-                                <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/git_Density_based%5BD%5D_large_scale_Dij%5BD%5D_Ant%5BD%5D_LLM%5BD%5D_ROUTE.ipynb" target="_blank" rel="noopener noreferrer" class="highlight-link">GitHub ↗</a>
-                                <a href="https://medium.com/@houfuchen0702/building-smart-evacuation-maps-integrating-dijkstra-aco-inspired-routing-and-llm-decision-making-8885dfbec49e" target="_blank" rel="noopener noreferrer" data-en="Build note ↗" data-zh="构建笔记 ↗">Build note ↗</a>
-                            </div>
-                        </div>
-
-                        <div id="proj-swim" class="highlight-card">
-                            <div class="vertical-accent"></div>
-                            <p class="case-study-eyebrow" data-en="PHYSICAL COMPUTING · LIGHT" data-zh="实体计算 · 光">PHYSICAL COMPUTING · LIGHT</p>
-                            <h3 data-en="S.W.I.M (Sequential Wave Imprinting Machine)" data-zh="S.W.I.M（序列波印制机）">S.W.I.M (Sequential Wave Imprinting Machine)</h3>
-                            <ul class="case-study-grid">
-                                <li><strong data-en="Idea" data-zh="想法">Idea</strong><span data-en="Move a one-dimensional light source through space to imprint a two-dimensional image." data-zh="让一维光源在空间中移动，从而印制出二维图像。">Move a one-dimensional light source through space to imprint a two-dimensional image.</span></li>
-                                <li><strong data-en="Build" data-zh="构建">Build</strong><span data-en="Arduino, addressable LEDs, and time-lapse photography turn digital pixels into a physical trace." data-zh="使用 Arduino、可寻址 LED 与延时摄影，把数字像素变成物理轨迹。">Arduino, addressable LEDs, and time-lapse photography turn digital pixels into a physical trace.</span></li>
-                                <li><strong data-en="Context" data-zh="背景">Context</strong><span data-en="Hardware project sponsored by Prof. Steve Mann." data-zh="由 Steve Mann 教授赞助的硬件项目。">Hardware project sponsored by Prof. Steve Mann.</span></li>
-                            </ul>
-                            <a href="https://github.com/chf-NewStart/swimProject" target="_blank" rel="noopener noreferrer" class="highlight-link">GitHub ↗</a>
-                            <div class="snapshots">
-                                <img src="swim/swim1.webp" alt="Sequential Wave Imprinting Machine light pattern" width="720" height="960" loading="lazy" decoding="async">
-                                <img src="swim/swim2.webp" alt="S.W.I.M. hardware experiment in motion" width="720" height="960" loading="lazy" decoding="async">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="games-section" class="scroll-section projects-section">
-            <div class="container">
-                <div class="section-heading reveal-content">
-                    <div><p class="section-kicker" data-en="04 / TOOLS" data-zh="04 / 工具箱">04 / TOOLS</p><h2 class="section-title" data-en="Useful tools, built in public." data-zh="公开构建，真正有用。">Useful tools, built in public.</h2></div>
-                    <p class="section-summary" data-en="Every live tool in one place — the flagship three below, the smaller desk apps on the bench." data-zh="所有在线工具都在这里——下方三件旗舰，加上台面上的小工具。">Every live tool in one place — the flagship three below, the smaller desk apps on the bench.</p>
-                </div>
-
-                <div class="reveal-content">
-                    <div class="section-console" data-en="~/live-lab $ ls --featured" data-zh="~/在线实验室 $ ls --featured">~/live-lab $ ls --featured</div>
-                    <p class="lab-swipe-hint" data-en="SWIPE TO BROWSE →" data-zh="滑动浏览 →">SWIPE TO BROWSE →</p>
-
-                    <section class="arcade-grid" tabindex="0" aria-label="Live tools; swipe or scroll to browse">
-                        <div class="gc-card gc-featured gc-life-card">
-                            <div class="gc-visual gc-life-visual">
-                                <img src="game/life-card.webp" alt="A neon cellular butterfly from Conway’s Game of Life" width="2130" height="1470" loading="lazy" decoding="async">
-                                <span class="gc-visual-badge" data-en="FLAGSHIP · LIVE" data-zh="旗舰 · 在线">FLAGSHIP · LIVE</span>
-                            </div>
-                            <div class="gc-icon">[##]</div>
-                            <div class="gc-title" data-en="game_of_life.exe" data-zh="生命游戏.exe">game_of_life.exe</div>
-                            <div class="gc-desc" data-en="Draw patterns, watch them evolve, and turn them into music. Explore a sandbox, 11 leaderboard challenges, and a Music Box sequencer." data-zh="绘制图案、观察演化，并把它们变成音乐。探索沙盒、11 个排行榜挑战与八音盒音序器。">Draw patterns, watch them evolve, and turn them into music. Explore a sandbox, 11 leaderboard challenges, and a Music Box sequencer.</div>
-                            <div class="gc-tags">
-                                <span class="gc-tag green">flagship</span>
-                                <span class="gc-tag">sandbox</span>
-                                <span class="gc-tag">challenges</span>
-                                <span class="gc-tag">music</span>
-                            </div>
-                            <div class="gc-footer">
-                                <span class="gc-meta">JS · PWA · leaderboard</span>
-                                <a class="gc-play" href="https://lifegameproject.com/life.html" target="_blank" rel="noopener noreferrer" data-en="→ play ↗" data-zh="→ 游玩 ↗">→ play ↗</a>
-                            </div>
-                        </div>
-
-                        <div class="gc-card gc-project-card gc-qi-card">
-                            <div class="gc-visual gc-qi-visual" role="img" aria-label="Irregular dark river stones and pale fan shells resting in shallow water">
-                                <div class="gc-qi-still-life" aria-hidden="true">
-                                    <span class="gc-qi-piece gc-qi-pebble piece-a"></span>
-                                    <span class="gc-qi-piece gc-qi-shell piece-b"></span>
-                                    <span class="gc-qi-piece gc-qi-pebble piece-c"></span>
-                                    <span class="gc-qi-piece gc-qi-shell piece-d"></span>
-                                    <span class="gc-qi-piece gc-qi-pebble piece-e"></span>
-                                </div>
-                                <span class="gc-visual-badge" data-en="2 GAMES · LIVE" data-zh="2 款 · 在线">2 GAMES · LIVE</span>
-                            </div>
-                            <div class="gc-icon">[○●]</div>
-                            <div class="gc-title" data-en="qi.exe / 棋" data-zh="棋.exe">qi.exe / 棋</div>
-                            <div class="gc-desc" data-en="A growing board-game room. Practice 9×9 Go with a beginner AI, then play Go or Gomoku locally or in a private friend room." data-zh="一个持续扩展的棋类游戏空间。在 9×9 棋盘上与入门 AI 练习围棋，也可同屏或在私密好友房对弈围棋与五子棋。">A growing board-game room. Practice 9×9 Go with a beginner AI, then play Go or Gomoku locally or in a private friend room.</div>
-                            <div class="gc-tags">
-                                <span class="gc-tag green" data-en="Go" data-zh="围棋">Go</span>
-                                <span class="gc-tag" data-en="Gomoku" data-zh="五子棋">Gomoku</span>
-                                <span class="gc-tag" data-en="beginner AI" data-zh="入门 AI">beginner AI</span>
-                                <span class="gc-tag" data-en="local + private" data-zh="同屏 + 私密房">local + private</span>
-                            </div>
-                            <div class="gc-footer">
-                                <span class="gc-meta" data-en="AI · local · friend rooms" data-zh="AI · 同屏 · 好友房间">AI · local · friend rooms</span>
-                                <a class="gc-play" href="https://lifegameproject.com/game/qi.html" target="_blank" rel="noopener noreferrer" data-en="→ Zen &amp; Qi ↗" data-zh="→ 禅与棋 ↗">→ Zen &amp; Qi ↗</a>
-                            </div>
-                        </div>
-
-                        <div class="gc-card gc-project-card gc-reading-card">
-                            <div class="gc-visual gc-phloem-visual">
-                                <img src="output/extension/read-in-phloem-1.1.7-store/02-library-night.webp" alt="Phloem’s dark library with a reading wall and an open paper" width="1280" height="800" loading="lazy" decoding="async">
-                                <span class="gc-visual-badge" data-en="READER · LIVE" data-zh="阅读器 · 在线">READER · LIVE</span>
-                            </div>
-                            <div class="gc-icon">[▤]</div>
-                            <div class="gc-title" data-en="phloem.app" data-zh="phloem.app">phloem.app</div>
-                            <div class="gc-desc" data-en="Read PDFs and Word drafts with focus guides, notes, highlights, and AI threads beside the page. Pair a manuscript with reviewer comments and trace each concern back to its passage." data-zh="在原文旁阅读 PDF 与 Word 草稿，使用专注导读、笔记、高亮和 AI 讨论。还可将论文与审稿意见配对，把每条意见定位回对应段落。">Read PDFs and Word drafts with focus guides, notes, highlights, and AI threads beside the page. Pair a manuscript with reviewer comments and trace each concern back to its passage.</div>
-                            <div class="gc-tags">
-                                <span class="gc-tag green">local-first</span>
-                                <span class="gc-tag">PDF + DOCX</span>
-                                <span class="gc-tag" data-en="revision desk" data-zh="修订工作台">revision desk</span>
-                                <span class="gc-tag">offline</span>
-                            </div>
-                            <div class="gc-footer">
-                                <span class="gc-meta">PWA · private sync</span>
-                                <a class="gc-play" href="/reading.html" data-en="→ open Phloem" data-zh="→ 打开 Phloem">→ open Phloem</a>
-                            </div>
-                        </div>
-
-                    </section>
-                </div>
-
-                <div class="tool-bench reveal-content">
-                    <div class="archive-heading">
-                        <p class="section-console" data-en="~/tool-bench $ ls --compact" data-zh="~/工具台 $ ls --compact">~/tool-bench $ ls --compact</p>
-                        <p data-en="Smaller desk tools — private by default, one click away." data-zh="更小的桌面工具——默认私密，一键直达。">Smaller desk tools — private by default, one click away.</p>
-                    </div>
-                    <div class="archive-grid">
+                <div class="home-tool-list">
                         <a href="/pose-loop/"><span data-en="Unclench" data-zh="松肩">Unclench</span><small data-en="Camera-guided shoulder breaks →" data-zh="摄像头引导的肩颈放松 →">Camera-guided shoulder breaks →</small></a>
                         <a href="/monet/"><span data-en="Monet Light" data-zh="莫奈光影">Monet Light</span><small data-en="Turn a photo into painted light →" data-zh="把照片画进印象派光影 →">Turn a photo into painted light →</small></a>
                         <a href="/understory/"><span data-en="The Understory" data-zh="林下札记">The Understory</span><small data-en="Natural facts, hidden questions →" data-zh="自然冷知识，藏在其中的问题 →">Natural facts, hidden questions →</small></a>
                         <a href="/journal.html"><span data-en="Journal" data-zh="日记">Journal</span><small data-en="Quiet, private daily log →" data-zh="安静、私密的每日记录 →">Quiet, private daily log →</small></a>
                         <a href="/msg/"><span data-en="Note box" data-zh="留言箱">Note box</span><small data-en="Leave me a note, no login →" data-zh="给我留言，无需登录 →">Leave me a note, no login →</small></a>
                         <a href="/moneymanage/"><span data-en="Finance tracker" data-zh="财务追踪器">Finance tracker</span><small data-en="Local-first · OFX/QFX →" data-zh="本地优先 · OFX/QFX →">Local-first · OFX/QFX →</small></a>
-                        <a href="/tools/screenshot/"><span data-en="Screenshot Studio" data-zh="截图工坊">Screenshot Studio</span><small data-en="Crop & resize, local only →" data-zh="裁剪缩放，纯本地 →">Crop &amp; resize, local only →</small></a>
-                    </div>
-                </div>
-            </div>
-        </section>
+                        <a href="/tools/screenshot/"><span data-en="Screenshot Studio" data-zh="截图工坊">Screenshot Studio</span><small data-en="Crop &amp; resize, local only →" data-zh="裁剪缩放，纯本地 →">Crop &amp; resize, local only →</small></a>
+                    <a href="https://lifegameproject.com/game/qi.html"><span  data-en="Qi / 棋" data-zh="棋">Qi / 棋</span><small><span  data-en="Go and Gomoku, solo or with a friend →" data-zh="围棋与五子棋，独自练习或与朋友对弈 →">Go and Gomoku, solo or with a friend →</span></small></a>
+<a href="https://lifegameproject.com/life.html"><span  data-en="Game of Life" data-zh="生命游戏">Game of Life</span><small><span  data-en="Patterns, challenges and a music box →" data-zh="图案、挑战与八音盒 →">Patterns, challenges and a music box →</span></small></a></div>
 
-        <section id="personal-section" class="scroll-section projects-section">
-            <div class="container">
-                <div class="section-heading reveal-content">
-                    <div><p class="section-kicker" data-en="05 / NOTES &amp; LIFE" data-zh="05 / 笔记与生活">05 / NOTES &amp; LIFE</p><h2 class="section-title" data-en="There’s more than one mode." data-zh="不止一种运行模式。">There’s more than one mode.</h2></div>
-                    <p class="section-summary" data-en="Notes from the PhD journey, private-by-design experiments, and ideas I’m still turning over." data-zh="博士旅程笔记、注重隐私的个人实验，以及仍在不断推敲的想法。">Notes from the PhD journey, private-by-design experiments, and ideas I’m still turning over.</p>
-                </div>
-
-                <div class="about-explorer reveal-content">
-                    <div class="explorer-menu">
-                        <div class="explorer-header" data-en="~/personal_logs $ ls -a" data-zh="~/个人日志 $ ls -a">~/personal_logs $ ls -a</div>
-
-                        <button type="button" class="explorer-btn active" data-panel="pers-phd">
-                            <span class="highlight-icon">[::]</span> <span data-en="PhD" data-zh="博士">PhD</span>
-                        </button>
-                        <button type="button" class="explorer-btn" data-panel="pers-notes">
-                            <span class="highlight-icon">[::]</span> <span data-en="Knowledge_Base" data-zh="知识库">Knowledge_Base</span>
-                        </button>
-                        <button type="button" class="explorer-btn" data-panel="pers-game">
-                            <span class="highlight-icon">[🕹]</span> <span data-en="game_life.exe" data-zh="游戏人生.exe">game_life.exe</span>
-                        </button>
-                    </div>
-
-                    <div class="explorer-content">
-
-                        <div id="pers-phd" class="highlight-card active-card">
-                            <div class="vertical-accent"></div>
-                            <h3 data-en="Interdisciplinary PhD Journey" data-zh="跨学科博士之旅">Interdisciplinary PhD Journey</h3>
-                            <p><strong class="accent-label" data-en="Status:" data-zh="状态：">Status:</strong> <span data-en="Current PhD @ University of Waterloo" data-zh="在读博士 @ 滑铁卢大学">Current PhD @ University of Waterloo</span></p>
-                            <ul class="highlight-list">
-                                <li><strong data-en="Research Focus:" data-zh="研究方向：">Research Focus:</strong> <span data-en="Digital Twins &amp; Systems Architecture" data-zh="数字孪生与系统架构">Digital Twins &amp; Systems Architecture</span></li>
-                                <li><strong data-en="Department:" data-zh="院系：">Department:</strong> <span data-en="Chemical Engineering" data-zh="化学工程系">Chemical Engineering</span></li>
-                                <li><strong data-en="Supervisors:" data-zh="导师：">Supervisors:</strong> <span data-en="Prof. Nasser Mohieddin Abukhdeir &amp; Prof. Christian Euler" data-zh="Nasser Mohieddin Abukhdeir 教授与 Christian Euler 教授">Prof. Nasser Mohieddin Abukhdeir &amp; Prof. Christian Euler</span></li>
-
-
+                <details class="home-disclosure" >
+<summary><span  data-en="Earlier projects · Evacuation maps &amp; S.W.I.M." data-zh="早期项目 · 疏散地图与 S.W.I.M.">Earlier projects · Evacuation maps &amp; S.W.I.M.</span><span class="home-plus" aria-hidden="true">+</span></summary>
+<div class="home-disclosure-content"><div id="proj-evac" class="home-panel">
+                            <p class="case-study-eyebrow" data-en="ROUTING SYSTEM · OPEN NOTEBOOK" data-zh="路径系统 · 开放笔记">ROUTING SYSTEM · OPEN NOTEBOOK</p>
+                            <h3 data-en="Building Smart Evacuation Maps" data-zh="构建智能疏散地图">Building Smart Evacuation Maps</h3>
+                            <ul class="case-study-grid">
+                                <li>
+<strong data-en="Problem" data-zh="问题">Problem</strong><span data-en="Shortest-path routing can create unsafe crowd concentration during majority evacuations." data-zh="最短路径规划在大规模疏散中可能造成不安全的人群集中。">Shortest-path routing can create unsafe crowd concentration during majority evacuations.</span>
+</li>
+                                <li>
+<strong data-en="Method" data-zh="方法">Method</strong><span data-en="Combine Dijkstra routing, ant-colony-inspired optimization, and LLM-assisted decisions." data-zh="结合 Dijkstra 路径规划、蚁群启发式优化与大语言模型辅助决策。">Combine Dijkstra routing, ant-colony-inspired optimization, and LLM-assisted decisions.</span>
+</li>
+                                <li>
+<strong data-en="Evidence" data-zh="证据">Evidence</strong><span data-en="Outperformed simple Dijkstra in the tested majority-evacuation scenarios." data-zh="在测试的大规模疏散场景中优于简单 Dijkstra 方法。">Outperformed simple Dijkstra in the tested majority-evacuation scenarios.</span>
+</li>
                             </ul>
-                        </div>
-
-                        <div id="pers-notes" class="highlight-card">
-                            <div class="vertical-accent"></div>
+                            <div class="case-study-links">
+                                <a href="https://github.com/chf-NewStart/someUsefulStuff/blob/main/git_Density_based%5BD%5D_large_scale_Dij%5BD%5D_Ant%5BD%5D_LLM%5BD%5D_ROUTE.ipynb" target="_blank" rel="noopener noreferrer" class="highlight-link">GitHub ↗</a>
+                                <a href="https://medium.com/@houfuchen0702/building-smart-evacuation-maps-integrating-dijkstra-aco-inspired-routing-and-llm-decision-making-8885dfbec49e" target="_blank" rel="noopener noreferrer" data-en="Build note ↗" data-zh="构建笔记 ↗">Build note ↗</a>
+                            </div>
+                        </div><div id="proj-swim" class="home-panel">
+                            <p class="case-study-eyebrow" data-en="PHYSICAL COMPUTING · LIGHT" data-zh="实体计算 · 光">PHYSICAL COMPUTING · LIGHT</p>
+                            <h3 data-en="S.W.I.M (Sequential Wave Imprinting Machine)" data-zh="S.W.I.M（序列波印制机）">S.W.I.M (Sequential Wave Imprinting Machine)</h3>
+                            <ul class="case-study-grid">
+                                <li>
+<strong data-en="Idea" data-zh="想法">Idea</strong><span data-en="Move a one-dimensional light source through space to imprint a two-dimensional image." data-zh="让一维光源在空间中移动，从而印制出二维图像。">Move a one-dimensional light source through space to imprint a two-dimensional image.</span>
+</li>
+                                <li>
+<strong data-en="Build" data-zh="构建">Build</strong><span data-en="Arduino, addressable LEDs, and time-lapse photography turn digital pixels into a physical trace." data-zh="使用 Arduino、可寻址 LED 与延时摄影，把数字像素变成物理轨迹。">Arduino, addressable LEDs, and time-lapse photography turn digital pixels into a physical trace.</span>
+</li>
+                                <li>
+<strong data-en="Context" data-zh="背景">Context</strong><span data-en="Hardware project sponsored by Prof. Steve Mann." data-zh="由 Steve Mann 教授赞助的硬件项目。">Hardware project sponsored by Prof. Steve Mann.</span>
+</li>
+                            </ul>
+                            <a href="https://github.com/chf-NewStart/swimProject" target="_blank" rel="noopener noreferrer" class="highlight-link">GitHub ↗</a>
+                            <div class="snapshots">
+                                <img src="swim/swim1.webp" alt="Sequential Wave Imprinting Machine light pattern" width="720" height="960" loading="lazy" decoding="async">
+                                <img src="swim/swim2.webp" alt="S.W.I.M. hardware experiment in motion" width="720" height="960" loading="lazy" decoding="async">
+                            </div>
+                        </div></div>
+</details>
+                <details class="home-disclosure" id='personal-section'>
+<summary><span  data-en="Notes &amp; reading" data-zh="笔记与阅读">Notes &amp; reading</span><span class="home-plus" aria-hidden="true">+</span></summary>
+<div class="home-disclosure-content"><div id="pers-notes" class="home-panel">
                             <h3 data-en="Knowledge Base" data-zh="知识库">Knowledge Base</h3>
                             <p data-en="A collection of my thoughts, articles, and book notes." data-zh="我的想法、文章和读书笔记的集合。">A collection of my thoughts, articles, and book notes.</p>
                             <ul class="highlight-list">
-                                <li><strong data-en="The Understory:" data-zh="林下札记：">The Understory:</strong> <span data-en="Natural facts and the philosophical questions hiding inside them." data-zh="自然冷知识，以及藏在其中的哲学问题。">Natural facts and the philosophical questions hiding inside them.</span></li>
-                                <li><strong data-en="Computer Vision &amp; AI:" data-zh="计算机视觉与 AI：">Computer Vision &amp; AI:</strong> <span data-en="Notes from recent deep dives." data-zh="近期深入研读的笔记。">Notes from recent deep dives.</span></li>
-                                <li><strong data-en="Algorithms:" data-zh="算法：">Algorithms:</strong> <span data-en="Problem-solving patterns and optimizations." data-zh="解题模式与优化方法。">Problem-solving patterns and optimizations.</span></li>
-                                <li><strong data-en="How to Be an Imperfectionist:" data-zh="《如何成为不完美主义者》：">How to Be an Imperfectionist:</strong> <span data-en="Key takeaways on productivity." data-zh="关于行动力与效率的关键收获。">Key takeaways on productivity.</span></li>
+                                <li>
+<strong data-en="The Understory:" data-zh="林下札记：">The Understory:</strong> <span data-en="Natural facts and the philosophical questions hiding inside them." data-zh="自然冷知识，以及藏在其中的哲学问题。">Natural facts and the philosophical questions hiding inside them.</span>
+</li>
+                                <li>
+<strong data-en="Computer Vision &amp; AI:" data-zh="计算机视觉与 AI：">Computer Vision &amp; AI:</strong> <span data-en="Notes from recent deep dives." data-zh="近期深入研读的笔记。">Notes from recent deep dives.</span>
+</li>
+                                <li>
+<strong data-en="Algorithms:" data-zh="算法：">Algorithms:</strong> <span data-en="Problem-solving patterns and optimizations." data-zh="解题模式与优化方法。">Problem-solving patterns and optimizations.</span>
+</li>
+                                <li>
+<strong data-en="How to Be an Imperfectionist:" data-zh="《如何成为不完美主义者》：">How to Be an Imperfectionist:</strong> <span data-en="Key takeaways on productivity." data-zh="关于行动力与效率的关键收获。">Key takeaways on productivity.</span>
+</li>
                             </ul>
                             <a href="/understory/" class="highlight-link inline-action" data-en="→ Enter the understory" data-zh="→ 进入林下札记">→ Enter the understory</a>
-                        </div>
-
-                        <div id="pers-game" class="highlight-card">
-                            <div class="vertical-accent"></div>
-                            <p class="panel-command" data-en="~/life $ ./game_life --launch" data-zh="~/人生 $ ./game_life --launch">~/life $ ./game_life --launch</p>
-                            <div class="panel-title-row">
-                                <h3 data-en="Game Life" data-zh="游戏人生">Game Life</h3>
-                                <span class="status-badge" data-en="10 games · 3 co-op" data-zh="10 款游戏 · 3 款双人">10 games · 3 co-op</span>
-                            </div>
-                            <p data-en="A whole arcade with its own home — cellular automata, AI board games, a torch-lit roguelike maze, a plant-metabolism farming sim, and real-time co-op." data-zh="一整座有自己家的游戏厅——元胞自动机、AI 棋类、火把照明的肉鸽迷宫、植物代谢种植模拟和实时双人合作。">A whole arcade with its own home — cellular automata, AI board games, a torch-lit roguelike maze, a plant-metabolism farming sim, and real-time co-op.</p>
-                            <ul class="game-index" aria-label="Game Life titles">
-                                <li>game_of_life.exe</li><li>gomoku.exe</li><li>go.exe</li><li>labyrinth.exe</li>
-                                <li>grow_a_tomato.exe</li><li>tomatoswipe.exe</li><li>sudoku.exe</li>
-                                <li>keep_up.exe</li><li>lander.exe</li><li>tether.exe</li>
-                            </ul>
-                            <blockquote class="panel-quote" data-en="Life is a game — enjoy every piece of it. Don’t be afraid. Don’t rush." data-zh="人生即游戏——尽情享受每一刻。别害怕，别着急。">Life is a game — enjoy every piece of it. Don’t be afraid. Don’t rush.</blockquote>
-                            <a href="https://lifegameproject.com/" target="_blank" rel="noopener noreferrer" class="highlight-link inline-action" data-en="→ Enter the arcade ↗" data-zh="→ 进入游戏厅 ↗">→ Enter the arcade ↗</a>
-                        </div>
-
-                    </div>
-                </div>
+                        </div></div>
+</details>
+                <p class="home-life-note"><span  data-en="Life is a game — enjoy every piece of it. Don’t be afraid. Don’t rush." data-zh="人生即游戏——尽情享受每一刻。别害怕，别着急。">Life is a game — enjoy every piece of it. Don’t be afraid. Don’t rush.</span></p>
             </div>
         </section>
-
-
-        <section id="contact-section" class="scroll-section contact-section">
+        <section id="contact-section" class="home-section home-contact">
                     <div class="container">
-                        <div class="contact-shell reveal-content">
+                        <div class="contact-shell">
                             <div class="contact-copy">
-                                <p class="section-kicker" data-en="06 / CONTACT" data-zh="06 / 联系">06 / CONTACT</p>
+                                <p class="section-kicker" data-en="04 / CONTACT" data-zh="04 / 联系">04 / CONTACT</p>
                                 <h2 class="section-title" data-en="Let’s make something useful." data-zh="一起做点真正有用的事。">Let’s make something useful.</h2>
                                 <p data-en="I’m open to research collaborations, technical conversations, and ambitious systems problems — especially where modeling, sensing, and machine learning overlap." data-zh="我欢迎研究合作、技术交流与有挑战性的系统问题——尤其是建模、传感和机器学习的交汇处。">I’m open to research collaborations, technical conversations, and ambitious systems problems — especially where modeling, sensing, and machine learning overlap.</p>
                                 <a class="cta-button" href="mailto:h534chen@uwaterloo.ca" data-en="Email Houfu" data-zh="给厚孚发邮件">Email Houfu</a>
                             </div>
                             <ul class="contact-links" aria-label="Contact links">
-                                <li><span data-en="EMAIL" data-zh="邮箱">EMAIL</span><a href="mailto:h534chen@uwaterloo.ca">h534chen@uwaterloo.ca</a><button class="copy-button" id="copyEmail" type="button" data-copy="h534chen@uwaterloo.ca" data-en="Copy" data-zh="复制">Copy</button></li>
-                                <li><span>GITHUB</span><a href="https://github.com/chf-NewStart" target="_blank" rel="noopener noreferrer">chf-NewStart ↗</a></li>
-                                <li><span data-en="LINKEDIN" data-zh="领英">LINKEDIN</span><a href="https://linkedin.com/in/houfuchen" target="_blank" rel="noopener noreferrer">houfuchen ↗</a></li>
-                                <li><span data-en="RESUME" data-zh="简历">RESUME</span><a href="resumes/Houfu_Chen_Resume_2026.pdf" download="Houfu-Chen-CV-2026.pdf" data-en="Download CV ↓" data-zh="下载简历 ↓">Download CV ↓</a></li>
-                                <li><span data-en="MSGBOX" data-zh="留言箱">MSGBOX</span><a href="/msg/" data-en="Leave a note ↗" data-zh="给我留言 ↗">Leave a note ↗</a></li>
+                                <li>
+<span data-en="EMAIL" data-zh="邮箱">EMAIL</span><a href="mailto:h534chen@uwaterloo.ca">h534chen@uwaterloo.ca</a><button class="copy-button" id="copyEmail" type="button" data-copy="h534chen@uwaterloo.ca" data-en="Copy" data-zh="复制">Copy</button>
+</li>
+                                <li>
+<span>GITHUB</span><a href="https://github.com/chf-NewStart" target="_blank" rel="noopener noreferrer">chf-NewStart ↗</a>
+</li>
+                                <li>
+<span data-en="LINKEDIN" data-zh="领英">LINKEDIN</span><a href="https://linkedin.com/in/houfuchen" target="_blank" rel="noopener noreferrer">houfuchen ↗</a>
+</li>
+                                <li>
+<span data-en="RESUME" data-zh="简历">RESUME</span><a href="resumes/Houfu_Chen_Resume_2026.pdf" download="Houfu-Chen-CV-2026.pdf" data-en="Download CV ↓" data-zh="下载简历 ↓">Download CV ↓</a>
+</li>
+                                <li>
+<span data-en="MSGBOX" data-zh="留言箱">MSGBOX</span><a href="/msg/" data-en="Leave a note ↗" data-zh="给我留言 ↗">Leave a note ↗</a>
+</li>
                             </ul>
                         </div>
                     </div>
                 </section>
 
+
+
     </main>
     <footer>
-        <p>
-            <span data-en="HC / SYSTEMS &amp; RESEARCH" data-zh="HC / 系统与研究">HC / SYSTEMS &amp; RESEARCH</span>
-            <span class="footer-affiliation"><strong data-en="UNIVERSITY OF WATERLOO" data-zh="滑铁卢大学">UNIVERSITY OF WATERLOO</strong><span data-en="Houfu Chen · PhD Researcher · Chemical Engineering · E6-3018" data-zh="陈厚孚 · 博士研究员 · 化学工程系 · E6-3018">Houfu Chen · PhD Researcher · Chemical Engineering · E6-3018</span></span>
-            <span>&copy; <span id="currentYear">2026</span> Houfu Chen</span>
-            <span data-en="Built with curiosity in Waterloo" data-zh="在滑铁卢，以好奇心构建">Built with curiosity in Waterloo</span>
-            <span data-en="Backdrop: live leaf tissue" data-zh="背景：实时叶片组织">Backdrop: live leaf tissue</span>
-        </p>
+        <div class="container home-footer">
+            <p>© <span id="currentYear">2026</span> Houfu Chen <span class="home-footer-separator" aria-hidden="true">/</span> <span  data-en="Built with curiosity in Waterloo." data-zh="在滑铁卢，以好奇心构建。">Built with curiosity in Waterloo.</span></p>
+            <button class="home-fact-button" id="tomatoToggle" type="button" aria-label="Show a random fun fact" aria-pressed="false"><img src="/favicon_io/tomato-favicon-32x32.png?v=3" alt="" width="20" height="20"><span  data-en="A little curiosity" data-zh="来一点好奇心">A little curiosity</span></button>
+        </div>
     </footer>
-
-    <script src="bio-bg.js" defer></script>
     <script src="site.js" defer></script>
+    <script src="homepage.js" defer></script>
 </body>
 </html>

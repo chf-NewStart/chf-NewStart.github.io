@@ -1,8 +1,8 @@
 # Phloem for iPad
 
-This checkout targets **1.2.0 build 25**, reader cache **v144**. Version 1.2 adds opt-in, offline-first iCloud sync for library metadata, notes, highlights, handwriting, progress, PDFs, and Word originals. It uses the user's private CloudKit database, reuses Phloem's conflict-aware merge and deletion tombstones, transfers originals as separate assets in bounded chunks, and downloads a remote original when it is first opened on a device. Local reading remains available with sync off or while iCloud is unavailable. Native assets must be synced before building. The simulator build, native bundle tests, and development-signed archive pass; development/production CloudKit schema deployment, two-device TestFlight validation, privacy-report reconciliation, and China-mainland account testing remain release gates.
+This checkout targets **1.2.0 build 26**, reader cache **v144**. Version 1.2 adds opt-in, offline-first iCloud sync for library metadata, notes, highlights, handwriting, progress, PDFs, and Word originals. It also fail-closes cloud generative-assistant setup and requests for the China mainland (`CHN`) App Store storefront and while StoreKit cannot verify a storefront. Local reading, Pencil tools, and private iCloud sync remain available. Native assets must be synced before building. Production CloudKit schema deployment, two-device TestFlight validation, privacy-report reconciliation, and China-mainland account testing remain release gates.
 
-The current development-signed archive is `/Users/chf/Library/Developer/Xcode/Archives/2026-09-30/Phloem 1.2.0 (25) iCloud.xcarchive`. Its bundle version and CloudKit entitlements have been verified locally. It is not a distribution-signed/TestFlight artifact; make a fresh distribution archive only after the CloudKit schema and device gates below pass.
+The current development-signed candidate is `/Users/chf/Library/Developer/Xcode/Archives/2026-10-01/Phloem 1.2.0 (26) China-safe.xcarchive`. Its version/build, strict signature, CloudKit entitlements, and all 54 bundled-file hashes are verified locally. It uses a development profile and is not a distribution/TestFlight artifact. The build 25 archive predates the regional gate and is historical; do not upload it.
 
 The 1.1 target compiles for the iPad simulator and its automated bundle/security checks pass. It is not release-ready until the physical-iPad, provider, privacy, TestFlight, and media gates in [`release/RELEASE-CHECKLIST-1.1.md`](release/RELEASE-CHECKLIST-1.1.md) pass.
 
@@ -21,7 +21,7 @@ npm run ios:open
 
 In Xcode:
 
-1. Confirm the **App** target shows Version **1.2.0** and Build **25**.
+1. Confirm the **App** target shows Version **1.2.0** and Build **26**.
 2. Under **Signing & Capabilities**, select the correct Team and keep automatic signing enabled.
 3. Connect a physical iPad, trust the Mac, enable Developer Mode if requested, and choose it as the run destination.
 4. Use disposable documents and provider keys for the release checklist. Do not test with confidential or third-party personal data.
@@ -37,6 +37,7 @@ Historical signed archives **1.1.0 (14)**, **(15)**, and **(16)** were built and
 - PDF and Word originals are separate CloudKit assets up to 200 MB. Existing local originals upload in 512 KB bridge chunks; remote originals stay in iCloud until opened, then become locally available for offline reading.
 - Turning sync off leaves both copies intact. **Delete iCloud copy…** removes the CloudKit library and original assets while preserving the library already stored on that iPad.
 - China-mainland iCloud accounts use the GCBD-operated iCloud service under its separate terms. The in-app privacy link and public policy disclose this; release testing still needs a real China-mainland account/network.
+- StoreKit storefront `CHN` disables and hides all cloud generative-assistant setup/actions. The native bridge rechecks before saving a credential or starting a request, observes storefront changes, and cancels active provider sessions. Unknown storefronts are fail-closed.
 
 ## Included since 1.1
 

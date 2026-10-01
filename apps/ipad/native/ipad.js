@@ -22,6 +22,55 @@
     section.querySelectorAll('button,input,select,textarea').forEach(disable);
   }
 
+  var aiRegionNote = null;
+  var nativeLocalDescription = null;
+  function applyAiRegionPolicy(rawPolicy) {
+    var root = document.documentElement;
+    var policy = rawPolicy || {};
+    var hasNativePolicy = Object.prototype.hasOwnProperty.call(policy, 'cloudAIAllowed') ||
+      Object.prototype.hasOwnProperty.call(policy, 'storefrontKnown');
+    /* Compatibility is only for older development mocks. The shipped plugin
+       always supplies both fields and is independently fail-closed. */
+    var countryCode = String(policy.countryCode || '').toUpperCase();
+    var storefrontKnown = hasNativePolicy ? policy.storefrontKnown === true : true;
+    var cloudAIAllowed = hasNativePolicy ? policy.cloudAIAllowed === true : true;
+    if (countryCode === 'CHN') cloudAIAllowed = false;
+
+    root.classList.remove('phloem-ai-region-pending', 'phloem-ai-region-restricted',
+      'phloem-ai-region-unavailable');
+    if (!cloudAIAllowed) {
+      root.classList.add(countryCode === 'CHN' && storefrontKnown
+        ? 'phloem-ai-region-restricted' : 'phloem-ai-region-unavailable');
+      var activeAiTab = document.querySelector('[data-tab="aiPanel"].active, [data-tab="aiPanel"][aria-selected="true"]');
+      var notesTab = document.querySelector('[data-tab="notesPanel"]');
+      if (activeAiTab && notesTab) notesTab.click();
+    }
+
+    window.PHLOEM_AI_REGION = {
+      countryCode: countryCode,
+      storefrontKnown: storefrontKnown,
+      cloudAIAllowed: cloudAIAllowed
+    };
+    if (nativeLocalDescription) {
+      nativeLocalDescription.textContent = cloudAIAllowed
+        ? 'Papers, highlights, and notes always stay available in this app’s local storage. Optional iCloud sync keeps a private copy in your iCloud account and merges it across your Apple devices. Optional AI uses a provider you choose, only after you accept its data-sharing disclosure; provider keys stay in iOS Keychain.'
+        : 'Papers, highlights, and notes always stay available in this app’s local storage. Optional iCloud sync keeps a private copy in your iCloud account and merges it across your Apple devices.';
+    }
+    if (aiRegionNote) {
+      aiRegionNote.hidden = cloudAIAllowed;
+      aiRegionNote.textContent = countryCode === 'CHN' && storefrontKnown
+        ? 'Online reading-assistant features are unavailable in the China mainland App Store. Local reading, Apple Pencil tools, and iCloud sync remain available.'
+        : 'Online reading-assistant features are unavailable until the App Store region can be verified.';
+    }
+    text(document.querySelector('#reviewsPanel .reviewer-panel-head > .hint'), cloudAIAllowed
+      ? 'Read imported Word comments beside the paper. Link them yourself, or use your configured AI provider to help match passages.'
+      : 'Read imported Word comments beside the paper and link them to passages yourself.');
+  }
+
+  function failClosedAiRegion() {
+    applyAiRegionPolicy({ countryCode: '', storefrontKnown: false, cloudAIAllowed: false });
+  }
+
   /* Keep every shared-reader element in the DOM: its state/rendering functions
      still reference them. CSS does not allow later web renders to reveal them. */
   ['gdriveConnectBtn', 'syncSaveBtn', 'aiPassCreate',
@@ -73,13 +122,16 @@
     localSection.className = 'native-local-settings';
     var heading = document.createElement('h3');
     heading.textContent = 'Saved on this iPad';
-    var description = document.createElement('p');
-    description.textContent = 'Papers, highlights, and notes always stay available in this app’s local storage. ' +
+    nativeLocalDescription = document.createElement('p');
+    nativeLocalDescription.textContent = 'Papers, highlights, and notes always stay available in this app’s local storage. ' +
       'Optional iCloud sync keeps a private copy in your iCloud account and merges it across your Apple devices. Optional AI uses a provider you choose, only after you accept its data-sharing disclosure; provider keys stay in iOS Keychain.';
+    aiRegionNote = document.createElement('p');
+    aiRegionNote.className = 'native-ai-region-note';
+    aiRegionNote.hidden = true;
     var lookupNote = document.createElement('p');
     lookupNote.textContent = 'Define uses Wikipedia and Wikimedia online when you ask for a lookup. ' +
       'Your selected term is sent to those services.';
-    localSection.append(heading, description, lookupNote);
+    localSection.append(heading, nativeLocalDescription, aiRegionNote, lookupNote);
     if (window.PHLOEM_NATIVE_BLOCKED_SETUP) {
       var blockedNote = document.createElement('p');
       blockedNote.textContent = 'That device setup or AI pass link was not imported. Add an AI key manually so it can be stored in iOS Keychain.';
@@ -129,8 +181,6 @@
     'Move the guide, turn the page, and keep notes beside the paper.');
   text(document.querySelector('.hero-card .step:nth-child(3) span'),
     'Read locally without an account, or turn on private iCloud sync.');
-  text(document.querySelector('#reviewsPanel .reviewer-panel-head > .hint'),
-    'Read imported Word comments beside the paper. Link them yourself, or use your configured AI provider to help match passages.');
   text(document.querySelector('#aiPanel .ai-panel-head .hint'),
     'You are interacting with AI. Choose what to discuss, do not send sensitive text, and verify important claims. Only the chosen context is sent.');
 
@@ -149,6 +199,17 @@
   /* Capacitor Browser opens a separate Safari view, leaving the local app and
      its origin intact. Do not send blob downloads or local PDF links through it. */
   var capacitor = window.Capacitor;
+  var nativeAi = capacitor && capacitor.Plugins && capacitor.Plugins.PhloemAI;
+  if (nativeAi && typeof nativeAi.status === 'function') {
+    Promise.resolve(nativeAi.status()).then(applyAiRegionPolicy).catch(failClosedAiRegion);
+    if (typeof nativeAi.addListener === 'function') {
+      Promise.resolve(nativeAi.addListener('storefrontChanged', function (policy) {
+        applyAiRegionPolicy(policy);
+      })).catch(function () { /* The current status still governs this launch. */ });
+    }
+  } else {
+    failClosedAiRegion();
+  }
   /* The native bridge exposes registered plugins under Plugins; registerPlugin
      belongs to the optional JS core bundle, not every native-injected global. */
   var nativeBrowser = capacitor && capacitor.Plugins && capacitor.Plugins.Browser;

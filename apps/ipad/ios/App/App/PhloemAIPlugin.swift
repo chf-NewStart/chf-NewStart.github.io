@@ -1,6 +1,7 @@
 import Capacitor
 import Foundation
 import Security
+import StoreKit
 import UIKit
 
 @objc(PhloemAIPlugin)
@@ -19,6 +20,11 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
     private static let installMarkerKey = "phloem.ai.install-marker.v1"
     private static let knownProviders = Set(["gemini", "deepseek", "openai", "anthropic"])
     private static let supportedProviders = Set(["deepseek", "openai", "anthropic"])
+    private static let mainlandChinaStorefront = "CHN"
+
+    private let providerSessionQueue = DispatchQueue(label: "com.houfu72.phloem.ai-sessions")
+    private var providerSessions: [UUID: URLSession] = [:]
+    private var storefrontUpdatesTask: Task<Void, Never>?
 
     override func load() {
         super.load()
@@ -42,6 +48,20 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
             defaults.removeObject(forKey: consentKey(provider))
             defaults.removeObject(forKey: legacyConsentKey(provider))
         }
+
+        storefrontUpdatesTask = Task { [weak self] in
+            for await storefront in Storefront.updates {
+                guard let self, !Task.isCancelled else { return }
+                let policy = self.regionPolicy(storefront: storefront)
+                if !policy.cloudAIAllowed { self.cancelProviderRequests() }
+                self.notifyListeners("storefrontChanged", data: policy.dictionary)
+            }
+        }
+    }
+
+    deinit {
+        storefrontUpdatesTask?.cancel()
+        cancelProviderRequests()
     }
 
     private struct ConfigureInput: Decodable {
@@ -68,6 +88,23 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
         let destination: String
         let version: Int
         let grantedAt: String
+    }
+
+    private struct RegionPolicy {
+        let countryCode: String?
+
+        var storefrontKnown: Bool { countryCode != nil }
+        var cloudAIAllowed: Bool {
+            guard let countryCode else { return false }
+            return countryCode != PhloemAIPlugin.mainlandChinaStorefront
+        }
+        var dictionary: [String: Any] {
+            [
+                "countryCode": countryCode ?? "",
+                "storefrontKnown": storefrontKnown,
+                "cloudAIAllowed": cloudAIAllowed
+            ]
+        }
     }
 
     private enum PluginError: LocalizedError {
@@ -113,6 +150,10 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func configure(_ call: CAPPluginCall) {
+        withCloudAIAllowed(call) { [weak self] in self?.configureAllowed(call) }
+    }
+
+    private func configureAllowed(_ call: CAPPluginCall) {
         do {
             let input = try call.decode(ConfigureInput.self)
             let provider = try validatedProvider(input.provider)
@@ -142,24 +183,39 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func status(_ call: CAPPluginCall) {
-        do {
-            var providers: [String] = []
-            var consentedProviders: [String] = []
-            for provider in Self.supportedProviders.sorted() where try credential(provider: provider) != nil {
-                providers.append(provider)
-                if validConsent(for: provider) {
-                    consentedProviders.append(provider)
-                }
+        Task { [weak self] in
+            guard let self else {
+                call.reject("Phloem could not check AI availability.", "AI_STATUS_FAILED")
+                return
             }
-            call.resolve(["providers": providers,
-                          "consentedProviders": consentedProviders,
-                          "consentVersion": Self.consentVersion])
-        } catch {
-            call.reject(error.localizedDescription, "AI_STATUS_FAILED", error)
+            let policy = await self.currentRegionPolicy()
+            do {
+                var providers: [String] = []
+                var consentedProviders: [String] = []
+                if policy.cloudAIAllowed {
+                    for provider in Self.supportedProviders.sorted() where try self.credential(provider: provider) != nil {
+                        providers.append(provider)
+                        if self.validConsent(for: provider) {
+                            consentedProviders.append(provider)
+                        }
+                    }
+                }
+                var result = policy.dictionary
+                result["providers"] = providers
+                result["consentedProviders"] = consentedProviders
+                result["consentVersion"] = Self.consentVersion
+                call.resolve(result)
+            } catch {
+                call.reject(error.localizedDescription, "AI_STATUS_FAILED", error)
+            }
         }
     }
 
     @objc func request(_ call: CAPPluginCall) {
+        withCloudAIAllowed(call) { [weak self] in self?.requestAllowed(call) }
+    }
+
+    private func requestAllowed(_ call: CAPPluginCall) {
         do {
             let input = try call.decode(RequestInput.self)
             let provider = try validatedProvider(input.provider)
@@ -185,8 +241,13 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
             configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
             let redirectDelegate = ApprovedRedirectDelegate(expectedHost: providerDestination(provider))
             let session = URLSession(configuration: configuration, delegate: redirectDelegate, delegateQueue: nil)
+            let requestID = UUID()
+            registerProviderSession(session, id: requestID)
             session.dataTask(with: request) { [weak self] data, response, error in
-                defer { session.finishTasksAndInvalidate() }
+                defer {
+                    self?.removeProviderSession(id: requestID)
+                    session.finishTasksAndInvalidate()
+                }
                 if let error {
                     call.reject("The AI provider could not be reached.", "AI_NETWORK_FAILED", error)
                     return
@@ -217,6 +278,53 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
         } catch {
             call.reject(error.localizedDescription, "AI_REQUEST_REJECTED", error)
         }
+    }
+
+    private func currentRegionPolicy() async -> RegionPolicy {
+        regionPolicy(storefront: await Storefront.current)
+    }
+
+    private func regionPolicy(storefront: Storefront?) -> RegionPolicy {
+        RegionPolicy(countryCode: storefront?.countryCode.uppercased())
+    }
+
+    /// Storefront is authoritative for App Store regional availability. Unknown is
+    /// fail-closed: ordinary reading still works, but no provider setup or request
+    /// can leave the device until StoreKit identifies a non-mainland storefront.
+    private func withCloudAIAllowed(_ call: CAPPluginCall, action: @escaping () -> Void) {
+        Task { [weak self] in
+            guard let self else {
+                call.reject("Cloud AI availability could not be checked.", "AI_STOREFRONT_UNKNOWN")
+                return
+            }
+            let policy = await self.currentRegionPolicy()
+            guard policy.cloudAIAllowed else {
+                let code = policy.storefrontKnown ? "AI_UNAVAILABLE_REGION" : "AI_STOREFRONT_UNKNOWN"
+                let message = policy.storefrontKnown
+                    ? "Cloud AI is unavailable in this App Store region."
+                    : "Cloud AI is unavailable until the App Store region can be verified."
+                call.reject(message, code)
+                return
+            }
+            action()
+        }
+    }
+
+    private func registerProviderSession(_ session: URLSession, id: UUID) {
+        providerSessionQueue.sync { providerSessions[id] = session }
+    }
+
+    private func removeProviderSession(id: UUID) {
+        providerSessionQueue.sync { _ = providerSessions.removeValue(forKey: id) }
+    }
+
+    private func cancelProviderRequests() {
+        let sessions = providerSessionQueue.sync { () -> [URLSession] in
+            let sessions = Array(providerSessions.values)
+            providerSessions.removeAll()
+            return sessions
+        }
+        sessions.forEach { $0.invalidateAndCancel() }
     }
 
     private func validatedProvider(_ value: String) throws -> String {
@@ -258,12 +366,20 @@ final class PhloemAIPlugin: CAPPlugin, CAPBridgedPlugin {
                     call.reject("Enter an API key to enable this provider.", "AI_CREDENTIAL_REQUIRED")
                     return
                 }
-                do {
-                    try self.storeCredential(key, provider: provider)
-                    try self.storeConsent(for: provider)
-                    call.resolve(["hasCredential": true, "provider": provider])
-                } catch {
-                    call.reject(error.localizedDescription, "AI_CONFIGURATION_FAILED", error)
+                Task {
+                    let policy = await self.currentRegionPolicy()
+                    guard policy.cloudAIAllowed else {
+                        let code = policy.storefrontKnown ? "AI_UNAVAILABLE_REGION" : "AI_STOREFRONT_UNKNOWN"
+                        call.reject("Cloud AI is unavailable in this App Store region.", code)
+                        return
+                    }
+                    do {
+                        try self.storeCredential(key, provider: provider)
+                        try self.storeConsent(for: provider)
+                        call.resolve(["hasCredential": true, "provider": provider])
+                    } catch {
+                        call.reject(error.localizedDescription, "AI_CONFIGURATION_FAILED", error)
+                    }
                 }
             }
             alert.addAction(save)

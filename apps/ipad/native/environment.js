@@ -3,7 +3,10 @@
   'use strict';
 
   window.PHLOEM_NATIVE = true;
-  document.documentElement.classList.add('phloem-native');
+  /* Hide cloud-AI entry points before the shared reader paints. The native
+     StoreKit check removes this fail-closed class only for a verified,
+     non-mainland-China storefront. */
+  document.documentElement.classList.add('phloem-native', 'phloem-ai-region-pending');
 
   /* Device setup links contain credentials. This local-reading prototype has no
      native credential store or OAuth flow, so do not import those links. The

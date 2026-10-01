@@ -206,7 +206,7 @@ test('Xcode Debug and Release agree on the next Apple build identity', async () 
   const project = await readFile(path.join(defaultRepoRoot, 'apps/ipad/ios/App/App.xcodeproj/project.pbxproj'), 'utf8');
   const builds = [...project.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map(match => match[1]);
   const versions = [...project.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map(match => match[1]);
-  assert.deepEqual(builds, ['25', '25']);
+  assert.deepEqual(builds, ['26', '26']);
   assert.deepEqual(versions, ['1.2.0', '1.2.0']);
 });
 
@@ -234,10 +234,28 @@ test('native AI security and privacy declarations remain attached to the app tar
   const project = await readFile(path.join(appRoot, 'App.xcodeproj/project.pbxproj'), 'utf8');
   assert.match(plugin, /kSecAttrAccessibleWhenUnlockedThisDeviceOnly/);
   assert.match(plugin, /URLSessionConfiguration\.ephemeral/);
+  assert.match(plugin, /import StoreKit/);
+  assert.match(plugin, /Storefront\.current/);
+  assert.match(plugin, /Storefront\.updates/);
+  assert.match(plugin, /mainlandChinaStorefront = "CHN"/);
+  assert.match(plugin, /withCloudAIAllowed\(call\)/);
+  assert.match(plugin, /cancelProviderRequests\(\)/);
   assert.match(plugin, /request\.url\?\.host == expectedHost/);
   assert.match(plugin, /UIAlertController\(/);
   assert.match(plugin, /field\.isSecureTextEntry = true/);
   assert.match(adapter, /hide\(byId\('aiKey'\)\)/);
+  assert.match(adapter, /applyAiRegionPolicy/);
+  assert.match(adapter, /countryCode === 'CHN'/);
+  assert.match(adapter, /storefrontChanged/);
+  const environment = await readFile(path.join(defaultRepoRoot, 'apps/ipad/native/environment.js'), 'utf8');
+  const nativeCss = await readFile(path.join(defaultRepoRoot, 'apps/ipad/native/ipad.css'), 'utf8');
+  const html = await readFile(path.join(defaultRepoRoot, 'reading.html'), 'utf8');
+  assert.match(environment, /phloem-ai-region-pending/);
+  assert.match(nativeCss, /phloem-ai-region-restricted #aiSettingsSection/);
+  for (const id of ['aiPanel', 'selectionNoteAi', 'lookupAiSetup', 'locateReviewsBtn', 'mAsk']) {
+    assert.match(nativeCss, new RegExp('#' + id));
+  }
+  assert.match(html, /id="aiSettingsSection"/);
   assert.doesNotMatch(reader, /nativePlugin\.configure\(\{provider:id,key:/);
   for (const host of ['api.openai.com', 'api.anthropic.com', 'api.deepseek.com']) {
     assert.match(plugin, new RegExp(host.replaceAll('.', '\\.')));

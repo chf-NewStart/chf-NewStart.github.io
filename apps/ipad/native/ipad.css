@@ -3,6 +3,33 @@ html.phloem-native .native-unavailable {
   display: none !important;
 }
 
+/* Cloud AI is fail-closed until StoreKit identifies the current storefront.
+   The native plugin independently rejects setup and provider requests, so this
+   visibility rule is presentation—not the security boundary. */
+html.phloem-native.phloem-ai-region-pending #aiSettingsSection,
+html.phloem-native.phloem-ai-region-pending [data-tab="aiPanel"],
+html.phloem-native.phloem-ai-region-pending #aiPanel,
+html.phloem-native.phloem-ai-region-pending #selectionNoteAi,
+html.phloem-native.phloem-ai-region-pending #lookupAiSetup,
+html.phloem-native.phloem-ai-region-pending #locateReviewsBtn,
+html.phloem-native.phloem-ai-region-pending #mAsk,
+html.phloem-native.phloem-ai-region-restricted #aiSettingsSection,
+html.phloem-native.phloem-ai-region-restricted [data-tab="aiPanel"],
+html.phloem-native.phloem-ai-region-restricted #aiPanel,
+html.phloem-native.phloem-ai-region-restricted #selectionNoteAi,
+html.phloem-native.phloem-ai-region-restricted #lookupAiSetup,
+html.phloem-native.phloem-ai-region-restricted #locateReviewsBtn,
+html.phloem-native.phloem-ai-region-restricted #mAsk,
+html.phloem-native.phloem-ai-region-unavailable #aiSettingsSection,
+html.phloem-native.phloem-ai-region-unavailable [data-tab="aiPanel"],
+html.phloem-native.phloem-ai-region-unavailable #aiPanel,
+html.phloem-native.phloem-ai-region-unavailable #selectionNoteAi,
+html.phloem-native.phloem-ai-region-unavailable #lookupAiSetup,
+html.phloem-native.phloem-ai-region-unavailable #locateReviewsBtn,
+html.phloem-native.phloem-ai-region-unavailable #mAsk {
+  display: none !important;
+}
+
 /* The shared dialog also imports .phloem-review files. Leave the confirmation
    button visible in that mode, where the download control has class hidden. */
 html.phloem-native .native-review-share:has(#reviewShareDownload:not(.hidden)) #reviewSharePrimary {

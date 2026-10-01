@@ -107,7 +107,11 @@ function check(name, actual) {
             await new Promise(resolve => delayedStatus.push(resolve));
             window.__nativeStatusPending--;
           }
-          return capturedState;
+          return { ...capturedState, countryCode: 'CAN', storefrontKnown: true, cloudAIAllowed: true };
+        },
+        addListener(event, listener) {
+          if (event === 'storefrontChanged') window.__emitStorefrontChanged = listener;
+          return Promise.resolve({ remove() {} });
         },
         async configure(payload) {
           window.__nativeCalls.push({ method: 'configure', payload });
@@ -177,7 +181,24 @@ function check(name, actual) {
   };
   await page.goto(origin + '/reading.html', { waitUntil: 'load' });
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
+  await page.waitForFunction(() => typeof window.__emitStorefrontChanged === 'function');
   const originalPaper = await savedPaper();
+  await page.evaluate(() => window.__emitStorefrontChanged({ countryCode: 'CHN', storefrontKnown: true, cloudAIAllowed: false }));
+  await page.waitForFunction(() => document.documentElement.classList.contains('phloem-ai-region-restricted'));
+  await openSettings();
+  check('China mainland storefront hides cloud AI settings and actions',
+    !(await page.locator('#aiSettingsSection').isVisible()) &&
+    !(await page.locator('[data-tab="aiPanel"]').isVisible()) &&
+    !(await page.locator('#mAsk').isVisible()) &&
+    !(await page.locator('#locateReviewsBtn').isVisible()));
+  check('China mainland storefront keeps the local reader available', await page.locator('#readerPage').isVisible());
+  check('China mainland settings explain the restriction without naming a provider',
+    /China mainland App Store/.test(await page.locator('.native-ai-region-note').textContent()) &&
+    !/OpenAI|ChatGPT/.test(await page.locator('.native-local-settings').textContent()));
+  await closeSettings();
+  await page.evaluate(() => window.__emitStorefrontChanged({ countryCode: 'CAN', storefrontKnown: true, cloudAIAllowed: true }));
+  await page.waitForFunction(() => window.PHLOEM_AI_REGION && window.PHLOEM_AI_REGION.cloudAIAllowed &&
+    !document.documentElement.classList.contains('phloem-ai-region-restricted'));
   await openSettings();
   assert.deepEqual(await page.locator('#aiProvider option').evaluateAll(options => options.map(option => option.value).sort()), ['anthropic', 'deepseek', 'openai']);
   check('native settings offer DeepSeek, OpenAI, and Anthropic only', true);
@@ -303,27 +324,32 @@ function check(name, actual) {
     (await page.locator('#aiKeyStatus').textContent()).includes('No key stored') && !(await page.locator('#aiKeyRemove').isVisible()));
 
   await reloadWithDelayedStatus();
+  check('an unverified storefront keeps cloud AI hidden during native status lookup',
+    !(await page.locator('#aiSettingsSection').isVisible()));
+  await releaseDelayedStatus();
+  await page.waitForFunction(() => window.PHLOEM_AI_REGION && window.PHLOEM_AI_REGION.cloudAIAllowed);
   await page.check('#nativeAiConsentCheck');
   await page.fill('#aiModel', 'deepseek-draft-model');
-  await releaseDelayedStatus();
-  check('late initial native status does not clear an in-progress consent checkbox or model edit',
+  check('verified non-China storefront enables consent and model editing',
     await page.locator('#nativeAiConsentCheck').isChecked() && await page.locator('#aiModel').inputValue() === 'deepseek-draft-model');
 
   await reloadWithDelayedStatus();
+  await releaseDelayedStatus();
+  await page.waitForFunction(() => window.PHLOEM_AI_REGION && window.PHLOEM_AI_REGION.cloudAIAllowed);
   await page.check('#nativeAiConsentCheck');
   await page.fill('#aiModel', 'deepseek-flash');
   await page.click('#aiKeySave');
   await page.waitForFunction(() => document.getElementById('aiKeyStatus').textContent.includes('stored in iOS Keychain'));
-  await releaseDelayedStatus();
-  check('stale initial native status cannot undo a completed key/consent save',
+  check('verified non-China storefront can complete key and consent setup',
     (await settings()).providers.deepseek.keyPresent && await page.locator('#nativeAiEnabled').isVisible() &&
     !(await page.locator('#nativeAiConsent').isVisible()) && await page.locator('#aiKeyRemove').isVisible());
 
   await reloadWithDelayedStatus();
+  await releaseDelayedStatus();
+  await page.waitForFunction(() => window.PHLOEM_AI_REGION && window.PHLOEM_AI_REGION.cloudAIAllowed);
   await page.click('#aiKeyRemove');
   await page.waitForFunction(() => document.getElementById('aiKeyStatus').textContent.includes('removed from iOS Keychain'));
-  await releaseDelayedStatus();
-  check('stale initial native status cannot restore a removed key or consent receipt',
+  check('verified non-China storefront can remove its key and consent receipt',
     !(await settings()).providers.deepseek.keyPresent && !(await page.locator('#nativeAiEnabled').isVisible()) &&
     await page.locator('#nativeAiConsent').isVisible() && !(await page.locator('#aiKeyRemove').isVisible()));
 

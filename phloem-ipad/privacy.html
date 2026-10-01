@@ -26,14 +26,15 @@
   <main>
     <p class="eyebrow">Phloem for iPad</p>
     <h1>Your papers. Your reading space.</h1>
-    <p class="meta">Privacy policy · Updated 28 September 2026</p>
+    <p class="meta">Privacy policy · Updated 1 October 2026</p>
     <p>Phloem for iPad is a paper reader made by Houfu Chen. This policy describes the iPad app. The Phloem website and browser extension have their own features and privacy information.</p>
 
     <h2>What stays in the app</h2>
     <p>Imported PDF and Word originals, extracted text, highlights, reading notes, reviewer comments, reading positions, and preferences are stored in the app on your iPad. Document rendering, text extraction, and the app’s OCR run on the device. Ordinary reading does not upload your library to a developer-operated service.</p>
     <p>Phloem has no Phloem account, advertising, or integrated analytics service. Google Drive and GitHub sync are unavailable in the iPad app. In version 1.1 and later, optional cloud AI is available only after you choose a provider and complete the setup described below.</p>
 
-    <h2>Optional AI in version 1.1 and later</h2>
+    <h2>Optional AI outside the China mainland storefront</h2>
+    <p>Cloud AI is unavailable when the signed App Store storefront is China mainland. Phloem uses Apple's StoreKit storefront status to hide cloud AI controls and block configuration and requests in native code. If the storefront is not yet available or cannot be identified, cloud AI remains unavailable. If the storefront changes to China mainland while a request is active, Phloem cancels that request. Local reading and annotation do not depend on cloud AI and remain available.</p>
     <p>AI is off by default and is available only to people who confirm they are 18 or older. To turn it on, you choose one supported provider, review a provider-specific disclosure, give your affirmative consent, and enter your own provider API key in a native iOS secure prompt. The key is stored in this iPad’s Keychain with this-device-only protection. Phloem’s web interface cannot read it back, and Phloem does not include it in library backups or exports.</p>
     <p>An AI request is made only when you deliberately use an AI feature. Depending on the action, Phloem sends the selected passage, current-page text, or guide context; your question and earlier turns in the same Phloem discussion; or extracted reviewer text and candidate excerpts chosen locally for reviewer assistance. Phloem does not send the original PDF or Word file, the rest of your library, unrelated highlights or notes, or keys for other providers.</p>
     <p>The request goes directly from your iPad to the provider over HTTPS. Phloem does not operate an AI proxy and the developer does not receive your prompt or the provider’s response. The provider receives your API key and normal connection information, and the key can associate the request with your provider account.</p>

@@ -1,14 +1,14 @@
 # Phloem 1.1 App Store package
 
-Target: **version 1.1.0, build 24**, reader cache **v143**. Build 24 re-anchors the reading-guide grip to the left edge of the guide band, clearing the zen-mode side dock; annotation and AI behavior are unchanged. It was archived and locally verified on September 30, 2026. Both Highlight and Pen use compact bottom toolbars with accessible descriptions instead of visible instruction footers. Pen retains eight colors, three widths, icon-only Pen/Eraser, Undo/Redo, and Done; Fine is the default size. Highlight retains Define without Ask AI; the separate Discuss/AI workspace is unchanged. Device testing, distribution validation, and upload remain pending. This is draft metadata, not submitted App Store Connect content.
+Target: **version 1.1.0, build 25**, reader cache **v143**. Build 25 retains the verified left-side reading-guide grip from build 24 and adds a native App Store storefront gate for optional cloud features. In the China mainland storefront, or while the storefront is unknown, those features and settings are hidden and native requests are blocked. Local reading, Pencil writing, highlighting, notes, guide, search, and reviewer tools remain available. Device testing, distribution validation, and upload remain pending. This is draft metadata, not submitted App Store Connect content.
 
 ## Promotional text
 
-Read papers deeply with a calm iPad desk, Pencil handwriting and highlights, professional notes, reviewer tools, and optional bring-your-own-key AI.
+Read papers deeply with a calm iPad desk, Apple Pencil handwriting and highlights, professional notes, focused layouts, and reviewer tools.
 
 ## What's New in This Version
 
-Phloem 1.1 adds an optional AI reading partner for users 18 and older. With your own OpenAI, Anthropic, or DeepSeek API key, you can discuss a selected passage, the current page, or the reading guide, and get help matching reviewer comments to likely passages.
+Phloem 1.1 turns your iPad into a focused reading and annotation desk for academic and technical documents.
 
 Also new:
 
@@ -20,13 +20,10 @@ Also new:
 - Smoother continuous handwriting, including previously saved strokes, without changing your original ink points or notes.
 - Undo the latest handwriting or highlight edit directly from the Zen dock, without leaving focused reading.
 - Highlight selectable text with Apple Pencil: drag across a passage and lift to save, including complete words at each endpoint. Mark opens its colors immediately and keeps them available between marks and color changes.
-- Use Define directly from the bottom Highlight toolbar for your selected passage or latest selected highlight on the current page. Use the separate Discuss workspace for AI questions.
+- Use Define directly from the bottom Highlight toolbar for your selected passage or latest selected highlight on the current page.
 - Clean, professional note lettering is now the default, with a Handwritten switch when you want the original style.
-- AI is off by default and sends text only after a provider-specific disclosure and your explicit consent.
-- API keys are entered in a secure iOS prompt, stored in Keychain, and excluded from Phloem backups.
+- The reading-guide handle now stays on the left side of the guide band, clear of the Zen dock.
 - Reliability and iPad interface refinements throughout the reader.
-
-AI output can be inaccurate. Verify important claims. Provider API charges and terms may apply.
 
 Handwriting stays editable in Phloem and is included in JSON backups. Export original PDF exports the original document without Phloem handwriting or highlights.
 
@@ -38,38 +35,32 @@ Import PDF and Word documents, read without distractions, and keep your thinking
 
 For handwritten PDF notes, turn on Write and use Apple Pencil directly on the page. Add ideas in the margins, circle figures, or sketch on scanned and blank pages without OCR. Choose from eight ink colors and three pen widths. Hold Pencil still for about 0.6 seconds after a long open stroke to straighten it, adjust the endpoint before lifting, or keep writing naturally with pressure-sensitive strokes. Your handwriting stays anchored to its PDF page as you zoom and change layouts; fingers remain available for navigation.
 
-For text highlighting, Mark opens its bottom toolbar and keeps colors available as you highlight and change colors. Pencil strokes include complete endpoint words. The toolbar offers Define for the selected passage or the latest selected highlight still on the current page. Define uses the existing online lookup and may use the configured AI fallback with your existing provider consent. AI questions remain available in the separate Discuss workspace.
+For text highlighting, Mark opens its bottom toolbar and keeps colors available as you highlight and change colors. Pencil strokes include complete endpoint words. The toolbar offers Define for the selected passage or the latest selected highlight still on the current page.
 
 On PDFs, Write's Eraser and Mark's Erase both remove touched handwriting strokes and text highlights. One Undo restores the whole sweep; the Zen dock also includes Undo without leaving focused reading. The text Reader's highlight eraser is unchanged. Handwriting is saved with the library and in JSON backups. Export original PDF and the PDF in a NotebookLM package remain the unannotated original file; they do not embed Phloem handwriting or highlights.
 
 For review work, Phloem keeps imported comments, linked passages, replies, and revision notes together. You stay in control of every link and every edit.
-
-Optional AI for users 18 and older
-
-Bring your own OpenAI, Anthropic, or DeepSeek API key to discuss a selected passage, the current page, or guide context, or to help locate passages related to reviewer comments. AI is disabled by default. Before setup, Phloem names the provider, explains what text will be sent, links to its policy, and asks for your explicit consent.
-
-Your key is entered in a native secure prompt, stored in iOS Keychain, and never included in a Phloem backup. Requests go directly to the provider you choose. Phloem does not operate an AI proxy, and the original PDF or Word file is not uploaded as part of an AI request.
 
 Private by design
 
 - No Phloem account
 - No advertising or Phloem analytics
 - Local reading works offline after a document is imported
-- Portable JSON backups include editable handwriting, typed notes, and highlights, but exclude original documents and AI keys
+- Portable JSON backups include editable handwriting, typed notes, and highlights, but exclude original documents and private credentials
 - Online features run only when you choose them
 
-AI, online definitions, PDF URL imports, external links, and cloud file providers require an internet connection. Keep original document files separately. AI provider terms, availability, and charges may apply, and AI output can be inaccurate.
+Online definitions, PDF URL imports, external links, and cloud file providers require an internet connection. Keep original document files separately.
 
 ## Keywords
 
-`paper reader,pdf,academic,research,notes,highlight,annotation,review,AI,iPad`
+`paper reader,pdf,academic,research,notes,highlight,annotation,review,iPad,Pencil`
 
 ## URLs
 
 - Support URL: `https://houfu72.com/phloem-ipad/support.html`
 - Privacy Policy URL: `https://houfu72.com/phloem-ipad/privacy.html`
 
-The support and privacy pages were verified live; recheck both URLs before external TestFlight or App Review. Build 19's shortcuts reuse existing lookup/AI destinations and consent; opening Ask AI alone sends no request.
+Recheck both URLs before external TestFlight or App Review.
 
 ## App Review Information
 
@@ -79,7 +70,9 @@ The support and privacy pages were verified live; recheck both URLs before exter
 
 ### Review Notes draft
 
-Version 1.1 adds an optional AI reading assistant for users who confirm they are 18 or older. No Phloem sign-in or purchase is required, and declining AI consent leaves the complete non-AI reader available.
+Version 1.1 adds Apple Pencil writing, improved highlighting, paper renaming, compact annotation tools, professional note lettering, and optional cloud assistance outside the China mainland storefront. No Phloem sign-in or purchase is required.
+
+China mainland compliance in build 25: the app reads the signed App Store storefront with StoreKit. When the storefront country code is `CHN`, all cloud-assistance settings and entry points are hidden, native configuration and request calls are rejected, and any active provider request is cancelled if the storefront changes to `CHN`. The same fail-closed behavior applies while StoreKit has not returned a storefront or returns an unknown storefront. This restriction is enforced in native Swift, not only in the web interface. Local document reading, Apple Pencil writing, highlighting, notes, search, reading guide, Zen mode, and reviewer tools remain available in China.
 
 Test path:
 
@@ -90,6 +83,8 @@ Test path:
 5. Enter the matching dedicated review API key in the native secure prompt: **[PASTE PROVIDER NAME AND REVIEW-ONLY KEY IN APP STORE CONNECT, NOT SOURCE CONTROL]**.
 6. Return to the paper, open Discuss, choose Page, Selection, or Guide, and ask a question. Select a passage or tap a highlight on the current page, open Mark, and choose Define to use the existing lookup and configured-provider fallback. The Highlight toolbar has no Ask AI shortcut. The separate Discuss workspace identifies itself as AI and warns that important claims must be verified.
 7. To revoke access, open Settings → AI assistant, select the configured provider, and tap Remove saved key.
+
+To test the regional restriction, use a China mainland App Store sandbox/storefront. Settings → AI assistant, Discuss, selection actions, reviewer assistance, and the Highlight toolbar's cloud entry points are absent. Native configure/request calls fail with a regional-unavailability error. Switch to a supported non-China storefront and relaunch to test the provider flow below.
 
 Before any request, the app names the provider, destination, categories of text sent, and purpose, links to the Phloem and provider privacy policies, and requires explicit consent. The key is stored using iOS Keychain with this-device-only protection and is not returned to the web layer, logged, or included in backups. Requests go directly over HTTPS to `api.openai.com`, `api.anthropic.com`, or `api.deepseek.com`; Phloem has no AI proxy. Depending on the action, the app sends the selected passage, current-page or guide text, the user's question and same-thread history, or extracted reviewer text and locally selected candidate excerpts. It never uploads the original PDF or Word file as part of an AI request. DeepSeek has its own disclosure and consent; adding it does not enable it automatically or reuse another provider's key or consent.
 
@@ -135,7 +130,7 @@ Send feedback with the iPad model, iPadOS version, build number, provider, and s
 2. Create version 1.1.0 in the existing App Store Connect record.
 3. Re-answer App Privacy and the current age-rating questionnaire.
 4. Run `npm run ios:sync`, then create a fresh Release archive with Xcode 26 or later and the current iPadOS SDK; generate and inspect the archive privacy report.
-5. The **1.1.0 (23)** archive's metadata, strict signature, and bundled-source matches have been locally verified. Validate and upload it to internal TestFlight after checking for an already-used build number. If 23 is used, increment the project build number and archive again. Build 22 lacks the Fine default.
+5. Validate and upload the new **1.1.0 (25)** archive to internal TestFlight. Build 25 is the first focused 1.1 binary with both the left-side guide handle and the native China storefront gate.
 6. Complete the physical-iPad and live-provider checklist against the exact TestFlight binary.
 7. Capture screenshots from that binary and paste the final metadata and reviewer-only key.
 8. Add for Review and submit. Prefer manual release or a phased release for the first AI-enabled update.

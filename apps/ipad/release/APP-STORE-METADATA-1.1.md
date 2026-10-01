@@ -90,6 +90,20 @@ Before any request, the app names the provider, destination, categories of text 
 
 The provider backend and reviewer key will remain active throughout review. No external purchase is required for Apple to test the feature.
 
+### Resolution Center reply draft
+
+Hello App Review Team,
+
+Thank you for the guidance. We have uploaded Phloem 1.1.0 build 25 to address Guideline 5.
+
+In build 25, cloud generative-AI functionality is deactivated for the China mainland App Store. The app uses StoreKit's current storefront and storefront-update sequence. When the storefront country code is `CHN`, all related settings and entry points are hidden, native provider configuration and request methods are rejected, and an in-progress provider request is cancelled if the storefront changes to `CHN`. The app also fails closed while the storefront is unavailable or cannot be verified. This restriction is implemented in native Swift and does not depend only on the web interface.
+
+Local document reading, Apple Pencil handwriting, text highlighting, notes, search, the movable reading guide, Zen mode, and reviewer tools remain available in China mainland. No account or purchase is required for these features.
+
+We also removed references to ChatGPT and OpenAI from the public app name, subtitle, promotional text, description, What's New text, keywords, and submitted screenshots. Provider information remains only in the private App Review Notes and in the privacy disclosures shown where the optional feature is legally available.
+
+Please review version 1.1.0 build 25. Thank you.
+
 ## App Privacy answers to confirm in App Store Connect
 
 - Data collected: **Yes**

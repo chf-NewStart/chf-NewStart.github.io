@@ -66,6 +66,7 @@
   var currentId = null, currentPage = 1, pdfDoc = null, pdfLib = null, pdfRendering = false, pdfRenderPending = false, pdfOpenEpoch = 0;
   var pdfFoldView=null,foldSourceId='',foldSourceHash='',cancelPdfTouchInteraction=null;
   var excerptView=null,excerptReturnSpot=null,excerptNavigationSerial=0,excerptNavigationBusy=false;
+  var workspaceView=null,workspaceOpen=false,workspaceDragSelection=null,workspaceSaveFailed=false;
   var pdfZoom = 1, pdfFit = true, paperAppearance = 'cream', readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
@@ -317,6 +318,28 @@
   }
   /* Excerpts are private per-paper notebook data, separate from highlights and AI.
      Keep unknown-format copies opaque so older clients cannot flatten newer notes. */
+  function normalizeReadingWorkspace(ch){
+    if(!window.PhloemWorkspaceState)return;
+    try{ch.readingWorkspace=window.PhloemWorkspaceState.normalize(ch.readingWorkspace);}
+    catch(error){if(!error||error.code!=='UNSUPPORTED_VERSION')throw error;}
+    if(ch.readingWorkspacePending!==undefined&&!Array.isArray(ch.readingWorkspacePending))ch.readingWorkspacePending=[ch.readingWorkspacePending];
+  }
+  function readingWorkspaceUnavailable(ch){
+    if(!window.PhloemWorkspaceState||!ch||Array.isArray(ch.readingWorkspacePending)&&ch.readingWorkspacePending.length)return true;
+    try{window.PhloemWorkspaceState.normalize(ch.readingWorkspace);return false;}catch(error){return true;}
+  }
+  function mergeReadingWorkspace(target,first,second){
+    if(!window.PhloemWorkspaceState)return false;
+    var before=JSON.stringify([target.readingWorkspace,target.readingWorkspacePending]),pending=[],seen=new Set();
+    function preserve(value){if(value===undefined)return;var key=JSON.stringify(value);if(!seen.has(key)){seen.add(key);pending.push(value);}}
+    [first,second].forEach(function(source){var copies=source.readingWorkspacePending;if(copies!==undefined)(Array.isArray(copies)?copies:[copies]).forEach(preserve);});
+    var left=first.readingWorkspace,right=second.readingWorkspace,unknown;
+    [left,right].forEach(function(value){try{window.PhloemWorkspaceState.normalize(value);}catch(error){if(error&&error.code==='UNSUPPORTED_VERSION'){if(unknown===undefined)unknown=value;}else throw error;}});
+    if(unknown!==undefined){target.readingWorkspace=unknown;if(left!==unknown)preserve(left);if(right!==unknown)preserve(right);}
+    else target.readingWorkspace=window.PhloemWorkspaceState.merge(left,right);
+    if(pending.length)target.readingWorkspacePending=pending;else delete target.readingWorkspacePending;
+    return before!==JSON.stringify([target.readingWorkspace,target.readingWorkspacePending]);
+  }
   function normalizeReadingExcerpts(ch){
     if(!window.PhloemExcerpts)return;
     try{ch.readingExcerpts=window.PhloemExcerpts.normalize(ch.readingExcerpts);}
@@ -349,6 +372,7 @@
   function normalize(ch,options){
     if(typeof normalizeReadingKeeps==='function')normalizeReadingKeeps(ch);
     if(typeof normalizeReadingExcerpts==='function')normalizeReadingExcerpts(ch);
+    if(typeof normalizeReadingWorkspace==='function')normalizeReadingWorkspace(ch);
     if(typeof normalizePdfFolds==='function')normalizePdfFolds(ch,options&&options.foldValidationNow);
     if(window.PhloemInk&&(ch.kind==='pdf'||ch.pdfInk||ch.pdfInkDeleted)){var ink=window.PhloemInk.normalize(ch.pdfInk,ch.pdfInkDeleted);ch.pdfInk=ink.pages;ch.pdfInkDeleted=ink.deleted;}
     ch.notes = ch.notes&&typeof ch.notes==='object'&&!Array.isArray(ch.notes)?ch.notes:{}; ch.pageNotes = ch.pageNotes&&typeof ch.pageNotes==='object'&&!Array.isArray(ch.pageNotes)?ch.pageNotes:{}; ch.tags = Array.isArray(ch.tags)?ch.tags:[];
@@ -441,6 +465,7 @@
     mergePdfInk(keep,keep,extra);
     if(typeof mergeReadingKeeps==='function')mergeReadingKeeps(keep,keep,extra);
     if(typeof mergeReadingExcerpts==='function')mergeReadingExcerpts(keep,keep,extra);
+    if(typeof mergeReadingWorkspace==='function')mergeReadingWorkspace(keep,keep,extra);
     if(typeof mergePdfFolds==='function')mergePdfFolds(keep,keep,extra,validationNow);
     Object.keys(extra).forEach(function(k){if(k!=='id'&&(keep[k]===undefined||keep[k]===null||keep[k]===''))keep[k]=extra[k];});
     if(titleQuality(extra)>titleQuality(keep))keep.title=extra.title;
@@ -752,6 +777,7 @@
        never scroll, or the toolbar slides under the sticky masthead. */
     document.body.classList.toggle('reading', id === 'readerPage');
     if (id !== 'readerPage') {
+      if(workspaceOpen)setWorkspaceOpen(false,false);
       resetExcerptNavigation();
       pdfOpenEpoch++;invalidatePdfLinkNavigation(true);pdfDoc=null;
       toggleSheet(false); hideLookup(); hidePdfReferencePreview(); byId('linkReturn').classList.add('hidden'); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){}
@@ -3208,6 +3234,7 @@
   }
   function toggleSheet(open,fromHistory){
     var notebook=byId('notebook'),scrim=byId('sheetScrim'),willOpen=open!==undefined?open:!notebook.classList.contains('sheet-open');
+    if(willOpen&&workspaceOpen)setWorkspaceOpen(false,false);
     var wasOpen=notebook.classList.contains('sheet-open');
     if(willOpen&&!wasOpen){sheetReturnFocus=document.activeElement;sheetReadingPosition=readerMode==='pdf'?capturePdfReadingPosition():null;}
     if(!willOpen&&recallActive)setRecall(false);
@@ -3249,6 +3276,7 @@
   byId('mNext').onclick=function(){byId('nextPage').click();};
   function closeTouchDockMore(returnFocus){var menu=byId('touchDockMenu'),button=byId('touchMore');menu.classList.add('hidden');button.setAttribute('aria-expanded','false');if(returnFocus)button.focus();}
   function toggleTouchPanel(id){
+    if(workspaceOpen)setWorkspaceOpen(false,false);
     if(temporaryNotebookMode())toggleMobileTab(id);
     else{
       var same=!byId(id).classList.contains('hidden'),open=!notebookCollapsed;
@@ -5264,6 +5292,9 @@
   })();
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;
+    // A card handle, canvas, or workspace button owns its keyboard interaction.
+    // Arrow keys and Undo here must not turn pages or erase PDF annotations.
+    if(workspaceOpen&&byId('workspacePanel').contains(e.target))return;
     if(e.key==='Escape'&&!byId('pdfReferencePreview').classList.contains('hidden')){e.preventDefault();hidePdfReferencePreview();return;}
     /* Escape belongs to the focused Find surface before it affects any persistent
        reader mode, such as Marker, that happens to be active underneath it. */
@@ -6325,12 +6356,14 @@
   }
   function renderReadingExcerpts(){
     if(excerptView)excerptView.render();
+    if(workspaceView)refreshWorkspace();
     var button=byId('selectionSaveExcerpt');if(button)button.disabled=readingExcerptsUnavailable(find(currentId));
     var chip=byId('excerptReturnChip');if(chip){chip.classList.toggle('hidden',!excerptContext().canReturn);chip.disabled=excerptNavigationBusy;}
   }
   function resetExcerptNavigation(){
     excerptReturnSpot=null;excerptNavigationSerial++;excerptNavigationBusy=false;
     if(excerptView)excerptView.reset();
+    workspaceDragSelection=null;if(workspaceView)workspaceView.reset();
     var chip=byId('excerptReturnChip');if(chip)chip.classList.add('hidden');
   }
   function saveExcerptState(ch,next){
@@ -6345,7 +6378,7 @@
     renderReadingExcerpts();
     if(focusId)requestAnimationFrame(function(){if(excerptView)excerptView.focus(focusId);});
   }
-  function addReadingExcerpt(selection){
+  function addReadingExcerpt(selection,workspacePoint){
     var ch=find(currentId);if(readingExcerptsUnavailable(ch))return null;
     var quote=selection&&typeof selection.text==='string'?selection.text:'',anchor=selection?currentKeepAnchor(selection):excerptReadingAnchor();
     if(selection&&!quote.trim())return null;
@@ -6356,13 +6389,13 @@
     // Repeated taps on the same selection open the existing clip, not duplicates.
     var existing=quote&&items.find(function(item){return item.quote===quote&&item.anchor.kind===anchor.kind&&
       (anchor.kind==='pdf'?item.anchor.page===anchor.page&&Math.abs((item.anchor.position||{}).y-(anchor.position||{}).y)<.002:item.anchor.para===anchor.para&&Math.abs(item.anchor.offset-anchor.offset)<.002);});
-    if(existing){clearPendingSelection();showExcerptNotebook(existing.id);return existing.id;}
+    if(existing){clearPendingSelection();if(workspacePoint)showWorkspaceClip(existing.id,workspacePoint);else showExcerptNotebook(existing.id);return existing.id;}
     var record={id:uid('excerpt-'),quote:quote,note:'',anchor:anchor};if(anchor.kind==='pdf')record.sourceHash=foldSourceHash;
     try{
       var saved=saveExcerptState(ch,window.PhloemExcerpts.upsert(ch.readingExcerpts,record,now()));
-      clearPendingSelection();showExcerptNotebook(record.id);
+      clearPendingSelection();if(workspacePoint)showWorkspaceClip(record.id,workspacePoint);else showExcerptNotebook(record.id);
       if(!saved)excerptStatus('Not confirmed saved. Keep this page open; check the storage warning before leaving.');
-      else showReaderToast(quote?'Excerpt saved to Clips':'Note added to Clips');
+      else showReaderToast(workspacePoint?(quote?'Passage placed in Workspace':'Note added to Workspace'):(quote?'Excerpt saved to Clips':'Note added to Clips'));
       return record.id;
     }catch(error){showReaderToast('Could not save this clip. Your selection has not been changed.');return null;}
   }
@@ -6416,7 +6449,147 @@
   }
   if(byId('selectionSaveExcerpt'))byId('selectionSaveExcerpt').onclick=function(){var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection;if(selection)addReadingExcerpt(selection);};
   if(byId('excerptReturnChip'))byId('excerptReturnChip').onclick=returnFromExcerpt;
-  addEventListener('beforeunload',function(event){if(excerptView&&excerptView.hasDrafts()){event.preventDefault();event.returnValue='';}});
+  addEventListener('beforeunload',function(event){if(excerptView&&excerptView.hasDrafts()||workspaceView&&workspaceView.hasDrafts()||workspaceSaveFailed){event.preventDefault();event.returnValue='';}});
+
+  /* Independent, per-paper scratch sheet. Clip text remains in readingExcerpts;
+     this field owns only positions and handwriting, never source-PDF annotations. */
+  function workspaceStatus(message){var node=byId('workspaceStatus');if(node)node.textContent=message;}
+  function workspaceContext(){
+    var ch=find(currentId),unavailable=readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch);
+    return{id:currentId,epoch:pdfOpenEpoch,open:workspaceOpen,unavailable:unavailable,busy:excerptNavigationBusy,
+      items:unavailable?[]:ch.readingExcerpts.items,workspace:unavailable?null:ch.readingWorkspace};
+  }
+  function saveWorkspace(ch,next){
+    ch.readingWorkspace=next;ch.updatedAt=now();var saved=persist();workspaceSaveFailed=!saved;
+    if(!saved)workspaceStatus('Not confirmed saved. Keep this page open and check the storage warning.');
+    return saved;
+  }
+  function workspaceWide(){return innerWidth>=900&&matchMedia('(orientation: landscape)').matches;}
+  function refreshWorkspace(){
+    if(workspaceView)workspaceView.render();
+    var button=byId('workspaceReturn');if(button){button.classList.toggle('hidden',!excerptContext().canReturn);button.disabled=excerptNavigationBusy;}
+  }
+  function initializeWorkspace(ch){
+    if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch))return;
+    var next=window.PhloemWorkspaceState.normalize(ch.readingWorkspace),changed=false;
+    ch.readingExcerpts.items.forEach(function(item,index){
+      if(next.positions[item.id])return;
+      var y=40+Math.floor(index/2)*600;if(y+600>20000)return;
+      while(y+600>next.height)next=window.PhloemWorkspaceState.setHeight(next,next.height+1000);
+      next=window.PhloemWorkspaceState.place(next,item.id,{x:40+(index%2)*480,y:y,width:440},now());changed=true;
+    });
+    if(changed)saveWorkspace(ch,next);
+  }
+  function setWorkspaceOpen(on,focus){
+    on=!!on;if(on&&!find(currentId))return;
+    if(on&&(!workspaceView||!window.PhloemWorkspaceState)){showReaderToast('Workspace did not finish loading. Reload Phloem and try again; your notes are safe.');return;}
+    if(workspaceView)workspaceView.cancel();
+    var wasOpen=workspaceOpen;
+    if(on){toggleSheet(false);closeTouchDockMore(false);closeZenPopouts(false);if(recallActive)setRecall(false);setDrift(0);}
+    workspaceOpen=on;document.body.classList.toggle('workspace-open',on);
+    byId('workspacePanel').classList.toggle('hidden',!on);
+    document.querySelectorAll('[data-workspace-open]').forEach(function(button){button.setAttribute('aria-pressed',String(on));});
+    if(on)initializeWorkspace(find(currentId));
+    refreshWorkspace();
+    if(on&&!byId('workspaceStatus').textContent.trim())workspaceStatus('Pencil writes · fingers scroll · drag cards by their handles.');
+    if(on!==wasOpen)requestAnimationFrame(function(){
+      if(readerMode==='pdf'&&pdfDoc)renderPdfPage();if(comfort.focus)placeGuide();refreshWorkspace();
+      if(focus!==false){var target=on?byId('workspaceClose'):Array.from(document.querySelectorAll('[data-workspace-open]')).find(function(button){return button.getClientRects().length;})||(zenOn?byId('zenLayout'):byId('workspaceOpen'));if(target&&target.getClientRects().length)target.focus({preventScroll:true});}
+    });
+  }
+  function workspaceDropPoint(excludeId){
+    var board=byId('workspaceBoard'),scroll=byId('workspaceScroll'),scale=Math.max(1,board.clientWidth)/1000;
+    var ch=find(currentId),positions=ch&&ch.readingWorkspace&&ch.readingWorkspace.positions||{},x=45,y=Math.max(35,scroll.scrollTop/scale+45),width=650,boxes=[];
+    Object.keys(positions).forEach(function(id){
+      if(id===excludeId||!ch.readingExcerpts.items.some(function(item){return item.id===id;}))return;
+      var position=positions[id],card=Array.from(byId('workspaceCards').children).find(function(node){return node.dataset.clipId===id;}),height=card&&card.offsetHeight?card.offsetHeight/scale:500;
+      boxes.push({x:position.x,y:position.y,width:position.width,height:height});
+    });
+    for(var attempt=0;attempt<=boxes.length;attempt++){
+      var overlap=boxes.find(function(box){return x<box.x+box.width+20&&x+width+20>box.x&&y<box.y+box.height+30&&y+500>box.y;});
+      if(!overlap)break;y=overlap.y+overlap.height+40;
+    }
+    return{x:x,y:Math.min(y,19400),width:width};
+  }
+  function placeWorkspaceClip(id,point){
+    var ch=find(currentId);if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)||!ch.readingExcerpts.items.some(function(item){return item.id===id;}))return false;
+    try{var next=ch.readingWorkspace;while(point.y+500>next.height&&next.height<20000)next=window.PhloemWorkspaceState.setHeight(next,next.height+1000);
+      return saveWorkspace(ch,window.PhloemWorkspaceState.place(next,id,Object.assign({width:650},point),now()));
+    }catch(error){workspaceStatus('Could not save the card position.');return false;}
+  }
+  function showWorkspaceClip(id,point){
+    setWorkspaceOpen(true,false);var saved=placeWorkspaceClip(id,point&&!point.auto?point:workspaceDropPoint(id));refreshWorkspace();
+    if(saved&&workspaceView)workspaceView.focus(id);return saved;
+  }
+  function addWorkspaceExcerpt(selection,point){
+    if(readingWorkspaceUnavailable(find(currentId)))return null;
+    return addReadingExcerpt(selection,point||{auto:true});
+  }
+  function workspaceAddStroke(stroke){
+    var ch=find(currentId);if(readingWorkspaceUnavailable(ch))return false;
+    try{return saveWorkspace(ch,window.PhloemWorkspaceState.addStroke(ch.readingWorkspace,Object.assign({},stroke,{id:stroke.id||uid('workspace-ink-')}),now()));}
+    catch(error){workspaceStatus('Could not save this workspace stroke.');return false;}
+  }
+  function workspaceEraseStrokes(ids){
+    var ch=find(currentId);if(readingWorkspaceUnavailable(ch))return false;
+    try{return saveWorkspace(ch,window.PhloemWorkspaceState.removeStrokes(ch.readingWorkspace,ids,now()));}
+    catch(error){workspaceStatus('Could not save this erasure.');return false;}
+  }
+  function workspaceGrow(){
+    var ch=find(currentId);if(readingWorkspaceUnavailable(ch))return false;
+    if(ch.readingWorkspace.height>=20000){workspaceStatus('This workspace has reached its paper limit. Your existing notes are safe.');return false;}
+    try{return saveWorkspace(ch,window.PhloemWorkspaceState.setHeight(ch.readingWorkspace,ch.readingWorkspace.height+1000));}catch(error){return false;}
+  }
+  if(window.PhloemWorkspaceView&&window.PhloemWorkspaceState){
+    workspaceView=window.PhloemWorkspaceView.create({context:workspaceContext,place:placeWorkspaceClip,updateNote:updateExcerptNote,
+      goToSource:async function(id){if(!workspaceWide())setWorkspaceOpen(false,false);var moved=await goToExcerptSource(id);if(!moved)workspaceStatus(byId('excerptStatus').textContent||'Could not open the source. Your notes are safe.');return moved;},removeClip:removeReadingExcerpt,
+      addNote:function(){return addWorkspaceExcerpt(null);},addStroke:workspaceAddStroke,eraseStrokes:workspaceEraseStrokes,grow:workspaceGrow,
+      close:function(){setWorkspaceOpen(false);},onTool:function(){if(pdfInkController&&pdfInkController.active())pdfInkController.cancel();}});
+  }
+  document.querySelectorAll('[data-workspace-open]').forEach(function(button){button.onclick=function(){setWorkspaceOpen(!workspaceOpen);};});
+  byId('workspaceReturn').onclick=async function(){if(!workspaceWide())setWorkspaceOpen(false,false);await returnFromExcerpt();refreshWorkspace();};
+  byId('selectionToWorkspace').onclick=function(){var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection;if(selection)addWorkspaceExcerpt(selection);};
+
+  /* Only this document's live selection token is accepted. An external webpage
+     cannot inject a source anchor or replace notebook content through a drop. */
+  function beginWorkspaceDrag(event){
+    var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection;
+    if(!selection||!event.dataTransfer)return;
+    workspaceDragSelection={id:currentId,epoch:pdfOpenEpoch,token:uid('workspace-drop-'),selection:JSON.parse(JSON.stringify(selection))};
+    event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('application/x-phloem-excerpt',workspaceDragSelection.token);
+    event.dataTransfer.setData('text/plain',selection.text||'');
+  }
+  byId('documentPane').addEventListener('dragstart',beginWorkspaceDrag);
+  byId('selectionToWorkspace').addEventListener('dragstart',beginWorkspaceDrag);
+  byId('workspaceBoard').addEventListener('dragover',function(event){if(!workspaceDragSelection)return;event.preventDefault();event.dataTransfer.dropEffect='copy';this.classList.add('workspace-drop-target');});
+  byId('workspaceBoard').addEventListener('dragleave',function(){this.classList.remove('workspace-drop-target');});
+  byId('workspaceBoard').addEventListener('drop',function(event){
+    this.classList.remove('workspace-drop-target');var held=workspaceDragSelection;workspaceDragSelection=null;
+    if(!held||held.id!==currentId||held.epoch!==pdfOpenEpoch||event.dataTransfer.getData('application/x-phloem-excerpt')!==held.token)return;
+    event.preventDefault();var point=workspaceView&&workspaceView.pointFromClient(event.clientX,event.clientY);if(point)addWorkspaceExcerpt(held.selection,point);
+  });
+  document.addEventListener('dragend',function(){workspaceDragSelection=null;byId('workspaceBoard').classList.remove('workspace-drop-target');});
+  // Explicit touch drag handle works even when WebKit's native selected-text drag
+  // is unavailable. A normal tap retains the one-tap placement fallback.
+  var workspaceTouchDrag=null,workspaceIgnoreClickUntil=0;
+  byId('selectionToWorkspace').addEventListener('pointerdown',function(event){
+    if(event.pointerType==='mouse'||event.button>0)return;
+    var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection;if(!selection)return;
+    workspaceTouchDrag={pointer:event.pointerId,id:currentId,epoch:pdfOpenEpoch,selection:JSON.parse(JSON.stringify(selection)),x:event.clientX,y:event.clientY,moved:false};
+    try{this.setPointerCapture(event.pointerId);}catch(error){}
+  });
+  byId('selectionToWorkspace').addEventListener('pointermove',function(event){
+    var drag=workspaceTouchDrag;if(!drag||drag.pointer!==event.pointerId)return;
+    if(!drag.moved&&Math.hypot(event.clientX-drag.x,event.clientY-drag.y)>12){drag.moved=true;setWorkspaceOpen(true,false);}
+    if(drag.moved){event.preventDefault();byId('workspaceBoard').classList.add('workspace-drop-target');}
+  });
+  ['pointerup','pointercancel','lostpointercapture'].forEach(function(type){byId('selectionToWorkspace').addEventListener(type,function(event){
+    var drag=workspaceTouchDrag;if(!drag||drag.pointer!==event.pointerId)return;workspaceTouchDrag=null;byId('workspaceBoard').classList.remove('workspace-drop-target');
+    if(!drag.moved)return;workspaceIgnoreClickUntil=Date.now()+500;event.preventDefault();
+    if(type==='pointerup'&&drag.id===currentId&&drag.epoch===pdfOpenEpoch){var rect=byId('workspaceBoard').getBoundingClientRect();if(event.clientX>=rect.left&&event.clientX<=rect.right&&event.clientY>=rect.top&&event.clientY<=rect.bottom&&workspaceView)addWorkspaceExcerpt(drag.selection,workspaceView.pointFromClient(event.clientX,event.clientY));}
+  });});
+  byId('selectionToWorkspace').addEventListener('click',function(event){if(Date.now()<workspaceIgnoreClickUntil){event.preventDefault();event.stopImmediatePropagation();}},true);
+  window.addEventListener('resize',function(){if(workspaceOpen)refreshWorkspace();});
 
   /* Selectable PDF/text layers and a direct, color marker interaction. */
   var markerPointerDown=false,selectionPointerDown=false,selectionPointerType='',lastHighlightPointerType='',selectionInputType='',suppressHighlightAutoCommit=false;
@@ -7885,6 +8058,10 @@
       if(typeof mergeReadingExcerpts==='function'){
         if(mergeReadingExcerpts(remote,local,remote))changed=true;
         if(mergeReadingExcerpts(local,local,remote))changed=true;
+      }
+      if(typeof mergeReadingWorkspace==='function'){
+        if(mergeReadingWorkspace(remote,local,remote))changed=true;
+        if(mergeReadingWorkspace(local,local,remote))changed=true;
       }
       if(typeof mergePdfFolds==='function'){
         if(mergePdfFolds(remote,local,remote,foldValidationNow))changed=true;

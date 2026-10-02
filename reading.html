@@ -23,8 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=149">
-  <link rel="stylesheet" href="/reading-fold.css?v=149">
+  <link rel="stylesheet" href="/reading.css?v=150">
+  <link rel="stylesheet" href="/reading-fold.css?v=150">
+  <link rel="stylesheet" href="/reading-workspace.css?v=150">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -146,6 +147,7 @@
         </div>
         <button class="soft-button" id="zenBtn" type="button" aria-pressed="false" aria-label="Zen reading mode" title="Zen reading · hide everything but the paper (F) · Space auto-scrolls">⛶ <span class="wide">Zen</span></button>
         <button class="soft-button" id="findBtn" type="button" aria-expanded="false" aria-controls="findBar" aria-label="Find in this paper">⌕ <span class="wide">Find</span></button>
+        <button class="soft-button" id="workspaceOpen" type="button" data-workspace-open aria-pressed="false" aria-controls="workspacePanel">▥ <span>Workspace</span></button>
         <div class="marker-tools" id="markerTools">
           <button class="soft-button" id="highlightBtn" type="button" aria-pressed="false" aria-expanded="false" aria-controls="highlightToolbar" aria-label="Marker mode off. Current color Yellow" title="Open highlight tools"><span class="marker-glyph" aria-hidden="true">✦</span> <span id="highlightBtnLabel">Marker</span></button>
           <button class="soft-button marker-color-trigger" id="highlightColorBtn" type="button" aria-expanded="false" aria-controls="highlightToolbar" aria-label="Highlight color: Yellow. Choose color" title="Choose highlight color"><span class="marker-current-dot" aria-hidden="true"></span><span class="marker-color-chevron" aria-hidden="true">⌄</span></button>
@@ -438,6 +440,37 @@
             <div class="evidence-list hidden" id="evidenceList"></div>
           </div>
         </aside>
+        <aside id="workspacePanel" class="workspace-panel hidden" aria-label="Paper workspace">
+          <div class="workspace-heading"><div><span class="panel-eyebrow">Beside your paper</span><h3>Workspace</h3></div><button class="soft-button" id="workspaceClose" type="button" aria-label="Close workspace and return to paper">Paper only</button></div>
+          <div id="workspaceTools" class="workspace-tools" role="toolbar" aria-label="Workspace tools">
+            <div class="workspace-tool-row">
+              <button type="button" data-workspace-tool="pen" aria-pressed="true">Pen</button>
+              <button type="button" data-workspace-tool="eraser" aria-pressed="false">Eraser</button>
+              <button type="button" data-workspace-tool="move" aria-pressed="false">Move</button>
+              <select id="workspaceSize" aria-label="Workspace pen size"><option value="1.2">Fine</option><option value="2.4">Medium</option><option value="4">Broad</option></select>
+              <button id="workspaceUndo" type="button" aria-label="Undo workspace ink" disabled>↶</button>
+              <button id="workspaceRedo" type="button" aria-label="Redo workspace ink" disabled>↷</button>
+            </div>
+            <div class="workspace-color-row" role="group" aria-label="Workspace ink color">
+              <button data-workspace-color="black" type="button" aria-label="Black ink" aria-pressed="true" style="--workspace-color:#20313b"></button>
+              <button data-workspace-color="blue" type="button" aria-label="Blue ink" aria-pressed="false" style="--workspace-color:#245bc1"></button>
+              <button data-workspace-color="red" type="button" aria-label="Red ink" aria-pressed="false" style="--workspace-color:#ba3f35"></button>
+              <button data-workspace-color="green" type="button" aria-label="Green ink" aria-pressed="false" style="--workspace-color:#24734b"></button>
+              <button data-workspace-color="purple" type="button" aria-label="Purple ink" aria-pressed="false" style="--workspace-color:#7842a3"></button>
+              <button data-workspace-color="orange" type="button" aria-label="Orange ink" aria-pressed="false" style="--workspace-color:#c26a1c"></button>
+              <button data-workspace-color="teal" type="button" aria-label="Teal ink" aria-pressed="false" style="--workspace-color:#157d86"></button>
+              <button data-workspace-color="gray" type="button" aria-label="Gray ink" aria-pressed="false" style="--workspace-color:#687782"></button>
+            </div>
+          </div>
+          <div class="workspace-actions"><button class="text-button" id="workspaceNewNote" type="button">＋ Text note</button><button class="text-button" id="workspaceMoreSpace" type="button">＋ More paper</button><button class="text-button" id="workspaceReturn" type="button">↩ Return to reading</button></div>
+          <p id="workspaceStatus" class="workspace-status" role="status" aria-live="polite">Pencil writes · fingers scroll · drag a card by its handle.</p>
+          <div id="workspaceScroll" class="workspace-scroll" tabindex="0" aria-label="Scrollable workspace paper">
+            <div id="workspaceBoard" class="workspace-board">
+              <div id="workspaceCards" class="workspace-cards"></div>
+              <svg id="workspaceInk" class="workspace-ink" aria-hidden="true" preserveAspectRatio="none"></svg>
+            </div>
+          </div>
+        </aside>
       </div>
       <div class="mobile-bar" id="mobileBar">
         <button id="mPrev" type="button" aria-label="Previous page">←</button>
@@ -459,6 +492,7 @@
           <div class="touch-dock-menu hidden" id="touchDockMenu" role="dialog" aria-label="More touch reading controls">
             <button id="touchUndo" type="button"><span aria-hidden="true">↶</span> Undo mark</button>
             <button id="touchFind" type="button"><span aria-hidden="true">⌕</span> Find</button>
+            <button type="button" data-workspace-open aria-pressed="false" aria-controls="workspacePanel">▥ Workspace</button>
             <button id="touchDiscuss" type="button"><span aria-hidden="true">✦</span> Discuss</button>
             <button id="touchSettings" type="button" aria-controls="comfortBar" aria-expanded="false"><span aria-hidden="true">⌔</span> Reading settings</button>
             <button id="touchPinNotes" type="button" aria-pressed="false"><span aria-hidden="true">▥</span> Keep notes beside page</button>
@@ -495,6 +529,7 @@
         <div class="selection-context hidden" id="selectionContext"><span class="selection-context-copy" id="selectionContextText"></span></div>
         <div class="selection-secondary" id="selectionSecondary">
           <button class="selection-explain" id="selectionSaveExcerpt" type="button">Save excerpt</button>
+          <button class="selection-explain" id="selectionToWorkspace" type="button" draggable="true" title="Tap to place, or drag this passage into the workspace">To workspace</button>
           <button class="selection-explain" id="selectionParkQuestion" type="button">Park question</button>
           <button class="selection-explain" id="selectionExplain" type="button" aria-label="Look up a definition"><span aria-hidden="true">⌕</span> Define</button>
         </div>
@@ -543,6 +578,7 @@
             <button class="zen-popout-option" type="button" data-zen-pdf-layout="scroll" aria-pressed="true"><span aria-hidden="true">↕</span><span>Scroll</span></button>
             <button class="zen-popout-option" type="button" data-zen-pdf-layout="page" aria-pressed="false"><span aria-hidden="true">▯</span><span>Page</span></button>
             <button class="zen-popout-option" type="button" data-zen-pdf-layout="book" aria-pressed="false"><span aria-hidden="true">▯▯</span><span>Book</span></button>
+            <button class="zen-popout-option" type="button" data-workspace-open aria-pressed="false" aria-controls="workspacePanel">▥ Workspace</button>
           </div>
         </div>
         <div class="zen-tool" id="zenGuideTool">
@@ -871,16 +907,18 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=149',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=150',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=149" defer></script>
-<script src="/reading-keeps.js?v=149" defer></script>
-<script src="/reading-excerpts.js?v=149" defer></script>
-<script src="/reading-excerpts-view.js?v=149" defer></script>
-<script src="/reading-folds.js?v=149" defer></script>
-<script src="/reading-pdf-projection.js?v=149" defer></script>
-<script src="/reading-fold-view.js?v=149" defer></script>
-<script src="/reading.js?v=149" defer></script>
+<script src="/reading-ink.js?v=150" defer></script>
+<script src="/reading-keeps.js?v=150" defer></script>
+<script src="/reading-excerpts.js?v=150" defer></script>
+<script src="/reading-excerpts-view.js?v=150" defer></script>
+<script src="/reading-workspace.js?v=150" defer></script>
+<script src="/reading-workspace-view.js?v=150" defer></script>
+<script src="/reading-folds.js?v=150" defer></script>
+<script src="/reading-pdf-projection.js?v=150" defer></script>
+<script src="/reading-fold-view.js?v=150" defer></script>
+<script src="/reading.js?v=150" defer></script>
 </body>
 </html>

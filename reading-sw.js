@@ -2,10 +2,10 @@
    already stored on this device open with no network (subway mode). Every other path on
    the site is left completely untouched. Served stale-while-revalidate: instant loads
    from cache, refreshed in the background for the next visit. */
-var CACHE = 'phloem-shell-v149';
+var CACHE = 'phloem-shell-v150';
 /* The app itself is network-first: online opens always get the newest deploy, the cache
    only answers when the network can't. Libraries and fonts stay stale-while-revalidate. */
-var NETWORK_FIRST = ['/reading.html', '/reading.css', '/reading.js', '/reading-ink.js', '/reading-keeps.js', '/reading-excerpts.js', '/reading-excerpts-view.js', '/reading-folds.js', '/reading-pdf-projection.js', '/reading-fold-view.js', '/reading-fold.css', '/carrel.webmanifest'];
+var NETWORK_FIRST = ['/reading.html', '/reading.css', '/reading.js', '/reading-ink.js', '/reading-keeps.js', '/reading-excerpts.js', '/reading-excerpts-view.js', '/reading-workspace.js', '/reading-workspace-view.js', '/reading-workspace.css', '/reading-folds.js', '/reading-pdf-projection.js', '/reading-fold-view.js', '/reading-fold.css', '/carrel.webmanifest'];
 var SHELL = [
   '/reading.html',
   '/reading.css',
@@ -14,6 +14,9 @@ var SHELL = [
   '/reading-keeps.js',
   '/reading-excerpts.js',
   '/reading-excerpts-view.js',
+  '/reading-workspace.js',
+  '/reading-workspace-view.js',
+  '/reading-workspace.css',
   '/reading-folds.js',
   '/reading-pdf-projection.js',
   '/reading-fold-view.js',

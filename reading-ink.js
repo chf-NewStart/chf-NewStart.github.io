@@ -239,5 +239,5 @@
     global.addEventListener('keydown',function(e){if(e.key==='Escape')finish(true);},true);
     return {cancel:function(){finish(true);},active:function(){return !!gesture;}};
   }
-  global.PhloemInk={normalize:normalize,merge:merge,render:render,create:create};
+  global.PhloemInk={normalize:normalize,merge:merge,render:render,create:create,pathData:pathData};
 })(window);

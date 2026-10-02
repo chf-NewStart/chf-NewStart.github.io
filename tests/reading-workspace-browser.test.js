@@ -1,0 +1,403 @@
+/* Landscape iPad-like browser coverage for the freeform research workspace.
+   Run with PHLOEM_BROWSER=chromium or PHLOEM_BROWSER=webkit. */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const http = require('node:http');
+const path = require('node:path');
+let playwright;
+try { playwright = require('playwright'); } catch (_) { playwright = require('playwright-core'); }
+const { PDFDocument, StandardFonts } = require('pdf-lib');
+
+const ROOT = path.resolve(__dirname, '..');
+const ENGINE = process.env.PHLOEM_BROWSER || 'chromium';
+assert(['chromium', 'webkit'].includes(ENGINE), 'PHLOEM_BROWSER must be chromium or webkit');
+const PORT = +(process.env.PHLOEM_WORKSPACE_TEST_PORT || 8327);
+let base;
+const server = http.createServer((request, response) => {
+  const pathname = decodeURIComponent(request.url.split('?')[0] || '/');
+  const filename = path.join(ROOT, pathname === '/' ? 'reading.html' : pathname);
+  fs.readFile(filename, (error, bytes) => {
+    if (error) { response.writeHead(404); response.end(); return; }
+    response.setHeader('content-type', filename.endsWith('.html') ? 'text/html'
+      : filename.endsWith('.js') ? 'text/javascript'
+        : filename.endsWith('.css') ? 'text/css' : 'application/octet-stream');
+    response.end(bytes);
+  });
+});
+
+const QUOTE = 'ecological inference on page two';
+const OTHER_QUOTE = 'second line marks a separate claim';
+function seedLibrary() {
+  if (sessionStorage.getItem('phloem.workspaceFixture')) return;
+  sessionStorage.setItem('phloem.workspaceFixture', '1');
+  const stamp = Date.now();
+  localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [
+    { id: 'workspace-other', kind: 'text', title: 'Other workspace paper',
+      fr: 'A separate paper has no workspace marks.\n\nIts notes stay independent.',
+      notes: {}, pageNotes: {}, questions: [], tags: [], addedAt: stamp, updatedAt: stamp }
+  ], deleted: {}, merged: {}, savedAt: stamp }));
+  localStorage.removeItem('readingRoom.lastOpen.v1');
+  localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ pdfLayout: 'page', focus: false }));
+  localStorage.setItem('readingRoom.notebookCollapsed.v1', '1');
+  localStorage.removeItem('readingRoom.touchNotesPinned.v1');
+}
+async function generatedPdf() {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  for (let pageNo = 1; pageNo <= 3; pageNo++) {
+    const page = doc.addPage([612, 792]);
+    page.drawText('Workspace fixture page ' + pageNo + ' contains ecological inference on page two.',
+      { x: 52, y: 710, size: 13, font });
+    page.drawText('The second line marks a separate claim for this workspace.',
+      { x: 52, y: 675, size: 12, font });
+  }
+  return Buffer.from(await doc.save());
+}
+async function currentPaper(page) {
+  return page.evaluate(() => {
+    const id = localStorage.getItem('readingRoom.lastOpen.v1');
+    return JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === id);
+  });
+}
+async function paperById(page, id) {
+  return page.evaluate(paperId => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === paperId), id);
+}
+async function waitPdf(page, pageNo) {
+  await page.waitForFunction(n => {
+    const holder = document.querySelector('.pdf-page[data-page="' + n + '"]');
+    return !document.getElementById('readerPage').classList.contains('hidden')
+      && holder && holder.querySelector('canvas')?.width > 0
+      && holder.querySelector('.text-layer span')
+      && document.getElementById('pdfFrame').dataset.pagedReady === 'true';
+  }, pageNo);
+}
+async function turnPage(page, direction, target) {
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.pagedReady === 'true');
+  const button = page.locator(direction === 'next' ? '#nextPage' : '#prevPage');
+  assert.equal(await button.isVisible(), true, 'page turn has a visible control');
+  await button.click();
+  await page.waitForFunction(n => !!document.querySelector('.pdf-page[data-page="' + n + '"].book-active')
+    && document.getElementById('pdfFrame').dataset.pagedReady === 'true'
+    && !document.getElementById('documentPane').classList.contains('turning-book-leaf'), target);
+}
+async function selectPdf(page, pageNo, phrase) {
+  await page.waitForFunction(({ pageNo, phrase }) => Array.from(document.querySelectorAll('.pdf-page[data-page="' + pageNo + '"] .text-layer span'))
+    .some(span => span.textContent.includes(phrase) && getComputedStyle(span).userSelect !== 'none'), { pageNo, phrase });
+  const selected = await page.evaluate(({ pageNo, phrase }) => {
+    const span = Array.from(document.querySelectorAll('.pdf-page[data-page="' + pageNo + '"] .text-layer span'))
+      .find(element => element.textContent.includes(phrase));
+    if (!span || !span.firstChild) return { error: 'missing span or node' };
+    const node = span.firstChild, start = node.textContent.indexOf(phrase);
+    if (start < 0) return { error: 'phrase not in first text node', node: node.textContent, span: span.textContent };
+    if (document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();
+    const range = document.createRange();
+    range.setStart(node, start); range.setEnd(node, start + phrase.length);
+    const selection = getSelection();
+    selection.removeAllRanges(); selection.addRange(range);
+    const text = selection.toString();
+    document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
+    document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse', pointerId: 88 }));
+    const rect = span.getBoundingClientRect(), style = getComputedStyle(span);
+    return { text, active: !!document.querySelector('.pdf-page[data-page="' + pageNo + '"].book-active'),
+      ready: document.getElementById('pdfFrame').dataset.pagedReady,
+      rect: { width: rect.width, height: rect.height, x: rect.x, y: rect.y },
+      display: style.display, visibility: style.visibility, userSelect: style.userSelect,
+      parentUserSelect: getComputedStyle(span.parentElement).userSelect,
+      rangeCount: selection.rangeCount, selectedRaw: selection.anchorNode?.textContent,
+      activeElement: document.activeElement?.id };
+  }, { pageNo, phrase });
+  assert.equal(selected.text, phrase, 'PDF text selection covers the requested source words: ' + JSON.stringify(selected));
+  await page.locator('#selectionToWorkspace').waitFor({ state: 'visible' });
+}
+async function openPaper(page, id) {
+  await page.locator('[data-view="libraryPage"]').first().click();
+  await page.locator('#libraryPage').waitFor({ state: 'visible' });
+  await page.locator('[data-continue-paper="' + id + '"]').click();
+  await page.waitForFunction(paperId => !document.getElementById('readerPage').classList.contains('hidden')
+    && localStorage.getItem('readingRoom.lastOpen.v1') === paperId, id);
+}
+async function stroke(page, points, pointerType = 'pen') {
+  await page.locator('#workspaceInk').evaluate((canvas, { points, pointerType }) => {
+    const rect = canvas.getBoundingClientRect();
+    const board = document.getElementById('workspaceBoard');
+    // A constructed PointerEvent has no browser-managed active pointer to capture.
+    // All samples are dispatched directly to the same target in this fixture.
+    const capture = board.setPointerCapture;
+    board.setPointerCapture = () => {};
+    try {
+      points.forEach(([x, y], index) => {
+        const type = index === 0 ? 'pointerdown' : index === points.length - 1 ? 'pointerup' : 'pointermove';
+        canvas.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true,
+          pointerType, pointerId: 77, isPrimary: true, button: 0,
+          buttons: type === 'pointerup' ? 0 : 1, pressure: type === 'pointerup' ? 0 : .62,
+          clientX: rect.left + rect.width * x, clientY: rect.top + rect.height * y }));
+      });
+    } finally { board.setPointerCapture = capture; }
+  }, { points, pointerType });
+}
+function workspaceStrokes(ch) {
+  const store = ch && ch.readingWorkspace;
+  return store && Array.isArray(store.strokes) ? store.strokes : [];
+}
+async function waitStrokeCount(page, paperId, count) {
+  await page.waitForFunction(({ paperId, count }) => {
+    const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === paperId);
+    return ch && ch.readingWorkspace && Array.isArray(ch.readingWorkspace.strokes)
+      && ch.readingWorkspace.strokes.length === count;
+  }, { paperId, count });
+}
+async function ensureWorkspaceOpen(page) {
+  if (await page.locator('#workspacePanel').isVisible()) return;
+  const open = page.locator('#workspaceOpen');
+  assert.equal(await open.isVisible(), true, 'workspace has a visible opening control');
+  await open.click();
+  await page.locator('#workspacePanel').waitFor({ state: 'visible' });
+}
+
+(async () => {
+  await new Promise((resolve, reject) => {
+    const onError = error => {
+      if (error.code !== 'EADDRINUSE') { reject(error); return; }
+      server.once('error', reject); server.listen(0, '127.0.0.1', resolve);
+    };
+    server.once('error', onError);
+    server.listen(PORT, '127.0.0.1', () => { server.removeListener('error', onError); resolve(); });
+  });
+  base = 'http://127.0.0.1:' + server.address().port;
+  let browser;
+  try {
+    const launch = { headless: true };
+    const executablePath = ENGINE === 'webkit' ? process.env.PHLOEM_WEBKIT_EXECUTABLE_PATH : process.env.CHROME_PATH;
+    if (executablePath) launch.executablePath = executablePath;
+    browser = await playwright[ENGINE].launch(launch);
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, hasTouch: true, serviceWorkers: 'block' });
+    const page = await context.newPage();
+    page.setDefaultTimeout(25000);
+    const errors = [], aiRequests = [];
+    page.on('pageerror', error => errors.push(error.message));
+    context.on('request', request => {
+      if (/(?:api\.openai\.com|api\.anthropic\.com|api\.deepseek\.com|generativelanguage\.googleapis\.com|\/v1\/(?:chat\/completions|responses|messages))/i.test(request.url())) aiRequests.push(request.url());
+    });
+    await page.addInitScript(seedLibrary);
+    await page.goto(base + '/reading.html', { waitUntil: 'load' });
+    await page.waitForFunction(() => document.body.classList.contains('library-ready'));
+    await page.locator('#pdfFile').setInputFiles({ name: 'workspace-generated.pdf', mimeType: 'application/pdf', buffer: await generatedPdf() });
+    await waitPdf(page, 1);
+    const pdfId = (await currentPaper(page)).id;
+    await ensureWorkspaceOpen(page);
+    const split = await page.evaluate(() => {
+      const viewport = innerWidth;
+      const paper = document.getElementById('documentPane').getBoundingClientRect();
+      const workspace = document.getElementById('workspacePanel').getBoundingClientRect();
+      return { viewport, paper: { left: paper.left, right: paper.right, width: paper.width },
+        workspace: { left: workspace.left, right: workspace.right, width: workspace.width } };
+    });
+    assert(split.paper.width >= split.viewport * .36 && split.workspace.width >= split.viewport * .36
+      && Math.abs(split.paper.width - split.workspace.width) <= split.viewport * .16
+      && split.paper.right <= split.workspace.left + 3,
+    'landscape reading and workspace panes share the screen: ' + JSON.stringify(split));
+    await turnPage(page, 'next', 2);
+    await selectPdf(page, 2, QUOTE);
+    await page.locator('#selectionToWorkspace').click();
+    await page.waitForFunction(id => {
+      const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
+      return ch && ch.readingExcerpts?.items?.some(item => item.quote === 'ecological inference on page two')
+        && Object.keys(ch.readingWorkspace?.positions || {}).length === 1;
+    }, pdfId);
+    let pdf = await paperById(page, pdfId);
+    const clip = pdf.readingExcerpts.items.find(item => item.quote === QUOTE);
+    const placement = pdf.readingWorkspace.positions[clip.id];
+    assert(placement && placement.x >= 0 && placement.x <= 1000 && placement.y >= 0 && placement.width > 0,
+      'selected passage has a logical workspace placement');
+    assert.equal(Object.values(pdf.highlights || {}).flat().length, 0, 'workspace clip does not mark the PDF');
+    assert.equal(Object.values(pdf.pdfInk || {}).flat().length, 0, 'workspace actions do not draw on the PDF');
+    const card = page.locator('.workspace-card[data-clip-id="' + clip.id + '"]');
+    await card.waitFor({ state: 'visible' });
+    assert.equal(await card.locator('.workspace-quote').textContent(), QUOTE);
+    await page.screenshot({ path: '/tmp/phloem-workspace-' + ENGINE + '-landscape.png' });
+    await turnPage(page, 'prev', 1);
+    await card.locator('.workspace-source').click();
+    await page.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active'));
+    await page.locator('#workspaceReturn').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#workspaceReturn').isVisible(), true,
+      'source visit exposes Return to reading in the workspace');
+    await page.locator('#workspaceReturn').click();
+    await page.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="1"].book-active'));
+    await page.locator('#workspaceReturn').waitFor({ state: 'hidden' });
+    await turnPage(page, 'next', 2);
+
+    await selectPdf(page, 2, OTHER_QUOTE);
+    assert.equal(await page.locator('#selectionToWorkspace').getAttribute('draggable'), 'true',
+      'selection action offers native drag and drop');
+    const boardBox = await page.locator('#workspaceBoard').boundingBox();
+    assert(boardBox, 'workspace board has a drop target');
+    await page.locator('#selectionToWorkspace').dragTo(page.locator('#workspaceBoard'),
+      { targetPosition: { x: boardBox.width * .7, y: Math.min(boardBox.height * .3, 420) } });
+    await page.waitForFunction(id => {
+      const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
+      return ch?.readingExcerpts?.items?.some(item => item.quote === 'second line marks a separate claim')
+        && Object.keys(ch.readingWorkspace?.positions || {}).length === 2;
+    }, pdfId);
+    assert.equal(Object.values((await paperById(page, pdfId)).highlights || {}).flat().length, 0,
+      'dragging a passage to workspace does not highlight the PDF');
+
+    const touchQuote = 'Workspace fixture page 2';
+    await selectPdf(page, 2, touchQuote);
+    await page.locator('#selectionToWorkspace').evaluate(button => {
+      const start = button.getBoundingClientRect();
+      const board = document.getElementById('workspaceBoard').getBoundingClientRect();
+      const options = { bubbles: true, cancelable: true, pointerType: 'touch', pointerId: 99,
+        isPrimary: true, button: 0, buttons: 1 };
+      button.dispatchEvent(new PointerEvent('pointerdown', { ...options,
+        clientX: start.left + start.width / 2, clientY: start.top + start.height / 2 }));
+      button.dispatchEvent(new PointerEvent('pointermove', { ...options,
+        clientX: board.left + board.width * .7, clientY: board.top + Math.min(board.height * .25, 380) }));
+      button.dispatchEvent(new PointerEvent('pointerup', { ...options, buttons: 0,
+        clientX: board.left + board.width * .7, clientY: board.top + Math.min(board.height * .25, 380) }));
+    });
+    await page.waitForFunction(id => {
+      const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
+      return ch?.readingExcerpts?.items?.some(item => item.quote === 'Workspace fixture page 2')
+        && Object.keys(ch.readingWorkspace?.positions || {}).length === 3;
+    }, pdfId);
+    assert.equal(Object.values((await paperById(page, pdfId)).highlights || {}).flat().length, 0,
+      'touch pointer drag places a passage without PDF highlighting');
+
+    const beforeFreeNote = await paperById(page, pdfId);
+    await page.locator('#workspaceNewNote').click();
+    await page.waitForFunction(id => {
+      const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
+      return ch?.readingExcerpts?.items?.some(item => item.quote === '')
+        && Object.keys(ch.readingWorkspace?.positions || {}).length === 4;
+    }, pdfId);
+    const afterFreeNote = await paperById(page, pdfId);
+    const freeNote = afterFreeNote.readingExcerpts.items.find(item => item.quote === '');
+    assert(freeNote && await page.locator('.workspace-card[data-clip-id="' + freeNote.id + '"]').count() === 1,
+      'standalone note is placed on the workspace');
+    assert(afterFreeNote.readingWorkspace.positions[freeNote.id].y > beforeFreeNote.readingWorkspace.positions[clip.id].y,
+      'automatic Text note placement starts below the earlier clip');
+    const freeOverlap = await page.locator('.workspace-card[data-clip-id="' + freeNote.id + '"]').evaluate(card => {
+      const a = card.getBoundingClientRect();
+      return Array.from(document.querySelectorAll('.workspace-card')).filter(other => other !== card).map(other => {
+        const b = other.getBoundingClientRect();
+        return Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
+          * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+      });
+    });
+    assert(freeOverlap.every(area => area < 1),
+      'automatic Text note placement avoids existing card boxes: ' + JSON.stringify(freeOverlap));
+    const freeText = 'First connection\nA second line of thought';
+    await page.locator('.workspace-card[data-clip-id="' + freeNote.id + '"] textarea.workspace-note').fill(freeText);
+    await page.waitForFunction(({ id, clipId, note }) => {
+      const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
+      return ch?.readingExcerpts?.items?.some(item => item.id === clipId && item.note === note);
+    }, { id: pdfId, clipId: freeNote.id, note: freeText });
+    const heightBefore = (await paperById(page, pdfId)).readingWorkspace.height;
+    await page.locator('#workspaceMoreSpace').click();
+    await page.waitForFunction(({ id, heightBefore }) => {
+      const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
+      return ch?.readingWorkspace?.height === heightBefore + 1000;
+    }, { id: pdfId, heightBefore });
+    assert.equal((await paperById(page, pdfId)).readingWorkspace.height, heightBefore + 1000,
+      'More paper extends the same per-document workspace');
+    const initialPlace = { ...placement };
+    const handle = card.locator('.workspace-handle');
+    await handle.scrollIntoViewIfNeeded();
+    const handleRect = await handle.boundingBox();
+    assert(handleRect, 'workspace card has a visible drag handle');
+    await page.mouse.move(handleRect.x + handleRect.width / 2, handleRect.y + handleRect.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(handleRect.x + handleRect.width / 2 + 85, handleRect.y + handleRect.height / 2 + 55, { steps: 5 });
+    await page.mouse.up();
+    await page.waitForFunction(({ id, clipId, oldX, oldY }) => {
+      const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
+      const pos = ch?.readingWorkspace?.positions?.[clipId];
+      return pos && (Math.abs(pos.x - oldX) > 1 || Math.abs(pos.y - oldY) > 1);
+    }, { id: pdfId, clipId: clip.id, oldX: initialPlace.x, oldY: initialPlace.y });
+    const beforeKeyboardMove = (await paperById(page, pdfId)).readingWorkspace.positions[clip.id];
+    await handle.focus();
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(({ id, clipId, x }) => {
+      const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
+      return ch?.readingWorkspace?.positions?.[clipId]?.x > x;
+    }, { id: pdfId, clipId: clip.id, x: beforeKeyboardMove.x });
+    assert.match(await page.locator('#pageNumber').textContent(), /^2\s*\//,
+      'ArrowRight on the card handle moves the card without turning the PDF page');
+    const draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
+
+    await page.locator('[data-workspace-tool="pen"]').click();
+    await page.locator('[data-workspace-color]').first().click();
+    await stroke(page, [[.65, .12], [.69, .14], [.74, .16], [.78, .18]]);
+    await waitStrokeCount(page, pdfId, 1);
+    pdf = await paperById(page, pdfId);
+    assert(workspaceStrokes(pdf)[0].points.length >= 2, 'Pencil stroke saves logical points');
+    assert(workspaceStrokes(pdf)[0].points[0][0] > 500 && workspaceStrokes(pdf)[0].points[0][0] < 800
+      && workspaceStrokes(pdf)[0].points[0][1] > 100,
+    'Pencil points use absolute workspace coordinates');
+    assert.equal(await page.locator('#workspaceInk path[data-stroke-id]').count(), 1,
+      'saved stroke is visible on the workspace ink layer');
+    assert.equal(Object.values(pdf.pdfInk || {}).flat().length, 0, 'workspace ink is separate from PDF ink');
+    assert.equal(await page.locator('#workspaceBoard').evaluate(board => document.activeElement === board), true,
+      'Pencil input leaves keyboard focus on the workspace board');
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.keyboard.press(modifier + '+z');
+    await waitStrokeCount(page, pdfId, 0);
+    await page.keyboard.press(modifier + '+Shift+z');
+    await waitStrokeCount(page, pdfId, 1);
+    assert.equal(Object.values((await paperById(page, pdfId)).pdfInk || {}).flat().length, 0,
+      'workspace keyboard history leaves PDF ink untouched');
+    await page.locator('[data-workspace-tool="eraser"]').click();
+    await stroke(page, [[.64, .11], [.70, .145], [.75, .165], [.79, .19]]);
+    await waitStrokeCount(page, pdfId, 0);
+    await page.locator('#workspaceUndo').click();
+    await waitStrokeCount(page, pdfId, 1);
+    await page.locator('#workspaceRedo').click();
+    await waitStrokeCount(page, pdfId, 0);
+    await page.locator('#workspaceUndo').click();
+    await waitStrokeCount(page, pdfId, 1);
+    await page.screenshot({ path: '/tmp/phloem-workspace-' + ENGINE + '-landscape.png' });
+    await page.reload({ waitUntil: 'load' });
+    await waitPdf(page, 2);
+    await ensureWorkspaceOpen(page);
+    await page.locator('.workspace-card[data-clip-id="' + clip.id + '"]').waitFor({ state: 'visible' });
+    pdf = await paperById(page, pdfId);
+    assert.equal(workspaceStrokes(pdf).length, 1, 'workspace ink survives reload');
+    assert.deepEqual(pdf.readingWorkspace.positions[clip.id], draggedPlace,
+      'moved card coordinates survive reload');
+    assert.equal(pdf.readingExcerpts.items.find(item => item.id === freeNote.id).note, freeText,
+      'standalone workspace note survives reload with line breaks');
+    assert.equal(Object.values(pdf.pdfInk || {}).flat().length, 0);
+
+    await page.setViewportSize({ width: 900, height: 1280 });
+    const portrait = await page.evaluate(() => {
+      const panel = document.getElementById('workspacePanel').getBoundingClientRect();
+      return { panelWidth: panel.width, viewport: innerWidth, panelLeft: panel.left, panelRight: panel.right };
+    });
+    assert(portrait.panelWidth >= portrait.viewport * .9 && portrait.panelLeft >= -2
+      && portrait.panelRight <= portrait.viewport + 2,
+    'portrait workspace fills the screen: ' + JSON.stringify(portrait));
+    await page.screenshot({ path: '/tmp/phloem-workspace-' + ENGINE + '-portrait.png' });
+    await page.locator('#workspaceClose').click();
+    await page.locator('#documentPane').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#workspacePanel').isVisible(), false, 'closing portrait workspace reveals the paper');
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openPaper(page, 'workspace-other');
+    await ensureWorkspaceOpen(page);
+    assert.equal(await page.locator('.workspace-card').count(), 0, 'other paper has no PDF clip cards');
+    assert.equal(workspaceStrokes(await currentPaper(page)).length, 0, 'other paper has no workspace ink');
+    await page.locator('#workspaceClose').click();
+    await openPaper(page, pdfId);
+    await waitPdf(page, 2);
+    await ensureWorkspaceOpen(page);
+    assert.equal(await page.locator('.workspace-card[data-clip-id="' + clip.id + '"]').count(), 1,
+      'returning to PDF restores its workspace clip');
+    assert.equal(workspaceStrokes(await currentPaper(page)).length, 1);
+    assert.deepEqual(errors, [], 'workspace flow has no browser page errors');
+    assert.deepEqual(aiRequests, [], 'workspace operations make no AI requests');
+    console.log('PASS  Workspace split, clipping, placement, ink, reload, portrait, and paper isolation');
+  } finally {
+    if (browser) await browser.close();
+    await new Promise(resolve => server.close(resolve));
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });

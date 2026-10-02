@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=150">
-  <link rel="stylesheet" href="/reading-fold.css?v=150">
-  <link rel="stylesheet" href="/reading-workspace.css?v=150">
+  <link rel="stylesheet" href="/reading.css?v=151">
+  <link rel="stylesheet" href="/reading-fold.css?v=151">
+  <link rel="stylesheet" href="/reading-workspace.css?v=151">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -441,17 +441,25 @@
           </div>
         </aside>
         <aside id="workspacePanel" class="workspace-panel hidden" aria-label="Paper workspace">
-          <div class="workspace-heading"><div><span class="panel-eyebrow">Beside your paper</span><h3>Workspace</h3></div><button class="soft-button" id="workspaceClose" type="button" aria-label="Close workspace and return to paper">Paper only</button></div>
+          <button class="workspace-close" id="workspaceClose" type="button" aria-label="Close workspace and return to paper" title="Return to paper">✕</button>
           <div id="workspaceTools" class="workspace-tools" role="toolbar" aria-label="Workspace tools">
             <div class="workspace-tool-row">
-              <button type="button" data-workspace-tool="pen" aria-pressed="true">Pen</button>
-              <button type="button" data-workspace-tool="eraser" aria-pressed="false">Eraser</button>
-              <button type="button" data-workspace-tool="move" aria-pressed="false">Move</button>
-              <select id="workspaceSize" aria-label="Workspace pen size"><option value="1.2">Fine</option><option value="2.4">Medium</option><option value="4">Broad</option></select>
+              <button id="workspacePenToggle" type="button" data-workspace-tool="pen" aria-label="Pen, color and size" aria-pressed="true" aria-expanded="false" aria-controls="workspacePenOptions" title="Pen, color and size"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg></button>
+              <button type="button" data-workspace-tool="eraser" aria-label="Eraser" aria-pressed="false" title="Eraser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 3 6 6-11 11H6l-4-4L15 3ZM8 10l6 6M10 20h11"/></svg></button>
+              <button type="button" data-workspace-tool="move" aria-label="Move notes" aria-pressed="false" title="Move notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button>
               <button id="workspaceUndo" type="button" aria-label="Undo workspace ink" disabled>↶</button>
-              <button id="workspaceRedo" type="button" aria-label="Redo workspace ink" disabled>↷</button>
+              <details id="workspaceMore" class="workspace-more">
+                <summary aria-label="More workspace tools" title="More tools">⋯</summary>
+                <div class="workspace-more-panel">
+                  <button id="workspaceNewNote" type="button">＋ Sticky note</button>
+                  <button id="workspaceMoreSpace" type="button">＋ More paper</button>
+                  <button id="workspaceRedo" type="button" aria-label="Redo workspace ink" disabled>↷ Redo ink</button>
+                  <button id="workspaceReturn" type="button">↩ Return to reading</button>
+                </div>
+              </details>
             </div>
-            <div class="workspace-color-row" role="group" aria-label="Workspace ink color">
+            <div id="workspacePenOptions" class="workspace-pen-options hidden" role="group" aria-label="Pen color and size">
+              <div class="workspace-color-row" role="group" aria-label="Workspace ink color">
               <button data-workspace-color="black" type="button" aria-label="Black ink" aria-pressed="true" style="--workspace-color:#20313b"></button>
               <button data-workspace-color="blue" type="button" aria-label="Blue ink" aria-pressed="false" style="--workspace-color:#245bc1"></button>
               <button data-workspace-color="red" type="button" aria-label="Red ink" aria-pressed="false" style="--workspace-color:#ba3f35"></button>
@@ -460,10 +468,11 @@
               <button data-workspace-color="orange" type="button" aria-label="Orange ink" aria-pressed="false" style="--workspace-color:#c26a1c"></button>
               <button data-workspace-color="teal" type="button" aria-label="Teal ink" aria-pressed="false" style="--workspace-color:#157d86"></button>
               <button data-workspace-color="gray" type="button" aria-label="Gray ink" aria-pressed="false" style="--workspace-color:#687782"></button>
+              </div>
+              <label class="workspace-size-label">Size <select id="workspaceSize" aria-label="Workspace pen size"><option value="1.2">Fine</option><option value="2.4">Medium</option><option value="4">Broad</option></select></label>
             </div>
           </div>
-          <div class="workspace-actions"><button class="text-button" id="workspaceNewNote" type="button">＋ Text note</button><button class="text-button" id="workspaceMoreSpace" type="button">＋ More paper</button><button class="text-button" id="workspaceReturn" type="button">↩ Return to reading</button></div>
-          <p id="workspaceStatus" class="workspace-status" role="status" aria-live="polite">Pencil writes · fingers scroll · drag a card by its handle.</p>
+          <p id="workspaceStatus" class="workspace-status" role="status" aria-live="polite"></p>
           <div id="workspaceScroll" class="workspace-scroll" tabindex="0" aria-label="Scrollable workspace paper">
             <div id="workspaceBoard" class="workspace-board">
               <div id="workspaceCards" class="workspace-cards"></div>
@@ -907,18 +916,18 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=150',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=151',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=150" defer></script>
-<script src="/reading-keeps.js?v=150" defer></script>
-<script src="/reading-excerpts.js?v=150" defer></script>
-<script src="/reading-excerpts-view.js?v=150" defer></script>
-<script src="/reading-workspace.js?v=150" defer></script>
-<script src="/reading-workspace-view.js?v=150" defer></script>
-<script src="/reading-folds.js?v=150" defer></script>
-<script src="/reading-pdf-projection.js?v=150" defer></script>
-<script src="/reading-fold-view.js?v=150" defer></script>
-<script src="/reading.js?v=150" defer></script>
+<script src="/reading-ink.js?v=151" defer></script>
+<script src="/reading-keeps.js?v=151" defer></script>
+<script src="/reading-excerpts.js?v=151" defer></script>
+<script src="/reading-excerpts-view.js?v=151" defer></script>
+<script src="/reading-workspace.js?v=151" defer></script>
+<script src="/reading-workspace-view.js?v=151" defer></script>
+<script src="/reading-folds.js?v=151" defer></script>
+<script src="/reading-pdf-projection.js?v=151" defer></script>
+<script src="/reading-fold-view.js?v=151" defer></script>
+<script src="/reading.js?v=151" defer></script>
 </body>
 </html>

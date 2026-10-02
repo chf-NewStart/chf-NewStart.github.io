@@ -6363,7 +6363,7 @@
   function resetExcerptNavigation(){
     excerptReturnSpot=null;excerptNavigationSerial++;excerptNavigationBusy=false;
     if(excerptView)excerptView.reset();
-    workspaceDragSelection=null;if(workspaceView)workspaceView.reset();
+    workspaceDragSelection=null;closeWorkspacePanels();if(workspaceView)workspaceView.reset();
     var chip=byId('excerptReturnChip');if(chip)chip.classList.add('hidden');
   }
   function saveExcerptState(ch,next){
@@ -6454,6 +6454,10 @@
   /* Independent, per-paper scratch sheet. Clip text remains in readingExcerpts;
      this field owns only positions and handwriting, never source-PDF annotations. */
   function workspaceStatus(message){var node=byId('workspaceStatus');if(node)node.textContent=message;}
+  function closeWorkspacePanels(){
+    var options=byId('workspacePenOptions'),pen=byId('workspacePenToggle'),more=byId('workspaceMore');
+    if(options)options.classList.add('hidden');if(pen)pen.setAttribute('aria-expanded','false');if(more)more.open=false;
+  }
   function workspaceContext(){
     var ch=find(currentId),unavailable=readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch);
     return{id:currentId,epoch:pdfOpenEpoch,open:workspaceOpen,unavailable:unavailable,busy:excerptNavigationBusy,
@@ -6485,13 +6489,13 @@
     if(on&&(!workspaceView||!window.PhloemWorkspaceState)){showReaderToast('Workspace did not finish loading. Reload Phloem and try again; your notes are safe.');return;}
     if(workspaceView)workspaceView.cancel();
     var wasOpen=workspaceOpen;
+    if(!on||on!==wasOpen)closeWorkspacePanels();
     if(on){toggleSheet(false);closeTouchDockMore(false);closeZenPopouts(false);if(recallActive)setRecall(false);setDrift(0);}
     workspaceOpen=on;document.body.classList.toggle('workspace-open',on);
     byId('workspacePanel').classList.toggle('hidden',!on);
     document.querySelectorAll('[data-workspace-open]').forEach(function(button){button.setAttribute('aria-pressed',String(on));});
     if(on)initializeWorkspace(find(currentId));
     refreshWorkspace();
-    if(on&&!byId('workspaceStatus').textContent.trim())workspaceStatus('Pencil writes · fingers scroll · drag cards by their handles.');
     if(on!==wasOpen)requestAnimationFrame(function(){
       if(readerMode==='pdf'&&pdfDoc)renderPdfPage();if(comfort.focus)placeGuide();refreshWorkspace();
       if(focus!==false){var target=on?byId('workspaceClose'):Array.from(document.querySelectorAll('[data-workspace-open]')).find(function(button){return button.getClientRects().length;})||(zenOn?byId('zenLayout'):byId('workspaceOpen'));if(target&&target.getClientRects().length)target.focus({preventScroll:true});}
@@ -6547,6 +6551,25 @@
       close:function(){setWorkspaceOpen(false);},onTool:function(){if(pdfInkController&&pdfInkController.active())pdfInkController.cancel();}});
   }
   document.querySelectorAll('[data-workspace-open]').forEach(function(button){button.onclick=function(){setWorkspaceOpen(!workspaceOpen);};});
+  byId('workspacePenToggle').addEventListener('click',function(){
+    var open=this.getAttribute('aria-expanded')!=='true';closeWorkspacePanels();
+    byId('workspacePenOptions').classList.toggle('hidden',!open);this.setAttribute('aria-expanded',String(open));
+  });
+  byId('workspaceTools').addEventListener('click',function(event){
+    var button=event.target.closest('button');if(!button)return;
+    if(button.dataset.workspaceTool&&button.dataset.workspaceTool!=='pen')closeWorkspacePanels();
+    if(button.closest('#workspaceMore'))byId('workspaceMore').open=false;
+  });
+  byId('workspaceMore').addEventListener('toggle',function(){
+    if(this.open){byId('workspacePenOptions').classList.add('hidden');byId('workspacePenToggle').setAttribute('aria-expanded','false');}
+  });
+  document.addEventListener('pointerdown',function(event){if(!byId('workspaceTools').contains(event.target))closeWorkspacePanels();},true);
+  byId('workspaceTools').addEventListener('keydown',function(event){
+    if(event.key!=='Escape')return;
+    var penOpen=byId('workspacePenToggle').getAttribute('aria-expanded')==='true',moreOpen=byId('workspaceMore').open;
+    if(!penOpen&&!moreOpen)return;event.preventDefault();event.stopPropagation();closeWorkspacePanels();
+    (penOpen?byId('workspacePenToggle'):byId('workspaceMore').querySelector('summary')).focus({preventScroll:true});
+  });
   byId('workspaceReturn').onclick=async function(){if(!workspaceWide())setWorkspaceOpen(false,false);await returnFromExcerpt();refreshWorkspace();};
   byId('selectionToWorkspace').onclick=function(){var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection;if(selection)addWorkspaceExcerpt(selection);};
 

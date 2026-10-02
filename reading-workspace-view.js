@@ -45,7 +45,12 @@
       state.orphan = true;
       state.input.readOnly = true;
       state.card.classList.add('workspace-orphan', 'workspace-draft');
+      state.editorLabel.hidden = false;
+      state.preview.hidden = true;
+      state.menu.hidden = true;
+      state.card.appendChild(state.remove);
       state.message.textContent = reason || 'Unsaved draft · copy before reloading.';
+      state.message.classList.remove('workspace-status-saved');
       state.source.disabled = true;
       state.source.hidden = true;
       state.remove.textContent = 'Dismiss draft';
@@ -113,22 +118,57 @@
       if (adapter.place(state.id, box) === true) { setBox(state, box, observedHeight); render(); }
       else setStatus('Could not move this clip.');
     }
+    function openEditor(state, focusInput) {
+      state.editing = true;
+      state.editorLabel.hidden = false;
+      state.preview.hidden = true;
+      state.card.classList.add('workspace-editing');
+      state.menu.open = false;
+      if (focusInput) state.input.focus({ preventScroll: true });
+    }
+    function closeEditor(state) {
+      if (state.orphan || state.dirty || state.saveFailed) return;
+      state.editing = false;
+      state.editorLabel.hidden = true;
+      state.preview.hidden = false;
+      state.card.classList.remove('workspace-editing');
+    }
+    function closeOpenMenus(except, restoreFocus) {
+      let closed = false;
+      let summaryToFocus = null;
+      const focused = document.activeElement;
+      for (const state of cards.values()) {
+        if (state.menu.open && state.menu !== except) {
+          if (restoreFocus && state.menu.contains(focused)) summaryToFocus = state.menu.querySelector('summary');
+          state.menu.open = false; closed = true;
+        }
+      }
+      if (summaryToFocus && summaryToFocus.isConnected) summaryToFocus.focus({ preventScroll: true });
+      return closed;
+    }
     function makeCard(item, box) {
       const id = String(item.id), card = document.createElement('article');
       card.className = 'workspace-card'; card.dataset.clipId = id; card.tabIndex = -1;
+      const head = document.createElement('div'); head.className = 'workspace-card-head';
       const handle = document.createElement('button');
-      handle.type = 'button'; handle.className = 'workspace-handle workspace-card-handle'; handle.textContent = 'Move clip';
+      handle.type = 'button'; handle.className = 'workspace-handle workspace-card-handle'; handle.textContent = '⠿';
       handle.setAttribute('aria-label', 'Move clip with drag or arrow keys'); handle.style.touchAction = 'none';
+      const menu = document.createElement('details'); menu.className = 'workspace-note-menu';
+      const summary = document.createElement('summary'); summary.textContent = '⋯'; summary.setAttribute('aria-label', 'Clip actions'); menu.appendChild(summary);
       const quote = document.createElement('blockquote'); quote.className = 'workspace-quote';
-      const label = document.createElement('label'); label.textContent = 'Your note';
+      const preview = document.createElement('div'); preview.className = 'workspace-note-preview'; preview.textContent = String(item.note || '');
+      const label = document.createElement('label'); label.textContent = 'Your note'; label.hidden = true;
       const input = document.createElement('textarea'); input.className = 'workspace-note'; input.maxLength = 20000; input.placeholder = 'Add your note…'; label.appendChild(input);
       const message = document.createElement('p'); message.className = 'workspace-card-status'; message.setAttribute('role', 'status');
       const actions = document.createElement('div'); actions.className = 'workspace-card-actions';
       const source = document.createElement('button'); source.type = 'button'; source.className = 'workspace-source'; source.textContent = 'Go to source';
+      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'workspace-note-edit'; edit.textContent = 'Edit note';
       const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'workspace-remove'; remove.textContent = 'Remove';
-      actions.append(source, remove); card.append(handle, quote, label, message, actions);
-      const state = { id, paperId: String(scope.id), draftId: uid(), card, handle, quote, input, message, source, remove, box, note: String(item.note || ''), version: item.updatedAt, dirty: false, saveFailed: false, orphan: false };
+      actions.append(source, edit, remove); menu.appendChild(actions); head.append(handle, menu); card.append(head, quote, preview, label, message);
+      const state = { id, paperId: String(scope.id), draftId: uid(), card, handle, menu, quote, preview, editorLabel: label, input, message, source, edit, remove, box, note: String(item.note || ''), version: item.updatedAt, dirty: false, saveFailed: false, orphan: false, editing: false };
       input.value = state.note; setBox(state, box, observedHeight);
+      edit.addEventListener('click', () => { if (liveItem(state)) openEditor(state, true); });
+      input.addEventListener('blur', () => { if (!state.orphan && !state.dirty && !state.saveFailed) closeEditor(state); });
       input.addEventListener('input', () => {
         const live = liveItem(state);
         if (!live || live.updatedAt !== state.version) { keepDraft(state, 'This note changed elsewhere. Copy your draft before dismissing it.'); return; }
@@ -137,20 +177,31 @@
           if (adapter.updateNote(id, input.value, state.version) !== true) {
             const fresh = liveItem(state);
             if (fresh && String(fresh.note || '') === input.value) state.version = fresh.updatedAt;
-            state.saveFailed = true; message.textContent = 'Could not save. Your draft is still here.'; return;
+            state.saveFailed = true; message.classList.remove('workspace-status-saved'); message.textContent = 'Could not save. Your draft is still here.'; return;
           }
           const fresh = liveItem(state);
-          state.note = input.value; state.version = fresh ? fresh.updatedAt : live.updatedAt; state.dirty = false; state.saveFailed = false; message.textContent = 'Saved';
-        } catch (error) { state.saveFailed = true; message.textContent = 'Could not save. Your draft is still here.'; }
+          state.note = input.value; state.version = fresh ? fresh.updatedAt : live.updatedAt; state.dirty = false; state.saveFailed = false;
+          preview.textContent = input.value; message.textContent = 'Saved'; message.classList.add('workspace-status-saved');
+        } catch (error) { state.saveFailed = true; message.classList.remove('workspace-status-saved'); message.textContent = 'Could not save. Your draft is still here.'; }
       });
       source.addEventListener('click', async () => {
         if (!liveItem(state)) return;
         const start = { ...scope }, prior = status.textContent;
+        menu.open = false;
+        card.focus({ preventScroll: true });
         source.disabled = true;
         try {
           const result = await adapter.goToSource(id);
-          if (result === false && same(start) && currentScope() && status.textContent === prior && !prior) setStatus('Could not open this source.');
-        } catch (error) { if (same(start) && currentScope() && status.textContent === prior && !prior) setStatus('Could not open this source.'); }
+          if (result === false && same(start) && currentScope()) {
+            if (status.textContent === prior && !prior) setStatus('Could not open this source.');
+            if (card.isConnected && context().open) summary.focus({ preventScroll: true });
+          }
+        } catch (error) {
+          if (same(start) && currentScope()) {
+            if (status.textContent === prior && !prior) setStatus('Could not open this source.');
+            if (card.isConnected && context().open) summary.focus({ preventScroll: true });
+          }
+        }
         finally { source.disabled = !liveItem(state) || !!context().busy; }
       });
       remove.addEventListener('click', () => {
@@ -159,7 +210,8 @@
           drafts.delete(draftKey(state)); card.remove(); render(); return;
         }
         if (!liveItem(state) || !global.confirm('Remove this clip and its note?')) return;
-        if (adapter.removeClip(id) === true) render(); else message.textContent = 'Could not remove this clip.';
+        if (adapter.removeClip(id) === true) render();
+        else { message.classList.remove('workspace-status-saved'); message.textContent = 'Could not remove this clip.'; }
       });
       handle.addEventListener('pointerdown', event => {
         if (gesture || !liveItem(state) || context().busy || (event.pointerType === 'pen' && tool !== 'move')) return;
@@ -232,7 +284,9 @@
           if (!state.saveFailed) { state.note = state.input.value; state.dirty = false; }
         }
         if (!state.dirty && document.activeElement !== state.input && state.input.value !== String(item.note || '')) state.input.value = String(item.note || '');
-        if (!state.dirty && document.activeElement !== state.input) { state.note = String(item.note || ''); state.version = item.updatedAt; }
+        if (!state.dirty && document.activeElement !== state.input) {
+          state.note = String(item.note || ''); state.version = item.updatedAt; state.preview.textContent = state.note;
+        }
         if (!gesture || gesture.kind !== 'drag' || gesture.state !== state) setBox(state, box, observedHeight);
         state.source.disabled = !!c.busy;
       }
@@ -252,7 +306,8 @@
     function focus(id, edit = false) {
       render(); const state = cards.get(String(id)); if (!state) return false;
       state.card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      (edit ? state.input : state.card).focus({ preventScroll: true });
+      if (edit) openEditor(state, true);
+      else state.card.focus({ preventScroll: true });
       return true;
     }
     function hasDrafts() { return drafts.size > 0 || [...cards.values()].some(state => state.dirty || state.saveFailed); }
@@ -363,10 +418,22 @@
     };
     board.addEventListener('touchend', event => endTouch(event, true), { capture: true, passive: false });
     board.addEventListener('touchcancel', event => endTouch(event, false), { capture: true, passive: false });
+    document.addEventListener('pointerdown', event => {
+      if (!context().open) return;
+      for (const state of cards.values()) {
+        if (state.menu.open && !state.menu.contains(event.target)) state.menu.open = false;
+      }
+    }, true);
     scroll.addEventListener('scroll', cancel, { passive: true }); global.addEventListener('resize', cancel); global.addEventListener('blur', cancel); global.addEventListener('pagehide', cancel);
     document.addEventListener('keydown', event => {
-      if (!context().open || !panel.contains(event.target)) return;
-      if (event.key === 'Escape' && gesture) { event.preventDefault(); event.stopImmediatePropagation(); cancel(); return; }
+      if (!context().open) return;
+      if (event.key === 'Escape' && gesture && panel.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); cancel(); return; }
+      const focusedCard = event.target.closest && event.target.closest('.workspace-card');
+      if (event.key === 'Escape' && focusedCard && [...cards.values()].some(state => state.card === focusedCard && state.menu.open) && closeOpenMenus(null, true)) {
+        event.preventDefault(); event.stopImmediatePropagation(); return;
+      }
+      if (event.key === 'Escape') closeOpenMenus();
+      if (!panel.contains(event.target)) return;
       if (event.target.closest('input,textarea,[contenteditable="true"]')) return;
       const key = event.key.toLowerCase();
       if ((event.metaKey || event.ctrlKey) && (key === 'z' || key === 'y')) {

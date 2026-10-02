@@ -123,6 +123,7 @@ function navigationHarness(items = [pdfRecord('first', 2), pdfRecord('second', 4
   context.jumpToReadingKeep = entry => { jumps.push(plain(entry.anchor)); return jump(entry); };
   vm.runInContext([
     'var excerptReturnSpot=null,excerptNavigationSerial=0,excerptNavigationBusy=false;',
+    section('  function closeWorkspacePanels(){', '  function workspaceContext(){'),
     section('  function excerptStatus(message){', '  function saveExcerptState('),
     section('  function excerptReadingAnchor(){', '  if(window.PhloemExcerptView)')
   ].join('\n'), context, { filename: 'reading.js excerpt navigation' });

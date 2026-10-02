@@ -72,13 +72,23 @@ async function waitPdf(page, pageNo) {
   }, pageNo);
 }
 async function turnPage(page, direction, target) {
-  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.pagedReady === 'true');
+  await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.pagedReady === 'true'
+    && !document.getElementById('documentPane').classList.contains('turning-book-leaf'));
   const button = page.locator(direction === 'next' ? '#nextPage' : '#prevPage');
   assert.equal(await button.isVisible(), true, 'page turn has a visible control');
   await button.click();
-  await page.waitForFunction(n => !!document.querySelector('.pdf-page[data-page="' + n + '"].book-active')
-    && document.getElementById('pdfFrame').dataset.pagedReady === 'true'
-    && !document.getElementById('documentPane').classList.contains('turning-book-leaf'), target);
+  try {
+    await page.waitForFunction(n => !!document.querySelector('.pdf-page[data-page="' + n + '"].book-active')
+      && document.getElementById('pdfFrame').dataset.pagedReady === 'true'
+      && !document.getElementById('documentPane').classList.contains('turning-book-leaf'), target);
+  } catch (error) {
+    const state = await page.evaluate(() => ({ current: document.getElementById('pageNumber').textContent,
+      ready: document.getElementById('pdfFrame').dataset.pagedReady,
+      turning: document.getElementById('documentPane').classList.contains('turning-book-leaf'),
+      active: [...document.querySelectorAll('.pdf-page.book-active')].map(node => node.dataset.page),
+      nextDisabled: document.getElementById('nextPage').disabled }));
+    throw new Error('page turn did not reach ' + target + ': ' + JSON.stringify(state), { cause: error });
+  }
 }
 async function selectPdf(page, pageNo, phrase) {
   await page.waitForFunction(({ pageNo, phrase }) => Array.from(document.querySelectorAll('.pdf-page[data-page="' + pageNo + '"] .text-layer span'))
@@ -153,6 +163,21 @@ async function ensureWorkspaceOpen(page) {
   await open.click();
   await page.locator('#workspacePanel').waitFor({ state: 'visible' });
 }
+async function openMore(page) {
+  const menu = page.locator('#workspaceMore');
+  if (!(await menu.evaluate(node => node.open))) await menu.locator('summary').click();
+  assert.equal(await menu.evaluate(node => node.open), true, 'More menu opens through its visible summary');
+}
+async function openCardMenu(card) {
+  const menu = card.locator('details.workspace-note-menu');
+  if (!(await menu.evaluate(node => node.open))) await menu.locator('summary').click();
+  assert.equal(await menu.evaluate(node => node.open), true, 'sticky note menu opens through its visible summary');
+}
+async function openPenOptions(page) {
+  const options = page.locator('#workspacePenOptions');
+  if (!(await options.isVisible())) await page.locator('#workspacePenToggle').click();
+  await options.waitFor({ state: 'visible' });
+}
 
 (async () => {
   await new Promise((resolve, reject) => {
@@ -196,6 +221,46 @@ async function ensureWorkspaceOpen(page) {
       && Math.abs(split.paper.width - split.workspace.width) <= split.viewport * .16
       && split.paper.right <= split.workspace.left + 3,
     'landscape reading and workspace panes share the screen: ' + JSON.stringify(split));
+    const cleanWorkspace = await page.evaluate(() => {
+      const panel = document.getElementById('workspacePanel');
+      const scroll = document.getElementById('workspaceScroll');
+      return {
+        background: getComputedStyle(document.getElementById('workspaceBoard')).backgroundImage,
+        scrollHeight: scroll.getBoundingClientRect().height,
+        panelHeight: panel.getBoundingClientRect().height,
+        headingVisible: [...panel.querySelectorAll('.workspace-heading')].some(node => getComputedStyle(node).display !== 'none' && node.getBoundingClientRect().height > 0),
+        penOptionsVisible: document.getElementById('workspacePenOptions')?.getBoundingClientRect().height > 0,
+        moreOpen: document.getElementById('workspaceMore')?.open
+      };
+    });
+    assert.equal(cleanWorkspace.background, 'none', 'workspace starts as blank paper without a background pattern');
+    assert.equal(cleanWorkspace.headingVisible, false, 'workspace has no large visible heading');
+    assert.equal(cleanWorkspace.penOptionsVisible, false, 'pen options are closed by default');
+    assert.equal(cleanWorkspace.moreOpen, false, 'More menu is closed by default');
+    assert(cleanWorkspace.scrollHeight >= cleanWorkspace.panelHeight * .85,
+      'paper uses at least 85% of workspace height: ' + JSON.stringify(cleanWorkspace));
+    await page.waitForFunction(() => {
+      const pane = document.getElementById('documentPane').getBoundingClientRect();
+      const paper = document.querySelector('.pdf-page.book-active')?.getBoundingClientRect();
+      return document.getElementById('pdfFrame').dataset.pagedReady === 'true'
+        && paper && paper.width >= pane.width * .65;
+    });
+    await page.screenshot({ path: '/tmp/phloem-workspace-' + ENGINE + '-empty.png' });
+    await openPenOptions(page);
+    await openMore(page);
+    await page.locator('#workspacePenOptions').waitFor({ state: 'hidden' });
+    assert.equal(await page.locator('#workspacePenOptions').isVisible(), false,
+      'opening More dismisses Pen options');
+    await page.locator('#readerMeta').click();
+    await page.waitForFunction(() => !document.getElementById('workspaceMore').open);
+    assert.equal(await page.locator('#workspaceMore').evaluate(node => node.open), false,
+      'outside pointer press dismisses More');
+    await openPenOptions(page);
+    await page.locator('#workspacePenToggle').focus();
+    await page.keyboard.press('Escape');
+    await page.locator('#workspacePenOptions').waitFor({ state: 'hidden' });
+    assert.equal(await page.locator('#workspacePenOptions').isVisible(), false,
+      'Escape dismisses Pen options');
     await turnPage(page, 'next', 2);
     await selectPdf(page, 2, QUOTE);
     await page.locator('#selectionToWorkspace').click();
@@ -214,16 +279,36 @@ async function ensureWorkspaceOpen(page) {
     const card = page.locator('.workspace-card[data-clip-id="' + clip.id + '"]');
     await card.waitFor({ state: 'visible' });
     assert.equal(await card.locator('.workspace-quote').textContent(), QUOTE);
+    assert.equal(await card.locator('textarea.workspace-note').isVisible(), false,
+      'a source sticky note does not expose its textarea by default');
+    assert.equal(await card.locator('.workspace-quote').isVisible(), true,
+      'the source quote stays visible on the compact sticky note');
+    await openCardMenu(card);
+    await page.locator('#readerMeta').click();
+    await page.waitForFunction(() => !document.querySelector('.workspace-card .workspace-note-menu').open);
+    assert.equal(await card.locator('.workspace-note-menu').evaluate(node => node.open), false,
+      'outside pointer press dismisses the sticky note menu');
+    await openCardMenu(card);
+    await card.locator('.workspace-note-menu summary').focus();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('.workspace-card .workspace-note-menu').open);
+    assert.equal(await card.locator('.workspace-note-menu').evaluate(node => node.open), false,
+      'Escape dismisses the sticky note menu');
     await page.screenshot({ path: '/tmp/phloem-workspace-' + ENGINE + '-landscape.png' });
     await turnPage(page, 'prev', 1);
+    await openCardMenu(card);
     await card.locator('.workspace-source').click();
     await page.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active'));
+    await openMore(page);
     await page.locator('#workspaceReturn').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#workspaceReturn').isVisible(), true,
       'source visit exposes Return to reading in the workspace');
     await page.locator('#workspaceReturn').click();
     await page.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="1"].book-active'));
-    await page.locator('#workspaceReturn').waitFor({ state: 'hidden' });
+    await page.waitForFunction(() => {
+      const button = document.getElementById('workspaceReturn');
+      return button.classList.contains('hidden') && !button.disabled;
+    });
     await turnPage(page, 'next', 2);
 
     await selectPdf(page, 2, OTHER_QUOTE);
@@ -264,6 +349,7 @@ async function ensureWorkspaceOpen(page) {
       'touch pointer drag places a passage without PDF highlighting');
 
     const beforeFreeNote = await paperById(page, pdfId);
+    await openMore(page);
     await page.locator('#workspaceNewNote').click();
     await page.waitForFunction(id => {
       const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
@@ -292,7 +378,15 @@ async function ensureWorkspaceOpen(page) {
       const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
       return ch?.readingExcerpts?.items?.some(item => item.id === clipId && item.note === note);
     }, { id: pdfId, clipId: freeNote.id, note: freeText });
+    assert.equal(await page.locator('.workspace-card[data-clip-id="' + freeNote.id + '"] .workspace-note-preview').textContent(), freeText,
+      'saved text appears in the compact sticky note preview');
+    await page.locator('.workspace-card[data-clip-id="' + freeNote.id + '"] .workspace-handle').focus();
+    assert.equal(await page.locator('.workspace-card[data-clip-id="' + freeNote.id + '"] textarea.workspace-note').isVisible(), false,
+      'saved sticky note returns to read mode after editing');
+    assert.equal(await page.locator('.workspace-card[data-clip-id="' + freeNote.id + '"] .workspace-note-preview').isVisible(), true,
+      'saved sticky note preview is visible after editing');
     const heightBefore = (await paperById(page, pdfId)).readingWorkspace.height;
+    await openMore(page);
     await page.locator('#workspaceMoreSpace').click();
     await page.waitForFunction(({ id, heightBefore }) => {
       const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
@@ -326,6 +420,7 @@ async function ensureWorkspaceOpen(page) {
     const draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
 
     await page.locator('[data-workspace-tool="pen"]').click();
+    await openPenOptions(page);
     await page.locator('[data-workspace-color]').first().click();
     await stroke(page, [[.65, .12], [.69, .14], [.74, .16], [.78, .18]]);
     await waitStrokeCount(page, pdfId, 1);
@@ -351,10 +446,15 @@ async function ensureWorkspaceOpen(page) {
     await waitStrokeCount(page, pdfId, 0);
     await page.locator('#workspaceUndo').click();
     await waitStrokeCount(page, pdfId, 1);
+    await openMore(page);
     await page.locator('#workspaceRedo').click();
     await waitStrokeCount(page, pdfId, 0);
+    assert.equal(await page.locator('#workspaceMore').evaluate(node => node.open), false,
+      'More closes after choosing Redo');
     await page.locator('#workspaceUndo').click();
     await waitStrokeCount(page, pdfId, 1);
+    assert.equal(await page.locator('#workspaceMore').evaluate(node => node.open), false,
+      'ink screenshot shows the compact rail with menus closed');
     await page.screenshot({ path: '/tmp/phloem-workspace-' + ENGINE + '-landscape.png' });
     await page.reload({ waitUntil: 'load' });
     await waitPdf(page, 2);

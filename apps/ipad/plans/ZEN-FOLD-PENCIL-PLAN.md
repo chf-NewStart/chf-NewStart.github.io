@@ -26,6 +26,16 @@ Actual module boundary for the next implementer:
 
 Next bounded tasks: physical iPad/WebKit validation of this pilot (keep gated if unavailable); then resume A1/A2 for compact Zen or A4/A5 for native Pencil after their prerequisites. Do not silently turn on folding, build an App Store archive, or claim native gestures work from synthetic events. Pinned figures, scratch margins, and additional book-like refinements are outside this delivery.
 
+### Quiet sticky-note workspace (web assets v151)
+
+The right half is now blank paper, with passages rendered as warm, compact sticky notes. Quoted text and existing typed notes show in read mode; each sticky's **⋯** menu holds Go to source, Edit note, and confirmed removal. New sticky notes open their editor immediately. Clean editors collapse on blur; failed or conflicted drafts stay visible and copyable with their warning. Source links and shared Clips records remain intact.
+
+A small floating rail contains Pen, Eraser, Move, Undo, and **⋯**. Tap Pen for color/size; the rail's **⋯** holds Sticky note, More paper, Redo, and Return to reading when available. Popovers do not resize the paper and close on outside taps, Escape, or document/workspace changes. The large heading, permanent instruction text, dotted background, and always-visible action rows are removed. Error/status messages remain visible. All primary touch targets remain at least 44px.
+
+No storage schema, PDF coordinates, workspace logical ink coordinates, merge policy, or native version changed. Existing sticky positions and ink are retained; this is web UI/cache release v151, not a new TestFlight binary. The excerpt-navigation fixture now includes the actual popover-reset helper.
+
+Validation on 2026-10-02: 37 workspace/excerpt state and integration tests, 16 iPad packaging tests, cache-version checks, and the existing touch-selection and PDF ink regressions (71/71) pass. The web bundle builds with 64 assets (13.4 MiB). Compact-card view tests pass 7/7 in both Chromium and WebKit, including failure/conflict drafts and keyboard focus restoration. The full workspace browser suite passes in both engines: split layout, tap/native/touch clip placement, source/return, sticky editing/movement, ink/eraser/history, menu exclusivity/dismissal, reload, portrait, and document isolation. Blank, landscape, and portrait screenshots were reviewed. Browser navigation checks now await Return's own hidden class and enabled state—not its ancestor menu's visibility, because that menu closes immediately while navigation completes asynchronously. No retry-to-pass was added. Physical Pencil feel and live multi-device sync remain unverified.
+
 ### Landscape paper + workspace (web assets v150)
 
 The user clarified that the requested workspace is **not a Clips list**: in landscape, the left half is the paper and the right half is a freeform sheet for placing passages, handwriting, and drawing. This supersedes v149's UI scope while preserving its stored excerpts and typed notes.

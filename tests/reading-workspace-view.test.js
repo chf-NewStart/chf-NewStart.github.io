@@ -6,6 +6,14 @@ let playwright;
 try { playwright = require('playwright'); } catch (_) { playwright = require('playwright-core'); }
 
 const ROOT = path.resolve(__dirname, '..');
+const ENGINE = process.env.PHLOEM_BROWSER || 'chromium';
+assert(['chromium', 'webkit'].includes(ENGINE), 'PHLOEM_BROWSER must be chromium or webkit');
+function launchBrowser() {
+  const launch = { headless: true };
+  const executablePath = ENGINE === 'webkit' ? process.env.PHLOEM_WEBKIT_EXECUTABLE_PATH : process.env.CHROME_PATH;
+  if (executablePath) launch.executablePath = executablePath;
+  return playwright[ENGINE].launch(launch);
+}
 const html = `<!doctype html><html><head><style>
 body { margin:0; } #workspacePanel { width:1000px; }
 #workspaceTools { height:44px; } #workspaceScroll { width:1000px; height:650px; overflow:auto; }
@@ -13,13 +21,18 @@ body { margin:0; } #workspacePanel { width:1000px; }
 #workspaceCards, #workspaceInk { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 .workspace-card { position:absolute; pointer-events:auto; background:white; }
 </style></head><body>
-<aside id="workspacePanel"><div id="workspaceTools">
-  <button type="button" data-workspace-tool="pen">Pen</button>
+<aside id="workspacePanel"><div id="workspaceTools" tabindex="0">
+  <button id="workspacePenToggle" type="button" data-workspace-tool="pen">Pen</button>
   <button type="button" data-workspace-tool="eraser">Eraser</button>
-  <select id="workspaceSize"><option value="1.2">Fine</option></select>
-</div><button id="workspaceUndo"></button><button id="workspaceRedo"></button>
-<button id="workspaceMoreSpace"></button><button id="workspaceNewNote"></button>
-<button id="workspaceClose"></button><p id="workspaceStatus"></p>
+  <button type="button" data-workspace-tool="move">Move</button>
+  <button id="workspaceUndo"></button>
+  <details id="workspaceMore"><summary>More</summary>
+    <button id="workspaceRedo"></button><button id="workspaceMoreSpace"></button>
+    <button id="workspaceNewNote"></button><button id="workspaceReturn"></button>
+  </details>
+  <div id="workspacePenOptions" hidden><button type="button" data-workspace-color="black">Black</button>
+    <select id="workspaceSize"><option value="1.2">Fine</option></select></div>
+</div><button id="workspaceClose"></button><p id="workspaceStatus"></p>
 <div id="workspaceScroll"><div id="workspaceBoard">
   <div id="workspaceCards"></div><svg id="workspaceInk"></svg>
 </div></div></aside></body></html>`;
@@ -69,13 +82,59 @@ async function fixture(browser, withClip = true) {
   }, withClip);
   return page;
 }
+async function editClip(page) {
+  await page.locator('.workspace-card .workspace-note-menu summary').click();
+  await page.locator('.workspace-card .workspace-note-edit').click();
+  await page.locator('.workspace-card textarea.workspace-note').waitFor({ state: 'visible' });
+}
+
+test('compact sticky note starts in read mode and Edit opens its textarea', async () => {
+  const browser = await launchBrowser();
+  try {
+    const page = await fixture(browser);
+    try {
+      assert.equal(await page.locator('.workspace-quote').textContent(), 'A source');
+      assert.equal(await page.locator('.workspace-note-preview').textContent(), 'Original note');
+      assert.equal(await page.locator('textarea.workspace-note').isVisible(), false);
+      await editClip(page);
+      assert.equal(await page.locator('textarea.workspace-note').isVisible(), true);
+      assert.equal(await page.locator('.workspace-note-preview').isVisible(), false);
+    } finally { await page.close(); }
+  } finally { await browser.close(); }
+});
+
+test('Escape closes a focused sticky menu and restores summary focus without consuming outside Escape', async () => {
+  const browser = await launchBrowser();
+  try {
+    const page = await fixture(browser);
+    try {
+      await page.evaluate(() => {
+        window.escapeBubbles = 0;
+        document.addEventListener('keydown', event => { if (event.key === 'Escape') window.escapeBubbles++; });
+      });
+      const menu = page.locator('.workspace-note-menu');
+      await menu.locator('summary').click();
+      await menu.locator('.workspace-source').focus();
+      await page.keyboard.press('Escape');
+      assert.equal(await menu.evaluate(node => node.open), false);
+      assert.equal(await menu.locator('summary').evaluate(node => document.activeElement === node), true);
+      assert.equal(await page.evaluate(() => window.escapeBubbles), 0, 'inside-menu Escape is consumed');
+      await menu.locator('summary').click();
+      await page.locator('#workspaceTools').focus();
+      await page.keyboard.press('Escape');
+      assert.equal(await menu.evaluate(node => node.open), false);
+      assert.equal(await page.evaluate(() => window.escapeBubbles), 1, 'outside Escape still bubbles');
+    } finally { await page.close(); }
+  } finally { await browser.close(); }
+});
 
 test('workspace view retains failed-save drafts through render, reset, and paper switch', async () => {
-  const browser = await playwright.chromium.launch({ headless: true });
+  const browser = await launchBrowser();
   try {
     const page = await fixture(browser);
     try {
       await page.evaluate(() => fixture.failUpdate(true));
+      await editClip(page);
       await page.locator('.workspace-note').fill('Unsaved local draft');
       const before = await page.evaluate(() => ({
         canonical: fixture.state.items[0].note, draft: fixture.view.hasDrafts(),
@@ -96,11 +155,11 @@ test('workspace view retains failed-save drafts through render, reset, and paper
 });
 
 test('closing a clean focused field does not create an orphan draft', async () => {
-  const browser = await playwright.chromium.launch({ headless: true });
+  const browser = await launchBrowser();
   try {
     const page = await fixture(browser);
     try {
-      await page.locator('.workspace-note').focus();
+      await editClip(page);
       const result = await page.evaluate(() => {
         fixture.state.open = false;
         fixture.view.render();
@@ -113,11 +172,12 @@ test('closing a clean focused field does not create an orphan draft', async () =
 });
 
 test('remote edit keeps a separate copyable local draft', async () => {
-  const browser = await playwright.chromium.launch({ headless: true });
+  const browser = await launchBrowser();
   try {
     const page = await fixture(browser);
     try {
       await page.evaluate(() => fixture.failUpdate(true));
+      await editClip(page);
       await page.locator('.workspace-note').fill('My draft');
       const result = await page.evaluate(() => {
         fixture.state.items[0].note = 'Remote edit';
@@ -138,7 +198,7 @@ test('remote edit keeps a separate copyable local draft', async () => {
 });
 
 test('logical ink near origin is not rendered as normalized half-page coordinates', async () => {
-  const browser = await playwright.chromium.launch({ headless: true });
+  const browser = await launchBrowser();
   try {
     const page = await fixture(browser, false);
     try {
@@ -155,7 +215,7 @@ test('logical ink near origin is not rendered as normalized half-page coordinate
 });
 
 test('far eraser misses a dot and collinear line; cancellation restores stroke opacity', async () => {
-  const browser = await playwright.chromium.launch({ headless: true });
+  const browser = await launchBrowser();
   try {
     const page = await fixture(browser, false);
     try {

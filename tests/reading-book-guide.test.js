@@ -152,6 +152,9 @@ async function checkZenGripOnLeft(page) {
     await page.goto('http://127.0.0.1:' + PORT + '/reading.html', { waitUntil: 'load' });
     await page.setInputFiles('#pdfFile', PDF);
     await ready(page, [1]);
+    await page.waitForFunction(() => document.body.classList.contains('zen'));
+    await page.locator('#zenExit').click();
+    await page.waitForFunction(() => !document.body.classList.contains('zen'));
     await page.evaluate(() => document.getElementById('nextPage').click());
     await ready(page, [2, 3]);
     await page.waitForFunction(() => document.getElementById('paneSpotlight').classList.contains('placed'));
@@ -160,7 +163,7 @@ async function checkZenGripOnLeft(page) {
     await page.evaluate(() => document.querySelector('[data-guide-orientation="column"]').click());
     await checkSpreadDrag(page, 'Book column guide');
 
-    await page.evaluate(() => document.getElementById('zenBtn').click());
+    await page.locator('#zenBtn').click();
     await ready(page, [2, 3]);
     await page.waitForFunction(() => document.body.classList.contains('zen'));
     await page.evaluate(() => document.querySelector('[data-guide-orientation="row"]').click());

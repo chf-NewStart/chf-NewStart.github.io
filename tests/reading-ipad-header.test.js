@@ -72,6 +72,9 @@ function verifyHeader(info, label, touch) {
     await page.goto('http://localhost:' + PORT + '/reading.html');
     await page.setInputFiles('#pdfFile', path.join(ROOT, 'assets/phloem-guide/phloem-field-guide.pdf'));
     await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.positionReady === 'true' && document.body.classList.contains('reading'));
+    await page.waitForFunction(() => document.body.classList.contains('zen'));
+    await page.locator('#zenExit').click();
+    await page.waitForFunction(() => !document.body.classList.contains('zen'));
     /* Realistic long metadata and sync/revision labels from the reported workflow. */
     await page.evaluate(() => {
       document.getElementById('readerTitle').textContent = 'Modelling metabolic fluxes in tomato fruit';

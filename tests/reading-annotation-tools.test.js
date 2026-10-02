@@ -177,6 +177,9 @@ async function reset(page, saved) {
   await page.evaluate(saved => sessionStorage.setItem('annotationTools.fixture.restore', saved), saved);
   await page.reload({ waitUntil: 'load' });
   await waitForPdf(page);
+  await page.waitForFunction(() => document.body.classList.contains('zen'));
+  await page.locator('#zenExit').click();
+  await page.waitForFunction(() => !document.body.classList.contains('zen'));
   await positionPage(page);
   const restored = await chapter(page), expected = JSON.parse(saved).chapters.find(item => item.id === restored.id);
   if (!expected || !same(annotations(restored), annotations(expected))) throw new Error('Fixture reset did not restore the baseline annotations');
@@ -200,6 +203,9 @@ async function reset(page, saved) {
       await page.waitForFunction(() => document.body.classList.contains('library-ready'));
       await page.setInputFiles('#pdfFile', { name: 'annotation-tools.pdf', mimeType: 'application/pdf', buffer: fixturePdf() });
       await waitForPdf(page);
+      await page.waitForFunction(() => document.body.classList.contains('zen'));
+      await page.locator('#zenExit').click();
+      await page.waitForFunction(() => !document.body.classList.contains('zen'));
       check(label + ' initial default Pencil mode has no selected pen controls', writeIsOff(await ui(page)));
       await stroke(page, 'Alpha', 'beta', touch);
       const notePoint = await wordPoint(page, 'Alpha');
@@ -227,7 +233,7 @@ async function reset(page, saved) {
       else markerEntries.push(['shared color activates Highlight in Zen', page => click(page, '#highlightToolbar [data-highlight-color="blue"]'), true]);
       for (const [name, activate, zen] of markerEntries) {
         await reset(page, saved);
-        if (zen) await click(page, '#zenBtn');
+        if (zen) await page.locator('#zenBtn').click();
         await setWrite(page, true, zen ? '#zenWrite' : touch ? '#touchWrite' : '#pdfWriteBtn');
         await activate(page);
         const state = await ui(page);
@@ -244,7 +250,7 @@ async function reset(page, saved) {
 
       for (const selector of ['#pdfWriteBtn', '#touchWrite', '#zenWrite']) {
         await reset(page, saved);
-        if (selector === '#zenWrite') await click(page, '#zenBtn');
+        if (selector === '#zenWrite') await page.locator('#zenBtn').click();
         await click(page, '#highlightBtn', 'mouse');
         await click(page, selector);
         const state = await ui(page);

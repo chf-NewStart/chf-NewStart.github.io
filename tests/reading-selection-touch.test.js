@@ -123,6 +123,17 @@ async function openFixture(page) {
     return canvas && canvas.width > 0 && spans.some(span => span.textContent.trim())
       && !document.getElementById('readerPage').classList.contains('hidden');
   });
+  await page.waitForFunction(() => document.body.classList.contains('zen'));
+  await page.locator('#zenExit').click();
+  await page.waitForFunction(() => !document.body.classList.contains('zen'));
+  // Leaving Zen schedules a PDF refit on the next frame. Wait for its text layer
+  // before sending a synthetic selection through the desk reader.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.pdf-page[data-page="1"] canvas');
+    const spans = Array.from(document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span'));
+    return canvas && canvas.width > 0 && spans.some(span => span.textContent.trim());
+  });
 }
 
 async function fixtureSpanState(page) {

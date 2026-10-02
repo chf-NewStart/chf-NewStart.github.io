@@ -42,7 +42,7 @@ async function tap(page, selector) { await page.locator(selector).evaluate(eleme
 async function chapter(page) { return page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === localStorage.getItem('readingRoom.lastOpen.v1'))); }
 async function palette(page, surface = 'header') {
   const trigger = { header: 'highlightColorBtn', dock: 'touchHighlight', zen: 'zenMarker' }[surface];
-  if (surface === 'zen' && !await page.locator('body').evaluate(body => body.classList.contains('zen'))) await tap(page, '#zenBtn');
+  if (surface === 'zen' && !await page.locator('body').evaluate(body => body.classList.contains('zen'))) await page.locator('#zenBtn').click();
   if (!await page.locator('#highlightToolbar').isVisible()) await tap(page, '#' + trigger);
 }
 async function selectAlpha(page) {
@@ -83,6 +83,9 @@ function pdfFixture() {
       await page.addInitScript(seed);
       await page.goto('http://127.0.0.1:' + PORT + '/reading.html', { waitUntil: 'load' });
       await page.waitForSelector('#textDocument mark[data-hl-id]');
+      await page.waitForFunction(() => document.body.classList.contains('zen'));
+      await page.locator('#zenExit').click();
+      await page.waitForFunction(() => !document.body.classList.contains('zen'));
       check(label + ' shared Highlight toolbar retains Define without Ask AI', await page.locator('#highlightToolbar [data-marker-action="define"]').count() === 1
         && await page.locator('#highlightToolbar [data-marker-action="ask"]').count() === 0
         && !/Ask AI/.test(await page.locator('#highlightToolbar').textContent()));
@@ -104,7 +107,7 @@ function pdfFixture() {
         await page.waitForFunction(() => document.getElementById('lookupTitle').textContent === 'Beta gamma definition');
         check(label + ' ' + surface + ' Define reuses cached explicit passage', (await page.locator('#lookupSelection').textContent()) === '“beta gamma”' && outbound.length === 0);
         await tap(page, '#lookupClose');
-        if (surface === 'zen') await tap(page, '#zenExit');
+        if (surface === 'zen') await page.locator('#zenExit').click();
       }
       const afterDefine = await chapter(page);
       check(label + ' cached Define sends nothing and saves no AI thread', outbound.length === 0 && afterDefine.aiThreads.length === 0 && afterDefine.questions.length === 0);
@@ -133,6 +136,9 @@ function pdfFixture() {
       await tap(page, '#readerBack');
       await page.setInputFiles('#pdfFile', { name: 'marker-actions-pages.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
       await page.waitForSelector('.pdf-page[data-page="1"] .text-layer span');
+      await page.waitForFunction(() => document.body.classList.contains('zen'));
+      await page.locator('#zenExit').click();
+      await page.waitForFunction(() => !document.body.classList.contains('zen'));
       await page.evaluate(() => {
         const span = document.querySelector('.pdf-page[data-page="1"] .text-layer span'), range = document.createRange();
         range.selectNodeContents(span); getSelection().removeAllRanges(); getSelection().addRange(range); document.dispatchEvent(new Event('selectionchange'));

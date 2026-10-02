@@ -86,6 +86,11 @@ async function waitForPdf(page) {
       && !document.getElementById('readerPage').classList.contains('hidden');
   });
 }
+async function leaveDefaultZen(page) {
+  await page.waitForFunction(() => document.body.classList.contains('zen'));
+  await page.locator('#zenExit').click();
+  await page.waitForFunction(() => !document.body.classList.contains('zen'));
+}
 async function chapter(page) {
   return page.evaluate(() => {
     const id = localStorage.getItem('readingRoom.lastOpen.v1');
@@ -159,6 +164,7 @@ async function checkZenUndo(browser) {
     await page.waitForFunction(() => document.body.classList.contains('library-ready'));
     await page.setInputFiles('#pdfFile', { name: 'zen-undo.pdf', mimeType: 'application/pdf', buffer: makeInkPdf() });
     await waitForPdf(page);
+    await leaveDefaultZen(page);
     await click(page, '#zenBtn');
     await page.waitForFunction(() => document.body.classList.contains('zen'));
     const undo = page.locator('#zenUndo');
@@ -242,6 +248,7 @@ async function checkZenUndo(browser) {
     const beforeReload = identities(await ink(page));
     await page.reload({ waitUntil: 'load' });
     await waitForPdf(page);
+    await leaveDefaultZen(page);
     await click(page, '#zenBtn');
     check('reopening keeps saved ink but correctly resets the session-only Zen Undo history', beforeReload !== '[]'
       && same(JSON.parse(identities(await ink(page))), JSON.parse(beforeReload)) && await page.locator('#zenUndo').isDisabled(),
@@ -267,6 +274,7 @@ async function checkZenUndo(browser) {
     await page.waitForFunction(() => document.body.classList.contains('library-ready'));
     await page.setInputFiles('#pdfFile', { name: 'handwriting-blank-page.pdf', mimeType: 'application/pdf', buffer: makeInkPdf() });
     await waitForPdf(page);
+    await leaveDefaultZen(page);
     check('PDF opens with highlighting as the default and Write off', await page.locator('#pdfWriteBtn').getAttribute('aria-pressed') === 'false' && !await page.locator('#pdfInkToolbar').isVisible());
     await positionPage(page, 1);
     let from = await point(page, .2, .3), to = await point(page, .4, .35);
@@ -424,6 +432,7 @@ async function checkZenUndo(browser) {
 
     await page.reload({ waitUntil: 'load' });
     await waitForPdf(page);
+    await leaveDefaultZen(page);
     check('all page ink and text highlights survive reload', same((await chapter(page)).pdfInk, JSON.parse(fullInk)) && same((await chapter(page)).highlights, JSON.parse(textMarks)), JSON.stringify({ inkMatches: same((await chapter(page)).pdfInk, JSON.parse(fullInk)), highlightsMatch: same((await chapter(page)).highlights, JSON.parse(textMarks)) }));
     check('Write is safely off after reopening the reader', await page.locator('#pdfWriteBtn').getAttribute('aria-pressed') === 'false');
     check('chosen ink style survives reopening the app', await page.locator('[data-pdf-ink-style="clean"]').getAttribute('aria-pressed') === 'true');

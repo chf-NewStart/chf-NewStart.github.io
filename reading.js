@@ -777,6 +777,7 @@
        never scroll, or the toolbar slides under the sticky masthead. */
     document.body.classList.toggle('reading', id === 'readerPage');
     if (id !== 'readerPage') {
+      if(zenOn)setZen(false,{quiet:true,refit:false});
       if(workspaceOpen)setWorkspaceOpen(false,false);
       resetExcerptNavigation();
       pdfOpenEpoch++;invalidatePdfLinkNavigation(true);pdfDoc=null;
@@ -3016,7 +3017,7 @@
   byId('guideGrip').addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
   /* Zen reading: every bar, note and button leaves; the paper gets the whole screen.
      The guide, zoom, gestures and lookup keep working on top of it. */
-  var zenOn=false,zenViaFullscreen=false,zenIdleTimer=0,zenWakeLock=null;
+  var zenOn=false,zenViaFullscreen=false,zenIdleTimer=0,zenWakeLock=null,zenWakePending=false;
   function zenWake(){
     if(!zenOn)return;
     document.body.classList.remove('zen-idle');clearTimeout(zenIdleTimer);
@@ -3026,12 +3027,17 @@
   /* Long stretches of hands-off reading are exactly when a tablet decides to lock
      its screen; zen holds a wake lock for as long as it owns the room. */
   function holdZenWake(){
-    if(!zenOn||!navigator.wakeLock||document.visibilityState!=='visible')return;
-    navigator.wakeLock.request('screen').then(function(lock){zenWakeLock=lock;lock.addEventListener('release',function(){zenWakeLock=null;});},function(){});
+    if(!zenOn||zenWakeLock||zenWakePending||!navigator.wakeLock||document.visibilityState!=='visible')return;
+    zenWakePending=true;
+    navigator.wakeLock.request('screen').then(function(lock){
+      if(!zenOn||document.visibilityState!=='visible'){lock.release().catch(function(){});return;}
+      zenWakeLock=lock;lock.addEventListener('release',function(){if(zenWakeLock===lock)zenWakeLock=null;});
+    },function(){}).finally(function(){zenWakePending=false;});
   }
   function dropZenWake(){if(zenWakeLock){zenWakeLock.release().catch(function(){});zenWakeLock=null;}}
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')holdZenWake();});
-  function setZen(on){
+  function setZen(on,options){
+    options=options||{};
     zenOn=!!on;document.body.classList.toggle('zen',zenOn);
     byId('zenDock').classList.toggle('find-open',zenOn&&!byId('findBar').classList.contains('hidden'));
     syncTabletReaderUi();
@@ -3047,15 +3053,15 @@
     else if(innerWidth>720)setNotebookCollapsed(true,false);
     /* Browser fullscreen only on mouse-driven devices: on iPad, system edge gestures keep
        kicking the page out of fullscreen mid-read, which yanked the whole desk back. */
-    if(zenOn&&matchMedia('(hover: hover) and (pointer: fine)').matches&&document.documentElement.requestFullscreen){
+    if(zenOn&&options.fullscreen!==false&&matchMedia('(hover: hover) and (pointer: fine)').matches&&document.documentElement.requestFullscreen){
       document.documentElement.requestFullscreen().then(function(){zenViaFullscreen=true;},function(){});
     }else if(!zenOn&&zenViaFullscreen){zenViaFullscreen=false;if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});}
-    requestAnimationFrame(function(){
+    if(options.refit!==false)requestAnimationFrame(function(){
       if(readerMode==='pdf'&&pdfDoc)renderPdfPage();
       if(comfort.focus)placeGuide();
       updateProgress();
     });
-    showReaderToast(zenOn?(pagedPdfFlow()?'Zen reading · Space turns the page · Esc leaves':'Zen reading · Space starts a slow auto-scroll · Esc leaves'):'Back at the desk');
+    if(!options.quiet)showReaderToast(zenOn?(pagedPdfFlow()?'Zen reading · Space turns the page · Esc leaves':'Zen reading · Space starts a slow auto-scroll · Esc leaves'):'Back at the desk');
   }
   byId('zenBtn').onclick=function(){setZen(!zenOn);};
   byId('zenExit').onclick=function(){setZen(false);};
@@ -3181,6 +3187,8 @@
   /* Pushing the divider far enough right tucks the whole notebook away; a slim tab at
      the screen edge brings it back. */
   function setNotebookCollapsed(on,save){
+    // Opening the desk is intentional; do not leave its controls hidden by Zen.
+    if(!on&&zenOn)setZen(false,{quiet:true});
     if(temporaryNotebookMode()){
       byId('readerLayout').classList.remove('notebook-collapsed');byId('readerLayout').style.removeProperty('--notebook-width');byId('notebookReopen').setAttribute('aria-expanded','false');syncTouchDockStates();return;
     }
@@ -3234,6 +3242,7 @@
   }
   function toggleSheet(open,fromHistory){
     var notebook=byId('notebook'),scrim=byId('sheetScrim'),willOpen=open!==undefined?open:!notebook.classList.contains('sheet-open');
+    if(willOpen&&zenOn)setZen(false,{quiet:true});
     if(willOpen&&workspaceOpen)setWorkspaceOpen(false,false);
     var wasOpen=notebook.classList.contains('sheet-open');
     if(willOpen&&!wasOpen){sheetReturnFocus=document.activeElement;sheetReadingPosition=readerMode==='pdf'?capturePdfReadingPosition():null;}
@@ -3952,7 +3961,11 @@
       else if(history.state.phloem==='sheet')history.replaceState({phloem:'reader'},'');
     }catch(e){}}
     readerMode=ch.kind==='pdf'?'pdf':'text';byId('pdfFrame').dataset.positionReady=ch.kind==='pdf'?'false':'true'; applyComfort(); updateReaderMode(); showPage('readerPage');
-    if((ch.reviewComments||[]).length){if(innerWidth>720)setNotebookCollapsed(false,false);switchTab('reviewsPanel');}else switchTab('notesPanel');
+    /* A fresh reading session starts on the quiet paper surface. Establish its
+       geometry before PDF fitting/position restoration, without requesting browser
+       fullscreen or scheduling a competing refit during the asynchronous open. */
+    setZen(true,{fullscreen:false,quiet:true,refit:false});
+    if((ch.reviewComments||[]).length){if(innerWidth>720&&!zenOn)setNotebookCollapsed(false,false);switchTab('reviewsPanel');}else switchTab('notesPanel');
     if(ch.kind==='pdf'){
       try{
         var openedDoc=preparedDoc||null;

@@ -53,6 +53,9 @@ function overlaps(a, b) { return a.x < b.right - 1 && a.right > b.x + 1 && a.y <
     await page.waitForFunction(() => document.body.classList.contains('library-ready'));
     await page.setInputFiles('#pdfFile', { name: 'palette.pdf', mimeType: 'application/pdf', buffer: fixturePdf() });
     await page.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0);
+    await page.waitForFunction(() => document.body.classList.contains('zen'));
+    await page.locator('#zenExit').click();
+    await page.waitForFunction(() => !document.body.classList.contains('zen'));
     await page.locator('#pdfWriteBtn').evaluate(button => button.click());
     check('Write starts with the first Fine size, not Medium', await page.locator('[data-pdf-ink-width="1.5"]').getAttribute('aria-pressed') === 'true' && await page.locator('[data-pdf-ink-width="3"]').getAttribute('aria-pressed') === 'false');
     check('all eight color presets are exposed with accessible names', await page.locator('[data-pdf-ink-color]').evaluateAll(buttons => buttons.length === 8 && buttons.every(button => button.getAttribute('aria-label') && button.title)));
@@ -72,7 +75,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && a.right > b.x + 1 && a.y <
       && /whole strokes.*text highlights/i.test(await page.locator('#pdfInkHint').textContent())
       && /handwriting strokes and text highlights/i.test(await page.locator('[data-pdf-ink-tool="eraser"]').getAttribute('title')));
     for (const zen of [false, true]) {
-      if (zen) await page.locator('#zenBtn').evaluate(button => button.click());
+      if (zen) await page.locator('#zenBtn').click();
       for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 390, height: 844 }, { width: 320, height: 800 }, { width: 844, height: 390 }]) {
         await page.setViewportSize(viewport);
         await page.waitForTimeout(180);

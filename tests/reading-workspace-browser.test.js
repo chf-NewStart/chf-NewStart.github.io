@@ -157,6 +157,12 @@ async function waitStrokeCount(page, paperId, count) {
   }, { paperId, count });
 }
 async function ensureWorkspaceOpen(page) {
+  if (await page.locator('body').evaluate(node => node.classList.contains('zen'))) {
+    const exit = page.locator('#zenExit');
+    assert.equal(await exit.isVisible(), true, 'Zen exposes its explicit exit control');
+    await exit.click();
+    await page.waitForFunction(() => !document.body.classList.contains('zen'));
+  }
   if (await page.locator('#workspacePanel').isVisible()) return;
   const open = page.locator('#workspaceOpen');
   assert.equal(await open.isVisible(), true, 'workspace has a visible opening control');

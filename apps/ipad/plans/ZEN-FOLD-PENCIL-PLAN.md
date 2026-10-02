@@ -26,6 +26,14 @@ Actual module boundary for the next implementer:
 
 Next bounded tasks: physical iPad/WebKit validation of this pilot (keep gated if unavailable); then resume A1/A2 for compact Zen or A4/A5 for native Pencil after their prerequisites. Do not silently turn on folding, build an App Store archive, or claim native gestures work from synthetic events. Pinned figures, scratch margins, and additional book-like refinements are outside this delivery.
 
+### Zen by default (web assets v152)
+
+Every fresh PDF/text reader opening, including last-open restoration after reload, now enters Zen before PDF fitting and position restoration. Automatic entry does not request browser fullscreen, show the manual Zen toast, or schedule a competing refit. The existing exit button/Escape restores the desk for that open document; the next opening starts quiet again. The library and other non-reader pages clear Zen. Workspace opens from Zen's existing Layout menu and keeps its split paper/sticky-note layout without leaving Zen.
+
+Explicit notebook/revision actions reveal the desk rather than opening an invisible panel beneath Zen's styles. Merely opening a paper with review comments does not reveal that desk. Pending wake-lock requests are deduplicated and release if they arrive after the reader leaves Zen; old lock-release events cannot clear a newer lock.
+
+Verification: default-entry/lifecycle tests cover quiet entry and wake-lock races (4/4); workspace/excerpt state/integration tests (37/37), cache v152, native packaging (16/16), and web bundling (64 assets / 13.4 MiB) pass. Default-Zen and workspace browser flows pass in Chromium and WebKit; desk-focused fixtures explicitly leave Zen via its visible control. Existing PDF ink (71/71), touch selection, iPad header and revision-desk checks pass in Chromium. Zen iPad, tool palettes (155/155), ink palette (45/45), annotation tools (114/114), and marker actions (41/41) also pass. The existing Book guide cross-leaf test still fails in Zen; it also fails against clean baseline `166aac03`, including the same wrong-leaf assertion, so it is not fixed or claimed passing here. No native archive/upload or physical Pencil acceptance was performed.
+
 ### Quiet sticky-note workspace (web assets v151)
 
 The right half is now blank paper, with passages rendered as warm, compact sticky notes. Quoted text and existing typed notes show in read mode; each sticky's **⋯** menu holds Go to source, Edit note, and confirmed removal. New sticky notes open their editor immediately. Clean editors collapse on blur; failed or conflicted drafts stay visible and copyable with their warning. Source links and shared Clips records remain intact.

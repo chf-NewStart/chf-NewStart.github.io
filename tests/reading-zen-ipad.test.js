@@ -144,6 +144,9 @@ async function storedPdfHighlights(page) {
   await page.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await page.setInputFiles('#pdfFile', path.join(ROOT, 'assets', 'phloem-guide', 'phloem-field-guide.pdf'));
   await page.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0 && !document.getElementById('readerPage').classList.contains('hidden'));
+  await page.waitForFunction(() => document.body.classList.contains('zen'));
+  await page.locator('#zenExit').click();
+  await page.waitForFunction(() => !document.body.classList.contains('zen'));
 
   await page.click('#zenBtn');
   await page.waitForFunction(() => document.body.classList.contains('zen'));
@@ -338,6 +341,9 @@ async function storedPdfHighlights(page) {
   await finePage.addInitScript(seedReader);
   await finePage.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await finePage.waitForFunction(() => document.querySelector('#textDocument .original') && !document.getElementById('readerPage').classList.contains('hidden'));
+  await finePage.waitForFunction(() => document.body.classList.contains('zen'));
+  await finePage.locator('#zenExit').click();
+  await finePage.waitForFunction(() => !document.body.classList.contains('zen'));
   await finePage.click('#zenBtn');
   await finePage.waitForFunction(() => document.body.classList.contains('zen'));
 
@@ -387,6 +393,9 @@ async function storedPdfHighlights(page) {
   await keyboardPage.addInitScript(seedReader);
   await keyboardPage.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await keyboardPage.waitForFunction(() => document.querySelector('#textDocument .original') && !document.getElementById('readerPage').classList.contains('hidden'));
+  await keyboardPage.waitForFunction(() => document.body.classList.contains('zen'));
+  await keyboardPage.locator('#zenExit').click();
+  await keyboardPage.waitForFunction(() => !document.body.classList.contains('zen'));
 
   /* Put a genuine DOM selection near the bottom of the full layout viewport. Its note
      card begins below the future keyboard edge, so passing this check requires the
@@ -445,7 +454,11 @@ async function storedPdfHighlights(page) {
   await phonePage.addInitScript(seedReader);
   await phonePage.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await phonePage.waitForFunction(() => document.querySelector('#textDocument .original') && !document.getElementById('readerPage').classList.contains('hidden'));
-  await phonePage.evaluate(() => document.getElementById('zenBtn').click());
+  await phonePage.waitForFunction(() => document.body.classList.contains('zen'));
+  await phonePage.locator('#zenExit').click();
+  await phonePage.waitForFunction(() => !document.body.classList.contains('zen'));
+  await phonePage.keyboard.press('f');
+  await phonePage.waitForFunction(() => document.body.classList.contains('zen'));
   await phonePage.click('#zenFind');
   const phoneFind = await phonePage.locator('#findBar').evaluate(bar => {
     const panel = bar.getBoundingClientRect(), input = document.getElementById('findInput'), previous = document.getElementById('findPrev').getBoundingClientRect(), next = document.getElementById('findNext').getBoundingClientRect();

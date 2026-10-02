@@ -240,6 +240,9 @@ async function checkPendingMark(page, surface) {
       await page.setInputFiles('#pdfFile', { name: 'tool-palettes.pdf', mimeType: 'application/pdf', buffer: fixturePdf() });
       await page.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0
         && Array.from(document.querySelectorAll('.text-layer span')).some(span => span.textContent.startsWith('Alpha')));
+      await page.waitForFunction(() => document.body.classList.contains('zen'));
+      await page.locator('#zenExit').click();
+      await page.waitForFunction(() => !document.body.classList.contains('zen'));
       check((touch ? 'touch' : 'desktop') + ' uses one shared Highlight toolbar with no old dropdowns',
         await page.locator('#highlightToolbar').count() === 1 && await page.locator('#highlightPalette,#touchHighlightPalette,#zenMarkerMenu,#zenMarkerToggle').count() === 0);
       const surfaces = [{ label: 'header', trigger: '#highlightBtn', reopen: '#highlightColorBtn', palette: '#highlightToolbar', write: touch ? '#touchWrite' : '#pdfWriteBtn', prefix: 'Alpha' }];
@@ -252,8 +255,9 @@ async function checkPendingMark(page, surface) {
       }
       if (touch) {
         for (const zen of [false, true]) {
+          await page.setViewportSize({ width: 1024, height: 768 });
           if (await page.locator('body').evaluate(body => body.classList.contains('zen')) !== zen) {
-            await page.locator(zen ? '#zenBtn' : '#zenExit').evaluate(button => button.click());
+            await page.locator(zen ? '#zenBtn' : '#zenExit').click();
           }
           for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 390, height: 844 }, { width: 320, height: 800 }]) {
             await page.setViewportSize(viewport);

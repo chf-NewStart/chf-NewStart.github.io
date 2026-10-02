@@ -3,10 +3,12 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const { chromium } = require('playwright');
+const { chromium, webkit } = require('playwright');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const ROOT = path.resolve(__dirname, '..');
 const PORT = +(process.env.PHLOEM_FOLD_TEST_PORT || 8246);
+const BROWSER = process.env.PHLOEM_BROWSER || 'chromium';
+assert.ok(['chromium', 'webkit'].includes(BROWSER), 'PHLOEM_BROWSER must be chromium or webkit');
 const server = http.createServer((req, res) => {
   const file = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));
   fs.readFile(file, (error, data) => {
@@ -64,7 +66,9 @@ async function fold(page) {
 }
 (async () => {
   await new Promise(resolve => server.listen(PORT, '127.0.0.1', resolve));
-  const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH });
+  const browserType = BROWSER === 'webkit' ? webkit : chromium;
+  const executablePath = BROWSER === 'webkit' ? process.env.PHLOEM_WEBKIT_EXECUTABLE_PATH : process.env.CHROME_PATH;
+  const browser = await browserType.launch({ headless: true, ...(executablePath ? {executablePath} : {}) });
   const context = await browser.newContext({ viewport: { width: 1180, height: 900 }, hasTouch: true, serviceWorkers: 'block' });
   const page = await context.newPage(), errors = [];
   page.setDefaultTimeout(20000); page.on('pageerror', error => errors.push(error.message));
@@ -94,14 +98,33 @@ async function fold(page) {
     assert.equal(await page.locator('#pdfFoldEnabled').isChecked(), false, 'folding defaults off');
     await page.locator('#pdfFoldEnabled').check();
     await page.locator('[data-close="settingsDialog"]').click();
-    await page.evaluate(() => {
+    const gestureFeedback = await page.evaluate(async () => {
       const holder=document.querySelector('.pdf-page[data-page="1"]'),target=holder.querySelector('.text-layer'),r=holder.getBoundingClientRect();
       const starts=[[.2,.15],[.2,.4],[.8,.15],[.8,.4]];
-      const touches=(moving,count)=>starts.slice(0,count).map(([x,y],i)=>new Touch({identifier:i+1,target,clientX:r.left+r.width*x,clientY:r.top+r.height*y+(moving?(i%2?-50:50):0)}));
-      for(let n=1;n<=4;n++)target.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,cancelable:true,touches:touches(false,n),changedTouches:touches(false,n).slice(-1)}));
-      target.dispatchEvent(new TouchEvent('touchmove',{bubbles:true,cancelable:true,touches:touches(true,4),changedTouches:touches(true,4)}));
-      for(let n=3;n>=0;n--)target.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,touches:touches(true,n),changedTouches:touches(true,n+1).slice(-1)}));
+      const touches=(moving,count)=>starts.slice(0,count).map(([x,y],i)=>({identifier:i+1,target,touchType:'direct',clientX:r.left+r.width*x,clientY:r.top+r.height*y+(moving?(i%2?-50:50):0)}));
+      // WebKit does not expose a constructible Touch. These deliberately synthetic
+      // event payloads test our DOM routing, never physical touch delivery.
+      const send=(type,active,changed)=>{
+        const event=new Event(type,{bubbles:true,cancelable:true});
+        Object.defineProperties(event,{touches:{value:active},targetTouches:{value:active},changedTouches:{value:changed}});
+        target.dispatchEvent(event);
+      };
+      // A normal tap must not poison the next gesture, and realistic sequential
+      // placement takes longer than the old 180ms assembly deadline.
+      send('touchstart',touches(false,1),touches(false,1));
+      send('touchend',[],touches(false,1));
+      for(let n=1;n<=4;n++) {
+        if(n>1)await new Promise(resolve=>setTimeout(resolve,150));
+        send('touchstart',touches(false,n),touches(false,n).slice(-1));
+      }
+      const ready=document.querySelector('#readerToast').textContent;
+      send('touchmove',touches(true,4),touches(true,4));
+      const armed=document.querySelector('#readerToast').textContent;
+      for(let n=3;n>=0;n--)send('touchend',touches(true,n),touches(true,n+1).slice(-1));
+      return {ready,armed};
     });
+    assert.match(gestureFeedback.ready,/Four fingers detected/);
+    assert.equal(gestureFeedback.armed,'Release to preview the fold');
     await page.locator('#pdfFoldDialog').waitFor({state:'visible'});
     assert.equal(await page.locator('#pdfFoldTop').inputValue(),'15','gesture previews the band between the fingers');
     assert.equal(await page.locator('#pdfFoldBottom').inputValue(),'40');

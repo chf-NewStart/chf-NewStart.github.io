@@ -30,9 +30,17 @@
 
   function createGestureRecognizer(options) {
     options = options || {};
-    var candidate = null, owner = null, blocked = false;
-    function clear() { candidate = null; owner = null; blocked = false; }
-    function abandonCandidate() { candidate = null; blocked = true; }
+    var ARRIVAL_WINDOW = 800;
+    var candidate = null, owner = null, blocked = false, blockedReason = '', maxFingers = 0, lastStatus = '';
+    function report(state, reason) {
+      var key = state + ':' + (reason || '');
+      if (maxFingers < 3 || key === lastStatus) return;
+      lastStatus = key;
+      if (typeof options.onStatus === 'function') options.onStatus({ state: state, reason: reason || '', fingers: maxFingers });
+    }
+    function clear() { candidate = null; owner = null; blocked = false; blockedReason = ''; maxFingers = 0; lastStatus = ''; }
+    function abandonCandidate(reason) { candidate = null; blocked = true; blockedReason = reason; report('cancelled', reason); }
+    function abortOwner(reason) { owner.aborted = true; report('cancelled', reason); }
     function pageForTouch(touch) {
       var target = touch && touch.target, holder = target && target.closest && target.closest('.pdf-page');
       return holder && +holder.dataset.page ? { holder: holder, page: +holder.dataset.page } : null;
@@ -75,15 +83,15 @@
       return true;
     }
     function makePairs(candidateState, touches) {
-      var pageRect = candidateState.holder.getBoundingClientRect(), centerX = pageRect.left + pageRect.width / 2;
-      var sides = { left: [], right: [] };
-      for (var i = 0; i < touches.length; i++) {
-        var initial = candidateState.points[String(touches[i].identifier)];
-        if (!initial) return null;
-        sides[initial.x < centerX ? 'left' : 'right'].push(touches[i]);
-      }
-      if (sides.left.length !== 2 || sides.right.length !== 2) return null;
-      var result = {}, topYs = [], bottomYs = [];
+      var pageRect = candidateState.holder.getBoundingClientRect();
+      if (touches.length !== 4 || touches.some(function (touch) { return !candidateState.points[String(touch.identifier)]; })) return null;
+      // A zoomed PDF may extend well beyond the screen. Group the two hands by
+      // their own positions, not by the centre of that off-screen page.
+      var sorted = touches.slice().sort(function (a, b) { return candidateState.points[String(a.identifier)].x - candidateState.points[String(b.identifier)].x; });
+      var leftEdge = candidateState.points[String(sorted[1].identifier)].x, rightEdge = candidateState.points[String(sorted[2].identifier)].x;
+      if (rightEdge - leftEdge < 40) return null;
+      var sides = { left: sorted.slice(0, 2), right: sorted.slice(2) };
+      var result = { centerX: (leftEdge + rightEdge) / 2 }, topYs = [], bottomYs = [];
       ['left', 'right'].forEach(function (side) {
         var pair = sides[side].slice().sort(function (a, b) { return candidateState.points[String(a.identifier)].y - candidateState.points[String(b.identifier)].y; });
         var top = candidateState.points[String(pair[0].identifier)], bottom = candidateState.points[String(pair[1].identifier)];
@@ -100,7 +108,7 @@
       return result;
     }
     function pairState(active, pairs, holder) {
-      var pageRect = holder.getBoundingClientRect(), centerX = pageRect.left + pageRect.width / 2;
+      var centerX = pairs.centerX;
       var isConverged = ['left', 'right'].every(function (side) {
         var pair = pairs[side], top = active.find(function (touch) { return touch.identifier === pair.topId; }), bottom = active.find(function (touch) { return touch.identifier === pair.bottomId; });
         if (!top || !bottom || top.clientY >= bottom.clientY || side === 'left' && (top.clientX >= centerX || bottom.clientX >= centerX) || side === 'right' && (top.clientX <= centerX || bottom.clientX <= centerX)) return false;
@@ -116,8 +124,12 @@
     function handle(type, event) {
       type = ({ start: 'touchstart', move: 'touchmove', end: 'touchend', cancel: 'touchcancel' })[type] || type;
       var active = touchList(event && event.touches), at = eventTime(event);
-      if (type === 'touchcancel') { var wasOwned = !!owner; clear(); return wasOwned; }
-      if (blocked) { if (type === 'touchend' && active.length === 0) blocked = false; return false; }
+      maxFingers = Math.max(maxFingers, active.length);
+      if (type === 'touchcancel') { var wasOwned = !!owner; if (owner || candidate || blocked) report('cancelled', 'system-cancelled'); clear(); return wasOwned; }
+      if (blocked) { report('cancelled', blockedReason); if (type === 'touchend' && active.length === 0) clear(); return false; }
+      // A normal tap must finish its candidate now, not leave the NEXT gesture
+      // blocked while waiting for another touchend that will never arrive.
+      if (!owner && type === 'touchend' && active.length === 0) { report('cancelled', 'need-four-fingers'); clear(); return false; }
       if (owner) {
         // Real fingers rarely lift in a single event. Once converged, consume a
         // shrinking set of the same contacts until the final lift. A replacement,
@@ -125,27 +137,28 @@
         if (type === 'touchend' && active.length < 4 && !owner.releasing) {
           owner.releasing = true;
           owner.remaining = owner.ids;
-          if (!owner.armed) owner.aborted = true;
+          if (!owner.armed) abortOwner('released-before-pinching');
         }
-        if (type === 'touchstart') owner.aborted = true;
+        if (type === 'touchstart') abortOwner('contacts-changed');
         if (owner.releasing) {
           var remaining = Object.create(null);
           if (active.length && (!validTouches(active, owner.holder) || active.some(function (touch) {
             var id = String(touch.identifier), point = owner.points[id], found = pageForTouch(touch);
             if (remaining[id] || !owner.remaining[id] || !point || !found || found.holder !== owner.holder || Math.hypot(touch.clientX - point.x, touch.clientY - point.y) > 12) return true;
             remaining[id] = true; return false;
-          }))) owner.aborted = true;
+          }))) abortOwner('contacts-changed');
           if (active.length && !owner.aborted) {
             var releasePositions = owner.contacts.map(function (touch) { return active.find(function (item) { return item.identifier === touch.identifier; }) || touch; });
             var releasedState = pairState(releasePositions, owner.pairs, owner.holder);
-            if (releasedState.crossed || !releasedState.converged) owner.aborted = true;
+            if (releasedState.crossed || !releasedState.converged) abortOwner('separated');
           }
           if (type === 'touchend') owner.remaining = remaining;
-        } else if (active.length !== 4 || !sameIds(active, owner.ids, false) || !validTouches(active, owner.holder) || active.some(function (touch) { var found = pageForTouch(touch); return !found || found.holder !== owner.holder; })) owner.aborted = true;
+        } else if (active.length !== 4 || !sameIds(active, owner.ids, false) || !validTouches(active, owner.holder) || active.some(function (touch) { var found = pageForTouch(touch); return !found || found.holder !== owner.holder; })) abortOwner('contacts-changed');
         if (type === 'touchmove' && !owner.aborted && !owner.releasing) {
           var state = pairState(active, owner.pairs, owner.holder);
-          if (state.crossed) owner.aborted = true;
+          if (state.crossed) abortOwner('crossed');
           owner.armed = !owner.aborted && state.converged;
+          if (!owner.aborted) report(owner.armed ? 'armed' : 'ready');
           active.forEach(function (touch) { owner.points[String(touch.identifier)] = { x: touch.clientX, y: touch.clientY }; });
           owner.contacts = active.slice();
         }
@@ -158,26 +171,33 @@
       }
       if (type === 'touchstart') {
         if (!candidate) candidate = startCandidate(active, at);
-        else if (at - candidate.firstAt > 180 || !recordCandidateTouches(active, true)) { abandonCandidate(); return false; }
-        if (!candidate) return false;
+        else if (at - candidate.firstAt > ARRIVAL_WINDOW) { abandonCandidate('arrival-timeout'); return false; }
+        else if (!recordCandidateTouches(active, true)) { abandonCandidate('contacts-changed'); return false; }
+        if (!candidate) { if (active.length >= 3) abandonCandidate('same-page'); return false; }
         var count = active.length;
         if (count === 1 || count === 2 || count === 3) return false;
-        if (count !== 4 || at - candidate.firstAt > 180 || candidate.maxTravel > 12) { abandonCandidate(); return false; }
+        if (count !== 4) { abandonCandidate('contacts-changed'); return false; }
+        if (at - candidate.firstAt > ARRIVAL_WINDOW) { abandonCandidate('arrival-timeout'); return false; }
+        if (candidate.maxTravel > 12) { abandonCandidate('moved-before-ready'); return false; }
         var pairs = makePairs(candidate, active);
-        if (!pairs) { abandonCandidate(); return false; }
+        if (!pairs) { abandonCandidate('placement'); return false; }
         var layout = pairState(active, pairs, candidate.holder);
-        if (layout.crossed) { abandonCandidate(); return false; }
+        if (layout.crossed) { abandonCandidate('placement'); return false; }
         var ids = Object.create(null);
         active.forEach(function (touch) { ids[String(touch.identifier)] = true; });
         owner = { holder: candidate.holder, page: candidate.page, ids: ids, points: candidate.points, contacts: active.slice(), pairs: pairs, band: pairs.band, armed: false, aborted: false, releasing: false };
         candidate = null;
         if (options.onOwn) options.onOwn(owner.page);
+        report('ready');
         return true;
       }
       if (!candidate) return false;
-      if (at - candidate.firstAt > 180 || !recordCandidateTouches(active, false) || candidate.maxTravel > 12) { abandonCandidate(); return false; }
+      if (at - candidate.firstAt > ARRIVAL_WINDOW) { abandonCandidate('arrival-timeout'); return false; }
+      if (!recordCandidateTouches(active, false)) { abandonCandidate('contacts-changed'); return false; }
+      if (candidate.maxTravel > 12) { abandonCandidate('moved-before-ready'); return false; }
       if (type === 'touchmove') return false;
-      if (type === 'touchend' && active.length !== Object.keys(candidate.points).length) abandonCandidate();
+      if (type === 'touchend' && active.length !== Object.keys(candidate.points).length) abandonCandidate('contacts-changed');
+      if (type === 'touchend' && active.length === 0) clear();
       return false;
     }
     return { handleTouch: handle, reset: clear };
@@ -553,7 +573,24 @@
     mountControls();
     recognizer = createGestureRecognizer({
       open: function (page, band) { if (!isFolded(page)) open(page, band); },
-      onOwn: function () { if (typeof adapter.cancelGestures === 'function') adapter.cancelGestures(); }
+      onOwn: function () { if (typeof adapter.cancelGestures === 'function') adapter.cancelGestures(); },
+      onStatus: function (status) {
+        if (status.state === 'ready') { adapterToast('Four fingers detected · pinch top and bottom together'); return; }
+        if (status.state === 'armed') { adapterToast('Release to preview the fold'); return; }
+        if (status.state !== 'cancelled') return;
+        var messages = {
+          'arrival-timeout': 'Gesture timed out · place four fingers, then pinch',
+          'moved-before-ready': 'Place all four fingers before moving',
+          'same-page': 'Keep all four fingers on one PDF page',
+          'placement': 'Use two fingers on each side, with space above and below',
+          'system-cancelled': 'Touch gesture cancelled · try Fold section',
+          'need-four-fingers': 'Four fingers are needed · lift and try again',
+          'released-before-pinching': 'Pinch the upper and lower fingers together before lifting',
+          'separated': 'Fold cancelled · keep fingers pinched as you lift',
+          'crossed': 'Keep each finger pair on its side while pinching'
+        };
+        adapterToast(messages[status.reason] || 'Gesture cancelled · lift all fingers and try again');
+      }
     });
     function handleTouch(type, event) {
       var ctx = context(), ready = enabled() && contextReady(ctx, true) && !(typeof adapter.activeStroke === 'function' && adapter.activeStroke());

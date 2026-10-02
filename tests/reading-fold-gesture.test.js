@@ -16,8 +16,9 @@ function fixture() {
     getBoundingClientRect() { return { left: 20, top: 50, right: 820, bottom: 1050, width: 800, height: 1000 }; }
   };
   const opens = [];
+  const statuses = [];
   let owns = 0;
-  const recognizer = createRecognizer({ open: (page, band) => opens.push({ page, band }), onOwn: () => owns++ });
+  const recognizer = createRecognizer({ open: (page, band) => opens.push({ page, band }), onOwn: () => owns++, onStatus: status => statuses.push(status) });
   function touch(identifier, x, y, target = holder, kind = 'direct') {
     return {
       identifier, clientX: x, clientY: y, touchType: kind,
@@ -25,7 +26,7 @@ function fixture() {
     };
   }
   function event(touches, timeStamp) { return { touches, timeStamp, cancelable: true, preventDefault() {} }; }
-  return { holder, opens, recognizer, touch, event, get owns() { return owns; } };
+  return { holder, opens, statuses, recognizer, touch, event, get owns() { return owns; } };
 }
 
 function beginFour(f, options = {}) {
@@ -141,10 +142,22 @@ test('reversing or separating after convergence disarms release; crossing a pair
   assert.deepEqual(crossed.opens, []);
 });
 
-test('candidate rejects slow arrival, stylus, cross-page arrivals, and identity replacement', () => {
+test('steady contact arrival within 800ms is accepted, including formerly rejected 70ms spacing', () => {
+  for (const spacing of [70, 150, 250]) { // First-to-fourth contact: 210, 450, 750ms.
+    const f = fixture();
+    const active = beginFour(f, { spacing });
+    assert.equal(f.owns, 1, `${spacing}ms spacing owns four steady fingers`);
+    const converged = active.map((item, index) => f.touch(item.identifier, item.clientX, item.clientY + (index % 2 ? -45 : 45)));
+    f.recognizer.handleTouch('move', f.event(converged, 1000 + 3 * spacing + 50));
+    f.recognizer.handleTouch('end', f.event([], 1000 + 3 * spacing + 70));
+    assert.deepEqual(plain(f.opens), [{ page: 7, band: { y0: .1, y1: .4 } }]);
+  }
+});
+
+test('candidate rejects arrival beyond 800ms, stylus, cross-page arrivals, and identity replacement', () => {
   const slow = fixture();
-  beginFour(slow, { spacing: 70 });
-  assert.equal(slow.owns, 0);
+  beginFour(slow, { spacing: 300 }); // First-to-fourth contact takes 900ms.
+  assert.equal(slow.owns, 0, 'a 900ms arrival is too slow');
 
   const stylus = fixture();
   beginFour(stylus, { firstKind: 'stylus' });
@@ -165,6 +178,68 @@ test('candidate rejects slow arrival, stylus, cross-page arrivals, and identity 
   active.push(replacement.touch(4, 680, 450));
   replacement.recognizer.handleTouch('start', replacement.event(active, 1060));
   assert.equal(replacement.owns, 0, 'a replacement cannot reseed midway through the same contact group');
+});
+
+test('more than 12px movement before the fourth contact leaves the gesture unclaimed', () => {
+  const f = fixture();
+  let active = [f.touch(1, 120, 150)];
+  assert.equal(f.recognizer.handleTouch('start', f.event(active, 1000)), false);
+  active.push(f.touch(2, 120, 450));
+  assert.equal(f.recognizer.handleTouch('start', f.event(active, 1050)), false);
+  active = [f.touch(1, 120, 163), active[1]];
+  assert.equal(f.recognizer.handleTouch('move', f.event(active, 1070)), false, 'ordinary pre-recognition movement is not stolen from native zoom');
+  active.push(f.touch(3, 680, 150));
+  assert.equal(f.recognizer.handleTouch('start', f.event(active, 1100)), false);
+  active.push(f.touch(4, 680, 450));
+  assert.equal(f.recognizer.handleTouch('start', f.event(active, 1150)), false);
+  assert.equal(f.owns, 0);
+  f.recognizer.handleTouch('end', f.event([], 1170));
+  assert.deepEqual(f.opens, []);
+});
+
+test('paired pinch can be entirely left of a zoomed PDF page centre', () => {
+  const f = fixture();
+  f.holder.getBoundingClientRect = () => ({ left: -400, top: 50, right: 1000, bottom: 1050, width: 1400, height: 1000 });
+  const active = beginFour(f, { points: [[40, 150], [40, 450], [200, 150], [200, 450]] });
+  assert.equal(f.owns, 1, 'the two groups are split by their own X positions, not the offscreen page centre');
+  const converged = active.map((item, index) => f.touch(item.identifier, item.clientX, item.clientY + (index % 2 ? -45 : 45)));
+  f.recognizer.handleTouch('move', f.event(converged, 1120));
+  f.recognizer.handleTouch('end', f.event([], 1140));
+  assert.deepEqual(plain(f.opens), [{ page: 7, band: { y0: .1, y1: .4 } }]);
+});
+
+test('paired pinch rejects groups with less than 40px horizontal separation', () => {
+  const f = fixture();
+  const active = beginFour(f, { points: [[180, 150], [180, 450], [205, 150], [205, 450]] });
+  assert.equal(f.owns, 0, '25px-separated groups are too narrow to be a deliberate fold');
+  f.recognizer.handleTouch('move', f.event(active, 1120));
+  f.recognizer.handleTouch('end', f.event([], 1140));
+  assert.deepEqual(f.opens, []);
+});
+
+test('gesture feedback stays quiet for native zoom and reports ready, armed, cancellation without document data', () => {
+  const f = fixture();
+  let active = [f.touch(1, 120, 150)];
+  f.recognizer.handleTouch('start', f.event(active, 1000));
+  active.push(f.touch(2, 120, 450));
+  f.recognizer.handleTouch('start', f.event(active, 1030));
+  assert.deepEqual(f.statuses, [], 'one and two fingers remain native gestures without fold feedback');
+  active.push(f.touch(3, 680, 150));
+  f.recognizer.handleTouch('start', f.event(active, 1060));
+  active.push(f.touch(4, 680, 450));
+  f.recognizer.handleTouch('start', f.event(active, 1090));
+  assert.ok(f.statuses.some(item => item.state === 'ready' && item.fingers === 4));
+  const converged = active.map((item, index) => f.touch(item.identifier, item.clientX, item.clientY + (index % 2 ? -45 : 45)));
+  f.recognizer.handleTouch('move', f.event(converged, 1120));
+  assert.ok(f.statuses.some(item => item.state === 'armed' && item.fingers === 4));
+  f.recognizer.handleTouch('cancel', f.event(converged, 1130));
+  assert.ok(f.statuses.some(item => item.state === 'cancelled' && item.fingers === 4));
+  for (const status of f.statuses) {
+    assert.deepEqual(Object.keys(status).sort(), ['fingers', 'reason', 'state'], 'feedback is a small state-only envelope');
+    assert.equal(typeof status.reason, 'string');
+    assert.equal(typeof status.fingers, 'number');
+  }
+  assert.deepEqual(f.opens, []);
 });
 
 test('owned contacts cannot be replaced, lifted mid-gesture, or moved to another page', () => {
@@ -201,4 +276,18 @@ test('ordinary one- and two-finger gestures remain unclaimed', () => {
   assert.equal(f.recognizer.handleTouch('move', f.event(two, 1060)), false);
   assert.equal(f.owns, 0);
   assert.deepEqual(f.opens, []);
+});
+
+test('ordinary taps do not leave the next fold gesture blocked', () => {
+  for (const fingerCount of [1, 2]) {
+    const f = fixture();
+    const touches = [f.touch(11, 200, 300), f.touch(12, 600, 300)].slice(0, fingerCount);
+    f.recognizer.handleTouch('start', f.event(touches, 100));
+    assert.equal(f.recognizer.handleTouch('end', f.event([], 150)), false);
+    const active = converge(f, beginFour(f));
+    assert.equal(f.owns, 1, 'a completed ordinary tap cannot block the next gesture');
+    f.recognizer.handleTouch('move', f.event(active, 1120));
+    f.recognizer.handleTouch('end', f.event([], 1140));
+    assert.equal(f.opens.length, 1);
+  }
 });

@@ -10,7 +10,7 @@ export const defaultRepoRoot = path.resolve(path.dirname(scriptPath), '../../..'
 // DOCX parsing lives in reading.js and uses the browser's DecompressionStream.
 // The OCR invocation is English + LSTM; both SIMD and non-SIMD cores embed WASM.
 export const readerFiles = Object.freeze([
-  'reading.js', 'reading-ink.js', 'reading-keeps.js', 'reading-folds.js', 'reading-pdf-projection.js', 'reading-fold-view.js', 'reading-fold.css', 'reading.css', 'carrel.webmanifest', 'LICENSE',
+  'reading.js', 'reading-ink.js', 'reading-keeps.js', 'reading-excerpts.js', 'reading-excerpts-view.js', 'reading-folds.js', 'reading-pdf-projection.js', 'reading-fold-view.js', 'reading-fold.css', 'reading.css', 'carrel.webmanifest', 'LICENSE',
   'fonts/dm-sans-var-latin.woff2', 'fonts/houfu-hand.woff2',
   'assets/phloem-guide/phloem-field-guide.pdf',
   'favicon_io/phloem-favicon.ico',

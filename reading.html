@@ -23,8 +23,8 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=148">
-  <link rel="stylesheet" href="/reading-fold.css?v=148">
+  <link rel="stylesheet" href="/reading.css?v=149">
+  <link rel="stylesheet" href="/reading-fold.css?v=149">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -330,6 +330,7 @@
           <button class="sheet-close" id="sheetClose" type="button" aria-label="Close notes">✕</button>
           <div class="tabs" role="tablist">
             <button class="tab active" data-tab="notesPanel" role="tab" aria-selected="true" aria-controls="notesPanel">Notes</button>
+            <button class="tab" id="excerptsTab" data-tab="excerptsPanel" role="tab" aria-selected="false" aria-controls="excerptsPanel">Clips</button>
             <button class="tab" id="reviewsTab" data-tab="reviewsPanel" role="tab" aria-selected="false" aria-controls="reviewsPanel">Reviews <span id="readerReviewerCount"></span></button>
             <button class="tab" data-tab="aiPanel" role="tab" aria-selected="false" aria-controls="aiPanel">Discuss</button>
           </div>
@@ -369,6 +370,20 @@
               <button class="text-button" id="editPaperBtn">Edit paper details</button>
               <button class="text-button danger-text" id="deletePaperBtn">Remove paper</button>
             </div>
+          </div>
+          <div class="tab-panel hidden" id="excerptsPanel" role="tabpanel" aria-labelledby="excerptsTab">
+            <div class="excerpt-panel-head">
+              <span class="panel-eyebrow">Side notebook</span>
+              <h3>Clips from this paper</h3>
+              <p class="hint">Save a passage while reading, then add your own note beside it. Notes without a passage belong here too.</p>
+              <div class="excerpt-panel-actions">
+                <span id="excerptCount" aria-live="polite"></span>
+                <button class="soft-button" id="newExcerptNote" type="button">＋ New note</button>
+              </div>
+              <button class="soft-button hidden" id="excerptReturn" type="button">↩ Return to reading</button>
+              <p id="excerptStatus" class="excerpt-status" role="status" aria-live="polite"></p>
+            </div>
+            <div id="excerptList" class="excerpt-list"></div>
           </div>
           <div class="tab-panel hidden" id="reviewsPanel" role="tabpanel">
             <div class="reviewer-panel-head">
@@ -453,6 +468,7 @@
       </div>
       <button id="linkReturn" class="link-return hidden" type="button">↩ Back to where you were</button>
       <button id="readingThreadResume" class="reading-thread-resume hidden" type="button" title="Resume your latest reading thread"><span id="readingThreadResumeText">Resume thread</span></button>
+      <button id="excerptReturnChip" class="excerpt-return-chip hidden" type="button">← Return to reading</button>
       <aside class="pdf-reference-preview hidden" id="pdfReferencePreview" role="tooltip" aria-live="polite">
         <span class="pdf-reference-preview-label" id="pdfReferencePreviewLabel">Linked passage</span>
         <p id="pdfReferencePreviewText">Finding the linked passage…</p>
@@ -478,6 +494,7 @@
         </div>
         <div class="selection-context hidden" id="selectionContext"><span class="selection-context-copy" id="selectionContextText"></span></div>
         <div class="selection-secondary" id="selectionSecondary">
+          <button class="selection-explain" id="selectionSaveExcerpt" type="button">Save excerpt</button>
           <button class="selection-explain" id="selectionParkQuestion" type="button">Park question</button>
           <button class="selection-explain" id="selectionExplain" type="button" aria-label="Look up a definition"><span aria-hidden="true">⌕</span> Define</button>
         </div>
@@ -854,14 +871,16 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=148',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=149',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=148" defer></script>
-<script src="/reading-keeps.js?v=148" defer></script>
-<script src="/reading-folds.js?v=148" defer></script>
-<script src="/reading-pdf-projection.js?v=148" defer></script>
-<script src="/reading-fold-view.js?v=148" defer></script>
-<script src="/reading.js?v=148" defer></script>
+<script src="/reading-ink.js?v=149" defer></script>
+<script src="/reading-keeps.js?v=149" defer></script>
+<script src="/reading-excerpts.js?v=149" defer></script>
+<script src="/reading-excerpts-view.js?v=149" defer></script>
+<script src="/reading-folds.js?v=149" defer></script>
+<script src="/reading-pdf-projection.js?v=149" defer></script>
+<script src="/reading-fold-view.js?v=149" defer></script>
+<script src="/reading.js?v=149" defer></script>
 </body>
 </html>

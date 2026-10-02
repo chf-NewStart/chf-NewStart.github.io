@@ -14,7 +14,8 @@ gate — check your change locally before you push.
 
 ## Layout
 
-- `index.html` — the portfolio page itself; `styles.css` and `site.js` belong to it.
+- `index.html` — the portfolio page, with shared `styles.css` / `site.js` and
+  homepage-only `homepage.css` / `homepage.js`. Shared files also serve Monet.
 - `bio-bg.js` — the animated backdrop (see below).
 - `journal.html`, `reading.html` (+ `reading-sw.js`, its offline service worker),
   `moneymanage/`, `msg/`, `personality/`, `pose-loop/`, `game/` —
@@ -29,7 +30,13 @@ gate — check your change locally before you push.
 
 ## The backdrop engine
 
-The animated background behind `index.html` is `bio-bg.js`, a WebGL2 single-pass
+The homepage starts with a solid forest-green background. The **Living background**
+button in the navigation opts into `bio-bg.js`; `homepage.js` downloads and starts
+the engine only when enabled, remembers the choice in `houfu-background`, and
+calls `stop()` when switched off. Storage failures leave the controls usable for
+the current visit. A failed or unsupported renderer returns to the quiet view.
+
+The optional animation is a WebGL2 single-pass
 fragment shader on `#bioBg`: procedural leaf tissue (Voronoi cells, chloroplast
 granules) advected by curl-noise flow. Scrolling stirs it — an energy envelope
 derived from scroll velocity speeds up the streaming and lifts the exposure.
@@ -57,12 +64,24 @@ using attribute pairs.
 
 ## The tomato rain
 
-The tomato button in the nav toggles a DOM physics toy scoped to the hero section:
+The **A little curiosity** button in the homepage footer opens a random fact.
+Shift-click still toggles a DOM physics toy scoped to the hero section:
 Braille-art tomatoes and pixel sprites fall, collide, pile up and go to sleep, with
 an ambient drizzle while it is on. The sprite cast in `sprites/` is deliberate: a
 goose for Waterloo, a raccoon for Toronto, and a Game of Life glider, block and
 blinker for the arcade. It runs its own `requestAnimationFrame` loop alongside the
 backdrop's, so keep per-frame work here cheap.
+
+## Homepage checks
+
+With Playwright (or `playwright-core`) and Chromium available, run
+`node --test tests/homepage.test.js`. Set `CHROME_PATH` to use an existing browser.
+The checks cover a quiet first visit, the optional renderer's start/stop and load
+cancellation, persisted choices, reduced-motion labels, blocked storage,
+disclosure deep links, mobile-menu focus, both languages, and layout widths from
+280px to 1440px. Renderer lifecycle tests use a small deterministic frame loop;
+they do not benchmark the WebGL shader. Set `HOMEPAGE_SCREENSHOTS` to an absolute
+directory to save desktop, tablet, and phone previews.
 
 ## Standalone tools
 

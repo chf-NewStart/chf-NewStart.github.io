@@ -10,7 +10,8 @@
     const scrollProgress = document.getElementById('scrollProgress');
     const nav = document.querySelector('.sticky-nav');
     const year = document.getElementById('currentYear');
-    let currentLanguage = localStorage.getItem('language') === 'zh' ? 'zh' : 'en';
+    let currentLanguage = 'en';
+    try { currentLanguage = localStorage.getItem('language') === 'zh' ? 'zh' : 'en'; } catch { /* use the page default */ }
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 
@@ -22,7 +23,7 @@
 
     function applyLanguage(language) {
         currentLanguage = language === 'zh' ? 'zh' : 'en';
-        localStorage.setItem('language', currentLanguage);
+        try { localStorage.setItem('language', currentLanguage); } catch { /* session-only choice */ }
         root.lang = currentLanguage === 'zh' ? 'zh-CN' : 'en';
 
         document.querySelectorAll('[data-en][data-zh]').forEach((element) => {
@@ -67,6 +68,7 @@
         // Same reason, different cause: an aria-label is an attribute, so the
         // textContent swap above cannot reach it.
         if (typeof updateExplorerLabels === 'function') updateExplorerLabels();
+        document.dispatchEvent(new CustomEvent('site:languagechange'));
     }
 
     languageToggle?.addEventListener('click', () => {
@@ -776,12 +778,8 @@
         }, 180);
     }, { passive: true });
 
-    // --- Backdrop ---------------------------------------------------------
-    // bio-bg.js deliberately does not start itself, so it has to be told to.
-    // Forgetting this once already shipped a page with a dead backdrop.
-    if (window.BIO_BG && (!window.BIO_BG.isSupported || window.BIO_BG.isSupported())) {
-        window.BIO_BG.start();
-    }
+    // The homepage owns its opt-in backdrop in homepage.js. Shared page
+    // controls must never start a renderer as a side effect of loading.
 
     const copyEmail = document.getElementById('copyEmail');
     copyEmail?.addEventListener('click', async () => {

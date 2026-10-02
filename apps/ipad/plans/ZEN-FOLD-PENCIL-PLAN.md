@@ -26,6 +26,12 @@ Actual module boundary for the next implementer:
 
 Next bounded tasks: physical iPad/WebKit validation of this pilot (keep gated if unavailable); then resume A1/A2 for compact Zen or A4/A5 for native Pencil after their prerequisites. Do not silently turn on folding, build an App Store archive, or claim native gestures work from synthetic events. Pinned figures, scratch margins, and additional book-like refinements are outside this delivery.
 
+### iPhone follow-up: staggered finger release
+
+After the user reported the feature did not work on iPhone, the recognizer was found to abort a successfully converged gesture when fingers lifted in separate touch events. Regression tests reproduced that failure before repair. It now owns a release phase: original contacts may lift in any order, the preview opens only after the final lift, and cancellation, replacement contacts, or a continuing drag still abort. Releasing before convergence remains a cancellation; separating after the first lift also aborts, even within the small resting-finger movement allowance. Ten recognizer tests and the browser's staged 4→3→2→1→0 release path pass. Reader cache/asset version is now 146. These are synthetic-event checks, not proof of physical Safari gesture delivery.
+
+Phone UI diagnosis also found Fold section positioned at x≈2510 in a 390px-wide horizontal settings strip. Fold/Undo/Unfold all are now at its start, and the opt-in is the first Desk settings section instead of below the sync/AI forms. `tests/reading-fold-phone.test.js` verifies controls are inside the viewport before any browser automation auto-scroll, then confirms folding and seam restoration at 390×844 in Chromium and WebKit. Source-authored PDF fixtures and isolated local browser storage only; no user library modified. These web fixes do not update an already-installed TestFlight binary.
+
 ## Outcome and confirmed decisions
 
 Make Zen quieter without removing useful controls. Add configurable Apple Pencil double-tap. Let a reader fold away part of a document, actually closing the vertical gap, and tap a strip to restore it. Never delete the underlying PDF, notes, ink, or highlights.
@@ -234,7 +240,7 @@ Guide-derived context must describe the visible guide region. Explicit full-page
 One reader gesture owner at a time: idle, provisional pinch, zoom/pan, page turn, Pencil stroke, guide drag, fold preview. Model this explicitly; do not add a fifth independent touch handler that races the others.
 
 - Fold recognition is touch-only, exactly four valid finger contacts on the same PDF page; never treat Pencil/palm contacts as the four fingers.
-- Extra contacts, OS cancellation, crossing page boundaries, or a disappearing touch abort cleanly with no fold write. No accidental zoom commit from a stale two-finger gesture.
+- Extra contacts, OS cancellation, crossing page boundaries, or contact loss before convergence abort cleanly with no fold write. After convergence, ordinary staggered release of the original fingers is accepted; open the preview only after the last lift. Replacement contacts or renewed dragging during release abort. No accidental zoom commit from a stale two-finger gesture.
 - If contacts arrive progressively, only a provisional pinch may hand over. Cancel its transient transform and pending commit first. Once zoom/page-turn owns meaningful movement, additional fingers must not steal it.
 - Prototype thresholds, not promises: collect contacts over roughly 180 ms; require two separated left/right groups with consistent upper/lower convergence, at least 32 CSS pixels and 20% shrink. Tune on physical devices, log only gesture metrics, and remove debug logging before release.
 - Recognition opens the fold preview with Confirm/Cancel. Until confirmed, it changes no document state. Keep visible handle-based folding even if the gesture is rejected by the platform.
@@ -445,6 +451,7 @@ node tests/reading-folds-state.test.js
 node tests/reading-pdf-projection.test.js
 node tests/reading-fold-gesture.test.js
 node tests/reading-fold-browser.test.js
+node tests/reading-fold-phone.test.js
 npm --prefix apps/ipad test
 npm --prefix apps/ipad run build
 git diff --check

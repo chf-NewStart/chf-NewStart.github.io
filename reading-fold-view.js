@@ -119,19 +119,40 @@
       if (type === 'touchcancel') { var wasOwned = !!owner; clear(); return wasOwned; }
       if (blocked) { if (type === 'touchend' && active.length === 0) blocked = false; return false; }
       if (owner) {
-        if (active.length > 4 || active.length && (active.length !== 4 || !sameIds(active, owner.ids, false) || !validTouches(active, owner.holder) || active.some(function (touch) { var found = pageForTouch(touch); return !found || found.holder !== owner.holder; }))) owner.aborted = true;
-        if (type === 'touchstart' && active.length !== 4) owner.aborted = true;
-        if (type === 'touchmove' && !owner.aborted) {
+        // Real fingers rarely lift in a single event. Once converged, consume a
+        // shrinking set of the same contacts until the final lift. A replacement,
+        // cancelled touch, or continuing drag still aborts without opening anything.
+        if (type === 'touchend' && active.length < 4 && !owner.releasing) {
+          owner.releasing = true;
+          owner.remaining = owner.ids;
+          if (!owner.armed) owner.aborted = true;
+        }
+        if (type === 'touchstart') owner.aborted = true;
+        if (owner.releasing) {
+          var remaining = Object.create(null);
+          if (active.length && (!validTouches(active, owner.holder) || active.some(function (touch) {
+            var id = String(touch.identifier), point = owner.points[id], found = pageForTouch(touch);
+            if (remaining[id] || !owner.remaining[id] || !point || !found || found.holder !== owner.holder || Math.hypot(touch.clientX - point.x, touch.clientY - point.y) > 12) return true;
+            remaining[id] = true; return false;
+          }))) owner.aborted = true;
+          if (active.length && !owner.aborted) {
+            var releasePositions = owner.contacts.map(function (touch) { return active.find(function (item) { return item.identifier === touch.identifier; }) || touch; });
+            var releasedState = pairState(releasePositions, owner.pairs, owner.holder);
+            if (releasedState.crossed || !releasedState.converged) owner.aborted = true;
+          }
+          if (type === 'touchend') owner.remaining = remaining;
+        } else if (active.length !== 4 || !sameIds(active, owner.ids, false) || !validTouches(active, owner.holder) || active.some(function (touch) { var found = pageForTouch(touch); return !found || found.holder !== owner.holder; })) owner.aborted = true;
+        if (type === 'touchmove' && !owner.aborted && !owner.releasing) {
           var state = pairState(active, owner.pairs, owner.holder);
           if (state.crossed) owner.aborted = true;
           owner.armed = !owner.aborted && state.converged;
+          active.forEach(function (touch) { owner.points[String(touch.identifier)] = { x: touch.clientX, y: touch.clientY }; });
+          owner.contacts = active.slice();
         }
         if (type === 'touchend' && active.length === 0) {
           var completed = owner, valid = !completed.aborted && completed.armed;
           clear();
           if (valid && typeof options.open === 'function') options.open(completed.page, completed.band);
-        } else if (type === 'touchend' && active.length !== 4) {
-          owner.aborted = true; owner.armed = false;
         }
         return true;
       }
@@ -148,7 +169,7 @@
         if (layout.crossed) { abandonCandidate(); return false; }
         var ids = Object.create(null);
         active.forEach(function (touch) { ids[String(touch.identifier)] = true; });
-        owner = { holder: candidate.holder, page: candidate.page, ids: ids, pairs: pairs, band: pairs.band, armed: false, aborted: false };
+        owner = { holder: candidate.holder, page: candidate.page, ids: ids, points: candidate.points, contacts: active.slice(), pairs: pairs, band: pairs.band, armed: false, aborted: false, releasing: false };
         candidate = null;
         if (options.onOwn) options.onOwn(owner.page);
         return true;
@@ -382,7 +403,7 @@
       var settings = document.querySelector('#settingsDialog .settings-body');
       if (settings && !document.getElementById('pdfFoldEnabled')) {
         var section = element('section', 'pdf-fold-settings'); section.innerHTML = '<h3>Experimental reading fold</h3><p>Folds full-width PDF passages in Scroll view. The first page tap unfolds it for text selection or annotation. This preview feature is opt-in.</p>';
-        var label = element('label', 'pdf-fold-enable-label'); enabledInput = element('input'); enabledInput.type = 'checkbox'; enabledInput.id = 'pdfFoldEnabled'; enabledInput.checked = readEnabled(); label.appendChild(enabledInput); label.appendChild(document.createTextNode(' Enable experimental paper folding (Scroll)')); section.appendChild(label); settings.appendChild(section);
+        var label = element('label', 'pdf-fold-enable-label'); enabledInput = element('input'); enabledInput.type = 'checkbox'; enabledInput.id = 'pdfFoldEnabled'; enabledInput.checked = readEnabled(); label.appendChild(enabledInput); label.appendChild(document.createTextNode(' Enable experimental paper folding (Scroll)')); section.appendChild(label); settings.insertBefore(section, settings.querySelector('section'));
       } else enabledInput = document.getElementById('pdfFoldEnabled');
       if (enabledInput) { enabledInput.addEventListener('change', function () {
         var position=capturePosition();try { localStorage.setItem(STORAGE_KEY, enabledInput.checked ? '1' : '0'); } catch (error) {}
@@ -404,6 +425,9 @@
       if (comfort && !document.getElementById('undoPdfFold')) {
         undoButton = element('button', 'toggle pdf-fold-undo', 'Undo fold'); undoButton.id = 'undoPdfFold'; undoButton.type = 'button'; comfort.appendChild(undoButton); undoButton.addEventListener('click', undoFold);
       } else undoButton = document.getElementById('undoPdfFold');
+      // On phones this is a sideways strip, not a wrapping desktop toolbar.
+      // Keep opted-in fold actions reachable without several screens of swiping.
+      if (comfort) [unfoldAllButton, undoButton, foldButton].forEach(function (button) { if (button) comfort.insertBefore(button, comfort.firstChild); });
       createPreview(); syncControls();
     }
     function readEnabled() { try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch (error) { return false; } }

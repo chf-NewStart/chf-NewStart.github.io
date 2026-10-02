@@ -100,7 +100,7 @@ async function fold(page) {
       const touches=(moving,count)=>starts.slice(0,count).map(([x,y],i)=>new Touch({identifier:i+1,target,clientX:r.left+r.width*x,clientY:r.top+r.height*y+(moving?(i%2?-50:50):0)}));
       for(let n=1;n<=4;n++)target.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,cancelable:true,touches:touches(false,n),changedTouches:touches(false,n).slice(-1)}));
       target.dispatchEvent(new TouchEvent('touchmove',{bubbles:true,cancelable:true,touches:touches(true,4),changedTouches:touches(true,4)}));
-      target.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,touches:[],changedTouches:touches(true,4)}));
+      for(let n=3;n>=0;n--)target.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,touches:touches(true,n),changedTouches:touches(true,n+1).slice(-1)}));
     });
     await page.locator('#pdfFoldDialog').waitFor({state:'visible'});
     assert.equal(await page.locator('#pdfFoldTop').inputValue(),'15','gesture previews the band between the fingers');

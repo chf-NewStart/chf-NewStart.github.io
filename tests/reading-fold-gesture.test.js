@@ -55,6 +55,57 @@ test('app event aliases and native TouchEvent names both recognize the gesture b
   }
 });
 
+test('a converged fold accepts natural staggered finger release and opens only after the last finger', () => {
+  for (const order of [[0, 1, 2, 3], [3, 1, 0, 2], [1, 2, 3, 0]]) {
+    const f = fixture();
+    const active = converge(f, beginFour(f));
+    f.recognizer.handleTouch('move', f.event(active, 1120));
+    let remaining = active.slice();
+    order.forEach((index, step) => {
+      remaining = remaining.filter(touch => touch.identifier !== active[index].identifier);
+      assert.equal(f.recognizer.handleTouch('end', f.event(remaining, 1140 + step * 30)), true);
+      assert.equal(f.opens.length, step === 3 ? 1 : 0);
+    });
+    assert.deepEqual(plain(f.opens), [{ page: 7, band: { y0: .1, y1: .4 } }]);
+  }
+});
+
+test('release permits a small resting-finger adjustment but rejects a continuing drag', () => {
+  for (const movement of [3, 35]) {
+    const f = fixture(), active = converge(f, beginFour(f));
+    f.recognizer.handleTouch('move', f.event(active, 1120));
+    f.recognizer.handleTouch('end', f.event(active.slice(1), 1140));
+    const moved = active.slice(1).map(touch => f.touch(touch.identifier, touch.clientX + movement, touch.clientY));
+    f.recognizer.handleTouch('move', f.event(moved, 1150));
+    f.recognizer.handleTouch('end', f.event([], 1170));
+    assert.equal(f.opens.length, movement === 3 ? 1 : 0);
+  }
+});
+
+test('separating a remaining pair during staggered release disarms even within the movement allowance', () => {
+  const f = fixture();
+  beginFour(f);
+  const active = [[120, 180], [120, 420], [680, 180], [680, 420]].map((p, i) => f.touch(i + 1, p[0], p[1]));
+  f.recognizer.handleTouch('move', f.event(active, 1120));
+  f.recognizer.handleTouch('end', f.event(active.slice(1), 1140));
+  const separated = active.slice(1).map(touch => f.touch(touch.identifier, touch.clientX, touch.clientY + (touch.identifier === 3 ? -11 : 11)));
+  f.recognizer.handleTouch('move', f.event(separated, 1150));
+  f.recognizer.handleTouch('end', f.event([], 1170));
+  assert.deepEqual(f.opens, []);
+});
+
+test('cancellation and a replacement touch during staggered release never open the preview', () => {
+  for (const action of ['cancel', 'replacement']) {
+    const f = fixture(), active = converge(f, beginFour(f));
+    f.recognizer.handleTouch('move', f.event(active, 1120));
+    f.recognizer.handleTouch('end', f.event(active.slice(1), 1140));
+    if (action === 'cancel') f.recognizer.handleTouch('cancel', f.event(active.slice(1), 1150));
+    else f.recognizer.handleTouch('start', f.event(active.slice(1).concat(f.touch(99, 120, 195)), 1150));
+    f.recognizer.handleTouch('end', f.event([], 1170));
+    assert.deepEqual(f.opens, []);
+  }
+});
+
 test('a five-contact gesture and a cancelled owned gesture never open', () => {
   const f = fixture();
   let active = beginFour(f);

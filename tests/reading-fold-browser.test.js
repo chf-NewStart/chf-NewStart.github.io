@@ -99,35 +99,63 @@ async function fold(page) {
     await page.locator('#pdfFoldEnabled').check();
     await page.locator('[data-close="settingsDialog"]').click();
     const gestureFeedback = await page.evaluate(async () => {
-      const holder=document.querySelector('.pdf-page[data-page="1"]'),target=holder.querySelector('.text-layer'),r=holder.getBoundingClientRect();
-      const starts=[[.2,.15],[.2,.4],[.8,.15],[.8,.4]];
-      const touches=(moving,count)=>starts.slice(0,count).map(([x,y],i)=>({identifier:i+1,target,touchType:'direct',clientX:r.left+r.width*x,clientY:r.top+r.height*y+(moving?(i%2?-50:50):0)}));
-      // WebKit does not expose a constructible Touch. These deliberately synthetic
-      // event payloads test our DOM routing, never physical touch delivery.
-      const send=(type,active,changed)=>{
-        const event=new Event(type,{bubbles:true,cancelable:true});
-        Object.defineProperties(event,{touches:{value:active},targetTouches:{value:active},changedTouches:{value:changed}});
+      const holder = document.querySelector('.pdf-page[data-page="1"]'), target = holder.querySelector('.text-layer');
+      const rect = holder.getBoundingClientRect(), top = rect.top + Math.min(200, rect.height * .2);
+      const starts = [[.2, top], [.2, top + 60], [.8, top], [.8, top + 60]];
+      const touches = (shrink, count) => starts.slice(0, count).map(([x, y], index) => ({
+        identifier: index + 1, target, touchType: 'direct',
+        clientX: rect.left + rect.width * x,
+        clientY: y + (index % 2 ? -shrink / 2 : shrink / 2)
+      }));
+      // Synthetic TouchEvent payloads test actual DOM routing in both browsers;
+      // WebKit does not expose a constructible Touch in this environment.
+      const send = (type, active, changed) => {
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        Object.defineProperties(event, { touches: { value: active }, targetTouches: { value: active }, changedTouches: { value: changed } });
         target.dispatchEvent(event);
       };
-      // A normal tap must not poison the next gesture, and realistic sequential
-      // placement takes longer than the old 180ms assembly deadline.
-      send('touchstart',touches(false,1),touches(false,1));
-      send('touchend',[],touches(false,1));
-      for(let n=1;n<=4;n++) {
-        if(n>1)await new Promise(resolve=>setTimeout(resolve,150));
-        send('touchstart',touches(false,n),touches(false,n).slice(-1));
-      }
-      const ready=document.querySelector('#readerToast').textContent;
-      send('touchmove',touches(true,4),touches(true,4));
-      const armed=document.querySelector('#readerToast').textContent;
-      for(let n=3;n>=0;n--)send('touchend',touches(true,n),touches(true,n+1).slice(-1));
-      return {ready,armed};
+      const toast = () => document.querySelector('#readerToast').textContent;
+      const startFour = async () => {
+        for (let count = 1; count <= 4; count++) {
+          if (count > 1) await new Promise(resolve => setTimeout(resolve, 150));
+          send('touchstart', touches(0, count), touches(0, count).slice(-1));
+        }
+        return toast();
+      };
+
+      // A normal tap must not poison the next four-contact gesture.
+      send('touchstart', touches(0, 1), touches(0, 1));
+      send('touchend', [], touches(0, 1));
+      const noMoveReady = await startFour();
+      send('touchend', [], touches(0, 4));
+      const noMove = toast();
+
+      await startFour();
+      send('touchmove', touches(6, 4), touches(6, 4)); // Half of the 12px required shrink for a 60px pair.
+      const insufficientProgress = toast();
+      send('touchend', [], touches(6, 4));
+      const insufficient = toast();
+
+      const ready = await startFour();
+      send('touchmove', touches(6, 4), touches(6, 4));
+      const tracking = toast();
+      send('touchmove', touches(12, 4), touches(12, 4));
+      const armed = toast();
+      for (let count = 3; count >= 0; count--)
+        send('touchend', touches(12, count), touches(12, count + 1).slice(-1));
+      return { noMoveReady, noMove, insufficientProgress, insufficient, ready, tracking, armed,
+        top: Math.round((top - rect.top) / rect.height * 100), bottom: Math.round((top + 60 - rect.top) / rect.height * 100) };
     });
-    assert.match(gestureFeedback.ready,/Four fingers detected/);
-    assert.equal(gestureFeedback.armed,'Release to preview the fold');
+    assert.match(gestureFeedback.noMoveReady, /Four fingers detected/);
+    assert.match(gestureFeedback.noMove, /no movement received/);
+    assert.equal(gestureFeedback.insufficientProgress, 'Pinch 50% · bring both upper/lower pairs together');
+    assert.match(gestureFeedback.insufficient, /pinch both upper\/lower pairs a little further/);
+    assert.match(gestureFeedback.ready, /Four fingers detected/);
+    assert.equal(gestureFeedback.tracking, 'Pinch 50% · bring both upper/lower pairs together');
+    assert.equal(gestureFeedback.armed, 'Release to preview the fold');
     await page.locator('#pdfFoldDialog').waitFor({state:'visible'});
-    assert.equal(await page.locator('#pdfFoldTop').inputValue(),'15','gesture previews the band between the fingers');
-    assert.equal(await page.locator('#pdfFoldBottom').inputValue(),'40');
+    assert.equal(await page.locator('#pdfFoldTop').inputValue(), String(gestureFeedback.top), 'gesture previews the top of the 60px band');
+    assert.equal(await page.locator('#pdfFoldBottom').inputValue(), String(gestureFeedback.bottom), 'gesture previews the bottom of the 60px band');
     assert.equal(JSON.stringify((await chapter(page)).pdfFolds),JSON.stringify(before.pdfFolds),'gesture never writes before confirmation');
     assert.equal(await page.locator('#pdfFrame').evaluate(el=>el.style.transform),'','four fingers cancel the provisional two-finger zoom');
     await page.locator('#cancelPdfFold').click();

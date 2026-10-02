@@ -32,15 +32,18 @@
     options = options || {};
     var ARRIVAL_WINDOW = 800;
     var candidate = null, owner = null, blocked = false, blockedReason = '', maxFingers = 0, lastStatus = '';
-    function report(state, reason) {
-      var key = state + ':' + (reason || '');
+    function report(state, reason, progress) {
+      var percent = state === 'tracking' ? Math.floor(clamp(progress || 0, 0, 100) / 10) * 10 : null;
+      var key = state + ':' + (reason || '') + ':' + percent;
       if (maxFingers < 3 || key === lastStatus) return;
       lastStatus = key;
-      if (typeof options.onStatus === 'function') options.onStatus({ state: state, reason: reason || '', fingers: maxFingers });
+      var status = { state: state, reason: reason || '', fingers: maxFingers };
+      if (percent !== null) status.progress = percent;
+      if (typeof options.onStatus === 'function') options.onStatus(status);
     }
     function clear() { candidate = null; owner = null; blocked = false; blockedReason = ''; maxFingers = 0; lastStatus = ''; }
     function abandonCandidate(reason) { candidate = null; blocked = true; blockedReason = reason; report('cancelled', reason); }
-    function abortOwner(reason) { owner.aborted = true; report('cancelled', reason); }
+    function abortOwner(reason) { if (owner.aborted) return; owner.aborted = true; report('cancelled', reason); }
     function pageForTouch(touch) {
       var target = touch && touch.target, holder = target && target.closest && target.closest('.pdf-page');
       return holder && +holder.dataset.page ? { holder: holder, page: +holder.dataset.page } : null;
@@ -107,19 +110,20 @@
       if (!(result.band.y1 > result.band.y0)) return null;
       return result;
     }
-    function pairState(active, pairs, holder) {
+    function pairState(active, pairs, holder, wasArmed) {
       var centerX = pairs.centerX;
-      var isConverged = ['left', 'right'].every(function (side) {
+      var states = ['left', 'right'].map(function (side) {
         var pair = pairs[side], top = active.find(function (touch) { return touch.identifier === pair.topId; }), bottom = active.find(function (touch) { return touch.identifier === pair.bottomId; });
-        if (!top || !bottom || top.clientY >= bottom.clientY || side === 'left' && (top.clientX >= centerX || bottom.clientX >= centerX) || side === 'right' && (top.clientX <= centerX || bottom.clientX <= centerX)) return false;
-        var gap = bottom.clientY - top.clientY;
-        return pair.startGap - gap >= 32 && gap <= pair.startGap * .8;
+        var crossed = !top || !bottom || top.clientY >= bottom.clientY || (side === 'left' ? top.clientX >= centerX || bottom.clientX >= centerX : top.clientX <= centerX || bottom.clientX <= centerX);
+        if (crossed) return { crossed: true, converged: false, progress: 0 };
+        // The old 32px minimum required an 80% pinch from a valid 40px start.
+        // Scale to each hand's spacing, and tolerate a little release jitter.
+        var required = Math.min(32, Math.max(8, pair.startGap * .20));
+        var shrink = pair.startGap - (bottom.clientY - top.clientY);
+        var threshold = wasArmed ? Math.max(4, required - 4) : required;
+        return { crossed: false, converged: shrink >= threshold, progress: clamp(shrink / required * 100, 0, 100) };
       });
-      var crossed = ['left', 'right'].some(function (side) {
-        var pair = pairs[side], top = active.find(function (touch) { return touch.identifier === pair.topId; }), bottom = active.find(function (touch) { return touch.identifier === pair.bottomId; });
-        return !top || !bottom || top.clientY >= bottom.clientY || (side === 'left' ? top.clientX >= centerX || bottom.clientX >= centerX : top.clientX <= centerX || bottom.clientX <= centerX);
-      });
-      return { converged: isConverged, crossed: crossed };
+      return { converged: states.every(function (state) { return state.converged; }), crossed: states.some(function (state) { return state.crossed; }), progress: Math.min(states[0].progress, states[1].progress) };
     }
     function handle(type, event) {
       type = ({ start: 'touchstart', move: 'touchmove', end: 'touchend', cancel: 'touchcancel' })[type] || type;
@@ -137,7 +141,7 @@
         if (type === 'touchend' && active.length < 4 && !owner.releasing) {
           owner.releasing = true;
           owner.remaining = owner.ids;
-          if (!owner.armed) abortOwner('released-before-pinching');
+          if (!owner.armed) abortOwner(owner.moves ? 'not-enough-pinch' : 'no-movement-events');
         }
         if (type === 'touchstart') abortOwner('contacts-changed');
         if (owner.releasing) {
@@ -149,16 +153,17 @@
           }))) abortOwner('contacts-changed');
           if (active.length && !owner.aborted) {
             var releasePositions = owner.contacts.map(function (touch) { return active.find(function (item) { return item.identifier === touch.identifier; }) || touch; });
-            var releasedState = pairState(releasePositions, owner.pairs, owner.holder);
+            var releasedState = pairState(releasePositions, owner.pairs, owner.holder, owner.armed);
             if (releasedState.crossed || !releasedState.converged) abortOwner('separated');
           }
           if (type === 'touchend') owner.remaining = remaining;
         } else if (active.length !== 4 || !sameIds(active, owner.ids, false) || !validTouches(active, owner.holder) || active.some(function (touch) { var found = pageForTouch(touch); return !found || found.holder !== owner.holder; })) abortOwner('contacts-changed');
         if (type === 'touchmove' && !owner.aborted && !owner.releasing) {
-          var state = pairState(active, owner.pairs, owner.holder);
+          owner.moves++;
+          var state = pairState(active, owner.pairs, owner.holder, owner.armed);
           if (state.crossed) abortOwner('crossed');
           owner.armed = !owner.aborted && state.converged;
-          if (!owner.aborted) report(owner.armed ? 'armed' : 'ready');
+          if (!owner.aborted) report(owner.armed ? 'armed' : 'tracking', '', state.progress);
           active.forEach(function (touch) { owner.points[String(touch.identifier)] = { x: touch.clientX, y: touch.clientY }; });
           owner.contacts = active.slice();
         }
@@ -185,7 +190,7 @@
         if (layout.crossed) { abandonCandidate('placement'); return false; }
         var ids = Object.create(null);
         active.forEach(function (touch) { ids[String(touch.identifier)] = true; });
-        owner = { holder: candidate.holder, page: candidate.page, ids: ids, points: candidate.points, contacts: active.slice(), pairs: pairs, band: pairs.band, armed: false, aborted: false, releasing: false };
+        owner = { holder: candidate.holder, page: candidate.page, ids: ids, points: candidate.points, contacts: active.slice(), pairs: pairs, band: pairs.band, moves: 0, armed: false, aborted: false, releasing: false };
         candidate = null;
         if (options.onOwn) options.onOwn(owner.page);
         report('ready');
@@ -576,6 +581,7 @@
       onOwn: function () { if (typeof adapter.cancelGestures === 'function') adapter.cancelGestures(); },
       onStatus: function (status) {
         if (status.state === 'ready') { adapterToast('Four fingers detected · pinch top and bottom together'); return; }
+        if (status.state === 'tracking') { adapterToast('Pinch ' + status.progress + '% · bring both upper/lower pairs together'); return; }
         if (status.state === 'armed') { adapterToast('Release to preview the fold'); return; }
         if (status.state !== 'cancelled') return;
         var messages = {
@@ -585,7 +591,8 @@
           'placement': 'Use two fingers on each side, with space above and below',
           'system-cancelled': 'Touch gesture cancelled · try Fold section',
           'need-four-fingers': 'Four fingers are needed · lift and try again',
-          'released-before-pinching': 'Pinch the upper and lower fingers together before lifting',
+          'no-movement-events': 'Four fingers detected, but no movement received · try Fold section',
+          'not-enough-pinch': 'Movement detected · pinch both upper/lower pairs a little further',
           'separated': 'Fold cancelled · keep fingers pinched as you lift',
           'crossed': 'Keep each finger pair on its side while pinching'
         };

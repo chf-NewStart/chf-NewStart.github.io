@@ -23,7 +23,8 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=143">
+  <link rel="stylesheet" href="/reading.css?v=145">
+  <link rel="stylesheet" href="/reading-fold.css?v=145">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -343,6 +344,18 @@
               </div>
               <p class="notebook-listen-status" id="notebookLmStatus" role="status" aria-live="polite"></p>
             </div>
+            <details id="readingKeepsPanel" class="reading-keeps-panel">
+              <summary>Places &amp; questions <span id="readingKeepsCount"></span></summary>
+              <div class="reading-keeps-body">
+                <div class="reading-keeps-actions" role="group" aria-label="Save a reading place or question">
+                  <button class="soft-button" id="saveReadingBookmark" type="button">Bookmark here</button>
+                  <button class="soft-button" id="leaveReadingThread" type="button">Leave a thread</button>
+                  <button class="soft-button" id="parkReadingQuestion" type="button">Park a question</button>
+                </div>
+                <div class="reading-keeps-list" id="readingKeepsList"></div>
+                <p class="reading-keeps-status" id="readingKeepsStatus" role="status" aria-live="polite"></p>
+              </div>
+            </details>
             <div class="mini-list" id="noteIndex"></div>
             <section class="page-note-card">
               <div class="note-heading-row"><div><span class="panel-eyebrow">Write beside the page</span><h3 id="noteHeading">Page note</h3></div><button class="recall-button" id="recallBtn" type="button" aria-pressed="false">↻ Recall</button></div>
@@ -439,6 +452,7 @@
         </div>
       </div>
       <button id="linkReturn" class="link-return hidden" type="button">↩ Back to where you were</button>
+      <button id="readingThreadResume" class="reading-thread-resume hidden" type="button" title="Resume your latest reading thread"><span id="readingThreadResumeText">Resume thread</span></button>
       <aside class="pdf-reference-preview hidden" id="pdfReferencePreview" role="tooltip" aria-live="polite">
         <span class="pdf-reference-preview-label" id="pdfReferencePreviewLabel">Linked passage</span>
         <p id="pdfReferencePreviewText">Finding the linked passage…</p>
@@ -464,6 +478,7 @@
         </div>
         <div class="selection-context hidden" id="selectionContext"><span class="selection-context-copy" id="selectionContextText"></span></div>
         <div class="selection-secondary" id="selectionSecondary">
+          <button class="selection-explain" id="selectionParkQuestion" type="button">Park question</button>
           <button class="selection-explain" id="selectionExplain" type="button" aria-label="Look up a definition"><span aria-hidden="true">⌕</span> Define</button>
         </div>
         <div class="selection-saved-tools hidden" id="selectionSavedTools">
@@ -606,6 +621,16 @@
       <label class="field-label" for="renamePaperTitle">Name</label><input class="field" id="renamePaperTitle" required maxlength="500" autocomplete="off">
       <p>Changes the name in Phloem, not the original file.</p>
       <div class="dialog-actions"><button class="soft-button" type="button" data-close="renamePaperDialog">Cancel</button><button class="button" type="submit">Save name</button></div>
+    </form>
+  </dialog>
+  <dialog id="readingKeepDialog" aria-labelledby="readingKeepHeading">
+    <form class="dialog-body form-grid reading-keep-form" id="readingKeepForm">
+      <div class="reading-keep-dialog-heading"><h2 id="readingKeepHeading">Keep this place</h2><p id="readingKeepContext"></p></div>
+      <label class="field-label" id="readingKeepTextLabel" for="readingKeepText">Note</label>
+      <textarea class="note-area" id="readingKeepText" maxlength="2000" aria-describedby="readingKeepHint readingKeepError"></textarea>
+      <p class="reading-keep-hint" id="readingKeepHint">Add a short reminder for your next visit.</p>
+      <p class="reading-keep-error" id="readingKeepError" role="alert" aria-live="polite"></p>
+      <div class="dialog-actions"><button class="soft-button" id="cancelReadingKeep" type="button">Cancel</button><button class="button" id="saveReadingKeep" type="submit">Save</button></div>
     </form>
   </dialog>
   <dialog id="paperDialog">
@@ -829,10 +854,14 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=143',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=145',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=143" defer></script>
-<script src="/reading.js?v=144" defer></script>
+<script src="/reading-ink.js?v=145" defer></script>
+<script src="/reading-keeps.js?v=145" defer></script>
+<script src="/reading-folds.js?v=145" defer></script>
+<script src="/reading-pdf-projection.js?v=145" defer></script>
+<script src="/reading-fold-view.js?v=145" defer></script>
+<script src="/reading.js?v=145" defer></script>
 </body>
 </html>

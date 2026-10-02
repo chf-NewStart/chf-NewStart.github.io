@@ -1,0 +1,44 @@
+/* Opt-in, read-only full-width PDF fold projection. */
+.pdf-page.pdf-folded-view > .pdf-sheet { display: none !important; }
+.pdf-page.pdf-folded-view > .pdf-fold-display {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--paper, #fff);
+  touch-action: pan-y pinch-zoom;
+}
+.pdf-fold-display-canvas { position: absolute; inset: 0 auto auto 0; display: block; max-width: none; }
+.pdf-frame.dark-paper .pdf-fold-display-canvas { filter: invert(.91) hue-rotate(180deg) contrast(.9) brightness(.92); }
+.pdf-frame[data-paper-appearance="original"] .pdf-fold-display-canvas { filter: none; mix-blend-mode: normal; }
+.pdf-frame.cream:not(.dark-paper) .pdf-fold-display-canvas { mix-blend-mode: multiply; filter: saturate(.96) contrast(1.01); }
+.pdf-fold-overlays { position: absolute; inset: 0 auto auto 0; width: 100%; height: 100%; pointer-events: none; }
+.pdf-fold-overlays > .highlight,
+.pdf-fold-overlays > .pdf-highlight,
+.pdf-fold-overlays > [data-highlight-id] { position: absolute; }
+.pdf-fold-ink { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+.pdf-fold-reveal { position: absolute; inset: 0; z-index: 2; display: block; width: 100%; height: 100%; min-height: 44px; padding: 8px; border: 0; background: transparent; color: transparent; cursor: pointer; touch-action: pan-y pinch-zoom; }
+.pdf-fold-reveal:focus-visible { outline: 3px solid var(--accent, #b48b4d); outline-offset: -4px; }
+.pdf-fold-seam { position: absolute; z-index: 4; left: 0; width: 100%; min-height: 44px; padding: 0 14px; border: 0; border-top: 1px solid rgba(115, 101, 75, .28); border-bottom: 1px solid rgba(115, 101, 75, .28); background: linear-gradient(180deg, rgba(232,225,209,.94), rgba(248,246,239,.98) 48%, rgba(226,218,201,.94)); color: #554b3c; font: inherit; cursor: pointer; touch-action: manipulation; }
+.pdf-fold-seam::after { content: "Folded passage · tap to restore"; display: block; line-height: 42px; text-align: center; font-size: .78rem; letter-spacing: .025em; }
+.pdf-frame.dark-paper .pdf-fold-seam { border-color: rgba(230,220,194,.24); background: linear-gradient(180deg, #32302b, #252522 48%, #343129); color: #e5dcc8; }
+.pdf-fold-preview-band { position: absolute; z-index: 8; left: 0; box-sizing: border-box; border-top: 2px solid #b37e43; border-bottom: 2px solid #b37e43; background: rgba(224, 174, 95, .32); box-shadow: 0 0 0 99999px rgba(25, 22, 18, .08); pointer-events: none; }
+.pdf-fold-dialog { width: min(34rem, calc(100vw - 28px)); max-width: calc(100vw - 28px); max-height: min(28rem, calc(100dvh - 24px)); overflow: auto; padding: 0; border: 1px solid var(--line, rgba(75,65,50,.2)); border-radius: 14px; background: var(--surface, #faf9f6); color: var(--ink, #302c25); box-shadow: 0 20px 70px rgba(20,18,14,.3); }
+.pdf-fold-dialog::backdrop { background: rgba(19, 18, 16, .42); }
+.pdf-fold-form { display: grid; gap: 14px; padding: 20px; }
+.pdf-fold-dialog-head h2 { margin: 0 0 6px; font-size: 1.1rem; }
+.pdf-fold-dialog-head p, .pdf-fold-status { margin: 0; color: var(--muted, #716c62); font-size: .9rem; line-height: 1.45; }
+.pdf-fold-ranges { display: grid; gap: 7px; }
+.pdf-fold-ranges label { font-size: .88rem; }
+.pdf-fold-range { width: 100%; min-height: 44px; accent-color: var(--accent, #9b7444); touch-action: pan-x; }
+.pdf-fold-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.pdf-fold-dialog-actions button, .pdf-fold-settings input { min-height: 44px; }
+.pdf-fold-settings { margin-block: 12px; padding: 12px; border: 1px solid var(--line, rgba(75,65,50,.18)); border-radius: 10px; }
+.pdf-fold-settings h3 { margin: 0 0 5px; font-size: .95rem; }
+.pdf-fold-settings p { margin: 0 0 10px; color: var(--muted, #716c62); font-size: .85rem; }
+.pdf-fold-enable-label { display: flex; align-items: center; gap: 9px; min-height: 44px; }
+.pdf-fold-enable-label input { width: 22px; height: 22px; }
+.pdf-fold-open, .pdf-fold-unfold-all, .pdf-fold-undo, .pdf-fold-zen-open { min-height: 44px; }
+@media (max-width: 600px) {
+  .pdf-fold-form { padding: 16px; }
+  .pdf-fold-dialog-actions { position: sticky; bottom: 0; padding-top: 8px; background: var(--surface, #faf9f6); }
+}

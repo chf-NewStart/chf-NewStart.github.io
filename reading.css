@@ -985,7 +985,7 @@
     body.zen main { min-height: 100vh; }
     body.zen #readerPage { height: calc(100vh - var(--kb-inset, 0px)); height: calc(100dvh - var(--kb-inset, 0px)); }
     body.zen .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
-    .zen-dock { position: fixed; z-index: 48; top: calc(10px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); display: none; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .zen-dock { --zen-safe-top: env(safe-area-inset-top, 0px); --zen-safe-bottom: env(safe-area-inset-bottom, 0px); position: fixed; z-index: 48; top: calc(10px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); display: none; flex-direction: column; align-items: flex-end; gap: 8px; }
     body.zen .zen-dock { display: flex; }
     body.zen .find-bar:not(.hidden) { position: fixed; z-index: 47; top: calc(62px + env(safe-area-inset-top)); right: calc(68px + env(safe-area-inset-right)); width: min(560px, calc(100vw - 96px - env(safe-area-inset-left) - env(safe-area-inset-right))); padding: 8px 10px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
     body.zen .find-bar input { max-width: none; }
@@ -997,6 +997,21 @@
     .zen-popout-option:hover, .zen-popout-option:focus-visible { border-color: var(--line); background: var(--surface-2); color: var(--ink); }
     .zen-popout-option[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); background: var(--accent-soft); color: var(--ink); }
     .zen-popout-option span:first-child { font-size: .9rem; letter-spacing: -.12em; }
+    .zen-action-menu { width: min(220px, calc(100vw - 76px)); max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); padding: 5px; display: flex; flex-direction: column; gap: 2px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+    .zen-action-menu .zen-tool { display: block; width: 100%; }
+    .zen-action-menu .zen-menu-action { z-index: auto; width: 100%; min-height: 44px; height: 44px; padding: 0 12px; flex: none; justify-content: flex-start; gap: 10px; border-color: transparent; border-radius: 10px; background: transparent; opacity: 1; backdrop-filter: none; color: var(--ink); font-size: 1rem; }
+    .zen-action-menu .zen-menu-action::after { content: attr(data-label); color: var(--ink); font: 700 .72rem/1.2 var(--sans); letter-spacing: normal; }
+    .zen-action-menu .zen-menu-action:hover, .zen-action-menu .zen-menu-action:focus-visible { border-color: var(--line); background: var(--surface-2); opacity: 1; }
+    .zen-action-menu .zen-menu-action:disabled { opacity: .42; }
+    .zen-action-menu .zen-marker-current-dot { left: 22px; right: auto; bottom: 7px; }
+    .zen-action-menu .zen-undo { flex-direction: row; }
+    .zen-action-menu .zen-undo > span { display: none; }
+    .zen-action-menu .zen-menu-subtool .zen-layout-menu { position: static; width: 100%; min-height: 0; margin: 0 0 4px; padding: 3px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; transform: none; border: 0; border-radius: 10px; background: var(--surface-2); box-shadow: none; backdrop-filter: none; }
+    .zen-action-menu .zen-menu-subtool .zen-layout-menu .zen-popout-option { min-width: 0; }
+    .zen-workspace { flex-direction: column; gap: 0; border-radius: 13px; font-size: 1.16rem; }
+    .zen-workspace-caption { font: 700 8px/1 var(--sans); letter-spacing: -.02em; }
+    .zen-workspace[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); opacity: .9; }
+    body.zen.zen-idle .zen-workspace[aria-pressed="true"] { opacity: .48; }
     .zen-guide-menu { width: min(286px, calc(100vw - 76px)); padding: 6px; display: grid; gap: 4px; }
     .zen-guide-toggle { width: 100%; justify-content: flex-start; }
     .zen-guide-dim-control { padding: 5px 7px; display: grid; grid-template-columns: auto minmax(92px, 1fr) 38px; align-items: center; gap: 9px; }
@@ -1014,8 +1029,9 @@
        of themselves, video-player style, and any movement or touch wakes them. They
        stay tappable while faded so one tap still exits — never a wake-then-tap dance. */
     body.zen.zen-idle .zen-exit { opacity: .08; }
-    body.zen .zen-dock.popout-open .zen-exit, body.zen .zen-dock.find-open .zen-exit, body.zen.zen-idle .zen-tool.popout-open .zen-exit { opacity: .72; }
-    .zen-tool.popout-open .zen-exit { border-color: color-mix(in srgb, var(--accent) 36%, var(--line)); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--ink); }
+    body.zen .zen-dock.popout-open > .zen-exit, body.zen .zen-dock.find-open > .zen-exit, body.zen.zen-idle .zen-dock > .zen-tool.popout-open > .zen-exit { opacity: .72; }
+    .zen-tool.popout-open > .zen-exit { border-color: color-mix(in srgb, var(--accent) 36%, var(--line)); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--ink); }
+    body.zen.zen-idle .zen-action-menu .zen-menu-action:not(:disabled) { opacity: 1; }
     /* When the guide is on, its accent shows through even at rest opacity. */
     .zen-guide { font-size: .78rem; }
     .zen-find { font-size: 1.05rem; }
@@ -1029,6 +1045,8 @@
     body.zen #zenUndo:disabled { opacity: .2; cursor: default; }
     .zen-guide.active { color: var(--accent); opacity: .55; }
     .zen-guide.active:hover, .zen-guide.active:focus-visible { color: var(--accent); }
+    #zenAnnotate.active { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); background: var(--accent-soft); color: var(--ink); opacity: .72; }
+    body.zen.zen-idle #zenAnnotate.active { opacity: .46; }
     .zen-marker.active { border-color: color-mix(in srgb, var(--marker-current-color) 68%, var(--line)); background: var(--marker-current-color); color: #20272d; opacity: .74; }
     .zen-marker.ready:not(.active) { box-shadow: inset 0 -4px 0 var(--marker-current-color); opacity: .72; }
     body.zen.zen-idle .zen-marker:is(.active,.ready) { opacity: .46; }
@@ -1042,10 +1060,13 @@
     /* Keep all 44px controls reachable in short landscape/Split View windows;
        don't scroll the dock, which would clip its left-opening popouts. */
     @media (max-height: 600px) {
-      body.zen .zen-dock { display: grid; grid-template-rows: repeat(5, 44px); grid-auto-flow: column; grid-auto-columns: 44px; direction: rtl; }
-      body.zen .zen-dock > * { direction: ltr; }
+      body.zen .zen-dock { gap: 5px; }
       body.zen .zen-tool.popout-open { z-index: 3; }
-      body.zen .find-bar:not(.hidden) { right: calc(116px + env(safe-area-inset-right)); max-width: calc(100vw - 136px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
+      body.zen .find-bar:not(.hidden) { right: calc(68px + env(safe-area-inset-right)); max-width: calc(100vw - 88px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
+    }
+    @media (max-height: 275px) {
+      body.zen .zen-dock { display: grid; grid-template-rows: repeat(3, 44px); grid-auto-flow: column; grid-auto-columns: 44px; gap: 4px; direction: rtl; }
+      body.zen .zen-dock > * { direction: ltr; }
     }
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     .highlight-layer { z-index: 1; pointer-events: none; }

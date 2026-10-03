@@ -101,6 +101,15 @@ async function ink(page, number = 1) { return (await chapter(page)).pdfInk?.[num
 function identities(strokes) { return JSON.stringify(strokes.map(({ updatedAt, ...stroke }) => stroke).sort((a, b) => a.id.localeCompare(b.id))); }
 async function markCount(page) { return Object.values((await chapter(page)).highlights || {}).reduce((count, items) => count + items.length, 0); }
 async function click(page, selector) { await page.locator(selector).evaluate(element => element.click()); }
+async function zenAction(page, selector) {
+  const menu = selector === '#zenFind' ? 'More' : 'Annotate';
+  if (!await page.locator('#zen' + menu + 'Menu').isVisible()) await page.locator('#zen' + menu).click();
+  await page.locator(selector).click();
+}
+async function showZenAction(page, selector) {
+  const menu = selector === '#zenFind' ? 'More' : 'Annotate';
+  if (!await page.locator('#zen' + menu + 'Menu').isVisible()) await page.locator('#zen' + menu).click();
+}
 async function writeMode(page, enabled = true) {
   if ((await page.locator('#pdfWriteBtn').getAttribute('aria-pressed') === 'true') !== enabled) await click(page, '#pdfWriteBtn');
   await page.waitForTimeout(60);
@@ -167,11 +176,12 @@ async function checkZenUndo(browser) {
     await leaveDefaultZen(page);
     await click(page, '#zenBtn');
     await page.waitForFunction(() => document.body.classList.contains('zen'));
+    await showZenAction(page, '#zenUndo');
     const undo = page.locator('#zenUndo');
     check('Zen exposes a named Undo button, disabled when there is no edit history', await undo.isVisible() && await undo.isDisabled()
       && /undo/i.test(await undo.getAttribute('aria-label')));
 
-    await page.locator('#zenWrite').click();
+    await zenAction(page, '#zenWrite');
     await positionPage(page, 1);
     let from = await point(page, .2, .3), to = await point(page, .4, .35);
     await stroke(page, from, to);
@@ -179,17 +189,17 @@ async function checkZenUndo(browser) {
     check('Zen Undo remains enabled after closing the handwriting toolbar', !await undo.isDisabled() && (await ink(page)).length === 1
       && !await page.locator('#pdfInkToolbar').isVisible() && await page.locator('#zenWrite').getAttribute('aria-pressed') === 'false');
     if (process.env.PHLOEM_ZEN_SCREENSHOT) await page.screenshot({ path: process.env.PHLOEM_ZEN_SCREENSHOT + '-enabled.png' });
-    await undo.click();
+    await zenAction(page, '#zenUndo');
     check('Zen Undo removes saved ink with Write off and keeps Zen open', (await ink(page)).length === 0
       && await page.locator('body').evaluate(element => element.classList.contains('zen')));
     check('empty Undo history synchronizes Zen, touch-dock, and handwriting controls', await undo.isDisabled()
       && await page.locator('#touchUndo').isDisabled() && await page.locator('#pdfInkUndo').isDisabled());
     await click(page, '#pdfInkRedo');
     check('shared Redo re-enables Zen Undo and restores the same ink', (await ink(page)).length === 1 && !await undo.isDisabled());
-    await undo.click();
+    await zenAction(page, '#zenUndo');
 
     // Interleave ink and a real PDF text highlight, then unwind the shared trail.
-    await page.locator('#zenWrite').click();
+    await zenAction(page, '#zenWrite');
     await positionPage(page, 1);
     from = await point(page, .2, .3); to = await point(page, .4, .35);
     await stroke(page, from, to);
@@ -202,10 +212,10 @@ async function checkZenUndo(browser) {
     await stroke(page, textPoints[0], textPoints[1]);
     check('Zen text highlighting enables Undo without entering Write', await markCount(page) === 1 && !await undo.isDisabled()
       && await page.locator('#zenWrite').getAttribute('aria-pressed') === 'false');
-    await undo.click();
+    await zenAction(page, '#zenUndo');
     check('Zen Undo follows chronology: newest text highlight is removed before older ink', await markCount(page) === 0
       && identities(await ink(page)) === savedInk && !await undo.isDisabled());
-    await undo.click();
+    await zenAction(page, '#zenUndo');
     check('Zen Undo then removes the older ink and disables the empty history', (await ink(page)).length === 0
       && await markCount(page) === 0 && await undo.isDisabled());
 
@@ -222,11 +232,11 @@ async function checkZenUndo(browser) {
         });
         return { controls, viewport: { width: innerWidth, height: innerHeight } };
       });
-      check('Zen dock keeps all 44px controls onscreen at ' + viewport.width + '×' + viewport.height, geometry.controls.length >= 10
+      check('Zen dock keeps all five 44px controls onscreen at ' + viewport.width + '×' + viewport.height, geometry.controls.length === 5
         && geometry.controls.every(rect => rect.width >= 44 && rect.height >= 44 && rect.x >= 0 && rect.y >= 0
           && rect.right <= geometry.viewport.width + 1 && rect.bottom <= geometry.viewport.height + 1), JSON.stringify(geometry));
       if (process.env.PHLOEM_ZEN_SCREENSHOT) await page.screenshot({ path: process.env.PHLOEM_ZEN_SCREENSHOT + '-' + viewport.width + 'x' + viewport.height + '.png' });
-      await page.locator('#zenFind').click();
+      await zenAction(page, '#zenFind');
       const findGeometry = await page.locator('#findBar').evaluate(element => {
         const rect = element.getBoundingClientRect(), dock = document.getElementById('zenDock').getBoundingClientRect();
         return { x: rect.x, y: rect.y, right: rect.right, bottom: rect.bottom, dockLeft: dock.left, width: innerWidth, height: innerHeight };
@@ -235,12 +245,12 @@ async function checkZenUndo(browser) {
         findGeometry.x >= 0 && findGeometry.y >= 0 && findGeometry.bottom <= findGeometry.height
           && findGeometry.right < findGeometry.dockLeft, JSON.stringify(findGeometry));
       if (process.env.PHLOEM_ZEN_SCREENSHOT && viewport.height < 600) await page.screenshot({ path: process.env.PHLOEM_ZEN_SCREENSHOT + '-short-find.png' });
-      await page.locator('#zenFind').click();
+      await zenAction(page, '#zenFind');
     }
     await page.setViewportSize({ width: 1180, height: 1000 });
     await waitForPdf(page);
     await page.waitForTimeout(300);
-    await page.locator('#zenWrite').click();
+    await zenAction(page, '#zenWrite');
     await positionPage(page, 1);
     from = await point(page, .2, .3); to = await point(page, .4, .35);
     await stroke(page, from, to);
@@ -250,6 +260,7 @@ async function checkZenUndo(browser) {
     await waitForPdf(page);
     await leaveDefaultZen(page);
     await click(page, '#zenBtn');
+    await showZenAction(page, '#zenUndo');
     check('reopening keeps saved ink but correctly resets the session-only Zen Undo history', beforeReload !== '[]'
       && same(JSON.parse(identities(await ink(page))), JSON.parse(beforeReload)) && await page.locator('#zenUndo').isDisabled(),
       JSON.stringify({ beforeReload, afterReload: identities(await ink(page)), disabled: await page.locator('#zenUndo').isDisabled() }));

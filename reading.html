@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=152">
-  <link rel="stylesheet" href="/reading-fold.css?v=152">
-  <link rel="stylesheet" href="/reading-workspace.css?v=152">
+  <link rel="stylesheet" href="/reading.css?v=153">
+  <link rel="stylesheet" href="/reading-fold.css?v=153">
+  <link rel="stylesheet" href="/reading-workspace.css?v=153">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -580,16 +580,6 @@
       </aside>
       <div class="zen-dock" id="zenDock" role="toolbar" aria-label="Zen reading controls" aria-orientation="vertical">
         <button class="zen-exit" id="zenExit" type="button" aria-label="Leave zen reading" title="Leave zen reading">✕</button>
-        <button class="zen-exit zen-find" id="zenFind" type="button" aria-expanded="false" aria-controls="findBar" aria-keyshortcuts="/" aria-label="Find in this paper" title="Find in this paper (/)">⌕</button>
-        <div class="zen-tool" id="zenLayoutTool">
-          <button class="zen-exit" id="zenLayout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout. Choose layout" title="Switch page layout"><span aria-hidden="true">⇄</span></button>
-          <div class="zen-popout zen-layout-menu hidden" id="zenLayoutMenu" role="group" aria-label="Page layout">
-            <button class="zen-popout-option" type="button" data-zen-pdf-layout="scroll" aria-pressed="true"><span aria-hidden="true">↕</span><span>Scroll</span></button>
-            <button class="zen-popout-option" type="button" data-zen-pdf-layout="page" aria-pressed="false"><span aria-hidden="true">▯</span><span>Page</span></button>
-            <button class="zen-popout-option" type="button" data-zen-pdf-layout="book" aria-pressed="false"><span aria-hidden="true">▯▯</span><span>Book</span></button>
-            <button class="zen-popout-option" type="button" data-workspace-open aria-pressed="false" aria-controls="workspacePanel">▥ Workspace</button>
-          </div>
-        </div>
         <div class="zen-tool" id="zenGuideTool">
           <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-expanded="false" aria-controls="zenGuideMenu" aria-haspopup="true" aria-label="Reading guide off. Open guide controls" title="Guide controls (G toggles)">▰</button>
           <div class="zen-popout zen-guide-menu hidden" id="zenGuideMenu" role="group" aria-label="Reading guide controls">
@@ -601,14 +591,34 @@
             </div>
           </div>
         </div>
-        <div class="zen-tool" id="zenMarkerTool" data-highlight-color="yellow">
-          <button class="zen-exit zen-marker" id="zenMarker" type="button" aria-expanded="false" aria-controls="highlightToolbar" aria-label="Marker mode off. Current color Yellow. Open marker controls" title="Marker controls"><span class="zen-marker-glyph" aria-hidden="true">✦</span><span class="zen-marker-current-dot" aria-hidden="true"></span></button>
+        <div class="zen-tool" id="zenAnnotateTool">
+          <button class="zen-exit" id="zenAnnotate" type="button" aria-expanded="false" aria-controls="zenAnnotateMenu" aria-haspopup="true" aria-label="Annotation tools" title="Annotation tools"><span aria-hidden="true">✎</span></button>
+          <div class="zen-popout zen-action-menu hidden" id="zenAnnotateMenu" role="group" aria-label="Annotation tools">
+            <div class="zen-tool" id="zenMarkerTool" data-highlight-color="yellow">
+              <button class="zen-exit zen-marker zen-menu-action" id="zenMarker" data-label="Highlight" type="button" aria-expanded="false" aria-controls="highlightToolbar" aria-label="Marker mode off. Current color Yellow. Open marker controls" title="Marker controls"><span class="zen-marker-glyph" aria-hidden="true">✦</span><span class="zen-marker-current-dot" aria-hidden="true"></span></button>
+            </div>
+            <button class="zen-exit zen-menu-action hidden" id="zenWrite" data-label="Write" data-pdf-write-toggle type="button" aria-label="Write on PDF with Pencil" aria-pressed="false" aria-controls="pdfInkToolbar" title="Write on PDF"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg></button>
+            <button class="zen-exit zen-undo zen-menu-action" id="zenUndo" data-label="Undo" type="button" aria-label="Undo last handwriting or highlight edit" aria-keyshortcuts="Meta+Z Control+Z" title="Undo last handwriting or highlight edit" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4 3 9l5 5M3 9h10a7 7 0 0 1 0 14" transform="translate(0 -2)"/></svg><span aria-hidden="true">Undo</span></button>
+          </div>
         </div>
-        <button class="zen-exit hidden" id="zenWrite" data-pdf-write-toggle type="button" aria-label="Write on PDF with Pencil" aria-pressed="false" aria-controls="pdfInkToolbar" title="Write on PDF"><svg class="pdf-write-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg></button>
-        <button class="zen-exit zen-undo" id="zenUndo" type="button" aria-label="Undo last handwriting or highlight edit" aria-keyshortcuts="Meta+Z Control+Z" title="Undo last handwriting or highlight edit" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4 3 9l5 5M3 9h10a7 7 0 0 1 0 14" transform="translate(0 -2)"/></svg><span aria-hidden="true">Undo</span></button>
-        <button class="zen-exit zen-paper paper-appearance-shortcut" id="zenPaperAppearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
-        <button class="zen-exit zen-theme" id="zenTheme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
-        <button class="zen-exit zen-refresh" id="zenRefresh" type="button" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
+        <button class="zen-exit zen-workspace" id="zenWorkspace" data-workspace-open type="button" aria-label="Toggle Workspace" aria-pressed="false" aria-controls="workspacePanel" title="Workspace"><span aria-hidden="true">▥</span><span class="zen-workspace-caption" aria-hidden="true">Workspace</span></button>
+        <div class="zen-tool" id="zenMoreTool">
+          <button class="zen-exit" id="zenMore" type="button" aria-expanded="false" aria-controls="zenMoreMenu" aria-haspopup="true" aria-label="More reading tools" title="More reading tools"><span aria-hidden="true">⋯</span></button>
+          <div class="zen-popout zen-action-menu hidden" id="zenMoreMenu" role="group" aria-label="More reading tools">
+            <button class="zen-exit zen-find zen-menu-action" id="zenFind" data-label="Find" type="button" aria-expanded="false" aria-controls="findBar" aria-keyshortcuts="/" aria-label="Find in this paper" title="Find in this paper (/)">⌕</button>
+            <div class="zen-tool zen-menu-subtool" id="zenLayoutTool">
+              <button class="zen-exit zen-menu-action" id="zenLayout" data-label="Page layout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout. Choose layout" title="Switch page layout"><span aria-hidden="true">⇄</span></button>
+              <div class="zen-popout zen-layout-menu hidden" id="zenLayoutMenu" role="group" aria-label="Page layout">
+                <button class="zen-popout-option" type="button" data-zen-pdf-layout="scroll" aria-pressed="true"><span aria-hidden="true">↕</span><span>Scroll</span></button>
+                <button class="zen-popout-option" type="button" data-zen-pdf-layout="page" aria-pressed="false"><span aria-hidden="true">▯</span><span>Page</span></button>
+                <button class="zen-popout-option" type="button" data-zen-pdf-layout="book" aria-pressed="false"><span aria-hidden="true">▯▯</span><span>Book</span></button>
+              </div>
+            </div>
+            <button class="zen-exit zen-paper paper-appearance-shortcut zen-menu-action" id="zenPaperAppearance" data-label="Paper appearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
+            <button class="zen-exit zen-theme zen-menu-action" id="zenTheme" data-label="Theme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
+            <button class="zen-exit zen-refresh zen-menu-action" id="zenRefresh" data-label="Refresh" type="button" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
+          </div>
+        </div>
       </div>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
     </section>
@@ -916,18 +926,18 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=152',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=153',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=152" defer></script>
-<script src="/reading-keeps.js?v=152" defer></script>
-<script src="/reading-excerpts.js?v=152" defer></script>
-<script src="/reading-excerpts-view.js?v=152" defer></script>
-<script src="/reading-workspace.js?v=152" defer></script>
-<script src="/reading-workspace-view.js?v=152" defer></script>
-<script src="/reading-folds.js?v=152" defer></script>
-<script src="/reading-pdf-projection.js?v=152" defer></script>
-<script src="/reading-fold-view.js?v=152" defer></script>
-<script src="/reading.js?v=152" defer></script>
+<script src="/reading-ink.js?v=153" defer></script>
+<script src="/reading-keeps.js?v=153" defer></script>
+<script src="/reading-excerpts.js?v=153" defer></script>
+<script src="/reading-excerpts-view.js?v=153" defer></script>
+<script src="/reading-workspace.js?v=153" defer></script>
+<script src="/reading-workspace-view.js?v=153" defer></script>
+<script src="/reading-folds.js?v=153" defer></script>
+<script src="/reading-pdf-projection.js?v=153" defer></script>
+<script src="/reading-fold-view.js?v=153" defer></script>
+<script src="/reading.js?v=153" defer></script>
 </body>
 </html>

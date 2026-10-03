@@ -2,7 +2,7 @@
 
 Design and implementation handoff · 2 October 2026
 
-Status: **reading keeps implemented; experimental read-only Scroll folding implemented behind an opt-in gate**. Quiet Zen regrouping and native Pencil double-tap remain planned. Baseline: `070ee9b3` (1.2.0, build 26). Current work is on `codex/phloem-zen-interaction-plan`; no new native archive, upload, or App Review submission was made. Locate functions by name; baseline line numbers below will drift.
+Status: **reading keeps and compact default Zen implemented; experimental read-only Scroll folding implemented behind an opt-in gate**. Native Pencil double-tap remains planned. Baseline: `070ee9b3` (1.2.0, build 26). Current work is on `codex/phloem-zen-interaction-plan`; no new native archive, upload, or App Review submission was made. Locate functions by name; baseline line numbers below will drift.
 
 ## Current delivery and next handoff
 
@@ -24,7 +24,15 @@ Actual module boundary for the next implementer:
 - `reading-pdf-projection.js`: pure `build({ width, height, bands, seamHeight })`, with source/display mapping and clipping.
 - `reading-fold-view.js`: derived display/preview/gesture controller. `reading.js` owns verified source identity, storage, rendering budget, source anchors, and existing touch arbitration. `reading-fold.css` contains scoped view styles.
 
-Next bounded tasks: physical iPad/WebKit validation of this pilot (keep gated if unavailable); then resume A1/A2 for compact Zen or A4/A5 for native Pencil after their prerequisites. Do not silently turn on folding, build an App Store archive, or claim native gestures work from synthetic events. Pinned figures, scratch margins, and additional book-like refinements are outside this delivery.
+Next bounded tasks: physical iPad validation of this pilot (keep gated if unavailable); then A4/A5 for native Pencil after their prerequisites. The v153 delivery below supersedes the older A1/A2 rail design. Do not silently turn on folding, build an App Store archive, or claim native gestures work from synthetic events. Pinned figures, scratch margins, and additional book-like refinements are outside this delivery.
+
+### Compact Zen and direct Workspace mode (web assets v153)
+
+Zen remains the default when opening any paper. Its rail now has five top-level controls: Exit Zen, Guide, Annotate, Workspace, and More. Annotate holds Highlight, Write (PDF only), and shared Undo; selecting a drawing tool opens its existing bottom palette. More holds Find, an inline Scroll/Page/Book disclosure, paper appearance, theme, and Refresh. Guide controls and dimness remain directly accessible. No annotation engine, data format, or native build identity changes.
+
+Workspace is now a dedicated pressed-state toggle, not buried under Layout. In landscape it opens the existing paper-left / blank sticky-note workspace-right split; narrow/portrait windows retain the full-panel workspace with its close action. Closing the mode retains notes, positions, and handwriting. Popup choices are at least 44px, stay within viewport/safe-area margins, and close on outside interaction or Escape. Keyboard focus returns to the visible parent control. Opening Annotate preserves a pending text selection; Escape closes that menu before clearing the selection or disabling a drawing tool.
+
+Verification: 41 pure Zen lifecycle/workspace/excerpt checks and 16 native packaging checks pass; cache v153 and the 64-asset web bundle pass. Compact-Zen, default-Zen, and workspace browser flows pass in Chromium and WebKit. Compact checks cover four viewport sizes, simulated safe-area margins, menu exclusivity, pending selection through Escape/reopen/Highlight, focus return, and direct-mode note/ink preservation. Chromium regression suites pass for touch selection, Zen iPad, PDF ink (71/71), annotation tools (114/114), marker actions (41/41), tool palettes (155/155), and ink palette (45/45); Zen iPad also passes WebKit. Clean-rail, More-menu, and split-workspace screenshots were reviewed. The pre-existing Book guide cross-leaf failure remains outside this UI change. Physical Pencil acceptance and a new TestFlight binary are not part of this delivery.
 
 ### Zen by default (web assets v152)
 

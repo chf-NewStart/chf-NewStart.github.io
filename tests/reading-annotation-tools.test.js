@@ -75,6 +75,12 @@ async function positionPage(page) {
   await page.waitForTimeout(80);
 }
 async function click(page, selector, pointerType) {
+  if (/^#zen(?:Marker|Write|Undo)$/.test(selector)) {
+    if (!await page.locator('#zenAnnotateMenu').isVisible()) await page.locator('#zenAnnotate').click();
+    await page.locator(selector).click();
+    await page.waitForTimeout(40);
+    return;
+  }
   await page.locator(selector).evaluate((element, pointerType) => {
     if (pointerType) element.dispatchEvent(new PointerEvent('click', { bubbles: true, cancelable: true, pointerType, detail: 1 }));
     else element.click();

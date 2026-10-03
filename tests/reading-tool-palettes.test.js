@@ -44,6 +44,14 @@ function seedReader() {
   localStorage.removeItem('readingRoom.lastOpen.v1');
 }
 async function activate(page, selector, touch) {
+  if (/^#zen(?:Marker|Write|Undo)$/.test(selector) && !await page.locator('#zenAnnotateMenu').isVisible()) {
+    if (touch) await page.locator('#zenAnnotate').tap();
+    else await page.locator('#zenAnnotate').click();
+  }
+  if (selector === '#zenLayout' && !await page.locator('#zenMoreMenu').isVisible()) {
+    if (touch) await page.locator('#zenMore').tap();
+    else await page.locator('#zenMore').click();
+  }
   if (touch) await page.locator(selector).tap();
   else await page.locator(selector).click();
 }

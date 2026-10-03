@@ -127,6 +127,13 @@ async function storedPdfHighlights(page) {
     return chapter && chapter.highlights && chapter.highlights['1'] || [];
   });
 }
+async function showZenMenu(page, name) {
+  if (!await page.locator('#zen' + name + 'Menu').isVisible()) await page.locator('#zen' + name).click();
+}
+async function zenAction(page, name, selector) {
+  await showZenMenu(page, name);
+  await page.locator(selector).click();
+}
 
 (async () => {
   await new Promise(resolve => server.listen(PORT, resolve));
@@ -150,6 +157,8 @@ async function storedPdfHighlights(page) {
 
   await page.click('#zenBtn');
   await page.waitForFunction(() => document.body.classList.contains('zen'));
+  check('Zen presents More as a top-level reading-tools control', await page.locator('#zenMore').isVisible() && !(await page.locator('#zenMoreMenu').isVisible()));
+  await showZenMenu(page, 'More');
   const zenDockState = await page.locator('#zenDock').evaluate(dock => {
     const button = document.getElementById('zenLayout');
     return {
@@ -169,7 +178,7 @@ async function storedPdfHighlights(page) {
     return { width: rect.width, height: rect.height, label: button.getAttribute('aria-label'), controls: button.getAttribute('aria-controls') };
   });
   check('Zen exposes a full-size Find control', zenFindTarget.width >= 44 && zenFindTarget.height >= 44 && /find/i.test(zenFindTarget.label) && zenFindTarget.controls === 'findBar', JSON.stringify(zenFindTarget));
-  await page.click('#zenFind');
+  await zenAction(page, 'More', '#zenFind');
   await page.waitForFunction(() => !document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('findInput'));
   const zenFindPanel = await page.locator('#findBar').evaluate(bar => {
     const rect = bar.getBoundingClientRect();
@@ -180,15 +189,16 @@ async function storedPdfHighlights(page) {
   await page.waitForFunction(() => /\d+\s*\/\s*\d+/.test(document.getElementById('findCount').textContent) && !!document.querySelector('.find-target,.find-span'));
   check('Find searches and paints results while Zen remains active', await page.evaluate(() => document.body.classList.contains('zen') && /\d+\s*\/\s*\d+/.test(document.getElementById('findCount').textContent) && !!document.querySelector('.find-target,.find-span')));
   await page.keyboard.press('Escape');
-  check('Escape closes Find, returns focus, and leaves Zen active', await page.evaluate(() => document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('zenFind') && document.body.classList.contains('zen') && document.getElementById('zenFind').getAttribute('aria-expanded') === 'false'));
+  check('Escape closes Find, returns focus to visible More, and leaves Zen active', await page.evaluate(() => document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('zenMore') && document.body.classList.contains('zen') && document.getElementById('zenFind').getAttribute('aria-expanded') === 'false'));
   await page.locator('#highlightBtn').evaluate(button => button.dispatchEvent(new PointerEvent('click', { bubbles: true, pointerType: 'mouse', detail: 1 })));
   await page.keyboard.press('/');
   await page.waitForFunction(() => !document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('findInput'));
   await page.locator('#findNext').focus();
   await page.keyboard.press('Escape');
-  check('Escape from a Zen Find step control closes only Find', await page.evaluate(() => document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('zenFind') && document.body.classList.contains('zen') && document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true'));
+  check('Escape from a Zen Find step control closes only Find', await page.evaluate(() => document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('zenMore') && document.body.classList.contains('zen') && document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true'));
   await page.locator('#highlightBtn').evaluate(button => button.dispatchEvent(new PointerEvent('click', { bubbles: true, pointerType: 'mouse', detail: 1 })));
 
+  await showZenMenu(page, 'Annotate');
   const zenMarker = page.locator('#zenMarker');
   const zenMarkerMenu = page.locator('#highlightToolbar');
   const zenMarkerState = await zenMarker.evaluate(button => {
@@ -256,7 +266,7 @@ async function storedPdfHighlights(page) {
     return { cardRight: card.right, dockLeft: dock.left, gap: dock.left - card.right };
   });
   check('the selection card stays clear of the Zen control rail', zenCardClearance.gap >= 10, JSON.stringify(zenCardClearance));
-  await zenMarker.click();
+  await zenAction(page, 'Annotate', '#zenMarker');
   await page.waitForTimeout(120);
   const zenSavedHighlights = await storedPdfHighlights(page);
   check('one Zen Marker tap saves the existing selection in the chosen color', zenSavedHighlights.length === 1
@@ -267,12 +277,13 @@ async function storedPdfHighlights(page) {
     && await zenMarker.getAttribute('aria-controls') === 'highlightToolbar'
     && await zenMarkerMenu.isVisible());
 
+  await showZenMenu(page, 'More');
   const zenPaperState = await page.locator('#zenPaperAppearance').evaluate(button => {
     const rect = button.getBoundingClientRect();
     return { visible: getComputedStyle(button).display !== 'none', width: rect.width, height: rect.height, label: button.getAttribute('aria-label'), state: button.dataset.paperState };
   });
   check('Zen includes a full-size paper appearance shortcut', zenPaperState.visible && zenPaperState.width >= 44 && zenPaperState.height >= 44 && zenPaperState.state === 'cream' && /cream/i.test(zenPaperState.label), JSON.stringify(zenPaperState));
-  await page.click('#zenPaperAppearance');
+  await zenAction(page, 'More', '#zenPaperAppearance');
   const zenPaperChanged = await page.evaluate(() => ({
     theme: document.documentElement.dataset.theme || 'light',
     body: document.body.dataset.paperAppearance,
@@ -281,11 +292,11 @@ async function storedPdfHighlights(page) {
     saved: localStorage.getItem('readingRoom.paperAppearance.v1')
   }));
   check('Zen changes paper appearance without changing the interface theme', zenPaperChanged.theme === 'light' && zenPaperChanged.body === 'inverted' && zenPaperChanged.frame === 'inverted' && zenPaperChanged.setting === 'true' && zenPaperChanged.saved === 'inverted', JSON.stringify(zenPaperChanged));
-  await page.click('#zenTheme');
+  await zenAction(page, 'More', '#zenTheme');
   check('Zen interface theme changes without resetting the paper', await page.evaluate(() => document.documentElement.dataset.theme === 'dark' && document.getElementById('pdfFrame').dataset.paperAppearance === 'inverted'));
 
-  if (zenLayoutVisible) await page.click('#zenLayout');
-  else await page.locator('#zenLayout').evaluate(button => button.click());
+  await showZenMenu(page, 'More');
+  await page.click('#zenLayout');
   check('layout switch expands beside the Zen dock', await page.locator('#zenLayoutMenu').isVisible() && await page.locator('#zenLayout').getAttribute('aria-expanded') === 'true');
   check('layout switch offers exactly Scroll, Page, and Book', await page.locator('#zenLayoutMenu [data-zen-pdf-layout]').evaluateAll(buttons => buttons.map(button => button.dataset.zenPdfLayout).join(',')) === 'scroll,page,book');
   check('the saved Scroll choice is reflected inside Zen', await page.locator('[data-zen-pdf-layout="scroll"]').getAttribute('aria-pressed') === 'true');
@@ -296,7 +307,7 @@ async function storedPdfHighlights(page) {
   check('choosing Page in Zen updates its own selected state', await page.locator('[data-zen-pdf-layout="page"]').getAttribute('aria-pressed') === 'true');
   check('a Zen layout choice closes its popout', !(await page.locator('#zenLayoutMenu').isVisible()) && await page.locator('#zenLayout').getAttribute('aria-expanded') === 'false');
 
-  await page.click('#zenLayout');
+  await zenAction(page, 'More', '#zenLayout');
   await page.keyboard.press('Escape');
   check('Escape closes the Zen layout popout without leaving Zen', !(await page.locator('#zenLayoutMenu').isVisible()) && await page.locator('#zenLayout').getAttribute('aria-expanded') === 'false' && await page.locator('body').evaluate(body => body.classList.contains('zen')));
 
@@ -347,6 +358,7 @@ async function storedPdfHighlights(page) {
   await finePage.click('#zenBtn');
   await finePage.waitForFunction(() => document.body.classList.contains('zen'));
 
+  await showZenMenu(finePage, 'Annotate');
   const fineZenMarker = finePage.locator('#zenMarker');
   const fineZenMarkerMenu = finePage.locator('#highlightToolbar');
   await fineZenMarker.focus();
@@ -374,7 +386,7 @@ async function storedPdfHighlights(page) {
   }));
   check('Escape closes the shared Highlight toolbar before disabling Marker', fineEscapeOnce.menuHidden
     && fineEscapeOnce.expanded === 'false' && fineEscapeOnce.markerPressed === 'true'
-    && fineEscapeOnce.active === 'zenMarker' && fineEscapeOnce.zen, JSON.stringify(fineEscapeOnce));
+    && fineEscapeOnce.active === 'zenAnnotate' && fineEscapeOnce.zen, JSON.stringify(fineEscapeOnce));
   await finePage.keyboard.press('Escape');
   const fineEscapeTwice = await finePage.evaluate(() => ({
     markerPressed: document.getElementById('highlightBtn').getAttribute('aria-pressed'),
@@ -459,7 +471,7 @@ async function storedPdfHighlights(page) {
   await phonePage.waitForFunction(() => !document.body.classList.contains('zen'));
   await phonePage.keyboard.press('f');
   await phonePage.waitForFunction(() => document.body.classList.contains('zen'));
-  await phonePage.click('#zenFind');
+  await zenAction(phonePage, 'More', '#zenFind');
   const phoneFind = await phonePage.locator('#findBar').evaluate(bar => {
     const panel = bar.getBoundingClientRect(), input = document.getElementById('findInput'), previous = document.getElementById('findPrev').getBoundingClientRect(), next = document.getElementById('findNext').getBoundingClientRect();
     return { left: panel.left, right: panel.right, top: panel.top, bottom: panel.bottom, width: innerWidth, height: innerHeight, inputFont: parseFloat(getComputedStyle(input).fontSize), previous: { width: previous.width, height: previous.height }, next: { width: next.width, height: next.height } };

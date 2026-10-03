@@ -729,11 +729,11 @@
   byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
   document.addEventListener('pointerdown',function(e){
     if(!e.target.closest('#lookupCard'))hideLookup();
-    if(!e.target.closest('#selectionCard,#touchDock,#markerTools,#zenMarkerTool,#highlightToolbar')&&!e.target.closest('.text-layer,.original'))clearPendingSelection();
+    if(!e.target.closest('#selectionCard,#touchDock,#markerTools,#zenAnnotateTool,#highlightToolbar')&&!e.target.closest('.text-layer,.original'))clearPendingSelection();
     /* Color controls stay available while marking the paper, just like the Pen
        toolbar. Other controls, Escape, or switching tools dismiss them. */
     var markingPaper=!!e.target.closest('.pdf-page,.original');
-    if(!markingPaper&&!e.target.closest('#markerTools,#touchMarkerTool,#zenMarkerTool,#highlightToolbar'))setHighlightToolbarOpen(false);
+    if(!markingPaper&&!e.target.closest('#markerTools,#touchMarkerTool,#zenAnnotateTool,#highlightToolbar'))setHighlightToolbarOpen(false);
   },true);
   window.addEventListener('resize',function(){placeLookupCard();placeSelectionCard();});
 
@@ -2775,6 +2775,12 @@
     syncTouchDockStates();
     if(on)requestAnimationFrame(placeGuide);
   }
+  function syncZenAnnotateUi(){
+    var trigger=byId('zenAnnotate');if(!trigger)return;
+    var active=!!(pdfWriteMode||highlightMode||highlightEraseMode||highlightToolbarOpen());
+    trigger.classList.toggle('active',active);
+    trigger.setAttribute('aria-label','Annotation tools'+(active?'. '+(pdfWriteMode?(pdfInkTool==='eraser'?'Eraser':'Pen'):highlightEraseMode?'Eraser':'Highlighter')+' active':''));
+  }
   function syncZenMarkerUi(){
     var trigger=byId('zenMarker'),tool=byId('zenMarkerTool');if(!trigger)return;
     var colorLabel=highlightColorLabel(highlightColor),pending=!!pendingSelection,persistent=fineHighlightUi();
@@ -2784,10 +2790,23 @@
     if(highlightEraseMode){trigger.classList.add('active');trigger.setAttribute('aria-label','Eraser on. Open highlight tools');trigger.title='Eraser on · choose a color to highlight again';}
     trigger.setAttribute('aria-controls','highlightToolbar');trigger.setAttribute('aria-expanded',String(highlightToolbarOpen()));
     byId('zenDock').classList.toggle('popout-open',!!byId('zenDock').querySelector('.zen-popout:not(.hidden)'));
+    syncZenAnnotateUi();
+  }
+  function placeZenPopouts(){
+    ['zenGuideMenu','zenAnnotateMenu','zenMoreMenu'].forEach(function(id){
+      var menu=byId(id);if(!menu||menu.classList.contains('hidden'))return;
+      var owner=menu.parentElement.getBoundingClientRect(),height=window.innerHeight,style=getComputedStyle(menu);
+      var topInset=10+(parseFloat(style.getPropertyValue('--zen-safe-top'))||0),bottomInset=10+(parseFloat(style.getPropertyValue('--zen-safe-bottom'))||0);
+      menu.style.maxHeight=Math.max(44,height-topInset-bottomInset)+'px';
+      menu.style.transform='none';
+      var top=Math.max(topInset,Math.min(owner.top+(owner.height-menu.offsetHeight)/2,height-bottomInset-menu.offsetHeight));
+      menu.style.top=(top-owner.top)+'px';
+    });
   }
   function closeZenPopouts(returnFocus){
     var openTrigger=null,closed=false;
-    [['zenLayout','zenLayoutMenu','zenLayoutTool'],['zenGuide','zenGuideMenu','zenGuideTool']].forEach(function(parts){
+    // Parents precede the inline Layout disclosure, so focus never returns to a hidden row.
+    [['zenGuide','zenGuideMenu','zenGuideTool'],['zenAnnotate','zenAnnotateMenu','zenAnnotateTool'],['zenMore','zenMoreMenu','zenMoreTool'],['zenLayout','zenLayoutMenu','zenLayoutTool']].forEach(function(parts){
       var trigger=byId(parts[0]),menu=byId(parts[1]),tool=byId(parts[2]);
       if(!menu.classList.contains('hidden')){closed=true;if(!openTrigger)openTrigger=trigger;}
       menu.classList.add('hidden');tool.classList.remove('popout-open');trigger.setAttribute('aria-expanded','false');
@@ -2799,22 +2818,30 @@
   }
   function toggleZenPopout(triggerId,menuId,toolId){
     var trigger=byId(triggerId),menu=byId(menuId),opening=menu.classList.contains('hidden');
+    if(triggerId==='zenLayout'){
+      if(byId('zenMoreMenu').classList.contains('hidden'))toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');
+      menu.classList.toggle('hidden',!opening);byId(toolId).classList.toggle('popout-open',opening);trigger.setAttribute('aria-expanded',String(opening));
+      placeZenPopouts();zenWake();return;
+    }
     closeZenPopouts(false);
     if(opening)setHighlightToolbarOpen(false);
     if(opening&&!byId('findBar').classList.contains('hidden'))toggleFindBar(false,false);
     if(opening){menu.classList.remove('hidden');byId(toolId).classList.add('popout-open');byId('zenDock').classList.add('popout-open');trigger.setAttribute('aria-expanded','true');}
-    zenWake();
+    placeZenPopouts();zenWake();
   }
-  /* Zen keeps a small edge rail: direct guide/theme actions, plus sideways choices
-     for settings that need more than one tap target. */
+  window.addEventListener('resize',placeZenPopouts);
+  /* Only five controls stay on the paper; annotation tools and occasional settings
+     live in separate disclosures. Workspace is a reversible paper/workspace mode. */
+  byId('zenAnnotate').onclick=function(){toggleZenPopout('zenAnnotate','zenAnnotateMenu','zenAnnotateTool');};
+  byId('zenMore').onclick=function(){toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');};
   byId('zenLayout').onclick=function(){toggleZenPopout('zenLayout','zenLayoutMenu','zenLayoutTool');};
   document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.zenPdfLayout);closeZenPopouts(true);};});
   byId('zenGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
   byId('zenGuideToggle').onclick=function(){byId('focusBtn').onclick();zenWake();};
-  byId('zenMarker').onclick=function(){if(pdfWriteMode)setPdfWriteMode(false);if(pendingSelection){commitPendingHighlight();setHighlightToolbarOpen(true,this);}else setHighlightToolbarOpen(!highlightToolbarOpen(),this);zenWake();};
-  byId('zenPaperAppearance').onclick=function(){closeZenPopouts(false);cyclePaperAppearance();};
-  byId('zenTheme').onclick=function(){closeZenPopouts(false);byId('themeBtn').onclick();};
-  byId('zenFind').onclick=function(){closeZenPopouts(false);toggleFindBar(undefined,false,byId('zenFind'));zenWake();};
+  byId('zenMarker').onclick=function(){if(pdfWriteMode)setPdfWriteMode(false);closeZenPopouts(true);if(pendingSelection){commitPendingHighlight();setHighlightToolbarOpen(true,byId('zenAnnotate'));}else setHighlightToolbarOpen(!highlightToolbarOpen(),byId('zenAnnotate'));zenWake();};
+  byId('zenPaperAppearance').onclick=function(){closeZenPopouts(true);cyclePaperAppearance();};
+  byId('zenTheme').onclick=function(){closeZenPopouts(true);byId('themeBtn').onclick();};
+  byId('zenFind').onclick=function(){closeZenPopouts(false);toggleFindBar(undefined,false,byId('zenMore'));zenWake();};
   byId('zenRefresh').onclick=refreshPhloem;
   document.addEventListener('pointerdown',function(event){
     if(!zenOn||event.target.closest('.zen-tool,#zenDock'))return;
@@ -3043,7 +3070,7 @@
     syncTabletReaderUi();
     /* Find can remain open while the surrounding chrome changes. Keep Escape's
        return point on a control that is actually visible in the new mode. */
-    if(!byId('findBar').classList.contains('hidden'))findReturnFocus=visibleFindReturnTarget(zenOn?byId('zenFind'):null);
+    if(!byId('findBar').classList.contains('hidden'))findReturnFocus=visibleFindReturnTarget(zenOn?byId('zenMore'):null);
     if(zenOn){zenWake();holdZenWake();}
     else{closeZenPopouts(false);clearTimeout(zenIdleTimer);document.body.classList.remove('zen-idle');dropZenWake();}
     byId('zenBtn').classList.toggle('active',zenOn);byId('zenBtn').setAttribute('aria-pressed',String(zenOn));
@@ -3314,7 +3341,7 @@
   };
   byId('touchMore').onclick=function(){var open=byId('touchDockMenu').classList.contains('hidden');clearPendingSelection();setHighlightToolbarOpen(false);closeTouchDockMore(false);if(open){byId('touchDockMenu').classList.remove('hidden');this.setAttribute('aria-expanded','true');var first=byId('touchDockMenu').querySelector('button:not([disabled])');if(first)first.focus();}};
   byId('touchUndo').onclick=function(){undoHighlight();syncTouchDockStates();closeTouchDockMore(false);};
-  byId('zenUndo').onclick=function(){closeZenPopouts(false);undoHighlight();};
+  byId('zenUndo').onclick=function(){closeZenPopouts(true);undoHighlight();};
   byId('touchFind').onclick=function(){closeTouchDockMore(false);toggleFindBar(true,false,byId('touchMore'));};
   byId('touchDiscuss').onclick=function(){toggleTouchPanel('aiPanel');closeTouchDockMore(false);};
   byId('touchSettings').onclick=function(){var open=byId('comfortBar').classList.contains('hidden');closeTouchDockMore(false);setComfortBarOpen(open,false,byId('touchMore'));};
@@ -3464,7 +3491,7 @@
     if(query.length>=2)findTimer=setTimeout(function(){findTimer=null;runFind();},0);
   }
   function visibleFindReturnTarget(preferred){
-    var candidates=[preferred,zenOn?byId('zenFind'):null,touchTabletUi()?byId('touchMore'):null,byId('findBtn'),byId('mMore'),byId('readerBack')];
+    var candidates=[preferred,zenOn?byId('zenMore'):null,touchTabletUi()?byId('touchMore'):null,byId('findBtn'),byId('mMore'),byId('readerBack')];
     for(var i=0;i<candidates.length;i++){
       var target=candidates[i];if(!target||!target.isConnected||target.disabled||!target.getClientRects().length)continue;
       var style=getComputedStyle(target);if(style.display!=='none'&&style.visibility!=='hidden')return target;
@@ -3476,7 +3503,7 @@
     if(willOpen){
       closeZenPopouts(false);
       if(returnTarget)findReturnFocus=returnTarget;
-      else if(!findReturnFocus)findReturnFocus=zenOn?byId('zenFind'):document.activeElement;
+      else if(!findReturnFocus)findReturnFocus=zenOn?byId('zenMore'):document.activeElement;
     }
     bar.classList.toggle('hidden',!willOpen);
     byId('findBtn').classList.toggle('active',willOpen);byId('findBtn').setAttribute('aria-expanded',String(willOpen));
@@ -5312,7 +5339,8 @@
     /* Escape belongs to the focused Find surface before it affects any persistent
        reader mode, such as Marker, that happens to be active underneath it. */
     if(e.key==='Escape'&&!byId('findBar').classList.contains('hidden')&&byId('findBar').contains(e.target)){e.preventDefault();toggleFindBar(false,true);return;}
-    if(e.key==='Escape'&&highlightToolbarOpen()){e.preventDefault();setHighlightToolbarOpen(false);var trigger=highlightToolbarTrigger||byId('highlightColorBtn');if(trigger)trigger.focus();return;}
+    if(e.key==='Escape'&&zenOn&&closeZenPopouts(true)){e.preventDefault();return;}
+    if(e.key==='Escape'&&highlightToolbarOpen()){e.preventDefault();setHighlightToolbarOpen(false);var trigger=zenOn?byId('zenAnnotate'):highlightToolbarTrigger||byId('highlightColorBtn');if(trigger)trigger.focus();return;}
     if(e.key==='Escape'&&!byId('touchDockMenu').classList.contains('hidden')){e.preventDefault();closeTouchDockMore(true);return;}
     if(e.key==='Escape'&&!byId('comfortBar').classList.contains('hidden')){e.preventDefault();setComfortBarOpen(false,true);return;}
     if(e.key==='Escape'&&temporaryNotebookMode()&&byId('notebook').classList.contains('sheet-open')){e.preventDefault();toggleSheet(false);return;}
@@ -5324,9 +5352,8 @@
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
     if(e.key==='Escape'&&!byId('lookupCard').classList.contains('hidden')){e.preventDefault();hideLookup();return;}
     if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
-    if(e.key==='Escape'&&zenOn&&closeZenPopouts(true)){e.preventDefault();return;}
     if(e.key==='Escape'&&highlightEraseMode){e.preventDefault();setHighlightEraseMode(false);showReaderToast('Eraser off');return;}
-    if(e.key==='Escape'&&pdfWriteMode){e.preventDefault();setPdfWriteMode(false);showReaderToast('Write mode off');return;}
+    if(e.key==='Escape'&&pdfWriteMode){e.preventDefault();setPdfWriteMode(false);if(zenOn)byId('zenAnnotate').focus();showReaderToast('Write mode off');return;}
     if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
     if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
@@ -6503,15 +6530,17 @@
     if(workspaceView)workspaceView.cancel();
     var wasOpen=workspaceOpen;
     if(!on||on!==wasOpen)closeWorkspacePanels();
-    if(on){toggleSheet(false);closeTouchDockMore(false);closeZenPopouts(false);if(recallActive)setRecall(false);setDrift(0);}
+    closeZenPopouts(false);
+    if(on){toggleSheet(false);closeTouchDockMore(false);if(recallActive)setRecall(false);setDrift(0);}
     workspaceOpen=on;document.body.classList.toggle('workspace-open',on);
     byId('workspacePanel').classList.toggle('hidden',!on);
     document.querySelectorAll('[data-workspace-open]').forEach(function(button){button.setAttribute('aria-pressed',String(on));});
+    byId('zenWorkspace').setAttribute('aria-label',on?'Close Workspace. Return to paper only':'Open Workspace beside the paper');
     if(on)initializeWorkspace(find(currentId));
     refreshWorkspace();
     if(on!==wasOpen)requestAnimationFrame(function(){
       if(readerMode==='pdf'&&pdfDoc)renderPdfPage();if(comfort.focus)placeGuide();refreshWorkspace();
-      if(focus!==false){var target=on?byId('workspaceClose'):Array.from(document.querySelectorAll('[data-workspace-open]')).find(function(button){return button.getClientRects().length;})||(zenOn?byId('zenLayout'):byId('workspaceOpen'));if(target&&target.getClientRects().length)target.focus({preventScroll:true});}
+      if(focus!==false){var target=on?byId('workspaceClose'):Array.from(document.querySelectorAll('[data-workspace-open]')).find(function(button){return button.getClientRects().length;})||(zenOn?byId('zenWorkspace'):byId('workspaceOpen'));if(target&&target.getClientRects().length)target.focus({preventScroll:true});}
     });
   }
   function workspaceDropPoint(excludeId){
@@ -6801,6 +6830,7 @@
     document.querySelectorAll('[data-pdf-ink-color]').forEach(function(button){button.setAttribute('aria-pressed',String(!!active&&button.dataset.pdfInkColor===pdfInkColor));});
     document.querySelectorAll('[data-pdf-ink-width]').forEach(function(button){button.setAttribute('aria-pressed',String(!!active&&+button.dataset.pdfInkWidth===pdfInkWidth));});
     byId('pdfInkUndo').disabled=!(highlightHistory&&highlightHistory.length);byId('pdfInkRedo').disabled=!(highlightFuture&&highlightFuture.length);
+    syncZenAnnotateUi();
   }
   function setPdfWriteMode(on){
     if(pdfInkController)pdfInkController.cancel();
@@ -6842,11 +6872,11 @@
     onStart:function(page){clearPdfErasePreview();clearPendingSelection();clearTimeout(guideLockClickTimer);hidePdfReferencePreview();holdDrift(1200);if(currentPage!==page){currentPage=page;updatePageChrome();loadPageNote();}selectionInputType='pen';suppressHighlightAutoCommit=true;},
     onCommit:commitPdfInk,onErase:erasePdfInk,onErasePreview:previewPdfErase,onEraseCancel:clearPdfErasePreview
   });
-  document.querySelectorAll('[data-pdf-write-toggle]').forEach(function(button){button.onclick=function(){setPdfWriteMode(!pdfWriteMode);showReaderToast(pdfWriteMode?'Write on the PDF with Pencil · fingers still scroll':'Write mode off · Pencil highlights text');};});
+  document.querySelectorAll('[data-pdf-write-toggle]').forEach(function(button){button.onclick=function(){if(button.id==='zenWrite')closeZenPopouts(true);setPdfWriteMode(!pdfWriteMode);showReaderToast(pdfWriteMode?'Write on the PDF with Pencil · fingers still scroll':'Write mode off · Pencil highlights text');};});
   document.querySelectorAll('[data-pdf-ink-tool]').forEach(function(button){button.onclick=function(){if(pdfInkController)pdfInkController.cancel();pdfInkTool=button.dataset.pdfInkTool;syncPdfInkUi();};});
   document.querySelectorAll('[data-pdf-ink-color]').forEach(function(button){button.onclick=function(){if(pdfInkController)pdfInkController.cancel();pdfInkColor=button.dataset.pdfInkColor;pdfInkTool='pen';syncPdfInkUi();};});
   document.querySelectorAll('[data-pdf-ink-width]').forEach(function(button){button.onclick=function(){if(pdfInkController)pdfInkController.cancel();pdfInkWidth=+button.dataset.pdfInkWidth;pdfInkTool='pen';syncPdfInkUi();};});
-  byId('pdfInkDone').onclick=function(){setPdfWriteMode(false);};byId('pdfInkUndo').onclick=undoHighlight;byId('pdfInkRedo').onclick=redoHighlight;
+  byId('pdfInkDone').onclick=function(){setPdfWriteMode(false);if(zenOn)byId('zenAnnotate').focus();};byId('pdfInkUndo').onclick=undoHighlight;byId('pdfInkRedo').onclick=redoHighlight;
   function eraserTargets(host){
     var ch=find(currentId),page=host.closest('.pdf-page'),base=page&&page.getBoundingClientRect(),kind=readerMode==='pdf'?'pdf':ch.kind==='pdf'?'reader':'text';
     // Hit testing must not create empty highlight lists, especially on scanned
@@ -7099,7 +7129,7 @@
   document.querySelectorAll('[data-highlight-eraser]').forEach(function(b){b.onclick=function(){setHighlightEraseMode(!highlightEraseMode);setHighlightToolbarOpen(true);showReaderToast(highlightEraseMode?'Eraser on · sweep over highlights or handwriting · Undo restores them':'Eraser off');};});
   document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.highlightColor);setHighlightMode(fineHighlightUi());};});
   byId('highlightUndo').onclick=undoHighlight;
-  byId('highlightDone').onclick=function(){clearPendingSelection();setHighlightEraseMode(false);setHighlightMode(false);setHighlightToolbarOpen(false);};
+  byId('highlightDone').onclick=function(){clearPendingSelection();setHighlightEraseMode(false);setHighlightMode(false);setHighlightToolbarOpen(false);if(zenOn)byId('zenAnnotate').focus();};
   document.querySelectorAll('[data-selection-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.selectionHighlightColor);setSelectionAction('selectionHighlight');commitPendingHighlight();};});
   syncHighlightColorUi();
   function savePendingHighlight(note,keepCard){

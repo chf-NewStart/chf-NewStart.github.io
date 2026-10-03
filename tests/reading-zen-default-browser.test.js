@@ -156,10 +156,9 @@ async function backToLibrary(page) {
     await page.locator('#zenBtn').click();
     await page.waitForFunction(() => document.body.classList.contains('zen'));
 
-    await page.locator('#zenLayout').click();
-    const layoutMenu = page.locator('#zenLayoutMenu');
-    await layoutMenu.waitFor({ state: 'visible' });
-    await layoutMenu.locator('[data-workspace-open]').click();
+    assert.equal(await page.locator('#zenWorkspace').isVisible(), true,
+      'Zen gives Workspace a direct visible control');
+    await page.locator('#zenWorkspace').click();
     await page.locator('#workspacePanel').waitFor({ state: 'visible' });
     const split = await page.evaluate(() => {
       const paper = document.getElementById('documentPane').getBoundingClientRect();
@@ -171,7 +170,7 @@ async function backToLibrary(page) {
     });
     assert(split.zen && split.paperWidth >= split.viewport * .35 && split.workspaceWidth >= split.viewport * .35
       && Math.abs(split.paperWidth - split.workspaceWidth) < split.viewport * .16 && Math.abs(split.gap) < 4,
-    'Zen Layout opens the split reading/workspace view: ' + JSON.stringify(split));
+    'direct Zen Workspace opens the split reading/workspace view: ' + JSON.stringify(split));
     assert.equal(split.background, 'none', 'Zen workspace keeps blank paper');
     await page.locator('#workspaceMore summary').click();
     await page.locator('#workspaceNewNote').click();

@@ -43,6 +43,7 @@ async function chapter(page) { return page.evaluate(() => JSON.parse(localStorag
 async function palette(page, surface = 'header') {
   const trigger = { header: 'highlightColorBtn', dock: 'touchHighlight', zen: 'zenMarker' }[surface];
   if (surface === 'zen' && !await page.locator('body').evaluate(body => body.classList.contains('zen'))) await page.locator('#zenBtn').click();
+  if (surface === 'zen' && !await page.locator('#zenAnnotateMenu').isVisible()) await page.locator('#zenAnnotate').click();
   if (!await page.locator('#highlightToolbar').isVisible()) await tap(page, '#' + trigger);
 }
 async function selectAlpha(page) {
@@ -139,6 +140,7 @@ function pdfFixture() {
       await page.waitForFunction(() => document.body.classList.contains('zen'));
       await page.locator('#zenExit').click();
       await page.waitForFunction(() => !document.body.classList.contains('zen'));
+      await page.waitForFunction(() => document.querySelector('.pdf-page[data-page="1"] .text-layer span')?.textContent.trim());
       await page.evaluate(() => {
         const span = document.querySelector('.pdf-page[data-page="1"] .text-layer span'), range = document.createRange();
         range.selectNodeContents(span); getSelection().removeAllRanges(); getSelection().addRange(range); document.dispatchEvent(new Event('selectionchange'));

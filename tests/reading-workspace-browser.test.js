@@ -145,6 +145,47 @@ async function stroke(page, points, pointerType = 'pen') {
     } finally { board.setPointerCapture = capture; }
   }, { points, pointerType });
 }
+async function pinchCard(card, scale) {
+  return card.evaluate((node, scale) => {
+    const rect = node.getBoundingClientRect();
+    const y = rect.top + Math.min(rect.height / 2, 26);
+    const x1 = rect.left + rect.width * .25, x2 = rect.left + rect.width * .75;
+    const endX2 = x1 + (x2 - x1) * scale;
+    const originalCapture = node.setPointerCapture;
+    node.setPointerCapture = () => {};
+    function emit(type, id, x) {
+      node.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true,
+        pointerType: 'touch', pointerId: id, isPrimary: id === 61, button: 0,
+        buttons: type === 'pointerup' ? 0 : 1, clientX: x, clientY: y }));
+    }
+    try {
+      emit('pointerdown', 61, x1); emit('pointerdown', 62, x2);
+      emit('pointermove', 62, endX2);
+      const preview = parseFloat(node.style.width) * 10;
+      emit('pointerup', 61, x1); emit('pointerup', 62, endX2);
+      return { preview, width: parseFloat(node.style.width) * 10,
+        menuOpen: node.querySelector('.workspace-note-menu').open };
+    } finally { node.setPointerCapture = originalCapture; }
+  }, scale);
+}
+async function realChromiumPinchOnQuote(page, card) {
+  const quote = card.locator('.workspace-quote');
+  await quote.scrollIntoViewIfNeeded();
+  const box = await quote.boundingBox();
+  assert(box && box.width > 70 && box.height > 0, 'quote has a visible two-finger touch surface');
+  const session = await page.context().newCDPSession(page);
+  const y = box.y + Math.min(box.height / 2, 20);
+  const x1 = box.x + box.width * .35;
+  const x2 = box.x + box.width * .65;
+  const point = (x, id) => ({ x, y, id, radiusX: 2, radiusY: 2, force: .6 });
+  try {
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(x1, 1)] });
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(x1, 1), point(x2, 2)] });
+    await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(x1, 1), point(x1 + (x2 - x1) * 1.2, 2)] });
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [point(x1, 1)] });
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  } finally { await session.detach(); }
+}
 function workspaceStrokes(ch) {
   const store = ch && ch.readingWorkspace;
   return store && Array.isArray(store.strokes) ? store.strokes : [];
@@ -305,6 +346,31 @@ async function openPenOptions(page) {
     await openCardMenu(card);
     await card.locator('.workspace-source').click();
     await page.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active'));
+    const cue = page.locator('.excerpt-source-cue-layer[data-excerpt-id="' + clip.id + '"]');
+    await cue.waitFor({ state: 'visible' });
+    const cueGeometry = await cue.evaluate((layer, phrase) => {
+      const source = [...document.querySelectorAll('.pdf-page[data-page="2"] .text-layer span')]
+        .find(node => node.textContent.includes(phrase) && node.firstChild);
+      if (!source) return { error: 'source phrase missing' };
+      const start = source.firstChild.textContent.indexOf(phrase), range = document.createRange();
+      range.setStart(source.firstChild, start); range.setEnd(source.firstChild, start + phrase.length);
+      const target = range.getBoundingClientRect();
+      const marks = [...layer.querySelectorAll('.excerpt-source-cue')].map(node => node.getBoundingClientRect());
+      return { page: layer.dataset.sourcePage, target: { x: target.x, y: target.y, width: target.width, height: target.height },
+        marks: marks.map(rect => ({ x: rect.x, y: rect.y, width: rect.width, height: rect.height })),
+        overlap: marks.some(rect => Math.max(0, Math.min(rect.right, target.right) - Math.max(rect.left, target.left))
+          * Math.max(0, Math.min(rect.bottom, target.bottom) - Math.max(rect.top, target.top)) > target.width * target.height * .25) };
+    }, QUOTE);
+    assert.equal(cueGeometry.page, '2', 'source cue belongs to the saved PDF page');
+    assert(cueGeometry.marks.length > 0 && cueGeometry.overlap,
+      'source cue paints the saved quote rather than a neighboring occurrence: ' + JSON.stringify(cueGeometry));
+    assert.equal(await page.locator('.excerpt-source-cue-layer').count(), 1,
+      'source navigation paints only one temporary cue');
+    assert.equal(await page.locator('#findInput').inputValue(), '', 'source cue does not modify Find');
+    assert.equal(Object.values((await paperById(page, pdfId)).highlights || {}).flat().length, 0,
+      'source cue is not saved as a PDF highlight');
+    await page.screenshot({ path: '/tmp/phloem-source-cue-' + ENGINE + '.png' });
+    await cue.waitFor({ state: 'hidden', timeout: 7000 });
     await openMore(page);
     await page.locator('#workspaceReturn').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#workspaceReturn').isVisible(), true,
@@ -423,7 +489,7 @@ async function openPenOptions(page) {
     }, { id: pdfId, clipId: clip.id, x: beforeKeyboardMove.x });
     assert.match(await page.locator('#pageNumber').textContent(), /^2\s*\//,
       'ArrowRight on the card handle moves the card without turning the PDF page');
-    const draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
+    let draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
 
     await page.locator('[data-workspace-tool="pen"]').click();
     await openPenOptions(page);
@@ -440,6 +506,54 @@ async function openPenOptions(page) {
     assert.equal(Object.values(pdf.pdfInk || {}).flat().length, 0, 'workspace ink is separate from PDF ink');
     assert.equal(await page.locator('#workspaceBoard').evaluate(board => document.activeElement === board), true,
       'Pencil input leaves keyboard focus on the workspace board');
+    const strokeBeforeResize = workspaceStrokes(pdf)[0];
+    const inkBeforeResize = await page.locator('#workspaceInk path[data-stroke-id]').evaluate(path => {
+      const box = path.getBBox(); return { x: box.x, y: box.y, width: box.width, height: box.height };
+    });
+    const pdfCanvasBeforeResize = await page.locator('.pdf-page[data-page="2"].book-active canvas').evaluate(canvas => canvas.getBoundingClientRect().width);
+    const pdfZoomBeforeResize = pdf.zoom;
+    // Synthetic Pencil input suppresses its trailing click for 400 ms, including
+    // taps on a nearby sticky control. Exercise the menu after that guard ends.
+    await page.waitForTimeout(450);
+    await openCardMenu(card);
+    await card.locator('.workspace-note-larger').click();
+    await card.locator('.workspace-note-larger').click();
+    await card.locator('.workspace-note-smaller').click();
+    const menuWidth = (await paperById(page, pdfId)).readingWorkspace.positions[clip.id].width;
+    assert.equal(menuWidth, draggedPlace.width + 80, 'larger/smaller controls change only this sticky note width');
+    const pinch = await pinchCard(card, 1.2);
+    await page.waitForFunction(({ id, clipId, width }) => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+      .find(ch => ch.id === id)?.readingWorkspace?.positions?.[clipId]?.width > width,
+    { id: pdfId, clipId: clip.id, width: menuWidth });
+    draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
+    assert(pinch.preview > menuWidth && draggedPlace.width <= 900 && draggedPlace.x >= 0
+      && draggedPlace.x + draggedPlace.width <= 1000,
+    'two-finger pinch enlarges this note within the paper bounds: ' + JSON.stringify({ pinch, draggedPlace }));
+    assert.equal(pinch.menuOpen, false, 'pinch does not accidentally activate the note menu');
+    pdf = await paperById(page, pdfId);
+    assert.deepEqual(workspaceStrokes(pdf)[0], strokeBeforeResize,
+      'resizing a sticky note does not scale or rewrite free workspace ink');
+    assert.deepEqual(await page.locator('#workspaceInk path[data-stroke-id]').evaluate(path => {
+      const box = path.getBBox(); return { x: box.x, y: box.y, width: box.width, height: box.height };
+    }), inkBeforeResize, 'free ink keeps the same visual geometry after note resizing');
+    assert.equal(await page.locator('.pdf-page[data-page="2"].book-active canvas').evaluate(canvas => canvas.getBoundingClientRect().width), pdfCanvasBeforeResize,
+      'note resizing does not zoom the source PDF');
+    assert.equal(pdf.zoom, pdfZoomBeforeResize, 'note resizing does not persist a PDF zoom change');
+    assert.equal(Object.values(pdf.pdfInk || {}).flat().length, 0, 'note resizing does not draw on the source PDF');
+    await page.screenshot({ path: '/tmp/phloem-sticky-resize-' + ENGINE + '.png' });
+    if (ENGINE === 'chromium') {
+      const beforeRealTouch = draggedPlace.width;
+      await realChromiumPinchOnQuote(page, card);
+      await page.waitForFunction(({ id, clipId, width }) => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+        .find(ch => ch.id === id)?.readingWorkspace?.positions?.[clipId]?.width > width,
+      { id: pdfId, clipId: clip.id, width: beforeRealTouch });
+      draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
+      assert(draggedPlace.width <= 900, 'browser-dispatched touch pinch remains bounded');
+      assert.equal(Object.values((await paperById(page, pdfId)).pdfInk || {}).flat().length, 0,
+        'real browser touch on a sticky quote leaves PDF ink untouched');
+    }
+    assert.equal(await page.evaluate(() => document.getElementById('workspacePanel').contains(document.activeElement)), true,
+      'touch pinch retains keyboard focus inside the workspace');
     const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
     await page.keyboard.press(modifier + '+z');
     await waitStrokeCount(page, pdfId, 0);
@@ -486,6 +600,18 @@ async function openPenOptions(page) {
     await page.locator('#workspaceClose').click();
     await page.locator('#documentPane').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#workspacePanel').isVisible(), false, 'closing portrait workspace reveals the paper');
+    await turnPage(page, 'prev', 1);
+    await ensureWorkspaceOpen(page);
+    const portraitCard = page.locator('.workspace-card[data-clip-id="' + clip.id + '"]');
+    await openCardMenu(portraitCard);
+    await portraitCard.locator('.workspace-source').click();
+    await page.locator('#workspacePanel').waitFor({ state: 'hidden' });
+    await page.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active')
+      && document.getElementById('pdfFrame').dataset.pagedReady === 'true');
+    await page.locator('.excerpt-source-cue-layer[data-excerpt-id="' + clip.id + '"][data-source-page="2"]')
+      .waitFor({ state: 'visible' });
+    assert.equal(Object.values((await paperById(page, pdfId)).highlights || {}).flat().length, 0,
+      'portrait source visit shows a transient cue without saving a PDF highlight');
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await openPaper(page, 'workspace-other');

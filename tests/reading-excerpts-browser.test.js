@@ -36,7 +36,7 @@ function seedTextPapers() {
   localStorage.setItem('phloem.excerptsFixtureSeeded', '1');
   const fixtureQuote = 'patient observation carries the <script>untrusted</script> source words all the way through a long passage, including its ending';
   const fixtureFirst = 'First passage establishes a reading place before the saved selection.';
-  const fixtureSecond = 'Second passage says ' + fixtureQuote + ' and then closes the paragraph.';
+  const fixtureSecond = 'Second passage says ' + fixtureQuote + ' and then repeats ' + fixtureQuote + ' before closing the paragraph.';
   const stamp = Date.now();
   localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [
     { id: 'clip-a', kind: 'text', title: 'Clips fixture A', fr: fixtureFirst + '\n\n' + fixtureSecond,
@@ -68,14 +68,18 @@ async function currentChapter(page) {
     return JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === id);
   });
 }
-async function selectText(page, selector, substring) {
-  const selected = await page.evaluate(({ selector, substring }) => {
+async function selectText(page, selector, substring, occurrence = 1) {
+  const selected = await page.evaluate(({ selector, substring, occurrence }) => {
     const element = Array.from(document.querySelectorAll(selector)).find(candidate => candidate.textContent.includes(substring));
     if (!element) return { error: 'missing element' };
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
-      const start = node.textContent.indexOf(substring);
+      let start = -1;
+      for (let index = 0; index < occurrence; index++) {
+        start = node.textContent.indexOf(substring, start + 1);
+        if (start < 0) break;
+      }
       if (start < 0) continue;
       const range = document.createRange();
       range.setStart(node, start);
@@ -89,7 +93,7 @@ async function selectText(page, selector, substring) {
       return { text };
     }
     return { error: 'missing substring' };
-  }, { selector, substring });
+  }, { selector, substring, occurrence });
   assert.equal(selected.text, substring, JSON.stringify(selected));
   await page.locator('#selectionSaveExcerpt').waitFor({ state: 'visible' });
 }
@@ -116,6 +120,8 @@ async function openPaper(page, id) {
   await page.locator('[data-continue-paper="' + id + '"]').click();
   await page.waitForFunction(paperId => !document.getElementById('readerPage').classList.contains('hidden')
     && localStorage.getItem('readingRoom.lastOpen.v1') === paperId, id);
+  await page.waitForFunction(() => document.body.classList.contains('zen'));
+  await page.locator('#zenExit').click();
 }
 async function pdfReady(page, n) {
   await page.waitForFunction(pageNumber => {
@@ -259,7 +265,7 @@ async function checkDraftProtection(browser) {
     await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden')
       && document.querySelectorAll('#textDocument .original').length === 2);
     assert.equal(await page.locator('#excerptsTab').count(), 1, 'Clips tab is in the existing notebook');
-    await selectText(page, '.original[data-para-index="1"]', QUOTE);
+    await selectText(page, '.original[data-para-index="1"]', QUOTE, 2);
     await page.locator('#selectionSaveExcerpt').click();
     await waitStored(page, 'clip-a', { kind: 'length', value: 1 });
     assert.equal(await page.locator('#excerptsPanel').isVisible(), true, 'save opens Clips');
@@ -293,15 +299,39 @@ async function checkDraftProtection(browser) {
       'creating a standalone note leaves the clipped note intact');
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
+    await page.waitForFunction(() => document.body.classList.contains('zen'));
+    await page.locator('#zenExit').click();
+    if (!await page.locator('#excerptsTab').isVisible()) await page.locator('#notebookReopen').click();
     await page.locator('#excerptsTab').click();
     assert.equal(await page.locator('.excerpt-card[data-excerpt-id="' + clip.id + '"] textarea.excerpt-note').inputValue(), note,
       'line breaks and literal markup survive reload');
     assert.equal(await page.locator('.excerpt-card script, .excerpt-card img').count(), 0,
       'note markup remains inert');
+    await page.locator('.excerpt-card[data-excerpt-id="' + clip.id + '"] .excerpt-source').click();
+    await page.locator('.excerpt-source-cue-layer[data-excerpt-id="' + clip.id + '"][data-source-para="1"] .excerpt-source-cue').first().waitFor({ state: 'visible' });
+    const textCue = await page.evaluate(quote => {
+      const root = document.querySelector('.original[data-para-index="1"]');
+      const cue = document.querySelector('.excerpt-source-cue-layer[data-source-para="1"] .excerpt-source-cue');
+      const node = [...root.childNodes].find(child => child.nodeType === Node.TEXT_NODE && child.textContent.includes(quote));
+      if (!node || !cue) return null;
+      const first = document.createRange(), second = document.createRange();
+      first.setStart(node, node.textContent.indexOf(quote)); first.setEnd(node, node.textContent.indexOf(quote) + 12);
+      second.setStart(node, node.textContent.lastIndexOf(quote)); second.setEnd(node, node.textContent.lastIndexOf(quote) + 12);
+      return { cueTop: cue.getBoundingClientRect().top, firstTop: first.getBoundingClientRect().top,
+        secondTop: second.getBoundingClientRect().top, cueText: cue.textContent };
+    }, QUOTE);
+    assert(textCue && Math.abs(textCue.cueTop - textCue.secondTop) < 8
+      && textCue.secondTop > textCue.firstTop + 8, 'source cue selects the saved second occurrence: ' + JSON.stringify(textCue));
+    assert.equal((await chapter(page, 'clip-a')).textHighlights.length, 0, 'temporary cue creates no saved text highlight');
+    await page.locator('#excerptReturnChip').click();
+    await page.waitForFunction(() => !document.querySelector('.excerpt-source-cue-layer'));
+    assert.equal((await chapter(page, 'clip-a')).textHighlights.length, 0, 'return clears the cue without saving a highlight');
     await openPaper(page, 'clip-b');
+    if (!await page.locator('#excerptsTab').isVisible()) await page.locator('#notebookReopen').click();
     await page.locator('#excerptsTab').click();
     assert.equal(await page.locator('.excerpt-card').count(), 0, 'Clips are isolated by document');
     await openPaper(page, 'clip-a');
+    if (!await page.locator('#excerptsTab').isVisible()) await page.locator('#notebookReopen').click();
     await page.locator('#excerptsTab').click();
     assert.equal(await page.locator('.excerpt-card').count(), 2, 'original paper keeps its Clips');
     let asked = 0;
@@ -317,6 +347,9 @@ async function checkDraftProtection(browser) {
     assert.equal(saved.readingExcerpts.items.length, 1, 'confirmed removal drops clip');
     assert(saved.readingExcerpts.deleted[clip.id], 'confirmed removal records a tombstone');
     await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(() => document.body.classList.contains('zen'));
+    await page.locator('#zenExit').click();
+    if (!await page.locator('#excerptsTab').isVisible()) await page.locator('#notebookReopen').click();
     await page.locator('#excerptsTab').click();
     assert.equal(await page.locator('.excerpt-card[data-excerpt-id="' + clip.id + '"]').count(), 0,
       'deleted clip stays deleted after reload');
@@ -335,6 +368,8 @@ async function checkDraftProtection(browser) {
     await pdfPage.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
     await pdfPage.locator('#pdfFile').setInputFiles({ name: 'clips-generated.pdf', mimeType: 'application/pdf', buffer: await makePdf() });
     await pdfReady(pdfPage, 1);
+    await pdfPage.waitForFunction(() => document.body.classList.contains('zen'));
+    await pdfPage.locator('#zenExit').click();
     await pdfPage.locator('#nextPage').click();
     await pdfReady(pdfPage, 2);
     await pdfPage.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active'));
@@ -360,13 +395,17 @@ async function checkDraftProtection(browser) {
     await pdfPage.locator('#excerptsTab').click();
     await pdfPage.locator('.excerpt-card[data-excerpt-id="' + pdfClip.id + '"] .excerpt-source').click();
     await pdfPage.waitForFunction(() => document.querySelector('.pdf-page[data-page="2"].book-active'));
+    await pdfPage.locator('.excerpt-source-cue-layer[data-excerpt-id="' + pdfClip.id + '"][data-source-page="2"] .excerpt-source-cue').first().waitFor({ state: 'visible' });
     assert.match(await pdfPage.locator('#pageNumber').textContent(), /^2\s*\//,
       'Go to source displays the PDF source page');
+    assert.equal(Object.values((await currentChapter(pdfPage)).highlights || {}).flat().length, 0,
+      'temporary PDF cue creates no saved highlight');
     const returnControl = pdfPage.locator('#excerptReturnChip');
     await returnControl.waitFor({ state: 'visible' });
     await pdfPage.waitForFunction(() => !document.getElementById('excerptReturnChip').disabled);
     await returnControl.click();
     await pdfPage.waitForFunction(() => document.querySelector('.pdf-page[data-page="1"].book-active'));
+    await pdfPage.waitForFunction(() => !document.querySelector('.excerpt-source-cue-layer'));
     assert.match(await pdfPage.locator('#pageNumber').textContent(), /^1\s*\//,
       'Return displays the prior reading page');
     assert.equal((await currentChapter(pdfPage)).readingExcerpts.items[0].sourceHash, pdfClip.sourceHash,

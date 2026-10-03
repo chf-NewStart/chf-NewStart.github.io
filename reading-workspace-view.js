@@ -23,6 +23,9 @@
     const drafts = new Map();
     let tool = 'pen', color = 'black', width = 1.2, gesture = null, previewFrame = 0;
     let suppressClickUntil = 0;
+    let suppressCardClickUntil = 0;
+    const cardTouches = new Map();
+    let manualCardScrollAt = 0;
     let undoStack = [], redoStack = [];
     let observedHeight = 2000;
 
@@ -58,14 +61,21 @@
       if (cards.get(state.id) === state) cards.delete(state.id);
     }
     function cancel() {
-      if (!gesture) return;
+      if (!gesture) { cardTouches.clear(); return; }
       const g = gesture;
       gesture = null;
+      cardTouches.clear();
       if (g.kind === 'stroke' && g.pointerType === 'pen') suppressClickUntil = performance.now() + 400;
       if (g.kind === 'stroke' && g.preview) g.preview.remove();
       if (g.kind === 'stroke' && g.mode === 'eraser') ink.querySelectorAll('[data-stroke-id]').forEach(path => { path.style.opacity = ''; });
       if (g.kind === 'drag' && g.state) setBox(g.state, g.startBox, observedHeight);
       if (g.kind === 'drag' && g.state && g.pointerId != null && g.state.handle.hasPointerCapture && g.state.handle.hasPointerCapture(g.pointerId)) g.state.handle.releasePointerCapture(g.pointerId);
+      if (g.kind === 'pinch') {
+        suppressCardClickUntil = performance.now() + 500;
+        g.state.card.classList.remove('workspace-resizing');
+        setBox(g.state, g.startBox, observedHeight);
+        for (const id of g.ids) if (g.state.card.hasPointerCapture && g.state.card.hasPointerCapture(id)) g.state.card.releasePointerCapture(id);
+      }
       if (g.pointerId != null && board.hasPointerCapture && board.hasPointerCapture(g.pointerId)) board.releasePointerCapture(g.pointerId);
       if (previewFrame) cancelAnimationFrame(previewFrame);
       previewFrame = 0;
@@ -118,6 +128,29 @@
       if (adapter.place(state.id, box) === true) { setBox(state, box, observedHeight); render(); }
       else setStatus('Could not move this clip.');
     }
+    function resizeCard(state, nextWidth) {
+      const c = context();
+      if (!liveItem(state) || c.busy) return false;
+      const old = { ...state.box }, width = clamp(Math.round(nextWidth), 280, 900);
+      if (width === old.width) return true;
+      const center = old.x + old.width / 2;
+      const box = { ...old, x: clamp(center - width / 2, 0, 1000 - width), width };
+      if (adapter.place(state.id, box) !== true) { setStatus('Could not resize this note.'); return false; }
+      setBox(state, box, observedHeight); render(); return true;
+    }
+    function finishPinch(commit) {
+      const g = gesture;
+      if (!g || g.kind !== 'pinch') return;
+      gesture = null;
+      cardTouches.clear();
+      suppressCardClickUntil = performance.now() + 500;
+      g.state.card.classList.remove('workspace-resizing');
+      for (const id of g.ids) if (g.state.card.hasPointerCapture && g.state.card.hasPointerCapture(id)) g.state.card.releasePointerCapture(id);
+      if (!commit || !liveItem(g.state) || context().busy) { setBox(g.state, g.startBox, observedHeight); return; }
+      if (g.state.box.width === g.startBox.width && g.state.box.x === g.startBox.x) return;
+      if (adapter.place(g.state.id, g.state.box) !== true) { setBox(g.state, g.startBox, observedHeight); setStatus('Could not resize this note.'); }
+      render();
+    }
     function openEditor(state, focusInput) {
       state.editing = true;
       state.editorLabel.hidden = false;
@@ -146,6 +179,18 @@
       if (summaryToFocus && summaryToFocus.isConnected) summaryToFocus.focus({ preventScroll: true });
       return closed;
     }
+    function clampCardMenu(state) {
+      if (!state.menu.open || !state.card.isConnected) return;
+      const actions = state.actions, viewport = scroll.getBoundingClientRect();
+      actions.style.left = 'auto'; actions.style.right = '0'; actions.style.top = '100%'; actions.style.bottom = 'auto';
+      actions.style.maxHeight = `${Math.max(44, viewport.height - 12)}px`;
+      actions.style.overflowY = 'auto';
+      const rect = actions.getBoundingClientRect(), owner = state.menu.getBoundingClientRect();
+      const left = clamp(rect.left, viewport.left + 6, Math.max(viewport.left + 6, viewport.right - rect.width - 6));
+      const top = clamp(rect.top, viewport.top + 6, Math.max(viewport.top + 6, viewport.bottom - rect.height - 6));
+      actions.style.left = `${left - owner.left}px`; actions.style.right = 'auto';
+      actions.style.top = `${top - owner.top}px`;
+    }
     function makeCard(item, box) {
       const id = String(item.id), card = document.createElement('article');
       card.className = 'workspace-card'; card.dataset.clipId = id; card.tabIndex = -1;
@@ -163,11 +208,16 @@
       const actions = document.createElement('div'); actions.className = 'workspace-card-actions';
       const source = document.createElement('button'); source.type = 'button'; source.className = 'workspace-source'; source.textContent = 'Go to source';
       const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'workspace-note-edit'; edit.textContent = 'Edit note';
+      const smaller = document.createElement('button'); smaller.type = 'button'; smaller.className = 'workspace-note-smaller'; smaller.textContent = 'Make smaller'; smaller.setAttribute('aria-label', 'Make note smaller');
+      const larger = document.createElement('button'); larger.type = 'button'; larger.className = 'workspace-note-larger'; larger.textContent = 'Make larger'; larger.setAttribute('aria-label', 'Make note larger');
       const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'workspace-remove'; remove.textContent = 'Remove';
-      actions.append(source, edit, remove); menu.appendChild(actions); head.append(handle, menu); card.append(head, quote, preview, label, message);
-      const state = { id, paperId: String(scope.id), draftId: uid(), card, handle, menu, quote, preview, editorLabel: label, input, message, source, edit, remove, box, note: String(item.note || ''), version: item.updatedAt, dirty: false, saveFailed: false, orphan: false, editing: false };
+      actions.append(source, edit, smaller, larger, remove); menu.appendChild(actions); head.append(handle, menu); card.append(head, quote, preview, label, message);
+      const state = { id, paperId: String(scope.id), draftId: uid(), card, handle, menu, actions, quote, preview, editorLabel: label, input, message, source, edit, smaller, larger, remove, box, note: String(item.note || ''), version: item.updatedAt, dirty: false, saveFailed: false, orphan: false, editing: false };
       input.value = state.note; setBox(state, box, observedHeight);
+      menu.addEventListener('toggle', () => { if (menu.open) clampCardMenu(state); });
       edit.addEventListener('click', () => { if (liveItem(state)) openEditor(state, true); });
+      smaller.addEventListener('click', () => { resizeCard(state, state.box.width - 80); clampCardMenu(state); });
+      larger.addEventListener('click', () => { resizeCard(state, state.box.width + 80); clampCardMenu(state); });
       input.addEventListener('blur', () => { if (!state.orphan && !state.dirty && !state.saveFailed) closeEditor(state); });
       input.addEventListener('input', () => {
         const live = liveItem(state);
@@ -240,6 +290,63 @@
         const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
         if (!dx && !dy) return; event.preventDefault(); moveCard(state, dx, dy);
       });
+      card.addEventListener('click', event => { if (performance.now() < suppressCardClickUntil) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+      card.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'touch' || !liveItem(state) || context().busy || (gesture && gesture.kind !== 'drag')) return;
+        if (event.target.closest('textarea, .workspace-note-menu')) return;
+        const surface = event.target.closest('.workspace-quote, .workspace-note-preview');
+        const client = { x: event.clientX, y: event.clientY };
+        cardTouches.set(event.pointerId, { state, client, startY: event.clientY, surface, scrolling: false });
+        if (surface) try { card.setPointerCapture(event.pointerId); } catch (error) { /* A synthetic pointer may not be capturable. */ }
+        const pair = [...cardTouches].filter(([, touch]) => touch.state === state);
+        if (pair.length !== 2) return;
+        const [first, second] = pair, distance = Math.hypot(first[1].client.x - second[1].client.x, first[1].client.y - second[1].client.y);
+        if (distance < 12) return;
+        if (gesture && gesture.kind === 'drag' && gesture.state === state) {
+          cancel(); cardTouches.set(first[0], first[1]); cardTouches.set(second[0], second[1]);
+        }
+        if (gesture) return;
+        gesture = { kind: 'pinch', state, ids: [first[0], second[0]], released: new Set(), startDistance: distance, startBox: { ...state.box } };
+        card.classList.add('workspace-resizing');
+        // Closing the size menu must not strand keyboard focus on a hidden button
+        // and route the next Undo to the PDF instead of this workspace.
+        card.focus({ preventScroll: true });
+        menu.open = false;
+        suppressCardClickUntil = performance.now() + 500;
+        event.preventDefault(); event.stopPropagation();
+        for (const pointerId of gesture.ids) try { card.setPointerCapture(pointerId); } catch (error) { /* A synthetic pointer may not be capturable. */ }
+      }, true);
+      card.addEventListener('pointermove', event => {
+        const touch = cardTouches.get(event.pointerId);
+        if (touch && touch.state === state) {
+          const previousY = touch.client.y;
+          touch.client = { x: event.clientX, y: event.clientY };
+          if ((!gesture || gesture.kind !== 'pinch') && touch.surface) {
+            if (!touch.scrolling && Math.abs(event.clientY - touch.startY) < 5) return;
+            touch.scrolling = true;
+            const requested = previousY - event.clientY;
+            const before = touch.surface.scrollTop;
+            touch.surface.scrollTop += requested;
+            manualCardScrollAt = performance.now();
+            scroll.scrollTop += requested - (touch.surface.scrollTop - before);
+            suppressCardClickUntil = performance.now() + 350;
+            event.preventDefault(); event.stopPropagation();
+            return;
+          }
+        }
+        const g = gesture;
+        if (!g || g.kind !== 'pinch' || g.state !== state || !g.ids.includes(event.pointerId)) return;
+        const a = cardTouches.get(g.ids[0]), b = cardTouches.get(g.ids[1]);
+        if (!a || !b) return;
+        const distance = Math.hypot(a.client.x - b.client.x, a.client.y - b.client.y);
+        const nextWidth = clamp(Math.round(g.startBox.width * distance / g.startDistance), 280, 900);
+        const center = g.startBox.x + g.startBox.width / 2;
+        setBox(state, { ...g.startBox, x: clamp(center - nextWidth / 2, 0, 1000 - nextWidth), width: nextWidth }, observedHeight);
+        event.preventDefault(); event.stopPropagation();
+      }, true);
+      card.addEventListener('pointerup', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId)) { event.preventDefault(); event.stopPropagation(); gesture.released.add(event.pointerId); cardTouches.delete(event.pointerId); if (gesture.released.size === 2) finishPinch(true); } else cardTouches.delete(event.pointerId); }, true);
+      card.addEventListener('pointercancel', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId)) { event.stopPropagation(); finishPinch(false); } else cardTouches.delete(event.pointerId); }, true);
+      card.addEventListener('lostpointercapture', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId) && !gesture.released.has(event.pointerId)) finishPinch(false); });
       return state;
     }
     function render() {
@@ -287,8 +394,11 @@
         if (!state.dirty && document.activeElement !== state.input) {
           state.note = String(item.note || ''); state.version = item.updatedAt; state.preview.textContent = state.note;
         }
-        if (!gesture || gesture.kind !== 'drag' || gesture.state !== state) setBox(state, box, observedHeight);
+        if (!gesture || (gesture.kind !== 'drag' && gesture.kind !== 'pinch') || gesture.state !== state) setBox(state, box, observedHeight);
         state.source.disabled = !!c.busy;
+        state.smaller.disabled = !!c.busy || state.box.width <= 280;
+        state.larger.disabled = !!c.busy || state.box.width >= 900;
+        if (state.menu.open) clampCardMenu(state);
       }
       for (const [id, state] of cards) {
         if (visible.has(id)) continue;
@@ -424,7 +534,10 @@
         if (state.menu.open && !state.menu.contains(event.target)) state.menu.open = false;
       }
     }, true);
-    scroll.addEventListener('scroll', cancel, { passive: true }); global.addEventListener('resize', cancel); global.addEventListener('blur', cancel); global.addEventListener('pagehide', cancel);
+    ['pointerup', 'pointercancel'].forEach(type => document.addEventListener(type, event => {
+      if (!gesture || gesture.kind !== 'pinch') cardTouches.delete(event.pointerId);
+    }));
+    scroll.addEventListener('scroll', () => { if (gesture && performance.now() - manualCardScrollAt > 100) cancel(); }, { passive: true }); global.addEventListener('resize', cancel); global.addEventListener('blur', cancel); global.addEventListener('pagehide', cancel);
     document.addEventListener('keydown', event => {
       if (!context().open) return;
       if (event.key === 'Escape' && gesture && panel.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); cancel(); return; }

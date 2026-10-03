@@ -734,6 +734,10 @@
     .text-layer span.find-span { background: color-mix(in srgb, var(--yellow) 42%, transparent); border-radius: 3px; }
     .text-layer span.find-span.find-current-span { background: color-mix(in srgb, var(--yellow) 68%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 52%, transparent); }
     .text-layer span.find-span.find-piece-host { background: transparent; box-shadow: none; }
+    .excerpt-source-cue-layer { position: absolute; inset: 0; z-index: 5; pointer-events: none; user-select: none; }
+    .excerpt-source-cue { position: absolute; border-radius: 3px; background: color-mix(in srgb, var(--yellow) 48%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); animation: excerpt-source-fade 3.2s ease-out both; }
+    @keyframes excerpt-source-fade { 0%, 72% { opacity: 1; } 100% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .excerpt-source-cue { animation: none; } }
     .text-layer span.review-focus-span { background: rgba(255,202,108,.22); border-radius: 3px; box-shadow: 0 0 0 2px rgba(184,121,31,.3); }
     .text-layer span.review-focus-general { background: rgba(128,179,105,.2); box-shadow: 0 0 0 2px rgba(91,126,77,.32); }
     .text-layer span.review-focus-section { background: rgba(105,185,218,.2); box-shadow: 0 0 0 2px rgba(50,112,139,.32); }

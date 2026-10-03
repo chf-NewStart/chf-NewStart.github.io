@@ -105,8 +105,10 @@ function navigationHarness(items = [pdfRecord('first', 2), pdfRecord('second', 4
     }
   };
   const status = { textContent: '' };
-  const jumps = [];
+  const jumps = [], cues = [];
   let jump = async () => true;
+  let cue = async () => true;
+  let clears = 0;
   let origins = 0;
   context.currentId = 'paper';
   context.pdfOpenEpoch = 1;
@@ -121,23 +123,28 @@ function navigationHarness(items = [pdfRecord('first', 2), pdfRecord('second', 4
   context.byId = id => id === 'excerptReturnChip' ? chip : id === 'excerptStatus' ? status : null;
   context.clearPendingSelection = () => {};
   context.jumpToReadingKeep = entry => { jumps.push(plain(entry.anchor)); return jump(entry); };
+  context.clearExcerptSourceCue = () => { clears++; };
+  context.flashExcerptSource = (entry, token) => { cues.push({ entry: plain(entry), token }); return cue(entry, token); };
   vm.runInContext([
     'var excerptReturnSpot=null,excerptNavigationSerial=0,excerptNavigationBusy=false;',
     section('  function closeWorkspacePanels(){', '  function workspaceContext(){'),
     section('  function excerptStatus(message){', '  function saveExcerptState('),
     section('  function excerptReadingAnchor(){', '  if(window.PhloemExcerptView)')
   ].join('\n'), context, { filename: 'reading.js excerpt navigation' });
-  return { context, chip, status, jumps, origins: () => origins, setJump: callback => { jump = callback; } };
+  return { context, chip, status, jumps, cues, clears: () => clears, origins: () => origins,
+    setJump: callback => { jump = callback; }, setCue: callback => { cue = callback; } };
 }
 
 test('source hash mismatch and out-of-range PDF page never call the jump function', async () => {
   const mismatch = navigationHarness([pdfRecord('wrong', 2, OTHER_HASH)]);
   assert.equal(await mismatch.context.goToExcerptSource('wrong'), false);
   assert.deepEqual(mismatch.jumps, []);
+  assert.deepEqual(mismatch.cues, []);
   assert.equal(mismatch.context.excerptReturnSpot, null);
   const missingPage = navigationHarness([pdfRecord('missing-page', 11)]);
   assert.equal(await missingPage.context.goToExcerptSource('missing-page'), false);
   assert.deepEqual(missingPage.jumps, []);
+  assert.deepEqual(missingPage.cues, []);
   assert.equal(missingPage.context.excerptReturnSpot, null);
 });
 
@@ -149,11 +156,41 @@ test('source visits capture one origin and return clears it', async () => {
   assert.equal(await nav.context.goToExcerptSource('second'), true);
   assert.equal(nav.origins(), 1);
   assert.deepEqual(nav.jumps.map(anchor => anchor.page), [2, 4]);
+  assert.deepEqual(nav.cues.map(cue => cue.entry.quote), ['Page 2', 'Page 4']);
   assert.equal(await nav.context.returnFromExcerpt(), true);
   assert.deepEqual(nav.jumps.map(anchor => anchor.page), [2, 4, 1]);
   assert.equal(nav.context.excerptReturnSpot, null);
   assert.equal(nav.context.excerptContext().canReturn, false);
   assert.equal(nav.chip.hidden, true);
+  assert.equal(nav.cues.length, 2, 'return clears the cue without painting a saved-quote cue');
+  assert(nav.clears() >= 3, 'each navigation clears an older transient cue');
+});
+
+test('no exact quote match keeps location navigation without claiming a passage highlight', async () => {
+  const nav = navigationHarness();
+  nav.setCue(async () => false);
+  assert.equal(await nav.context.goToExcerptSource('first'), true);
+  assert.equal(nav.cues[0].entry.quote, 'Page 2');
+  assert.match(nav.status.textContent, /could not be matched/i);
+  assert.equal(nav.context.excerptContext().canReturn, true);
+});
+
+test('an older asynchronous source cue cannot finish after document reset', async () => {
+  const nav = navigationHarness();
+  let resolve;
+  nav.setCue(() => new Promise(done => { resolve = done; }));
+  const pending = nav.context.goToExcerptSource('first');
+  await new Promise(done => setImmediate(done));
+  assert.equal(nav.cues.length, 1);
+  nav.context.currentId = 'another-paper';
+  nav.context.pdfOpenEpoch = 2;
+  nav.context.resetExcerptNavigation();
+  const statusAfterReset = nav.status.textContent;
+  resolve(true);
+  assert.equal(await pending, false);
+  assert.equal(nav.context.excerptReturnSpot, null);
+  assert.equal(nav.chip.hidden, true);
+  assert.equal(nav.status.textContent, statusAfterReset);
 });
 
 test('busy navigation rejects reentry and never starts another jump', async () => {
@@ -192,4 +229,5 @@ test('a stale removed excerpt ID cannot navigate', async () => {
   nav.context.state.chapters[0].readingExcerpts = envelope(pdfRecord('second', 4));
   assert.equal(await nav.context.goToExcerptSource('first'), false);
   assert.deepEqual(nav.jumps, []);
+  assert.deepEqual(nav.cues, []);
 });

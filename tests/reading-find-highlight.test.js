@@ -63,7 +63,10 @@ function makeSplitPhrasePdf() {
 }
 
 async function enterFind(page, query) {
-  await page.click('#findBtn');
+  if (await page.locator('body').evaluate(body => body.classList.contains('zen'))) {
+    await page.click('#zenMore');
+    await page.click('#zenFind');
+  } else await page.click('#findBtn');
   await page.fill('#findInput', query);
   await page.waitForFunction(() => /1 \/ 1/.test(document.getElementById('findCount').textContent));
 }

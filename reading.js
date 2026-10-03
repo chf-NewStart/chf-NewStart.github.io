@@ -6661,6 +6661,7 @@
   }
   if(window.PhloemWorkspaceView&&window.PhloemWorkspaceState){
     workspaceView=window.PhloemWorkspaceView.create({context:workspaceContext,place:placeWorkspaceClip,updateNote:updateExcerptNote,
+      stickyStyle:function(item){var hash=paperVisualHash({id:item.id}),note=WALL_NOTES[(hash>>>1)%WALL_NOTES.length];return{paper:note.cover,ink:note.ink,tapeTilt:((((hash>>>27)%11)-5)*.45)+'deg'};},
       goToSource:async function(id){if(!workspaceWide())setWorkspaceOpen(false,false);var moved=await goToExcerptSource(id);if(!moved)workspaceStatus(byId('excerptStatus').textContent||'Could not open the source. Your notes are safe.');return moved;},removeClip:removeReadingExcerpt,
       addNote:function(){return addWorkspaceExcerpt(null);},addStroke:workspaceAddStroke,eraseStrokes:workspaceEraseStrokes,grow:workspaceGrow,
       close:function(){setWorkspaceOpen(false);},onTool:function(){if(pdfInkController&&pdfInkController.active())pdfInkController.cancel();}});

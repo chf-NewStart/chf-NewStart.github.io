@@ -19,7 +19,8 @@ body { margin:0; } #workspacePanel { width:1000px; }
 #workspaceTools { height:44px; } #workspaceScroll { width:1000px; height:650px; overflow:auto; }
 #workspaceBoard { position:relative; width:1000px; height:2000px; }
 #workspaceCards, #workspaceInk { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-.workspace-card { position:absolute; pointer-events:auto; background:white; touch-action:auto; }
+.workspace-card { position:absolute; display:flex; flex-direction:column; min-height:178px; pointer-events:auto; background:white; touch-action:auto; }
+.workspace-card-body { flex:1; min-width:0; touch-action:none; }
 .workspace-card .workspace-quote, .workspace-card .workspace-note-preview { display:block; max-height:100px; overflow:auto; touch-action:none; white-space:pre-wrap; }
 .workspace-card .workspace-note-preview[hidden], .workspace-card label[hidden] { display:none; }
 .workspace-note-menu { position:relative; }
@@ -60,6 +61,7 @@ async function fixture(browser, withClip = true) {
     let failUpdate = false, placeClock = at;
     const adapter = {
       context: () => state,
+      stickyStyle: () => ({ paper: '#e5df73', ink: '#234f91', tapeTilt: '1.35deg' }),
       place(id, box) {
         calls.place.push({ id, box: { ...box } });
         state.workspace = window.PhloemWorkspaceState.place(state.workspace, id, box, ++placeClock);
@@ -91,6 +93,62 @@ async function fixture(browser, withClip = true) {
   }, withClip);
   return page;
 }
+
+test('sticky palette variables come from the adapter and survive note edits', async () => {
+  const browser = await launchBrowser();
+  try {
+    const page = await fixture(browser);
+    try {
+      const card = page.locator('.workspace-card[data-clip-id="clip"]');
+      const readStyle = () => card.evaluate(node => ({
+        paper: node.style.getPropertyValue('--note-paper'),
+        ink: node.style.getPropertyValue('--note-ink'),
+        tapeTilt: node.style.getPropertyValue('--tape-tilt'),
+        transform: node.style.transform
+      }));
+      const before = await readStyle();
+      assert.deepEqual(before, { paper: '#e5df73', ink: '#234f91', tapeTilt: '1.35deg', transform: '' });
+      assert.equal(await card.locator('.workspace-card-body').evaluate(node => getComputedStyle(node).touchAction), 'none',
+        'blank sticky paper is a touch surface while the editor remains outside it');
+      assert.equal(await card.locator('.workspace-card-body .workspace-quote').count(), 1,
+        'source quote is inside the common paper touch surface');
+      assert.equal(await card.locator('.workspace-card-body textarea.workspace-note').count(), 0,
+        'native textarea is outside the pinch surface');
+      await editClip(page);
+      await card.locator('textarea.workspace-note').fill('Edited on this sticky');
+      await page.locator('#workspaceTools').focus();
+      await page.waitForFunction(() => fixture.state.items[0].note === 'Edited on this sticky');
+      assert.deepEqual(await readStyle(), before, 'editing preserves the chosen paper, ink, and tape tilt');
+      await page.evaluate(() => fixture.view.render());
+      assert.deepEqual(await readStyle(), before, 'rerender retains the same card style without rotating its geometry');
+    } finally { await page.close(); }
+  } finally { await browser.close(); }
+});
+
+test('blank sticky paper supports pinch and a note beyond the paper edge remains scroll-reachable', async () => {
+  const browser = await launchBrowser();
+  try {
+    const page = await fixture(browser);
+    try {
+      const pinch = await pinchClip(page, 1.25, false, '.workspace-card-body');
+      assert(pinch.preview > 420 && pinch.width > 420 && pinch.placesAfter === 1,
+        'blank body pinch saves a single bounded width');
+      await page.evaluate(() => {
+        const card = document.querySelector('.workspace-card');
+        card.style.top = '1930px';
+      });
+      await page.locator('.workspace-card').scrollIntoViewIfNeeded();
+      const bounds = await page.evaluate(() => {
+        const scroll = document.getElementById('workspaceScroll').getBoundingClientRect();
+        const card = document.querySelector('.workspace-card').getBoundingClientRect();
+        return { scrollBottom: scroll.bottom, cardBottom: card.bottom,
+          scrollTop: document.getElementById('workspaceScroll').scrollTop };
+      });
+      assert(bounds.scrollTop > 0 && bounds.cardBottom <= bounds.scrollBottom + 1,
+        'overflow from a bottom-edge sticky can be reached by normal workspace scroll: ' + JSON.stringify(bounds));
+    } finally { await page.close(); }
+  } finally { await browser.close(); }
+});
 async function editClip(page) {
   await page.locator('.workspace-card .workspace-note-menu summary').click();
   await page.locator('.workspace-card .workspace-note-edit').click();

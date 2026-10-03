@@ -375,6 +375,7 @@ async function checkDraftProtection(browser) {
     await pdfPage.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active'));
     await pdfPage.waitForFunction(() => Array.from(document.querySelectorAll('.pdf-page[data-page="2"] .text-layer span'))
       .some(span => span.textContent.includes('Clips fixture page 2')));
+    await pdfPage.waitForFunction(() => !document.getElementById('documentPane').classList.contains('turning-book-leaf'));
     await selectText(pdfPage, '.pdf-page[data-page="2"] .text-layer span', 'Clips fixture page 2');
     await pdfPage.locator('#selectionSaveExcerpt').click();
     const pdf = await currentChapter(pdfPage);

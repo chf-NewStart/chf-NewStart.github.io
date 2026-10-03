@@ -194,12 +194,20 @@
     function makeCard(item, box) {
       const id = String(item.id), card = document.createElement('article');
       card.className = 'workspace-card'; card.dataset.clipId = id; card.tabIndex = -1;
+      // Share the library's paper palette without changing saved card/ink geometry.
+      const stickyStyle = adapter.stickyStyle ? adapter.stickyStyle(item) : null;
+      if (stickyStyle) {
+        card.style.setProperty('--note-paper', stickyStyle.paper);
+        card.style.setProperty('--note-ink', stickyStyle.ink);
+        card.style.setProperty('--tape-tilt', stickyStyle.tapeTilt);
+      }
       const head = document.createElement('div'); head.className = 'workspace-card-head';
       const handle = document.createElement('button');
       handle.type = 'button'; handle.className = 'workspace-handle workspace-card-handle'; handle.textContent = '⠿';
       handle.setAttribute('aria-label', 'Move clip with drag or arrow keys'); handle.style.touchAction = 'none';
       const menu = document.createElement('details'); menu.className = 'workspace-note-menu';
       const summary = document.createElement('summary'); summary.textContent = '⋯'; summary.setAttribute('aria-label', 'Clip actions'); menu.appendChild(summary);
+      const body = document.createElement('div'); body.className = 'workspace-card-body';
       const quote = document.createElement('blockquote'); quote.className = 'workspace-quote';
       const preview = document.createElement('div'); preview.className = 'workspace-note-preview'; preview.textContent = String(item.note || '');
       const label = document.createElement('label'); label.textContent = 'Your note'; label.hidden = true;
@@ -211,7 +219,7 @@
       const smaller = document.createElement('button'); smaller.type = 'button'; smaller.className = 'workspace-note-smaller'; smaller.textContent = 'Make smaller'; smaller.setAttribute('aria-label', 'Make note smaller');
       const larger = document.createElement('button'); larger.type = 'button'; larger.className = 'workspace-note-larger'; larger.textContent = 'Make larger'; larger.setAttribute('aria-label', 'Make note larger');
       const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'workspace-remove'; remove.textContent = 'Remove';
-      actions.append(source, edit, smaller, larger, remove); menu.appendChild(actions); head.append(handle, menu); card.append(head, quote, preview, label, message);
+      actions.append(source, edit, smaller, larger, remove); menu.appendChild(actions); head.append(handle, menu); body.append(quote, preview); card.append(head, body, label, message);
       const state = { id, paperId: String(scope.id), draftId: uid(), card, handle, menu, actions, quote, preview, editorLabel: label, input, message, source, edit, smaller, larger, remove, box, note: String(item.note || ''), version: item.updatedAt, dirty: false, saveFailed: false, orphan: false, editing: false };
       input.value = state.note; setBox(state, box, observedHeight);
       menu.addEventListener('toggle', () => { if (menu.open) clampCardMenu(state); });
@@ -294,7 +302,7 @@
       card.addEventListener('pointerdown', event => {
         if (event.pointerType !== 'touch' || !liveItem(state) || context().busy || (gesture && gesture.kind !== 'drag')) return;
         if (event.target.closest('textarea, .workspace-note-menu')) return;
-        const surface = event.target.closest('.workspace-quote, .workspace-note-preview');
+        const surface = event.target.closest('.workspace-quote, .workspace-note-preview, .workspace-card-body');
         const client = { x: event.clientX, y: event.clientY };
         cardTouches.set(event.pointerId, { state, client, startY: event.clientY, surface, scrolling: false });
         if (surface) try { card.setPointerCapture(event.pointerId); } catch (error) { /* A synthetic pointer may not be capturable. */ }

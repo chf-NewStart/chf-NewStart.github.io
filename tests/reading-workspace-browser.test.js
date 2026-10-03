@@ -168,23 +168,41 @@ async function pinchCard(card, scale) {
     } finally { node.setPointerCapture = originalCapture; }
   }, scale);
 }
-async function realChromiumPinchOnQuote(page, card) {
-  const quote = card.locator('.workspace-quote');
-  await quote.scrollIntoViewIfNeeded();
-  const box = await quote.boundingBox();
-  assert(box && box.width > 70 && box.height > 0, 'quote has a visible two-finger touch surface');
+async function realChromiumPinchOnSurface(page, card, selector, blankArea = false, scale = 1.2) {
+  const surface = card.locator(selector);
+  await surface.scrollIntoViewIfNeeded();
+  const box = await surface.boundingBox();
+  assert(box && box.width > 70 && box.height > 0, selector + ' has a visible two-finger touch surface');
   const session = await page.context().newCDPSession(page);
-  const y = box.y + Math.min(box.height / 2, 20);
+  const y = blankArea ? box.y + box.height - 18 : box.y + Math.min(box.height / 2, 20);
   const x1 = box.x + box.width * .35;
   const x2 = box.x + box.width * .65;
+  const hit = await page.evaluate(({ x1, x2, y }) => {
+    const read = x => { const node = document.elementFromPoint(x, y); return {
+      tag: node?.tagName, className: node?.className,
+      onCard: !!node?.closest('.workspace-card'),
+      onSurface: !!node?.closest('.workspace-card-body'),
+      touchAction: node ? getComputedStyle(node).touchAction : null };
+    };
+    const card = document.querySelector('.workspace-card[data-clip-id]');
+    const scroll = document.getElementById('workspaceScroll');
+    return { first: read(x1), second: read(x2), card: card.getBoundingClientRect().toJSON(),
+      scroll: scroll.getBoundingClientRect().toJSON(), scrollTop: scroll.scrollTop };
+  }, { x1, x2, y });
+  assert(hit.first.onCard && hit.first.onSurface && hit.second.onCard && hit.second.onSurface,
+    'real touch coordinates hit sticky paper: ' + JSON.stringify(hit));
+  if (blankArea) assert.equal(await page.evaluate(({ x, y }) =>
+    !!document.elementFromPoint(x, y)?.closest('.workspace-card-body'), { x: x1, y }), true,
+  'blank note body receives real browser touches');
   const point = (x, id) => ({ x, y, id, radiusX: 2, radiusY: 2, force: .6 });
   try {
     await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(x1, 1)] });
     await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(x1, 1), point(x2, 2)] });
-    await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(x1, 1), point(x1 + (x2 - x1) * 1.2, 2)] });
+    await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(x1, 1), point(x1 + (x2 - x1) * scale, 2)] });
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [point(x1, 1)] });
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   } finally { await session.detach(); }
+  return hit;
 }
 function workspaceStrokes(ch) {
   const store = ch && ch.readingWorkspace;
@@ -224,6 +242,28 @@ async function openPenOptions(page) {
   const options = page.locator('#workspacePenOptions');
   if (!(await options.isVisible())) await page.locator('#workspacePenToggle').click();
   await options.waitFor({ state: 'visible' });
+}
+async function stickyAppearance(page, card) {
+  return card.evaluate(node => {
+    const style = getComputedStyle(node);
+    const tape = getComputedStyle(node, '::after');
+    const quote = getComputedStyle(node.querySelector('.workspace-quote'));
+    const library = document.querySelector('.book-spine.paper-sticky-note');
+    const libraryStyle = library ? getComputedStyle(library) : null;
+    return {
+      paper: style.getPropertyValue('--note-paper').trim(),
+      ink: style.getPropertyValue('--note-ink').trim(),
+      tapeTilt: style.getPropertyValue('--tape-tilt').trim(),
+      backgroundImage: style.backgroundImage, backgroundColor: style.backgroundColor,
+      borderRadius: style.borderRadius, boxShadow: style.boxShadow,
+      minHeight: style.minHeight, transform: style.transform,
+      quoteFont: quote.fontFamily, quoteColor: quote.color,
+      tape: { content: tape.content, width: tape.width, height: tape.height,
+        opacity: Number(tape.opacity), pointerEvents: tape.pointerEvents, backgroundImage: tape.backgroundImage },
+      library: libraryStyle ? { backgroundImage: libraryStyle.backgroundImage,
+        borderRadius: libraryStyle.borderRadius, boxShadow: libraryStyle.boxShadow } : null
+    };
+  });
 }
 
 (async () => {
@@ -330,6 +370,45 @@ async function openPenOptions(page) {
       'a source sticky note does not expose its textarea by default');
     assert.equal(await card.locator('.workspace-quote').isVisible(), true,
       'the source quote stays visible on the compact sticky note');
+    const lightSticky = await stickyAppearance(page, card);
+    assert(['#e5df73', '#a7c8e7', '#df8d80'].includes(lightSticky.paper)
+      && lightSticky.ink === '#234f91',
+    'workspace sticky uses the same three pastel papers and blue ink as the library wall: ' + JSON.stringify(lightSticky));
+    assert.match(lightSticky.quoteFont, /DM Sans/i, 'source quote uses the library sticky sans face');
+    assert.equal(lightSticky.quoteColor, 'rgb(35, 79, 145)', 'source quote uses the resolved blue ink');
+    assert(lightSticky.tapeTilt.endsWith('deg') && lightSticky.tape.content !== 'none'
+      && lightSticky.tape.width === '38px' && lightSticky.tape.height === '14px'
+      && lightSticky.tape.pointerEvents === 'none' && lightSticky.tape.opacity > 0,
+    'warm tape is visible but cannot intercept sticky interactions: ' + JSON.stringify(lightSticky));
+    assert.equal(lightSticky.transform, 'none', 'workspace card stays unrotated so dragging and ink geometry agree');
+    assert.equal(lightSticky.minHeight, '178px', 'workspace sticky has the library paper-note minimum height');
+    assert(lightSticky.library, 'the library paper-sticky-note exists for visual parity comparison');
+    assert.equal(lightSticky.backgroundImage, lightSticky.library.backgroundImage,
+      'workspace and library stickies use the same paper surface gradient');
+    assert.equal(lightSticky.borderRadius, lightSticky.library.borderRadius,
+      'workspace and library stickies use the same paper edges');
+    assert.equal(lightSticky.boxShadow, lightSticky.library.boxShadow,
+      'workspace and library stickies use the same layered paper shadow');
+    await page.screenshot({ path: '/tmp/phloem-workspace-sticky-' + ENGINE + '-light.png' });
+    const themeButton = page.locator('#themeBtn');
+    assert.equal(await themeButton.isVisible(), true, 'reader exposes a visible theme control');
+    await themeButton.click();
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    const darkSticky = await stickyAppearance(page, card);
+    assert.equal(darkSticky.paper, lightSticky.paper, 'dark interface preserves the note paper pigment');
+    assert.equal(darkSticky.ink, lightSticky.ink, 'dark interface preserves the note ink pigment');
+    assert.equal(darkSticky.backgroundColor, lightSticky.backgroundColor,
+      'dark interface leaves the actual pastel paper color unchanged');
+    assert.equal(darkSticky.backgroundImage, lightSticky.backgroundImage,
+      'dark interface leaves the actual paper gradient unchanged');
+    assert.equal(darkSticky.quoteColor, lightSticky.quoteColor,
+      'dark interface leaves the actual blue quote ink unchanged');
+    assert.equal(darkSticky.tapeTilt, lightSticky.tapeTilt, 'dark interface preserves tape placement');
+    assert(darkSticky.tape.opacity < lightSticky.tape.opacity, 'dark interface softens translucent tape');
+    assert.equal(darkSticky.transform, 'none', 'dark mode does not rotate workspace card');
+    await page.screenshot({ path: '/tmp/phloem-workspace-sticky-' + ENGINE + '-dark.png' });
+    await themeButton.click();
+    await page.waitForFunction(() => !document.documentElement.dataset.theme);
     await openCardMenu(card);
     await page.locator('#readerMeta').click();
     await page.waitForFunction(() => !document.querySelector('.workspace-card .workspace-note-menu').open);
@@ -543,14 +622,23 @@ async function openPenOptions(page) {
     await page.screenshot({ path: '/tmp/phloem-sticky-resize-' + ENGINE + '.png' });
     if (ENGINE === 'chromium') {
       const beforeRealTouch = draggedPlace.width;
-      await realChromiumPinchOnQuote(page, card);
+      const realQuoteTouch = await realChromiumPinchOnSurface(page, card, '.workspace-quote');
       await page.waitForFunction(({ id, clipId, width }) => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
         .find(ch => ch.id === id)?.readingWorkspace?.positions?.[clipId]?.width > width,
-      { id: pdfId, clipId: clip.id, width: beforeRealTouch });
+      { id: pdfId, clipId: clip.id, width: beforeRealTouch }).catch(error => {
+        throw new Error('real quote pinch did not save: ' + JSON.stringify(realQuoteTouch), { cause: error });
+      });
       draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
       assert(draggedPlace.width <= 900, 'browser-dispatched touch pinch remains bounded');
       assert.equal(Object.values((await paperById(page, pdfId)).pdfInk || {}).flat().length, 0,
         'real browser touch on a sticky quote leaves PDF ink untouched');
+      const beforeBlankTouch = draggedPlace.width;
+      await realChromiumPinchOnSurface(page, card, '.workspace-card-body', true, .8);
+      await page.waitForFunction(({ id, clipId, width }) => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+        .find(ch => ch.id === id)?.readingWorkspace?.positions?.[clipId]?.width < width,
+      { id: pdfId, clipId: clip.id, width: beforeBlankTouch });
+      draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
+      assert(draggedPlace.width >= 280, 'real browser pinch on blank sticky paper respects size bounds');
     }
     assert.equal(await page.evaluate(() => document.getElementById('workspacePanel').contains(document.activeElement)), true,
       'touch pinch retains keyboard focus inside the workspace');
@@ -582,6 +670,10 @@ async function openPenOptions(page) {
     await page.locator('.workspace-card[data-clip-id="' + clip.id + '"]').waitFor({ state: 'visible' });
     pdf = await paperById(page, pdfId);
     assert.equal(workspaceStrokes(pdf).length, 1, 'workspace ink survives reload');
+    assert.deepEqual(await stickyAppearance(page, page.locator('.workspace-card[data-clip-id="' + clip.id + '"]')).then(style =>
+      ({ paper: style.paper, ink: style.ink, tapeTilt: style.tapeTilt })),
+    { paper: lightSticky.paper, ink: lightSticky.ink, tapeTilt: lightSticky.tapeTilt },
+    'palette is stable across document reload');
     assert.deepEqual(pdf.readingWorkspace.positions[clip.id], draggedPlace,
       'moved card coordinates survive reload');
     assert.equal(pdf.readingExcerpts.items.find(item => item.id === freeNote.id).note, freeText,
@@ -597,6 +689,7 @@ async function openPenOptions(page) {
       && portrait.panelRight <= portrait.viewport + 2,
     'portrait workspace fills the screen: ' + JSON.stringify(portrait));
     await page.screenshot({ path: '/tmp/phloem-workspace-' + ENGINE + '-portrait.png' });
+    await page.screenshot({ path: '/tmp/phloem-workspace-sticky-' + ENGINE + '-portrait.png' });
     await page.locator('#workspaceClose').click();
     await page.locator('#documentPane').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#workspacePanel').isVisible(), false, 'closing portrait workspace reveals the paper');

@@ -4683,8 +4683,9 @@
     if(!placeAnchor(true)){restoringPdfPosition=false;return false;}currentPage=target;updatePageChrome();updateProgress();
     /* Remember the placed spot now, not only after the settling frames below: an iPad
        rotation or Split View resize inside that window would otherwise rebuild from the
-       previous spot (for example the page a clip came from). */
-    rememberStablePdfPosition(capturePdfReadingPosition()||position);
+       previous spot (for example the page a clip came from). Store the target itself:
+       sampling here could catch half-resized geometry. */
+    rememberStablePdfPosition(position);
     await pdfLayoutFrames();if(!stillCurrent())return stopped();restoringPdfPosition=false;rememberStablePdfPosition(capturePdfReadingPosition()||position);
     if(announce)showReaderToast('Picked up at the exact reading spot');return true;
   }

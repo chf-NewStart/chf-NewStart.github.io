@@ -56,7 +56,7 @@
 .workspace-selecting { cursor:crosshair; }
 /* The library wall's pastel paper and blue ink. No individual
    note rotation: the shared sheet transform keeps Pencil ink aligned. */
-.workspace-card { --note-paper:#e5df73; --note-ink:#234f91; position:absolute; display:flex; flex-direction:column; box-sizing:border-box; min-width:0; min-height:178px; padding:0 14px 14px; border:1px solid color-mix(in srgb,var(--note-ink) 14%,transparent); border-radius:2px 3px 7px 4px; background:linear-gradient(165deg,rgba(255,255,255,.15),transparent 58%),color-mix(in srgb,var(--note-paper) 62%,#fffbed); color:var(--note-ink); box-shadow:0 7px 15px rgba(42,38,30,.13),inset 0 1px rgba(255,255,255,.24); pointer-events:auto; touch-action:auto; font:14px/1.5 var(--sans); overflow-wrap:anywhere; }
+.workspace-card { --note-paper:#e5df73; --note-ink:#234f91; position:absolute; display:flex; flex-direction:column; box-sizing:border-box; min-width:0; min-height:120px; padding:0 14px 14px; border:1px solid color-mix(in srgb,var(--note-ink) 14%,transparent); border-radius:2px 3px 7px 4px; background:linear-gradient(165deg,rgba(255,255,255,.15),transparent 58%),color-mix(in srgb,var(--note-paper) 62%,#fffbed); color:var(--note-ink); box-shadow:0 7px 15px rgba(42,38,30,.13),inset 0 1px rgba(255,255,255,.24); pointer-events:auto; touch-action:auto; font:14px/1.5 var(--sans); overflow-wrap:anywhere; }
 /* Plain sticky notes: no tape or pin. A faint top strip marks where to grab the note. */
 .workspace-card::after { content:""; position:absolute; top:0; left:0; right:0; height:44px; border-radius:2px 3px 0 0; background:color-mix(in srgb,var(--note-ink) 5%,transparent); pointer-events:none; }
 html[data-theme="dark"] .workspace-card::after { background:rgba(255,255,255,.04); }

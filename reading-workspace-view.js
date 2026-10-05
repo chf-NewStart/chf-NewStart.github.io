@@ -153,6 +153,10 @@
       const smooth = global.PhloemInk && global.PhloemInk.pathData;
       const shown = displayStroke(stroke);
       const copy = { ...shown, points: shown.points.map(p => [p[0] / 1000, p[1] / observedHeight, p[2]]) };
+      // Workspace handwriting: a light stabilizer against tremor and a wider pressure
+      // response (about 0.55x to 1.55x the nib), so light and firm strokes read like ink.
+      // Display only; the saved Pencil samples are unchanged.
+      if (shown.shape !== 'line' && shown.nib !== 'marker') { copy.stabilize = clamp(shown.width * .9, 1, 3); copy.response = [.55, 1]; }
       if (shown.nib === 'marker') {
         // Preserve the appearance of previously saved marker strokes.
         // A fixed chisel-nib direction gives broad downstrokes and finer crossstrokes.
@@ -395,12 +399,13 @@
           if (path) paintPath(path, stroke);
           for (const point of logicalPoints(stroke)) inkBottom = Math.max(inkBottom, point[1]);
         }
-        // Like a real sticky note, a note is at least as tall as it is wide (up to 300px),
-        // and grows to hold the writing on it.
-        const unit = board.clientWidth / observedWidth, square = Math.min(300, box.width * unit);
-        state.card.style.minHeight = `${Math.max(178, square, (inkBottom - box.y) * unit + 20)}px`;
+        // A note starts a little shorter than it is wide (120-180px tall), then grows to hold
+        // its text and the writing on it, so a one-line note stays small.
+        const unit = board.clientWidth / observedWidth, floor = noteFloor(box.width * unit);
+        state.card.style.minHeight = `${Math.max(floor, (inkBottom - box.y) * unit + 20)}px`;
       }
     }
+    function noteFloor(widthPx) { return clamp(widthPx * .75, 120, 180); }
     function boxFor(c, id) {
       const raw = positionsOf(c)[id];
       if (!raw) return null;

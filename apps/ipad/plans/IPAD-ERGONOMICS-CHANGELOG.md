@@ -392,3 +392,35 @@ change keep their old ownership; lasso them with the note to move them together.
 New `tests/reading-workspace-note-ink-follows.test.js` (one stroke inside the note,
 one starting 12 px below it; a finger drags the note; both strokes follow) fails
 before (the edge stroke had no anchor) and passes after.
+
+## 24. Smoother, pressure-shaped Workspace handwriting (v174)
+
+houfu: the strokes look thin and even and are a bit hard to control. Workspace ink
+used the shared `natural` outline, whose width only ranges 0.7x-1.15x of the nib with
+pressure, and it drew every jitter in the Pencil samples. Two optional, display-only
+settings were added to `PhloemInk.pathData` in `reading-ink.js`, and `paintPath` in
+`reading-workspace-view.js` turns them on for Workspace pen strokes (not straight
+lines or the old marker nib):
+- `stabilize`: a forward and a backward arc-length exponential filter on the
+  centerline, averaged so there is no lag or shrinkage; the first and last points
+  stay where the Pencil touched. Reach is 0.9x the nib width, clamped to 1-3 pt.
+- `response`: radius = width x (0.55 + 1.0 x filtered pressure) / 2, so light
+  strokes are finer and firm strokes broader.
+These are standard pressure-width and smoothing techniques, not any one app's ink.
+Stored points do not change, so older strokes simply redraw smoother. Paper ink is
+unchanged. New `tests/reading-ink-stabilize.test.js`: stabilized ink turns at least
+30% less on jittery input with the same start point, the firm/light width ratio
+grows by at least 20%, and strokes without the options are byte-identical.
+Not verified on a physical iPad and Pencil.
+
+## 25. Compact Workspace notes (v175)
+
+houfu, with a screenshot: some notes are much bigger than they need to be. A note's
+minimum height was its width (capped at 300px, never under 178px), so a wide note with
+one line stood as a big empty square. `setBox` in `reading-workspace-view.js` now uses
+`noteFloor(widthPx)` = width x 0.75, clamped to 120-180px, and the note still grows to
+hold its text and the ink anchored to it. The `.workspace-card` CSS floor drops from
+178px to 120px. New notes stay squarish (a little shorter than wide); widening a note no
+longer makes it taller. Tests: `reading-workspace-browser.test.js` checks the new floor,
+and `reading-workspace-lasso-resize.test.js` checks a new rail note is about 3:4.
+Not verified on a physical iPad.

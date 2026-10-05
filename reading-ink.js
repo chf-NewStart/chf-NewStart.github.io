@@ -46,6 +46,15 @@
       if(!last||Math.hypot(point.x-last.x,point.y-last.y)>.05*unit)points.push(point);
     });
     if(!points.length)return '';
+    // Optional display-only stabilizer (Workspace ink): a forward and a backward
+    // arc-length filter averaged together, so hand tremor and sensor jitter are
+    // smoothed without lag or shrinking the stroke; the end points stay put.
+    if(stroke.stabilize>0&&points.length>2){
+      var reach=stroke.stabilize*unit,forward=[],backward=[];
+      points.forEach(function(p,i){var q=i?forward[i-1]:p,step=i?Math.hypot(p.x-points[i-1].x,p.y-points[i-1].y):0,k=1-Math.exp(-step/reach);forward.push(i?{x:q.x+(p.x-q.x)*k,y:q.y+(p.y-q.y)*k}:{x:p.x,y:p.y});});
+      for(var i=points.length-1;i>=0;i--){var p=points[i],q=backward[i+1]||p,step=i<points.length-1?Math.hypot(p.x-points[i+1].x,p.y-points[i+1].y):0,k=1-Math.exp(-step/reach);backward[i]=i<points.length-1?{x:q.x+(p.x-q.x)*k,y:q.y+(p.y-q.y)*k}:{x:p.x,y:p.y};}
+      for(var i=1;i<points.length-1;i++){points[i].x=(forward[i].x+backward[i].x)/2;points[i].y=(forward[i].y+backward[i].y)/2;}
+    }
     var smoothLength=Math.max(6,stroke.width*2.5)*unit,pressure=points[0].p;
     points.forEach(function(p,i){
       var previous=points[Math.max(0,i-1)],step=Math.hypot(p.x-previous.x,p.y-previous.y);
@@ -54,7 +63,7 @@
     pressure=points[points.length-1].filtered;
     for(var i=points.length-1;i>=0;i--){
       var next=points[Math.min(points.length-1,i+1)],p=points[i],step=Math.hypot(p.x-next.x,p.y-next.y);
-      pressure+=(p.filtered-pressure)*(1-Math.exp(-step/smoothLength));p.r=stroke.width*unit*(stroke.style==='natural'?.7+.45*pressure:.55+.9*pressure)/2;
+      pressure+=(p.filtered-pressure)*(1-Math.exp(-step/smoothLength));p.r=stroke.width*unit*(stroke.response?stroke.response[0]+stroke.response[1]*pressure:stroke.style==='natural'?.7+.45*pressure:.55+.9*pressure)/2;
     }
     function dot(p){return 'M '+num(p.x-p.r)+' '+num(p.y)+' a '+num(p.r)+' '+num(p.r)+' 0 1 0 '+num(2*p.r)+' 0 a '+num(p.r)+' '+num(p.r)+' 0 1 0 '+num(-2*p.r)+' 0 Z';}
     if(points.length===1)return dot(points[0]);

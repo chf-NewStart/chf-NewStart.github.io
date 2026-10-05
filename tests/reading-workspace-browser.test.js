@@ -482,9 +482,9 @@ async function sourceCueVisual(page, cue) {
       && lightSticky.tape.backgroundColor !== 'rgba(0, 0, 0, 0)' && lightSticky.tape.opacity > 0,
     'plain top strip spans the note, has no tape gradient, and cannot intercept sticky interactions: ' + JSON.stringify(lightSticky));
     assert.equal(lightSticky.transform, 'none', 'workspace card stays unrotated so dragging and ink geometry agree');
-    // Notes start square, like a real sticky note: at least as tall as wide (up to 300px).
-    assert(Math.abs(parseFloat(lightSticky.minHeight) - Math.max(178, Math.min(300, lightSticky.tape.cardWidth))) <= 2,
-      'workspace sticky is at least as tall as it is wide: ' + lightSticky.minHeight + ' for ' + lightSticky.tape.cardWidth);
+    // Notes start a little shorter than wide (120-180px) and grow with their content.
+    assert(Math.abs(parseFloat(lightSticky.minHeight) - Math.min(180, Math.max(120, lightSticky.tape.cardWidth * .75))) <= 2,
+      'workspace sticky starts compact: ' + lightSticky.minHeight + ' for ' + lightSticky.tape.cardWidth);
     assert(lightSticky.library, 'the library paper-sticky-note exists for visual parity comparison');
     assert.equal(lightSticky.backgroundImage, lightSticky.library.backgroundImage,
       'workspace and library stickies use the same paper surface gradient');

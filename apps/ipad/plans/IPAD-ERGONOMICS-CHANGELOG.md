@@ -412,3 +412,15 @@ unchanged. New `tests/reading-ink-stabilize.test.js`: stabilized ink turns at le
 30% less on jittery input with the same start point, the firm/light width ratio
 grows by at least 20%, and strokes without the options are byte-identical.
 Not verified on a physical iPad and Pencil.
+
+## 25. Compact Workspace notes (v175)
+
+houfu, with a screenshot: some notes are much bigger than they need to be. A note's
+minimum height was its width (capped at 300px, never under 178px), so a wide note with
+one line stood as a big empty square. `setBox` in `reading-workspace-view.js` now uses
+`noteFloor(widthPx)` = width x 0.75, clamped to 120-180px, and the note still grows to
+hold its text and the ink anchored to it. The `.workspace-card` CSS floor drops from
+178px to 120px. New notes stay squarish (a little shorter than wide); widening a note no
+longer makes it taller. Tests: `reading-workspace-browser.test.js` checks the new floor,
+and `reading-workspace-lasso-resize.test.js` checks a new rail note is about 3:4.
+Not verified on a physical iPad.

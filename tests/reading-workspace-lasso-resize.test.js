@@ -187,7 +187,7 @@ const centre = box => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
     await page.locator('#workspaceBoard').focus();
     const strokesBefore = live((await saved(page)).readingWorkspace).length;
     const cardBox = await card.boundingBox();
-    assert(Math.abs(cardBox.width / cardBox.height - 1) < .06, 'a new rail note starts square: ' + JSON.stringify(cardBox));
+    assert(Math.abs(cardBox.height / cardBox.width - .75) < .06, 'a new rail note starts compact, a little shorter than wide: ' + JSON.stringify(cardBox));
     const tape = { x: cardBox.x + 40, y: cardBox.y + 20 };
     await page.evaluate(({ tape }) => {
       const handle = document.querySelector('.workspace-card .workspace-card-handle');

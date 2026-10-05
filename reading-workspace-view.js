@@ -399,12 +399,13 @@
           if (path) paintPath(path, stroke);
           for (const point of logicalPoints(stroke)) inkBottom = Math.max(inkBottom, point[1]);
         }
-        // Like a real sticky note, a note is at least as tall as it is wide (up to 300px),
-        // and grows to hold the writing on it.
-        const unit = board.clientWidth / observedWidth, square = Math.min(300, box.width * unit);
-        state.card.style.minHeight = `${Math.max(178, square, (inkBottom - box.y) * unit + 20)}px`;
+        // A note starts a little shorter than it is wide (120-180px tall), then grows to hold
+        // its text and the writing on it, so a one-line note stays small.
+        const unit = board.clientWidth / observedWidth, floor = noteFloor(box.width * unit);
+        state.card.style.minHeight = `${Math.max(floor, (inkBottom - box.y) * unit + 20)}px`;
       }
     }
+    function noteFloor(widthPx) { return clamp(widthPx * .75, 120, 180); }
     function boxFor(c, id) {
       const raw = positionsOf(c)[id];
       if (!raw) return null;

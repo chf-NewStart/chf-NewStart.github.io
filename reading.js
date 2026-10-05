@@ -8164,6 +8164,21 @@
      on the website. */
   var WEB_CLOUDKIT=Object.assign({container:'iCloud.com.houfu72.phloem',apiToken:'5c6f4cf802eac49c21fb137680e0bd99c199ba8c09ad82a239a3441c30ef04fb',environment:'production',script:'https://cdn.apple-cloudkit.com/ck/2/cloudkit.js'},window.PHLOEM_CLOUDKIT_CONFIG||{});
   var webCloudAdapter=null,webCloudReady=null;
+  /* Apple returns from sign-in by loading this page with ?ckWebAuthToken=… (the API
+     token's "URL Redirect" callback). A full-page round trip works on iPad Safari,
+     where CloudKit JS's own popup loses its opener and never reports back. The token
+     is taken out of the address bar at once and handed to CloudKit JS, which keeps it
+     in its own cookie. Read it with a regex rather than URLSearchParams so a literal
+     "+" in the token is not turned into a space. */
+  var webCloudReturnToken=(function(){
+    if(window.PHLOEM_NATIVE)return'';
+    try{
+      var m=location.search.match(/[?&](?:ckWebAuthToken|ckSession)=([^&#]*)/);if(!m)return'';
+      var rest=location.search.replace(/[?&](?:ckWebAuthToken|ckSession)=[^&#]*/g,'').replace(/^&/,'?');
+      history.replaceState(history.state,'',location.pathname+(rest&&rest!=='?'?rest:'')+location.hash);
+      return decodeURIComponent(m[1]);
+    }catch(e){return'';}
+  })();
   function webCloudConfigured(){return !window.PHLOEM_NATIVE&&!!WEB_CLOUDKIT.apiToken;}
   function webCloudLoad(){
     if(webCloudReady)return webCloudReady;
@@ -8174,7 +8189,7 @@
       script.onerror=function(){reject(new Error('Phloem could not reach Apple’s iCloud service. Check your connection and try again.'));};
       document.head.appendChild(script);
     }).then(function(CloudKit){
-      CloudKit.configure({containers:[{containerIdentifier:WEB_CLOUDKIT.container,environment:WEB_CLOUDKIT.environment,
+      CloudKit.configure({containers:[{containerIdentifier:WEB_CLOUDKIT.container,environment:WEB_CLOUDKIT.environment,ckWebAuthToken:webCloudReturnToken||undefined,
         apiTokenAuth:{apiToken:WEB_CLOUDKIT.apiToken,persist:true,signInButton:{id:'icloudAppleSignIn',theme:'black'},signOutButton:{id:'icloudAppleSignOut',theme:'black'}}}]});
       return CloudKit.getDefaultContainer();
     });
@@ -8230,11 +8245,17 @@
     if(!webCloudConfigured())return null;if(webCloudAdapter)return webCloudAdapter;
     webCloudAdapter={
       web:true,
-      /* Shows Apple's sign-in button in Settings and waits for the popup to finish. */
+      /* Sends this tab to Apple's sign-in page; Apple brings it back with a token, and
+         webCloudFinishSignIn() picks up from there. CloudKit JS keeps the sign-in URL
+         on a private field, so the public error's redirectURL is the fallback. Its own
+         black button stays hidden in #icloudAppleSignInBox. */
       signIn:async function(){
         var container=await webCloudLoad(),identity=await container.setUpAuth();if(identity)return identity;
-        var box=byId('icloudAppleSignInBox');if(box)box.classList.remove('hidden');
-        try{return await container.whenUserSignsIn();}finally{if(box)box.classList.add('hidden');}
+        var url=container._auth&&container._auth._signInURL;
+        if(!url)try{await container.fetchCurrentUserIdentity();}catch(error){url=error&&error.redirectURL;}
+        if(!url)throw new Error('Apple did not offer a sign-in page. Reload Phloem and try again.');
+        location.assign(url);
+        return new Promise(function(){});
       },
       signOut:async function(){try{var container=await webCloudLoad();if(container.signOut)await container.signOut();}catch(e){}},
       status:async function(){
@@ -8366,7 +8387,9 @@
     if(!iCloudOn()||iCloudSyncing)return;iCloudSyncing=true;iCloudSetStatus('Checking your private iCloud library…','☁ iCloud · syncing');
     var plugin=iCloudPlugin(),sent=0,remoteOnly=0,paused=0;
     try{
-      var account=await plugin.status();if(!account.available)throw new Error(iCloudAccountMessage(account.accountStatus));
+      var account=await plugin.status();
+      if(!account.available&&interactive&&plugin.web&&account.accountStatus==='signInRequired'){iCloudSetStatus('Sign in with your Apple ID to continue…');iCloudSyncing=false;await plugin.signIn();return;}
+      if(!account.available)throw new Error(iCloudAccountMessage(account.accountStatus));
       for(var attempt=0;attempt<3;attempt++){
         var remote=await plugin.fetchLibrary(),changeTag=remote&&remote.changeTag||'';
         if(remote&&remote.found){var incoming=JSON.parse(remote.payload);if(!incoming||!Array.isArray(incoming.chapters))throw new Error('The iCloud library has an unexpected format. Phloem did not overwrite it.');if(mergeState(incoming)){persist(false);renderShelf();updateReviewBadge();}}
@@ -8915,6 +8938,16 @@
     try{await iCloudPlugin().deleteCloudData();localStorage.removeItem(ICLOUD_KEY);iCloudCfg=null;iCloudDocumentStates=Object.create(null);fillSettings();syncUi();renderShelf();byId('icloudStatus').textContent='The private iCloud copy was deleted. Your local library stays on '+iCloudDeviceName()+'.';}catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not delete the private iCloud copy.';}finally{button.disabled=false;}
   };
   if(window.PHLOEM_NATIVE)window.PHLOEM_ICLOUD={enabled:iCloudOn,sync:iCloudSync};
+  /* Back from Apple's sign-in page: finish turning iCloud on and show the result. */
+  async function webCloudFinishSignIn(){
+    if(!webCloudReturnToken||!webCloudConfigured())return;
+    fillSettings();if(!byId('settingsDialog').open)byId('settingsDialog').showModal();
+    var section=byId('icloudSettings');if(section&&section.scrollIntoView)section.scrollIntoView({block:'center'});
+    if(iCloudOn())return iCloudSync(true);
+    byId('icloudStatus').textContent='Signed in. Checking your private iCloud library…';
+    try{var account=await iCloudPlugin().status();if(!account.available)throw new Error(iCloudAccountMessage(account.accountStatus));iCloudCfg={on:true,enabledAt:now()};localStorage.setItem(ICLOUD_KEY,JSON.stringify(iCloudCfg));fillSettings();await iCloudSync(true);}
+    catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not turn on iCloud sync.';}
+  }
   if(webCloudConfigured()&&byId('icloudSettings'))byId('icloudSettings').classList.remove('native-only');
 
   var lastSyncToast='';
@@ -9146,7 +9179,7 @@
   var startupDuplicateRepair=startupStateRecovery.then(function(){Object.keys(state.merged||{}).forEach(function(dropId){queueDuplicateStorage(state.merged[dropId],dropId);});return repairDuplicateStorage();});
   var startupStarterGuide=startupStateRecovery.then(function(){return seedStarterGuide();});
   var startupLibraryWork=[startupStateRecovery,startupStarterGuide,startupLocalSourceScan];
-  renderSharedAiPass();syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupLibraryWork.push(startupDuplicateRepair.then(function(){return gdriveSync();}));}if(iCloudOn())startupLibraryWork.push(startupDuplicateRepair.then(function(){return iCloudSync(false); }));
+  renderSharedAiPass();syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){loadGis().catch(function(){});startupLibraryWork.push(startupDuplicateRepair.then(function(){return gdriveSync();}));}if(webCloudReturnToken)startupLibraryWork.push(startupDuplicateRepair.then(function(){return webCloudFinishSignIn();}));else if(iCloudOn())startupLibraryWork.push(startupDuplicateRepair.then(function(){return iCloudSync(false); }));
   Promise.allSettled(startupLibraryWork).then(function(){libraryHydrating=false;renderShelf();updateReviewBadge();});
   /* A refresh drops you back into the paper you were reading, not the library. */
   startupStateRecovery.then(function(){try{var lastOpen=resolvedPaperId(localStorage.getItem(LAST_OPEN_KEY));if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}});startupStateRecovery.then(function(){return Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived));}).then(function(){return startupDuplicateRepair;}).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});

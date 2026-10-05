@@ -137,17 +137,16 @@ function fakeCloudKit(seed) {
   };
   const container = {
     privateCloudDatabase: database,
+    _auth: { _signInURL: location.origin + '/reading.html?ckWebAuthToken=fake%2Btoken+raw' },
     async setUpAuth() { return store.signedIn ? { userRecordName: '_tester' } : null; },
-    whenUserSignsIn() {
-      return new Promise(resolve => {
-        const host = document.getElementById('icloudAppleSignIn');
-        host.innerHTML = '<button type="button" id="fakeAppleSignIn">Sign in with Apple</button>';
-        document.getElementById('fakeAppleSignIn').onclick = () => { store.signedIn = true; host.innerHTML = ''; resolve({ userRecordName: '_tester' }); };
-      });
-    }
+    whenUserSignsIn() { return new Promise(() => {}); }
   };
   window.CloudKit = {
-    configure(config) { store.configured = config; },
+    configure(config) {
+      store.configured = config;
+      const token = config.containers[0].ckWebAuthToken;
+      if (token) { store.signedIn = true; store.token = token; }
+    },
     getDefaultContainer() { return container; }
   };
 }
@@ -219,11 +218,16 @@ async function seedWebLibrary(page, chapters, stamp) {
     (await page.textContent('#icloudStatus')).includes('this device') || (await page.textContent('#icloudStatus')).includes('this browser'),
     await page.textContent('#icloudStatus'));
 
-  await page.click('#icloudEnableBtn');
-  await page.waitForSelector('#fakeAppleSignIn');
-  check('turning on iCloud shows Apple’s sign-in button', await page.isVisible('#fakeAppleSignIn'));
-  await page.click('#fakeAppleSignIn');
+  /* Turning iCloud on sends the tab to Apple's sign-in page, which returns to the
+     reader with ?ckWebAuthToken=… (here the fake skips straight to the return). */
+  await Promise.all([page.waitForNavigation(), page.click('#icloudEnableBtn')]);
   await page.waitForFunction(() => /Synced with your private iCloud library/.test(document.getElementById('icloudStatus').textContent)).catch(async error => { console.log('status:', await page.textContent('#icloudStatus'), errors); throw error; });
+
+  const returned = await page.evaluate(() => ({ url: location.href, token: window.__ckStore.token, appleButton: !document.getElementById('icloudAppleSignInBox').classList.contains('hidden'), open: document.getElementById('settingsDialog').open }));
+  check('the returned token reaches CloudKit JS intact, with + kept', returned.token === 'fake+token+raw', returned.token);
+  check('the token is removed from the address bar', !/ckWebAuthToken/.test(returned.url), returned.url);
+  check('Apple’s own black button never shows', !returned.appleButton);
+  check('Settings reopens on the iCloud result after the return', returned.open);
 
   const config = await page.evaluate(() => window.__ckStore.configured);
   const container = config && config.containers && config.containers[0];

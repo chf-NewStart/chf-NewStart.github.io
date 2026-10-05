@@ -6702,6 +6702,9 @@
   }
   function fitWorkspacePdfAfterResize(){
     if(!workspaceOpen||readerMode!=='pdf'||!pdfDoc)return null;
+    /* A paper the reader zoomed into keeps its on-screen size while the divider moves:
+       zoom is relative to the pane width, so it is rescaled instead of reset to fit. */
+    if(pagedPdfFlow()?pagedManualZoom:!pdfFit)return{keepZoom:true,fitWidth:Math.max(280,(byId('documentPane').clientWidth||800)-1)};
     var needsFit=pagedPdfFlow()?pagedManualZoom:!pdfFit||pdfZoom!==1;
     var position=needsFit?stablePdfPositionForRebuild():null;
     scrollPdfFit=true;scrollPdfZoom=1;
@@ -6721,6 +6724,11 @@
     divider.setAttribute('aria-valuenow',String(width));divider.setAttribute('aria-valuetext','Paper '+width+' percent, workspace '+Math.round((100-width)*10)/10+' percent');
     if(save){workspaceWidthPreference=width;try{localStorage.setItem(WORKSPACE_WIDTH_KEY,String(width));}catch(e){}}
     if(!workspaceBoardResizeFrame)workspaceBoardResizeFrame=requestAnimationFrame(sizeWorkspaceBoard);
+    if(fitPosition&&fitPosition.keepZoom){
+      var fitWidth=Math.max(280,(byId('documentPane').clientWidth||800)-1);
+      if(fitWidth!==fitPosition.fitWidth){pdfZoom=Math.max(pagedPdfFlow()?.05:.5,Math.min(4,pdfZoom*fitPosition.fitWidth/fitWidth));updateZoomChrome();}
+      return;
+    }
     if(fitPosition&&Math.abs(width-previous)<.05)requestAnimationFrame(function(){
       if(!workspaceOpen||!pdfDoc||readerMode!=='pdf')return;
       if(pagedPdfFlow())fitPagedPages(currentPage,true);

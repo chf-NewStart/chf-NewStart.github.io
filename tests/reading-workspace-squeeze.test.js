@@ -144,8 +144,36 @@ async function dragDivider(page, toX) {
     await dragDivider(page, 1180 - 480);
     const back = await sheet(page);
     assert(Math.abs(back.cardHeight - wide.cardHeight) / wide.cardHeight < .03, 'widening restores the note');
+    // A zoomed-in Workspace keeps its on-screen size while the divider moves.
+    await page.locator('#workspaceMore > summary').click();
+    await page.locator('#workspaceZoomIn').click();
+    await page.locator('#workspaceZoomIn').click();
+    await page.locator('#workspaceMore > summary').click();
+    const cardPx = () => page.locator('.workspace-card').first().evaluate(card => card.getBoundingClientRect().width);
+    const zoomedBefore = await cardPx();
+    await dragDivider(page, 1180 - 360);
+    const zoomedAfter = await cardPx();
+    assert(Math.abs(zoomedAfter - zoomedBefore) / zoomedBefore < .03, 'zoomed workspace does not zoom out with the divider: ' + zoomedBefore + ' -> ' + zoomedAfter);
+    assert.notEqual(await page.locator('#workspaceZoomReset').textContent(), '100%');
+
+    // A zoomed-in paper keeps its on-screen size too, instead of snapping back to fit.
+    await page.locator('#zenMore').click();
+    await page.locator('#zenReadingControls').click();
+    await page.locator('#readerControlsDialog').waitFor({ state: 'visible' });
+    await page.locator('#zoomIn').click();
+    await page.locator('#zoomIn').click();
+    await page.click('#readerControlsDialog [data-close="readerControlsDialog"]');
+    await page.locator('#readerControlsDialog').waitFor({ state: 'hidden' });
+    await page.waitForTimeout(600);
+    const pagePx = () => page.locator('.pdf-page').first().evaluate(node => node.getBoundingClientRect().width);
+    const paperBefore = await pagePx();
+    await dragDivider(page, 1180 - 520);
+    await page.waitForTimeout(900);
+    const paperAfter = await pagePx();
+    assert(Math.abs(paperAfter - paperBefore) / paperBefore < .03, 'zoomed paper does not snap to fit with the divider: ' + paperBefore + ' -> ' + paperAfter);
+
     assert.deepEqual(errors, [], 'no page errors');
-    console.log('PASS squeezing the workspace scales notes, text and ink together');
+    console.log('PASS squeezing the workspace scales notes, text and ink together; zoom survives the divider');
   } finally {
     if (browser) await browser.close();
     server.close();

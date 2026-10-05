@@ -28,16 +28,17 @@ function lock() {
     fireRelease() { if (handlers.release) handlers.release(); } };
 }
 function harness(wakeRequest) {
-  const elements = Object.fromEntries(['zenDock', 'findBar', 'zenBtn', 'readerPage', 'mMore', 'zenFind'].map(id => [id, node()]));
+  const elements = Object.fromEntries(['zenDock', 'findBar', 'zenExit', 'readerPage', 'mMore', 'zenMore'].map(id => [id, node()]));
   elements.findBar.classList.add('hidden');
-  const calls = { fullscreen: 0, exitFullscreen: 0, toast: 0, refit: 0, sheet: 0, tablet: 0 };
+  const calls = { fullscreen: 0, exitFullscreen: 0, toast: 0, refit: 0, sheet: 0, tablet: 0, pages: [] };
+  const handlers = {};
   const document = {
     body: node(), visibilityState: 'visible', fullscreenElement: null,
     documentElement: {
-      requestFullscreen() { calls.fullscreen++; return Promise.resolve(); },
-      exitFullscreen() { calls.exitFullscreen++; return Promise.resolve(); }
+      requestFullscreen() { calls.fullscreen++; document.fullscreenElement = document.documentElement; return Promise.resolve(); }
     },
-    addEventListener() {}
+    exitFullscreen() { calls.exitFullscreen++; document.fullscreenElement = null; return Promise.resolve(); },
+    addEventListener(name, callback) { (handlers[name] ||= []).push(callback); }
   };
   const context = vm.createContext({
     document, navigator: { wakeLock: wakeRequest ? { request: wakeRequest } : null },
@@ -50,20 +51,21 @@ function harness(wakeRequest) {
     requestAnimationFrame() { calls.refit++; },
     renderPdfPage() {}, placeGuide() {}, updateProgress() {},
     showReaderToast() { calls.toast++; }, pagedPdfFlow: () => false,
+    showPage(id) { calls.pages.push(id); },
     setTimeout: () => 1, clearTimeout() {}
   });
   vm.runInContext(section('  var zenOn=false,zenViaFullscreen=false,zenIdleTimer=0,zenWakeLock=null,zenWakePending=false;',
-    '  byId(\'zenBtn\').onclick=function(){setZen(!zenOn);};'), context,
+    '  /* Auto-scroll:'), context,
   { filename: 'reading.js Zen lifecycle' });
-  return { context, elements, calls, document };
+  return { context, elements, calls, document, emit(name) { for (const handler of handlers[name] || []) handler(); } };
 }
 
-test('automatic Zen entry applies the reading state without fullscreen, toast, or competing refit', () => {
+test('sole reader entry applies quiet reading without fullscreen, toast, or competing refit', () => {
   const { context, elements, calls, document } = harness();
-  context.setZen(true, { fullscreen: false, quiet: true, refit: false });
+  context.setZen(true, { quiet: true, refit: false });
   assert.equal(context.zenOn, true);
   assert.equal(document.body.classList.contains('zen'), true);
-  assert.equal(elements.zenBtn.attributes['aria-pressed'], 'true');
+  assert.equal(elements.readerPage.classList.contains('show-tools'), false);
   assert.equal(calls.sheet, 1);
   assert.equal(calls.tablet, 1);
   assert.equal(calls.fullscreen, 0);
@@ -73,6 +75,97 @@ test('automatic Zen entry applies the reading state without fullscreen, toast, o
   assert.equal(document.body.classList.contains('zen'), false);
   assert.equal(calls.toast, 0);
   assert.equal(calls.refit, 0);
+});
+
+test('X delegates directly to the library instead of toggling the old reader interface', () => {
+  const { context, elements, calls } = harness();
+  context.setZen(true, { refit: false });
+  elements.zenExit.onclick();
+  assert.deepEqual(calls.pages, ['libraryPage']);
+  assert.equal(context.zenOn, true, 'showPage owns reading cleanup, not an intermediate desk transition');
+});
+
+test('browser fullscreen can enter and leave without changing the reading interface', async () => {
+  const { context, calls, document, emit } = harness();
+  context.setZen(true, { refit: false });
+  context.toggleReaderFullscreen();
+  await tick();
+  assert.equal(calls.fullscreen, 1);
+  assert.equal(context.zenViaFullscreen, true);
+  context.toggleReaderFullscreen();
+  await tick();
+  emit('fullscreenchange');
+  assert.equal(calls.exitFullscreen, 1);
+  assert.equal(context.zenViaFullscreen, false);
+  assert.equal(context.zenOn, true);
+  assert.equal(document.body.classList.contains('zen'), true);
+  assert.deepEqual(calls.pages, []);
+});
+
+test('system fullscreen dismissal never exposes the old desk or leaves the paper', async () => {
+  const { context, calls, document, emit } = harness();
+  context.setZen(true, { refit: false });
+  context.toggleReaderFullscreen();
+  await tick();
+  document.fullscreenElement = null;
+  emit('fullscreenchange');
+  assert.equal(context.zenViaFullscreen, false);
+  assert.equal(context.zenOn, true);
+  assert.equal(document.body.classList.contains('zen'), true);
+  assert.deepEqual(calls.pages, []);
+});
+
+test('leaving the reader releases browser fullscreen if Phloem owns it', async () => {
+  const { context, calls, document } = harness();
+  context.setZen(true, { refit: false });
+  context.toggleReaderFullscreen();
+  await tick();
+  context.setZen(false, { refit: false });
+  assert.equal(calls.exitFullscreen, 1);
+  assert.equal(context.zenViaFullscreen, false);
+  assert.equal(document.body.classList.contains('zen'), false);
+});
+
+test('a late fullscreen acquisition is released if the paper has already closed', async () => {
+  const pending = deferred();
+  const { context, calls, document } = harness();
+  document.documentElement.requestFullscreen = () => {
+    calls.fullscreen++;
+    return pending.promise.then(() => { document.fullscreenElement = document.documentElement; });
+  };
+  context.setZen(true, { refit: false });
+  context.toggleReaderFullscreen();
+  assert.equal(calls.fullscreen, 1);
+  assert.equal(document.fullscreenElement, null, 'the request is still awaiting acquisition');
+  context.setZen(false, { refit: false });
+  assert.equal(calls.exitFullscreen, 0, 'there is no fullscreen to release before acquisition');
+  pending.resolve();
+  await tick();
+  assert.equal(calls.exitFullscreen, 1, 'the late acquisition is immediately released');
+  assert.equal(document.fullscreenElement, null);
+  assert.equal(context.zenViaFullscreen, false);
+  assert.equal(context.zenOn, false);
+  assert.equal(document.body.classList.contains('zen'), false);
+});
+
+test('a fullscreen request completing after system dismissal does not claim stale ownership', async () => {
+  const pending = deferred();
+  const { context, calls, document, emit } = harness();
+  document.documentElement.requestFullscreen = () => {
+    calls.fullscreen++;
+    document.fullscreenElement = document.documentElement;
+    return pending.promise;
+  };
+  context.setZen(true, { refit: false });
+  context.toggleReaderFullscreen();
+  document.fullscreenElement = null;
+  emit('fullscreenchange');
+  pending.resolve();
+  await tick();
+  assert.equal(context.zenViaFullscreen, false);
+  assert.equal(context.zenOn, true);
+  assert.equal(document.body.classList.contains('zen'), true);
+  assert.equal(calls.exitFullscreen, 0);
 });
 
 test('a pending wake-lock request is unique and releases if Zen exits before it resolves', async () => {

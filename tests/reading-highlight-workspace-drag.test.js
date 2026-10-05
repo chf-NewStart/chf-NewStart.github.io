@@ -114,6 +114,14 @@ async function assertNoPencilHighlight(page,label) {
     const page=await context.newPage();page.setDefaultTimeout(25000);
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.addInitScript(() => {
+      // A paired mouse plus touch/Pencil: the visible Zen color palette enables
+      // persistent mouse Marker, while finger drag/scroll/pinch stay available.
+      const nativeMatchMedia=window.matchMedia.bind(window);
+      window.matchMedia=query=>{
+        const result=nativeMatchMedia(query);
+        if(query==='(pointer: fine)'||query==='(any-pointer: fine)')Object.defineProperty(result,'matches',{value:true});
+        return result;
+      };
       localStorage.setItem('readingRoom.comfort.v1',JSON.stringify({pdfLayout:'page',focus:false}));
       localStorage.setItem('readingRoom.notebookCollapsed.v1','1');
     });
@@ -121,7 +129,6 @@ async function assertNoPencilHighlight(page,label) {
     await page.waitForFunction(() => document.body.classList.contains('library-ready'));
     await page.locator('#pdfFile').setInputFiles({name:'saved-highlight.pdf',mimeType:'application/pdf',buffer:await pdfFixture()});
     await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.pagedReady==='true');
-    if(await page.locator('body').evaluate(node=>node.classList.contains('zen')))await page.locator('#zenExit').click();
     await selectPhrase(page);
     const notePoint=await highlightCenter(page);
     await page.mouse.click(notePoint.x,notePoint.y);
@@ -129,7 +136,7 @@ async function assertNoPencilHighlight(page,label) {
     await page.locator('#selectionClose').click();
     const initial=await paper(page),highlight=initial.highlights['1'][0];
     assert.equal(highlight.text,'drag this saved passage');
-    await page.locator('#workspaceOpen').click();
+    await page.locator('#zenWorkspace').click();
     await page.locator('#workspacePanel').waitFor({state:'visible'});
     const from=await highlightCenter(page),to=await workspaceCenter(page);
     await page.mouse.move(from.x,from.y);await page.mouse.down();
@@ -205,7 +212,9 @@ async function assertNoPencilHighlight(page,label) {
       if(!dropInside)assert.deepEqual(afterPencil.readingWorkspace.positions,beforePencil.readingWorkspace.positions,'Pencil release outside workspace does not move the clip');
       assert.equal(await page.locator('.workspace-highlight-ghost').count(),0);
     }
-    await page.locator('#highlightBtn').click();
+    await page.locator('#zenAnnotate').click();
+    await page.locator('#zenMarker').click();
+    await page.locator('#highlightToolbar [data-highlight-color="yellow"]').click();
     assert.equal(await page.locator('body').evaluate(body=>body.classList.contains('marker-on')),true,'marker remains selected for finger drag');
     let cdp;
     if(ENGINE==='chromium'){
@@ -229,7 +238,7 @@ async function assertNoPencilHighlight(page,label) {
       'claimed highlight drag releases the paper selection tracker');
     assert.deepEqual((await paper(page)).highlights,initial.highlights,'successful drop preserves source highlight geometry, color and note exactly');
     assert.equal(await page.locator('body').evaluate(body=>body.classList.contains('marker-on')),true,'finger drop preserves the selected Marker');
-    await page.locator('#highlightBtn').click();
+    await page.locator('#highlightDone').click();
     assert.equal(await page.locator('body').evaluate(body=>body.classList.contains('marker-on')),false,'switching Marker off restores ordinary text selection mode');
     await assertTextSelectionRestored(page,'drop');
     const moved=(await paper(page)).readingWorkspace.positions[after.readingExcerpts.items[0].id];
@@ -249,7 +258,8 @@ async function assertNoPencilHighlight(page,label) {
       }
       assert.equal(await page.locator('.workspace-highlight-ghost').count(),0);
     };
-    await page.locator('#pdfWriteBtn').evaluate(button=>button.click());
+    await page.locator('#zenAnnotate').click();
+    await page.locator('#zenWrite').click();
     assert.equal(await page.locator('#pdfWriteBtn').getAttribute('aria-pressed'),'true');
     await page.locator('#workspaceZoomIn').evaluate(button=>button.click());
     const zoomedTo=await page.locator('#workspaceBoard').evaluate(node=>{

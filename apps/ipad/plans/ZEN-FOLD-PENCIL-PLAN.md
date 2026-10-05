@@ -737,6 +737,40 @@ Pencil-drag screenshot shows only the original saved words marked. Reference
 holds and 66 unified eraser checks passed in Chromium, plus 52 state/cache/bundle
 tests and 19 app-update assertions. No Apple archive/upload was made.
 
+### 2026-10-05 — One quiet reader (shell v160)
+
+Zen is now the only paper-reading interface. The main X returns directly to the
+library through the normal reading-position save and cleanup path; it never
+reveals a second toolbar. More contains This paper (rename, page navigation,
+zoom, contents, Reader view), Notebook, and Reading settings. These reuse the
+existing controls and persistence handlers. Notes and settings float above the
+paper without leaving Zen or changing its fitted width. The five-button dock,
+Workspace, annotation palettes, and guide remain available.
+
+Escape dismisses the active surface/tool before leaving the paper. Native
+dialogs, notes, and settings keep their own keyboard handling. F toggles browser
+fullscreen independently; system fullscreen dismissal cannot expose the former
+desk. Late fullscreen acquisition after library navigation is released.
+
+Verification: Zen-only default flows and compact-rail browser tests passed in
+Chromium and WebKit, including saved notes, rename dialog handoff, page controls,
+PDF resume, clips, and Workspace. Direct X from an open Notebook, immediate
+reopening and one-step browser Back pass for text and PDF; the rapid sheet-close
+then X case also passes. WebKit's coalesced history traversals are avoided by
+consuming sheet and reader layers in one traversal. Ten lifecycle tests, 87
+state/bundle tests, and 19 app-update assertions passed. Phone (390px/320px) and
+desktop overlay screenshots were inspected,
+including software-keyboard insets and scroll access to bottom actions. The
+saved-highlight drag regression now uses the visible Zen controls with a hybrid
+mouse/touch fixture and passed both engines; reference hold interactions also
+passed in Chromium.
+No annotation schema changes or Apple archive/upload in this pass. Older browser
+fixtures that deliberately used X to reveal the removed toolbar still need
+migration to the Zen controls; they are not evidence of a supported second mode.
+
+The separate extended-workspace writable-area issue is not fixed by this change.
+Its untracked diagnostic test remains outside this commit.
+
 ## Sources and API checks
 
 - [Apple: handling double-taps](https://developer.apple.com/documentation/ApplePencil/handling-double-taps-from-apple-pencil) — system preference and configurable alternative behavior.

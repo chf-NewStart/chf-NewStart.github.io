@@ -1,4 +1,4 @@
-/* Fresh paper openings start in Zen; run with PHLOEM_BROWSER=chromium|webkit. */
+/* The paper reader stays in Zen; run with PHLOEM_BROWSER=chromium|webkit. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -37,8 +37,11 @@ function seedLibrary() {
 async function generatedPdf() {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  const page = doc.addPage([612, 792]);
-  page.drawText('Zen fixture PDF passage for workspace clipping.', { x: 52, y: 710, size: 13, font });
+  for (let number = 1; number <= 3; number++) {
+    const page = doc.addPage([612, 792]);
+    page.drawText('Zen fixture PDF passage for workspace clipping. Page ' + number,
+      { x: 52, y: 710, size: 13, font });
+  }
   return Buffer.from(await doc.save());
 }
 async function waitZen(page, paperId) {
@@ -52,18 +55,55 @@ async function waitZen(page, paperId) {
   assert.doesNotMatch(await page.locator('#readerToast').textContent(), /Zen reading/i,
     'automatic Zen entry does not show the manual Zen toast');
 }
-async function exitZen(page) {
-  await page.locator('#zenExit').click();
-  await page.waitForFunction(() => !document.body.classList.contains('zen'));
-  assert.equal(await page.locator('#readerBack').isVisible(), true,
-    'leaving Zen restores the reader navigation toolbar');
+async function staysZen(page, message) {
+  assert.equal(await page.locator('body').evaluate(node => node.classList.contains('zen')), true, message);
+  assert.equal(await page.locator('#readerPage').isVisible(), true, 'the same paper remains open');
+  assert.equal(await page.locator('#readerBack').isVisible(), false, 'the old desk toolbar remains hidden');
 }
-async function backToLibrary(page) {
-  await exitZen(page);
-  await page.locator('#readerBack').click();
+async function atLibrary(page) {
   await page.locator('#libraryPage').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#readerPage').isVisible(), false, 'returning to the library closes the reader');
   assert.equal(await page.locator('body').evaluate(node => node.classList.contains('zen')), false,
     'library remains outside Zen');
+}
+async function backToLibrary(page) {
+  await page.locator('#zenExit').click();
+  await atLibrary(page);
+}
+async function openMoreAction(page, selector) {
+  await page.locator('#zenMore').click();
+  await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+  await page.locator(selector).click();
+  await page.locator('#zenMoreMenu').waitFor({ state: 'hidden' });
+}
+async function waitPdfPage(page, number) {
+  await page.waitForFunction(value => {
+    const active = document.querySelector('.pdf-page.book-active[data-page="' + value + '"] canvas');
+    return !!active?.width && document.getElementById('pdfFrame').dataset.pagedReady === 'true'
+      && document.getElementById('pageNumber').textContent.trim().startsWith(value + ' /');
+  }, number);
+}
+async function notebookExitReopenBack(page, paperId, pdfPage, closeFirst = false) {
+  await openMoreAction(page, '#zenNotebook');
+  await page.locator('#notebook').waitFor({ state: 'visible' });
+  await staysZen(page, 'Notebook is open before the direct library exit');
+  if (closeFirst) {
+    // Model rapid Close notes then X before the pending history traversal returns.
+    await page.evaluate(() => {
+      document.getElementById('sheetClose').click();
+      document.getElementById('zenExit').click();
+    });
+    await atLibrary(page);
+  } else await backToLibrary(page);
+  assert.equal(await page.locator('#sheetScrim').isVisible(), false, 'X dismisses the open Notebook scrim');
+  // Reopen immediately: pending sheet/history cleanup must not consume the new reader entry.
+  await page.locator('[data-continue-paper="' + paperId + '"]').click();
+  await waitZen(page, paperId);
+  if (pdfPage) await waitPdfPage(page, pdfPage);
+  assert.equal(await page.locator('#notebook').isVisible(), false,
+    'reopening after X starts with the Notebook closed');
+  await page.goBack();
+  await atLibrary(page);
 }
 
 (async () => {
@@ -89,8 +129,19 @@ async function backToLibrary(page) {
     await page.addInitScript(seedLibrary);
     await page.addInitScript(() => {
       window.__zenFullscreenRequests = 0;
-      Element.prototype.requestFullscreen = () => {
+      window.__zenFullscreenExits = 0;
+      let fullscreenElement = null;
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreenElement });
+      Element.prototype.requestFullscreen = function () {
         window.__zenFullscreenRequests++;
+        fullscreenElement = this;
+        document.dispatchEvent(new Event('fullscreenchange'));
+        return Promise.resolve();
+      };
+      document.exitFullscreen = () => {
+        window.__zenFullscreenExits++;
+        fullscreenElement = null;
+        document.dispatchEvent(new Event('fullscreenchange'));
         return Promise.resolve();
       };
     });
@@ -103,18 +154,74 @@ async function backToLibrary(page) {
     await waitZen(page, 'zen-text');
     assert.equal(await page.evaluate(() => window.__zenFullscreenRequests), 0,
       'default text Zen does not request fullscreen');
-    await exitZen(page);
-    assert.equal(await page.locator('#readerPage').isVisible(), true, 'manual exit stays in the same paper');
-    await page.locator('#zenBtn').click();
-    await page.waitForFunction(() => document.body.classList.contains('zen'));
-    await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.body.classList.contains('zen'));
-    assert.equal(await page.locator('#readerPage').isVisible(), true, 'Escape exits Zen without closing the paper');
+    assert.deepEqual(await page.locator('#zenDock > button, #zenDock > .zen-tool > button')
+      .evaluateAll(buttons => buttons.filter(button => button.getClientRects().length).map(button => button.id)),
+    ['zenExit', 'zenGuide', 'zenAnnotate', 'zenWorkspace', 'zenMore'],
+    'Zen-only reading keeps the compact five-button dock');
+    await page.keyboard.press('f');
+    await page.waitForFunction(() => window.__zenFullscreenRequests === 1 && !!document.fullscreenElement);
+    await staysZen(page, 'F enters browser fullscreen without leaving Zen');
+    await page.keyboard.press('f');
+    await page.waitForFunction(() => window.__zenFullscreenExits === 1 && !document.fullscreenElement);
+    await staysZen(page, 'F exits browser fullscreen without revealing the desk');
 
+    await openMoreAction(page, '#zenNotebook');
+    await page.locator('#notebook').waitFor({ state: 'visible' });
+    await staysZen(page, 'Notebook opens over the Zen paper');
+    const paperNote = 'This paper note must survive closing the Zen overlay.';
+    await page.locator('[data-tab="notesPanel"]').click();
+    await page.locator('#pageNote').fill(paperNote);
+    await page.waitForFunction(value => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+      .find(ch => ch.id === 'zen-text')?.pageNotes?.document === value, paperNote);
+    await page.locator('#sheetClose').click();
+    await page.locator('#notebook').waitFor({ state: 'hidden' });
+    await staysZen(page, 'closing Notebook returns to quiet Zen reading');
+    await openMoreAction(page, '#zenNotebook');
+    assert.equal(await page.locator('#pageNote').inputValue(), paperNote, 'reopening Notebook restores the saved note');
+    await page.locator('#sheetClose').focus();
+    await page.keyboard.press('Escape');
+    await page.locator('#notebook').waitFor({ state: 'hidden' });
+    await staysZen(page, 'the first Escape closes Notebook only');
+    await page.keyboard.press('Escape');
+    await atLibrary(page);
+
+    await page.locator('[data-continue-paper="zen-text"]').click();
+    await waitZen(page, 'zen-text');
+    await notebookExitReopenBack(page, 'zen-text');
+    await page.locator('[data-continue-paper="zen-text"]').click();
+    await waitZen(page, 'zen-text');
+    await notebookExitReopenBack(page, 'zen-text', null, true);
+    assert.equal(await page.evaluate(value => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+      .find(ch => ch.id === 'zen-text')?.pageNotes?.document === value, paperNote), true,
+    'direct Notebook exit and browser Back preserve the text paper note');
+
+    await page.locator('[data-continue-paper="zen-text"]').click();
+    await waitZen(page, 'zen-text');
+    await openMoreAction(page, '#zenSettings');
+    await page.locator('#comfortBar').waitFor({ state: 'visible' });
+    await staysZen(page, 'reading settings open over the Zen paper');
+    await page.keyboard.press('Escape');
+    await page.locator('#comfortBar').waitFor({ state: 'hidden' });
+    await staysZen(page, 'Escape dismisses settings before closing the paper');
+    await openMoreAction(page, '#zenSettings');
+    await page.locator('#comfortBar').waitFor({ state: 'visible' });
+    await backToLibrary(page);
+    assert.equal(await page.locator('#comfortBar').isVisible(), false, 'X returns straight to the library from settings');
+    await page.locator('[data-continue-paper="zen-text"]').click();
+    await waitZen(page, 'zen-text');
+    await page.locator('#zenMore').click();
+    await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+    await backToLibrary(page);
+    assert.equal(await page.locator('#zenMoreMenu').isVisible(), false, 'X returns straight to the library from an open popout');
+
+    await page.locator('[data-continue-paper="zen-text"]').click();
     await page.reload({ waitUntil: 'load' });
     await waitZen(page, 'zen-text');
     assert.equal(await page.evaluate(() => window.__zenFullscreenRequests), 0,
       'reload into Zen does not request fullscreen');
+    await openMoreAction(page, '#zenNotebook');
+    assert.equal(await page.locator('#pageNote').inputValue(), paperNote, 'the paper note survives a full reload');
+    await page.locator('#sheetClose').click();
     await backToLibrary(page);
     await page.locator('[data-continue-paper="zen-text"]').click();
     await waitZen(page, 'zen-text');
@@ -128,6 +235,42 @@ async function backToLibrary(page) {
     await waitZen(page, pdfId);
     assert.equal(await page.evaluate(() => window.__zenFullscreenRequests), 0,
       'default PDF Zen does not request fullscreen');
+
+    await openMoreAction(page, '#zenReadingControls');
+    await page.locator('#readerControlsDialog').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#readerControlsDialog').evaluate(node => node instanceof HTMLDialogElement && node.open),
+      true, 'reading controls use an open native dialog');
+    for (const id of ['renameReaderTitle', 'pageNumber', 'prevPage', 'nextPage', 'zoomLabel', 'zoomIn', 'zoomOut', 'tocBtn', 'reflowBtn']) {
+      assert.equal(await page.locator('#' + id).count(), 1, id + ' remains a single existing control');
+      assert.equal(await page.locator('#readerControlsDialog #' + id).count(), 1, id + ' is reachable inside Reading controls');
+    }
+    await staysZen(page, 'Reading controls preserve Zen beneath the dialog');
+    await page.locator('#renameReaderTitle').click();
+    await page.locator('#renamePaperDialog').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#readerControlsDialog').isVisible(), false,
+      'Rename replaces Reading controls with its own dialog');
+    assert.equal(await page.locator('#renamePaperTitle').evaluate(node => document.activeElement === node), true,
+      'the rename field receives focus after Reading controls closes');
+    await page.locator('#renamePaperTitle').fill('Zen renamed PDF');
+    await page.locator('#renamePaperTitle').press('Enter');
+    await page.locator('#renamePaperDialog').waitFor({ state: 'hidden' });
+    await staysZen(page, 'renaming the paper keeps Zen active');
+    assert.equal(await page.locator('#readerTitle').textContent(), 'Zen renamed PDF');
+    await openMoreAction(page, '#zenReadingControls');
+    await page.locator('#nextPage').click();
+    await waitPdfPage(page, 2);
+    await page.keyboard.press('Escape');
+    await page.locator('#readerControlsDialog').waitFor({ state: 'hidden' });
+    await staysZen(page, 'Escape dismisses the Reading controls dialog first');
+    await notebookExitReopenBack(page, pdfId, 2);
+    await page.locator('[data-continue-paper="' + pdfId + '"]').click();
+    await waitPdfPage(page, 2);
+    await waitZen(page, pdfId);
+    await openMoreAction(page, '#zenReadingControls');
+    await page.locator('#prevPage').click();
+    await waitPdfPage(page, 1);
+    await page.keyboard.press('Escape');
+    await page.locator('#readerControlsDialog').waitFor({ state: 'hidden' });
 
     const passage = 'Zen fixture PDF passage';
     const selected = await page.evaluate(text => {
@@ -148,13 +291,12 @@ async function backToLibrary(page) {
     await page.locator('#excerptsPanel').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#notebook').isVisible(), true,
       'Save excerpt reveals the requested Clips notebook panel');
-    assert.equal(await page.locator('body').evaluate(node => node.classList.contains('zen')), false,
-      'explicit Save excerpt leaves Zen so its panel is not hidden');
+    await staysZen(page, 'Save excerpt reveals Clips over the same Zen paper');
     assert.equal(await page.evaluate(value => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
       .find(ch => ch.id === localStorage.getItem('readingRoom.lastOpen.v1'))?.readingExcerpts?.items?.some(item => item.quote === value), passage), true,
     'selected passage is saved as a clip');
-    await page.locator('#zenBtn').click();
-    await page.waitForFunction(() => document.body.classList.contains('zen'));
+    await page.locator('#sheetClose').click();
+    await page.locator('#notebook').waitFor({ state: 'hidden' });
 
     assert.equal(await page.locator('#zenWorkspace').isVisible(), true,
       'Zen gives Workspace a direct visible control');
@@ -207,7 +349,7 @@ async function backToLibrary(page) {
     assert.equal(await page.locator('body').evaluate(node => node.classList.contains('zen')), false,
       'system browser Back from Zen reaches the ordinary library');
     assert.deepEqual(errors, [], 'default-Zen flow has no page errors');
-    console.log('PASS  New text/PDF openings default to Zen; exits, reload, library and split Workspace work');
+    console.log('PASS  Zen-only text/PDF reading: library exits, layered Escape, fullscreen, notes, reading controls, PDF resume and split Workspace');
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.close(resolve));

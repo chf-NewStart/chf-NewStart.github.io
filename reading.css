@@ -984,8 +984,9 @@
     /* Zen reading: the paper owns the room, with a faint edge rail for the few
        controls that matter mid-read. Each detailed choice opens to the left so the
        outer page corners stay clear for turning. */
-    body.zen .masthead, body.zen .reader-tools, body.zen .comfort-bar,
-    body.zen .progress-rail, body.zen .mobile-bar, body.zen .notebook, body.zen .notebook-resizer, body.zen .notebook-tuck, body.zen .notebook-reopen { display: none !important; }
+    body.zen .masthead, body.zen .progress-rail,
+    body.reading :is(.mobile-bar, .touch-dock, .notebook-resizer, .notebook-tuck, .notebook-reopen),
+    .legacy-reader-commands { display: none !important; }
     body.zen main { min-height: 100vh; }
     body.zen #readerPage { height: calc(100vh - var(--kb-inset, 0px)); height: calc(100dvh - var(--kb-inset, 0px)); }
     body.zen .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
@@ -2282,4 +2283,107 @@
 @media (max-width: 720px) {
   .reading-thread-resume:not(.hidden) { bottom: calc(162px + env(safe-area-inset-bottom)); }
   .excerpt-return-chip:not(.hidden) { bottom: calc(212px + env(safe-area-inset-bottom)); }
+}
+
+/* Reading uses one quiet dock. Detailed controls float above the paper and never
+   add another toolbar or resize its document surface. */
+#readerControlsDialog {
+  top: env(safe-area-inset-top); bottom: calc(var(--kb-inset, 0px) + env(safe-area-inset-bottom));
+  width: min(560px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  max-height: calc(100vh - 24px - var(--kb-inset, 0px));
+  max-height: calc(100dvh - 24px - var(--kb-inset, 0px) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  scroll-padding-block: 84px 16px;
+}
+#readerControlsDialog::backdrop { background: rgba(12,16,18,.42); backdrop-filter: blur(3px); }
+#readerControlsDialog .dialog-head { padding: 12px 16px; }
+#readerControlsDialog .icon-btn { flex: 0 0 44px; width: 44px; min-height: 44px; }
+#readerControlsDialog .reader-tools {
+  display: flex; min-width: 0; min-height: 0; flex-wrap: wrap; align-items: center;
+  gap: 12px 8px; padding: 18px 16px; border: 0; overflow: visible;
+}
+#readerControlsDialog .reader-tools > .title {
+  display: block; flex: 1 0 100%; width: 100%; min-width: 0; margin: 0 0 4px;
+}
+#readerControlsDialog .reader-title-button { width: 100%; min-height: 44px; padding: 2px 0; }
+#readerControlsDialog .reader-tools .title strong {
+  max-width: none; overflow: visible; text-overflow: clip; white-space: normal;
+  overflow-wrap: anywhere; font: 500 1.15rem/1.4 var(--serif);
+}
+#readerControlsDialog .reader-tools .title span { display: block; margin-top: 5px; font-size: .72rem; line-height: 1.45; overflow-wrap: anywhere; }
+#readerControlsDialog .reader-tools .soft-button { min-width: 44px; min-height: 44px; padding: 8px 12px; border-color: var(--line); color: var(--ink); }
+#readerControlsDialog .reader-tools .soft-button .wide { display: inline; }
+#readerControlsDialog .reader-tools > :is(.reader-page-controls, .zoom-tools):not(.hidden) { display: flex; flex: 1 0 100%; }
+#readerControlsDialog .reader-tools > :is(#tocBtn, #reflowBtn):not(.hidden) { display: inline-flex; }
+#readerControlsDialog .reader-page-controls { min-width: 0; align-items: center; flex-wrap: wrap; gap: 8px; }
+#readerControlsDialog :is(#prevPage, #nextPage, #pageNumber):not(.hidden) { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+#readerControlsDialog #pageNumber { flex: 1; margin: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: .78rem; }
+#readerControlsDialog .zoom-tools { min-width: 0; flex-wrap: wrap; gap: 6px; border: 0; border-radius: 0; overflow: visible; }
+#readerControlsDialog .zoom-tools button { flex: 1 1 44px; min-width: 44px; min-height: 44px; height: auto; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+#readerControlsDialog .zoom-tools #colZoomBtn { flex: 2 1 155px; white-space: normal; }
+
+body.zen #comfortBar {
+  position: fixed; z-index: 47; top: calc(12px + env(safe-area-inset-top));
+  right: calc(68px + env(safe-area-inset-right)); bottom: auto; left: auto;
+  width: min(570px, calc(100vw - 92px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  max-height: calc(100vh - 24px - var(--kb-inset, 0px));
+  max-height: calc(100dvh - 24px - var(--kb-inset, 0px) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 10px; padding: 0 12px 12px;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scroll-padding-block: 74px 12px;
+  border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 20px 62px rgba(12,16,18,.28);
+}
+body.zen #comfortBar::-webkit-scrollbar { display: block; width: 6px; }
+body.zen #comfortBar::-webkit-scrollbar-thumb { border-radius: 6px; background: var(--line); }
+.reader-settings-head { position: sticky; z-index: 2; top: 0; display: flex; align-items: center; gap: 8px; margin: 0 -12px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.reader-settings-head h2 { min-width: 0; margin: 0; font: 500 1.15rem/1.3 var(--serif); }
+.reader-settings-head .icon-btn { flex: 0 0 44px; width: 44px; min-height: 44px; margin-left: auto; }
+body.zen #comfortBar .comfort-section { display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: start; gap: 10px; width: 100%; min-width: 0; padding: 8px; white-space: normal; }
+body.zen #comfortBar.paged-pdf-mode .comfort-motion { display: none; }
+body.zen #comfortBar .comfort-section-title { min-height: 44px; padding-right: 8px; white-space: normal; overflow-wrap: anywhere; }
+body.zen #comfortBar .comfort-section-body { display: flex; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
+body.zen #comfortBar .group { min-width: 0; max-width: 100%; flex: 0 1 auto; flex-wrap: wrap; white-space: normal; }
+body.zen #comfortBar :is(.guide-scope, .guide-palette) { min-width: 0; flex-wrap: wrap; }
+body.zen #comfortBar :is(button, .step-btn, .toggle, .guide-color) { min-width: 44px; min-height: 44px; height: auto; white-space: normal; }
+body.zen #comfortBar input[type="range"] { min-width: 60px; min-height: 44px; max-width: 100%; }
+body.zen #comfortBar .comfort-reset { justify-self: end; margin: 0; }
+
+body.zen #notebook:not(.sheet-open) { display: none !important; }
+body.zen #notebook.sheet-open {
+  position: fixed; z-index: 46; top: calc(12px + env(safe-area-inset-top));
+  right: calc(68px + env(safe-area-inset-right)); bottom: calc(12px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px))); left: auto;
+  display: flex !important; width: min(430px, calc(100vw - 92px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  height: auto; max-height: none; overflow: hidden; border: 1px solid var(--line); border-radius: 18px;
+  background: var(--surface); box-shadow: 0 20px 62px rgba(12,16,18,.3);
+  opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition: none;
+}
+body.zen #notebook::before { display: none; }
+body.zen #notebook .tabs { margin: 0 52px 0 0; padding-top: 0; min-height: 64px; }
+body.zen #notebook .tab { min-width: 0; min-height: 44px; padding: 12px 3px; overflow-wrap: anywhere; }
+body.zen #notebook #sheetClose { position: absolute; z-index: 4; top: 10px; right: 8px; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); }
+body.zen #notebook .tab-panel { flex: 1 1 auto; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 16px; scroll-padding-block: 12px; }
+body.zen #notebook :is(input, textarea) { max-width: 100%; }
+body.zen #notebook :is(button, .field) { min-height: 44px; }
+body.zen #sheetScrim:not(.hidden) { position: fixed; z-index: 45; inset: 0; display: block; background: rgba(12,16,18,.34); }
+body.zen .zen-action-menu { max-height: calc(100dvh - 24px - var(--kb-inset, 0px) - env(safe-area-inset-top) - env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+body.zen .zen-action-menu .zen-menu-action { flex-shrink: 0; }
+body.zen .zen-action-menu .zen-menu-action::after { min-width: 0; text-align: left; }
+
+@media (max-width: 600px) {
+  body.zen #comfortBar { right: calc(66px + env(safe-area-inset-right)); width: calc(100vw - 78px - env(safe-area-inset-left) - env(safe-area-inset-right)); padding-inline: 10px; }
+  body.zen #comfortBar .reader-settings-head { margin-inline: -10px; padding-inline: 10px; }
+  body.zen #comfortBar .comfort-section { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  body.zen #comfortBar .comfort-section-title { min-height: 28px; padding: 0 0 6px; border-right: 0; border-bottom: 1px solid var(--line); }
+  body.zen #comfortBar .comfort-section-body { gap: 10px; }
+  body.zen #comfortBar .group { flex: 1 1 100%; gap: 5px; }
+  body.zen #comfortBar .group-label { flex: 1 0 100%; }
+  body.zen #comfortBar .guide-dim-control input { flex: 1; width: 0; }
+  body.zen #notebook.sheet-open { right: calc(66px + env(safe-area-inset-right)); width: calc(100vw - 78px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
+  body.zen #notebook .tab { font-size: .65rem; letter-spacing: 0; }
+  body.zen #notebook .tab-panel { padding: 12px; }
+  body.zen #notebook :is(input, textarea) { font-size: 16px; }
+  body.zen #notebook :is(.notebook-listen, .note-heading-row, .paper-tools) { flex-wrap: wrap; }
+  body.zen #notebook .review-file-actions { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 360px) {
+  body.zen #notebook .tab { padding-inline: 2px; font-size: .6rem; white-space: nowrap; overflow-wrap: normal; }
 }

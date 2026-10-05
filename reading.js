@@ -764,6 +764,13 @@
     applyTheme(dark);
   };
   var historyEcho=0,navFromPop=false;
+  function consumeReaderHistory(){
+    // Never queue two traversals: WebKit may coalesce them into one popstate.
+    // An in-flight sheet close is reconciled against the visible screen below.
+    if(historyEcho)return;
+    var state=history.state&&history.state.phloem;if(!state)return;
+    try{history.go(state==='sheet'?-2:-1);historyEcho++;}catch(e){}
+  }
   function showPage(id){
     var wasReading=!byId('readerPage').classList.contains('hidden');
     if(id!=='readerPage'&&byId('readingKeepDialog').open)byId('readingKeepDialog').close();
@@ -778,20 +785,21 @@
        never scroll, or the toolbar slides under the sticky masthead. */
     document.body.classList.toggle('reading', id === 'readerPage');
     if (id !== 'readerPage') {
+      setDrift(0);setHighlightToolbarOpen(false);setComfortBarOpen(false);
+      if(byId('readerControlsDialog').open)byId('readerControlsDialog').close();
       if(zenOn)setZen(false,{quiet:true,refit:false});
       if(workspaceOpen)setWorkspaceOpen(false,false);
       resetExcerptNavigation();
       pdfOpenEpoch++;invalidatePdfLinkNavigation(true);pdfDoc=null;
-      toggleSheet(false); hideLookup(); hidePdfReferencePreview(); byId('linkReturn').classList.add('hidden'); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){}
+      toggleSheet(false,true); hideLookup(); hidePdfReferencePreview(); byId('linkReturn').classList.add('hidden'); try{localStorage.removeItem(LAST_OPEN_KEY);}catch(e){}
     }
-    /* Any exit that bypasses the back button (masthead, brand, deleting the open
-       paper) still consumes the reader's history layer, or the next system back
-       would be silently dead. A sheet layer mid-consume reads as 'sheet' here and
-       the extra back below settles both layers; the echoes are swallowed. */
+    /* X consumes an open notebook and its reader in one history traversal. The
+       screen changes immediately; a quick reopen is repaired by the echo below. */
     if (wasReading && id !== 'readerPage' && !navFromPop) {
-      try{ if(history.state&&history.state.phloem){ history.back(); historyEcho++; } }catch(e){}
+      consumeReaderHistory();
     }
-    if (id === 'readerPage' && temporaryNotebookMode()) { toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false'); }
+    // The quiet paper is the only reader, including history/reopen entry points.
+    if (id === 'readerPage') setZen(true,{quiet:true,refit:false});
     if (id === 'libraryPage') renderShelf();
     if (id === 'reviewPage') renderReview();
     if (id === 'connectionsPage') renderConnections();
@@ -861,7 +869,14 @@
     var readerOpen=!byId('readerPage').classList.contains('hidden');
     if(historyEcho>0){
       historyEcho--;
-      if(sheetOpen&&st!=='sheet'){try{history.pushState({phloem:'sheet'},'');}catch(err){}}
+      if(!readerOpen){consumeReaderHistory();return;}
+      // The reader may have reopened while X's traversal was still pending.
+      // Give that visible paper one fresh layer instead of swallowing its Back.
+      try{
+        if(!st)history.pushState({phloem:'reader'},'');
+        if(sheetOpen&&st!=='sheet')history.pushState({phloem:'sheet'},'');
+        else if(!sheetOpen&&st==='sheet')history.replaceState({phloem:'reader'},'');
+      }catch(err){}
       return;
     }
     if(sheetOpen&&st!=='sheet'){
@@ -872,7 +887,6 @@
     if(readerOpen){
       if(!st){
         document.querySelectorAll('dialog[open]').forEach(function(d){try{d.close();}catch(err){}});
-        setDrift(0);if(zenOn)setZen(false);
         navFromPop=true;try{showPage('libraryPage');}finally{navFromPop=false;}
       }
       else if(st==='sheet'&&!sheetOpen){try{history.replaceState({phloem:'reader'},'');}catch(err){}}
@@ -2666,12 +2680,14 @@
     if(open&&!comfortReturnFocus)comfortReturnFocus=trigger||document.activeElement;
     bar.classList.toggle('hidden',!open);byId('guideTool').classList.toggle('settings-open',open);btn.setAttribute('aria-expanded',String(open));
     if(touchButton)touchButton.setAttribute('aria-expanded',String(open));
-    if(touchTabletUi()){bar.setAttribute('role','dialog');bar.setAttribute('aria-modal','false');}
+    byId('zenSettings').setAttribute('aria-expanded',String(open));
+    if(zenOn||touchTabletUi()){bar.setAttribute('role','dialog');bar.setAttribute('aria-modal','false');}
     else{bar.removeAttribute('role');bar.removeAttribute('aria-modal');}
-    if(open&&touchTabletUi())requestAnimationFrame(function(){var first=Array.from(bar.querySelectorAll('button:not([disabled]), input:not([disabled])')).find(function(element){return element.offsetParent!==null;});if(first)first.focus();});
+    if(open&&(zenOn||touchTabletUi()))requestAnimationFrame(function(){var first=Array.from(bar.querySelectorAll('button:not([disabled]), input:not([disabled])')).find(function(element){return element.offsetParent!==null;});if(first)first.focus();});
     if(!open){var target=comfortReturnFocus;comfortReturnFocus=null;if(returnFocus&&target&&target.isConnected)try{target.focus({preventScroll:true});}catch(e){try{target.focus();}catch(err){}}}
   }
   byId('comfortBtn').onclick=function(){dismissGuideDiscovery();setComfortBarOpen(byId('comfortBar').classList.contains('hidden'));};
+  byId('comfortClose').onclick=function(){setComfortBarOpen(false,true);};
   function setFocusPara(index,scroll){
     var list=paraSections();if(!list.length){focusPara=null;return;}
     focusPara=Math.max(0,Math.min(list.length-1,index||0));
@@ -2796,7 +2812,7 @@
   function placeZenPopouts(){
     ['zenGuideMenu','zenAnnotateMenu','zenMoreMenu'].forEach(function(id){
       var menu=byId(id);if(!menu||menu.classList.contains('hidden'))return;
-      var owner=menu.parentElement.getBoundingClientRect(),height=window.innerHeight,style=getComputedStyle(menu);
+      var owner=menu.parentElement.getBoundingClientRect(),height=Math.min(window.innerHeight,window.visualViewport?window.visualViewport.height:window.innerHeight),style=getComputedStyle(menu);
       var topInset=10+(parseFloat(style.getPropertyValue('--zen-safe-top'))||0),bottomInset=10+(parseFloat(style.getPropertyValue('--zen-safe-bottom'))||0);
       menu.style.maxHeight=Math.max(44,height-topInset-bottomInset)+'px';
       menu.style.transform='none';
@@ -2835,6 +2851,15 @@
      live in separate disclosures. Workspace is a reversible paper/workspace mode. */
   byId('zenAnnotate').onclick=function(){toggleZenPopout('zenAnnotate','zenAnnotateMenu','zenAnnotateTool');};
   byId('zenMore').onclick=function(){toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');};
+  byId('zenReadingControls').onclick=function(){closeZenPopouts(true);setComfortBarOpen(false);byId('readerControlsDialog').showModal();};
+  byId('zenNotebook').onclick=function(){closeZenPopouts(true);setComfortBarOpen(false);switchTab('notesPanel');toggleSheet(true);};
+  byId('zenSettings').onclick=function(){closeZenPopouts(true);setComfortBarOpen(true,false,byId('zenMore'));};
+  // These actions open their own surface. Close this dialog before their shared
+  // command runs so the paper (or next dialog) is not left behind a modal layer.
+  byId('readerControlsDialog').addEventListener('click',function(event){
+    if(event.target.closest('#renameReaderTitle,#tocBtn,#pageNumber,#reflowBtn'))this.close();
+  },true);
+  byId('readerControlsDialog').addEventListener('close',function(){if(zenOn&&!byId('readerPage').classList.contains('hidden')&&!document.querySelector('dialog[open]'))byId('zenMore').focus({preventScroll:true});});
   byId('zenLayout').onclick=function(){toggleZenPopout('zenLayout','zenLayoutMenu','zenLayoutTool');};
   document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.zenPdfLayout);closeZenPopouts(true);};});
   byId('zenGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
@@ -3043,8 +3068,8 @@
   /* iOS cancels the pointer mid-drag if it decides the touch is a scroll; blocking the
      touchmove default keeps the drag alive until the finger actually lifts. */
   byId('guideGrip').addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
-  /* Zen reading: every bar, note and button leaves; the paper gets the whole screen.
-     The guide, zoom, gestures and lookup keep working on top of it. */
+  /* One quiet reader. Notes and occasional controls float above the paper; only
+     leaving the reader clears Zen. Browser fullscreen is independent. */
   var zenOn=false,zenViaFullscreen=false,zenIdleTimer=0,zenWakeLock=null,zenWakePending=false;
   function zenWake(){
     if(!zenOn)return;
@@ -3074,27 +3099,24 @@
     if(!byId('findBar').classList.contains('hidden'))findReturnFocus=visibleFindReturnTarget(zenOn?byId('zenMore'):null);
     if(zenOn){zenWake();holdZenWake();}
     else{closeZenPopouts(false);clearTimeout(zenIdleTimer);document.body.classList.remove('zen-idle');dropZenWake();}
-    byId('zenBtn').classList.toggle('active',zenOn);byId('zenBtn').setAttribute('aria-pressed',String(zenOn));
     if(zenOn){toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false');}
-    /* Leaving zen keeps the paper at full width: the notebook stays tucked away
-       instead of instantly reclaiming its panel; one tap on its edge brings it back. */
-    else if(innerWidth>720)setNotebookCollapsed(true,false);
-    /* Browser fullscreen only on mouse-driven devices: on iPad, system edge gestures keep
-       kicking the page out of fullscreen mid-read, which yanked the whole desk back. */
-    if(zenOn&&options.fullscreen!==false&&matchMedia('(hover: hover) and (pointer: fine)').matches&&document.documentElement.requestFullscreen){
-      document.documentElement.requestFullscreen().then(function(){zenViaFullscreen=true;},function(){});
-    }else if(!zenOn&&zenViaFullscreen){zenViaFullscreen=false;if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});}
+    if(!zenOn&&zenViaFullscreen){zenViaFullscreen=false;if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});}
     if(options.refit!==false)requestAnimationFrame(function(){
       if(readerMode==='pdf'&&pdfDoc)renderPdfPage();
       if(comfort.focus)placeGuide();
       updateProgress();
     });
-    if(!options.quiet)showReaderToast(zenOn?(pagedPdfFlow()?'Zen reading · Space turns the page · Esc leaves':'Zen reading · Space starts a slow auto-scroll · Esc leaves'):'Back at the desk');
   }
-  byId('zenBtn').onclick=function(){setZen(!zenOn);};
-  byId('zenExit').onclick=function(){setZen(false);};
+  function toggleReaderFullscreen(){
+    if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});
+    else if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(function(){
+      if(!zenOn){if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});return;}
+      zenViaFullscreen=!!document.fullscreenElement;
+    },function(){});
+  }
+  byId('zenExit').onclick=function(){showPage('libraryPage');};
   document.addEventListener('fullscreenchange',function(){
-    if(!document.fullscreenElement&&zenOn&&zenViaFullscreen){zenViaFullscreen=false;setZen(false);}
+    if(!document.fullscreenElement)zenViaFullscreen=false;
   });
   /* Auto-scroll: the paper drifts up at a steady pace, which quietly enforces a reading
      rhythm. Touching or wheeling the page pauses the drift, then it resumes. */
@@ -3160,7 +3182,6 @@
   byId('documentPane').addEventListener('touchstart',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('touchmove',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('wheel',function(){holdDrift(1500);},{passive:true});
-  byId('readerBack').addEventListener('click',function(){setDrift(0);setHighlightToolbarOpen(false);if(zenOn)setZen(false);});
   var TOUCH_DOCK_SIDE_KEY='readingRoom.touchDockSide.v1',TOUCH_NOTES_PIN_KEY='readingRoom.touchNotesPinned.v1';
   var touchDockSide='right',tabletNotesPinned=false,sheetReturnFocus=null,sheetReadingPosition=null;
   try{touchDockSide=localStorage.getItem(TOUCH_DOCK_SIDE_KEY)==='left'?'left':'right';}catch(e){}
@@ -3170,7 +3191,7 @@
   /* Phones already use the bottom sheet. Touch tablets use the same temporary-panel
      semantics by default, so opening Notes cannot squeeze, refit, or move the PDF.
      A wide landscape reader can explicitly pin the notebook beside the page. */
-  function temporaryNotebookMode(){return innerWidth<=720||(touchTabletUi()&&(!tabletNotesPinned||!tabletSidePanelAvailable()||zenOn));}
+  function temporaryNotebookMode(){return zenOn||innerWidth<=720||(touchTabletUi()&&(!tabletNotesPinned||!tabletSidePanelAvailable()));}
   function syncTouchDockStates(){
     var guide=byId('touchGuide'),marker=byId('touchHighlight'),notes=byId('touchNotes'),undo=byId('touchUndo');if(!guide)return;
     guide.classList.toggle('active',!!comfort.focus);guide.setAttribute('aria-pressed',String(!!comfort.focus));
@@ -3215,8 +3236,7 @@
   /* Pushing the divider far enough right tucks the whole notebook away; a slim tab at
      the screen edge brings it back. */
   function setNotebookCollapsed(on,save){
-    // Opening the desk is intentional; do not leave its controls hidden by Zen.
-    if(!on&&zenOn)setZen(false,{quiet:true});
+    if(zenOn){toggleSheet(!on);return;}
     if(temporaryNotebookMode()){
       byId('readerLayout').classList.remove('notebook-collapsed');byId('readerLayout').style.removeProperty('--notebook-width');byId('notebookReopen').setAttribute('aria-expanded','false');syncTouchDockStates();return;
     }
@@ -3270,12 +3290,13 @@
   }
   function toggleSheet(open,fromHistory){
     var notebook=byId('notebook'),scrim=byId('sheetScrim'),willOpen=open!==undefined?open:!notebook.classList.contains('sheet-open');
-    if(willOpen&&zenOn)setZen(false,{quiet:true});
+    if(willOpen&&zenOn){closeZenPopouts(false);setComfortBarOpen(false);}
     if(willOpen&&workspaceOpen)setWorkspaceOpen(false,false);
     var wasOpen=notebook.classList.contains('sheet-open');
     if(willOpen&&!wasOpen){sheetReturnFocus=document.activeElement;sheetReadingPosition=readerMode==='pdf'?capturePdfReadingPosition():null;}
     if(!willOpen&&recallActive)setRecall(false);
     notebook.classList.toggle('sheet-open',willOpen);scrim.classList.toggle('hidden',!willOpen);
+    byId('zenNotebook').setAttribute('aria-expanded',String(willOpen));
     syncMobileSheetButtons();
     var hideSheet=temporaryNotebookMode()&&!willOpen;
     try{byId('notebook').inert=hideSheet;}catch(e){}
@@ -3290,7 +3311,7 @@
        stack never drifts from what is on screen. */
     try{
       if(willOpen&&!wasOpen&&temporaryNotebookMode()&&!(history.state&&history.state.phloem==='sheet'))history.pushState({phloem:'sheet'},'');
-      else if(!willOpen&&wasOpen&&!fromHistory&&history.state&&history.state.phloem==='sheet'){history.back();historyEcho++;}
+      else if(!willOpen&&wasOpen&&!fromHistory&&!historyEcho&&history.state&&history.state.phloem==='sheet'){history.back();historyEcho++;}
     }catch(e){}
     return sheetRestore;
   }
@@ -3357,7 +3378,7 @@
   };
   document.addEventListener('pointerdown',function(e){
     if(!e.target.closest('#touchDock'))closeTouchDockMore(false);
-    if(touchTabletUi()&&!byId('comfortBar').classList.contains('hidden')&&!e.target.closest('#comfortBar, #comfortBtn, #touchSettings'))setComfortBarOpen(false,false);
+    if((zenOn||touchTabletUi())&&!byId('comfortBar').classList.contains('hidden')&&!e.target.closest('#comfortBar, #comfortBtn, #touchSettings, #zenSettings'))setComfortBarOpen(false,false);
   },true);
   function updateProgress(){
     var ch=find(currentId),pct=0;
@@ -4046,10 +4067,7 @@
       else if(history.state.phloem==='sheet')history.replaceState({phloem:'reader'},'');
     }catch(e){}}
     readerMode=ch.kind==='pdf'?'pdf':'text';byId('pdfFrame').dataset.positionReady=ch.kind==='pdf'?'false':'true'; applyComfort(); updateReaderMode(); showPage('readerPage');
-    /* A fresh reading session starts on the quiet paper surface. Establish its
-       geometry before PDF fitting/position restoration, without requesting browser
-       fullscreen or scheduling a competing refit during the asynchronous open. */
-    setZen(true,{fullscreen:false,quiet:true,refit:false});
+    /* showPage establishes the quiet geometry before PDF fitting/position restore. */
     if((ch.reviewComments||[]).length){if(innerWidth>720&&!zenOn)setNotebookCollapsed(false,false);switchTab('reviewsPanel');}else switchTab('notesPanel');
     if(ch.kind==='pdf'){
       try{
@@ -5383,6 +5401,8 @@
   })();
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;
+    // Native dialogs own Escape, focus and form shortcuts; none may exit the reader.
+    if(document.querySelector('dialog[open]'))return;
     // A card handle, canvas, or workspace button owns its keyboard interaction.
     // Arrow keys and Undo here must not turn pages or erase PDF annotations.
     if(workspaceOpen&&byId('workspacePanel').contains(e.target))return;
@@ -5401,6 +5421,9 @@
       var focusable=Array.from(byId('notebook').querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')).filter(function(element){return element.offsetParent!==null;});
       if(focusable.length){var first=focusable[0],last=focusable[focusable.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();return;}if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();return;}}
     }
+    // Notes/settings own their native button, form and arrow keys. Typing or
+    // pressing Space there must not turn the PDF underneath the overlay.
+    if(byId('notebook').contains(e.target)||byId('comfortBar').contains(e.target))return;
     if(e.key==='Escape'&&cancelActiveBookCurl(false)){e.preventDefault();return;}
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
     if(e.key==='Escape'&&!byId('lookupCard').classList.contains('hidden')){e.preventDefault();hideLookup();return;}
@@ -5408,13 +5431,13 @@
     if(e.key==='Escape'&&highlightEraseMode){e.preventDefault();setHighlightEraseMode(false);showReaderToast('Eraser off');return;}
     if(e.key==='Escape'&&pdfWriteMode){e.preventDefault();setPdfWriteMode(false);if(zenOn)byId('zenAnnotate').focus();showReaderToast('Write mode off');return;}
     if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
-    if(e.key==='Escape'&&zenOn){e.preventDefault();setZen(false);return;}
+    if(e.key==='Escape'&&zenOn){e.preventDefault();showPage('libraryPage');return;}
     if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
     if(e.key==='Escape'&&reviewFocusId){e.preventDefault();dismissReviewerFocus();return;}
     if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undoHighlight();return;}
     if((e.metaKey||e.ctrlKey)&&((e.shiftKey&&e.key.toLowerCase()==='z')||(!e.shiftKey&&e.key.toLowerCase()==='y'))){e.preventDefault();redoHighlight();return;}
     if(e.key==='/'&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleFindBar(true);return;}
-    if(e.key.toLowerCase()==='f'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();setZen(!zenOn);return;}
+    if(e.key.toLowerCase()==='f'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();toggleReaderFullscreen();return;}
     if(e.key.toLowerCase()==='g'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();byId('focusBtn').onclick();return;}
     if(e.key.toLowerCase()==='c'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&readerMode==='pdf'&&pdfDoc){e.preventDefault();cycleColumnZoom();return;}
     if(e.key==='Backspace'&&readerMode==='pdf'&&linkReturnSpot){e.preventDefault();returnFromLink();return;}

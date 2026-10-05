@@ -4,10 +4,10 @@
   'use strict';
 
   const MIN_ZOOM = .5, MAX_ZOOM = 3, KEY = 'phloem.workspaceZoom.v1';
-  // Notes, text and ink are laid out on a sheet at least this wide. A narrower pane
-  // (a squeezed split, a phone) shows the same sheet scaled down, like zooming out,
-  // so nothing reflows or piles up. Wider panes keep laying out at their own width.
-  const LAYOUT_MIN_WIDTH = 560;
+  // Notes, text and ink are always laid out on a sheet this wide (per 1000 units) and
+  // scaled to the pane, like a page in a note app. Moving the divider or rotating the
+  // iPad scales the sheet; it never reflows notes or piles them up.
+  const LAYOUT_WIDTH = 600;
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 
   function create(options) {
@@ -61,7 +61,7 @@
       options.onNeedSpace(growY ? neededY : Math.min(neededY, logicalHeight),
         growX ? neededX : Math.min(neededX, logicalWidth));
     }
-    function layoutWidth() { return Math.max(baseWidth, LAYOUT_MIN_WIDTH); }
+    function layoutWidth() { return LAYOUT_WIDTH; }
     function fit() { return baseWidth / layoutWidth(); }
     function sizePaper() {
       board.style.width = `${layoutWidth() * logicalWidth / 1000}px`;
@@ -77,6 +77,12 @@
       const oldCenterX = oldWidth ? (scroll.scrollLeft + scroll.clientWidth / 2) * 1000 / (oldWidth * zoom) : 0;
       const oldCenterY = oldWidth ? (scroll.scrollTop + scroll.clientHeight / 2) * 1000 / (oldWidth * zoom) : 0;
       baseWidth = scroll.clientWidth;
+      // At 100% the sheet fits the pane. A reader who zoomed keeps the same on-screen
+      // size when the pane changes width, instead of zooming out and back in.
+      if (oldWidth && oldWidth !== baseWidth && Math.abs(zoom - 1) > .001) {
+        zoom = clamp(zoom * oldWidth / baseWidth, MIN_ZOOM, MAX_ZOOM);
+        storeZoom();
+      }
       sizePaper();
       if (oldWidth && oldWidth !== baseWidth) {
         scroll.scrollLeft = oldCenterX * baseWidth * zoom / 1000 - scroll.clientWidth / 2;

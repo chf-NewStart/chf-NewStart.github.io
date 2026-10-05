@@ -339,7 +339,9 @@ async function stickyAppearance(page, card) {
       minHeight: style.minHeight, transform: style.transform,
       quoteFont: quote.fontFamily, quoteColor: quote.color,
       tape: { content: tape.content, width: tape.width, height: tape.height,
-        opacity: Number(tape.opacity), pointerEvents: tape.pointerEvents, backgroundImage: tape.backgroundImage },
+        opacity: Number(tape.opacity), pointerEvents: tape.pointerEvents, backgroundImage: tape.backgroundImage,
+        backgroundColor: tape.backgroundColor, top: tape.top, left: tape.left, right: tape.right,
+        cardWidth: node.getBoundingClientRect().width },
       library: libraryStyle ? { backgroundImage: libraryStyle.backgroundImage,
         borderRadius: libraryStyle.borderRadius, boxShadow: libraryStyle.boxShadow } : null
     };
@@ -470,10 +472,14 @@ async function sourceCueVisual(page, cue) {
     'workspace sticky uses the same three pastel papers and blue ink as the library wall: ' + JSON.stringify(lightSticky));
     assert.match(lightSticky.quoteFont, /DM Sans/i, 'source quote uses the library sticky sans face');
     assert.equal(lightSticky.quoteColor, 'rgb(35, 79, 145)', 'source quote uses the resolved blue ink');
-    assert(lightSticky.tapeTilt.endsWith('deg') && lightSticky.tape.content !== 'none'
-      && lightSticky.tape.width === '38px' && lightSticky.tape.height === '14px'
-      && lightSticky.tape.pointerEvents === 'none' && lightSticky.tape.opacity > 0,
-    'warm tape is visible but cannot intercept sticky interactions: ' + JSON.stringify(lightSticky));
+    // 591ea712 replaced the 38x14 tape with a plain, faintly tinted 44px top strip
+    // (the Pencil grab area) at the owner's request.
+    assert(lightSticky.tape.content !== 'none' && lightSticky.tape.height === '44px'
+      && lightSticky.tape.top === '0px' && lightSticky.tape.left === '0px' && lightSticky.tape.right === '0px'
+      && Math.abs(parseFloat(lightSticky.tape.width) - lightSticky.tape.cardWidth) <= 2
+      && lightSticky.tape.pointerEvents === 'none' && lightSticky.tape.backgroundImage === 'none'
+      && lightSticky.tape.backgroundColor !== 'rgba(0, 0, 0, 0)' && lightSticky.tape.opacity > 0,
+    'plain top strip spans the note, has no tape gradient, and cannot intercept sticky interactions: ' + JSON.stringify(lightSticky));
     assert.equal(lightSticky.transform, 'none', 'workspace card stays unrotated so dragging and ink geometry agree');
     assert.equal(lightSticky.minHeight, '178px', 'workspace sticky has the library paper-note minimum height');
     assert(lightSticky.library, 'the library paper-sticky-note exists for visual parity comparison');
@@ -500,7 +506,8 @@ async function sourceCueVisual(page, cue) {
     assert.equal(darkSticky.quoteColor, lightSticky.quoteColor,
       'dark interface leaves the actual blue quote ink unchanged');
     assert.equal(darkSticky.tapeTilt, lightSticky.tapeTilt, 'dark interface preserves tape placement');
-    assert(darkSticky.tape.opacity < lightSticky.tape.opacity, 'dark interface softens translucent tape');
+    assert.notEqual(darkSticky.tape.backgroundColor, lightSticky.tape.backgroundColor,
+      'dark interface uses its own faint top-strip tint (591ea712)');
     assert.equal(darkSticky.transform, 'none', 'dark mode does not rotate workspace card');
     await page.screenshot({ path: '/tmp/phloem-workspace-sticky-' + ENGINE + '-dark.png' });
     if (!await themeButton.isVisible()) await page.locator('#zenMore').click();
@@ -608,7 +615,7 @@ async function sourceCueVisual(page, cue) {
       'touch pointer drag places a passage without PDF highlighting');
 
     const beforeFreeNote = await paperById(page, pdfId);
-    await openMore(page);
+    // e397e11a put Note directly on the workspace rail instead of inside More.
     await page.locator('#workspaceNewNote').click();
     await page.waitForFunction(id => {
       const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);

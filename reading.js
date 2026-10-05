@@ -6480,7 +6480,11 @@
       var placed=entry.anchor.position&&await placePdfReadingPosition(entry.anchor.position,false,true);
       if(currentId!==chapterId||pdfOpenEpoch!==epoch)return false;
       if(!placed)await gotoPdfPage(entry.anchor.page,'auto');
-      return currentId===chapterId&&pdfOpenEpoch===epoch;
+      if(currentId!==chapterId||pdfOpenEpoch!==epoch)return false;
+      // A fitted paged PDF never scrolls, so no scroll timer saves the jump; an iPad
+      // PWA killed right after it would reopen on the old page.
+      savePdfReadingPosition(false);
+      return true;
     }
     if(readerMode!=='text'){readerMode='text';updateReaderMode();}
     if(currentId!==chapterId||pdfOpenEpoch!==epoch)return false;

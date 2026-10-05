@@ -359,6 +359,9 @@ async function dialogSave(page, text) {
       .getByRole('button', { name: 'Go to place' }).click();
     await pdfPage.waitForFunction(() => document.querySelector('.pdf-page[data-page="2"].book-active canvas')?.width > 0
       && document.getElementById('pdfFrame').dataset.pagedReady === 'true');
+    // The jump saves its page once placement settles; a fitted paged PDF never scrolls to save it.
+    await pdfPage.waitForFunction(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+      .find(item => item.sourceName === 'keeps-generated.pdf').readPage === 2, null, { timeout: 5000 }).catch(() => {});
     const resumedPosition = await pdfPage.evaluate(() => {
       const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
         .find(item => item.sourceName === 'keeps-generated.pdf');

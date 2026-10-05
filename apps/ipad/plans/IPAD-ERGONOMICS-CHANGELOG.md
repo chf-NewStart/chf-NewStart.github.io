@@ -268,3 +268,50 @@ progress, passes after it finished) and `keeps-browser`. Those were re-run on th
 own afterwards rather than re-running the whole suite. Only `reading-keeps-browser` still fails ("explicit jump returns to saved PDF
 page"), and it fails the same way with live main's `reading.js`, so it is not caused
 by this round. Not verified: WebKit, a physical iPad and Pencil.
+
+## 13. Workspace pinch zoom as smooth as the PDF (`e209a4a9`, v165)
+
+Each pinch frame used to re-lay out the whole board. The pinch now previews with a
+single CSS transform on the board inside `requestAnimationFrame` (anchored under the
+fingers) and commits the real zoom once, when the fingers lift or the gesture is
+cancelled. `reading-workspace-viewport.js` (`previewPinch`, `endPinch`; `getZoom`
+reports the live pinch value). `tests/reading-workspace-viewport.test.js` now checks
+the layout does not change mid-pinch.
+
+## 14. Keeps "Go to place" saves the page (`f9674709`, v165)
+
+`jumpToReadingKeep` placed the PDF but did not save the position, so a later rebuild
+could return to the old page. It now calls `savePdfReadingPosition(false)` after the
+jump settles. Fixes the `reading-keeps-browser` failure noted in round 2.
+
+## 15. A squeezed Workspace scales instead of reflowing (`766c5c8c`, v166)
+
+Notes, text and ink are always laid out on a sheet 600 px wide per 1000 units and
+the sheet is scaled to the pane (`LAYOUT_WIDTH`, `fit()` in
+`reading-workspace-viewport.js`). Dragging the divider shrinks everything together
+instead of wrapping note text and shifting it against the ink. New
+`tests/reading-workspace-squeeze.test.js` (no reflow at 480 and 330 px panes).
+
+## 16. Moving the divider keeps the zoom (`d0c0d11b`, v167)
+
+When zoomed in, a divider move used to snap back toward fit and re-zoom. The
+Workspace now rescales its zoom by old/new pane width (`measure()` in the viewport
+module), and a zoomed or paged-manual PDF keeps its zoom the same way
+(`fitWorkspacePdfAfterResize` / `setWorkspaceWidth` in `reading.js`). Covered in the
+squeeze test.
+
+## 17. New sticky notes start square (`0f0acd1a`, v168)
+
+New notes default to 400 units wide (was 650), and the note's minimum height
+matches its width up to 300 px, so a new note is roughly square.
+`reading.js` (drop point, clip placement), `reading-workspace-view.js` (`setBox`).
+Tests updated in lasso-resize, workspace-browser and group-adapter.
+
+## 18. Highlighter colors fold out beside the Zen dock (`20d242dd`, v168)
+
+In Zen, opening the highlighter from the dock no longer raises the bottom palette.
+The same toolbar is docked next to the button (left of the dock when the dock is on
+the right of the paper, otherwise right), in two short columns, clamped on screen.
+`placeDockedHighlightToolbar` in `reading.js`, `.highlight-toolbar.docked` in
+`reading.css`. The Pen shelf is unchanged. `tests/reading-tool-palettes.test.js`
+checks the fold-out position and column layout.

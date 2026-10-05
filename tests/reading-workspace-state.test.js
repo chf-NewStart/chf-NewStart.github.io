@@ -21,8 +21,8 @@ const ids = value => Array.from(value.strokes, item => item.id);
 
 test('plain-script frozen API and canonical empty board', () => {
   assert.deepEqual(Object.keys(workspace).sort(),
-    ['BOARD_WIDTH', 'MAX_HEIGHT', 'VERSION', 'addStroke', 'displayStroke', 'merge', 'normalize',
-      'place', 'removeStrokes', 'setHeight']);
+    ['BOARD_WIDTH', 'MAX_HEIGHT', 'VERSION', 'addStroke', 'displayStroke', 'merge', 'moveGroup', 'normalize',
+      'place', 'removeStrokes', 'selectGroup', 'setHeight']);
   assert.equal(Object.isFrozen(workspace), true);
   assert.equal(workspace.VERSION, 2);
   assert.equal(workspace.BOARD_WIDTH, 1000);

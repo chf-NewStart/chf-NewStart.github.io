@@ -794,6 +794,33 @@ tests cover the direct Undo control; short windows use a two-column rail with
 popouts outside both columns. Split-view screenshots inspected. Synthetic Pencil
 tests do not replace physical iPad/Pencil testing. No Apple build/upload.
 
+### 2026-10-05 — Workspace lasso for notes and handwriting (shell v162)
+
+The workspace Move button is now Lasso. Circle sticky notes and handwriting, then
+drag inside the dashed selection to move them together. Circling a note's writing
+selects its owner and all attached writing; the raw anchored strokes stay intact
+so the move is applied once. Pencil, mouse, and one-finger selection share logical
+workspace coordinates at any zoom. Arrow keys nudge 5 units (Shift: 20). Switch
+tools or press Escape to clear; Escape during a drag, pointer cancellation, or a
+second touch first cancels the uncommitted gesture.
+
+Each grouped move is one workspace Undo/Redo step, independent of paper history.
+Undo remains session-scoped and does not cover note text or individual handle
+moves. Group snapshots reject stale/deleted members and newly attached writing.
+Failed group saves roll back before recovery storage or sync is queued. History
+tracks locally restored ink identities without adopting unrelated external edits.
+No annotation schema change, Apple archive, or upload.
+
+Verification: full-app lasso tests passed Chromium and WebKit at 50% and 125%
+zoom, including attached/free ink, keyboard, cancellation, two-touch cancellation,
+reload, independent paper history, and interleaved move/add/erase Undo and Redo.
+Eight controller fault/conflict tests and 47 state/adapter/integration tests pass.
+Existing workspace ink/card/viewport checks pass both engines (WebKit skips six
+Chromium-only native-touch checks), and split Undo/Redo passes both engines.
+The divider fixture now enters Workspace through Zen and passes Chromium.
+All 19 cache-update assertions pass; the WebKit selection screenshot was inspected.
+Synthetic Pencil events do not replace testing with a physical iPad and Pencil.
+
 ## Sources and API checks
 
 - [Apple: handling double-taps](https://developer.apple.com/documentation/ApplePencil/handling-double-taps-from-apple-pencil) — system preference and configurable alternative behavior.

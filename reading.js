@@ -515,10 +515,11 @@
     clearTimeout(stateSnapshotTimer);stateSnapshotTimer=null;var serialized=stateSnapshotPending;stateSnapshotPending='';if(!serialized)return stateSnapshotWrite;stateSnapshotWrite=stateSnapshotWrite.catch(function(){return false;}).then(function(){return putStateSnapshot(serialized);});return stateSnapshotWrite;
   }
   function queueStateSnapshot(serialized,immediate){stateSnapshotPending=serialized;clearTimeout(stateSnapshotTimer);if(immediate)return flushStateSnapshot();stateSnapshotTimer=setTimeout(flushStateSnapshot,350);return stateSnapshotWrite;}
-  function persist(schedule){
+  function persist(schedule,atomic){
     if(stateLoadFailed&&!state.chapters.length)return false;var serialized='',savedLocally=false;state.savedAt=now();
     try{serialized=JSON.stringify(localState());localStorage.setItem(KEY,serialized);savedLocally=true;stateLoadFailed=false;storageWarned=false;}
     catch(e){}
+    if(atomic&&!savedLocally)return false;
     if(serialized){
       var snapshot=queueStateSnapshot(serialized,!savedLocally);
       if(!savedLocally&&!storageWarned){
@@ -6835,6 +6836,77 @@
     try{return saveWorkspace(ch,window.PhloemWorkspaceState.removeStrokes(ch.readingWorkspace,ids,now()));}
     catch(error){workspaceStatus('Could not save this erasure.');return false;}
   }
+  function workspaceGroupEqual(left,right){
+    if(left===right)return true;
+    if(!left||!right||typeof left!=='object'||typeof right!=='object'||Array.isArray(left)!==Array.isArray(right))return false;
+    if(Array.isArray(left))return left.length===right.length&&left.every(function(value,index){return workspaceGroupEqual(value,right[index]);});
+    var keys=Object.keys(left).sort(),other=Object.keys(right).sort();
+    return keys.length===other.length&&keys.every(function(key,index){return key===other[index]&&workspaceGroupEqual(left[key],right[key]);});
+  }
+  function workspaceGroupIds(ids){
+    return Array.isArray(ids)&&ids.every(function(id){return typeof id==='string'&&id.length>0&&id.length<=128&&['__proto__','constructor','prototype'].indexOf(id)<0;})&&new Set(ids).size===ids.length;
+  }
+  function workspaceGroupSnapshotIds(snapshot){
+    if(!snapshot||!snapshot.positions||typeof snapshot.positions!=='object'||Array.isArray(snapshot.positions)||!Array.isArray(snapshot.strokes))return null;
+    var clipIds=Object.keys(snapshot.positions),strokeIds=snapshot.strokes.map(function(stroke){return stroke&&stroke.id;});
+    return workspaceGroupIds(clipIds)&&workspaceGroupIds(strokeIds)&&(clipIds.length||strokeIds.length)?{clipIds:clipIds,strokeIds:strokeIds}:null;
+  }
+  function workspaceGroupMatches(ch,selection,expected){
+    var ids=workspaceGroupSnapshotIds(expected);if(!ids||!selection||!workspaceGroupIds(selection.clipIds)||!workspaceGroupIds(selection.strokeIds))return false;
+    if(!workspaceGroupEqual(ids.clipIds.slice().sort(),selection.clipIds.slice().sort())||!workspaceGroupEqual(ids.strokeIds.slice().sort(),selection.strokeIds.slice().sort()))return false;
+    var current=window.PhloemWorkspaceState.normalize(ch.readingWorkspace),clips=new Set(ids.clipIds),strokes=new Map(current.strokes.map(function(stroke){return[stroke.id,stroke];})),wanted=new Set(ids.strokeIds);
+    if(!ids.clipIds.every(function(id){return ch.readingExcerpts.items.some(function(item){return item.id===id;})&&current.positions[id]&&workspaceGroupEqual(current.positions[id],expected.positions[id]);}))return false;
+    if(!expected.strokes.every(function(stroke){return strokes.has(stroke.id)&&workspaceGroupEqual(strokes.get(stroke.id),stroke);}))return false;
+    return current.strokes.every(function(stroke){return !stroke.anchor||!clips.has(stroke.anchor.clipId)||wanted.has(stroke.id);});
+  }
+  function workspaceGroupChangesExpected(before,next,expected){
+    var clips=new Set(Object.keys(expected.positions)),strokes=new Set(expected.strokes.map(function(stroke){return stroke.id;}));
+    if(next.height<before.height||!workspaceGroupEqual(before.deleted,next.deleted))return false;
+    if(!Object.keys(before.positions).concat(Object.keys(next.positions)).every(function(id){return clips.has(id)||workspaceGroupEqual(before.positions[id],next.positions[id]);}))return false;
+    var oldStrokes=new Map(before.strokes.map(function(stroke){return[stroke.id,stroke];})),newStrokes=new Map(next.strokes.map(function(stroke){return[stroke.id,stroke];}));
+    return before.strokes.concat(next.strokes).every(function(stroke){return strokes.has(stroke.id)||workspaceGroupEqual(oldStrokes.get(stroke.id),newStrokes.get(stroke.id));});
+  }
+  function saveWorkspaceGroup(ch,next){
+    var previous=ch.readingWorkspace,updatedAt=ch.updatedAt,hadUpdatedAt=Object.prototype.hasOwnProperty.call(ch,'updatedAt'),savedAt=state.savedAt,hadSavedAt=Object.prototype.hasOwnProperty.call(state,'savedAt');
+    try{ch.readingWorkspace=next;ch.updatedAt=now();if(persist(undefined,true)){workspaceSaveFailed=false;return true;}}catch(error){}
+    ch.readingWorkspace=previous;if(hadUpdatedAt)ch.updatedAt=updatedAt;else delete ch.updatedAt;
+    if(hadSavedAt)state.savedAt=savedAt;else delete state.savedAt;
+    workspaceSaveFailed=true;workspaceStatus('Could not save this selection change. Its previous position has been kept.');return false;
+  }
+  function workspaceMoveGroup(selection,delta,cards,expected){
+    var ch=find(currentId);
+    if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)){workspaceStatus('This workspace is unavailable for editing.');return false;}
+    try{
+      if(!workspaceGroupMatches(ch,selection,expected)){workspaceStatus('This selection changed. Select it again before moving it.');return false;}
+      if(!delta||!Number.isFinite(delta.x)||!Number.isFinite(delta.y))throw new TypeError('Invalid group movement');
+      if(delta.x===0&&delta.y===0)return true;
+      var before=window.PhloemWorkspaceState.normalize(ch.readingWorkspace),next=window.PhloemWorkspaceState.moveGroup(before,selection,delta,cards,now());
+      if(!workspaceGroupChangesExpected(before,next,expected)){workspaceStatus('This selection changed. Select it again before moving it.');return false;}
+      return saveWorkspaceGroup(ch,next);
+    }catch(error){workspaceStatus('Could not move this selection. Its previous position has been kept.');return false;}
+  }
+  function workspaceRestoreGroup(target,expected){
+    var ch=find(currentId);
+    if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)){workspaceStatus('This workspace is unavailable for editing.');return false;}
+    try{
+      var ids=workspaceGroupSnapshotIds(target);
+      if(!ids||!workspaceGroupMatches(ch,ids,expected)){workspaceStatus('This selection changed since the move. Undo is unavailable.');return false;}
+      var api=window.PhloemWorkspaceState,validated=api.normalize({version:api.VERSION,height:api.MAX_HEIGHT,positions:target.positions,strokes:target.strokes,deleted:{}});
+      if(!workspaceGroupEqual(validated.positions,target.positions)||!workspaceGroupEqual(validated.strokes.slice().sort(function(a,b){return a.id<b.id?-1:a.id>b.id?1:0;}),target.strokes.slice().sort(function(a,b){return a.id<b.id?-1:a.id>b.id?1:0;})))throw new TypeError('Invalid group snapshot');
+      var before=api.normalize(ch.readingWorkspace),next=before,stamp=now(),bottom=0;
+      ids.clipIds.forEach(function(id){bottom=Math.max(bottom,target.positions[id].y);});
+      target.strokes.forEach(function(stroke){api.displayStroke(stroke,Object.assign({},next.positions,target.positions)).points.forEach(function(point){bottom=Math.max(bottom,point[1]);});});
+      while(bottom>next.height&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
+      ids.clipIds.forEach(function(id){next=api.place(next,id,target.positions[id],stamp);});
+      target.strokes.forEach(function(stroke){
+        // addStroke inherits optional metadata; removing it here lets redo detach orphan ink.
+        next.strokes=next.strokes.map(function(current){if(current.id!==stroke.id)return current;var copy=Object.assign({},current);['anchor','nib','shape'].forEach(function(key){if(!Object.prototype.hasOwnProperty.call(stroke,key))delete copy[key];});return copy;});
+        next=api.addStroke(next,stroke,stamp);
+      });
+      if(!workspaceGroupChangesExpected(before,next,expected))throw new TypeError('Unexpected group change');
+      return saveWorkspaceGroup(ch,next);
+    }catch(error){workspaceStatus('Could not restore this selection. Its current position has been kept.');return false;}
+  }
   function workspaceEnsureSpace(logicalY){
     var ch=find(currentId);if(readingWorkspaceUnavailable(ch))return false;
     if(!Number.isFinite(logicalY)||logicalY<0)return false;
@@ -6850,7 +6922,7 @@
     workspaceView=window.PhloemWorkspaceView.create({context:workspaceContext,place:placeWorkspaceClip,updateNote:updateExcerptNote,
       stickyStyle:function(item){var hash=paperVisualHash({id:item.id}),note=WALL_NOTES[(hash>>>1)%WALL_NOTES.length];return{paper:note.cover,ink:note.ink,tapeTilt:((((hash>>>27)%11)-5)*.45)+'deg'};},
       goToSource:async function(id){if(!workspaceWide())setWorkspaceOpen(false,false);var moved=await goToExcerptSource(id);if(!moved)workspaceStatus(byId('excerptStatus').textContent||'Could not open the source. Your notes are safe.');return moved;},removeClip:removeReadingExcerpt,
-      addNote:function(){return addWorkspaceExcerpt(null);},addStroke:workspaceAddStroke,eraseStrokes:workspaceEraseStrokes,grow:workspaceGrow,ensureSpace:workspaceEnsureSpace,
+      addNote:function(){return addWorkspaceExcerpt(null);},addStroke:workspaceAddStroke,eraseStrokes:workspaceEraseStrokes,moveGroup:workspaceMoveGroup,restoreGroup:workspaceRestoreGroup,grow:workspaceGrow,ensureSpace:workspaceEnsureSpace,
       close:function(){setWorkspaceOpen(false);},onTool:function(){if(pdfInkController&&pdfInkController.active())pdfInkController.cancel();}});
   }
   document.querySelectorAll('[data-workspace-open]').forEach(function(button){button.onclick=function(){setWorkspaceOpen(!workspaceOpen);};});

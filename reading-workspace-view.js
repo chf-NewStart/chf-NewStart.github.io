@@ -29,6 +29,13 @@
     let undoStack = [], redoStack = [];
     let observedHeight = 2000;
     let growingPaper = false;
+    let selection = null;
+    const lassoLayer = document.createElementNS(NS, 'svg');
+    lassoLayer.classList.add('workspace-lasso-layer'); lassoLayer.setAttribute('aria-hidden', 'true');
+    const selectionBox = document.createElement('div');
+    selectionBox.className = 'workspace-selection-box'; selectionBox.hidden = true; selectionBox.tabIndex = 0;
+    selectionBox.setAttribute('role', 'group');
+    board.append(lassoLayer, selectionBox);
     const viewport = global.PhloemWorkspaceViewport ? global.PhloemWorkspaceViewport.create({ onNeedSpace: ensurePaperAt, isBusy: () => !!gesture }) : null;
     function resizeLayout() {
       if (viewport) viewport.layout(observedHeight);
@@ -89,6 +96,8 @@
       if (status.textContent === 'Straight line · lift to keep') setStatus('');
       gesture = null;
       cardTouches.clear();
+      if (g.kind === 'lasso') lassoLayer.replaceChildren();
+      if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); paintSelection(); }
       if (g.kind === 'stroke' && g.pointerType === 'pen') suppressClickUntil = performance.now() + 400;
       if (g.kind === 'stroke' && g.preview) g.preview.remove();
       if (g.kind === 'stroke' && g.mode === 'eraser') ink.querySelectorAll('[data-stroke-id]').forEach(path => { path.style.opacity = ''; });
@@ -145,6 +154,128 @@
     function makePath(stroke) { const path = document.createElementNS(NS, 'path'); path.dataset.strokeId = stroke.id || ''; paintPath(path, stroke); return path; }
     function activeStroke(c, stroke) { return !!(stroke && stroke.id && Number((c.workspace && c.workspace.deleted || {})[stroke.id] || 0) < Number(stroke.updatedAt || 0)); }
     function canonicalStroke(id) { const c = context(); return strokesOf(c).find(stroke => stroke.id === id && activeStroke(c, stroke)) || null; }
+    const copy = value => JSON.parse(JSON.stringify(value));
+    function measuredCards() {
+      const rect = board.getBoundingClientRect(), scale = 1000 / Math.max(1, rect.width);
+      return [...cards.values()].filter(state => !state.orphan).map(state => {
+        const r = state.card.getBoundingClientRect();
+        return { id: state.id, x: state.box.x, y: state.box.y, width: state.box.width, height: r.height * scale };
+      });
+    }
+    function groupSnapshot(group) {
+      const c = context(), positions = {}, strokes = [];
+      for (const id of group.clipIds) {
+        if (!positionsOf(c)[id] || !itemsOf(c).some(item => String(item.id) === id)) return null;
+        positions[id] = copy(positionsOf(c)[id]);
+      }
+      for (const id of group.strokeIds) { const stroke = canonicalStroke(id); if (!stroke) return null; strokes.push(copy(stroke)); }
+      return { positions, strokes };
+    }
+    function clearSelection() {
+      selection = null; selectionBox.hidden = true; lassoLayer.replaceChildren();
+      board.querySelectorAll('.workspace-selected').forEach(node => node.classList.remove('workspace-selected'));
+    }
+    function refreshSelection() {
+      if (!selection) return;
+      const snapshot = groupSnapshot(selection);
+      if (!snapshot || (selection.snapshot && JSON.stringify(snapshot) !== JSON.stringify(selection.snapshot))) { clearSelection(); return; }
+      const boxes = measuredCards().filter(card => selection.clipIds.includes(card.id));
+      let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+      let rawLeft = Infinity, rawTop = Infinity, rawRight = -Infinity, rawBottom = -Infinity;
+      const include = (x, y, w = 0, h = 0) => { left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x + w); bottom = Math.max(bottom, y + h); };
+      const raw = (x, y, w = 0, h = 0) => { rawLeft = Math.min(rawLeft, x); rawTop = Math.min(rawTop, y); rawRight = Math.max(rawRight, x + w); rawBottom = Math.max(rawBottom, y + h); };
+      boxes.forEach(card => { include(card.x, card.y, card.width, card.height); raw(card.x, card.y, card.width, card.height); });
+      snapshot.strokes.forEach(stroke => {
+        const shown = displayStroke(stroke), pad = shown.width * 1000 / 612 / 2;
+        shown.points.forEach(p => { include(p[0] - pad, p[1] - pad, pad * 2, pad * 2); raw(p[0], p[1]); });
+      });
+      if (!Number.isFinite(left)) { clearSelection(); return; }
+      selection.bounds = { x: left, y: top, width: right - left, height: bottom - top };
+      selection.moveBounds = { x: rawLeft, y: rawTop, width: rawRight - rawLeft, height: rawBottom - rawTop };
+      selection.snapshot = snapshot; paintSelection();
+    }
+    function paintSelection(delta = { x: 0, y: 0 }) {
+      board.querySelectorAll('.workspace-selected').forEach(node => node.classList.remove('workspace-selected'));
+      selectionBox.hidden = !selection;
+      if (!selection) return;
+      for (const id of selection.clipIds) if (cards.has(id)) cards.get(id).card.classList.add('workspace-selected');
+      ink.querySelectorAll('[data-stroke-id]').forEach(path => path.classList.toggle('workspace-selected', selection.strokeIds.includes(path.dataset.strokeId)));
+      const b = selection.bounds;
+      Object.assign(selectionBox.style, { left: `${(b.x + delta.x) / 10}%`, top: `${(b.y + delta.y) / observedHeight * 100}%`, width: `${b.width / 10}%`, height: `${b.height / observedHeight * 100}%` });
+      selectionBox.setAttribute('aria-label', `${selection.clipIds.length} notes and ${selection.strokeIds.length} strokes selected. Drag to move; arrow keys to nudge; Escape to clear.`);
+    }
+    function previewGroup(delta) {
+      if (!selection) return;
+      const scale = board.clientWidth / 1000;
+      for (const id of selection.clipIds) if (cards.has(id)) cards.get(id).card.style.transform = delta.x || delta.y ? `translate(${delta.x * scale}px, ${delta.y * scale}px)` : '';
+      ink.querySelectorAll('[data-stroke-id]').forEach(path => {
+        if (selection.strokeIds.includes(path.dataset.strokeId)) {
+          if (delta.x || delta.y) path.setAttribute('transform', `translate(${delta.x} ${delta.y})`); else path.removeAttribute('transform');
+        }
+      });
+      paintSelection(delta);
+    }
+    function groupDelta(delta) {
+      const b = selection.moveBounds, max = global.PhloemWorkspaceState.MAX_HEIGHT;
+      return { x: clamp(delta.x, -b.x, 1000 - b.x - b.width), y: clamp(delta.y, -b.y, max - b.y - b.height) };
+    }
+    function commitGroup(delta, measured, before) {
+      if (!selection || !before || Math.hypot(delta.x, delta.y) < .01) return;
+      if (JSON.stringify(before) !== JSON.stringify(selection.snapshot)) { clearSelection(); render(); setStatus('This selection changed. Circle it again before moving.'); return; }
+      if (!adapter.moveGroup || adapter.moveGroup(selection, delta, measured, before) !== true) { setStatus('Could not move this selection. It may have changed elsewhere.'); clearSelection(); render(); return; }
+      const after = groupSnapshot(selection);
+      if (after) { recordUndo({ kind: 'move', before, after }, undoStack); redoStack = []; selection.snapshot = after; }
+      render();
+    }
+    function startSelection(event, pointerId) {
+      if (gesture || !available(context()) || context().busy) return false;
+      if (selection && JSON.stringify(groupSnapshot(selection)) !== JSON.stringify(selection.snapshot)) { clearSelection(); render(); setStatus('This selection changed. Circle it again before moving.'); return false; }
+      closeOpenMenus();
+      const focused = document.activeElement;
+      if (focused && board.contains(focused) && focused.matches('textarea,input')) focused.blur();
+      if (viewport) viewport.cancel();
+      board.focus({ preventScroll: true });
+      const p = pointFromClient(event.clientX, event.clientY), b = selection && selection.bounds;
+      if (b && p.x >= b.x - 8 && p.x <= b.x + b.width + 8 && p.y >= b.y - 8 && p.y <= b.y + b.height + 8) {
+        gesture = { kind: 'group', pointerId, start: p, delta: { x: 0, y: 0 }, measured: measuredCards(), before: groupSnapshot(selection) };
+      } else {
+        clearSelection();
+        const path = document.createElementNS(NS, 'path'); path.classList.add('workspace-lasso-preview'); lassoLayer.appendChild(path);
+        lassoLayer.setAttribute('viewBox', `0 0 1000 ${observedHeight}`);
+        gesture = { kind: 'lasso', pointerId, points: [[p.x, p.y]], path };
+      }
+      return true;
+    }
+    function moveSelection(event) {
+      const g = gesture, p = pointFromClient(event.clientX, event.clientY);
+      if (g.kind === 'group') {
+        const delta = { x: p.x - g.start.x, y: p.y - g.start.y };
+        if (Math.hypot(delta.x, delta.y) < .25 && !g.moved) return;
+        g.moved = true; g.delta = groupDelta(delta); previewGroup(g.delta);
+      }
+      else {
+        const last = g.points[g.points.length - 1];
+        if (Math.hypot(p.x - last[0], p.y - last[1]) < 1) return;
+        if (g.points.length >= 4096) g.points = g.points.filter((_, i) => i % 2 === 0);
+        g.points.push([p.x, p.y]);
+        g.path.setAttribute('d', g.points.map((p, i) => `${i ? 'L' : 'M'}${p[0]} ${p[1]}`).join(' ') + ' Z');
+      }
+    }
+    function finishSelection(event) {
+      const g = gesture; moveSelection(event); gesture = null;
+      suppressClickUntil = performance.now() + 450;
+      if (typeof g.pointerId === 'number' && board.hasPointerCapture(g.pointerId)) board.releasePointerCapture(g.pointerId);
+      if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); commitGroup(g.delta, g.measured, g.before); }
+      else {
+        lassoLayer.replaceChildren();
+        const c = context(), visibleCards = measuredCards(), cardIds = new Set(visibleCards.map(card => card.id));
+        const visibleState = { ...c.workspace, strokes: strokesOf(c).filter(stroke => !stroke.anchor || cardIds.has(stroke.anchor.clipId)) };
+        const group = global.PhloemWorkspaceState.selectGroup(visibleState, g.points, visibleCards);
+        if (group.bounds) { selection = group; refreshSelection(); }
+        else setStatus('Nothing selected. Circle a note or handwriting.');
+      }
+      if (selection) { setStatus(''); selectionBox.focus({ preventScroll: true }); }
+    }
     function renderInk(c) {
       const paths = strokesOf(c).filter(s => activeStroke(c, s) && (!s.anchor || itemsOf(c).some(item => item.id === s.anchor.clipId))).map(makePath);
       if (gesture && gesture.kind === 'stroke' && gesture.preview) paths.push(gesture.preview);
@@ -419,16 +550,17 @@
     }
     function render() {
       const c = context();
+      if (gesture && gesture.kind === 'group' && JSON.stringify(groupSnapshot(selection)) !== JSON.stringify(gesture.before)) { cancel(); clearSelection(); }
       if (!same(c)) {
-        cancel();
+        cancel(); clearSelection();
         scroll.scrollTop = 0;
         for (const state of cards.values()) if (state.dirty || state.saveFailed) keepDraft(state, 'Unsaved draft · copy before reloading.');
         cards = new Map(); scope = { id: c.id, epoch: c.epoch }; undoStack = []; redoStack = [];
         cardsLayer.replaceChildren(); setStatus('');
       }
-      if (!c.open) { cancel(); return; }
+      if (!c.open) { cancel(); clearSelection(); return; }
       if (c.unavailable) {
-        cancel();
+        cancel(); clearSelection();
         for (const state of cards.values()) state.input.readOnly = true;
         setStatus('Workspace temporarily unavailable. Existing notes are preserved; editing is paused.');
         return;
@@ -438,6 +570,7 @@
       observedHeight = heightOf(c);
       resizeLayout();
       const usable = available(c);
+      board.classList.toggle('workspace-selecting', tool === 'select');
       tools.querySelectorAll('[data-workspace-tool]').forEach(button => { const on = button.dataset.workspaceTool === tool; button.classList.toggle('active', on); button.setAttribute('aria-pressed', String(on)); });
       tools.querySelectorAll('[data-workspace-color]').forEach(button => { const on = button.dataset.workspaceColor === color; button.classList.toggle('active', on); button.setAttribute('aria-pressed', String(on)); });
       if (sizeSelect && document.activeElement !== sizeSelect) sizeSelect.value = String(width);
@@ -480,9 +613,11 @@
         for (const state of cards.values()) bottom = Math.max(bottom, (state.card.getBoundingClientRect().bottom - boardRect.top) * 1000 / boardRect.width);
         ensurePaperAt(bottom + 500);
       }
+      if (gesture && gesture.kind === 'group') previewGroup(gesture.delta);
+      else if (!gesture || gesture.kind !== 'lasso') refreshSelection();
     }
     function reset() {
-      cancel();
+      cancel(); clearSelection();
       for (const state of cards.values()) if (state.dirty || state.saveFailed) keepDraft(state, 'Unsaved draft · copy before reloading.');
       cards = new Map(); scope = null; cardsLayer.replaceChildren(); ink.replaceChildren(); undoStack = []; redoStack = [];
       setStatus('');
@@ -600,6 +735,15 @@
       render();
     }
     board.addEventListener('pointerdown', event => {
+      if (tool === 'select') {
+        if (event.button !== 0) return;
+        if (gesture) { if (gesture.pointerId !== event.pointerId) cancel(); event.preventDefault(); event.stopImmediatePropagation(); return; }
+        event.preventDefault(); event.stopImmediatePropagation();
+        if (startSelection(event, event.pointerId)) {
+          board.setPointerCapture(event.pointerId);
+        }
+        return;
+      }
       if (tool !== 'pen' && tool !== 'eraser') return;
       if (event.pointerType === 'touch') return;
       if (event.pointerType !== 'pen' && event.target.closest('.workspace-card')) return;
@@ -609,23 +753,36 @@
       }
     }, true);
     board.addEventListener('pointermove', event => {
+      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); moveSelection(event); return; }
       const g = gesture; if (!g || g.kind !== 'stroke' || g.pointerId !== event.pointerId) return;
       event.preventDefault();
       const samples = event.getCoalescedEvents ? event.getCoalescedEvents() : [event];
       (samples.length ? samples : [event]).forEach(sample => addPoint(g, sample));
     }, true);
-    board.addEventListener('pointerup', event => { if (gesture && gesture.kind === 'stroke' && gesture.pointerId === event.pointerId) { event.preventDefault(); addPoint(gesture, event); finishStroke(true); } }, true);
-    board.addEventListener('pointercancel', event => { if (gesture && gesture.kind === 'stroke' && gesture.pointerId === event.pointerId) finishStroke(false); }, true);
-    board.addEventListener('lostpointercapture', event => { if (gesture && gesture.kind === 'stroke' && gesture.pointerId === event.pointerId) finishStroke(false); }, true);
-    board.addEventListener('click', event => { if (performance.now() <= suppressClickUntil) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+    board.addEventListener('pointerup', event => {
+      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); finishSelection(event); return; }
+      if (gesture && gesture.kind === 'stroke' && gesture.pointerId === event.pointerId) { event.preventDefault(); addPoint(gesture, event); finishStroke(true); }
+    }, true);
+    board.addEventListener('pointercancel', event => { if (gesture && gesture.pointerId === event.pointerId) { if (gesture.kind === 'stroke') finishStroke(false); else cancel(); } }, true);
+    board.addEventListener('lostpointercapture', event => { if (gesture && gesture.pointerId === event.pointerId) { if (gesture.kind === 'stroke') finishStroke(false); else cancel(); } }, true);
+    board.addEventListener('click', event => { if (tool === 'select' || performance.now() <= suppressClickUntil) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
     // Older iPad WebKit may report Pencil through TouchEvent without a pen PointerEvent.
     board.addEventListener('touchstart', event => {
+      if (tool === 'select') {
+        if (event.touches.length > 1) cancel();
+        else if (!gesture && !global.PointerEvent && event.changedTouches.length) { const t = event.changedTouches[0]; startSelection(t, `touch-${t.identifier}`); }
+        event.preventDefault(); event.stopImmediatePropagation(); return;
+      }
       if (gesture && gesture.kind === 'stroke') { event.preventDefault(); return; }
       const touch = [...event.changedTouches].find(t => t.touchType === 'stylus');
       if (!touch || gesture || (tool !== 'pen' && tool !== 'eraser')) return;
       if (startStroke({ clientX: touch.clientX, clientY: touch.clientY, pressure: touch.force }, `touch-${touch.identifier}`, tool)) { suppressClickUntil = performance.now() + 600; event.preventDefault(); }
     }, { capture: true, passive: false });
     board.addEventListener('touchmove', event => {
+      if (tool === 'select') {
+        if (gesture && typeof gesture.pointerId === 'string') { const t = [...event.changedTouches].find(t => `touch-${t.identifier}` === gesture.pointerId); if (t) moveSelection(t); }
+        event.preventDefault(); event.stopImmediatePropagation(); return;
+      }
       const g = gesture; if (!g || g.kind !== 'stroke') return;
       if (typeof g.pointerId !== 'string') { event.preventDefault(); return; }
       const touch = [...event.changedTouches].find(t => `touch-${t.identifier}` === g.pointerId);
@@ -635,6 +792,7 @@
     const endTouch = (event, commit) => {
       const g = gesture; if (!g || typeof g.pointerId !== 'string') return;
       const touch = [...event.changedTouches].find(t => `touch-${t.identifier}` === g.pointerId); if (!touch) return;
+      if (g.kind === 'lasso' || g.kind === 'group') { event.preventDefault(); if (commit) finishSelection(touch); else cancel(); return; }
       event.preventDefault(); if (commit) addPoint(g, { clientX: touch.clientX, clientY: touch.clientY, pressure: touch.force }); finishStroke(commit);
     };
     board.addEventListener('touchend', event => endTouch(event, true), { capture: true, passive: false });
@@ -652,6 +810,7 @@
     document.addEventListener('keydown', event => {
       if (!context().open) return;
       if (event.key === 'Escape' && gesture && panel.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); cancel(); return; }
+      if (event.key === 'Escape' && selection && panel.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); clearSelection(); board.focus({ preventScroll: true }); return; }
       const focusedCard = event.target.closest && event.target.closest('.workspace-card');
       if (event.key === 'Escape' && focusedCard && [...cards.values()].some(state => state.card === focusedCard && state.menu.open) && closeOpenMenus(null, true)) {
         event.preventDefault(); event.stopImmediatePropagation(); return;
@@ -659,6 +818,12 @@
       if (event.key === 'Escape') closeOpenMenus();
       if (!panel.contains(event.target)) return;
       if (event.target.closest('input,textarea,[contenteditable="true"]')) return;
+      if (selection && event.target === selectionBox && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const step = event.shiftKey ? 20 : 5;
+        const delta = groupDelta({ x: event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0, y: event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0 });
+        commitGroup(delta, measuredCards(), groupSnapshot(selection)); return;
+      }
       const key = event.key.toLowerCase();
       if ((event.metaKey || event.ctrlKey) && (key === 'z' || key === 'y')) {
         event.preventDefault(); event.stopImmediatePropagation(); cancel(); history(key === 'y' || event.shiftKey ? 'redo' : 'undo');
@@ -668,28 +833,73 @@
 
     tools.addEventListener('click', event => {
       const button = event.target.closest('[data-workspace-tool], [data-workspace-color]'); if (!button || !tools.contains(button)) return;
-      if (button.dataset.workspaceTool) { cancel(); tool = button.dataset.workspaceTool; if (adapter.onTool) adapter.onTool(tool); }
+      if (button.dataset.workspaceTool) { cancel(); if (tool !== button.dataset.workspaceTool) clearSelection(); tool = button.dataset.workspaceTool; if (adapter.onTool) adapter.onTool(tool); }
       if (button.dataset.workspaceColor && COLORS[button.dataset.workspaceColor]) color = button.dataset.workspaceColor;
       render();
     });
     if (sizeSelect) sizeSelect.addEventListener('change', () => { width = clamp(Number(sizeSelect.value) || 2.4, .5, 12); });
     function recordUndo(action, target) { target.push(action); if (target.length > 50) target.shift(); }
-    function restoreStroke(stroke) { const at = Date.now(); const restored = { ...stroke, id: uid(), createdAt: at, updatedAt: at, points: stroke.points.map(p => [...p]) }; return adapter.addStroke(restored) === true ? (canonicalStroke(restored.id) || restored) : null; }
+    function geometryKey(record) {
+      if (!record) return '';
+      const sorted = value => Array.isArray(value) ? value.map(sorted) : value && typeof value === 'object'
+        ? Object.fromEntries(Object.keys(value).filter(key => key !== 'updatedAt').sort().map(key => [key, sorted(value[key])])) : value;
+      return JSON.stringify(sorted(record));
+    }
+    // Restoring geometry gives it a fresh sync clock. Rebase our own matching
+    // history records so a move can be undone, then the stroke that preceded it.
+    function rebaseHistory(rewritten) {
+      const positions = positionsOf(context());
+      const clipIds = new Set(rewritten.kind === 'move' ? Object.keys(rewritten.before.positions) : []);
+      const strokeIds = new Set(rewritten.kind === 'move' ? rewritten.before.strokes.map(stroke => stroke.id) : rewritten.kind === 'add' ? [rewritten.stroke.id] : rewritten.strokes.map(stroke => stroke.id));
+      const stroke = record => { const live = strokeIds.has(record.id) && canonicalStroke(record.id); return live && geometryKey(live) === geometryKey(record) ? copy(live) : record; };
+      for (const action of [...undoStack, ...redoStack]) {
+        if (action.kind === 'add') action.stroke = stroke(action.stroke);
+        if (action.kind === 'erase') action.strokes = action.strokes.map(stroke);
+        if (action.kind === 'move') for (const snapshot of [action.before, action.after]) {
+          snapshot.strokes = snapshot.strokes.map(stroke);
+          for (const id of Object.keys(snapshot.positions)) if (clipIds.has(id) && geometryKey(positions[id]) === geometryKey(snapshot.positions[id])) snapshot.positions[id] = copy(positions[id]);
+        }
+      }
+    }
+    function restoreStroke(stroke) {
+      const at = Date.now(), restored = { ...stroke, id: uid(), createdAt: at, updatedAt: at, points: stroke.points.map(p => [...p]) };
+      if (adapter.addStroke(restored) !== true) return null;
+      return canonicalStroke(restored.id) || restored;
+    }
+    function rebindStroke(stroke, saved) {
+      // Erase undo restores with a new identity to respect sync tombstones.
+      // Earlier local group history must follow that replacement identity.
+      const replace = record => record.id === stroke.id ? { ...record, id: saved.id, createdAt: saved.createdAt, updatedAt: Math.max(record.updatedAt, saved.createdAt) } : record;
+      for (const action of [...undoStack, ...redoStack]) {
+        if (action.kind === 'add') action.stroke = replace(action.stroke);
+        if (action.kind === 'erase') action.strokes = action.strokes.map(replace);
+        if (action.kind === 'move') for (const snapshot of [action.before, action.after]) snapshot.strokes = snapshot.strokes.map(replace);
+      }
+      if (selection) selection.strokeIds = selection.strokeIds.map(id => id === stroke.id ? saved.id : id);
+    }
     function history(direction) {
       const from = direction === 'undo' ? undoStack : redoStack, to = direction === 'undo' ? redoStack : undoStack;
-      const action = from.pop(); if (!action || !available(context()) || context().busy) return;
+      if (!available(context()) || context().busy) return;
+      cancel();
+      const action = from.pop(); if (!action) return;
       let next = null;
-      if (action.kind === 'add') {
+      if (action.kind === 'move') {
+        const target = direction === 'undo' ? action.before : action.after, expected = direction === 'undo' ? action.after : action.before;
+        if (adapter.restoreGroup && adapter.restoreGroup(target, expected) === true) {
+          const restored = groupSnapshot({ clipIds: Object.keys(target.positions), strokeIds: target.strokes.map(stroke => stroke.id) });
+          if (restored) { next = { ...action, [direction === 'undo' ? 'before' : 'after']: restored }; if (selection) selection.snapshot = groupSnapshot(selection); }
+        }
+      } else if (action.kind === 'add') {
         if (direction === 'undo') {
           const saved = canonicalStroke(action.stroke.id);
           if (saved && saved.updatedAt === action.stroke.updatedAt && adapter.eraseStrokes([saved.id]) === true) next = action;
         }
-        else { const restored = restoreStroke(action.stroke); if (restored) next = { kind: 'add', stroke: restored }; }
+        else { const restored = restoreStroke(action.stroke); if (restored) { rebindStroke(action.stroke, restored); next = { kind: 'add', stroke: restored }; } }
       } else if (direction === 'undo') {
         const c = context(), deleted = c.workspace && c.workspace.deleted || {};
         if (action.strokes.every(s => Number(deleted[s.id] || 0) >= Number(s.updatedAt || 0) && !canonicalStroke(s.id))) {
           const restored = action.strokes.map(restoreStroke);
-          if (restored.every(Boolean)) next = { kind: 'erase', strokes: restored };
+          if (restored.every(Boolean)) { action.strokes.forEach((stroke, index) => rebindStroke(stroke, restored[index])); next = { kind: 'erase', strokes: restored }; }
           else {
             const partial = restored.filter(Boolean).map(s => s.id);
             if (partial.length) adapter.eraseStrokes(partial);
@@ -699,7 +909,7 @@
         const ids = action.strokes.map(s => s.id);
         if (action.strokes.every(s => { const live = canonicalStroke(s.id); return live && live.updatedAt === s.updatedAt; }) && adapter.eraseStrokes(ids) === true) next = action;
       }
-      if (next) recordUndo(next, to); else { from.push(action); setStatus('This ink changed elsewhere. Try again after it syncs.'); }
+      if (next) { recordUndo(next, to); rebaseHistory(next); } else { from.push(action); setStatus('This selection or handwriting changed elsewhere. Try again after it syncs.'); }
       render();
     }
     if (buttons.undo) buttons.undo.addEventListener('click', () => history('undo'));

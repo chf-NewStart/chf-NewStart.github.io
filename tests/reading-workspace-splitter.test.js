@@ -55,7 +55,7 @@ async function geometry(page) {
     const a = pane.getBoundingClientRect(), b = panel.getBoundingClientRect(), p = paper?.getBoundingClientRect();
     const board = document.getElementById('workspaceBoard').getBoundingClientRect();
     const divider = document.getElementById('workspaceDivider').getBoundingClientRect();
-    const dock = document.getElementById('touchDock').getBoundingClientRect();
+    const dock = document.getElementById('zenDock').getBoundingClientRect();
     return { pane: { left: a.left, right: a.right, width: a.width, height: a.height },
       panel: { left: b.left, width: b.width }, paper: p && { width: p.width, height: p.height },
       board: { width: board.width, height: board.height }, divider: { left: divider.left, width: divider.width },
@@ -74,8 +74,7 @@ async function fitted(page) {
   });
 }
 async function openWorkspace(page) {
-  if (await page.locator('body').evaluate(body => body.classList.contains('zen'))) await page.locator('#zenExit').click();
-  if (!(await page.locator('#workspacePanel').isVisible())) await page.locator('#workspaceOpen').click();
+  if (!(await page.locator('#workspacePanel').isVisible())) await page.locator('#zenWorkspace').click();
   await page.locator('#workspacePanel').waitFor({ state: 'visible' });
 }
 async function drag(page, targetPercent, expectPaged = true) {

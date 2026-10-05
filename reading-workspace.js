@@ -232,8 +232,197 @@
     return normalize(state);
   }
 
+  function cardMap(cards) {
+    var result = new Map();
+    if (!Array.isArray(cards)) return result;
+    cards.forEach(function (raw) {
+      try {
+        if (!object(raw) || !id(raw.id) || !finite(raw.x) || !finite(raw.y) ||
+            !finite(raw.width) || !finite(raw.height) || raw.width <= 0 ||
+            raw.height < 0 || raw.width > BOARD_WIDTH || raw.height > MAX_HEIGHT) return;
+        var box = { id: raw.id, x: raw.x, y: raw.y, width: raw.width, height: raw.height };
+        // Duplicate DOM measurements must not make selection depend on input order.
+        if (!result.has(box.id) || JSON.stringify(box) > JSON.stringify(result.get(box.id)))
+          result.set(box.id, box);
+      } catch (error) { /* One unavailable card cannot hide the rest of the board. */ }
+    });
+    return result;
+  }
+  function groupPositions(cards) {
+    var result = Object.create(null);
+    cards.forEach(function (box, key) {
+      // The controller can constrain a saved card to the currently visible paper.
+      // Selection and movement must use that displayed placement consistently.
+      result[key] = box;
+    });
+    return result;
+  }
+  function validPolygon(polygon) {
+    if (!Array.isArray(polygon) || polygon.length < 3 || polygon.length > 8192) return false;
+    for (var i = 0; i < polygon.length; i++) {
+      var point = polygon[i];
+      if (!Array.isArray(point) || point.length !== 2 || !finite(point[0]) ||
+          !finite(point[1]) || point[0] < 0 || point[0] > BOARD_WIDTH ||
+          point[1] < 0 || point[1] > MAX_HEIGHT) return false;
+    }
+    // A repeated closing point is fine, but a line or a single point is not a lasso.
+    var first = polygon[0], second = null;
+    for (i = 1; i < polygon.length; i++) {
+      if (!second && (polygon[i][0] !== first[0] || polygon[i][1] !== first[1])) second = polygon[i];
+      else if (second && cross(first, second, polygon[i]) !== 0) return true;
+    }
+    return false;
+  }
+  function cross(a, b, c) {
+    return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  }
+  function onSegment(point, a, b) {
+    return Math.abs(cross(a, b, point)) < 1e-7 &&
+      point[0] >= Math.min(a[0], b[0]) - 1e-9 && point[0] <= Math.max(a[0], b[0]) + 1e-9 &&
+      point[1] >= Math.min(a[1], b[1]) - 1e-9 && point[1] <= Math.max(a[1], b[1]) + 1e-9;
+  }
+  function insidePolygon(point, polygon) {
+    var inside = false;
+    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      var a = polygon[j], b = polygon[i];
+      if (onSegment(point, a, b)) return true;
+      if ((a[1] > point[1]) !== (b[1] > point[1]) &&
+          point[0] < (b[0] - a[0]) * (point[1] - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+    }
+    return inside;
+  }
+  function segmentsIntersect(a, b, c, d) {
+    var abC = cross(a, b, c), abD = cross(a, b, d);
+    var cdA = cross(c, d, a), cdB = cross(c, d, b);
+    return (abC > 0 && abD < 0 || abC < 0 && abD > 0) &&
+      (cdA > 0 && cdB < 0 || cdA < 0 && cdB > 0) ||
+      onSegment(c, a, b) || onSegment(d, a, b) || onSegment(a, c, d) || onSegment(b, c, d);
+  }
+  function distanceSquared(point, a, b) {
+    var dx = b[0] - a[0], dy = b[1] - a[1];
+    var t = dx || dy ? clamp(((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) /
+      (dx * dx + dy * dy), 0, 1) : 0;
+    var x = point[0] - a[0] - t * dx, y = point[1] - a[1] - t * dy;
+    return x * x + y * y;
+  }
+  function strokeIntersects(stroke, polygon) {
+    // Ink widths use the renderer's 612-unit page scale. Use the largest visible
+    // pressure radius so a lasso touching an outer edge still selects the stroke.
+    var radius = stroke.width * 1000 / 612 * (stroke.nib === 'marker' ? 1.35 * 1.45 : 1.15) / 2;
+    var points = stroke.points, radiusSquared = radius * radius;
+    for (var i = 0; i < points.length; i++) {
+      var a = points[i], b = points[Math.max(0, i - 1)];
+      if (insidePolygon(a, polygon)) return true;
+      for (var j = 0, k = polygon.length - 1; j < polygon.length; k = j++) {
+        var c = polygon[k], d = polygon[j];
+        if (segmentsIntersect(a, b, c, d) ||
+            Math.min(distanceSquared(a, c, d), distanceSquared(b, c, d),
+              distanceSquared(c, a, b), distanceSquared(d, a, b)) <= radiusSquared) return true;
+      }
+    }
+    return false;
+  }
+  function closeGroup(state, cards, clipIds, strokeIds) {
+    state.strokes.forEach(function (entry) {
+      if (strokeIds.has(entry.id) && entry.anchor && cards.has(entry.anchor.clipId))
+        clipIds.add(entry.anchor.clipId);
+    });
+    state.strokes.forEach(function (entry) {
+      if (entry.anchor && clipIds.has(entry.anchor.clipId)) strokeIds.add(entry.id);
+    });
+  }
+  function groupBounds(state, cards, clipIds, strokeIds) {
+    var left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    function include(x, y) {
+      left = Math.min(left, x); top = Math.min(top, y);
+      right = Math.max(right, x); bottom = Math.max(bottom, y);
+    }
+    clipIds.forEach(function (key) {
+      var box = cards.get(key);
+      include(box.x, box.y); include(box.x + box.width, box.y + box.height);
+    });
+    var positions = groupPositions(cards);
+    state.strokes.forEach(function (entry) {
+      if (strokeIds.has(entry.id)) displayStroke(entry, positions).points.forEach(function (point) {
+        include(point[0], point[1]);
+      });
+    });
+    return left === Infinity ? null : { x: left, y: top, width: right - left, height: bottom - top };
+  }
+  function selectGroup(value, polygon, cards) {
+    var state = normalize(value), available = cardMap(cards);
+    var clipIds = new Set(), strokeIds = new Set();
+    if (!validPolygon(polygon)) return { clipIds: [], strokeIds: [], bounds: null };
+    available.forEach(function (box, key) {
+      if (insidePolygon([box.x + box.width / 2, box.y + box.height / 2], polygon)) clipIds.add(key);
+    });
+    var positions = groupPositions(available);
+    state.strokes.forEach(function (entry) {
+      if (strokeIntersects(displayStroke(entry, positions), polygon)) strokeIds.add(entry.id);
+    });
+    closeGroup(state, available, clipIds, strokeIds);
+    return { clipIds: Array.from(clipIds).sort(compare), strokeIds: Array.from(strokeIds).sort(compare),
+      bounds: groupBounds(state, available, clipIds, strokeIds) };
+  }
+  function selectedIds(values, available) {
+    if (!Array.isArray(values)) throw new TypeError('Invalid reading-workspace selection');
+    var result = new Set();
+    for (var i = 0; i < values.length; i++) {
+      if (!owns(values, i) || !id(values[i]) || !available.has(values[i]))
+        throw new TypeError('Invalid reading-workspace selection');
+      result.add(values[i]);
+    }
+    return result;
+  }
+  function moveGroup(value, selection, delta, cards, stamp) {
+    var state = normalize(value), cap = ceiling(), available = cardMap(cards);
+    if (!object(selection) || !object(delta) || !finite(delta.x) || !finite(delta.y))
+      throw new TypeError('Invalid reading-workspace group move');
+    if (!timestamp(stamp, cap)) throw new RangeError('Invalid reading-workspace timestamp');
+    var liveStrokes = new Map(state.strokes.map(function (entry) { return [entry.id, entry]; }));
+    var clipIds = selectedIds(selection.clipIds, available);
+    var strokeIds = selectedIds(selection.strokeIds, liveStrokes);
+    closeGroup(state, available, clipIds, strokeIds);
+    var bounds = groupBounds(state, available, clipIds, strokeIds);
+    if (!bounds) return state;
+    if (!finite(bounds.x) || !finite(bounds.y) || !finite(bounds.width) || !finite(bounds.height) ||
+        bounds.width > BOARD_WIDTH || bounds.height > MAX_HEIGHT)
+      throw new RangeError('Reading-workspace group does not fit on paper');
+    var dx = clamp(delta.x, -bounds.x, BOARD_WIDTH - bounds.x - bounds.width);
+    var dy = clamp(delta.y, -bounds.y, MAX_HEIGHT - bounds.y - bounds.height);
+    if (!dx && !dy) return state;
+    var bottom = bounds.y + bounds.height + dy;
+    // Match ensureSpace's 1000-unit growth, including ink reaching the current edge.
+    state.height = Math.min(MAX_HEIGHT, Math.max(state.height, (Math.floor(bottom / 1000) + 1) * 1000));
+    Array.from(clipIds).sort(compare).forEach(function (key) {
+      var base = available.get(key), tolerance = 1e-7;
+      if (base.width < 280 || base.width > 900 || base.x + dx < -tolerance ||
+          base.x + dx > BOARD_WIDTH - base.width + tolerance ||
+          base.y + dy < -tolerance || base.y + dy > MAX_HEIGHT + tolerance)
+        throw new RangeError('Invalid reading-workspace card geometry');
+      state = place(state, key, { x: base.x + dx, y: base.y + dy, width: base.width }, stamp);
+    });
+    Array.from(strokeIds).sort(compare).forEach(function (key) {
+      var entry = liveStrokes.get(key);
+      // Moving an owner already moves all of its writing through displayStroke.
+      if (entry.anchor && clipIds.has(entry.anchor.clipId)) return;
+      var moved = Object.assign({}, entry, { points: entry.points.map(function (point) {
+        return [clamp(point[0] + dx, 0, BOARD_WIDTH), clamp(point[1] + dy, 0, MAX_HEIGHT), point[2]];
+      }) });
+      if (entry.anchor) {
+        // An unavailable owner displays raw fallback points. Detach on movement so
+        // later restoring that owner cannot apply a second, unrelated transform.
+        delete moved.anchor;
+        var old = state.strokes.find(function (item) { return item.id === key; });
+        delete old.anchor;
+      }
+      state = addStroke(state, moved, stamp);
+    });
+    return normalize(state);
+  }
+
   global.PhloemWorkspaceState = Object.freeze({ VERSION: VERSION,
     BOARD_WIDTH: BOARD_WIDTH, MAX_HEIGHT: MAX_HEIGHT, normalize: normalize, merge: merge, place: place,
     addStroke: addStroke, removeStrokes: removeStrokes, setHeight: setHeight,
-    displayStroke: displayStroke });
+    displayStroke: displayStroke, selectGroup: selectGroup, moveGroup: moveGroup });
 })(window);

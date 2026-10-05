@@ -1,4 +1,4 @@
-/* Lasso resize and finger move, and the Pencil moving a note by its tape, in the
+/* Lasso resize and finger move, and the Pencil moving a note by its top strip, in the
    full app at iPad landscape size. Chromium uses native CDP touch; WebKit falls back
    to synthetic PointerEvents. Neither replaces a physical iPad and Apple Pencil check. */
 const assert = require('node:assert/strict');
@@ -107,6 +107,7 @@ async function fingerDrag(page, from, to) {
   }
   await page.waitForTimeout(250);
 }
+const card0Tape = page => page.locator('.workspace-card').first().evaluate(card => { const after = getComputedStyle(card, '::after'); return after.top === '0px' && after.left === '0px' ? 'none' : 'tape'; });
 const centre = box => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
 
 (async () => {
@@ -176,16 +177,17 @@ const centre = box => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
     await page.locator('#workspaceRedo').evaluate(button => button.click());
     assert(Math.abs(span(live((await saved(page)).readingWorkspace)[0]) / span(original) - 2) < .15, 'Redo reapplies the resize');
 
-    // 5. With the pen tool, the Pencil on a note's tape moves the note and writes nothing.
+    // 5. With the pen tool, the Pencil on a note's top strip moves the note and writes nothing.
     await page.keyboard.press('Escape');
     await page.locator('[data-workspace-tool="pen"]').click();
     await page.locator('#workspaceNewNote').click();
     const card = page.locator('.workspace-card').first();
     await card.waitFor({ state: 'visible' });
+    assert.equal(await card0Tape(page), 'none', 'notes are plain: no tape or pin');
     await page.locator('#workspaceBoard').focus();
     const strokesBefore = live((await saved(page)).readingWorkspace).length;
     const cardBox = await card.boundingBox();
-    const tape = { x: cardBox.x + cardBox.width / 2, y: cardBox.y - 2 };
+    const tape = { x: cardBox.x + 40, y: cardBox.y + 20 };
     await page.evaluate(({ tape }) => {
       const handle = document.querySelector('.workspace-card .workspace-card-handle');
       const board = document.getElementById('workspaceBoard');
@@ -199,8 +201,8 @@ const centre = box => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
     }, { tape });
     await page.waitForTimeout(200);
     const cardAfter = await card.boundingBox();
-    assert(cardAfter.x > cardBox.x + 80 && cardAfter.y > cardBox.y + 50, 'Pencil on the tape moved the note: ' + JSON.stringify([cardBox, cardAfter]));
-    assert.equal(live((await saved(page)).readingWorkspace).length, strokesBefore, 'Pencil on the tape wrote no stroke');
+    assert(cardAfter.x > cardBox.x + 80 && cardAfter.y > cardBox.y + 50, 'Pencil on the top strip moved the note: ' + JSON.stringify([cardBox, cardAfter]));
+    assert.equal(live((await saved(page)).readingWorkspace).length, strokesBefore, 'Pencil on the top strip wrote no stroke');
 
     // 6. The Pencil elsewhere on the note still writes.
     const after = await card.boundingBox();
@@ -214,7 +216,7 @@ const centre = box => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
       return (ch.readingWorkspace.strokes || []).filter(s => Number((ch.readingWorkspace.deleted || {})[s.id] || 0) < Number(s.updatedAt || 0)).length === n + 1; }, strokesBefore);
 
     assert.deepEqual(errors, [], 'no page errors');
-    console.log('PASS lasso resize, finger move, keyboard resize, undo/redo, Pencil tape drag');
+    console.log('PASS lasso resize, finger move, keyboard resize, undo/redo, Pencil top-strip drag');
   } finally {
     if (browser) await browser.close();
     server.close();

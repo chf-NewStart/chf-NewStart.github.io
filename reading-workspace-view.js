@@ -304,7 +304,13 @@
       if (viewport) viewport.cancel();
       board.focus({ preventScroll: true });
       const p = pointFromClient(event.clientX, event.clientY), b = selection && selection.bounds;
-      const handle = b && event.target && event.target.closest && event.target.closest('.workspace-selection-handle');
+      let handle = b && event.target && event.target.closest && event.target.closest('.workspace-selection-handle');
+      if (handle && event.pointerType !== 'touch') {
+        // A finger gets the full 44px target; the precise Pencil or mouse must land on the dot,
+        // so starting a fresh lasso just outside a corner still draws a lasso.
+        const dot = handle.getBoundingClientRect();
+        if (Math.hypot(event.clientX - (dot.left + dot.width / 2), event.clientY - (dot.top + dot.height / 2)) > 12) handle = null;
+      }
       if (handle) {
         const c = handle.dataset.corner, origin = { x: c.includes('w') ? b.x + b.width : b.x, y: c.includes('n') ? b.y + b.height : b.y };
         const measured = measuredCards(), before = groupSnapshot(selection);
@@ -837,19 +843,24 @@
       }
       render();
     }
-    // The tape across a note's top edge is its grip for every tool: the Pencil there
-    // moves the note instead of writing. The hit area is wider than the drawn tape.
-    function tapeCardAt(clientX, clientY) {
+    // A note's top strip (above its text, beside the ⋯ menu) is its grip while writing:
+    // the Pencil there moves the note instead of drawing on it.
+    function gripCardAt(clientX, clientY, target) {
+      if (target && target.closest && target.closest('.workspace-note-menu, textarea, input')) return null;
       for (const state of [...cards.values()].reverse()) {
         if (state.orphan || !state.card.isConnected) continue;
-        const r = state.card.getBoundingClientRect(), mid = r.left + r.width / 2;
-        if (Math.abs(clientX - mid) <= 32 && clientY >= r.top - 16 && clientY <= r.top + 18) return state;
+        const r = state.card.getBoundingClientRect(), head = state.handle.getBoundingClientRect(), menu = state.menu.getBoundingClientRect();
+        if (clientX < r.left || clientX > r.right || clientY < r.top - 8 || clientY > Math.max(head.bottom, r.top + 30)) continue;
+        if (clientX >= menu.left && clientX <= menu.right && clientY >= menu.top && clientY <= menu.bottom) return null;
+        return state;
       }
       return null;
     }
-    function startTapeDrag(event) {
+    function startGripDrag(event) {
+      // Lasso keeps its own drags; the grip is for writing tools, where the Pencil would otherwise draw.
+      if (tool !== 'pen' && tool !== 'eraser') return false;
       if (gesture || event.button !== 0 || !available(context()) || context().busy) return false;
-      const state = tapeCardAt(event.clientX, event.clientY);
+      const state = gripCardAt(event.clientX, event.clientY, event.target);
       if (!state || !liveItem(state)) return false;
       event.preventDefault(); event.stopImmediatePropagation();
       gesture = { kind: 'drag', pointerId: event.pointerId, state, start: pointFromClient(event.clientX, event.clientY), startBox: { ...state.box } };
@@ -857,7 +868,7 @@
       return true;
     }
     board.addEventListener('pointerdown', event => {
-      if (startTapeDrag(event)) return;
+      if (startGripDrag(event)) return;
       if (tool === 'select') {
         if (event.button !== 0) return;
         if (gesture) { if (gesture.pointerId !== event.pointerId) cancel(); event.preventDefault(); event.stopImmediatePropagation(); return; }

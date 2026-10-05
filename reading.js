@@ -2807,6 +2807,13 @@
     trigger.title=pending?'Highlight selection in '+colorLabel:(persistent?'Marker controls · ':'Highlight color · ')+colorLabel;
     if(highlightEraseMode){trigger.classList.add('active');trigger.setAttribute('aria-label','Eraser on. Open highlight tools');trigger.title='Eraser on · choose a color to highlight again';}
     trigger.setAttribute('aria-controls','highlightToolbar');trigger.setAttribute('aria-expanded',String(highlightToolbarOpen()));
+    // Beside an open Workspace the paper's color is one tap away, mirroring the Annotate entry.
+    var direct=byId('zenWorkspaceMarker');
+    if(direct){
+      direct.dataset.highlightColor=highlightColor;direct.classList.toggle('active',trigger.classList.contains('active'));direct.classList.toggle('ready',pending);
+      direct.setAttribute('aria-label',pending?'Highlight selected passage in '+colorLabel:highlightEraseMode?'Eraser on. Open highlight tools':'Highlighter color '+colorLabel+'. Open colors');
+      direct.title=pending?'Highlight selection in '+colorLabel:'Highlighter color · '+colorLabel;direct.setAttribute('aria-expanded',String(highlightToolbarOpen()));
+    }
     byId('zenDock').classList.toggle('popout-open',!!byId('zenDock').querySelector('.zen-popout:not(.hidden)'));
     syncZenAnnotateUi();
   }
@@ -2870,7 +2877,9 @@
   document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.zenPdfLayout);closeZenPopouts(true);};});
   byId('zenGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
   byId('zenGuideToggle').onclick=function(){byId('focusBtn').onclick();zenWake();};
-  byId('zenMarker').onclick=function(){if(pdfWriteMode)setPdfWriteMode(false);closeZenPopouts(true);if(pendingSelection){commitPendingHighlight();setHighlightToolbarOpen(true,byId('zenAnnotate'));}else setHighlightToolbarOpen(!highlightToolbarOpen(),byId('zenAnnotate'));zenWake();};
+  function zenMarkerAction(returnTarget){if(pdfWriteMode)setPdfWriteMode(false);closeZenPopouts(true);if(pendingSelection){commitPendingHighlight();setHighlightToolbarOpen(true,returnTarget);}else setHighlightToolbarOpen(!highlightToolbarOpen(),returnTarget);zenWake();}
+  byId('zenMarker').onclick=function(){zenMarkerAction(byId('zenAnnotate'));};
+  byId('zenWorkspaceMarker').onclick=function(){zenMarkerAction(this);};
   byId('zenPaperAppearance').onclick=function(){closeZenPopouts(true);cyclePaperAppearance();};
   byId('zenTheme').onclick=function(){closeZenPopouts(true);byId('themeBtn').onclick();};
   byId('zenFind').onclick=function(){closeZenPopouts(false);toggleFindBar(undefined,false,byId('zenMore'));zenWake();};
@@ -5421,7 +5430,7 @@
        reader mode, such as Marker, that happens to be active underneath it. */
     if(e.key==='Escape'&&!byId('findBar').classList.contains('hidden')&&byId('findBar').contains(e.target)){e.preventDefault();toggleFindBar(false,true);return;}
     if(e.key==='Escape'&&zenOn&&closeZenPopouts(true)){e.preventDefault();return;}
-    if(e.key==='Escape'&&highlightToolbarOpen()){e.preventDefault();setHighlightToolbarOpen(false);var trigger=zenOn?byId('zenAnnotate'):highlightToolbarTrigger||byId('highlightColorBtn');if(trigger)trigger.focus();return;}
+    if(e.key==='Escape'&&highlightToolbarOpen()){e.preventDefault();setHighlightToolbarOpen(false);var trigger=zenOn?zenHighlightReturn():highlightToolbarTrigger||byId('highlightColorBtn');if(trigger)trigger.focus();return;}
     if(e.key==='Escape'&&!byId('touchDockMenu').classList.contains('hidden')){e.preventDefault();closeTouchDockMore(true);return;}
     if(e.key==='Escape'&&!byId('comfortBar').classList.contains('hidden')){e.preventDefault();setComfortBarOpen(false,true);return;}
     if(e.key==='Escape'&&temporaryNotebookMode()&&byId('notebook').classList.contains('sheet-open')){e.preventDefault();toggleSheet(false);return;}
@@ -7106,13 +7115,15 @@
   function fineHighlightUi(){return !!(matchMedia('(pointer: fine)').matches||matchMedia('(any-pointer: fine)').matches);}
   function highlightColorLabel(color){return color==='mint'?'Mint':color==='coral'?'Coral':color==='blue'?'Blue':'Yellow';}
   var highlightToolbarTrigger=null;
+  // Return focus to the direct Workspace color button when it opened the shelf; otherwise Annotate.
+  function zenHighlightReturn(){var t=highlightToolbarTrigger;return t&&t.id==='zenWorkspaceMarker'&&t.getClientRects().length?t:byId('zenAnnotate');}
   function highlightToolbarOpen(){var toolbar=byId('highlightToolbar');return !!toolbar&&!toolbar.classList.contains('hidden');}
   function setHighlightToolbarOpen(on,trigger){
     if(on&&pdfWriteMode)setPdfWriteMode(false);
     var toolbar=byId('highlightToolbar');if(!toolbar)return;
     if(on){if(trigger)highlightToolbarTrigger=trigger;closeZenPopouts(false);closeTouchDockMore(false);}
     toolbar.classList.toggle('hidden',!on);document.body.classList.toggle('highlight-toolbar-open',!!on);
-    ['highlightBtn','highlightColorBtn','touchHighlight','zenMarker'].forEach(function(id){var button=byId(id);button.setAttribute('aria-controls','highlightToolbar');button.setAttribute('aria-expanded',String(!!on));});
+    ['highlightBtn','highlightColorBtn','touchHighlight','zenMarker','zenWorkspaceMarker'].forEach(function(id){var button=byId(id);button.setAttribute('aria-controls','highlightToolbar');button.setAttribute('aria-expanded',String(!!on));});
     syncHighlightColorUi();syncTouchDockStates();
   }
   function syncHighlightColorUi(){
@@ -7574,7 +7585,7 @@
   document.querySelectorAll('[data-highlight-eraser]').forEach(function(b){b.onclick=function(){setHighlightEraseMode(!highlightEraseMode);setHighlightToolbarOpen(true);showReaderToast(highlightEraseMode?'Eraser on · sweep over highlights or handwriting · Undo restores them':'Eraser off');};});
   document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.highlightColor);setHighlightMode(fineHighlightUi());};});
   byId('highlightUndo').onclick=undoHighlight;
-  byId('highlightDone').onclick=function(){clearPendingSelection();setHighlightEraseMode(false);setHighlightMode(false);setHighlightToolbarOpen(false);if(zenOn)byId('zenAnnotate').focus();};
+  byId('highlightDone').onclick=function(){clearPendingSelection();setHighlightEraseMode(false);setHighlightMode(false);setHighlightToolbarOpen(false);if(zenOn)zenHighlightReturn().focus();};
   document.querySelectorAll('[data-selection-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.selectionHighlightColor);setSelectionAction('selectionHighlight');commitPendingHighlight();};});
   syncHighlightColorUi();
   function savePendingHighlight(note,keepCard){

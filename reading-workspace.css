@@ -96,6 +96,12 @@ body.workspace-open #sheetScrim { display:none !important; }
 body.workspace-open #workspaceReturn.hidden { display:none; }
 body.workspace-open #touchDock { right:calc(100% - var(--workspace-paper-width) + 10px); left:auto; top:max(180px,25dvh); transform:none; }
 body.workspace-open.zen #zenDock { right:calc(100% - var(--workspace-paper-width) + 12px); }
+.zen-workspace-marker { display:none !important; }
+body.workspace-open.zen .zen-workspace-marker { display:flex !important; }
+/* Paper highlight and handwriting shelves center on the paper, never over the workspace. */
+@media (min-width:900px) and (orientation:landscape) {
+  body.workspace-open :is(.highlight-toolbar,.pdf-ink-toolbar) { left:calc(var(--workspace-paper-width) / 2); max-width:calc(var(--workspace-paper-width) - 24px); }
+}
 body.workspace-open #excerptReturnChip { left:calc(var(--workspace-paper-width) / 2); bottom:26px; }
 body.workspace-open #workspaceOpen { color:var(--accent); }
 @media (max-width:899px), (orientation:portrait) {

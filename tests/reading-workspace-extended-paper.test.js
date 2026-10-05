@@ -163,6 +163,39 @@ async function writeAt(page, { logicalY, xFraction = .35, label, stylusTouch = f
     assert.equal(await page.locator('#workspaceInk path[data-stroke-id]').count(), saved.length, 'persisted strokes render after reload');
     await zoom(page, .5);
     saved.push(await writeAt(page, { logicalY: 3600, xFraction: .75, label: '50% right-hand visible paper' }));
+    // One continuous Pencil stroke that crosses the old 1000-unit right edge at
+    // 50% must keep going: no run of samples flattened against x=1000.
+    const crossing = await page.evaluate(async () => {
+      const scroll = document.getElementById('workspaceScroll'), board = document.getElementById('workspaceBoard');
+      scroll.scrollLeft = 0;
+      await new Promise(resolve => setTimeout(resolve, 60));
+      const b = board.getBoundingClientRect(), r = scroll.getBoundingClientRect();
+      const scale = b.width / Number(board.dataset.logicalWidth || 1000);
+      const y = r.top + r.height * .4, logicalY = (y - b.top) / scale;
+      const capture = board.setPointerCapture; board.setPointerCapture = () => {};
+      try {
+        for (let i = 0; i <= 20; i++) {
+          const logicalX = 800 + i * 50, x = b.left + logicalX * scale;
+          const type = i === 0 ? 'pointerdown' : i === 20 ? 'pointerup' : 'pointermove';
+          const target = i === 0 ? document.elementFromPoint(x, y) : board;
+          target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 79,
+            isPrimary: true, button: 0, buttons: i === 20 ? 0 : 1, pressure: i === 20 ? 0 : .6, clientX: x, clientY: y }));
+          if (i < 20) await new Promise(resolve => setTimeout(resolve, 16));
+        }
+      } finally { board.setPointerCapture = capture; }
+      return { logicalY, visibleRight: (r.right - b.left) / scale, width: Number(board.dataset.logicalWidth) };
+    });
+    assert(crossing.visibleRight > 1800, '50% zoom shows paper well past the old edge: ' + JSON.stringify(crossing));
+    const crossed = (await paper(page)).readingWorkspace;
+    const stroke = crossed.strokes.find(item => !saved.some(old => old.id === item.id));
+    assert(stroke, 'the crossing stroke was saved');
+    const xs = stroke.points.map(point => point[0]);
+    assert(xs[0] < 1000 && Math.max(...xs) > 1700, 'the stroke continues past x=1000: ' + JSON.stringify(xs));
+    assert(xs.filter(x => Math.abs(x - 1000) < .5).length <= 1, 'no samples pile up on the old edge: ' + JSON.stringify(xs));
+    assert(xs.every((x, i) => i === 0 || x >= xs[i - 1] - .01), 'samples stay in drawing order across the edge');
+    assert(crossed.width >= 2000, 'the saved paper is wide enough for the stroke: ' + crossed.width);
+    assert.equal(await page.locator('#workspaceInk path[data-stroke-id="' + stroke.id + '"]').count(), 1, 'the crossing stroke renders');
+    saved.push(stroke);
     assert.deepEqual(errors, [], 'full-app fixture has no uncaught errors');
     console.log('Extended workspace paper checks passed (' + ENGINE + ')');
   } finally {

@@ -89,7 +89,7 @@ async function clientPoints(page, points) {
     const rect = board.getBoundingClientRect();
     const saved = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
       .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1'));
-    return points.map(([x, y]) => ({ x: rect.left + x * rect.width / 1000,
+    return points.map(([x, y]) => ({ x: rect.left + x * rect.width / (saved.readingWorkspace.width || 1000),
       y: rect.top + y * rect.height / saved.readingWorkspace.height }));
   }, points);
 }
@@ -105,7 +105,7 @@ async function synthetic(page, points, pointerType = 'pen', end = 'pointerup', p
     try {
       for (let index = 0; index < points.length; index++) {
         const [x, y] = points[index];
-        const clientX = rect.left + x * rect.width / 1000;
+        const clientX = rect.left + x * rect.width / (saved.readingWorkspace.width || 1000);
         const clientY = rect.top + y * rect.height / saved.readingWorkspace.height;
         const target = document.elementFromPoint(clientX, clientY);
         if (!target || !board.contains(target)) throw new Error('Fixture point is outside visible workspace: ' + JSON.stringify({ x, y, clientX, clientY }));
@@ -138,8 +138,8 @@ async function visibleGeometry(page) {
       .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1'));
     const box = node => {
       const r = node.getBoundingClientRect();
-      return { x: (r.left - rect.left) * 1000 / rect.width, y: (r.top - rect.top) * saved.readingWorkspace.height / rect.height,
-        width: r.width * 1000 / rect.width, height: r.height * saved.readingWorkspace.height / rect.height };
+      return { x: (r.left - rect.left) * (saved.readingWorkspace.width || 1000) / rect.width, y: (r.top - rect.top) * saved.readingWorkspace.height / rect.height,
+        width: r.width * (saved.readingWorkspace.width || 1000) / rect.width, height: r.height * saved.readingWorkspace.height / rect.height };
     };
     return { card: box(document.querySelector('.workspace-card')),
       selection: document.querySelector('.workspace-selection-box:not([hidden])') ? box(document.querySelector('.workspace-selection-box')) : null };
@@ -251,7 +251,7 @@ const fixture = {};
     await card.locator('.workspace-note-menu summary').click();
     const initialPlace = (await chapter(page)).readingWorkspace.positions[fixture.note];
     const handle = await card.locator('.workspace-handle').boundingBox();
-    const boardWidth = await page.locator('#workspaceBoard').evaluate(node => node.getBoundingClientRect().width);
+    const boardWidth = await page.locator('#workspaceBoard').evaluate(node => node.getBoundingClientRect().width * 1000 / Number(node.dataset.logicalWidth || 1000));
     await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2); await page.mouse.down();
     await page.mouse.move(handle.x + handle.width / 2 + (100 - initialPlace.x) * boardWidth / 1000,
       handle.y + handle.height / 2 + (120 - initialPlace.y) * boardWidth / 1000, { steps: 6 }); await page.mouse.up();
@@ -384,8 +384,9 @@ const fixture = {};
       await page.locator('[data-workspace-tool="pen"]').click(); await select.click();
       const start = await card.locator(selector).evaluate(node => {
         const r = node.getBoundingClientRect(), board = document.getElementById('workspaceBoard').getBoundingClientRect();
-        return [(r.left + r.width / 2 - board.left) * 1000 / board.width,
-          (r.top + Math.min(r.height / 2, 10) - board.top) * 1000 / board.width];
+        const logical = Number(document.getElementById('workspaceBoard').dataset.logicalWidth || 1000);
+        return [(r.left + r.width / 2 - board.left) * logical / board.width,
+          (r.top + Math.min(r.height / 2, 10) - board.top) * logical / board.width];
       });
       await synthetic(page, [start, [start[0] + 8, start[1] + 8], start], 'pen');
       await card.locator(selector).evaluate(node => node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })));
@@ -398,10 +399,11 @@ const fixture = {};
     const beforeTwoFinger = await chapter(page);
     await page.evaluate(() => {
       const board = document.getElementById('workspaceBoard'), rect = board.getBoundingClientRect(), capture = board.setPointerCapture;
+      const logical = Number(board.dataset.logicalWidth || 1000);
       board.setPointerCapture = () => {};
       const emit = (type, pointerId, x, y) => board.dispatchEvent(new PointerEvent(type, { bubbles: true,
         cancelable: true, pointerType: 'touch', pointerId, isPrimary: pointerId === 201,
-        buttons: type === 'pointerup' ? 0 : 1, clientX: rect.left + x * rect.width / 1000, clientY: rect.top + y * rect.width / 1000 }));
+        buttons: type === 'pointerup' ? 0 : 1, clientX: rect.left + x * rect.width / logical, clientY: rect.top + y * rect.width / logical }));
       try {
         emit('pointerdown', 201, 45, 30); emit('pointermove', 201, 60, 50);
         emit('pointerdown', 202, 95, 70); emit('pointermove', 201, 75, 65);

@@ -6832,7 +6832,12 @@
     }catch(error){workspaceStatus('Could not save the card position.');return false;}
   }
   function showWorkspaceClip(id,point){
-    setWorkspaceOpen(true,false);var saved=placeWorkspaceClip(id,point&&!point.auto?point:workspaceDropPoint(id));refreshWorkspace();
+    setWorkspaceOpen(true,false);
+    // A dropped card stays on the paper the reader can already see: near the right
+    // edge it shifts left rather than widening the paper and scrolling the view away.
+    var ch=find(currentId),paperWidth=ch&&ch.readingWorkspace&&ch.readingWorkspace.width||1000;
+    if(point&&!point.auto&&Number.isFinite(point.x))point=Object.assign({},point,{x:Math.max(0,Math.min(paperWidth-(point.width||650),point.x))});
+    var saved=placeWorkspaceClip(id,point&&!point.auto?point:workspaceDropPoint(id));refreshWorkspace();
     if(saved&&workspaceView)workspaceView.focus(id);return saved;
   }
   function addWorkspaceExcerpt(selection,point){

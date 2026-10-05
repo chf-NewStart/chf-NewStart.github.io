@@ -45,8 +45,10 @@
       const neededX = Math.min(limit('MAX_WIDTH') - 1, Math.ceil(visibleRight + 300));
       const growY = neededY > logicalHeight && neededY > lastNeedY + 50;
       // A normal 100% view can remain 1000 units wide. Zooming out exposes real
-      // paper to the right; horizontal panning keeps a margin ahead of its edge.
-      const rightExposed = visibleRight > logicalWidth + .01 || left > 0;
+      // paper to the right; panning a zoomed-in view all the way to the right
+      // edge keeps a margin ahead of it. Zooming in or panning elsewhere does not
+      // add width the reader never reached.
+      const rightExposed = visibleRight > logicalWidth + .01 || (left > 0 && visibleRight > logicalWidth - 50);
       const growX = rightExposed && neededX > logicalWidth && neededX > lastNeedX + 50;
       if (!growY && !growX) return;
       // Set before callback: a synchronous layout from the adapter must not recurse.

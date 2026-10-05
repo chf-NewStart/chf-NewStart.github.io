@@ -125,7 +125,27 @@
       return target instanceof Element && scroll.contains(target) &&
         !target.closest('.workspace-card, textarea, input, select, button, [contenteditable="true"]');
     }
-    function cancel() { touches.clear(); pinch = null; }
+    // A live pinch only moves a composited transform, like the PDF pinch: no layout,
+    // scroll writes, paper growth or storage until the fingers lift. The zoom is
+    // committed once at the end, anchored to the same content point.
+    function previewPinch() {
+      const p = pinch; if (!p) return;
+      p.frame = 0;
+      const rect = scroll.getBoundingClientRect();
+      const t = { x: scroll.scrollLeft + p.x - rect.left - p.contentX * p.next, y: scroll.scrollTop + p.y - rect.top - p.contentY * p.next };
+      board.style.willChange = 'transform';
+      board.style.transform = `translate(${t.x}px, ${t.y}px) scale(${p.next})`;
+    }
+    function endPinch(commit) {
+      const p = pinch; pinch = null;
+      if (!p) return;
+      if (p.frame) global.cancelAnimationFrame(p.frame);
+      board.style.willChange = '';
+      board.style.transform = `scale(${zoom})`;
+      if (commit && Math.abs(p.next - zoom) > .0001) setZoom(p.next, p.x, p.y, p.contentX, p.contentY);
+    }
+    // Ending a pinch early keeps the zoom the reader can already see.
+    function cancel() { touches.clear(); endPinch(true); }
 
     scroll.addEventListener('pointerdown', event => {
       if (event.pointerType !== 'touch' || !blankTarget(event.target) || isBusy()) return;
@@ -133,7 +153,8 @@
       const current = pair();
       if (!current || current.distance < 12) return;
       const rect = scroll.getBoundingClientRect();
-      pinch = { distance: current.distance, zoom,
+      endPinch(true);
+      pinch = { distance: current.distance, zoom, next: zoom, x: current.x, y: current.y, frame: 0,
         contentX: (scroll.scrollLeft + current.x - rect.left) / zoom,
         contentY: (scroll.scrollTop + current.y - rect.top) / zoom };
       event.preventDefault();
@@ -145,15 +166,16 @@
       const current = pair();
       if (!current) { cancel(); return; }
       event.preventDefault();
-      setZoom(pinch.zoom * current.distance / pinch.distance,
-        current.x, current.y, pinch.contentX, pinch.contentY);
+      pinch.next = clamp(pinch.zoom * current.distance / pinch.distance, MIN_ZOOM, MAX_ZOOM);
+      pinch.x = current.x; pinch.y = current.y;
+      if (!pinch.frame) pinch.frame = global.requestAnimationFrame(previewPinch);
     }, { capture: true, passive: false });
     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
       scroll.addEventListener(type, event => {
         if (!touches.delete(event.pointerId)) return;
         if (pinch) {
           if (event.cancelable) event.preventDefault();
-          pinch = null;
+          endPinch(true);
         }
       }, true);
     }
@@ -172,7 +194,7 @@
     global.addEventListener('pagehide', cancel);
     if (global.ResizeObserver) new ResizeObserver(() => measure()).observe(scroll);
     updateControls();
-    return Object.freeze({ layout, cancel, getZoom: () => zoom });
+    return Object.freeze({ layout, cancel, getZoom: () => pinch ? pinch.next : zoom });
   }
 
   global.PhloemWorkspaceViewport = Object.freeze({ create });

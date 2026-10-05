@@ -169,10 +169,13 @@ test('blank two finger pinch anchors its moving centroid while a note retains it
       emit(board, 'pointerdown', 2, 340, 200);
       const top = scroll.getBoundingClientRect().top;
       const originalPoint = { x: (scroll.scrollLeft + 300), y: (scroll.scrollTop + 202.5 - top) };
+      const layoutBefore = [scroll.scrollLeft, scroll.scrollTop, board.style.width, board.style.height];
       const pinchPrevented = emit(board, 'pointermove', 2, 400, 200);
+      // Smooth pinch: mid-gesture only a transform preview changes; layout and scroll wait for the lift.
+      const layoutDuring = [scroll.scrollLeft, scroll.scrollTop, board.style.width, board.style.height];
+      emit(board, 'pointerup', 1, 260, 205); emit(board, 'pointerup', 2, 400, 200);
       const zoom = fixture.viewport.getZoom();
       const anchored = { x: (scroll.scrollLeft + 330) / zoom, y: (scroll.scrollTop + 202.5 - top) / zoom };
-      emit(board, 'pointerup', 1, 260, 205); emit(board, 'pointerup', 2, 400, 200);
       const note = document.querySelector('.workspace-card-body');
       emit(note, 'pointerdown', 3, 45, 45); emit(note, 'pointerdown', 4, 95, 45);
       emit(note, 'pointermove', 4, 145, 45);
@@ -181,7 +184,7 @@ test('blank two finger pinch anchors its moving centroid while a note retains it
       emit(board, 'pointerdown', 5, 260, 200); emit(board, 'pointerdown', 6, 340, 200);
       emit(board, 'pointermove', 6, 420, 200);
       emit(board, 'pointerup', 5, 260, 200); emit(board, 'pointerup', 6, 420, 200);
-      return { onePrevented, movePrevented, pinchPrevented, zoom, originalPoint,
+      return { onePrevented, movePrevented, pinchPrevented, zoom, originalPoint, layoutBefore, layoutDuring,
         anchored, afterNote:fixture.viewport.getZoom(), notePointers:fixture.notePointers,
         touchAction:getComputedStyle(board).touchAction };
     });
@@ -189,6 +192,7 @@ test('blank two finger pinch anchors its moving centroid while a note retains it
     assert.equal(result.movePrevented, false);
     assert(result.pinchPrevented);
     assert(result.zoom > 1.5);
+    assert.deepEqual(result.layoutDuring, result.layoutBefore, 'a live pinch does not relayout or scroll');
     assert(Math.abs(result.anchored.x - result.originalPoint.x) < 1);
     assert(Math.abs(result.anchored.y - result.originalPoint.y) < 1, JSON.stringify(result));
     assert.equal(result.afterNote, result.zoom);

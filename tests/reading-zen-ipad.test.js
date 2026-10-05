@@ -151,11 +151,8 @@ async function zenAction(page, name, selector) {
   await page.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await page.setInputFiles('#pdfFile', path.join(ROOT, 'assets', 'phloem-guide', 'phloem-field-guide.pdf'));
   await page.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0 && !document.getElementById('readerPage').classList.contains('hidden'));
-  await page.waitForFunction(() => document.body.classList.contains('zen'));
-  await page.locator('#zenExit').click();
-  await page.waitForFunction(() => !document.body.classList.contains('zen'));
-
-  await page.click('#zenBtn');
+  /* Zen is the only reader (1a215db5): papers open straight into it, and its X
+     returns to the library, so there is no desk toolbar to leave and re-enter. */
   await page.waitForFunction(() => document.body.classList.contains('zen'));
   check('Zen presents More as a top-level reading-tools control', await page.locator('#zenMore').isVisible() && !(await page.locator('#zenMoreMenu').isVisible()));
   await showZenMenu(page, 'More');
@@ -353,10 +350,6 @@ async function zenAction(page, name, selector) {
   await finePage.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await finePage.waitForFunction(() => document.querySelector('#textDocument .original') && !document.getElementById('readerPage').classList.contains('hidden'));
   await finePage.waitForFunction(() => document.body.classList.contains('zen'));
-  await finePage.locator('#zenExit').click();
-  await finePage.waitForFunction(() => !document.body.classList.contains('zen'));
-  await finePage.click('#zenBtn');
-  await finePage.waitForFunction(() => document.body.classList.contains('zen'));
 
   await showZenMenu(finePage, 'Annotate');
   const fineZenMarker = finePage.locator('#zenMarker');
@@ -406,8 +399,6 @@ async function zenAction(page, name, selector) {
   await keyboardPage.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await keyboardPage.waitForFunction(() => document.querySelector('#textDocument .original') && !document.getElementById('readerPage').classList.contains('hidden'));
   await keyboardPage.waitForFunction(() => document.body.classList.contains('zen'));
-  await keyboardPage.locator('#zenExit').click();
-  await keyboardPage.waitForFunction(() => !document.body.classList.contains('zen'));
 
   /* Put a genuine DOM selection near the bottom of the full layout viewport. Its note
      card begins below the future keyboard edge, so passing this check requires the
@@ -466,10 +457,6 @@ async function zenAction(page, name, selector) {
   await phonePage.addInitScript(seedReader);
   await phonePage.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await phonePage.waitForFunction(() => document.querySelector('#textDocument .original') && !document.getElementById('readerPage').classList.contains('hidden'));
-  await phonePage.waitForFunction(() => document.body.classList.contains('zen'));
-  await phonePage.locator('#zenExit').click();
-  await phonePage.waitForFunction(() => !document.body.classList.contains('zen'));
-  await phonePage.keyboard.press('f');
   await phonePage.waitForFunction(() => document.body.classList.contains('zen'));
   await zenAction(phonePage, 'More', '#zenFind');
   const phoneFind = await phonePage.locator('#findBar').evaluate(bar => {

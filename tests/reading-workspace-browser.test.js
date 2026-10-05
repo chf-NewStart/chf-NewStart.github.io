@@ -76,9 +76,15 @@ async function waitPdf(page, pageNo) {
 async function turnPage(page, direction, target) {
   await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.pagedReady === 'true'
     && !document.getElementById('documentPane').classList.contains('turning-book-leaf'));
+  // Page arrows now live in Zen's More > This paper dialog (1a215db5).
+  await page.locator('#zenMore').click();
+  await page.locator('#zenReadingControls').click();
+  await page.locator('#readerControlsDialog').waitFor({ state: 'visible' });
   const button = page.locator(direction === 'next' ? '#nextPage' : '#prevPage');
   assert.equal(await button.isVisible(), true, 'page turn has a visible control');
   await button.click();
+  await page.locator('[data-close="readerControlsDialog"]').click();
+  await page.locator('#readerControlsDialog').waitFor({ state: 'hidden' });
   try {
     await page.waitForFunction(n => !!document.querySelector('.pdf-page[data-page="' + n + '"].book-active')
       && document.getElementById('pdfFrame').dataset.pagedReady === 'true'
@@ -150,7 +156,9 @@ async function selectPdfAcrossLines(page, pageNo) {
   return selected.quote;
 }
 async function openPaper(page, id) {
-  await page.locator('[data-view="libraryPage"]').first().click();
+  // The masthead is hidden while reading; Zen's X returns to the library (1a215db5).
+  if (await page.locator('#readerPage').isVisible()) await page.locator('#zenExit').click();
+  else await page.locator('[data-view="libraryPage"]').first().click();
   await page.locator('#libraryPage').waitFor({ state: 'visible' });
   await page.locator('[data-continue-paper="' + id + '"]').click();
   await page.waitForFunction(paperId => !document.getElementById('readerPage').classList.contains('hidden')
@@ -188,12 +196,17 @@ async function pinchCard(card, scale) {
         pointerType: 'touch', pointerId: id, isPrimary: id === 61, button: 0,
         buttons: type === 'pointerup' ? 0 : 1, clientX: x, clientY: y }));
     }
+    // Card widths are percentages of the saved paper width, which can now grow past
+    // 1000 logical units (d9df0ddd).
+    const paper = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+      .find(ch => ch.id === localStorage.getItem('readingRoom.lastOpen.v1'));
+    const logical = () => parseFloat(node.style.width) / 100 * (paper?.readingWorkspace?.width || 1000);
     try {
       emit('pointerdown', 61, x1); emit('pointerdown', 62, x2);
       emit('pointermove', 62, endX2);
-      const preview = parseFloat(node.style.width) * 10;
+      const preview = logical();
       emit('pointerup', 61, x1); emit('pointerup', 62, endX2);
-      return { preview, width: parseFloat(node.style.width) * 10,
+      return { preview, width: logical(),
         menuOpen: node.querySelector('.workspace-note-menu').open };
     } finally { node.setPointerCapture = originalCapture; }
   }, scale);
@@ -281,17 +294,19 @@ async function waitStrokeCount(page, paperId, count) {
   }, { paperId, count });
 }
 async function ensureWorkspaceOpen(page) {
-  if (await page.locator('body').evaluate(node => node.classList.contains('zen'))) {
-    const exit = page.locator('#zenExit');
-    assert.equal(await exit.isVisible(), true, 'Zen exposes its explicit exit control');
-    await exit.click();
-    await page.waitForFunction(() => !document.body.classList.contains('zen'));
-  }
+  // 1a215db5 made Zen the only reader; Workspace opens from the Zen dock, which
+  // stays beside the paper instead of revealing a desk toolbar.
   if (await page.locator('#workspacePanel').isVisible()) return;
-  const open = page.locator('#workspaceOpen');
+  const open = page.locator('#zenWorkspace');
   assert.equal(await open.isVisible(), true, 'workspace has a visible opening control');
   await open.click();
   await page.locator('#workspacePanel').waitFor({ state: 'visible' });
+}
+async function pressOutsideWorkspace(page) {
+  // #readerMeta moved into the This paper dialog (1a215db5); press the grey
+  // desk below the PDF page instead, which is equally outside the workspace.
+  const pane = await page.locator('#documentPane').boundingBox();
+  await page.mouse.click(pane.x + pane.width * .5, pane.y + pane.height - 12);
 }
 async function openMore(page) {
   const menu = page.locator('#workspaceMore');
@@ -417,7 +432,7 @@ async function sourceCueVisual(page, cue) {
     await page.locator('#workspacePenOptions').waitFor({ state: 'hidden' });
     assert.equal(await page.locator('#workspacePenOptions').isVisible(), false,
       'opening More dismisses Pen options');
-    await page.locator('#readerMeta').click();
+    await pressOutsideWorkspace(page);
     await page.waitForFunction(() => !document.getElementById('workspaceMore').open);
     assert.equal(await page.locator('#workspaceMore').evaluate(node => node.open), false,
       'outside pointer press dismisses More');
@@ -469,7 +484,9 @@ async function sourceCueVisual(page, cue) {
     assert.equal(lightSticky.boxShadow, lightSticky.library.boxShadow,
       'workspace and library stickies use the same layered paper shadow');
     await page.screenshot({ path: '/tmp/phloem-workspace-sticky-' + ENGINE + '-light.png' });
-    const themeButton = page.locator('#themeBtn');
+    // The reader's theme control is Zen More > Theme (1a215db5).
+    const themeButton = page.locator('#zenTheme');
+    await page.locator('#zenMore').click();
     assert.equal(await themeButton.isVisible(), true, 'reader exposes a visible theme control');
     await themeButton.click();
     await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
@@ -486,10 +503,11 @@ async function sourceCueVisual(page, cue) {
     assert(darkSticky.tape.opacity < lightSticky.tape.opacity, 'dark interface softens translucent tape');
     assert.equal(darkSticky.transform, 'none', 'dark mode does not rotate workspace card');
     await page.screenshot({ path: '/tmp/phloem-workspace-sticky-' + ENGINE + '-dark.png' });
+    if (!await themeButton.isVisible()) await page.locator('#zenMore').click();
     await themeButton.click();
     await page.waitForFunction(() => !document.documentElement.dataset.theme);
     await openCardMenu(card);
-    await page.locator('#readerMeta').click();
+    await pressOutsideWorkspace(page);
     await page.waitForFunction(() => !document.querySelector('.workspace-card .workspace-note-menu').open);
     assert.equal(await card.locator('.workspace-note-menu').evaluate(node => node.open), false,
       'outside pointer press dismisses the sticky note menu');
@@ -663,13 +681,25 @@ async function sourceCueVisual(page, cue) {
     await page.locator('[data-workspace-tool="pen"]').click();
     await openPenOptions(page);
     await page.locator('[data-workspace-color]').first().click();
-    await stroke(page, [[.65, .12], [.69, .14], [.74, .16], [.78, .18]]);
+    // Paper now widens (d9df0ddd), so fixed board fractions no longer land on the
+    // sticky; aim the same short diagonal at the sticky's own paper.
+    const onCard = await card.evaluate(node => {
+      const box = node.getBoundingClientRect(), ink = document.getElementById('workspaceInk').getBoundingClientRect();
+      return [[.4, .55], [.47, .6], [.55, .65], [.62, .7]].map(([fx, fy]) =>
+        [(box.left + box.width * fx - ink.left) / ink.width, (box.top + box.height * fy - ink.top) / ink.height]);
+    });
+    await stroke(page, onCard);
     await waitStrokeCount(page, pdfId, 1);
     pdf = await paperById(page, pdfId);
     assert(workspaceStrokes(pdf)[0].points.length >= 2, 'Pencil stroke saves logical points');
-    assert(workspaceStrokes(pdf)[0].points[0][0] > 500 && workspaceStrokes(pdf)[0].points[0][0] < 800
-      && workspaceStrokes(pdf)[0].points[0][1] > 100,
-    'Pencil points use absolute workspace coordinates');
+    // d9df0ddd/96b066a5: the paper now widens in 1000-unit steps when notes are
+    // placed past its edge (saved v3 `width`), so the stroke is aimed at the card.
+    // The stroke starts 40% across the sticky, so in logical units it must sit at
+    // the card's saved x plus 40% of its saved width (not screen pixels).
+    const expectedStartX = draggedPlace.x + draggedPlace.width * .4;
+    assert(Math.abs(workspaceStrokes(pdf)[0].points[0][0] - expectedStartX) < 25
+      && workspaceStrokes(pdf)[0].points[0][1] > draggedPlace.y,
+    'Pencil points use absolute workspace coordinates: ' + JSON.stringify({ points: workspaceStrokes(pdf)[0].points.slice(0, 2), expectedStartX, draggedPlace }));
     assert.equal(await page.locator('#workspaceInk path[data-stroke-id]').count(), 1,
       'saved stroke is visible on the workspace ink layer');
     assert.equal(Object.values(pdf.pdfInk || {}).flat().length, 0, 'workspace ink is separate from PDF ink');
@@ -698,7 +728,7 @@ async function sourceCueVisual(page, cue) {
     { id: pdfId, clipId: clip.id, width: menuWidth });
     draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
     assert(pinch.preview > menuWidth && draggedPlace.width <= 900 && draggedPlace.x >= 0
-      && draggedPlace.x + draggedPlace.width <= 1000,
+      && draggedPlace.x + draggedPlace.width <= (await paperById(page, pdfId)).readingWorkspace.width,
     'two-finger pinch enlarges this note within the paper bounds: ' + JSON.stringify({ pinch, draggedPlace }));
     assert.equal(pinch.menuOpen, false, 'pinch does not accidentally activate the note menu');
     pdf = await paperById(page, pdfId);
@@ -779,7 +809,7 @@ async function sourceCueVisual(page, cue) {
     const movedInkPoints = await page.evaluate(id => {
       const board = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === id).readingWorkspace;
       return PhloemWorkspaceState.displayStroke(board.strokes[0], board.positions).points
-        .map(point => [point[0] / 1000, point[1] / board.height]);
+        .map(point => [point[0] / (board.width || 1000), point[1] / board.height]);
     }, pdfId);
     await stroke(page, movedInkPoints);
     await waitStrokeCount(page, pdfId, 0);

@@ -54,9 +54,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && a.right > b.x + 1 && a.y <
     await page.setInputFiles('#pdfFile', { name: 'palette.pdf', mimeType: 'application/pdf', buffer: fixturePdf() });
     await page.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0);
     await page.waitForFunction(() => document.body.classList.contains('zen'));
-    await page.locator('#zenExit').click();
-    await page.waitForFunction(() => !document.body.classList.contains('zen'));
-    await page.locator('#pdfWriteBtn').evaluate(button => button.click());
+    /* Zen is the sole reader (1a215db5): ✕ now returns to the library, and Write
+       is reached from the Zen dock's Annotate menu. */
+    await page.locator('#zenAnnotate').click();
+    await page.locator('#zenAnnotateMenu').waitFor({ state: 'visible' });
+    await page.locator('#zenWrite').click();
+    await page.waitForFunction(() => !document.getElementById('pdfInkToolbar').classList.contains('hidden'));
     check('Write starts with the first Fine size, not Medium', await page.locator('[data-pdf-ink-width="1.5"]').getAttribute('aria-pressed') === 'true' && await page.locator('[data-pdf-ink-width="3"]').getAttribute('aria-pressed') === 'false');
     check('all eight color presets are exposed with accessible names', await page.locator('[data-pdf-ink-color]').evaluateAll(buttons => buttons.length === 8 && buttons.every(button => button.getAttribute('aria-label') && button.title)));
     check('Pen and Eraser are named icon-only controls', await page.locator('[data-pdf-ink-tool]').evaluateAll(buttons => buttons.length === 2 && buttons.every(button => button.getAttribute('aria-label') && !button.textContent.trim())));
@@ -74,8 +77,10 @@ function overlaps(a, b) { return a.x < b.right - 1 && a.right > b.x + 1 && a.y <
     check('toolbar explains straightening and shared whole-object erasing', /hold pencil to straighten/i.test(await page.locator('#pdfInkHint').textContent())
       && /whole strokes.*text highlights/i.test(await page.locator('#pdfInkHint').textContent())
       && /handwriting strokes and text highlights/i.test(await page.locator('[data-pdf-ink-tool="eraser"]').getAttribute('title')));
-    for (const zen of [false, true]) {
-      if (zen) await page.locator('#zenBtn').click();
+    /* The classic (non-Zen) reader was removed in 1a215db5 "Make Zen the sole reader",
+       so the toolbar geometry is checked on the only reader that remains. */
+    for (const zen of [true]) {
+      check('the PDF ink toolbar is shown inside the Zen reader', await page.evaluate(() => document.body.classList.contains('zen')));
       for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 390, height: 844 }, { width: 320, height: 800 }, { width: 844, height: 390 }]) {
         await page.setViewportSize(viewport);
         await page.waitForTimeout(180);

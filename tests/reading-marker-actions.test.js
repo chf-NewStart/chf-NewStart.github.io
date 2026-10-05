@@ -40,11 +40,16 @@ function seed() {
 }
 async function tap(page, selector) { await page.locator(selector).evaluate(element => element.click()); await page.waitForTimeout(45); }
 async function chapter(page) { return page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === localStorage.getItem('readingRoom.lastOpen.v1'))); }
-async function palette(page, surface = 'header') {
-  const trigger = { header: 'highlightColorBtn', dock: 'touchHighlight', zen: 'zenMarker' }[surface];
-  if (surface === 'zen' && !await page.locator('body').evaluate(body => body.classList.contains('zen'))) await page.locator('#zenBtn').click();
-  if (surface === 'zen' && !await page.locator('#zenAnnotateMenu').isVisible()) await page.locator('#zenAnnotate').click();
-  if (!await page.locator('#highlightToolbar').isVisible()) await tap(page, '#' + trigger);
+// Zen is the only reader since 1a215db5 ("Make Zen the sole reader"): the header
+// color chooser and the touch dock are hidden, so the shared Highlight toolbar is
+// reached through the Zen dock (Annotate -> Highlight), tapped on touch.
+let touchContext = false;
+async function press(locator) { if (touchContext) await locator.tap(); else await locator.click(); }
+async function palette(page) {
+  if (await page.locator('#highlightToolbar').isVisible()) return;
+  if (!await page.locator('#zenAnnotateMenu').isVisible()) await press(page.locator('#zenAnnotate'));
+  await press(page.locator('#zenMarker'));
+  await page.locator('#highlightToolbar').waitFor({ state: 'visible' });
 }
 async function selectAlpha(page) {
   await page.evaluate(() => {
@@ -79,14 +84,13 @@ function pdfFixture() {
     for (const touch of [true, false]) {
       const label = touch ? 'touch' : 'desktop', context = await browser.newContext({ viewport: { width: 1180, height: 1000 }, hasTouch: touch, isMobile: touch, serviceWorkers: 'block' });
       const page = await context.newPage(), errors = [], outbound = [];
+      touchContext = touch;
       page.on('pageerror', error => errors.push(error.message));
       await page.route(/https:\/\/(?:api\.(?:openai|anthropic|deepseek)\.com|en\.wikipedia\.org|commons\.wikimedia\.org)\//, route => { outbound.push(route.request().url()); return route.abort(); });
       await page.addInitScript(seed);
       await page.goto('http://127.0.0.1:' + PORT + '/reading.html', { waitUntil: 'load' });
       await page.waitForSelector('#textDocument mark[data-hl-id]');
       await page.waitForFunction(() => document.body.classList.contains('zen'));
-      await page.locator('#zenExit').click();
-      await page.waitForFunction(() => !document.body.classList.contains('zen'));
       check(label + ' shared Highlight toolbar retains Define without Ask AI', await page.locator('#highlightToolbar [data-marker-action="define"]').count() === 1
         && await page.locator('#highlightToolbar [data-marker-action="ask"]').count() === 0
         && !/Ask AI/.test(await page.locator('#highlightToolbar').textContent()));
@@ -99,8 +103,9 @@ function pdfFixture() {
       await tap(page, '#highlightToolbar [data-marker-action="define"]');
       check(label + ' missing target guides without opening lookup', (await page.locator('#readerToast').textContent()).includes('Select text') && !await page.locator('#lookupCard').isVisible() && outbound.length === 0);
       await tap(page, '#textDocument mark[data-hl-id]');
-      for (const surface of ['header', ...(touch ? ['dock'] : []), 'zen']) {
-        await palette(page, surface);
+      // Header and touch-dock surfaces were removed in 1a215db5; Zen is the one surface.
+      for (const surface of ['zen']) {
+        await palette(page);
         const description = await page.locator('#highlightToolbar [data-marker-action-context]').textContent();
         check(label + ' ' + surface + ' previews explicitly selected passage', description === '“beta gamma”', description);
         check(label + ' ' + surface + ' Define has a 44px target', await page.locator('#highlightToolbar [data-marker-action="define"]').evaluate(button => button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44));
@@ -108,12 +113,13 @@ function pdfFixture() {
         await page.waitForFunction(() => document.getElementById('lookupTitle').textContent === 'Beta gamma definition');
         check(label + ' ' + surface + ' Define reuses cached explicit passage', (await page.locator('#lookupSelection').textContent()) === '“beta gamma”' && outbound.length === 0);
         await tap(page, '#lookupClose');
-        if (surface === 'zen') await page.locator('#zenExit').click();
       }
       const afterDefine = await chapter(page);
       check(label + ' cached Define sends nothing and saves no AI thread', outbound.length === 0 && afterDefine.aiThreads.length === 0 && afterDefine.questions.length === 0);
       check(label + ' saved highlight and note remain intact', afterDefine.textHighlights.length === 1 && afterDefine.textHighlights[0].note === 'A note that must not be sent automatically.');
-      await selectAlpha(page); await palette(page);
+      // In Zen, Highlight commits a pending selection (zenMarkerAction), so the reader
+      // opens the toolbar first and then selects; the toolbar stays open while marking.
+      await palette(page); await selectAlpha(page);
       check(label + ' pending native selection takes precedence over last highlight', (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()) === '“Alpha”');
       await page.locator('#highlightToolbar [data-marker-action="define"]').click();
       await page.waitForFunction(() => document.getElementById('lookupTitle').textContent === 'Alpha definition');
@@ -134,12 +140,11 @@ function pdfFixture() {
       }));
       check(label + ' deleted last highlight is never reused by Define', deletedState.context.includes('Select text')
         && deletedState.toast.includes('Select text') && deletedState.lookupHidden, deletedState);
-      await tap(page, '#readerBack');
+      await press(page.locator('#zenExit'));
+      await page.waitForFunction(() => !document.getElementById('libraryPage').classList.contains('hidden'));
       await page.setInputFiles('#pdfFile', { name: 'marker-actions-pages.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
       await page.waitForSelector('.pdf-page[data-page="1"] .text-layer span');
       await page.waitForFunction(() => document.body.classList.contains('zen'));
-      await page.locator('#zenExit').click();
-      await page.waitForFunction(() => !document.body.classList.contains('zen'));
       await page.waitForFunction(() => document.querySelector('.pdf-page[data-page="1"] .text-layer span')?.textContent.trim());
       await page.evaluate(() => {
         const span = document.querySelector('.pdf-page[data-page="1"] .text-layer span'), range = document.createRange();
@@ -148,7 +153,11 @@ function pdfFixture() {
       await page.waitForFunction(() => document.getElementById('highlightBtn').classList.contains('ready'));
       await tap(page, '#selectionHighlight'); await palette(page);
       check(label + ' newly committed PDF highlight is available immediately', (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()).includes('Boundary marker test'));
-      await tap(page, '#nextPage'); await page.waitForFunction(() => document.getElementById('pageNumber').textContent.trim().startsWith('2'));
+      // Page controls live in Zen More -> This paper (1a215db5).
+      await press(page.locator('#zenMore')); await press(page.locator('#zenReadingControls'));
+      await press(page.locator('#readerControlsDialog #nextPage'));
+      await press(page.locator('#readerControlsDialog [data-close="readerControlsDialog"]'));
+      await page.waitForFunction(() => document.getElementById('pageNumber').textContent.trim().startsWith('2'));
       await palette(page); await tap(page, '#highlightToolbar [data-marker-action="define"]');
       check(label + ' previous-page PDF highlight cannot leak into Define', (await page.locator('#highlightToolbar [data-marker-action-context]').textContent()).includes('Select text')
         && (await page.locator('#readerToast').textContent()).includes('Select text') && !await page.locator('#lookupCard').isVisible() && outbound.length === 0);

@@ -86,10 +86,34 @@ async function waitForPdf(page) {
       && !document.getElementById('readerPage').classList.contains('hidden');
   });
 }
-async function leaveDefaultZen(page) {
+/* Zen is the sole reader (1a215db5 "Make Zen the sole reader and return directly to
+   library"): its ✕ now leaves for the library and clears the open paper, so the test
+   stays on the Zen paper and reaches every control the way a reader does now. */
+async function useDefaultZen(page) {
   await page.waitForFunction(() => document.body.classList.contains('zen'));
-  await page.locator('#zenExit').click();
-  await page.waitForFunction(() => !document.body.classList.contains('zen'));
+}
+async function openZenMore(page) {
+  if (!await page.locator('#zenMoreMenu').isVisible()) await page.locator('#zenMore').click();
+  await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+}
+async function setReadingSettings(page, open) {
+  if (await page.locator('#comfortBar').isVisible() === open) return;
+  if (open) { await openZenMore(page); await page.locator('#zenSettings').click(); }
+  else await page.locator('#comfortClose').click();
+  await page.locator('#comfortBar').waitFor({ state: open ? 'visible' : 'hidden' });
+}
+async function paperControl(page, selector) {
+  await openZenMore(page);
+  await page.locator('#zenReadingControls').click();
+  await page.locator('#readerControlsDialog').waitFor({ state: 'visible' });
+  await page.locator(selector).click();
+  if (await page.locator('#readerControlsDialog').isVisible()) await page.locator('#readerControlsDialog [data-close="readerControlsDialog"]').click();
+  await page.locator('#readerControlsDialog').waitFor({ state: 'hidden' });
+}
+async function zenLayout(page, layout) {
+  await openZenMore(page);
+  await page.locator('#zenLayout').click();
+  await page.locator('[data-zen-pdf-layout="' + layout + '"]').click();
 }
 async function chapter(page) {
   return page.evaluate(() => {
@@ -101,17 +125,18 @@ async function ink(page, number = 1) { return (await chapter(page)).pdfInk?.[num
 function identities(strokes) { return JSON.stringify(strokes.map(({ updatedAt, ...stroke }) => stroke).sort((a, b) => a.id.localeCompare(b.id))); }
 async function markCount(page) { return Object.values((await chapter(page)).highlights || {}).reduce((count, items) => count + items.length, 0); }
 async function click(page, selector) { await page.locator(selector).evaluate(element => element.click()); }
+// Paper Undo sits directly on the Zen dock since 62af6da4 "Expose paper undo".
 async function zenAction(page, selector) {
   const menu = selector === '#zenFind' ? 'More' : 'Annotate';
-  if (!await page.locator('#zen' + menu + 'Menu').isVisible()) await page.locator('#zen' + menu).click();
+  if (selector !== '#zenUndo' && !await page.locator('#zen' + menu + 'Menu').isVisible()) await page.locator('#zen' + menu).click();
   await page.locator(selector).click();
 }
 async function showZenAction(page, selector) {
   const menu = selector === '#zenFind' ? 'More' : 'Annotate';
-  if (!await page.locator('#zen' + menu + 'Menu').isVisible()) await page.locator('#zen' + menu).click();
+  if (selector !== '#zenUndo' && !await page.locator('#zen' + menu + 'Menu').isVisible()) await page.locator('#zen' + menu).click();
 }
 async function writeMode(page, enabled = true) {
-  if ((await page.locator('#pdfWriteBtn').getAttribute('aria-pressed') === 'true') !== enabled) await click(page, '#pdfWriteBtn');
+  if ((await page.locator('#zenWrite').getAttribute('aria-pressed') === 'true') !== enabled) await zenAction(page, '#zenWrite');
   await page.waitForTimeout(60);
 }
 async function positionPage(page, number) {
@@ -173,9 +198,7 @@ async function checkZenUndo(browser) {
     await page.waitForFunction(() => document.body.classList.contains('library-ready'));
     await page.setInputFiles('#pdfFile', { name: 'zen-undo.pdf', mimeType: 'application/pdf', buffer: makeInkPdf() });
     await waitForPdf(page);
-    await leaveDefaultZen(page);
-    await click(page, '#zenBtn');
-    await page.waitForFunction(() => document.body.classList.contains('zen'));
+    await useDefaultZen(page);
     await showZenAction(page, '#zenUndo');
     const undo = page.locator('#zenUndo');
     check('Zen exposes a named Undo button, disabled when there is no edit history', await undo.isVisible() && await undo.isDisabled()
@@ -232,7 +255,8 @@ async function checkZenUndo(browser) {
         });
         return { controls, viewport: { width: innerWidth, height: innerHeight } };
       });
-      check('Zen dock keeps all five 44px controls onscreen at ' + viewport.width + '×' + viewport.height, geometry.controls.length === 5
+      /* Six since 62af6da4 "Expose paper undo" moved Undo out of Annotate onto the dock. */
+      check('Zen dock keeps all six 44px controls onscreen at ' + viewport.width + '×' + viewport.height, geometry.controls.length === 6
         && geometry.controls.every(rect => rect.width >= 44 && rect.height >= 44 && rect.x >= 0 && rect.y >= 0
           && rect.right <= geometry.viewport.width + 1 && rect.bottom <= geometry.viewport.height + 1), JSON.stringify(geometry));
       if (process.env.PHLOEM_ZEN_SCREENSHOT) await page.screenshot({ path: process.env.PHLOEM_ZEN_SCREENSHOT + '-' + viewport.width + 'x' + viewport.height + '.png' });
@@ -258,8 +282,7 @@ async function checkZenUndo(browser) {
     const beforeReload = identities(await ink(page));
     await page.reload({ waitUntil: 'load' });
     await waitForPdf(page);
-    await leaveDefaultZen(page);
-    await click(page, '#zenBtn');
+    await useDefaultZen(page);
     await showZenAction(page, '#zenUndo');
     check('reopening keeps saved ink but correctly resets the session-only Zen Undo history', beforeReload !== '[]'
       && same(JSON.parse(identities(await ink(page))), JSON.parse(beforeReload)) && await page.locator('#zenUndo').isDisabled(),
@@ -285,14 +308,14 @@ async function checkZenUndo(browser) {
     await page.waitForFunction(() => document.body.classList.contains('library-ready'));
     await page.setInputFiles('#pdfFile', { name: 'handwriting-blank-page.pdf', mimeType: 'application/pdf', buffer: makeInkPdf() });
     await waitForPdf(page);
-    await leaveDefaultZen(page);
-    check('PDF opens with highlighting as the default and Write off', await page.locator('#pdfWriteBtn').getAttribute('aria-pressed') === 'false' && !await page.locator('#pdfInkToolbar').isVisible());
+    await useDefaultZen(page);
+    check('PDF opens with highlighting as the default and Write off', await page.locator('#zenWrite').getAttribute('aria-pressed') === 'false' && !await page.locator('#pdfInkToolbar').isVisible());
     await positionPage(page, 1);
     let from = await point(page, .2, .3), to = await point(page, .4, .35);
     await stroke(page, from, to);
     check('Pencil movement in blank margins does not write without explicit Write mode', (await ink(page)).length === 0 && await markCount(page) === 0);
     await writeMode(page);
-    check('Write mode exposes ink controls and synchronizes the touch dock', await page.locator('#pdfInkToolbar').isVisible() && await page.locator('#touchWrite').getAttribute('aria-pressed') === 'true');
+    check('Write mode exposes ink controls and synchronizes the Zen dock', await page.locator('#pdfInkToolbar').isVisible() && await page.locator('#zenWrite').getAttribute('aria-pressed') === 'true');
     await positionPage(page, 1);
     from = await point(page, .2, .3); to = await point(page, .4, .35);
     await pointer(page, 'pointerdown', from, { pressure: .2 });
@@ -315,10 +338,10 @@ async function checkZenUndo(browser) {
     check('stroke stores normalized page coordinates and pressure samples', first?.points.length >= 2 && first.points.every(p => p.length === 3 && p[0] >= 0 && p[0] <= 1 && p[1] >= 0 && p[1] <= 1 && p[2] >= 0 && p[2] <= 1) && first.points.some(p => Math.abs(p[2] - .2) < .01) && first.points.some(p => Math.abs(p[2] - .8) < .01), JSON.stringify(first));
     check('writing creates no text highlights and renders a saved SVG stroke', await markCount(page) === 0 && await page.locator('.pdf-ink-stroke[data-ink-id="' + first?.id + '"]').count() === 1);
     const beforeStyleChange=JSON.stringify(await ink(page));
-    await click(page,'#comfortBtn');
-    await click(page,'[data-pdf-ink-style="clean"]');
+    await setReadingSettings(page, true);
+    await page.locator('[data-pdf-ink-style="clean"]').click();
     check('Clean is selectable without rewriting existing Natural notes', await page.locator('[data-pdf-ink-style="clean"]').getAttribute('aria-pressed') === 'true' && JSON.stringify(await ink(page)) === beforeStyleChange);
-    await click(page,'#comfortBtn');
+    await setReadingSettings(page, false);
     const beforeFinger = JSON.stringify(await ink(page));
     const fingerDown = await pointer(page, 'pointerdown', from, { pointerType: 'touch', id: 98 });
     const fingerMove = await pointer(page, 'pointermove', to, { pointerType: 'touch', id: 98 });
@@ -382,7 +405,7 @@ async function checkZenUndo(browser) {
     await pointer(page, 'pointermove', to);
     await click(page, '#pdfInkDone');
     await pointer(page, 'pointerup', to);
-    check('Done cancels an unfinished stroke and returns Pencil to highlighting', JSON.stringify(await ink(page)) === beforeCancel && !await hasPreview(page) && await page.locator('#pdfWriteBtn').getAttribute('aria-pressed') === 'false');
+    check('Done cancels an unfinished stroke and returns Pencil to highlighting', JSON.stringify(await ink(page)) === beforeCancel && !await hasPreview(page) && await page.locator('#zenWrite').getAttribute('aria-pressed') === 'false');
 
     // Create a genuine text highlight before exercising the ink eraser.
     await positionPage(page, 1);
@@ -443,34 +466,36 @@ async function checkZenUndo(browser) {
 
     await page.reload({ waitUntil: 'load' });
     await waitForPdf(page);
-    await leaveDefaultZen(page);
+    await useDefaultZen(page);
     check('all page ink and text highlights survive reload', same((await chapter(page)).pdfInk, JSON.parse(fullInk)) && same((await chapter(page)).highlights, JSON.parse(textMarks)), JSON.stringify({ inkMatches: same((await chapter(page)).pdfInk, JSON.parse(fullInk)), highlightsMatch: same((await chapter(page)).highlights, JSON.parse(textMarks)) }));
-    check('Write is safely off after reopening the reader', await page.locator('#pdfWriteBtn').getAttribute('aria-pressed') === 'false');
+    check('Write is safely off after reopening the reader', await page.locator('#zenWrite').getAttribute('aria-pressed') === 'false');
     check('chosen ink style survives reopening the app', await page.locator('[data-pdf-ink-style="clean"]').getAttribute('aria-pressed') === 'true');
     await positionPage(page, 1);
     const original = await page.locator('.pdf-page[data-page="1"]').boundingBox();
-    await click(page, '#zoomIn');
+    await paperControl(page, '#zoomIn');
     await page.waitForTimeout(500);
     await positionPage(page, 1);
     check('zoom changes visual scale without modifying normalized ink', (await page.locator('.pdf-page[data-page="1"]').boundingBox()).width > original.width && same((await chapter(page)).pdfInk, JSON.parse(fullInk)) && await page.locator('.pdf-page[data-page="1"] .pdf-ink-stroke').count() === 2);
-    await click(page, '#zoomLabel');
+    await paperControl(page, '#zoomLabel');
     await page.waitForTimeout(250);
     await writeMode(page);
     await positionPage(page, 1);
     from = await point(page, .25, .3); to = await point(page, .45, .35);
     await pointer(page, 'pointerdown', from);
     await pointer(page, 'pointermove', to);
-    await click(page, '#reflowBtn');
+    await paperControl(page, '#reflowBtn');
     await page.waitForFunction(() => !document.getElementById('textDocument').classList.contains('hidden') && !document.getElementById('reflowBtn').disabled);
     await pointer(page, 'pointerup', to);
     check('switching to Reader view cancels ink without altering PDF or text annotations', same((await chapter(page)).pdfInk, JSON.parse(fullInk)) && !await hasPreview(page) && same((await chapter(page)).highlights, JSON.parse(textMarks)));
-    check('Write is disabled or hidden when no original PDF surface is displayed', await page.locator('#pdfWriteBtn').isDisabled() || !await page.locator('#pdfWriteBtn').isVisible());
-    await click(page, '#reflowBtn');
+    await showZenAction(page, '#zenWrite');
+    check('Write is disabled or hidden when no original PDF surface is displayed', await page.locator('#zenAnnotateMenu').isVisible() && (await page.locator('#zenWrite').isDisabled() || !await page.locator('#zenWrite').isVisible()));
+    await page.locator('#zenAnnotate').click();
+    await paperControl(page, '#reflowBtn');
     await waitForPdf(page);
     await writeMode(page);
     await positionPage(page, 1);
     for (const layout of ['page', 'book']) {
-      await click(page, '[data-pdf-layout="' + layout + '"]');
+      await zenLayout(page, layout);
       await page.waitForFunction(layout => document.querySelector('[data-pdf-layout="' + layout + '"]').getAttribute('aria-pressed') === 'true'
         && document.getElementById('pdfFrame').dataset.pagedReady === 'true'
         && document.querySelector('.pdf-page[data-page="1"].book-active .pdf-ink-layer'), layout);
@@ -489,9 +514,9 @@ async function checkZenUndo(browser) {
       check(layout + ' handwriting does not turn pages, create highlights, or lock the guide', await page.locator('.pdf-page[data-page="1"]').evaluate(element => element.classList.contains('book-active'))
         && same((await chapter(page)).highlights, JSON.parse(textMarks))
         && !await page.locator('#paneSpotlight').evaluate(element => element.classList.contains('locked')));
-      await click(page, '#nextPage');
+      await paperControl(page, '#nextPage');
       await page.waitForFunction(() => document.querySelector('.pdf-page[data-page="2"].book-active') && document.getElementById('pdfFrame').dataset.pagedReady === 'true' && !document.getElementById('pdfFrame').dataset.curlState);
-      await click(page, '#prevPage');
+      await paperControl(page, '#prevPage');
       await page.waitForFunction(() => document.querySelector('.pdf-page[data-page="1"].book-active') && document.getElementById('pdfFrame').dataset.pagedReady === 'true' && !document.getElementById('pdfFrame').dataset.curlState);
       check(layout + ' page navigation restores the same saved ink on returning', same(await ink(page), afterLayoutInk)
         && await page.locator('.pdf-page[data-page="1"] .pdf-ink-stroke[data-ink-id="' + added?.id + '"]').count() === 1);

@@ -118,7 +118,12 @@ async function wordPoint(page, word, edge, mode = 'pdf') {
 
 async function pointer(page, type, point, options = {}) {
   return page.evaluate(({ type, point, options }) => {
-    const target = document.elementFromPoint(point.x, point.y) || document.getElementById('documentPane');
+    // A browser targets the click that follows a pointerup at the element that was
+    // hit by that pointerup, not at whatever a newly opened card now covers there.
+    const hit = document.elementFromPoint(point.x, point.y) || document.getElementById('documentPane');
+    const target = type === 'click' && window.__pencilUpTarget && window.__pencilUpTarget.isConnected ? window.__pencilUpTarget : hit;
+    if (type === 'pointerup') window.__pencilUpTarget = hit;
+    else if (type === 'click' || type === 'pointerdown') window.__pencilUpTarget = null;
     const event = new PointerEvent(type, {
       bubbles: true, cancelable: true, pointerType: options.pointerType || 'pen',
       pointerId: options.pointerId || 71, isPrimary: true, button: 0,
@@ -180,6 +185,14 @@ async function stylusTouch(page, type, point, options = {}) {
   }, { type, point, options });
 }
 
+/* Zen is the only reader since 1a215db5 ("Make Zen the sole reader"); the touch
+   dock Mark button is hidden, so a finger reaches Mark via Zen Annotate -> Highlight. */
+async function zenMark(page) {
+  if (!await page.locator('#zenAnnotateMenu').isVisible()) await page.locator('#zenAnnotate').tap();
+  await page.locator('#zenMarker').tap();
+}
+const zenMarkLabel = page => page.locator('#zenMarker').getAttribute('aria-label');
+
 async function chooseEraser(page) {
   await page.evaluate(() => document.querySelector('#highlightToolbar [data-highlight-eraser]').click());
 }
@@ -211,7 +224,8 @@ function highlightIdentity(items) {
     await page.setInputFiles('#pdfFile', { name: 'pencil-highlighting.pdf', mimeType: 'application/pdf', buffer: makePencilPdf() });
     await waitForPdf(page);
 
-    check(browserName + ' starts with touch UI and Marker off', await page.locator('#touchHighlight').isVisible()
+    check(browserName + ' starts with touch UI and Marker off', await page.locator('#zenAnnotate').isVisible()
+      && await page.locator('body').evaluate(body => body.classList.contains('touch-tablet-reader'))
       && await page.locator('#highlightBtn').getAttribute('aria-pressed') === 'false');
 
     await nativeTouchSelection(page, 'zeta', 'theta');
@@ -325,7 +339,7 @@ function highlightIdentity(items) {
     await page.waitForTimeout(750);
     check('finger selection remains exact and requires explicit Mark after Pencil use', (await highlights(page)).length === 2
       && await page.evaluate(() => getSelection().toString()) === exactTouch);
-    await page.locator('#touchHighlight').click();
+    await zenMark(page);
     await page.waitForTimeout(120);
     saved = await highlights(page);
     check('the existing finger Mark action still saves the selected passage once', saved.length === 3 && saved[2].text === exactTouch.replace(/\s+/g, ' ').trim());
@@ -342,9 +356,9 @@ function highlightIdentity(items) {
       && !await page.locator('#paneSpotlight').evaluate(guide => guide.classList.contains('locked')));
     await page.keyboard.press('Escape');
     if (process.env.PHLOEM_PENCIL_SCREENSHOT) {
-      await page.locator('#touchHighlight').click();
+      await zenMark(page);
       await page.screenshot({ path: process.env.PHLOEM_PENCIL_SCREENSHOT });
-      await page.locator('#touchHighlight').click();
+      await zenMark(page);
     }
 
     await pointer(page, 'pointerdown', await wordPoint(page, 'lambda', 'start'));
@@ -422,7 +436,7 @@ function highlightIdentity(items) {
     check('the shared toolbar stays visible with a pressed Eraser and labels the dock action Erase', await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
       && await page.locator('#highlightToolbar').isVisible()
       && await page.locator('#highlightToolbar [data-highlight-eraser]').getAttribute('aria-pressed') === 'true'
-      && /Erase/.test(await page.locator('#touchHighlight').textContent()));
+      && /Eraser on/.test(await zenMarkLabel(page)));
     const fingerDown = await pointer(page, 'pointerdown', readerBeta, { pointerType: 'touch', pointerId: 94 });
     const fingerMove = await pointer(page, 'pointermove', readerBetaEnd, { pointerType: 'touch', pointerId: 94 });
     await pointer(page, 'pointerup', readerBetaEnd, { pointerType: 'touch', pointerId: 94 });
@@ -452,9 +466,12 @@ function highlightIdentity(items) {
     await page.evaluate(() => document.querySelector('#highlightToolbar [data-highlight-color="mint"]').click());
     check('choosing a highlight color exits Eraser and restores the Mark dock label', !await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
       && await page.locator('#highlightToolbar [data-highlight-eraser]').getAttribute('aria-pressed') === 'false'
-      && /Mark/.test(await page.locator('#touchHighlight').textContent()));
+      && /^Marker\. Current color/.test(await zenMarkLabel(page)));
 
-    await page.evaluate(() => document.getElementById('reflowBtn').click());
+    // Reader view is toggled from Zen More -> This paper (1a215db5).
+    await page.locator('#zenMore').tap();
+    await page.locator('#zenReadingControls').tap();
+    await page.locator('#readerControlsDialog #reflowBtn').tap();
     await waitForPdf(page);
     const pdfBeta = await wordPoint(page, 'beta', 'start');
     const pdfBetaEnd = await wordPoint(page, 'beta', 'end');
@@ -517,17 +534,17 @@ function highlightIdentity(items) {
     const fingerFromEraser = await nativeTouchSelection(page, 'Iota', 'lambda');
     await page.waitForTimeout(750);
     check('native finger selection while Eraser is active returns to Mark without losing the exact selection', !await page.locator('body').evaluate(body => body.classList.contains('highlight-erasing'))
-      && /Mark/.test(await page.locator('#touchHighlight').textContent())
+      && /^Highlight selected passage/.test(await zenMarkLabel(page))
       && await page.evaluate(() => getSelection().toString()) === fingerFromEraser
       && (await highlights(page)).length === 3);
-    await page.locator('#touchHighlight').click();
+    await zenMark(page);
     await page.waitForTimeout(120);
     check('the pending finger Mark action still saves an overlapping selection after leaving Eraser', (await highlights(page)).length === 4
       && (await highlights(page)).some(item => item.text === fingerFromEraser.replace(/\s+/g, ' ').trim()));
     await undo(page);
     await chooseEraser(page);
     if (process.env.PHLOEM_ERASER_SCREENSHOT) {
-      await page.locator('#touchHighlight').click();
+      await zenMark(page);
       await page.screenshot({ path: process.env.PHLOEM_ERASER_SCREENSHOT });
     }
     check(browserName + ' Pencil workflows have no page errors', errors.length === 0, errors.join('; '));

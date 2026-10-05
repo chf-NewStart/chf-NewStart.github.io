@@ -643,6 +643,51 @@ Handoff rules:
 | Hardware/cloud limitations | Not tested | Physical Pencil/four-finger gestures, WebKit, long-document iPad memory, real-account iCloud round trip |
 | Upload / App Review | Not performed | No push, native archive, upload or submission in this implementation pass |
 
+### 2026-10-05 — Workspace web update (shell v157)
+
+The user cancelled the Apple build for this pass. No archive, upload, signing,
+release-number change, or App Store submission is included. The native asset
+allowlist and its dependency-closure test include the new shared viewport module
+so the next explicitly authorized native build can bundle it.
+
+Implemented from web baseline `11edaf25`:
+
+- Draggable, keyboard-accessible PDF/workspace divider with a locally saved split;
+  PDF refits after resizing and restores its prior zoom when Workspace closes.
+- Local 50–300% workspace sheet zoom: pinch blank paper, Ctrl-wheel, or the compact
+  controls in More. Sticky-note pinch still resizes that note. Both use logical
+  coordinates; neither changes the source PDF's zoom or annotations.
+- Paper extends in 1,000-unit steps near the visible/written lower edge. The old
+  20,000-unit limit is removed; a 1,000,000-unit safety bound remains. This is
+  auto-growing paper, not an unbounded memory guarantee.
+- Workspace-only Medium marker default, continuous chisel-inspired pressure
+  rendering, and optional Natural pen. A roughly 600 ms end-of-stroke hold makes
+  an open stroke straight; short marks and loops remain handwriting.
+- New strokes beginning on a sticky store an explicit note anchor and move/scale
+  with it, including eraser and Undo geometry. Existing unanchored ink is preserved
+  as free ink, not guessed onto a note. The six-dot icon is removed; the blank top
+  strip still supports dragging and keyboard movement.
+- With landscape Workspace open, drag a saved PDF highlight directly onto paper.
+  Finger input uses a brief hold; ordinary quick scrolling and two-finger PDF
+  gestures do not copy. The original highlight remains and the clip keeps its
+  source link. Drops respect workspace zoom and reject toolbar/outside targets.
+
+Persistence contract: workspace v2 accepts v1 data without changing its original
+geometry. V2 carries marker/line/anchor metadata and taller coordinates. Unknown
+v3+ envelopes remain opaque with editing paused. Older v1 workspace-aware clients
+fail closed on v2 rather than stripping its extra geometry; reload/update those
+clients before editing the new workspace there.
+
+Verification: 108 state/integration/cache/bundle checks passed; workspace view
+(14), ink view (4), splitter, full workspace, direct-highlight drag, Clips/source
+cues, and compact Zen browser suites passed in Chromium and WebKit. Viewport
+tests passed 11 in Chromium and 5 in WebKit (6 Chromium-only native CDP cases
+skipped in WebKit). Native Chromium touch streams cover vertical/diagonal sheet
+pinch, note pinch, finger hold/drop, normal scrolling, and PDF pinch. Visual
+checks include landscape/portrait, enlarged paper, note menus, and continuous
+ink. This is browser evidence, not physical iPad/Pencil verification; the earlier
+Book-guide timing issue and real-account cloud/device checks remain separate.
+
 ## Sources and API checks
 
 - [Apple: handling double-taps](https://developer.apple.com/documentation/ApplePencil/handling-double-taps-from-apple-pencil) — system preference and configurable alternative behavior.

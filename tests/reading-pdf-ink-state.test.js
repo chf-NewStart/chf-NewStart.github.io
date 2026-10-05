@@ -44,7 +44,7 @@ function libraryHarness(chapters) {
     mergeReviews: (a, b) => ({ ...a, ...b }), mergeLookups: (a, b) => ({ ...a, ...b })
   });
   vm.runInContext([
-    readerSection('  function normalize(ch){', '\n  var pendingDuplicateStorage'),
+    readerSection('  function normalize(ch,options){', '\n  var pendingDuplicateStorage'),
     readerSection('  function mergePdfInk(', '\n  function pdfInkStamp('),
     readerSection('  function mergeDuplicateRecord(', '\n  function canonicalPaper('),
     readerSection('  function mergeState(inc){', '\n  var syncDecryptBlocked')

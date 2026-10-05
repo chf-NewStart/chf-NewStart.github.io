@@ -37,7 +37,7 @@ test('bundles a local reader with all runtime dependencies and preserves website
   assert.ok(html.indexOf('/native/environment.js') < html.indexOf('navigator.serviceWorker'));
   assert.ok(html.indexOf('/native/ipad.js') > html.indexOf('<script src="/reading.js'));
   assert.ok(html.indexOf('<script src="/reading-ink.js') >= 0 && html.indexOf('<script src="/reading-ink.js') < html.indexOf('<script src="/reading.js'), 'local handwriting must load before chapter normalization');
-  for (const module of ['reading-excerpts.js', 'reading-excerpts-view.js', 'reading-workspace.js', 'reading-workspace-view.js']) {
+  for (const module of ['reading-excerpts.js', 'reading-excerpts-view.js', 'reading-workspace.js', 'reading-workspace-viewport.js', 'reading-workspace-view.js']) {
     assert.ok(html.indexOf('<script src="/' + module) >= 0 && html.indexOf('<script src="/' + module) < html.indexOf('<script src="/reading.js'), 'local Clips modules must load before reader initialization');
   }
   assert.equal((html.match(/<script\b[^>]*\bsrc=["']https?:/g) || []).length, 0, 'app shell must not load its code from a live website');

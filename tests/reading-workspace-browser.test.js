@@ -201,12 +201,30 @@ async function pinchCard(card, scale) {
 async function realChromiumPinchOnSurface(page, card, selector, blankArea = false, scale = 1.2) {
   const surface = card.locator(selector);
   await surface.scrollIntoViewIfNeeded();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const box = await surface.boundingBox();
   assert(box && box.width > 70 && box.height > 0, selector + ' has a visible two-finger touch surface');
   const session = await page.context().newCDPSession(page);
-  const y = blankArea ? box.y + box.height - 18 : box.y + Math.min(box.height / 2, 20);
-  const x1 = box.x + box.width * .35;
-  const x2 = box.x + box.width * .65;
+  // A growing ink-bearing sticky may overlap other notes. Touch visible paper
+  // owned by this card, not a different sticky painted over its lower edge.
+  const contacts = await card.evaluate((card, { selector, blankArea }) => {
+    const surface = card.querySelector(selector), rect = surface.getBoundingClientRect();
+    const pane = document.getElementById('workspaceScroll').getBoundingClientRect();
+    const lowY = Math.max(rect.top, pane.top) + 2, highY = Math.min(rect.bottom, pane.bottom) - 2;
+    for (let y = blankArea ? highY - 16 : (lowY + highY) / 2; y >= lowY; y -= 18) {
+      const candidates = [];
+      for (let x = Math.max(rect.left, pane.left) + 18; x <= Math.min(rect.right, pane.right) - 18; x += 18) {
+        const hit = document.elementFromPoint(x, y);
+        if (hit?.closest('.workspace-card') !== card || !surface.contains(hit)) continue;
+        if (blankArea && hit !== surface) continue;
+        candidates.push(x);
+      }
+      if (candidates.length >= 5) return { x1: candidates[0], x2: candidates[4], y };
+    }
+    return null;
+  }, { selector, blankArea });
+  assert(contacts, 'two unoccluded contacts on the intended sticky are available');
+  const { x1, x2, y } = contacts;
   const hit = await page.evaluate(({ x1, x2, y }) => {
     const read = x => { const node = document.elementFromPoint(x, y); return {
       tag: node?.tagName, className: node?.className,
@@ -225,6 +243,18 @@ async function realChromiumPinchOnSurface(page, card, selector, blankArea = fals
     !!document.elementFromPoint(x, y)?.closest('.workspace-card-body'), { x: x1, y }), true,
   'blank note body receives real browser touches');
   const point = (x, id) => ({ x, y, id, radiusX: 2, radiusY: 2, force: .6 });
+  await page.evaluate(() => {
+    window.workspaceTouchTrace = [];
+    window.workspaceTraceListener = event => {
+      if (!document.getElementById('workspacePanel').contains(event.target)) return;
+      window.workspaceTouchTrace.push({ type: event.type, id: event.pointerId, target: event.target.className,
+        width: document.querySelector('.workspace-card').style.width,
+        resizing: !!document.querySelector('.workspace-resizing'),
+        scrollTop: document.getElementById('workspaceScroll').scrollTop });
+    };
+    for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture', 'scroll'])
+      document.addEventListener(type, window.workspaceTraceListener, true);
+  });
   try {
     await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(x1, 1)] });
     await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(x1, 1), point(x2, 2)] });
@@ -232,7 +262,12 @@ async function realChromiumPinchOnSurface(page, card, selector, blankArea = fals
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [point(x1, 1)] });
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   } finally { await session.detach(); }
-  return hit;
+  const trace = await page.evaluate(() => {
+    for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture', 'scroll'])
+      document.removeEventListener(type, window.workspaceTraceListener, true);
+    return window.workspaceTouchTrace;
+  });
+  return { ...hit, trace };
 }
 function workspaceStrokes(ch) {
   const store = ch && ch.readingWorkspace;
@@ -641,6 +676,8 @@ async function sourceCueVisual(page, cue) {
     assert.equal(await page.locator('#workspaceBoard').evaluate(board => document.activeElement === board), true,
       'Pencil input leaves keyboard focus on the workspace board');
     const strokeBeforeResize = workspaceStrokes(pdf)[0];
+    assert.equal(strokeBeforeResize.anchor.clipId, clip.id,
+      'writing that starts on this sticky belongs to it');
     const inkBeforeResize = await page.locator('#workspaceInk path[data-stroke-id]').evaluate(path => {
       const box = path.getBBox(); return { x: box.x, y: box.y, width: box.width, height: box.height };
     });
@@ -666,10 +703,16 @@ async function sourceCueVisual(page, cue) {
     assert.equal(pinch.menuOpen, false, 'pinch does not accidentally activate the note menu');
     pdf = await paperById(page, pdfId);
     assert.deepEqual(workspaceStrokes(pdf)[0], strokeBeforeResize,
-      'resizing a sticky note does not scale or rewrite free workspace ink');
-    assert.deepEqual(await page.locator('#workspaceInk path[data-stroke-id]').evaluate(path => {
+      'resizing a sticky preserves the original saved ink coordinates and attachment');
+    const inkAfterResize = await page.locator('#workspaceInk path[data-stroke-id]').evaluate(path => {
       const box = path.getBBox(); return { x: box.x, y: box.y, width: box.width, height: box.height };
-    }), inkBeforeResize, 'free ink keeps the same visual geometry after note resizing');
+    });
+    const anchorBase = strokeBeforeResize.anchor, scale = draggedPlace.width / anchorBase.width;
+    const expectedInk = { x: draggedPlace.x + (inkBeforeResize.x - anchorBase.x) * scale,
+      y: draggedPlace.y + (inkBeforeResize.y - anchorBase.y) * scale,
+      width: inkBeforeResize.width * scale, height: inkBeforeResize.height * scale };
+    for (const key of Object.keys(expectedInk)) assert(Math.abs(inkAfterResize[key] - expectedInk[key]) < 1,
+      'attached ink follows the sticky transform: ' + JSON.stringify({ inkAfterResize, expectedInk }));
     assert.equal(await page.locator('.pdf-page[data-page="2"].book-active canvas').evaluate(canvas => canvas.getBoundingClientRect().width), pdfCanvasBeforeResize,
       'note resizing does not zoom the source PDF');
     assert.equal(pdf.zoom, pdfZoomBeforeResize, 'note resizing does not persist a PDF zoom change');
@@ -688,15 +731,43 @@ async function sourceCueVisual(page, cue) {
       assert.equal(Object.values((await paperById(page, pdfId)).pdfInk || {}).flat().length, 0,
         'real browser touch on a sticky quote leaves PDF ink untouched');
       const beforeBlankTouch = draggedPlace.width;
-      await realChromiumPinchOnSurface(page, card, '.workspace-card-body', true, .8);
+      const blankTouch = await realChromiumPinchOnSurface(page, card, '.workspace-card-body', true, .8);
       await page.waitForFunction(({ id, clipId, width }) => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
         .find(ch => ch.id === id)?.readingWorkspace?.positions?.[clipId]?.width < width,
-      { id: pdfId, clipId: clip.id, width: beforeBlankTouch });
+      { id: pdfId, clipId: clip.id, width: beforeBlankTouch }).catch(error => {
+        throw new Error('real blank-paper pinch did not save: ' + JSON.stringify(blankTouch), { cause: error });
+      });
       draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
       assert(draggedPlace.width >= 280, 'real browser pinch on blank sticky paper respects size bounds');
     }
     assert.equal(await page.evaluate(() => document.getElementById('workspacePanel').contains(document.activeElement)), true,
       'touch pinch retains keyboard focus inside the workspace');
+    await page.waitForTimeout(550); // A separate tap follows the pinch's trailing-click guard.
+    const beforeSheetZoom = JSON.stringify((await paperById(page, pdfId)).readingWorkspace);
+    const beforeCardWidth = (await card.boundingBox()).width;
+    await openMore(page);
+    await page.locator('#workspaceZoomIn').click();
+    assert.equal(await page.locator('#workspaceMore').evaluate(node => node.open), true,
+      'zoom controls stay open for repeated adjustments');
+    assert(Math.abs((await card.boundingBox()).width / beforeCardWidth - 1.25) < .01,
+      'whole-sheet zoom scales the sticky paper as well as its ink');
+    assert.equal(JSON.stringify((await paperById(page, pdfId)).readingWorkspace), beforeSheetZoom,
+      'viewport zoom does not rewrite saved paper, notes, or ink');
+    assert.equal(await page.locator('.pdf-page[data-page="2"].book-active canvas').evaluate(canvas => canvas.getBoundingClientRect().width), pdfCanvasBeforeResize,
+      'workspace zoom does not zoom the left PDF');
+    await openCardMenu(card);
+    const menuBounds = await card.locator('.workspace-card-actions').evaluate(menu => {
+      const box = menu.getBoundingClientRect(), pane = document.getElementById('workspaceScroll').getBoundingClientRect();
+      return { box: box.toJSON(), pane: pane.toJSON() };
+    });
+    assert(menuBounds.box.left >= menuBounds.pane.left - 1 && menuBounds.box.right <= menuBounds.pane.right + 1
+      && menuBounds.box.top >= menuBounds.pane.top - 1 && menuBounds.box.bottom <= menuBounds.pane.bottom + 1,
+    'zoomed sticky menu stays inside the viewport: ' + JSON.stringify(menuBounds));
+    await page.screenshot({ path: '/tmp/phloem-workspace-zoom-' + ENGINE + '.png' });
+    await openMore(page);
+    await page.locator('#workspaceZoomReset').click();
+    await page.locator('#workspaceMore summary').click();
+    await card.focus();
     const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
     await page.keyboard.press(modifier + '+z');
     await waitStrokeCount(page, pdfId, 0);
@@ -705,7 +776,12 @@ async function sourceCueVisual(page, cue) {
     assert.equal(Object.values((await paperById(page, pdfId)).pdfInk || {}).flat().length, 0,
       'workspace keyboard history leaves PDF ink untouched');
     await page.locator('[data-workspace-tool="eraser"]').click();
-    await stroke(page, [[.64, .11], [.70, .145], [.75, .165], [.79, .19]]);
+    const movedInkPoints = await page.evaluate(id => {
+      const board = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === id).readingWorkspace;
+      return PhloemWorkspaceState.displayStroke(board.strokes[0], board.positions).points
+        .map(point => [point[0] / 1000, point[1] / board.height]);
+    }, pdfId);
+    await stroke(page, movedInkPoints);
     await waitStrokeCount(page, pdfId, 0);
     await page.locator('#workspaceUndo').click();
     await waitStrokeCount(page, pdfId, 1);

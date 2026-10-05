@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=156">
-  <link rel="stylesheet" href="/reading-fold.css?v=156">
-  <link rel="stylesheet" href="/reading-workspace.css?v=156">
+  <link rel="stylesheet" href="/reading.css?v=157">
+  <link rel="stylesheet" href="/reading-fold.css?v=157">
+  <link rel="stylesheet" href="/reading-workspace.css?v=157">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -317,6 +317,7 @@
           <div class="pdf-frame" id="pdfFrame"></div>
           <article class="text-document hidden" id="textDocument"></article>
         </div>
+        <div class="workspace-divider" id="workspaceDivider" role="separator" aria-label="Resize paper and workspace" aria-controls="documentPane workspacePanel" aria-orientation="vertical" aria-valuemin="30" aria-valuemax="70" aria-valuenow="50" aria-valuetext="Paper 50 percent, workspace 50 percent" title="Drag to resize paper and workspace · double-click to reset" tabindex="0"></div>
         <div class="pane-spotlight" id="paneSpotlight">
           <div class="guide-shade guide-shade-top"></div>
           <div class="guide-shade guide-shade-left"></div>
@@ -453,6 +454,11 @@
                 <div class="workspace-more-panel">
                   <button id="workspaceNewNote" type="button">＋ Sticky note</button>
                   <button id="workspaceMoreSpace" type="button">＋ More paper</button>
+                  <div class="workspace-zoom-controls" role="group" aria-label="Workspace zoom">
+                    <button id="workspaceZoomOut" type="button" aria-label="Zoom workspace out" title="Zoom out">−</button>
+                    <button id="workspaceZoomReset" type="button" aria-label="Reset workspace zoom" title="Reset zoom">100%</button>
+                    <button id="workspaceZoomIn" type="button" aria-label="Zoom workspace in" title="Zoom in">＋</button>
+                  </div>
                   <button id="workspaceRedo" type="button" aria-label="Redo workspace ink" disabled>↷ Redo ink</button>
                   <button id="workspaceReturn" type="button">↩ Return to reading</button>
                 </div>
@@ -469,14 +475,17 @@
               <button data-workspace-color="teal" type="button" aria-label="Teal ink" aria-pressed="false" style="--workspace-color:#157d86"></button>
               <button data-workspace-color="gray" type="button" aria-label="Gray ink" aria-pressed="false" style="--workspace-color:#687782"></button>
               </div>
-              <label class="workspace-size-label">Size <select id="workspaceSize" aria-label="Workspace pen size"><option value="1.2">Fine</option><option value="2.4">Medium</option><option value="4">Broad</option></select></label>
+              <label class="workspace-size-label">Size <select id="workspaceSize" aria-label="Workspace pen size"><option value="1.2">Fine</option><option value="2.4" selected>Medium</option><option value="4">Broad</option></select></label>
+              <label class="workspace-size-label">Stroke <select id="workspaceNib" aria-label="Workspace stroke style"><option value="marker" selected>Marker</option><option value="natural">Natural pen</option></select></label>
             </div>
           </div>
           <p id="workspaceStatus" class="workspace-status" role="status" aria-live="polite"></p>
           <div id="workspaceScroll" class="workspace-scroll" tabindex="0" aria-label="Scrollable workspace paper">
-            <div id="workspaceBoard" class="workspace-board">
-              <div id="workspaceCards" class="workspace-cards"></div>
-              <svg id="workspaceInk" class="workspace-ink" aria-hidden="true" preserveAspectRatio="none"></svg>
+            <div id="workspaceStage" class="workspace-stage">
+              <div id="workspaceBoard" class="workspace-board">
+                <div id="workspaceCards" class="workspace-cards"></div>
+                <svg id="workspaceInk" class="workspace-ink" aria-hidden="true" preserveAspectRatio="none"></svg>
+              </div>
             </div>
           </div>
         </aside>
@@ -926,18 +935,19 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=156',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=157',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=156" defer></script>
-<script src="/reading-keeps.js?v=156" defer></script>
-<script src="/reading-excerpts.js?v=156" defer></script>
-<script src="/reading-excerpts-view.js?v=156" defer></script>
-<script src="/reading-workspace.js?v=156" defer></script>
-<script src="/reading-workspace-view.js?v=156" defer></script>
-<script src="/reading-folds.js?v=156" defer></script>
-<script src="/reading-pdf-projection.js?v=156" defer></script>
-<script src="/reading-fold-view.js?v=156" defer></script>
-<script src="/reading.js?v=156" defer></script>
+<script src="/reading-ink.js?v=157" defer></script>
+<script src="/reading-keeps.js?v=157" defer></script>
+<script src="/reading-excerpts.js?v=157" defer></script>
+<script src="/reading-excerpts-view.js?v=157" defer></script>
+<script src="/reading-workspace.js?v=157" defer></script>
+<script src="/reading-workspace-viewport.js?v=157" defer></script>
+<script src="/reading-workspace-view.js?v=157" defer></script>
+<script src="/reading-folds.js?v=157" defer></script>
+<script src="/reading-pdf-projection.js?v=157" defer></script>
+<script src="/reading-fold-view.js?v=157" defer></script>
+<script src="/reading.js?v=157" defer></script>
 </body>
 </html>

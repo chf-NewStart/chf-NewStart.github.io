@@ -11,7 +11,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'reading-workspace.js
   { filename: 'reading-workspace.js' });
 const workspace = context.window.PhloemWorkspaceState;
 const plain = value => JSON.parse(JSON.stringify(value));
-const empty = () => ({ version: 1, height: 2000, positions: {}, strokes: [], deleted: {} });
+const empty = () => ({ version: 2, height: 2000, positions: {}, strokes: [], deleted: {} });
 const stroke = (id, updatedAt = 100, extra = {}) => ({
   id, color: 'black', width: 3, points: [[12, 1800, .5], [900, 1900, 1]],
   style: 'natural', createdAt: 50, updatedAt, ...extra
@@ -21,8 +21,12 @@ const ids = value => Array.from(value.strokes, item => item.id);
 
 test('plain-script frozen API and canonical empty board', () => {
   assert.deepEqual(Object.keys(workspace).sort(),
-    ['addStroke', 'merge', 'normalize', 'place', 'removeStrokes', 'setHeight']);
+    ['BOARD_WIDTH', 'MAX_HEIGHT', 'VERSION', 'addStroke', 'displayStroke', 'merge', 'normalize',
+      'place', 'removeStrokes', 'setHeight']);
   assert.equal(Object.isFrozen(workspace), true);
+  assert.equal(workspace.VERSION, 2);
+  assert.equal(workspace.BOARD_WIDTH, 1000);
+  assert.equal(workspace.MAX_HEIGHT, 1_000_000);
   assert.deepEqual(plain(workspace.normalize()), empty());
 });
 
@@ -45,8 +49,7 @@ test('normalization skips malformed neighbors and leaves input untouched', () =>
 });
 
 test('unknown versions fail closed through every public operation', () => {
-  const future = { version: 2, ...empty(), strokes: [stroke('keep')] };
-  future.version = 2;
+  const future = { ...empty(), version: 3, strokes: [stroke('keep')] };
   const operations = [
     () => workspace.normalize(future), () => workspace.merge(empty(), future),
     () => workspace.merge(future, empty()),
@@ -56,8 +59,21 @@ test('unknown versions fail closed through every public operation', () => {
     () => workspace.setHeight(future, 3000)
   ];
   for (const run of operations)
-    assert.throws(run, error => error.code === 'UNSUPPORTED_VERSION' && error.version === 2);
+    assert.throws(run, error => error.code === 'UNSUPPORTED_VERSION' && error.version === 3);
   assert.equal(future.strokes[0].id, 'keep');
+});
+
+test('version 1 board migrates losslessly to version 2 coordinates and ink', () => {
+  const legacy = { ...empty(), version: 1, height: 20000,
+    positions: { clip: { x: 40, y: 19000, width: 420, updatedAt: 100 } },
+    strokes: [stroke('legacy', 100, { points: [[10, 19990, .5]] })] };
+  const before = JSON.stringify(legacy);
+  const migrated = plain(workspace.normalize(legacy));
+  assert.equal(migrated.version, 2);
+  assert.deepEqual(migrated.positions, legacy.positions);
+  assert.deepEqual(migrated.strokes, legacy.strokes);
+  assert.equal(JSON.stringify(legacy), before);
+  assert.deepEqual(plain(workspace.merge(empty(), legacy)).strokes, legacy.strokes);
 });
 
 test('place uses logical coordinates, clamps card into board, and advances only same ID', () => {
@@ -85,7 +101,15 @@ test('height grows only in 1000 steps and does not scale existing logical geomet
   let grown = taller;
   for (let h = 4000; h <= 20000; h += 1000) grown = workspace.setHeight(grown, h);
   assert.equal(grown.height, 20000);
-  assert.throws(() => workspace.setHeight(grown, 21000), { name: 'RangeError' });
+  grown = workspace.normalize(board({ height: workspace.MAX_HEIGHT - 1000 }));
+  assert.equal(workspace.setHeight(grown, workspace.MAX_HEIGHT).height, workspace.MAX_HEIGHT);
+  assert.throws(() => workspace.setHeight(workspace.setHeight(grown, workspace.MAX_HEIGHT),
+    workspace.MAX_HEIGHT + 1000), { name: 'RangeError' });
+  assert.deepEqual(plain(workspace.place(workspace.setHeight(grown, workspace.MAX_HEIGHT),
+    'edge', { x: 1000, y: workspace.MAX_HEIGHT + 500, width: 420 }, 100).positions.edge),
+  { x: 580, y: workspace.MAX_HEIGHT, width: 420, updatedAt: 100 });
+  assert.deepEqual(ids(workspace.normalize(board({ strokes: [stroke('edge', 100,
+    { points: [[1000, workspace.MAX_HEIGHT, .5]] })] }))), ['edge']);
 });
 
 test('independent card placements and strokes merge; greater height wins', () => {
@@ -141,7 +165,7 @@ test('stroke constraints, future clocks, and prototype IDs reject unsafe data', 
   const bad = [
     stroke('too-many', 100, { points: Array.from({ length: 8193 }, () => [0, 0, .5]) }),
     stroke('negative', 100, { points: [[0, -1, .5]] }),
-    stroke('too-far', 100, { points: [[0, 20001, .5]] }),
+    stroke('too-far', 100, { points: [[0, workspace.MAX_HEIGHT + 1, .5]] }),
     stroke('bad-pressure', 100, { points: [[0, 0, 1.1]] }),
     stroke('bad-width', 100, { width: 12.1 }),
     stroke('bad-style', 100, { style: 'clean' }),
@@ -159,4 +183,77 @@ test('stroke constraints, future clocks, and prototype IDs reject unsafe data', 
   assert.throws(() => workspace.place(empty(), 'x', { x: 0, y: 0 }, cap + 1), { name: 'RangeError' });
   assert.throws(() => workspace.addStroke(board({ strokes: [stroke('ceiling', cap)] }),
     { id: 'ceiling', color: 'black', width: 1, points: [[0, 0, .5]] }, cap), { name: 'RangeError' });
+});
+
+test('optional marker, line, and note anchor metadata normalize without losing valid ink', () => {
+  const anchored = stroke('attached', 100, {
+    nib: 'marker', shape: 'line', anchor: { clipId: 'clip', x: 50, y: 1500, width: 420 }
+  });
+  const invalidAnchors = [
+    { clipId: 'clip', x: Infinity, y: 0, width: 420 },
+    { clipId: 'clip', x: 900, y: 0, width: 420 },
+    { clipId: 'clip', x: 0, y: -1, width: 420 },
+    { clipId: 'clip', x: 0, y: 0, width: 0 },
+    { clipId: '__proto__', x: 0, y: 0, width: 420 },
+    { clipId: 'clip', x: 0, y: 0, width: 420, note: 'ignored' }
+  ];
+  const normalized = plain(workspace.normalize(board({ strokes: [anchored,
+    ...invalidAnchors.slice(0, 5).map((base, index) =>
+      stroke(`bad-${index}`, 100, { anchor: base, nib: 'unknown', shape: 'curve' }))] })));
+  assert.deepEqual(normalized.strokes[0], anchored);
+  for (const item of normalized.strokes.slice(1)) {
+    assert.equal('anchor' in item, false);
+    assert.equal('nib' in item, false);
+    assert.equal('shape' in item, false);
+  }
+  assert.deepEqual(plain(workspace.normalize(board({ strokes: [
+    stroke('extra', 100, { anchor: invalidAnchors[5] })] })).strokes[0].anchor),
+  { clipId: 'clip', x: 0, y: 0, width: 420 });
+  assert.throws(() => workspace.addStroke(empty(), {
+    id: 'bad', color: 'black', width: 2, points: [[50, 1500, .5]],
+    anchor: invalidAnchors[0]
+  }, 100), { name: 'TypeError' });
+});
+
+test('anchored display geometry follows note move and uniform resize without mutation', () => {
+  const base = { clipId: 'clip', x: 50, y: 1500, width: 400 };
+  const original = stroke('attached', 100, { width: 4,
+    points: [[60, 1510, .2], [150, 1550, .8]], nib: 'marker', shape: 'line', anchor: base });
+  const before = JSON.stringify(original);
+  const moved = plain(workspace.displayStroke(original,
+    { clip: { x: 200, y: 3500, width: 600, updatedAt: 101 } }));
+  assert.deepEqual(moved.points, [[215, 3515, .2], [350, 3575, .8]]);
+  assert.equal(moved.width, 6);
+  assert.equal(moved.nib, 'marker');
+  assert.equal(moved.shape, 'line');
+  assert.deepEqual(moved.anchor, base);
+  assert.deepEqual(plain(workspace.displayStroke(original, {})), original);
+  assert.equal(JSON.stringify(original), before);
+  moved.points[0][0] = 999;
+  moved.anchor.x = 999;
+  assert.equal(original.points[0][0], 60);
+  assert.equal(original.anchor.x, 50);
+});
+
+test('attached marker and line metadata survives merge in both directions, erase, and undo', () => {
+  const raw = { id: 'ink', color: 'teal', width: 3,
+    points: [[40, 1800, .5], [80, 1830, .8]], nib: 'marker', shape: 'line',
+    anchor: { clipId: 'clip', x: 20, y: 1790, width: 420 } };
+  const added = workspace.addStroke(empty(), raw, 100);
+  assert.equal(added.strokes[0].nib, 'marker');
+  const edited = workspace.addStroke(added, {
+    id: 'ink', color: 'blue', width: 4, points: raw.points
+  }, 101);
+  assert.equal(edited.strokes[0].nib, 'marker');
+  assert.equal(edited.strokes[0].shape, 'line');
+  assert.deepEqual(plain(edited.strokes[0].anchor), raw.anchor);
+  const other = board({ positions: { clip: { x: 100, y: 1900, width: 420, updatedAt: 102 } } });
+  assert.deepEqual(plain(workspace.merge(edited, other)), plain(workspace.merge(other, edited)));
+  const erased = workspace.removeStrokes(edited, ['ink'], 102);
+  assert.deepEqual(ids(workspace.merge(erased, edited)), []);
+  const restored = workspace.addStroke(erased, raw, 102);
+  assert.equal(restored.strokes[0].nib, 'marker');
+  assert.equal(restored.strokes[0].shape, 'line');
+  assert.deepEqual(plain(restored.strokes[0].anchor), raw.anchor);
+  assert.equal(restored.strokes[0].updatedAt, 103);
 });

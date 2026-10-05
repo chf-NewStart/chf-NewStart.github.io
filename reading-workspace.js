@@ -2,10 +2,10 @@
 (function (global) {
   'use strict';
 
-  var VERSION = 1;
+  var VERSION = 2;
   var BOARD_WIDTH = 1000;
   var DEFAULT_HEIGHT = 2000;
-  var MAX_HEIGHT = 20000;
+  var MAX_HEIGHT = 1000000;
   var FUTURE_WINDOW = 366 * 24 * 60 * 60 * 1000;
   var COLORS = { black: true, blue: true, red: true, green: true,
     purple: true, orange: true, teal: true, gray: true };
@@ -37,7 +37,10 @@
     throw error;
   }
   function checkVersion(value) {
-    if (object(value) && owns(value, 'version') && value.version !== VERSION) unsupported(value.version);
+    // V1 uses the same logical coordinates. A V2 writer migrates it without
+    // geometry changes; V1 writers fail closed on V2 instead of dropping taller ink.
+    if (object(value) && owns(value, 'version') && value.version !== 1 &&
+        value.version !== VERSION) unsupported(value.version);
   }
   function height(value) {
     return Number.isSafeInteger(value) && value >= DEFAULT_HEIGHT &&
@@ -49,6 +52,13 @@
     var width = clamp(owns(raw, 'width') ? raw.width : 420, 280, 900);
     return { x: clamp(raw.x, 0, BOARD_WIDTH - width),
       y: clamp(raw.y, 0, boardHeight), width: width, updatedAt: raw.updatedAt };
+  }
+  function anchor(raw) {
+    if (!object(raw) || !id(raw.clipId) || !finite(raw.x) || !finite(raw.y) ||
+        !finite(raw.width) || raw.width < 280 || raw.width > 900 ||
+        raw.x < 0 || raw.x > BOARD_WIDTH - raw.width ||
+        raw.y < 0 || raw.y > MAX_HEIGHT) return null;
+    return { clipId: raw.clipId, x: raw.x, y: raw.y, width: raw.width };
   }
   function stroke(raw, cap) {
     if (!object(raw) || !id(raw.id) || !owns(COLORS, raw.color) ||
@@ -65,8 +75,35 @@
           point[2] < 0 || point[2] > 1) return null;
       points.push([point[0], point[1], point[2]]);
     }
-    return { id: raw.id, color: raw.color, width: raw.width, points: points,
+    var entry = { id: raw.id, color: raw.color, width: raw.width, points: points,
       style: 'natural', createdAt: raw.createdAt, updatedAt: raw.updatedAt };
+    // Optional V2 fields leave the original global points available for fallback display.
+    try {
+      if (raw.nib === 'marker') entry.nib = 'marker';
+      if (raw.shape === 'line') entry.shape = 'line';
+      var base = anchor(raw.anchor);
+      if (base) entry.anchor = base;
+    } catch (error) { /* Damaged optional metadata must not discard otherwise valid ink. */ }
+    return entry;
+  }
+  function displayStroke(raw, positions) {
+    if (!object(raw) || !Array.isArray(raw.points) || !finite(raw.width))
+      throw new TypeError('Invalid reading-workspace stroke');
+    var result = Object.assign({}, raw);
+    result.points = raw.points.map(function (point) { return point.slice(); });
+    var base = anchor(raw.anchor);
+    if (base) result.anchor = base;
+    if (!base || !object(positions) || !owns(positions, base.clipId)) return result;
+    var current = positions[base.clipId];
+    if (!object(current) || !finite(current.x) || !finite(current.y) ||
+        !finite(current.width) || current.width <= 0) return result;
+    var scale = current.width / base.width;
+    result.points = raw.points.map(function (point) {
+      return [current.x + (point[0] - base.x) * scale,
+        current.y + (point[1] - base.y) * scale, point[2]];
+    });
+    result.width = raw.width * scale;
+    return result;
   }
   function pick(a, b) {
     if (!a) return b;
@@ -149,12 +186,22 @@
   function addStroke(value, raw, stamp) {
     var state = normalize(value), cap = ceiling();
     if (!object(raw) || !id(raw.id)) throw new TypeError('Invalid reading-workspace stroke');
+    if (owns(raw, 'anchor') && !anchor(raw.anchor) ||
+        owns(raw, 'nib') && raw.nib !== 'marker' ||
+        owns(raw, 'shape') && raw.shape !== 'line')
+      throw new TypeError('Invalid reading-workspace stroke metadata');
     var old = state.strokes.find(function (entry) { return entry.id === raw.id; });
     var deletedAt = owns(state.deleted, raw.id) ? state.deleted[raw.id] : 0;
     var at = nextStamp(stamp, Math.max(old ? old.updatedAt : 0, deletedAt), cap);
     var candidate = { id: raw.id, color: raw.color, width: raw.width,
       points: raw.points, style: 'natural', createdAt: old ? old.createdAt : at,
       updatedAt: at };
+    if (owns(raw, 'anchor')) candidate.anchor = raw.anchor;
+    else if (old && old.anchor) candidate.anchor = old.anchor;
+    if (owns(raw, 'nib')) candidate.nib = raw.nib;
+    else if (old && old.nib) candidate.nib = old.nib;
+    if (owns(raw, 'shape')) candidate.shape = raw.shape;
+    else if (old && old.shape) candidate.shape = old.shape;
     var entry = stroke(candidate, cap);
     if (!entry) throw new TypeError('Invalid reading-workspace stroke');
     state.strokes = state.strokes.filter(function (existing) { return existing.id !== entry.id; });
@@ -185,6 +232,8 @@
     return normalize(state);
   }
 
-  global.PhloemWorkspaceState = Object.freeze({ normalize: normalize, merge: merge,
-    place: place, addStroke: addStroke, removeStrokes: removeStrokes, setHeight: setHeight });
+  global.PhloemWorkspaceState = Object.freeze({ VERSION: VERSION,
+    BOARD_WIDTH: BOARD_WIDTH, MAX_HEIGHT: MAX_HEIGHT, normalize: normalize, merge: merge, place: place,
+    addStroke: addStroke, removeStrokes: removeStrokes, setHeight: setHeight,
+    displayStroke: displayStroke });
 })(window);

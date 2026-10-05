@@ -21,13 +21,34 @@
     let scope = null;
     let cards = new Map();
     const drafts = new Map();
-    let tool = 'pen', color = 'black', width = 1.2, gesture = null, previewFrame = 0;
+    let tool = 'pen', color = 'black', width = 2.4, nib = 'marker', gesture = null, previewFrame = 0;
     let suppressClickUntil = 0;
     let suppressCardClickUntil = 0;
     const cardTouches = new Map();
     let manualCardScrollAt = 0;
     let undoStack = [], redoStack = [];
     let observedHeight = 2000;
+    let growingPaper = false;
+    const viewport = global.PhloemWorkspaceViewport ? global.PhloemWorkspaceViewport.create({ onNeedSpace: ensurePaperAt, isBusy: () => !!gesture }) : null;
+    function resizeLayout() {
+      if (viewport) viewport.layout(observedHeight);
+      else board.style.height = `${board.clientWidth * observedHeight / 1000}px`;
+    }
+    function ensurePaperAt(y) {
+      if (growingPaper || !Number.isFinite(y) || !available(context()) || context().busy || !adapter.ensureSpace) return false;
+      if (y < observedHeight) return true;
+      growingPaper = true;
+      try {
+        if (adapter.ensureSpace(y) !== true) return false;
+        const nextHeight = heightOf(context());
+        if (nextHeight !== observedHeight) {
+          observedHeight = nextHeight; resizeLayout();
+          for (const state of cards.values()) setBox(state, state.box, observedHeight);
+          renderInk(context());
+        }
+        return true;
+      } finally { growingPaper = false; }
+    }
 
     function context() { return adapter.context() || {}; }
     function same(c) { return !!scope && c.id === scope.id && c.epoch === scope.epoch; }
@@ -61,8 +82,11 @@
       if (cards.get(state.id) === state) cards.delete(state.id);
     }
     function cancel() {
+      if (viewport) viewport.cancel();
       if (!gesture) { cardTouches.clear(); return; }
       const g = gesture;
+      clearTimeout(g.holdTimer);
+      if (status.textContent === 'Straight line · lift to keep') setStatus('');
       gesture = null;
       cardTouches.clear();
       if (g.kind === 'stroke' && g.pointerType === 'pen') suppressClickUntil = performance.now() + 400;
@@ -86,8 +110,13 @@
       return { x: clamp((x - rect.left) * 1000 / Math.max(rect.width, 1), 0, 1000), y: clamp((y - rect.top) * observedHeight / Math.max(rect.height, 1), 0, observedHeight) };
     }
     function rawPoints(points) { return points.map(p => [Math.round(clamp(p.x, 0, 1000) * 100) / 100, Math.round(clamp(p.y, 0, observedHeight) * 100) / 100, Math.round(clamp(p.pressure == null ? .5 : p.pressure, 0, 1) * 100) / 100]); }
-    function logicalPoints(stroke) { return stroke.points || []; }
-    function inkCopy(stroke) { return { ...stroke, points: logicalPoints(stroke).map(p => [p[0] / 1000, p[1] / observedHeight, p[2]]) }; }
+    function displayStroke(stroke) {
+      const positions = { ...positionsOf(context()) };
+      if (stroke.anchor && cards.has(stroke.anchor.clipId)) positions[stroke.anchor.clipId] = cards.get(stroke.anchor.clipId).box;
+      return global.PhloemWorkspaceState && global.PhloemWorkspaceState.displayStroke
+        ? global.PhloemWorkspaceState.displayStroke(stroke, positions) : stroke;
+    }
+    function logicalPoints(stroke) { return displayStroke(stroke).points || []; }
     function fallbackPath(stroke) {
       const pts = logicalPoints(stroke);
       if (!pts.length) return '';
@@ -95,15 +124,28 @@
     }
     function paintPath(path, stroke) {
       const smooth = global.PhloemInk && global.PhloemInk.pathData;
-      path.setAttribute('d', smooth ? smooth(inkCopy(stroke), observedHeight / 1000) : fallbackPath(stroke));
+      const shown = displayStroke(stroke);
+      const copy = { ...shown, points: shown.points.map(p => [p[0] / 1000, p[1] / observedHeight, p[2]]) };
+      if (shown.nib === 'marker') {
+        // A fixed chisel-nib direction gives broad downstrokes and finer crossstrokes.
+        // Reuse the continuous, pressure-filtered outline; never stamp disconnected dots.
+        copy.style = 'clean'; copy.width *= 1.35;
+        copy.points = copy.points.map((p, i, pts) => {
+          const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+          const angle = Math.atan2((b[1] - a[1]) * observedHeight, (b[0] - a[0]) * 1000);
+          return [p[0], p[1], clamp(.12 + .76 * Math.abs(Math.sin(angle - .65)) + .12 * p[2], 0, 1)];
+        });
+      }
+      path.setAttribute('d', smooth ? smooth(copy, observedHeight / 1000) : fallbackPath(stroke));
       path.setAttribute('fill', smooth ? (COLORS[stroke.color] || COLORS.black) : 'none');
+      path.setAttribute('fill-opacity', shown.nib === 'marker' ? '.94' : '1');
       if (!smooth) { path.setAttribute('stroke', COLORS[stroke.color] || COLORS.black); path.setAttribute('stroke-width', String(stroke.width * 1000 / 612)); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round'); }
     }
     function makePath(stroke) { const path = document.createElementNS(NS, 'path'); path.dataset.strokeId = stroke.id || ''; paintPath(path, stroke); return path; }
     function activeStroke(c, stroke) { return !!(stroke && stroke.id && Number((c.workspace && c.workspace.deleted || {})[stroke.id] || 0) < Number(stroke.updatedAt || 0)); }
     function canonicalStroke(id) { const c = context(); return strokesOf(c).find(stroke => stroke.id === id && activeStroke(c, stroke)) || null; }
     function renderInk(c) {
-      const paths = strokesOf(c).filter(s => activeStroke(c, s)).map(makePath);
+      const paths = strokesOf(c).filter(s => activeStroke(c, s) && (!s.anchor || itemsOf(c).some(item => item.id === s.anchor.clipId))).map(makePath);
       if (gesture && gesture.kind === 'stroke' && gesture.preview) paths.push(gesture.preview);
       ink.replaceChildren(...paths);
       ink.setAttribute('viewBox', `0 0 1000 ${observedHeight}`);
@@ -114,6 +156,17 @@
       state.card.style.left = `${box.x / 10}%`;
       state.card.style.top = `${box.y / height * 100}%`;
       state.card.style.width = `${box.width / 10}%`;
+      if (cards.has(state.id)) {
+        const attached = strokesOf(context()).filter(stroke => stroke.anchor && stroke.anchor.clipId === state.id);
+        const paths = attached.length ? new Map([...ink.querySelectorAll('[data-stroke-id]')].map(node => [node.dataset.strokeId, node])) : new Map();
+        let inkBottom = box.y;
+        for (const stroke of attached) {
+          const path = paths.get(stroke.id);
+          if (path) paintPath(path, stroke);
+          for (const point of logicalPoints(stroke)) inkBottom = Math.max(inkBottom, point[1]);
+        }
+        state.card.style.minHeight = `${Math.max(178, (inkBottom - box.y) * board.clientWidth / 1000 + 20)}px`;
+      }
     }
     function boxFor(c, id) {
       const raw = positionsOf(c)[id];
@@ -124,6 +177,7 @@
     function moveCard(state, deltaX, deltaY) {
       const c = context();
       if (!liveItem(state) || c.busy) return;
+      ensurePaperAt(state.box.y + deltaY + 500);
       const box = { ...state.box, x: clamp(state.box.x + deltaX, 0, 1000 - state.box.width), y: clamp(state.box.y + deltaY, 0, observedHeight - 80) };
       if (adapter.place(state.id, box) === true) { setBox(state, box, observedHeight); render(); }
       else setStatus('Could not move this clip.');
@@ -182,14 +236,17 @@
     function clampCardMenu(state) {
       if (!state.menu.open || !state.card.isConnected) return;
       const actions = state.actions, viewport = scroll.getBoundingClientRect();
+      const scale = Math.max(.01, board.getBoundingClientRect().width / Math.max(1, board.clientWidth));
       actions.style.left = 'auto'; actions.style.right = '0'; actions.style.top = '100%'; actions.style.bottom = 'auto';
-      actions.style.maxHeight = `${Math.max(44, viewport.height - 12)}px`;
+      actions.style.boxSizing = 'border-box';
+      actions.style.maxWidth = `${Math.max(44, (viewport.width - 12) / scale)}px`;
+      actions.style.maxHeight = `${Math.max(44, (viewport.height - 12) / scale)}px`;
       actions.style.overflowY = 'auto';
       const rect = actions.getBoundingClientRect(), owner = state.menu.getBoundingClientRect();
       const left = clamp(rect.left, viewport.left + 6, Math.max(viewport.left + 6, viewport.right - rect.width - 6));
       const top = clamp(rect.top, viewport.top + 6, Math.max(viewport.top + 6, viewport.bottom - rect.height - 6));
-      actions.style.left = `${left - owner.left}px`; actions.style.right = 'auto';
-      actions.style.top = `${top - owner.top}px`;
+      actions.style.left = `${(left - owner.left) / scale}px`; actions.style.right = 'auto';
+      actions.style.top = `${(top - owner.top) / scale}px`;
     }
     function makeCard(item, box) {
       const id = String(item.id), card = document.createElement('article');
@@ -203,7 +260,7 @@
       }
       const head = document.createElement('div'); head.className = 'workspace-card-head';
       const handle = document.createElement('button');
-      handle.type = 'button'; handle.className = 'workspace-handle workspace-card-handle'; handle.textContent = '⠿';
+      handle.type = 'button'; handle.className = 'workspace-handle workspace-card-handle'; handle.textContent = ''; handle.title = 'Drag note';
       handle.setAttribute('aria-label', 'Move clip with drag or arrow keys'); handle.style.touchAction = 'none';
       const menu = document.createElement('details'); menu.className = 'workspace-note-menu';
       const summary = document.createElement('summary'); summary.textContent = '⋯'; summary.setAttribute('aria-label', 'Clip actions'); menu.appendChild(summary);
@@ -280,6 +337,7 @@
       handle.addEventListener('pointermove', event => {
         const g = gesture; if (!g || g.kind !== 'drag' || g.pointerId !== event.pointerId || g.state !== state) return;
         const point = pointFromClient(event.clientX, event.clientY);
+        ensurePaperAt(g.startBox.y + point.y - g.start.y + 500);
         setBox(state, { ...g.startBox, x: clamp(g.startBox.x + point.x - g.start.x, 0, 1000 - g.startBox.width), y: clamp(g.startBox.y + point.y - g.start.y, 0, observedHeight - 80) }, observedHeight);
       });
       const finishDrag = event => {
@@ -333,10 +391,11 @@
             if (!touch.scrolling && Math.abs(event.clientY - touch.startY) < 5) return;
             touch.scrolling = true;
             const requested = previousY - event.clientY;
+            const scale = Math.max(.01, board.getBoundingClientRect().width / Math.max(1, board.clientWidth));
             const before = touch.surface.scrollTop;
-            touch.surface.scrollTop += requested;
+            touch.surface.scrollTop += requested / scale;
             manualCardScrollAt = performance.now();
-            scroll.scrollTop += requested - (touch.surface.scrollTop - before);
+            scroll.scrollTop += requested - (touch.surface.scrollTop - before) * scale;
             suppressCardClickUntil = performance.now() + 350;
             event.preventDefault(); event.stopPropagation();
             return;
@@ -376,7 +435,7 @@
       if (status.textContent === 'Workspace temporarily unavailable. Existing notes are preserved; editing is paused.') setStatus('');
       for (const state of cards.values()) if (!state.orphan) state.input.readOnly = false;
       observedHeight = heightOf(c);
-      board.style.height = `${board.clientWidth * observedHeight / 1000}px`;
+      resizeLayout();
       const usable = available(c);
       tools.querySelectorAll('[data-workspace-tool]').forEach(button => { const on = button.dataset.workspaceTool === tool; button.classList.toggle('active', on); button.setAttribute('aria-pressed', String(on)); });
       tools.querySelectorAll('[data-workspace-color]').forEach(button => { const on = button.dataset.workspaceColor === color; button.classList.toggle('active', on); button.setAttribute('aria-pressed', String(on)); });
@@ -414,6 +473,12 @@
         else { state.card.remove(); cards.delete(id); }
       }
       for (const state of drafts.values()) if (state.paperId === String(c.id) && !state.card.isConnected) cardsLayer.appendChild(state.card);
+      const boardRect = board.getBoundingClientRect();
+      if (boardRect.width > 0 && cards.size) {
+        let bottom = 0;
+        for (const state of cards.values()) bottom = Math.max(bottom, (state.card.getBoundingClientRect().bottom - boardRect.top) * 1000 / boardRect.width);
+        ensurePaperAt(bottom + 500);
+      }
     }
     function reset() {
       cancel();
@@ -434,15 +499,40 @@
     function updatePreview() {
       previewFrame = 0;
       const g = gesture; if (!g || g.kind !== 'stroke' || g.mode !== 'pen') return;
-      paintPath(g.preview, { color: g.color, width: g.width, style: 'natural', points: rawPoints(g.points) });
+      paintPath(g.preview, { color: g.color, width: g.width, style: 'natural', nib: g.nib, shape: g.straight ? 'line' : undefined, points: rawPoints(g.points) });
+    }
+    function armStraightLine(g, event) {
+      if (g.straight || g.mode !== 'pen' || g.points.length < 2) return;
+      const here = { x: event.clientX, y: event.clientY };
+      if (g.holdTimer && g.holdAnchor && Math.hypot(here.x - g.holdAnchor.x, here.y - g.holdAnchor.y) <= 6) return;
+      clearTimeout(g.holdTimer); g.holdTimer = 0;
+      const rect = board.getBoundingClientRect(), first = g.points[0], last = g.points[g.points.length - 1];
+      const span = Math.hypot(last.x - first.x, last.y - first.y) * rect.width / 1000;
+      if (span < 24 || g.travel > span * 2) return;
+      g.holdAnchor = here;
+      g.holdTimer = setTimeout(() => {
+        g.holdTimer = 0;
+        if (gesture !== g || !currentScope() || context().busy) return;
+        const pressure = g.points.reduce((sum, p) => sum + p.pressure, 0) / g.points.length;
+        g.points = [{ ...g.points[0], pressure }, { ...g.points[g.points.length - 1], pressure }];
+        g.straight = true; g.linePressure = pressure;
+        if (!previewFrame) previewFrame = requestAnimationFrame(updatePreview);
+        setStatus('Straight line · lift to keep');
+      }, 600);
     }
     function addPoint(g, event) {
       const p = pointFromClient(event.clientX, event.clientY), pressure = Number.isFinite(event.pressure) && event.pressure > 0 ? event.pressure : .5;
+      ensurePaperAt(p.y + 500);
       const last = g.points[g.points.length - 1];
-      if (!last || Math.hypot(p.x - last.x, p.y - last.y) >= .25) {
+      const resting = g.holdTimer && g.holdAnchor && Math.hypot(event.clientX - g.holdAnchor.x, event.clientY - g.holdAnchor.y) <= 6;
+      if (g.lastClient && !resting) g.travel += Math.hypot(event.clientX - g.lastClient.x, event.clientY - g.lastClient.y);
+      g.lastClient = { x: event.clientX, y: event.clientY };
+      if (g.straight) g.points[1] = { ...p, pressure: g.linePressure };
+      else if (!last || Math.hypot(p.x - last.x, p.y - last.y) >= .25) {
         if (g.points.length >= 4096) g.points = g.points.filter((_, index) => index % 2 === 0);
         g.points.push({ ...p, pressure });
       }
+      armStraightLine(g, event);
       if (g.mode === 'pen' && !previewFrame) previewFrame = requestAnimationFrame(updatePreview);
       if (g.mode === 'eraser') eraseAt(g, p, last || p);
     }
@@ -461,11 +551,12 @@
       const c = context(); if (!same(c)) return;
       for (const stroke of strokesOf(c)) {
         if (!activeStroke(c, stroke) || g.ids.has(stroke.id)) continue;
-        const pts = logicalPoints(stroke); let close = false;
+        if (stroke.anchor && !itemsOf(c).some(item => item.id === stroke.anchor.clipId)) continue;
+        const pts = logicalPoints(stroke), shown = displayStroke(stroke); let close = false;
         for (let i = 0; i < pts.length; i++) {
           const a = { x: pts[i][0], y: pts[i][1] };
           const b = pts[Math.min(i + 1, pts.length - 1)];
-          if (segmentsNear(previous, point, a, { x: b[0], y: b[1] }, 16 + (stroke.width || 1))) { close = true; break; }
+          if (segmentsNear(previous, point, a, { x: b[0], y: b[1] }, 16 + (shown.width || 1))) { close = true; break; }
         }
         if (close) { g.ids.add(stroke.id); g.erased.push(stroke); }
       }
@@ -474,13 +565,22 @@
     function startStroke(event, pointerId, mode) {
       if (gesture || !available(context()) || context().busy) return false;
       board.focus({ preventScroll: true });
-      const g = { kind: 'stroke', mode, pointerId, pointerType: event.pointerType || 'pen', points: [], ids: new Set(), erased: [], color, width, paperId: scope.id, epoch: scope.epoch };
+      if (viewport) viewport.cancel();
+      const owner = [...cards.values()].reverse().find(state => {
+        if (state.orphan) return false;
+        const r = state.card.getBoundingClientRect();
+        return event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
+      });
+      const g = { kind: 'stroke', mode, pointerId, pointerType: event.pointerType || 'pen', points: [], ids: new Set(), erased: [], color, width, nib, travel: 0, holdTimer: 0, paperId: scope.id, epoch: scope.epoch,
+        anchor: owner ? { clipId: owner.id, ...owner.box } : null };
       gesture = g; board.classList.add('workspace-drawing');
       if (mode === 'pen') { g.preview = document.createElementNS(NS, 'path'); g.preview.classList.add('workspace-ink-preview'); ink.appendChild(g.preview); }
       addPoint(g, event); return true;
     }
     function finishStroke(commit) {
       const g = gesture; if (!g || g.kind !== 'stroke') return;
+      clearTimeout(g.holdTimer);
+      if (status.textContent === 'Straight line · lift to keep') setStatus('');
       gesture = null; board.classList.remove('workspace-drawing');
       if (g.pointerType === 'pen') suppressClickUntil = performance.now() + 400;
       if (previewFrame) cancelAnimationFrame(previewFrame); previewFrame = 0;
@@ -488,6 +588,9 @@
       if (!commit || !currentScope() || g.paperId !== scope.id || g.epoch !== scope.epoch) { render(); return; }
       if (g.mode === 'pen' && g.points.length) {
         const at = Date.now(), stroke = { id: uid(), color: g.color, width: g.width, style: 'natural', points: rawPoints(g.points), createdAt: at, updatedAt: at };
+        if (g.nib === 'marker') stroke.nib = 'marker';
+        if (g.anchor) stroke.anchor = g.anchor;
+        if (g.straight) stroke.shape = 'line';
         if (adapter.addStroke(stroke) === true) { undoStack.push({ kind: 'add', stroke: canonicalStroke(stroke.id) || stroke }); redoStack = []; }
         else setStatus('Could not save this stroke.');
       } else if (g.mode === 'eraser' && g.ids.size) {
@@ -569,7 +672,9 @@
       if (button.dataset.workspaceColor && COLORS[button.dataset.workspaceColor]) color = button.dataset.workspaceColor;
       render();
     });
-    if (sizeSelect) sizeSelect.addEventListener('change', () => { width = clamp(Number(sizeSelect.value) || 1.2, .5, 12); });
+    if (sizeSelect) sizeSelect.addEventListener('change', () => { width = clamp(Number(sizeSelect.value) || 2.4, .5, 12); });
+    const nibSelect = document.getElementById('workspaceNib');
+    if (nibSelect) nibSelect.addEventListener('change', () => { cancel(); nib = nibSelect.value === 'natural' ? 'natural' : 'marker'; });
     function recordUndo(action, target) { target.push(action); if (target.length > 50) target.shift(); }
     function restoreStroke(stroke) { const at = Date.now(); const restored = { ...stroke, id: uid(), createdAt: at, updatedAt: at, points: stroke.points.map(p => [...p]) }; return adapter.addStroke(restored) === true ? (canonicalStroke(restored.id) || restored) : null; }
     function history(direction) {
@@ -608,7 +713,7 @@
       const id = adapter.addNote(point); if (id != null) { render(); focus(id, true); } else setStatus('Could not add a note.');
     });
     if (buttons.close) buttons.close.addEventListener('click', () => { cancel(); adapter.close(); });
-    return { render, reset, cancel, focus, pointFromClient, active, hasDrafts };
+    return { render, reset, cancel, focus, pointFromClient, active, hasDrafts, resizeLayout };
   }
   global.PhloemWorkspaceView = { create };
 })(window);

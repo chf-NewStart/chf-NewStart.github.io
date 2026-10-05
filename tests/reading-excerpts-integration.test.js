@@ -118,6 +118,7 @@ function navigationHarness(items = [pdfRecord('first', 2), pdfRecord('second', 4
   context.excerptView = null;
   context.workspaceView = null;
   context.workspaceDragSelection = null;
+  context.cancelSavedHighlightDrag = () => {};
   context.temporaryNotebookMode = () => false;
   context.currentKeepAnchor = () => { origins++; return { kind: 'pdf', page: 1 }; };
   context.byId = id => id === 'excerptReturnChip' ? chip : id === 'excerptStatus' ? status : null;

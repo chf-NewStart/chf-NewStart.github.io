@@ -190,6 +190,7 @@ async function seedWebLibrary(page, chapters, stamp) {
 
   /* Without an API token the website keeps iCloud hidden. */
   const plainContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
+  await plainContext.addInitScript(() => { window.PHLOEM_CLOUDKIT_CONFIG = { apiToken: '' }; });
   const plain = await plainContext.newPage();
   plain.setDefaultTimeout(12000);
   await seedWebLibrary(plain, [webPaper], stamp);

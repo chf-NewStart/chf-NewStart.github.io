@@ -314,7 +314,8 @@ async function notebookExitReopenBack(page, paperId, pdfPage, closeFirst = false
       && Math.abs(split.paperWidth - split.workspaceWidth) < split.viewport * .16 && Math.abs(split.gap) < 4,
     'direct Zen Workspace opens the split reading/workspace view: ' + JSON.stringify(split));
     assert.equal(split.background, 'none', 'Zen workspace keeps blank paper');
-    await page.locator('#workspaceMore summary').click();
+    assert.equal(await page.locator('#workspaceMore').evaluate(node => node.open), false);
+    assert.equal(await page.locator('#workspaceNewNote').isVisible(), true, 'Sticky note is a direct rail control, not hidden in More');
     await page.locator('#workspaceNewNote').click();
     await page.waitForFunction(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
       .find(ch => ch.id === localStorage.getItem('readingRoom.lastOpen.v1'))?.readingExcerpts?.items?.some(item => item.quote === ''));

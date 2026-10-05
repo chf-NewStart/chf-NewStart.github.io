@@ -6941,7 +6941,7 @@
   });
   byId('workspaceTools').addEventListener('click',function(event){
     var button=event.target.closest('button');if(!button)return;
-    if(button.dataset.workspaceTool&&button.dataset.workspaceTool!=='pen')closeWorkspacePanels();
+    if(button.dataset.workspaceTool&&button.dataset.workspaceTool!=='pen'||button.id==='workspaceNewNote')closeWorkspacePanels();
     if(button.closest('#workspaceMore')&&!button.closest('.workspace-zoom-controls'))byId('workspaceMore').open=false;
   });
   byId('workspaceMore').addEventListener('toggle',function(){

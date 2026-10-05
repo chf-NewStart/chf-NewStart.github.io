@@ -8,9 +8,9 @@
 .workspace-tools button, .workspace-tools select, .workspace-tools summary { border:1px solid transparent; border-radius:10px; background:transparent; color:var(--ink); font:650 13px var(--sans); padding:6px 10px; }
 .workspace-tool-row > button { display:grid; place-items:center; width:44px; padding:0; font-size:21px; }
 .workspace-tool-row > button svg { width:22px; height:22px; }
-.workspace-tool-row > .workspace-undo { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:0; }
-.workspace-tool-row > .workspace-undo svg { width:18px; height:18px; }
-.workspace-undo span { font:600 9px/1.1 var(--sans); }
+.workspace-tool-row > :is(.workspace-undo,.workspace-labelled) { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:0; }
+.workspace-tool-row > :is(.workspace-undo,.workspace-labelled) svg { width:18px; height:18px; }
+:is(.workspace-undo,.workspace-labelled) span { font:600 9px/1.1 var(--sans); }
 .workspace-tools button[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); }
 .workspace-tools button:disabled { opacity:.35; }
 .workspace-tools button:focus-visible, .workspace-panel summary:focus-visible, .workspace-close:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }

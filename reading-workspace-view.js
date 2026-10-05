@@ -648,7 +648,9 @@
       }, true);
       card.addEventListener('pointerup', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId)) { event.preventDefault(); event.stopPropagation(); gesture.released.add(event.pointerId); cardTouches.delete(event.pointerId); if (gesture.released.size === 2) finishPinch(true); } else cardTouches.delete(event.pointerId); }, true);
       card.addEventListener('pointercancel', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId)) { event.stopPropagation(); finishPinch(false); } else cardTouches.delete(event.pointerId); }, true);
-      card.addEventListener('lostpointercapture', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId) && !gesture.released.has(event.pointerId)) finishPinch(false); });
+      // Handing a finger from the top strip's grip to the pinch makes the grip lose its
+      // capture; that bubbles here and must not end the pinch it just started.
+      card.addEventListener('lostpointercapture', event => { if (event.target === card && gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId) && !gesture.released.has(event.pointerId)) finishPinch(false); });
       return state;
     }
     function render() {
@@ -886,6 +888,9 @@
     function startGripDrag(event) {
       // Lasso keeps its own drags; the grip is for writing tools, where the Pencil would otherwise draw.
       if (tool !== 'pen' && tool !== 'eraser') return false;
+      // Fingers reach the note's own grip and pinch handlers, so a second finger can
+      // still turn a move into a resize.
+      if (event.pointerType === 'touch') return false;
       if (gesture || event.button !== 0 || !available(context()) || context().busy) return false;
       const state = gripCardAt(event.clientX, event.clientY, event.target);
       if (!state || !liveItem(state)) return false;

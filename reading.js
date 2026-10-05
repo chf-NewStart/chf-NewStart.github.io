@@ -8162,7 +8162,7 @@
      path and move as whole Blobs through uploadDocument/downloadDocument. The API token
      comes from CloudKit Console and is meant to be public; leaving it empty hides iCloud
      on the website. */
-  var WEB_CLOUDKIT=Object.assign({container:'iCloud.com.houfu72.phloem',apiToken:'ee0d92b8b460a4964c6d0d8ee123a8110d0f716d395ac797b96c408de2648372',environment:'production',script:'https://cdn.apple-cloudkit.com/ck/2/cloudkit.js'},window.PHLOEM_CLOUDKIT_CONFIG||{});
+  var WEB_CLOUDKIT=Object.assign({container:'iCloud.com.houfu72.phloem',apiToken:'5c6f4cf802eac49c21fb137680e0bd99c199ba8c09ad82a239a3441c30ef04fb',environment:'production',script:'https://cdn.apple-cloudkit.com/ck/2/cloudkit.js'},window.PHLOEM_CLOUDKIT_CONFIG||{});
   var webCloudAdapter=null,webCloudReady=null;
   function webCloudConfigured(){return !window.PHLOEM_NATIVE&&!!WEB_CLOUDKIT.apiToken;}
   function webCloudLoad(){

@@ -299,8 +299,11 @@ test('zoom out on portrait paper asks for bounded extent once and preserves save
     const after = await geometry(page);
     const calls = await page.evaluate(() => [...fixture.calls]);
     assert.equal(after.zoom, .5);
-    assert.equal(after.boardWidth, 400 * after.logicalWidth / 1000);
-    assert.equal(after.boardHeight, 400 * after.logicalHeight / 1000);
+    // A pane narrower than the 560px layout width lays the sheet out at 560px and
+    // scales it down, so notes never reflow when the divider squeezes the pane.
+    assert.equal(after.boardWidth, 560 * after.logicalWidth / 1000);
+    assert.equal(after.boardHeight, 560 * after.logicalHeight / 1000);
+    assert(Math.abs(after.boardRect.width - 400 * after.logicalWidth * after.zoom / 1000) < 1, 'visually the sheet still fits the 400px pane');
     assert(after.boardRect.width >= after.scrollWidth, 'zoomed-out visible background is actual paper');
     assert(after.stageHeight >= after.scrollHeight);
     assert(calls.length > 0 && calls.length < 8, 'growth follows viewport need without a render loop');

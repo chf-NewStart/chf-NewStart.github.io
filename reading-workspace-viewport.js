@@ -4,6 +4,10 @@
   'use strict';
 
   const MIN_ZOOM = .5, MAX_ZOOM = 3, KEY = 'phloem.workspaceZoom.v1';
+  // Notes, text and ink are laid out on a sheet at least this wide. A narrower pane
+  // (a squeezed split, a phone) shows the same sheet scaled down, like zooming out,
+  // so nothing reflows or piles up. Wider panes keep laying out at their own width.
+  const LAYOUT_MIN_WIDTH = 560;
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 
   function create(options) {
@@ -57,11 +61,13 @@
       options.onNeedSpace(growY ? neededY : Math.min(neededY, logicalHeight),
         growX ? neededX : Math.min(neededX, logicalWidth));
     }
+    function layoutWidth() { return Math.max(baseWidth, LAYOUT_MIN_WIDTH); }
+    function fit() { return baseWidth / layoutWidth(); }
     function sizePaper() {
-      board.style.width = `${baseWidth * logicalWidth / 1000}px`;
+      board.style.width = `${layoutWidth() * logicalWidth / 1000}px`;
       board.style.minHeight = '0';
-      board.style.height = `${baseWidth * logicalHeight / 1000}px`;
-      board.style.transform = `scale(${zoom})`;
+      board.style.height = `${layoutWidth() * logicalHeight / 1000}px`;
+      board.style.transform = `scale(${zoom * fit()})`;
       stage.style.width = `${Math.max(scroll.clientWidth, baseWidth * logicalWidth * zoom / 1000)}px`;
       stage.style.height = `${Math.max(scroll.clientHeight, baseWidth * logicalHeight * zoom / 1000)}px`;
     }
@@ -134,14 +140,14 @@
       const rect = scroll.getBoundingClientRect();
       const t = { x: scroll.scrollLeft + p.x - rect.left - p.contentX * p.next, y: scroll.scrollTop + p.y - rect.top - p.contentY * p.next };
       board.style.willChange = 'transform';
-      board.style.transform = `translate(${t.x}px, ${t.y}px) scale(${p.next})`;
+      board.style.transform = `translate(${t.x}px, ${t.y}px) scale(${p.next * fit()})`;
     }
     function endPinch(commit) {
       const p = pinch; pinch = null;
       if (!p) return;
       if (p.frame) global.cancelAnimationFrame(p.frame);
       board.style.willChange = '';
-      board.style.transform = `scale(${zoom})`;
+      board.style.transform = `scale(${zoom * fit()})`;
       if (commit && Math.abs(p.next - zoom) > .0001) setZoom(p.next, p.x, p.y, p.contentX, p.contentY);
     }
     // Ending a pinch early keeps the zoom the reader can already see.

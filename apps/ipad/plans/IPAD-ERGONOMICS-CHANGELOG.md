@@ -1,0 +1,195 @@
+# iPad Workspace ergonomics pass — change log for cross-checking
+
+Branch `claude/phloem-ipad-ergonomics-4rko4x`, based on Codex's checkpoint
+`d9df0ddd` (`codex/phloem-zen-interaction-plan`, expanded workspace paper WIP).
+Each entry below is one commit, so a reviewer can check them one at a time with
+`git show <commit>`. Nothing here touches the saved annotation format, AI,
+privacy, sync, signing, release numbers or the native build.
+
+This branch also finishes Codex's expanded-paper checkpoint (entry 6), and its
+last commit bumps the reader assets and offline shell from v162 to v163, as the
+handoff's step 6 asks, because the combined work is going to main.
+
+## 1. Two-finger tap Undo, three-finger tap Redo on workspace paper
+
+**Commit:** "Undo workspace handwriting with a two-finger tap"
+
+**What changed.** A quick tap with two fingers anywhere on workspace paper undoes
+the last workspace change (a stroke, an erase, or a lasso move). Three fingers
+redo it. A short status line says what happened, or "Nothing to undo in
+Workspace". It uses the same history as the rail Undo/Redo buttons, so those stay
+in sync.
+
+**Why it helps on iPad.** The Pencil hand stays on the page; you no longer reach
+to the top-right rail after every mistake.
+
+**Safety rules (all tested).** The tap is void if any finger moves more than
+12 px, the tap lasts longer than 400 ms, the paper scrolls or zooms during it, the
+system cancels a contact, any Pencil or mouse contact happens during it (a resting
+palm while writing), or a finger lands on a note control, text box, button or menu.
+One-finger taps never count. With the lasso tool active, the second finger already
+cancels a half-drawn lasso; the tap then undoes and leaves no outline behind. Paper
+(PDF) history and two-finger PDF zoom are untouched; the gesture is listened for
+only on the workspace scroll area.
+
+**Files.** `reading-workspace-view.js` (listener block next to the Undo/Redo
+buttons; one line in `startStroke`), new `tests/reading-workspace-multitap.test.js`.
+
+**How to verify.**
+- `node tests/reading-workspace-multitap.test.js` (4 tests; the native CDP touch
+  case is Chromium-only). It fails on the parent commit and passes here.
+- On iPad: write two strokes in Workspace, tap with two fingers (one stroke goes),
+  three fingers (it comes back). Rest your palm while writing and confirm nothing
+  is undone. Two-finger pan and pinch on blank paper must still scroll and zoom.
+
+## 2. Sticky note button on the Workspace rail
+
+**Commit:** "Put Sticky note directly on the workspace rail"
+
+**What changed.** `＋ Sticky note` moved out of the ⋯ More menu onto the rail as a
+labelled 44 px "Note" button between Lasso and Undo (same icon-plus-caption style
+as Undo). The element id `workspaceNewNote` is unchanged. Tapping it closes any
+open pen or More popover. More now holds More paper, zoom, Redo and Return.
+
+**Why it helps on iPad.** Adding a note is the main workspace action; it was two
+taps deep. It is now one tap, in the same column as the other tools.
+
+**Files.** `reading.html`, `reading-workspace.css` (`.workspace-labelled` shares the
+Undo button style), `reading.js` (popover close), and three tests that used to
+open More first now tap the rail: `reading-zen-default-browser`,
+`reading-zen-compact-browser`, `reading-split-undo-browser`. The default Zen test
+asserts the button is visible with More closed.
+
+**How to verify.** Those three tests. On iPad: open Workspace, the rail shows
+Pen, Eraser, Lasso, Note, Undo, ⋯; tap Note and type straight away.
+
+## 3. Paper highlighter color button on the paper dock while Workspace is open
+
+**Commit:** "Put the paper highlighter color on the paper dock in Workspace"
+
+**What changed.** With Workspace open in landscape, the paper's own Zen dock (left
+half) gains one button between Annotate and Undo. It shows the current highlighter
+color as a dot and opens the paper's color shelf in one tap (before: Annotate, then
+Highlight). It mirrors the existing Marker button's color, label, pending-selection
+and eraser states, and Done or Escape return focus to it. It is hidden whenever
+Workspace is closed, so the reading-only Zen dock is unchanged. The Workspace rail
+is not touched, and the workspace pen color stays independent.
+
+Found while doing this: in split view, the paper's highlight shelf (and the paper
+handwriting shelf) centered on the whole window and covered part of the workspace.
+They now center on the paper half and are capped to its width.
+
+**Files.** `reading.html` (`#zenWorkspaceMarker`), `reading.css` (color tokens and
+eraser look include the new id), `reading-workspace.css` (show only when
+`body.workspace-open.zen`; shelf position in wide landscape), `reading.js`
+(`zenMarkerAction`, label/color mirroring in `syncZenMarkerUi`,
+`zenHighlightReturn` for focus), new `tests/reading-workspace-paper-color.test.js`.
+
+**How to verify.** `node tests/reading-workspace-paper-color.test.js` (iPad Air
+landscape size 1180×820). On iPad: open a PDF, open Workspace, tap the dot button
+on the paper side, pick a color, and check the shelf sits over the paper only.
+
+## 4. Cross-feature QA
+
+**Commit:** "Add cross-feature QA for the Workspace ergonomics pass"
+
+`tests/reading-workspace-ergonomics-qa.test.js` runs one full-app session at iPad
+landscape size: paper highlight, workspace stroke, rail Note with text, lasso and
+keyboard nudge, two-finger tap undoes the nudge then the stroke, three-finger tap
+redoes, paper color button, paper Undo, then reload. It asserts workspace taps
+never touch paper highlights or notes, and paper Undo never touches workspace ink.
+
+## 5. A tap releases the lasso
+
+**Commit:** "Release the workspace lasso with a tap"
+
+**What changed.** With Lasso active, a finger tap anywhere (inside or outside the
+dashed selection) releases it. A Pencil or mouse tap outside releases it too; a
+Pencil tap inside keeps it so a drag can start there. Releasing no longer shows
+"Nothing selected. Circle a note or handwriting." and adds no Undo step or saved
+change. A tap is judged by the farthest travel from touch-down (under 8 px), so a
+closed lasso loop that ends where it began is never mistaken for a tap.
+
+**Files.** `reading-workspace-view.js` (`startSelection`, `moveSelection`,
+`finishSelection`), new `tests/reading-workspace-lasso-release.test.js`.
+
+**How to verify.** The new test fails on the parent commit and passes here. On
+iPad: circle something with the Pencil, then tap the paper with a finger.
+
+## 6. Writable paper after zooming out (finishes Codex checkpoint d9df0ddd)
+
+**Commit:** "Finish writable zoomed-out workspace paper"
+
+**The bug.** After zooming out, blank space showed to the right, but the paper was
+still 1000 units wide, so Pencil strokes flattened against an invisible edge.
+Codex's checkpoint makes that space real paper (saved `width`, workspace v3). This
+commit fixes what was left of the handoff:
+
+- `reading-workspace-viewport.js`: any horizontal scroll offset added 1000 units of
+  width, so simply zooming in grew the paper. Now width grows only when zooming out
+  exposes paper, or when a zoomed-in view is panned to within 50 units of the right
+  edge.
+- `reading.js` `showWorkspaceClip`: a highlight or new note dropped near the right
+  edge widened the paper and scrolled the view away. It now shifts left onto the
+  visible paper. Programmatic placement beyond the edge still grows the paper
+  (Codex's adapter test keeps passing).
+- `tests/reading-workspace-lasso-browser.test.js`: converts with the saved logical
+  width, not 1000 (handoff item 3).
+- `tests/reading-workspace-extended-paper.test.js`: adds one continuous 50%-zoom
+  Pencil stroke from x=800 to x=1800 and checks that no samples pile up at x=1000
+  and the paper is at least 2000 wide. Run against live main, this file fails
+  (reproducing the bug); here it passes.
+
+**Still open from the handoff.** WebKit runs (item 1), and native/older-client v3
+compatibility review (item 5): older open copies pause Workspace editing on a v3
+paper until they reload, by Codex's fail-closed design. Existing native builds have
+not received this change.
+
+## 7. Version bump
+
+**Commit:** "Bump Phloem reader shell to v163". All `?v=` asset queries in
+`reading.html` and the service-worker cache name in `reading-sw.js` move from 162
+to 163. `tests/reading-app-update.test.js` and the iPad bundle tests
+(`apps/ipad/tests`, 16/16) pass.
+
+## Full-suite comparison (Chromium, every file in `tests/`)
+
+Baseline is Codex's checkpoint `d9df0ddd`; "this branch" is before the version bump.
+
+| | Baseline | This branch |
+| --- | --- | --- |
+| Passing files | 37 of 71 | 45 of 75 (4 new) |
+| Failing files | 34 | 30 |
+
+Every file that fails on this branch also fails on the baseline. Most fail because
+the old fixtures still open the non-Zen toolbar that "One quiet reader" removed
+(timeouts on `#workspaceOpen`, `#touchHighlight`, header buttons), as Codex's plan
+notes. Fixed by this branch: `reading-workspace-viewport`,
+`reading-workspace-lasso-browser`, `reading-highlight-workspace-drag`.
+`reading-pdf-links` passed here and failed on the baseline run; it was not changed,
+so treat that as timing, not a fix.
+
+Still failing on both: ai-providers, annotation-tools, book-guide, excerpts-browser,
+fold-browser, fold-phone, highlights, ipad-header, ipad-touch-dock, keeps-browser,
+library-list, library-thinking-search, marker-actions, native-ai, notebooklm-export,
+pdf-authors, pdf-continuity, pdf-ink-palette, pdf-ink, pdf-title, pdf-toc,
+pencil-highlight, rename-recent, selection-note-ai, selection-touch, tool-palettes,
+typography, vertical-book-flow, workspace-browser, zen-ipad.
+
+## Patent and design note
+
+These are generic interaction patterns, not a copy of any one app's design:
+a labelled toolbar button, a color-dot button, and a multi-finger tap for
+undo/redo. The two-finger-undo / three-finger-redo tap is widely used across iPad
+drawing and note apps, which is why it was chosen, but that does not establish
+freedom to operate. Nothing here has been checked by a patent attorney. If that
+matters for the App Store build, the gesture is contained in one listener block
+in `reading-workspace-view.js` and can be removed or put behind a setting without
+touching anything else.
+
+## Not verified
+
+- WebKit: not installed in the environment used for this pass. Run
+  `PHLOEM_BROWSER=webkit` for the three new browser tests.
+- Physical iPad, Apple Pencil, palm rejection and VoiceOver: not tested. Synthetic
+  and CDP touches are browser evidence only.

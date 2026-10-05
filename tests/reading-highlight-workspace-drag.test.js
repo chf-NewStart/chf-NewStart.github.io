@@ -54,6 +54,54 @@ async function workspaceCenter(page) {
     const rect=node.getBoundingClientRect();return{x:rect.left+rect.width*.55,y:rect.top+Math.min(260,rect.height*.2)};
   });
 }
+async function nativeParagraphSelection(page) {
+  return page.evaluate(() => {
+    const span=[...document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span')].find(node=>node.textContent.includes('drag this saved passage'));
+    const range=document.createRange();range.selectNodeContents(span);
+    const selection=getSelection();selection.removeAllRanges();selection.addRange(range);
+    document.dispatchEvent(new Event('selectionchange',{bubbles:true}));
+    return span.textContent;
+  });
+}
+async function assertQuietSelectionDuringDrag(page,label) {
+  await page.waitForTimeout(35);
+  const state=await page.evaluate(()=>({
+    text:getSelection().toString(),ranges:getSelection().rangeCount,
+    selecting:document.body.classList.contains('selecting-paper'),
+    cardVisible:!document.getElementById('selectionCard').classList.contains('hidden'),
+    markerReady:document.getElementById('highlightBtn').classList.contains('ready')
+  }));
+  assert.deepEqual(state,{text:'',ranges:0,selecting:false,cardVisible:false,markerReady:false},label);
+}
+async function assertTextSelectionRestored(page,label) {
+  const text=await nativeParagraphSelection(page);
+  await page.waitForFunction(()=>getSelection().toString().includes('drag this saved passage'));
+  const selectable=await page.locator('.pdf-page[data-page="1"] .text-layer span').first().evaluate(node=>{
+    const style=getComputedStyle(node);return style.userSelect!=='none'&&style.webkitUserSelect!=='none';
+  });
+  assert.equal(selectable,true,label+' restores selectable PDF text');
+  await page.locator('#selectionCard').waitFor({state:'visible'});
+  assert.equal(await page.locator('#selectionExcerpt').textContent(),'“'+text+'”',label+' accepts a new passage selection');
+  await page.locator('#selectionClose').click();
+}
+/* WKWebView emits stylus Touch events alongside Pencil Pointer events. Keep
+   their target fixed to the original PDF span, including when Pencil leaves it. */
+async function pairedStylusTouch(page,type,point) {
+  await page.evaluate(({type,point})=>{
+    if(type==='touchstart')window.__workspaceTestStylusTarget=document.elementFromPoint(point.x,point.y);
+    const target=window.__workspaceTestStylusTarget||document.getElementById('documentPane');
+    const stylus={identifier:810,target,touchType:'stylus',clientX:point.x,clientY:point.y,pageX:point.x+scrollX,pageY:point.y+scrollY,force:.55};
+    const touches=/^touch(end|cancel)$/.test(type)?[]:[stylus];
+    const event=new Event(type,{bubbles:true,cancelable:true});
+    Object.defineProperties(event,{changedTouches:{value:[stylus]},touches:{value:touches},targetTouches:{value:touches}});
+    target.dispatchEvent(event);
+    if(!touches.length)delete window.__workspaceTestStylusTarget;
+  },{type,point});
+}
+async function assertNoPencilHighlight(page,label) {
+  assert.equal(await page.locator('body').evaluate(body=>body.classList.contains('pencil-highlighting')),false,label+' does not start a Pencil marker gesture');
+  assert.equal(await page.locator('.pencil-highlight-preview').count(),0,label+' does not paint a marker preview');
+}
 
 (async () => {
   await new Promise((resolve,reject) => { server.once('error',reject);server.listen(8341,'127.0.0.1',resolve); });
@@ -75,6 +123,10 @@ async function workspaceCenter(page) {
     await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.pagedReady==='true');
     if(await page.locator('body').evaluate(node=>node.classList.contains('zen')))await page.locator('#zenExit').click();
     await selectPhrase(page);
+    const notePoint=await highlightCenter(page);
+    await page.mouse.click(notePoint.x,notePoint.y);
+    await page.locator('#selectionNote').fill('Keep this note attached to the exact saved passage.');
+    await page.locator('#selectionClose').click();
     const initial=await paper(page),highlight=initial.highlights['1'][0];
     assert.equal(highlight.text,'drag this saved passage');
     await page.locator('#workspaceOpen').click();
@@ -98,15 +150,28 @@ async function workspaceCenter(page) {
     assert.equal(await page.locator('#selectionExcerpt').textContent(),'“'+highlight.text+'”','tap still opens the original highlight card');
     await page.locator('#selectionClose').click();
     const touchFrom=await highlightCenter(page),touchTo=await workspaceCenter(page);
-    const pointer=async(type,point,id)=>page.evaluate(({type,point,id})=>{
+    const pointer=async(type,point,id,pointerType='touch')=>page.evaluate(({type,point,id,pointerType})=>{
       const target=type==='pointerdown'?document.elementFromPoint(point.x,point.y):document;
-      target.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:'touch',isPrimary:true,clientX:point.x,clientY:point.y}));
-    },{type,point,id});
+      target.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType,isPrimary:true,clientX:point.x,clientY:point.y}));
+    },{type,point,id,pointerType});
     await pointer('pointerdown',touchFrom,70);await pointer('pointerup',touchFrom,70);
     await page.locator('#selectionSavedTools').waitFor({state:'visible'});
     assert.equal(await page.locator('body').evaluate(body=>body.classList.contains('selecting-paper')),false,
       'touch tap opens the saved card and releases selection tracking');
     await page.locator('#selectionClose').click();
+    await pointer('pointerdown',touchFrom,80);
+    await nativeParagraphSelection(page);
+    await page.waitForTimeout(430);
+    assert.equal(await page.locator('.workspace-highlight-ghost').isVisible(),true,'saved passage hold claims the drag despite a native long-press selection');
+    await assertQuietSelectionDuringDrag(page,'active held drag removes the browser paragraph selection');
+    await nativeParagraphSelection(page);
+    await assertQuietSelectionDuringDrag(page,'late Safari-style selectionchange cannot reselect the paragraph during drag');
+    await pointer('pointermove',{x:touchFrom.x+35,y:touchFrom.y+8},80);
+    await assertQuietSelectionDuringDrag(page,'moving the saved passage stays free of native selection');
+    await pointer('pointercancel',touchFrom,80);
+    assert.equal(await page.locator('.workspace-highlight-ghost').count(),0,'cancel removes the held ghost');
+    assert.deepEqual((await paper(page)).highlights,initial.highlights,'cancel preserves source highlight geometry, color and note exactly');
+    await assertTextSelectionRestored(page,'cancel');
     await pointer('pointerdown',touchFrom,71);
     await pointer('pointermove',{x:touchFrom.x+28,y:touchFrom.y+10},71);
     await pointer('pointerup',{x:touchFrom.x+28,y:touchFrom.y+10},71);
@@ -117,6 +182,29 @@ async function workspaceCenter(page) {
     assert.equal(await page.locator('.workspace-highlight-ghost').count(),0,'second finger cancels a pending hold');
     await pointer('pointercancel',touchFrom,73);
     await pointer('pointercancel',touchFrom,74);
+    for(const dropInside of [true,false]){
+      const pencilFrom=await highlightCenter(page),pencilTo=dropInside?await workspaceCenter(page):{x:pencilFrom.x+90,y:pencilFrom.y};
+      const beforePencil=await paper(page),id=dropInside?81:82;
+      await pointer('pointerdown',pencilFrom,id,'pen');
+      await pairedStylusTouch(page,'touchstart',pencilFrom);
+      await assertNoPencilHighlight(page,'paired Pencil drag candidate');
+      await pointer('pointermove',pencilTo,id,'pen');
+      await pairedStylusTouch(page,'touchmove',pencilTo);
+      assert.equal(await page.locator('.workspace-highlight-ghost').isVisible(),true,'Pencil transfers the saved passage');
+      await assertNoPencilHighlight(page,'paired Pencil move');
+      await assertQuietSelectionDuringDrag(page,'paired Pencil drag leaves the PDF selection unchanged');
+      if(!dropInside&&process.env.PHLOEM_DRAG_SCREENSHOT)await page.screenshot({path:process.env.PHLOEM_DRAG_SCREENSHOT});
+      await pointer('pointerup',pencilTo,id,'pen');
+      await assertNoPencilHighlight(page,'Pencil pointerup before trailing touchend');
+      await pairedStylusTouch(page,'touchend',pencilTo);
+      await page.waitForTimeout(70);
+      const afterPencil=await paper(page);
+      assert.deepEqual(afterPencil.highlights,initial.highlights,'paired Pencil events never add or expand a source highlight');
+      assert.equal(afterPencil.readingExcerpts.items.length,1,'Pencil keeps one exact saved excerpt');
+      assert.equal(afterPencil.readingExcerpts.items[0].quote,highlight.text);
+      if(!dropInside)assert.deepEqual(afterPencil.readingWorkspace.positions,beforePencil.readingWorkspace.positions,'Pencil release outside workspace does not move the clip');
+      assert.equal(await page.locator('.workspace-highlight-ghost').count(),0);
+    }
     await page.locator('#highlightBtn').click();
     assert.equal(await page.locator('body').evaluate(body=>body.classList.contains('marker-on')),true,'marker remains selected for finger drag');
     let cdp;
@@ -126,6 +214,8 @@ async function workspaceCenter(page) {
     }else await pointer('pointerdown',touchFrom,72);
     await page.waitForTimeout(430);
     assert.equal(await page.locator('.workspace-highlight-ghost').isVisible(),true,'touch hold arms the drag');
+    await nativeParagraphSelection(page);
+    await assertQuietSelectionDuringDrag(page,'held finger drag with Marker selected rejects native paragraph selection');
     if(cdp){
       await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:touchTo.x,y:touchTo.y+120,id:72}]});
       await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
@@ -137,6 +227,11 @@ async function workspaceCenter(page) {
     assert.equal((await paper(page)).readingExcerpts.items.length,1,'touch hold moves the existing clip without duplicating it');
     assert.equal(await page.locator('body').evaluate(body=>body.classList.contains('selecting-paper')),false,
       'claimed highlight drag releases the paper selection tracker');
+    assert.deepEqual((await paper(page)).highlights,initial.highlights,'successful drop preserves source highlight geometry, color and note exactly');
+    assert.equal(await page.locator('body').evaluate(body=>body.classList.contains('marker-on')),true,'finger drop preserves the selected Marker');
+    await page.locator('#highlightBtn').click();
+    assert.equal(await page.locator('body').evaluate(body=>body.classList.contains('marker-on')),false,'switching Marker off restores ordinary text selection mode');
+    await assertTextSelectionRestored(page,'drop');
     const moved=(await paper(page)).readingWorkspace.positions[after.readingExcerpts.items[0].id];
     assert(Math.abs(moved.y-after.readingWorkspace.positions[after.readingExcerpts.items[0].id].y)>50,
       'held drag actually moves the existing card');

@@ -6849,6 +6849,7 @@
   /* Only this document's live selection token is accepted. An external webpage
      cannot inject a source anchor or replace notebook content through a drop. */
   function beginWorkspaceDrag(event){
+    if(savedHighlightDrag){event.preventDefault();return;}
     var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection;
     if(!selection||!event.dataTransfer)return;
     workspaceDragSelection={id:currentId,epoch:pdfOpenEpoch,token:uid('workspace-drop-'),selection:JSON.parse(JSON.stringify(selection))};
@@ -6888,6 +6889,9 @@
   /* A saved PDF highlight can be copied straight onto the adjacent workspace.
      Its painted rectangles have pointer-events:none, so hit-test stored geometry. */
   var savedHighlightDrag=null,savedHighlightIgnoredClick=null,savedHighlightTouches=new Set();
+  function clearSavedHighlightNativeSelection(){
+    var selection=window.getSelection&&window.getSelection();if(selection&&selection.rangeCount)selection.removeAllRanges();
+  }
   function savedHighlightDropPoint(x,y){
     if(!workspaceOpen||!workspaceWide()||!workspaceView)return null;
     var rect=byId('workspaceBoard').getBoundingClientRect(),scroll=byId('workspaceScroll'),visible=scroll.getBoundingClientRect(),target=document.elementFromPoint(x,y);
@@ -6901,14 +6905,15 @@
   }
   function activateSavedHighlightDrag(drag,x,y){
     if(drag.active)return;
-    finishPaperSelection(true);
-    drag.active=true;drag.ghost=document.createElement('div');drag.ghost.className='workspace-highlight-ghost';drag.ghost.setAttribute('aria-hidden','true');
+    drag.active=true;finishPaperSelection(true);clearPendingSelection();
+    drag.ghost=document.createElement('div');drag.ghost.className='workspace-highlight-ghost';drag.ghost.setAttribute('aria-hidden','true');
     drag.ghost.textContent='↗ '+(drag.selection.text||'Saved highlight').slice(0,110);
     document.body.appendChild(drag.ghost);document.body.classList.add('workspace-highlight-dragging');
     hideSelectionCard();positionSavedHighlightGhost(drag,x,y);
   }
   function cancelSavedHighlightDrag(){
     var drag=savedHighlightDrag;if(!drag)return;
+    finishPaperSelection(true);clearSavedHighlightNativeSelection();drag.source.classList.remove('workspace-highlight-source');
     savedHighlightDrag=null;clearTimeout(drag.holdTimer);
     if(drag.ghost)drag.ghost.remove();document.body.classList.remove('workspace-highlight-dragging');
     byId('workspaceBoard').classList.remove('workspace-drop-target');
@@ -6918,14 +6923,14 @@
     if(savedHighlightDrag){if(event.pointerType==='touch'&&event.pointerId!==savedHighlightDrag.pointer)cancelSavedHighlightDrag();return;}
     if(event.target.closest&&event.target.closest('.pdf-link'))return;
     if(event.pointerType==='touch'&&(savedHighlightTouches.size!==1||event.isPrimary===false))return;
-    if(!workspaceOpen||!workspaceWide()||readerMode!=='pdf'||!pdfDoc||(event.pointerType!=='touch'&&(highlightEraseMode||pdfWriteMode||highlightMode))||bookCurlOwned||pagedTurning||pendingSelection)return;
+    if(!workspaceOpen||!workspaceWide()||readerMode!=='pdf'||!pdfDoc||(event.pointerType!=='touch'&&(highlightEraseMode||pdfWriteMode||highlightMode))||pencilStroke||pdfInkController&&pdfInkController.active()||bookCurlOwned||pagedTurning||pendingSelection)return;
     if(event.pointerType==='mouse'&&event.button!==0)return;
     var page=event.target.closest&&event.target.closest('.pdf-page');if(!page||pdfReviewAtPoint(page,event.clientX,event.clientY))return;
     var hit=pdfHighlightAtPoint(page,event.clientX,event.clientY);if(!hit||!hit.item.text)return;
-    var drag={pointer:event.pointerId,type:event.pointerType||'mouse',id:currentId,epoch:pdfOpenEpoch,pane:byId('documentPane'),
+    var drag={pointer:event.pointerId,type:event.pointerType||'mouse',id:currentId,epoch:pdfOpenEpoch,pane:byId('documentPane'),source:page.querySelector('.text-layer')||page,
       startX:event.clientX,startY:event.clientY,lastX:event.clientX,lastY:event.clientY,holdTimer:0,armed:event.pointerType!=='touch',active:false,captured:false,ghost:null,
       selection:{kind:'pdf',page:hit.page,text:hit.item.text,rects:(hit.item.rects||[]).map(function(rect){return Object.assign({},rect);})},highlightId:hit.item.id};
-    savedHighlightDrag=drag;
+    savedHighlightDrag=drag;drag.source.classList.add('workspace-highlight-source');
     if(drag.type==='touch'){
       drag.holdTimer=setTimeout(function(){if(savedHighlightDrag===drag){drag.armed=true;activateSavedHighlightDrag(drag,drag.lastX,drag.lastY);}},380);
     }else{
@@ -6933,6 +6938,9 @@
       event.preventDefault();event.stopImmediatePropagation();
     }
   },true);
+  // Claim selection, not scrolling: keep the initial finger event and touch-action
+  // intact so a quick scroll or a second finger can still cancel the hold.
+  ['selectstart','contextmenu'].forEach(function(type){byId('documentPane').addEventListener(type,function(event){if(savedHighlightDrag){event.preventDefault();event.stopImmediatePropagation();}},true);});
   document.addEventListener('pointerdown',function(event){
     if(event.pointerType!=='touch')return;
     savedHighlightTouches.add(event.pointerId);
@@ -6959,7 +6967,11 @@
   },true);
   document.addEventListener('pointercancel',function(event){savedHighlightTouches.delete(event.pointerId);if(savedHighlightDrag&&event.pointerId===savedHighlightDrag.pointer)cancelSavedHighlightDrag();},true);
   document.addEventListener('lostpointercapture',function(event){if(savedHighlightDrag&&event.pointerId===savedHighlightDrag.pointer)cancelSavedHighlightDrag();},true);
-  document.addEventListener('touchmove',function(event){if(savedHighlightDrag&&savedHighlightDrag.type==='touch'&&savedHighlightDrag.armed&&event.cancelable)event.preventDefault();},{capture:true,passive:false});
+  document.addEventListener('touchmove',function(event){
+    var drag=savedHighlightDrag;if(!drag)return;
+    if(drag.type==='pen'&&stylusTouch(event.changedTouches)){ownPencilEvent(event);return;}
+    if(drag.type==='touch'&&drag.armed&&event.cancelable)event.preventDefault();
+  },{capture:true,passive:false});
   document.addEventListener('click',function(event){
     var ignored=savedHighlightIgnoredClick;
     if(ignored&&Date.now()<ignored.until&&Math.hypot(event.clientX-ignored.x,event.clientY-ignored.y)<30){
@@ -7117,6 +7129,7 @@
     }
   }
   function captureSelection(anchor){
+    if(savedHighlightDrag){clearSavedHighlightNativeSelection();return;}
     if(pencilStroke||byId('readerPage').classList.contains('hidden'))return;
     var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
     var range=selection.getRangeAt(0),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:range.getBoundingClientRect(),passage=paperSelectionFromRange(range);if(!passage)return;
@@ -7305,7 +7318,7 @@
   }
   function startPencilStroke(e,id,source){
     if(readerMode==='pdf'&&(pdfWriteMode||highlightEraseMode&&pdfInkController))return false;
-    if(pencilStroke||bookCurlOwned||pagedTurning||reviewLinkTargetId||guideDragging||selectionPointerDown||e.button>0)return false;
+    if(savedHighlightDrag||pencilStroke||bookCurlOwned||pagedTurning||reviewLinkTargetId||guideDragging||selectionPointerDown||e.button>0)return false;
     var target=e.target,host=target&&target.closest&&target.closest(readerMode==='pdf'?'.text-layer':'.original');
     if(!host&&highlightEraseMode&&readerMode==='pdf'){var page=target.closest('.pdf-page');host=page&&page.querySelector('.text-layer');}
     if(!host||!byId('documentPane').contains(host)||target.closest('a,button,input,textarea,[contenteditable="true"]'))return false;
@@ -7375,6 +7388,9 @@
   function stylusTouch(list){return Array.from(list||[]).find(function(t){return t.touchType==='stylus';});}
   byId('documentPane').addEventListener('touchstart',function(e){
     var t=stylusTouch(e.changedTouches);
+    // WKWebView pairs Pencil pointer events with stylus TouchEvents. A saved
+    // passage drag already owns this contact; do not start a second highlighter.
+    if(savedHighlightDrag&&t){ownPencilEvent(e);return;}
     if(!pencilStroke&&t)startPencilStroke(t,t.identifier,'touch');
     if(pencilStroke&&t&&pencilStroke.touchId===null)pencilStroke.touchId=t.identifier;
     if(pencilStroke)ownPencilEvent(e);

@@ -714,6 +714,29 @@ The same failure was reproduced by serving baseline `7733fb77` production files
 from Git in memory. No production behavior or assertions were weakened to mask
 that preexisting test mismatch. No native build, upload, or submission in this pass.
 
+### 2026-10-05 — Quiet saved-highlight dragging (shell v159)
+
+Fixed two competing gestures when copying a saved PDF passage to Workspace:
+native paragraph selection could survive the hold, and WKWebView's paired Pencil
+TouchEvents could start a second highlighter alongside the drag ghost. A saved
+highlight drag now owns those events, clears transient native ranges, and locks
+selection/callouts only on its source text layer until release or cancellation.
+Its immutable saved quote remains the copied passage. Initial finger scrolling,
+two-finger PDF zoom, normal text selection afterward, and existing notes are
+preserved; no annotation schema or native build changes.
+
+Regression coverage injects native paragraph selections during the hold and drag,
+and paired Pencil pointer/stylus-touch events with both valid and outside drops.
+It checks exact source-highlight geometry/color/note preservation, no extra
+highlighter preview or pending selection, restored ordinary text selection, and
+native Chromium scrolling/pinch. The original failure was reproduced before the
+fix. Physical iPad/Pencil remains a device check, not a claim from simulated input.
+
+Verification: the expanded drag suite passed in Chromium and WebKit; the live
+Pencil-drag screenshot shows only the original saved words marked. Reference
+holds and 66 unified eraser checks passed in Chromium, plus 52 state/cache/bundle
+tests and 19 app-update assertions. No Apple archive/upload was made.
+
 ## Sources and API checks
 
 - [Apple: handling double-taps](https://developer.apple.com/documentation/ApplePencil/handling-double-taps-from-apple-pencil) — system preference and configurable alternative behavior.

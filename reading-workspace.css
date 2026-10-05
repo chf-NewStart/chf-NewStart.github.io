@@ -65,6 +65,7 @@ html[data-theme="dark"] .workspace-card::after { border-color:rgba(205,191,145,.
 .workspace-dragging { cursor:grabbing; }
 .workspace-highlight-ghost { position:fixed; z-index:100; max-width:230px; padding:8px 11px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); font:12px/1.35 var(--sans); pointer-events:none; opacity:.96; transform:translate(14px,14px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 body.workspace-highlight-dragging { cursor:grabbing; user-select:none; -webkit-user-select:none; }
+.workspace-highlight-source, .workspace-highlight-source * { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .selection-card #selectionToWorkspace { min-height:44px; touch-action:none; }
 .workspace-divider { display:none; }
 body.workspace-open { --workspace-paper-width:50%; }

@@ -128,7 +128,11 @@ async function storedPaper(page) {
   await page.waitForTimeout(350);
   paper = await storedPaper(page);
   check('a normal curated title remains untouched on later reload', paper.title === CURATED_TITLE, paper.title);
-  await page.locator('#readerTitle').click();
+  // Zen is the only reader (1a215db5): rename lives in More > This paper.
+  await page.locator('#zenMore').click();
+  await page.locator('#zenReadingControls').click();
+  await page.locator('#readerControlsDialog').waitFor({ state: 'visible' });
+  await page.locator('#renameReaderTitle').click();
   await page.locator('#renamePaperTitle').fill('kiab548');
   await page.locator('#renamePaperTitle').press('Enter');
   await page.reload({ waitUntil: 'load' });

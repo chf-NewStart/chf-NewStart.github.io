@@ -37,17 +37,38 @@ function annotationBytes(ch) { return JSON.stringify([ch.pdfInk, ch.pdfInkDelete
 async function ready(page) {
   await page.waitForFunction(() => document.querySelector('#pdfFrame[data-position-ready="true"] .pdf-page .text-layer span') && document.querySelector('.pdf-page canvas').width > 0);
 }
+// Zen is the only reader (1a215db5): Reading settings live in Zen More.
 async function settings(page) {
   if (!await page.locator('#comfortBar').isVisible()) {
-    if (await page.locator('#comfortBtn').isVisible()) await page.locator('#comfortBtn').click();
-    else { await page.locator('#touchMore').click(); await page.locator('#touchSettings').click(); }
+    await page.locator('#zenMore').click();
+    await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+    await page.locator('#zenSettings').click();
+    await page.locator('#comfortBar').waitFor({ state: 'visible' });
   }
 }
 async function closeSettings(page) {
   if (await page.locator('#comfortBar').isVisible()) {
-    await page.locator('#comfortBtn').click();
+    await page.locator('#comfortClose').click();
     await page.locator('#comfortBar').waitFor({state:'hidden'});
   }
+}
+// Desk settings (the fold opt-in) live in the library masthead. Leave the paper
+// with Zen's X, change the setting, then reopen the same paper from the library.
+async function deskSettings(page, change) {
+  const id = await page.evaluate(() => localStorage.getItem('readingRoom.lastOpen.v1'));
+  await page.locator('#zenExit').click();
+  await page.locator('#libraryPage').waitFor({ state: 'visible' });
+  await page.locator('#settingsBtn').click();
+  await page.locator('#settingsDialog').waitFor({ state: 'visible' });
+  await change();
+  await page.locator('[data-close="settingsDialog"]').click();
+  await page.locator('[data-continue-paper="' + id + '"]').first().click();
+  await ready(page);
+  // Reopening announces the restored reading spot; let that toast clear so it
+  // cannot be mistaken for (or overwrite) the gesture feedback read below.
+  await page.waitForFunction(() => /Picked up/.test(document.getElementById('readerToast').textContent)
+    && !document.getElementById('readerToast').classList.contains('hidden'), null, { timeout: 4000 }).catch(() => {});
+  await page.waitForFunction(() => document.getElementById('readerToast').classList.contains('hidden'));
 }
 async function openFold(page) {
   await settings(page);
@@ -94,10 +115,10 @@ async function fold(page) {
     });
     await page.reload(); await ready(page);
     const before = await chapter(page), unchanged = annotationBytes(before);
-    await page.locator('#settingsBtn').click();
-    assert.equal(await page.locator('#pdfFoldEnabled').isChecked(), false, 'folding defaults off');
-    await page.locator('#pdfFoldEnabled').check();
-    await page.locator('[data-close="settingsDialog"]').click();
+    await deskSettings(page, async () => {
+      assert.equal(await page.locator('#pdfFoldEnabled').isChecked(), false, 'folding defaults off');
+      await page.locator('#pdfFoldEnabled').check();
+    });
     const gestureFeedback = await page.evaluate(async () => {
       const holder = document.querySelector('.pdf-page[data-page="1"]'), target = holder.querySelector('.text-layer');
       const rect = holder.getBoundingClientRect(), top = rect.top + Math.min(200, rect.height * .2);
@@ -207,8 +228,7 @@ async function fold(page) {
     assert.equal(annotationBytes(await chapter(page)), unchanged);
     await page.reload(); await ready(page);
     await page.locator('.pdf-fold-seam').first().waitFor({ state: 'visible' });
-    await page.locator('#settingsBtn').click(); await page.locator('#pdfFoldEnabled').uncheck();
-    await page.locator('[data-close="settingsDialog"]').click();
+    await deskSettings(page, () => page.locator('#pdfFoldEnabled').uncheck());
     assert.equal(await page.locator('.pdf-fold-seam').count(), 0, 'disabling renders original pages');
     assert.equal(JSON.stringify((await chapter(page)).pdfFolds), priorFold, 'disabling retains saved folds');
     assert.deepEqual(errors, [], 'no browser errors');

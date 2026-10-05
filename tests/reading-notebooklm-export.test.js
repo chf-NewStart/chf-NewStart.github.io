@@ -87,7 +87,11 @@ function check(name, condition, extra) {
       };
     });
   });
-  if (await page.locator('#notebookReopen').isVisible()) await page.click('#notebookReopen');
+  // Zen is the only reader (73f8b633, 1a215db5): the Notebook opens from More.
+  await page.click('#zenMore');
+  await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+  await page.click('#zenNotebook');
+  await page.locator('#notebook').waitFor({ state: 'visible' });
   if (await page.locator('#notesPanel').evaluate(element => element.classList.contains('hidden'))) await page.click('[data-tab="notesPanel"]');
   check('NotebookLM handoff lives inside the notebook', await page.locator('#notesPanel #notebookLmBtn').count() === 1);
   const cardText = await page.locator('.notebook-listen').textContent();
@@ -141,7 +145,7 @@ function check(name, condition, extra) {
   check('prepared tab continues to NotebookLM', exported.notebookUrl === 'https://notebook.google.com/');
   const status = await page.locator('#notebookLmStatus').textContent();
   check('notebook shows the unzip and two-source handoff', status.includes('Unzip') && status.includes('PDF and Phloem guide'));
-  await page.click('#readerBack');
+  await page.click('#zenExit');
   await page.waitForFunction(() => !document.getElementById('libraryPage').classList.contains('hidden'));
   check('selected PDF offers an original-file download on the library page', await page.locator('#selectedPaper .download-paper').isVisible());
   const paperDownloadPromise = page.waitForEvent('download');
@@ -154,7 +158,9 @@ function check(name, condition, extra) {
     const parent = element.getBoundingClientRect(), children = Array.from(element.children).map(child => child.getBoundingClientRect());
     return { parent: { left: parent.left, right: parent.right }, children: children.map(rect => ({ left: rect.left, right: rect.right, width: rect.width })) };
   });
-  check('Continue, Offline, PDF, and Remove all fit the mobile notebook', mobileActions.children.length === 4 && mobileActions.children.every(rect => rect.left >= mobileActions.parent.left - 1 && rect.right <= mobileActions.parent.right + 1), JSON.stringify(mobileActions));
+  // ea4c9f09 added Rename to the cover actions, between PDF and Remove.
+  check('cover actions include Rename before Remove', await page.locator('#selectedPaper .cover-actions .rename-paper + .remove-paper').count() === 1);
+  check('Continue, Offline, PDF, Rename, and Remove all fit the mobile notebook', mobileActions.children.length === 5 && mobileActions.children.every(rect => rect.left >= mobileActions.parent.left - 1 && rect.right <= mobileActions.parent.right + 1), JSON.stringify(mobileActions));
   check('export has no page errors', errors.length === 0, errors.join('; '));
 
   await context.close();

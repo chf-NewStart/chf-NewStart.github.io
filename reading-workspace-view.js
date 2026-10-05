@@ -36,6 +36,12 @@
     const selectionBox = document.createElement('div');
     selectionBox.className = 'workspace-selection-box'; selectionBox.hidden = true; selectionBox.tabIndex = 0;
     selectionBox.setAttribute('role', 'group');
+    // Corner handles resize a lassoed group with a finger or Pencil, about the opposite corner.
+    for (const corner of ['nw', 'ne', 'sw', 'se']) {
+      const handle = document.createElement('span');
+      handle.className = 'workspace-selection-handle'; handle.dataset.corner = corner; handle.setAttribute('aria-hidden', 'true');
+      selectionBox.appendChild(handle);
+    }
     board.append(lassoLayer, selectionBox);
     const viewport = global.PhloemWorkspaceViewport ? global.PhloemWorkspaceViewport.create({ onNeedSpace: ensurePaperAt, isBusy: () => !!gesture }) : null;
     function resizeLayout() {
@@ -109,7 +115,7 @@
       gesture = null;
       cardTouches.clear();
       if (g.kind === 'lasso') lassoLayer.replaceChildren();
-      if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); paintSelection(); }
+      if (g.kind === 'group' || g.kind === 'scale') { previewGroup({ x: 0, y: 0 }); paintSelection(); }
       if (g.kind === 'stroke' && g.pointerType === 'pen') suppressClickUntil = performance.now() + 400;
       if (g.kind === 'stroke' && g.preview) g.preview.remove();
       if (g.kind === 'stroke' && g.mode === 'eraser') ink.querySelectorAll('[data-stroke-id]').forEach(path => { path.style.opacity = ''; });
@@ -214,7 +220,7 @@
       ink.querySelectorAll('[data-stroke-id]').forEach(path => path.classList.toggle('workspace-selected', selection.strokeIds.includes(path.dataset.strokeId)));
       const b = selection.bounds;
       Object.assign(selectionBox.style, { left: `${(b.x + delta.x) / observedWidth * 100}%`, top: `${(b.y + delta.y) / observedHeight * 100}%`, width: `${b.width / observedWidth * 100}%`, height: `${b.height / observedHeight * 100}%` });
-      selectionBox.setAttribute('aria-label', `${selection.clipIds.length} notes and ${selection.strokeIds.length} strokes selected. Drag to move; arrow keys to nudge; Escape to clear.`);
+      selectionBox.setAttribute('aria-label', `${selection.clipIds.length} notes and ${selection.strokeIds.length} strokes selected. Drag to move; drag a corner to resize; arrow keys to nudge; plus and minus to resize; Escape to clear.`);
     }
     function previewGroup(delta) {
       if (!selection) return;
@@ -239,6 +245,56 @@
       if (after) { recordUndo({ kind: 'move', before, after }, undoStack); redoStack = []; selection.snapshot = after; }
       render();
     }
+    function scaleLimits(origin, measured, before) {
+      // Notes keep their saved 280-900 width range; nothing may cross the paper's top or left edge.
+      let low = .25, high = 4;
+      const b = selection.bounds;
+      for (const card of measured) if (selection.clipIds.includes(card.id)) { low = Math.max(low, 280 / card.width); high = Math.min(high, 900 / card.width); }
+      if (b.x < origin.x) high = Math.min(high, origin.x / (origin.x - b.x));
+      if (b.y < origin.y) high = Math.min(high, origin.y / (origin.y - b.y));
+      return low <= high ? { low, high } : { low: 1, high: 1 };
+    }
+    function scaledSnapshot(before, origin, k) {
+      const at = (v, o) => Math.max(0, o + (v - o) * k);
+      const positions = {}, measuredIds = new Set(selection.clipIds);
+      for (const [id, box] of Object.entries(before.positions)) positions[id] = { ...box, x: at(box.x, origin.x), y: at(box.y, origin.y), width: clamp(box.width * k, 280, 900) };
+      const strokes = before.strokes.map(stroke => {
+        // Writing on a selected note already follows that note's new width.
+        if (stroke.anchor && measuredIds.has(stroke.anchor.clipId)) return copy(stroke);
+        const shown = displayStroke(stroke), next = copy(stroke);
+        delete next.anchor;
+        next.points = shown.points.map(point => [at(point[0], origin.x), at(point[1], origin.y), point[2]]);
+        next.width = clamp(shown.width * k, .5, 12);
+        return next;
+      });
+      return { positions, strokes };
+    }
+    function previewScale(origin, k) {
+      if (!selection) return;
+      const scale = board.clientWidth / observedWidth, b = selection.bounds;
+      for (const card of measuredCards()) {
+        if (!selection.clipIds.includes(card.id) || !cards.has(card.id)) continue;
+        const node = cards.get(card.id).card;
+        node.style.transformOrigin = '0 0';
+        node.style.transform = k === 1 ? '' : `translate(${(origin.x + (card.x - origin.x) * k - card.x) * scale}px, ${(origin.y + (card.y - origin.y) * k - card.y) * scale}px) scale(${k})`;
+      }
+      ink.querySelectorAll('[data-stroke-id]').forEach(path => {
+        if (!selection.strokeIds.includes(path.dataset.strokeId)) return;
+        if (k === 1) path.removeAttribute('transform');
+        else path.setAttribute('transform', `translate(${origin.x} ${origin.y}) scale(${k}) translate(${-origin.x} ${-origin.y})`);
+      });
+      const x = origin.x + (b.x - origin.x) * k, y = origin.y + (b.y - origin.y) * k;
+      Object.assign(selectionBox.style, { left: `${Math.min(x, x + b.width * k) / observedWidth * 100}%`, top: `${Math.min(y, y + b.height * k) / observedHeight * 100}%`, width: `${b.width * k / observedWidth * 100}%`, height: `${b.height * k / observedHeight * 100}%` });
+    }
+    function commitScale(origin, k, measured, before) {
+      if (!selection || !before || Math.abs(k - 1) < .005) return;
+      if (JSON.stringify(before) !== JSON.stringify(selection.snapshot)) { clearSelection(); render(); setStatus('This selection changed. Circle it again before resizing.'); return; }
+      const target = scaledSnapshot(before, origin, k);
+      if (!adapter.restoreGroup || adapter.restoreGroup(target, before) !== true) { setStatus('Could not resize this selection. It may have changed elsewhere.'); clearSelection(); render(); return; }
+      const after = groupSnapshot(selection);
+      if (after) { recordUndo({ kind: 'move', before, after }, undoStack); redoStack = []; selection.snapshot = after; }
+      render();
+    }
     function startSelection(event, pointerId) {
       if (gesture || !available(context()) || context().busy) return false;
       if (selection && JSON.stringify(groupSnapshot(selection)) !== JSON.stringify(selection.snapshot)) { clearSelection(); render(); setStatus('This selection changed. Circle it again before moving.'); return false; }
@@ -248,7 +304,22 @@
       if (viewport) viewport.cancel();
       board.focus({ preventScroll: true });
       const p = pointFromClient(event.clientX, event.clientY), b = selection && selection.bounds;
-      if (b && p.x >= b.x - 8 && p.x <= b.x + b.width + 8 && p.y >= b.y - 8 && p.y <= b.y + b.height + 8) {
+      let handle = b && event.target && event.target.closest && event.target.closest('.workspace-selection-handle');
+      if (handle && event.pointerType !== 'touch') {
+        // A finger gets the full 44px target; the precise Pencil or mouse must land on the dot,
+        // so starting a fresh lasso just outside a corner still draws a lasso.
+        const dot = handle.getBoundingClientRect();
+        if (Math.hypot(event.clientX - (dot.left + dot.width / 2), event.clientY - (dot.top + dot.height / 2)) > 12) handle = null;
+      }
+      if (handle) {
+        const c = handle.dataset.corner, origin = { x: c.includes('w') ? b.x + b.width : b.x, y: c.includes('n') ? b.y + b.height : b.y };
+        const measured = measuredCards(), before = groupSnapshot(selection);
+        gesture = { kind: 'scale', pointerId, client: { x: event.clientX, y: event.clientY }, origin, startDistance: Math.max(1, Math.hypot(p.x - origin.x, p.y - origin.y)), k: 1, measured, before, limits: scaleLimits(origin, measured, before) };
+        return true;
+      }
+      // A fingertip is less precise than the Pencil: accept a drag that starts just outside the box.
+      const slop = event.pointerType === 'touch' ? Math.max(8, 20 * observedWidth / Math.max(1, board.clientWidth)) : 8;
+      if (b && p.x >= b.x - slop && p.x <= b.x + b.width + slop && p.y >= b.y - slop && p.y <= b.y + b.height + slop) {
         gesture = { kind: 'group', pointerId, finger: event.pointerType === 'touch', client: { x: event.clientX, y: event.clientY }, start: p, delta: { x: 0, y: 0 }, measured: measuredCards(), before: groupSnapshot(selection) };
       } else {
         clearSelection();
@@ -261,7 +332,12 @@
     function moveSelection(event) {
       const g = gesture, p = pointFromClient(event.clientX, event.clientY);
       if (g.client) g.far = Math.max(g.far || 0, Math.hypot(event.clientX - g.client.x, event.clientY - g.client.y));
-      if (g.kind === 'group') {
+      if (g.kind === 'scale') {
+        const k = clamp(Math.hypot(p.x - g.origin.x, p.y - g.origin.y) / g.startDistance, g.limits.low, g.limits.high);
+        if (Math.abs(k - 1) < .005 && !g.moved) return;
+        g.moved = true; g.k = k; previewScale(g.origin, k);
+      }
+      else if (g.kind === 'group') {
         const delta = { x: p.x - g.start.x, y: p.y - g.start.y };
         if (Math.hypot(delta.x, delta.y) < .25 && !g.moved) return;
         g.moved = true; g.delta = groupDelta(delta); previewGroup(g.delta);
@@ -286,7 +362,8 @@
         if (g.kind === 'group') previewGroup({ x: 0, y: 0 });
         clearSelection(); setStatus(''); render(); return;
       }
-      if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); commitGroup(g.delta, g.measured, g.before); }
+      if (g.kind === 'scale') { previewGroup({ x: 0, y: 0 }); if (g.moved) commitScale(g.origin, g.k, g.measured, g.before); else paintSelection(); }
+      else if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); commitGroup(g.delta, g.measured, g.before); }
       else {
         lassoLayer.replaceChildren();
         const c = context(), visibleCards = measuredCards(), cardIds = new Set(visibleCards.map(card => card.id));
@@ -573,7 +650,7 @@
     }
     function render() {
       const c = context();
-      if (gesture && gesture.kind === 'group' && JSON.stringify(groupSnapshot(selection)) !== JSON.stringify(gesture.before)) { cancel(); clearSelection(); }
+      if (gesture && (gesture.kind === 'group' || gesture.kind === 'scale') && JSON.stringify(groupSnapshot(selection)) !== JSON.stringify(gesture.before)) { cancel(); clearSelection(); }
       if (!same(c)) {
         cancel(); clearSelection();
         scroll.scrollTop = 0;
@@ -637,6 +714,7 @@
         ensurePaperAt(bottom + 500);
       }
       if (gesture && gesture.kind === 'group') previewGroup(gesture.delta);
+      else if (gesture && gesture.kind === 'scale') previewScale(gesture.origin, gesture.k);
       else if (!gesture || gesture.kind !== 'lasso') refreshSelection();
     }
     function reset() {
@@ -765,7 +843,32 @@
       }
       render();
     }
+    // A note's top strip (above its text, beside the ⋯ menu) is its grip while writing:
+    // the Pencil there moves the note instead of drawing on it.
+    function gripCardAt(clientX, clientY, target) {
+      if (target && target.closest && target.closest('.workspace-note-menu, textarea, input')) return null;
+      for (const state of [...cards.values()].reverse()) {
+        if (state.orphan || !state.card.isConnected) continue;
+        const r = state.card.getBoundingClientRect(), head = state.handle.getBoundingClientRect(), menu = state.menu.getBoundingClientRect();
+        if (clientX < r.left || clientX > r.right || clientY < r.top - 8 || clientY > Math.max(head.bottom, r.top + 30)) continue;
+        if (clientX >= menu.left && clientX <= menu.right && clientY >= menu.top && clientY <= menu.bottom) return null;
+        return state;
+      }
+      return null;
+    }
+    function startGripDrag(event) {
+      // Lasso keeps its own drags; the grip is for writing tools, where the Pencil would otherwise draw.
+      if (tool !== 'pen' && tool !== 'eraser') return false;
+      if (gesture || event.button !== 0 || !available(context()) || context().busy) return false;
+      const state = gripCardAt(event.clientX, event.clientY, event.target);
+      if (!state || !liveItem(state)) return false;
+      event.preventDefault(); event.stopImmediatePropagation();
+      gesture = { kind: 'drag', pointerId: event.pointerId, state, start: pointFromClient(event.clientX, event.clientY), startBox: { ...state.box } };
+      try { state.handle.setPointerCapture(event.pointerId); } catch (error) { /* A synthetic pointer may not be capturable. */ }
+      return true;
+    }
     board.addEventListener('pointerdown', event => {
+      if (startGripDrag(event)) return;
       if (tool === 'select') {
         if (event.button !== 0) return;
         if (gesture) { if (gesture.pointerId !== event.pointerId) cancel(); event.preventDefault(); event.stopImmediatePropagation(); return; }
@@ -784,14 +887,14 @@
       }
     }, true);
     board.addEventListener('pointermove', event => {
-      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); moveSelection(event); return; }
+      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group' || gesture.kind === 'scale') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); moveSelection(event); return; }
       const g = gesture; if (!g || g.kind !== 'stroke' || g.pointerId !== event.pointerId) return;
       event.preventDefault();
       const samples = event.getCoalescedEvents ? event.getCoalescedEvents() : [event];
       (samples.length ? samples : [event]).forEach(sample => addPoint(g, sample));
     }, true);
     board.addEventListener('pointerup', event => {
-      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); finishSelection(event); return; }
+      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group' || gesture.kind === 'scale') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); finishSelection(event); return; }
       if (gesture && gesture.kind === 'stroke' && gesture.pointerId === event.pointerId) { event.preventDefault(); addPoint(gesture, event); finishStroke(true); }
     }, true);
     board.addEventListener('pointercancel', event => { if (gesture && gesture.pointerId === event.pointerId) { if (gesture.kind === 'stroke') finishStroke(false); else cancel(); } }, true);
@@ -823,7 +926,7 @@
     const endTouch = (event, commit) => {
       const g = gesture; if (!g || typeof g.pointerId !== 'string') return;
       const touch = [...event.changedTouches].find(t => `touch-${t.identifier}` === g.pointerId); if (!touch) return;
-      if (g.kind === 'lasso' || g.kind === 'group') { event.preventDefault(); if (commit) finishSelection(touch); else cancel(); return; }
+      if (g.kind === 'lasso' || g.kind === 'group' || g.kind === 'scale') { event.preventDefault(); if (commit) finishSelection(touch); else cancel(); return; }
       event.preventDefault(); if (commit) addPoint(g, { clientX: touch.clientX, clientY: touch.clientY, pressure: touch.force }); finishStroke(commit);
     };
     board.addEventListener('touchend', event => endTouch(event, true), { capture: true, passive: false });
@@ -854,6 +957,12 @@
         const step = event.shiftKey ? 20 : 5;
         const delta = groupDelta({ x: event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0, y: event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0 });
         commitGroup(delta, measuredCards(), groupSnapshot(selection)); return;
+      }
+      if (selection && event.target === selectionBox && ['+', '=', '-', '_'].includes(event.key) && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const b = selection.bounds, origin = { x: b.x + b.width / 2, y: b.y + b.height / 2 }, measured = measuredCards(), before = groupSnapshot(selection);
+        const limits = scaleLimits(origin, measured, before), grow = event.key === '+' || event.key === '=';
+        commitScale(origin, clamp(grow ? 1.1 : 1 / 1.1, limits.low, limits.high), measured, before); return;
       }
       const key = event.key.toLowerCase();
       if ((event.metaKey || event.ctrlKey) && (key === 'z' || key === 'y')) {

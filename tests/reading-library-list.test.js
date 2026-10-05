@@ -246,7 +246,7 @@ function check(name, condition, extra) {
   await page.locator('.library-list-row[data-library-paper="paper_models"] .library-list-open').click();
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
   check('one click on a list row opens its paper', await page.locator('#readerTitle').textContent() === 'Constraint models for carbon allocation');
-  await page.click('#readerBack');
+  await page.click('#zenExit'); // 1a215db5: Zen's X is the reader's only route back to the library.
   await page.waitForFunction(() => !document.getElementById('libraryPage').classList.contains('hidden'));
   check('returning from a paper keeps List selected', await page.locator('#libraryViewToggle [data-library-view="list"]').getAttribute('aria-pressed') === 'true');
 

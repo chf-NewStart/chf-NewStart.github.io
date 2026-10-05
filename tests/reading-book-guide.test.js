@@ -131,6 +131,25 @@ async function checkZenGripOnLeft(page) {
   console.log('PASS  Zen row guide grip stays on the left, clear of the dock');
 }
 
+async function openMore(page) {
+  await page.locator('#zenMore').click();
+  await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+}
+async function nextPage(page) {
+  await openMore(page);
+  await page.locator('#zenReadingControls').click();
+  await page.locator('#readerControlsDialog').waitFor({ state: 'visible' });
+  await page.locator('#nextPage').click();
+  await page.locator('[data-close="readerControlsDialog"]').click();
+  await page.locator('#readerControlsDialog').waitFor({ state: 'hidden' });
+}
+async function zenLayout(page, layout) {
+  await openMore(page);
+  await page.locator('#zenLayout').click();
+  await page.locator('#zenLayoutMenu').waitFor({ state: 'visible' });
+  await page.locator('[data-zen-pdf-layout="' + layout + '"]').click();
+}
+
 (async () => {
   let browser;
   try {
@@ -152,23 +171,22 @@ async function checkZenGripOnLeft(page) {
     await page.goto('http://127.0.0.1:' + PORT + '/reading.html', { waitUntil: 'load' });
     await page.setInputFiles('#pdfFile', PDF);
     await ready(page, [1]);
+    // Zen is the only reader (73f8b633, 1a215db5): X returns to the library, so the
+    // Book guide is exercised on the Zen paper, with page and layout controls in More.
     await page.waitForFunction(() => document.body.classList.contains('zen'));
-    await page.locator('#zenExit').click();
-    await page.waitForFunction(() => !document.body.classList.contains('zen'));
-    await page.evaluate(() => document.getElementById('nextPage').click());
+    await nextPage(page);
     await ready(page, [2, 3]);
     await page.waitForFunction(() => document.getElementById('paneSpotlight').classList.contains('placed'));
-    await checkSpreadDrag(page, 'Book row guide');
-
-    await page.evaluate(() => document.querySelector('[data-guide-orientation="column"]').click());
-    await checkSpreadDrag(page, 'Book column guide');
-
-    await page.locator('#zenBtn').click();
-    await ready(page, [2, 3]);
-    await page.waitForFunction(() => document.body.classList.contains('zen'));
-    await page.evaluate(() => document.querySelector('[data-guide-orientation="row"]').click());
     await checkZenGripOnLeft(page);
     await checkSpreadDrag(page, 'Zen Book row guide');
+
+    await page.evaluate(() => document.querySelector('[data-guide-orientation="column"]').click());
+    await checkSpreadDrag(page, 'Zen Book column guide');
+
+    await page.evaluate(() => document.querySelector('[data-guide-orientation="row"]').click());
+    await checkZenGripOnLeft(page);
+    await checkSpreadDrag(page, 'Zen Book row guide after column');
+    assert(await page.evaluate(() => document.body.classList.contains('zen')), 'guide work stays in Zen');
 
     // A previous spread or curl copy must not pull the guide onto a hidden page.
     let state = await metrics(page);
@@ -176,13 +194,13 @@ async function checkZenGripOnLeft(page) {
     await tapPage(page, 1, centre(right));
     onPage(await metrics(page), right.page);
     assert.equal((await metrics(page)).current, right.page);
-    await page.evaluate(() => document.getElementById('nextPage').click());
+    await nextPage(page);
     await ready(page, [4, 5]);
     state = await metrics(page);
     assert(state.band.width > 30, 'a turn reanchors on a newly visible leaf');
     console.log('PASS  inactive targets and a new spread cannot retain the old leaf');
 
-    await page.evaluate(() => document.querySelector('[data-pdf-layout="page"]').click());
+    await zenLayout(page, 'page');
     await page.waitForFunction(() => document.getElementById('pdfFrame').dataset.pagedReady === 'true' && document.querySelectorAll('.pdf-page.book-active').length === 1);
     state = await metrics(page);
     const onlyPage = state.pages[0];
@@ -192,7 +210,7 @@ async function checkZenGripOnLeft(page) {
     await gripEvent(page, 'pointerup', centre(onlyPage));
     console.log('PASS  Page layout keeps its single guide leaf');
 
-    await page.evaluate(() => document.querySelector('[data-pdf-layout="scroll"]').click());
+    await zenLayout(page, 'scroll');
     await page.waitForFunction(() => !document.getElementById('documentPane').classList.contains('paged-pdf-flow') && document.getElementById('pdfFrame').dataset.positionReady === 'true');
     await page.evaluate(() => {
       const pane = document.getElementById('documentPane');

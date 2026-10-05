@@ -22,6 +22,26 @@ function check(name, condition, extra) {
   if (!condition) failures++;
 }
 
+// Zen is the only reader (73f8b633, 1a215db5): reading settings open from More,
+// the guide toggles from the Zen guide popout, and X/Escape leave the paper.
+async function openReadingSettings(page) {
+  await page.click('#zenMore');
+  await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+  await page.click('#zenSettings');
+  await page.locator('#comfortBar').waitFor({ state: 'visible' });
+}
+async function closeReadingSettings(page) {
+  await page.click('#comfortClose');
+  await page.locator('#comfortBar').waitFor({ state: 'hidden' });
+}
+async function toggleGuide(page) {
+  await page.click('#zenGuide');
+  await page.locator('#zenGuideMenu').waitFor({ state: 'visible' });
+  await page.click('#zenGuideToggle');
+  await page.click('#zenGuide');
+  await page.locator('#zenGuideMenu').waitFor({ state: 'hidden' });
+}
+
 (async () => {
   await new Promise(resolve => server.listen(8126, resolve));
   const launch = { headless: true };
@@ -50,16 +70,20 @@ function check(name, condition, extra) {
   check('paper opens without the reading settings tray', await page.evaluate(() => document.getElementById('comfortBar').classList.contains('hidden') && document.getElementById('comfortBtn').getAttribute('aria-expanded') === 'false' && !document.getElementById('guideTool').classList.contains('settings-open')));
   check('guide and reading settings share one toolbar control', await page.locator('#guideTool').count() === 1 && await page.getByRole('button', { name: 'Reading', exact: true }).count() === 0);
   check('guide no longer offers competing styles', await page.locator('[data-guide-style]').count() === 0);
-  await page.click('#comfortBtn');
+  await openReadingSettings(page);
   check('guide dimness remains directly available', await page.locator('#guideDimRange').isVisible() && await page.locator('#guideDimRange').inputValue() === '70');
   check('legacy tint settings migrate to line focus', await page.locator('.guide-shade-top').evaluate(element => getComputedStyle(element).opacity === '0.7'));
   check('retired guide style is removed from saved settings', await page.evaluate(() => !Object.prototype.hasOwnProperty.call(JSON.parse(localStorage.getItem('readingRoom.comfort.v1')), 'guideStyle')));
-  await page.click('#comfortBtn');
-  await page.click('#focusBtn');
+  await closeReadingSettings(page);
+  await toggleGuide(page);
   check('main half toggles the whole guide control on', await page.locator('#guideTool').evaluate(element => element.classList.contains('active')) && await page.locator('#focusBtn').getAttribute('aria-pressed') === 'true');
   check('first guide use keeps the settings tray folded', await page.evaluate(() => document.getElementById('comfortBar').classList.contains('hidden') && document.getElementById('comfortBtn').getAttribute('aria-expanded') === 'false' && !document.getElementById('guideTool').classList.contains('settings-open')));
-  check('first guide use briefly points toward Settings', await page.locator('#readerToast').textContent().then(text => text.includes('Settings adjusts dimness and size')));
-  await page.click('#comfortBtn');
+  // f28daf13 deliberately keeps the desk-only "Settings adjusts dimness" toast out of
+  // Zen; with Zen the sole reader, the guide popout itself carries the dimness slider.
+  check('first guide use confirms the guide and keeps its dimness beside the toggle',
+    await page.locator('#readerToast').textContent().then(text => /Reading guide/.test(text)) &&
+    await page.locator('#zenGuideMenu #zenGuideDimRange').count() === 1);
+  await openReadingSettings(page);
   await page.click('button[data-guide-orientation="column"]');
   await page.waitForFunction(() => {
     const overlay = document.getElementById('paneSpotlight');
@@ -89,12 +113,14 @@ function check(name, condition, extra) {
   check('column guide follows horizontal pointer movement', movedCenter < verticalGuide.center - .1, movedCenter.toFixed(2));
   await page.click('button[data-guide-orientation="row"]');
   check('legacy comfort settings default to row flow', await page.locator('#paneSpotlight').getAttribute('data-guide-orientation') === 'row');
-  await page.click('#comfortBtn');
-  await page.click('#focusBtn');
-  await page.click('#comfortBtn');
-  await page.click('#readerBack');
-  check('Back folds an open reading-settings layer before leaving the paper', await page.locator('#comfortBar').evaluate(bar => bar.classList.contains('hidden')));
-  await page.click('#readerBack');
+  await closeReadingSettings(page);
+  await toggleGuide(page);
+  await openReadingSettings(page);
+  await page.keyboard.press('Escape');
+  check('Back folds an open reading-settings layer before leaving the paper', await page.locator('#comfortBar').evaluate(bar => bar.classList.contains('hidden')) && await page.locator('#readerPage').isVisible());
+  // Leave with the tray open so reopening proves the tray is folded again.
+  await openReadingSettings(page);
+  await page.click('#zenExit');
   await page.waitForFunction(() => document.getElementById('readerPage').classList.contains('hidden') && !document.getElementById('libraryPage').classList.contains('hidden'));
   await page.locator('#selectedPaper .open-selected').click();
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && document.querySelector('#textDocument .original'));

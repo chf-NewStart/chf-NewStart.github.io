@@ -114,14 +114,39 @@ function watchAi(context, found) {
       || request.method() !== 'GET' && new URL(url).origin !== base) found.push(url);
   });
 }
+// Zen is the only reader (73f8b633, 1a215db5): X returns to the library, the Notebook
+// (with Clips) and page controls open from More, and there is no separate desk.
+async function openZenMore(page) {
+  await page.locator('#zenMore').click();
+  await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+}
 async function openPaper(page, id) {
-  await page.locator('[data-view="libraryPage"]').first().click();
+  if (await page.locator('#readerPage').isVisible()) await page.locator('#zenExit').click();
+  else await page.locator('[data-view="libraryPage"]').first().click();
   await page.locator('#libraryPage').waitFor({ state: 'visible' });
   await page.locator('[data-continue-paper="' + id + '"]').click();
   await page.waitForFunction(paperId => !document.getElementById('readerPage').classList.contains('hidden')
     && localStorage.getItem('readingRoom.lastOpen.v1') === paperId, id);
   await page.waitForFunction(() => document.body.classList.contains('zen'));
-  await page.locator('#zenExit').click();
+}
+async function openNotebook(page) {
+  if (await page.locator('#notebook').evaluate(el => el.classList.contains('sheet-open'))) return;
+  await openZenMore(page);
+  assert.equal(await page.locator('#zenNotebook').isVisible(), true, 'Notebook action is visibly available');
+  await page.locator('#zenNotebook').click();
+  await page.waitForFunction(() => document.getElementById('notebook').classList.contains('sheet-open'));
+}
+async function openClips(page) {
+  if (!await page.locator('#excerptsTab').isVisible()) await openNotebook(page);
+  await page.locator('#excerptsTab').click();
+}
+async function turnPage(page, control) {
+  await openZenMore(page);
+  await page.locator('#zenReadingControls').click();
+  await page.locator('#readerControlsDialog').waitFor({ state: 'visible' });
+  await page.locator(control).click();
+  await page.locator('[data-close="readerControlsDialog"]').click();
+  await page.locator('#readerControlsDialog').waitFor({ state: 'hidden' });
 }
 async function pdfReady(page, n) {
   await page.waitForFunction(pageNumber => {
@@ -131,10 +156,7 @@ async function pdfReady(page, n) {
   }, n);
 }
 async function openMobileNotes(page) {
-  const button = await page.locator('#mNotes').isVisible() ? page.locator('#mNotes') : page.locator('#touchNotes');
-  assert.equal(await button.isVisible(), true, 'mobile Notes action is visibly available');
-  await button.click();
-  await page.waitForFunction(() => document.getElementById('notebook').classList.contains('sheet-open'));
+  await openNotebook(page);
 }
 async function closeOpenSheet(page) {
   if (!await page.locator('#notebook').evaluate(el => el.classList.contains('sheet-open'))) return;
@@ -300,9 +322,7 @@ async function checkDraftProtection(browser) {
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
     await page.waitForFunction(() => document.body.classList.contains('zen'));
-    await page.locator('#zenExit').click();
-    if (!await page.locator('#excerptsTab').isVisible()) await page.locator('#notebookReopen').click();
-    await page.locator('#excerptsTab').click();
+    await openClips(page);
     assert.equal(await page.locator('.excerpt-card[data-excerpt-id="' + clip.id + '"] textarea.excerpt-note').inputValue(), note,
       'line breaks and literal markup survive reload');
     assert.equal(await page.locator('.excerpt-card script, .excerpt-card img').count(), 0,
@@ -327,12 +347,10 @@ async function checkDraftProtection(browser) {
     await page.waitForFunction(() => !document.querySelector('.excerpt-source-cue-layer'));
     assert.equal((await chapter(page, 'clip-a')).textHighlights.length, 0, 'return clears the cue without saving a highlight');
     await openPaper(page, 'clip-b');
-    if (!await page.locator('#excerptsTab').isVisible()) await page.locator('#notebookReopen').click();
-    await page.locator('#excerptsTab').click();
+    await openClips(page);
     assert.equal(await page.locator('.excerpt-card').count(), 0, 'Clips are isolated by document');
     await openPaper(page, 'clip-a');
-    if (!await page.locator('#excerptsTab').isVisible()) await page.locator('#notebookReopen').click();
-    await page.locator('#excerptsTab').click();
+    await openClips(page);
     assert.equal(await page.locator('.excerpt-card').count(), 2, 'original paper keeps its Clips');
     let asked = 0;
     page.on('dialog', async dialog => {
@@ -348,9 +366,7 @@ async function checkDraftProtection(browser) {
     assert(saved.readingExcerpts.deleted[clip.id], 'confirmed removal records a tombstone');
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => document.body.classList.contains('zen'));
-    await page.locator('#zenExit').click();
-    if (!await page.locator('#excerptsTab').isVisible()) await page.locator('#notebookReopen').click();
-    await page.locator('#excerptsTab').click();
+    await openClips(page);
     assert.equal(await page.locator('.excerpt-card[data-excerpt-id="' + clip.id + '"]').count(), 0,
       'deleted clip stays deleted after reload');
     assert.deepEqual(errors, [], 'text flow has no page errors');
@@ -369,8 +385,7 @@ async function checkDraftProtection(browser) {
     await pdfPage.locator('#pdfFile').setInputFiles({ name: 'clips-generated.pdf', mimeType: 'application/pdf', buffer: await makePdf() });
     await pdfReady(pdfPage, 1);
     await pdfPage.waitForFunction(() => document.body.classList.contains('zen'));
-    await pdfPage.locator('#zenExit').click();
-    await pdfPage.locator('#nextPage').click();
+    await turnPage(pdfPage, '#nextPage');
     await pdfReady(pdfPage, 2);
     await pdfPage.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active'));
     await pdfPage.waitForFunction(() => Array.from(document.querySelectorAll('.pdf-page[data-page="2"] .text-layer span'))
@@ -390,7 +405,7 @@ async function checkDraftProtection(browser) {
     assert.equal(Object.values(pdf.highlights || {}).flat().length, 0, 'PDF clip is not a highlight');
     await pdfPage.locator('#excerptsTab').click();
     await closeOpenSheet(pdfPage);
-    await pdfPage.locator('#prevPage').click();
+    await turnPage(pdfPage, '#prevPage');
     await pdfPage.waitForFunction(() => document.querySelector('.pdf-page[data-page="1"].book-active'));
     if (!await pdfPage.locator('#notebook').evaluate(el => el.classList.contains('sheet-open'))) await openMobileNotes(pdfPage);
     await pdfPage.locator('#excerptsTab').click();

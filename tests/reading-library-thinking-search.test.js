@@ -178,7 +178,7 @@ function makePdf() {
       && document.getElementById('pageNumber').textContent.startsWith('5 / 7');
   });
   check('opening a reviewer hit focuses that exact comment and page', true);
-  await page.click('#readerBack');
+  await page.click('#zenExit'); // 1a215db5: Zen's X is the reader's only route back to the library.
   await page.waitForFunction(() => !document.getElementById('libraryPage').classList.contains('hidden') && document.querySelector('.library-thinking-hit[data-thinking-type="Reviewer work"]'));
 
   await page.fill('#librarySearch', '');

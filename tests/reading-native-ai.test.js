@@ -159,15 +159,41 @@ function check(name, actual) {
     const chapter = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0];
     return { id: chapter.id, title: chapter.title, fr: chapter.fr, notes: chapter.notes, textHighlights: chapter.textHighlights };
   });
+  // Zen is the only reader (73f8b633, 1a215db5). Desk settings live on the library
+  // masthead, reached with the reader's X; closing them returns to the same paper.
+  const readerVisible = () => page.evaluate(() => !document.getElementById('readerPage').classList.contains('hidden'));
   const openSettings = async () => {
+    if (await readerVisible()) {
+      if (await page.locator('#notebook').isVisible()) await page.click('#sheetClose');
+      await page.click('#zenExit');
+      await page.locator('#libraryPage').waitFor({ state: 'visible' });
+    }
     await page.click('#settingsBtn');
     await page.waitForFunction(() => document.getElementById('settingsDialog').open);
   };
-  const closeSettings = () => page.click('[data-close="settingsDialog"]');
+  const closeSettings = async () => {
+    await page.click('[data-close="settingsDialog"]');
+    await page.click('[data-continue-paper="native_ai_paper"]');
+    await page.waitForFunction(() => document.body.classList.contains('zen') &&
+      !document.getElementById('readerPage').classList.contains('hidden'));
+  };
+  const openNotebook = async () => {
+    if (await page.locator('#notebook').isVisible()) return;
+    await page.click('#zenMore');
+    await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+    await page.click('#zenNotebook');
+    await page.locator('#notebook').waitFor({ state: 'visible' });
+  };
+  // Settings are opened from the library, which leaves the paper (and clears its
+  // last-open marker), so a reload from there lands on the library.
+  const reloadApp = async () => {
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(() => document.body.classList.contains('library-ready') ||
+      !document.getElementById('readerPage').classList.contains('hidden'));
+  };
   const reloadWithDelayedStatus = async () => {
     await page.evaluate(() => localStorage.setItem('native.ai.status.hold', '1'));
-    await page.reload({ waitUntil: 'load' });
-    await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
+    await reloadApp();
     await openSettings();
     await page.waitForFunction(() => window.__nativeStatusPending > 0);
   };
@@ -177,7 +203,7 @@ function check(name, actual) {
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   };
   const openAi = async () => {
-    if (await page.locator('#notebookReopen').isVisible()) await page.click('#notebookReopen');
+    await openNotebook();
     await page.click('[data-tab="aiPanel"]');
     await page.click('#aiUseCurrent');
   };
@@ -187,14 +213,21 @@ function check(name, actual) {
   const originalPaper = await savedPaper();
   await page.evaluate(() => window.__emitStorefrontChanged({ countryCode: 'CHN', storefrontKnown: true, cloudAIAllowed: false }));
   await page.waitForFunction(() => document.documentElement.classList.contains('phloem-ai-region-restricted'));
+  // The Discuss tab lives in the Zen Notebook; inspect it there before leaving for settings.
+  await openNotebook();
+  const chinaReader = {
+    readerVisible: await page.locator('#readerPage').isVisible(),
+    notesTabVisible: await page.locator('[data-tab="notesPanel"]').isVisible(),
+    aiTabHidden: !(await page.locator('[data-tab="aiPanel"]').isVisible()),
+    askHidden: !(await page.locator('#mAsk').isVisible()),
+    locateHidden: !(await page.locator('#locateReviewsBtn').isVisible())
+  };
   await openSettings();
   check('China mainland storefront hides cloud AI settings and actions',
     !(await page.locator('#aiSettingsSection').isVisible()) &&
-    !(await page.locator('[data-tab="aiPanel"]').isVisible()) &&
-    !(await page.locator('#mAsk').isVisible()) &&
-    !(await page.locator('#locateReviewsBtn').isVisible()));
+    chinaReader.notesTabVisible && chinaReader.aiTabHidden && chinaReader.askHidden && chinaReader.locateHidden);
   check('China mainland storefront keeps the local reader and iCloud settings available',
-    await page.locator('#readerPage').isVisible() && await page.locator('#icloudSettings').isVisible());
+    chinaReader.readerVisible && await page.locator('#icloudSettings').isVisible());
   check('China mainland settings explain the restriction without naming a provider',
     /China mainland App Store/.test(await page.locator('.native-ai-region-note').textContent()) &&
     !/OpenAI|ChatGPT/.test(await page.locator('.native-local-settings').textContent()));
@@ -266,8 +299,7 @@ function check(name, actual) {
   await openSettings();
   check('reopening settings keeps the accepted disclosure collapsed',
     await page.locator('#nativeAiEnabled').isVisible() && !(await page.locator('#nativeAiConsent').isVisible()));
-  await page.reload({ waitUntil: 'load' });
-  await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
+  await reloadApp();
   await openSettings();
   check('DeepSeek selection and credential presence survive reload', await page.locator('#aiProvider').inputValue() === 'deepseek' &&
     (await settings()).providers.deepseek.keyPresent === true);
@@ -306,6 +338,7 @@ function check(name, actual) {
     await page.click('#aiKeySave');
     await page.waitForFunction(() => document.getElementById('aiKeyStatus').textContent.includes('stored in iOS Keychain'));
     await closeSettings();
+    await openAi();
     await page.fill('#aiQuestion', 'Check existing provider ' + provider);
     await page.click('#aiAskBtn');
     await page.waitForFunction(id => document.getElementById('qaList').textContent.includes('Mock native ' + id + ' reply.'), provider);
@@ -320,8 +353,7 @@ function check(name, actual) {
     (await settings()).providers.openai.keyPresent && (await settings()).providers.anthropic.keyPresent);
   check('removing a key brings the required consent form back', await page.locator('#nativeAiConsent').isVisible() &&
     await page.locator('#nativeAiConsentLabel').isVisible() && !(await page.locator('#nativeAiEnabled').isVisible()));
-  await page.reload({ waitUntil: 'load' });
-  await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
+  await reloadApp();
   await openSettings();
   check('removed DeepSeek key remains removed after reload', await page.locator('#aiProvider').inputValue() === 'deepseek' &&
     (await page.locator('#aiKeyStatus').textContent()).includes('No key stored') && !(await page.locator('#aiKeyRemove').isVisible()));

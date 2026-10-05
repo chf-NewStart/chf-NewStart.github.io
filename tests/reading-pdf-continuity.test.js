@@ -96,6 +96,17 @@ async function waitForReader(page, pageNumber) {
   }, pageNumber);
 }
 
+async function openZenMore(page) {
+  if (!(await page.locator('#zenMoreMenu').isVisible())) await page.click('#zenMore');
+  await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+}
+
+async function openPaperControls(page) {
+  await openZenMore(page);
+  await page.click('#zenReadingControls');
+  await page.locator('#readerControlsDialog').waitFor({ state: 'visible' });
+}
+
 async function storedChapter(page, id) {
   return page.evaluate(paperId => {
     const saved = JSON.parse(localStorage.getItem('readingRoom.v1'));
@@ -181,6 +192,9 @@ function samePdfVerticalAnchor(before, after, tolerance) {
   const paperId = await page.evaluate(() => localStorage.getItem('readingRoom.lastOpen.v1'));
   await waitForDurablePdf(page, paperId);
 
+  /* Zen is the only reader (1a215db5): the page counter, zoom and Column controls
+     live in More > This paper, and theme/paper appearance live in the More menu. */
+  await openPaperControls(page);
   const counterState = await page.locator('#pageNumber').evaluate(counter => ({
     tag: counter.tagName,
     type: counter.getAttribute('type'),
@@ -207,12 +221,17 @@ function samePdfVerticalAnchor(before, after, tolerance) {
     paper: document.getElementById('pdfFrame').dataset.paperAppearance
   }));
   check('the fixture begins with a light interface and cream paper', initialSurfaces.theme === 'light' && initialSurfaces.paper === 'cream', JSON.stringify(initialSurfaces));
-  const paperShortcut = await page.locator('#paperAppearanceBtn').evaluate(button => {
-    const rect = button.getBoundingClientRect(), theme = document.getElementById('themeBtn').getBoundingClientRect();
-    return { visible: getComputedStyle(button).display !== 'none', state: button.dataset.paperState, label: button.getAttribute('aria-label'), besideTheme: document.getElementById('themeBtn').nextElementSibling === button, gap: Math.round(rect.left - theme.right) };
+  await openZenMore(page);
+  const paperShortcut = await page.locator('#zenPaperAppearance').evaluate(button => {
+    const themeButton = document.getElementById('zenTheme');
+    const rect = button.getBoundingClientRect(), theme = themeButton.getBoundingClientRect();
+    /* The Zen More menu is a vertical list, so "beside" is the neighbouring row. */
+    const gap = Math.round(Math.max(rect.top - theme.bottom, theme.top - rect.bottom, rect.left - theme.right, theme.left - rect.right));
+    return { visible: button.offsetParent !== null && getComputedStyle(button).display !== 'none', state: button.dataset.paperState, label: button.getAttribute('aria-label'), besideTheme: themeButton.nextElementSibling === button || button.nextElementSibling === themeButton, gap };
   });
   check('the reader puts its current paper appearance beside the interface theme', paperShortcut.visible && paperShortcut.state === 'cream' && /cream/i.test(paperShortcut.label) && paperShortcut.besideTheme && paperShortcut.gap <= 12, JSON.stringify(paperShortcut));
-  await page.click('#themeBtn');
+  await openZenMore(page);
+  await page.click('#zenTheme');
   const darkCream = await page.evaluate(() => ({
     theme: document.documentElement.dataset.theme || 'light',
     paper: document.getElementById('pdfFrame').dataset.paperAppearance
@@ -221,26 +240,30 @@ function samePdfVerticalAnchor(before, after, tolerance) {
 
   const quickPaperStates = [];
   for (let click = 0; click < 3; click++) {
-    await page.click('#paperAppearanceBtn');
+    await openZenMore(page);
+    await page.click('#zenPaperAppearance');
     quickPaperStates.push(await page.evaluate(() => {
       const state = document.body.dataset.paperAppearance;
       return { state, frame: document.getElementById('pdfFrame').dataset.paperAppearance, saved: localStorage.getItem('readingRoom.paperAppearance.v1'), selected: document.querySelector('[data-paper-appearance="' + state + '"]').getAttribute('aria-pressed'), theme: document.documentElement.dataset.theme || 'light' };
     }));
   }
   check('the masthead shortcut cycles Inverted, Original, and Cream everywhere', quickPaperStates.map(item => item.state).join(',') === 'inverted,original,cream' && quickPaperStates.every(item => item.state === item.frame && item.state === item.saved && item.selected === 'true' && item.theme === 'dark'), JSON.stringify(quickPaperStates));
-  await page.click('#paperAppearanceBtn');
+  await openZenMore(page);
+  await page.click('#zenPaperAppearance');
   const darkInverted = await page.evaluate(() => ({
     theme: document.documentElement.dataset.theme || 'light',
     paper: document.getElementById('pdfFrame').dataset.paperAppearance
   }));
   check('changing paper appearance leaves the dark interface alone', darkInverted.theme === 'dark' && darkInverted.paper === 'inverted', JSON.stringify(darkInverted));
-  await page.click('#themeBtn');
+  await openZenMore(page);
+  await page.click('#zenTheme');
   const lightInverted = await page.evaluate(() => ({
     theme: document.documentElement.dataset.theme || 'light',
     paper: document.getElementById('pdfFrame').dataset.paperAppearance
   }));
   check('returning the interface to light does not reset inverted paper', lightInverted.theme === 'light' && lightInverted.paper === 'inverted', JSON.stringify(lightInverted));
-  await page.click('#themeBtn');
+  await openZenMore(page);
+  await page.click('#zenTheme');
   check('theme and paper choices are stored under independent keys', await page.evaluate(() => {
     return localStorage.getItem('readingRoom.theme') === 'dark'
       && localStorage.getItem('readingRoom.paperAppearance.v1') === 'inverted';
@@ -315,6 +338,7 @@ function samePdfVerticalAnchor(before, after, tolerance) {
     JSON.stringify({ before: beforeResize, after: afterResize }));
 
   const beforeColumns = await pdfRelativeAnchor(page);
+  await openPaperControls(page);
   await page.click('#colZoomBtn');
   await page.waitForFunction(() => document.getElementById('colZoomBtn').dataset.columnState === 'left');
   const leftColumn = await pdfRelativeAnchor(page);
@@ -327,6 +351,8 @@ function samePdfVerticalAnchor(before, after, tolerance) {
   await page.waitForFunction(() => document.getElementById('colZoomBtn').dataset.columnState === 'full');
   const afterColumns = await pdfRelativeAnchor(page);
   const fullState = await page.locator('#colZoomBtn').evaluate(button => ({ text: button.textContent.trim(), pressed: button.getAttribute('aria-pressed') }));
+  await page.click('#readerControlsDialog [data-close="readerControlsDialog"]');
+  await page.locator('#readerControlsDialog').waitFor({ state: 'hidden' });
   check('Column cycles through explicit Left, Right, and Full states', leftState.text === 'Column · Left' && leftState.pressed === 'true'
     && rightState.text === 'Column · Right' && rightState.pressed === 'true'
     && fullState.text === 'Column · Full width' && fullState.pressed === 'false', JSON.stringify({ leftState, rightState, fullState }));

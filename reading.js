@@ -4631,7 +4631,10 @@
        their old ones. Re-sampling that mixed geometry shifts the passage. The build key
        tells us when it is safe to sample and when to reuse the last coherent PDF point. */
     if(pdfBuildKey===currentBuildKey()&&pdfViews.length)return rememberStablePdfPosition(capturePdfReadingPosition());
-    return lastStablePdfPositionId===currentId&&lastStablePdfPosition?normalizedPdfPosition(lastStablePdfPosition):capturePdfReadingPosition();
+    var remembered=lastStablePdfPositionId===currentId&&lastStablePdfPosition?normalizedPdfPosition(lastStablePdfPosition):null;
+    // Paged layouts show exactly the current spread; a remembered point on another page is stale.
+    if(remembered&&pagedPdfFlow()&&pagedPageNos(currentPage).indexOf(remembered.page)<0)remembered=null;
+    return remembered||capturePdfReadingPosition();
   }
   async function placePdfReadingPosition(value,announce,restoreHorizontal){
     var position=normalizedPdfPosition(value);if(!position||!pdfDoc||readerMode!=='pdf')return false;
@@ -4678,6 +4681,11 @@
     await pdfLayoutFrames();
     if(!stillCurrent())return stopped();
     if(!placeAnchor(true)){restoringPdfPosition=false;return false;}currentPage=target;updatePageChrome();updateProgress();
+    /* Remember the placed spot now, not only after the settling frames below: an iPad
+       rotation or Split View resize inside that window would otherwise rebuild from the
+       previous spot (for example the page a clip came from). Store the target itself:
+       sampling here could catch half-resized geometry. */
+    rememberStablePdfPosition(position);
     await pdfLayoutFrames();if(!stillCurrent())return stopped();restoringPdfPosition=false;rememberStablePdfPosition(capturePdfReadingPosition()||position);
     if(announce)showReaderToast('Picked up at the exact reading spot');return true;
   }

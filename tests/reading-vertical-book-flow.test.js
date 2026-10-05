@@ -1236,9 +1236,15 @@ async function curlFxMetrics(page) {
     pane.scrollTop = Math.min(211, pane.scrollHeight - pane.clientHeight);
     return { left: pane.scrollLeft, top: pane.scrollTop };
   });
-  /* Activate the transparent PDF annotation directly; Playwright's forced pointer click
-     can target the canvas beneath this zero-content overlay in headless Chromium. */
-  await linked.locator('.pdf-page[data-page="1"] .pdf-link').evaluate(link => link.click());
+  /* 108c5012 made PDF references a deliberate hold: a tap stays quiet, a hold opens
+     the reference card, and its Go to reference action follows the link. */
+  const linkBox = await linked.locator('.pdf-page[data-page="1"] .pdf-link').boundingBox();
+  await linked.mouse.move(linkBox.x + linkBox.width / 2, linkBox.y + linkBox.height / 2);
+  await linked.mouse.down();
+  await linked.waitForTimeout(600);
+  await linked.mouse.up();
+  await linked.locator('#pdfReferenceOpen').waitFor({ state: 'visible' });
+  await linked.locator('#pdfReferenceOpen').click();
   await linked.waitForFunction(() => document.getElementById('pageNumber').textContent.startsWith('3 /'));
   await linked.waitForFunction(() => document.getElementById('readerToast').textContent.includes('Jumped to p. 3'));
   const linkedPaper = await linked.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(chapter => chapter.sourceName === 'linked-pages.pdf'));

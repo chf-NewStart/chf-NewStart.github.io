@@ -186,7 +186,8 @@ async function stroke(page, points, pointerType = 'pen') {
 async function pinchCard(card, scale) {
   return card.evaluate((node, scale) => {
     const rect = node.getBoundingClientRect();
-    const y = rect.top + Math.min(rect.height / 2, 26);
+    // Below the 44px top grab strip (591ea712), on the note's own paper.
+    const y = rect.top + Math.min(rect.height / 2, 70);
     const x1 = rect.left + rect.width * .25, x2 = rect.left + rect.width * .75;
     const endX2 = x1 + (x2 - x1) * scale;
     const originalCapture = node.setPointerCapture;

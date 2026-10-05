@@ -315,3 +315,17 @@ the right of the paper, otherwise right), in two short columns, clamped on scree
 `placeDockedHighlightToolbar` in `reading.js`, `.highlight-toolbar.docked` in
 `reading.css`. The Pen shelf is unchanged. `tests/reading-tool-palettes.test.js`
 checks the fold-out position and column layout.
+
+## 19. Safari's native pan no longer cuts a Workspace pinch short (v169)
+
+Entry 13 made each pinch frame cheap, but the pinch was still driven only by
+pointer events on a `touch-action: pan-x pan-y` scroller. When two fingers travel
+together, Safari may start a native pan and cancel both pointers, ending the pinch
+part-way through and leaving the rest to scrolling. The PDF pinch avoids this by
+cancelling `touchstart`/`touchmove`. The Workspace now does the same for a
+two-finger touch on blank paper, and if the first finger had already started a
+scroll (so its pointer was cancelled), the touch stream starts and carries the
+pinch itself. `reading-workspace-viewport.js`; new test "native pinch still zooms
+after the first finger already started a scroll" in
+`tests/reading-workspace-viewport.test.js` (zoom stayed at 100% before, 2.25x after).
+Not verified on WebKit or a physical iPad.

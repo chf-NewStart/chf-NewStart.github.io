@@ -50,6 +50,8 @@ async function generatedPdf() {
       { x: 52, y: 710, size: 13, font });
     page.drawText('The second line marks a separate claim for this workspace.',
       { x: 52, y: 675, size: 12, font });
+    page.drawText('Cross-line source begins with remarkable', { x: 52, y: 635, size: 12, font });
+    page.drawText('continuity across the next rendered PDF line', { x: 52, y: 615, size: 12, font });
   }
   return Buffer.from(await doc.save());
 }
@@ -118,6 +120,34 @@ async function selectPdf(page, pageNo, phrase) {
   }, { pageNo, phrase });
   assert.equal(selected.text, phrase, 'PDF text selection covers the requested source words: ' + JSON.stringify(selected));
   await page.locator('#selectionToWorkspace').waitFor({ state: 'visible' });
+}
+async function selectPdfAcrossLines(page, pageNo) {
+  await page.waitForFunction(pageNo => {
+    const spans = [...document.querySelectorAll('.pdf-page[data-page="' + pageNo + '"] .text-layer span')];
+    return spans.some(node => node.textContent.includes('remarkable'))
+      && spans.some(node => node.textContent.includes('continuity'))
+      && document.getElementById('pdfFrame').dataset.pagedReady === 'true';
+  }, pageNo);
+  const selected = await page.evaluate(pageNo => {
+    const spans = [...document.querySelectorAll('.pdf-page[data-page="' + pageNo + '"] .text-layer span')];
+    const first = spans.find(node => node.textContent.includes('remarkable') && node.firstChild);
+    const second = spans.find(node => node.textContent.includes('continuity') && node.firstChild);
+    if (!first || !second) return { error: 'cross-line PDF spans unavailable', spans: spans.map(node => node.textContent),
+      active: [...document.querySelectorAll('.pdf-page.book-active')].map(node => node.dataset.page) };
+    const range = document.createRange();
+    range.setStart(first.firstChild, first.firstChild.textContent.indexOf('remarkable'));
+    range.setEnd(second.firstChild, second.firstChild.textContent.indexOf('continuity') + 'continuity'.length);
+    const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
+    document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse', pointerId: 89 }));
+    return { quote: range.toString(), selected: selection.toString(), first: first.textContent, second: second.textContent };
+  }, pageNo);
+  assert(selected.quote && selected.quote.includes('remarkable') && selected.quote.includes('continuity'),
+    'PDF Range captures words across rendered line spans: ' + JSON.stringify(selected));
+  assert.match(selected.quote, /remarkablecontinuity/,
+    'native Range concatenates adjacent PDF.js lines without an intervening space');
+  await page.locator('#selectionToWorkspace').waitFor({ state: 'visible' });
+  return selected.quote;
 }
 async function openPaper(page, id) {
   await page.locator('[data-view="libraryPage"]').first().click();
@@ -263,6 +293,20 @@ async function stickyAppearance(page, card) {
       library: libraryStyle ? { backgroundImage: libraryStyle.backgroundImage,
         borderRadius: libraryStyle.borderRadius, boxShadow: libraryStyle.boxShadow } : null
     };
+  });
+}
+async function sourceCueVisual(page, cue) {
+  return cue.evaluate(layer => {
+    const mark = layer.querySelector('.excerpt-source-cue');
+    const rect = mark?.getBoundingClientRect();
+    const pane = document.getElementById('documentPane').getBoundingClientRect();
+    const style = mark && getComputedStyle(mark);
+    const animation = mark?.getAnimations()[0];
+    return { connected: layer.isConnected, width: rect?.width, height: rect?.height,
+      inPane: !!rect && rect.right > pane.left && rect.left < pane.right && rect.bottom > pane.top && rect.top < pane.bottom,
+      onScreen: !!rect && rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight,
+      opacity: style ? Number(style.opacity) : 0, background: style?.backgroundColor,
+      animationMs: animation?.currentTime || 0 };
   });
 }
 
@@ -448,7 +492,18 @@ async function stickyAppearance(page, card) {
     assert.equal(await page.locator('#findInput').inputValue(), '', 'source cue does not modify Find');
     assert.equal(Object.values((await paperById(page, pdfId)).highlights || {}).flat().length, 0,
       'source cue is not saved as a PDF highlight');
+    const cueAtStart = await sourceCueVisual(page, cue);
+    assert(cueAtStart.width > 1 && cueAtStart.height > 1 && cueAtStart.inPane && cueAtStart.onScreen
+      && cueAtStart.opacity > .5, 'source cue is visually legible over the PDF words: ' + JSON.stringify(cueAtStart));
     await page.screenshot({ path: '/tmp/phloem-source-cue-' + ENGINE + '.png' });
+    await page.waitForFunction(() => document.querySelector('.excerpt-source-cue')?.getAnimations()[0]?.currentTime >= 1800);
+    const cueAtMiddle = await sourceCueVisual(page, cue);
+    assert(cueAtMiddle.connected && cueAtMiddle.onScreen && cueAtMiddle.opacity > .5,
+      'source cue remains plainly visible midway through its 3.2-second interval: ' + JSON.stringify(cueAtMiddle));
+    await page.waitForFunction(() => document.querySelector('.excerpt-source-cue')?.getAnimations()[0]?.currentTime >= 2700);
+    const cueAtEnd = await sourceCueVisual(page, cue);
+    assert(cueAtEnd.connected && cueAtEnd.onScreen && cueAtEnd.opacity > .12,
+      'source cue is still visible late in its 3.2-second interval: ' + JSON.stringify(cueAtEnd));
     await cue.waitFor({ state: 'hidden', timeout: 7000 });
     await openMore(page);
     await page.locator('#workspaceReturn').waitFor({ state: 'visible' });
@@ -680,6 +735,39 @@ async function stickyAppearance(page, card) {
       'standalone workspace note survives reload with line breaks');
     assert.equal(Object.values(pdf.pdfInk || {}).flat().length, 0);
 
+    const crossLineQuote = await selectPdfAcrossLines(page, 2);
+    await page.locator('#selectionToWorkspace').click();
+    const crossLineClip = (await paperById(page, pdfId)).readingExcerpts.items.find(item => item.quote === crossLineQuote);
+    assert(crossLineClip, 'cross-line PDF selection saves its exact quote');
+    const crossLineCard = page.locator('.workspace-card[data-clip-id="' + crossLineClip.id + '"]');
+    await crossLineCard.waitFor({ state: 'visible' });
+    await openCardMenu(crossLineCard);
+    await crossLineCard.locator('.workspace-source').click();
+    const crossLineCue = page.locator('.excerpt-source-cue-layer[data-excerpt-id="' + crossLineClip.id + '"]');
+    await crossLineCue.waitFor({ state: 'visible' });
+    const crossLineGeometry = await crossLineCue.evaluate(layer => {
+      const spans = [...document.querySelectorAll('.pdf-page[data-page="2"] .text-layer span')];
+      const words = ['remarkable', 'continuity'];
+      const marks = [...layer.querySelectorAll('.excerpt-source-cue')].map(mark => mark.getBoundingClientRect());
+      return words.map(word => {
+        const span = spans.find(node => node.textContent.includes(word) && node.firstChild);
+        if (!span) return { word, missing: true };
+        const range = document.createRange(), start = span.firstChild.textContent.indexOf(word);
+        range.setStart(span.firstChild, start); range.setEnd(span.firstChild, start + word.length);
+        const target = range.getBoundingClientRect();
+        return { word, marked: marks.some(rect => Math.max(0, Math.min(rect.right, target.right) - Math.max(rect.left, target.left))
+          * Math.max(0, Math.min(rect.bottom, target.bottom) - Math.max(rect.top, target.top)) > target.width * target.height * .25) };
+      });
+    });
+    assert(crossLineGeometry.every(item => item.marked),
+      'cross-line source cue visibly covers both selected PDF lines: ' + JSON.stringify(crossLineGeometry));
+    const crossLineVisual = await sourceCueVisual(page, crossLineCue);
+    assert(crossLineVisual.inPane && crossLineVisual.onScreen && crossLineVisual.opacity > .5,
+      'cross-line source cue is visually legible: ' + JSON.stringify(crossLineVisual));
+    await page.screenshot({ path: '/tmp/phloem-source-cue-cross-line-' + ENGINE + '.png' });
+    assert.equal(Object.values((await paperById(page, pdfId)).highlights || {}).flat().length, 0,
+      'cross-line temporary cue never becomes a saved highlight');
+
     await page.setViewportSize({ width: 900, height: 1280 });
     const portrait = await page.evaluate(() => {
       const panel = document.getElementById('workspacePanel').getBoundingClientRect();
@@ -701,8 +789,12 @@ async function stickyAppearance(page, card) {
     await page.locator('#workspacePanel').waitFor({ state: 'hidden' });
     await page.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active')
       && document.getElementById('pdfFrame').dataset.pagedReady === 'true');
-    await page.locator('.excerpt-source-cue-layer[data-excerpt-id="' + clip.id + '"][data-source-page="2"]')
-      .waitFor({ state: 'visible' });
+    const portraitCue = page.locator('.excerpt-source-cue-layer[data-excerpt-id="' + clip.id + '"][data-source-page="2"]');
+    await portraitCue.waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.querySelector('.excerpt-source-cue')?.getAnimations()[0]?.currentTime >= 2700);
+    const portraitCueLate = await sourceCueVisual(page, portraitCue);
+    assert(portraitCueLate.connected && portraitCueLate.onScreen && portraitCueLate.opacity > .12,
+      'portrait source cue stays visible late in its 3.2-second interval: ' + JSON.stringify(portraitCueLate));
     assert.equal(Object.values((await paperById(page, pdfId)).highlights || {}).flat().length, 0,
       'portrait source visit shows a transient cue without saving a PDF highlight');
 

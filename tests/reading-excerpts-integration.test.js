@@ -105,7 +105,7 @@ function navigationHarness(items = [pdfRecord('first', 2), pdfRecord('second', 4
     }
   };
   const status = { textContent: '' };
-  const jumps = [], cues = [];
+  const jumps = [], cues = [], toasts = [];
   let jump = async () => true;
   let cue = async () => true;
   let clears = 0;
@@ -122,6 +122,7 @@ function navigationHarness(items = [pdfRecord('first', 2), pdfRecord('second', 4
   context.currentKeepAnchor = () => { origins++; return { kind: 'pdf', page: 1 }; };
   context.byId = id => id === 'excerptReturnChip' ? chip : id === 'excerptStatus' ? status : null;
   context.clearPendingSelection = () => {};
+  context.showReaderToast = message => toasts.push(message);
   context.jumpToReadingKeep = entry => { jumps.push(plain(entry.anchor)); return jump(entry); };
   context.clearExcerptSourceCue = () => { clears++; };
   context.flashExcerptSource = (entry, token) => { cues.push({ entry: plain(entry), token }); return cue(entry, token); };
@@ -131,7 +132,7 @@ function navigationHarness(items = [pdfRecord('first', 2), pdfRecord('second', 4
     section('  function excerptStatus(message){', '  function saveExcerptState('),
     section('  function excerptReadingAnchor(){', '  if(window.PhloemExcerptView)')
   ].join('\n'), context, { filename: 'reading.js excerpt navigation' });
-  return { context, chip, status, jumps, cues, clears: () => clears, origins: () => origins,
+  return { context, chip, status, jumps, cues, toasts, clears: () => clears, origins: () => origins,
     setJump: callback => { jump = callback; }, setCue: callback => { cue = callback; } };
 }
 
@@ -163,6 +164,7 @@ test('source visits capture one origin and return clears it', async () => {
   assert.equal(nav.context.excerptContext().canReturn, false);
   assert.equal(nav.chip.hidden, true);
   assert.equal(nav.cues.length, 2, 'return clears the cue without painting a saved-quote cue');
+  assert.deepEqual(nav.toasts, [], 'matched passages and Return need no warning toast');
   assert(nav.clears() >= 3, 'each navigation clears an older transient cue');
 });
 
@@ -172,6 +174,8 @@ test('no exact quote match keeps location navigation without claiming a passage 
   assert.equal(await nav.context.goToExcerptSource('first'), true);
   assert.equal(nav.cues[0].entry.quote, 'Page 2');
   assert.match(nav.status.textContent, /could not be matched/i);
+  assert.equal(nav.toasts.length, 1, 'unmatched source is explained even when the Clips panel is hidden');
+  assert.match(nav.toasts[0], /could not be highlighted/i);
   assert.equal(nav.context.excerptContext().canReturn, true);
 });
 

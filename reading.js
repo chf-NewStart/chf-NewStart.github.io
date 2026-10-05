@@ -6493,6 +6493,10 @@
     if(!host||!root||(isPdf&&(!view.rendered||readerMode!=='pdf'))||(!isPdf&&readerMode!=='text')||section&&section.classList.contains('eq-figured'))return false;
     var box=host.getBoundingClientRect();if(!box.width||!box.height)return false;
     var groups=findTextGroups(root,entry.quote,isPdf,true),best=null,bestDistance=Infinity,position=anchor.position||{};
+    // Native PDF clips are saved with Range.toString(), which can join adjacent
+    // positioned spans without the visual spaces/newlines Find inserts. Match that
+    // exact DOM text too, retaining character offsets instead of guessing a phrase.
+    if(isPdf&&!groups.length)groups=findTextGroups(root,entry.quote,false,true);
     var targetX=Number.isFinite(position.x)?position.x:.5,targetY=Number.isFinite(position.y)?position.y:.4;
     if(isPdf&&view.viewport&&Number.isFinite(position.pdfX)&&Number.isFinite(position.pdfY)){
       var point=view.viewport.convertToViewportPoint(position.pdfX,position.pdfY);targetX=point[0]/view.pageWidth;targetY=point[1]/view.pageHeight;
@@ -6542,6 +6546,7 @@
         if(id!==currentId||epoch!==pdfOpenEpoch||token!==excerptNavigationSerial)return false;
         if(isReturn)excerptReturnSpot=null;
         excerptStatus(isReturn?'Back at your reading place.':entry&&entry.quote&&!located?'At the saved location. The passage text could not be matched for a temporary highlight.':'At the clip’s source. Return to reading brings you back.');
+        if(!isReturn&&entry&&entry.quote&&!located)showReaderToast('At the saved location, but the passage could not be highlighted.');
       }
       else{excerptReturnSpot=previous;excerptStatus('That location is unavailable. Your note is preserved.');}
       return moved;

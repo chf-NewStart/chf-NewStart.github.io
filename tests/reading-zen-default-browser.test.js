@@ -156,8 +156,8 @@ async function notebookExitReopenBack(page, paperId, pdfPage, closeFirst = false
       'default text Zen does not request fullscreen');
     assert.deepEqual(await page.locator('#zenDock > button, #zenDock > .zen-tool > button')
       .evaluateAll(buttons => buttons.filter(button => button.getClientRects().length).map(button => button.id)),
-    ['zenExit', 'zenGuide', 'zenAnnotate', 'zenWorkspace', 'zenMore'],
-    'Zen-only reading keeps the compact five-button dock');
+    ['zenExit', 'zenGuide', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'],
+    'Zen-only reading keeps the compact dock with direct paper Undo');
     await page.keyboard.press('f');
     await page.waitForFunction(() => window.__zenFullscreenRequests === 1 && !!document.fullscreenElement);
     await staysZen(page, 'F enters browser fullscreen without leaving Zen');

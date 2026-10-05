@@ -29,24 +29,24 @@ body { margin:0; } #workspacePanel { width:1000px; }
 <button id="workspaceMoreSpace"></button><button id="workspaceNewNote"></button>
 <button id="workspaceReturn"></button></details>
 <div id="workspacePenOptions"><select id="workspaceSize"><option value="2.4">Medium</option>
-<option value="1.2">Fine</option></select><select id="workspaceNib">
-<option value="marker">Marker</option><option value="natural">Natural</option></select></div>
+<option value="1.2">Fine</option></select></div>
 </div><button id="workspaceClose"></button><p id="workspaceStatus"></p>
 <div id="workspaceScroll"><div id="workspaceBoard"><div id="workspaceCards"></div>
 <svg id="workspaceInk"></svg></div></div></aside></body></html>`;
 
-async function fixture(browser, withClip = true) {
+async function fixture(browser, withClip = true, savedWorkspace = null) {
   const page = await browser.newPage({ viewport: { width: 1100, height: 800 } });
   await page.setContent(html);
   for (const file of ['reading-workspace.js', 'reading-ink.js', 'reading-workspace-view.js'])
     await page.addScriptTag({ path: path.join(ROOT, file) });
-  await page.evaluate(hasClip => {
+  await page.evaluate(({ hasClip, savedWorkspace }) => {
     const at = Date.now();
     const workspace = hasClip ? PhloemWorkspaceState.place(PhloemWorkspaceState.normalize(),
       'clip', { x: 40, y: 40, width: 420 }, at) : PhloemWorkspaceState.normalize();
     const state = { id: 'paper-a', epoch: 1, open: true, unavailable: false, busy: false,
       items: hasClip ? [{ id: 'clip', quote: 'A source', note: 'A note',
-        anchor: { kind: 'text', para: 0, offset: 0 }, createdAt: at, updatedAt: at }] : [], workspace };
+        anchor: { kind: 'text', para: 0, offset: 0 }, createdAt: at, updatedAt: at }] : [],
+      workspace: savedWorkspace ? PhloemWorkspaceState.normalize(JSON.parse(savedWorkspace)) : workspace };
     const calls = { add: [], erase: [], place: [], ensure: [] };
     let placeClock = at;
     const adapter = {
@@ -95,35 +95,87 @@ async function fixture(browser, withClip = true) {
       }
     };
     view.render();
-  }, withClip);
+  }, { hasClip: withClip, savedWorkspace });
   return page;
 }
 
-test('medium marker ink is one continuous path; legacy natural ink remains distinct and data stays intact', async () => {
+test('new medium ink uses a continuous natural pen in preview and saved strokes', async () => {
   const browser = await launch();
   try {
     const page = await fixture(browser, false);
     try {
-      const result = await page.evaluate(() => {
-        fixture.draw([[100, 100], [130, 125], [160, 140], [190, 180]]);
-        const marker = fixture.state.workspace.strokes[0];
-        const original = JSON.stringify(marker.points);
-        const markerPath = document.querySelector(`[data-stroke-id="${marker.id}"]`).getAttribute('d');
-        fixture.state.workspace = PhloemWorkspaceState.addStroke(fixture.state.workspace,
-          { id: 'legacy', color: 'black', width: marker.width, points: marker.points }, Date.now());
-        fixture.view.render();
-        return { marker, original, markerPath,
-          legacyPath: document.querySelector('[data-stroke-id="legacy"]').getAttribute('d'),
-          after: JSON.stringify(fixture.state.workspace.strokes.find(s => s.id === marker.id).points) };
+      const result = await page.evaluate(async () => {
+        fixture.emit('pointerdown', 100, 100);
+        for (const [x, y] of [[130, 125], [160, 140], [190, 180]]) fixture.emit('pointermove', x, y);
+        await new Promise(requestAnimationFrame);
+        const preview = document.querySelector('.workspace-ink-preview');
+        const previewPath = preview.getAttribute('d'), previewOpacity = preview.getAttribute('fill-opacity');
+        fixture.emit('pointerup', 190, 180);
+        const stroke = fixture.state.workspace.strokes[0];
+        const path = document.querySelector(`[data-stroke-id="${stroke.id}"]`);
+        return { stroke, previewPath, previewOpacity, path: path.getAttribute('d'), opacity: path.getAttribute('fill-opacity') };
       });
-      assert.equal(result.marker.width, 2.4);
-      assert.equal(result.marker.nib, 'marker');
-      assert.equal(result.marker.style, 'natural');
-      assert.equal(await page.locator(`[data-stroke-id="${result.marker.id}"]`).count(), 1,
-        'the continuous marker is one SVG path element');
-      assert.match(result.markerPath, / L /, 'the marker path joins sampled points');
-      assert.notEqual(result.markerPath, result.legacyPath);
-      assert.equal(result.after, result.original, 'rendering does not rewrite saved pressure points');
+      assert.equal(result.stroke.width, 2.4);
+      assert.equal(result.stroke.nib, undefined, 'normal pen uses the original natural stroke format');
+      assert.equal(result.stroke.style, 'natural');
+      assert.equal(await page.locator(`[data-stroke-id="${result.stroke.id}"]`).count(), 1);
+      assert.match(result.path, / L /, 'the pen outline joins sampled points');
+      assert.equal(result.previewPath, result.path, 'saving preserves the natural pen preview');
+      assert.equal(result.previewOpacity, '1');
+      assert.equal(result.opacity, '1');
+    } finally { await page.close(); }
+  } finally { await browser.close(); }
+});
+
+test('saved marker ink keeps its rendering and metadata after reload, erase, undo, and redo', async () => {
+  const browser = await launch();
+  try {
+    let page = await fixture(browser);
+    try {
+      const original = await page.evaluate(() => {
+        fixture.state.workspace = PhloemWorkspaceState.addStroke(fixture.state.workspace,
+          { id: 'saved-marker', color: 'blue', width: 2.4, nib: 'marker', shape: 'line',
+            anchor: { clipId: 'clip', x: 40, y: 40, width: 420 },
+            points: [[100, 95, .3], [180, 130, .8]] }, Date.now());
+        fixture.view.render();
+        const path = document.querySelector('[data-stroke-id="saved-marker"]');
+        return { saved: JSON.stringify(fixture.state.workspace), stroke: fixture.state.workspace.strokes[0],
+          path: path.getAttribute('d'), opacity: path.getAttribute('fill-opacity') };
+      });
+      await page.close();
+      page = await fixture(browser, true, original.saved);
+      const reloaded = await page.evaluate(() => ({ saved: JSON.stringify(fixture.state.workspace),
+        path: document.querySelector('[data-stroke-id="saved-marker"]').getAttribute('d'),
+        opacity: document.querySelector('[data-stroke-id="saved-marker"]').getAttribute('fill-opacity') }));
+      assert.equal(reloaded.saved, original.saved, 'loading and rendering leave saved marker data intact');
+      assert.equal(reloaded.path, original.path);
+      assert.equal(reloaded.opacity, '.94');
+      await page.evaluate(() => fixture.draw([[700, 300], [750, 330]], 38));
+      assert.equal(await page.evaluate(() => fixture.state.workspace.strokes.at(-1).nib), undefined,
+        'loading a saved marker does not change the new pen');
+      await page.locator('[data-workspace-tool="eraser"]').click();
+      await page.evaluate(() => fixture.draw([[100, 95], [110, 100]], 39));
+      assert.equal(await page.locator('[data-stroke-id="saved-marker"]').count(), 0);
+      await page.locator('#workspaceUndo').click();
+      const readRestored = () => page.evaluate(() => {
+        const stroke = fixture.state.workspace.strokes.find(s => s.nib === 'marker');
+        const path = document.querySelector(`[data-stroke-id="${stroke.id}"]`);
+        return { stroke, path: path.getAttribute('d'), opacity: path.getAttribute('fill-opacity') };
+      });
+      const checkRestored = restored => {
+        const { id, createdAt, updatedAt, ...metadata } = restored.stroke;
+        const { id: originalId, createdAt: originalCreated, updatedAt: originalUpdated, ...originalMetadata } = original.stroke;
+        assert.notEqual(id, originalId, 'undo restores an erased stroke under a new id');
+        assert.deepEqual(metadata, originalMetadata, 'marker shape, anchor, width, color, and pressure points survive');
+        assert.equal(restored.path, original.path);
+        assert.equal(restored.opacity, original.opacity);
+      };
+      checkRestored(await readRestored());
+      await page.locator('#workspaceTools').focus();
+      await page.keyboard.press('Control+Shift+Z');
+      assert.equal(await page.evaluate(() => fixture.state.workspace.strokes.some(s => s.nib === 'marker')), false);
+      await page.locator('#workspaceUndo').click();
+      checkRestored(await readRestored());
     } finally { await page.close(); }
   } finally { await browser.close(); }
 });
@@ -233,7 +285,7 @@ test('ink over a note follows its move and resize; free ink stays put; eraser an
       const restored = await page.evaluate(() => fixture.state.workspace.strokes.find(s => s.anchor));
       assert(restored && restored.id !== initial.attached.id);
       assert.deepEqual(restored.anchor, initial.attached.anchor);
-      assert.equal(restored.nib, 'marker');
+      assert.equal(restored.nib, undefined);
     } finally { await page.close(); }
   } finally { await browser.close(); }
 });

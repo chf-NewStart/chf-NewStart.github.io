@@ -771,6 +771,29 @@ migration to the Zen controls; they are not evidence of a supported second mode.
 The separate extended-workspace writable-area issue is not fixed by this change.
 Its untracked diagnostic test remains outside this commit.
 
+### 2026-10-05 — Separate paper/workspace correction controls (shell v161)
+
+Paper Undo is now a direct, labeled dock button. In landscape Workspace it stays
+on the left paper side and reverses that paper's highlights and handwriting in
+chronological order. Paper Redo remains inside Annotate. The right-hand workspace
+Undo/Redo controls affect only workspace handwriting; their labels now make that
+scope explicit. Neither history affects the other side, and creating a new edit
+invalidates only that side's redo. These histories remain session-scoped; this
+does not add undo for workspace note text, card moves, or paper-size changes.
+
+Removed the workspace Marker stroke-style selector. New strokes and previews use
+the natural pen, still medium by default. Existing saved marker strokes keep
+their rendering, metadata, straight-line shape and note anchors, including after
+reload, erasing, Undo and Redo. No stored annotation format was changed.
+
+Verification: independent split Undo/Redo, keyboard routing, paper ink/highlight
+ordering and unchanged note cards passed full-app tests in Chromium and WebKit.
+Focused workspace suites passed 19/19 in each engine, plus 61 state/lifecycle/
+bundle tests and 19 update-cache assertions. Updated compact and default Zen
+tests cover the direct Undo control; short windows use a two-column rail with
+popouts outside both columns. Split-view screenshots inspected. Synthetic Pencil
+tests do not replace physical iPad/Pencil testing. No Apple build/upload.
+
 ## Sources and API checks
 
 - [Apple: handling double-taps](https://developer.apple.com/documentation/ApplePencil/handling-double-taps-from-apple-pencil) — system preference and configurable alternative behavior.

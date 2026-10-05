@@ -1048,6 +1048,10 @@
     .zen-undo svg { width: 18px; height: 18px; }
     .zen-undo span { font: 600 9px/1.1 var(--sans); }
     body.zen #zenUndo:disabled { opacity: .2; cursor: default; }
+    body.zen #zenUndo:not(:disabled) { opacity: .8; color: var(--ink); }
+    /* Keep the immediate correction affordance discoverable after a mark, even
+       when the rest of the quiet reader rail fades. */
+    body.zen.zen-idle #zenUndo:not(:disabled) { opacity: .46; }
     .zen-guide.active { color: var(--accent); opacity: .55; }
     .zen-guide.active:hover, .zen-guide.active:focus-visible { color: var(--accent); }
     #zenAnnotate.active { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); background: var(--accent-soft); color: var(--ink); opacity: .72; }
@@ -1069,7 +1073,7 @@
       body.zen .zen-tool.popout-open { z-index: 3; }
       body.zen .find-bar:not(.hidden) { right: calc(68px + env(safe-area-inset-right)); max-width: calc(100vw - 88px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
     }
-    @media (max-height: 275px) {
+    @media (max-height: 325px) {
       body.zen .zen-dock { display: grid; grid-template-rows: repeat(3, 44px); grid-auto-flow: column; grid-auto-columns: 44px; gap: 4px; direction: rtl; }
       body.zen .zen-dock > * { direction: ltr; }
     }

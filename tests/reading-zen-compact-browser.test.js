@@ -55,11 +55,11 @@ async function railAt(page, viewport) {
         width: rect.width, height: rect.height };
     }));
   assert.deepEqual(controls.map(item => item.id),
-    ['zenExit', 'zenGuide', 'zenAnnotate', 'zenWorkspace', 'zenMore'],
-    'Zen has exactly five top-level controls at ' + JSON.stringify(viewport));
+    ['zenExit', 'zenGuide', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'],
+    'Zen has six top-level controls, including direct paper Undo, at ' + JSON.stringify(viewport));
   assert(controls.every(item => item.width >= 43.5 && item.height >= 43.5 && item.x >= -1 && item.y >= -1
     && item.right <= viewport.width + 1 && item.bottom <= viewport.height + 1),
-  'all five Zen controls remain on-screen and touch-sized: ' + JSON.stringify({ viewport, controls }));
+  'all six Zen controls remain on-screen and touch-sized: ' + JSON.stringify({ viewport, controls }));
 }
 async function stroke(page) {
   await page.locator('#workspaceInk').evaluate(canvas => {
@@ -124,7 +124,7 @@ async function stroke(page) {
 
     const sizes = [
       { width: 1280, height: 900 }, { width: 1024, height: 768 },
-      { width: 844, height: 390 }, { width: 390, height: 844 }
+      { width: 844, height: 390 }, { width: 844, height: 300 }, { width: 390, height: 844 }
     ];
     for (const viewport of sizes) {
       await railAt(page, viewport);
@@ -270,7 +270,7 @@ async function stroke(page) {
     assert.equal(await page.locator('#workspaceInk path[data-stroke-id]').count(), 1,
       'direct Workspace toggle retains saved ink');
     assert.deepEqual(errors, [], 'compact Zen interactions have no page errors');
-    console.log('PASS  Compact Zen five-control rail, popups, palette focus and direct Workspace');
+    console.log('PASS  Compact Zen rail with direct paper Undo, popups, palette focus and direct Workspace');
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.close(resolve));

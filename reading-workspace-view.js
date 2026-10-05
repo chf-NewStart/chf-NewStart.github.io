@@ -21,7 +21,7 @@
     let scope = null;
     let cards = new Map();
     const drafts = new Map();
-    let tool = 'pen', color = 'black', width = 2.4, nib = 'marker', gesture = null, previewFrame = 0;
+    let tool = 'pen', color = 'black', width = 2.4, gesture = null, previewFrame = 0;
     let suppressClickUntil = 0;
     let suppressCardClickUntil = 0;
     const cardTouches = new Map();
@@ -127,6 +127,7 @@
       const shown = displayStroke(stroke);
       const copy = { ...shown, points: shown.points.map(p => [p[0] / 1000, p[1] / observedHeight, p[2]]) };
       if (shown.nib === 'marker') {
+        // Preserve the appearance of previously saved marker strokes.
         // A fixed chisel-nib direction gives broad downstrokes and finer crossstrokes.
         // Reuse the continuous, pressure-filtered outline; never stamp disconnected dots.
         copy.style = 'clean'; copy.width *= 1.35;
@@ -499,7 +500,7 @@
     function updatePreview() {
       previewFrame = 0;
       const g = gesture; if (!g || g.kind !== 'stroke' || g.mode !== 'pen') return;
-      paintPath(g.preview, { color: g.color, width: g.width, style: 'natural', nib: g.nib, shape: g.straight ? 'line' : undefined, points: rawPoints(g.points) });
+      paintPath(g.preview, { color: g.color, width: g.width, style: 'natural', shape: g.straight ? 'line' : undefined, points: rawPoints(g.points) });
     }
     function armStraightLine(g, event) {
       if (g.straight || g.mode !== 'pen' || g.points.length < 2) return;
@@ -571,7 +572,7 @@
         const r = state.card.getBoundingClientRect();
         return event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
       });
-      const g = { kind: 'stroke', mode, pointerId, pointerType: event.pointerType || 'pen', points: [], ids: new Set(), erased: [], color, width, nib, travel: 0, holdTimer: 0, paperId: scope.id, epoch: scope.epoch,
+      const g = { kind: 'stroke', mode, pointerId, pointerType: event.pointerType || 'pen', points: [], ids: new Set(), erased: [], color, width, travel: 0, holdTimer: 0, paperId: scope.id, epoch: scope.epoch,
         anchor: owner ? { clipId: owner.id, ...owner.box } : null };
       gesture = g; board.classList.add('workspace-drawing');
       if (mode === 'pen') { g.preview = document.createElementNS(NS, 'path'); g.preview.classList.add('workspace-ink-preview'); ink.appendChild(g.preview); }
@@ -588,7 +589,6 @@
       if (!commit || !currentScope() || g.paperId !== scope.id || g.epoch !== scope.epoch) { render(); return; }
       if (g.mode === 'pen' && g.points.length) {
         const at = Date.now(), stroke = { id: uid(), color: g.color, width: g.width, style: 'natural', points: rawPoints(g.points), createdAt: at, updatedAt: at };
-        if (g.nib === 'marker') stroke.nib = 'marker';
         if (g.anchor) stroke.anchor = g.anchor;
         if (g.straight) stroke.shape = 'line';
         if (adapter.addStroke(stroke) === true) { undoStack.push({ kind: 'add', stroke: canonicalStroke(stroke.id) || stroke }); redoStack = []; }
@@ -673,8 +673,6 @@
       render();
     });
     if (sizeSelect) sizeSelect.addEventListener('change', () => { width = clamp(Number(sizeSelect.value) || 2.4, .5, 12); });
-    const nibSelect = document.getElementById('workspaceNib');
-    if (nibSelect) nibSelect.addEventListener('change', () => { cancel(); nib = nibSelect.value === 'natural' ? 'natural' : 'marker'; });
     function recordUndo(action, target) { target.push(action); if (target.length > 50) target.shift(); }
     function restoreStroke(stroke) { const at = Date.now(); const restored = { ...stroke, id: uid(), createdAt: at, updatedAt: at, points: stroke.points.map(p => [...p]) }; return adapter.addStroke(restored) === true ? (canonicalStroke(restored.id) || restored) : null; }
     function history(direction) {

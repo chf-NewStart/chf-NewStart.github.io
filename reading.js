@@ -2813,6 +2813,11 @@
     ['zenGuideMenu','zenAnnotateMenu','zenMoreMenu'].forEach(function(id){
       var menu=byId(id);if(!menu||menu.classList.contains('hidden'))return;
       var owner=menu.parentElement.getBoundingClientRect(),height=Math.min(window.innerHeight,window.visualViewport?window.visualViewport.height:window.innerHeight),style=getComputedStyle(menu);
+      // In very short windows the rail has two columns. Open beside the whole
+      // rail, not over the neighboring column's Undo/Workspace/More buttons.
+      var rail=byId('zenDock').getBoundingClientRect();
+      menu.style.right=(owner.right-rail.left+9)+'px';
+      menu.style.maxWidth=Math.max(44,rail.left-19)+'px';
       var topInset=10+(parseFloat(style.getPropertyValue('--zen-safe-top'))||0),bottomInset=10+(parseFloat(style.getPropertyValue('--zen-safe-bottom'))||0);
       menu.style.maxHeight=Math.max(44,height-topInset-bottomInset)+'px';
       menu.style.transform='none';
@@ -2847,8 +2852,8 @@
     placeZenPopouts();zenWake();
   }
   window.addEventListener('resize',placeZenPopouts);
-  /* Only five controls stay on the paper; annotation tools and occasional settings
-     live in separate disclosures. Workspace is a reversible paper/workspace mode. */
+  /* Undo stays directly on the paper; annotation choices and occasional settings
+     live in disclosures. The workspace owns a separate handwriting history. */
   byId('zenAnnotate').onclick=function(){toggleZenPopout('zenAnnotate','zenAnnotateMenu','zenAnnotateTool');};
   byId('zenMore').onclick=function(){toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');};
   byId('zenReadingControls').onclick=function(){closeZenPopouts(true);setComfortBarOpen(false);byId('readerControlsDialog').showModal();};
@@ -3202,7 +3207,8 @@
     notes.classList.toggle('active',notesOpen);notes.setAttribute('aria-expanded',String(notesOpen));
     if(undo){undo.disabled=!(highlightHistory&&highlightHistory.length);undo.innerHTML='<span aria-hidden="true">↶</span> Undo last edit';}
     var highlightUndo=byId('highlightUndo');if(highlightUndo)highlightUndo.disabled=!(highlightHistory&&highlightHistory.length);
-    var zenUndo=byId('zenUndo');if(zenUndo)zenUndo.disabled=!(highlightHistory&&highlightHistory.length);syncPdfInkUi();
+    var zenUndo=byId('zenUndo');if(zenUndo)zenUndo.disabled=!(highlightHistory&&highlightHistory.length);
+    var zenRedo=byId('zenRedo');if(zenRedo)zenRedo.disabled=!(highlightFuture&&highlightFuture.length);syncPdfInkUi();
   }
   function syncTabletReaderUi(){
     var notebook=byId('notebook'),wasOverlay=document.body.classList.contains('tablet-notes-overlay'),wasPinned=document.body.classList.contains('tablet-notes-pinned'),sheetWasOpen=notebook.classList.contains('sheet-open');
@@ -3363,7 +3369,8 @@
   };
   byId('touchMore').onclick=function(){var open=byId('touchDockMenu').classList.contains('hidden');clearPendingSelection();setHighlightToolbarOpen(false);closeTouchDockMore(false);if(open){byId('touchDockMenu').classList.remove('hidden');this.setAttribute('aria-expanded','true');var first=byId('touchDockMenu').querySelector('button:not([disabled])');if(first)first.focus();}};
   byId('touchUndo').onclick=function(){undoHighlight();syncTouchDockStates();closeTouchDockMore(false);};
-  byId('zenUndo').onclick=function(){closeZenPopouts(true);undoHighlight();};
+  byId('zenUndo').onclick=function(){closeZenPopouts(false);undoHighlight();};
+  byId('zenRedo').onclick=function(){closeZenPopouts(true);redoHighlight();};
   byId('touchFind').onclick=function(){closeTouchDockMore(false);toggleFindBar(true,false,byId('touchMore'));};
   byId('touchDiscuss').onclick=function(){toggleTouchPanel('aiPanel');closeTouchDockMore(false);};
   byId('touchSettings').onclick=function(){var open=byId('comfortBar').classList.contains('hidden');closeTouchDockMore(false);setComfortBarOpen(open,false,byId('touchMore'));};

@@ -165,6 +165,7 @@
       const current = pair();
       if (!current || current.distance < 12) return;
       const rect = scroll.getBoundingClientRect();
+      if (pinch && pinch.touch) return;
       endPinch(true);
       pinch = { distance: current.distance, zoom, next: zoom, x: current.x, y: current.y, frame: 0,
         contentX: (scroll.scrollLeft + current.x - rect.left) / zoom,
@@ -174,7 +175,7 @@
     scroll.addEventListener('pointermove', event => {
       if (!touches.has(event.pointerId)) return;
       touches.set(event.pointerId, point(event));
-      if (!pinch) return; // One finger keeps native workspace scrolling.
+      if (!pinch || pinch.touch) return; // One finger keeps native workspace scrolling.
       const current = pair();
       if (!current) { cancel(); return; }
       event.preventDefault();
@@ -185,10 +186,47 @@
     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
       scroll.addEventListener(type, event => {
         if (!touches.delete(event.pointerId)) return;
-        if (pinch) {
+        if (pinch && !pinch.touch) {
           if (event.cancelable) event.preventDefault();
           endPinch(true);
         }
+      }, true);
+    }
+    // Safari starts a native two-finger pan as soon as the fingers travel together, and
+    // then cancels their pointers, which cut the pinch off mid-gesture and left the rest
+    // to scrolling. Like the PDF pinch, a two-finger touch on blank paper keeps the
+    // browser out of it, and the touch stream can start or carry the pinch itself if
+    // the pointer stream lost a finger first.
+    function touchPair(list) {
+      if (list.length !== 2) return null;
+      const a = list[0], b = list[1];
+      return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2,
+        distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) };
+    }
+    function touchesBlank(list) { return [...list].every(touch => blankTarget(touch.target)); }
+    scroll.addEventListener('touchstart', event => {
+      if (event.touches.length !== 2 || isBusy() || !touchesBlank(event.touches)) return;
+      event.preventDefault();
+      const current = touchPair(event.touches);
+      if (pinch || !current || current.distance < 12) return;
+      const rect = scroll.getBoundingClientRect();
+      pinch = { distance: current.distance, zoom, next: zoom, x: current.x, y: current.y, frame: 0, touch: true,
+        contentX: (scroll.scrollLeft + current.x - rect.left) / zoom,
+        contentY: (scroll.scrollTop + current.y - rect.top) / zoom };
+    }, { capture: true, passive: false });
+    scroll.addEventListener('touchmove', event => {
+      if (!pinch) return;
+      if (event.cancelable) event.preventDefault();
+      if (!pinch.touch) return; // The pointer stream is already carrying this pinch.
+      const current = touchPair(event.touches);
+      if (!current) return;
+      pinch.next = clamp(pinch.zoom * current.distance / pinch.distance, MIN_ZOOM, MAX_ZOOM);
+      pinch.x = current.x; pinch.y = current.y;
+      if (!pinch.frame) pinch.frame = global.requestAnimationFrame(previewPinch);
+    }, { capture: true, passive: false });
+    for (const type of ['touchend', 'touchcancel']) {
+      scroll.addEventListener(type, event => {
+        if (pinch && pinch.touch && event.touches.length < 2) { touches.clear(); endPinch(true); }
       }, true);
     }
     scroll.addEventListener('wheel', event => {

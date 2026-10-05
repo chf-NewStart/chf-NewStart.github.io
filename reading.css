@@ -1224,6 +1224,11 @@
       user-select: none; -webkit-user-select: none; overscroll-behavior: contain;
     }
     .highlight-controls { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px; }
+    /* Zen: a vertical column beside the dock button (placed by placeDockedHighlightToolbar). */
+    body.zen .highlight-toolbar.docked { bottom: auto; transform: none; max-width: none; max-height: calc(100dvh - 24px); width: auto; }
+    body.zen .highlight-toolbar.docked .highlight-controls { flex-wrap: nowrap; align-items: flex-start; }
+    body.zen .highlight-toolbar.docked :is(.highlight-actions,.highlight-colors) { flex-direction: column; }
+    body.zen .highlight-toolbar.docked .highlight-group { padding: 3px 0; }
     .highlight-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; }
     .highlight-group { display: flex; flex: 0 0 auto; align-items: center; gap: 0; padding: 0 3px; border-radius: 11px; background: var(--surface-2); }
     .highlight-toolbar button {

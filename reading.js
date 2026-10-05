@@ -6829,7 +6829,7 @@
   function workspaceDropPoint(excludeId){
     var ch=find(currentId),logicalWidth=ch&&ch.readingWorkspace&&ch.readingWorkspace.width||1000,board=byId('workspaceBoard'),scroll=byId('workspaceScroll'),scale=Math.max(1,board.clientWidth)/logicalWidth;
     var visible=scroll.getBoundingClientRect(),origin=workspaceView?workspaceView.pointFromClient(visible.left+25,visible.top+35):{x:scroll.scrollLeft/scale+45,y:scroll.scrollTop/scale+45};
-    var positions=ch&&ch.readingWorkspace&&ch.readingWorkspace.positions||{},width=650,x=Math.max(0,Math.min(logicalWidth-width,origin.x)),y=Math.max(35,origin.y),boxes=[];
+    var positions=ch&&ch.readingWorkspace&&ch.readingWorkspace.positions||{},width=400,x=Math.max(0,Math.min(logicalWidth-width,origin.x)),y=Math.max(35,origin.y),boxes=[];
     Object.keys(positions).forEach(function(id){
       if(id===excludeId||!ch.readingExcerpts.items.some(function(item){return item.id===id;}))return;
       var position=positions[id],card=Array.from(byId('workspaceCards').children).find(function(node){return node.dataset.clipId===id;}),height=card&&card.offsetHeight?card.offsetHeight/scale:500;
@@ -6843,12 +6843,12 @@
   }
   function placeWorkspaceClip(id,point){
     var ch=find(currentId);if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)||!ch.readingExcerpts.items.some(function(item){return item.id===id;}))return false;
-    try{var api=window.PhloemWorkspaceState,next=api.normalize(ch.readingWorkspace),width=point&&point.width===undefined?650:point&&point.width;
+    try{var api=window.PhloemWorkspaceState,next=api.normalize(ch.readingWorkspace),width=point&&point.width===undefined?400:point&&point.width;
       if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||!Number.isFinite(width))throw new TypeError('Invalid card position');
       width=Math.max(280,Math.min(900,width));
       while(point.x+width>next.width&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
       while(point.y+500>next.height&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
-      return saveWorkspace(ch,api.place(next,id,Object.assign({width:650},point),now()));
+      return saveWorkspace(ch,api.place(next,id,Object.assign({width:400},point),now()));
     }catch(error){workspaceStatus('Could not save the card position.');return false;}
   }
   function showWorkspaceClip(id,point){
@@ -6856,7 +6856,7 @@
     // A dropped card stays on the paper the reader can already see: near the right
     // edge it shifts left rather than widening the paper and scrolling the view away.
     var ch=find(currentId),paperWidth=ch&&ch.readingWorkspace&&ch.readingWorkspace.width||1000;
-    if(point&&!point.auto&&Number.isFinite(point.x))point=Object.assign({},point,{x:Math.max(0,Math.min(paperWidth-(point.width||650),point.x))});
+    if(point&&!point.auto&&Number.isFinite(point.x))point=Object.assign({},point,{x:Math.max(0,Math.min(paperWidth-(point.width||400),point.x))});
     var saved=placeWorkspaceClip(id,point&&!point.auto?point:workspaceDropPoint(id));refreshWorkspace();
     if(saved&&workspaceView)workspaceView.focus(id);return saved;
   }
@@ -7148,9 +7148,26 @@
     var toolbar=byId('highlightToolbar');if(!toolbar)return;
     if(on){if(trigger)highlightToolbarTrigger=trigger;closeZenPopouts(false);closeTouchDockMore(false);}
     toolbar.classList.toggle('hidden',!on);document.body.classList.toggle('highlight-toolbar-open',!!on);
+    placeDockedHighlightToolbar(on);
     ['highlightBtn','highlightColorBtn','touchHighlight','zenMarker','zenWorkspaceMarker'].forEach(function(id){var button=byId(id);button.setAttribute('aria-controls','highlightToolbar');button.setAttribute('aria-expanded',String(!!on));});
     syncHighlightColorUi();syncTouchDockStates();
   }
+  /* In Zen the colors fold out beside the dock button that opened them, as a short
+     vertical column, instead of a shelf across the bottom of the paper. */
+  function placeDockedHighlightToolbar(on){
+    var toolbar=byId('highlightToolbar'),dock=byId('zenDock'),trigger=highlightToolbarTrigger;
+    var docked=!!on&&document.body.classList.contains('zen')&&!!trigger&&!!dock&&(dock.contains(trigger));
+    toolbar.classList.toggle('docked',docked);
+    if(!docked){toolbar.style.removeProperty('top');toolbar.style.removeProperty('left');return;}
+    var anchor=trigger.getClientRects().length?trigger:byId('zenAnnotate');if(!anchor||!anchor.getClientRects().length){toolbar.classList.remove('docked');return;}
+    var a=anchor.getBoundingClientRect(),t=toolbar.getBoundingClientRect(),gap=10,margin=12;
+    // Fold out toward the paper the dock sits on (left of a right-edge dock), never over Workspace.
+    var pane=byId('documentPane'),p=pane&&pane.getClientRects().length?pane.getBoundingClientRect():{left:0,right:innerWidth};
+    var left=a.left+a.width/2>(p.left+p.right)/2?a.left-gap-t.width:a.right+gap;
+    var top=Math.max(margin,Math.min(innerHeight-t.height-margin,a.top+a.height/2-t.height/2));
+    toolbar.style.left=Math.max(margin,Math.min(innerWidth-t.width-margin,left))+'px';toolbar.style.top=top+'px';
+  }
+  window.addEventListener('resize',function(){var toolbar=byId('highlightToolbar');if(toolbar&&!toolbar.classList.contains('hidden'))placeDockedHighlightToolbar(true);});
   function syncHighlightColorUi(){
     var label=highlightColorLabel(highlightColor),mode=!!highlightMode,pending=!!pendingSelection;
     document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(x){var selected=!pdfWriteMode&&!highlightEraseMode&&x.dataset.highlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});

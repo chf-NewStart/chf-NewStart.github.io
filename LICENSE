@@ -1,21 +1,22 @@
-MIT License
+Copyright (c) 2026 Houfu Chen. All rights reserved.
 
-Copyright (c) 2026 Houfu Chen
+The source code, text, images and other files in this repository are
+published so people can read them and use the live website and apps. No
+license is granted to copy, modify, distribute, sublicense or create
+derivative works from them, in whole or in part, without written permission
+from Houfu Chen.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Viewing the code on GitHub and using the published website, browser
+extension and App Store apps as ordinary users is permitted.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Earlier versions of this repository were released under the MIT License.
+Copies obtained under those versions keep that license; it does not apply to
+versions published after this change.
+
+Third-party fonts, libraries and other files (for example in fonts/, vendor/
+and apps/ipad/licenses/) remain under their own upstream licenses, which this
+notice does not change.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+IMPLIED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.

@@ -197,10 +197,10 @@ Phloem icon artwork by [Promma](https://www.linkedin.com/in/itpromma/).
 
 ## License
 
-The code in this repository is released under the [MIT License](LICENSE) — take
-Phloem or any of the tools apart, reuse them, learn from them. Personal content
-is **not** covered by that license and remains all rights reserved: photos and
-images (`emo/`, `food/`, `matrix/`, `money/`, `monet/`, `robo1/`, `swim/`, the
-sprite and card art), resume files (`resumes/`), and the handwriting font
-(`fonts/houfu-hand.woff2`). The other vendored fonts and libraries (`fonts/`,
-`vendor/`) keep their own upstream licenses.
+All rights reserved — see [LICENSE](LICENSE). The code is public so you can
+read it and see how Phloem and the tools work, but it may not be copied,
+modified or redistributed without permission. That covers the code and all
+personal content: photos and images, resume files (`resumes/`), and the
+handwriting font (`fonts/houfu-hand.woff2`). Versions published before this
+change were MIT-licensed and stay that way. Vendored fonts and libraries
+(`fonts/`, `vendor/`) keep their own upstream licenses.

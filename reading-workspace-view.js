@@ -793,20 +793,44 @@
       if (abC * abD < 0 && cdA * cdB < 0) return true;
       return Math.min(pointDistance(a, c, d), pointDistance(b, c, d), pointDistance(c, a, b), pointDistance(d, a, b)) < radius;
     }
+    // Ink cannot change under a live eraser, so each sweep measures the strokes once
+    // (points, reach and bounds) and then only tests the strokes near each new segment.
+    // Re-reading every stroke on every Pencil sample made the eraser stutter.
+    function eraserTargets(c) {
+      const paths = new Map();
+      ink.querySelectorAll('[data-stroke-id]').forEach(path => {
+        const list = paths.get(path.dataset.strokeId) || [];
+        list.push(path); paths.set(path.dataset.strokeId, list);
+      });
+      const clips = new Set(itemsOf(c).map(item => item.id));
+      return strokesOf(c).filter(stroke => activeStroke(c, stroke) && !(stroke.anchor && !clips.has(stroke.anchor.clipId))).map(stroke => {
+        const shown = displayStroke(stroke), pts = (shown.points || []).map(p => ({ x: p[0], y: p[1] }));
+        const reach = 16 + (shown.width || 1);
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        pts.forEach(p => { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); });
+        return { stroke, pts, reach, minX: minX - reach, maxX: maxX + reach, minY: minY - reach, maxY: maxY + reach, paths: paths.get(stroke.id) || [] };
+      });
+    }
     function eraseAt(g, point, previous) {
       const c = context(); if (!same(c)) return;
-      for (const stroke of strokesOf(c)) {
-        if (!activeStroke(c, stroke) || g.ids.has(stroke.id)) continue;
-        if (stroke.anchor && !itemsOf(c).some(item => item.id === stroke.anchor.clipId)) continue;
-        const pts = logicalPoints(stroke), shown = displayStroke(stroke); let close = false;
-        for (let i = 0; i < pts.length; i++) {
-          const a = { x: pts[i][0], y: pts[i][1] };
-          const b = pts[Math.min(i + 1, pts.length - 1)];
-          if (segmentsNear(previous, point, a, { x: b[0], y: b[1] }, 16 + (shown.width || 1))) { close = true; break; }
-        }
-        if (close) { g.ids.add(stroke.id); g.erased.push(stroke); }
+      // Growing the paper mid-sweep can redraw the ink; measure again and re-fade.
+      if (!g.targets || g.targets.some(target => target.paths.length && !target.paths[0].isConnected)) {
+        g.targets = eraserTargets(c);
+        g.targets.forEach(target => { if (g.ids.has(target.stroke.id)) target.paths.forEach(path => { path.style.opacity = '.2'; }); });
       }
-      ink.querySelectorAll('[data-stroke-id]').forEach(path => { if (g.ids.has(path.dataset.strokeId)) path.style.opacity = '.2'; });
+      const lowX = Math.min(point.x, previous.x), highX = Math.max(point.x, previous.x);
+      const lowY = Math.min(point.y, previous.y), highY = Math.max(point.y, previous.y);
+      for (const target of g.targets) {
+        const stroke = target.stroke;
+        if (g.ids.has(stroke.id) || highX < target.minX || lowX > target.maxX || highY < target.minY || lowY > target.maxY) continue;
+        const pts = target.pts; let close = false;
+        for (let i = 0; i < pts.length; i++) {
+          if (segmentsNear(previous, point, pts[i], pts[Math.min(i + 1, pts.length - 1)], target.reach)) { close = true; break; }
+        }
+        if (!close) continue;
+        g.ids.add(stroke.id); g.erased.push(stroke);
+        target.paths.forEach(path => { path.style.opacity = '.2'; });
+      }
     }
     function startStroke(event, pointerId, mode) {
       if (gesture || !available(context()) || context().busy) return false;

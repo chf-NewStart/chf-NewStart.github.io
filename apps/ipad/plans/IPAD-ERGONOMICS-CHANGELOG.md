@@ -329,3 +329,21 @@ pinch itself. `reading-workspace-viewport.js`; new test "native pinch still zoom
 after the first finger already started a scroll" in
 `tests/reading-workspace-viewport.test.js` (zoom stayed at 100% before, 2.25x after).
 Not verified on WebKit or a physical iPad.
+
+## 20. Smoother eraser on the Workspace and the paper (v170)
+
+houfu reported the eraser "gives glitches" while erasing. Both erasers did all their
+work on every Pencil sample. The Workspace eraser recomputed each stroke's display
+points (with note anchors) twice per stroke and walked the whole ink layer; with 80
+strokes that was a median 15 ms per sample in desktop Chromium (iPad Pencil samples
+arrive every 4-8 ms). It now measures the strokes once per sweep, rejects strokes by
+bounding box before the segment test, and fades only newly hit strokes; median
+0.4 ms per sample, same strokes erased. If the paper grows mid-sweep and the ink is
+redrawn, it re-measures and re-fades. `reading-workspace-view.js`
+(`eraserTargets`, `eraseAt`).
+The paper eraser had the same pattern: `reading-ink.js` now measures the page's
+strokes once per sweep, and `collectEraserHits` in `reading.js` restyles highlights
+only when a sample erased something new.
+New `tests/reading-workspace-eraser-sweep.test.js`: 40 lines, one sweep erases
+exactly the 20 it crosses, Undo restores them, and the sweep walks the ink layer at
+most 3 times (120 times before the change). Not verified on a physical iPad.

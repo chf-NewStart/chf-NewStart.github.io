@@ -7402,10 +7402,12 @@
     });
   }
   function collectEraserHits(g,x,y){
-    var next={x:x,y:y};
-    g.targets.forEach(function(ref){if(!g.erased.has(ref.item.id)&&ref.rects.some(function(r){return eraserCrossesRect(g.last,next,r,g.radius);}))g.erased.set(ref.item.id,ref);});
+    var next={x:x,y:y},hit=false;
+    g.targets.forEach(function(ref){if(!g.erased.has(ref.item.id)&&ref.rects.some(function(r){return eraserCrossesRect(g.last,next,r,g.radius);})){g.erased.set(ref.item.id,ref);hit=true;}});
     g.last=next;
-    g.host.closest('.pdf-page,.original').querySelectorAll('[data-hl-id]').forEach(function(el){el.classList.toggle('erasing-highlight',g.erased.has(el.dataset.hlId));});
+    /* Restyle only when this sample erased something new; every Pencil sample used to
+       walk the page's highlights. */
+    if(hit)g.host.closest('.pdf-page,.original').querySelectorAll('[data-hl-id]').forEach(function(el){el.classList.toggle('erasing-highlight',g.erased.has(el.dataset.hlId));});
   }
   var pencilGlyphCache=new WeakMap(),pencilGraphemeSegmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter(undefined,{granularity:'grapheme'}):null,pencilWordSegmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter(undefined,{granularity:'word'}):null;
   function pencilGlyphs(node){

@@ -140,6 +140,13 @@
     if(cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)return true;
     return Math.min(distance(a,c,d),distance(b,c,d),distance(c,a,b),distance(d,a,b))<=r;
   }
+  function eraserTargets(strokes,rect) {
+    return strokes.map(function(stroke){
+      var pts=(stroke.points||[]).map(function(point){return{x:rect.left+point[0]*rect.width,y:rect.top+point[1]*rect.height};}),r=10+stroke.width*rect.width/612;
+      var xs=pts.map(function(point){return point.x;}),ys=pts.map(function(point){return point.y;});
+      return{id:stroke.id,pts:pts,r:r,minX:Math.min.apply(null,xs)-r,maxX:Math.max.apply(null,xs)+r,minY:Math.min.apply(null,ys)-r,maxY:Math.max.apply(null,ys)+r};
+    });
+  }
   function create(options) {
     var gesture=null,suppressUntil=0,lastTouch=null,frame=0;
     function own(event) { if(event.cancelable)event.preventDefault();event.stopImmediatePropagation(); }
@@ -189,12 +196,18 @@
       var rect=g.sheet.getBoundingClientRect();if(!sameRect(g)){finish(true);return;}
       var x=clamp(event.clientX,rect.left,rect.right),y=clamp(event.clientY,rect.top,rect.bottom),p={x:x,y:y};
       if(g.tool==='eraser'){
-        (options.getStrokes(g.page)||[]).forEach(function(stroke){
-          if(g.erased.has(stroke.id))return;var pts=stroke.points.map(function(point){return{x:rect.left+point[0]*rect.width,y:rect.top+point[1]*rect.height};}),hit=false,r=10+stroke.width*rect.width/612;
-          for(var i=0;i<pts.length;i++){if(segmentsNear(g.last,p,pts[Math.max(0,i-1)],pts[i],r)){hit=true;break;}}
-          if(hit)g.erased.add(stroke.id);
+        /* The sheet cannot move during a sweep (sameRect), so its strokes are measured
+           once and each Pencil sample only tests strokes near the new segment. */
+        if(!g.targets)g.targets=eraserTargets(options.getStrokes(g.page)||[],rect);
+        var lowX=Math.min(g.last.x,p.x),highX=Math.max(g.last.x,p.x),lowY=Math.min(g.last.y,p.y),highY=Math.max(g.last.y,p.y);
+        g.targets.forEach(function(target){
+          if(g.erased.has(target.id)||highX<target.minX||lowX>target.maxX||highY<target.minY||lowY>target.maxY)return;
+          var pts=target.pts,hit=false;
+          for(var i=0;i<pts.length;i++){if(segmentsNear(g.last,p,pts[Math.max(0,i-1)],pts[i],target.r)){hit=true;break;}}
+          if(!hit)return;
+          g.erased.add(target.id);
+          g.sheet.querySelectorAll('[data-ink-id]').forEach(function(el){if(el.dataset.inkId===target.id)el.classList.add('pdf-ink-erasing');});
         });
-        g.sheet.querySelectorAll('[data-ink-id]').forEach(function(el){el.classList.toggle('pdf-ink-erasing',g.erased.has(el.dataset.inkId));});
         if(options.onErasePreview)options.onErasePreview(g.page,g.last,p);g.last=p;return;
       }
       if(!force&&g.last&&Math.hypot(x-g.last.x,y-g.last.y)<.65)return;

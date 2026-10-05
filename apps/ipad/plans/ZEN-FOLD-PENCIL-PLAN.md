@@ -688,6 +688,32 @@ checks include landscape/portrait, enlarged paper, note menus, and continuous
 ink. This is browser evidence, not physical iPad/Pencil verification; the earlier
 Book-guide timing issue and real-account cloud/device checks remain separate.
 
+### 2026-10-05 — Deliberate reference holds (shell v158)
+
+PDF annotation hover, focus, and ordinary pointer clicks no longer preview or
+navigate. A stationary 500 ms hold opens a local reference/URL card; following it
+requires the card's explicit action. Enter/Space and trusted pointer-free
+assistive activation can open the card without following the destination.
+The card has a keyboard-operable Close button and sits above the Zen controls.
+Movement, extra contacts, cancellation, scrolling, document changes, and active
+annotation gestures prevent accidental opening. External previews still make no
+destination request. Disabling previews keeps a minimal hold-to-navigate card.
+
+Verification: reference regressions passed in Chromium and WebKit, including
+phone hit targets, exact reference jumps/returns, hover/tap/middle-click silence,
+hold cancellation, keyboard activation/close, and finger contact during an active
+Pen stroke. Native Chromium finger hold/movement and direct saved-highlight drag
+passed; direct drag also passed in WebKit. Unified eraser checks passed 66/66;
+state/cache/bundle suites passed 52 tests (plus 19 app-update assertions). Phone
+and desktop card screenshots reviewed. Physical iPad/Pencil and VoiceOver remain
+device checks, not claimed by browser tests.
+
+The older `reading-pencil-highlight.test.js` still expects the non-Zen touch dock:
+it fails its initial visibility check and later times out on `#touchHighlight`.
+The same failure was reproduced by serving baseline `7733fb77` production files
+from Git in memory. No production behavior or assertions were weakened to mask
+that preexisting test mismatch. No native build, upload, or submission in this pass.
+
 ## Sources and API checks
 
 - [Apple: handling double-taps](https://developer.apple.com/documentation/ApplePencil/handling-double-taps-from-apple-pencil) — system preference and configurable alternative behavior.

@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=157">
-  <link rel="stylesheet" href="/reading-fold.css?v=157">
-  <link rel="stylesheet" href="/reading-workspace.css?v=157">
+  <link rel="stylesheet" href="/reading.css?v=158">
+  <link rel="stylesheet" href="/reading-fold.css?v=158">
+  <link rel="stylesheet" href="/reading-workspace.css?v=158">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -242,7 +242,7 @@
               </div>
             </div>
             <div class="group"><span class="group-label">Links</span>
-              <button class="toggle" id="pdfLinkPreviewBtn" type="button" aria-pressed="true" title="Show a local preview when a PDF link is hovered or focused">Previews on</button>
+              <button class="toggle" id="pdfLinkPreviewBtn" type="button" aria-pressed="true" title="Include passage text in the reference card. Hold a PDF link to open its card.">Previews on</button>
             </div>
             <div class="group"><span class="group-label">New ink</span>
               <div class="guide-scope" role="group" aria-label="Style for new handwriting">
@@ -521,9 +521,11 @@
       <button id="linkReturn" class="link-return hidden" type="button">↩ Back to where you were</button>
       <button id="readingThreadResume" class="reading-thread-resume hidden" type="button" title="Resume your latest reading thread"><span id="readingThreadResumeText">Resume thread</span></button>
       <button id="excerptReturnChip" class="excerpt-return-chip hidden" type="button">← Return to reading</button>
-      <aside class="pdf-reference-preview hidden" id="pdfReferencePreview" role="tooltip" aria-live="polite">
+      <aside class="pdf-reference-preview hidden" id="pdfReferencePreview" role="dialog" aria-labelledby="pdfReferencePreviewLabel" aria-describedby="pdfReferencePreviewText" aria-modal="false">
+        <button class="pdf-reference-close" id="pdfReferenceClose" type="button" aria-label="Close reference">×</button>
         <span class="pdf-reference-preview-label" id="pdfReferencePreviewLabel">Linked passage</span>
-        <p id="pdfReferencePreviewText">Finding the linked passage…</p>
+        <p id="pdfReferencePreviewText" aria-live="polite">Finding the linked passage…</p>
+        <a class="pdf-reference-open" id="pdfReferenceOpen" href="#">Go to reference</a>
       </aside>
       <aside class="selection-card hidden" id="selectionCard" aria-label="Actions for selected text">
         <div class="lookup-head">
@@ -935,19 +937,19 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=157',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=158',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=157" defer></script>
-<script src="/reading-keeps.js?v=157" defer></script>
-<script src="/reading-excerpts.js?v=157" defer></script>
-<script src="/reading-excerpts-view.js?v=157" defer></script>
-<script src="/reading-workspace.js?v=157" defer></script>
-<script src="/reading-workspace-viewport.js?v=157" defer></script>
-<script src="/reading-workspace-view.js?v=157" defer></script>
-<script src="/reading-folds.js?v=157" defer></script>
-<script src="/reading-pdf-projection.js?v=157" defer></script>
-<script src="/reading-fold-view.js?v=157" defer></script>
-<script src="/reading.js?v=157" defer></script>
+<script src="/reading-ink.js?v=158" defer></script>
+<script src="/reading-keeps.js?v=158" defer></script>
+<script src="/reading-excerpts.js?v=158" defer></script>
+<script src="/reading-excerpts-view.js?v=158" defer></script>
+<script src="/reading-workspace.js?v=158" defer></script>
+<script src="/reading-workspace-viewport.js?v=158" defer></script>
+<script src="/reading-workspace-view.js?v=158" defer></script>
+<script src="/reading-folds.js?v=158" defer></script>
+<script src="/reading-pdf-projection.js?v=158" defer></script>
+<script src="/reading-fold-view.js?v=158" defer></script>
+<script src="/reading.js?v=158" defer></script>
 </body>
 </html>

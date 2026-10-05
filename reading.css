@@ -957,11 +957,11 @@
       .guide-tool.guide-discovery .guide-discovery-note { opacity: 1; transform: none; }
     }
     /* PDF.js text stays selectable everywhere except the authored link rectangles.
-       The link layer must sit above that transparent text or spans intercept both the
-       click and hover before the annotation can see them. */
+       The link layer must sit above that transparent text so annotations can receive
+       deliberate holds. Ordinary taps and hover remain quiet. */
     .pdf-links { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
-    .pdf-link { position: absolute; pointer-events: auto; border-radius: 3px; touch-action: manipulation; }
-    .pdf-link:hover { background: rgba(64, 137, 174, .16); box-shadow: 0 0 0 1px rgba(64, 137, 174, .4); }
+    .pdf-link { position: absolute; pointer-events: auto; border-radius: 3px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    .pdf-link.reference-holding { background: rgba(64, 137, 174, .1); }
     .pdf-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; background: rgba(64, 137, 174, .16); }
     .pdf-destination-flash { position: absolute; z-index: 5; min-width: 34px; min-height: 14px; border: 1px solid rgba(64,137,174,.78); border-radius: 4px; background: rgba(91,169,255,.23); box-shadow: 0 0 0 4px rgba(91,169,255,.1); pointer-events: none; animation: pdf-destination-flash 2.4s ease-out both; }
     .pdf-destination-flash.pdf-reference-flash { border-radius: 6px; background: rgba(91,169,255,.14); box-shadow: 0 0 0 3px rgba(91,169,255,.09), inset 3px 0 rgba(64,137,174,.5); }
@@ -1305,7 +1305,10 @@
     .mini-note .hl-note { display: block; margin-top: 3px; color: var(--ink); font-style: normal; }
     .reader-toast { position: fixed; z-index: 40; left: 22px; bottom: 22px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--ink); color: var(--surface); box-shadow: var(--shadow); font-size: .72rem; font-weight: 650; pointer-events: none; }
     .link-return { position: fixed; z-index: 41; left: 50%; bottom: calc(66px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 10px 15px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-size: .72rem; font-weight: 700; }
-    .pdf-reference-preview { position: fixed; z-index: 43; width: min(360px, calc(100vw - 24px)); padding: 12px 14px 13px; border: 1px solid color-mix(in srgb, var(--blue) 38%, var(--line)); border-radius: 13px; background: color-mix(in srgb, var(--surface) 97%, transparent); color: var(--ink); box-shadow: 0 16px 45px rgba(20,24,25,.22); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); pointer-events: none; }
+    .pdf-reference-preview { position: fixed; z-index: 51; box-sizing: border-box; width: min(360px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 12px 14px 13px; border: 1px solid color-mix(in srgb, var(--blue) 38%, var(--line)); border-radius: 13px; background: color-mix(in srgb, var(--surface) 97%, transparent); color: var(--ink); box-shadow: 0 16px 45px rgba(20,24,25,.22); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); pointer-events: auto; }
+    .pdf-reference-close { float: right; width: 44px; min-height: 44px; margin: -7px -9px 0 5px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 20px; }
+    .pdf-reference-open { display: inline-flex; align-items: center; min-height: 44px; margin-top: 6px; color: var(--blue); font: 650 .75rem var(--sans); text-decoration: none; }
+    .pdf-reference-preview :is(button,a):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
     .pdf-reference-preview-label { display: block; margin-bottom: 5px; color: var(--blue); font-size: .57rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
     .pdf-reference-preview p { margin: 0; color: var(--ink); font: .8rem/1.46 var(--serif); }
     .pdf-reference-preview.external p { overflow-wrap: anywhere; font-family: var(--sans); }

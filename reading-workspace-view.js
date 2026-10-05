@@ -837,7 +837,27 @@
       }
       render();
     }
+    // The tape across a note's top edge is its grip for every tool: the Pencil there
+    // moves the note instead of writing. The hit area is wider than the drawn tape.
+    function tapeCardAt(clientX, clientY) {
+      for (const state of [...cards.values()].reverse()) {
+        if (state.orphan || !state.card.isConnected) continue;
+        const r = state.card.getBoundingClientRect(), mid = r.left + r.width / 2;
+        if (Math.abs(clientX - mid) <= 32 && clientY >= r.top - 16 && clientY <= r.top + 18) return state;
+      }
+      return null;
+    }
+    function startTapeDrag(event) {
+      if (gesture || event.button !== 0 || !available(context()) || context().busy) return false;
+      const state = tapeCardAt(event.clientX, event.clientY);
+      if (!state || !liveItem(state)) return false;
+      event.preventDefault(); event.stopImmediatePropagation();
+      gesture = { kind: 'drag', pointerId: event.pointerId, state, start: pointFromClient(event.clientX, event.clientY), startBox: { ...state.box } };
+      try { state.handle.setPointerCapture(event.pointerId); } catch (error) { /* A synthetic pointer may not be capturable. */ }
+      return true;
+    }
     board.addEventListener('pointerdown', event => {
+      if (startTapeDrag(event)) return;
       if (tool === 'select') {
         if (event.button !== 0) return;
         if (gesture) { if (gesture.pointerId !== event.pointerId) cancel(); event.preventDefault(); event.stopImmediatePropagation(); return; }

@@ -8155,8 +8155,143 @@
      conflict-aware library merge used by backup restore and browser sync. Originals
      are separate CKAssets and cross the native bridge in bounded chunks. */
   var ICLOUD_CHUNK_BYTES=512*1024,ICLOUD_DOCUMENT_LIMIT=200*1024*1024;
-  function iCloudOn(){return !!(window.PHLOEM_NATIVE&&iCloudCfg&&iCloudCfg.on&&nativeCloudPlugin());}
+  /* iCloud on the website. Apple's CloudKit JS talks to the same private database and
+     the same record names as the iPad's native bridge, so a browser and the app share
+     one library. The adapter exposes the native plugin's shape (status, fetchLibrary,
+     saveLibrary, ...) so iCloudSync() runs unchanged; originals skip the base64 chunk
+     path and move as whole Blobs through uploadDocument/downloadDocument. The API token
+     comes from CloudKit Console and is meant to be public; leaving it empty hides iCloud
+     on the website. */
+  var WEB_CLOUDKIT=Object.assign({container:'iCloud.com.houfu72.phloem',apiToken:'',environment:'production',script:'https://cdn.apple-cloudkit.com/ck/2/cloudkit.js'},window.PHLOEM_CLOUDKIT_CONFIG||{});
+  var webCloudAdapter=null,webCloudReady=null;
+  function webCloudConfigured(){return !window.PHLOEM_NATIVE&&!!WEB_CLOUDKIT.apiToken;}
+  function webCloudLoad(){
+    if(webCloudReady)return webCloudReady;
+    webCloudReady=new Promise(function(resolve,reject){
+      if(window.CloudKit)return resolve(window.CloudKit);
+      var script=document.createElement('script');script.src=WEB_CLOUDKIT.script;script.async=true;
+      script.onload=function(){window.CloudKit?resolve(window.CloudKit):reject(new Error('Apple’s iCloud script loaded without CloudKit.'));};
+      script.onerror=function(){reject(new Error('Phloem could not reach Apple’s iCloud service. Check your connection and try again.'));};
+      document.head.appendChild(script);
+    }).then(function(CloudKit){
+      CloudKit.configure({containers:[{containerIdentifier:WEB_CLOUDKIT.container,environment:WEB_CLOUDKIT.environment,
+        apiTokenAuth:{apiToken:WEB_CLOUDKIT.apiToken,persist:true,signInButton:{id:'icloudAppleSignIn',theme:'black'},signOutButton:{id:'icloudAppleSignOut',theme:'black'}}}]});
+      return CloudKit.getDefaultContainer();
+    });
+    webCloudReady.catch(function(){webCloudReady=null;});
+    return webCloudReady;
+  }
+  function webCloudError(error,fallback,code){
+    var ck=error&&(error.ckErrorCode||error.serverErrorCode)||'',message=fallback;
+    if(ck==='AUTHENTICATION_REQUIRED'||ck==='AUTHENTICATION_FAILED')message+=' Sign in with your Apple ID again.';
+    else if(ck==='QUOTA_EXCEEDED')message+=' Your iCloud storage is full.';
+    else if(ck==='THROTTLED'||ck==='TRY_AGAIN_LATER'||ck==='SERVICE_UNAVAILABLE')message+=' iCloud is busy right now. Try again in a few minutes.';
+    else if(ck==='NOT_FOUND'&&/type|schema/i.test(error&&error.reason||''))message+=' Phloem’s iCloud storage is not set up on Apple’s servers yet.';
+    var detail=error&&(error.reason||error.message)||'';if(ck||detail)message+=' (CloudKit'+(ck?' '+ck:'')+(detail?': '+detail:'')+')';
+    var out=new Error(message);out.code=ck==='CONFLICT'&&code?code:'ICLOUD_WEB_FAILED';out.ckErrorCode=ck;return out;
+  }
+  function webCloudFirstError(response){
+    if(!response)return null;if(response.hasErrors&&response.errors&&response.errors.length)return response.errors[0];
+    var bad=(response.records||[]).find(function(r){return r&&r.serverErrorCode;});return bad||null;
+  }
+  async function webCloudDatabase(){var container=await webCloudLoad();return container.privateCloudDatabase;}
+  async function webCloudFetch(names,desiredKeys){
+    var database=await webCloudDatabase(),response;
+    try{response=await database.fetchRecords(names,desiredKeys?{desiredKeys:desiredKeys}:undefined);}catch(error){if(error&&error.ckErrorCode==='NOT_FOUND')return[];throw error;}
+    var found=(response.records||[]).filter(function(r){return r&&!r.serverErrorCode&&r.fields;});
+    var errors=(response.errors||[]).concat((response.records||[]).filter(function(r){return r&&r.serverErrorCode;})).filter(function(e){return(e.ckErrorCode||e.serverErrorCode)!=='NOT_FOUND';});
+    if(errors.length)throw errors[0];return found;
+  }
+  async function webCloudSave(record){
+    var database=await webCloudDatabase(),response=await database.saveRecords([record]),error=webCloudFirstError(response);if(error)throw error;
+    return(response.records||[])[0]||null;
+  }
+  async function webCloudDocumentName(id){
+    var digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(id)));
+    return'document-'+Array.from(new Uint8Array(digest)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+  }
+  function webCloudField(record,key){var f=record&&record.fields&&record.fields[key];return f?f.value:undefined;}
+  async function webCloudAssetBytes(asset){
+    if(!asset||!asset.downloadURL)throw new Error('The iCloud record has no readable file.');
+    var response=await fetch(asset.downloadURL,{credentials:'omit'});if(!response.ok)throw new Error('iCloud returned '+response.status+' for the file.');
+    return response.arrayBuffer();
+  }
+  async function webCloudAllDocumentNames(){
+    var database=await webCloudDatabase(),names=[],response=await database.performQuery({recordType:'PhloemDocument'},{desiredKeys:['documentID']});
+    for(;;){var error=webCloudFirstError(response);if(error)throw error;(response.records||[]).forEach(function(r){if(r&&r.recordName)names.push(r.recordName);});if(!response.moreComesBack)break;response=await database.performQuery(response);}
+    return names;
+  }
+  async function webCloudDelete(names){
+    if(!names.length)return 0;var database=await webCloudDatabase(),response=await database.deleteRecords(names),deleted=0;
+    (response.records||[]).forEach(function(r){if(r&&!r.serverErrorCode)deleted++;});
+    var errors=(response.errors||[]).filter(function(e){return(e.ckErrorCode||e.serverErrorCode)!=='NOT_FOUND';});if(errors.length)throw errors[0];return deleted;
+  }
+  function webCloudPlugin(){
+    if(!webCloudConfigured())return null;if(webCloudAdapter)return webCloudAdapter;
+    webCloudAdapter={
+      web:true,
+      /* Shows Apple's sign-in button in Settings and waits for the popup to finish. */
+      signIn:async function(){
+        var container=await webCloudLoad(),identity=await container.setUpAuth();if(identity)return identity;
+        var box=byId('icloudAppleSignInBox');if(box)box.classList.remove('hidden');
+        try{return await container.whenUserSignsIn();}finally{if(box)box.classList.add('hidden');}
+      },
+      signOut:async function(){try{var container=await webCloudLoad();if(container.signOut)await container.signOut();}catch(e){}},
+      status:async function(){
+        try{var container=await webCloudLoad(),identity=await container.setUpAuth();return{available:!!identity,accountStatus:identity?'available':'signInRequired'};}
+        catch(error){throw webCloudError(error,'Phloem could not check your Apple ID sign-in.');}
+      },
+      fetchLibrary:async function(){
+        try{
+          var record=(await webCloudFetch(['library-v1']))[0];if(!record)return{found:false};
+          var bytes=await webCloudAssetBytes(webCloudField(record,'payload'));
+          return{found:true,payload:new TextDecoder().decode(bytes),changeTag:record.recordChangeTag||'',modifiedAt:(record.modified&&record.modified.timestamp||0)/1000};
+        }catch(error){throw webCloudError(error,'Phloem could not download the iCloud library.');}
+      },
+      saveLibrary:async function(options){
+        var record={recordType:'PhloemLibrary',recordName:'library-v1',fields:{payload:{value:new Blob([options.payload],{type:'application/json'})},formatVersion:{value:1,type:'INT64'},updatedAt:{value:Date.now(),type:'TIMESTAMP'}}};
+        if(options.changeTag)record.recordChangeTag=options.changeTag;
+        try{var saved=await webCloudSave(record);return{changeTag:saved&&saved.recordChangeTag||''};}
+        catch(error){throw webCloudError(error,(error&&error.ckErrorCode)==='CONFLICT'?'The iCloud library changed on another device. Phloem will merge it and try again.':'iCloud could not save this update.','ICLOUD_CONFLICT');}
+      },
+      fetchDocuments:async function(options){
+        var ids=(options&&options.ids||[]).filter(Boolean);if(!ids.length)return{documents:[]};
+        try{
+          var names=await Promise.all(ids.map(webCloudDocumentName)),records=await webCloudFetch(names,['documentID','filename','mimeType','byteCount','contentHash','updatedAt']);
+          return{documents:records.map(function(r){return{id:webCloudField(r,'documentID')||'',filename:webCloudField(r,'filename')||'',mimeType:webCloudField(r,'mimeType')||'application/octet-stream',byteCount:+webCloudField(r,'byteCount')||0,contentHash:webCloudField(r,'contentHash')||''};})};
+        }catch(error){throw webCloudError(error,'Phloem could not check the iCloud document list.');}
+      },
+      uploadDocument:async function(options){
+        try{
+          var name=await webCloudDocumentName(options.id),existing=(await webCloudFetch([name],['byteCount','contentHash']))[0];
+          if(existing&&+webCloudField(existing,'byteCount')===options.bytes.byteLength&&options.contentHash&&webCloudField(existing,'contentHash')===options.contentHash)return{uploaded:false,skipped:true};
+          var record={recordType:'PhloemDocument',recordName:name,fields:{documentID:{value:String(options.id)},filename:{value:options.filename},mimeType:{value:options.mimeType},byteCount:{value:options.bytes.byteLength,type:'INT64'},contentHash:{value:options.contentHash||''},updatedAt:{value:Date.now(),type:'TIMESTAMP'},file:{value:new Blob([options.bytes],{type:options.mimeType})}}};
+          if(existing&&existing.recordChangeTag)record.recordChangeTag=existing.recordChangeTag;
+          await webCloudSave(record);return{uploaded:true,skipped:false};
+        }catch(error){throw webCloudError(error,'iCloud could not save this original.','ICLOUD_DOCUMENT_CONFLICT');}
+      },
+      downloadDocument:async function(options){
+        var name=await webCloudDocumentName(options.id),record=(await webCloudFetch([name]))[0];if(!record)return{found:false};
+        var bytes=await webCloudAssetBytes(webCloudField(record,'file'));
+        return{found:true,bytes:bytes,contentHash:webCloudField(record,'contentHash')||''};
+      },
+      deleteDocuments:async function(options){
+        var ids=(options&&options.ids||[]).filter(Boolean);if(!ids.length)return{deleted:0};
+        try{return{deleted:await webCloudDelete(await Promise.all(ids.map(webCloudDocumentName)))};}
+        catch(error){throw webCloudError(error,'Phloem could not finish removing deleted iCloud originals.');}
+      },
+      deleteCloudData:async function(){
+        try{return{deleted:await webCloudDelete(['library-v1'].concat(await webCloudAllDocumentNames()))};}
+        catch(error){throw webCloudError(error,'Phloem could not finish deleting the private iCloud copy.');}
+      }
+    };
+    return webCloudAdapter;
+  }
+  function iCloudPlugin(){return nativeCloudPlugin()||webCloudPlugin();}
+  function iCloudDeviceName(){return window.PHLOEM_NATIVE?'this iPad':'this browser';}
+  function iCloudOn(){return !!(iCloudCfg&&iCloudCfg.on&&iCloudPlugin());}
   function iCloudAccountMessage(status){
+    if(status==='signInRequired')return'Sign in with your Apple ID in Settings › Sync with iCloud, then sync again.';
     if(status==='noAccount')return'Sign in to iCloud in iPad Settings, then try again.';
     if(status==='restricted')return'iCloud is restricted on this iPad.';
     if(status==='temporarilyUnavailable')return'iCloud is temporarily unavailable. Your local library is safe; try again later.';
@@ -8188,9 +8323,14 @@
   }
   function iCloudSetDocumentState(id,next){iCloudDocumentStates[id]=next||{};iCloudRefreshPaper(id);}
   async function iCloudUploadSource(ch,stored){
-    var plugin=nativeCloudPlugin(),spec=binarySourceSpec(ch),bytes=stored instanceof ArrayBuffer?stored:await pdfBytes(stored),uploadID='';if(!plugin||!spec)return false;
+    var plugin=iCloudPlugin(),spec=binarySourceSpec(ch),bytes=stored instanceof ArrayBuffer?stored:await pdfBytes(stored),uploadID='';if(!plugin||!spec)return false;
     if(bytes.byteLength>ICLOUD_DOCUMENT_LIMIT){iCloudSetDocumentState(ch.id,{state:'too-large',byteCount:bytes.byteLength});return false;}
     var contentHash=ch.contentHash||'';if(!contentHash)try{contentHash=await pdfFingerprint(bytes);}catch(e){}
+    if(plugin.uploadDocument){
+      iCloudSetDocumentState(ch.id,{state:'uploading',byteCount:bytes.byteLength,progress:0});
+      try{await plugin.uploadDocument({id:ch.id,filename:originalSourceFilename(ch),mimeType:spec.mime,bytes:bytes,contentHash:contentHash});iCloudSetDocumentState(ch.id,{state:'synced',byteCount:bytes.byteLength,contentHash:contentHash,progress:100});return true;}
+      catch(error){iCloudSetDocumentState(ch.id,{state:'paused',byteCount:bytes.byteLength});throw error;}
+    }
     try{
       var begun=await plugin.beginUpload({id:ch.id,filename:originalSourceFilename(ch),mimeType:spec.mime,byteCount:bytes.byteLength,contentHash:contentHash});uploadID=begun.uploadID;
       for(var offset=0;offset<bytes.byteLength;offset+=ICLOUD_CHUNK_BYTES){
@@ -8203,8 +8343,14 @@
   async function iCloudDownloadSource(id){
     if(!iCloudOn())return null;if(iCloudDownloads[id])return iCloudDownloads[id];
     iCloudDownloads[id]=(async function(){
-      var plugin=nativeCloudPlugin(),downloadID='',begun=null;
+      var plugin=iCloudPlugin(),downloadID='',begun=null;
       try{
+        if(plugin.downloadDocument){
+          iCloudSetDocumentState(id,{state:'fetching',progress:0});begun=await plugin.downloadDocument({id:id});if(!begun||!begun.found){iCloudSetDocumentState(id,{state:'missing'});return null;}
+          var whole=begun.bytes;if(!whole||!whole.byteLength||whole.byteLength>ICLOUD_DOCUMENT_LIMIT)throw new Error('This iCloud original is empty or over the 200 MB sync limit.');
+          if(!(await putPdf(id,whole)))throw new Error('The original downloaded, but this device could not keep a durable local copy.');
+          var held=find(id);if(held&&begun.contentHash&&!held.contentHash){held.contentHash=begun.contentHash;persist(false);}iCloudSetDocumentState(id,{state:'synced',byteCount:whole.byteLength,contentHash:begun.contentHash||'',progress:100});return whole;
+        }
         begun=await plugin.beginDownload({id:id});if(!begun||!begun.found){iCloudSetDocumentState(id,{state:'missing'});return null;}
         downloadID=begun.downloadID;var total=+begun.byteCount||0;if(!total||total>ICLOUD_DOCUMENT_LIMIT)throw new Error('This iCloud original is empty or over the 200 MB sync limit.');
         var bytes=new Uint8Array(total),offset=0;
@@ -8218,7 +8364,7 @@
   }
   async function iCloudSync(interactive){
     if(!iCloudOn()||iCloudSyncing)return;iCloudSyncing=true;iCloudSetStatus('Checking your private iCloud library…','☁ iCloud · syncing');
-    var plugin=nativeCloudPlugin(),sent=0,remoteOnly=0,paused=0;
+    var plugin=iCloudPlugin(),sent=0,remoteOnly=0,paused=0;
     try{
       var account=await plugin.status();if(!account.available)throw new Error(iCloudAccountMessage(account.accountStatus));
       for(var attempt=0;attempt<3;attempt++){
@@ -8363,7 +8509,7 @@
   }
   function gdriveFormatBytes(value){var n=+value||0;if(!n)return 'size unknown';if(n<1048576)return Math.max(1,Math.round(n/1024))+' KB';return(n/1048576).toFixed(n<10485760?1:0)+' MB';}
   function gdrivePaperStatus(ch){
-    if(window.PHLOEM_NATIVE)return iCloudPaperStatus(ch);
+    if(window.PHLOEM_NATIVE||iCloudOn())return iCloudPaperStatus(ch);
     var stateInfo=gdrivePdfStates[ch.id],size=gdriveFormatBytes((stateInfo&&stateInfo.size)||ch.fileSize),label='',tone='local',progress=Math.max(0,Math.min(100,stateInfo?(+stateInfo.progress||0):0));
     if(!gdriveOn())label='Backup not connected · '+size;
     else if(!stateInfo){label='Backup · checking Drive';tone='checking';}
@@ -8590,7 +8736,7 @@
     byId('gdriveConnectBtn').classList.toggle('button',!gdriveOn());byId('gdriveConnectBtn').classList.toggle('soft-button',gdriveOn());
     byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
     byId('gdriveStatus').textContent=gdriveOn()?'Connected'+(gdriveEmail?' as '+gdriveEmail:'')+' — your library syncs automatically. PDFs and Word drafts follow you between devices.':'Not connected.';
-    var cloudEnable=byId('icloudEnableBtn'),cloudSync=byId('icloudSyncBtn'),cloudOff=byId('icloudOffBtn'),cloudDelete=byId('icloudDeleteBtn');if(cloudEnable){cloudEnable.classList.toggle('hidden',iCloudOn());cloudSync.classList.toggle('hidden',!iCloudOn());cloudOff.classList.toggle('hidden',!iCloudOn());cloudDelete.classList.toggle('hidden',!iCloudOn());if(!iCloudOn())byId('icloudStatus').textContent='Off — everything stays on this iPad.';}
+    var cloudEnable=byId('icloudEnableBtn'),cloudSync=byId('icloudSyncBtn'),cloudOff=byId('icloudOffBtn'),cloudDelete=byId('icloudDeleteBtn');if(cloudEnable){cloudEnable.classList.toggle('hidden',iCloudOn());cloudSync.classList.toggle('hidden',!iCloudOn());cloudOff.classList.toggle('hidden',!iCloudOn());cloudDelete.classList.toggle('hidden',!iCloudOn());if(!iCloudOn())byId('icloudStatus').textContent='Off — everything stays on '+iCloudDeviceName()+'.';}
     syncUi();refreshInstallUi();
   }
   function syncUi(msg){var on=!!(syncCfg&&syncCfg.repo&&syncCfg.token&&syncCfg.pass);byId('syncSignal').textContent=msg||(iCloudOn()?'☁ iCloud':on?'☁ '+syncCfg.repo:gdriveOn()?'☁ Google Drive':'this device');byId('syncStatus').textContent=on?'Connected to '+syncCfg.repo+'. Notes are encrypted before upload.':'Off — everything stays on this device.';}
@@ -8754,21 +8900,22 @@
   };
 
   if(byId('icloudEnableBtn'))byId('icloudEnableBtn').onclick=async function(){
-    var plugin=nativeCloudPlugin(),button=this;if(!plugin){byId('icloudStatus').textContent='The native iCloud bridge is unavailable. Close and reopen the app, then try again.';return;}
-    button.disabled=true;byId('icloudStatus').textContent='Checking this iPad’s iCloud account…';
-    try{var account=await plugin.status();if(!account.available)throw new Error(iCloudAccountMessage(account.accountStatus));iCloudCfg={on:true,enabledAt:now()};localStorage.setItem(ICLOUD_KEY,JSON.stringify(iCloudCfg));fillSettings();await iCloudSync(true);}catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not turn on iCloud sync.';}finally{button.disabled=false;}
+    var plugin=iCloudPlugin(),button=this;if(!plugin){byId('icloudStatus').textContent='The native iCloud bridge is unavailable. Close and reopen the app, then try again.';return;}
+    button.disabled=true;byId('icloudStatus').textContent=plugin.web?'Sign in with your Apple ID to continue…':'Checking this iPad’s iCloud account…';
+    try{if(plugin.signIn)await plugin.signIn();var account=await plugin.status();if(!account.available)throw new Error(iCloudAccountMessage(account.accountStatus));iCloudCfg={on:true,enabledAt:now()};localStorage.setItem(ICLOUD_KEY,JSON.stringify(iCloudCfg));fillSettings();await iCloudSync(true);}catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not turn on iCloud sync.';}finally{button.disabled=false;}
   };
   if(byId('icloudSyncBtn'))byId('icloudSyncBtn').onclick=function(){iCloudSync(true);};
   if(byId('icloudOffBtn'))byId('icloudOffBtn').onclick=function(){
-    if(!confirm('Turn off iCloud sync on this iPad? Local papers and notes stay here, and the private iCloud copy is not deleted.'))return;
+    if(!confirm('Turn off iCloud sync on '+iCloudDeviceName()+'? Local papers and notes stay here, and the private iCloud copy is not deleted.'))return;
     localStorage.removeItem(ICLOUD_KEY);iCloudCfg=null;iCloudDocumentStates=Object.create(null);fillSettings();syncUi();renderShelf();
   };
   if(byId('icloudDeleteBtn'))byId('icloudDeleteBtn').onclick=async function(){
-    if(!confirm('Delete Phloem’s entire private iCloud copy?\n\nPapers and notes already on this iPad stay here, but another device may lose its only cloud copy. This cannot be undone.'))return;
+    if(!confirm('Delete Phloem’s entire private iCloud copy?\n\nPapers and notes already on '+iCloudDeviceName()+' stay here, but another device may lose its only cloud copy. This cannot be undone.'))return;
     var button=this;button.disabled=true;byId('icloudStatus').textContent='Deleting the private iCloud copy…';
-    try{await nativeCloudPlugin().deleteCloudData();localStorage.removeItem(ICLOUD_KEY);iCloudCfg=null;iCloudDocumentStates=Object.create(null);fillSettings();syncUi();renderShelf();byId('icloudStatus').textContent='The private iCloud copy was deleted. Your local library stays on this iPad.';}catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not delete the private iCloud copy.';}finally{button.disabled=false;}
+    try{await iCloudPlugin().deleteCloudData();localStorage.removeItem(ICLOUD_KEY);iCloudCfg=null;iCloudDocumentStates=Object.create(null);fillSettings();syncUi();renderShelf();byId('icloudStatus').textContent='The private iCloud copy was deleted. Your local library stays on '+iCloudDeviceName()+'.';}catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not delete the private iCloud copy.';}finally{button.disabled=false;}
   };
   if(window.PHLOEM_NATIVE)window.PHLOEM_ICLOUD={enabled:iCloudOn,sync:iCloudSync};
+  if(webCloudConfigured()&&byId('icloudSettings'))byId('icloudSettings').classList.remove('native-only');
 
   var lastSyncToast='';
   var githubPath='papers';

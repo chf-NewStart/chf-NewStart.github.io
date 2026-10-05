@@ -378,3 +378,17 @@ finger drag scrolls and draws no lasso, Pencil lassos, finger tap releases) fail
 before and passes after. `reading-workspace-lasso-browser` now draws its lassos with
 the Pencil and checks that a finger loop selects nothing; a finger still drags the
 selection. Not verified on a physical iPad.
+
+## 23. Writing that lies mostly on a note moves with it (v173)
+
+houfu: "whats been written on the note should move with the note". Writing that
+started inside a note already moved and scaled with it (checked with a finger drag,
+a Pencil top-strip drag and a pinch). houfu's screenshot shows the gap: a line
+written across the note's edge ("uptake / contribution to") whose first strokes
+began just outside it. A stroke was anchored only if the Pencil touched down inside a
+note. `finishStroke` now falls back to `noteUnderStroke`, which anchors the stroke to
+the topmost note holding at least 60% of its points. Strokes saved before this
+change keep their old ownership; lasso them with the note to move them together.
+New `tests/reading-workspace-note-ink-follows.test.js` (one stroke inside the note,
+one starting 12 px below it; a finger drags the note; both strokes follow) fails
+before (the edge stroke had no anchor) and passes after.

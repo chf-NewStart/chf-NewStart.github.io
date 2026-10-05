@@ -193,3 +193,75 @@ touching anything else.
   `PHLOEM_BROWSER=webkit` for the three new browser tests.
 - Physical iPad, Apple Pencil, palm rejection and VoiceOver: not tested. Synthetic
   and CDP touches are browser evidence only.
+
+# Round 2 (shell v164)
+
+Built on main after PR #31. Each entry is one or more commits on
+`claude/phloem-ipad-ergonomics-4rko4x`; "WIP" commits only hold test repairs.
+
+## 8. Lasso: resize from the corners, easier finger move
+
+**What changed.** A lassoed selection has four corner handles. Dragging one (finger
+or Pencil) scales the whole group about the opposite corner; notes stay within their
+280-900 saved width, line weight scales with ink (0.5-12), and nothing crosses the
+paper's top or left edge. `+`/`-` on the focused selection resize by 10% from the
+keyboard. A finger anywhere in a handle's 44 px target grabs it; a Pencil or mouse
+must land on the 14 px dot, so a new lasso can still start just outside a corner.
+A finger drag that starts up to ~20 px outside the dashed box still moves it.
+Resizes use the existing grouped-move Undo/Redo (snapshot in, snapshot out through
+`adapter.restoreGroup`), so no saved-format or adapter change.
+
+**Files.** `reading-workspace-view.js` (`scaleLimits`, `scaledSnapshot`,
+`previewScale`, `commitScale`, handle hit test in `startSelection`),
+`reading-workspace.css` (`.workspace-selection-handle`).
+
+## 9. Plain sticky notes; the top strip is the grip
+
+**What changed.** houfu asked for plain notes: the tape is gone. The note's 44 px top
+row is faintly tinted and carries a short grabber bar (the standard iPadOS sheet
+cue). With the pen or eraser active, the Pencil on that strip drags the note instead
+of writing; the ⋯ menu still opens; writing below the strip still writes. Lasso mode
+keeps its own gestures. The library wall's cards are unchanged.
+
+**Files.** `reading-workspace-view.js` (`gripCardAt`, `startGripDrag`),
+`reading-workspace.css` (`.workspace-card::before/::after`).
+
+**Verify (8 and 9).** `node tests/reading-workspace-lasso-resize.test.js` (full app,
+1180x820, native CDP touch): fails on main before this round, passes here. On iPad:
+lasso some ink, drag a corner dot out and in, drag inside with a finger, Undo twice;
+add a note and drag its top strip with the Pencil while the pen is selected.
+
+## 10. Library header no longer widens the page on portrait iPad
+
+At 721-1100 px the library's sort, Offline, Wall/List and Clean/Handwritten
+controls plus search did not fit one line and the header never wrapped, so the page
+grew to ~960 px and mobile Safari zoomed out. The header now wraps; below 1100 px
+search takes its own row. `reading.css`; new `tests/reading-library-ipad-width.test.js`
+(fails before, passes after).
+
+## 11. PDF stays on the returned page when the iPad rotates right after
+
+After Clips' Return to reading, the stable PDF position was only refreshed after two
+settling frames; a rotation in that window rebuilt from the clip's page. The placed
+target is now remembered immediately (the target itself, not a mid-resize sample),
+and paged layouts ignore a remembered point that is not on the current spread.
+`reading.js` (`placePdfReadingPosition`, `stablePdfPositionForRebuild`).
+`tests/reading-excerpts-browser.test.js` failed 3 of 6 runs before, 0 of 10 after;
+`reading-pdf-continuity` passes 6 of 6 under CPU load.
+
+## 12. Older reader tests repaired for the Zen-only reader
+
+About 30 files clicked classic-reader controls that `73f8b633` hid and `1a215db5`
+removed. They now reach each feature the way a user does (Zen dock, More menu,
+This paper, library masthead). Assertions changed only where a commit deliberately
+changed behaviour, each citing it in the test. Test files only.
+
+## Full suite, round 2 (Chromium, 77 files)
+
+| | Live main before round 2 | This round |
+| --- | --- | --- |
+| Failing files | 30 | 1 |
+
+Only `reading-keeps-browser` still fails ("explicit jump returns to saved PDF
+page"), and it fails the same way with live main's `reading.js`, so it is not caused
+by this round. Not verified: WebKit, a physical iPad and Pencil.

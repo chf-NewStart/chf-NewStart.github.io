@@ -1171,10 +1171,10 @@
     .zoom-tools button:hover { background: var(--surface-2); }
     #zoomLabel { min-width: 50px; }
     .marker-tools { --marker-current-color: #ffd83d; position: relative; z-index: 13; display: inline-flex; align-items: stretch; flex: 0 0 auto; overflow: visible; border: 1px solid transparent; border-radius: 10px; transition: border-color .16s, background .16s, box-shadow .16s; }
-    :is(#markerTools,#highlightColorBtn,#touchHighlight,#zenMarkerTool,#zenMarker)[data-highlight-color="yellow"] { --marker-current-color: #ffd83d; }
-    :is(#markerTools,#highlightColorBtn,#touchHighlight,#zenMarkerTool,#zenMarker)[data-highlight-color="mint"] { --marker-current-color: #5cd591; }
-    :is(#markerTools,#highlightColorBtn,#touchHighlight,#zenMarkerTool,#zenMarker)[data-highlight-color="coral"] { --marker-current-color: #ff7e69; }
-    :is(#markerTools,#highlightColorBtn,#touchHighlight,#zenMarkerTool,#zenMarker)[data-highlight-color="blue"] { --marker-current-color: #5ba9ff; }
+    :is(#markerTools,#highlightColorBtn,#touchHighlight,#zenMarkerTool,#zenMarker,#zenWorkspaceMarker)[data-highlight-color="yellow"] { --marker-current-color: #ffd83d; }
+    :is(#markerTools,#highlightColorBtn,#touchHighlight,#zenMarkerTool,#zenMarker,#zenWorkspaceMarker)[data-highlight-color="mint"] { --marker-current-color: #5cd591; }
+    :is(#markerTools,#highlightColorBtn,#touchHighlight,#zenMarkerTool,#zenMarker,#zenWorkspaceMarker)[data-highlight-color="coral"] { --marker-current-color: #ff7e69; }
+    :is(#markerTools,#highlightColorBtn,#touchHighlight,#zenMarkerTool,#zenMarker,#zenWorkspaceMarker)[data-highlight-color="blue"] { --marker-current-color: #5ba9ff; }
     .marker-tools:hover, .marker-tools:focus-within { border-color: var(--line); background: color-mix(in srgb, var(--surface-2) 74%, transparent); }
     body.marker-on .marker-tools { border-color: color-mix(in srgb, var(--marker-current-color) 72%, #20272d); box-shadow: 0 0 0 3px color-mix(in srgb, var(--marker-current-color) 16%, transparent); }
     .reader-tools .marker-tools > .soft-button { min-height: 32px; border: 0; border-radius: 0; background: transparent; color: var(--muted); }
@@ -1194,7 +1194,7 @@
       body.marker-on :is(.text-layer,.text-layer *,.original,.original *) { cursor: crosshair; }
     }
     body.highlight-erasing .marker-tools { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-    body.highlight-erasing #highlightBtn, body.highlight-erasing #touchHighlight, body.highlight-erasing #zenMarker { background: var(--accent-soft); color: var(--ink); opacity: 1; }
+    body.highlight-erasing #highlightBtn, body.highlight-erasing #touchHighlight, body.highlight-erasing #zenMarker, body.highlight-erasing #zenWorkspaceMarker { background: var(--accent-soft); color: var(--ink); opacity: 1; }
     body.highlight-erasing :is(.marker-glyph,.touch-marker-glyph,.zen-marker-glyph) { display: inline-block; width: 16px; height: 10px; border: 1.5px solid currentColor; border-radius: 2px; background: linear-gradient(90deg, #ef8f85 0 56%, var(--surface) 56%); transform: rotate(-34deg); font-size: 0; }
     body.highlight-erasing :is(.marker-current-dot,.zen-marker-current-dot), body.highlight-erasing .touch-marker-glyph::after { visibility: hidden; }
     @media (hover: hover) and (pointer: fine) {

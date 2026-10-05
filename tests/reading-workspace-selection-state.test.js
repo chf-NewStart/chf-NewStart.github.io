@@ -10,7 +10,7 @@ const context = vm.createContext({ window: {}, Date: Clock });
 vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'reading-workspace.js'), 'utf8'), context);
 const workspace = context.window.PhloemWorkspaceState;
 const plain = value => JSON.parse(JSON.stringify(value));
-const board = (extra = {}) => ({ version: 2, height: 2000, positions: {}, strokes: [], deleted: {}, ...extra });
+const board = (extra = {}) => ({ version: 3, width: 1000, height: 2000, positions: {}, strokes: [], deleted: {}, ...extra });
 const ink = (id, points, extra = {}) => ({ id, color: 'black', width: 1, points,
   style: 'natural', createdAt: 50, updatedAt: 100, ...extra });
 const rect = (x, y, width, height) => [[x, y], [x + width, y],
@@ -168,13 +168,14 @@ test('group movement translates notes and standalone ink once and leaves anchore
   assert.deepEqual(shown.points, [[80, 150, .8]]);
 });
 
-test('one shared delta clamps all members at board boundaries without changing their separation', () => {
+test('one shared delta clamps all members at global boundaries without changing their separation', () => {
   const owner = card('a', 40, 100);
   const state = board({ positions: { a: at(owner) }, strokes: [ink('free', [[950, 50, .3], [970, 70, .5]])] });
   const moved = plain(workspace.moveGroup(state, selection(['a'], ['free']),
-    { x: 300, y: -300 }, [owner], 200));
-  assert.deepEqual(moved.positions.a, { x: 70, y: 50, width: 280, updatedAt: 200 });
-  assert.deepEqual(moved.strokes[0].points, [[980, 0, .3], [1000, 20, .5]]);
+    { x: 2_000_000, y: -300 }, [owner], 200));
+  assert.deepEqual(moved.positions.a, { x: workspace.MAX_WIDTH - 930, y: 50, width: 280, updatedAt: 200 });
+  assert.deepEqual(moved.strokes[0].points, [[workspace.MAX_WIDTH - 20, 0, .3], [workspace.MAX_WIDTH, 20, .5]]);
+  assert.equal(moved.width, workspace.MAX_WIDTH);
   const back = plain(workspace.moveGroup(state, selection(['a'], ['free']),
     { x: -500, y: 0 }, [owner], 200));
   assert.equal(back.positions.a.x, 0);
@@ -187,11 +188,11 @@ test('fractional card coordinates tolerate floating-point residue at the right p
     const owner = card('a', x, 100, 200, width);
     const state = board({ positions: { a: at(owner) }, strokes: [ink('attached', [[x + 5, 120, .5]],
       { anchor: { clipId: 'a', x, y: 100, width } })] });
-    const moved = plain(workspace.moveGroup(state, selection(['a']), { x: 2000, y: 0 }, [owner], 200));
-    assert.ok(Math.abs(moved.positions.a.x - (1000 - width)) < 1e-7);
+    const moved = plain(workspace.moveGroup(state, selection(['a']), { x: 2_000_000, y: 0 }, [owner], 200));
+    assert.ok(Math.abs(moved.positions.a.x - (workspace.MAX_WIDTH - width)) < 1e-7);
     assert.equal(moved.positions.a.width, width);
     const shown = workspace.displayStroke(moved.strokes[0], moved.positions);
-    assert.ok(Math.abs(shown.points[0][0] - (1000 - width + 5)) < 1e-7);
+    assert.ok(Math.abs(shown.points[0][0] - (workspace.MAX_WIDTH - width + 5)) < 1e-7);
   }
 });
 
@@ -199,10 +200,10 @@ test('attached ink protruding beyond its owner participates in shared movement b
   const owner = card('a', 100, 100);
   const state = board({ positions: { a: at(owner) }, strokes: [ink('attached', [[950, 80, .4]],
     { anchor: { clipId: 'a', x: 100, y: 100, width: 280 } })] });
-  const moved = plain(workspace.moveGroup(state, selection(['a']), { x: 500, y: -500 }, [owner], 200));
-  assert.equal(moved.positions.a.x, 150);
+  const moved = plain(workspace.moveGroup(state, selection(['a']), { x: 2_000_000, y: -500 }, [owner], 200));
+  assert.equal(moved.positions.a.x, workspace.MAX_WIDTH - 850);
   assert.equal(moved.positions.a.y, 20);
-  assert.deepEqual(plain(workspace.displayStroke(moved.strokes[0], moved.positions)).points, [[1000, 0, .4]]);
+  assert.deepEqual(plain(workspace.displayStroke(moved.strokes[0], moved.positions)).points, [[workspace.MAX_WIDTH, 0, .4]]);
 });
 
 test('movement grows paper in 1000-unit steps and clamps the entire group at MAX_HEIGHT', () => {
@@ -222,7 +223,7 @@ test('movement grows paper in 1000-unit steps and clamps the entire group at MAX
 });
 
 test('empty or fully clamped moves return an independent normalized state without advancing clocks', () => {
-  const state = board({ strokes: [ink('edge', [[1000, 0, .5]])] });
+  const state = board({ width: workspace.MAX_WIDTH, strokes: [ink('edge', [[workspace.MAX_WIDTH, 0, .5]])] });
   for (const picked of [selection(), selection([], ['edge'])]) {
     const result = workspace.moveGroup(state, picked, { x: 1, y: -1 }, [], 200);
     assert.notEqual(result, state);

@@ -21,22 +21,32 @@ const html = `<!doctype html><html><head><meta charset="utf-8">
 <button id="workspaceZoomIn" aria-label="Zoom workspace in">＋</button></div></div></div>
 <div id="workspaceScroll" class="workspace-scroll"><div id="workspaceStage" class="workspace-stage">
 <div id="workspaceBoard" class="workspace-board"><article class="workspace-card" style="left:20px;top:20px;width:180px;height:200px">
-<div class="workspace-card-body">Note surface</div><textarea class="workspace-note"></textarea></article></div>
+<div class="workspace-card-body">Note surface</div><textarea class="workspace-note"></textarea></article>
+<svg id="workspaceInk" class="workspace-ink" preserveAspectRatio="none" viewBox="0 0 1000 2000"><path id="originalInk" d="M100 400L350 450" fill="none" stroke="black" stroke-width="3"/></svg></div>
 </div></div><script src="/reading-workspace.js" defer></script><script src="/reading-workspace-viewport.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',()=>{
   const calls=[], data={positions:{note:{x:20,y:40,width:300}},strokes:[{points:[[4,5,.5]]}]};
-  let height=2000, busy=false, notePointers=0;
+  const stored=JSON.parse(localStorage.getItem('fixture.extent')||'{}');
+  let height=stored.height||2000, width=stored.width||1000, busy=false, notePointers=0;
   const maxHeight=window.PhloemWorkspaceState?.MAX_HEIGHT||1000000;
-  const viewport=PhloemWorkspaceViewport.create({isBusy:()=>busy,onNeedSpace(y){
-    calls.push(y);
-    if(y<=height||height>=maxHeight)return;
-    height=Math.min(maxHeight,Math.ceil(y/1000)*1000);
-    viewport.layout(height);
+  const maxWidth=window.PhloemWorkspaceState?.MAX_WIDTH||1000000;
+  const render=()=>{
+    viewport.layout(height,width);
+    document.getElementById('workspaceInk').setAttribute('viewBox','0 0 '+width+' '+height);
+  };
+  const store=()=>localStorage.setItem('fixture.extent',JSON.stringify({height,width}));
+  const viewport=PhloemWorkspaceViewport.create({isBusy:()=>busy,onNeedSpace(y,x){
+    calls.push({y,x});
+    if(y<=height&&x<=width)return;
+    height=Math.min(maxHeight,Math.max(height,Math.ceil(y/1000)*1000));
+    width=Math.min(maxWidth,Math.max(width,Math.ceil(x/1000)*1000));
+    store(); render();
   }});
-  viewport.layout(height);
+  render();
   document.querySelector('.workspace-card').addEventListener('pointerdown',()=>notePointers++);
-  window.fixture={viewport,calls,data,maxHeight,get height(){return height},get notePointers(){return notePointers},
-    setBusy(value){busy=value},setHeight(value){height=Math.min(maxHeight,value);viewport.layout(height)}};
+  window.fixture={viewport,calls,data,maxHeight,maxWidth,get height(){return height},get width(){return width},get notePointers(){return notePointers},
+    setBusy(value){busy=value},setHeight(value){height=Math.min(maxHeight,value);store();render()},
+    setWidth(value){width=Math.min(maxWidth,value);store();render()},render};
 });</script></body></html>`;
 const server = http.createServer((request, response) => {
   if (request.url === '/') { response.setHeader('Content-Type', 'text/html'); response.end(html); return; }
@@ -48,7 +58,7 @@ const server = http.createServer((request, response) => {
   response.statusCode = 404; response.end();
 });
 
-test.before(async () => new Promise(resolve => server.listen(8340, '127.0.0.1', resolve)));
+test.before(async () => new Promise(resolve => server.listen(0, '127.0.0.1', resolve)));
 test.after(async () => new Promise(resolve => server.close(resolve)));
 async function browser() {
   const options = { headless: true };
@@ -58,7 +68,7 @@ async function browser() {
 }
 async function pageFor(instance) {
   const page = await instance.newPage({ viewport: { width: 1100, height: 900 } });
-  await page.goto('http://127.0.0.1:8340/');
+  await page.goto('http://127.0.0.1:' + server.address().port + '/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   return page;
@@ -67,7 +77,7 @@ const geometry = page => page.evaluate(() => {
   const scroll = document.getElementById('workspaceScroll');
   const board = document.getElementById('workspaceBoard');
   const stage = document.getElementById('workspaceStage');
-  return { zoom: fixture.viewport.getZoom(), boardWidth: board.clientWidth,
+  return { zoom: fixture.viewport.getZoom(), logicalWidth: fixture.width, logicalHeight: fixture.height, boardWidth: board.clientWidth,
     boardHeight: board.clientHeight, boardRect: board.getBoundingClientRect().toJSON(),
     stageWidth: stage.offsetWidth, stageHeight: stage.offsetHeight,
     scrollWidth: scroll.clientWidth, scrollHeight: scroll.clientHeight,
@@ -194,7 +204,7 @@ test('Chromium native two touch stream zooms the workspace without changing page
     try {
       const context = await instance.newContext({ viewport: { width: 1100, height: 900 }, hasTouch: true, isMobile: true });
       const page = await context.newPage();
-      await page.goto('http://127.0.0.1:8340/');
+      await page.goto('http://127.0.0.1:' + server.address().port + '/');
       const client = await context.newCDPSession(page);
       const touch = (type, points) => client.send('Input.dispatchTouchEvent', { type,
         touchPoints: points.map(([id, x, y]) => ({ id, x, y })) });
@@ -230,7 +240,7 @@ for (const [name, start, end] of [
       try {
         const context = await instance.newContext({ viewport: { width: 1100, height: 900 }, hasTouch: true, isMobile: true });
         const page = await context.newPage();
-        await page.goto('http://127.0.0.1:8340/');
+        await page.goto('http://127.0.0.1:' + server.address().port + '/');
         const initial = await page.evaluate(() => {
           document.getElementById('workspaceScroll').scrollTop = 300;
           window.pinchCancels = 0;
@@ -276,7 +286,7 @@ test('zoom out on portrait paper asks for bounded extent once and preserves save
     await page.evaluate(() => {
       const scroll = document.getElementById('workspaceScroll');
       scroll.style.width = '400px'; scroll.style.height = '850px';
-      fixture.viewport.layout(fixture.height);
+      fixture.render();
     });
     await page.locator('#workspaceZoomOut').click();
     await page.locator('#workspaceZoomOut').click();
@@ -285,14 +295,16 @@ test('zoom out on portrait paper asks for bounded extent once and preserves save
     const after = await geometry(page);
     const calls = await page.evaluate(() => [...fixture.calls]);
     assert.equal(after.zoom, .5);
-    assert.equal(after.boardWidth, 400);
-    assert.equal(after.boardHeight, after.boardWidth * (await page.evaluate(() => fixture.height)) / 1000);
+    assert.equal(after.boardWidth, 400 * after.logicalWidth / 1000);
+    assert.equal(after.boardHeight, 400 * after.logicalHeight / 1000);
+    assert(after.boardRect.width >= after.scrollWidth, 'zoomed-out visible background is actual paper');
     assert(after.stageHeight >= after.scrollHeight);
     assert(calls.length > 0 && calls.length < 8, 'growth follows viewport need without a render loop');
     const capacity = await page.evaluate(() => fixture.maxHeight);
-    assert(calls.every(value => Number.isFinite(value) && value <= capacity));
+    assert(calls.every(value => Number.isFinite(value.y) && value.y <= capacity));
+    assert(calls.every(value => Number.isFinite(value.x) && value.x <= after.logicalWidth));
     assert.equal(after.saved, before.saved);
-    await page.evaluate(() => fixture.viewport.layout(fixture.height));
+    await page.evaluate(() => fixture.render());
     assert.deepEqual(await page.evaluate(() => [...fixture.calls]), calls);
     await page.close();
   } finally { await instance.close(); }
@@ -313,9 +325,9 @@ test('scrolling beyond the former 20000-unit ceiling extends paper once without 
     assert.equal(result.capacity, 1000000);
     assert.equal(result.height, 21000);
     assert.equal(result.calls.length, 1, 'one bounded callback grows past the old ceiling');
-    assert(result.calls[0] > 20000 && result.calls[0] < result.height);
+    assert(result.calls[0].y > 20000 && result.calls[0].y < result.height);
     assert.equal((await geometry(page)).saved, before.saved);
-    await page.evaluate(() => fixture.viewport.layout(fixture.height));
+    await page.evaluate(() => fixture.render());
     assert.deepEqual(await page.evaluate(() => [...fixture.calls]), result.calls,
       'rendering the enlarged sheet does not reenter growth');
     await page.close();

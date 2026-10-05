@@ -2807,6 +2807,13 @@
     trigger.title=pending?'Highlight selection in '+colorLabel:(persistent?'Marker controls · ':'Highlight color · ')+colorLabel;
     if(highlightEraseMode){trigger.classList.add('active');trigger.setAttribute('aria-label','Eraser on. Open highlight tools');trigger.title='Eraser on · choose a color to highlight again';}
     trigger.setAttribute('aria-controls','highlightToolbar');trigger.setAttribute('aria-expanded',String(highlightToolbarOpen()));
+    // Beside an open Workspace the paper's color is one tap away, mirroring the Annotate entry.
+    var direct=byId('zenWorkspaceMarker');
+    if(direct){
+      direct.dataset.highlightColor=highlightColor;direct.classList.toggle('active',trigger.classList.contains('active'));direct.classList.toggle('ready',pending);
+      direct.setAttribute('aria-label',pending?'Highlight selected passage in '+colorLabel:highlightEraseMode?'Eraser on. Open highlight tools':'Highlighter color '+colorLabel+'. Open colors');
+      direct.title=pending?'Highlight selection in '+colorLabel:'Highlighter color · '+colorLabel;direct.setAttribute('aria-expanded',String(highlightToolbarOpen()));
+    }
     byId('zenDock').classList.toggle('popout-open',!!byId('zenDock').querySelector('.zen-popout:not(.hidden)'));
     syncZenAnnotateUi();
   }
@@ -2870,7 +2877,9 @@
   document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.zenPdfLayout);closeZenPopouts(true);};});
   byId('zenGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
   byId('zenGuideToggle').onclick=function(){byId('focusBtn').onclick();zenWake();};
-  byId('zenMarker').onclick=function(){if(pdfWriteMode)setPdfWriteMode(false);closeZenPopouts(true);if(pendingSelection){commitPendingHighlight();setHighlightToolbarOpen(true,byId('zenAnnotate'));}else setHighlightToolbarOpen(!highlightToolbarOpen(),byId('zenAnnotate'));zenWake();};
+  function zenMarkerAction(returnTarget){if(pdfWriteMode)setPdfWriteMode(false);closeZenPopouts(true);if(pendingSelection){commitPendingHighlight();setHighlightToolbarOpen(true,returnTarget);}else setHighlightToolbarOpen(!highlightToolbarOpen(),returnTarget);zenWake();}
+  byId('zenMarker').onclick=function(){zenMarkerAction(byId('zenAnnotate'));};
+  byId('zenWorkspaceMarker').onclick=function(){zenMarkerAction(this);};
   byId('zenPaperAppearance').onclick=function(){closeZenPopouts(true);cyclePaperAppearance();};
   byId('zenTheme').onclick=function(){closeZenPopouts(true);byId('themeBtn').onclick();};
   byId('zenFind').onclick=function(){closeZenPopouts(false);toggleFindBar(undefined,false,byId('zenMore'));zenWake();};
@@ -5421,7 +5430,7 @@
        reader mode, such as Marker, that happens to be active underneath it. */
     if(e.key==='Escape'&&!byId('findBar').classList.contains('hidden')&&byId('findBar').contains(e.target)){e.preventDefault();toggleFindBar(false,true);return;}
     if(e.key==='Escape'&&zenOn&&closeZenPopouts(true)){e.preventDefault();return;}
-    if(e.key==='Escape'&&highlightToolbarOpen()){e.preventDefault();setHighlightToolbarOpen(false);var trigger=zenOn?byId('zenAnnotate'):highlightToolbarTrigger||byId('highlightColorBtn');if(trigger)trigger.focus();return;}
+    if(e.key==='Escape'&&highlightToolbarOpen()){e.preventDefault();setHighlightToolbarOpen(false);var trigger=zenOn?zenHighlightReturn():highlightToolbarTrigger||byId('highlightColorBtn');if(trigger)trigger.focus();return;}
     if(e.key==='Escape'&&!byId('touchDockMenu').classList.contains('hidden')){e.preventDefault();closeTouchDockMore(true);return;}
     if(e.key==='Escape'&&!byId('comfortBar').classList.contains('hidden')){e.preventDefault();setComfortBarOpen(false,true);return;}
     if(e.key==='Escape'&&temporaryNotebookMode()&&byId('notebook').classList.contains('sheet-open')){e.preventDefault();toggleSheet(false);return;}
@@ -6798,9 +6807,9 @@
     });
   }
   function workspaceDropPoint(excludeId){
-    var board=byId('workspaceBoard'),scroll=byId('workspaceScroll'),scale=Math.max(1,board.clientWidth)/1000;
-    var visible=scroll.getBoundingClientRect(),origin=workspaceView?workspaceView.pointFromClient(visible.left+25,visible.top+35):{x:45,y:scroll.scrollTop/scale+45};
-    var ch=find(currentId),positions=ch&&ch.readingWorkspace&&ch.readingWorkspace.positions||{},x=Math.max(0,Math.min(350,origin.x)),y=Math.max(35,origin.y),width=650,boxes=[];
+    var ch=find(currentId),logicalWidth=ch&&ch.readingWorkspace&&ch.readingWorkspace.width||1000,board=byId('workspaceBoard'),scroll=byId('workspaceScroll'),scale=Math.max(1,board.clientWidth)/logicalWidth;
+    var visible=scroll.getBoundingClientRect(),origin=workspaceView?workspaceView.pointFromClient(visible.left+25,visible.top+35):{x:scroll.scrollLeft/scale+45,y:scroll.scrollTop/scale+45};
+    var positions=ch&&ch.readingWorkspace&&ch.readingWorkspace.positions||{},width=650,x=Math.max(0,Math.min(logicalWidth-width,origin.x)),y=Math.max(35,origin.y),boxes=[];
     Object.keys(positions).forEach(function(id){
       if(id===excludeId||!ch.readingExcerpts.items.some(function(item){return item.id===id;}))return;
       var position=positions[id],card=Array.from(byId('workspaceCards').children).find(function(node){return node.dataset.clipId===id;}),height=card&&card.offsetHeight?card.offsetHeight/scale:500;
@@ -6814,12 +6823,21 @@
   }
   function placeWorkspaceClip(id,point){
     var ch=find(currentId);if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)||!ch.readingExcerpts.items.some(function(item){return item.id===id;}))return false;
-    try{var next=ch.readingWorkspace;while(point.y+500>next.height&&next.height<window.PhloemWorkspaceState.MAX_HEIGHT)next=window.PhloemWorkspaceState.setHeight(next,next.height+1000);
-      return saveWorkspace(ch,window.PhloemWorkspaceState.place(next,id,Object.assign({width:650},point),now()));
+    try{var api=window.PhloemWorkspaceState,next=api.normalize(ch.readingWorkspace),width=point&&point.width===undefined?650:point&&point.width;
+      if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||!Number.isFinite(width))throw new TypeError('Invalid card position');
+      width=Math.max(280,Math.min(900,width));
+      while(point.x+width>next.width&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
+      while(point.y+500>next.height&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
+      return saveWorkspace(ch,api.place(next,id,Object.assign({width:650},point),now()));
     }catch(error){workspaceStatus('Could not save the card position.');return false;}
   }
   function showWorkspaceClip(id,point){
-    setWorkspaceOpen(true,false);var saved=placeWorkspaceClip(id,point&&!point.auto?point:workspaceDropPoint(id));refreshWorkspace();
+    setWorkspaceOpen(true,false);
+    // A dropped card stays on the paper the reader can already see: near the right
+    // edge it shifts left rather than widening the paper and scrolling the view away.
+    var ch=find(currentId),paperWidth=ch&&ch.readingWorkspace&&ch.readingWorkspace.width||1000;
+    if(point&&!point.auto&&Number.isFinite(point.x))point=Object.assign({},point,{x:Math.max(0,Math.min(paperWidth-(point.width||650),point.x))});
+    var saved=placeWorkspaceClip(id,point&&!point.auto?point:workspaceDropPoint(id));refreshWorkspace();
     if(saved&&workspaceView)workspaceView.focus(id);return saved;
   }
   function addWorkspaceExcerpt(selection,point){
@@ -6861,7 +6879,7 @@
   }
   function workspaceGroupChangesExpected(before,next,expected){
     var clips=new Set(Object.keys(expected.positions)),strokes=new Set(expected.strokes.map(function(stroke){return stroke.id;}));
-    if(next.height<before.height||!workspaceGroupEqual(before.deleted,next.deleted))return false;
+    if(next.width<before.width||next.height<before.height||!workspaceGroupEqual(before.deleted,next.deleted))return false;
     if(!Object.keys(before.positions).concat(Object.keys(next.positions)).every(function(id){return clips.has(id)||workspaceGroupEqual(before.positions[id],next.positions[id]);}))return false;
     var oldStrokes=new Map(before.strokes.map(function(stroke){return[stroke.id,stroke];})),newStrokes=new Map(next.strokes.map(function(stroke){return[stroke.id,stroke];}));
     return before.strokes.concat(next.strokes).every(function(stroke){return strokes.has(stroke.id)||workspaceGroupEqual(oldStrokes.get(stroke.id),newStrokes.get(stroke.id));});
@@ -6891,11 +6909,12 @@
     try{
       var ids=workspaceGroupSnapshotIds(target);
       if(!ids||!workspaceGroupMatches(ch,ids,expected)){workspaceStatus('This selection changed since the move. Undo is unavailable.');return false;}
-      var api=window.PhloemWorkspaceState,validated=api.normalize({version:api.VERSION,height:api.MAX_HEIGHT,positions:target.positions,strokes:target.strokes,deleted:{}});
+      var api=window.PhloemWorkspaceState,validated=api.normalize({version:api.VERSION,width:api.MAX_WIDTH,height:api.MAX_HEIGHT,positions:target.positions,strokes:target.strokes,deleted:{}});
       if(!workspaceGroupEqual(validated.positions,target.positions)||!workspaceGroupEqual(validated.strokes.slice().sort(function(a,b){return a.id<b.id?-1:a.id>b.id?1:0;}),target.strokes.slice().sort(function(a,b){return a.id<b.id?-1:a.id>b.id?1:0;})))throw new TypeError('Invalid group snapshot');
-      var before=api.normalize(ch.readingWorkspace),next=before,stamp=now(),bottom=0;
-      ids.clipIds.forEach(function(id){bottom=Math.max(bottom,target.positions[id].y);});
-      target.strokes.forEach(function(stroke){api.displayStroke(stroke,Object.assign({},next.positions,target.positions)).points.forEach(function(point){bottom=Math.max(bottom,point[1]);});});
+      var before=api.normalize(ch.readingWorkspace),next=before,stamp=now(),bottom=0,right=0;
+      ids.clipIds.forEach(function(id){var position=target.positions[id];bottom=Math.max(bottom,position.y);right=Math.max(right,position.x+position.width);});
+      target.strokes.forEach(function(stroke){stroke.points.concat(api.displayStroke(stroke,Object.assign({},next.positions,target.positions)).points).forEach(function(point){bottom=Math.max(bottom,point[1]);right=Math.max(right,point[0]);});});
+      while(right>next.width&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
       while(bottom>next.height&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
       ids.clipIds.forEach(function(id){next=api.place(next,id,target.positions[id],stamp);});
       target.strokes.forEach(function(stroke){
@@ -6907,13 +6926,17 @@
       return saveWorkspaceGroup(ch,next);
     }catch(error){workspaceStatus('Could not restore this selection. Its current position has been kept.');return false;}
   }
-  function workspaceEnsureSpace(logicalY){
+  function workspaceEnsureSpace(logicalY,logicalX){
     var ch=find(currentId);if(readingWorkspaceUnavailable(ch))return false;
-    if(!Number.isFinite(logicalY)||logicalY<0)return false;
-    var limit=window.PhloemWorkspaceState.MAX_HEIGHT;
-    if(logicalY>=limit){workspaceStatus('This very large workspace has reached its safety limit. Existing notes are safe.');return false;}
-    if(logicalY<ch.readingWorkspace.height)return true;
-    try{var next=ch.readingWorkspace;while(next.height<=logicalY&&next.height<limit)next=window.PhloemWorkspaceState.setHeight(next,next.height+1000);return saveWorkspace(ch,next);}catch(error){workspaceStatus('Could not extend the paper. Existing notes are safe.');return false;}
+    if(logicalX===undefined)logicalX=0;
+    if(!Number.isFinite(logicalY)||logicalY<0||!Number.isFinite(logicalX)||logicalX<0)return false;
+    var api=window.PhloemWorkspaceState;
+    if(logicalY>=api.MAX_HEIGHT||logicalX>=api.MAX_WIDTH){workspaceStatus('This very large workspace has reached its safety limit. Existing notes are safe.');return false;}
+    try{var next=api.normalize(ch.readingWorkspace);if(logicalY<next.height&&logicalX<next.width)return true;
+      while(next.width<=logicalX&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
+      while(next.height<=logicalY&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
+      return saveWorkspace(ch,next);
+    }catch(error){workspaceStatus('Could not extend the paper. Existing notes are safe.');return false;}
   }
   function workspaceGrow(){
     var ch=find(currentId);return ch&&ch.readingWorkspace?workspaceEnsureSpace(ch.readingWorkspace.height):false;
@@ -6932,7 +6955,7 @@
   });
   byId('workspaceTools').addEventListener('click',function(event){
     var button=event.target.closest('button');if(!button)return;
-    if(button.dataset.workspaceTool&&button.dataset.workspaceTool!=='pen')closeWorkspacePanels();
+    if(button.dataset.workspaceTool&&button.dataset.workspaceTool!=='pen'||button.id==='workspaceNewNote')closeWorkspacePanels();
     if(button.closest('#workspaceMore')&&!button.closest('.workspace-zoom-controls'))byId('workspaceMore').open=false;
   });
   byId('workspaceMore').addEventListener('toggle',function(){
@@ -7097,13 +7120,15 @@
   function fineHighlightUi(){return !!(matchMedia('(pointer: fine)').matches||matchMedia('(any-pointer: fine)').matches);}
   function highlightColorLabel(color){return color==='mint'?'Mint':color==='coral'?'Coral':color==='blue'?'Blue':'Yellow';}
   var highlightToolbarTrigger=null;
+  // Return focus to the direct Workspace color button when it opened the shelf; otherwise Annotate.
+  function zenHighlightReturn(){var t=highlightToolbarTrigger;return t&&t.id==='zenWorkspaceMarker'&&t.getClientRects().length?t:byId('zenAnnotate');}
   function highlightToolbarOpen(){var toolbar=byId('highlightToolbar');return !!toolbar&&!toolbar.classList.contains('hidden');}
   function setHighlightToolbarOpen(on,trigger){
     if(on&&pdfWriteMode)setPdfWriteMode(false);
     var toolbar=byId('highlightToolbar');if(!toolbar)return;
     if(on){if(trigger)highlightToolbarTrigger=trigger;closeZenPopouts(false);closeTouchDockMore(false);}
     toolbar.classList.toggle('hidden',!on);document.body.classList.toggle('highlight-toolbar-open',!!on);
-    ['highlightBtn','highlightColorBtn','touchHighlight','zenMarker'].forEach(function(id){var button=byId(id);button.setAttribute('aria-controls','highlightToolbar');button.setAttribute('aria-expanded',String(!!on));});
+    ['highlightBtn','highlightColorBtn','touchHighlight','zenMarker','zenWorkspaceMarker'].forEach(function(id){var button=byId(id);button.setAttribute('aria-controls','highlightToolbar');button.setAttribute('aria-expanded',String(!!on));});
     syncHighlightColorUi();syncTouchDockStates();
   }
   function syncHighlightColorUi(){
@@ -7565,7 +7590,7 @@
   document.querySelectorAll('[data-highlight-eraser]').forEach(function(b){b.onclick=function(){setHighlightEraseMode(!highlightEraseMode);setHighlightToolbarOpen(true);showReaderToast(highlightEraseMode?'Eraser on · sweep over highlights or handwriting · Undo restores them':'Eraser off');};});
   document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.highlightColor);setHighlightMode(fineHighlightUi());};});
   byId('highlightUndo').onclick=undoHighlight;
-  byId('highlightDone').onclick=function(){clearPendingSelection();setHighlightEraseMode(false);setHighlightMode(false);setHighlightToolbarOpen(false);if(zenOn)byId('zenAnnotate').focus();};
+  byId('highlightDone').onclick=function(){clearPendingSelection();setHighlightEraseMode(false);setHighlightMode(false);setHighlightToolbarOpen(false);if(zenOn)zenHighlightReturn().focus();};
   document.querySelectorAll('[data-selection-highlight-color]').forEach(function(b){b.onclick=function(){setHighlightColor(b.dataset.selectionHighlightColor);setSelectionAction('selectionHighlight');commitPendingHighlight();};});
   syncHighlightColorUi();
   function savePendingHighlight(note,keepCard){

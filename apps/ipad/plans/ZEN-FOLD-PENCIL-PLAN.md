@@ -821,6 +821,77 @@ The divider fixture now enters Workspace through Zen and passes Chromium.
 All 19 cache-update assertions pass; the WebKit selection screenshot was inspected.
 Synthetic Pencil events do not replace testing with a physical iPad and Pencil.
 
+### 2026-10-05 — WIP handoff: expanded workspace paper is not writable
+
+Paused at the user's request: push a checkpoint so another agent can finish.
+This checkpoint belongs on `codex/phloem-zen-interaction-plan`, NOT on live main.
+Main's last released commit is `47b5bc04` (lasso, shell v162). No cache bump or
+Apple build has been made for this work-in-progress.
+
+User evidence: `/Users/chf/Downloads/IMG_0098.PNG`. At reduced workspace zoom,
+blank space appears to the right but Pencil strokes flatten against an invisible
+edge. The old sheet is always 1000 logical units wide; the viewport paints a
+larger blank stage, and pointer samples clamp x to1000. This is not a pressure or
+stroke-smoothing issue.
+
+Implemented, but not fully verified:
+
+- `reading-workspace.js`: VERSION3 with saved `width`, initial1000, MAX_WIDTH1e6;
+  `setWidth` grows in1000-unit steps. V1/V2 migrate without moving geometry;
+  unknown versions fail closed. Merging preserves the larger width. Group moves
+  can expand width atomically; raw note-anchored ink remains unchanged.
+- `reading-workspace-viewport.js`: logical width is separate from the original
+  1000-unit scale. `layout(height,width)` and `onNeedSpace(y,x)` make exposed
+  background real paper without stretching existing ink. Zoom anchor/growth
+  interactions still need cross-browser regression verification.
+- `reading-workspace-view.js`: width-aware pointer coordinates, card percentages,
+  SVG viewBox, lasso bounds, drag/resize and hold-line scale. Pencil samples use
+  the unbounded contact to request growth BEFORE clamping, preventing old-edge
+  flattening. `board.dataset.logicalWidth/Height` expose actual extents for tests.
+- `reading.js`: width-aware space requests, placements, group restoration and
+  dropped-note positions. Existing future-version preservation remains intact.
+- Updated state, adapter, integration and viewport test fixtures. The formerly
+  untracked extended-paper diagnostic is now included and uses current Zen UI,
+  a dynamic server port, and the actual logical width.
+
+Verified on this checkpoint: syntax checks for all four changed production JS
+files, `git diff --check`, and62 state/selection/adapter/integration/controller
+tests pass. `tests/reading-workspace-extended-paper.test.js` passed Chromium:
+writing at y2300/3400/4700/5600/5800 across100/50/125/200% zoom, stylus TouchEvent
+fallback, reload persistence, and the50% right-hand visible paper regression.
+This does NOT establish WebKit/iPad correctness or complete feature safety.
+
+Next agent checklist:
+
+1. Run the extended-paper test in WebKit; add a continuous stroke crossing the
+   old x1000 edge, growth during a stroke, and right/bottom/corner cases.
+2. Finish/verify width-specific pure-state tests: width bounds, wide anchors,
+   merge/tombstones and selections beyond x1000. V3 is now supported, so synthetic
+   future-version fixtures must use V4+.
+3. Adapt `tests/reading-workspace-lasso-browser.test.js`: it still converts using
+   `boardRect.width/1000` in several places. Divide by saved workspace.width or
+   board.dataset.logicalWidth instead. Run lasso/history/eraser/reload tests at
+   x>1000 in both engines; ensure note-attached ink moves/resizes only once.
+4. Run viewport, ink-view, card-view, splitter, split-undo, app-update and native
+   bundle tests. Inspect zoom anchors, divider changes, orientation, horizontal
+   scrolling and extent-growth recursion. Check storage-failure behavior.
+5. Review V3 compatibility: older deployed/native clients should preserve an
+   unsupported workspace and pause editing, never normalize away wider ink.
+   Existing native builds have NOT received this change.
+6. When finished, bump all reader asset query versions and the service-worker
+   cache from162 to163 (or next unused version), test, then push main only with
+   appropriate user authorization. Verify Pages deployment and live asset hashes.
+
+Worktree: `/Users/chf/.codex/worktrees/phloem-guide-left/houfu0702.github.io`.
+Do not use the unrelated dirty primary Desktop checkout. Node runtime is
+`/Users/chf/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin`;
+set NODE_PATH to its sibling `node/node_modules`, CHROME_PATH to
+`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, and
+PHLOEM_WEBKIT_EXECUTABLE_PATH to
+`/Users/chf/Library/Caches/ms-playwright/webkit-2359/pw_run.sh`.
+Use PHLOEM_BROWSER=webkit for WebKit browser scripts. All subagents were
+interrupted for this handoff; do not assume background work is continuing.
+
 ## Sources and API checks
 
 - [Apple: handling double-taps](https://developer.apple.com/documentation/ApplePencil/handling-double-taps-from-apple-pencil) — system preference and configurable alternative behavior.

@@ -193,9 +193,7 @@ async function checkSplitBounds(page) {
     await checkSplitBounds(page);
     assert.equal(await page.locator('#workspaceNib').count(), 0, 'workspace has no Marker style selector');
     await historyButtons(page, { paperUndo: false, paperRedo: false, workspaceUndo: false, workspaceRedo: false });
-    await workspaceMenu(page, true);
     await page.locator('#workspaceNewNote').click();
-    await workspaceMenu(page, false);
     const note = page.locator('.workspace-card textarea.workspace-note').first();
     await note.fill('Keep this workspace note through both ink histories.');
     await page.locator('.workspace-card .workspace-handle').first().focus();

@@ -27,8 +27,14 @@ test('iCloud uses the private CloudKit database with bounded asset transfers', a
   assert.match(plugin, /CKAsset\(fileURL:/);
   assert.match(plugin, /Data\(base64Encoded: encoded\)/);
   assert.match(plugin, /fetchAllDocumentRecordIDs/);
+  // Settings must show the CloudKit reason, not only a generic failure sentence.
+  assert.match(plugin, /private func explain\(_ message: String, _ error: Error\?\) -> String/);
+  assert.doesNotMatch(plugin, /call\.reject\("[^"]+", "[A-Z_]+", (error|fetchError|queryError|deleteError)\)/);
   assert.match(plugin, /CKQuery\([\s\S]*recordType: Self\.documentRecordType/);
   assert.match(bridge, /registerPluginInstance\(PhloemCloudPlugin\(\)\)/);
+  // The storyboard's initial controller must also register the plugins, not the plain Capacitor one.
+  const storyboard = await readFile(path.join(appRoot, 'App/Base.lproj/Main.storyboard'), 'utf8');
+  assert.match(storyboard, /customClass="PhloemBridgeViewController" customModule="App"/);
   assert.match(entitlements, /com\.apple\.developer\.icloud-container-identifiers/);
   assert.match(entitlements, /iCloud\.com\.houfu72\.phloem/);
   assert.match(entitlements, /<string>CloudKit<\/string>/);

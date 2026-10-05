@@ -24,7 +24,7 @@ Target: **1.2.0 (26)**, reader cache **v144**. This build adds optional private 
 - [ ] In the Apple Developer account, confirm the existing `com.houfu72.phloem` App ID has iCloud/CloudKit enabled and is assigned to the permanent container `iCloud.com.houfu72.phloem`.
 - [ ] Let automatic signing regenerate development and distribution provisioning profiles with the CloudKit entitlement.
 - [ ] Install a development-signed build on an iCloud-signed-in physical iPad and turn on sync once. Confirm CloudKit creates the development schema for `PhloemLibrary` and `PhloemDocument`.
-- [ ] In CloudKit Console, inspect record fields and indexes, then deploy the complete development schema to **Production**. App Store/TestFlight builds cannot rely on a development-only schema.
+- [ ] In CloudKit Console, add a QUERYABLE index on `recordName` for `PhloemDocument` (Delete iCloud copy queries it), inspect record fields and indexes, then deploy the complete development schema to **Production**. App Store/TestFlight builds cannot rely on a development-only schema.
 - [ ] Create a fresh signed **1.2.0 (26)** archive after production-schema deployment; validate its entitlements, privacy report, version/build, signature, and bundled-source hashes.
 
 ## Exact TestFlight binary — required before submission

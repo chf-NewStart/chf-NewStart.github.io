@@ -200,3 +200,8 @@ node tests/reading-review-fail-closed.test.js
 Exit code 0 means every check passed. If your Chromium lives in a nonstandard
 place, set `CHROME_PATH` when running the AI provider test or pass it via
 `chromium.launch({ executablePath: ... })` in the highlight test.
+
+`daily-fun-fact.test.js` is a site test, not a reader test. It checks
+`scripts/add-daily-fact.js` (run by the daily fun-fact workflow) against the real
+queue and both queue entry shapes, and needs no browser:
+`node --test tests/daily-fun-fact.test.js`.

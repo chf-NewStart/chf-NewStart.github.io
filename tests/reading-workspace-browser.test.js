@@ -342,7 +342,7 @@ async function stickyAppearance(page, card) {
       tape: { content: tape.content, width: tape.width, height: tape.height,
         opacity: Number(tape.opacity), pointerEvents: tape.pointerEvents, backgroundImage: tape.backgroundImage,
         backgroundColor: tape.backgroundColor, top: tape.top, left: tape.left, right: tape.right,
-        cardWidth: node.getBoundingClientRect().width },
+        cardWidth: node.offsetWidth },
       library: libraryStyle ? { backgroundImage: libraryStyle.backgroundImage,
         borderRadius: libraryStyle.borderRadius, boxShadow: libraryStyle.boxShadow } : null
     };

@@ -51,3 +51,34 @@ Keep iCloud as the app's only sync for now, and do not add Google Drive to the a
 - Two clouds syncing one library doubles the ways a merge can go wrong.
 
 If houfu wants the website and the iPad to share one library, the better route is the other direction: add iCloud to the website with Apple's CloudKit JS, using the same container, and keep Drive on the website as an option. Whether CloudKit JS sign-in works for China-mainland Apple accounts is unverified. Until then, the JSON backup (Settings) moves notes, highlights and ink between the website and the app; PDFs must be added on each side.
+
+## Part 2: iCloud on the website (houfu chose "iCloud on web", 2026-10-05)
+
+houfu wants papers added on the website to show up in the app. houfu picked iCloud on the website over Google Drive in the app on a decision card.
+
+### How it works
+
+- `reading.js` gains `webCloudPlugin()`, an adapter over Apple's CloudKit JS (`https://cdn.apple-cloudkit.com/ck/2/cloudkit.js`, loaded only when iCloud is used). It exposes the same methods as the native `PhloemCloud` plugin, so `iCloudSync()`, the merge and the paper status labels run unchanged in the browser.
+- It uses the same container (`iCloud.com.houfu72.phloem`), private database, record names (`library-v1`, `document-<sha256 of paper id>`) and fields (`payload`, `formatVersion` INT64, `documentID`, `filename`, `mimeType`, `byteCount` INT64, `contentHash`, `updatedAt` TIMESTAMP, `file`) as `PhloemCloudPlugin.swift`. The app and the website therefore read each other's records.
+- Conflicts work the same way. A save carries the record's change tag, and CloudKit's `CONFLICT` maps to `ICLOUD_CONFLICT`, which makes `iCloudSync()` re-fetch, merge and retry.
+- Originals skip the native base64 chunk path. They are added as `uploadDocument` / `downloadDocument` (whole Blob in, `downloadURL` fetch out), and `iCloudUploadSource` / `iCloudDownloadSource` use them when the plugin has them.
+- `iCloudPlugin()` returns the native plugin in the app and the web adapter in a browser. `iCloudOn()` no longer requires the native app.
+- Sign-in: "Turn on iCloud sync" shows Apple's "Sign in with Apple ID" button (`#icloudAppleSignIn`) and waits for `whenUserSignsIn()`. `persist: true` keeps the session across reloads.
+- `WEB_CLOUDKIT.apiToken` is empty, so the website still hides the section (`native-only`) until houfu supplies a CloudKit API token. CloudKit API tokens are designed to be embedded in public web pages.
+- The CSP in `reading.html` allows `cdn.apple-cloudkit.com` for scripts, styles and images. `connect-src https:` already covers the API and asset downloads.
+- Google Drive stays on the website. Both can be on at once, and both merge into the same local library.
+
+### Tests
+
+- New `tests/reading-icloud-web.test.js` uses a fake CloudKit JS that stores records in memory and seeds a library and original "written by the iPad". 12 checks: the section is hidden without a token and shown with one; Apple's sign-in button appears; the configuration names the app's container in production; the iPad's paper merges into the website; the cloud library ends up holding both papers; the website's original is saved under the native record name with INT64 `byteCount`; opening the iPad-only paper downloads its original into IndexedDB; and no page errors.
+- Full suite: everything passes except `reading-fold-phone`, which also fails on unchanged main (known flaky). `apps/ipad` `npm test`: 16 of 16. The browser tests need `pdf-lib` on `NODE_PATH`.
+- Not yet verified against Apple's real servers. Two points need checking once the token is in: that CloudKit asset `downloadURL`s can be fetched from houfu72.com (CORS), and that the explicit `type` on fields is accepted.
+
+### Steps for houfu
+
+1. In Xcode, run Phloem on the iPad. Turn on iCloud sync, add a paper, and tap Sync now. This creates the Development schema.
+2. Open CloudKit Console at icloud.developer.apple.com and choose `iCloud.com.houfu72.phloem`. Under Development › Indexes, add `recordName` as QUERYABLE on `PhloemDocument`.
+3. Deploy Schema Changes to Production.
+4. In the same console, open API Access (Tokens & Keys), create an API token named "Phloem web", set Sign In Callback to postMessage and Allowed Origins to houfu72.com, and send the token to the thread.
+5. Claude sets `WEB_CLOUDKIT.apiToken`, ships, and the website shows Sync with iCloud.
+6. Archive app build 28 or higher for TestFlight.

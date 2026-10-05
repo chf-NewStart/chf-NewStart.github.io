@@ -200,3 +200,5 @@ node tests/reading-review-fail-closed.test.js
 Exit code 0 means every check passed. If your Chromium lives in a nonstandard
 place, set `CHROME_PATH` when running the AI provider test or pass it via
 `chromium.launch({ executablePath: ... })` in the highlight test.
+
+`reading-icloud-web.test.js` covers iCloud on the website through a fake CloudKit JS: hidden until an API token is set, Apple ID sign-in, merging the library the iPad app wrote, uploading the browser's originals under the native record names and field types, and downloading an iPad-only original when it is opened.

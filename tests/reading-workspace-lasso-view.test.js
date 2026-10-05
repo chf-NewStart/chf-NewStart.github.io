@@ -42,7 +42,7 @@ function harness() {
     available: () => true, positionsOf: c => c.workspace.positions, itemsOf: c => c.items,
     copy: plain, undoStack: [], redoStack: [], selection: null, gesture: null,
     board, status, selectionBox: node(), lassoLayer: node(), cards: new Map(),
-    ink: { querySelectorAll: () => [...paths.values()] }, observedHeight: 2000,
+    ink: { querySelectorAll: () => [...paths.values()] }, observedHeight: 2000, observedWidth: 1000,
     viewport: null, previewFrame: 0, suppressClickUntil: 0, suppressCardClickUntil: 0,
     cardTouches: new Map(), performance: { now: () => 100 }, clearTimeout, cancelAnimationFrame() {},
     document: { activeElement: null, createElementNS: node }, NS: 'svg',

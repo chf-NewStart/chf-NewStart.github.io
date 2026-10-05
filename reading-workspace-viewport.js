@@ -1,5 +1,5 @@
-/* A local view of the workspace sheet. Saved card and ink coordinates stay in
-   the board's 1000-unit coordinate system regardless of its visual zoom. */
+/* A local view of the workspace sheet. The original 1000-unit page sets the
+   coordinate scale; growing the paper adds room without rescaling saved ink. */
 (function (global) {
   'use strict';
 
@@ -16,7 +16,8 @@
     const increase = document.getElementById('workspaceZoomIn');
     if (![scroll, stage, board, out, reset, increase].every(Boolean)) throw new Error('Workspace viewport DOM is missing');
 
-    let zoom = 1, logicalHeight = 2000, boardWidth = 0, lastNeed = 0;
+    let zoom = 1, logicalHeight = 2000, logicalWidth = 1000, baseWidth = 0;
+    let lastNeedY = 0, lastNeedX = 0;
     let pinch = null;
     const touches = new Map();
     try {
@@ -34,43 +35,58 @@
       out.disabled = zoom <= MIN_ZOOM + .001;
       increase.disabled = zoom >= MAX_ZOOM - .001;
     }
-    function needSpace() {
-      if (!boardWidth || !scroll.clientHeight || typeof options.onNeedSpace !== 'function') return;
-      const visibleBottom = (scroll.scrollTop + scroll.clientHeight) * 1000 / (boardWidth * zoom);
-      const maxHeight = global.PhloemWorkspaceState && Number(global.PhloemWorkspaceState.MAX_HEIGHT) || 1000000;
-      const needed = Math.min(maxHeight - 1, Math.ceil(visibleBottom + 300));
-      if (needed > logicalHeight && needed > lastNeed + 50) {
-        lastNeed = needed; // Set before callback: a synchronous render must not recurse.
-        options.onNeedSpace(needed);
-      }
+    function limit(name) { return global.PhloemWorkspaceState && Number(global.PhloemWorkspaceState[name]) || 1000000; }
+    function needSpace(left = scroll.scrollLeft, top = scroll.scrollTop) {
+      if (!baseWidth || !scroll.clientHeight || typeof options.onNeedSpace !== 'function') return;
+      const scale = baseWidth * zoom / 1000;
+      const visibleBottom = (top + scroll.clientHeight) / scale;
+      const visibleRight = (left + scroll.clientWidth) / scale;
+      const neededY = Math.min(limit('MAX_HEIGHT') - 1, Math.ceil(visibleBottom + 300));
+      const neededX = Math.min(limit('MAX_WIDTH') - 1, Math.ceil(visibleRight + 300));
+      const growY = neededY > logicalHeight && neededY > lastNeedY + 50;
+      // A normal 100% view can remain 1000 units wide. Zooming out exposes real
+      // paper to the right; horizontal panning keeps a margin ahead of its edge.
+      const rightExposed = visibleRight > logicalWidth + .01 || left > 0;
+      const growX = rightExposed && neededX > logicalWidth && neededX > lastNeedX + 50;
+      if (!growY && !growX) return;
+      // Set before callback: a synchronous layout from the adapter must not recurse.
+      if (growY) lastNeedY = neededY;
+      if (growX) lastNeedX = neededX;
+      options.onNeedSpace(growY ? neededY : Math.min(neededY, logicalHeight),
+        growX ? neededX : Math.min(neededX, logicalWidth));
+    }
+    function sizePaper() {
+      board.style.width = `${baseWidth * logicalWidth / 1000}px`;
+      board.style.minHeight = '0';
+      board.style.height = `${baseWidth * logicalHeight / 1000}px`;
+      board.style.transform = `scale(${zoom})`;
+      stage.style.width = `${Math.max(scroll.clientWidth, baseWidth * logicalWidth * zoom / 1000)}px`;
+      stage.style.height = `${Math.max(scroll.clientHeight, baseWidth * logicalHeight * zoom / 1000)}px`;
     }
     function measure() {
       if (!scroll.clientWidth) return;
-      const oldWidth = boardWidth;
+      const oldWidth = baseWidth;
       const oldCenterX = oldWidth ? (scroll.scrollLeft + scroll.clientWidth / 2) * 1000 / (oldWidth * zoom) : 0;
       const oldCenterY = oldWidth ? (scroll.scrollTop + scroll.clientHeight / 2) * 1000 / (oldWidth * zoom) : 0;
-      boardWidth = scroll.clientWidth;
-      board.style.width = `${boardWidth}px`;
-      board.style.minHeight = '0';
-      board.style.height = `${boardWidth * logicalHeight / 1000}px`;
-      board.style.transform = `scale(${zoom})`;
-      stage.style.width = `${Math.max(boardWidth, boardWidth * zoom)}px`;
-      stage.style.height = `${Math.max(scroll.clientHeight, boardWidth * logicalHeight * zoom / 1000)}px`;
-      if (oldWidth && oldWidth !== boardWidth) {
-        scroll.scrollLeft = oldCenterX * boardWidth * zoom / 1000 - scroll.clientWidth / 2;
-        scroll.scrollTop = oldCenterY * boardWidth * zoom / 1000 - scroll.clientHeight / 2;
+      baseWidth = scroll.clientWidth;
+      sizePaper();
+      if (oldWidth && oldWidth !== baseWidth) {
+        scroll.scrollLeft = oldCenterX * baseWidth * zoom / 1000 - scroll.clientWidth / 2;
+        scroll.scrollTop = oldCenterY * baseWidth * zoom / 1000 - scroll.clientHeight / 2;
       }
       updateControls();
       needSpace();
     }
-    function layout(height) {
-      const next = Number(height);
-      if (Number.isFinite(next) && next >= 1000) logicalHeight = next;
-      if (logicalHeight >= lastNeed) lastNeed = 0;
+    function layout(height, width = 1000) {
+      const nextHeight = Number(height), nextWidth = Number(width);
+      if (Number.isFinite(nextHeight) && nextHeight >= 1000) logicalHeight = Math.min(limit('MAX_HEIGHT'), nextHeight);
+      if (Number.isFinite(nextWidth) && nextWidth >= 1000) logicalWidth = Math.min(limit('MAX_WIDTH'), nextWidth);
+      if (logicalHeight >= lastNeedY) lastNeedY = 0;
+      if (logicalWidth >= lastNeedX) lastNeedX = 0;
       measure();
     }
     function setZoom(value, anchorX, anchorY, contentX, contentY) {
-      if (!boardWidth || !Number.isFinite(value)) return;
+      if (!baseWidth || !Number.isFinite(value)) return;
       const next = clamp(value, MIN_ZOOM, MAX_ZOOM);
       if (Math.abs(next - zoom) < .0001) return;
       const rect = scroll.getBoundingClientRect();
@@ -79,11 +95,13 @@
       const heldX = contentX == null ? (scroll.scrollLeft + x) / zoom : contentX;
       const heldY = contentY == null ? (scroll.scrollTop + y) / zoom : contentY;
       zoom = next;
-      board.style.transform = `scale(${zoom})`;
-      stage.style.width = `${Math.max(boardWidth, boardWidth * zoom)}px`;
-      stage.style.height = `${Math.max(scroll.clientHeight, boardWidth * logicalHeight * zoom / 1000)}px`;
-      scroll.scrollLeft = heldX * zoom - x;
-      scroll.scrollTop = heldY * zoom - y;
+      sizePaper();
+      const nextLeft = Math.max(0, heldX * zoom - x), nextTop = Math.max(0, heldY * zoom - y);
+      // Grow before assigning scroll offsets. Otherwise a narrower stage can
+      // clamp the requested anchor before its new paper has been laid out.
+      needSpace(nextLeft, nextTop);
+      scroll.scrollLeft = nextLeft;
+      scroll.scrollTop = nextTop;
       updateControls();
       storeZoom();
       needSpace();
@@ -143,7 +161,7 @@
       event.preventDefault();
       setZoom(zoom * Math.exp(-event.deltaY * .002), event.clientX, event.clientY);
     }, { passive: false });
-    scroll.addEventListener('scroll', needSpace, { passive: true });
+    scroll.addEventListener('scroll', () => needSpace(), { passive: true });
     out.addEventListener('click', () => centerZoom(zoom / 1.25));
     reset.addEventListener('click', () => centerZoom(1));
     increase.addEventListener('click', () => centerZoom(zoom * 1.25));

@@ -6798,9 +6798,9 @@
     });
   }
   function workspaceDropPoint(excludeId){
-    var board=byId('workspaceBoard'),scroll=byId('workspaceScroll'),scale=Math.max(1,board.clientWidth)/1000;
-    var visible=scroll.getBoundingClientRect(),origin=workspaceView?workspaceView.pointFromClient(visible.left+25,visible.top+35):{x:45,y:scroll.scrollTop/scale+45};
-    var ch=find(currentId),positions=ch&&ch.readingWorkspace&&ch.readingWorkspace.positions||{},x=Math.max(0,Math.min(350,origin.x)),y=Math.max(35,origin.y),width=650,boxes=[];
+    var ch=find(currentId),logicalWidth=ch&&ch.readingWorkspace&&ch.readingWorkspace.width||1000,board=byId('workspaceBoard'),scroll=byId('workspaceScroll'),scale=Math.max(1,board.clientWidth)/logicalWidth;
+    var visible=scroll.getBoundingClientRect(),origin=workspaceView?workspaceView.pointFromClient(visible.left+25,visible.top+35):{x:scroll.scrollLeft/scale+45,y:scroll.scrollTop/scale+45};
+    var positions=ch&&ch.readingWorkspace&&ch.readingWorkspace.positions||{},width=650,x=Math.max(0,Math.min(logicalWidth-width,origin.x)),y=Math.max(35,origin.y),boxes=[];
     Object.keys(positions).forEach(function(id){
       if(id===excludeId||!ch.readingExcerpts.items.some(function(item){return item.id===id;}))return;
       var position=positions[id],card=Array.from(byId('workspaceCards').children).find(function(node){return node.dataset.clipId===id;}),height=card&&card.offsetHeight?card.offsetHeight/scale:500;
@@ -6814,8 +6814,12 @@
   }
   function placeWorkspaceClip(id,point){
     var ch=find(currentId);if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)||!ch.readingExcerpts.items.some(function(item){return item.id===id;}))return false;
-    try{var next=ch.readingWorkspace;while(point.y+500>next.height&&next.height<window.PhloemWorkspaceState.MAX_HEIGHT)next=window.PhloemWorkspaceState.setHeight(next,next.height+1000);
-      return saveWorkspace(ch,window.PhloemWorkspaceState.place(next,id,Object.assign({width:650},point),now()));
+    try{var api=window.PhloemWorkspaceState,next=api.normalize(ch.readingWorkspace),width=point&&point.width===undefined?650:point&&point.width;
+      if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||!Number.isFinite(width))throw new TypeError('Invalid card position');
+      width=Math.max(280,Math.min(900,width));
+      while(point.x+width>next.width&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
+      while(point.y+500>next.height&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
+      return saveWorkspace(ch,api.place(next,id,Object.assign({width:650},point),now()));
     }catch(error){workspaceStatus('Could not save the card position.');return false;}
   }
   function showWorkspaceClip(id,point){
@@ -6861,7 +6865,7 @@
   }
   function workspaceGroupChangesExpected(before,next,expected){
     var clips=new Set(Object.keys(expected.positions)),strokes=new Set(expected.strokes.map(function(stroke){return stroke.id;}));
-    if(next.height<before.height||!workspaceGroupEqual(before.deleted,next.deleted))return false;
+    if(next.width<before.width||next.height<before.height||!workspaceGroupEqual(before.deleted,next.deleted))return false;
     if(!Object.keys(before.positions).concat(Object.keys(next.positions)).every(function(id){return clips.has(id)||workspaceGroupEqual(before.positions[id],next.positions[id]);}))return false;
     var oldStrokes=new Map(before.strokes.map(function(stroke){return[stroke.id,stroke];})),newStrokes=new Map(next.strokes.map(function(stroke){return[stroke.id,stroke];}));
     return before.strokes.concat(next.strokes).every(function(stroke){return strokes.has(stroke.id)||workspaceGroupEqual(oldStrokes.get(stroke.id),newStrokes.get(stroke.id));});
@@ -6891,11 +6895,12 @@
     try{
       var ids=workspaceGroupSnapshotIds(target);
       if(!ids||!workspaceGroupMatches(ch,ids,expected)){workspaceStatus('This selection changed since the move. Undo is unavailable.');return false;}
-      var api=window.PhloemWorkspaceState,validated=api.normalize({version:api.VERSION,height:api.MAX_HEIGHT,positions:target.positions,strokes:target.strokes,deleted:{}});
+      var api=window.PhloemWorkspaceState,validated=api.normalize({version:api.VERSION,width:api.MAX_WIDTH,height:api.MAX_HEIGHT,positions:target.positions,strokes:target.strokes,deleted:{}});
       if(!workspaceGroupEqual(validated.positions,target.positions)||!workspaceGroupEqual(validated.strokes.slice().sort(function(a,b){return a.id<b.id?-1:a.id>b.id?1:0;}),target.strokes.slice().sort(function(a,b){return a.id<b.id?-1:a.id>b.id?1:0;})))throw new TypeError('Invalid group snapshot');
-      var before=api.normalize(ch.readingWorkspace),next=before,stamp=now(),bottom=0;
-      ids.clipIds.forEach(function(id){bottom=Math.max(bottom,target.positions[id].y);});
-      target.strokes.forEach(function(stroke){api.displayStroke(stroke,Object.assign({},next.positions,target.positions)).points.forEach(function(point){bottom=Math.max(bottom,point[1]);});});
+      var before=api.normalize(ch.readingWorkspace),next=before,stamp=now(),bottom=0,right=0;
+      ids.clipIds.forEach(function(id){var position=target.positions[id];bottom=Math.max(bottom,position.y);right=Math.max(right,position.x+position.width);});
+      target.strokes.forEach(function(stroke){stroke.points.concat(api.displayStroke(stroke,Object.assign({},next.positions,target.positions)).points).forEach(function(point){bottom=Math.max(bottom,point[1]);right=Math.max(right,point[0]);});});
+      while(right>next.width&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
       while(bottom>next.height&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
       ids.clipIds.forEach(function(id){next=api.place(next,id,target.positions[id],stamp);});
       target.strokes.forEach(function(stroke){
@@ -6907,13 +6912,17 @@
       return saveWorkspaceGroup(ch,next);
     }catch(error){workspaceStatus('Could not restore this selection. Its current position has been kept.');return false;}
   }
-  function workspaceEnsureSpace(logicalY){
+  function workspaceEnsureSpace(logicalY,logicalX){
     var ch=find(currentId);if(readingWorkspaceUnavailable(ch))return false;
-    if(!Number.isFinite(logicalY)||logicalY<0)return false;
-    var limit=window.PhloemWorkspaceState.MAX_HEIGHT;
-    if(logicalY>=limit){workspaceStatus('This very large workspace has reached its safety limit. Existing notes are safe.');return false;}
-    if(logicalY<ch.readingWorkspace.height)return true;
-    try{var next=ch.readingWorkspace;while(next.height<=logicalY&&next.height<limit)next=window.PhloemWorkspaceState.setHeight(next,next.height+1000);return saveWorkspace(ch,next);}catch(error){workspaceStatus('Could not extend the paper. Existing notes are safe.');return false;}
+    if(logicalX===undefined)logicalX=0;
+    if(!Number.isFinite(logicalY)||logicalY<0||!Number.isFinite(logicalX)||logicalX<0)return false;
+    var api=window.PhloemWorkspaceState;
+    if(logicalY>=api.MAX_HEIGHT||logicalX>=api.MAX_WIDTH){workspaceStatus('This very large workspace has reached its safety limit. Existing notes are safe.');return false;}
+    try{var next=api.normalize(ch.readingWorkspace);if(logicalY<next.height&&logicalX<next.width)return true;
+      while(next.width<=logicalX&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
+      while(next.height<=logicalY&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
+      return saveWorkspace(ch,next);
+    }catch(error){workspaceStatus('Could not extend the paper. Existing notes are safe.');return false;}
   }
   function workspaceGrow(){
     var ch=find(currentId);return ch&&ch.readingWorkspace?workspaceEnsureSpace(ch.readingWorkspace.height):false;

@@ -11,7 +11,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'reading-workspace.js
   { filename: 'reading-workspace.js' });
 const workspace = context.window.PhloemWorkspaceState;
 const plain = value => JSON.parse(JSON.stringify(value));
-const empty = () => ({ version: 2, height: 2000, positions: {}, strokes: [], deleted: {} });
+const empty = () => ({ version: 3, width: 1000, height: 2000, positions: {}, strokes: [], deleted: {} });
 const stroke = (id, updatedAt = 100, extra = {}) => ({
   id, color: 'black', width: 3, points: [[12, 1800, .5], [900, 1900, 1]],
   style: 'natural', createdAt: 50, updatedAt, ...extra
@@ -21,12 +21,13 @@ const ids = value => Array.from(value.strokes, item => item.id);
 
 test('plain-script frozen API and canonical empty board', () => {
   assert.deepEqual(Object.keys(workspace).sort(),
-    ['BOARD_WIDTH', 'MAX_HEIGHT', 'VERSION', 'addStroke', 'displayStroke', 'merge', 'moveGroup', 'normalize',
-      'place', 'removeStrokes', 'selectGroup', 'setHeight']);
+    ['BOARD_WIDTH', 'MAX_HEIGHT', 'MAX_WIDTH', 'VERSION', 'addStroke', 'displayStroke', 'merge', 'moveGroup', 'normalize',
+      'place', 'removeStrokes', 'selectGroup', 'setHeight', 'setWidth']);
   assert.equal(Object.isFrozen(workspace), true);
-  assert.equal(workspace.VERSION, 2);
+  assert.equal(workspace.VERSION, 3);
   assert.equal(workspace.BOARD_WIDTH, 1000);
   assert.equal(workspace.MAX_HEIGHT, 1_000_000);
+  assert.equal(workspace.MAX_WIDTH, 1_000_000);
   assert.deepEqual(plain(workspace.normalize()), empty());
 });
 
@@ -49,31 +50,39 @@ test('normalization skips malformed neighbors and leaves input untouched', () =>
 });
 
 test('unknown versions fail closed through every public operation', () => {
-  const future = { ...empty(), version: 3, strokes: [stroke('keep')] };
+  const future = { ...empty(), version: 4, strokes: [stroke('keep')] };
   const operations = [
     () => workspace.normalize(future), () => workspace.merge(empty(), future),
     () => workspace.merge(future, empty()),
     () => workspace.place(future, 'a', { x: 0, y: 0 }, 100),
     () => workspace.addStroke(future, stroke('new'), 100),
     () => workspace.removeStrokes(future, ['keep'], 100),
-    () => workspace.setHeight(future, 3000)
+    () => workspace.setHeight(future, 3000), () => workspace.setWidth(future, 2000),
+    () => workspace.selectGroup(future, [], []),
+    () => workspace.moveGroup(future, { clipIds: [], strokeIds: [] }, { x: 0, y: 0 }, [], 100)
   ];
   for (const run of operations)
-    assert.throws(run, error => error.code === 'UNSUPPORTED_VERSION' && error.version === 3);
+    assert.throws(run, error => error.code === 'UNSUPPORTED_VERSION' && error.version === 4);
   assert.equal(future.strokes[0].id, 'keep');
 });
 
-test('version 1 board migrates losslessly to version 2 coordinates and ink', () => {
-  const legacy = { ...empty(), version: 1, height: 20000,
-    positions: { clip: { x: 40, y: 19000, width: 420, updatedAt: 100 } },
-    strokes: [stroke('legacy', 100, { points: [[10, 19990, .5]] })] };
-  const before = JSON.stringify(legacy);
-  const migrated = plain(workspace.normalize(legacy));
-  assert.equal(migrated.version, 2);
-  assert.deepEqual(migrated.positions, legacy.positions);
-  assert.deepEqual(migrated.strokes, legacy.strokes);
-  assert.equal(JSON.stringify(legacy), before);
-  assert.deepEqual(plain(workspace.merge(empty(), legacy)).strokes, legacy.strokes);
+test('version 1 and 2 boards migrate to a 1000-unit-wide version 3 without changing geometry', () => {
+  for (const version of [1, 2]) {
+    const legacy = { version, height: 20000,
+      positions: { clip: { x: 40, y: 19000, width: 420, updatedAt: 100 } },
+      strokes: [stroke('legacy', 100, { points: [[10, 19990, .5]], nib: 'marker', shape: 'line',
+        anchor: { clipId: 'clip', x: 40, y: 19000, width: 420 } })], deleted: { erased: 150 } };
+    const before = JSON.stringify(legacy);
+    const migrated = plain(workspace.normalize(legacy));
+    assert.equal(migrated.version, 3);
+    assert.equal(migrated.width, 1000);
+    assert.equal(migrated.height, 20000);
+    assert.deepEqual(migrated.positions, legacy.positions);
+    assert.deepEqual(migrated.strokes, legacy.strokes);
+    assert.deepEqual(migrated.deleted, legacy.deleted);
+    assert.equal(JSON.stringify(legacy), before);
+    assert.deepEqual(plain(workspace.merge(empty(), legacy)).strokes, legacy.strokes);
+  }
 });
 
 test('place uses logical coordinates, clamps card into board, and advances only same ID', () => {

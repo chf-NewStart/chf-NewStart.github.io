@@ -348,7 +348,12 @@ const fixture = {};
     const withoutPaper = await chapter(page);
     assert.equal(Object.values(withoutPaper.highlights || {}).flat().length, 0);
     await page.locator('#workspaceUndo').click();
-    await selectGroup(page, 'touch');
+    // Fingers scroll in lasso mode, as with the pen (houfu, Oct 5): a finger loop draws no lasso.
+    await page.locator('[data-workspace-tool="select"]').click();
+    assert.equal(await synthetic(page, rectangle(45, 25, 95, 75), 'touch'), false, 'a finger drag in lasso mode draws no lasso');
+    assert.equal(await page.locator('.workspace-selection-box').isVisible(), false, 'a finger drag selects nothing');
+    // The Pencil draws the lasso; a finger then moves the selection.
+    await selectGroup(page);
     const beforeFresh = await chapter(page);
     await dragGroup(page, 18, 22, 'touch'); assertMoved(beforeFresh, await chapter(page), 18, 22);
     await workspaceMenu(page, true);
@@ -371,7 +376,7 @@ const fixture = {};
     }
     await page.locator('[data-workspace-tool="pen"]').click(); await select.click();
     const beforeCancel = await chapter(page);
-    await synthetic(page, rectangle(45, 25, 95, 75), 'touch', 'pointercancel');
+    await synthetic(page, rectangle(45, 25, 95, 75), 'pen', 'pointercancel');
     assert.equal(await page.locator('.workspace-lasso-preview').count(), 0, 'pointercancel clears an unfinished loop');
     assert.equal(await page.locator('.workspace-selection-box').isVisible(), false, 'canceled loop does not select objects');
     assert.deepEqual((await chapter(page)).readingWorkspace, beforeCancel.readingWorkspace, 'canceled loop does not add ink');

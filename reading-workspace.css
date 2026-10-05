@@ -52,7 +52,7 @@
 .workspace-selection-box:focus-visible { outline:3px solid color-mix(in srgb,var(--accent) 30%,transparent); }
 .workspace-card.workspace-selected { outline:1px solid var(--accent); outline-offset:2px; }
 .workspace-ink .workspace-selected { filter:drop-shadow(0 0 1px var(--accent)); }
-.workspace-board.workspace-selecting, .workspace-selecting * { touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+.workspace-board.workspace-selecting, .workspace-selecting * { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .workspace-selecting { cursor:crosshair; }
 /* The library wall's pastel paper and blue ink. No individual
    note rotation: the shared sheet transform keeps Pencil ink aligned. */

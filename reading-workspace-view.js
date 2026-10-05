@@ -851,6 +851,19 @@
       if (mode === 'pen') { g.preview = document.createElementNS(NS, 'path'); g.preview.classList.add('workspace-ink-preview'); ink.appendChild(g.preview); }
       addPoint(g, event); return true;
     }
+    // Writing that started just off a note but lies mostly on it belongs to that note,
+    // so it moves and scales with it like writing that started inside.
+    function noteUnderStroke(points) {
+      if (!points.length) return null;
+      const rect = board.getBoundingClientRect(), sx = rect.width / Math.max(1, observedWidth), sy = rect.height / Math.max(1, observedHeight);
+      for (const state of [...cards.values()].reverse()) {
+        if (state.orphan || !state.card.isConnected) continue;
+        const r = state.card.getBoundingClientRect();
+        const inside = points.filter(p => { const x = rect.left + p.x * sx, y = rect.top + p.y * sy; return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }).length;
+        if (inside >= points.length * .6) return { clipId: state.id, ...state.box };
+      }
+      return null;
+    }
     function finishStroke(commit) {
       const g = gesture; if (!g || g.kind !== 'stroke') return;
       clearTimeout(g.holdTimer);
@@ -862,7 +875,8 @@
       if (!commit || !currentScope() || g.paperId !== scope.id || g.epoch !== scope.epoch) { render(); return; }
       if (g.mode === 'pen' && g.points.length) {
         const at = Date.now(), stroke = { id: uid(), color: g.color, width: g.width, style: 'natural', points: rawPoints(g.points), createdAt: at, updatedAt: at };
-        if (g.anchor) stroke.anchor = g.anchor;
+        const anchor = g.anchor || noteUnderStroke(g.points);
+        if (anchor) stroke.anchor = anchor;
         if (g.straight) stroke.shape = 'line';
         if (adapter.addStroke(stroke) === true) { undoStack.push({ kind: 'add', stroke: canonicalStroke(stroke.id) || stroke }); redoStack = []; }
         else setStatus('Could not save this stroke.');
@@ -899,11 +913,35 @@
       try { state.handle.setPointerCapture(event.pointerId); } catch (error) { /* A synthetic pointer may not be capturable. */ }
       return true;
     }
+    let fingerTap = null;
+    function fingerOnSelection(event) {
+      const b = selection && selection.bounds; if (!b) return false;
+      if (event.target && event.target.closest && event.target.closest('.workspace-selection-box, .workspace-selection-handle')) return true;
+      const p = pointFromClient(event.clientX, event.clientY), slop = Math.max(8, 20 * observedWidth / Math.max(1, board.clientWidth));
+      return p.x >= b.x - slop && p.x <= b.x + b.width + slop && p.y >= b.y - slop && p.y <= b.y + b.height + slop;
+    }
+    board.addEventListener('pointermove', event => {
+      if (fingerTap && fingerTap.pointerId === event.pointerId && Math.hypot(event.clientX - fingerTap.x, event.clientY - fingerTap.y) >= 8) fingerTap = null;
+    }, true);
+    board.addEventListener('pointerup', event => {
+      const t = fingerTap; if (!t || t.pointerId !== event.pointerId) return;
+      fingerTap = null;
+      if (tool !== 'select' || gesture || performance.now() - t.at > 600 || Math.hypot(event.clientX - t.x, event.clientY - t.y) >= 8) return;
+      if (selection) { clearSelection(); setStatus(''); render(); }
+    }, true);
+    board.addEventListener('pointercancel', event => { if (fingerTap && fingerTap.pointerId === event.pointerId) fingerTap = null; }, true);
     board.addEventListener('pointerdown', event => {
       if (startGripDrag(event)) return;
       if (tool === 'select') {
         if (event.button !== 0) return;
         if (gesture) { if (gesture.pointerId !== event.pointerId) cancel(); event.preventDefault(); event.stopImmediatePropagation(); return; }
+        // As with the pen, fingers scroll and pinch the paper; only the Pencil (or mouse)
+        // draws a lasso. A finger still moves or resizes a selection it lands on, and a
+        // finger tap elsewhere releases it.
+        if (event.pointerType === 'touch' && !fingerOnSelection(event)) {
+          fingerTap = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now() };
+          return;
+        }
         event.preventDefault(); event.stopImmediatePropagation();
         if (startSelection(event, event.pointerId)) {
           board.setPointerCapture(event.pointerId);
@@ -935,8 +973,11 @@
     // Older iPad WebKit may report Pencil through TouchEvent without a pen PointerEvent.
     board.addEventListener('touchstart', event => {
       if (tool === 'select') {
-        if (event.touches.length > 1) cancel();
-        else if (!gesture && !global.PointerEvent && event.changedTouches.length) { const t = event.changedTouches[0]; startSelection(t, `touch-${t.identifier}`); }
+        const stylus = [...event.changedTouches].find(t => t.touchType === 'stylus');
+        if (event.touches.length > 1) { if (gesture) cancel(); if (!stylus) return; }
+        // A finger that is not moving a selection scrolls the paper natively.
+        if (!gesture && !stylus) return;
+        if (!gesture && !global.PointerEvent) startSelection(stylus, `touch-${stylus.identifier}`);
         event.preventDefault(); event.stopImmediatePropagation(); return;
       }
       if (gesture && gesture.kind === 'stroke') { event.preventDefault(); return; }
@@ -946,7 +987,8 @@
     }, { capture: true, passive: false });
     board.addEventListener('touchmove', event => {
       if (tool === 'select') {
-        if (gesture && typeof gesture.pointerId === 'string') { const t = [...event.changedTouches].find(t => `touch-${t.identifier}` === gesture.pointerId); if (t) moveSelection(t); }
+        if (!gesture) return;
+        if (typeof gesture.pointerId === 'string') { const t = [...event.changedTouches].find(t => `touch-${t.identifier}` === gesture.pointerId); if (t) moveSelection(t); }
         event.preventDefault(); event.stopImmediatePropagation(); return;
       }
       const g = gesture; if (!g || g.kind !== 'stroke') return;

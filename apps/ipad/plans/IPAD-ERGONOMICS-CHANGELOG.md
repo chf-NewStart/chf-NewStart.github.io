@@ -360,3 +360,21 @@ to the card and ended the pinch; the card now reacts only to its own lost captur
 New `tests/reading-workspace-note-pinch-grip.test.js` (native CDP touch: first finger
 on the strip, second on the note body, spread) fails before (the note moves) and
 passes after (it grows). Not verified on a physical iPad.
+
+## 22. Fingers scroll the Workspace in lasso mode (v172)
+
+houfu: in lasso mode fingers should move the Workspace, as in pen mode. Every finger
+touch in lasso mode started a lasso, and `.workspace-selecting *` set
+`touch-action: none`, so the paper could not scroll. Now, as with the pen, the Pencil
+(or mouse) draws the lasso and fingers scroll and pinch natively.
+`reading-workspace-view.js`: the board's select-mode `pointerdown` lets a finger that
+is not on the selection (`fingerOnSelection`, same slop as before) pass through,
+tracking it only as a possible tap (`fingerTap`) that releases the selection if it
+lifts within 8 px and 600 ms. Select-mode `touchstart`/`touchmove` cancel only for a
+stylus or a live selection gesture. `reading-workspace.css`: the selecting rule no
+longer sets `touch-action`; the selection box and corner handles keep `none`.
+Tests: new `tests/reading-workspace-lasso-finger-scroll.test.js` (native CDP touch:
+finger drag scrolls and draws no lasso, Pencil lassos, finger tap releases) fails
+before and passes after. `reading-workspace-lasso-browser` now draws its lassos with
+the Pencil and checks that a finger loop selects nothing; a finger still drags the
+selection. Not verified on a physical iPad.

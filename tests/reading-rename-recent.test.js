@@ -69,6 +69,9 @@ const server = http.createServer((request, response) => {
     await page.locator('#renamePaperTitle').press('Enter');
     check('list Rename targets its own paper', (await saved('rename-1')).title === 'List name' && (await saved('rename-0')).title === 'My renamed book');
     await page.locator('.library-list-open[data-library-paper="rename-1"]').click();
+    // 1a215db5: the title lives in Zen's More > This paper dialog.
+    await page.locator('#zenMore').click();
+    await page.locator('#zenReadingControls').click();
     await page.locator('#readerTitle').click();
     check('clicking the open title selects its existing name', await page.locator('#renamePaperTitle').evaluate(input => input.value === 'List name' && input.selectionStart === 0 && input.selectionEnd === input.value.length));
     await page.locator('#renamePaperTitle').fill('   ');

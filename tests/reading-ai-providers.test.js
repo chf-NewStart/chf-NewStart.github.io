@@ -17,6 +17,23 @@ const server = http.createServer((req, res) => {
 });
 
 let failures = 0;
+// Zen is the only reader (73f8b633, 1a215db5): the Notebook opens from More,
+// and Desk settings live on the library masthead behind the reader's X.
+async function openZenNotebook(page) {
+  await page.locator('#zenMore').click();
+  await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+  await page.locator('#zenNotebook').click();
+  await page.locator('#notebook').waitFor({ state: 'visible' });
+}
+async function openDeskSettings(page) {
+  if (await page.locator('#readerPage').isVisible()) {
+    if (await page.locator('#notebook').isVisible()) await page.locator('#sheetClose').click();
+    await page.locator('#zenExit').click();
+    await page.locator('#libraryPage').waitFor({ state: 'visible' });
+  }
+  await page.locator('#settingsBtn').click();
+  await page.locator('#settingsDialog').waitFor({ state: 'visible' });
+}
 function check(name, condition, extra) {
   console.log((condition ? 'PASS' : 'FAIL') + '  ' + name + (extra !== undefined ? '  [' + extra + ']' : ''));
   if (!condition) failures++;
@@ -48,7 +65,7 @@ function check(name, condition, extra) {
   await localPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
   await localPage.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
   check('guide default dimness is 55%', await localPage.locator('#guideDimRange').inputValue() === '55');
-  if (await localPage.locator('#notebookReopen').isVisible()) await localPage.click('#notebookReopen');
+  await openZenNotebook(localPage);
   await localPage.click('[data-tab="aiPanel"]');
   await localPage.click('#aiUseCurrent');
   await localPage.fill('#aiQuestion', 'What happens to light energy?');
@@ -81,7 +98,7 @@ function check(name, condition, extra) {
   });
   await deepSeekPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
   await deepSeekPage.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
-  if (await deepSeekPage.locator('#notebookReopen').isVisible()) await deepSeekPage.click('#notebookReopen');
+  await openZenNotebook(deepSeekPage);
   await deepSeekPage.click('[data-tab="aiPanel"]');
   await deepSeekPage.click('#aiUseCurrent');
   await deepSeekPage.fill('#aiQuestion', 'Summarize this.');
@@ -90,7 +107,7 @@ function check(name, condition, extra) {
   check('legacy key migrates to DeepSeek', authorization === 'Bearer legacy-test-key', authorization);
   check('DeepSeek uses current default model', requestBody && requestBody.model === 'deepseek-flash', requestBody && requestBody.model);
   check('thread history reaches provider', requestBody && requestBody.messages && requestBody.messages.some(message => message.role === 'user' && message.content.includes('Summarize this.')));
-  await deepSeekPage.click('#settingsBtn');
+  await openDeskSettings(deepSeekPage);
   check('migrated provider appears in settings', await deepSeekPage.locator('#aiProvider').inputValue() === 'deepseek');
   check('editable model appears in settings', await deepSeekPage.locator('#aiModel').inputValue() === 'deepseek-flash');
   await deepSeekContext.close();
@@ -108,7 +125,7 @@ function check(name, condition, extra) {
     });
   });
   await setupSourcePage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
-  await setupSourcePage.click('#settingsBtn');
+  await openDeskSettings(setupSourcePage);
   check('device setup link works without GitHub sync', await setupSourcePage.locator('#syncLinkBtn').isVisible());
   await setupSourcePage.click('#syncLinkBtn');
   const setupLink = await setupSourcePage.evaluate(() => window.__deviceSetupLink || '');
@@ -123,7 +140,7 @@ function check(name, condition, extra) {
   check('device setup imports selected AI provider', importedAi && importedAi.provider === 'openai', importedAi && importedAi.provider);
   check('device setup imports AI key', importedAi && importedAi.providers.openai.key === 'setup-transfer-test-key');
   check('device setup does not invent GitHub sync', await setupTargetPage.evaluate(() => localStorage.getItem('readingRoom.sync.v1') === null));
-  await setupTargetPage.click('#settingsBtn');
+  await openDeskSettings(setupTargetPage);
   check('imported AI key appears ready in settings', await setupTargetPage.locator('#aiKeyStatus').textContent().then(text => text.includes('Ready to use OpenAI')));
   await setupTargetContext.close();
 

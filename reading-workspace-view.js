@@ -27,6 +27,7 @@
     const cardTouches = new Map();
     let manualCardScrollAt = 0;
     let undoStack = [], redoStack = [];
+    let multiTap = null, tapStatusTimer = 0;
     let observedHeight = 2000, observedWidth = 1000;
     let growingPaper = false;
     let selection = null;
@@ -729,6 +730,8 @@
       const g = { kind: 'stroke', mode, pointerId, pointerType: event.pointerType || 'pen', points: [], ids: new Set(), erased: [], color, width, travel: 0, holdTimer: 0, paperId: scope.id, epoch: scope.epoch,
         anchor: owner ? { clipId: owner.id, ...owner.box } : null };
       gesture = g; board.classList.add('workspace-drawing');
+      // A resting palm during handwriting is never a deliberate history tap.
+      if (multiTap) multiTap.valid = false;
       if (mode === 'pen') { g.preview = document.createElementNS(NS, 'path'); g.preview.classList.add('workspace-ink-preview'); ink.appendChild(g.preview); }
       addPoint(g, event); return true;
     }
@@ -933,6 +936,51 @@
     }
     if (buttons.undo) buttons.undo.addEventListener('click', () => history('undo'));
     if (buttons.redo) buttons.redo.addEventListener('click', () => history('redo'));
+    // iPad note-app convention: a quick two-finger tap undoes and a three-finger tap
+    // redoes workspace handwriting, so the Pencil hand never travels to the rail.
+    // Any movement, scroll, zoom, cancellation, pen stroke or form control voids it.
+    const TAP_MS = 400, TAP_SLOP = 12;
+    function tapStatus(message) {
+      clearTimeout(tapStatusTimer); setStatus(message);
+      tapStatusTimer = setTimeout(() => { if (status.textContent === message) setStatus(''); }, 1400);
+    }
+    function finishMultiTap() {
+      const tap = multiTap; multiTap = null;
+      if (!tap || !tap.valid || (tap.max !== 2 && tap.max !== 3) || performance.now() - tap.start > TAP_MS) return;
+      if (scroll.scrollTop !== tap.scrollTop || scroll.scrollLeft !== tap.scrollLeft || board.style.transform !== tap.zoom) return;
+      if (gesture || !available(context()) || context().busy) return;
+      const direction = tap.max === 2 ? 'undo' : 'redo';
+      const stack = direction === 'undo' ? undoStack : redoStack, before = stack.length;
+      if (!before) { tapStatus(direction === 'undo' ? 'Nothing to undo in Workspace' : 'Nothing to redo in Workspace'); return; }
+      history(direction);
+      if (stack.length < before) tapStatus(direction === 'undo' ? 'Undid last workspace change' : 'Redid workspace change');
+    }
+    scroll.addEventListener('pointerdown', event => {
+      // Any Pencil or mouse contact (stroke, eraser, lasso) during the tap voids it.
+      if (event.pointerType !== 'touch') { if (multiTap) multiTap.valid = false; return; }
+      // A contact released outside this pane must not strand an old session.
+      if (multiTap && performance.now() - multiTap.start > 2000) multiTap = null;
+      if (!multiTap) multiTap = { start: performance.now(), down: new Map(), max: 0, valid: true,
+        scrollTop: scroll.scrollTop, scrollLeft: scroll.scrollLeft, zoom: board.style.transform };
+      const formControl = event.target instanceof Element && event.target.closest('textarea, input, select, button, summary, [contenteditable="true"]');
+      if (formControl || (gesture && gesture.kind === 'stroke')) multiTap.valid = false;
+      multiTap.down.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      multiTap.max = Math.max(multiTap.max, multiTap.down.size);
+    }, true);
+    document.addEventListener('pointermove', event => {
+      const start = multiTap && multiTap.down.get(event.pointerId);
+      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_SLOP) multiTap.valid = false;
+    }, { capture: true, passive: true });
+    document.addEventListener('pointerup', event => {
+      if (!multiTap || !multiTap.down.delete(event.pointerId)) return;
+      if (!multiTap.down.size) finishMultiTap();
+    }, true);
+    document.addEventListener('pointercancel', event => {
+      if (!multiTap || !multiTap.down.has(event.pointerId)) return;
+      multiTap.valid = false; multiTap.down.delete(event.pointerId);
+      if (!multiTap.down.size) multiTap = null;
+    }, true);
+    for (const type of ['blur', 'pagehide']) global.addEventListener(type, () => { multiTap = null; });
     if (buttons.moreSpace) buttons.moreSpace.addEventListener('click', () => { if (adapter.grow() === true) render(); else setStatus('Could not add more space.'); });
     if (buttons.newNote) buttons.newNote.addEventListener('click', () => {
       if (!available(context()) || context().busy) return;

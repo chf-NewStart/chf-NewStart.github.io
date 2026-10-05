@@ -247,7 +247,8 @@ const fixture = {};
     await card.locator('textarea.workspace-note').fill(NOTE); await card.locator('.workspace-handle').focus();
     fixture.note = await card.getAttribute('data-clip-id');
     await card.locator('.workspace-note-menu summary').click();
-    for (let i = 0; i < 5; i++) await card.locator('.workspace-note-smaller').click();
+    // Shrink to the minimum width; new notes start square (400 units) since the sticky-note round.
+    for (let i = 0; i < 5 && await card.locator('.workspace-note-smaller').isEnabled(); i++) await card.locator('.workspace-note-smaller').click();
     await card.locator('.workspace-note-menu summary').click();
     const initialPlace = (await chapter(page)).readingWorkspace.positions[fixture.note];
     const handle = await card.locator('.workspace-handle').boundingBox();

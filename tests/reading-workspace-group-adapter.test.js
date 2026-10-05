@@ -238,5 +238,5 @@ test('new-note drop points use logical width and horizontal scroll', () => {
   const point = context.workspaceDropPoint();
   assert.equal(point.x, 1545);
   assert.equal(point.y, 645);
-  assert.equal(point.width, 650);
+  assert.equal(point.width, 400, 'new notes start square-sized');
 });

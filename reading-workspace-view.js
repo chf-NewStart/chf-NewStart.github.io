@@ -395,7 +395,10 @@
           if (path) paintPath(path, stroke);
           for (const point of logicalPoints(stroke)) inkBottom = Math.max(inkBottom, point[1]);
         }
-        state.card.style.minHeight = `${Math.max(178, (inkBottom - box.y) * board.clientWidth / observedWidth + 20)}px`;
+        // Like a real sticky note, a note is at least as tall as it is wide (up to 300px),
+        // and grows to hold the writing on it.
+        const unit = board.clientWidth / observedWidth, square = Math.min(300, box.width * unit);
+        state.card.style.minHeight = `${Math.max(178, square, (inkBottom - box.y) * unit + 20)}px`;
       }
     }
     function boxFor(c, id) {

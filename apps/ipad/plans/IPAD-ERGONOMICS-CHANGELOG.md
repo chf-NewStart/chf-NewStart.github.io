@@ -347,3 +347,16 @@ only when a sample erased something new.
 New `tests/reading-workspace-eraser-sweep.test.js`: 40 lines, one sweep erases
 exactly the 20 it crosses, Undo restores them, and the sweep walks the ink layer at
 most 3 times (120 times before the change). Not verified on a physical iPad.
+
+## 21. A pinch that starts on a note's top strip resizes it (v171)
+
+houfu: with one finger on the top of a note, pinching moved it instead of resizing.
+Two causes in `reading-workspace-view.js`. `startGripDrag` (the Pencil grip from
+entry 9) also took finger touches and stopped them before the note's own pointerdown,
+so the note never counted that finger toward a pinch; it now ignores touch, and
+fingers use the note handle as before. Then, when the second finger turned the drag
+into a pinch, the handle lost pointer capture, and that `lostpointercapture` bubbled
+to the card and ended the pinch; the card now reacts only to its own lost capture.
+New `tests/reading-workspace-note-pinch-grip.test.js` (native CDP touch: first finger
+on the strip, second on the note body, spread) fails before (the note moves) and
+passes after (it grows). Not verified on a physical iPad.

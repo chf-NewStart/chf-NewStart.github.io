@@ -249,17 +249,18 @@
       board.focus({ preventScroll: true });
       const p = pointFromClient(event.clientX, event.clientY), b = selection && selection.bounds;
       if (b && p.x >= b.x - 8 && p.x <= b.x + b.width + 8 && p.y >= b.y - 8 && p.y <= b.y + b.height + 8) {
-        gesture = { kind: 'group', pointerId, start: p, delta: { x: 0, y: 0 }, measured: measuredCards(), before: groupSnapshot(selection) };
+        gesture = { kind: 'group', pointerId, finger: event.pointerType === 'touch', client: { x: event.clientX, y: event.clientY }, start: p, delta: { x: 0, y: 0 }, measured: measuredCards(), before: groupSnapshot(selection) };
       } else {
         clearSelection();
         const path = document.createElementNS(NS, 'path'); path.classList.add('workspace-lasso-preview'); lassoLayer.appendChild(path);
         lassoLayer.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
-        gesture = { kind: 'lasso', pointerId, points: [[p.x, p.y]], path };
+        gesture = { kind: 'lasso', pointerId, client: { x: event.clientX, y: event.clientY }, points: [[p.x, p.y]], path };
       }
       return true;
     }
     function moveSelection(event) {
       const g = gesture, p = pointFromClient(event.clientX, event.clientY);
+      if (g.client) g.far = Math.max(g.far || 0, Math.hypot(event.clientX - g.client.x, event.clientY - g.client.y));
       if (g.kind === 'group') {
         const delta = { x: p.x - g.start.x, y: p.y - g.start.y };
         if (Math.hypot(delta.x, delta.y) < .25 && !g.moved) return;
@@ -277,6 +278,14 @@
       const g = gesture; moveSelection(event); gesture = null;
       suppressClickUntil = performance.now() + 450;
       if (typeof g.pointerId === 'number' && board.hasPointerCapture(g.pointerId)) board.releasePointerCapture(g.pointerId);
+      // A tap that never travelled releases the lasso instead of drawing an empty loop.
+      // Fingers release from anywhere, even inside the selection; Pencil and mouse
+      // keep a tap inside it so a deliberate drag can still start there.
+      const tapped = !!g.client && (g.far || 0) < 8 && !g.moved;
+      if (tapped && (g.kind === 'lasso' || g.finger)) {
+        if (g.kind === 'group') previewGroup({ x: 0, y: 0 });
+        clearSelection(); setStatus(''); render(); return;
+      }
       if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); commitGroup(g.delta, g.measured, g.before); }
       else {
         lassoLayer.replaceChildren();

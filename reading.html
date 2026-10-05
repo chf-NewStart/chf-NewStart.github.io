@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://accounts.google.com https://cdn.apple-cloudkit.com; style-src 'self' 'unsafe-inline' https://cdn.apple-cloudkit.com; img-src 'self' data: blob: https://upload.wikimedia.org https://cdn.apple-cloudkit.com; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Phloem — Breathe, Focus, Read</title>
   <meta name="description" content="Breathe, Focus, Read — a calm desk that makes academic papers easier to focus on: reading guides for wandering eyes, notes beside the page, and spaced review that keeps what you read.">
@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=170">
-  <link rel="stylesheet" href="/reading-fold.css?v=170">
-  <link rel="stylesheet" href="/reading-workspace.css?v=170">
+  <link rel="stylesheet" href="/reading.css?v=171">
+  <link rel="stylesheet" href="/reading-fold.css?v=171">
+  <link rel="stylesheet" href="/reading-workspace.css?v=171">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -756,9 +756,10 @@
       <p class="settings-lede">Choose how this reading desk syncs, thinks with you, and moves between devices. Your reading settings stay calm and local by default.</p>
       <section class="native-only" id="icloudSettings">
         <h3>Sync with iCloud</h3>
-        <p>Keep your library, notes, highlights, handwriting, progress, PDFs, and Word drafts in your private iCloud database. Reading stays offline-first, and Phloem merges edits instead of replacing this iPad’s library.</p>
+        <p>Keep your library, notes, highlights, handwriting, progress, PDFs, and Word drafts in your private iCloud database. The iPad app and this website share it when both use the same Apple ID. Reading stays offline-first, and Phloem merges edits instead of replacing this device’s library.</p>
         <div><button class="button" id="icloudEnableBtn" type="button">Turn on iCloud sync</button> <button class="soft-button hidden" id="icloudSyncBtn" type="button">Sync now</button> <button class="soft-button hidden" id="icloudOffBtn" type="button">Turn off</button> <button class="soft-button hidden" id="icloudDeleteBtn" type="button">Delete iCloud copy…</button></div>
-        <div class="status" id="icloudStatus" role="status" aria-live="polite">Off — everything stays on this iPad.</div>
+        <div class="hidden" id="icloudAppleSignInBox"><div id="icloudAppleSignIn"></div><div id="icloudAppleSignOut" hidden></div></div>
+        <div class="status" id="icloudStatus" role="status" aria-live="polite">Off — everything stays on this device.</div>
       </section>
       <section>
         <h3>Sync with Google Drive</h3>
@@ -949,19 +950,19 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=170',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=171',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=170" defer></script>
-<script src="/reading-keeps.js?v=170" defer></script>
-<script src="/reading-excerpts.js?v=170" defer></script>
-<script src="/reading-excerpts-view.js?v=170" defer></script>
-<script src="/reading-workspace.js?v=170" defer></script>
-<script src="/reading-workspace-viewport.js?v=170" defer></script>
-<script src="/reading-workspace-view.js?v=170" defer></script>
-<script src="/reading-folds.js?v=170" defer></script>
-<script src="/reading-pdf-projection.js?v=170" defer></script>
-<script src="/reading-fold-view.js?v=170" defer></script>
-<script src="/reading.js?v=170" defer></script>
+<script src="/reading-ink.js?v=171" defer></script>
+<script src="/reading-keeps.js?v=171" defer></script>
+<script src="/reading-excerpts.js?v=171" defer></script>
+<script src="/reading-excerpts-view.js?v=171" defer></script>
+<script src="/reading-workspace.js?v=171" defer></script>
+<script src="/reading-workspace-viewport.js?v=171" defer></script>
+<script src="/reading-workspace-view.js?v=171" defer></script>
+<script src="/reading-folds.js?v=171" defer></script>
+<script src="/reading-pdf-projection.js?v=171" defer></script>
+<script src="/reading-fold-view.js?v=171" defer></script>
+<script src="/reading.js?v=171" defer></script>
 </body>
 </html>

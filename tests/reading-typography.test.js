@@ -42,9 +42,15 @@ function check(name, condition, extra) {
     localStorage.setItem('readingRoom.lastOpen.v1', paper.id);
   });
 
+  // Zen is the only reader (1a215db5): Reading settings live in the Zen dock's More menu.
+  const openReadingSettings = async () => {
+    await page.click('#zenMore');
+    await page.click('#zenSettings');
+    await page.locator('#comfortBar').waitFor({ state: 'visible' });
+  };
   await page.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && document.querySelector('.para .original'));
-  await page.click('#comfortBtn');
+  await openReadingSettings();
   check('typeface choice lives in the Reflow text settings', await page.locator('.comfort-text [data-reading-typeface="book"]').isVisible() && await page.locator('.comfort-text [data-reading-typeface="clean"]').isVisible());
 
   await page.click('[data-reading-typeface="clean"]');
@@ -59,7 +65,7 @@ function check(name, condition, extra) {
   const persistedFont = await page.locator('.para .original').first().evaluate(node => getComputedStyle(node).fontFamily);
   check('Clean remains selected after reload', persisted === 'true' && persistedFont.includes('DM Sans'), persistedFont);
 
-  await page.click('#comfortBtn');
+  await openReadingSettings();
   await page.click('[data-reading-typeface="book"]');
   const bookFont = await page.locator('.para .original').first().evaluate(node => getComputedStyle(node).fontFamily);
   check('Book restores the serif reading stack', bookFont.includes('Charter') && !bookFont.includes('DM Sans'), bookFont);

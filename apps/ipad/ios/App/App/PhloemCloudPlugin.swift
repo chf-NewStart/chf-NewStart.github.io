@@ -558,7 +558,11 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
         default:
             hint = ""
         }
-        let detail = "(CloudKit \(cloudError.code.rawValue): \(cloudError.localizedDescription))"
+        // NSError's description carries the server's sub-code and message, such as
+        // "Server Rejected Request" (15/2000); server message = "...", which
+        // localizedDescription drops.
+        let detail = "(CloudKit \(cloudError.code.rawValue): \(String((cloudError as NSError).description.prefix(500))))"
+        NSLog("PhloemCloud: %@", (cloudError as NSError).description)
         return [message, hint, detail].filter { !$0.isEmpty }.joined(separator: " ")
     }
 

@@ -60,6 +60,8 @@
 /* Plain sticky notes: no tape or pin. A faint top strip marks where to grab the note. */
 .workspace-card::after { content:""; position:absolute; top:0; left:0; right:0; height:44px; border-radius:2px 3px 0 0; background:color-mix(in srgb,var(--note-ink) 5%,transparent); pointer-events:none; }
 html[data-theme="dark"] .workspace-card::after { background:rgba(255,255,255,.04); }
+/* A short grabber bar, the standard iPadOS sheet cue, marks the strip as the place to grab. */
+.workspace-card::before { content:""; position:absolute; top:9px; left:50%; width:34px; height:4px; border-radius:2px; background:color-mix(in srgb,var(--note-ink) 32%,transparent); transform:translateX(-50%); pointer-events:none; }
 .workspace-card:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .workspace-card.workspace-resizing { outline:2px solid var(--accent); outline-offset:2px; }
 .workspace-card-head { display:flex; align-items:center; justify-content:space-between; margin:0 -8px; }

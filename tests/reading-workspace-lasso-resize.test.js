@@ -107,7 +107,7 @@ async function fingerDrag(page, from, to) {
   }
   await page.waitForTimeout(250);
 }
-const card0Tape = page => page.locator('.workspace-card').first().evaluate(card => { const after = getComputedStyle(card, '::after'); return after.top === '0px' && after.left === '0px' ? 'none' : 'tape'; });
+const card0Tape = page => page.locator('.workspace-card').first().evaluate(card => { const after = getComputedStyle(card, '::after'); const grabber = getComputedStyle(card, '::before'); return after.top === '0px' && after.left === '0px' && grabber.content === '""' && grabber.height === '4px' && grabber.pointerEvents === 'none' ? 'none' : 'tape'; });
 const centre = box => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
 
 (async () => {
@@ -183,7 +183,7 @@ const centre = box => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
     await page.locator('#workspaceNewNote').click();
     const card = page.locator('.workspace-card').first();
     await card.waitFor({ state: 'visible' });
-    assert.equal(await card0Tape(page), 'none', 'notes are plain: no tape or pin');
+    assert.equal(await card0Tape(page), 'none', 'notes are plain: a top strip with a grabber bar, no tape or pin');
     await page.locator('#workspaceBoard').focus();
     const strokesBefore = live((await saved(page)).readingWorkspace).length;
     const cardBox = await card.boundingBox();

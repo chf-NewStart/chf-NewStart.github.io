@@ -246,7 +246,6 @@ async function stroke(page) {
     await page.locator('#zenWorkspace').click();
     await page.locator('#workspacePanel').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#zenWorkspace').getAttribute('aria-pressed'), 'true');
-    await page.locator('#workspaceMore summary').click();
     await page.locator('#workspaceNewNote').click();
     await page.waitForFunction(id => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
       .find(ch => ch.id === id)?.readingExcerpts?.items?.some(item => item.quote === ''), paperId);

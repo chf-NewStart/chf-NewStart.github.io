@@ -20,7 +20,7 @@ function harness() {
   const context = vm.createContext({
     window: {}, state, currentId: 'paper', KEY: 'reader', stateLoadFailed: false,
     storageWarned: false, workspaceSaveFailed: false, now: () => 1000,
-    find: () => ch, localState: () => state,
+    find: () => ch, localState: () => state, workspaceView: null, byId: () => null,
     readingExcerptsUnavailable: chapter => !chapter || !chapter.readingExcerpts,
     workspaceStatus: message => { calls.status = message; },
     localStorage: { setItem(key, value) { calls.writes.push(value); if (fail) throw new Error('Storage full'); } },
@@ -31,7 +31,10 @@ function harness() {
   vm.runInContext([
     section('  function readingWorkspaceUnavailable(ch){', '  function mergeReadingWorkspace('),
     section('  function persist(schedule,atomic){', '  function find(id){'),
-    section('  function workspaceGroupEqual(', '  function workspaceEnsureSpace(')
+    section('  function saveWorkspace(ch,next){', '  function workspaceWide()'),
+    section('  function workspaceDropPoint(', '  function showWorkspaceClip('),
+    section('  function workspaceGroupEqual(', '  function workspaceEnsureSpace('),
+    section('  function workspaceEnsureSpace(', '  function workspaceGrow(')
   ].join('\n'), context);
   const api = context.window.PhloemWorkspaceState;
   let board = api.place(api.normalize(), 'clip', { x: 40, y: 40, width: 420 }, 100);
@@ -102,8 +105,8 @@ test('missing or stale snapshots, deleted members, and newly anchored children f
     fixture => { fixture.ch.readingWorkspace = fixture.api.removeStrokes(fixture.ch.readingWorkspace, ['free'], 300); },
     fixture => { fixture.ch.readingWorkspace = fixture.api.addStroke(fixture.ch.readingWorkspace, { ...stroke('free'), color: 'red' }, 300); },
     fixture => { fixture.ch.readingWorkspace = fixture.api.addStroke(fixture.ch.readingWorkspace, stroke('new-child', { clipId: 'clip', x: 40, y: 40, width: 420 }), 300); },
-    fixture => { fixture.ch.readingWorkspacePending = [{ version: 3 }]; },
-    fixture => { fixture.ch.readingWorkspace = { version: 3, preserved: true }; }
+    fixture => { fixture.ch.readingWorkspacePending = [{ version: 4 }]; },
+    fixture => { fixture.ch.readingWorkspace = { version: 4, preserved: true }; }
   ]) {
     const fixture = harness(); fixture.expected = snapshot(fixture.ch); mutate(fixture);
     const current = fixture.ch.readingWorkspace;
@@ -161,4 +164,79 @@ test('orphan ink undo restores its anchor and redo removes it again', () => {
   assert.deepEqual(restored.strokes[0].anchor, before.strokes[0].anchor);
   assert.equal(context.workspaceRestoreGroup(moved, restored), true);
   assert.equal(snapshot(ch, selection).strokes[0].anchor, undefined);
+});
+
+test('horizontal group movement grows the paper and undo never contracts it', () => {
+  const { context, ch } = harness(), before = snapshot(ch);
+  assert.equal(context.workspaceMoveGroup(selected, { x: 2200, y: 100 }, cards, before), true);
+  const moved = snapshot(ch);
+  assert.equal(ch.readingWorkspace.width, 3000);
+  assert.equal(moved.positions.clip.x, 2240);
+  assert.deepEqual(moved.strokes.find(item => item.id === 'free').points, [[2270, 180, .5], [2300, 210, .6]]);
+  assert.equal(context.workspaceRestoreGroup(before, moved), true);
+  assert.equal(ch.readingWorkspace.width, 3000);
+  assert.equal(ch.readingWorkspace.positions.clip.x, 40);
+  assert.equal(context.workspaceRestoreGroup(moved, snapshot(ch)), true);
+  assert.equal(ch.readingWorkspace.positions.clip.x, 2240);
+});
+
+test('restoring wide target geometry grows enough for card edges and raw anchored ink', () => {
+  const { context, ch } = harness(), expected = snapshot(ch), target = plain(expected);
+  target.positions.clip.x = 2100;
+  const attached = target.strokes.find(item => item.id === 'attached');
+  attached.anchor.x = 3100;
+  attached.points = [[3130, 80, .5], [3160, 110, .6]];
+  assert.equal(context.workspaceRestoreGroup(target, expected), true);
+  assert.equal(ch.readingWorkspace.width, 4000, 'raw fallback points remain inside saved paper width');
+  assert.equal(ch.readingWorkspace.positions.clip.x, 2100);
+  assert.deepEqual(plain(ch.readingWorkspace.strokes.find(item => item.id === 'attached').points), attached.points);
+});
+
+test('space requests expand both dimensions in one save and keep all existing coordinates', () => {
+  const { context, ch, calls } = harness(), previous = plain(ch.readingWorkspace);
+  assert.equal(context.workspaceEnsureSpace(2300, 2500), true);
+  assert.equal(ch.readingWorkspace.width, 3000);
+  assert.equal(ch.readingWorkspace.height, 3000);
+  assert.deepEqual(plain(ch.readingWorkspace.positions), previous.positions);
+  assert.deepEqual(plain(ch.readingWorkspace.strokes), previous.strokes);
+  assert.deepEqual(plain(ch.readingWorkspace.deleted), previous.deleted);
+  assert.equal(calls.writes.length, 1);
+  assert.equal(context.workspaceEnsureSpace(2999), true, 'legacy height-only callers preserve width');
+  assert.equal(calls.writes.length, 1);
+  assert.equal(context.workspaceEnsureSpace(3000), true);
+  assert.equal(ch.readingWorkspace.width, 3000);
+  assert.equal(ch.readingWorkspace.height, 4000);
+});
+
+test('invalid or exhausted width requests leave the workspace untouched', () => {
+  const { context, ch, api, calls } = harness(), previous = ch.readingWorkspace;
+  for (const x of [-1, NaN, Infinity, api.MAX_WIDTH]) assert.equal(context.workspaceEnsureSpace(500, x), false);
+  assert.equal(ch.readingWorkspace, previous);
+  assert.equal(calls.writes.length, 0);
+});
+
+test('placing a note beyond the original right edge expands paper before saving its position', () => {
+  const { context, ch, calls } = harness(), other = plain(ch.readingWorkspace.positions.other);
+  assert.equal(context.placeWorkspaceClip('clip', { x: 2450, y: 2700, width: 650 }), true);
+  assert.equal(ch.readingWorkspace.width, 4000);
+  assert.equal(ch.readingWorkspace.height, 4000);
+  assert.equal(ch.readingWorkspace.positions.clip.x, 2450);
+  assert.equal(ch.readingWorkspace.positions.clip.y, 2700);
+  assert.deepEqual(plain(ch.readingWorkspace.positions.other), other);
+  assert.equal(calls.writes.length, 1);
+});
+
+test('new-note drop points use logical width and horizontal scroll', () => {
+  const { context, ch, api } = harness();
+  ch.readingWorkspace = api.setWidth(api.setWidth(ch.readingWorkspace, 2000), 3000);
+  const elements = {
+    workspaceBoard: { clientWidth: 1500 },
+    workspaceScroll: { scrollLeft: 750, scrollTop: 300, getBoundingClientRect: () => ({ left: 0, top: 0 }) },
+    workspaceCards: { children: [] }
+  };
+  context.byId = id => elements[id];
+  const point = context.workspaceDropPoint();
+  assert.equal(point.x, 1545);
+  assert.equal(point.y, 645);
+  assert.equal(point.width, 650);
 });

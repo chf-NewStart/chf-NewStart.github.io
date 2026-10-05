@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=162">
-  <link rel="stylesheet" href="/reading-fold.css?v=162">
-  <link rel="stylesheet" href="/reading-workspace.css?v=162">
+  <link rel="stylesheet" href="/reading.css?v=163">
+  <link rel="stylesheet" href="/reading-fold.css?v=163">
+  <link rel="stylesheet" href="/reading-workspace.css?v=163">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -456,11 +456,11 @@
               <button id="workspacePenToggle" type="button" data-workspace-tool="pen" aria-label="Pen, color and size" aria-pressed="true" aria-expanded="false" aria-controls="workspacePenOptions" title="Pen, color and size"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg></button>
               <button type="button" data-workspace-tool="eraser" aria-label="Eraser" aria-pressed="false" title="Eraser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 3 6 6-11 11H6l-4-4L15 3ZM8 10l6 6M10 20h11"/></svg></button>
               <button type="button" data-workspace-tool="select" aria-label="Select handwriting and notes" aria-pressed="false" title="Lasso: circle handwriting and notes, then drag to move"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="9" rx="9" ry="6" stroke-dasharray="3 3"/><path d="M6 13c-3 4 0 7 4 6s3-4 0-4H8m2 4c0 2-2 3-4 3"/></svg></button>
+              <button id="workspaceNewNote" class="workspace-labelled" type="button" aria-label="Add sticky note" title="Add sticky note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14v10l-6 6H5Z"/><path d="M13 20v-6h6M12 7v6M9 10h6"/></svg><span aria-hidden="true">Note</span></button>
               <button id="workspaceUndo" class="workspace-undo" type="button" aria-label="Undo workspace handwriting or selection move" title="Undo workspace handwriting or selection move" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4 3 9l5 5M3 9h10a7 7 0 0 1 0 14" transform="translate(0 -2)"/></svg><span aria-hidden="true">Undo</span></button>
               <details id="workspaceMore" class="workspace-more">
                 <summary aria-label="More workspace tools" title="More tools">⋯</summary>
                 <div class="workspace-more-panel">
-                  <button id="workspaceNewNote" type="button">＋ Sticky note</button>
                   <button id="workspaceMoreSpace" type="button">＋ More paper</button>
                   <div class="workspace-zoom-controls" role="group" aria-label="Workspace zoom">
                     <button id="workspaceZoomOut" type="button" aria-label="Zoom workspace out" title="Zoom out">−</button>
@@ -619,6 +619,7 @@
             <button class="zen-exit zen-menu-action" id="zenRedo" data-label="Redo on paper" type="button" aria-label="Redo paper highlight or handwriting" title="Redo paper highlight or handwriting only" disabled><span aria-hidden="true">↷</span></button>
           </div>
         </div>
+        <button class="zen-exit zen-marker zen-workspace-marker" id="zenWorkspaceMarker" data-highlight-color="yellow" type="button" aria-expanded="false" aria-controls="highlightToolbar" aria-label="Highlighter color Yellow. Open colors" title="Highlighter color · Yellow"><span class="zen-marker-glyph" aria-hidden="true">✦</span><span class="zen-marker-current-dot" aria-hidden="true"></span></button>
         <button class="zen-exit zen-undo" id="zenUndo" type="button" aria-label="Undo paper highlight or handwriting" aria-keyshortcuts="Meta+Z Control+Z" title="Undo paper highlight or handwriting only" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4 3 9l5 5M3 9h10a7 7 0 0 1 0 14" transform="translate(0 -2)"/></svg><span aria-hidden="true">Undo</span></button>
         <button class="zen-exit zen-workspace" id="zenWorkspace" data-workspace-open type="button" aria-label="Toggle Workspace" aria-pressed="false" aria-controls="workspacePanel" title="Workspace"><span aria-hidden="true">▥</span><span class="zen-workspace-caption" aria-hidden="true">Workspace</span></button>
         <div class="zen-tool" id="zenMoreTool">
@@ -948,19 +949,19 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=162',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=163',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=162" defer></script>
-<script src="/reading-keeps.js?v=162" defer></script>
-<script src="/reading-excerpts.js?v=162" defer></script>
-<script src="/reading-excerpts-view.js?v=162" defer></script>
-<script src="/reading-workspace.js?v=162" defer></script>
-<script src="/reading-workspace-viewport.js?v=162" defer></script>
-<script src="/reading-workspace-view.js?v=162" defer></script>
-<script src="/reading-folds.js?v=162" defer></script>
-<script src="/reading-pdf-projection.js?v=162" defer></script>
-<script src="/reading-fold-view.js?v=162" defer></script>
-<script src="/reading.js?v=162" defer></script>
+<script src="/reading-ink.js?v=163" defer></script>
+<script src="/reading-keeps.js?v=163" defer></script>
+<script src="/reading-excerpts.js?v=163" defer></script>
+<script src="/reading-excerpts-view.js?v=163" defer></script>
+<script src="/reading-workspace.js?v=163" defer></script>
+<script src="/reading-workspace-viewport.js?v=163" defer></script>
+<script src="/reading-workspace-view.js?v=163" defer></script>
+<script src="/reading-folds.js?v=163" defer></script>
+<script src="/reading-pdf-projection.js?v=163" defer></script>
+<script src="/reading-fold-view.js?v=163" defer></script>
+<script src="/reading.js?v=163" defer></script>
 </body>
 </html>

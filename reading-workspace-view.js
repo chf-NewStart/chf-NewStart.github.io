@@ -27,7 +27,8 @@
     const cardTouches = new Map();
     let manualCardScrollAt = 0;
     let undoStack = [], redoStack = [];
-    let observedHeight = 2000;
+    let multiTap = null, tapStatusTimer = 0;
+    let observedHeight = 2000, observedWidth = 1000;
     let growingPaper = false;
     let selection = null;
     const lassoLayer = document.createElementNS(NS, 'svg');
@@ -38,18 +39,28 @@
     board.append(lassoLayer, selectionBox);
     const viewport = global.PhloemWorkspaceViewport ? global.PhloemWorkspaceViewport.create({ onNeedSpace: ensurePaperAt, isBusy: () => !!gesture }) : null;
     function resizeLayout() {
-      if (viewport) viewport.layout(observedHeight);
-      else board.style.height = `${board.clientWidth * observedHeight / 1000}px`;
+      board.dataset.logicalWidth = String(observedWidth);
+      board.dataset.logicalHeight = String(observedHeight);
+      if (viewport) viewport.layout(observedHeight, observedWidth);
+      else {
+        const baseWidth = scroll.clientWidth || board.clientWidth * 1000 / observedWidth;
+        board.style.width = `${baseWidth * observedWidth / 1000}px`;
+        board.style.height = `${baseWidth * observedHeight / 1000}px`;
+      }
+      lassoLayer.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
     }
-    function ensurePaperAt(y) {
-      if (growingPaper || !Number.isFinite(y) || !available(context()) || context().busy || !adapter.ensureSpace) return false;
-      if (y < observedHeight) return true;
+    function ensurePaperAt(y, x = 0) {
+      if (growingPaper || !Number.isFinite(y) || !Number.isFinite(x) || !available(context()) || context().busy || !adapter.ensureSpace) return false;
+      const api = global.PhloemWorkspaceState;
+      y = clamp(y, 0, (api && api.MAX_HEIGHT || 1000000) - 1);
+      x = clamp(x, 0, (api && api.MAX_WIDTH || 1000000) - 1);
+      if (y < observedHeight && x < observedWidth) return true;
       growingPaper = true;
       try {
-        if (adapter.ensureSpace(y) !== true) return false;
-        const nextHeight = heightOf(context());
-        if (nextHeight !== observedHeight) {
-          observedHeight = nextHeight; resizeLayout();
+        if (adapter.ensureSpace(y, x) !== true) return false;
+        const nextHeight = heightOf(context()), nextWidth = widthOf(context());
+        if (nextHeight !== observedHeight || nextWidth !== observedWidth) {
+          observedHeight = nextHeight; observedWidth = nextWidth; resizeLayout();
           for (const state of cards.values()) setBox(state, state.box, observedHeight);
           renderInk(context());
         }
@@ -63,6 +74,7 @@
     function setStatus(message) { status.textContent = message || ''; }
     function available(c) { return !!(c.id && c.open && !c.unavailable); }
     function heightOf(c) { const n = Number(c.workspace && c.workspace.height); return Number.isFinite(n) && n >= 1000 ? n : 2000; }
+    function widthOf(c) { const n = Number(c.workspace && c.workspace.width); return Number.isFinite(n) && n >= 1000 ? n : 1000; }
     function itemsOf(c) { return Array.isArray(c.items) ? c.items : []; }
     function positionsOf(c) { return c.workspace && c.workspace.positions || {}; }
     function strokesOf(c) { return Array.isArray(c.workspace && c.workspace.strokes) ? c.workspace.strokes : []; }
@@ -116,9 +128,9 @@
     }
     function pointFromClient(x, y) {
       const rect = board.getBoundingClientRect();
-      return { x: clamp((x - rect.left) * 1000 / Math.max(rect.width, 1), 0, 1000), y: clamp((y - rect.top) * observedHeight / Math.max(rect.height, 1), 0, observedHeight) };
+      return { x: clamp((x - rect.left) * observedWidth / Math.max(rect.width, 1), 0, observedWidth), y: clamp((y - rect.top) * observedHeight / Math.max(rect.height, 1), 0, observedHeight) };
     }
-    function rawPoints(points) { return points.map(p => [Math.round(clamp(p.x, 0, 1000) * 100) / 100, Math.round(clamp(p.y, 0, observedHeight) * 100) / 100, Math.round(clamp(p.pressure == null ? .5 : p.pressure, 0, 1) * 100) / 100]); }
+    function rawPoints(points) { return points.map(p => [Math.round(clamp(p.x, 0, observedWidth) * 100) / 100, Math.round(clamp(p.y, 0, observedHeight) * 100) / 100, Math.round(clamp(p.pressure == null ? .5 : p.pressure, 0, 1) * 100) / 100]); }
     function displayStroke(stroke) {
       const positions = { ...positionsOf(context()) };
       if (stroke.anchor && cards.has(stroke.anchor.clipId)) positions[stroke.anchor.clipId] = cards.get(stroke.anchor.clipId).box;
@@ -156,7 +168,7 @@
     function canonicalStroke(id) { const c = context(); return strokesOf(c).find(stroke => stroke.id === id && activeStroke(c, stroke)) || null; }
     const copy = value => JSON.parse(JSON.stringify(value));
     function measuredCards() {
-      const rect = board.getBoundingClientRect(), scale = 1000 / Math.max(1, rect.width);
+      const rect = board.getBoundingClientRect(), scale = observedWidth / Math.max(1, rect.width);
       return [...cards.values()].filter(state => !state.orphan).map(state => {
         const r = state.card.getBoundingClientRect();
         return { id: state.id, x: state.box.x, y: state.box.y, width: state.box.width, height: r.height * scale };
@@ -201,12 +213,12 @@
       for (const id of selection.clipIds) if (cards.has(id)) cards.get(id).card.classList.add('workspace-selected');
       ink.querySelectorAll('[data-stroke-id]').forEach(path => path.classList.toggle('workspace-selected', selection.strokeIds.includes(path.dataset.strokeId)));
       const b = selection.bounds;
-      Object.assign(selectionBox.style, { left: `${(b.x + delta.x) / 10}%`, top: `${(b.y + delta.y) / observedHeight * 100}%`, width: `${b.width / 10}%`, height: `${b.height / observedHeight * 100}%` });
+      Object.assign(selectionBox.style, { left: `${(b.x + delta.x) / observedWidth * 100}%`, top: `${(b.y + delta.y) / observedHeight * 100}%`, width: `${b.width / observedWidth * 100}%`, height: `${b.height / observedHeight * 100}%` });
       selectionBox.setAttribute('aria-label', `${selection.clipIds.length} notes and ${selection.strokeIds.length} strokes selected. Drag to move; arrow keys to nudge; Escape to clear.`);
     }
     function previewGroup(delta) {
       if (!selection) return;
-      const scale = board.clientWidth / 1000;
+      const scale = board.clientWidth / observedWidth;
       for (const id of selection.clipIds) if (cards.has(id)) cards.get(id).card.style.transform = delta.x || delta.y ? `translate(${delta.x * scale}px, ${delta.y * scale}px)` : '';
       ink.querySelectorAll('[data-stroke-id]').forEach(path => {
         if (selection.strokeIds.includes(path.dataset.strokeId)) {
@@ -217,7 +229,7 @@
     }
     function groupDelta(delta) {
       const b = selection.moveBounds, max = global.PhloemWorkspaceState.MAX_HEIGHT;
-      return { x: clamp(delta.x, -b.x, 1000 - b.x - b.width), y: clamp(delta.y, -b.y, max - b.y - b.height) };
+      return { x: clamp(delta.x, -b.x, global.PhloemWorkspaceState.MAX_WIDTH - b.x - b.width), y: clamp(delta.y, -b.y, max - b.y - b.height) };
     }
     function commitGroup(delta, measured, before) {
       if (!selection || !before || Math.hypot(delta.x, delta.y) < .01) return;
@@ -237,17 +249,18 @@
       board.focus({ preventScroll: true });
       const p = pointFromClient(event.clientX, event.clientY), b = selection && selection.bounds;
       if (b && p.x >= b.x - 8 && p.x <= b.x + b.width + 8 && p.y >= b.y - 8 && p.y <= b.y + b.height + 8) {
-        gesture = { kind: 'group', pointerId, start: p, delta: { x: 0, y: 0 }, measured: measuredCards(), before: groupSnapshot(selection) };
+        gesture = { kind: 'group', pointerId, finger: event.pointerType === 'touch', client: { x: event.clientX, y: event.clientY }, start: p, delta: { x: 0, y: 0 }, measured: measuredCards(), before: groupSnapshot(selection) };
       } else {
         clearSelection();
         const path = document.createElementNS(NS, 'path'); path.classList.add('workspace-lasso-preview'); lassoLayer.appendChild(path);
-        lassoLayer.setAttribute('viewBox', `0 0 1000 ${observedHeight}`);
-        gesture = { kind: 'lasso', pointerId, points: [[p.x, p.y]], path };
+        lassoLayer.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
+        gesture = { kind: 'lasso', pointerId, client: { x: event.clientX, y: event.clientY }, points: [[p.x, p.y]], path };
       }
       return true;
     }
     function moveSelection(event) {
       const g = gesture, p = pointFromClient(event.clientX, event.clientY);
+      if (g.client) g.far = Math.max(g.far || 0, Math.hypot(event.clientX - g.client.x, event.clientY - g.client.y));
       if (g.kind === 'group') {
         const delta = { x: p.x - g.start.x, y: p.y - g.start.y };
         if (Math.hypot(delta.x, delta.y) < .25 && !g.moved) return;
@@ -265,6 +278,14 @@
       const g = gesture; moveSelection(event); gesture = null;
       suppressClickUntil = performance.now() + 450;
       if (typeof g.pointerId === 'number' && board.hasPointerCapture(g.pointerId)) board.releasePointerCapture(g.pointerId);
+      // A tap that never travelled releases the lasso instead of drawing an empty loop.
+      // Fingers release from anywhere, even inside the selection; Pencil and mouse
+      // keep a tap inside it so a deliberate drag can still start there.
+      const tapped = !!g.client && (g.far || 0) < 8 && !g.moved;
+      if (tapped && (g.kind === 'lasso' || g.finger)) {
+        if (g.kind === 'group') previewGroup({ x: 0, y: 0 });
+        clearSelection(); setStatus(''); render(); return;
+      }
       if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); commitGroup(g.delta, g.measured, g.before); }
       else {
         lassoLayer.replaceChildren();
@@ -280,14 +301,14 @@
       const paths = strokesOf(c).filter(s => activeStroke(c, s) && (!s.anchor || itemsOf(c).some(item => item.id === s.anchor.clipId))).map(makePath);
       if (gesture && gesture.kind === 'stroke' && gesture.preview) paths.push(gesture.preview);
       ink.replaceChildren(...paths);
-      ink.setAttribute('viewBox', `0 0 1000 ${observedHeight}`);
+      ink.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
       ink.style.pointerEvents = 'none';
     }
     function setBox(state, box, height) {
       state.box = { x: box.x, y: box.y, width: box.width };
-      state.card.style.left = `${box.x / 10}%`;
+      state.card.style.left = `${box.x / observedWidth * 100}%`;
       state.card.style.top = `${box.y / height * 100}%`;
-      state.card.style.width = `${box.width / 10}%`;
+      state.card.style.width = `${box.width / observedWidth * 100}%`;
       if (cards.has(state.id)) {
         const attached = strokesOf(context()).filter(stroke => stroke.anchor && stroke.anchor.clipId === state.id);
         const paths = attached.length ? new Map([...ink.querySelectorAll('[data-stroke-id]')].map(node => [node.dataset.strokeId, node])) : new Map();
@@ -297,20 +318,20 @@
           if (path) paintPath(path, stroke);
           for (const point of logicalPoints(stroke)) inkBottom = Math.max(inkBottom, point[1]);
         }
-        state.card.style.minHeight = `${Math.max(178, (inkBottom - box.y) * board.clientWidth / 1000 + 20)}px`;
+        state.card.style.minHeight = `${Math.max(178, (inkBottom - box.y) * board.clientWidth / observedWidth + 20)}px`;
       }
     }
     function boxFor(c, id) {
       const raw = positionsOf(c)[id];
       if (!raw) return null;
       const width = clamp(Number(raw.width) || 650, 280, 900);
-      return { x: clamp(Number(raw.x) || 0, 0, 1000 - width), y: clamp(Number(raw.y) || 0, 0, heightOf(c) - 80), width };
+      return { x: clamp(Number(raw.x) || 0, 0, widthOf(c) - width), y: clamp(Number(raw.y) || 0, 0, heightOf(c) - 80), width };
     }
     function moveCard(state, deltaX, deltaY) {
       const c = context();
       if (!liveItem(state) || c.busy) return;
-      ensurePaperAt(state.box.y + deltaY + 500);
-      const box = { ...state.box, x: clamp(state.box.x + deltaX, 0, 1000 - state.box.width), y: clamp(state.box.y + deltaY, 0, observedHeight - 80) };
+      ensurePaperAt(state.box.y + deltaY + 500, state.box.x + deltaX + state.box.width + 300);
+      const box = { ...state.box, x: clamp(state.box.x + deltaX, 0, observedWidth - state.box.width), y: clamp(state.box.y + deltaY, 0, observedHeight - 80) };
       if (adapter.place(state.id, box) === true) { setBox(state, box, observedHeight); render(); }
       else setStatus('Could not move this clip.');
     }
@@ -320,7 +341,8 @@
       const old = { ...state.box }, width = clamp(Math.round(nextWidth), 280, 900);
       if (width === old.width) return true;
       const center = old.x + old.width / 2;
-      const box = { ...old, x: clamp(center - width / 2, 0, 1000 - width), width };
+      ensurePaperAt(old.y + 500, center + width / 2 + 300);
+      const box = { ...old, x: clamp(center - width / 2, 0, observedWidth - width), width };
       if (adapter.place(state.id, box) !== true) { setStatus('Could not resize this note.'); return false; }
       setBox(state, box, observedHeight); render(); return true;
     }
@@ -469,8 +491,8 @@
       handle.addEventListener('pointermove', event => {
         const g = gesture; if (!g || g.kind !== 'drag' || g.pointerId !== event.pointerId || g.state !== state) return;
         const point = pointFromClient(event.clientX, event.clientY);
-        ensurePaperAt(g.startBox.y + point.y - g.start.y + 500);
-        setBox(state, { ...g.startBox, x: clamp(g.startBox.x + point.x - g.start.x, 0, 1000 - g.startBox.width), y: clamp(g.startBox.y + point.y - g.start.y, 0, observedHeight - 80) }, observedHeight);
+        ensurePaperAt(g.startBox.y + point.y - g.start.y + 500, g.startBox.x + point.x - g.start.x + g.startBox.width + 300);
+        setBox(state, { ...g.startBox, x: clamp(g.startBox.x + point.x - g.start.x, 0, observedWidth - g.startBox.width), y: clamp(g.startBox.y + point.y - g.start.y, 0, observedHeight - 80) }, observedHeight);
       });
       const finishDrag = event => {
         const g = gesture; if (!g || g.kind !== 'drag' || g.pointerId !== event.pointerId || g.state !== state) return;
@@ -540,7 +562,8 @@
         const distance = Math.hypot(a.client.x - b.client.x, a.client.y - b.client.y);
         const nextWidth = clamp(Math.round(g.startBox.width * distance / g.startDistance), 280, 900);
         const center = g.startBox.x + g.startBox.width / 2;
-        setBox(state, { ...g.startBox, x: clamp(center - nextWidth / 2, 0, 1000 - nextWidth), width: nextWidth }, observedHeight);
+        ensurePaperAt(g.startBox.y + 500, center + nextWidth / 2 + 300);
+        setBox(state, { ...g.startBox, x: clamp(center - nextWidth / 2, 0, observedWidth - nextWidth), width: nextWidth }, observedHeight);
         event.preventDefault(); event.stopPropagation();
       }, true);
       card.addEventListener('pointerup', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId)) { event.preventDefault(); event.stopPropagation(); gesture.released.add(event.pointerId); cardTouches.delete(event.pointerId); if (gesture.released.size === 2) finishPinch(true); } else cardTouches.delete(event.pointerId); }, true);
@@ -567,7 +590,7 @@
       }
       if (status.textContent === 'Workspace temporarily unavailable. Existing notes are preserved; editing is paused.') setStatus('');
       for (const state of cards.values()) if (!state.orphan) state.input.readOnly = false;
-      observedHeight = heightOf(c);
+      observedHeight = heightOf(c); observedWidth = widthOf(c);
       resizeLayout();
       const usable = available(c);
       board.classList.toggle('workspace-selecting', tool === 'select');
@@ -610,7 +633,7 @@
       const boardRect = board.getBoundingClientRect();
       if (boardRect.width > 0 && cards.size) {
         let bottom = 0;
-        for (const state of cards.values()) bottom = Math.max(bottom, (state.card.getBoundingClientRect().bottom - boardRect.top) * 1000 / boardRect.width);
+        for (const state of cards.values()) bottom = Math.max(bottom, (state.card.getBoundingClientRect().bottom - boardRect.top) * observedWidth / boardRect.width);
         ensurePaperAt(bottom + 500);
       }
       if (gesture && gesture.kind === 'group') previewGroup(gesture.delta);
@@ -643,7 +666,7 @@
       if (g.holdTimer && g.holdAnchor && Math.hypot(here.x - g.holdAnchor.x, here.y - g.holdAnchor.y) <= 6) return;
       clearTimeout(g.holdTimer); g.holdTimer = 0;
       const rect = board.getBoundingClientRect(), first = g.points[0], last = g.points[g.points.length - 1];
-      const span = Math.hypot(last.x - first.x, last.y - first.y) * rect.width / 1000;
+      const span = Math.hypot(last.x - first.x, last.y - first.y) * rect.width / observedWidth;
       if (span < 24 || g.travel > span * 2) return;
       g.holdAnchor = here;
       g.holdTimer = setTimeout(() => {
@@ -657,8 +680,14 @@
       }, 600);
     }
     function addPoint(g, event) {
+      // Pointer capture can deliver the next Pencil sample beyond the old sheet
+      // edge. Grow from the unbounded contact first, never flatten it to that edge.
+      const rect = board.getBoundingClientRect();
+      const x = (event.clientX - rect.left) * observedWidth / Math.max(1, rect.width);
+      const y = (event.clientY - rect.top) * observedHeight / Math.max(1, rect.height);
+      ensurePaperAt(y + 500, x + 300);
+      if (x < 0 || y < 0 || x > observedWidth || y > observedHeight) return;
       const p = pointFromClient(event.clientX, event.clientY), pressure = Number.isFinite(event.pressure) && event.pressure > 0 ? event.pressure : .5;
-      ensurePaperAt(p.y + 500);
       const last = g.points[g.points.length - 1];
       const resting = g.holdTimer && g.holdAnchor && Math.hypot(event.clientX - g.holdAnchor.x, event.clientY - g.holdAnchor.y) <= 6;
       if (g.lastClient && !resting) g.travel += Math.hypot(event.clientX - g.lastClient.x, event.clientY - g.lastClient.y);
@@ -710,6 +739,8 @@
       const g = { kind: 'stroke', mode, pointerId, pointerType: event.pointerType || 'pen', points: [], ids: new Set(), erased: [], color, width, travel: 0, holdTimer: 0, paperId: scope.id, epoch: scope.epoch,
         anchor: owner ? { clipId: owner.id, ...owner.box } : null };
       gesture = g; board.classList.add('workspace-drawing');
+      // A resting palm during handwriting is never a deliberate history tap.
+      if (multiTap) multiTap.valid = false;
       if (mode === 'pen') { g.preview = document.createElementNS(NS, 'path'); g.preview.classList.add('workspace-ink-preview'); ink.appendChild(g.preview); }
       addPoint(g, event); return true;
     }
@@ -914,6 +945,51 @@
     }
     if (buttons.undo) buttons.undo.addEventListener('click', () => history('undo'));
     if (buttons.redo) buttons.redo.addEventListener('click', () => history('redo'));
+    // iPad note-app convention: a quick two-finger tap undoes and a three-finger tap
+    // redoes workspace handwriting, so the Pencil hand never travels to the rail.
+    // Any movement, scroll, zoom, cancellation, pen stroke or form control voids it.
+    const TAP_MS = 400, TAP_SLOP = 12;
+    function tapStatus(message) {
+      clearTimeout(tapStatusTimer); setStatus(message);
+      tapStatusTimer = setTimeout(() => { if (status.textContent === message) setStatus(''); }, 1400);
+    }
+    function finishMultiTap() {
+      const tap = multiTap; multiTap = null;
+      if (!tap || !tap.valid || (tap.max !== 2 && tap.max !== 3) || performance.now() - tap.start > TAP_MS) return;
+      if (scroll.scrollTop !== tap.scrollTop || scroll.scrollLeft !== tap.scrollLeft || board.style.transform !== tap.zoom) return;
+      if (gesture || !available(context()) || context().busy) return;
+      const direction = tap.max === 2 ? 'undo' : 'redo';
+      const stack = direction === 'undo' ? undoStack : redoStack, before = stack.length;
+      if (!before) { tapStatus(direction === 'undo' ? 'Nothing to undo in Workspace' : 'Nothing to redo in Workspace'); return; }
+      history(direction);
+      if (stack.length < before) tapStatus(direction === 'undo' ? 'Undid last workspace change' : 'Redid workspace change');
+    }
+    scroll.addEventListener('pointerdown', event => {
+      // Any Pencil or mouse contact (stroke, eraser, lasso) during the tap voids it.
+      if (event.pointerType !== 'touch') { if (multiTap) multiTap.valid = false; return; }
+      // A contact released outside this pane must not strand an old session.
+      if (multiTap && performance.now() - multiTap.start > 2000) multiTap = null;
+      if (!multiTap) multiTap = { start: performance.now(), down: new Map(), max: 0, valid: true,
+        scrollTop: scroll.scrollTop, scrollLeft: scroll.scrollLeft, zoom: board.style.transform };
+      const formControl = event.target instanceof Element && event.target.closest('textarea, input, select, button, summary, [contenteditable="true"]');
+      if (formControl || (gesture && gesture.kind === 'stroke')) multiTap.valid = false;
+      multiTap.down.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      multiTap.max = Math.max(multiTap.max, multiTap.down.size);
+    }, true);
+    document.addEventListener('pointermove', event => {
+      const start = multiTap && multiTap.down.get(event.pointerId);
+      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_SLOP) multiTap.valid = false;
+    }, { capture: true, passive: true });
+    document.addEventListener('pointerup', event => {
+      if (!multiTap || !multiTap.down.delete(event.pointerId)) return;
+      if (!multiTap.down.size) finishMultiTap();
+    }, true);
+    document.addEventListener('pointercancel', event => {
+      if (!multiTap || !multiTap.down.has(event.pointerId)) return;
+      multiTap.valid = false; multiTap.down.delete(event.pointerId);
+      if (!multiTap.down.size) multiTap = null;
+    }, true);
+    for (const type of ['blur', 'pagehide']) global.addEventListener(type, () => { multiTap = null; });
     if (buttons.moreSpace) buttons.moreSpace.addEventListener('click', () => { if (adapter.grow() === true) render(); else setStatus('Could not add more space.'); });
     if (buttons.newNote) buttons.newNote.addEventListener('click', () => {
       if (!available(context()) || context().busy) return;

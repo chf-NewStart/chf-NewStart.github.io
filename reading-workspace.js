@@ -2,8 +2,9 @@
 (function (global) {
   'use strict';
 
-  var VERSION = 2;
+  var VERSION = 3;
   var BOARD_WIDTH = 1000;
+  var MAX_WIDTH = 1000000;
   var DEFAULT_HEIGHT = 2000;
   var MAX_HEIGHT = 1000000;
   var FUTURE_WINDOW = 366 * 24 * 60 * 60 * 1000;
@@ -37,30 +38,35 @@
     throw error;
   }
   function checkVersion(value) {
-    // V1 uses the same logical coordinates. A V2 writer migrates it without
-    // geometry changes; V1 writers fail closed on V2 instead of dropping taller ink.
+    // V1/V2 use the same logical coordinates on a 1000-unit-wide sheet. V3 adds
+    // horizontal extent without scaling geometry; older writers fail closed.
     if (object(value) && owns(value, 'version') && value.version !== 1 &&
-        value.version !== VERSION) unsupported(value.version);
+        value.version !== 2 && value.version !== VERSION) unsupported(value.version);
+  }
+  function width(value) {
+    return Number.isSafeInteger(value) && value >= BOARD_WIDTH &&
+      value <= MAX_WIDTH && value % 1000 === 0;
   }
   function height(value) {
     return Number.isSafeInteger(value) && value >= DEFAULT_HEIGHT &&
       value <= MAX_HEIGHT && value % 1000 === 0;
   }
-  function position(raw, boardHeight, cap) {
+  function position(raw, boardWidth, boardHeight, cap) {
     if (!object(raw) || !finite(raw.x) || !finite(raw.y) ||
         owns(raw, 'width') && !finite(raw.width) || !timestamp(raw.updatedAt, cap)) return null;
     var width = clamp(owns(raw, 'width') ? raw.width : 420, 280, 900);
-    return { x: clamp(raw.x, 0, BOARD_WIDTH - width),
+    return { x: clamp(raw.x, 0, boardWidth - width),
       y: clamp(raw.y, 0, boardHeight), width: width, updatedAt: raw.updatedAt };
   }
-  function anchor(raw) {
+  function anchor(raw, boardWidth) {
+    if (boardWidth === undefined) boardWidth = MAX_WIDTH;
     if (!object(raw) || !id(raw.clipId) || !finite(raw.x) || !finite(raw.y) ||
         !finite(raw.width) || raw.width < 280 || raw.width > 900 ||
-        raw.x < 0 || raw.x > BOARD_WIDTH - raw.width ||
+        raw.x < 0 || raw.x > boardWidth - raw.width ||
         raw.y < 0 || raw.y > MAX_HEIGHT) return null;
     return { clipId: raw.clipId, x: raw.x, y: raw.y, width: raw.width };
   }
-  function stroke(raw, cap) {
+  function stroke(raw, boardWidth, cap) {
     if (!object(raw) || !id(raw.id) || !owns(COLORS, raw.color) ||
         !finite(raw.width) || raw.width < .5 || raw.width > 12 ||
         !Array.isArray(raw.points) || raw.points.length < 1 || raw.points.length > 8192 ||
@@ -71,7 +77,7 @@
       var point = raw.points[i];
       if (!Array.isArray(point) || point.length !== 3 || !finite(point[0]) ||
           !finite(point[1]) || !finite(point[2]) || point[0] < 0 ||
-          point[0] > BOARD_WIDTH || point[1] < 0 || point[1] > MAX_HEIGHT ||
+          point[0] > boardWidth || point[1] < 0 || point[1] > MAX_HEIGHT ||
           point[2] < 0 || point[2] > 1) return null;
       points.push([point[0], point[1], point[2]]);
     }
@@ -81,7 +87,7 @@
     try {
       if (raw.nib === 'marker') entry.nib = 'marker';
       if (raw.shape === 'line') entry.shape = 'line';
-      var base = anchor(raw.anchor);
+      var base = anchor(raw.anchor, boardWidth);
       if (base) entry.anchor = base;
     } catch (error) { /* Damaged optional metadata must not discard otherwise valid ink. */ }
     return entry;
@@ -113,18 +119,20 @@
   }
   function collect(value, positions, strokes, deleted, cap) {
     checkVersion(value);
-    if (!object(value)) return DEFAULT_HEIGHT;
+    if (!object(value)) return { width: BOARD_WIDTH, height: DEFAULT_HEIGHT };
+    var boardWidth = (!owns(value, 'version') || value.version === VERSION) && width(value.width)
+      ? value.width : BOARD_WIDTH;
     var boardHeight = height(value.height) ? value.height : DEFAULT_HEIGHT;
     if (object(value.positions)) Object.keys(value.positions).forEach(function (key) {
       try {
         if (!id(key)) return;
-        var entry = position(value.positions[key], boardHeight, cap);
+        var entry = position(value.positions[key], boardWidth, boardHeight, cap);
         if (entry) positions.set(key, pick(positions.get(key), entry));
       } catch (error) { /* An invalid card cannot discard its neighbors. */ }
     });
     if (Array.isArray(value.strokes)) value.strokes.forEach(function (raw) {
       try {
-        var entry = stroke(raw, cap);
+        var entry = stroke(raw, boardWidth, cap);
         if (entry) strokes.set(entry.id, pick(strokes.get(entry.id), entry));
       } catch (error) { /* An invalid stroke cannot discard its neighbors. */ }
     });
@@ -135,13 +143,13 @@
             (!deleted.has(key) || stamp > deleted.get(key))) deleted.set(key, stamp);
       } catch (error) { /* Ignore one damaged tombstone. */ }
     });
-    return boardHeight;
+    return { width: boardWidth, height: boardHeight };
   }
-  function finish(boardHeight, positions, strokes, tombstones) {
+  function finish(boardWidth, boardHeight, positions, strokes, tombstones) {
     var outPositions = Object.create(null), deleted = Object.create(null);
     Array.from(positions.keys()).sort(compare).forEach(function (key) {
       var entry = positions.get(key);
-      outPositions[key] = { x: clamp(entry.x, 0, BOARD_WIDTH - entry.width),
+      outPositions[key] = { x: clamp(entry.x, 0, boardWidth - entry.width),
         y: clamp(entry.y, 0, boardHeight), width: entry.width, updatedAt: entry.updatedAt };
     });
     Array.from(tombstones.keys()).sort(compare).forEach(function (key) {
@@ -151,21 +159,22 @@
       return !tombstones.has(entry.id) || entry.updatedAt > tombstones.get(entry.id);
     });
     outStrokes.sort(function (a, b) { return compare(a.id, b.id); });
-    return { version: VERSION, height: boardHeight, positions: outPositions,
+    return { version: VERSION, width: boardWidth, height: boardHeight, positions: outPositions,
       strokes: outStrokes, deleted: deleted };
   }
   function normalize(value) {
     var positions = new Map(), strokes = new Map(), deleted = new Map(), cap = ceiling();
-    var boardHeight = collect(value, positions, strokes, deleted, cap);
-    return finish(boardHeight, positions, strokes, deleted);
+    var size = collect(value, positions, strokes, deleted, cap);
+    return finish(size.width, size.height, positions, strokes, deleted);
   }
   function merge(left, right) {
     checkVersion(left);
     checkVersion(right);
     var positions = new Map(), strokes = new Map(), deleted = new Map(), cap = ceiling();
-    var leftHeight = collect(left, positions, strokes, deleted, cap);
-    var rightHeight = collect(right, positions, strokes, deleted, cap);
-    return finish(Math.max(leftHeight, rightHeight), positions, strokes, deleted);
+    var leftSize = collect(left, positions, strokes, deleted, cap);
+    var rightSize = collect(right, positions, strokes, deleted, cap);
+    return finish(Math.max(leftSize.width, rightSize.width), Math.max(leftSize.height, rightSize.height),
+      positions, strokes, deleted);
   }
   function nextStamp(requested, previous, cap) {
     if (!timestamp(requested, cap)) throw new RangeError('Invalid reading-workspace timestamp');
@@ -180,13 +189,13 @@
     var old = state.positions[clipId];
     var at = nextStamp(stamp, old ? old.updatedAt : 0, cap);
     state.positions[clipId] = position({ x: raw.x, y: raw.y,
-      width: owns(raw, 'width') ? raw.width : 420, updatedAt: at }, state.height, cap);
+      width: owns(raw, 'width') ? raw.width : 420, updatedAt: at }, state.width, state.height, cap);
     return normalize(state);
   }
   function addStroke(value, raw, stamp) {
     var state = normalize(value), cap = ceiling();
     if (!object(raw) || !id(raw.id)) throw new TypeError('Invalid reading-workspace stroke');
-    if (owns(raw, 'anchor') && !anchor(raw.anchor) ||
+    if (owns(raw, 'anchor') && !anchor(raw.anchor, state.width) ||
         owns(raw, 'nib') && raw.nib !== 'marker' ||
         owns(raw, 'shape') && raw.shape !== 'line')
       throw new TypeError('Invalid reading-workspace stroke metadata');
@@ -202,7 +211,7 @@
     else if (old && old.nib) candidate.nib = old.nib;
     if (owns(raw, 'shape')) candidate.shape = raw.shape;
     else if (old && old.shape) candidate.shape = old.shape;
-    var entry = stroke(candidate, cap);
+    var entry = stroke(candidate, state.width, cap);
     if (!entry) throw new TypeError('Invalid reading-workspace stroke');
     state.strokes = state.strokes.filter(function (existing) { return existing.id !== entry.id; });
     state.strokes.push(entry);
@@ -231,15 +240,22 @@
     state.height = requested;
     return normalize(state);
   }
+  function setWidth(value, requested) {
+    var state = normalize(value);
+    if (!width(requested) || requested !== state.width + 1000)
+      throw new RangeError('Reading-workspace width must grow by 1000');
+    state.width = requested;
+    return normalize(state);
+  }
 
-  function cardMap(cards) {
+  function cardMap(cards, boardWidth) {
     var result = new Map();
     if (!Array.isArray(cards)) return result;
     cards.forEach(function (raw) {
       try {
         if (!object(raw) || !id(raw.id) || !finite(raw.x) || !finite(raw.y) ||
             !finite(raw.width) || !finite(raw.height) || raw.width <= 0 ||
-            raw.height < 0 || raw.width > BOARD_WIDTH || raw.height > MAX_HEIGHT) return;
+            raw.height < 0 || raw.width > boardWidth || raw.height > MAX_HEIGHT) return;
         var box = { id: raw.id, x: raw.x, y: raw.y, width: raw.width, height: raw.height };
         // Duplicate DOM measurements must not make selection depend on input order.
         if (!result.has(box.id) || JSON.stringify(box) > JSON.stringify(result.get(box.id)))
@@ -257,12 +273,12 @@
     });
     return result;
   }
-  function validPolygon(polygon) {
+  function validPolygon(polygon, boardWidth) {
     if (!Array.isArray(polygon) || polygon.length < 3 || polygon.length > 8192) return false;
     for (var i = 0; i < polygon.length; i++) {
       var point = polygon[i];
       if (!Array.isArray(point) || point.length !== 2 || !finite(point[0]) ||
-          !finite(point[1]) || point[0] < 0 || point[0] > BOARD_WIDTH ||
+          !finite(point[1]) || point[0] < 0 || point[0] > boardWidth ||
           point[1] < 0 || point[1] > MAX_HEIGHT) return false;
     }
     // A repeated closing point is fine, but a line or a single point is not a lasso.
@@ -350,9 +366,9 @@
     return left === Infinity ? null : { x: left, y: top, width: right - left, height: bottom - top };
   }
   function selectGroup(value, polygon, cards) {
-    var state = normalize(value), available = cardMap(cards);
+    var state = normalize(value), available = cardMap(cards, state.width);
     var clipIds = new Set(), strokeIds = new Set();
-    if (!validPolygon(polygon)) return { clipIds: [], strokeIds: [], bounds: null };
+    if (!validPolygon(polygon, state.width)) return { clipIds: [], strokeIds: [], bounds: null };
     available.forEach(function (box, key) {
       if (insidePolygon([box.x + box.width / 2, box.y + box.height / 2], polygon)) clipIds.add(key);
     });
@@ -375,7 +391,7 @@
     return result;
   }
   function moveGroup(value, selection, delta, cards, stamp) {
-    var state = normalize(value), cap = ceiling(), available = cardMap(cards);
+    var state = normalize(value), cap = ceiling(), available = cardMap(cards, state.width);
     if (!object(selection) || !object(delta) || !finite(delta.x) || !finite(delta.y))
       throw new TypeError('Invalid reading-workspace group move');
     if (!timestamp(stamp, cap)) throw new RangeError('Invalid reading-workspace timestamp');
@@ -386,18 +402,20 @@
     var bounds = groupBounds(state, available, clipIds, strokeIds);
     if (!bounds) return state;
     if (!finite(bounds.x) || !finite(bounds.y) || !finite(bounds.width) || !finite(bounds.height) ||
-        bounds.width > BOARD_WIDTH || bounds.height > MAX_HEIGHT)
+        bounds.width > MAX_WIDTH || bounds.height > MAX_HEIGHT)
       throw new RangeError('Reading-workspace group does not fit on paper');
-    var dx = clamp(delta.x, -bounds.x, BOARD_WIDTH - bounds.x - bounds.width);
+    var dx = clamp(delta.x, -bounds.x, MAX_WIDTH - bounds.x - bounds.width);
     var dy = clamp(delta.y, -bounds.y, MAX_HEIGHT - bounds.y - bounds.height);
     if (!dx && !dy) return state;
     var bottom = bounds.y + bounds.height + dy;
+    var right = bounds.x + bounds.width + dx;
     // Match ensureSpace's 1000-unit growth, including ink reaching the current edge.
+    state.width = Math.min(MAX_WIDTH, Math.max(state.width, (Math.floor(right / 1000) + 1) * 1000));
     state.height = Math.min(MAX_HEIGHT, Math.max(state.height, (Math.floor(bottom / 1000) + 1) * 1000));
     Array.from(clipIds).sort(compare).forEach(function (key) {
       var base = available.get(key), tolerance = 1e-7;
       if (base.width < 280 || base.width > 900 || base.x + dx < -tolerance ||
-          base.x + dx > BOARD_WIDTH - base.width + tolerance ||
+          base.x + dx > MAX_WIDTH - base.width + tolerance ||
           base.y + dy < -tolerance || base.y + dy > MAX_HEIGHT + tolerance)
         throw new RangeError('Invalid reading-workspace card geometry');
       state = place(state, key, { x: base.x + dx, y: base.y + dy, width: base.width }, stamp);
@@ -407,7 +425,7 @@
       // Moving an owner already moves all of its writing through displayStroke.
       if (entry.anchor && clipIds.has(entry.anchor.clipId)) return;
       var moved = Object.assign({}, entry, { points: entry.points.map(function (point) {
-        return [clamp(point[0] + dx, 0, BOARD_WIDTH), clamp(point[1] + dy, 0, MAX_HEIGHT), point[2]];
+        return [clamp(point[0] + dx, 0, MAX_WIDTH), clamp(point[1] + dy, 0, MAX_HEIGHT), point[2]];
       }) });
       if (entry.anchor) {
         // An unavailable owner displays raw fallback points. Detach on movement so
@@ -422,7 +440,7 @@
   }
 
   global.PhloemWorkspaceState = Object.freeze({ VERSION: VERSION,
-    BOARD_WIDTH: BOARD_WIDTH, MAX_HEIGHT: MAX_HEIGHT, normalize: normalize, merge: merge, place: place,
-    addStroke: addStroke, removeStrokes: removeStrokes, setHeight: setHeight,
+    BOARD_WIDTH: BOARD_WIDTH, MAX_WIDTH: MAX_WIDTH, MAX_HEIGHT: MAX_HEIGHT, normalize: normalize, merge: merge, place: place,
+    addStroke: addStroke, removeStrokes: removeStrokes, setWidth: setWidth, setHeight: setHeight,
     displayStroke: displayStroke, selectGroup: selectGroup, moveGroup: moveGroup });
 })(window);

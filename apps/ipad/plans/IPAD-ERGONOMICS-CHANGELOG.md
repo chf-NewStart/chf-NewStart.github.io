@@ -260,8 +260,11 @@ changed behaviour, each citing it in the test. Test files only.
 
 | | Live main before round 2 | This round |
 | --- | --- | --- |
-| Failing files | 30 | 1 |
+| Failing files | 30 | 3 in the full run, then 1 |
 
-Only `reading-keeps-browser` still fails ("explicit jump returns to saved PDF
+The full run (three shards in parallel) failed `pdf-continuity` (a rotation check
+under load, fixed by entry 11's final commit), `vertical-book-flow` (repair still in
+progress, passes after it finished) and `keeps-browser`. Those were re-run on their
+own afterwards rather than re-running the whole suite. Only `reading-keeps-browser` still fails ("explicit jump returns to saved PDF
 page"), and it fails the same way with live main's `reading.js`, so it is not caused
 by this round. Not verified: WebKit, a physical iPad and Pencil.

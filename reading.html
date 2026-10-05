@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://upload.wikimedia.org; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://accounts.google.com https://cdn.apple-cloudkit.com; style-src 'self' 'unsafe-inline' https://cdn.apple-cloudkit.com; img-src 'self' data: blob: https://upload.wikimedia.org https://cdn.apple-cloudkit.com; connect-src 'self' https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Phloem — Breathe, Focus, Read</title>
   <meta name="description" content="Breathe, Focus, Read — a calm desk that makes academic papers easier to focus on: reading guides for wandering eyes, notes beside the page, and spaced review that keeps what you read.">
@@ -756,9 +756,10 @@
       <p class="settings-lede">Choose how this reading desk syncs, thinks with you, and moves between devices. Your reading settings stay calm and local by default.</p>
       <section class="native-only" id="icloudSettings">
         <h3>Sync with iCloud</h3>
-        <p>Keep your library, notes, highlights, handwriting, progress, PDFs, and Word drafts in your private iCloud database. Reading stays offline-first, and Phloem merges edits instead of replacing this iPad’s library.</p>
+        <p>Keep your library, notes, highlights, handwriting, progress, PDFs, and Word drafts in your private iCloud database. The iPad app and this website share it when both use the same Apple ID. Reading stays offline-first, and Phloem merges edits instead of replacing this device’s library.</p>
         <div><button class="button" id="icloudEnableBtn" type="button">Turn on iCloud sync</button> <button class="soft-button hidden" id="icloudSyncBtn" type="button">Sync now</button> <button class="soft-button hidden" id="icloudOffBtn" type="button">Turn off</button> <button class="soft-button hidden" id="icloudDeleteBtn" type="button">Delete iCloud copy…</button></div>
-        <div class="status" id="icloudStatus" role="status" aria-live="polite">Off — everything stays on this iPad.</div>
+        <div class="hidden" id="icloudAppleSignInBox"><div id="icloudAppleSignIn"></div><div id="icloudAppleSignOut" hidden></div></div>
+        <div class="status" id="icloudStatus" role="status" aria-live="polite">Off — everything stays on this device.</div>
       </section>
       <section>
         <h3>Sync with Google Drive</h3>

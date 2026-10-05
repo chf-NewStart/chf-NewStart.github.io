@@ -41,6 +41,13 @@
 .workspace-lasso-preview { fill:color-mix(in srgb,var(--accent) 7%,transparent); stroke:var(--accent); stroke-width:1.5; stroke-dasharray:5 4; vector-effect:non-scaling-stroke; }
 .workspace-selection-box { position:absolute; z-index:4; box-sizing:border-box; border:1.5px dashed var(--accent); outline:3px solid color-mix(in srgb,var(--accent) 8%,transparent); border-radius:4px; cursor:grab; touch-action:none; }
 .workspace-selection-box[hidden] { display:none; }
+.workspace-selection-handle { position:absolute; width:14px; height:14px; box-sizing:border-box; border:2px solid var(--accent); border-radius:50%; background:var(--paper); box-shadow:0 1px 3px rgba(0,0,0,.18); touch-action:none; }
+/* Visible dots stay small; the touch target is a 44px square centred on each corner. */
+.workspace-selection-handle::before { content:''; position:absolute; left:50%; top:50%; width:44px; height:44px; transform:translate(-50%,-50%); }
+.workspace-selection-handle[data-corner="nw"] { left:-8px; top:-8px; cursor:nwse-resize; }
+.workspace-selection-handle[data-corner="ne"] { right:-8px; top:-8px; cursor:nesw-resize; }
+.workspace-selection-handle[data-corner="sw"] { left:-8px; bottom:-8px; cursor:nesw-resize; }
+.workspace-selection-handle[data-corner="se"] { right:-8px; bottom:-8px; cursor:nwse-resize; }
 .workspace-selection-box:active { cursor:grabbing; }
 .workspace-selection-box:focus-visible { outline:3px solid color-mix(in srgb,var(--accent) 30%,transparent); }
 .workspace-card.workspace-selected { outline:1px solid var(--accent); outline-offset:2px; }

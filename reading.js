@@ -7148,9 +7148,26 @@
     var toolbar=byId('highlightToolbar');if(!toolbar)return;
     if(on){if(trigger)highlightToolbarTrigger=trigger;closeZenPopouts(false);closeTouchDockMore(false);}
     toolbar.classList.toggle('hidden',!on);document.body.classList.toggle('highlight-toolbar-open',!!on);
+    placeDockedHighlightToolbar(on);
     ['highlightBtn','highlightColorBtn','touchHighlight','zenMarker','zenWorkspaceMarker'].forEach(function(id){var button=byId(id);button.setAttribute('aria-controls','highlightToolbar');button.setAttribute('aria-expanded',String(!!on));});
     syncHighlightColorUi();syncTouchDockStates();
   }
+  /* In Zen the colors fold out beside the dock button that opened them, as a short
+     vertical column, instead of a shelf across the bottom of the paper. */
+  function placeDockedHighlightToolbar(on){
+    var toolbar=byId('highlightToolbar'),dock=byId('zenDock'),trigger=highlightToolbarTrigger;
+    var docked=!!on&&document.body.classList.contains('zen')&&!!trigger&&!!dock&&(dock.contains(trigger));
+    toolbar.classList.toggle('docked',docked);
+    if(!docked){toolbar.style.removeProperty('top');toolbar.style.removeProperty('left');return;}
+    var anchor=trigger.getClientRects().length?trigger:byId('zenAnnotate');if(!anchor||!anchor.getClientRects().length){toolbar.classList.remove('docked');return;}
+    var a=anchor.getBoundingClientRect(),t=toolbar.getBoundingClientRect(),gap=10,margin=12;
+    // Fold out toward the paper the dock sits on (left of a right-edge dock), never over Workspace.
+    var pane=byId('documentPane'),p=pane&&pane.getClientRects().length?pane.getBoundingClientRect():{left:0,right:innerWidth};
+    var left=a.left+a.width/2>(p.left+p.right)/2?a.left-gap-t.width:a.right+gap;
+    var top=Math.max(margin,Math.min(innerHeight-t.height-margin,a.top+a.height/2-t.height/2));
+    toolbar.style.left=Math.max(margin,Math.min(innerWidth-t.width-margin,left))+'px';toolbar.style.top=top+'px';
+  }
+  window.addEventListener('resize',function(){var toolbar=byId('highlightToolbar');if(toolbar&&!toolbar.classList.contains('hidden'))placeDockedHighlightToolbar(true);});
   function syncHighlightColorUi(){
     var label=highlightColorLabel(highlightColor),mode=!!highlightMode,pending=!!pendingSelection;
     document.querySelectorAll('.marker-swatch[data-highlight-color]').forEach(function(x){var selected=!pdfWriteMode&&!highlightEraseMode&&x.dataset.highlightColor===highlightColor;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});

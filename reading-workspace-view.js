@@ -851,6 +851,19 @@
       if (mode === 'pen') { g.preview = document.createElementNS(NS, 'path'); g.preview.classList.add('workspace-ink-preview'); ink.appendChild(g.preview); }
       addPoint(g, event); return true;
     }
+    // Writing that started just off a note but lies mostly on it belongs to that note,
+    // so it moves and scales with it like writing that started inside.
+    function noteUnderStroke(points) {
+      if (!points.length) return null;
+      const rect = board.getBoundingClientRect(), sx = rect.width / Math.max(1, observedWidth), sy = rect.height / Math.max(1, observedHeight);
+      for (const state of [...cards.values()].reverse()) {
+        if (state.orphan || !state.card.isConnected) continue;
+        const r = state.card.getBoundingClientRect();
+        const inside = points.filter(p => { const x = rect.left + p.x * sx, y = rect.top + p.y * sy; return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }).length;
+        if (inside >= points.length * .6) return { clipId: state.id, ...state.box };
+      }
+      return null;
+    }
     function finishStroke(commit) {
       const g = gesture; if (!g || g.kind !== 'stroke') return;
       clearTimeout(g.holdTimer);
@@ -862,7 +875,8 @@
       if (!commit || !currentScope() || g.paperId !== scope.id || g.epoch !== scope.epoch) { render(); return; }
       if (g.mode === 'pen' && g.points.length) {
         const at = Date.now(), stroke = { id: uid(), color: g.color, width: g.width, style: 'natural', points: rawPoints(g.points), createdAt: at, updatedAt: at };
-        if (g.anchor) stroke.anchor = g.anchor;
+        const anchor = g.anchor || noteUnderStroke(g.points);
+        if (anchor) stroke.anchor = anchor;
         if (g.straight) stroke.shape = 'line';
         if (adapter.addStroke(stroke) === true) { undoStack.push({ kind: 'add', stroke: canonicalStroke(stroke.id) || stroke }); redoStack = []; }
         else setStatus('Could not save this stroke.');

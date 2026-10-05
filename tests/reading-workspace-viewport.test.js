@@ -282,6 +282,37 @@ for (const [name, start, end] of [
     });
 }
 
+test('Chromium native pinch still zooms after the first finger already started a scroll',
+  { skip: ENGINE !== 'chromium' }, async () => {
+    const instance = await browser();
+    try {
+      const context = await instance.newContext({ viewport: { width: 1100, height: 900 }, hasTouch: true, isMobile: true });
+      const page = await context.newPage();
+      await page.goto('http://127.0.0.1:' + server.address().port + '/');
+      const scale = await page.evaluate(() => {
+        document.getElementById('workspaceScroll').scrollTop = 300;
+        return visualViewport.scale;
+      });
+      const client = await context.newCDPSession(page);
+      const touch = (type, points) => client.send('Input.dispatchTouchEvent', { type,
+        touchPoints: points.map(([id, x, y]) => ({ id, x, y })) });
+      // The reader's first finger lands and drifts far enough for the browser to scroll
+      // before the second finger arrives, as happens on an iPad.
+      await touch('touchStart', [[1, 300, 420]]);
+      await touch('touchMove', [[1, 300, 400]]);
+      await touch('touchMove', [[1, 300, 380]]);
+      await touch('touchStart', [[1, 300, 380], [2, 380, 380]]);
+      for (let step = 1; step <= 5; step++) {
+        await touch('touchMove', [[1, 300 - step * 10, 380], [2, 380 + step * 10, 380]]);
+      }
+      await touch('touchEnd', []);
+      const result = await page.evaluate(() => ({ zoom: fixture.viewport.getZoom(), scale: visualViewport.scale }));
+      assert(Math.abs(result.zoom - 180 / 80) < .02, JSON.stringify(result));
+      assert.equal(result.scale, scale);
+      await context.close();
+    } finally { await instance.close(); }
+  });
+
 test('zoom out on portrait paper asks for bounded extent once and preserves saved data', async () => {
   const instance = await browser();
   try {

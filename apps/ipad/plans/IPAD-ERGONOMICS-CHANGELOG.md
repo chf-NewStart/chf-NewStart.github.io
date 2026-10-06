@@ -465,3 +465,32 @@ clear. A note already above the keyboard leaves the Workspace where it is.
 Tests: new `tests/reading-workspace-note-keyboard.test.js` fakes the visual viewport
 shrinking by 380px (it fails without the fix: text box bottom 806 vs keyboard top 440).
 Not verified on a physical iPad.
+
+## 28. Lasso moves save with a full store; easier lasso; palm-proof divider (v189)
+
+houfu: "when i try to change something using lasso, it says nothing selected, circle a
+note or handwriting, and when i move it says could not move this selection, it may have
+changed elsewhere ... also the divider is open mistouched by me when writing".
+
+**"Could not move this selection."** A lasso move or resize saves all-or-nothing through
+`persist(undefined, true)` in `reading.js`. That path returned false whenever
+localStorage refused the write, before trying the IndexedDB device snapshot. PR #57 had
+moved ordinary saves onto the snapshot when the ~5 MB store is full (the app's merged
+device + iCloud + Drive library fills it), but not this path, so every lasso move in the
+app was rolled back. An atomic save now fails only when the snapshot can't take it either
+(`stateRecoveryDone && stateSnapshotOk`). New `tests/reading-workspace-lasso-storage-full.test.js`
+reproduces the message without the fix.
+
+**"Nothing selected."** Couldn't be reproduced on the website (plain, zoomed and reloaded
+boards all selected). `selectGroup` in `reading-workspace.js` only took a note when the loop
+held the note's exact centre, so a loop around part of a note, or around the writing on
+it, missed the note. Now a note is taken when the loop holds its centre or at least about
+a third of its area (6x6 sample grid), and a small loop on a blank part of a note, with
+nothing else caught, takes that note. Updated `tests/reading-workspace-selection-state.test.js`.
+
+**Divider.** The 44px divider strip took any pointer, so a palm resting while writing next
+to it resized the panes. Now (in `reading.js`) finger touches are ignored while Apple
+Pencil is down or for 800ms after it lifts, and palm-sized contacts (over 40px) are ignored.
+Pencil resizes only from the middle grip (±60px), and nothing moves until a 6px drag. A
+deliberate finger drag and double-click reset still work. New
+`tests/reading-workspace-divider-palm.test.js`. Not verified on a physical iPad.

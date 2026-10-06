@@ -8162,7 +8162,12 @@
      path and move as whole Blobs through uploadDocument/downloadDocument. The API token
      comes from CloudKit Console and is meant to be public; leaving it empty hides iCloud
      on the website. */
-  var WEB_CLOUDKIT=Object.assign({container:'iCloud.com.houfu72.phloem',apiToken:'5c6f4cf802eac49c21fb137680e0bd99c199ba8c09ad82a239a3441c30ef04fb',environment:'production',script:'https://cdn.apple-cloudkit.com/ck/2/cloudkit.js'},window.PHLOEM_CLOUDKIT_CONFIG||{});
+  /* Hidden on 2026-10-06: Apple's sign-in page answers "Failed to verify your identity"
+     for this container on every browser, even with CloudKit JS's own popup flow (see
+     apps/ipad/plans/ICLOUD-SYNC-FIX.md). The Production token was
+     5c6f4cf802eac49c21fb137680e0bd99c199ba8c09ad82a239a3441c30ef04fb; put it back here
+     to show the section again. */
+  var WEB_CLOUDKIT=Object.assign({container:'iCloud.com.houfu72.phloem',apiToken:'',environment:'production',script:'https://cdn.apple-cloudkit.com/ck/2/cloudkit.js'},window.PHLOEM_CLOUDKIT_CONFIG||{});
   var webCloudAdapter=null,webCloudReady=null;
   /* Apple returns from sign-in by loading this page with ?ckWebAuthToken=… (the API
      token's "URL Redirect" callback). A full-page round trip works on iPad Safari,

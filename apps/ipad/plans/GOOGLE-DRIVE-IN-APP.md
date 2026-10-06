@@ -41,3 +41,13 @@ houfu wants papers added on the website to show up in the iPad app. Website iClo
 4. Before submitting to the App Store, update the App Privacy answers and the privacy policy page to say that the app can optionally sync to the user's own Google Drive app folder.
    - Privacy policy: done 2026-10-06 (`phloem-ipad/privacy.html` has an "Optional Google Drive sync" section, a bullet under "When information leaves your iPad", and the deletion note). App Store Connect's App Privacy answers are still houfu's to update.
 5. Google consent screen (project carrel-505515): set App name to Phloem, home page https://houfu72.com/reading.html, privacy policy https://houfu72.com/phloem-ipad/privacy.html, authorized domain houfu72.com. The new name shows after Google's brand verification; until then the sign-in sheet says "Carrel".
+
+## Follow-up: "Could not save" when the local store is full (2026-10-06, shell v186)
+
+- What houfu saw: in the TestFlight app (1.2.0 build 30), after connecting Google Drive, new workspace notes said "Could not save. Your draft is still here." and creating one said "Not confirmed saved". The website was fine.
+- Cause: `persist()` in reading.js saves the library to localStorage, which holds about 5 MB. Once the app's library merged the device, iCloud and Drive copies, `localStorage.setItem` threw. `persist()` returned false even though the same state was also written to the IndexedDB snapshot (`state:snapshot:latest`), so every note edit reported a failure.
+- Fix (reading.js):
+  - When localStorage is full, the IndexedDB snapshot counts as the save: `persist()` returns true as long as the last snapshot write succeeded (`stateSnapshotOk`). The "Saved to recovery storage" dialog is gone. The "Phloem needs a little room" dialog now appears only if the IndexedDB write also fails.
+  - Startup already merges a newer snapshot back in (`restoreStateSnapshot`). It now compares against the `savedAt` value read from localStorage at load (`stateLoadedAt`), not a later in-memory value. Until that merge has run, a localStorage failure does not write the snapshot (`stateRecoveryDone`), so a stale library can't overwrite a newer snapshot.
+  - The "Recovered your library from this device's safety copy" status shows only when the load actually had a problem, so it doesn't appear on every launch.
+- Test: `tests/reading-storage-full.test.js` makes the library key throw QuotaExceededError, writes a Clips note, and checks that the note shows "Saved", has no dialog, is in the snapshot, and survives a reload. It fails on main before the fix (the dialog blocks the reader) and passes after.

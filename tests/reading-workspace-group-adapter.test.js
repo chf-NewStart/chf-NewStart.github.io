@@ -20,6 +20,7 @@ function harness() {
   const context = vm.createContext({
     window: {}, state, currentId: 'paper', KEY: 'reader', stateLoadFailed: false,
     storageWarned: false, workspaceSaveFailed: false, now: () => 1000,
+    stateSnapshotOk: false, stateRecoveryDone: true, stateLocalFull: false,
     find: () => ch, localState: () => state, workspaceView: null, byId: () => null,
     readingExcerptsUnavailable: chapter => !chapter || !chapter.readingExcerpts,
     workspaceStatus: message => { calls.status = message; },
@@ -150,6 +151,21 @@ test('ordinary persistence retains recovery and sync fallback when localStorage 
   assert.equal(fixture.calls.writes.length, 1);
   assert.equal(fixture.calls.recovery.length, 1);
   assert.equal(fixture.calls.sync, 1);
+});
+
+test('a full localStorage still counts as saved when the device snapshot is working', () => {
+  const fixture = harness(); fixture.fail(true);
+  fixture.context.stateSnapshotOk = true;
+  assert.equal(fixture.context.persist(), true);
+  assert.equal(fixture.calls.recovery.length, 1);
+  assert.equal(fixture.context.stateLocalFull, true);
+});
+
+test('before startup recovery, a full localStorage does not overwrite the newer snapshot', () => {
+  const fixture = harness(); fixture.fail(true);
+  fixture.context.stateSnapshotOk = true; fixture.context.stateRecoveryDone = false;
+  assert.equal(fixture.context.persist(), false);
+  assert.equal(fixture.calls.recovery.length, 0);
 });
 
 test('orphan ink undo restores its anchor and redo removes it again', () => {

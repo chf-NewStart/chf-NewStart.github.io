@@ -62,7 +62,7 @@
   var stateLoadIssue='',stateLoadFailed=false,stateLoadRaw='';
   var pristineLibrary = false;
   try { pristineLibrary = localStorage.getItem(KEY) === null; } catch(e){}
-  var state = loadState();
+  var state = loadState(),stateLoadedAt=+state.savedAt||0;
   /* Until async first-run seeding and Drive restoration settle, an empty local state
      is unknown—not an empty library. Keep onboarding out of that reload interval. */
   var libraryHydrating = state.chapters.length === 0;
@@ -511,30 +511,34 @@
   /* localStorage is deliberately only for small, frequently edited state. Rebuildable PDF
      text lives beside the PDFs in IndexedDB, while encrypted sync may still carry it. */
   var storageWarned = false,stateSnapshotTimer=null,stateSnapshotPending='',stateSnapshotWrite=Promise.resolve(false);
+  /* localStorage holds only about 5 MB. Once a merged library (device + iCloud + Drive)
+     outgrows it, the IndexedDB snapshot becomes the device's save: startup merges a
+     newer snapshot back in. Until that startup merge has run, a stale in-memory library
+     must not overwrite the newer snapshot. */
+  var stateSnapshotOk=typeof indexedDB!=='undefined',stateRecoveryDone=false,stateLocalFull=false;
   var DERIVED_FIELDS=['pageLines','pageParagraphs','pageTexts','readerText','readerV','fr','termLookups','figCount'];
   function localState(){
     var copy=Object.assign({},state);copy.chapters=state.chapters.map(function(ch){var item=Object.assign({},ch);if(item.kind==='pdf')DERIVED_FIELDS.forEach(function(field){delete item[field];});return item;});return copy;
   }
   function flushStateSnapshot(){
-    clearTimeout(stateSnapshotTimer);stateSnapshotTimer=null;var serialized=stateSnapshotPending;stateSnapshotPending='';if(!serialized)return stateSnapshotWrite;stateSnapshotWrite=stateSnapshotWrite.catch(function(){return false;}).then(function(){return putStateSnapshot(serialized);});return stateSnapshotWrite;
+    clearTimeout(stateSnapshotTimer);stateSnapshotTimer=null;var serialized=stateSnapshotPending;stateSnapshotPending='';if(!serialized)return stateSnapshotWrite;stateSnapshotWrite=stateSnapshotWrite.catch(function(){return false;}).then(function(){return putStateSnapshot(serialized);}).then(function(kept){
+      // Only a failed device save while localStorage is also full loses an edit.
+      if(!kept&&!storageWarned&&stateLocalFull){storageWarned=true;showError('Phloem could not save the newest change because this device’s storage is full. Free some space on the device, then try that edit once more.','Phloem needs a little room');}
+      return kept;});return stateSnapshotWrite;
   }
   function queueStateSnapshot(serialized,immediate){stateSnapshotPending=serialized;clearTimeout(stateSnapshotTimer);if(immediate)return flushStateSnapshot();stateSnapshotTimer=setTimeout(flushStateSnapshot,350);return stateSnapshotWrite;}
   function persist(schedule,atomic){
     if(stateLoadFailed&&!state.chapters.length)return false;var serialized='',savedLocally=false;state.savedAt=now();
-    try{serialized=JSON.stringify(localState());localStorage.setItem(KEY,serialized);savedLocally=true;stateLoadFailed=false;storageWarned=false;}
-    catch(e){}
+    try{serialized=JSON.stringify(localState());localStorage.setItem(KEY,serialized);savedLocally=true;stateLoadFailed=false;storageWarned=false;stateLocalFull=false;}
+    catch(e){if(serialized)stateLocalFull=true;}
     if(atomic&&!savedLocally)return false;
-    if(serialized){
-      var snapshot=queueStateSnapshot(serialized,!savedLocally);
-      if(!savedLocally&&!storageWarned){
-        storageWarned=true;
-        Promise.resolve(snapshot).then(function(kept){
-          showError(kept?'Your newest change is safe in Phloem’s device recovery copy, but the browser’s small note store is full. Remove a finished paper or turn on sync to make more room.':'Phloem could not save the newest change because this browser’s local storage is full. Remove a finished paper or turn on sync, then try that edit once more.',kept?'Saved to recovery storage':'Phloem needs a little room');
-        });
-      }
+    var savedOnDevice=savedLocally;
+    if(serialized&&(savedLocally||stateRecoveryDone)){
+      if(!savedLocally)savedOnDevice=stateSnapshotOk;
+      queueStateSnapshot(serialized,!savedLocally&&!stateSnapshotOk);
     }
     if (schedule !== false) scheduleSync();
-    return savedLocally;
+    return savedOnDevice;
   }
   function find(id){ return state.chapters.find(function(ch){ return ch.id === id; }); }
   function touch(ch){ ch.updatedAt = now(); persist(); }
@@ -963,7 +967,7 @@
     return localSourceScanPromise.then(function(value){localSourceScanPromise=null;return value;},function(error){localSourceScanPromise=null;throw error;});
   }
   async function putStateSnapshot(serialized,key){
-    key=key||'latest';if(!serialized)return false;if(key==='latest')memoryStateSnapshot=serialized;try{var d=await db();await new Promise(function(res,rej){var r=d.transaction('derived','readwrite').objectStore('derived').put(serialized,'state:snapshot:'+key);r.onsuccess=res;r.onerror=function(){rej(r.error);};});return true;}catch(e){return false;}
+    key=key||'latest';if(!serialized)return false;if(key==='latest')memoryStateSnapshot=serialized;try{var d=await db();await new Promise(function(res,rej){var r=d.transaction('derived','readwrite').objectStore('derived').put(serialized,'state:snapshot:'+key);r.onsuccess=res;r.onerror=function(){rej(r.error);};});if(key==='latest')stateSnapshotOk=true;return true;}catch(e){if(key==='latest')stateSnapshotOk=false;return false;}
   }
   async function getStateSnapshot(key){
     key=key||'latest';try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('derived').objectStore('derived').get('state:snapshot:'+key);r.onsuccess=function(){res(r.result||'');};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}return key==='latest'?memoryStateSnapshot:'';
@@ -1057,7 +1061,7 @@
     return memoryDerived[id]||null;
   }
   async function restoreStateSnapshot(){
-    if(stateLoadIssue&&stateLoadRaw)await putStateSnapshot(stateLoadRaw,'failed-load');var raw=await getStateSnapshot(),prepared=null;try{prepared=normalizeStateCandidate(JSON.parse(raw||''));}catch(e){}if(!prepared||!prepared.state.chapters.length)return false;var saved=prepared.state,savedAt=+saved.savedAt||0,localAt=+state.savedAt||0;if(!stateLoadIssue&&savedAt<=localAt)return false;var changed=mergeState(saved);if(savedAt>localAt)state.savedAt=savedAt;if(changed){stateLoadFailed=false;stateLoadIssue='';persist(false);renderShelf();updateReviewBadge();var status=byId('libraryImportStatus');if(status)status.textContent='Recovered your library from this device’s safety copy.';}return changed;
+    if(stateLoadIssue&&stateLoadRaw)await putStateSnapshot(stateLoadRaw,'failed-load');var raw=await getStateSnapshot(),prepared=null;stateRecoveryDone=true;try{prepared=normalizeStateCandidate(JSON.parse(raw||''));}catch(e){}if(!prepared||!prepared.state.chapters.length)return false;var saved=prepared.state,savedAt=+saved.savedAt||0,localAt=stateLoadedAt;if(!stateLoadIssue&&savedAt<=localAt)return false;var changed=mergeState(saved);if(savedAt>localAt)state.savedAt=savedAt;if(changed){var hadIssue=!!stateLoadIssue;stateLoadFailed=false;stateLoadIssue='';persist(false);renderShelf();updateReviewBadge();var status=byId('libraryImportStatus');if(status&&hadIssue)status.textContent='Recovered your library from this device’s safety copy.';}return changed;
   }
   async function recoverStoredSources(){
     var keys=await storedSourceKeys(),recovered=0;
@@ -1070,7 +1074,7 @@
     }
     if(recovered){stateLoadFailed=false;persist(false);renderShelf();updateReviewBadge();var status=byId('libraryImportStatus');if(status)status.textContent='Recovered '+recovered+' original file'+(recovered===1?'':'s')+' from this device. Google Drive can restore their latest names, notes, and review work.';}return recovered;
   }
-  async function recoverStartupLibrary(){var restored=await restoreStateSnapshot(),recovered=await recoverStoredSources();return!!restored||recovered>0;}
+  async function recoverStartupLibrary(){var restored=false;try{restored=await restoreStateSnapshot();}finally{stateRecoveryDone=true;}var recovered=await recoverStoredSources();return!!restored||recovered>0;}
   function mergeDerivedInto(ch,saved){var changed=false;if(!ch||!saved)return changed;DERIVED_FIELDS.forEach(function(field){var incoming=saved[field],current=ch[field];if(incoming===undefined)return;if(field==='termLookups'&&incoming&&typeof incoming==='object'){var merged=Object.assign({},incoming,current||{});if(Object.keys(merged).length!==Object.keys(current||{}).length){ch[field]=merged;changed=true;}return;}if(current===undefined||current===null||(Array.isArray(incoming)&&(!Array.isArray(current)||incoming.length>current.length))){ch[field]=incoming;changed=true;}});return changed;}
   async function hydrateDerived(ch){
     if(!ch||ch.kind!=='pdf')return ch;var saved=await getDerived(ch.id);if(saved)mergeDerivedInto(ch,saved);if(repairPdfReviewQuotes(ch))persist(false);return ch;

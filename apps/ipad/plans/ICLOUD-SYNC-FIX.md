@@ -117,3 +117,17 @@ v182's result was identical: 1007 characters, so `ckSession` and `ckWebAuthToken
 - The error starts with "v183" so a screenshot names the version. It also says whether the two returned values match and whether a renewed token was tried.
 
 New test: a refused check that hands back a renewed token, which Apple then accepts, ends with the website synced. Full suite: only `reading-fold-phone` fails, which is the known flaky test.
+
+### Where it stands after v183 (2026-10-06, about 10 pm Toronto)
+
+v183 tried every form of the returned token: decoded, raw, the renewed one from Apple's first 421, and both the `ckWebAuthToken` and `ckSession` parameters (they hold the same 1007-character value). Apple answered `AUTHENTICATION_REQUIRED` to every one.
+
+What's established:
+
+- The live `cdn.apple-cloudkit.com/ck/2/cloudkit.js` (read on the Mac, 173,391 bytes) is the same size as the `tsl-apple-cloudkit` npm copy read here.
+- It has no redirect-callback handling. A token reaches it only through `apiTokenAuth.ckWebAuthToken`, its cookie store, or the popup's `postMessage` (`e.data.ckSession`).
+- Requests send `?ckAPIToken=<raw>&ckWebAuthToken=<encodeURIComponent(token)>&clientId=…`, encoded once. Phloem's direct check sends the same.
+
+So Phloem sends the token the way Apple's own library would, and Apple's server still refuses it.
+
+Open question: does a token from the popup flow (Apple's supported path) work for this container at all? The next test is on a desktop browser with an API token set to Post Message. That needs either a second "Phloem web (popup)" token or the current token switched back to Post Message. If the popup token works on desktop, the redirect token is the problem, and the fix is a sign-in flow that keeps a window opener on iPad. If it also fails, the problem is on the account or container side.

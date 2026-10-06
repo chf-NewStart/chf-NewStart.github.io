@@ -99,6 +99,11 @@ body.workspace-open #documentPane { grid-column:1; grid-row:1; min-width:0; }
 body.workspace-open .workspace-divider { position:absolute; z-index:15; top:0; bottom:0; left:var(--workspace-paper-width); display:block; box-sizing:border-box; width:44px; transform:translateX(-50%); cursor:col-resize; touch-action:none; user-select:none; -webkit-user-select:none; }
 body.workspace-open .workspace-divider::before { content:""; position:absolute; top:0; bottom:0; left:20px; width:4px; background:color-mix(in srgb,var(--accent) 42%,var(--line)); box-shadow:0 0 0 1px var(--surface); }
 body.workspace-open .workspace-divider::after { content:"⋮"; position:absolute; top:50%; left:50%; display:grid; place-items:center; width:18px; height:52px; border:1px solid var(--line); border-radius:11px; background:var(--surface); color:var(--accent); box-shadow:var(--shadow); font:700 20px var(--sans); transform:translate(-50%,-50%); }
+/* While Apple Pencil is in use, only the grip in the middle grabs the divider; strokes
+   that start beside the line go to the paper or Workspace underneath. */
+.workspace-divider-grip { position:absolute; top:50%; left:0; width:44px; height:96px; transform:translateY(-50%); }
+body.workspace-open.workspace-pen-active .workspace-divider { pointer-events:none; }
+body.workspace-open.workspace-pen-active .workspace-divider-grip { pointer-events:auto; }
 body.workspace-open .workspace-divider:focus-visible { outline:2px solid var(--accent); outline-offset:-5px; }
 body.workspace-open.resizing-workspace .workspace-divider { cursor:col-resize; }
 body.workspace-open .pane-spotlight, body.workspace-open .recall-shield { right:calc(100% - var(--workspace-paper-width)); }

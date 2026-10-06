@@ -531,7 +531,9 @@
     if(stateLoadFailed&&!state.chapters.length)return false;var serialized='',savedLocally=false;state.savedAt=now();
     try{serialized=JSON.stringify(localState());localStorage.setItem(KEY,serialized);savedLocally=true;stateLoadFailed=false;storageWarned=false;stateLocalFull=false;}
     catch(e){if(serialized)stateLocalFull=true;}
-    if(atomic&&!savedLocally)return false;
+    /* An all-or-nothing save (a lasso move) may still land in the device snapshot when the
+       small store is full; it fails only when neither copy can take it. */
+    if(atomic&&!savedLocally&&!(serialized&&stateRecoveryDone&&stateSnapshotOk))return false;
     var savedOnDevice=savedLocally;
     if(serialized&&(savedLocally||stateRecoveryDone)){
       if(!savedLocally)savedOnDevice=stateSnapshotOk;
@@ -6744,21 +6746,50 @@
     });
   }
   var workspaceDivider=byId('workspaceDivider');
+  /* A hand resting while writing must not resize the panes: the divider ignores touches
+     while Apple Pencil is down or was just lifted, and broad palm-sized contacts. Pencil
+     resizes only from the grip in the middle, and nothing moves until a drag of a few
+     pixels, so a stray tap leaves the split alone. */
+  var workspacePenDown=0,workspacePenAt=0,workspacePenTimer=0;
+  function markWorkspacePen(){
+    workspacePenAt=Date.now();document.body.classList.add('workspace-pen-active');clearTimeout(workspacePenTimer);
+    // Ten quiet seconds after the last Pencil stroke, the whole strip grabs the divider again.
+    workspacePenTimer=setTimeout(function(){if(!workspacePenDown)document.body.classList.remove('workspace-pen-active');},10000);
+  }
+  document.addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){workspacePenDown++;markWorkspacePen();}},true);
+  ['pointerup','pointercancel'].forEach(function(type){document.addEventListener(type,function(e){if(e.pointerType==='pen'){workspacePenDown=Math.max(0,workspacePenDown-1);markWorkspacePen();}},true);});
+  function workspaceDividerAccepts(e){
+    if(e.pointerType==='touch'){
+      if(workspacePenDown||Date.now()-workspacePenAt<800)return false;
+      if((e.width||0)>40||(e.height||0)>40)return false;
+    }
+    if(e.pointerType==='pen'){var r=byId('workspaceDividerGrip').getBoundingClientRect();if(e.clientY<r.top||e.clientY>r.bottom)return false;}
+    return true;
+  }
   workspaceDivider.onpointerdown=function(e){
     if(!workspaceOpen||!workspaceWide()||workspaceDividerDrag||(e.pointerType==='mouse'&&e.button!==0))return;
-    if(workspaceView)workspaceView.cancel();
-    if(pdfInkController&&pdfInkController.active())pdfInkController.cancel();
-    workspaceDividerDrag={id:e.pointerId,start:+workspaceDivider.getAttribute('aria-valuenow')||50};
+    e.preventDefault();
+    if(!workspaceDividerAccepts(e))return;
+    workspaceDividerDrag={id:e.pointerId,start:+workspaceDivider.getAttribute('aria-valuenow')||50,x:e.clientX,moving:false};
     try{workspaceDivider.setPointerCapture(e.pointerId);}catch(err){}
-    document.body.classList.add('resizing-workspace');e.preventDefault();
   };
   workspaceDivider.onpointermove=function(e){
     if(!workspaceDividerDrag||workspaceDividerDrag.id!==e.pointerId)return;
-    var rect=byId('readerLayout').getBoundingClientRect();setWorkspaceWidth((e.clientX-rect.left)/rect.width*100,false);e.preventDefault();
+    e.preventDefault();
+    if(!workspaceDividerDrag.moving){
+      if(Math.abs(e.clientX-workspaceDividerDrag.x)<6)return;
+      workspaceDividerDrag.moving=true;
+      if(workspaceView)workspaceView.cancel();
+      if(pdfInkController&&pdfInkController.active())pdfInkController.cancel();
+      document.body.classList.add('resizing-workspace');
+    }
+    var rect=byId('readerLayout').getBoundingClientRect();setWorkspaceWidth((e.clientX-rect.left)/rect.width*100,false);
   };
   function finishWorkspaceResize(e,cancel){
     if(!workspaceDividerDrag||workspaceDividerDrag.id!==e.pointerId)return;
-    var previous=workspaceDividerDrag.start;workspaceDividerDrag=null;document.body.classList.remove('resizing-workspace');
+    var previous=workspaceDividerDrag.start,moved=workspaceDividerDrag.moving;workspaceDividerDrag=null;document.body.classList.remove('resizing-workspace');
+    if(workspaceDivider.hasPointerCapture(e.pointerId))workspaceDivider.releasePointerCapture(e.pointerId);
+    if(!moved)return;
     if(cancel)setWorkspaceWidth(previous,false);
     else setWorkspaceWidth(+workspaceDivider.getAttribute('aria-valuenow'),true);
     if(workspaceDivider.hasPointerCapture(e.pointerId))workspaceDivider.releasePointerCapture(e.pointerId);

@@ -131,3 +131,9 @@ What's established:
 So Phloem sends the token the way Apple's own library would, and Apple's server still refuses it.
 
 Open question: does a token from the popup flow (Apple's supported path) work for this container at all? The next test is on a desktop browser with an API token set to Post Message. That needs either a second "Phloem web (popup)" token or the current token switched back to Post Message. If the popup token works on desktop, the redirect token is the problem, and the fix is a sign-in flow that keeps a window opener on iPad. If it also fails, the problem is on the account or container side.
+
+### Outcome (2026-10-06, about 10 am Toronto)
+
+The pop-up test page (`icloud-test.html`) runs CloudKit JS's own Post Message flow. Apple's sign-in page answered "Failed to verify your identity. Try again." for houfu's Apple ID on both iPhone and Mac. It did the same with the test token's Allowed Origins set to Any domain. Apple's sign-in itself fails for this container on the web, before Phloem's code is involved. The v178–v183 redirect tokens were most likely issued for a sign-in Apple never completed.
+
+Shell v184 hides "Sync with iCloud" on the website again by emptying `WEB_CLOUDKIT.apiToken` (a comment in reading.js keeps the Production token). The web adapter, the tests and the native app are unchanged. houfu then chose "Drive in app" on a decision card: the iPad app gets optional Google Drive sync, and iCloud stays for users in China.

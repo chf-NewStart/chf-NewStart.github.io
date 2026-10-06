@@ -4,6 +4,10 @@
   'use strict';
 
   const MIN_ZOOM = .5, MAX_ZOOM = 3, KEY = 'phloem.workspaceZoom.v1';
+  // Notes, text and ink are always laid out on a sheet this wide (per 1000 units) and
+  // scaled to the pane, like a page in a note app. Moving the divider or rotating the
+  // iPad scales the sheet; it never reflows notes or piles them up.
+  const LAYOUT_WIDTH = 600;
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 
   function create(options) {
@@ -57,11 +61,13 @@
       options.onNeedSpace(growY ? neededY : Math.min(neededY, logicalHeight),
         growX ? neededX : Math.min(neededX, logicalWidth));
     }
+    function layoutWidth() { return LAYOUT_WIDTH; }
+    function fit() { return baseWidth / layoutWidth(); }
     function sizePaper() {
-      board.style.width = `${baseWidth * logicalWidth / 1000}px`;
+      board.style.width = `${layoutWidth() * logicalWidth / 1000}px`;
       board.style.minHeight = '0';
-      board.style.height = `${baseWidth * logicalHeight / 1000}px`;
-      board.style.transform = `scale(${zoom})`;
+      board.style.height = `${layoutWidth() * logicalHeight / 1000}px`;
+      board.style.transform = `scale(${zoom * fit()})`;
       stage.style.width = `${Math.max(scroll.clientWidth, baseWidth * logicalWidth * zoom / 1000)}px`;
       stage.style.height = `${Math.max(scroll.clientHeight, baseWidth * logicalHeight * zoom / 1000)}px`;
     }
@@ -71,6 +77,12 @@
       const oldCenterX = oldWidth ? (scroll.scrollLeft + scroll.clientWidth / 2) * 1000 / (oldWidth * zoom) : 0;
       const oldCenterY = oldWidth ? (scroll.scrollTop + scroll.clientHeight / 2) * 1000 / (oldWidth * zoom) : 0;
       baseWidth = scroll.clientWidth;
+      // At 100% the sheet fits the pane. A reader who zoomed keeps the same on-screen
+      // size when the pane changes width, instead of zooming out and back in.
+      if (oldWidth && oldWidth !== baseWidth && Math.abs(zoom - 1) > .001) {
+        zoom = clamp(zoom * oldWidth / baseWidth, MIN_ZOOM, MAX_ZOOM);
+        storeZoom();
+      }
       sizePaper();
       if (oldWidth && oldWidth !== baseWidth) {
         scroll.scrollLeft = oldCenterX * baseWidth * zoom / 1000 - scroll.clientWidth / 2;
@@ -125,7 +137,27 @@
       return target instanceof Element && scroll.contains(target) &&
         !target.closest('.workspace-card, textarea, input, select, button, [contenteditable="true"]');
     }
-    function cancel() { touches.clear(); pinch = null; }
+    // A live pinch only moves a composited transform, like the PDF pinch: no layout,
+    // scroll writes, paper growth or storage until the fingers lift. The zoom is
+    // committed once at the end, anchored to the same content point.
+    function previewPinch() {
+      const p = pinch; if (!p) return;
+      p.frame = 0;
+      const rect = scroll.getBoundingClientRect();
+      const t = { x: scroll.scrollLeft + p.x - rect.left - p.contentX * p.next, y: scroll.scrollTop + p.y - rect.top - p.contentY * p.next };
+      board.style.willChange = 'transform';
+      board.style.transform = `translate(${t.x}px, ${t.y}px) scale(${p.next * fit()})`;
+    }
+    function endPinch(commit) {
+      const p = pinch; pinch = null;
+      if (!p) return;
+      if (p.frame) global.cancelAnimationFrame(p.frame);
+      board.style.willChange = '';
+      board.style.transform = `scale(${zoom * fit()})`;
+      if (commit && Math.abs(p.next - zoom) > .0001) setZoom(p.next, p.x, p.y, p.contentX, p.contentY);
+    }
+    // Ending a pinch early keeps the zoom the reader can already see.
+    function cancel() { touches.clear(); endPinch(true); }
 
     scroll.addEventListener('pointerdown', event => {
       if (event.pointerType !== 'touch' || !blankTarget(event.target) || isBusy()) return;
@@ -133,7 +165,9 @@
       const current = pair();
       if (!current || current.distance < 12) return;
       const rect = scroll.getBoundingClientRect();
-      pinch = { distance: current.distance, zoom,
+      if (pinch && pinch.touch) return;
+      endPinch(true);
+      pinch = { distance: current.distance, zoom, next: zoom, x: current.x, y: current.y, frame: 0,
         contentX: (scroll.scrollLeft + current.x - rect.left) / zoom,
         contentY: (scroll.scrollTop + current.y - rect.top) / zoom };
       event.preventDefault();
@@ -141,20 +175,58 @@
     scroll.addEventListener('pointermove', event => {
       if (!touches.has(event.pointerId)) return;
       touches.set(event.pointerId, point(event));
-      if (!pinch) return; // One finger keeps native workspace scrolling.
+      if (!pinch || pinch.touch) return; // One finger keeps native workspace scrolling.
       const current = pair();
       if (!current) { cancel(); return; }
       event.preventDefault();
-      setZoom(pinch.zoom * current.distance / pinch.distance,
-        current.x, current.y, pinch.contentX, pinch.contentY);
+      pinch.next = clamp(pinch.zoom * current.distance / pinch.distance, MIN_ZOOM, MAX_ZOOM);
+      pinch.x = current.x; pinch.y = current.y;
+      if (!pinch.frame) pinch.frame = global.requestAnimationFrame(previewPinch);
     }, { capture: true, passive: false });
     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
       scroll.addEventListener(type, event => {
         if (!touches.delete(event.pointerId)) return;
-        if (pinch) {
+        if (pinch && !pinch.touch) {
           if (event.cancelable) event.preventDefault();
-          pinch = null;
+          endPinch(true);
         }
+      }, true);
+    }
+    // Safari starts a native two-finger pan as soon as the fingers travel together, and
+    // then cancels their pointers, which cut the pinch off mid-gesture and left the rest
+    // to scrolling. Like the PDF pinch, a two-finger touch on blank paper keeps the
+    // browser out of it, and the touch stream can start or carry the pinch itself if
+    // the pointer stream lost a finger first.
+    function touchPair(list) {
+      if (list.length !== 2) return null;
+      const a = list[0], b = list[1];
+      return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2,
+        distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) };
+    }
+    function touchesBlank(list) { return [...list].every(touch => blankTarget(touch.target)); }
+    scroll.addEventListener('touchstart', event => {
+      if (event.touches.length !== 2 || isBusy() || !touchesBlank(event.touches)) return;
+      event.preventDefault();
+      const current = touchPair(event.touches);
+      if (pinch || !current || current.distance < 12) return;
+      const rect = scroll.getBoundingClientRect();
+      pinch = { distance: current.distance, zoom, next: zoom, x: current.x, y: current.y, frame: 0, touch: true,
+        contentX: (scroll.scrollLeft + current.x - rect.left) / zoom,
+        contentY: (scroll.scrollTop + current.y - rect.top) / zoom };
+    }, { capture: true, passive: false });
+    scroll.addEventListener('touchmove', event => {
+      if (!pinch) return;
+      if (event.cancelable) event.preventDefault();
+      if (!pinch.touch) return; // The pointer stream is already carrying this pinch.
+      const current = touchPair(event.touches);
+      if (!current) return;
+      pinch.next = clamp(pinch.zoom * current.distance / pinch.distance, MIN_ZOOM, MAX_ZOOM);
+      pinch.x = current.x; pinch.y = current.y;
+      if (!pinch.frame) pinch.frame = global.requestAnimationFrame(previewPinch);
+    }, { capture: true, passive: false });
+    for (const type of ['touchend', 'touchcancel']) {
+      scroll.addEventListener(type, event => {
+        if (pinch && pinch.touch && event.touches.length < 2) { touches.clear(); endPinch(true); }
       }, true);
     }
     scroll.addEventListener('wheel', event => {
@@ -172,7 +244,7 @@
     global.addEventListener('pagehide', cancel);
     if (global.ResizeObserver) new ResizeObserver(() => measure()).observe(scroll);
     updateControls();
-    return Object.freeze({ layout, cancel, getZoom: () => zoom });
+    return Object.freeze({ layout, cancel, getZoom: () => pinch ? pinch.next : zoom });
   }
 
   global.PhloemWorkspaceViewport = Object.freeze({ create });

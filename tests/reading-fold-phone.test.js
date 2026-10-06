@@ -89,24 +89,26 @@ function seed() {
     await page.setInputFiles('#pdfFile', { name: 'phone-fold-fixture.pdf', mimeType: 'application/pdf', buffer: await fixture() });
     await ready(page);
     assert.ok((await chapter(page)).contentHash, 'imported PDF is fingerprinted');
-    assert.ok(await page.locator('#mMore').isVisible(), 'phone More button is visible');
+    // Zen is the only reader (1a215db5): the phone bottom bar gave way to Zen's More.
+    assert.ok(await page.locator('#zenMore').isVisible(), 'phone More button is visible');
     assert.ok(await page.locator('#settingsBtn').isHidden(), 'Desk settings is not directly visible inside the phone reader');
 
-    // The opt-in lives in Desk settings. Return using the visible phone Back control.
-    await page.locator('#readerBack').click();
+    // The opt-in lives in Desk settings. Return using the visible phone Back (X) control.
+    const paperId = await page.evaluate(() => localStorage.getItem('readingRoom.lastOpen.v1'));
+    await page.locator('#zenExit').click();
     await page.locator('#settingsBtn').click();
     await page.locator('#settingsDialog').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#pdfFoldEnabled').isChecked(), false, 'folding is opt-in');
     await assertInitiallyInside(page, '#pdfFoldEnabled', '#settingsDialog', 'fold opt-in');
     await page.locator('#pdfFoldEnabled').check();
     await page.locator('[data-close="settingsDialog"]').click();
-    await page.locator('.continue-reading-card').first().click();
+    await page.locator('[data-continue-paper="' + paperId + '"]').first().click();
     await ready(page);
 
-    // On a phone the bottom More tray reveals the top Reading settings control.
-    await page.locator('#mMore').click();
-    assert.ok(await page.locator('#comfortBtn').isVisible(), 'Reading settings appears in phone More tray');
-    await page.locator('#comfortBtn').click();
+    // On a phone the Zen More menu reveals the Reading settings control.
+    await page.locator('#zenMore').click();
+    assert.ok(await page.locator('#zenSettings').isVisible(), 'Reading settings appears in phone More menu');
+    await page.locator('#zenSettings').click();
     await page.locator('#comfortBar').waitFor({ state: 'visible' });
     assert.ok(await page.locator('[data-pdf-layout="scroll"]').getAttribute('aria-pressed') === 'true', 'Scroll layout is active');
     await assertInitiallyInside(page, '#openPdfFold', '#comfortBar', 'Fold section');

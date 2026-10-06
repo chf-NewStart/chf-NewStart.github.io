@@ -123,11 +123,10 @@ async function openFixture(page) {
     return canvas && canvas.width > 0 && spans.some(span => span.textContent.trim())
       && !document.getElementById('readerPage').classList.contains('hidden');
   });
+  /* Zen is the only reader (1a215db5); its Annotate > Marker control replaces the
+     former touch-dock Mark and desk Marker buttons. Let the fitted Zen layout
+     settle and its text layer render before sending a synthetic selection. */
   await page.waitForFunction(() => document.body.classList.contains('zen'));
-  await page.locator('#zenExit').click();
-  await page.waitForFunction(() => !document.body.classList.contains('zen'));
-  // Leaving Zen schedules a PDF refit on the next frame. Wait for its text layer
-  // before sending a synthetic selection through the desk reader.
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForFunction(() => {
     const canvas = document.querySelector('.pdf-page[data-page="1"] canvas');
@@ -193,6 +192,25 @@ async function selectPartialAcrossSpans(page, leftLabel, rightLabel, pointerId, 
   }, { leftLabel, rightLabel, pointerId, pointerType, finishEvent });
 }
 
+/* Reach the Zen Marker the way a reader does: open Annotate, then tap Marker. */
+async function openZenAnnotate(page) {
+  if (!await page.locator('#zenAnnotateMenu').isVisible()) await page.locator('#zenAnnotate').click();
+  await page.locator('#zenAnnotateMenu').waitFor({ state: 'visible' });
+}
+async function clickZenMarker(page) {
+  await openZenAnnotate(page);
+  await page.locator('#zenMarker').click();
+}
+async function tapZenMarker(page) {
+  const tap = async selector => {
+    const box = await page.locator(selector).boundingBox();
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  if (!await page.locator('#zenAnnotateMenu').isVisible()) await tap('#zenAnnotate');
+  await page.locator('#zenAnnotateMenu').waitFor({ state: 'visible' });
+  await tap('#zenMarker');
+}
+
 async function storedHighlights(page) {
   return page.evaluate(() => {
     const id = localStorage.getItem('readingRoom.lastOpen.v1');
@@ -226,7 +244,7 @@ async function storedHighlights(page) {
     coarse: matchMedia('(pointer: coarse)').matches || matchMedia('(any-pointer: coarse)').matches,
     touchPoints: navigator.maxTouchPoints,
     dockVisible: (() => {
-      const dock = document.getElementById('touchDock');
+      const dock = document.getElementById('zenDock');
       const style = getComputedStyle(dock);
       const rect = dock.getBoundingClientRect();
       return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
@@ -237,9 +255,9 @@ async function storedHighlights(page) {
   const fixture = await fixtureSpanState(page);
   check(browserName + ' fixture exposes separate adjacent PDF.js spans', fixture.ready && fixture.distinct && fixture.sameLine && fixture.gap <= 3, JSON.stringify(fixture));
 
-  const touchMark = page.locator('#touchHighlight');
+  const touchMark = page.locator('#zenMarker');
   const touchPalette = page.locator('#highlightToolbar');
-  await touchMark.click();
+  await clickZenMarker(page);
   check('touch Mark without a selection opens the shared Highlight toolbar', await touchPalette.isVisible()
     && await touchMark.getAttribute('aria-expanded') === 'true'
     && await touchMark.getAttribute('aria-haspopup') === null);
@@ -271,7 +289,7 @@ async function storedHighlights(page) {
     && await touchMark.getAttribute('aria-expanded') === 'true'
     && await touchMark.getAttribute('aria-controls') === 'highlightToolbar');
 
-  await touchMark.click();
+  await clickZenMarker(page);
   await page.waitForTimeout(180);
   const saved = await storedHighlights(page);
   check('touch Mark saves the pending selection exactly once', saved.length === 1 && saved[0].text === expectedText, JSON.stringify(saved));
@@ -307,7 +325,9 @@ async function storedHighlights(page) {
   check('the desktop PDF fixture has one saved partial highlight', (await storedHighlights(desktop)).length === 1
     && (await storedHighlights(desktop))[0].text === desktopExpected, JSON.stringify(await storedHighlights(desktop)));
 
-  await desktop.locator('#highlightBtn').click();
+  // Fine-pointer Zen arms persistent Marker by choosing a color from Annotate > Marker.
+  await clickZenMarker(desktop);
+  await desktop.locator('#highlightToolbar [data-highlight-color="yellow"]').click();
   const highlightPoint = await desktop.evaluate(() => {
     const id = localStorage.getItem('readingRoom.lastOpen.v1');
     const state = JSON.parse(localStorage.getItem('readingRoom.v1'));
@@ -375,19 +395,22 @@ async function storedHighlights(page) {
     coarse: matchMedia('(pointer: coarse)').matches || matchMedia('(any-pointer: coarse)').matches,
     fine: matchMedia('(pointer: fine)').matches || matchMedia('(any-pointer: fine)').matches,
     touchPoints: navigator.maxTouchPoints,
-    markerVisible: document.getElementById('highlightBtn').getBoundingClientRect().width > 0,
-    touchMarkVisible: document.getElementById('touchHighlight').getBoundingClientRect().width > 0
+    annotateVisible: document.getElementById('zenAnnotate').getBoundingClientRect().width > 0
   }));
-  check(browserName + ' hybrid fixture exposes touch capability and both marker controls', hybridCapabilities.coarse
-    && hybridCapabilities.markerVisible && hybridCapabilities.touchMarkVisible, JSON.stringify(hybridCapabilities));
+  check(browserName + ' hybrid fixture exposes touch capability, a fine pointer and the Zen Marker control', hybridCapabilities.coarse
+    && hybridCapabilities.fine && hybridCapabilities.annotateVisible, JSON.stringify(hybridCapabilities));
 
+  // The Zen Marker colors are the single marker control for mouse and touch alike.
+  const hybridYellow = hybrid.locator('#highlightToolbar [data-highlight-color="yellow"]');
+  await clickZenMarker(hybrid);
+  await hybridYellow.waitFor({ state: 'visible' });
   await hybrid.evaluate(() => {
     window.__markerClickPointerType = '';
-    document.getElementById('highlightBtn').addEventListener('click', event => {
+    document.querySelector('#highlightToolbar [data-highlight-color="yellow"]').addEventListener('click', event => {
       window.__markerClickPointerType = event.pointerType || '';
     }, { capture: true, once: true });
   });
-  await hybrid.locator('#highlightBtn').click();
+  await hybridYellow.click();
   const hybridMarkerState = await hybrid.evaluate(() => ({
     pointerType: window.__markerClickPointerType,
     markerOn: document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true',
@@ -396,24 +419,44 @@ async function storedHighlights(page) {
   check('a mouse click can arm persistent desktop Marker in a touch-capable context', hybridMarkerState.pointerType === 'mouse'
     && hybridMarkerState.markerOn && hybridMarkerState.bodyMarkerOn, JSON.stringify(hybridMarkerState));
 
+  /* Keyboard: Escape closes the color toolbar, a second Escape disarms Marker
+     (the Zen toggle-off path since 1a215db5 hid the desk Marker button). A
+     keyboard Enter on a color, with no pointerType, then re-arms it. */
+  await hybrid.keyboard.press('Escape');
+  await hybrid.keyboard.press('Escape');
+  const hybridKeyboardOff = await hybrid.evaluate(() => ({
+    markerOn: document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true',
+    bodyMarkerOn: document.body.classList.contains('marker-on')
+  }));
+  check('keyboard Escape disarms the persistent Marker in a touch-capable context', !hybridKeyboardOff.markerOn
+    && !hybridKeyboardOff.bodyMarkerOn, JSON.stringify(hybridKeyboardOff));
+  await hybrid.locator('#zenAnnotate').focus();
+  await hybrid.keyboard.press('Enter');
+  await hybrid.locator('#zenAnnotateMenu').waitFor({ state: 'visible' });
+  await hybrid.locator('#zenMarker').focus();
+  await hybrid.keyboard.press('Enter');
+  await hybridYellow.waitFor({ state: 'visible' });
   await hybrid.evaluate(() => {
     window.__markerKeyboardClick = null;
-    document.getElementById('highlightBtn').addEventListener('click', event => {
+    document.querySelector('#highlightToolbar [data-highlight-color="yellow"]').addEventListener('click', event => {
       window.__markerKeyboardClick = { pointerType: event.pointerType || '', detail: event.detail };
     }, { capture: true, once: true });
   });
-  await hybrid.locator('#highlightBtn').focus();
+  await hybridYellow.focus();
   await hybrid.keyboard.press('Enter');
   const hybridKeyboardState = await hybrid.evaluate(() => ({
     event: window.__markerKeyboardClick,
     markerOn: document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true',
     bodyMarkerOn: document.body.classList.contains('marker-on')
   }));
-  check('keyboard activation with no pointerType still toggles Marker when a fine pointer is available', hybridKeyboardState.event
+  check('keyboard activation with no pointerType re-arms Marker when a fine pointer is available', hybridKeyboardState.event
     && hybridKeyboardState.event.pointerType === '' && hybridKeyboardState.event.detail === 0
-    && !hybridKeyboardState.markerOn && !hybridKeyboardState.bodyMarkerOn, JSON.stringify(hybridKeyboardState));
+    && hybridKeyboardState.markerOn && hybridKeyboardState.bodyMarkerOn, JSON.stringify(hybridKeyboardState));
 
-  await hybrid.locator('#highlightBtn').click();
+  await hybrid.keyboard.press('Escape');
+  await hybrid.keyboard.press('Escape');
+  await clickZenMarker(hybrid);
+  await hybridYellow.click();
   check('a second hybrid mouse click rearms Marker for the touch-selection check', await hybrid.locator('#highlightBtn').getAttribute('aria-pressed') === 'true');
 
   await hybrid.evaluate(() => {
@@ -432,15 +475,14 @@ async function storedHighlights(page) {
       return state.chapters.find(item => item.id === id).highlights['1']?.length || 0;
     })(),
     markerOn: document.getElementById('highlightBtn').getAttribute('aria-pressed') === 'true',
-    touchLabel: document.getElementById('touchHighlight').getAttribute('aria-label') || '',
+    touchLabel: document.getElementById('zenMarker').getAttribute('aria-label') || '',
     nativeText: window.getSelection().toString(),
     events: window.__hybridSelectionEvents
   }));
   check('a touch selection stays pending despite hybrid desktop Marker mode', !!hybridSelection && hybridPendingState.count === 0
     && hybridPendingState.markerOn && hybridPendingState.touchLabel.includes('Highlight selected passage'),
     JSON.stringify({ selection: hybridSelection, state: hybridPendingState }));
-  const hybridTouchBox = await hybrid.locator('#touchHighlight').boundingBox();
-  await hybrid.touchscreen.tap(hybridTouchBox.x + hybridTouchBox.width / 2, hybridTouchBox.y + hybridTouchBox.height / 2);
+  await tapZenMarker(hybrid);
   await hybrid.waitForTimeout(180);
   const hybridSaved = await storedHighlights(hybrid);
   const hybridExpected = hybridSelection && hybridSelection.exact.replace(/\s+/g, ' ').trim();

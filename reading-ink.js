@@ -46,6 +46,15 @@
       if(!last||Math.hypot(point.x-last.x,point.y-last.y)>.05*unit)points.push(point);
     });
     if(!points.length)return '';
+    // Optional display-only stabilizer (Workspace ink): a forward and a backward
+    // arc-length filter averaged together, so hand tremor and sensor jitter are
+    // smoothed without lag or shrinking the stroke; the end points stay put.
+    if(stroke.stabilize>0&&points.length>2){
+      var reach=stroke.stabilize*unit,forward=[],backward=[];
+      points.forEach(function(p,i){var q=i?forward[i-1]:p,step=i?Math.hypot(p.x-points[i-1].x,p.y-points[i-1].y):0,k=1-Math.exp(-step/reach);forward.push(i?{x:q.x+(p.x-q.x)*k,y:q.y+(p.y-q.y)*k}:{x:p.x,y:p.y});});
+      for(var i=points.length-1;i>=0;i--){var p=points[i],q=backward[i+1]||p,step=i<points.length-1?Math.hypot(p.x-points[i+1].x,p.y-points[i+1].y):0,k=1-Math.exp(-step/reach);backward[i]=i<points.length-1?{x:q.x+(p.x-q.x)*k,y:q.y+(p.y-q.y)*k}:{x:p.x,y:p.y};}
+      for(var i=1;i<points.length-1;i++){points[i].x=(forward[i].x+backward[i].x)/2;points[i].y=(forward[i].y+backward[i].y)/2;}
+    }
     var smoothLength=Math.max(6,stroke.width*2.5)*unit,pressure=points[0].p;
     points.forEach(function(p,i){
       var previous=points[Math.max(0,i-1)],step=Math.hypot(p.x-previous.x,p.y-previous.y);
@@ -54,7 +63,7 @@
     pressure=points[points.length-1].filtered;
     for(var i=points.length-1;i>=0;i--){
       var next=points[Math.min(points.length-1,i+1)],p=points[i],step=Math.hypot(p.x-next.x,p.y-next.y);
-      pressure+=(p.filtered-pressure)*(1-Math.exp(-step/smoothLength));p.r=stroke.width*unit*(stroke.style==='natural'?.7+.45*pressure:.55+.9*pressure)/2;
+      pressure+=(p.filtered-pressure)*(1-Math.exp(-step/smoothLength));p.r=stroke.width*unit*(stroke.response?stroke.response[0]+stroke.response[1]*pressure:stroke.style==='natural'?.7+.45*pressure:.55+.9*pressure)/2;
     }
     function dot(p){return 'M '+num(p.x-p.r)+' '+num(p.y)+' a '+num(p.r)+' '+num(p.r)+' 0 1 0 '+num(2*p.r)+' 0 a '+num(p.r)+' '+num(p.r)+' 0 1 0 '+num(-2*p.r)+' 0 Z';}
     if(points.length===1)return dot(points[0]);
@@ -140,6 +149,13 @@
     if(cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)return true;
     return Math.min(distance(a,c,d),distance(b,c,d),distance(c,a,b),distance(d,a,b))<=r;
   }
+  function eraserTargets(strokes,rect) {
+    return strokes.map(function(stroke){
+      var pts=(stroke.points||[]).map(function(point){return{x:rect.left+point[0]*rect.width,y:rect.top+point[1]*rect.height};}),r=10+stroke.width*rect.width/612;
+      var xs=pts.map(function(point){return point.x;}),ys=pts.map(function(point){return point.y;});
+      return{id:stroke.id,pts:pts,r:r,minX:Math.min.apply(null,xs)-r,maxX:Math.max.apply(null,xs)+r,minY:Math.min.apply(null,ys)-r,maxY:Math.max.apply(null,ys)+r};
+    });
+  }
   function create(options) {
     var gesture=null,suppressUntil=0,lastTouch=null,frame=0;
     function own(event) { if(event.cancelable)event.preventDefault();event.stopImmediatePropagation(); }
@@ -189,12 +205,18 @@
       var rect=g.sheet.getBoundingClientRect();if(!sameRect(g)){finish(true);return;}
       var x=clamp(event.clientX,rect.left,rect.right),y=clamp(event.clientY,rect.top,rect.bottom),p={x:x,y:y};
       if(g.tool==='eraser'){
-        (options.getStrokes(g.page)||[]).forEach(function(stroke){
-          if(g.erased.has(stroke.id))return;var pts=stroke.points.map(function(point){return{x:rect.left+point[0]*rect.width,y:rect.top+point[1]*rect.height};}),hit=false,r=10+stroke.width*rect.width/612;
-          for(var i=0;i<pts.length;i++){if(segmentsNear(g.last,p,pts[Math.max(0,i-1)],pts[i],r)){hit=true;break;}}
-          if(hit)g.erased.add(stroke.id);
+        /* The sheet cannot move during a sweep (sameRect), so its strokes are measured
+           once and each Pencil sample only tests strokes near the new segment. */
+        if(!g.targets)g.targets=eraserTargets(options.getStrokes(g.page)||[],rect);
+        var lowX=Math.min(g.last.x,p.x),highX=Math.max(g.last.x,p.x),lowY=Math.min(g.last.y,p.y),highY=Math.max(g.last.y,p.y);
+        g.targets.forEach(function(target){
+          if(g.erased.has(target.id)||highX<target.minX||lowX>target.maxX||highY<target.minY||lowY>target.maxY)return;
+          var pts=target.pts,hit=false;
+          for(var i=0;i<pts.length;i++){if(segmentsNear(g.last,p,pts[Math.max(0,i-1)],pts[i],target.r)){hit=true;break;}}
+          if(!hit)return;
+          g.erased.add(target.id);
+          g.sheet.querySelectorAll('[data-ink-id]').forEach(function(el){if(el.dataset.inkId===target.id)el.classList.add('pdf-ink-erasing');});
         });
-        g.sheet.querySelectorAll('[data-ink-id]').forEach(function(el){el.classList.toggle('pdf-ink-erasing',g.erased.has(el.dataset.inkId));});
         if(options.onErasePreview)options.onErasePreview(g.page,g.last,p);g.last=p;return;
       }
       if(!force&&g.last&&Math.hypot(x-g.last.x,y-g.last.y)<.65)return;

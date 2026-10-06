@@ -65,7 +65,11 @@ function check(name, condition, extra) {
   paper = await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0]);
   check('older blank author credit repairs on open', paper.authors === EXPECTED_AUTHORS, paper.authors);
 
-  if (!(await page.locator('#editPaperBtn').isVisible())) await page.click('#notebookReopen');
+  // Zen is the only reader (1a215db5): the notebook opens from More > Notebook.
+  if (!(await page.locator('#editPaperBtn').isVisible())) {
+    await page.click('#zenMore');
+    await page.click('#zenNotebook');
+  }
   await page.click('#editPaperBtn');
   await page.fill('#paperAuthorsEdit', 'Curated Author Credit');
   await page.click('#savePaperDetails');

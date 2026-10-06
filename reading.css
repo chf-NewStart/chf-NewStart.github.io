@@ -120,7 +120,7 @@
     .library-health span { color: var(--muted); font-size: .69rem; line-height: 1.45; }
     .library-health .soft-button { flex: 0 0 auto; margin-left: auto; background: color-mix(in srgb, var(--surface) 78%, transparent); }
     .library-health.done { border-color: var(--line); background: var(--surface); }
-    .section-head { display: flex; align-items: end; gap: 14px; margin: 0 0 16px; }
+    .section-head { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin: 0 0 16px; }
     .section-head h2 { margin: 0; font: 500 1.5rem var(--serif); }
     .section-head .count { color: var(--muted); font-size: .75rem; }
     .library-sort { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: .68rem; white-space: nowrap; }
@@ -157,6 +157,9 @@
     .library-view-option:focus-visible, .library-note-style-option:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent); outline-offset: 2px; }
     .search { width: min(280px, 42vw); background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 8px 2px; outline: none; }
     .search:focus { border-color: var(--accent); }
+    /* Portrait iPad: the library controls do not fit on one line beside search.
+       Give search its own row instead of widening the page (which zooms it out). */
+    @media (max-width: 1100px) { .section-head .search { flex: 1 1 100%; width: 100%; margin-left: 0; } }
 
     /* The Living Shelf: fixed category highlighters sit above a quiet reading wall,
        while the selected paper rests beside it as a proper field notebook. */
@@ -1221,6 +1224,11 @@
       user-select: none; -webkit-user-select: none; overscroll-behavior: contain;
     }
     .highlight-controls { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px; }
+    /* Zen: a vertical column beside the dock button (placed by placeDockedHighlightToolbar). */
+    body.zen .highlight-toolbar.docked { bottom: auto; transform: none; max-width: none; max-height: calc(100dvh - 24px); width: auto; }
+    body.zen .highlight-toolbar.docked .highlight-controls { flex-wrap: nowrap; align-items: flex-start; }
+    body.zen .highlight-toolbar.docked :is(.highlight-actions,.highlight-colors) { flex-direction: column; }
+    body.zen .highlight-toolbar.docked .highlight-group { padding: 3px 0; }
     .highlight-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; }
     .highlight-group { display: flex; flex: 0 0 auto; align-items: center; gap: 0; padding: 0 3px; border-radius: 11px; background: var(--surface-2); }
     .highlight-toolbar button {

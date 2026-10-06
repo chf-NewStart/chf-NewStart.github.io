@@ -9,12 +9,17 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const PORT = +(process.env.PHLOEM_IPAD_DOCK_TEST_PORT || 8147);
 const PDF = path.join(ROOT, 'assets', 'phloem-guide', 'phloem-field-guide.pdf');
+/* Zen is the only reader since 1a215db5 ("Make Zen the sole reader and return
+   directly to library"), which hid the former #touchDock. Its Zen rail is now the
+   compact touch dock: Guide, Annotate (Highlight), Undo, Workspace and More are on
+   the rail; Highlight sits one tap inside Annotate (f3455d93 "Simplify Zen
+   controls") and Notes one tap inside More (1a215db5). */
 const ACTION_SELECTORS = {
-  guide: '#touchGuide, [data-touch-action="guide"]',
-  highlight: '#touchHighlight, [data-touch-action="highlight"]',
-  notes: '#touchNotes, [data-touch-action="notes"]',
-  more: '#touchMore, [data-touch-action="more"]'
+  guide: '#zenGuide',
+  annotate: '#zenAnnotate',
+  more: '#zenMore'
 };
+const RAIL_IDS = ['zenExit', 'zenGuide', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'];
 
 const server = http.createServer((req, res) => {
   const pathname = req.url.split('?')[0] === '/' ? '/reading.html' : req.url.split('?')[0];
@@ -190,7 +195,7 @@ async function pinnedPanelState(page) {
 }
 
 async function dockPhysicalSide(page) {
-  return page.locator('#touchDock').evaluate(dock => {
+  return page.locator('#zenDock').evaluate(dock => {
     const rect = dock.getBoundingClientRect();
     return {
       side: rect.left + rect.width / 2 < innerWidth / 2 ? 'left' : 'right',
@@ -198,6 +203,19 @@ async function dockPhysicalSide(page) {
       rect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height }
     };
   });
+}
+
+async function openMore(page) {
+  if (!await page.locator('#zenMoreMenu').isVisible()) await page.locator('#zenMore').click();
+  await page.locator('#zenMoreMenu').waitFor({ state: 'visible' });
+}
+async function moreAction(page, selector) {
+  await openMore(page);
+  await page.locator(selector).click();
+}
+async function openNotes(page) {
+  await moreAction(page, '#zenNotebook');
+  await page.locator('#notebook').waitFor({ state: 'visible' });
 }
 
 (async () => {
@@ -228,18 +246,16 @@ async function dockPhysicalSide(page) {
      either signal is sufficient for the production tablet path. */
   check('the tablet fixture is a >720px coarse-pointer reader', capabilities.width > 720 && capabilities.coarse, JSON.stringify(capabilities));
 
-  const dockVisible = await isVisible(tablet, '#touchDock');
-  check('a coarse-pointer iPad gets the compact reading dock even above the phone breakpoint', dockVisible);
+  const dockVisible = await isVisible(tablet, '#zenDock');
+  check('a coarse-pointer iPad gets the compact reading dock even above the phone breakpoint', dockVisible && await tablet.locator('body').evaluate(body => body.classList.contains('zen')));
   check('the old phone paging bar stays hidden on a tablet', !(await tablet.locator('#mobileBar').isVisible()));
 
-  const actionState = {};
-  for (const [name, selector] of Object.entries(ACTION_SELECTORS)) {
-    actionState[name] = await isVisible(tablet, selector);
-  }
-  check('the dock exposes Guide, Highlight, Notes, and More without opening another tray', Object.values(actionState).every(Boolean), JSON.stringify(actionState));
+  const railIds = await tablet.locator('#zenDock > button, #zenDock > .zen-tool > button')
+    .evaluateAll(buttons => buttons.filter(button => button.getClientRects().length).map(button => button.id));
+  check('the dock exposes Guide, Annotate (Highlight), Undo, Workspace, and More directly on the rail', JSON.stringify(railIds) === JSON.stringify(RAIL_IDS), JSON.stringify(railIds));
 
-  if (dockVisible && Object.values(actionState).every(Boolean)) {
-    const dockMetrics = await tablet.locator('#touchDock').evaluate((dock, selectors) => {
+  if (dockVisible) {
+    const dockMetrics = await tablet.locator('#zenDock').evaluate((dock, selectors) => {
       const actions = {};
       for (const [name, selector] of Object.entries(selectors)) {
         const button = dock.querySelector(selector);
@@ -253,14 +269,20 @@ async function dockPhysicalSide(page) {
       return { actions, dock: { width: rect.width, height: rect.height } };
     }, ACTION_SELECTORS);
     check('every primary dock action has a 44–48px-class touch target', Object.values(dockMetrics.actions).every(item => item && item.width >= 44 && item.height >= 44 && item.width <= 56 && item.height <= 56), JSON.stringify(dockMetrics.actions));
-    check('all four dock actions retain readable accessible names', Object.entries(dockMetrics.actions).every(([name, item]) => item && item.name.toLowerCase().includes(name)), JSON.stringify(dockMetrics.actions));
+    check('the dock actions retain readable accessible names', Object.entries(dockMetrics.actions).every(([name, item]) => item && item.name.toLowerCase().includes(name === 'annotate' ? 'annotation' : name)), JSON.stringify(dockMetrics.actions));
 
-    await tablet.locator(ACTION_SELECTORS.guide).first().click();
-    check('the dock Guide action controls the existing reading guide state', await tablet.locator('#focusBtn').getAttribute('aria-pressed') === 'true' && await tablet.locator(ACTION_SELECTORS.guide).first().getAttribute('aria-pressed') === 'true');
-    await tablet.locator(ACTION_SELECTORS.guide).first().click();
+    await tablet.locator(ACTION_SELECTORS.guide).click();
+    await tablet.locator('#zenGuideToggle').click();
+    check('the dock Guide action controls the existing reading guide state', await tablet.locator('#focusBtn').getAttribute('aria-pressed') === 'true' && await tablet.locator('#zenGuideToggle').getAttribute('aria-pressed') === 'true');
+    await tablet.locator('#zenGuideToggle').click();
+    await tablet.locator('#zenGuide').focus();
+    await tablet.keyboard.press('Escape');
 
-    const touchHighlight = tablet.locator(ACTION_SELECTORS.highlight).first();
+    const touchHighlight = tablet.locator('#zenMarker');
     const touchPalette = tablet.locator('#highlightToolbar');
+    await tablet.locator(ACTION_SELECTORS.annotate).click();
+    await tablet.locator('#zenAnnotateMenu').waitFor({ state: 'visible' });
+    check('Highlight is one tap inside Annotate with a full-size target', await touchHighlight.evaluate(button => { const rect = button.getBoundingClientRect(); return rect.width >= 44 && rect.height >= 44; }));
     await touchHighlight.click();
     check('idle Mark opens the shared Highlight toolbar instead of arming a persistent touch marker', await touchPalette.isVisible()
       && await touchHighlight.getAttribute('aria-expanded') === 'true'
@@ -272,24 +294,22 @@ async function dockPhysicalSide(page) {
 
     const initialSide = await dockPhysicalSide(tablet);
     check('the dock rests against one reachable side instead of floating over the paper', initialSide.edgeGap <= 20, JSON.stringify(initialSide));
-    await tablet.locator(ACTION_SELECTORS.more).first().click();
-    const sideControl = tablet.locator('#touchDockMove, #touchDockSide, [data-touch-dock-move], [data-touch-dock-side]').first();
-    const sideControlVisible = await sideControl.count() > 0 && await sideControl.isVisible();
-    check('More offers an explicit control for moving the dock to the other hand', sideControlVisible && await tablet.locator(ACTION_SELECTORS.more).first().getAttribute('aria-expanded') === 'true');
-    check('opening More moves keyboard focus into its dialog', await tablet.locator('#touchDockMenu').evaluate(menu => menu.contains(document.activeElement)));
+    await tablet.locator(ACTION_SELECTORS.more).click();
+    check('More discloses its reading tools beside the dock', await tablet.locator('#zenMoreMenu').isVisible() && await tablet.locator(ACTION_SELECTORS.more).getAttribute('aria-expanded') === 'true');
+    check('Notes is one tap inside More with a full-size target', await tablet.locator('#zenNotebook').evaluate(button => { const rect = button.getBoundingClientRect(); return rect.width >= 44 && rect.height >= 44 && /notes/i.test(button.getAttribute('aria-label') || ''); }));
+    await tablet.locator('#zenMore').focus();
     await tablet.keyboard.press('Escape');
-    check('Escape closes More and returns focus to its trigger', !await tablet.locator('#touchDockMenu').isVisible() && await tablet.locator('#touchMore').evaluate(button => document.activeElement === button));
+    check('Escape closes More and returns focus to its trigger', !await tablet.locator('#zenMoreMenu').isVisible() && await tablet.locator('#zenMore').evaluate(button => document.activeElement === button));
 
-    await tablet.locator(ACTION_SELECTORS.more).first().click();
-    await tablet.locator('#touchFind').click();
+    await moreAction(tablet, '#zenFind');
     await tablet.waitForFunction(() => !document.getElementById('findBar').classList.contains('hidden') && document.activeElement === document.getElementById('findInput'));
-    check('Find opens from the iPad dock after its More dialog closes', !await tablet.locator('#touchDockMenu').isVisible() && await tablet.locator('#findBar').isVisible());
+    check('Find opens from the iPad dock after its More menu closes', !await tablet.locator('#zenMoreMenu').isVisible() && await tablet.locator('#findBar').isVisible());
     await tablet.keyboard.press('Escape');
-    check('Escape closes iPad Find and returns focus to the visible dock trigger', !await tablet.locator('#findBar').isVisible() && await tablet.locator('#touchMore').evaluate(button => document.activeElement === button));
+    check('Escape closes iPad Find and returns focus to the visible dock trigger', !await tablet.locator('#findBar').isVisible() && await tablet.locator('#zenMore').evaluate(button => document.activeElement === button));
 
-    await tablet.locator(ACTION_SELECTORS.more).first().click();
+    await openMore(tablet);
     const beforeSettings = await readingPlace(tablet);
-    await tablet.locator('#touchSettings').click();
+    await tablet.locator('#zenSettings').click();
     await tablet.waitForTimeout(120);
     const settingsState = await tablet.locator('#comfortBar').evaluate(bar => {
       const style = getComputedStyle(bar);
@@ -305,38 +325,33 @@ async function dockPhysicalSide(page) {
     check('tablet settings expose dialog semantics and move focus inside', settingsState.role === 'dialog' && settingsState.focused, JSON.stringify(settingsState));
     check('visible tablet settings controls meet the 44px touch target', settingsState.targets.length > 0 && settingsState.targets.every(target => target.width >= 44 && target.height >= 44), JSON.stringify(settingsState.targets));
     await tablet.keyboard.press('Escape');
-    check('Escape closes settings and returns focus to the dock trigger', !await tablet.locator('#comfortBar').isVisible() && await tablet.locator('#touchMore').evaluate(button => document.activeElement === button));
+    check('Escape closes settings and returns focus to the dock trigger', !await tablet.locator('#comfortBar').isVisible() && await tablet.locator('#zenMore').evaluate(button => document.activeElement === button));
 
-    await tablet.locator(ACTION_SELECTORS.more).first().click();
-    if (sideControlVisible) {
-      await sideControl.click();
-      await tablet.waitForTimeout(120);
-      const movedSide = await dockPhysicalSide(tablet);
-      check('the side control visibly moves the dock to the opposite edge', movedSide.side !== initialSide.side && movedSide.edgeGap <= 20, JSON.stringify({ initialSide, movedSide }));
-
-      await tablet.reload({ waitUntil: 'load' });
-      await tablet.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0
-        && document.getElementById('pdfFrame').dataset.positionReady === 'true'
-        && !document.getElementById('readerPage').classList.contains('hidden'));
-      const restoredSide = await dockPhysicalSide(tablet);
-      check('the preferred dock side survives a reload', restoredSide.side === movedSide.side && restoredSide.edgeGap <= 20, JSON.stringify({ movedSide, restoredSide }));
-    }
+    /* The former dock-side switch belonged to the hidden legacy #touchDock; the Zen
+       rail has a single right-edge position (1a215db5). It must stay put on reload. */
+    await tablet.reload({ waitUntil: 'load' });
+    await tablet.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0
+      && document.getElementById('pdfFrame').dataset.positionReady === 'true'
+      && !document.getElementById('readerPage').classList.contains('hidden')
+      && document.body.classList.contains('zen'));
+    const restoredSide = await dockPhysicalSide(tablet);
+    check('the dock keeps its reachable edge after a reload', restoredSide.side === initialSide.side && restoredSide.edgeGap <= 20, JSON.stringify({ initialSide, restoredSide }));
 
     await placeOnSecondPage(tablet);
     const beforeNotes = await readingPlace(tablet);
-    await tablet.locator(ACTION_SELECTORS.notes).first().click();
+    await openNotes(tablet);
     await tablet.waitForTimeout(340);
     const landscapeOverlay = await noteOverlayState(tablet);
-    const openNotes = await readingPlace(tablet);
+    const openNotesPlace = await readingPlace(tablet);
     check('Notes opens as a temporary overlay above the tablet paper', landscapeOverlay.visible && (landscapeOverlay.position === 'fixed' || landscapeOverlay.position === 'absolute') && landscapeOverlay.overlap > 0, JSON.stringify(landscapeOverlay));
-    check('opening Notes does not resize or rerender the PDF', samePaperSize(beforeNotes, openNotes), JSON.stringify({ beforeNotes, openNotes }));
-    check('opening Notes keeps the exact page and reading position', sameReadingPlace(beforeNotes, openNotes), JSON.stringify({ beforeNotes, openNotes }));
-    check('the dock reports that Notes is open', await tablet.locator(ACTION_SELECTORS.notes).first().getAttribute('aria-expanded') === 'true');
+    check('opening Notes does not resize or rerender the PDF', samePaperSize(beforeNotes, openNotesPlace), JSON.stringify({ beforeNotes, openNotesPlace }));
+    check('opening Notes keeps the exact page and reading position', sameReadingPlace(beforeNotes, openNotesPlace), JSON.stringify({ beforeNotes, openNotesPlace }));
+    check('the dock reports that Notes is open', await tablet.locator('#zenNotebook').getAttribute('aria-expanded') === 'true');
     check('temporary Notes use dialog semantics and move focus inside', await tablet.locator('#notebook').getAttribute('role') === 'dialog' && await tablet.locator('#notebook').getAttribute('aria-modal') === 'true' && await tablet.locator('#notebook').evaluate(notebook => notebook.contains(document.activeElement)));
     await tablet.keyboard.press('Escape');
     await tablet.waitForTimeout(340);
-    check('Escape closes temporary Notes and returns focus to Notes', !await tablet.locator('#notebook').isVisible() && await tablet.locator(ACTION_SELECTORS.notes).first().evaluate(button => document.activeElement === button));
-    await tablet.locator(ACTION_SELECTORS.notes).first().click();
+    check('Escape closes temporary Notes and returns focus to the visible More trigger', !await tablet.locator('#notebook').isVisible() && await tablet.locator('#zenMore').evaluate(button => document.activeElement === button));
+    await openNotes(tablet);
     await tablet.waitForTimeout(340);
 
     await tablet.fill('#pageNote', 'Keep this quick note and its source passage visible above the iPad keyboard.');
@@ -364,61 +379,41 @@ async function dockPhysicalSide(page) {
     await tablet.evaluate(() => window.__setVisualViewport({ width: 1024, height: 768, offsetTop: 0 }));
     await tablet.waitForFunction(() => !document.body.classList.contains('keyboard-open'));
 
-    await tablet.locator(ACTION_SELECTORS.notes).first().click();
+    await tablet.locator('#sheetClose').click();
     await tablet.waitForTimeout(340);
     const closedNotes = await readingPlace(tablet);
     const closedOverlay = await noteOverlayState(tablet);
-    check('a second Notes tap closes the temporary panel', !closedOverlay.visible && await tablet.locator(ACTION_SELECTORS.notes).first().getAttribute('aria-expanded') === 'false', JSON.stringify(closedOverlay));
+    check('Close notes dismisses the temporary panel', !closedOverlay.visible && await tablet.locator('#zenNotebook').getAttribute('aria-expanded') === 'false', JSON.stringify(closedOverlay));
     check('closing Notes returns to the unchanged reading place and scale', samePaperSize(beforeNotes, closedNotes) && sameReadingPlace(beforeNotes, closedNotes), JSON.stringify({ beforeNotes, closedNotes }));
 
+    /* Notes stay a temporary overlay in Zen at every orientation: 1a215db5 made
+       Notes float above the paper "without leaving Zen or changing its fitted width",
+       replacing the former pin-beside-page column. */
     const defaultTabletMode = await tablet.locator('body').evaluate(body => ({ overlay: body.classList.contains('tablet-notes-overlay'), pinned: body.classList.contains('tablet-notes-pinned') }));
-    check('wide landscape still defaults to temporary Notes until the reader explicitly pins it', defaultTabletMode.overlay && !defaultTabletMode.pinned, JSON.stringify(defaultTabletMode));
-    await tablet.locator(ACTION_SELECTORS.more).first().click();
-    const pinControl = tablet.locator('#touchPinNotes, [data-touch-pin-notes]').first();
-    const pinAvailable = await pinControl.count() > 0 && await pinControl.isVisible();
-    check('wide-landscape More offers an explicit Keep notes beside page action', pinAvailable && await pinControl.getAttribute('aria-pressed') === 'false');
+    check('wide landscape keeps temporary Notes rather than a pinned column', defaultTabletMode.overlay && !defaultTabletMode.pinned, JSON.stringify(defaultTabletMode));
+    await openNotes(tablet);
+    await tablet.waitForTimeout(340);
+    const landscapeOpen = await readingPlace(tablet);
+    await tablet.setViewportSize({ width: 768, height: 1024 });
+    await tablet.evaluate(() => window.__setVisualViewport({ width: 768, height: 1024, offsetTop: 0 }));
+    await tablet.waitForFunction(() => innerWidth === 768 && document.body.classList.contains('tablet-notes-overlay') && !document.body.classList.contains('tablet-notes-pinned') && document.querySelector('.pdf-page canvas')?.width > 0);
+    await tablet.waitForTimeout(520);
+    check('portrait iPad keeps the touch dock instead of falling back to desktop controls', await tablet.locator('#zenDock').isVisible() && !await tablet.locator('#readerBack').isVisible());
+    const portraitOverlay = await noteOverlayState(tablet);
+    const portraitOpen = await readingPlace(tablet);
+    check('open Notes remain a temporary portrait overlay', portraitOverlay.visible && (portraitOverlay.position === 'fixed' || portraitOverlay.position === 'absolute') && portraitOverlay.overlap > 0 && portraitOverlay.paneWidth >= portraitOverlay.layoutWidth - 2, JSON.stringify(portraitOverlay));
+    check('portrait keeps full PDF width without losing the current page', portraitOpen.page === landscapeOpen.page && portraitOpen.paneWidth >= 766, JSON.stringify({ landscapeOpen, portraitOpen }));
 
-    if (pinAvailable) {
-      const beforePin = await readingPlace(tablet);
-      await pinControl.click();
-      await tablet.waitForFunction(() => document.body.classList.contains('tablet-notes-pinned') && document.getElementById('documentPane').clientWidth < innerWidth - 200);
-      await tablet.waitForTimeout(520);
-      const pinnedPanel = await pinnedPanelState(tablet);
-      const pinnedPlace = await readingPlace(tablet);
-      check('pinning creates a genuine notes column beside the PDF only after that action', pinnedPanel.visible && pinnedPanel.bodyPinned && !pinnedPanel.bodyOverlay && pinnedPanel.beside && pinnedPanel.paneWidth < pinnedPanel.layoutWidth - 200, JSON.stringify(pinnedPanel));
-      check('the pin action clearly reports its selected state', await pinControl.getAttribute('aria-pressed') === 'true');
-      check('pinning keeps the current page and relative reading place while deliberately narrowing it', pinnedPlace.page === beforePin.page && Math.abs(pinnedPlace.withinPage - beforePin.withinPage) <= .03 && pinnedPlace.pageWidth < beforePin.pageWidth - 100, JSON.stringify({ beforePin, pinnedPlace }));
+    await tablet.setViewportSize({ width: 1024, height: 768 });
+    await tablet.evaluate(() => window.__setVisualViewport({ width: 1024, height: 768, offsetTop: 0 }));
+    await tablet.waitForFunction(() => innerWidth === 1024 && document.querySelector('.pdf-page canvas')?.width > 0);
+    await tablet.waitForTimeout(520);
+    const restoredOverlay = await noteOverlayState(tablet);
+    const restoredOpen = await readingPlace(tablet);
+    check('returning to wide landscape keeps the open temporary Notes over the full-width paper', restoredOverlay.visible && restoredOverlay.overlap > 0 && restoredOverlay.paneWidth >= restoredOverlay.layoutWidth - 2 && restoredOpen.page === landscapeOpen.page, JSON.stringify({ restoredOverlay, restoredOpen }));
 
-      await tablet.setViewportSize({ width: 768, height: 1024 });
-      await tablet.evaluate(() => window.__setVisualViewport({ width: 768, height: 1024, offsetTop: 0 }));
-      await tablet.waitForFunction(() => innerWidth === 768 && document.body.classList.contains('tablet-notes-overlay') && !document.body.classList.contains('tablet-notes-pinned') && document.querySelector('.pdf-page canvas')?.width > 0);
-      await tablet.waitForTimeout(520);
-      check('portrait iPad keeps the touch dock instead of falling back to desktop controls', await tablet.locator('#touchDock').isVisible());
-      const portraitOverlay = await noteOverlayState(tablet);
-      const portraitOpen = await readingPlace(tablet);
-      check('a pinned landscape notebook automatically falls back to a temporary portrait overlay', portraitOverlay.visible && (portraitOverlay.position === 'fixed' || portraitOverlay.position === 'absolute') && portraitOverlay.overlap > 0 && portraitOverlay.paneWidth >= portraitOverlay.layoutWidth - 2, JSON.stringify(portraitOverlay));
-      check('portrait fallback restores full PDF width without losing the current page', portraitOpen.page === pinnedPlace.page && portraitOpen.paneWidth >= 766 && portraitOpen.pageWidth > pinnedPlace.pageWidth + 100, JSON.stringify({ pinnedPlace, portraitOpen }));
-      check('the unavailable side-by-side choice is hidden in portrait', await pinControl.evaluate(button => button.classList.contains('hidden')));
-
-      await tablet.setViewportSize({ width: 1024, height: 768 });
-      await tablet.evaluate(() => window.__setVisualViewport({ width: 1024, height: 768, offsetTop: 0 }));
-      await tablet.waitForFunction(() => innerWidth === 1024 && document.body.classList.contains('tablet-notes-pinned') && document.getElementById('documentPane').clientWidth < innerWidth - 200);
-      await tablet.waitForTimeout(520);
-      const restoredPin = await pinnedPanelState(tablet);
-      check('returning to wide landscape restores the reader’s explicit pinned preference', restoredPin.visible && restoredPin.bodyPinned && restoredPin.beside, JSON.stringify(restoredPin));
-
-      await tablet.locator(ACTION_SELECTORS.more).first().click();
-      check('wide landscape offers Use temporary notes while pinned', await pinControl.isVisible() && await pinControl.getAttribute('aria-pressed') === 'true');
-      const beforeUnpin = await readingPlace(tablet);
-      await pinControl.click();
-      await tablet.waitForFunction(() => document.body.classList.contains('tablet-notes-overlay') && document.getElementById('notebook').classList.contains('sheet-open') && document.getElementById('documentPane').clientWidth === innerWidth);
-      await tablet.waitForTimeout(520);
-      const unpinnedOverlay = await noteOverlayState(tablet);
-      const unpinnedPlace = await readingPlace(tablet);
-      check('unpinning restores the open temporary overlay instead of closing Notes', unpinnedOverlay.visible && (unpinnedOverlay.position === 'fixed' || unpinnedOverlay.position === 'absolute') && unpinnedOverlay.overlap > 0 && await pinControl.getAttribute('aria-pressed') === 'false', JSON.stringify(unpinnedOverlay));
-      check('unpinning returns the PDF to full landscape width and keeps the page', samePaperSize(beforePin, unpinnedPlace) && unpinnedPlace.page === beforeUnpin.page, JSON.stringify({ beforePin, beforeUnpin, unpinnedPlace }));
-      await tablet.locator(ACTION_SELECTORS.notes).first().click();
-    }
+    await tablet.locator('#sheetClose').click();
+    await tablet.waitForTimeout(340);
   }
   await tabletContext.close();
 
@@ -432,11 +427,11 @@ async function dockPhysicalSide(page) {
     fine: matchMedia('(pointer: fine)').matches,
     touchDockVisible: !!document.getElementById('touchDock') && getComputedStyle(document.getElementById('touchDock')).display !== 'none',
     mobileBarVisible: getComputedStyle(document.getElementById('mobileBar')).display !== 'none',
-    guideVisible: getComputedStyle(document.getElementById('focusBtn')).display !== 'none',
-    markerVisible: getComputedStyle(document.getElementById('highlightBtn')).display !== 'none'
+    guideVisible: getComputedStyle(document.getElementById('zenGuide')).display !== 'none',
+    markerVisible: getComputedStyle(document.getElementById('zenAnnotate')).display !== 'none'
   }));
   check('the desktop fixture uses a fine pointer', desktopState.fine, JSON.stringify(desktopState));
-  check('fine-pointer desktop keeps its existing toolbar without the touch dock or phone bar', !desktopState.touchDockVisible && !desktopState.mobileBarVisible && desktopState.guideVisible && desktopState.markerVisible, JSON.stringify(desktopState));
+  check('fine-pointer desktop keeps its Zen Guide and Annotate controls without the touch dock or phone bar', !desktopState.touchDockVisible && !desktopState.mobileBarVisible && desktopState.guideVisible && desktopState.markerVisible, JSON.stringify(desktopState));
 
   check('the touch dock workflow has no page errors', errors.length === 0, errors.join('; '));
   await desktopContext.close();

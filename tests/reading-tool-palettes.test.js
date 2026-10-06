@@ -106,7 +106,8 @@ async function checkBottomToolbar(page, label, pen) {
   const geometry = await page.locator('#highlightToolbar').evaluate(bar => {
     const rect = bar.getBoundingClientRect();
     return { position: getComputedStyle(bar).position, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
-      width: innerWidth, height: innerHeight, zen: document.body.classList.contains('zen'), scroll: bar.scrollWidth > bar.clientWidth + 1 || bar.scrollHeight > bar.clientHeight + 1,
+      width: innerWidth, height: innerHeight, zen: document.body.classList.contains('zen'), docked: bar.classList.contains('docked'),
+      dock: (() => { const d = document.getElementById('zenDock').getBoundingClientRect(); return { left: d.left, right: d.right }; })(), scroll: bar.scrollWidth > bar.clientWidth + 1 || bar.scrollHeight > bar.clientHeight + 1,
       buttons: Array.from(bar.querySelectorAll('button')).map(button => {
         const r = button.getBoundingClientRect(); return { width: r.width, height: r.height, left: r.left, right: r.right, top: r.top, bottom: r.bottom };
       }), descriptions: Array.from(bar.querySelectorAll('[data-marker-action-context],#highlightHint')).map(element => {
@@ -114,14 +115,22 @@ async function checkBottomToolbar(page, label, pen) {
         return { width: r.width, height: r.height, available: style.display !== 'none' && style.visibility !== 'hidden' && element.getAttribute('aria-hidden') !== 'true' };
       }) };
   });
-  check(label + ' uses the same bottom-screen position as Pen', geometry.position === 'fixed'
+  // In Zen the colors fold out beside the dock button instead of a bottom shelf (owner's
+  // request after v167): a compact column pair next to the dock, fully on screen.
+  if (geometry.zen) {
+    check(label + ' folds out beside the Zen dock', geometry.position === 'fixed' && geometry.docked
+      && (geometry.right <= geometry.dock.left - 4 || geometry.left >= geometry.dock.right + 4)
+      && geometry.left >= 0 && geometry.right <= geometry.width && geometry.top >= 0 && geometry.bottom <= geometry.height, geometry);
+  } else check(label + ' uses the same bottom-screen position as Pen', geometry.position === 'fixed'
     && Math.abs(geometry.bottom - pen.bottom) <= 1 && geometry.height - geometry.bottom <= (geometry.width <= 720 && !geometry.zen ? 74 : 20)
     && geometry.left >= 0 && geometry.right <= geometry.width && geometry.top > geometry.height / 2, geometry);
   check(label + ' exposes every tool and color at 44px without scrolling', !geometry.scroll && geometry.buttons.length === 8
     && geometry.buttons.every(button => button.width >= 43.9 && button.height >= 43.9 && button.left >= geometry.left
       && button.right <= geometry.right + .5 && button.top >= geometry.top && button.bottom <= geometry.bottom + .5), geometry);
   const centers = geometry.buttons.map(button => (button.top + button.bottom) / 2), centerSpread = Math.max(...centers) - Math.min(...centers);
-  check(label + ' keeps the bar to one compact row, or two in narrow views', geometry.width > 720
+  const columns = new Set(geometry.buttons.map(button => Math.round((button.left + button.right) / 2 / 24))).size;
+  if (geometry.zen) check(label + ' keeps the fold-out to two short columns', columns <= 2 && geometry.bottom - geometry.top <= 4 * 44 + 40, geometry);
+  else check(label + ' keeps the bar to one compact row, or two in narrow views', geometry.width > 720
     ? geometry.bottom - geometry.top <= 70 && centerSpread <= 1
     : geometry.bottom - geometry.top <= 120 && centerSpread <= 52, geometry);
   check(label + ' keeps passage context and instructions accessible without showing extra lines', geometry.descriptions.length === 2
@@ -136,6 +145,7 @@ async function checkPalette(page, touch, surface) {
     && !current.write && !await page.locator('#pdfInkToolbar').isVisible()
     && current.markerPalettes.length === 1 && current.markerPalettes[0] === surface.palette.slice(1), current);
   await checkBottomToolbar(page, label, pen);
+  // Only the removed header Marker button (1a215db5) armed sticky mode on open; Zen Highlight opens colors only.
   if (!touch && surface.label === 'header') check(label + ' keeps desktop sticky Marker behavior', current.sticky, current);
   if (touch) check(label + ' leaves finger selection in explicit Mark mode', !current.sticky, current);
   for (const color of ['mint', 'blue', 'coral']) {
@@ -150,7 +160,8 @@ async function checkPalette(page, touch, surface) {
   current = await state(page);
   check(label + ' outside chrome dismisses colors and retains the chosen color', current.markerPalettes.length === 0
     && current.markerColor === 'coral' && !current.write, current);
-  if (!touch && surface.label === 'header') check(label + ' outside click preserves sticky Marker', current.sticky, current);
+  // Desktop color choices arm sticky Highlight (setHighlightMode(fineHighlightUi())); dismissing the bar keeps it.
+  if (!touch) check(label + ' outside click preserves sticky Marker', current.sticky, current);
   await activate(page, surface.reopen || surface.trigger, touch);
   check(label + ' can reopen its retained color choices', await page.locator(surface.palette).isVisible());
   const stickyBeforeEscape = (await state(page)).sticky;
@@ -249,33 +260,29 @@ async function checkPendingMark(page, surface) {
       await page.waitForFunction(() => document.querySelector('.pdf-page canvas')?.width > 0
         && Array.from(document.querySelectorAll('.text-layer span')).some(span => span.textContent.startsWith('Alpha')));
       await page.waitForFunction(() => document.body.classList.contains('zen'));
-      await page.locator('#zenExit').click();
-      await page.waitForFunction(() => !document.body.classList.contains('zen'));
       check((touch ? 'touch' : 'desktop') + ' uses one shared Highlight toolbar with no old dropdowns',
         await page.locator('#highlightToolbar').count() === 1 && await page.locator('#highlightPalette,#touchHighlightPalette,#zenMarkerMenu,#zenMarkerToggle').count() === 0);
-      const surfaces = [{ label: 'header', trigger: '#highlightBtn', reopen: '#highlightColorBtn', palette: '#highlightToolbar', write: touch ? '#touchWrite' : '#pdfWriteBtn', prefix: 'Alpha' }];
-      if (touch) surfaces.push({ label: 'dock', trigger: '#touchHighlight', palette: '#highlightToolbar', write: '#touchWrite', prefix: 'Iota' });
-      surfaces.push({ label: 'Zen', trigger: '#zenMarker', palette: '#highlightToolbar', write: '#zenWrite', prefix: 'Nu' });
+      // Zen is the only reader since 1a215db5 ("Make Zen the sole reader"): the header
+      // Marker/Write buttons and the touch dock are hidden command targets, so the Zen
+      // dock (Annotate -> Highlight / Write) is the one surface a reader can use.
+      const surfaces = [{ label: 'Zen', trigger: '#zenMarker', palette: '#highlightToolbar', write: '#zenWrite', prefix: 'Nu' }];
       for (const surface of surfaces) {
-        if (surface.label === 'Zen') await activate(page, '#zenBtn', touch);
         await checkPalette(page, touch, surface);
         if (touch) await checkPendingMark(page, surface);
       }
       if (touch) {
-        for (const zen of [false, true]) {
+        // The separate non-Zen reader layout was removed in 1a215db5.
+        for (const zen of [true]) {
           await page.setViewportSize({ width: 1024, height: 768 });
-          if (await page.locator('body').evaluate(body => body.classList.contains('zen')) !== zen) {
-            await page.locator(zen ? '#zenBtn' : '#zenExit').click();
-          }
           for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 390, height: 844 }, { width: 320, height: 800 }]) {
             await page.setViewportSize(viewport);
             await page.waitForTimeout(80);
-            await page.locator('#pdfWriteBtn').evaluate(button => button.click());
+            await activate(page, '#zenWrite', true);
             const pen = await page.locator('#pdfInkToolbar').evaluate(bar => ({ bottom: bar.getBoundingClientRect().bottom }));
-            await page.locator('#highlightColorBtn').evaluate(button => button.click());
+            await activate(page, '#zenMarker', true);
             await checkBottomToolbar(page, (zen ? 'Zen ' : 'Reader ') + viewport.width + '×' + viewport.height, pen);
             if (process.env.PHLOEM_TOOL_PALETTE_SCREENSHOT) await page.screenshot({ path: process.env.PHLOEM_TOOL_PALETTE_SCREENSHOT + '-' + (zen ? 'zen' : 'reader') + '-' + viewport.width + 'x' + viewport.height + '.png' });
-            await page.locator('#highlightDone').click();
+            await activate(page, '#highlightDone', true);
           }
         }
       }

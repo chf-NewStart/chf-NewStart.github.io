@@ -36,6 +36,12 @@
     const selectionBox = document.createElement('div');
     selectionBox.className = 'workspace-selection-box'; selectionBox.hidden = true; selectionBox.tabIndex = 0;
     selectionBox.setAttribute('role', 'group');
+    // Corner handles resize a lassoed group with a finger or Pencil, about the opposite corner.
+    for (const corner of ['nw', 'ne', 'sw', 'se']) {
+      const handle = document.createElement('span');
+      handle.className = 'workspace-selection-handle'; handle.dataset.corner = corner; handle.setAttribute('aria-hidden', 'true');
+      selectionBox.appendChild(handle);
+    }
     board.append(lassoLayer, selectionBox);
     const viewport = global.PhloemWorkspaceViewport ? global.PhloemWorkspaceViewport.create({ onNeedSpace: ensurePaperAt, isBusy: () => !!gesture }) : null;
     function resizeLayout() {
@@ -109,7 +115,7 @@
       gesture = null;
       cardTouches.clear();
       if (g.kind === 'lasso') lassoLayer.replaceChildren();
-      if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); paintSelection(); }
+      if (g.kind === 'group' || g.kind === 'scale') { previewGroup({ x: 0, y: 0 }); paintSelection(); }
       if (g.kind === 'stroke' && g.pointerType === 'pen') suppressClickUntil = performance.now() + 400;
       if (g.kind === 'stroke' && g.preview) g.preview.remove();
       if (g.kind === 'stroke' && g.mode === 'eraser') ink.querySelectorAll('[data-stroke-id]').forEach(path => { path.style.opacity = ''; });
@@ -147,6 +153,10 @@
       const smooth = global.PhloemInk && global.PhloemInk.pathData;
       const shown = displayStroke(stroke);
       const copy = { ...shown, points: shown.points.map(p => [p[0] / 1000, p[1] / observedHeight, p[2]]) };
+      // Workspace handwriting: a light stabilizer against tremor and a wider pressure
+      // response (about 0.55x to 1.55x the nib), so light and firm strokes read like ink.
+      // Display only; the saved Pencil samples are unchanged.
+      if (shown.shape !== 'line' && shown.nib !== 'marker') { copy.stabilize = clamp(shown.width * .9, 1, 3); copy.response = [.55, 1]; }
       if (shown.nib === 'marker') {
         // Preserve the appearance of previously saved marker strokes.
         // A fixed chisel-nib direction gives broad downstrokes and finer crossstrokes.
@@ -214,7 +224,7 @@
       ink.querySelectorAll('[data-stroke-id]').forEach(path => path.classList.toggle('workspace-selected', selection.strokeIds.includes(path.dataset.strokeId)));
       const b = selection.bounds;
       Object.assign(selectionBox.style, { left: `${(b.x + delta.x) / observedWidth * 100}%`, top: `${(b.y + delta.y) / observedHeight * 100}%`, width: `${b.width / observedWidth * 100}%`, height: `${b.height / observedHeight * 100}%` });
-      selectionBox.setAttribute('aria-label', `${selection.clipIds.length} notes and ${selection.strokeIds.length} strokes selected. Drag to move; arrow keys to nudge; Escape to clear.`);
+      selectionBox.setAttribute('aria-label', `${selection.clipIds.length} notes and ${selection.strokeIds.length} strokes selected. Drag to move; drag a corner to resize; arrow keys to nudge; plus and minus to resize; Escape to clear.`);
     }
     function previewGroup(delta) {
       if (!selection) return;
@@ -239,6 +249,56 @@
       if (after) { recordUndo({ kind: 'move', before, after }, undoStack); redoStack = []; selection.snapshot = after; }
       render();
     }
+    function scaleLimits(origin, measured, before) {
+      // Notes keep their saved 280-900 width range; nothing may cross the paper's top or left edge.
+      let low = .25, high = 4;
+      const b = selection.bounds;
+      for (const card of measured) if (selection.clipIds.includes(card.id)) { low = Math.max(low, 280 / card.width); high = Math.min(high, 900 / card.width); }
+      if (b.x < origin.x) high = Math.min(high, origin.x / (origin.x - b.x));
+      if (b.y < origin.y) high = Math.min(high, origin.y / (origin.y - b.y));
+      return low <= high ? { low, high } : { low: 1, high: 1 };
+    }
+    function scaledSnapshot(before, origin, k) {
+      const at = (v, o) => Math.max(0, o + (v - o) * k);
+      const positions = {}, measuredIds = new Set(selection.clipIds);
+      for (const [id, box] of Object.entries(before.positions)) positions[id] = { ...box, x: at(box.x, origin.x), y: at(box.y, origin.y), width: clamp(box.width * k, 280, 900) };
+      const strokes = before.strokes.map(stroke => {
+        // Writing on a selected note already follows that note's new width.
+        if (stroke.anchor && measuredIds.has(stroke.anchor.clipId)) return copy(stroke);
+        const shown = displayStroke(stroke), next = copy(stroke);
+        delete next.anchor;
+        next.points = shown.points.map(point => [at(point[0], origin.x), at(point[1], origin.y), point[2]]);
+        next.width = clamp(shown.width * k, .5, 12);
+        return next;
+      });
+      return { positions, strokes };
+    }
+    function previewScale(origin, k) {
+      if (!selection) return;
+      const scale = board.clientWidth / observedWidth, b = selection.bounds;
+      for (const card of measuredCards()) {
+        if (!selection.clipIds.includes(card.id) || !cards.has(card.id)) continue;
+        const node = cards.get(card.id).card;
+        node.style.transformOrigin = '0 0';
+        node.style.transform = k === 1 ? '' : `translate(${(origin.x + (card.x - origin.x) * k - card.x) * scale}px, ${(origin.y + (card.y - origin.y) * k - card.y) * scale}px) scale(${k})`;
+      }
+      ink.querySelectorAll('[data-stroke-id]').forEach(path => {
+        if (!selection.strokeIds.includes(path.dataset.strokeId)) return;
+        if (k === 1) path.removeAttribute('transform');
+        else path.setAttribute('transform', `translate(${origin.x} ${origin.y}) scale(${k}) translate(${-origin.x} ${-origin.y})`);
+      });
+      const x = origin.x + (b.x - origin.x) * k, y = origin.y + (b.y - origin.y) * k;
+      Object.assign(selectionBox.style, { left: `${Math.min(x, x + b.width * k) / observedWidth * 100}%`, top: `${Math.min(y, y + b.height * k) / observedHeight * 100}%`, width: `${b.width * k / observedWidth * 100}%`, height: `${b.height * k / observedHeight * 100}%` });
+    }
+    function commitScale(origin, k, measured, before) {
+      if (!selection || !before || Math.abs(k - 1) < .005) return;
+      if (JSON.stringify(before) !== JSON.stringify(selection.snapshot)) { clearSelection(); render(); setStatus('This selection changed. Circle it again before resizing.'); return; }
+      const target = scaledSnapshot(before, origin, k);
+      if (!adapter.restoreGroup || adapter.restoreGroup(target, before) !== true) { setStatus('Could not resize this selection. It may have changed elsewhere.'); clearSelection(); render(); return; }
+      const after = groupSnapshot(selection);
+      if (after) { recordUndo({ kind: 'move', before, after }, undoStack); redoStack = []; selection.snapshot = after; }
+      render();
+    }
     function startSelection(event, pointerId) {
       if (gesture || !available(context()) || context().busy) return false;
       if (selection && JSON.stringify(groupSnapshot(selection)) !== JSON.stringify(selection.snapshot)) { clearSelection(); render(); setStatus('This selection changed. Circle it again before moving.'); return false; }
@@ -248,7 +308,22 @@
       if (viewport) viewport.cancel();
       board.focus({ preventScroll: true });
       const p = pointFromClient(event.clientX, event.clientY), b = selection && selection.bounds;
-      if (b && p.x >= b.x - 8 && p.x <= b.x + b.width + 8 && p.y >= b.y - 8 && p.y <= b.y + b.height + 8) {
+      let handle = b && event.target && event.target.closest && event.target.closest('.workspace-selection-handle');
+      if (handle && event.pointerType !== 'touch') {
+        // A finger gets the full 44px target; the precise Pencil or mouse must land on the dot,
+        // so starting a fresh lasso just outside a corner still draws a lasso.
+        const dot = handle.getBoundingClientRect();
+        if (Math.hypot(event.clientX - (dot.left + dot.width / 2), event.clientY - (dot.top + dot.height / 2)) > 12) handle = null;
+      }
+      if (handle) {
+        const c = handle.dataset.corner, origin = { x: c.includes('w') ? b.x + b.width : b.x, y: c.includes('n') ? b.y + b.height : b.y };
+        const measured = measuredCards(), before = groupSnapshot(selection);
+        gesture = { kind: 'scale', pointerId, client: { x: event.clientX, y: event.clientY }, origin, startDistance: Math.max(1, Math.hypot(p.x - origin.x, p.y - origin.y)), k: 1, measured, before, limits: scaleLimits(origin, measured, before) };
+        return true;
+      }
+      // A fingertip is less precise than the Pencil: accept a drag that starts just outside the box.
+      const slop = event.pointerType === 'touch' ? Math.max(8, 20 * observedWidth / Math.max(1, board.clientWidth)) : 8;
+      if (b && p.x >= b.x - slop && p.x <= b.x + b.width + slop && p.y >= b.y - slop && p.y <= b.y + b.height + slop) {
         gesture = { kind: 'group', pointerId, finger: event.pointerType === 'touch', client: { x: event.clientX, y: event.clientY }, start: p, delta: { x: 0, y: 0 }, measured: measuredCards(), before: groupSnapshot(selection) };
       } else {
         clearSelection();
@@ -261,7 +336,12 @@
     function moveSelection(event) {
       const g = gesture, p = pointFromClient(event.clientX, event.clientY);
       if (g.client) g.far = Math.max(g.far || 0, Math.hypot(event.clientX - g.client.x, event.clientY - g.client.y));
-      if (g.kind === 'group') {
+      if (g.kind === 'scale') {
+        const k = clamp(Math.hypot(p.x - g.origin.x, p.y - g.origin.y) / g.startDistance, g.limits.low, g.limits.high);
+        if (Math.abs(k - 1) < .005 && !g.moved) return;
+        g.moved = true; g.k = k; previewScale(g.origin, k);
+      }
+      else if (g.kind === 'group') {
         const delta = { x: p.x - g.start.x, y: p.y - g.start.y };
         if (Math.hypot(delta.x, delta.y) < .25 && !g.moved) return;
         g.moved = true; g.delta = groupDelta(delta); previewGroup(g.delta);
@@ -286,7 +366,8 @@
         if (g.kind === 'group') previewGroup({ x: 0, y: 0 });
         clearSelection(); setStatus(''); render(); return;
       }
-      if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); commitGroup(g.delta, g.measured, g.before); }
+      if (g.kind === 'scale') { previewGroup({ x: 0, y: 0 }); if (g.moved) commitScale(g.origin, g.k, g.measured, g.before); else paintSelection(); }
+      else if (g.kind === 'group') { previewGroup({ x: 0, y: 0 }); commitGroup(g.delta, g.measured, g.before); }
       else {
         lassoLayer.replaceChildren();
         const c = context(), visibleCards = measuredCards(), cardIds = new Set(visibleCards.map(card => card.id));
@@ -318,9 +399,13 @@
           if (path) paintPath(path, stroke);
           for (const point of logicalPoints(stroke)) inkBottom = Math.max(inkBottom, point[1]);
         }
-        state.card.style.minHeight = `${Math.max(178, (inkBottom - box.y) * board.clientWidth / observedWidth + 20)}px`;
+        // A note starts a little shorter than it is wide (120-180px tall), then grows to hold
+        // its text and the writing on it, so a one-line note stays small.
+        const unit = board.clientWidth / observedWidth, floor = noteFloor(box.width * unit);
+        state.card.style.minHeight = `${Math.max(floor, (inkBottom - box.y) * unit + 20)}px`;
       }
     }
+    function noteFloor(widthPx) { return clamp(widthPx * .75, 120, 180); }
     function boxFor(c, id) {
       const raw = positionsOf(c)[id];
       if (!raw) return null;
@@ -568,12 +653,14 @@
       }, true);
       card.addEventListener('pointerup', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId)) { event.preventDefault(); event.stopPropagation(); gesture.released.add(event.pointerId); cardTouches.delete(event.pointerId); if (gesture.released.size === 2) finishPinch(true); } else cardTouches.delete(event.pointerId); }, true);
       card.addEventListener('pointercancel', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId)) { event.stopPropagation(); finishPinch(false); } else cardTouches.delete(event.pointerId); }, true);
-      card.addEventListener('lostpointercapture', event => { if (gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId) && !gesture.released.has(event.pointerId)) finishPinch(false); });
+      // Handing a finger from the top strip's grip to the pinch makes the grip lose its
+      // capture; that bubbles here and must not end the pinch it just started.
+      card.addEventListener('lostpointercapture', event => { if (event.target === card && gesture && gesture.kind === 'pinch' && gesture.state === state && gesture.ids.includes(event.pointerId) && !gesture.released.has(event.pointerId)) finishPinch(false); });
       return state;
     }
     function render() {
       const c = context();
-      if (gesture && gesture.kind === 'group' && JSON.stringify(groupSnapshot(selection)) !== JSON.stringify(gesture.before)) { cancel(); clearSelection(); }
+      if (gesture && (gesture.kind === 'group' || gesture.kind === 'scale') && JSON.stringify(groupSnapshot(selection)) !== JSON.stringify(gesture.before)) { cancel(); clearSelection(); }
       if (!same(c)) {
         cancel(); clearSelection();
         scroll.scrollTop = 0;
@@ -637,6 +724,7 @@
         ensurePaperAt(bottom + 500);
       }
       if (gesture && gesture.kind === 'group') previewGroup(gesture.delta);
+      else if (gesture && gesture.kind === 'scale') previewScale(gesture.origin, gesture.k);
       else if (!gesture || gesture.kind !== 'lasso') refreshSelection();
     }
     function reset() {
@@ -712,20 +800,44 @@
       if (abC * abD < 0 && cdA * cdB < 0) return true;
       return Math.min(pointDistance(a, c, d), pointDistance(b, c, d), pointDistance(c, a, b), pointDistance(d, a, b)) < radius;
     }
+    // Ink cannot change under a live eraser, so each sweep measures the strokes once
+    // (points, reach and bounds) and then only tests the strokes near each new segment.
+    // Re-reading every stroke on every Pencil sample made the eraser stutter.
+    function eraserTargets(c) {
+      const paths = new Map();
+      ink.querySelectorAll('[data-stroke-id]').forEach(path => {
+        const list = paths.get(path.dataset.strokeId) || [];
+        list.push(path); paths.set(path.dataset.strokeId, list);
+      });
+      const clips = new Set(itemsOf(c).map(item => item.id));
+      return strokesOf(c).filter(stroke => activeStroke(c, stroke) && !(stroke.anchor && !clips.has(stroke.anchor.clipId))).map(stroke => {
+        const shown = displayStroke(stroke), pts = (shown.points || []).map(p => ({ x: p[0], y: p[1] }));
+        const reach = 16 + (shown.width || 1);
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        pts.forEach(p => { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); });
+        return { stroke, pts, reach, minX: minX - reach, maxX: maxX + reach, minY: minY - reach, maxY: maxY + reach, paths: paths.get(stroke.id) || [] };
+      });
+    }
     function eraseAt(g, point, previous) {
       const c = context(); if (!same(c)) return;
-      for (const stroke of strokesOf(c)) {
-        if (!activeStroke(c, stroke) || g.ids.has(stroke.id)) continue;
-        if (stroke.anchor && !itemsOf(c).some(item => item.id === stroke.anchor.clipId)) continue;
-        const pts = logicalPoints(stroke), shown = displayStroke(stroke); let close = false;
-        for (let i = 0; i < pts.length; i++) {
-          const a = { x: pts[i][0], y: pts[i][1] };
-          const b = pts[Math.min(i + 1, pts.length - 1)];
-          if (segmentsNear(previous, point, a, { x: b[0], y: b[1] }, 16 + (shown.width || 1))) { close = true; break; }
-        }
-        if (close) { g.ids.add(stroke.id); g.erased.push(stroke); }
+      // Growing the paper mid-sweep can redraw the ink; measure again and re-fade.
+      if (!g.targets || g.targets.some(target => target.paths.length && !target.paths[0].isConnected)) {
+        g.targets = eraserTargets(c);
+        g.targets.forEach(target => { if (g.ids.has(target.stroke.id)) target.paths.forEach(path => { path.style.opacity = '.2'; }); });
       }
-      ink.querySelectorAll('[data-stroke-id]').forEach(path => { if (g.ids.has(path.dataset.strokeId)) path.style.opacity = '.2'; });
+      const lowX = Math.min(point.x, previous.x), highX = Math.max(point.x, previous.x);
+      const lowY = Math.min(point.y, previous.y), highY = Math.max(point.y, previous.y);
+      for (const target of g.targets) {
+        const stroke = target.stroke;
+        if (g.ids.has(stroke.id) || highX < target.minX || lowX > target.maxX || highY < target.minY || lowY > target.maxY) continue;
+        const pts = target.pts; let close = false;
+        for (let i = 0; i < pts.length; i++) {
+          if (segmentsNear(previous, point, pts[i], pts[Math.min(i + 1, pts.length - 1)], target.reach)) { close = true; break; }
+        }
+        if (!close) continue;
+        g.ids.add(stroke.id); g.erased.push(stroke);
+        target.paths.forEach(path => { path.style.opacity = '.2'; });
+      }
     }
     function startStroke(event, pointerId, mode) {
       if (gesture || !available(context()) || context().busy) return false;
@@ -744,6 +856,19 @@
       if (mode === 'pen') { g.preview = document.createElementNS(NS, 'path'); g.preview.classList.add('workspace-ink-preview'); ink.appendChild(g.preview); }
       addPoint(g, event); return true;
     }
+    // Writing that started just off a note but lies mostly on it belongs to that note,
+    // so it moves and scales with it like writing that started inside.
+    function noteUnderStroke(points) {
+      if (!points.length) return null;
+      const rect = board.getBoundingClientRect(), sx = rect.width / Math.max(1, observedWidth), sy = rect.height / Math.max(1, observedHeight);
+      for (const state of [...cards.values()].reverse()) {
+        if (state.orphan || !state.card.isConnected) continue;
+        const r = state.card.getBoundingClientRect();
+        const inside = points.filter(p => { const x = rect.left + p.x * sx, y = rect.top + p.y * sy; return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }).length;
+        if (inside >= points.length * .6) return { clipId: state.id, ...state.box };
+      }
+      return null;
+    }
     function finishStroke(commit) {
       const g = gesture; if (!g || g.kind !== 'stroke') return;
       clearTimeout(g.holdTimer);
@@ -755,7 +880,8 @@
       if (!commit || !currentScope() || g.paperId !== scope.id || g.epoch !== scope.epoch) { render(); return; }
       if (g.mode === 'pen' && g.points.length) {
         const at = Date.now(), stroke = { id: uid(), color: g.color, width: g.width, style: 'natural', points: rawPoints(g.points), createdAt: at, updatedAt: at };
-        if (g.anchor) stroke.anchor = g.anchor;
+        const anchor = g.anchor || noteUnderStroke(g.points);
+        if (anchor) stroke.anchor = anchor;
         if (g.straight) stroke.shape = 'line';
         if (adapter.addStroke(stroke) === true) { undoStack.push({ kind: 'add', stroke: canonicalStroke(stroke.id) || stroke }); redoStack = []; }
         else setStatus('Could not save this stroke.');
@@ -765,10 +891,62 @@
       }
       render();
     }
+    // A note's top strip (above its text, beside the ⋯ menu) is its grip while writing:
+    // the Pencil there moves the note instead of drawing on it.
+    function gripCardAt(clientX, clientY, target) {
+      if (target && target.closest && target.closest('.workspace-note-menu, textarea, input')) return null;
+      for (const state of [...cards.values()].reverse()) {
+        if (state.orphan || !state.card.isConnected) continue;
+        const r = state.card.getBoundingClientRect(), head = state.handle.getBoundingClientRect(), menu = state.menu.getBoundingClientRect();
+        if (clientX < r.left || clientX > r.right || clientY < r.top - 8 || clientY > Math.max(head.bottom, r.top + 30)) continue;
+        if (clientX >= menu.left && clientX <= menu.right && clientY >= menu.top && clientY <= menu.bottom) return null;
+        return state;
+      }
+      return null;
+    }
+    function startGripDrag(event) {
+      // Lasso keeps its own drags; the grip is for writing tools, where the Pencil would otherwise draw.
+      if (tool !== 'pen' && tool !== 'eraser') return false;
+      // Fingers reach the note's own grip and pinch handlers, so a second finger can
+      // still turn a move into a resize.
+      if (event.pointerType === 'touch') return false;
+      if (gesture || event.button !== 0 || !available(context()) || context().busy) return false;
+      const state = gripCardAt(event.clientX, event.clientY, event.target);
+      if (!state || !liveItem(state)) return false;
+      event.preventDefault(); event.stopImmediatePropagation();
+      gesture = { kind: 'drag', pointerId: event.pointerId, state, start: pointFromClient(event.clientX, event.clientY), startBox: { ...state.box } };
+      try { state.handle.setPointerCapture(event.pointerId); } catch (error) { /* A synthetic pointer may not be capturable. */ }
+      return true;
+    }
+    let fingerTap = null;
+    function fingerOnSelection(event) {
+      const b = selection && selection.bounds; if (!b) return false;
+      if (event.target && event.target.closest && event.target.closest('.workspace-selection-box, .workspace-selection-handle')) return true;
+      const p = pointFromClient(event.clientX, event.clientY), slop = Math.max(8, 20 * observedWidth / Math.max(1, board.clientWidth));
+      return p.x >= b.x - slop && p.x <= b.x + b.width + slop && p.y >= b.y - slop && p.y <= b.y + b.height + slop;
+    }
+    board.addEventListener('pointermove', event => {
+      if (fingerTap && fingerTap.pointerId === event.pointerId && Math.hypot(event.clientX - fingerTap.x, event.clientY - fingerTap.y) >= 8) fingerTap = null;
+    }, true);
+    board.addEventListener('pointerup', event => {
+      const t = fingerTap; if (!t || t.pointerId !== event.pointerId) return;
+      fingerTap = null;
+      if (tool !== 'select' || gesture || performance.now() - t.at > 600 || Math.hypot(event.clientX - t.x, event.clientY - t.y) >= 8) return;
+      if (selection) { clearSelection(); setStatus(''); render(); }
+    }, true);
+    board.addEventListener('pointercancel', event => { if (fingerTap && fingerTap.pointerId === event.pointerId) fingerTap = null; }, true);
     board.addEventListener('pointerdown', event => {
+      if (startGripDrag(event)) return;
       if (tool === 'select') {
         if (event.button !== 0) return;
         if (gesture) { if (gesture.pointerId !== event.pointerId) cancel(); event.preventDefault(); event.stopImmediatePropagation(); return; }
+        // As with the pen, fingers scroll and pinch the paper; only the Pencil (or mouse)
+        // draws a lasso. A finger still moves or resizes a selection it lands on, and a
+        // finger tap elsewhere releases it.
+        if (event.pointerType === 'touch' && !fingerOnSelection(event)) {
+          fingerTap = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now() };
+          return;
+        }
         event.preventDefault(); event.stopImmediatePropagation();
         if (startSelection(event, event.pointerId)) {
           board.setPointerCapture(event.pointerId);
@@ -784,14 +962,14 @@
       }
     }, true);
     board.addEventListener('pointermove', event => {
-      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); moveSelection(event); return; }
+      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group' || gesture.kind === 'scale') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); moveSelection(event); return; }
       const g = gesture; if (!g || g.kind !== 'stroke' || g.pointerId !== event.pointerId) return;
       event.preventDefault();
       const samples = event.getCoalescedEvents ? event.getCoalescedEvents() : [event];
       (samples.length ? samples : [event]).forEach(sample => addPoint(g, sample));
     }, true);
     board.addEventListener('pointerup', event => {
-      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); finishSelection(event); return; }
+      if (gesture && (gesture.kind === 'lasso' || gesture.kind === 'group' || gesture.kind === 'scale') && gesture.pointerId === event.pointerId) { event.preventDefault(); event.stopImmediatePropagation(); finishSelection(event); return; }
       if (gesture && gesture.kind === 'stroke' && gesture.pointerId === event.pointerId) { event.preventDefault(); addPoint(gesture, event); finishStroke(true); }
     }, true);
     board.addEventListener('pointercancel', event => { if (gesture && gesture.pointerId === event.pointerId) { if (gesture.kind === 'stroke') finishStroke(false); else cancel(); } }, true);
@@ -800,8 +978,11 @@
     // Older iPad WebKit may report Pencil through TouchEvent without a pen PointerEvent.
     board.addEventListener('touchstart', event => {
       if (tool === 'select') {
-        if (event.touches.length > 1) cancel();
-        else if (!gesture && !global.PointerEvent && event.changedTouches.length) { const t = event.changedTouches[0]; startSelection(t, `touch-${t.identifier}`); }
+        const stylus = [...event.changedTouches].find(t => t.touchType === 'stylus');
+        if (event.touches.length > 1) { if (gesture) cancel(); if (!stylus) return; }
+        // A finger that is not moving a selection scrolls the paper natively.
+        if (!gesture && !stylus) return;
+        if (!gesture && !global.PointerEvent) startSelection(stylus, `touch-${stylus.identifier}`);
         event.preventDefault(); event.stopImmediatePropagation(); return;
       }
       if (gesture && gesture.kind === 'stroke') { event.preventDefault(); return; }
@@ -811,7 +992,8 @@
     }, { capture: true, passive: false });
     board.addEventListener('touchmove', event => {
       if (tool === 'select') {
-        if (gesture && typeof gesture.pointerId === 'string') { const t = [...event.changedTouches].find(t => `touch-${t.identifier}` === gesture.pointerId); if (t) moveSelection(t); }
+        if (!gesture) return;
+        if (typeof gesture.pointerId === 'string') { const t = [...event.changedTouches].find(t => `touch-${t.identifier}` === gesture.pointerId); if (t) moveSelection(t); }
         event.preventDefault(); event.stopImmediatePropagation(); return;
       }
       const g = gesture; if (!g || g.kind !== 'stroke') return;
@@ -823,7 +1005,7 @@
     const endTouch = (event, commit) => {
       const g = gesture; if (!g || typeof g.pointerId !== 'string') return;
       const touch = [...event.changedTouches].find(t => `touch-${t.identifier}` === g.pointerId); if (!touch) return;
-      if (g.kind === 'lasso' || g.kind === 'group') { event.preventDefault(); if (commit) finishSelection(touch); else cancel(); return; }
+      if (g.kind === 'lasso' || g.kind === 'group' || g.kind === 'scale') { event.preventDefault(); if (commit) finishSelection(touch); else cancel(); return; }
       event.preventDefault(); if (commit) addPoint(g, { clientX: touch.clientX, clientY: touch.clientY, pressure: touch.force }); finishStroke(commit);
     };
     board.addEventListener('touchend', event => endTouch(event, true), { capture: true, passive: false });
@@ -854,6 +1036,12 @@
         const step = event.shiftKey ? 20 : 5;
         const delta = groupDelta({ x: event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0, y: event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0 });
         commitGroup(delta, measuredCards(), groupSnapshot(selection)); return;
+      }
+      if (selection && event.target === selectionBox && ['+', '=', '-', '_'].includes(event.key) && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const b = selection.bounds, origin = { x: b.x + b.width / 2, y: b.y + b.height / 2 }, measured = measuredCards(), before = groupSnapshot(selection);
+        const limits = scaleLimits(origin, measured, before), grow = event.key === '+' || event.key === '=';
+        commitScale(origin, clamp(grow ? 1.1 : 1 / 1.1, limits.low, limits.high), measured, before); return;
       }
       const key = event.key.toLowerCase();
       if ((event.metaKey || event.ctrlKey) && (key === 'z' || key === 'y')) {

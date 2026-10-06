@@ -74,10 +74,18 @@ async function positionPage(page) {
   });
   await page.waitForTimeout(80);
 }
+// Zen is the only reader since 1a215db5 ("Make Zen the sole reader"): the header
+// Marker/Write buttons and the touch dock are hidden command targets, so every
+// tool switch below goes through the Zen dock (Annotate -> Highlight / Write).
+// Touch contexts tap the dock like a finger on iPad.
+let touchContext = false;
+async function press(locator) {
+  if (touchContext) await locator.tap(); else await locator.click();
+}
 async function click(page, selector, pointerType) {
   if (/^#zen(?:Marker|Write|Undo)$/.test(selector)) {
-    if (!await page.locator('#zenAnnotateMenu').isVisible()) await page.locator('#zenAnnotate').click();
-    await page.locator(selector).click();
+    if (!await page.locator('#zenAnnotateMenu').isVisible()) await press(page.locator('#zenAnnotate'));
+    await press(page.locator(selector));
     await page.waitForTimeout(40);
     return;
   }
@@ -87,7 +95,7 @@ async function click(page, selector, pointerType) {
   }, pointerType);
   await page.waitForTimeout(40);
 }
-async function setWrite(page, enabled = true, selector = '#pdfWriteBtn') {
+async function setWrite(page, enabled = true, selector = '#zenWrite') {
   if ((await page.locator(selector).getAttribute('aria-pressed') === 'true') !== enabled) await click(page, selector);
 }
 async function chapter(page) {
@@ -158,7 +166,7 @@ async function nativeTouchSelection(page) {
   });
   // A pending native selection is actionable without visually selecting Marker
   // while the mutually exclusive Write tool is still active.
-  await page.waitForFunction(() => document.getElementById('touchHighlight').getAttribute('aria-label').includes('Highlight selected passage'));
+  await page.waitForFunction(() => document.getElementById('zenMarker').getAttribute('aria-label').includes('Highlight selected passage'));
 }
 async function ui(page) {
   return page.evaluate(() => ({
@@ -184,8 +192,6 @@ async function reset(page, saved) {
   await page.reload({ waitUntil: 'load' });
   await waitForPdf(page);
   await page.waitForFunction(() => document.body.classList.contains('zen'));
-  await page.locator('#zenExit').click();
-  await page.waitForFunction(() => !document.body.classList.contains('zen'));
   await positionPage(page);
   const restored = await chapter(page), expected = JSON.parse(saved).chapters.find(item => item.id === restored.id);
   if (!expected || !same(annotations(restored), annotations(expected))) throw new Error('Fixture reset did not restore the baseline annotations');
@@ -202,6 +208,7 @@ async function reset(page, saved) {
       const label = touch ? 'touch' : 'desktop';
       const context = await browser.newContext({ viewport: { width: 1180, height: 1000 }, hasTouch: touch, isMobile: touch, deviceScaleFactor: touch ? 2 : 1, serviceWorkers: 'block' });
       const page = await context.newPage(), errors = [];
+      touchContext = touch;
       page.setDefaultTimeout(18000);
       page.on('pageerror', error => errors.push(error.message));
       await page.addInitScript(seedReader);
@@ -210,8 +217,6 @@ async function reset(page, saved) {
       await page.setInputFiles('#pdfFile', { name: 'annotation-tools.pdf', mimeType: 'application/pdf', buffer: fixturePdf() });
       await waitForPdf(page);
       await page.waitForFunction(() => document.body.classList.contains('zen'));
-      await page.locator('#zenExit').click();
-      await page.waitForFunction(() => !document.body.classList.contains('zen'));
       check(label + ' initial default Pencil mode has no selected pen controls', writeIsOff(await ui(page)));
       await stroke(page, 'Alpha', 'beta', touch);
       const notePoint = await wordPoint(page, 'Alpha');
@@ -228,19 +233,17 @@ async function reset(page, saved) {
       check(label + ' baseline contains one noted highlight and one ink stroke', highlights(baseline).length === 1 && !!highlights(baseline)[0].note && ink(baseline).length === 1);
       if (highlights(baseline).length !== 1 || !highlights(baseline)[0].note || ink(baseline).length !== 1) throw new Error(label + ' fixture setup failed');
 
+      // The header Marker/color chooser and touch-dock Mark entries were removed from
+      // the reader in 1a215db5; their only user path is now the Zen Highlight entry.
       const markerEntries = [
-        ['header Marker', page => click(page, '#highlightBtn', touch ? 'touch' : 'mouse')],
-        ['header color chooser', page => click(page, '#highlightColorBtn')],
-        ['header color', page => click(page, '#highlightToolbar [data-highlight-color="mint"]')],
-        ['Zen Marker opening', page => click(page, '#zenMarker'), true],
-        ['Zen Marker color', page => click(page, '#highlightToolbar [data-highlight-color="coral"]'), true]
+        ['Zen Marker opening', page => click(page, '#zenMarker')],
+        ['Zen Marker color', page => click(page, '#highlightToolbar [data-highlight-color="coral"]')]
       ];
-      if (touch) markerEntries.push(['touch Mark', page => click(page, '#touchHighlight')], ['touch Mark color', page => click(page, '#highlightToolbar [data-highlight-color="blue"]')]);
-      else markerEntries.push(['shared color activates Highlight in Zen', page => click(page, '#highlightToolbar [data-highlight-color="blue"]'), true]);
-      for (const [name, activate, zen] of markerEntries) {
+      if (touch) markerEntries.push(['Zen Marker color (mint)', page => click(page, '#highlightToolbar [data-highlight-color="mint"]')]);
+      else markerEntries.push(['shared color activates Highlight in Zen', page => click(page, '#highlightToolbar [data-highlight-color="blue"]')]);
+      for (const [name, activate] of markerEntries) {
         await reset(page, saved);
-        if (zen) await page.locator('#zenBtn').click();
-        await setWrite(page, true, zen ? '#zenWrite' : touch ? '#touchWrite' : '#pdfWriteBtn');
+        await setWrite(page, true);
         await activate(page);
         const state = await ui(page);
         check(label + ' ' + name + ' deselects all Write controls', writeIsOff(state), state);
@@ -254,10 +257,11 @@ async function reset(page, saved) {
         check(label + ' ' + name + ' Undo restores original annotations', same(annotations(await chapter(page)), annotations(baseline)));
       }
 
-      for (const selector of ['#pdfWriteBtn', '#touchWrite', '#zenWrite']) {
+      for (const selector of ['#zenWrite']) {
         await reset(page, saved);
-        if (selector === '#zenWrite') await page.locator('#zenBtn').click();
-        await click(page, '#highlightBtn', 'mouse');
+        // Arm Marker the Zen way (Highlight, then a color) before switching to Write.
+        await click(page, '#zenMarker');
+        await click(page, '#highlightToolbar [data-highlight-color="yellow"]');
         await click(page, selector);
         const state = await ui(page);
         check(label + ' ' + selector + ' selects only Write across all controls', writeIsExclusive(state), state);
@@ -277,8 +281,13 @@ async function reset(page, saved) {
         const from = await wordPoint(page, 'Iota'), to = await wordPoint(page, 'kappa', true);
         await beginStroke(page, from, to, touch);
         check(label + ' ' + (fromWrite ? 'ink' : 'highlight') + ' stays uncommitted before switching', same(annotations(await chapter(page)), annotations(baseline)));
-        if (fromWrite) await click(page, '#highlightBtn', touch ? 'touch' : 'mouse');
-        else await click(page, '#pdfWriteBtn');
+        // While a Pencil stroke is down, reading-ink.js deliberately owns every other
+        // touch/pen contact (palm rejection), so a finger cannot open the Zen menu
+        // mid-stroke. Touch therefore invokes the Zen command directly, as this test
+        // always did; desktop uses the mouse through the Zen Annotate menu.
+        const switchTo = fromWrite ? '#zenMarker' : '#zenWrite';
+        if (touch) await page.locator(switchTo).evaluate(element => element.click());
+        else await click(page, switchTo);
         await endStroke(page, to, touch);
         check(label + ' switching ' + (fromWrite ? 'Write to Marker' : 'Marker to Write') + ' cancels the active stroke and its duplicate event stream', same(annotations(await chapter(page)), annotations(baseline)) && (await ui(page)).previews === 0);
         await stroke(page, 'Iota', 'kappa', touch);
@@ -289,7 +298,7 @@ async function reset(page, saved) {
       for (const eraseFromWrite of [false, true]) {
         await reset(page, saved);
         await setWrite(page);
-        await click(page, '#highlightBtn', touch ? 'touch' : 'mouse');
+        await click(page, '#zenMarker');
         if (eraseFromWrite) { await setWrite(page); await click(page, '[data-pdf-ink-tool="eraser"]'); }
         else await click(page, '#highlightToolbar [data-highlight-eraser]');
         await stroke(page, 'Alpha', 'beta', touch);
@@ -298,7 +307,7 @@ async function reset(page, saved) {
         await click(page, '#pdfInkUndo');
         check(label + ' one shared Undo restores note identity and ink after ' + (eraseFromWrite ? 'Write' : 'Marker') + ' erase', same(annotations(await chapter(page)), annotations(baseline)) && await page.locator('#pdfInkUndo').isDisabled());
       }
-      if (touch) for (const selector of ['#touchHighlight', '#selectionHighlight']) {
+      if (touch) for (const selector of ['#zenMarker', '#selectionHighlight']) {
         await reset(page, saved);
         await setWrite(page);
         await nativeTouchSelection(page);

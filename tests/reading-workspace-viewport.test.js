@@ -169,10 +169,13 @@ test('blank two finger pinch anchors its moving centroid while a note retains it
       emit(board, 'pointerdown', 2, 340, 200);
       const top = scroll.getBoundingClientRect().top;
       const originalPoint = { x: (scroll.scrollLeft + 300), y: (scroll.scrollTop + 202.5 - top) };
+      const layoutBefore = [scroll.scrollLeft, scroll.scrollTop, board.style.width, board.style.height];
       const pinchPrevented = emit(board, 'pointermove', 2, 400, 200);
+      // Smooth pinch: mid-gesture only a transform preview changes; layout and scroll wait for the lift.
+      const layoutDuring = [scroll.scrollLeft, scroll.scrollTop, board.style.width, board.style.height];
+      emit(board, 'pointerup', 1, 260, 205); emit(board, 'pointerup', 2, 400, 200);
       const zoom = fixture.viewport.getZoom();
       const anchored = { x: (scroll.scrollLeft + 330) / zoom, y: (scroll.scrollTop + 202.5 - top) / zoom };
-      emit(board, 'pointerup', 1, 260, 205); emit(board, 'pointerup', 2, 400, 200);
       const note = document.querySelector('.workspace-card-body');
       emit(note, 'pointerdown', 3, 45, 45); emit(note, 'pointerdown', 4, 95, 45);
       emit(note, 'pointermove', 4, 145, 45);
@@ -181,7 +184,7 @@ test('blank two finger pinch anchors its moving centroid while a note retains it
       emit(board, 'pointerdown', 5, 260, 200); emit(board, 'pointerdown', 6, 340, 200);
       emit(board, 'pointermove', 6, 420, 200);
       emit(board, 'pointerup', 5, 260, 200); emit(board, 'pointerup', 6, 420, 200);
-      return { onePrevented, movePrevented, pinchPrevented, zoom, originalPoint,
+      return { onePrevented, movePrevented, pinchPrevented, zoom, originalPoint, layoutBefore, layoutDuring,
         anchored, afterNote:fixture.viewport.getZoom(), notePointers:fixture.notePointers,
         touchAction:getComputedStyle(board).touchAction };
     });
@@ -189,6 +192,7 @@ test('blank two finger pinch anchors its moving centroid while a note retains it
     assert.equal(result.movePrevented, false);
     assert(result.pinchPrevented);
     assert(result.zoom > 1.5);
+    assert.deepEqual(result.layoutDuring, result.layoutBefore, 'a live pinch does not relayout or scroll');
     assert(Math.abs(result.anchored.x - result.originalPoint.x) < 1);
     assert(Math.abs(result.anchored.y - result.originalPoint.y) < 1, JSON.stringify(result));
     assert.equal(result.afterNote, result.zoom);
@@ -278,6 +282,37 @@ for (const [name, start, end] of [
     });
 }
 
+test('Chromium native pinch still zooms after the first finger already started a scroll',
+  { skip: ENGINE !== 'chromium' }, async () => {
+    const instance = await browser();
+    try {
+      const context = await instance.newContext({ viewport: { width: 1100, height: 900 }, hasTouch: true, isMobile: true });
+      const page = await context.newPage();
+      await page.goto('http://127.0.0.1:' + server.address().port + '/');
+      const scale = await page.evaluate(() => {
+        document.getElementById('workspaceScroll').scrollTop = 300;
+        return visualViewport.scale;
+      });
+      const client = await context.newCDPSession(page);
+      const touch = (type, points) => client.send('Input.dispatchTouchEvent', { type,
+        touchPoints: points.map(([id, x, y]) => ({ id, x, y })) });
+      // The reader's first finger lands and drifts far enough for the browser to scroll
+      // before the second finger arrives, as happens on an iPad.
+      await touch('touchStart', [[1, 300, 420]]);
+      await touch('touchMove', [[1, 300, 400]]);
+      await touch('touchMove', [[1, 300, 380]]);
+      await touch('touchStart', [[1, 300, 380], [2, 380, 380]]);
+      for (let step = 1; step <= 5; step++) {
+        await touch('touchMove', [[1, 300 - step * 10, 380], [2, 380 + step * 10, 380]]);
+      }
+      await touch('touchEnd', []);
+      const result = await page.evaluate(() => ({ zoom: fixture.viewport.getZoom(), scale: visualViewport.scale }));
+      assert(Math.abs(result.zoom - 180 / 80) < .02, JSON.stringify(result));
+      assert.equal(result.scale, scale);
+      await context.close();
+    } finally { await instance.close(); }
+  });
+
 test('zoom out on portrait paper asks for bounded extent once and preserves saved data', async () => {
   const instance = await browser();
   try {
@@ -295,8 +330,11 @@ test('zoom out on portrait paper asks for bounded extent once and preserves save
     const after = await geometry(page);
     const calls = await page.evaluate(() => [...fixture.calls]);
     assert.equal(after.zoom, .5);
-    assert.equal(after.boardWidth, 400 * after.logicalWidth / 1000);
-    assert.equal(after.boardHeight, 400 * after.logicalHeight / 1000);
+    // The sheet is always laid out 600px per 1000 units and scaled to the pane,
+    // so notes never reflow when the divider squeezes the pane.
+    assert.equal(after.boardWidth, 600 * after.logicalWidth / 1000);
+    assert.equal(after.boardHeight, 600 * after.logicalHeight / 1000);
+    assert(Math.abs(after.boardRect.width - 400 * after.logicalWidth * after.zoom / 1000) < 1, 'visually the sheet still fits the 400px pane');
     assert(after.boardRect.width >= after.scrollWidth, 'zoomed-out visible background is actual paper');
     assert(after.stageHeight >= after.scrollHeight);
     assert(calls.length > 0 && calls.length < 8, 'growth follows viewport need without a render loop');

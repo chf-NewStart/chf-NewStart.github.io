@@ -115,9 +115,11 @@ function check(name, cond, extra) {
   check('Escape closes card', await cardHidden());
 
   // 7. The shared toolbar selects an active Highlight tool and keeps colors ready.
-  await page.click('#highlightColorBtn');
+  // Zen is the only reader (1a215db5): the color chooser is Annotate -> Highlight on the Zen dock.
+  await page.click('#zenAnnotate');
+  await page.click('#zenMarker');
   check('the shared Highlight toolbar opens from the color chooser', await page.locator('#highlightToolbar').isVisible()
-    && await page.locator('#highlightColorBtn').getAttribute('aria-expanded') === 'true');
+    && await page.locator('#zenMarker').getAttribute('aria-expanded') === 'true');
   await page.click('#highlightToolbar [data-highlight-color="coral"]');
   await page.waitForTimeout(100);
   check('choosing a color activates desktop Highlight and keeps the shared toolbar open', await page.locator('#highlightBtn').getAttribute('aria-pressed') === 'true'

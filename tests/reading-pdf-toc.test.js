@@ -90,6 +90,10 @@ function check(name, condition, extra) {
   });
 
   check('a printed contents page is found without PDF bookmarks', (await page.locator('#tocBtn').getAttribute('title')).includes('read from the PDF pages'));
+  // Zen is the only reader (1a215db5): Contents lives in More > This paper.
+  await page.click('#zenMore');
+  await page.click('#zenReadingControls');
+  await page.locator('#readerControlsDialog').waitFor({ state: 'visible' });
   await page.click('#tocBtn');
   const entries = await page.locator('#tocList .toc-item').allTextContents();
   if (PDF_PATH) {

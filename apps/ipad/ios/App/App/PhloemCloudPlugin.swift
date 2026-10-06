@@ -71,7 +71,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func status(_ call: CAPPluginCall) {
         container.accountStatus { status, error in
             if let error {
-                call.reject("Phloem could not check this iPad's iCloud account.", "ICLOUD_STATUS_FAILED", error)
+                call.reject(self.explain("Phloem could not check this iPad's iCloud account.", error), "ICLOUD_STATUS_FAILED", error)
                 return
             }
             let label: String
@@ -94,7 +94,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
             if let error {
-                call.reject("Phloem could not download the iCloud library.", "ICLOUD_LIBRARY_FETCH_FAILED", error)
+                call.reject(self.explain("Phloem could not download the iCloud library.", error), "ICLOUD_LIBRARY_FETCH_FAILED", error)
                 return
             }
             guard let record else {
@@ -110,7 +110,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
                     "modifiedAt": record.modificationDate?.timeIntervalSince1970 ?? 0
                 ])
             } catch {
-                call.reject("The iCloud library record could not be read safely.", "ICLOUD_LIBRARY_INVALID", error)
+                call.reject(self.explain("The iCloud library record could not be read safely.", error), "ICLOUD_LIBRARY_INVALID", error)
             }
         }
     }
@@ -123,7 +123,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
         let expectedChangeTag = call.getString("changeTag") ?? ""
         database.fetch(withRecordID: libraryRecordID()) { existing, fetchError in
             if let fetchError, !self.isUnknownItem(fetchError) {
-                call.reject("Phloem could not prepare the iCloud library update.", "ICLOUD_LIBRARY_FETCH_FAILED", fetchError)
+                call.reject(self.explain("Phloem could not prepare the iCloud library update.", fetchError), "ICLOUD_LIBRARY_FETCH_FAILED", fetchError)
                 return
             }
             if let existing, existing.recordChangeTag != expectedChangeTag {
@@ -148,7 +148,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                 }
             } catch {
-                call.reject("Phloem could not stage the iCloud library update.", "ICLOUD_LIBRARY_STAGE_FAILED", error)
+                call.reject(self.explain("Phloem could not stage the iCloud library update.", error), "ICLOUD_LIBRARY_STAGE_FAILED", error)
             }
         }
     }
@@ -178,7 +178,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         operation.fetchRecordsResultBlock = { result in
             if case .failure(let error) = result, !self.isPartialFailure(error) {
-                call.reject("Phloem could not check the iCloud document list.", "ICLOUD_DOCUMENT_STATUS_FAILED", error)
+                call.reject(self.explain("Phloem could not check the iCloud document list.", error), "ICLOUD_DOCUMENT_STATUS_FAILED", error)
             } else {
                 call.resolve(["documents": documents])
             }
@@ -213,7 +213,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
             transferQueue.sync { uploads[transferID] = transfer }
             call.resolve(["uploadID": transferID])
         } catch {
-            call.reject("Phloem could not prepare the original file for iCloud.", "ICLOUD_UPLOAD_STAGE_FAILED", error)
+            call.reject(self.explain("Phloem could not prepare the original file for iCloud.", error), "ICLOUD_UPLOAD_STAGE_FAILED", error)
         }
     }
 
@@ -238,7 +238,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             call.resolve(["receivedBytes": received])
         } catch {
-            call.reject("Phloem could not stage an iCloud upload chunk.", "ICLOUD_UPLOAD_CHUNK_FAILED", error)
+            call.reject(self.explain("Phloem could not stage an iCloud upload chunk.", error), "ICLOUD_UPLOAD_CHUNK_FAILED", error)
         }
     }
 
@@ -260,7 +260,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
         database.fetch(withRecordID: recordID) { existing, fetchError in
             if let fetchError, !self.isUnknownItem(fetchError) {
                 try? FileManager.default.removeItem(at: transfer.url)
-                call.reject("Phloem could not prepare the iCloud document update.", "ICLOUD_DOCUMENT_FETCH_FAILED", fetchError)
+                call.reject(self.explain("Phloem could not prepare the iCloud document update.", fetchError), "ICLOUD_DOCUMENT_FETCH_FAILED", fetchError)
                 return
             }
             if let existing,
@@ -308,7 +308,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
             if let error {
-                call.reject("Phloem could not download this original from iCloud.", "ICLOUD_DOWNLOAD_FAILED", error)
+                call.reject(self.explain("Phloem could not download this original from iCloud.", error), "ICLOUD_DOWNLOAD_FAILED", error)
                 return
             }
             guard let record,
@@ -334,7 +334,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
                     "contentHash": record["contentHash"] as? String ?? ""
                 ])
             } catch {
-                call.reject("Phloem could not stage this iCloud download.", "ICLOUD_DOWNLOAD_STAGE_FAILED", error)
+                call.reject(self.explain("Phloem could not stage this iCloud download.", error), "ICLOUD_DOWNLOAD_STAGE_FAILED", error)
             }
         }
     }
@@ -359,7 +359,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             call.resolve(["data": result.0.base64EncodedString(), "nextOffset": result.1, "done": result.2])
         } catch {
-            call.reject("Phloem could not read an iCloud download chunk.", "ICLOUD_DOWNLOAD_CHUNK_FAILED", error)
+            call.reject(self.explain("Phloem could not read an iCloud download chunk.", error), "ICLOUD_DOWNLOAD_CHUNK_FAILED", error)
         }
     }
 
@@ -383,7 +383,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         operation.modifyRecordsResultBlock = { result in
             if case .failure(let error) = result, !self.isPartialFailureContainingOnlyUnknownItems(error) {
-                call.reject("Phloem could not finish removing deleted iCloud originals.", "ICLOUD_DELETE_FAILED", error)
+                call.reject(self.explain("Phloem could not finish removing deleted iCloud originals.", error), "ICLOUD_DELETE_FAILED", error)
             } else {
                 call.resolve(["deleted": deletedCount])
             }
@@ -394,7 +394,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func deleteCloudData(_ call: CAPPluginCall) {
         fetchAllDocumentRecordIDs { documentRecordIDs, queryError in
             if let queryError {
-                call.reject("Phloem could not inspect every private iCloud document before deleting it.", "ICLOUD_DELETE_FAILED", queryError)
+                call.reject(self.explain("Phloem could not inspect every private iCloud document before deleting it.", queryError), "ICLOUD_DELETE_FAILED", queryError)
                 return
             }
             let recordIDs = [self.libraryRecordID()] + documentRecordIDs
@@ -407,7 +407,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             operation.modifyRecordsResultBlock = { result in
                 if case .failure(let deleteError) = result, !self.isPartialFailureContainingOnlyUnknownItems(deleteError) {
-                    call.reject("Phloem could not finish deleting the private iCloud copy.", "ICLOUD_DELETE_FAILED", deleteError)
+                    call.reject(self.explain("Phloem could not finish deleting the private iCloud copy.", deleteError), "ICLOUD_DELETE_FAILED", deleteError)
                 } else {
                     call.resolve(["deleted": deletedCount])
                 }
@@ -498,7 +498,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
             if let error {
-                completion(nil, SaveFailure(message: "iCloud could not save this update.", code: "ICLOUD_SAVE_FAILED", underlying: error))
+                completion(nil, SaveFailure(message: self.explain("iCloud could not save this update.", error), code: "ICLOUD_SAVE_FAILED", underlying: error))
                 return
             }
             completion(saved, nil)
@@ -528,6 +528,42 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
         let url = root.appendingPathComponent("\(prefix)-\(UUID().uuidString)")
         try contents.write(to: url, options: .atomic)
         return url
+    }
+
+    /// Appends the CloudKit reason, so Settings shows why sync failed instead of a
+    /// generic sentence. The code number lets support match it to CKError.Code.
+    private func explain(_ message: String, _ error: Error?) -> String {
+        guard let error else { return message }
+        guard var cloudError = error as? CKError else {
+            return "\(message) \(error.localizedDescription)"
+        }
+        if cloudError.code == .partialFailure,
+           let first = cloudError.partialErrorsByItemID?.values.compactMap({ $0 as? CKError }).first {
+            cloudError = first
+        }
+        let hint: String
+        switch cloudError.code {
+        case .notAuthenticated:
+            hint = "Sign in to iCloud in iPad Settings and make sure iCloud Drive is on."
+        case .networkUnavailable, .networkFailure:
+            hint = "This iPad is offline. Your local library is safe; try again when you are online."
+        case .quotaExceeded:
+            hint = "Your iCloud storage is full."
+        case .serviceUnavailable, .requestRateLimited, .zoneBusy:
+            hint = "iCloud is busy right now. Try again in a few minutes."
+        case .badContainer, .missingEntitlement:
+            hint = "This build of Phloem is not signed for its iCloud container."
+        case .permissionFailure, .serverRejectedRequest, .invalidArguments:
+            hint = "iCloud refused the request. Phloem's iCloud storage may not be set up on Apple's servers yet."
+        default:
+            hint = ""
+        }
+        // NSError's description carries the server's sub-code and message, such as
+        // "Server Rejected Request" (15/2000); server message = "...", which
+        // localizedDescription drops.
+        let detail = "(CloudKit \(cloudError.code.rawValue): \(String((cloudError as NSError).description.prefix(500))))"
+        NSLog("PhloemCloud: %@", (cloudError as NSError).description)
+        return [message, hint, detail].filter { !$0.isEmpty }.joined(separator: " ")
     }
 
     private func isUnknownItem(_ error: Error?) -> Bool {

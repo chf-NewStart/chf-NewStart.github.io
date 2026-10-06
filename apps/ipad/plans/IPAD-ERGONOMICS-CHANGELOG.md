@@ -447,3 +447,21 @@ In `reading-workspace-view.js` the Note button now handles pointers itself:
 Tests: new `tests/reading-workspace-note-drop.test.js` (centred tap, no overlap on a
 second tap, CDP finger drag with outline, mouse drop off the Workspace adds nothing, mouse
 drop saves). Not verified on a physical iPad.
+
+## 27. A note being typed in stays above the keyboard (v188)
+
+houfu: "when i put the note low, the keyboard will obstruct it, how about move the
+workspace to that point of sticky note so my keyboard never hides it?"
+iPadOS lays its keyboard over the page without resizing it, so the Workspace scroller
+kept its full height and a low note's text box ended up under the keyboard. In
+`reading-workspace-view.js`, `keepEditorAboveKeyboard()` measures the visible area as the
+Workspace scroller clipped to `window.visualViewport` (which shrinks when the keyboard is
+up). If the focused note's text box (plus up to 40px of the note below it) runs past that
+area, it raises `scroll.scrollTop` by the overlap, but never so far that the note's
+top leaves the screen, and it grows the paper first if the scroller is already at the
+bottom. It runs on focus inside a note and on `visualViewport` resize (at 0, 120, 320
+and 600ms while the keyboard slides in), and on every keystroke so a growing note stays
+clear. A note already above the keyboard leaves the Workspace where it is.
+Tests: new `tests/reading-workspace-note-keyboard.test.js` fakes the visual viewport
+shrinking by 380px (it fails without the fix: text box bottom 806 vs keyboard top 440).
+Not verified on a physical iPad.

@@ -275,8 +275,7 @@ async function openNotes(page) {
     await tablet.locator('#zenGuideToggle').click();
     check('the dock Guide action controls the existing reading guide state', await tablet.locator('#focusBtn').getAttribute('aria-pressed') === 'true' && await tablet.locator('#zenGuideToggle').getAttribute('aria-pressed') === 'true');
     await tablet.locator('#zenGuideToggle').click();
-    await tablet.locator('#zenGuide').focus();
-    await tablet.keyboard.press('Escape');
+    check('turning the guide off folds its controls away', !(await tablet.locator('#zenGuideMenu').isVisible()) && await tablet.locator('#zenGuide').getAttribute('aria-expanded') === 'false' && await tablet.locator('#focusBtn').getAttribute('aria-pressed') === 'false');
 
     const touchHighlight = tablet.locator('#zenMarker');
     const touchPalette = tablet.locator('#highlightToolbar');

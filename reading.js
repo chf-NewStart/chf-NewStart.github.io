@@ -2524,7 +2524,7 @@
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
   var GUIDE_DISCOVERY_KEY='readingRoom.guideDiscoverySeen.v1';
-  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfLayout:'scroll',inkStyle:'natural',linkPreviews:true,guideScope:'page',guideSize:'m',guideDim:55,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
+  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfLayout:'scroll',inkStyle:'natural',linkPreviews:true,guideScope:'page',guideSize:'m',guideDim:85,guideDimScale:2,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
   var comfort=Object.assign({},DEFAULT_COMFORT);
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   var migratedLegacyPagedComfort=!!(savedComfort&&!Object.prototype.hasOwnProperty.call(savedComfort,'pdfLayout')&&savedComfort.pdfDirection==='vertical');
@@ -2552,7 +2552,11 @@
   if(['scroll','page','book'].indexOf(comfort.pdfLayout)<0)comfort.pdfLayout='scroll';
   if(['column','page'].indexOf(comfort.guideScope)<0)comfort.guideScope='page';
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
-  comfort.guideDim=Math.max(20,Math.min(85,+comfort.guideDim||55));
+  /* Dimness runs 70-100% with 85% in the middle (it used to run 20-85% from 55%). A saved
+     value below the new range moves once to the new default rather than to the floor. */
+  if(savedComfort&&savedComfort.guideDimScale!==2&&!(+savedComfort.guideDim>=70))comfort.guideDim=85;
+  comfort.guideDimScale=2;
+  comfort.guideDim=Math.max(70,Math.min(100,+comfort.guideDim||85));
   comfort.guideX=Math.max(.05,Math.min(.95,+comfort.guideX||.72));
   comfort.guideY=Math.max(.05,Math.min(.95,+comfort.guideY||.38));
   if(['white','cream'].indexOf(comfort.tone)<0)comfort.tone=DEFAULT_COMFORT.tone;
@@ -2677,7 +2681,7 @@
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide '+(comfort.guideOrientation==='column'?'width':'height')+' · '+btn.dataset.guideSize.toUpperCase());};});
   function setGuideDim(value){
-    comfort.guideDim=Math.max(20,Math.min(85,+value||55));
+    comfort.guideDim=Math.max(70,Math.min(100,+value||85));
     ['guideDimRange','zenGuideDimRange'].forEach(function(id){var range=byId(id);range.value=String(comfort.guideDim);range.setAttribute('aria-valuetext',comfort.guideDim+' percent');});
     byId('guideDimValue').textContent=byId('zenGuideDimValue').textContent=comfort.guideDim+'%';
     byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();
@@ -2886,7 +2890,8 @@
   byId('zenLayout').onclick=function(){toggleZenPopout('zenLayout','zenLayoutMenu','zenLayoutTool');};
   document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.onclick=function(){setPdfLayout(btn.dataset.zenPdfLayout);closeZenPopouts(true);};});
   byId('zenGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
-  byId('zenGuideToggle').onclick=function(){byId('focusBtn').onclick();zenWake();};
+  // Turning the guide off from its controls also folds them away; the dimness slider has nothing to dim.
+  byId('zenGuideToggle').onclick=function(){byId('focusBtn').onclick();if(!comfort.focus)closeZenPopouts(true);zenWake();};
   function zenMarkerAction(returnTarget){if(pdfWriteMode)setPdfWriteMode(false);closeZenPopouts(true);if(pendingSelection){commitPendingHighlight();setHighlightToolbarOpen(true,returnTarget);}else setHighlightToolbarOpen(!highlightToolbarOpen(),returnTarget);zenWake();}
   byId('zenMarker').onclick=function(){zenMarkerAction(byId('zenAnnotate'));};
   byId('zenWorkspaceMarker').onclick=function(){zenMarkerAction(this);};
@@ -7009,6 +7014,10 @@
   }
   document.querySelectorAll('[data-workspace-open]').forEach(function(button){button.onclick=function(){setWorkspaceOpen(!workspaceOpen);};});
   byId('workspacePenToggle').addEventListener('click',function(){
+    /* Like the iPad's own tool picker: switching to the pen from another tool only picks
+       it; tapping the pen while it's already the tool opens (or closes) its colors. This
+       runs before the view's toolbar handler, so aria-pressed still names the old tool. */
+    if(this.getAttribute('aria-pressed')!=='true'){closeWorkspacePanels();return;}
     var open=this.getAttribute('aria-expanded')!=='true';closeWorkspacePanels();
     byId('workspacePenOptions').classList.toggle('hidden',!open);this.setAttribute('aria-expanded',String(open));
   });

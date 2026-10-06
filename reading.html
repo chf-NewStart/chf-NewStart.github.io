@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=190">
-  <link rel="stylesheet" href="/reading-fold.css?v=190">
-  <link rel="stylesheet" href="/reading-workspace.css?v=190">
+  <link rel="stylesheet" href="/reading.css?v=191">
+  <link rel="stylesheet" href="/reading-fold.css?v=191">
+  <link rel="stylesheet" href="/reading-workspace.css?v=191">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -270,8 +270,8 @@
               </div>
             </div>
             <div class="group guide-dim-control" id="guideDimGroup"><span class="group-label">Dimness</span>
-              <input class="drift-range" id="guideDimRange" type="range" min="20" max="85" step="5" value="55" aria-label="Dimness outside the focused lines">
-              <span class="value" id="guideDimValue">55%</span>
+              <input class="drift-range" id="guideDimRange" type="range" min="70" max="100" step="5" value="85" aria-label="Dimness outside the focused lines">
+              <span class="value" id="guideDimValue">85%</span>
             </div>
             <div class="group" id="guideSpanGroup"><span class="group-label">Span</span>
               <div class="guide-scope" role="group" aria-label="Reading guide width">
@@ -604,8 +604,8 @@
             <button class="zen-popout-option zen-guide-toggle" id="zenGuideToggle" type="button" aria-pressed="false"><span aria-hidden="true">▰</span><span id="zenGuideToggleLabel">Guide off</span></button>
             <div class="zen-guide-dim-control">
               <label for="zenGuideDimRange">Outside dimness</label>
-              <input id="zenGuideDimRange" type="range" min="20" max="85" step="5" value="55" aria-label="Dimness outside the focused lines">
-              <output id="zenGuideDimValue" for="zenGuideDimRange">55%</output>
+              <input id="zenGuideDimRange" type="range" min="70" max="100" step="5" value="85" aria-label="Dimness outside the focused lines">
+              <output id="zenGuideDimValue" for="zenGuideDimRange">85%</output>
             </div>
           </div>
         </div>
@@ -950,19 +950,19 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=190',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=191',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=190" defer></script>
-<script src="/reading-keeps.js?v=190" defer></script>
-<script src="/reading-excerpts.js?v=190" defer></script>
-<script src="/reading-excerpts-view.js?v=190" defer></script>
-<script src="/reading-workspace.js?v=190" defer></script>
-<script src="/reading-workspace-viewport.js?v=190" defer></script>
-<script src="/reading-workspace-view.js?v=190" defer></script>
-<script src="/reading-folds.js?v=190" defer></script>
-<script src="/reading-pdf-projection.js?v=190" defer></script>
-<script src="/reading-fold-view.js?v=190" defer></script>
-<script src="/reading.js?v=190" defer></script>
+<script src="/reading-ink.js?v=191" defer></script>
+<script src="/reading-keeps.js?v=191" defer></script>
+<script src="/reading-excerpts.js?v=191" defer></script>
+<script src="/reading-excerpts-view.js?v=191" defer></script>
+<script src="/reading-workspace.js?v=191" defer></script>
+<script src="/reading-workspace-viewport.js?v=191" defer></script>
+<script src="/reading-workspace-view.js?v=191" defer></script>
+<script src="/reading-folds.js?v=191" defer></script>
+<script src="/reading-pdf-projection.js?v=191" defer></script>
+<script src="/reading-fold-view.js?v=191" defer></script>
+<script src="/reading.js?v=191" defer></script>
 </body>
 </html>

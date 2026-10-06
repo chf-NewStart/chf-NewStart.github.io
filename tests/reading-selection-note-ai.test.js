@@ -38,7 +38,8 @@ async function toggleGuide(page) {
   await page.click('#zenGuide');
   await page.locator('#zenGuideMenu').waitFor({ state: 'visible' });
   await page.click('#zenGuideToggle');
-  await page.click('#zenGuide');
+  // Turning the guide off folds its controls away on its own (v191).
+  if (await page.locator('#zenGuideMenu').isVisible()) await page.click('#zenGuide');
   await page.locator('#zenGuideMenu').waitFor({ state: 'hidden' });
 }
 

@@ -29,7 +29,21 @@ if (!Array.isArray(queue) || queue.length === 0) {
     process.exit(0);
 }
 
-const { fact, glossary = {} } = queue.shift();
+// Queue entries come in two shapes: flat facts written by
+// refill-fact-queue.py ({ tag, title, fact, detail }) and the older
+// wrapped form ({ fact: { ... }, glossary }).
+function unpackEntry(entry) {
+    if (entry && typeof entry.fact === 'object' && entry.fact !== null) {
+        return { fact: entry.fact, glossary: entry.glossary || {} };
+    }
+    const { glossary = {}, ...fact } = entry || {};
+    return { fact, glossary };
+}
+
+const { fact, glossary } = unpackEntry(queue.shift());
+if (typeof fact.title !== 'string' || typeof fact.fact !== 'string') {
+    throw new Error(`Queue entry is missing a title or fact: ${JSON.stringify(fact).slice(0, 200)}`);
+}
 let library = fs.readFileSync(libraryPath, 'utf8');
 
 if (library.includes(JSON.stringify(fact.title))) {

@@ -27,7 +27,7 @@ Checked against main at 6e17320c (shell v188), the source of build 33.
   `build-web.mjs`, service worker). Workspace code is owned by the ergonomics
   thread and was covered by its tests only.
 
-## Changes in this round (v189)
+## Changes in this round (v190)
 
 1. `reading.html`: the iCloud section no longer says "The iPad app and this
    website share it when both use the same Apple ID." Website iCloud was hidden
@@ -36,7 +36,7 @@ Checked against main at 6e17320c (shell v188), the source of build 33.
    the dialog's lede line instead of before it. Before, the lede ("Your reading
    space on this iPad.") sat alone under the first card with an empty cell
    beside it. This has been the case since 1.1.
-3. Shell bumped to v189 (`reading-sw.js` cache name and the `?v=` query strings in
+3. Shell bumped to v190 (`reading-sw.js` cache name and the `?v=` query strings in
    `reading.html`).
 
 ## Build 33

@@ -82,3 +82,7 @@ houfu wants papers added on the website to show up in the app. houfu picked iClo
 4. In the same console, open API Access (Tokens & Keys), create an API token named "Phloem web", set Sign In Callback to postMessage and Allowed Origins to houfu72.com, and send the token to the thread.
 5. Claude sets `WEB_CLOUDKIT.apiToken`, ships, and the website shows Sync with iCloud.
 6. Archive app build 28 or higher for TestFlight.
+
+### Fix: the sign-in return was ignored (shell v179)
+
+houfu's first test of the redirect flow (v178) came back to Phloem but Settings still said "Sign in with your Apple ID". Reading CloudKit JS's source (the copy bundled in the `tsl-apple-cloudkit` npm package) shows the auth constructor reads `ckWebAuthToken` from the `apiTokenAuth` object, next to `apiToken` and `persist`. Phloem had put it on the container config, where CloudKit JS ignores it, so the returned token was dropped and the session stayed signed out. The fake CloudKit in `tests/reading-icloud-web.test.js` accepted the wrong place, which is why the test passed; it now reads the token from `apiTokenAuth` like the real library. The return token is also accepted from the URL fragment as well as the query string, in case Apple's redirect uses `#`.

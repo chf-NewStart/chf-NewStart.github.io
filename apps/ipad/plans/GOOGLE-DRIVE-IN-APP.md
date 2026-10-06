@@ -31,7 +31,7 @@ houfu wants papers added on the website to show up in the iPad app. Website iClo
   - the reader uses the native token
 - `bundle.test.mjs` also checks that `gdriveOn()` turns on in the app once `PHLOEM_GOOGLE_DRIVE` is set.
 - Results: `apps/ipad` `npm test` passes 19 of 19, and the full reader suite passes. Shell v185.
-- The Swift code has not been compiled. This container has no Swift toolchain, so the next Xcode build on houfu's Mac compiles it.
+- Compile check (2026-10-06, houfu's Mac, separate worktree at 9a90cfaf): `npm ci`, `npm test` (19/19), `npm run build`, `npx cap sync ios`, then `xcodebuild -project App.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' -configuration Debug CODE_SIGNING_ALLOWED=NO build` gave BUILD SUCCEEDED with no errors and no warnings in `PhloemGooglePlugin.swift`. `npm test` does not leave a `www/` folder, so `npm run build` must run before `cap sync`.
 
 ## Steps for houfu
 

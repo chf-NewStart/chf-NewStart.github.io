@@ -1249,6 +1249,34 @@
       });
     }
     if (buttons.close) buttons.close.addEventListener('click', () => { cancel(); adapter.close(); });
+    // While typing in a note, keep it above the on-screen keyboard: when the keyboard
+    // (the visual viewport) covers the note being edited, scroll the Workspace up so the
+    // note's text box sits just above it. A note taller than the space keeps its top visible.
+    let keyboardTimers = [];
+    function keepEditorAboveKeyboard() {
+      const vv = global.visualViewport, active = document.activeElement;
+      if (!vv || !active || !board.contains(active) || !active.closest('.workspace-card')) return;
+      const card = active.closest('.workspace-card'), view = scroll.getBoundingClientRect();
+      const visibleBottom = Math.min(view.bottom, vv.offsetTop + vv.height) - 16, visibleTop = Math.max(view.top, vv.offsetTop) + 8;
+      if (visibleBottom - visibleTop < 80) return;
+      const box = card.getBoundingClientRect(), field = active.getBoundingClientRect();
+      let delta = Math.max(field.bottom, Math.min(box.bottom, field.bottom + 40)) - visibleBottom;
+      if (delta <= 0) return;
+      delta = Math.min(delta, box.top - visibleTop);
+      if (delta <= 0) return;
+      const unit = board.getBoundingClientRect().height / Math.max(observedHeight, 1);
+      const id = card.dataset.clipId, state = id && cards.get(String(id));
+      if (state && state.box && scroll.scrollTop + scroll.clientHeight + delta > scroll.scrollHeight) ensurePaperAt(state.box.y + 500 + delta / Math.max(unit, .01));
+      scroll.scrollTop += delta;
+    }
+    function scheduleKeyboardCheck() {
+      keyboardTimers.forEach(clearTimeout);
+      // iOS slides the keyboard in over ~250ms; check while it settles.
+      keyboardTimers = [0, 120, 320, 600].map(ms => setTimeout(keepEditorAboveKeyboard, ms));
+    }
+    if (global.visualViewport) global.visualViewport.addEventListener('resize', scheduleKeyboardCheck);
+    board.addEventListener('focusin', event => { if (event.target.closest && event.target.closest('.workspace-card')) scheduleKeyboardCheck(); });
+    board.addEventListener('input', event => { if (event.target.closest && event.target.closest('.workspace-card')) keepEditorAboveKeyboard(); });
     return { render, reset, cancel, focus, pointFromClient, active, hasDrafts, resizeLayout };
   }
   global.PhloemWorkspaceView = { create };

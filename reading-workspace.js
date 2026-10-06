@@ -365,17 +365,34 @@
     });
     return left === Infinity ? null : { x: left, y: top, width: right - left, height: bottom - top };
   }
+  function coverage(box, polygon) {
+    var inside = 0, steps = 6;
+    for (var i = 0; i < steps; i++) for (var j = 0; j < steps; j++)
+      if (insidePolygon([box.x + box.width * (i + .5) / steps, box.y + box.height * (j + .5) / steps], polygon)) inside++;
+    return inside / (steps * steps);
+  }
   function selectGroup(value, polygon, cards) {
     var state = normalize(value), available = cardMap(cards, state.width);
     var clipIds = new Set(), strokeIds = new Set();
     if (!validPolygon(polygon, state.width)) return { clipIds: [], strokeIds: [], bounds: null };
+    // A note is selected when the loop holds its centre or about a third of its area, so a
+    // loop that only clips part of a note (or circles the writing on it) still takes it.
     available.forEach(function (box, key) {
-      if (insidePolygon([box.x + box.width / 2, box.y + box.height / 2], polygon)) clipIds.add(key);
+      if (insidePolygon([box.x + box.width / 2, box.y + box.height / 2], polygon) || coverage(box, polygon) >= .34) clipIds.add(key);
     });
     var positions = groupPositions(available);
     state.strokes.forEach(function (entry) {
       if (strokeIntersects(displayStroke(entry, positions), polygon)) strokeIds.add(entry.id);
     });
+    // A small loop drawn on a blank part of a note selects that note.
+    if (!clipIds.size && !strokeIds.size) {
+      var cx = 0, cy = 0;
+      polygon.forEach(function (point) { cx += point[0]; cy += point[1]; });
+      cx /= polygon.length; cy /= polygon.length;
+      var hit = null;
+      available.forEach(function (box, key) { if (cx >= box.x && cx <= box.x + box.width && cy >= box.y && cy <= box.y + box.height) hit = key; });
+      if (hit !== null) clipIds.add(hit);
+    }
     closeGroup(state, available, clipIds, strokeIds);
     return { clipIds: Array.from(clipIds).sort(compare), strokeIds: Array.from(strokeIds).sort(compare),
       bounds: groupBounds(state, available, clipIds, strokeIds) };

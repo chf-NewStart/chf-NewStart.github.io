@@ -26,9 +26,23 @@ test('lasso selects measured card centers and returns canonical stable IDs and b
   const picked = plain(workspace.selectGroup(state, rect(0, 90, 890, 220), cards));
   assert.deepEqual(picked, { clipIds: ['a', 'overlap', 'z'], strokeIds: [],
     bounds: { x: 20, y: 20, width: 860, height: 280 } });
+  // A small loop on a blank corner of a note selects that note (v189; it used to select nothing).
   assert.deepEqual(plain(workspace.selectGroup(state, rect(0, 100, 60, 50), cards)),
+    { clipIds: ['a'], strokeIds: [], bounds: { x: 20, y: 100, width: 280, height: 200 } });
+  // A loop on blank paper still selects nothing.
+  assert.deepEqual(plain(workspace.selectGroup(state, rect(400, 600, 60, 50), cards)),
     { clipIds: [], strokeIds: [], bounds: null });
   assert.equal(JSON.stringify({ state, cards }), before);
+});
+
+test('lasso takes a note when it covers about a third of it, not when it only grazes an edge', () => {
+  const cards = [card('n', 100, 100, 200, 300)];
+  const state = board();
+  // Left half of the note, centre outside the loop.
+  assert.deepEqual(plain(workspace.selectGroup(state, rect(80, 80, 160, 240), cards)).clipIds, ['n']);
+  // A thin sliver along the left edge, with ink elsewhere so the blank-note fallback is off.
+  const inked = board({ strokes: [ink('free', [[60, 150, .5]])] });
+  assert.deepEqual(plain(workspace.selectGroup(inked, rect(40, 80, 80, 240), cards)).clipIds, []);
 });
 
 test('lasso catches single points, boundary contact, and segments crossing with both endpoints outside', () => {

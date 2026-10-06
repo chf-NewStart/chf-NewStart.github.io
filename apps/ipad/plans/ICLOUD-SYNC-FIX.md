@@ -95,3 +95,11 @@ On v179 houfu saw "Signed in. Checking your private iCloud library…" and then 
 2. If CloudKit still reports signed out right after the return, `webCloudRetryReturn()` calls Apple's `users/caller` endpoint directly with each plausible spelling of the returned token: decoded, exactly as sent, and with spaces read back as "+". The first spelling Apple accepts (or the fresh token Apple returns in `X-Apple-CloudKit-Web-Auth-Token`) becomes the session. If Apple refuses all of them, Settings shows "Apple sent you back, but did not accept the sign-in" with Apple's error code and reason, plus the token's length and which special characters it contains (never the token itself).
 
 Tests: `reading-icloud-web` now also covers a refused return (Apple's reason is shown and both spellings are tried) and a rescued return (the spelling Apple accepts becomes the session and sync carries on). In the full suite only `reading-fold-phone` failed; it is known to be flaky and also fails on main.
+
+### Third round (shell v181)
+
+v180 showed: "Apple sent you back, but did not accept the sign-in (AUTHENTICATION_REQUIRED for both spellings; token 1007 chars with + % / =)". Advanced Data Protection is off and iCloud.com web access is on, so neither is the cause. Apple's docs say each web auth token is good for one round trip, and every response carries a renewed one.
+
+- CloudKit JS makes up a new `clientId` on every page load and sends it with every request, including the one that produces the sign-in URL. The page after Apple's redirect is a new load with a different clientId. Phloem now keeps one clientId per browser (`phloem.icloudWebClient.v1`) and passes it as `clientID`, so the request after the return matches the one before it. This is a hypothesis, not confirmed.
+- Codex's cross-check (relayed by houfu): the status line said "Signed in" before anything was verified. It now says "Back from Apple. Checking the sign-in…". The direct check also reads both renewal headers (`X-Apple-CloudKit-Web-Auth-Token` and `X-Apple-CloudKit-Session`), as CloudKit JS does.
+- `services.fetch` wraps fetch to note Apple's answer to the first `users/caller` request: its status, its error code, whether a renewed token came back, and whether the token was sent. A failed sign-in now shows that line, which is the decisive evidence Codex asked for.

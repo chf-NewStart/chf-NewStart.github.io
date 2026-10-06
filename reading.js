@@ -8171,7 +8171,7 @@
      in its own cookie. CloudKit JS reads it only from apiTokenAuth.ckWebAuthToken; at the
      container level it is silently ignored. Read it with a regex rather than URLSearchParams so a literal
      "+" in the token is not turned into a space. */
-  var webCloudReturnRaw='';
+  var webCloudReturnRaw='',webCloudReturnName='';
   /* CloudKit JS keeps the session in a cookie by default. A cookie can be dropped
      (size, Safari privacy settings), and then every request goes out signed out, so
      Phloem gives CloudKit JS a localStorage-backed store instead. */
@@ -8180,13 +8180,33 @@
     putToken:function(id,token){try{var all=JSON.parse(localStorage.getItem(WEB_CLOUDKIT_SESSION_KEY)||'{}');if(token)all[id]=token;else delete all[id];localStorage.setItem(WEB_CLOUDKIT_SESSION_KEY,JSON.stringify(all));}catch(e){}},
     getToken:function(id){try{return JSON.parse(localStorage.getItem(WEB_CLOUDKIT_SESSION_KEY)||'{}')[id]||null;}catch(e){return null;}}
   };
+  /* CloudKit JS makes up a new clientId on every page load and sends it with each
+     request, including the one that produces the sign-in page. Apple's redirect then
+     loads a fresh page, so keep one clientId per browser to make the request after the
+     return match the one before it. */
+  var webCloudClientId=(function(){
+    try{var id=localStorage.getItem('phloem.icloudWebClient.v1');if(!id){id=crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2);localStorage.setItem('phloem.icloudWebClient.v1',id);}return id;}catch(e){return undefined;}
+  })();
+  /* Notes Apple's answer to the first user check after the return (status, error code,
+     and whether a renewed token came back), so a failed sign-in can name it. */
+  var webCloudFirstCheck='';
+  function webCloudLoggedFetch(url,options){
+    return window.fetch(url,options).then(function(response){
+      if(!webCloudFirstCheck&&/\/users\/(?:caller|current)/.test(String(url))){
+        var renewed=response.headers.get('X-Apple-CloudKit-Web-Auth-Token')||response.headers.get('X-Apple-CloudKit-Session');
+        webCloudFirstCheck='first check '+response.status+(renewed?', renewed token':', no renewed token')+(/[?&]ckWebAuthToken=/.test(String(url))?'':', sent without token');
+        response.clone().json().then(function(body){if(body&&body.serverErrorCode)webCloudFirstCheck+=' '+body.serverErrorCode;}).catch(function(){});
+      }
+      return response;
+    });
+  }
   var webCloudReturnToken=(function(){
     if(window.PHLOEM_NATIVE)return'';
     try{
       var re=/[?&#](?:ckWebAuthToken|ckSession)=([^&#]*)/,m=location.search.match(re)||location.hash.match(re);if(!m)return'';
       var strip=function(part,lead){var out=part.replace(/([?&#])(?:ckWebAuthToken|ckSession)=[^&#]*&?/g,'$1').replace(/[?&#]$/,'');return out===lead?'':out;};
+      webCloudReturnRaw=m[1];webCloudReturnName=((location.search+location.hash).match(/[?&#][^=&#]+(?==)/g)||[]).map(function(k){return k.slice(1);}).join('+')||'token';
       history.replaceState(history.state,'',location.pathname+strip(location.search,'?')+strip(location.hash,'#'));
-      webCloudReturnRaw=m[1];
       try{return decodeURIComponent(m[1]);}catch(e){return m[1];}
     }catch(e){return'';}
   })();
@@ -8200,8 +8220,8 @@
       script.onerror=function(){reject(new Error('Phloem could not reach Apple’s iCloud service. Check your connection and try again.'));};
       document.head.appendChild(script);
     }).then(function(CloudKit){
-      CloudKit.configure({containers:[{containerIdentifier:WEB_CLOUDKIT.container,environment:WEB_CLOUDKIT.environment,
-        apiTokenAuth:{apiToken:WEB_CLOUDKIT.apiToken,persist:true,ckWebAuthToken:webCloudReturnToken||undefined,signInButton:{id:'icloudAppleSignIn',theme:'black'},signOutButton:{id:'icloudAppleSignOut',theme:'black'}}}],services:{authTokenStore:webCloudTokenStore}});
+      CloudKit.configure({containers:[{containerIdentifier:WEB_CLOUDKIT.container,environment:WEB_CLOUDKIT.environment,clientID:webCloudClientId,
+        apiTokenAuth:{apiToken:WEB_CLOUDKIT.apiToken,persist:true,ckWebAuthToken:webCloudReturnToken||undefined,signInButton:{id:'icloudAppleSignIn',theme:'black'},signOutButton:{id:'icloudAppleSignOut',theme:'black'}}}],services:{authTokenStore:webCloudTokenStore,fetch:webCloudLoggedFetch}});
       return CloudKit.getDefaultContainer();
     });
     webCloudReady.catch(function(){webCloudReady=null;});
@@ -8257,22 +8277,23 @@
      spaces read back as "+"). The first one Apple accepts becomes the session;
      otherwise the error names Apple's reason and the token's shape (never its value)
      so a screenshot shows what went wrong. */
+  function webCloudTryDecode(text){try{return decodeURIComponent(text);}catch(e){return'';}}
   async function webCloudRetryReturn(container){
-    var seen={},candidates=[webCloudReturnToken,webCloudReturnRaw,webCloudReturnToken.replace(/ /g,'+')].filter(function(t){if(!t||seen[t])return false;return seen[t]=true;});
+    var seen={},candidates=[webCloudReturnToken,webCloudReturnRaw,webCloudReturnToken.replace(/ /g,'+'),webCloudTryDecode(webCloudReturnToken)].filter(function(t){if(!t||seen[t])return false;return seen[t]=true;});
     var t=webCloudReturnToken,raw=webCloudReturnRaw,reasons=[];webCloudReturnToken='';webCloudReturnRaw='';
     for(var i=0;i<candidates.length;i++){
-      var token=candidates[i],url='https://api.apple-cloudkit.com/database/1/'+encodeURIComponent(WEB_CLOUDKIT.container)+'/'+WEB_CLOUDKIT.environment+'/public/users/caller?ckAPIToken='+encodeURIComponent(WEB_CLOUDKIT.apiToken)+'&ckWebAuthToken='+encodeURIComponent(token);
+      var token=candidates[i],url='https://api.apple-cloudkit.com/database/1/'+encodeURIComponent(WEB_CLOUDKIT.container)+'/'+WEB_CLOUDKIT.environment+'/public/users/caller?ckAPIToken='+encodeURIComponent(WEB_CLOUDKIT.apiToken)+'&ckWebAuthToken='+encodeURIComponent(token)+(webCloudClientId?'&clientId='+encodeURIComponent(webCloudClientId):'');
       try{
         var response=await fetch(url,{credentials:'omit'}),body=await response.json().catch(function(){return{};});
         if(response.ok&&body&&body.userRecordName){
-          var fresh=response.headers.get('X-Apple-CloudKit-Web-Auth-Token')||token;
+          var fresh=response.headers.get('X-Apple-CloudKit-Web-Auth-Token')||response.headers.get('X-Apple-CloudKit-Session')||token;
           if(container._auth&&container._auth._setSession)container._auth._setSession(fresh);
           var identity=await container.setUpAuth();if(identity)return identity;
           reasons.push('accepted directly but not by CloudKit JS');
         }else reasons.push((body&&body.serverErrorCode||response.status)+(body&&body.reason?': '+body.reason:''));
       }catch(error){reasons.push(error&&error.message||'network error');}
     }
-    var refused=new Error('Apple sent you back, but did not accept the sign-in. (CloudKit '+reasons.join(' / ')+'; token '+t.length+' chars'+(/\+/.test(t)?', +':'')+(/ /.test(t)?', space':'')+(/%/.test(raw)?', %':'')+(/\//.test(t)?', /':'')+(/=/.test(t)?', =':'')+')');
+    var refused=new Error('Apple sent you back, but did not accept the sign-in. (CloudKit '+reasons.join(' / ')+'; '+(webCloudFirstCheck?webCloudFirstCheck+'; ':'')+webCloudReturnName+' '+t.length+' chars, '+t.split('__').length+' parts'+(/%/.test(t)?', % after decoding':'')+(/\+/.test(t)?', +':'')+(/ /.test(t)?', space':'')+(/%/.test(raw)?', %':'')+(/\//.test(t)?', /':'')+(/=/.test(t)?', =':'')+')');
     refused.code='ICLOUD_WEB_RETURN_REFUSED';throw refused;
   }
   function webCloudPlugin(){
@@ -8978,7 +8999,7 @@
     fillSettings();if(!byId('settingsDialog').open)byId('settingsDialog').showModal();
     var section=byId('icloudSettings');if(section&&section.scrollIntoView)section.scrollIntoView({block:'center'});
     if(iCloudOn())return iCloudSync(true);
-    byId('icloudStatus').textContent='Signed in. Checking your private iCloud library…';
+    byId('icloudStatus').textContent='Back from Apple. Checking the sign-in…';
     try{var account=await iCloudPlugin().status();if(!account.available)throw new Error(iCloudAccountMessage(account.accountStatus));iCloudCfg={on:true,enabledAt:now()};localStorage.setItem(ICLOUD_KEY,JSON.stringify(iCloudCfg));fillSettings();await iCloudSync(true);}
     catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not turn on iCloud sync.';}
   }

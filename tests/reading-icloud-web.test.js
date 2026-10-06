@@ -287,6 +287,8 @@ async function seedWebLibrary(page, chapters, stamp) {
   });
   check('opening an iPad-only paper downloads its original from iCloud', downloaded.found && downloaded.size === pdfSize, JSON.stringify(downloaded));
 
+  check('CloudKit JS gets the same clientId before and after the sign-in redirect',
+    await page.evaluate(() => { const id = window.__ckStore.configured.containers[0].clientID; return !!id && id === localStorage.getItem('phloem.icloudWebClient.v1'); }));
   check('CloudKit JS keeps the session in localStorage, not a cookie',
     await page.evaluate(() => !!(window.__ckStore.configured.services && window.__ckStore.configured.services.authTokenStore)));
   check('no page errors', errors.length === 0, errors.join(' | '));

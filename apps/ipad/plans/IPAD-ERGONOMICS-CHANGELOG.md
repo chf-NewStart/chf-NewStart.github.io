@@ -500,3 +500,28 @@ while Pencil is in use (any pen pointer in the last 10 seconds, body class
 paper or Workspace underneath. A
 deliberate finger drag and double-click reset still work. New
 `tests/reading-workspace-divider-palm.test.js`. Not verified on a physical iPad.
+
+## 29. Guide controls fold away on off; dimness 70-100 from 85; pen picks before colors (v191)
+
+houfu: "when turning off the guide, pls i dont need the guide toggle if i already pressed
+the button to close it. also can we tune the dimness of guide to be 85 in default, and
+lets make it from 70 to 100 where 85 is at middle", then "similarly when i click pen, i
+dont need to open pallet everytime when i switch from other tool right?"
+
+- **Guide off folds its controls.** `#zenGuideToggle` in `reading.js` now calls
+  `closeZenPopouts(true)` after it turns the guide off (focus returns to the Zen guide
+  button). Turning the guide on keeps the controls open so dimness can be set.
+- **Dimness 70-100%, default 85%.** Both sliders (`#guideDimRange`, `#zenGuideDimRange`)
+  run 70-100 in steps of 5, so 85 is the middle. `DEFAULT_COMFORT.guideDim` is 85 and the
+  CSS fallback opacity is .85. A one-time move (`guideDimScale: 2` in the saved comfort)
+  changes a saved value below 70 (the old range was 20-85 from 55) to 85; saved values of
+  70-85 are kept. `setGuideDim` clamps to 70-100.
+- **Pen picks before opening colors.** Like the iPadOS tool picker, `#workspacePenToggle`
+  only selects the pen when another Workspace tool was active; tapping it while it is
+  already the tool opens or closes the colors. The handler runs before the view's toolbar
+  handler, so `aria-pressed` still names the previous tool.
+
+Tests: new `tests/reading-guide-pen-controls.test.js` (fails on v190). Updated
+`reading-ai-providers` (85% default), `reading-selection-note-ai` and
+`reading-ipad-touch-dock` (the toggle now closes the controls itself).
+Not verified on a physical iPad.

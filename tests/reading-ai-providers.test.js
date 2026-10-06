@@ -64,7 +64,7 @@ function check(name, condition, extra) {
   });
   await localPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
   await localPage.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
-  check('guide default dimness is 55%', await localPage.locator('#guideDimRange').inputValue() === '55');
+  check('guide default dimness is 85%', await localPage.locator('#guideDimRange').inputValue() === '85');
   await openZenNotebook(localPage);
   await localPage.click('[data-tab="aiPanel"]');
   await localPage.click('#aiUseCurrent');

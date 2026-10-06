@@ -1135,7 +1135,7 @@
     .pane-spotlight[data-guide-orientation="column"][data-guide-color="blue"] .guide-band { background: linear-gradient(180deg, rgba(67,145,177,.13), rgba(83,166,199,.27) 10%, rgba(83,166,199,.27) 90%, rgba(67,145,177,.13)); box-shadow: inset 1px 0 rgba(78,154,184,.5), inset -1px 0 rgba(41,113,143,.36), 0 0 0 1px rgba(67,145,177,.1); }
     /* The paper outside the focused line always recedes behind a translucent wash. */
     .guide-shade { position: absolute; left: 0; right: 0; background: var(--paper); opacity: 0; transition: opacity .2s ease, left .08s linear, top .08s linear, width .08s linear, height .08s linear; pointer-events: none; }
-    .pane-spotlight .guide-shade { opacity: var(--guide-dim-opacity, .55); }
+    .pane-spotlight .guide-shade { opacity: var(--guide-dim-opacity, .85); }
     .guide-shade-top { top: 0; height: var(--guide-y, 34%); }
     .guide-shade-bottom { top: calc(var(--guide-y, 34%) + var(--guide-h, 118px)); bottom: 0; }
     /* Side wings at band height, so in Column scope the other column dims too. */

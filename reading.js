@@ -8189,11 +8189,11 @@
   })();
   /* Notes Apple's answer to the first user check after the return (status, error code,
      and whether a renewed token came back), so a failed sign-in can name it. */
-  var webCloudFirstCheck='';
+  var webCloudFirstCheck='',webCloudRenewed='';
   function webCloudLoggedFetch(url,options){
     return window.fetch(url,options).then(function(response){
       if(!webCloudFirstCheck&&/\/users\/(?:caller|current)/.test(String(url))){
-        var renewed=response.headers.get('X-Apple-CloudKit-Web-Auth-Token')||response.headers.get('X-Apple-CloudKit-Session');
+        var renewed=response.headers.get('X-Apple-CloudKit-Web-Auth-Token')||response.headers.get('X-Apple-CloudKit-Session');if(renewed)webCloudRenewed=renewed;
         webCloudFirstCheck='first check '+response.status+(renewed?', renewed token':', no renewed token')+(/[?&]ckWebAuthToken=/.test(String(url))?'':', sent without token');
         response.clone().json().then(function(body){if(body&&body.serverErrorCode)webCloudFirstCheck+=' '+body.serverErrorCode;}).catch(function(){});
       }
@@ -8284,7 +8284,11 @@
      so a screenshot shows what went wrong. */
   function webCloudTryDecode(text){try{return decodeURIComponent(text);}catch(e){return'';}}
   async function webCloudRetryReturn(container){
-    var seen={},candidates=[webCloudReturnToken,webCloudReturnRaw,webCloudReturnToken.replace(/ /g,'+'),webCloudTryDecode(webCloudReturnToken),webCloudTryDecode(webCloudReturnAlt),webCloudReturnAlt].filter(function(t){if(!t||seen[t])return false;return seen[t]=true;});
+    /* Apple answers the first check with a renewed token even when it refuses, and each
+       token is good for one round trip. CloudKit JS stores that renewed token, so ask
+       once more before anything else, then try it directly. */
+    try{var again=await container.setUpAuth();if(again){webCloudReturnToken='';webCloudReturnRaw='';return again;}}catch(e){}
+    var seen={},candidates=[webCloudRenewed,webCloudReturnToken,webCloudReturnRaw,webCloudReturnToken.replace(/ /g,'+'),webCloudTryDecode(webCloudReturnToken),webCloudTryDecode(webCloudReturnAlt),webCloudReturnAlt].filter(function(t){if(!t||seen[t])return false;return seen[t]=true;});
     var t=webCloudReturnToken,raw=webCloudReturnRaw,reasons=[];webCloudReturnToken='';webCloudReturnRaw='';
     for(var i=0;i<candidates.length;i++){
       var token=candidates[i],url='https://api.apple-cloudkit.com/database/1/'+encodeURIComponent(WEB_CLOUDKIT.container)+'/'+WEB_CLOUDKIT.environment+'/public/users/caller?ckAPIToken='+encodeURIComponent(WEB_CLOUDKIT.apiToken)+'&ckWebAuthToken='+encodeURIComponent(token)+(webCloudClientId?'&clientId='+encodeURIComponent(webCloudClientId):'');
@@ -8295,10 +8299,14 @@
           if(container._auth&&container._auth._setSession)container._auth._setSession(fresh);
           var identity=await container.setUpAuth();if(identity)return identity;
           reasons.push('accepted directly but not by CloudKit JS');
-        }else reasons.push((body&&body.serverErrorCode||response.status)+(body&&body.reason?': '+body.reason:''));
+        }else{
+          reasons.push((body&&body.serverErrorCode||response.status)+(body&&body.reason?': '+body.reason:''));
+          var next=response.headers.get('X-Apple-CloudKit-Web-Auth-Token')||response.headers.get('X-Apple-CloudKit-Session');
+          if(next&&!seen[next]&&candidates.length<10){seen[next]=true;candidates.push(next);webCloudRenewed=next;}
+        }
       }catch(error){reasons.push(error&&error.message||'network error');}
     }
-    var refused=new Error('Apple sent you back, but did not accept the sign-in. (CloudKit '+reasons.join(' / ')+'; '+(webCloudFirstCheck?webCloudFirstCheck+'; ':'')+webCloudReturnName+' '+t.length+' chars, '+t.split('__').length+' parts'+(/%/.test(t)?', % after decoding':'')+(/\+/.test(t)?', +':'')+(/ /.test(t)?', space':'')+(/%/.test(raw)?', %':'')+(/\//.test(t)?', /':'')+(/=/.test(t)?', =':'')+')');
+    var refused=new Error('Apple sent you back, but did not accept the sign-in. (v183; CloudKit '+reasons.join(' / ')+'; '+(webCloudFirstCheck?webCloudFirstCheck+'; ':'')+webCloudReturnName+(webCloudReturnAlt?(webCloudTryDecode(webCloudReturnAlt)===t?' (same value)':' (different values, other '+webCloudTryDecode(webCloudReturnAlt).length+')'):'')+(webCloudRenewed?', renewed '+webCloudRenewed.length+' chars tried':'')+' '+t.length+' chars, '+t.split('__').length+' parts'+(/%/.test(t)?', % after decoding':'')+(/\+/.test(t)?', +':'')+(/ /.test(t)?', space':'')+(/%/.test(raw)?', %':'')+(/\//.test(t)?', /':'')+(/=/.test(t)?', =':'')+')');
     refused.code='ICLOUD_WEB_RETURN_REFUSED';throw refused;
   }
   function webCloudPlugin(){

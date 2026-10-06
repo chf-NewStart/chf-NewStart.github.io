@@ -324,6 +324,11 @@ async function seedWebLibrary(page, chapters, stamp) {
     : { status: 421, contentType: 'application/json', body: JSON.stringify({ serverErrorCode: 'AUTHENTICATION_REQUIRED' }) });
   check('a spelling Apple accepts becomes the session and sync carries on', /Synced with your private iCloud library/.test(rescued.status) && rescued.token === 'fresh-token', rescued.status + ' / ' + rescued.token);
 
+  const renewedRescue = await returnWith(token => token === 'renewed-1'
+    ? { status: 200, contentType: 'application/json', headers: { 'X-Apple-CloudKit-Web-Auth-Token': 'fresh-token', 'Access-Control-Expose-Headers': 'X-Apple-CloudKit-Web-Auth-Token' }, body: JSON.stringify({ userRecordName: '_tester' }) }
+    : { status: 421, contentType: 'application/json', headers: { 'X-Apple-CloudKit-Web-Auth-Token': 'renewed-1', 'Access-Control-Expose-Headers': 'X-Apple-CloudKit-Web-Auth-Token' }, body: JSON.stringify({ serverErrorCode: 'AUTHENTICATION_REQUIRED' }) });
+  check('a renewed token from a refused check is tried next', /Synced with your private iCloud library/.test(renewedRescue.status) && renewedRescue.token === 'fresh-token' && renewedRescue.tried.includes('renewed-1'), renewedRescue.status + ' / ' + JSON.stringify(renewedRescue.tried));
+
   await browser.close();
   server.close();
   process.exit(failures ? 1 : 0);

@@ -107,3 +107,13 @@ v180 showed: "Apple sent you back, but did not accept the sign-in (AUTHENTICATIO
 ### Fourth round (shell v182)
 
 The v181 error line showed what Apple's redirect actually contains: both `ckWebAuthToken` (1007 chars, 4 `__` parts) and `ckSession`. Apple's first `users/caller` answer was 421 AUTHENTICATION_REQUIRED. Phloem had been taking `ckWebAuthToken`, the first one it matched. CloudKit JS's own popup flow uses the message's `ckSession` as the session, so Phloem now prefers `ckSession` and keeps `ckWebAuthToken` only as a fallback for the direct check. Removing the tokens from the address bar now drops both parameters; the old regex left the second one behind. The test's fake redirect returns both parameters and checks that `ckSession` is the one used. Full suite: all pass.
+
+### Fifth round (shell v183)
+
+v182's result was identical: 1007 characters, so `ckSession` and `ckWebAuthToken` are most likely the same value. The v181 line also showed that Apple's first 421 answer carries a renewed token, and each token is good for one round trip. Phloem then retried only with the original, already-spent token, which Codex had flagged. Now:
+
+- After a refused first check, Phloem asks CloudKit JS once more. CloudKit JS has already stored the renewed token, so this check uses it.
+- The direct check tries the renewed token first. Any token a refused answer hands back is added to the list, up to 10 attempts.
+- The error starts with "v183" so a screenshot names the version. It also says whether the two returned values match and whether a renewed token was tried.
+
+New test: a refused check that hands back a renewed token, which Apple then accepts, ends with the website synced. Full suite: only `reading-fold-phone` fails, which is the known flaky test.

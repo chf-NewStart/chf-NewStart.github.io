@@ -155,7 +155,10 @@
     supportLink.textContent = 'Support ↗';
     privacySection.append(privacyHeading, privacyCopy, privacyLink, document.createTextNode(' · '), supportLink);
     settings.appendChild(privacySection);
-    settings.prepend(localSection);
+    // The lede introduces the dialog, so the iPad's own section follows it.
+    var lede = settings.querySelector('.settings-lede');
+    if (lede) lede.after(localSection);
+    else settings.prepend(localSection);
   }
 
   var signal = byId('syncSignal');

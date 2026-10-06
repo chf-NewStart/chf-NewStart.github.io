@@ -8171,7 +8171,7 @@
      in its own cookie. CloudKit JS reads it only from apiTokenAuth.ckWebAuthToken; at the
      container level it is silently ignored. Read it with a regex rather than URLSearchParams so a literal
      "+" in the token is not turned into a space. */
-  var webCloudReturnRaw='',webCloudReturnName='';
+  var webCloudReturnRaw='',webCloudReturnName='',webCloudReturnAlt='';
   /* CloudKit JS keeps the session in a cookie by default. A cookie can be dropped
      (size, Safari privacy settings), and then every request goes out signed out, so
      Phloem gives CloudKit JS a localStorage-backed store instead. */
@@ -8203,8 +8203,13 @@
   var webCloudReturnToken=(function(){
     if(window.PHLOEM_NATIVE)return'';
     try{
-      var re=/[?&#](?:ckWebAuthToken|ckSession)=([^&#]*)/,m=location.search.match(re)||location.hash.match(re);if(!m)return'';
-      var strip=function(part,lead){var out=part.replace(/([?&#])(?:ckWebAuthToken|ckSession)=[^&#]*&?/g,'$1').replace(/[?&#]$/,'');return out===lead?'':out;};
+      /* Apple's redirect carries both ckWebAuthToken and ckSession. ckSession is the
+         session CloudKit JS itself uses (its popup flow reads data.ckSession), so it
+         comes first; ckWebAuthToken stays as a fallback for the direct check. */
+      var all=location.search+location.hash,pick=function(name){var found=all.match(new RegExp('[?&#]'+name+'=([^&#]*)'));return found?found[1]:'';};
+      var session=pick('ckSession'),web=pick('ckWebAuthToken'),m=(session||web)?[null,session||web]:null;if(!m)return'';
+      webCloudReturnAlt=session&&web?web:'';
+      var strip=function(part,lead){if(!part)return'';var kept=part.slice(1).split('&').filter(function(p){return p&&!/^(?:ckWebAuthToken|ckSession)=/.test(p);});return kept.length?lead+kept.join('&'):'';};
       webCloudReturnRaw=m[1];webCloudReturnName=((location.search+location.hash).match(/[?&#][^=&#]+(?==)/g)||[]).map(function(k){return k.slice(1);}).join('+')||'token';
       history.replaceState(history.state,'',location.pathname+strip(location.search,'?')+strip(location.hash,'#'));
       try{return decodeURIComponent(m[1]);}catch(e){return m[1];}
@@ -8279,7 +8284,7 @@
      so a screenshot shows what went wrong. */
   function webCloudTryDecode(text){try{return decodeURIComponent(text);}catch(e){return'';}}
   async function webCloudRetryReturn(container){
-    var seen={},candidates=[webCloudReturnToken,webCloudReturnRaw,webCloudReturnToken.replace(/ /g,'+'),webCloudTryDecode(webCloudReturnToken)].filter(function(t){if(!t||seen[t])return false;return seen[t]=true;});
+    var seen={},candidates=[webCloudReturnToken,webCloudReturnRaw,webCloudReturnToken.replace(/ /g,'+'),webCloudTryDecode(webCloudReturnToken),webCloudTryDecode(webCloudReturnAlt),webCloudReturnAlt].filter(function(t){if(!t||seen[t])return false;return seen[t]=true;});
     var t=webCloudReturnToken,raw=webCloudReturnRaw,reasons=[];webCloudReturnToken='';webCloudReturnRaw='';
     for(var i=0;i<candidates.length;i++){
       var token=candidates[i],url='https://api.apple-cloudkit.com/database/1/'+encodeURIComponent(WEB_CLOUDKIT.container)+'/'+WEB_CLOUDKIT.environment+'/public/users/caller?ckAPIToken='+encodeURIComponent(WEB_CLOUDKIT.apiToken)+'&ckWebAuthToken='+encodeURIComponent(token)+(webCloudClientId?'&clientId='+encodeURIComponent(webCloudClientId):'');

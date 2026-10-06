@@ -138,7 +138,7 @@ function fakeCloudKit(seed) {
   const container = {
     privateCloudDatabase: database,
     _auth: {
-      _signInURL: location.origin + '/reading.html?ckWebAuthToken=fake%2Btoken+raw',
+      _signInURL: location.origin + '/reading.html?ckWebAuthToken=web-auth-token%2Bother&ckSession=fake%2Btoken+raw',
       _setSession(token) { store.signedIn = !!token; store.token = token; }
     },
     async setUpAuth() { return store.signedIn ? { userRecordName: '_tester' } : null; },
@@ -229,8 +229,8 @@ async function seedWebLibrary(page, chapters, stamp) {
   await page.waitForFunction(() => /Synced with your private iCloud library/.test(document.getElementById('icloudStatus').textContent)).catch(async error => { console.log('status:', await page.textContent('#icloudStatus'), errors); throw error; });
 
   const returned = await page.evaluate(() => ({ url: location.href, token: window.__ckStore.token, appleButton: !document.getElementById('icloudAppleSignInBox').classList.contains('hidden'), open: document.getElementById('settingsDialog').open }));
-  check('the returned token reaches CloudKit JS intact, with + kept', returned.token === 'fake+token+raw', returned.token);
-  check('the token is removed from the address bar', !/ckWebAuthToken/.test(returned.url), returned.url);
+  check('the returned ckSession reaches CloudKit JS intact, with + kept', returned.token === 'fake+token+raw', returned.token);
+  check('the token is removed from the address bar', !/ckWebAuthToken|ckSession/.test(returned.url), returned.url);
   check('Apple’s own black button never shows', !returned.appleButton);
   check('Settings reopens on the iCloud result after the return', returned.open);
 

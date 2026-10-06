@@ -8168,14 +8168,15 @@
      token's "URL Redirect" callback). A full-page round trip works on iPad Safari,
      where CloudKit JS's own popup loses its opener and never reports back. The token
      is taken out of the address bar at once and handed to CloudKit JS, which keeps it
-     in its own cookie. Read it with a regex rather than URLSearchParams so a literal
+     in its own cookie. CloudKit JS reads it only from apiTokenAuth.ckWebAuthToken; at the
+     container level it is silently ignored. Read it with a regex rather than URLSearchParams so a literal
      "+" in the token is not turned into a space. */
   var webCloudReturnToken=(function(){
     if(window.PHLOEM_NATIVE)return'';
     try{
-      var m=location.search.match(/[?&](?:ckWebAuthToken|ckSession)=([^&#]*)/);if(!m)return'';
-      var rest=location.search.replace(/[?&](?:ckWebAuthToken|ckSession)=[^&#]*/g,'').replace(/^&/,'?');
-      history.replaceState(history.state,'',location.pathname+(rest&&rest!=='?'?rest:'')+location.hash);
+      var re=/[?&#](?:ckWebAuthToken|ckSession)=([^&#]*)/,m=location.search.match(re)||location.hash.match(re);if(!m)return'';
+      var strip=function(part,lead){var out=part.replace(/([?&#])(?:ckWebAuthToken|ckSession)=[^&#]*&?/g,'$1').replace(/[?&#]$/,'');return out===lead?'':out;};
+      history.replaceState(history.state,'',location.pathname+strip(location.search,'?')+strip(location.hash,'#'));
       return decodeURIComponent(m[1]);
     }catch(e){return'';}
   })();
@@ -8189,8 +8190,8 @@
       script.onerror=function(){reject(new Error('Phloem could not reach Apple’s iCloud service. Check your connection and try again.'));};
       document.head.appendChild(script);
     }).then(function(CloudKit){
-      CloudKit.configure({containers:[{containerIdentifier:WEB_CLOUDKIT.container,environment:WEB_CLOUDKIT.environment,ckWebAuthToken:webCloudReturnToken||undefined,
-        apiTokenAuth:{apiToken:WEB_CLOUDKIT.apiToken,persist:true,signInButton:{id:'icloudAppleSignIn',theme:'black'},signOutButton:{id:'icloudAppleSignOut',theme:'black'}}}]});
+      CloudKit.configure({containers:[{containerIdentifier:WEB_CLOUDKIT.container,environment:WEB_CLOUDKIT.environment,
+        apiTokenAuth:{apiToken:WEB_CLOUDKIT.apiToken,persist:true,ckWebAuthToken:webCloudReturnToken||undefined,signInButton:{id:'icloudAppleSignIn',theme:'black'},signOutButton:{id:'icloudAppleSignOut',theme:'black'}}}]});
       return CloudKit.getDefaultContainer();
     });
     webCloudReady.catch(function(){webCloudReady=null;});

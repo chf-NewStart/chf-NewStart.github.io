@@ -144,7 +144,8 @@ function fakeCloudKit(seed) {
   window.CloudKit = {
     configure(config) {
       store.configured = config;
-      const token = config.containers[0].ckWebAuthToken;
+      // Real CloudKit JS reads the return token only from apiTokenAuth.
+      const token = config.containers[0].apiTokenAuth.ckWebAuthToken;
       if (token) { store.signedIn = true; store.token = token; }
     },
     getDefaultContainer() { return container; }

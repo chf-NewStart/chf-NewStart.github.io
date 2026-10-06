@@ -24,6 +24,10 @@
   var NATIVE_AI_CONSENT_VERSION = 2;
   var nativeAiConsentedProviders = {}, nativeAiSettingsEpoch = 0;
   function nativeAiPlugin(){return window.PHLOEM_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemAI||null;}
+  /* The iPad app signs in to Google natively (Google blocks OAuth in web views); ipad.js
+     sets PHLOEM_GOOGLE_DRIVE once the plugin reports a configured client and an App
+     Store region where Google is reachable. */
+  function nativeGooglePlugin(){return window.PHLOEM_NATIVE&&window.PHLOEM_GOOGLE_DRIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemGoogle||null;}
   function nativeCloudPlugin(){return window.PHLOEM_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemCloud||null;}
   function nativeAiDestination(id){return{id:'',gemini:'generativelanguage.googleapis.com',deepseek:'api.deepseek.com',openai:'api.openai.com',anthropic:'api.anthropic.com'}[id]||'';}
   function nativeAiPrivacy(id){return{
@@ -8550,7 +8554,12 @@
     /* Everyone waiting shares one sign-in: a second request while the popup is up
        would orphan the first caller and strand its promise. */
     if(gdriveTokenPending)return gdriveTokenPending;
-    var request=loadGis().then(function(){
+    var nativeGoogle=nativeGooglePlugin(),request;
+    if(nativeGoogle)request=nativeGoogle.getToken({interactive:!!interactive,hint:gdriveEmail||''}).then(function(result){
+      if(!result||!result.accessToken)throw new Error('Google sign-in did not return access.');
+      gdriveToken=result.accessToken;gdriveTokenAt=now();gdriveSaveAuth();gdriveLearnEmail(gdriveToken);return gdriveToken;
+    },function(error){throw new Error(error&&error.message||'Google sign-in failed.');});
+    else request=loadGis().then(function(){
       return new Promise(function(res,rej){
         if(gdriveTokenFresh())return res(gdriveToken);
         /* A first sign-in walks through passwords and 2FA — give it two minutes.
@@ -8787,6 +8796,7 @@
   byId('gdriveSyncBtn').onclick=function(){gdriveSync(true);};
   byId('gdriveOffBtn').onclick=function(){
     if(!confirm('Disconnect Google Drive on this device? The file in your Drive stays there.'))return;
+    var nativeGoogle=nativeGooglePlugin();if(nativeGoogle&&nativeGoogle.signOut)nativeGoogle.signOut().catch(function(){});
     localStorage.removeItem(GDRIVE_KEY);gdriveCfg=null;gdriveToken=null;gdriveTokenAt=0;gdriveEmail='';gdrivePdfStates={};fillSettings();syncUi();renderShelf();
   };
 
@@ -9011,6 +9021,7 @@
     try{await iCloudPlugin().deleteCloudData();localStorage.removeItem(ICLOUD_KEY);iCloudCfg=null;iCloudDocumentStates=Object.create(null);fillSettings();syncUi();renderShelf();byId('icloudStatus').textContent='The private iCloud copy was deleted. Your local library stays on '+iCloudDeviceName()+'.';}catch(error){byId('icloudStatus').textContent=error&&error.message||'Phloem could not delete the private iCloud copy.';}finally{button.disabled=false;}
   };
   if(window.PHLOEM_NATIVE)window.PHLOEM_ICLOUD={enabled:iCloudOn,sync:iCloudSync};
+  if(window.PHLOEM_NATIVE)window.PHLOEM_GDRIVE={enabled:function(){return gdriveOn();},sync:function(interactive){return gdriveSync(!!interactive);},refresh:function(){fillSettings();syncUi();renderShelf();}};
   /* Back from Apple's sign-in page: finish turning iCloud on and show the result. */
   async function webCloudFinishSignIn(){
     if(!webCloudReturnToken||!webCloudConfigured())return;

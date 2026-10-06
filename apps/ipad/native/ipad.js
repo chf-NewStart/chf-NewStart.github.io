@@ -165,8 +165,10 @@
     signal.title = cloudEnabled ? 'Sync with iCloud now' : 'Local library and iCloud settings';
     signal.setAttribute('aria-label', signal.title);
     signal.onclick = function () {
-      if (window.PHLOEM_ICLOUD && window.PHLOEM_ICLOUD.enabled()) window.PHLOEM_ICLOUD.sync(true);
-      else byId('settingsBtn').click();
+      var synced = false;
+      if (window.PHLOEM_ICLOUD && window.PHLOEM_ICLOUD.enabled()) { window.PHLOEM_ICLOUD.sync(true); synced = true; }
+      if (window.PHLOEM_GDRIVE && window.PHLOEM_GDRIVE.enabled()) { window.PHLOEM_GDRIVE.sync(true); synced = true; }
+      if (!synced) byId('settingsBtn').click();
     };
   }
   var refresh = byId('refreshBtn');
@@ -200,6 +202,34 @@
      its origin intact. Do not send blob downloads or local PDF links through it. */
   var capacitor = window.Capacitor;
   var nativeAi = capacitor && capacitor.Plugins && capacitor.Plugins.PhloemAI;
+
+  /* Google Drive stays hidden until the native plugin has an iOS client ID and the
+     App Store region is not mainland China, where Google is unreachable (iCloud is
+     the sync there). Once shown, a Drive library already connected on this iPad
+     syncs straight away, the way the website does at startup. */
+  var nativeGoogle = capacitor && capacitor.Plugins && capacitor.Plugins.PhloemGoogle;
+  function showSection(id) {
+    var control = byId(id), section = control && control.closest('section');
+    if (!section) return;
+    section.classList.remove('native-unavailable');
+    section.removeAttribute('aria-hidden');
+    section.querySelectorAll('button,input,select,textarea').forEach(function (element) {
+      element.disabled = false;
+      element.removeAttribute('aria-disabled');
+    });
+  }
+  if (nativeGoogle && nativeGoogle.status) {
+    nativeGoogle.status().then(function (result) {
+      if (!result || !result.configured || !result.regionAllowed) return;
+      window.PHLOEM_GOOGLE_DRIVE = true;
+      showSection('gdriveConnectBtn');
+      var drive = window.PHLOEM_GDRIVE;
+      if (drive) {
+        drive.refresh();
+        if (drive.enabled()) drive.sync(false);
+      }
+    }).catch(function () {});
+  }
   if (nativeAi && typeof nativeAi.status === 'function') {
     Promise.resolve(nativeAi.status()).then(applyAiRegionPolicy).catch(failClosedAiRegion);
     if (typeof nativeAi.addListener === 'function') {

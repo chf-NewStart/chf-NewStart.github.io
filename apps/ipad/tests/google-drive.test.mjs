@@ -15,7 +15,8 @@ test('the Google sign-in plugin is compiled, registered and configured from Info
   const bridge = await readFile(path.join(app, 'App/PhloemBridgeViewController.swift'), 'utf8');
   assert.match(bridge, /registerPluginInstance\(PhloemGooglePlugin\(\)\)/);
   const plist = await readFile(path.join(app, 'App/Info.plist'), 'utf8');
-  assert.match(plist, /<key>PhloemGoogleClientID<\/key>\s*<string>[^<]*<\/string>/);
+  assert.match(plist, /<key>PhloemGoogleClientID<\/key>\s*<string>\d+-[a-z0-9]+\.apps\.googleusercontent\.com<\/string>/);
+  assert.doesNotMatch(plist, /oh18cpvsq9c14e1ohu1c8pnld47q9jm7/, 'the web client ID cannot sign in from the app');
 });
 
 test('native Google sign-in asks only for the hidden Drive app folder, with PKCE, and keeps the refresh token in Keychain', async () => {

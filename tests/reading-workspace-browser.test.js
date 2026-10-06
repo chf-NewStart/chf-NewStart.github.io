@@ -809,10 +809,16 @@ async function sourceCueVisual(page, cue) {
     await page.locator('#workspaceMore summary').click();
     await card.focus();
     const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    // Note resizes are Workspace Undo steps too, so the keyboard first undoes the last pinch.
+    const resizedWidth = draggedPlace.width;
     await page.keyboard.press(modifier + '+z');
-    await waitStrokeCount(page, pdfId, 0);
+    await page.waitForFunction(({ id, clipId, width }) => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+      .find(ch => ch.id === id).readingWorkspace.positions[clipId].width !== width, { id: pdfId, clipId: clip.id, width: resizedWidth });
+    assert.equal(workspaceStrokes(await paperById(page, pdfId)).length, 1, 'undoing the resize keeps the ink on the note');
     await page.keyboard.press(modifier + '+Shift+z');
-    await waitStrokeCount(page, pdfId, 1);
+    await page.waitForFunction(({ id, clipId, width }) => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+      .find(ch => ch.id === id).readingWorkspace.positions[clipId].width === width, { id: pdfId, clipId: clip.id, width: resizedWidth });
+    draggedPlace = { ...(await paperById(page, pdfId)).readingWorkspace.positions[clip.id] };
     assert.equal(Object.values((await paperById(page, pdfId)).pdfInk || {}).flat().length, 0,
       'workspace keyboard history leaves PDF ink untouched');
     await page.locator('[data-workspace-tool="eraser"]').click();

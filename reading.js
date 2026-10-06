@@ -6990,6 +6990,100 @@
       return saveWorkspaceGroup(ch,next);
     }catch(error){workspaceStatus('Could not restore this selection. Its current position has been kept.');return false;}
   }
+  /* Lasso Delete and Duplicate, note removal, and their Undo: notes and handwriting
+     change together in one save, so a failed write leaves both exactly as they were. */
+  function saveClipsAndWorkspace(ch,nextExcerpts,nextWorkspace){
+    var previousExcerpts=ch.readingExcerpts,previousWorkspace=ch.readingWorkspace,updatedAt=ch.updatedAt,hadUpdatedAt=Object.prototype.hasOwnProperty.call(ch,'updatedAt'),savedAt=state.savedAt,hadSavedAt=Object.prototype.hasOwnProperty.call(state,'savedAt');
+    try{ch.readingExcerpts=nextExcerpts;ch.readingWorkspace=nextWorkspace;ch.updatedAt=now();if(persist(undefined,true)){workspaceSaveFailed=false;return true;}}catch(error){}
+    ch.readingExcerpts=previousExcerpts;ch.readingWorkspace=previousWorkspace;if(hadUpdatedAt)ch.updatedAt=updatedAt;else delete ch.updatedAt;
+    if(hadSavedAt)state.savedAt=savedAt;else delete state.savedAt;
+    workspaceSaveFailed=true;workspaceStatus('Could not save this change. Nothing was changed.');return false;
+  }
+  function workspaceClipRecord(item){
+    var record={id:item.id,quote:item.quote,note:item.note,anchor:JSON.parse(JSON.stringify(item.anchor))};
+    if(item.sourceHash)record.sourceHash=item.sourceHash;if(item.createdAt)record.createdAt=item.createdAt;return record;
+  }
+  function workspaceFit(api,next,positions,strokes){
+    var bottom=0,right=0;
+    Object.keys(positions).forEach(function(id){var p=positions[id];bottom=Math.max(bottom,p.y+500);right=Math.max(right,p.x+p.width);});
+    strokes.forEach(function(stroke){stroke.points.concat(api.displayStroke(stroke,Object.assign({},next.positions,positions)).points).forEach(function(point){bottom=Math.max(bottom,point[1]);right=Math.max(right,point[0]);});});
+    while(right>next.width&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
+    while(bottom>next.height&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
+    return next;
+  }
+  // Removes the selected notes and handwriting (with any writing on those notes).
+  // Returns what was removed, for Undo, or null. Note positions stay, untouched.
+  function workspaceDeleteGroup(selection,expected){
+    var ch=find(currentId);
+    if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)){workspaceStatus('This workspace is unavailable for editing.');return null;}
+    try{
+      if(!workspaceGroupMatches(ch,selection,expected)){workspaceStatus('This selection changed. Select it again before deleting it.');return null;}
+      var E=window.PhloemExcerpts,api=window.PhloemWorkspaceState,stamp=now(),excerpts=E.normalize(ch.readingExcerpts),workspace=api.normalize(ch.readingWorkspace);
+      var clips=selection.clipIds.map(function(id){return workspaceClipRecord(excerpts.items.find(function(item){return item.id===id;}));});
+      var strokes=JSON.parse(JSON.stringify(expected.strokes));
+      selection.clipIds.forEach(function(id){excerpts=E.remove(excerpts,id,stamp);});
+      if(selection.strokeIds.length)workspace=api.removeStrokes(workspace,selection.strokeIds,stamp);
+      if(!saveClipsAndWorkspace(ch,excerpts,workspace))return null;
+      renderReadingExcerpts();
+      return{clips:clips,positions:JSON.parse(JSON.stringify(expected.positions)),strokes:strokes};
+    }catch(error){workspaceStatus('Could not delete this selection. Nothing was changed.');return null;}
+  }
+  // Brings back what workspaceDeleteGroup removed, under the same ids, so notes keep
+  // their colour and writing on them follows them. Refuses if any of it came back elsewhere.
+  function workspaceRestoreDeleted(record){
+    var ch=find(currentId);
+    if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)){workspaceStatus('This workspace is unavailable for editing.');return false;}
+    try{
+      if(!record||!Array.isArray(record.clips)||!Array.isArray(record.strokes)||!record.positions||!workspaceGroupIds(record.clips.map(function(c){return c&&c.id;}))||!workspaceGroupIds(record.strokes.map(function(s){return s&&s.id;})))throw new TypeError('Invalid deleted group');
+      var E=window.PhloemExcerpts,api=window.PhloemWorkspaceState,stamp=now(),excerpts=E.normalize(ch.readingExcerpts),workspace=api.normalize(ch.readingWorkspace);
+      if(record.clips.some(function(clip){return excerpts.items.some(function(item){return item.id===clip.id;})||!record.positions[clip.id];})||
+        record.strokes.some(function(stroke){return workspace.strokes.some(function(live){return live.id===stroke.id;});})){workspaceStatus('These notes changed since. Undo is unavailable.');return false;}
+      workspace=workspaceFit(api,workspace,record.positions,record.strokes);
+      record.clips.forEach(function(clip){
+        excerpts=E.upsert(excerpts,clip,stamp);workspace=api.place(workspace,clip.id,record.positions[clip.id],stamp);
+        // Keep the note's original creation time, so it returns to its place in the Clips list.
+        var back=excerpts.items.find(function(item){return item.id===clip.id;});
+        if(back&&Number.isFinite(clip.createdAt)&&clip.createdAt>0&&clip.createdAt<=back.updatedAt){back.createdAt=clip.createdAt;excerpts=E.normalize(excerpts);}
+      });
+      record.strokes.forEach(function(stroke){workspace=api.addStroke(workspace,stroke,stamp);});
+      if(!saveClipsAndWorkspace(ch,excerpts,workspace))return false;
+      renderReadingExcerpts();return true;
+    }catch(error){workspaceStatus('Could not bring these notes back. Nothing was changed.');return false;}
+  }
+  // Copies the selection, offset by delta. Writing on a copied note is re-attached to the
+  // copy; other handwriting is shifted. Returns the copies' ids, or null.
+  function workspaceDuplicateGroup(selection,delta,expected){
+    var ch=find(currentId);
+    if(readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)){workspaceStatus('This workspace is unavailable for editing.');return null;}
+    try{
+      if(!workspaceGroupMatches(ch,selection,expected)){workspaceStatus('This selection changed. Select it again before duplicating it.');return null;}
+      if(!delta||!Number.isFinite(delta.x)||!Number.isFinite(delta.y))throw new TypeError('Invalid duplicate offset');
+      var E=window.PhloemExcerpts,api=window.PhloemWorkspaceState,stamp=now(),excerpts=E.normalize(ch.readingExcerpts),workspace=api.normalize(ch.readingWorkspace);
+      // The copy steps right only as far as the paper allows, so duplicating never widens it.
+      var groupRight=0;
+      selection.clipIds.forEach(function(id){var p=workspace.positions[id];groupRight=Math.max(groupRight,p.x+p.width);});
+      selection.strokeIds.forEach(function(id){var source=workspace.strokes.find(function(stroke){return stroke.id===id;});api.displayStroke(source,workspace.positions).points.forEach(function(p){groupRight=Math.max(groupRight,p[0]);});});
+      delta={x:Math.max(0,Math.min(delta.x,workspace.width-groupRight)),y:delta.y};
+      var idMap={},positions={},strokes=[];
+      selection.clipIds.forEach(function(id){var p=workspace.positions[id],copyId=uid('excerpt-');idMap[id]=copyId;positions[copyId]={x:Math.max(0,p.x+delta.x),y:Math.max(0,p.y+delta.y),width:p.width};});
+      selection.strokeIds.forEach(function(id){
+        var source=workspace.strokes.find(function(stroke){return stroke.id===id;}),copy={id:uid('workspace-ink-'),color:source.color,width:source.width,style:'natural',points:source.points.map(function(p){return p.slice();})};
+        if(source.nib)copy.nib=source.nib;if(source.shape)copy.shape=source.shape;
+        if(source.anchor&&idMap[source.anchor.clipId])copy.anchor=Object.assign({},source.anchor,{clipId:idMap[source.anchor.clipId]});
+        else{var shown=api.displayStroke(source,workspace.positions);copy.points=shown.points.map(function(p){return[Math.max(0,p[0]+delta.x),Math.max(0,p[1]+delta.y),p[2]];});copy.width=Math.max(.5,Math.min(12,shown.width));}
+        strokes.push(copy);
+      });
+      workspace=workspaceFit(api,workspace,positions,strokes.filter(function(stroke){return !stroke.anchor;}));
+      selection.clipIds.forEach(function(id){
+        var source=excerpts.items.find(function(item){return item.id===id;}),copy=workspaceClipRecord(source);copy.id=idMap[id];delete copy.createdAt;
+        excerpts=E.upsert(excerpts,copy,stamp);workspace=api.place(workspace,copy.id,positions[copy.id],stamp);
+      });
+      strokes.forEach(function(stroke){workspace=api.addStroke(workspace,stroke,stamp);});
+      if(!saveClipsAndWorkspace(ch,excerpts,workspace))return null;
+      renderReadingExcerpts();
+      return{clipIds:selection.clipIds.map(function(id){return idMap[id];}),strokeIds:strokes.map(function(stroke){return stroke.id;})};
+    }catch(error){workspaceStatus('Could not duplicate this selection. Nothing was changed.');return null;}
+  }
   function workspaceEnsureSpace(logicalY,logicalX){
     var ch=find(currentId);if(readingWorkspaceUnavailable(ch))return false;
     if(logicalX===undefined)logicalX=0;
@@ -7009,7 +7103,7 @@
     workspaceView=window.PhloemWorkspaceView.create({context:workspaceContext,place:placeWorkspaceClip,updateNote:updateExcerptNote,
       stickyStyle:function(item){var hash=paperVisualHash({id:item.id}),note=WALL_NOTES[(hash>>>1)%WALL_NOTES.length];return{paper:note.cover,ink:note.ink,tapeTilt:((((hash>>>27)%11)-5)*.45)+'deg'};},
       goToSource:async function(id){if(!workspaceWide())setWorkspaceOpen(false,false);var moved=await goToExcerptSource(id);if(!moved)workspaceStatus(byId('excerptStatus').textContent||'Could not open the source. Your notes are safe.');return moved;},removeClip:removeReadingExcerpt,
-      addNote:function(point){return addWorkspaceExcerpt(null,point);},addStroke:workspaceAddStroke,eraseStrokes:workspaceEraseStrokes,moveGroup:workspaceMoveGroup,restoreGroup:workspaceRestoreGroup,grow:workspaceGrow,ensureSpace:workspaceEnsureSpace,
+      addNote:function(point){return addWorkspaceExcerpt(null,point);},addStroke:workspaceAddStroke,eraseStrokes:workspaceEraseStrokes,moveGroup:workspaceMoveGroup,restoreGroup:workspaceRestoreGroup,deleteGroup:workspaceDeleteGroup,restoreDeleted:workspaceRestoreDeleted,duplicateGroup:workspaceDuplicateGroup,grow:workspaceGrow,ensureSpace:workspaceEnsureSpace,
       close:function(){setWorkspaceOpen(false);},onTool:function(){if(pdfInkController&&pdfInkController.active())pdfInkController.cancel();}});
   }
   document.querySelectorAll('[data-workspace-open]').forEach(function(button){button.onclick=function(){setWorkspaceOpen(!workspaceOpen);};});

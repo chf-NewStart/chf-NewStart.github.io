@@ -525,3 +525,60 @@ Tests: new `tests/reading-guide-pen-controls.test.js` (fails on v190). Updated
 `reading-ai-providers` (85% default), `reading-selection-note-ai` and
 `reading-ipad-touch-dock` (the toggle now closes the controls itself).
 Not verified on a physical iPad.
+
+## 30. Lasso Delete and Duplicate; one Undo order for the whole Workspace (v192)
+
+houfu: "the lasso should come with a delete option and duplicate option right", and "check
+the undo order, im worried it only undo penstrokes instead of other stuff like lasso".
+
+What Undo covered before: pen strokes, eraser sweeps and lasso moves and resizes. Nothing
+done to a single note was recorded: dragging it by its strip, arrow keys, pinch, Make
+larger/smaller, adding or removing it. So after "write, then drag a note", Undo erased the
+writing and the drag could never be undone. Worse, a lasso move followed by a lone drag of
+one of its notes made that lasso step fail forever ("changed elsewhere") and blocked every
+older step.
+
+- **Single-note moves and resizes are Undo steps** (`placeNote` in
+  `reading-workspace-view.js`). They are recorded as the existing `'move'` kind, a group of
+  the note plus the writing on it, and undone through `restoreGroup`. Because they are now in
+  order on the stack, undoing the lone drag first rebases the older lasso step, which then
+  undoes too.
+- **Lasso Duplicate and Delete.** A small bar (`.workspace-selection-actions`, a child of the
+  selection box, 28px above it so it stays clear of the corner handles' 44px targets; below
+  it near the top of the paper) offers Duplicate and Delete. Keyboard: Delete/Backspace and
+  Command-D on the focused selection. Duplicate copies the notes (text, quote and source
+  link, new ids) 30 units down and right, re-attaches the writing on each copied note to
+  its copy, shifts loose handwriting, and selects the copy. Delete removes the notes and
+  all their writing. New adapter functions in `reading.js`: `workspaceDeleteGroup`,
+  `workspaceRestoreDeleted`, `workspaceDuplicateGroup`, saved together through
+  `saveClipsAndWorkspace` (one all-or-nothing save of clips and workspace).
+- **New history kinds** `'create'` (duplicate, new note) and `'delete'` (lasso Delete, note
+  Remove). Undo of a delete restores under the same ids, so a note keeps its colour and
+  position and the writing on it follows it. The data layer already lets a later upsert beat
+  its tombstone. `rebaseHistory` and `rebindStroke` handle the new kinds.
+- **Adding a note is an Undo step**; Redo brings it back with what was typed in it.
+- **Remove in a note's menu** no longer asks for confirmation, because one Undo brings the
+  note, its text and its writing back. It now also removes the writing on the note, which
+  used to stay saved but hidden. The Clips panel still confirms, as before.
+- Strokes and erases now go through `recordUndo` too, so the 50-step cap applies to them.
+- The Undo/Redo button labels say "the last Workspace change".
+
+Not recorded (unchanged): typing in a note (the text box keeps its own undo), placing a
+passage from the paper, and paper growth.
+
+Tests: new `tests/reading-workspace-lasso-actions.test.js`. Updated
+`reading-workspace-browser` (Cmd-Z after the pinches now undoes the last resize),
+`reading-split-undo-browser` (a new note enables Workspace Undo) and
+`reading-workspace-ergonomics-qa` (two-finger taps undo the newer note before the older
+stroke; three-finger taps bring both back). Not verified on a physical iPad.
+
+Review fixes before shipping (an independent review found five real problems):
+- Strokes brought back by Undo of a Delete got a new `createdAt`, so older steps on them
+  failed with "changed elsewhere". `geometryKey` now ignores `createdAt` as well as
+  `updatedAt` when rebasing history.
+- A note brought back by Undo keeps its original `createdAt`, so it keeps its place in
+  the Clips list.
+- Duplicate steps right only as far as the paper allows, so it never widens the paper.
+- The Duplicate/Delete bar is counter-scaled (`--selection-ui-scale`) so it stays the same
+  size on screen at any Workspace zoom, and it moves below the box (then left) when the
+  floating tool palette or the top of the pane would cover it.

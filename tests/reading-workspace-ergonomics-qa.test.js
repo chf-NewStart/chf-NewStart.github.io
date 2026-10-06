@@ -137,26 +137,34 @@ async function fingersTap(page, count) {
     assert(moved[0].points[0][0] > original.points[0][0] + 10, 'lasso nudge moved the ink: ' + JSON.stringify([original.points[0], moved[0].points[0]]));
     await page.keyboard.press('Escape');
 
-    // Two-finger tap undoes the move, then the stroke; paper and note are untouched.
+    // Two-finger taps undo in order: the move, then the newer note, then the stroke.
+    // Paper highlights are untouched.
     await fingersTap(page, 2);
     await page.waitForFunction(x => { const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
       .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1'));
     return ch.readingWorkspace.strokes.some(s => Math.abs(s.points[0][0] - x) < .5 && Number((ch.readingWorkspace.deleted || {})[s.id] || 0) < Number(s.updatedAt || 0)); }, original.points[0][0]);
     assert.equal(await page.locator('#workspaceStatus').textContent(), 'Undid last workspace change');
     await fingersTap(page, 2);
+    await page.waitForFunction(() => !JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+      .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1')).readingExcerpts.items.some(item => item.note === 'QA note from the rail'));
+    assert.equal(live((await saved(page)).readingWorkspace).length, 1, 'the note goes before the older stroke');
+    await fingersTap(page, 2);
     await page.waitForFunction(() => { const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
       .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1'));
     return ch.readingWorkspace.strokes.every(s => Number((ch.readingWorkspace.deleted || {})[s.id] || 0) >= Number(s.updatedAt || 0)); });
     ch = await saved(page);
     assert.equal(paperHighlights(ch).length, 1, 'workspace taps never undo paper highlights');
-    assert(ch.readingExcerpts.items.some(item => item.note === 'QA note from the rail'), 'workspace taps never remove notes');
     assert.equal(await page.locator('#zenUndo').isDisabled(), false, 'paper Undo stays available');
 
-    // Three-finger tap redoes the stroke.
+    // Three-finger taps redo the stroke, then bring the note back with its text.
     await fingersTap(page, 3);
     await page.waitForFunction(() => { const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
       .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1'));
     return ch.readingWorkspace.strokes.some(s => Number((ch.readingWorkspace.deleted || {})[s.id] || 0) < Number(s.updatedAt || 0)); });
+    await page.waitForTimeout(300);
+    await fingersTap(page, 3);
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+      .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1')).readingExcerpts.items.some(item => item.note === 'QA note from the rail'));
 
     // Paper color button and paper Undo stay on the paper side.
     await page.locator('#zenWorkspaceMarker').click();

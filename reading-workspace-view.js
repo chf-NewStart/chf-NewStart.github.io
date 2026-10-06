@@ -42,6 +42,15 @@
       handle.className = 'workspace-selection-handle'; handle.dataset.corner = corner; handle.setAttribute('aria-hidden', 'true');
       selectionBox.appendChild(handle);
     }
+    // Like the iPadOS edit menu over a selection: Duplicate and Delete sit just above the box.
+    const selectionActions = document.createElement('div');
+    selectionActions.className = 'workspace-selection-actions'; selectionActions.setAttribute('role', 'toolbar'); selectionActions.setAttribute('aria-label', 'Selection actions');
+    for (const [action, label] of [['duplicate', 'Duplicate'], ['delete', 'Delete']]) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = `workspace-selection-${action}`; button.dataset.selectionAction = action; button.textContent = label;
+      selectionActions.appendChild(button);
+    }
+    selectionBox.appendChild(selectionActions);
     board.append(lassoLayer, selectionBox);
     const viewport = global.PhloemWorkspaceViewport ? global.PhloemWorkspaceViewport.create({ onNeedSpace: ensurePaperAt, isBusy: () => !!gesture }) : null;
     function resizeLayout() {
@@ -224,7 +233,27 @@
       ink.querySelectorAll('[data-stroke-id]').forEach(path => path.classList.toggle('workspace-selected', selection.strokeIds.includes(path.dataset.strokeId)));
       const b = selection.bounds;
       Object.assign(selectionBox.style, { left: `${(b.x + delta.x) / observedWidth * 100}%`, top: `${(b.y + delta.y) / observedHeight * 100}%`, width: `${b.width / observedWidth * 100}%`, height: `${b.height / observedHeight * 100}%` });
-      selectionBox.setAttribute('aria-label', `${selection.clipIds.length} notes and ${selection.strokeIds.length} strokes selected. Drag to move; drag a corner to resize; arrow keys to nudge; plus and minus to resize; Escape to clear.`);
+      // Near the top of the paper the actions drop below the box; near the left edge they line up with its left side.
+      const unit = (board.getBoundingClientRect ? board.getBoundingClientRect().width : board.clientWidth) / Math.max(1, observedWidth);
+      selectionBox.classList.toggle('workspace-selection-near-top', (b.y + delta.y) * unit < 72);
+      selectionBox.classList.toggle('workspace-selection-near-left', (b.x + delta.x + b.width) * unit < 200);
+      placeSelectionActions();
+      selectionBox.setAttribute('aria-label', `${selection.clipIds.length} notes and ${selection.strokeIds.length} strokes selected. Drag to move; drag a corner to resize; arrow keys to nudge; plus and minus to resize; Delete to delete; Command-D to duplicate; Escape to clear.`);
+    }
+    // The Duplicate/Delete bar keeps its on-screen size at any Workspace zoom, and moves
+    // below the box, then left, when the floating tool palette would cover it.
+    function placeSelectionActions() {
+      if (!selectionBox.querySelector || !board.getBoundingClientRect || !selectionBox.style.setProperty) return;
+      const bar = selectionBox.querySelector('.workspace-selection-actions'); if (!bar) return;
+      const zoom = board.getBoundingClientRect().width / Math.max(1, board.clientWidth) || 1;
+      selectionBox.style.setProperty('--selection-ui-scale', String(1 / zoom));
+      selectionBox.style.setProperty('--selection-actions-shift', '0px');
+      if (selectionBox.hidden) return;
+      const covered = () => { const r = bar.getBoundingClientRect(), t = tools.getBoundingClientRect(); return r.right > t.left && r.left < t.right && r.bottom > t.top && r.top < t.bottom ? r.right - t.left : 0; };
+      const above = bar.getBoundingClientRect().top < scroll.getBoundingClientRect().top;
+      if ((above || covered()) && !selectionBox.classList.contains('workspace-selection-near-top')) selectionBox.classList.add('workspace-selection-near-top');
+      const overlap = covered();
+      if (overlap) selectionBox.style.setProperty('--selection-actions-shift', `${(overlap + 8) / zoom}px`);
     }
     function previewGroup(delta) {
       if (!selection) return;
@@ -298,6 +327,41 @@
       const after = groupSnapshot(selection);
       if (after) { recordUndo({ kind: 'move', before, after }, undoStack); redoStack = []; selection.snapshot = after; }
       render();
+    }
+    // Every live stroke on these notes belongs with them, whatever was written since.
+    function liveGroup(group) {
+      const c = context(), clips = new Set(group.clipIds), strokeIds = new Set(group.strokeIds);
+      strokesOf(c).forEach(stroke => { if (stroke.anchor && clips.has(stroke.anchor.clipId) && activeStroke(c, stroke)) strokeIds.add(stroke.id); });
+      return { clipIds: [...group.clipIds], strokeIds: [...strokeIds] };
+    }
+    function deleteGroup(group) {
+      if (!adapter.deleteGroup || !available(context()) || context().busy) return false;
+      group = liveGroup(group);
+      const before = groupSnapshot(group);
+      const record = before && adapter.deleteGroup(group, before);
+      if (!record) { render(); return false; }
+      recordUndo({ kind: 'delete', group, record }, undoStack); redoStack = [];
+      render(); return true;
+    }
+    function deleteSelection() {
+      if (!selection) return;
+      const group = { clipIds: [...selection.clipIds], strokeIds: [...selection.strokeIds] };
+      if (JSON.stringify(groupSnapshot(group)) !== JSON.stringify(selection.snapshot)) { clearSelection(); render(); setStatus('This selection changed. Circle it again before deleting.'); return; }
+      clearSelection();
+      if (deleteGroup(group)) { setStatus(''); board.focus({ preventScroll: true }); }
+      else setStatus('Could not delete this selection. Nothing was changed.');
+    }
+    function duplicateSelection() {
+      if (!selection || !adapter.duplicateGroup || !available(context()) || context().busy) return;
+      const group = { clipIds: [...selection.clipIds], strokeIds: [...selection.strokeIds] }, before = groupSnapshot(group);
+      if (!before || JSON.stringify(before) !== JSON.stringify(selection.snapshot)) { clearSelection(); render(); setStatus('This selection changed. Circle it again before duplicating.'); return; }
+      // The copy lands a little down and to the right, and becomes the selection.
+      const copies = adapter.duplicateGroup(group, { x: 30, y: 30 }, before);
+      if (!copies) { setStatus('Could not duplicate this selection. Nothing was changed.'); render(); return; }
+      recordUndo({ kind: 'create', group: copies, record: null }, undoStack); redoStack = [];
+      selection = { clipIds: copies.clipIds, strokeIds: copies.strokeIds };
+      setStatus(''); render();
+      if (selection) selectionBox.focus({ preventScroll: true });
     }
     function startSelection(event, pointerId) {
       if (gesture || !available(context()) || context().busy) return false;
@@ -412,12 +476,25 @@
       const width = clamp(Number(raw.width) || 650, 280, 900);
       return { x: clamp(Number(raw.x) || 0, 0, widthOf(c) - width), y: clamp(Number(raw.y) || 0, 0, heightOf(c) - 80), width };
     }
+    // A note on its own (with the writing on it) as a group, so moving or resizing it
+    // is one Undo step, in order with handwriting and lasso changes.
+    function noteGroup(id) {
+      const c = context();
+      return { clipIds: [id], strokeIds: strokesOf(c).filter(stroke => stroke.anchor && stroke.anchor.clipId === id && activeStroke(c, stroke)).map(stroke => stroke.id) };
+    }
+    function placeNote(id, box) {
+      const group = noteGroup(id), before = groupSnapshot(group);
+      if (adapter.place(id, box) !== true) return false;
+      const after = before && groupSnapshot(group);
+      if (after && geometryKey(after) !== geometryKey(before) && adapter.restoreGroup) { recordUndo({ kind: 'move', before, after }, undoStack); redoStack = []; }
+      return true;
+    }
     function moveCard(state, deltaX, deltaY) {
       const c = context();
       if (!liveItem(state) || c.busy) return;
       ensurePaperAt(state.box.y + deltaY + 500, state.box.x + deltaX + state.box.width + 300);
       const box = { ...state.box, x: clamp(state.box.x + deltaX, 0, observedWidth - state.box.width), y: clamp(state.box.y + deltaY, 0, observedHeight - 80) };
-      if (adapter.place(state.id, box) === true) { setBox(state, box, observedHeight); render(); }
+      if (placeNote(state.id, box)) { setBox(state, box, observedHeight); render(); }
       else setStatus('Could not move this clip.');
     }
     function resizeCard(state, nextWidth) {
@@ -428,7 +505,7 @@
       const center = old.x + old.width / 2;
       ensurePaperAt(old.y + 500, center + width / 2 + 300);
       const box = { ...old, x: clamp(center - width / 2, 0, observedWidth - width), width };
-      if (adapter.place(state.id, box) !== true) { setStatus('Could not resize this note.'); return false; }
+      if (!placeNote(state.id, box)) { setStatus('Could not resize this note.'); return false; }
       setBox(state, box, observedHeight); render(); return true;
     }
     function finishPinch(commit) {
@@ -441,7 +518,7 @@
       for (const id of g.ids) if (g.state.card.hasPointerCapture && g.state.card.hasPointerCapture(id)) g.state.card.releasePointerCapture(id);
       if (!commit || !liveItem(g.state) || context().busy) { setBox(g.state, g.startBox, observedHeight); return; }
       if (g.state.box.width === g.startBox.width && g.state.box.x === g.startBox.x) return;
-      if (adapter.place(g.state.id, g.state.box) !== true) { setBox(g.state, g.startBox, observedHeight); setStatus('Could not resize this note.'); }
+      if (!placeNote(g.state.id, g.state.box)) { setBox(g.state, g.startBox, observedHeight); setStatus('Could not resize this note.'); }
       render();
     }
     function openEditor(state, focusInput) {
@@ -563,7 +640,15 @@
           if (!global.confirm('Dismiss this unsaved draft? Copy its text first if you need it.')) return;
           drafts.delete(draftKey(state)); card.remove(); render(); return;
         }
-        if (!liveItem(state) || !global.confirm('Remove this clip and its note?')) return;
+        if (!liveItem(state)) return;
+        // Removing is one Undo step (the note, its text and the writing on it come back),
+        // so it needs no confirmation.
+        if (adapter.deleteGroup) {
+          if (deleteGroup(noteGroup(id))) { menu.open = false; tapStatus('Note removed · Undo brings it back'); }
+          else { message.classList.remove('workspace-status-saved'); message.textContent = 'Could not remove this clip.'; }
+          return;
+        }
+        if (!global.confirm('Remove this clip and its note?')) return;
         if (adapter.removeClip(id) === true) render();
         else { message.classList.remove('workspace-status-saved'); message.textContent = 'Could not remove this clip.'; }
       });
@@ -584,7 +669,7 @@
         gesture = null;
         if (event.type === 'pointercancel' || !liveItem(state)) { setBox(state, g.startBox, observedHeight); return; }
         if (state.box.x === g.startBox.x && state.box.y === g.startBox.y) return;
-        if (adapter.place(id, state.box) !== true) { setBox(state, g.startBox, observedHeight); setStatus('Could not move this clip.'); }
+        if (!placeNote(id, state.box)) { setBox(state, g.startBox, observedHeight); setStatus('Could not move this clip.'); }
         render();
       };
       handle.addEventListener('pointerup', finishDrag); handle.addEventListener('pointercancel', finishDrag);
@@ -883,10 +968,10 @@
         const anchor = g.anchor || noteUnderStroke(g.points);
         if (anchor) stroke.anchor = anchor;
         if (g.straight) stroke.shape = 'line';
-        if (adapter.addStroke(stroke) === true) { undoStack.push({ kind: 'add', stroke: canonicalStroke(stroke.id) || stroke }); redoStack = []; }
+        if (adapter.addStroke(stroke) === true) { recordUndo({ kind: 'add', stroke: canonicalStroke(stroke.id) || stroke }, undoStack); redoStack = []; }
         else setStatus('Could not save this stroke.');
       } else if (g.mode === 'eraser' && g.ids.size) {
-        if (adapter.eraseStrokes([...g.ids]) === true) { undoStack.push({ kind: 'erase', strokes: g.erased }); redoStack = []; }
+        if (adapter.eraseStrokes([...g.ids]) === true) { recordUndo({ kind: 'erase', strokes: g.erased }, undoStack); redoStack = []; }
         else setStatus('Could not erase these strokes.');
       }
       render();
@@ -935,7 +1020,14 @@
       if (selection) { clearSelection(); setStatus(''); render(); }
     }, true);
     board.addEventListener('pointercancel', event => { if (fingerTap && fingerTap.pointerId === event.pointerId) fingerTap = null; }, true);
+    const onSelectionActions = event => !!(event.target && event.target.closest && event.target.closest('.workspace-selection-actions'));
+    selectionActions.addEventListener('click', event => {
+      const button = event.target.closest('[data-selection-action]'); if (!button) return;
+      event.preventDefault(); event.stopPropagation();
+      if (button.dataset.selectionAction === 'delete') deleteSelection(); else duplicateSelection();
+    });
     board.addEventListener('pointerdown', event => {
+      if (onSelectionActions(event)) return;
       if (startGripDrag(event)) return;
       if (tool === 'select') {
         if (event.button !== 0) return;
@@ -974,9 +1066,10 @@
     }, true);
     board.addEventListener('pointercancel', event => { if (gesture && gesture.pointerId === event.pointerId) { if (gesture.kind === 'stroke') finishStroke(false); else cancel(); } }, true);
     board.addEventListener('lostpointercapture', event => { if (gesture && gesture.pointerId === event.pointerId) { if (gesture.kind === 'stroke') finishStroke(false); else cancel(); } }, true);
-    board.addEventListener('click', event => { if (tool === 'select' || performance.now() <= suppressClickUntil) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+    board.addEventListener('click', event => { if (onSelectionActions(event)) return; if (tool === 'select' || performance.now() <= suppressClickUntil) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
     // Older iPad WebKit may report Pencil through TouchEvent without a pen PointerEvent.
     board.addEventListener('touchstart', event => {
+      if (onSelectionActions(event) && !gesture) return;
       if (tool === 'select') {
         const stylus = [...event.changedTouches].find(t => t.touchType === 'stylus');
         if (event.touches.length > 1) { if (gesture) cancel(); if (!stylus) return; }
@@ -1043,7 +1136,13 @@
         const limits = scaleLimits(origin, measured, before), grow = event.key === '+' || event.key === '=';
         commitScale(origin, clamp(grow ? 1.1 : 1 / 1.1, limits.low, limits.high), measured, before); return;
       }
+      if (selection && event.target === selectionBox && (event.key === 'Delete' || event.key === 'Backspace') && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault(); event.stopImmediatePropagation(); deleteSelection(); return;
+      }
       const key = event.key.toLowerCase();
+      if (selection && event.target === selectionBox && (event.metaKey || event.ctrlKey) && key === 'd') {
+        event.preventDefault(); event.stopImmediatePropagation(); duplicateSelection(); return;
+      }
       if ((event.metaKey || event.ctrlKey) && (key === 'z' || key === 'y')) {
         event.preventDefault(); event.stopImmediatePropagation(); cancel(); history(key === 'y' || event.shiftKey ? 'redo' : 'undo');
       }
@@ -1061,15 +1160,16 @@
     function geometryKey(record) {
       if (!record) return '';
       const sorted = value => Array.isArray(value) ? value.map(sorted) : value && typeof value === 'object'
-        ? Object.fromEntries(Object.keys(value).filter(key => key !== 'updatedAt').sort().map(key => [key, sorted(value[key])])) : value;
+        ? Object.fromEntries(Object.keys(value).filter(key => key !== 'updatedAt' && key !== 'createdAt').sort().map(key => [key, sorted(value[key])])) : value;
       return JSON.stringify(sorted(record));
     }
     // Restoring geometry gives it a fresh sync clock. Rebase our own matching
     // history records so a move can be undone, then the stroke that preceded it.
     function rebaseHistory(rewritten) {
       const positions = positionsOf(context());
-      const clipIds = new Set(rewritten.kind === 'move' ? Object.keys(rewritten.before.positions) : []);
-      const strokeIds = new Set(rewritten.kind === 'move' ? rewritten.before.strokes.map(stroke => stroke.id) : rewritten.kind === 'add' ? [rewritten.stroke.id] : rewritten.strokes.map(stroke => stroke.id));
+      const grouped = rewritten.kind === 'create' || rewritten.kind === 'delete';
+      const clipIds = new Set(rewritten.kind === 'move' ? Object.keys(rewritten.before.positions) : grouped ? rewritten.group.clipIds : []);
+      const strokeIds = new Set(rewritten.kind === 'move' ? rewritten.before.strokes.map(stroke => stroke.id) : grouped ? rewritten.group.strokeIds : rewritten.kind === 'add' ? [rewritten.stroke.id] : rewritten.strokes.map(stroke => stroke.id));
       const stroke = record => { const live = strokeIds.has(record.id) && canonicalStroke(record.id); return live && geometryKey(live) === geometryKey(record) ? copy(live) : record; };
       for (const action of [...undoStack, ...redoStack]) {
         if (action.kind === 'add') action.stroke = stroke(action.stroke);
@@ -1093,6 +1193,10 @@
         if (action.kind === 'add') action.stroke = replace(action.stroke);
         if (action.kind === 'erase') action.strokes = action.strokes.map(replace);
         if (action.kind === 'move') for (const snapshot of [action.before, action.after]) snapshot.strokes = snapshot.strokes.map(replace);
+        if (action.kind === 'create' || action.kind === 'delete') {
+          action.group = { ...action.group, strokeIds: action.group.strokeIds.map(id => id === stroke.id ? saved.id : id) };
+          if (action.record) action.record = { ...action.record, strokes: action.record.strokes.map(replace) };
+        }
       }
       if (selection) selection.strokeIds = selection.strokeIds.map(id => id === stroke.id ? saved.id : id);
     }
@@ -1107,6 +1211,17 @@
         if (adapter.restoreGroup && adapter.restoreGroup(target, expected) === true) {
           const restored = groupSnapshot({ clipIds: Object.keys(target.positions), strokeIds: target.strokes.map(stroke => stroke.id) });
           if (restored) { next = { ...action, [direction === 'undo' ? 'before' : 'after']: restored }; if (selection) selection.snapshot = groupSnapshot(selection); }
+        }
+      } else if (action.kind === 'create' || action.kind === 'delete') {
+        // A duplicate or a new note is undone by removing it; a deletion by bringing it back.
+        if ((action.kind === 'create') === (direction === 'undo')) {
+          const group = liveGroup(action.group), before = groupSnapshot(group);
+          const record = before && adapter.deleteGroup ? adapter.deleteGroup(group, before) : null;
+          if (record) next = { kind: action.kind, group, record };
+        } else if (action.record && adapter.restoreDeleted && adapter.restoreDeleted(action.record) === true) {
+          const group = { clipIds: action.record.clips.map(clip => clip.id), strokeIds: action.record.strokes.map(stroke => stroke.id) };
+          next = { kind: action.kind, group, record: null };
+          if (tool === 'select') selection = group;
         }
       } else if (action.kind === 'add') {
         if (direction === 'undo') {
@@ -1187,7 +1302,10 @@
       const notePx = () => board.getBoundingClientRect().width / Math.max(observedWidth, 1);
       const addNoteAt = point => {
         const id = adapter.addNote({ x: Math.round(point.x), y: Math.round(point.y), width: NOTE_WIDTH });
-        if (id != null) { render(); focus(id, true); } else setStatus('Could not add a note.');
+        if (id == null) { setStatus('Could not add a note.'); return; }
+        // A new note is an Undo step too (Redo brings it back with whatever was typed in it).
+        if (adapter.deleteGroup && itemsOf(context()).some(item => String(item.id) === String(id))) { recordUndo({ kind: 'create', group: { clipIds: [String(id)], strokeIds: [] }, record: null }, undoStack); redoStack = []; }
+        render(); focus(id, true);
       };
       const endNoteDrag = () => { if (noteDrag && noteDrag.ghost) noteDrag.ghost.remove(); noteDrag = null; };
       buttons.newNote.addEventListener('pointerdown', event => {

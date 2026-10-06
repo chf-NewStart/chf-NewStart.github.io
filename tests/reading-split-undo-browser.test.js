@@ -201,7 +201,8 @@ async function checkSplitBounds(page) {
       .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1'))?.readingExcerpts?.items
       ?.some(item => item.note === 'Keep this workspace note through both ink histories.'));
     const notes = (await chapter(page)).readingExcerpts.items;
-    await historyButtons(page, { paperUndo: false, paperRedo: false, workspaceUndo: false, workspaceRedo: false });
+    // The new note is itself a Workspace Undo step, beneath everything that follows.
+    await historyButtons(page, { paperUndo: false, paperRedo: false, workspaceUndo: true, workspaceRedo: false });
 
     await highlight(page, 'First independent paper highlight.');
     await expectCounts(page, 1, 0);
@@ -221,7 +222,7 @@ async function checkSplitBounds(page) {
     await page.locator('#workspaceUndo').click();
     await expectCounts(page, 1, 0);
     assert.deepEqual(highlights(await chapter(page)), highlights(initial), 'workspace Undo leaves paper highlights intact');
-    await historyButtons(page, { paperUndo: true, paperRedo: false, workspaceUndo: false, workspaceRedo: true });
+    await historyButtons(page, { paperUndo: true, paperRedo: false, workspaceUndo: true, workspaceRedo: true });
     await redoWorkspace(page);
     await expectCounts(page, 1, 1);
 
@@ -229,10 +230,10 @@ async function checkSplitBounds(page) {
     await page.locator('#zenUndo').click();
     await page.locator('#workspaceUndo').click();
     await expectCounts(page, 0, 0);
-    await historyButtons(page, { paperUndo: false, paperRedo: true, workspaceUndo: false, workspaceRedo: true });
+    await historyButtons(page, { paperUndo: false, paperRedo: true, workspaceUndo: true, workspaceRedo: true });
     await highlight(page, 'Second independent paper highlight.');
     await expectCounts(page, 1, 0);
-    await historyButtons(page, { paperUndo: true, paperRedo: false, workspaceUndo: false, workspaceRedo: true });
+    await historyButtons(page, { paperUndo: true, paperRedo: false, workspaceUndo: true, workspaceRedo: true });
     await redoWorkspace(page);
     await expectCounts(page, 1, 1);
     await page.locator('#zenUndo').click();

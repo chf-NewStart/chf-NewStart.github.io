@@ -49,6 +49,13 @@
 .workspace-selection-handle[data-corner="sw"] { left:-8px; bottom:-8px; cursor:nesw-resize; }
 .workspace-selection-handle[data-corner="se"] { right:-8px; bottom:-8px; cursor:nwse-resize; }
 .workspace-selection-box:active { cursor:grabbing; }
+/* Duplicate / Delete over a lasso selection, clear of the corner handles' 44px targets. */
+.workspace-selection-actions { --s:var(--selection-ui-scale,1); position:absolute; right:var(--selection-actions-shift,0px); bottom:calc(100% + 28px * var(--s)); transform:scale(var(--s)); transform-origin:right bottom; display:flex; gap:2px; padding:3px; border:1px solid var(--line); border-radius:12px; background:var(--surface); box-shadow:var(--shadow); cursor:default; white-space:nowrap; }
+.workspace-selection-near-top .workspace-selection-actions { bottom:auto; top:calc(100% + 28px * var(--s)); transform-origin:right top; }
+.workspace-selection-near-left .workspace-selection-actions { right:auto; left:0; transform-origin:left bottom; }
+.workspace-selection-near-left.workspace-selection-near-top .workspace-selection-actions { transform-origin:left top; }
+.workspace-selection-actions button { min-width:44px; min-height:40px; padding:0 14px; border:0; border-radius:9px; background:transparent; color:var(--ink); font:650 13px var(--sans); touch-action:manipulation; }
+.workspace-selection-actions button:hover, .workspace-selection-actions button:focus-visible { background:color-mix(in srgb,var(--accent) 12%,transparent); }
 .workspace-selection-box:focus-visible { outline:3px solid color-mix(in srgb,var(--accent) 30%,transparent); }
 .workspace-card.workspace-selected { outline:1px solid var(--accent); outline-offset:2px; }
 .workspace-ink .workspace-selected { filter:drop-shadow(0 0 1px var(--accent)); }

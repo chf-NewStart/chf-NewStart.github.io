@@ -6750,15 +6750,20 @@
      while Apple Pencil is down or was just lifted, and broad palm-sized contacts. Pencil
      resizes only from the grip in the middle, and nothing moves until a drag of a few
      pixels, so a stray tap leaves the split alone. */
-  var workspacePenDown=0,workspacePenAt=0;
-  document.addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){workspacePenDown++;workspacePenAt=Date.now();}},true);
-  ['pointerup','pointercancel'].forEach(function(type){document.addEventListener(type,function(e){if(e.pointerType==='pen'){workspacePenDown=Math.max(0,workspacePenDown-1);workspacePenAt=Date.now();}},true);});
+  var workspacePenDown=0,workspacePenAt=0,workspacePenTimer=0;
+  function markWorkspacePen(){
+    workspacePenAt=Date.now();document.body.classList.add('workspace-pen-active');clearTimeout(workspacePenTimer);
+    // Ten quiet seconds after the last Pencil stroke, the whole strip grabs the divider again.
+    workspacePenTimer=setTimeout(function(){if(!workspacePenDown)document.body.classList.remove('workspace-pen-active');},10000);
+  }
+  document.addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){workspacePenDown++;markWorkspacePen();}},true);
+  ['pointerup','pointercancel'].forEach(function(type){document.addEventListener(type,function(e){if(e.pointerType==='pen'){workspacePenDown=Math.max(0,workspacePenDown-1);markWorkspacePen();}},true);});
   function workspaceDividerAccepts(e){
     if(e.pointerType==='touch'){
       if(workspacePenDown||Date.now()-workspacePenAt<800)return false;
       if((e.width||0)>40||(e.height||0)>40)return false;
     }
-    if(e.pointerType==='pen'){var r=workspaceDivider.getBoundingClientRect();if(Math.abs(e.clientY-(r.top+r.height/2))>60)return false;}
+    if(e.pointerType==='pen'){var r=byId('workspaceDividerGrip').getBoundingClientRect();if(e.clientY<r.top||e.clientY>r.bottom)return false;}
     return true;
   }
   workspaceDivider.onpointerdown=function(e){

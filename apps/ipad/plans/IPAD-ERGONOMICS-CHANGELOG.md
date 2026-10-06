@@ -491,6 +491,12 @@ nothing else caught, takes that note. Updated `tests/reading-workspace-selection
 **Divider.** The 44px divider strip took any pointer, so a palm resting while writing next
 to it resized the panes. Now (in `reading.js`) finger touches are ignored while Apple
 Pencil is down or for 800ms after it lifts, and palm-sized contacts (over 40px) are ignored.
-Pencil resizes only from the middle grip (±60px), and nothing moves until a 6px drag. A
+Pencil resizes only from the middle grip, and nothing moves until a 6px drag.
+houfu then clarified the divider "just moves accidentally when i write near it": Pencil
+strokes that started inside the 44px strip (22px either side of the line) grabbed it. So
+while Pencil is in use (any pen pointer in the last 10 seconds, body class
+`workspace-pen-active`), the strip has `pointer-events:none` and only a 44x96px
+`#workspaceDividerGrip` in the middle takes pointers; strokes beside the line reach the
+paper or Workspace underneath. A
 deliberate finger drag and double-click reset still work. New
 `tests/reading-workspace-divider-palm.test.js`. Not verified on a physical iPad.

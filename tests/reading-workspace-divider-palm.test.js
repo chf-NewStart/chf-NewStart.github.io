@@ -88,6 +88,20 @@ const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('readi
     assert(fingered < start - 5, `a deliberate finger drag still resizes: ${start} -> ${fingered}`);
     await drag({ type: 'pen', dx: 120 });
     assert(await percent() > fingered + 5, 'Pencil on the middle grip still resizes');
+    // While Pencil is in use, a stroke starting right beside the divider line reaches the
+    // paper or Workspace underneath; only the middle grip still grabs the divider.
+    const hits = await page.evaluate(() => {
+      document.getElementById('pdfFrame').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'pen', pointerId: 60, clientX: 100, clientY: 300 }));
+      document.getElementById('pdfFrame').dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'pen', pointerId: 60, clientX: 100, clientY: 300 }));
+      const r = document.getElementById('workspaceDivider').getBoundingClientRect(), mid = r.top + r.height / 2;
+      const at = (x, y) => { const el = document.elementFromPoint(x, y); return el && (el.closest('#workspaceDivider') ? (el.id || 'divider') : el.closest('#workspaceBoard') ? 'board' : el.closest('#documentPane') ? 'paper' : el.id || el.className); };
+      return { active: document.body.classList.contains('workspace-pen-active'),
+        leftOfLine: at(r.left + 8, mid + 200), rightOfLine: at(r.right - 8, mid + 200), grip: at(r.left + r.width / 2, mid) };
+    });
+    assert(hits.active, 'Pencil use marks the page');
+    assert.equal(hits.leftOfLine, 'paper', 'a Pencil stroke just left of the divider line goes to the paper: ' + JSON.stringify(hits));
+    assert.equal(hits.rightOfLine, 'board', 'a Pencil stroke just right of the divider line goes to the Workspace: ' + JSON.stringify(hits));
+    assert.equal(hits.grip, 'workspaceDividerGrip', 'the middle grip still takes the divider');
     assert.deepEqual(errors, []);
     console.log('PASS the divider ignores a resting hand and stray Pencil, and still resizes on purpose');
   } finally {

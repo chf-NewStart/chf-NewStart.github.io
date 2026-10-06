@@ -20,6 +20,7 @@
 		A11C0DE12FEA000100000002 /* PhloemBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11C0DE12FEA000100000012 /* PhloemBridgeViewController.swift */; };
 		A11C0DE12FEA000100000003 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A11C0DE12FEA000100000013 /* PrivacyInfo.xcprivacy */; };
 		A11C0DE12FEA000100000004 /* PhloemCloudPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11C0DE12FEA000100000014 /* PhloemCloudPlugin.swift */; };
+		A11C0DE12FEA000100000006 /* PhloemGooglePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11C0DE12FEA000100000016 /* PhloemGooglePlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		A11C0DE12FEA000100000012 /* PhloemBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhloemBridgeViewController.swift; sourceTree = "<group>"; };
 		A11C0DE12FEA000100000013 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A11C0DE12FEA000100000014 /* PhloemCloudPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhloemCloudPlugin.swift; sourceTree = "<group>"; };
+		A11C0DE12FEA000100000016 /* PhloemGooglePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhloemGooglePlugin.swift; sourceTree = "<group>"; };
 		A11C0DE12FEA000100000015 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -77,6 +79,7 @@
 				A11C0DE12FEA000100000012 /* PhloemBridgeViewController.swift */,
 				A11C0DE12FEA000100000011 /* PhloemAIPlugin.swift */,
 				A11C0DE12FEA000100000014 /* PhloemCloudPlugin.swift */,
+				A11C0DE12FEA000100000016 /* PhloemGooglePlugin.swift */,
 				A11C0DE12FEA000100000015 /* App.entitlements */,
 				A11C0DE12FEA000100000013 /* PrivacyInfo.xcprivacy */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
@@ -183,6 +186,7 @@
 				A11C0DE12FEA000100000002 /* PhloemBridgeViewController.swift in Sources */,
 				A11C0DE12FEA000100000001 /* PhloemAIPlugin.swift in Sources */,
 				A11C0DE12FEA000100000004 /* PhloemCloudPlugin.swift in Sources */,
+				A11C0DE12FEA000100000006 /* PhloemGooglePlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

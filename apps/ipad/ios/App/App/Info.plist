@@ -68,5 +68,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>PhloemGoogleClientID</key>
+	<string></string>
 </dict>
 </plist>

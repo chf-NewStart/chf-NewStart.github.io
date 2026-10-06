@@ -86,6 +86,9 @@ test('native packaging blocks browser sync credentials without disabling the nat
   assert.equal(context.syncCfg, null);
   assert.equal(reads, 0, 'native startup must not read the GitHub sync configuration');
   assert.equal(context.gdriveOn(), false);
+  context.window.PHLOEM_GOOGLE_DRIVE = true;
+  assert.equal(context.gdriveOn(), true, 'Drive runs natively once the Google sign-in plugin is ready');
+  context.window.PHLOEM_GOOGLE_DRIVE = false;
   assert.equal(savedData.get('readingRoom.sync.v1'), savedSync);
   assert.equal(savedData.get('readingRoom.v1'), 'test-notes');
   context.window.PHLOEM_NATIVE = false;

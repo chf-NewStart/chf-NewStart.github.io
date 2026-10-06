@@ -48,16 +48,17 @@ export function nativeHtml(source) {
   return html;
 }
 
-// This preview does not ship native OAuth or a credential store. These guards
-// also cover credentials left in this app's webview by an earlier prototype;
-// hiding settings alone would not stop startup sync. Never erase user storage.
+// GitHub sync has no native credential store, so it stays off in the app. Google
+// Drive runs only once ipad.js confirms the native Google sign-in plugin is set up
+// (PHLOEM_GOOGLE_DRIVE); until then a Drive record left in this webview by an
+// earlier prototype cannot start a sync. Never erase user storage.
 export function nativeReaderJs(source) {
   let js = replaceOnce(source,
     /try \{ syncCfg = JSON\.parse\(localStorage\.getItem\(SYNC_KEY\)\); \} catch\(e\)\{\}/,
     'try { if(!window.PHLOEM_NATIVE)syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY)); } catch(e){}',
     'GitHub sync startup load', 'reading.js');
   js = replaceOnce(js, /function gdriveOn\(\)\{return !!\(gdriveCfg&&gdriveCfg\.on\);\}/,
-    'function gdriveOn(){return !window.PHLOEM_NATIVE&&!!(gdriveCfg&&gdriveCfg.on);}',
+    'function gdriveOn(){return (!window.PHLOEM_NATIVE||!!window.PHLOEM_GOOGLE_DRIVE)&&!!(gdriveCfg&&gdriveCfg.on);}',
     'Drive enabled check', 'reading.js');
   return js;
 }

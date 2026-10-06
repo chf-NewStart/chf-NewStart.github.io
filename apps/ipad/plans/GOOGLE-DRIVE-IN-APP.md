@@ -13,7 +13,7 @@ houfu wants papers added on the website to show up in the iPad app. Website iClo
   - Scope: `drive.appdata` only, the same one the website uses.
   - Tokens: the refresh token is kept in Keychain (`com.houfu72.phloem.google`, this device only, cleared on a fresh install). Access tokens go to the reader and are never stored natively.
   - Methods: `status()` returns configured, regionAllowed, countryCode and signedIn. `getToken({interactive, hint})` refreshes silently and signs in only when the call is interactive. `signOut()` deletes the refresh token and revokes it at Google.
-  - The iOS client ID comes from Info.plist `PhloemGoogleClientID`, which is empty until houfu creates the client. While it's empty, Drive stays hidden.
+  - The iOS client ID comes from Info.plist `PhloemGoogleClientID`, now set to houfu's iOS client "Phloem iPad" (615468645410-f9h6jit1naopniqsmhmmo5vks3m8nat2.apps.googleusercontent.com, created 2026-10-06). If it is ever emptied, Drive stays hidden.
 - `native/ipad.js`: Drive still starts hidden with the other web-only settings. Once `PhloemGoogle.status()` reports a configured client and a known App Store region other than mainland China (`CHN`), it sets `window.PHLOEM_GOOGLE_DRIVE` and shows the Drive section. If Drive was already connected on this iPad, it starts a sync. The sync badge syncs both iCloud and Drive when each is on.
 - `reading.js`: `gdriveGetToken()` asks the native plugin when it is ready, and the website's GIS popup otherwise. "Turn off" also signs out natively. `window.PHLOEM_GDRIVE` exposes enabled, sync and refresh to ipad.js. The website's behaviour is unchanged.
 - `scripts/build-web.mjs`: the bundled `gdriveOn()` now also requires `PHLOEM_GOOGLE_DRIVE` in the app, so a Drive record left from an old prototype can't start a sync before the plugin is ready.
@@ -36,6 +36,6 @@ houfu wants papers added on the website to show up in the iPad app. Website iClo
 ## Steps for houfu
 
 1. In Google Cloud Console, open the project that holds the website's Drive client (`615468645410-…`). Go to APIs & Services › Credentials › Create credentials › OAuth client ID › iOS. Name it "Phloem iPad", set Bundle ID to `com.houfu72.phloem`, and send the Client ID.
-2. Claude puts the Client ID into Info.plist `PhloemGoogleClientID`.
+2. Done 2026-10-06: the Client ID is in Info.plist `PhloemGoogleClientID`.
 3. Build from Xcode onto the iPad. Go to Settings › Sync with Google Drive › Connect Google Drive and sign in. Papers from the website's Drive should appear.
 4. Before submitting to the App Store, update the App Privacy answers and the privacy policy page to say that the app can optionally sync to the user's own Google Drive app folder.

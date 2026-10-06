@@ -127,3 +127,6 @@ body.workspace-open #workspaceOpen { color:var(--accent); }
   .workspace-pen-options { width:194px; right:calc(100% + 5px); }
   .workspace-more-panel { width:175px; right:calc(100% + 5px); }
 }
+#workspaceNewNote { touch-action:none; }
+.workspace-note-ghost { position:fixed; top:0; left:0; z-index:60; box-sizing:border-box; border:1.5px dashed color-mix(in srgb,#234f91 45%,transparent); border-radius:4px; background:color-mix(in srgb,#e5df73 55%,transparent); box-shadow:0 10px 22px rgba(42,38,30,.18); pointer-events:none; }
+.workspace-note-ghost-away { opacity:.35; }

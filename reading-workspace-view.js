@@ -1179,11 +1179,75 @@
     }, true);
     for (const type of ['blur', 'pagehide']) global.addEventListener(type, () => { multiTap = null; });
     if (buttons.moreSpace) buttons.moreSpace.addEventListener('click', () => { if (adapter.grow() === true) render(); else setStatus('Could not add more space.'); });
-    if (buttons.newNote) buttons.newNote.addEventListener('click', () => {
-      if (!available(context()) || context().busy) return;
-      const point = pointFromClient(scroll.getBoundingClientRect().left + scroll.clientWidth / 2, scroll.getBoundingClientRect().top + 90);
-      const id = adapter.addNote(point); if (id != null) { render(); focus(id, true); } else setStatus('Could not add a note.');
-    });
+    if (buttons.newNote) {
+      // A tap on Note puts a new note in the middle of the view; dragging from Note carries a
+      // note outline and drops the note where the finger or Pencil lets go (held by its top strip).
+      const NOTE_WIDTH = 400, GRIP = 22;
+      let noteDrag = null, skipClick = false;
+      const notePx = () => board.getBoundingClientRect().width / Math.max(observedWidth, 1);
+      const addNoteAt = point => {
+        const id = adapter.addNote({ x: Math.round(point.x), y: Math.round(point.y), width: NOTE_WIDTH });
+        if (id != null) { render(); focus(id, true); } else setStatus('Could not add a note.');
+      };
+      const endNoteDrag = () => { if (noteDrag && noteDrag.ghost) noteDrag.ghost.remove(); noteDrag = null; };
+      buttons.newNote.addEventListener('pointerdown', event => {
+        if (event.button > 0 || !available(context()) || context().busy) return;
+        endNoteDrag();
+        noteDrag = { id: event.pointerId, x: event.clientX, y: event.clientY, ghost: null };
+        try { buttons.newNote.setPointerCapture(event.pointerId); } catch (_) {}
+      });
+      buttons.newNote.addEventListener('pointermove', event => {
+        if (!noteDrag || noteDrag.id !== event.pointerId) return;
+        if (!noteDrag.ghost) {
+          if (Math.hypot(event.clientX - noteDrag.x, event.clientY - noteDrag.y) < 10) return;
+          const ghost = document.createElement('div'), unit = notePx(), width = NOTE_WIDTH * unit;
+          ghost.className = 'workspace-note-ghost';
+          ghost.setAttribute('aria-hidden', 'true');
+          ghost.style.width = `${width}px`;
+          ghost.style.height = `${noteFloor(width)}px`;
+          document.body.appendChild(ghost);
+          noteDrag.ghost = ghost;
+        }
+        event.preventDefault();
+        const unit = notePx(), over = scroll.getBoundingClientRect();
+        noteDrag.ghost.style.transform = `translate(${event.clientX - NOTE_WIDTH * unit / 2}px, ${event.clientY - GRIP * unit}px)`;
+        noteDrag.ghost.classList.toggle('workspace-note-ghost-away', !(event.clientX >= over.left && event.clientX <= over.right && event.clientY >= over.top && event.clientY <= over.bottom));
+      });
+      buttons.newNote.addEventListener('pointerup', event => {
+        if (!noteDrag || noteDrag.id !== event.pointerId) return;
+        const dragged = !!noteDrag.ghost; endNoteDrag();
+        if (!dragged) return;
+        skipClick = true; setTimeout(() => { skipClick = false; }, 400);
+        const over = scroll.getBoundingClientRect();
+        if (!(event.clientX >= over.left && event.clientX <= over.right && event.clientY >= over.top && event.clientY <= over.bottom)) return;
+        if (!available(context()) || context().busy) return;
+        const unit = notePx(), at = pointFromClient(event.clientX, event.clientY);
+        addNoteAt({ x: clamp(at.x - NOTE_WIDTH / 2, 0, Math.max(0, observedWidth - NOTE_WIDTH)), y: Math.max(0, at.y - GRIP) });
+      });
+      buttons.newNote.addEventListener('pointercancel', endNoteDrag);
+      buttons.newNote.addEventListener('lostpointercapture', event => { if (noteDrag && noteDrag.id === event.pointerId) endNoteDrag(); });
+      buttons.newNote.addEventListener('click', event => {
+        if (skipClick) { skipClick = false; event.preventDefault(); event.stopImmediatePropagation(); return; }
+        if (!available(context()) || context().busy) return;
+        const view = scroll.getBoundingClientRect(), unit = notePx();
+        const center = pointFromClient(view.left + scroll.clientWidth / 2, view.top + scroll.clientHeight / 2);
+        const height = noteFloor(NOTE_WIDTH * unit) / unit, maxX = Math.max(0, observedWidth - NOTE_WIDTH);
+        const x0 = clamp(center.x - NOTE_WIDTH / 2, 0, maxX), y0 = Math.max(0, center.y - height / 2);
+        // Take the free spot nearest the middle, so a tapped note never covers another note.
+        const taken = [...cards.values()].filter(state => state.box && state.card.isConnected)
+          .map(state => ({ ...state.box, height: state.card.offsetHeight / unit }));
+        const free = (x, y) => !taken.some(b => x < b.x + b.width + 16 && x + NOTE_WIDTH + 16 > b.x && y < b.y + b.height + 16 && y + height + 16 > b.y);
+        let x = x0, y = y0;
+        if (!free(x, y)) {
+          const spots = [];
+          for (let dx = -900; dx <= 900; dx += 40) for (let dy = -900; dy <= 1800; dy += 40) spots.push([dx, dy]);
+          spots.sort((p, q) => Math.hypot(p[0], p[1] * 1.3) - Math.hypot(q[0], q[1] * 1.3));
+          const spot = spots.find(([dx, dy]) => x0 + dx >= 0 && x0 + dx <= maxX && y0 + dy >= 0 && free(x0 + dx, y0 + dy));
+          if (spot) { x = x0 + spot[0]; y = y0 + spot[1]; }
+        }
+        addNoteAt({ x, y });
+      });
+    }
     if (buttons.close) buttons.close.addEventListener('click', () => { cancel(); adapter.close(); });
     return { render, reset, cancel, focus, pointFromClient, active, hasDrafts, resizeLayout };
   }

@@ -424,3 +424,26 @@ hold its text and the ink anchored to it. The `.workspace-card` CSS floor drops 
 longer makes it taller. Tests: `reading-workspace-browser.test.js` checks the new floor,
 and `reading-workspace-lasso-resize.test.js` checks a new rail note is about 3:4.
 Not verified on a physical iPad.
+
+## 26. Drag a new note to where you want it (v187)
+
+houfu: "can we do drag and drop the note instead of click and it randomly appears".
+Cause of the "random" spot: the Workspace adapter's `addNote` in `reading.js` dropped the
+point the view passed, so every new note went through `workspaceDropPoint` (top-left of
+the view, pushed down past other cards). The adapter now passes the point through
+(`addWorkspaceExcerpt(null, point)`).
+
+In `reading-workspace-view.js` the Note button now handles pointers itself:
+- Drag (more than 10px, finger, Pencil or mouse): a dashed note outline
+  (`.workspace-note-ghost`, sized like a new note at the current zoom) follows the pointer
+  and fades when it leaves the Workspace. Letting go over the Workspace adds the note
+  centred on the pointer and held by its top strip (22 logical px below the top);
+  letting go elsewhere adds nothing. The click that follows a drag is swallowed.
+- Tap: the note goes in the middle of the visible Workspace. If that spot overlaps a
+  note, it takes the nearest free spot (searched on a 40px grid, slightly preferring
+  sideways moves), so repeated taps never stack notes.
+`#workspaceNewNote` gets `touch-action:none` so a finger drag doesn't scroll the rail.
+
+Tests: new `tests/reading-workspace-note-drop.test.js` (centred tap, no overlap on a
+second tap, CDP finger drag with outline, mouse drop off the Workspace adds nothing, mouse
+drop saves). Not verified on a physical iPad.

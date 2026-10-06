@@ -39,3 +39,5 @@ houfu wants papers added on the website to show up in the iPad app. Website iClo
 2. Done 2026-10-06: the Client ID is in Info.plist `PhloemGoogleClientID`.
 3. Build from Xcode onto the iPad. Go to Settings › Sync with Google Drive › Connect Google Drive and sign in. Papers from the website's Drive should appear.
 4. Before submitting to the App Store, update the App Privacy answers and the privacy policy page to say that the app can optionally sync to the user's own Google Drive app folder.
+   - Privacy policy: done 2026-10-06 (`phloem-ipad/privacy.html` has an "Optional Google Drive sync" section, a bullet under "When information leaves your iPad", and the deletion note). App Store Connect's App Privacy answers are still houfu's to update.
+5. Google consent screen (project carrel-505515): set App name to Phloem, home page https://houfu72.com/reading.html, privacy policy https://houfu72.com/phloem-ipad/privacy.html, authorized domain houfu72.com. The new name shows after Google's brand verification; until then the sign-in sheet says "Carrel".

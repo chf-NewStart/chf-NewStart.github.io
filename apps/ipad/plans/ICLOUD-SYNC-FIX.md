@@ -86,3 +86,12 @@ houfu wants papers added on the website to show up in the app. houfu picked iClo
 ### Fix: the sign-in return was ignored (shell v179)
 
 houfu's first test of the redirect flow (v178) came back to Phloem but Settings still said "Sign in with your Apple ID". Reading CloudKit JS's source (the copy bundled in the `tsl-apple-cloudkit` npm package) shows the auth constructor reads `ckWebAuthToken` from the `apiTokenAuth` object, next to `apiToken` and `persist`. Phloem had put it on the container config, where CloudKit JS ignores it, so the returned token was dropped and the session stayed signed out. The fake CloudKit in `tests/reading-icloud-web.test.js` accepted the wrong place, which is why the test passed; it now reads the token from `apiTokenAuth` like the real library. The return token is also accepted from the URL fragment as well as the query string, in case Apple's redirect uses `#`.
+
+### Second fix: the sign-in still dropped after a second (shell v180)
+
+On v179 houfu saw "Signed in. Checking your private iCloud library…" and then "Sign in with your Apple ID" again, so the token now reached CloudKit JS but the first request still went out signed out or was refused. The cause can't be seen from here, because this container can't reach Apple. Two changes cover the likely causes and make the next screenshot say which one it was:
+
+1. CloudKit JS stores the session in a cookie and reads it back before every request. If Safari drops that cookie, every request goes out signed out. Phloem now passes `services.authTokenStore`, a store backed by localStorage (`phloem.icloudWebSession.v1`), so the session no longer depends on the cookie.
+2. If CloudKit still reports signed out right after the return, `webCloudRetryReturn()` calls Apple's `users/caller` endpoint directly with each plausible spelling of the returned token: decoded, exactly as sent, and with spaces read back as "+". The first spelling Apple accepts (or the fresh token Apple returns in `X-Apple-CloudKit-Web-Auth-Token`) becomes the session. If Apple refuses all of them, Settings shows "Apple sent you back, but did not accept the sign-in" with Apple's error code and reason, plus the token's length and which special characters it contains (never the token itself).
+
+Tests: `reading-icloud-web` now also covers a refused return (Apple's reason is shown and both spellings are tried) and a rescued return (the spelling Apple accepts becomes the session and sync carries on). In the full suite only `reading-fold-phone` failed; it is known to be flaky and also fails on main.

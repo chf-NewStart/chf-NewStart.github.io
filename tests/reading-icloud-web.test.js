@@ -137,7 +137,10 @@ function fakeCloudKit(seed) {
   };
   const container = {
     privateCloudDatabase: database,
-    _auth: { _signInURL: location.origin + '/reading.html?ckWebAuthToken=fake%2Btoken+raw' },
+    _auth: {
+      _signInURL: location.origin + '/reading.html?ckWebAuthToken=fake%2Btoken+raw',
+      _setSession(token) { store.signedIn = !!token; store.token = token; }
+    },
     async setUpAuth() { return store.signedIn ? { userRecordName: '_tester' } : null; },
     whenUserSignsIn() { return new Promise(() => {}); }
   };
@@ -146,7 +149,8 @@ function fakeCloudKit(seed) {
       store.configured = config;
       // Real CloudKit JS reads the return token only from apiTokenAuth.
       const token = config.containers[0].apiTokenAuth.ckWebAuthToken;
-      if (token) { store.signedIn = true; store.token = token; }
+      // seed.rejectReturn: CloudKit JS keeps the return token but Apple refuses it.
+      if (token && !seed.rejectReturn) { store.signedIn = true; store.token = token; }
     },
     getDefaultContainer() { return container; }
   };
@@ -283,7 +287,41 @@ async function seedWebLibrary(page, chapters, stamp) {
   });
   check('opening an iPad-only paper downloads its original from iCloud', downloaded.found && downloaded.size === pdfSize, JSON.stringify(downloaded));
 
+  check('CloudKit JS keeps the session in localStorage, not a cookie',
+    await page.evaluate(() => !!(window.__ckStore.configured.services && window.__ckStore.configured.services.authTokenStore)));
   check('no page errors', errors.length === 0, errors.join(' | '));
+
+  /* When CloudKit JS still reports signed out after the return, Phloem asks Apple
+     directly. If Apple refuses every spelling, Settings names Apple's reason. */
+  async function returnWith(apple) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
+    await ctx.addInitScript(fakeCloudKit, {
+      rejectReturn: true,
+      library: { chapters: [ipadPaper], deleted: {}, merged: {}, categoryOrder: [], categoryOrderUpdatedAt: 0, savedAt: stamp - 2000 }
+    });
+    const tried = [];
+    await ctx.route('https://api.apple-cloudkit.com/**', route => {
+      const token = new URL(route.request().url()).searchParams.get('ckWebAuthToken');
+      tried.push(token);
+      route.fulfill(apple(token));
+    });
+    const p = await ctx.newPage();
+    p.setDefaultTimeout(15000);
+    await seedWebLibrary(p, [webPaper], stamp);
+    await p.goto('http://localhost:' + PORT + '/reading.html?ckWebAuthToken=fake%2Btoken+raw', { waitUntil: 'load' });
+    await p.waitForFunction(() => /Synced with your private iCloud library|did not accept/.test(document.getElementById('icloudStatus').textContent));
+    const result = { status: await p.textContent('#icloudStatus'), token: await p.evaluate(() => window.__ckStore.token), tried };
+    await ctx.close();
+    return result;
+  }
+  const refused = await returnWith(() => ({ status: 421, contentType: 'application/json', body: JSON.stringify({ serverErrorCode: 'AUTHENTICATION_REQUIRED', reason: 'request needs authorization' }) }));
+  check('a refused return names Apple’s reason in Settings', /did not accept the sign-in/.test(refused.status) && /AUTHENTICATION_REQUIRED/.test(refused.status) && !/fake/.test(refused.status), refused.status);
+  check('each spelling of the returned token is tried', refused.tried.includes('fake+token+raw') && refused.tried.includes('fake%2Btoken+raw'), JSON.stringify(refused.tried));
+  const rescued = await returnWith(token => token === 'fake%2Btoken+raw'
+    ? { status: 200, contentType: 'application/json', headers: { 'X-Apple-CloudKit-Web-Auth-Token': 'fresh-token', 'Access-Control-Expose-Headers': 'X-Apple-CloudKit-Web-Auth-Token' }, body: JSON.stringify({ userRecordName: '_tester' }) }
+    : { status: 421, contentType: 'application/json', body: JSON.stringify({ serverErrorCode: 'AUTHENTICATION_REQUIRED' }) });
+  check('a spelling Apple accepts becomes the session and sync carries on', /Synced with your private iCloud library/.test(rescued.status) && rescued.token === 'fresh-token', rescued.status + ' / ' + rescued.token);
+
   await browser.close();
   server.close();
   process.exit(failures ? 1 : 0);

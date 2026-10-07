@@ -22,7 +22,7 @@ const ids = value => Array.from(value.strokes, item => item.id);
 test('plain-script frozen API and canonical empty board', () => {
   assert.deepEqual(Object.keys(workspace).sort(),
     ['BOARD_WIDTH', 'MAX_HEIGHT', 'MAX_WIDTH', 'VERSION', 'addStroke', 'displayStroke', 'merge', 'moveGroup', 'normalize',
-      'place', 'removeStrokes', 'selectGroup', 'setHeight', 'setWidth']);
+      'place', 'removeStrokes', 'restoreGroup', 'selectGroup', 'setHeight', 'setWidth']);
   assert.equal(Object.isFrozen(workspace), true);
   assert.equal(workspace.VERSION, 3);
   assert.equal(workspace.BOARD_WIDTH, 1000);
@@ -56,6 +56,7 @@ test('unknown versions fail closed through every public operation', () => {
     () => workspace.merge(future, empty()),
     () => workspace.place(future, 'a', { x: 0, y: 0 }, 100),
     () => workspace.addStroke(future, stroke('new'), 100),
+    () => workspace.restoreGroup(future, { positions: {}, strokes: [stroke('new')] }, 100),
     () => workspace.removeStrokes(future, ['keep'], 100),
     () => workspace.setHeight(future, 3000), () => workspace.setWidth(future, 2000),
     () => workspace.selectGroup(future, [], []),

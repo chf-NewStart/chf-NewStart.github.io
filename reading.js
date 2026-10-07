@@ -4544,7 +4544,8 @@
       await page.render({canvasContext:view.canvas.getContext('2d'),viewport:viewport,transform:ratio===1?null:[ratio,0,0,ratio,0,0]}).promise;
       if(view.buildId!==pdfBuildId||view.buildId!==renderBuildId||pdfDoc!==renderDoc||currentId!==renderId)return;
       view.text.innerHTML='';view.text.style.width=Math.ceil(viewport.width)+'px';view.text.style.height=Math.ceil(viewport.height)+'px';
-      try{var textContent=await page.getTextContent({includeMarkedContent:true});await new pdfLib.TextLayer({textContentSource:textContent,container:view.text,viewport:viewport}).render();if(view.buildId!==pdfBuildId||view.buildId!==renderBuildId||pdfDoc!==renderDoc||currentId!==renderId)return;var textCh=find(renderId),pageText=contentToLines(textContent).join(' ');if(textCh&&pageText){textCh.pageTexts=textCh.pageTexts||[];if(textCh.pageTexts[n-1]!==pageText){textCh.pageTexts[n-1]=pageText;saveDerivedSoon(textCh);persist(false);}if(repairPdfReviewQuotes(textCh,n)){persist(false);renderReviewerPanel(textCh);}}}catch(textError){view.text.innerHTML='';}
+      // Extracted text has its own derived-data store; only review repairs below need a library save.
+      try{var textContent=await page.getTextContent({includeMarkedContent:true});await new pdfLib.TextLayer({textContentSource:textContent,container:view.text,viewport:viewport}).render();if(view.buildId!==pdfBuildId||view.buildId!==renderBuildId||pdfDoc!==renderDoc||currentId!==renderId)return;var textCh=find(renderId),pageText=contentToLines(textContent).join(' ');if(textCh&&pageText){textCh.pageTexts=textCh.pageTexts||[];if(textCh.pageTexts[n-1]!==pageText){textCh.pageTexts[n-1]=pageText;saveDerivedSoon(textCh);}if(repairPdfReviewQuotes(textCh,n)){persist(false);renderReviewerPanel(textCh);}}}catch(textError){view.text.innerHTML='';}
       /* Authored PDF links are deliberate detours: hold to inspect, then use the
          card's explicit action to navigate. Hover and ordinary taps stay quiet. */
       try{
@@ -7027,17 +7028,12 @@
       if(!ids||!workspaceGroupMatches(ch,ids,expected)){workspaceStatus('This selection changed since the move. Undo is unavailable.');return false;}
       var api=window.PhloemWorkspaceState,validated=api.normalize({version:api.VERSION,width:api.MAX_WIDTH,height:api.MAX_HEIGHT,positions:target.positions,strokes:target.strokes,deleted:{}});
       if(!workspaceGroupEqual(validated.positions,target.positions)||!workspaceGroupEqual(validated.strokes.slice().sort(function(a,b){return a.id<b.id?-1:a.id>b.id?1:0;}),target.strokes.slice().sort(function(a,b){return a.id<b.id?-1:a.id>b.id?1:0;})))throw new TypeError('Invalid group snapshot');
-      var before=api.normalize(ch.readingWorkspace),next=before,stamp=now(),bottom=0,right=0;
+      var before=api.normalize(ch.readingWorkspace),next=before,stamp=now(),bottom=0,right=0,restorePositions=Object.assign({},before.positions,target.positions);
       ids.clipIds.forEach(function(id){var position=target.positions[id];bottom=Math.max(bottom,position.y);right=Math.max(right,position.x+position.width);});
-      target.strokes.forEach(function(stroke){stroke.points.concat(api.displayStroke(stroke,Object.assign({},next.positions,target.positions)).points).forEach(function(point){bottom=Math.max(bottom,point[1]);right=Math.max(right,point[0]);});});
+      target.strokes.forEach(function(stroke){stroke.points.concat(api.displayStroke(stroke,restorePositions).points).forEach(function(point){bottom=Math.max(bottom,point[1]);right=Math.max(right,point[0]);});});
       while(right>next.width&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
       while(bottom>next.height&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
-      ids.clipIds.forEach(function(id){next=api.place(next,id,target.positions[id],stamp);});
-      target.strokes.forEach(function(stroke){
-        // addStroke inherits optional metadata; removing it here lets redo detach orphan ink.
-        next.strokes=next.strokes.map(function(current){if(current.id!==stroke.id)return current;var copy=Object.assign({},current);['anchor','nib','shape'].forEach(function(key){if(!Object.prototype.hasOwnProperty.call(stroke,key))delete copy[key];});return copy;});
-        next=api.addStroke(next,stroke,stamp);
-      });
+      next=api.restoreGroup(next,target,stamp);
       if(!workspaceGroupChangesExpected(before,next,expected))throw new TypeError('Unexpected group change');
       return saveWorkspaceGroup(ch,next);
     }catch(error){workspaceStatus('Could not restore this selection. Its current position has been kept.');return false;}

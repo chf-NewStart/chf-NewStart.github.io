@@ -216,6 +216,19 @@ place, set `CHROME_PATH` when running the AI provider test or pass it via
 
 `reading-icloud-web.test.js` covers iCloud on the website through a fake CloudKit JS: hidden until an API token is set, Apple ID sign-in, merging the library the iPad app wrote, uploading the browser's originals under the native record names and field types, and downloading an iPad-only original when it is opened.
 
+`reading-pdf-ink-render-cache.test.js` checks that adding one stroke preserves
+existing SVG paths, while equal-clock merges, in-place edits, page geometry,
+erasing and Undo still update the correct outlines and stacking order.
+`reading-pdf-derived-persistence.test.js` checks that extracted PDF text reaches
+IndexedDB without rewriting the main library, while repaired review anchors
+still save immediately and survive reopening.
+
+`reading-workspace-restore-group-state.test.js` checks bulk lasso move/restore
+compatibility, timestamps, exact optional metadata, validation and input
+immutability. Its 1,000-stroke fixtures bound point-copy work rather than relying
+on machine-specific timing thresholds. Run these state checks with `node --test`;
+the PDF checks also require the browser dependencies described above.
+
 `daily-fun-fact.test.js` is a site test, not a reader test. It checks
 `scripts/add-daily-fact.js` (run by the daily fun-fact workflow) against the real
 queue and both queue entry shapes, and needs no browser:

@@ -192,29 +192,64 @@
       width: owns(raw, 'width') ? raw.width : 420, updatedAt: at }, state.width, state.height, cap);
     return normalize(state);
   }
-  function addStroke(value, raw, stamp) {
-    var state = normalize(value), cap = ceiling();
-    if (!object(raw) || !id(raw.id)) throw new TypeError('Invalid reading-workspace stroke');
-    if (owns(raw, 'anchor') && !anchor(raw.anchor, state.width) ||
+  function changedStroke(raw, old, deletedAt, boardWidth, stamp, cap, inheritMetadata) {
+    if (owns(raw, 'anchor') && !anchor(raw.anchor, boardWidth) ||
         owns(raw, 'nib') && raw.nib !== 'marker' ||
         owns(raw, 'shape') && raw.shape !== 'line')
       throw new TypeError('Invalid reading-workspace stroke metadata');
-    var old = state.strokes.find(function (entry) { return entry.id === raw.id; });
-    var deletedAt = owns(state.deleted, raw.id) ? state.deleted[raw.id] : 0;
     var at = nextStamp(stamp, Math.max(old ? old.updatedAt : 0, deletedAt), cap);
     var candidate = { id: raw.id, color: raw.color, width: raw.width,
       points: raw.points, style: 'natural', createdAt: old ? old.createdAt : at,
       updatedAt: at };
     if (owns(raw, 'anchor')) candidate.anchor = raw.anchor;
-    else if (old && old.anchor) candidate.anchor = old.anchor;
+    else if (inheritMetadata && old && old.anchor) candidate.anchor = old.anchor;
     if (owns(raw, 'nib')) candidate.nib = raw.nib;
-    else if (old && old.nib) candidate.nib = old.nib;
+    else if (inheritMetadata && old && old.nib) candidate.nib = old.nib;
     if (owns(raw, 'shape')) candidate.shape = raw.shape;
-    else if (old && old.shape) candidate.shape = old.shape;
-    var entry = stroke(candidate, state.width, cap);
+    else if (inheritMetadata && old && old.shape) candidate.shape = old.shape;
+    var entry = stroke(candidate, boardWidth, cap);
     if (!entry) throw new TypeError('Invalid reading-workspace stroke');
+    return entry;
+  }
+  function addStroke(value, raw, stamp) {
+    var state = normalize(value), cap = ceiling();
+    if (!object(raw) || !id(raw.id)) throw new TypeError('Invalid reading-workspace stroke');
+    var old = state.strokes.find(function (entry) { return entry.id === raw.id; });
+    var deletedAt = owns(state.deleted, raw.id) ? state.deleted[raw.id] : 0;
+    var entry = changedStroke(raw, old, deletedAt, state.width, stamp, cap, true);
     state.strokes = state.strokes.filter(function (existing) { return existing.id !== entry.id; });
     state.strokes.push(entry);
+    return normalize(state);
+  }
+  function restoreGroup(value, target, stamp) {
+    var state = normalize(value), cap = ceiling();
+    if (!object(target) || !object(target.positions) || !Array.isArray(target.strokes))
+      throw new TypeError('Invalid reading-workspace group');
+    if (!timestamp(stamp, cap)) throw new RangeError('Invalid reading-workspace timestamp');
+    Object.keys(target.positions).forEach(function (key) {
+      var raw = target.positions[key];
+      if (!id(key) || !object(raw) || !finite(raw.x) || !finite(raw.y) ||
+          owns(raw, 'width') && !finite(raw.width))
+        throw new TypeError('Invalid reading-workspace position');
+      var old = state.positions[key], at = nextStamp(stamp, old ? old.updatedAt : 0, cap);
+      state.positions[key] = position({ x: raw.x, y: raw.y,
+        width: owns(raw, 'width') ? raw.width : 420, updatedAt: at }, state.width, state.height, cap);
+    });
+    var targets = target.strokes;
+    var live = new Map(state.strokes.map(function (entry) { return [entry.id, entry]; }));
+    var seen = new Set();
+    for (var i = 0; i < targets.length; i++) {
+      var raw = targets[i];
+      if (!owns(targets, i) || !object(raw) || !id(raw.id) || seen.has(raw.id))
+        throw new TypeError('Invalid reading-workspace strokes');
+      seen.add(raw.id);
+      var deletedAt = owns(state.deleted, raw.id) ? state.deleted[raw.id] : 0;
+      // A saved group is exact: absent metadata must detach ink on redo. All
+      // replacements still advance the same clocks and validate like addStroke.
+      live.set(raw.id, changedStroke(raw, live.get(raw.id), deletedAt,
+        state.width, stamp, cap, false));
+    }
+    state.strokes = Array.from(live.values());
     return normalize(state);
   }
   function removeStrokes(value, ids, stamp) {
@@ -429,13 +464,14 @@
     // Match ensureSpace's 1000-unit growth, including ink reaching the current edge.
     state.width = Math.min(MAX_WIDTH, Math.max(state.width, (Math.floor(right / 1000) + 1) * 1000));
     state.height = Math.min(MAX_HEIGHT, Math.max(state.height, (Math.floor(bottom / 1000) + 1) * 1000));
+    var target = { positions: Object.create(null), strokes: [] };
     Array.from(clipIds).sort(compare).forEach(function (key) {
       var base = available.get(key), tolerance = 1e-7;
       if (base.width < 280 || base.width > 900 || base.x + dx < -tolerance ||
           base.x + dx > MAX_WIDTH - base.width + tolerance ||
           base.y + dy < -tolerance || base.y + dy > MAX_HEIGHT + tolerance)
         throw new RangeError('Invalid reading-workspace card geometry');
-      state = place(state, key, { x: base.x + dx, y: base.y + dy, width: base.width }, stamp);
+      target.positions[key] = { x: base.x + dx, y: base.y + dy, width: base.width };
     });
     Array.from(strokeIds).sort(compare).forEach(function (key) {
       var entry = liveStrokes.get(key);
@@ -448,16 +484,14 @@
         // An unavailable owner displays raw fallback points. Detach on movement so
         // later restoring that owner cannot apply a second, unrelated transform.
         delete moved.anchor;
-        var old = state.strokes.find(function (item) { return item.id === key; });
-        delete old.anchor;
       }
-      state = addStroke(state, moved, stamp);
+      target.strokes.push(moved);
     });
-    return normalize(state);
+    return restoreGroup(state, target, stamp);
   }
 
   global.PhloemWorkspaceState = Object.freeze({ VERSION: VERSION,
     BOARD_WIDTH: BOARD_WIDTH, MAX_WIDTH: MAX_WIDTH, MAX_HEIGHT: MAX_HEIGHT, normalize: normalize, merge: merge, place: place,
-    addStroke: addStroke, removeStrokes: removeStrokes, setWidth: setWidth, setHeight: setHeight,
+    addStroke: addStroke, restoreGroup: restoreGroup, removeStrokes: removeStrokes, setWidth: setWidth, setHeight: setHeight,
     displayStroke: displayStroke, selectGroup: selectGroup, moveGroup: moveGroup });
 })(window);

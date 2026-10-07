@@ -94,7 +94,8 @@ const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('readi
       snap = await page.evaluate(() => new Promise(resolve => { const r = indexedDB.open('marginFiles', 2); r.onerror = () => resolve('');
         r.onsuccess = () => { const g = r.result.transaction('derived').objectStore('derived').get('state:snapshot:latest'); g.onerror = () => resolve(''); g.onsuccess = () => resolve(g.result || ''); }; }));
       const local = await page.evaluate(() => localStorage.getItem('readingRoom.v1'));
-      if (snap && snap !== local) break;
+      // The device snapshot is written once the Pencil rests, so wait for one newer than the stale store.
+      if (snap && local && JSON.parse(snap).savedAt > JSON.parse(local).savedAt) break;
       await page.waitForTimeout(100);
     }
     const ws = JSON.parse(snap).chapters.find(ch => ch.readingWorkspace && Object.keys(ch.readingWorkspace.positions || {}).length).readingWorkspace;

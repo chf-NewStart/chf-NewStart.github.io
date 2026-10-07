@@ -45,6 +45,7 @@ function harness() {
     ink: { querySelectorAll: () => [...paths.values()] }, observedHeight: 2000, observedWidth: 1000,
     viewport: null, previewFrame: 0, suppressClickUntil: 0, suppressCardClickUntil: 0,
     cardTouches: new Map(), performance: { now: () => 100 }, clearTimeout, cancelAnimationFrame() {},
+    setTimeout: fn => { fn(); return 0; }, workspacePenDown: 0, workspacePenAt: 0, inkCache: new Map(),
     document: { activeElement: null, createElementNS: node }, NS: 'svg',
     closeOpenMenus() {}, measuredCards: () => [],
     pointFromClient: (x, y) => ({ x, y }), setStatus: message => { status.textContent = message; },

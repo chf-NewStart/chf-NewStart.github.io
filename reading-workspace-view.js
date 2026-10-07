@@ -31,6 +31,9 @@
     let observedHeight = 2000, observedWidth = 1000;
     let growingPaper = false;
     let selection = null;
+    // Each stroke's outline is smoothed once and kept with its path, keyed by what changes
+    // its shape. A new stroke then adds one path instead of every path being rebuilt.
+    const inkCache = new Map();
     const lassoLayer = document.createElementNS(NS, 'svg');
     lassoLayer.classList.add('workspace-lasso-layer'); lassoLayer.setAttribute('aria-hidden', 'true');
     const selectionBox = document.createElement('div');
@@ -442,10 +445,30 @@
       }
       if (selection) { setStatus(''); selectionBox.focus({ preventScroll: true }); }
     }
+    function inkKey(stroke) {
+      const id = stroke.anchor && stroke.anchor.clipId, box = id ? (cards.has(id) ? cards.get(id).box : positionsOf(context())[id]) : null;
+      return `${stroke.updatedAt}|${observedWidth}|${observedHeight}|${box ? `${box.x},${box.y},${box.width}` : ''}`;
+    }
+    function repaintCached(stroke) {
+      const entry = inkCache.get(stroke.id); if (!entry) return;
+      const key = inkKey(stroke);
+      if (entry.key !== key) { paintPath(entry.node, stroke); entry.key = key; }
+    }
     function renderInk(c) {
-      const paths = strokesOf(c).filter(s => activeStroke(c, s) && (!s.anchor || itemsOf(c).some(item => item.id === s.anchor.clipId))).map(makePath);
-      if (gesture && gesture.kind === 'stroke' && gesture.preview) paths.push(gesture.preview);
-      ink.replaceChildren(...paths);
+      const clips = new Set(itemsOf(c).map(item => String(item.id)));
+      const live = strokesOf(c).filter(s => activeStroke(c, s) && (!s.anchor || clips.has(s.anchor.clipId)));
+      const wanted = new Set(live.map(stroke => stroke.id));
+      for (const [id, entry] of inkCache) if (!wanted.has(id) || !entry.node.isConnected || entry.node.parentNode !== ink) { entry.node.remove(); inkCache.delete(id); }
+      // Leftover eraser fading or a lasso preview offset ends with the gesture that made it.
+      const settled = !gesture || (gesture.kind !== 'group' && gesture.kind !== 'scale' && !(gesture.kind === 'stroke' && gesture.mode === 'eraser'));
+      const preview = gesture && gesture.kind === 'stroke' && gesture.preview && gesture.preview.parentNode === ink ? gesture.preview : null;
+      for (const stroke of live) {
+        let entry = inkCache.get(stroke.id);
+        if (!entry) { entry = { node: makePath(stroke), key: inkKey(stroke) }; inkCache.set(stroke.id, entry); ink.insertBefore(entry.node, preview); }
+        else repaintCached(stroke);
+        if (settled) { entry.node.style.opacity = ''; entry.node.removeAttribute('transform'); }
+      }
+      for (const node of [...ink.children]) if (node !== preview && !(node.dataset && inkCache.has(node.dataset.strokeId) && inkCache.get(node.dataset.strokeId).node === node)) node.remove();
       ink.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
       ink.style.pointerEvents = 'none';
     }
@@ -456,11 +479,9 @@
       state.card.style.width = `${box.width / observedWidth * 100}%`;
       if (cards.has(state.id)) {
         const attached = strokesOf(context()).filter(stroke => stroke.anchor && stroke.anchor.clipId === state.id);
-        const paths = attached.length ? new Map([...ink.querySelectorAll('[data-stroke-id]')].map(node => [node.dataset.strokeId, node])) : new Map();
         let inkBottom = box.y;
         for (const stroke of attached) {
-          const path = paths.get(stroke.id);
-          if (path) paintPath(path, stroke);
+          repaintCached(stroke);
           for (const point of logicalPoints(stroke)) inkBottom = Math.max(inkBottom, point[1]);
         }
         // A note starts a little shorter than it is wide (120-180px tall), then grows to hold
@@ -750,7 +771,7 @@
         cancel(); clearSelection();
         scroll.scrollTop = 0;
         for (const state of cards.values()) if (state.dirty || state.saveFailed) keepDraft(state, 'Unsaved draft · copy before reloading.');
-        cards = new Map(); scope = { id: c.id, epoch: c.epoch }; undoStack = []; redoStack = [];
+        cards = new Map(); scope = { id: c.id, epoch: c.epoch }; undoStack = []; redoStack = []; inkCache.clear(); ink.replaceChildren();
         cardsLayer.replaceChildren(); setStatus('');
       }
       if (!c.open) { cancel(); clearSelection(); return; }
@@ -815,7 +836,7 @@
     function reset() {
       cancel(); clearSelection();
       for (const state of cards.values()) if (state.dirty || state.saveFailed) keepDraft(state, 'Unsaved draft · copy before reloading.');
-      cards = new Map(); scope = null; cardsLayer.replaceChildren(); ink.replaceChildren(); undoStack = []; redoStack = [];
+      cards = new Map(); scope = null; cardsLayer.replaceChildren(); ink.replaceChildren(); inkCache.clear(); undoStack = []; redoStack = [];
       setStatus('');
     }
     function focus(id, edit = false) {

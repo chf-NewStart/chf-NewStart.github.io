@@ -26,13 +26,15 @@ function harness() {
     workspaceStatus: message => { calls.status = message; },
     localStorage: { setItem(key, value) { calls.writes.push(value); if (fail) throw new Error('Storage full'); } },
     queueStateSnapshot(serialized) { calls.recovery.push(serialized); return Promise.resolve(false); },
-    scheduleSync() { calls.sync++; }, showError() { calls.warnings++; }
+    scheduleSync() { calls.sync++; }, showError() { calls.warnings++; },
+    // Deferred handwriting saves run at once here: no Pencil is resting.
+    setTimeout: fn => { fn(); return 0; }, clearTimeout() {}, workspacePenDown: 0, workspacePenAt: 0
   });
   vm.runInContext(workspace, context);
   vm.runInContext([
     section('  function readingWorkspaceUnavailable(ch){', '  function mergeReadingWorkspace('),
     section('  function persist(schedule,atomic){', '  function find(id){'),
-    section('  function saveWorkspace(ch,next){', '  function workspaceWide()'),
+    section('  function saveWorkspace(', '  function workspaceWide()'),
     section('  function workspaceDropPoint(', '  function showWorkspaceClip('),
     section('  function workspaceGroupEqual(', '  function workspaceEnsureSpace('),
     section('  function workspaceEnsureSpace(', '  function workspaceGrow(')

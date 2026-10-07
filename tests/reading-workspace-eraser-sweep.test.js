@@ -30,8 +30,9 @@ async function generatedPdf() {
   page.drawText('Paper highlight stays independent of workspace taps.', { x: 52, y: 710, size: 13, font });
   return Buffer.from(await doc.save());
 }
-const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
-  .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1')));
+// Handwriting saves once the Pencil has rested for a moment (v194), so wait for that save.
+const saved = async page => (await page.waitForTimeout(1400), page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
+  .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1'))));
 const live = workspace => (workspace?.strokes || []).filter(stroke => Number((workspace.deleted || {})[stroke.id] || 0) < Number(stroke.updatedAt || 0));
 async function pen(page, fractions, pointerId = 77) {
   await page.locator('#workspaceBoard').evaluate((board, { fractions, pointerId }) => {

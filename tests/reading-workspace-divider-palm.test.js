@@ -94,7 +94,7 @@ const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('readi
       document.getElementById('pdfFrame').dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'pen', pointerId: 60, clientX: 100, clientY: 300 }));
       const r = document.getElementById('workspaceDivider').getBoundingClientRect(), mid = r.top + r.height / 2;
       const at = (x, y) => { const el = document.elementFromPoint(x, y); return el && (el.closest('#workspaceDivider') ? (el.id || 'divider') : el.closest('#workspaceBoard') ? 'board' : el.closest('#documentPane') ? 'paper' : el.id || el.className); };
-      return { active: document.body.classList.contains('workspace-pen-active'),
+      return { active: document.getElementById('workspaceDivider').classList.contains('workspace-pen-active'),
         leftOfLine: at(r.left + 8, mid + 200), rightOfLine: at(r.right - 8, mid + 200), grip: at(r.left + r.width / 2, mid) };
     });
     assert(hits.active, 'Pencil use marks the page');
@@ -104,7 +104,7 @@ const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('readi
     // Two seconds after Pencil lifts, a finger can grab the whole strip again.
     await page.waitForTimeout(2300);
     const later = await page.evaluate(() => { const r = document.getElementById('workspaceDivider').getBoundingClientRect(), mid = r.top + r.height / 2;
-      const el = document.elementFromPoint(r.left + 8, mid + 200); return { active: document.body.classList.contains('workspace-pen-active'), divider: !!(el && el.closest('#workspaceDivider')) }; });
+      const el = document.elementFromPoint(r.left + 8, mid + 200); return { active: document.getElementById('workspaceDivider').classList.contains('workspace-pen-active'), divider: !!(el && el.closest('#workspaceDivider')) }; });
     assert.deepEqual(later, { active: false, divider: true }, 'the whole divider strip takes a finger again soon after writing');
     assert.deepEqual(errors, []);
     console.log('PASS the divider ignores a resting hand and stray Pencil, and still resizes on purpose');

@@ -98,7 +98,11 @@ async function click(page, selector, pointerType) {
 async function setWrite(page, enabled = true, selector = '#zenWrite') {
   if ((await page.locator(selector).getAttribute('aria-pressed') === 'true') !== enabled) await click(page, selector);
 }
+// Handwriting saves once the Pencil has rested for a moment (v194), so reading the stored
+// library right after a stroke first waits for that save.
+let strokeAt = 0;
 async function chapter(page) {
+  const wait = strokeAt + 1500 - Date.now(); if (wait > 0) await page.waitForTimeout(wait);
   return page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1')));
 }
 function highlights(ch) { return (ch.highlights || {})[1] || []; }
@@ -119,6 +123,7 @@ async function pointer(page, type, point) {
     target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 71, isPrimary: true, button: 0,
       buttons: /up|cancel/.test(type) ? 0 : 1, pressure: /up|cancel/.test(type) ? 0 : .6, clientX: point.x, clientY: point.y }));
   }, { type, point });
+  if (/up|cancel/.test(type)) strokeAt = Date.now();
 }
 async function stylusTouch(page, type, point) {
   await page.evaluate(({ type, point }) => {

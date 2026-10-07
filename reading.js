@@ -526,8 +526,16 @@
       if(!kept&&!storageWarned&&stateLocalFull){storageWarned=true;showError('Phloem could not save the newest change because this device’s storage is full. Free some space on the device, then try that edit once more.','Phloem needs a little room');}
       return kept;});return stateSnapshotWrite;
   }
-  function queueStateSnapshot(serialized,immediate){stateSnapshotPending=serialized;clearTimeout(stateSnapshotTimer);if(immediate)return flushStateSnapshot();stateSnapshotTimer=setTimeout(flushStateSnapshot,350);return stateSnapshotWrite;}
+  var stateSnapshotQueuedAt=0;
+  function queueStateSnapshot(serialized,immediate){if(!stateSnapshotPending)stateSnapshotQueuedAt=Date.now();stateSnapshotPending=serialized;clearTimeout(stateSnapshotTimer);if(immediate)return flushStateSnapshot();stateSnapshotTimer=setTimeout(flushStateSnapshotWhenIdle,350);return stateSnapshotWrite;}
+  // Copying the library into the device snapshot waits for the Pencil to rest (up to 5 s).
+  function flushStateSnapshotWhenIdle(){
+    if(stateSnapshotPending&&(workspacePenDown||Date.now()-workspacePenAt<600)&&Date.now()-stateSnapshotQueuedAt<5000){stateSnapshotTimer=setTimeout(flushStateSnapshotWhenIdle,300);return stateSnapshotWrite;}
+    return flushStateSnapshot();
+  }
   function persist(schedule,atomic){
+    // Any save writes the whole library, so it also covers handwriting waiting to save.
+    if(persistSoonTimer){clearTimeout(persistSoonTimer);persistSoonTimer=0;}persistSoonSince=0;
     if(stateLoadFailed&&!state.chapters.length)return false;var serialized='',savedLocally=false;state.savedAt=now();
     try{serialized=JSON.stringify(localState());localStorage.setItem(KEY,serialized);savedLocally=true;stateLoadFailed=false;storageWarned=false;stateLocalFull=false;}
     catch(e){if(serialized)stateLocalFull=true;}
@@ -540,7 +548,31 @@
       queueStateSnapshot(serialized,!savedLocally&&!stateSnapshotOk);
     }
     if (schedule !== false) scheduleSync();
+    persistSoonHealthy=savedOnDevice;
     return savedOnDevice;
+  }
+  /* Handwriting saves often: every stroke, every erase, and the paper growing under the
+     Pencil. Each save writes the whole library, several MB once iCloud and Drive have
+     merged in, so saving at every lift froze the page for a moment between strokes on
+     iPad (worse while screen recording). These saves wait until the Pencil has rested
+     for a moment instead, never mid-stroke. Any other save, or leaving the page or the
+     app, writes them at once. After a failed save they go straight through again, so
+     storage problems still show up on the stroke that hit them. */
+  var PERSIST_SOON_IDLE=1200,PERSIST_SOON_MAX=15000,persistSoonTimer=0,persistSoonSince=0,persistSoonHealthy=true,persistSoonFailed=null;
+  function persistSoon(onFail){
+    if(!persistSoonHealthy)return persist();
+    if(onFail)persistSoonFailed=onFail;
+    if(!persistSoonSince)persistSoonSince=Date.now();
+    clearTimeout(persistSoonTimer);persistSoonTimer=setTimeout(flushPersistSoon,PERSIST_SOON_IDLE);
+    return true;
+  }
+  function flushPersistSoon(force){
+    clearTimeout(persistSoonTimer);persistSoonTimer=0;if(!persistSoonSince)return true;
+    var idle=workspacePenDown?0:Date.now()-workspacePenAt;
+    // A long unbroken run of writing still saves, at the next lift.
+    if(force!==true&&(workspacePenDown||(idle<PERSIST_SOON_IDLE&&Date.now()-persistSoonSince<PERSIST_SOON_MAX))){persistSoonTimer=setTimeout(flushPersistSoon,workspacePenDown?250:PERSIST_SOON_IDLE-idle);return true;}
+    var failed=persistSoonFailed;persistSoonFailed=null;
+    var saved=persist();if(!saved&&failed)failed();return saved;
   }
   function find(id){ return state.chapters.find(function(ch){ return ch.id === id; }); }
   function touch(ch){ ch.updatedAt = now(); persist(); }
@@ -922,6 +954,9 @@
     var ch=find(currentId);if(!ch)return;saveCurrentReadingPosition(false,false);
     var serialized='';
     try{
+      /* With the small store full, its copy is older than this page's library; patching it
+         would then copy that stale library over the newer device snapshot. */
+      if(stateLocalFull)throw new Error('the stored library is older than this page');
       var latest=JSON.parse(localStorage.getItem(KEY)||'null'),stored=latest&&Array.isArray(latest.chapters)&&latest.chapters.find(function(item){return item&&item.id===ch.id;});
       if(!stored)throw new Error('current paper is not in the stored library');
       if(ch.kind==='pdf'){
@@ -938,6 +973,9 @@
     }catch(e){persist(false);}
     flushStateSnapshot();
   }
+  // Handwriting waiting to save (persistSoon) is written before the cursor flush below.
+  addEventListener('pagehide',function(){flushPersistSoon(true);});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flushPersistSoon(true);});
   addEventListener('pagehide',flushReadingLifecycle);
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flushReadingLifecycle();});
 
@@ -6698,9 +6736,12 @@
     return{id:currentId,epoch:pdfOpenEpoch,open:workspaceOpen,unavailable:unavailable,busy:excerptNavigationBusy,
       items:unavailable?[]:ch.readingExcerpts.items,workspace:unavailable?null:ch.readingWorkspace};
   }
-  function saveWorkspace(ch,next){
-    ch.readingWorkspace=next;ch.updatedAt=now();var saved=persist();workspaceSaveFailed=!saved;
-    if(!saved)workspaceStatus('Not confirmed saved. Keep this page open and check the storage warning.');
+  function saveWorkspace(ch,next,soon){
+    ch.readingWorkspace=next;ch.updatedAt=now();
+    var failed=function(){workspaceSaveFailed=true;workspaceStatus('Not confirmed saved. Keep this page open and check the storage warning.');};
+    // Strokes, erasing and paper growth save after a pause in writing (see persistSoon).
+    var saved=soon?persistSoon(failed):persist();workspaceSaveFailed=!saved;
+    if(!saved)failed();
     return saved;
   }
   function workspaceWide(){return innerWidth>=900&&matchMedia('(orientation: landscape)').matches;}
@@ -6757,9 +6798,11 @@
      pixels, so a stray tap leaves the split alone. */
   var workspacePenDown=0,workspacePenAt=0,workspacePenTimer=0;
   function markWorkspacePen(){
-    workspacePenAt=Date.now();document.body.classList.add('workspace-pen-active');clearTimeout(workspacePenTimer);
+    workspacePenAt=Date.now();clearTimeout(workspacePenTimer);
+    // The class sits on the divider itself: toggling one on <body> restyled the whole page.
+    if(!workspaceDivider.classList.contains('workspace-pen-active'))workspaceDivider.classList.add('workspace-pen-active');
     // Two quiet seconds after the last Pencil stroke, a finger can grab the whole strip again.
-    workspacePenTimer=setTimeout(function(){if(!workspacePenDown)document.body.classList.remove('workspace-pen-active');},2000);
+    workspacePenTimer=setTimeout(function(){if(!workspacePenDown)workspaceDivider.classList.remove('workspace-pen-active');},2000);
   }
   document.addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){workspacePenDown++;markWorkspacePen();}},true);
   ['pointerup','pointercancel'].forEach(function(type){document.addEventListener(type,function(e){if(e.pointerType==='pen'){workspacePenDown=Math.max(0,workspacePenDown-1);markWorkspacePen();}},true);});
@@ -6838,6 +6881,8 @@
     if(!on)cancelSavedHighlightDrag();
     if(on&&(!workspaceView||!window.PhloemWorkspaceState)){showReaderToast('Workspace did not finish loading. Reload Phloem and try again; your notes are safe.');return;}
     if(workspaceView)workspaceView.cancel();
+    // Closing the Workspace is a natural pause: write handwriting still waiting to save.
+    if(!on)flushPersistSoon(true);
     var wasOpen=workspaceOpen;
     var workspacePdfPosition=readerMode==='pdf'&&pdfDoc&&on!==wasOpen?stablePdfPositionForRebuild():null;
     if(!on)cancelWorkspaceDividerDrag();
@@ -6910,12 +6955,12 @@
   }
   function workspaceAddStroke(stroke){
     var ch=find(currentId);if(readingWorkspaceUnavailable(ch))return false;
-    try{return saveWorkspace(ch,window.PhloemWorkspaceState.addStroke(ch.readingWorkspace,Object.assign({},stroke,{id:stroke.id||uid('workspace-ink-')}),now()));}
+    try{return saveWorkspace(ch,window.PhloemWorkspaceState.addStroke(ch.readingWorkspace,Object.assign({},stroke,{id:stroke.id||uid('workspace-ink-')}),now()),true);}
     catch(error){workspaceStatus('Could not save this workspace stroke.');return false;}
   }
   function workspaceEraseStrokes(ids){
     var ch=find(currentId);if(readingWorkspaceUnavailable(ch))return false;
-    try{return saveWorkspace(ch,window.PhloemWorkspaceState.removeStrokes(ch.readingWorkspace,ids,now()));}
+    try{return saveWorkspace(ch,window.PhloemWorkspaceState.removeStrokes(ch.readingWorkspace,ids,now()),true);}
     catch(error){workspaceStatus('Could not save this erasure.');return false;}
   }
   function workspaceGroupEqual(left,right){
@@ -7093,7 +7138,7 @@
     try{var next=api.normalize(ch.readingWorkspace);if(logicalY<next.height&&logicalX<next.width)return true;
       while(next.width<=logicalX&&next.width<api.MAX_WIDTH)next=api.setWidth(next,next.width+1000);
       while(next.height<=logicalY&&next.height<api.MAX_HEIGHT)next=api.setHeight(next,next.height+1000);
-      return saveWorkspace(ch,next);
+      return saveWorkspace(ch,next,true);
     }catch(error){workspaceStatus('Could not extend the paper. Existing notes are safe.');return false;}
   }
   function workspaceGrow(){
@@ -7473,10 +7518,12 @@
     if(pdfInkController)pdfInkController.cancel();
     var ch=find(currentId);pdfWriteMode=!!(on&&window.PhloemInk&&ch&&ch.kind==='pdf'&&readerMode==='pdf');
     if(pdfWriteMode){pdfInkTool='pen';finishPencilStroke(true);setHighlightEraseMode(false);setHighlightMode(false);clearPendingSelection();setHighlightToolbarOpen(false);closeZenPopouts(false);setDrift(0);}
+    // Leaving Write ends a run of strokes, so ink still waiting to save is written now.
+    else flushPersistSoon(true);
     syncHighlightColorUi();syncTouchDockStates();
   }
   function commitPdfInk(page,stroke){
-    var ch=find(currentId);if(!ch)return;var stamp=pdfInkStamp(ch),item=Object.assign({id:uid('ink'),at:stamp,updatedAt:stamp},stroke);ch.pdfInk=ch.pdfInk||{};var list=ch.pdfInk[page]||(ch.pdfInk[page]=[]);list.push(item);recordHighlightAction({kind:'ink',op:'add',page:page,entries:[{item:item,index:list.length-1}]});touch(ch);renderPdfInk(page);syncPdfInkUi();
+    var ch=find(currentId);if(!ch)return;var stamp=pdfInkStamp(ch),item=Object.assign({id:uid('ink'),at:stamp,updatedAt:stamp},stroke);ch.pdfInk=ch.pdfInk||{};var list=ch.pdfInk[page]||(ch.pdfInk[page]=[]);list.push(item);recordHighlightAction({kind:'ink',op:'add',page:page,entries:[{item:item,index:list.length-1}]});ch.updatedAt=now();persistSoon();renderPdfInk(page);syncPdfInkUi();
   }
   var pdfEraseGesture=null;
   function clearPdfErasePreview(){
@@ -9083,7 +9130,21 @@
       if(reason!==lastSyncToast&&!byId('readerPage').classList.contains('hidden')){lastSyncToast=reason;showReaderToast('Sync: '+reason.slice(0,80));}
     }syncing=false;
   }
-  function scheduleSync(){if(!syncCfg&&!gdriveOn()&&!iCloudOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){doSync();gdriveSync();iCloudSync(false);},4000);}
+  /* A sync downloads, parses, merges and re-uploads the whole library, much of it on this
+     thread, so starting one while the reader writes or types froze the page for a moment.
+     It now waits for 6 quiet seconds without a touch, Pencil or key (90 s at most), and
+     runs right away when the page is hidden. */
+  var SYNC_QUIET=6000,SYNC_MAX_WAIT=90000,syncWaitingSince=0,lastInputAt=0;
+  ['pointerdown','pointerup','keydown'].forEach(function(type){document.addEventListener(type,function(){lastInputAt=Date.now();},{capture:true,passive:true});});
+  function syncWaitLeft(){return Math.max(0,SYNC_MAX_WAIT-(Date.now()-syncWaitingSince));}
+  function scheduleSync(){if(!syncCfg&&!gdriveOn()&&!iCloudOn())return;if(!syncWaitingSince)syncWaitingSince=Date.now();clearTimeout(syncTimer);syncTimer=setTimeout(runQuietSync,Math.min(4000,syncWaitLeft()));}
+  function runQuietSync(force){
+    clearTimeout(syncTimer);syncTimer=null;if(!syncWaitingSince)return;
+    var quiet=Date.now()-lastInputAt,left=syncWaitLeft();
+    if(force!==true&&(workspacePenDown||quiet<SYNC_QUIET)&&left>0){syncTimer=setTimeout(runQuietSync,Math.min(workspacePenDown?1000:SYNC_QUIET-quiet,left));return;}
+    syncWaitingSince=0;doSync();gdriveSync();iCloudSync(false);
+  }
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&syncWaitingSince)runQuietSync(true);});
   /* A device link is a direct hand-off, independent of library sync. It always carries
      the AI provider configuration (including every saved key) and includes GitHub
      credentials only when present. Google OAuth sessions are deliberately never copied. */

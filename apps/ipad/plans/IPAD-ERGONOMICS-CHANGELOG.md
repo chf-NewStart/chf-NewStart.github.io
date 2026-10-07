@@ -598,3 +598,42 @@ palm guard blocked ordinary finger drags:
 Updated `tests/reading-workspace-divider-palm.test.js`: a 60px fingertip contact drags the
 divider (fails on v192), and the whole strip is hit-testable again 2 seconds after Pencil.
 Not verified on a physical iPad.
+
+## 32. Smoother handwriting: saves and sync wait for a pause (v194)
+
+houfu: "when doing screenrecording + workspace, it glitches like it freezes once in a while
+when i try to write". Profiling the Workspace with a 4 MB library, 400 strokes and the CPU
+slowed 6x (about an iPad recording its screen) found the pen-lift handler taking 290-730ms,
+so the next stroke started late. The causes and the fixes:
+- Every stroke, erase and paper growth saved the whole library (JSON of several MB plus a
+  localStorage write). These saves now wait until the Pencil has rested for 1.2 s (15 s at
+  most during unbroken writing, and never mid-stroke). Any other save writes them too, and
+  hiding the page or leaving the app writes them at once. After a failed save they go
+  straight through again, so storage warnings still appear on the stroke that hit them.
+  PDF ink on the paper uses the same pause.
+- The device snapshot copy (IndexedDB) waits for the Pencil to rest for 600ms (5 s at most).
+- Background sync (iCloud, Drive, GitHub) parses and merges the whole library on the main
+  thread. It used to start 4 s after any save, often just as writing resumed. It now waits
+  for 6 quiet seconds with no touch, Pencil or key, runs after 90 s at most, and runs at
+  once when the page is hidden.
+- The Workspace rebuilt every ink path on each render. It now keeps one path per stroke and
+  repaints only strokes whose shape, anchor note or board size changed.
+- The Pencil-active class moved from `<body>` to the divider, so it no longer restyles the
+  whole page twice per stroke.
+Measured with the same setup: the pen-lift handler now takes 9-73ms and the longest task
+70-140ms (was 310-810ms).
+
+While checking that deferred saves survive the app going to the background, a page-hide bug
+from v186 turned up: with localStorage full (the iPad app with a merged library), the
+cursor save on page hide patched the older localStorage copy and then copied it over the
+newer device snapshot, so recent notes and ink could be lost if sync had not uploaded them
+yet. With the store full, page hide now writes the newest library to the device snapshot.
+
+Tests: new `tests/reading-workspace-ink-idle-save.test.js` (five strokes 250ms apart write
+the library once after a pause; earlier ink paths are reused; hiding the page saves at once;
+Undo and Redo; a cancelled eraser sweep; reload keeps strokes), new
+`tests/reading-sync-quiet.test.js` (timing over the real scheduler: 6 quiet seconds, Pencil
+held, the 90 s cap, hide), new `tests/reading-storage-full-lifecycle.test.js` (fails on
+v193). `tests/reading-workspace-lasso-storage-full.test.js` now waits for a snapshot newer
+than the stale store, and `tests/reading-workspace-divider-palm.test.js` checks the
+divider's class. Not verified on a physical iPad.

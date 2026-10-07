@@ -115,7 +115,13 @@ async function zenLayout(page, layout) {
   await page.locator('#zenLayout').click();
   await page.locator('[data-zen-pdf-layout="' + layout + '"]').click();
 }
+// Handwriting saves once the Pencil has rested for a moment (v194), so reading the stored
+// library right after a stroke first waits for that save.
+let strokeAt = 0, penDown = false;
 async function chapter(page) {
+  // Some gestures here are dispatched inside the page, so allow for the save, except while
+  // a Pencil is still down: pausing then would turn the stroke into a held straight line.
+  if (!penDown) await page.waitForTimeout(Math.max(1400, strokeAt + 1500 - Date.now()));
   return page.evaluate(() => {
     const id = localStorage.getItem('readingRoom.lastOpen.v1');
     return JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === id);
@@ -159,7 +165,11 @@ async function pointer(page, type, location, options = {}) {
       buttons: options.buttons === undefined ? /up|cancel/.test(type) ? 0 : 1 : options.buttons,
       pressure: options.pressure === undefined ? /up|cancel/.test(type) ? 0 : .6 : options.pressure, clientX: location.x, clientY: location.y });
     target.dispatchEvent(event); return { prevented: event.defaultPrevented, target: target.tagName };
-  }, { type, location, options });
+  }, { type, location, options }).finally(() => {
+    if ((options.pointerType || 'pen') !== 'pen') return;
+    if (type === 'pointerdown') penDown = true;
+    if (/up|cancel/.test(type)) { penDown = false; strokeAt = Date.now(); }
+  });
 }
 async function touch(page, type, location, options = {}) {
   return page.evaluate(({ type, location, options }) => {

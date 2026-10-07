@@ -74,7 +74,11 @@ async function waitForPdf(page) {
       && !document.getElementById('readerPage').classList.contains('hidden');
   });
 }
+// Handwriting saves once the Pencil has rested for a moment (v194), so reading the stored
+// library right after a stroke first waits for that save.
+let strokeAt = 0;
 async function chapter(page) {
+  const wait = strokeAt + 1500 - Date.now(); if (wait > 0) await page.waitForTimeout(wait);
   return page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1')));
 }
 function ink(ch, number = 1) { return (ch.pdfInk || {})[number] || []; }
@@ -114,7 +118,7 @@ async function pointer(page, type, point, options = {}) {
     const event = new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: options.pointerType || 'pen', pointerId: options.id || 71, isPrimary: true, button: 0,
       buttons: /up|cancel/.test(type) ? 0 : 1, pressure: /up|cancel/.test(type) ? 0 : .6, clientX: point.x, clientY: point.y });
     target.dispatchEvent(event); return event.defaultPrevented;
-  }, { type, point, options });
+  }, { type, point, options }).finally(() => { if (/up|cancel/.test(type)) strokeAt = Date.now(); });
 }
 async function touch(page, type, point, options = {}) {
   return page.evaluate(({ type, point, options }) => {
@@ -126,7 +130,7 @@ async function touch(page, type, point, options = {}) {
     const event = new Event(type, { bubbles: true, cancelable: true });
     Object.defineProperties(event, { changedTouches: { value: changedTouches }, touches: { value: touches }, targetTouches: { value: touches } });
     target.dispatchEvent(event); return event.defaultPrevented;
-  }, { type, point, options });
+  }, { type, point, options }).finally(() => { if (/end|cancel/.test(type)) strokeAt = Date.now(); });
 }
 async function stroke(page, from, to, options = {}) {
   const steps = options.steps || 8;

@@ -36,7 +36,9 @@ async function fixturePdf() {
   pdf.addPage([612, 792]).drawText('Extended workspace paper stays writable.', { x: 52, y: 710, size: 14, font });
   return Buffer.from(await pdf.save());
 }
+// Handwriting saves once the Pencil has rested for a moment (v194), so wait for that save.
 async function paper(page) {
+  await page.waitForTimeout(1400);
   return page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
     .find(ch => ch.id === localStorage.getItem('readingRoom.lastOpen.v1')));
 }
@@ -58,7 +60,8 @@ async function zoom(page, requested) {
 async function scrollToLogical(page, y) {
   // Scroll only as far as the browser currently allows; each genuine scroll
   // event asks the app for more paper until the destination can be displayed.
-  for (let attempt = 0; attempt < 12; attempt++) {
+  // Paper growth saves once writing and scrolling pause, so allow for that save to land.
+  for (let attempt = 0; attempt < 40; attempt++) {
     const position = await page.evaluate(y => {
       const scroll = document.getElementById('workspaceScroll'), board = document.getElementById('workspaceBoard');
       const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === localStorage.getItem('readingRoom.lastOpen.v1'));
@@ -113,7 +116,7 @@ async function writeAt(page, { logicalY, xFraction = .35, label, stylusTouch = f
     await page.waitForFunction(count => {
       const ch = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === localStorage.getItem('readingRoom.lastOpen.v1'));
       return ch?.readingWorkspace?.strokes.length === count;
-    }, before + 1, { timeout: 2000 });
+    }, before + 1, { timeout: 4000 });
   } catch (error) {
     throw new Error(label + ' did not save a stroke from the actual hit target: ' + JSON.stringify(result), { cause: error });
   }

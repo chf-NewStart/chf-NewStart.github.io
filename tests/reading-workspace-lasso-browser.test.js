@@ -31,7 +31,9 @@ async function generatedPdf() {
   doc.addPage([612, 792]).drawText(QUOTE, { x: 45, y: 710, size: 11, font });
   return Buffer.from(await doc.save());
 }
+// Handwriting saves once the Pencil has rested for a moment (v194), so wait for that save.
 async function chapter(page) {
+  await page.waitForTimeout(1400);
   return page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
     .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1')));
 }
@@ -89,8 +91,8 @@ async function clientPoints(page, points) {
     const rect = board.getBoundingClientRect();
     const saved = JSON.parse(localStorage.getItem('readingRoom.v1')).chapters
       .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1'));
-    return points.map(([x, y]) => ({ x: rect.left + x * rect.width / (saved.readingWorkspace.width || 1000),
-      y: rect.top + y * rect.height / saved.readingWorkspace.height }));
+    return points.map(([x, y]) => ({ x: rect.left + x * rect.width / (Number(board.dataset.logicalWidth) || saved.readingWorkspace.width || 1000),
+      y: rect.top + y * rect.height / (Number(board.dataset.logicalHeight) || saved.readingWorkspace.height) }));
   }, points);
 }
 async function synthetic(page, points, pointerType = 'pen', end = 'pointerup', pointerId = 81) {
@@ -105,8 +107,8 @@ async function synthetic(page, points, pointerType = 'pen', end = 'pointerup', p
     try {
       for (let index = 0; index < points.length; index++) {
         const [x, y] = points[index];
-        const clientX = rect.left + x * rect.width / (saved.readingWorkspace.width || 1000);
-        const clientY = rect.top + y * rect.height / saved.readingWorkspace.height;
+        const clientX = rect.left + x * rect.width / (Number(board.dataset.logicalWidth) || saved.readingWorkspace.width || 1000);
+        const clientY = rect.top + y * rect.height / (Number(board.dataset.logicalHeight) || saved.readingWorkspace.height);
         const target = document.elementFromPoint(clientX, clientY);
         if (!target || !board.contains(target)) throw new Error('Fixture point is outside visible workspace: ' + JSON.stringify({ x, y, clientX, clientY }));
         const type = index === 0 ? 'pointerdown' : index === points.length - 1 ? end : 'pointermove';
@@ -138,8 +140,8 @@ async function visibleGeometry(page) {
       .find(item => item.id === localStorage.getItem('readingRoom.lastOpen.v1'));
     const box = node => {
       const r = node.getBoundingClientRect();
-      return { x: (r.left - rect.left) * (saved.readingWorkspace.width || 1000) / rect.width, y: (r.top - rect.top) * saved.readingWorkspace.height / rect.height,
-        width: r.width * (saved.readingWorkspace.width || 1000) / rect.width, height: r.height * saved.readingWorkspace.height / rect.height };
+      return { x: (r.left - rect.left) * (Number(board.dataset.logicalWidth) || saved.readingWorkspace.width || 1000) / rect.width, y: (r.top - rect.top) * (Number(board.dataset.logicalHeight) || saved.readingWorkspace.height) / rect.height,
+        width: r.width * (Number(board.dataset.logicalWidth) || saved.readingWorkspace.width || 1000) / rect.width, height: r.height * (Number(board.dataset.logicalHeight) || saved.readingWorkspace.height) / rect.height };
     };
     return { card: box(document.querySelector('.workspace-card')),
       selection: document.querySelector('.workspace-selection-box:not([hidden])') ? box(document.querySelector('.workspace-selection-box')) : null };

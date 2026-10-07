@@ -122,6 +122,21 @@ async function fixture(browser, withClip = true, savedWorkspace = null) {
       assert.equal(merged.sameFill, false, 'and its new color');
     } else assert.equal(merged.samePath, true);
 
+    const edits = await page.evaluate(() => {
+      const at = Date.now(), base = { id: 'edit-me', color: 'black', width: 2.4, style: 'natural', createdAt: at, updatedAt: at, points: [[100, 300, .6], [220, 340, .6]] };
+      fixture.state.workspace = PhloemWorkspaceState.normalize({ ...fixture.state.workspace, strokes: [base] }); fixture.view.render();
+      const path = () => document.querySelector('[data-stroke-id="edit-me"]').getAttribute('d');
+      const plain = path();
+      // The marker nib changes the outline without changing the clock.
+      fixture.state.workspace = { ...fixture.state.workspace, strokes: fixture.state.workspace.strokes.map(s => ({ ...s, nib: 'marker' })) }; fixture.view.render();
+      const marker = path();
+      // A stroke edited in place (same object, same clock) moves on screen too.
+      fixture.state.workspace.strokes[0].points.forEach(p => { p[0] += 0.4; p[1] += 250; }); fixture.view.render();
+      return { markerRepainted: marker !== plain, movedRepainted: path() !== marker };
+    });
+    assert.equal(edits.markerRepainted, true, 'a nib change repaints the stroke');
+    assert.equal(edits.movedRepainted, true, 'an in-place coordinate change repaints the stroke');
+
     const order = await page.evaluate(() => {
       const at = Date.now(), geometry = { width: 2.4, style: 'natural', createdAt: at, updatedAt: at, points: [[100, 100, .6], [200, 150, .6]] };
       fixture.state.workspace = PhloemWorkspaceState.normalize({ ...fixture.state.workspace, strokes: [{ ...geometry, id: 'z-stroke', color: 'black' }] }); fixture.view.render();

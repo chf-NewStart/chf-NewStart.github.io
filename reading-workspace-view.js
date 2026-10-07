@@ -445,23 +445,21 @@
       }
       if (selection) { setStatus(''); selectionBox.focus({ preventScroll: true }); }
     }
-    /* A synced merge can replace a stroke's points or color without changing its clock (the
-       tie-break is by content), so the key also carries a cheap hash of the stroke itself. */
-    const inkContentHashes = new WeakMap();
+    /* A synced merge can replace a stroke's points, nib or color without changing its clock
+       (the tie-break is by content), and some updates edit a stroke in place, so the key
+       carries a fresh hash of every field that drawing reads. Cheap next to drawing. */
     function inkContent(stroke) {
-      let hash = inkContentHashes.get(stroke);
-      if (hash !== undefined) return hash;
-      hash = 0;
-      const text = `${stroke.color}|${stroke.width}|${stroke.style || ''}|${stroke.shape || ''}|${JSON.stringify(stroke.anchor || null)}`;
+      let hash = 0;
+      const fields = {};
+      for (const key of Object.keys(stroke).sort()) if (key !== 'points' && key !== 'updatedAt' && key !== 'createdAt') fields[key] = stroke[key];
+      const text = JSON.stringify(fields);
       for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) | 0;
       for (const point of stroke.points || []) for (const value of point) hash = (hash * 31 + Math.round(value * 1000)) | 0;
-      hash = `${(stroke.points || []).length}:${hash}`;
-      inkContentHashes.set(stroke, hash);
-      return hash;
+      return `${(stroke.points || []).length}:${hash}`;
     }
     function inkKey(stroke) {
       const id = stroke.anchor && stroke.anchor.clipId, box = id ? (cards.has(id) ? cards.get(id).box : positionsOf(context())[id]) : null;
-      return `${stroke.updatedAt}|${inkContent(stroke)}|${observedWidth}|${observedHeight}|${box ? `${box.x},${box.y},${box.width}` : ''}`;
+      return `${stroke.updatedAt}|${inkContent(stroke)}|${observedWidth}|${observedHeight}|${box ? `${box.x},${box.y},${box.width},${box.height || ''}` : ''}`;
     }
     function repaintCached(stroke) {
       const entry = inkCache.get(stroke.id); if (!entry) return;

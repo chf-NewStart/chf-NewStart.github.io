@@ -6808,11 +6808,20 @@
   /* Window capture, registered before the PDF ink controller: it takes Pencil events at
      the window and stops them there, so later listeners never saw PDF strokes. The quiet
      timers for saves and sync (persistSoon, runQuietSync) read this activity. */
-  addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){workspacePenDown++;lastInputAt=Date.now();markWorkspacePen();}},true);
-  ['pointerup','pointercancel'].forEach(function(type){addEventListener(type,function(e){if(e.pointerType==='pen'){workspacePenDown=Math.max(0,workspacePenDown-1);lastInputAt=Date.now();markWorkspacePen();}},true);});
-  // A stylus seen only as touches (no Pencil pointer events) counts as writing too.
-  addEventListener('touchstart',function(e){if(Array.from(e.changedTouches||[]).some(function(t){return t.touchType==='stylus';})){lastInputAt=Date.now();markWorkspacePen();}},{capture:true,passive:true});
-  ['touchend','touchcancel'].forEach(function(type){addEventListener(type,function(e){if(Array.from(e.changedTouches||[]).some(function(t){return t.touchType==='stylus';})){lastInputAt=Date.now();markWorkspacePen();}},{capture:true,passive:true});});
+  /* workspacePenDown counts Pencils on the glass: pen pointers plus stylus touches that
+     arrive without pointer events. A paired pointer and touch for one Pencil counts once. */
+  var penPointersDown=0,stylusTouchesDown={};
+  function countWorkspacePen(){var touches=Object.keys(stylusTouchesDown).length;workspacePenDown=Math.max(penPointersDown,touches);lastInputAt=Date.now();markWorkspacePen();}
+  addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){penPointersDown++;countWorkspacePen();}},true);
+  ['pointerup','pointercancel'].forEach(function(type){addEventListener(type,function(e){if(e.pointerType==='pen'){penPointersDown=Math.max(0,penPointersDown-1);countWorkspacePen();}},true);});
+  function stylusTouches(list){return Array.from(list||[]).filter(function(t){return t.touchType==='stylus';});}
+  addEventListener('touchstart',function(e){var found=stylusTouches(e.changedTouches);if(!found.length)return;found.forEach(function(t){stylusTouchesDown[t.identifier]=1;});countWorkspacePen();},{capture:true,passive:true});
+  // A long stroke keeps the Pencil "in use" while it moves, even with no pointer events.
+  addEventListener('touchmove',function(e){if(stylusTouches(e.changedTouches).length){lastInputAt=workspacePenAt=Date.now();}},{capture:true,passive:true});
+  ['touchend','touchcancel'].forEach(function(type){addEventListener(type,function(e){var found=stylusTouches(e.changedTouches);if(!found.length)return;found.forEach(function(t){delete stylusTouchesDown[t.identifier];});
+    // Never leave a touch counted that the page no longer has (a lost touchend).
+    var live={};stylusTouches(e.touches).forEach(function(t){live[t.identifier]=1;});Object.keys(stylusTouchesDown).forEach(function(id){if(!live[id])delete stylusTouchesDown[id];});countWorkspacePen();},{capture:true,passive:true});});
+  addEventListener('blur',function(){stylusTouchesDown={};penPointersDown=0;workspacePenDown=0;});
   function workspaceDividerAccepts(e){
     if(e.pointerType==='touch'){
       // No contact-size test: iPad reports ordinary fingertips as 40-70px contacts.

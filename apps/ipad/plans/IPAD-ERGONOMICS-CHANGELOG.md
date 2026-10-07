@@ -658,3 +658,11 @@ Review fixes (independent review of 45c5d8a3, all reproduced first, then fixed):
   500 and 1,000 strokes.
 - `tests/reading-workspace-pending-save-paper.test.js`: strokes written just before opening
   another paper save to their own paper, and Undo before the save wins.
+- Second review round (Codex): a Pencil seen only as stylus touches still let saves and sync
+  start mid-stroke, because touches marked activity but never counted as "down". Stylus
+  touches are now counted by identifier (a paired pointer and touch count once), touchmove
+  keeps the Pencil marked as in use, and a lost touchend is cleared on the next touch event
+  or window blur. `tests/reading-pdf-ink-quiet.test.js` adds a long touch-only stroke.
+- The ink cache missed nib (marker) changes and strokes edited in place. The key now hashes
+  every drawn field on each render (not cached per object), plus the anchor note's height.
+  `tests/reading-workspace-ink-cache.test.js` covers both (fails on 5577dd98).

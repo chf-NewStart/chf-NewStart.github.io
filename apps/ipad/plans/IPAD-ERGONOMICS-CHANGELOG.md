@@ -679,19 +679,20 @@ Review fixes (independent review of 45c5d8a3, all reproduced first, then fixed):
   clip note) saves its typing at once. Workspace notes keep the pause, since a Pencil stroke
   beside one blurs it.
 
-## 33. Clip and Workspace notes, and the reading position, save after a pause (v196)
+## 33. Clip and Workspace notes save after a pause (v196)
 
 Second audit pass for "one small action saves the whole library":
 - Typing in a clip note or a Workspace sticky note called `persist()` on every key (both go
   through `updateExcerptNote`). `saveExcerptState` now takes a `typing` flag and uses
   `persistSoon`; a failed save still shows "Could not save this note" in the Clips status.
-- The reading position saved the whole library 600 ms after every scroll stop, and PDF page
-  changes 1.2 s after each page. Both now set the position in memory and call
-  `persistSoon`, so a run of short scrolls saves once. Page hide still flushes.
+- Tried and backed out: deferring the reading-position save after each scroll stop. Its
+  pending save landed in the middle of later Workspace writing and lasso tests, and a scroll
+  stop is one save, not one per key. The position still saves 600 ms after a scroll stops.
 - `tests/reading-typing-save-pause.test.js` adds clip-note typing (12 saves for 12 keys
-  before this change) and four scroll stops (at most one save).
+  before this change).
 - Checked and left alone: library search re-renders the shelf 90 ms after typing stops
   (no save); adding, recoloring or removing a highlight saves once per action.
+
 ## 32b. Highlight quick bar: four colors, Define, ⋯ (v195, separate PR from v194)
 
 houfu: "after each passage highlighted, can we see a simple toggle where shows 4 highlight

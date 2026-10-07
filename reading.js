@@ -3475,8 +3475,7 @@
     if(!pageTrackTick){pageTrackTick=true;requestAnimationFrame(function(){pageTrackTick=false;trackCurrentPage();updateProgress();if(comfort.focus&&!guideDragging)placeGuide();});}
     clearTimeout(scrollSaveTimer);
     scrollSaveTimer=setTimeout(function(){
-      // Each save writes the whole library, so the position waits for a pause like typing.
-      if(restoringPdfPosition)return;if(saveCurrentReadingPosition(undefined,false))persistSoon();
+      if(restoringPdfPosition)return;saveCurrentReadingPosition();
     },600);
   });
   function restoreReaderPosition(ch,announce){
@@ -4764,7 +4763,7 @@
     if(best!==currentPage){
       currentPage=best;updatePageChrome();
       clearTimeout(pageSettleTimer);
-      pageSettleTimer=setTimeout(function(){if(savePdfReadingPosition(undefined,false))persistSoon();},1200);
+      pageSettleTimer=setTimeout(function(){savePdfReadingPosition();},1200);
     }
   }
   async function renderPdfPage(preservedPosition){

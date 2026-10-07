@@ -1,8 +1,7 @@
 /* Every save writes the whole library, so a save per keystroke made typing a note lag
    once the library was large (about 160 ms per key on a throttled 4 MB library). Typing
    now saves once the keys pause, and hiding the page saves whatever is still waiting.
-   Clip notes (and Workspace notes, which share their save path) and the reading position
-   after a scroll wait the same way. */
+   Clip notes (and Workspace notes, which share their save path) wait the same way. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -110,17 +109,6 @@ async function type(page, text) {
     await page.waitForFunction(() => (localStorage.getItem('readingRoom.v1') || '').includes('clip thought'), null, { timeout: 4000 });
     console.log('PASS  a clip note saves once typing pauses  [' + clipSaves + ']');
 
-    // Scrolling the paper saves the position after the scroll settles, once.
-    await page.waitForTimeout(1500);
-    await page.evaluate(() => { window.__librarySaves = 0; });
-    for (let i = 1; i <= 4; i++) {
-      await page.evaluate(y => { document.getElementById('documentPane').scrollTop = y; }, i * 300);
-      await page.waitForTimeout(700);
-    }
-    const scrollSaves = await page.evaluate(() => window.__librarySaves);
-    assert(scrollSaves <= 1, 'four scroll stops wrote the library ' + scrollSaves + ' times');
-    await page.waitForFunction(() => (JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].readerScroll || 0) > 0.05, null, { timeout: 4000 });
-    console.log('PASS  scroll stops save the position once they pause  [' + scrollSaves + ']');
     assert.deepEqual(errors, [], 'no page errors');
     console.log('PASS  no page errors');
   } finally {

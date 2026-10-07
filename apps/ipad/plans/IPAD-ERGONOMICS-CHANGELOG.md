@@ -598,3 +598,25 @@ palm guard blocked ordinary finger drags:
 Updated `tests/reading-workspace-divider-palm.test.js`: a 60px fingertip contact drags the
 divider (fails on v192), and the whole strip is hit-testable again 2 seconds after Pencil.
 Not verified on a physical iPad.
+
+## 32b. Highlight quick bar: four colors, Define, ⋯ (v195, separate PR from v194)
+
+houfu: "after each passage highlighted, can we see a simple toggle where shows 4 highlight
+colors and 1 search icon for the define thing", then "sure, lets build that". Spec from
+houfu's review: colors recolor that exact saved highlight (id, text, geometry, notes and
+Undo kept), Define reuses the lookup flow and its short-phrase limit, other actions go under
+⋯, 44px targets, inside the paper pane, no interference with the next Pencil stroke,
+scrolling or the Workspace, and never reuse a deleted or off-page highlight.
+- `#highlightQuick` (reading.html) appears after any new highlight (selection card color,
+  Highlight button, Marker or Pencil highlighting), unless the Marker color toolbar or the
+  passage card opened instead. It sits above the highlight (below if there is no room),
+  clamped to the paper pane and visual viewport, and never covers the highlight.
+- Colors call `recolorHighlight(ref, to)`, now shared with the card's color row: one
+  `recolor` Undo step on the same record.
+- Define opens the highlight's card and runs `queueLookup` on its text (same limits).
+  ⋯ opens the card (note, excerpt, To workspace, Park question, Remove).
+- The bar listens only on itself. Any pointerdown elsewhere (touch or Pencil, passive, not
+  cancelled), a paper scroll, Escape, resize or blur closes it, so the next stroke reaches
+  the paper. Before acting it checks the highlight still exists on this paper and is shown;
+  otherwise it just closes.
+Test: `tests/reading-highlight-quick-bar.test.js`. Not verified on a physical iPad.

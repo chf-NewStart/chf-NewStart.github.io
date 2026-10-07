@@ -1,5 +1,5 @@
 /* The paper/Workspace divider ignores a resting hand. While Apple Pencil is down, or just
-   after it lifts, finger touches on the divider do nothing; palm-sized contacts do nothing;
+   after it lifts, finger touches on the divider do nothing (a normal fingertip of any contact size works otherwise);
    Pencil resizes only from the middle grip; and a touch that doesn't drag leaves the split
    alone. A deliberate finger drag still resizes. Synthetic pointer events in Chromium; not a
    substitute for a physical iPad check. */
@@ -75,15 +75,14 @@ const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('readi
     await drag({ type: 'touch', penElsewhere: true });
     assert.equal(await percent(), start, 'a finger on the divider while Pencil is writing does nothing');
     await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 900)));
-    await drag({ type: 'touch', size: 70 });
-    assert.equal(await percent(), start, 'a palm-sized contact on the divider does nothing');
     await drag({ type: 'pen', dy: 200 });
     assert.equal(await percent(), start, 'Pencil away from the middle grip does nothing');
     await drag({ type: 'touch', dx: 2 });
     assert.equal(await percent(), start, 'a touch that does not drag leaves the split alone');
     await drag({ type: 'touch', penJustLifted: true });
     assert.equal(await percent(), start, 'a finger right after Pencil lifts does nothing');
-    await drag({ type: 'touch' });
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 900)));
+    await drag({ type: 'touch', size: 60 });
     const fingered = await percent();
     assert(fingered < start - 5, `a deliberate finger drag still resizes: ${start} -> ${fingered}`);
     await drag({ type: 'pen', dx: 120 });
@@ -102,6 +101,11 @@ const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('readi
     assert.equal(hits.leftOfLine, 'paper', 'a Pencil stroke just left of the divider line goes to the paper: ' + JSON.stringify(hits));
     assert.equal(hits.rightOfLine, 'board', 'a Pencil stroke just right of the divider line goes to the Workspace: ' + JSON.stringify(hits));
     assert.equal(hits.grip, 'workspaceDividerGrip', 'the middle grip still takes the divider');
+    // Two seconds after Pencil lifts, a finger can grab the whole strip again.
+    await page.waitForTimeout(2300);
+    const later = await page.evaluate(() => { const r = document.getElementById('workspaceDivider').getBoundingClientRect(), mid = r.top + r.height / 2;
+      const el = document.elementFromPoint(r.left + 8, mid + 200); return { active: document.body.classList.contains('workspace-pen-active'), divider: !!(el && el.closest('#workspaceDivider')) }; });
+    assert.deepEqual(later, { active: false, divider: true }, 'the whole divider strip takes a finger again soon after writing');
     assert.deepEqual(errors, []);
     console.log('PASS the divider ignores a resting hand and stray Pencil, and still resizes on purpose');
   } finally {

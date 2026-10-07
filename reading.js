@@ -6752,21 +6752,21 @@
   }
   var workspaceDivider=byId('workspaceDivider');
   /* A hand resting while writing must not resize the panes: the divider ignores touches
-     while Apple Pencil is down or was just lifted, and broad palm-sized contacts. Pencil
+     while Apple Pencil is down or was just lifted. Pencil
      resizes only from the grip in the middle, and nothing moves until a drag of a few
      pixels, so a stray tap leaves the split alone. */
   var workspacePenDown=0,workspacePenAt=0,workspacePenTimer=0;
   function markWorkspacePen(){
     workspacePenAt=Date.now();document.body.classList.add('workspace-pen-active');clearTimeout(workspacePenTimer);
-    // Ten quiet seconds after the last Pencil stroke, the whole strip grabs the divider again.
-    workspacePenTimer=setTimeout(function(){if(!workspacePenDown)document.body.classList.remove('workspace-pen-active');},10000);
+    // Two quiet seconds after the last Pencil stroke, a finger can grab the whole strip again.
+    workspacePenTimer=setTimeout(function(){if(!workspacePenDown)document.body.classList.remove('workspace-pen-active');},2000);
   }
   document.addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){workspacePenDown++;markWorkspacePen();}},true);
   ['pointerup','pointercancel'].forEach(function(type){document.addEventListener(type,function(e){if(e.pointerType==='pen'){workspacePenDown=Math.max(0,workspacePenDown-1);markWorkspacePen();}},true);});
   function workspaceDividerAccepts(e){
     if(e.pointerType==='touch'){
+      // No contact-size test: iPad reports ordinary fingertips as 40-70px contacts.
       if(workspacePenDown||Date.now()-workspacePenAt<800)return false;
-      if((e.width||0)>40||(e.height||0)>40)return false;
     }
     if(e.pointerType==='pen'){var r=byId('workspaceDividerGrip').getBoundingClientRect();if(e.clientY<r.top||e.clientY>r.bottom)return false;}
     return true;

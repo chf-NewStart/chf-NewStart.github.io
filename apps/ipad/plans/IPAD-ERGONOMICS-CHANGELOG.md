@@ -582,3 +582,19 @@ Review fixes before shipping (an independent review found five real problems):
 - The Duplicate/Delete bar is counter-scaled (`--selection-ui-scale`) so it stays the same
   size on screen at any Workspace zoom, and it moves below the box (then left) when the
   floating tool palette or the top of the pane would cover it.
+
+## 31. A finger moves the divider again (v193)
+
+houfu: "wait it looks like you disabled the hand moving the divider?" Two parts of the v189
+palm guard blocked ordinary finger drags:
+- Touches with a contact over 40px were treated as a palm. iPad reports normal fingertips as
+  40-70px contacts, so most finger drags were ignored. The size test is gone; touches are
+  still ignored while Apple Pencil is down and for 800ms after it lifts.
+- After any Pencil use the strip stayed pass-through (only the middle grip took pointers)
+  for 10 seconds. That window is now 2 seconds, so the whole strip takes a finger again
+  shortly after writing, while strokes written in a row beside the line still reach the
+  paper or Workspace.
+
+Updated `tests/reading-workspace-divider-palm.test.js`: a 60px fingertip contact drags the
+divider (fails on v192), and the whole strip is hit-testable again 2 seconds after Pencil.
+Not verified on a physical iPad.

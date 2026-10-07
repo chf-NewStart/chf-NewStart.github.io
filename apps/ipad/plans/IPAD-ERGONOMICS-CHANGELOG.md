@@ -724,3 +724,13 @@ Test: `tests/reading-highlight-quick-bar.test.js`. Not verified on a physical iP
 houfu asked for all three to go to main for testing and a demo (2026-10-07). The quick bar
 branch (v195) was merged into the save-audit branch; its version lines were set to v196,
 the only conflicts. v194 and v195 never deployed.
+- Pre-release review (three reviewers plus a verifier, on the full v196 diff) found one real
+  defect, now fixed: a Pencil seen as stylus touches stayed counted as down when its
+  touchend was lost. That happens after a Pencil highlight in a text paper, because
+  `renderText` removes the element the touch started on, and touch events stick to their
+  start element. Paused saves then waited with no deadline, and a finger could no longer
+  move the divider. Now (a) the start element is watched for its touchend, (b) every
+  stylus touchstart drops touches the page no longer lists, and (c) `penOnGlass()`
+  clears a "down" Pencil after 10 s with no Pencil event. `tests/reading-pdf-ink-quiet`
+  covers (a) and (b); (a) fails before the fix.
+- The quick bar leaves Escape alone while a dialog is open.

@@ -23,4 +23,15 @@ assert.deepEqual(tHeld.sync,[],'no sync during a long touch-only stroke');
 await touchFire('touchend',90,92);await page.waitForTimeout(1600);
 assert.ok((await page.evaluate(()=>__review.get())).writes.length>=1,'touch-only strokes save once the Pencil rests');
 console.log('PASS PDF Pencil strokes (pointer or touch-only) hold saves and sync until the Pencil rests');
+// A touch's end goes to the element it began on. If a redraw removes that element, the end
+// never reaches the window; the Pencil must still count as lifted.
+const lost=await page.evaluate(()=>{const el=document.createElement('span');el.style.cssText='position:fixed;left:5px;top:5px;width:20px;height:20px';document.body.appendChild(el);
+  const touch=(type,list)=>{const t={identifier:97,target:el,touchType:'stylus',clientX:10,clientY:10,pageX:10,pageY:10,force:.6};const e=new Event(type,{bubbles:true,cancelable:true});Object.defineProperties(e,{changedTouches:{value:[t]},touches:{value:list?[t]:[]},targetTouches:{value:list?[t]:[]}});el.dispatchEvent(e);};
+  touch('touchstart',true);const down=__review.get().workspacePenDown;el.remove();touch('touchend',false);return{down,after:__review.get().workspacePenDown};});
+assert.equal(lost.down,1);assert.equal(lost.after,0,'a touchend on a removed element still lifts the Pencil');
+// A touchend lost entirely is cleared by the next touch, which lists every touch still down.
+const pruned=await page.evaluate(()=>{const fireOn=(type,id,list)=>{const t={identifier:id,target:document.body,touchType:'stylus',clientX:10,clientY:10,pageX:10,pageY:10,force:.6};const e=new Event(type,{bubbles:true,cancelable:true});Object.defineProperties(e,{changedTouches:{value:[t]},touches:{value:list?[t]:[]},targetTouches:{value:[]}});document.body.dispatchEvent(e);};
+  fireOn('touchstart',98,true);const stuck=__review.get().workspacePenDown;fireOn('touchstart',99,true);const next=__review.get().workspacePenDown;fireOn('touchend',99,false);return{stuck,next,end:__review.get().workspacePenDown};});
+assert.deepEqual(pruned,{stuck:1,next:1,end:0},'a lost touchend does not keep the Pencil counted');
+console.log('PASS a lost or detached touchend does not leave the Pencil counted as down');
 }finally{await browser.close();server.close();}})().catch(e=>{console.error(e);server.close();process.exitCode=1});

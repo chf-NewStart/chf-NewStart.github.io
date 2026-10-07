@@ -530,6 +530,7 @@
   function queueStateSnapshot(serialized,immediate){if(!stateSnapshotPending)stateSnapshotQueuedAt=Date.now();stateSnapshotPending=serialized;clearTimeout(stateSnapshotTimer);if(immediate)return flushStateSnapshot();stateSnapshotTimer=setTimeout(flushStateSnapshotWhenIdle,350);return stateSnapshotWrite;}
   // Copying the library into the device snapshot waits for the Pencil to rest (up to 5 s).
   function flushStateSnapshotWhenIdle(){
+    penOnGlass();
     if(stateSnapshotPending&&(workspacePenDown||Date.now()-workspacePenAt<600)&&Date.now()-stateSnapshotQueuedAt<5000){stateSnapshotTimer=setTimeout(flushStateSnapshotWhenIdle,300);return stateSnapshotWrite;}
     return flushStateSnapshot();
   }
@@ -569,7 +570,7 @@
   }
   function flushPersistSoon(force){
     clearTimeout(persistSoonTimer);persistSoonTimer=0;if(!persistSoonSince)return true;
-    var idle=workspacePenDown?0:Date.now()-workspacePenAt;
+    penOnGlass();var idle=workspacePenDown?0:Date.now()-workspacePenAt;
     // A long unbroken run of writing still saves, at the next lift.
     if(force!==true&&(workspacePenDown||(idle<PERSIST_SOON_IDLE&&Date.now()-persistSoonSince<PERSIST_SOON_MAX))){persistSoonTimer=setTimeout(flushPersistSoon,workspacePenDown?250:PERSIST_SOON_IDLE-idle);return true;}
     var failed=persistSoonFailed;persistSoonFailed=null;
@@ -6810,7 +6811,7 @@
     // The class sits on the divider itself: toggling one on <body> restyled the whole page.
     if(!workspaceDivider.classList.contains('workspace-pen-active'))workspaceDivider.classList.add('workspace-pen-active');
     // Two quiet seconds after the last Pencil stroke, a finger can grab the whole strip again.
-    workspacePenTimer=setTimeout(function(){if(!workspacePenDown)workspaceDivider.classList.remove('workspace-pen-active');},2000);
+    workspacePenTimer=setTimeout(function quiet(){if(!penOnGlass())workspaceDivider.classList.remove('workspace-pen-active');else workspacePenTimer=setTimeout(quiet,2000);},2000);
   }
   /* Window capture, registered before the PDF ink controller: it takes Pencil events at
      the window and stops them there, so later listeners never saw PDF strokes. The quiet
@@ -6822,17 +6823,28 @@
   addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){penPointersDown++;countWorkspacePen();}},true);
   ['pointerup','pointercancel'].forEach(function(type){addEventListener(type,function(e){if(e.pointerType==='pen'){penPointersDown=Math.max(0,penPointersDown-1);countWorkspacePen();}},true);});
   function stylusTouches(list){return Array.from(list||[]).filter(function(t){return t.touchType==='stylus';});}
-  addEventListener('touchstart',function(e){var found=stylusTouches(e.changedTouches);if(!found.length)return;found.forEach(function(t){stylusTouchesDown[t.identifier]=1;});countWorkspacePen();},{capture:true,passive:true});
+  addEventListener('touchstart',function(e){var found=stylusTouches(e.changedTouches);if(!found.length)return;
+    // Touches the page no longer has were lifted where the window could not see it.
+    var live={};Array.from(e.touches||[]).forEach(function(t){live[t.identifier]=1;});Object.keys(stylusTouchesDown).forEach(function(id){if(!live[id])delete stylusTouchesDown[id];});
+    found.forEach(function(t){stylusTouchesDown[t.identifier]=1;});countWorkspacePen();
+    var start=e.target;if(start&&start.addEventListener&&start!==window&&start!==document){var end=function(ev){if(!start.isConnected)liftStylusTouches(ev);start.removeEventListener('touchend',end);start.removeEventListener('touchcancel',end);};start.addEventListener('touchend',end,{passive:true});start.addEventListener('touchcancel',end,{passive:true});}
+  },{capture:true,passive:true});
   // A long stroke keeps the Pencil "in use" while it moves, even with no pointer events.
   addEventListener('touchmove',function(e){if(stylusTouches(e.changedTouches).length){lastInputAt=workspacePenAt=Date.now();}},{capture:true,passive:true});
   ['touchend','touchcancel'].forEach(function(type){addEventListener(type,function(e){var found=stylusTouches(e.changedTouches);if(!found.length)return;found.forEach(function(t){delete stylusTouchesDown[t.identifier];});
     // Never leave a touch counted that the page no longer has (a lost touchend).
     var live={};stylusTouches(e.touches).forEach(function(t){live[t.identifier]=1;});Object.keys(stylusTouchesDown).forEach(function(id){if(!live[id])delete stylusTouchesDown[id];});countWorkspacePen();},{capture:true,passive:true});});
   addEventListener('blur',function(){stylusTouchesDown={};penPointersDown=0;workspacePenDown=0;});
+  /* A touch's end goes to the element it started on. When a redraw removes that element
+     (a Pencil highlight rebuilding the text), touchend never reaches the window, so the
+     start element is watched too. And a Pencil counted as down with no Pencil event for
+     10 s is a lost lift: saves, the divider and sync stop waiting for it. */
+  function penOnGlass(){if(workspacePenDown&&Date.now()-workspacePenAt>10000){stylusTouchesDown={};penPointersDown=0;workspacePenDown=0;}return workspacePenDown;}
+  function liftStylusTouches(e){stylusTouches(e.changedTouches).forEach(function(t){delete stylusTouchesDown[t.identifier];});countWorkspacePen();}
   function workspaceDividerAccepts(e){
     if(e.pointerType==='touch'){
       // No contact-size test: iPad reports ordinary fingertips as 40-70px contacts.
-      if(workspacePenDown||Date.now()-workspacePenAt<800)return false;
+      if(penOnGlass()||Date.now()-workspacePenAt<800)return false;
     }
     if(e.pointerType==='pen'){var r=byId('workspaceDividerGrip').getBoundingClientRect();if(e.clientY<r.top||e.clientY>r.bottom)return false;}
     return true;
@@ -8075,7 +8087,7 @@
     if(lastAskSelection)queueLookup(lastAskSelection.text,selectionAnchor||rect,lastAskSelection,0);
   };
   addEventListener('pointerdown',function(e){if(quickRef&&!e.target.closest('#highlightQuick'))hideHighlightQuick();},{capture:true,passive:true});
-  addEventListener('keydown',function(e){if(quickRef&&e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();hideHighlightQuick();}},true);
+  addEventListener('keydown',function(e){if(quickRef&&e.key==='Escape'&&!document.querySelector('dialog[open]')){e.preventDefault();e.stopImmediatePropagation();hideHighlightQuick();}},true);
   byId('documentPane').addEventListener('scroll',function(){if(quickRef)hideHighlightQuick();},{passive:true});
   ['resize','blur'].forEach(function(type){addEventListener(type,function(){if(quickRef)hideHighlightQuick();});});
   function renderPdfHighlights(pageNum){
@@ -9214,7 +9226,7 @@
   function scheduleSync(){if(!syncCfg&&!gdriveOn()&&!iCloudOn())return;if(!syncWaitingSince)syncWaitingSince=Date.now();clearTimeout(syncTimer);syncTimer=setTimeout(runQuietSync,Math.min(4000,syncWaitLeft()));}
   function runQuietSync(force){
     clearTimeout(syncTimer);syncTimer=null;if(!syncWaitingSince)return;
-    var quiet=Date.now()-lastInputAt,left=syncWaitLeft();
+    penOnGlass();var quiet=Date.now()-lastInputAt,left=syncWaitLeft();
     if(force!==true&&(workspacePenDown||quiet<SYNC_QUIET)&&left>0){syncTimer=setTimeout(runQuietSync,Math.min(workspacePenDown?1000:SYNC_QUIET-quiet,left));return;}
     syncWaitingSince=0;doSync();gdriveSync();iCloudSync(false);
   }

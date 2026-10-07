@@ -445,9 +445,23 @@
       }
       if (selection) { setStatus(''); selectionBox.focus({ preventScroll: true }); }
     }
+    /* A synced merge can replace a stroke's points or color without changing its clock (the
+       tie-break is by content), so the key also carries a cheap hash of the stroke itself. */
+    const inkContentHashes = new WeakMap();
+    function inkContent(stroke) {
+      let hash = inkContentHashes.get(stroke);
+      if (hash !== undefined) return hash;
+      hash = 0;
+      const text = `${stroke.color}|${stroke.width}|${stroke.style || ''}|${stroke.shape || ''}|${JSON.stringify(stroke.anchor || null)}`;
+      for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) | 0;
+      for (const point of stroke.points || []) for (const value of point) hash = (hash * 31 + Math.round(value * 1000)) | 0;
+      hash = `${(stroke.points || []).length}:${hash}`;
+      inkContentHashes.set(stroke, hash);
+      return hash;
+    }
     function inkKey(stroke) {
       const id = stroke.anchor && stroke.anchor.clipId, box = id ? (cards.has(id) ? cards.get(id).box : positionsOf(context())[id]) : null;
-      return `${stroke.updatedAt}|${observedWidth}|${observedHeight}|${box ? `${box.x},${box.y},${box.width}` : ''}`;
+      return `${stroke.updatedAt}|${inkContent(stroke)}|${observedWidth}|${observedHeight}|${box ? `${box.x},${box.y},${box.width}` : ''}`;
     }
     function repaintCached(stroke) {
       const entry = inkCache.get(stroke.id); if (!entry) return;
@@ -462,10 +476,15 @@
       // Leftover eraser fading or a lasso preview offset ends with the gesture that made it.
       const settled = !gesture || (gesture.kind !== 'group' && gesture.kind !== 'scale' && !(gesture.kind === 'stroke' && gesture.mode === 'eraser'));
       const preview = gesture && gesture.kind === 'stroke' && gesture.preview && gesture.preview.parentNode === ink ? gesture.preview : null;
+      // Paths keep the stored stroke order, so overlapping ink stacks the same after a reload.
+      let cursor = ink.firstChild;
       for (const stroke of live) {
         let entry = inkCache.get(stroke.id);
-        if (!entry) { entry = { node: makePath(stroke), key: inkKey(stroke) }; inkCache.set(stroke.id, entry); ink.insertBefore(entry.node, preview); }
+        if (!entry) { entry = { node: makePath(stroke), key: inkKey(stroke) }; inkCache.set(stroke.id, entry); }
         else repaintCached(stroke);
+        while (cursor && cursor !== preview && cursor !== entry.node && !(cursor.dataset && inkCache.has(cursor.dataset.strokeId) && wanted.has(cursor.dataset.strokeId))) cursor = cursor.nextSibling;
+        if (cursor === entry.node) cursor = cursor.nextSibling;
+        else ink.insertBefore(entry.node, cursor || preview);
         if (settled) { entry.node.style.opacity = ''; entry.node.removeAttribute('transform'); }
       }
       for (const node of [...ink.children]) if (node !== preview && !(node.dataset && inkCache.has(node.dataset.strokeId) && inkCache.get(node.dataset.strokeId).node === node)) node.remove();

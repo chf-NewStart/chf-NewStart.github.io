@@ -563,7 +563,8 @@
     if(!persistSoonHealthy)return persist();
     if(onFail)persistSoonFailed=onFail;
     if(!persistSoonSince)persistSoonSince=Date.now();
-    clearTimeout(persistSoonTimer);persistSoonTimer=setTimeout(flushPersistSoon,PERSIST_SOON_IDLE);
+    // Each stroke restarts the idle wait, but never past the 15 s deadline.
+    clearTimeout(persistSoonTimer);persistSoonTimer=setTimeout(flushPersistSoon,Math.max(0,Math.min(PERSIST_SOON_IDLE,persistSoonSince+PERSIST_SOON_MAX-Date.now())));
     return true;
   }
   function flushPersistSoon(force){
@@ -6804,8 +6805,14 @@
     // Two quiet seconds after the last Pencil stroke, a finger can grab the whole strip again.
     workspacePenTimer=setTimeout(function(){if(!workspacePenDown)workspaceDivider.classList.remove('workspace-pen-active');},2000);
   }
-  document.addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){workspacePenDown++;markWorkspacePen();}},true);
-  ['pointerup','pointercancel'].forEach(function(type){document.addEventListener(type,function(e){if(e.pointerType==='pen'){workspacePenDown=Math.max(0,workspacePenDown-1);markWorkspacePen();}},true);});
+  /* Window capture, registered before the PDF ink controller: it takes Pencil events at
+     the window and stops them there, so later listeners never saw PDF strokes. The quiet
+     timers for saves and sync (persistSoon, runQuietSync) read this activity. */
+  addEventListener('pointerdown',function(e){if(e.pointerType==='pen'){workspacePenDown++;lastInputAt=Date.now();markWorkspacePen();}},true);
+  ['pointerup','pointercancel'].forEach(function(type){addEventListener(type,function(e){if(e.pointerType==='pen'){workspacePenDown=Math.max(0,workspacePenDown-1);lastInputAt=Date.now();markWorkspacePen();}},true);});
+  // A stylus seen only as touches (no Pencil pointer events) counts as writing too.
+  addEventListener('touchstart',function(e){if(Array.from(e.changedTouches||[]).some(function(t){return t.touchType==='stylus';})){lastInputAt=Date.now();markWorkspacePen();}},{capture:true,passive:true});
+  ['touchend','touchcancel'].forEach(function(type){addEventListener(type,function(e){if(Array.from(e.changedTouches||[]).some(function(t){return t.touchType==='stylus';})){lastInputAt=Date.now();markWorkspacePen();}},{capture:true,passive:true});});
   function workspaceDividerAccepts(e){
     if(e.pointerType==='touch'){
       // No contact-size test: iPad reports ordinary fingertips as 40-70px contacts.

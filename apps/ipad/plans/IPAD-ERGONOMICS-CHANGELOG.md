@@ -637,3 +637,24 @@ held, the 90 s cap, hide), new `tests/reading-storage-full-lifecycle.test.js` (f
 v193). `tests/reading-workspace-lasso-storage-full.test.js` now waits for a snapshot newer
 than the stale store, and `tests/reading-workspace-divider-palm.test.js` checks the
 divider's class. Not verified on a physical iPad.
+
+Review fixes (independent review of 45c5d8a3, all reproduced first, then fixed):
+- Save deadline: each stroke restarted the 1.2 s wait, so steady writing never reached the
+  15 s cap (120 strokes over 30 s saved nothing). The wait now never runs past the
+  deadline; at the deadline a Pencil still down saves at its lift.
+  `tests/reading-persist-soon-deadline.test.js`.
+- PDF strokes: the PDF ink controller takes Pencil events at the window and stops them, so
+  the activity tracker (on the document) never saw PDF writing and a deferred save or a
+  sync could start mid-stroke. The tracker now listens at the window before the controller
+  is created, and also notes stylus touches. `tests/reading-pdf-ink-quiet.test.js`.
+- Cached ink: a synced stroke that wins a merge with the same clock (content tie-break) kept
+  its old path on screen. The cache key now includes a cheap hash of the stroke's points,
+  color, width, style and anchor.
+- Stacking: new paths were appended, so overlapping strokes could stack differently after
+  a reload (stored order is by id). Paths are now kept in stored order, moving nodes only
+  when out of place. Both in `tests/reading-workspace-ink-cache.test.js`, which also checks
+  that one new stroke on a 300-stroke board leaves every other path element and outline
+  unchanged. The review's benchmark still shows one generated path per new stroke at 100,
+  500 and 1,000 strokes.
+- `tests/reading-workspace-pending-save-paper.test.js`: strokes written just before opening
+  another paper save to their own paper, and Undo before the save wins.

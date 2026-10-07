@@ -369,8 +369,10 @@ async function checkZenUndo(browser) {
       fire('pointerdown', from, 71); fire('pointermove', to, 71);
     }, { from: rapidFrom, to: rapidTo });
     await page.waitForFunction(() => Array.from(document.querySelectorAll('.pdf-ink-preview path')).some(path => path.getBoundingClientRect().width > 0), null, { timeout: 2000 }).catch(() => null);
-    check('a fast Pencil dot cannot prevent the following stroke preview from painting', (await ink(page)).length === 2 && await page.locator('.pdf-ink-preview path').count() > 0);
+    // Saves wait while a Pencil is down (v194), so the dot's save is checked after the lift.
+    check('a fast Pencil dot cannot prevent the following stroke preview from painting', await page.locator('.pdf-ink-preview path').count() > 0);
     await pointer(page, 'pointercancel', rapidTo);
+    check('the fast dot saves once the Pencil rests', (await ink(page)).length === JSON.parse(beforeFinger).length + 1);
     await click(page, '#pdfInkUndo');
     check('fast tap creates one undoable dot without committing the cancelled next stroke', identities(await ink(page)) === identities(JSON.parse(beforeFinger)));
 

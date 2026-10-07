@@ -270,7 +270,7 @@ function highlightIdentity(items) {
     await stroke(page, firstSavedPoint, firstSavedPoint);
     check('a saved Pencil highlight still opens the existing note editor', !await page.locator('#selectionCard').evaluate(card => card.classList.contains('hidden')));
     await page.locator('#selectionNote').fill('Keep this observation with the highlighted passage.');
-    await page.waitForTimeout(100);
+    await page.waitForFunction(text => (localStorage.getItem('readingRoom.v1') || '').includes(text), 'Keep this observation with the highlighted passage.', { timeout: 5000 }); // typing saves after a pause
     check('notes remain attached to a Pencil highlight', (await highlights(page))[0].note === 'Keep this observation with the highlighted passage.');
     await page.keyboard.press('Escape');
 
@@ -425,7 +425,7 @@ function highlightIdentity(items) {
     check('small Pencil jitter over a Reader highlight still opens its card without duplication', (await highlights(page, 'reader')).length === 2
       && !await page.locator('#selectionCard').evaluate(card => card.classList.contains('hidden')));
     await page.locator('#selectionNote').fill('Keep this Reader note when undoing erasure.');
-    await page.waitForTimeout(100);
+    await page.waitForFunction(text => (localStorage.getItem('readingRoom.v1') || '').includes(text), 'Keep this Reader note when undoing erasure.', { timeout: 5000 }); // typing saves after a pause
     const readerBeforeErase = highlightIdentity(await highlights(page, 'reader'));
     await page.locator('#selectionRemoveHighlight').click();
     check('the Reader highlight card Remove button deletes its selected highlight', (await highlights(page, 'reader')).length === 1);

@@ -68,7 +68,7 @@ function check(name, cond, extra) {
 
   // 2. Type a note -> saved on the highlight, sidebar shows it
   await page.fill('#selectionNote', 'key definition to remember');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(text => (localStorage.getItem('readingRoom.v1') || '').includes(text), 'key definition to remember', { timeout: 5000 }); // typing saves after a pause
   check('note stored on highlight', (await hl())[0].note === 'key definition to remember');
   check('sidebar shows note', await page.evaluate(() => document.getElementById('noteIndex').textContent.includes('key definition to remember')));
 

@@ -162,6 +162,7 @@ async function toggleGuide(page) {
   check('AI thread stays hidden for an empty note', !(await page.locator('#selectionNoteAi').isVisible()));
 
   await page.fill('#selectionNote', 'This is the bridge between the data sources.');
+  await page.waitForFunction(text => (localStorage.getItem('readingRoom.v1') || '').includes(text), 'This is the bridge between the data sources.', { timeout: 5000 }); // typing saves after a pause
   check('note is saved on the highlight', await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].textHighlights[0].note === 'This is the bridge between the data sources.'));
   check('AI thread appears after note text exists', await page.locator('#selectionNoteAi').isVisible());
   check('a note with no thread yet offers to start one', await page.locator('#selectionNoteAi').textContent().then(text => text.includes('Start AI thread')));

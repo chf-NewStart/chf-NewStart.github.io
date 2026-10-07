@@ -666,3 +666,8 @@ Review fixes (independent review of 45c5d8a3, all reproduced first, then fixed):
 - The ink cache missed nib (marker) changes and strokes edited in place. The key now hashes
   every drawn field on each render (not cached per object), plus the anchor note's height.
   `tests/reading-workspace-ink-cache.test.js` covers both (fails on 5577dd98).
+- Audit for the same mistake elsewhere: typing a page note, a passage note, a note in the
+  paper text or a review response saved the whole library on every key (162 ms per key on
+  main with a 4 MB library at 6x CPU throttle). Those handlers now use `touchTyping`, which
+  saves after the same pause as handwriting and on page hide (7 ms per key).
+  `tests/reading-typing-save-pause.test.js` fails on the earlier code (14 saves for 14 keys).

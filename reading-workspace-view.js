@@ -447,15 +447,12 @@
     }
     /* A synced merge can replace a stroke's points, nib or color without changing its clock
        (the tie-break is by content), and some updates edit a stroke in place, so the key
-       carries a fresh hash of every field that drawing reads. Cheap next to drawing. */
+       carries the exact content of every field that drawing reads. It is compared as a whole
+       string, not hashed, so no edit can collide with the cached one. Cheap next to drawing. */
     function inkContent(stroke) {
-      let hash = 0;
       const fields = {};
-      for (const key of Object.keys(stroke).sort()) if (key !== 'points' && key !== 'updatedAt' && key !== 'createdAt') fields[key] = stroke[key];
-      const text = JSON.stringify(fields);
-      for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) | 0;
-      for (const point of stroke.points || []) for (const value of point) hash = (hash * 31 + Math.round(value * 1000)) | 0;
-      return `${(stroke.points || []).length}:${hash}`;
+      for (const key of Object.keys(stroke).sort()) if (key !== 'updatedAt' && key !== 'createdAt') fields[key] = stroke[key];
+      return JSON.stringify(fields);
     }
     function inkKey(stroke) {
       const id = stroke.anchor && stroke.anchor.clipId, box = id ? (cards.has(id) ? cards.get(id).box : positionsOf(context())[id]) : null;

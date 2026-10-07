@@ -132,8 +132,12 @@ async function fixture(browser, withClip = true, savedWorkspace = null) {
       const marker = path();
       // A stroke edited in place (same object, same clock) moves on screen too.
       fixture.state.workspace.strokes[0].points.forEach(p => { p[0] += 0.4; p[1] += 250; }); fixture.view.render();
-      return { markerRepainted: marker !== plain, movedRepainted: path() !== marker };
+      const moved = path();
+      // A rolling hash of the coordinates collides: +1 on x and -31 on y leaves x*31+y alone.
+      fixture.state.workspace.strokes[0].points[0][0] += 1; fixture.state.workspace.strokes[0].points[0][1] -= 31; fixture.view.render();
+      return { markerRepainted: marker !== plain, movedRepainted: moved !== marker, collisionRepainted: path() !== moved };
     });
+    assert.equal(edits.collisionRepainted, true, 'a change a coordinate hash would miss still repaints the stroke');
     assert.equal(edits.markerRepainted, true, 'a nib change repaints the stroke');
     assert.equal(edits.movedRepainted, true, 'an in-place coordinate change repaints the stroke');
 

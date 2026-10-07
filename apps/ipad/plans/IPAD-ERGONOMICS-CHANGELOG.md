@@ -671,3 +671,10 @@ Review fixes (independent review of 45c5d8a3, all reproduced first, then fixed):
   main with a 4 MB library at 6x CPU throttle). Those handlers now use `touchTyping`, which
   saves after the same pause as handwriting and on page hide (7 ms per key).
   `tests/reading-typing-save-pause.test.js` fails on the earlier code (14 saves for 14 keys).
+- Review round 3 (houfu's reviewer): the ink key's rolling hash of coordinates could collide
+  (x +1 with y −31 gives the same hash), leaving stale ink on screen. The key now holds the
+  exact JSON of every drawn field and is compared whole. `reading-workspace-ink-cache`
+  covers that collision (fails before this fix).
+- Leaving a notebook text field (page note, passage note, in-text note, review response,
+  clip note) saves its typing at once. Workspace notes keep the pause, since a Pencil stroke
+  beside one blurs it.

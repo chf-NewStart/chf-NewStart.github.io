@@ -579,6 +579,9 @@
   function touch(ch){ ch.updatedAt = now(); persist(); }
   // Typing saves once the keys pause (persistSoon), not on every keystroke: each save writes the whole library.
   function touchTyping(ch){ ch.updatedAt = now(); persistSoon(); }
+  // Leaving a notebook text field saves its typing right away. Workspace notes are left out:
+  // a Pencil stroke next to one blurs it, and that stroke should not wait on a save.
+  document.addEventListener('focusout',function(e){var t=e.target;if(t&&t.matches&&t.matches('#pageNote,#selectionNote,[data-note-area],[data-review-response],textarea.excerpt-note'))flushPersistSoon(true);},true);
   function showError(message,title){ byId('errorTitle').textContent=title||'Could not open that paper';byId('errorMessage').textContent=message; if(!byId('errorDialog').open) byId('errorDialog').showModal(); }
   function showReaderToast(message){var toast=byId('readerToast');clearTimeout(readerToastTimer);toast.textContent=message;toast.classList.remove('hidden');readerToastTimer=setTimeout(function(){toast.classList.add('hidden');},1800);}
 

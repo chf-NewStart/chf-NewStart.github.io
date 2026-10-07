@@ -33,6 +33,8 @@ async function generatedPdf() {
   page.drawText('Third line for Pencil checks.', { x: 52, y: 634, size: 13, font });
   page.drawText('Fourth line for scrolling.', { x: 52, y: 596, size: 13, font });
   page.drawText('Fifth line to remove again.', { x: 52, y: 558, size: 13, font });
+  page.drawText('Sixth line for Escape.', { x: 52, y: 520, size: 13, font });
+  page.drawText('Seventh line for keyboard Undo.', { x: 52, y: 482, size: 13, font });
   return Buffer.from(await doc.save());
 }
 async function chapter(page) {
@@ -153,6 +155,29 @@ const quickHidden = page => page.locator('#highlightQuick').evaluate(node => nod
     await page.evaluate(() => document.querySelector('#highlightQuick [data-quick-color="coral"]').click());
     assert.equal(highlights(await chapter(page)).length, count, 'the bar does not revive it');
     assert.equal(await quickHidden(page), true);
+
+    // Escape closes only the bar; the paper stays open.
+    await highlightWith(page, 'for Escape');
+    await page.keyboard.press('Escape');
+    assert.equal(await quickHidden(page), true, 'Escape closes the bar');
+    await page.waitForTimeout(200);
+    assert.equal(await page.locator('#readerPage').evaluate(n => !n.classList.contains('hidden')), true, 'Escape leaves the paper open');
+    assert.equal(await page.evaluate(() => document.body.classList.contains('zen')), true, 'and stays in the reader');
+
+    // Keyboard Undo and Redo keep the bar truthful: the right color, or gone with its highlight.
+    await highlightWith(page, 'keyboard Undo');
+    await page.locator('#highlightQuick [data-quick-color="mint"]').click();
+    const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.locator('#highlightQuick [data-quick-color="mint"]').evaluate(n => n.blur());
+    await page.keyboard.press(mod + '+z');
+    await page.waitForTimeout(100);
+    assert.equal(highlights(await chapter(page)).find(h => h.text.includes('keyboard')).color, 'yellow');
+    assert.equal(await page.locator('#highlightQuick [data-quick-color="yellow"]').getAttribute('aria-pressed'), 'true', 'Undo moves the selected color back');
+    assert.equal(await page.locator('#highlightQuick [data-quick-color="mint"]').getAttribute('aria-pressed'), 'false');
+    await page.keyboard.press(mod + '+z');
+    await page.waitForTimeout(100);
+    assert.equal(highlights(await chapter(page)).some(h => h.text.includes('keyboard')), false, 'the second Undo removes the highlight');
+    assert.equal(await quickHidden(page), true, 'and the bar goes with it');
     assert.deepEqual(errors, []);
     console.log('PASS the highlight quick bar recolors in place, opens Define and the card, and stays out of the way');
   } finally {

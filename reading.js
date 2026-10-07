@@ -7925,12 +7925,14 @@
   }
   function undoHighlight(){
     if(pdfInkController)pdfInkController.cancel();
+    requestAnimationFrame(refreshHighlightQuick);
     var action=highlightHistory.pop();
     if(!action){showReaderToast('Nothing to undo');return;}
     if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.kind==='annotations'?'Erased annotations restored':action.kind==='ink'?'Handwriting change undone':action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();syncPdfInkUi();
   }
   function redoHighlight(){
     if(pdfInkController)pdfInkController.cancel();
+    requestAnimationFrame(refreshHighlightQuick);
     var action=highlightFuture.pop();
     if(!action){showReaderToast('Nothing to redo');return;}
     if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.kind==='annotations'?'Annotations erased':action.kind==='ink'?'Handwriting change redone':action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();syncPdfInkUi();
@@ -7986,6 +7988,8 @@
     var rec=findHighlightRecord(ref);if(!rec)return;quickRef={kind:ref.kind,page:ref.page,id:ref.id};quickPaper=currentId;
     syncHighlightQuickColors();var bar=byId('highlightQuick');bar.classList.remove('hidden');placeHighlightQuick();
   }
+  // Undo or Redo (also from the keyboard) can recolor or remove the bar's highlight.
+  function refreshHighlightQuick(){if(!quickRef)return;if(!quickRefLive()){hideHighlightQuick();return;}syncHighlightQuickColors();placeHighlightQuick();}
   function syncHighlightQuickColors(){var rec=findHighlightRecord(quickRef),color=rec&&rec.color||'yellow';document.querySelectorAll('[data-quick-color]').forEach(function(b){var on=b.dataset.quickColor===color;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});}
   document.querySelectorAll('[data-quick-color]').forEach(function(b){b.onclick=function(){
     if(!quickRefLive()){hideHighlightQuick();return;}
@@ -8001,7 +8005,7 @@
     if(lastAskSelection)queueLookup(lastAskSelection.text,selectionAnchor||rect,lastAskSelection,0);
   };
   addEventListener('pointerdown',function(e){if(quickRef&&!e.target.closest('#highlightQuick'))hideHighlightQuick();},{capture:true,passive:true});
-  addEventListener('keydown',function(e){if(quickRef&&e.key==='Escape')hideHighlightQuick();},true);
+  addEventListener('keydown',function(e){if(quickRef&&e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();hideHighlightQuick();}},true);
   byId('documentPane').addEventListener('scroll',function(){if(quickRef)hideHighlightQuick();},{passive:true});
   ['resize','blur'].forEach(function(type){addEventListener(type,function(){if(quickRef)hideHighlightQuick();});});
   function renderPdfHighlights(pageNum){

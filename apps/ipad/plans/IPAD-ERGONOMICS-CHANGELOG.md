@@ -620,3 +620,7 @@ scrolling or the Workspace, and never reuse a deleted or off-page highlight.
   the paper. Before acting it checks the highlight still exists on this paper and is shown;
   otherwise it just closes.
 Test: `tests/reading-highlight-quick-bar.test.js`. Not verified on a physical iPad.
+- Review fixes (houfu's reviewer): Escape closed the bar and then also left the paper for
+  the library; it now stops at the bar. Keyboard Undo/Redo left the bar showing the old
+  color, or showing for a highlight Undo had removed; both now refresh or hide it.
+  `tests/reading-highlight-quick-bar.test.js` covers both (each fails before its fix).

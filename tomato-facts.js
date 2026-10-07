@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "PLANTS",
+            title: "Bananas are slightly radioactive",
+            fact: "Bananas are rich in potassium, and about 0.012% of natural potassium is potassium-40, a radioactive isotope. The dose from one banana is tiny — it's the standard 'banana equivalent dose' used to make radiation levels intuitive.",
+            detail: "You would need around 10 million bananas in one sitting to approach a dangerous dose. Truckloads of bananas have been known to set off radiation sensors at ports."
+        },
+        {
             tag: "RECORDS",
             title: "A single aspen colony can weigh more than a blue whale ×600",
             fact: "Pando, a quaking aspen grove in Utah, is one tree: ~47,000 genetically identical stems sharing one root system. It weighs about 6,000 tonnes, making it likely the heaviest known living organism.",

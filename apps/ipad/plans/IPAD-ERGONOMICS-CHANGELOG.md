@@ -678,3 +678,17 @@ Review fixes (independent review of 45c5d8a3, all reproduced first, then fixed):
 - Leaving a notebook text field (page note, passage note, in-text note, review response,
   clip note) saves its typing at once. Workspace notes keep the pause, since a Pencil stroke
   beside one blurs it.
+
+## 33. Clip and Workspace notes, and the reading position, save after a pause (v196)
+
+Second audit pass for "one small action saves the whole library":
+- Typing in a clip note or a Workspace sticky note called `persist()` on every key (both go
+  through `updateExcerptNote`). `saveExcerptState` now takes a `typing` flag and uses
+  `persistSoon`; a failed save still shows "Could not save this note" in the Clips status.
+- The reading position saved the whole library 600 ms after every scroll stop, and PDF page
+  changes 1.2 s after each page. Both now set the position in memory and call
+  `persistSoon`, so a run of short scrolls saves once. Page hide still flushes.
+- `tests/reading-typing-save-pause.test.js` adds clip-note typing (12 saves for 12 keys
+  before this change) and four scroll stops (at most one save).
+- Checked and left alone: library search re-renders the shelf 90 ms after typing stops
+  (no save); adding, recoloring or removing a highlight saves once per action.

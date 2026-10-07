@@ -1,6 +1,8 @@
 /* Every save writes the whole library, so a save per keystroke made typing a note lag
    once the library was large (about 160 ms per key on a throttled 4 MB library). Typing
-   now saves once the keys pause, and hiding the page saves whatever is still waiting. */
+   now saves once the keys pause, and hiding the page saves whatever is still waiting.
+   Clip notes (and Workspace notes, which share their save path) and the reading position
+   after a scroll wait the same way. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -26,7 +28,7 @@ function seed() {
     const stamp = Date.now();
     localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [
       { id: 'typing-a', kind: 'text', title: 'Typing fixture',
-        fr: 'First paragraph of a paper.\n\nSecond paragraph of the same paper.',
+        fr: Array.from({ length: 60 }, (_, i) => 'Paragraph ' + i + ' of a long paper. '.repeat(12)).join('\n\n'),
         notes: {}, pageNotes: {}, questions: [], tags: [], addedAt: stamp, updatedAt: stamp }
     ], deleted: {}, merged: {}, savedAt: stamp }));
     localStorage.setItem('readingRoom.lastOpen.v1', 'typing-a');
@@ -65,7 +67,7 @@ async function type(page, text) {
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(seed);
     await page.goto(base + '/reading.html', { waitUntil: 'load' });
-    await page.waitForFunction(() => document.querySelectorAll('#textDocument .original').length === 2);
+    await page.waitForFunction(() => document.querySelectorAll('#textDocument .original').length === 60);
     await page.waitForTimeout(800);
 
     await page.evaluate(() => { window.__librarySaves = 0; });
@@ -86,6 +88,39 @@ async function type(page, text) {
     });
     assert((await stored(page)).includes('claim to check later'), 'hiding the page saves the waiting keys');
     console.log('PASS  hiding the page saves keys typed just before');
+    await page.evaluate(() => {
+      delete document.visibilityState;
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    // A clip note, typed in the notebook's Clips tab.
+    if (!await page.locator('#excerptsTab').isVisible()) {
+      await page.locator('#zenMore').click();
+      await page.locator('#zenNotebook').click();
+    }
+    await page.locator('#excerptsTab').click();
+    await page.locator('#newExcerptNote').click();
+    const clip = page.locator('.excerpt-card textarea.excerpt-note').first();
+    await clip.waitFor({ state: 'visible' });
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => { window.__librarySaves = 0; });
+    await clip.pressSequentially('clip thought', { delay: 40 });
+    const clipSaves = await page.evaluate(() => window.__librarySaves);
+    assert(clipSaves <= 1, 'typing a clip note wrote the library ' + clipSaves + ' times');
+    await page.waitForFunction(() => (localStorage.getItem('readingRoom.v1') || '').includes('clip thought'), null, { timeout: 4000 });
+    console.log('PASS  a clip note saves once typing pauses  [' + clipSaves + ']');
+
+    // Scrolling the paper saves the position after the scroll settles, once.
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => { window.__librarySaves = 0; });
+    for (let i = 1; i <= 4; i++) {
+      await page.evaluate(y => { document.getElementById('documentPane').scrollTop = y; }, i * 300);
+      await page.waitForTimeout(700);
+    }
+    const scrollSaves = await page.evaluate(() => window.__librarySaves);
+    assert(scrollSaves <= 1, 'four scroll stops wrote the library ' + scrollSaves + ' times');
+    await page.waitForFunction(() => (JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].readerScroll || 0) > 0.05, null, { timeout: 4000 });
+    console.log('PASS  scroll stops save the position once they pause  [' + scrollSaves + ']');
     assert.deepEqual(errors, [], 'no page errors');
     console.log('PASS  no page errors');
   } finally {

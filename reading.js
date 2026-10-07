@@ -3475,7 +3475,8 @@
     if(!pageTrackTick){pageTrackTick=true;requestAnimationFrame(function(){pageTrackTick=false;trackCurrentPage();updateProgress();if(comfort.focus&&!guideDragging)placeGuide();});}
     clearTimeout(scrollSaveTimer);
     scrollSaveTimer=setTimeout(function(){
-      if(restoringPdfPosition)return;saveCurrentReadingPosition();
+      // Each save writes the whole library, so the position waits for a pause like typing.
+      if(restoringPdfPosition)return;if(saveCurrentReadingPosition(undefined,false))persistSoon();
     },600);
   });
   function restoreReaderPosition(ch,announce){
@@ -4763,7 +4764,7 @@
     if(best!==currentPage){
       currentPage=best;updatePageChrome();
       clearTimeout(pageSettleTimer);
-      pageSettleTimer=setTimeout(function(){savePdfReadingPosition();},1200);
+      pageSettleTimer=setTimeout(function(){if(savePdfReadingPosition(undefined,false))persistSoon();},1200);
     }
   }
   async function renderPdfPage(preservedPosition){
@@ -6577,10 +6578,12 @@
     workspaceDragSelection=null;closeWorkspacePanels();if(workspaceView)workspaceView.reset();
     var chip=byId('excerptReturnChip');if(chip)chip.classList.add('hidden');
   }
-  function saveExcerptState(ch,next){
+  function saveExcerptState(ch,next,typing){
     ch.readingExcerpts=next;ch.updatedAt=now();
     // The existing persistence path also queues the device recovery snapshot.
     // Do not claim "Saved locally" when localStorage rejected this write.
+    // Typing saves once the keys pause; a failed save still shows, a moment later.
+    if(typing)return persistSoon(function(){excerptStatus('Could not save this note. Your draft is still in the editor.');});
     return persist();
   }
   function showExcerptNotebook(focusId){
@@ -6614,7 +6617,7 @@
     var ch=find(currentId);if(readingExcerptsUnavailable(ch))return false;
     var item=ch.readingExcerpts.items.find(function(entry){return entry.id===id;});
     if(!item||expectedUpdatedAt!==undefined&&item.updatedAt!==expectedUpdatedAt){excerptStatus('This clip changed elsewhere. Your draft is still in the editor; copy it before reloading.');return false;}
-    try{return saveExcerptState(ch,window.PhloemExcerpts.upsert(ch.readingExcerpts,Object.assign({},item,{note:note}),now()));}
+    try{return saveExcerptState(ch,window.PhloemExcerpts.upsert(ch.readingExcerpts,Object.assign({},item,{note:note}),now()),true);}
     catch(error){excerptStatus('Could not save this note. Your draft is still in the editor.');return false;}
   }
   function removeReadingExcerpt(id){

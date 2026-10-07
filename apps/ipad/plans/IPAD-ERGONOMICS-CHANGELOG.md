@@ -692,3 +692,34 @@ Second audit pass for "one small action saves the whole library":
   before this change) and four scroll stops (at most one save).
 - Checked and left alone: library search re-renders the shelf 90 ms after typing stops
   (no save); adding, recoloring or removing a highlight saves once per action.
+## 32b. Highlight quick bar: four colors, Define, ⋯ (v195, separate PR from v194)
+
+houfu: "after each passage highlighted, can we see a simple toggle where shows 4 highlight
+colors and 1 search icon for the define thing", then "sure, lets build that". Spec from
+houfu's review: colors recolor that exact saved highlight (id, text, geometry, notes and
+Undo kept), Define reuses the lookup flow and its short-phrase limit, other actions go under
+⋯, 44px targets, inside the paper pane, no interference with the next Pencil stroke,
+scrolling or the Workspace, and never reuse a deleted or off-page highlight.
+- `#highlightQuick` (reading.html) appears after any new highlight (selection card color,
+  Highlight button, Marker or Pencil highlighting), unless the Marker color toolbar or the
+  passage card opened instead. It sits above the highlight (below if there is no room),
+  clamped to the paper pane and visual viewport, and never covers the highlight.
+- Colors call `recolorHighlight(ref, to)`, now shared with the card's color row: one
+  `recolor` Undo step on the same record.
+- Define opens the highlight's card and runs `queueLookup` on its text (same limits).
+  ⋯ opens the card (note, excerpt, To workspace, Park question, Remove).
+- The bar listens only on itself. Any pointerdown elsewhere (touch or Pencil, passive, not
+  cancelled), a paper scroll, Escape, resize or blur closes it, so the next stroke reaches
+  the paper. Before acting it checks the highlight still exists on this paper and is shown;
+  otherwise it just closes.
+Test: `tests/reading-highlight-quick-bar.test.js`. Not verified on a physical iPad.
+- Review fixes (houfu's reviewer): Escape closed the bar and then also left the paper for
+  the library; it now stops at the bar. Keyboard Undo/Redo left the bar showing the old
+  color, or showing for a highlight Undo had removed; both now refresh or hide it.
+  `tests/reading-highlight-quick-bar.test.js` covers both (each fails before its fix).
+
+## 34. Release v196: sections 32, 32b and 33 together
+
+houfu asked for all three to go to main for testing and a demo (2026-10-07). The quick bar
+branch (v195) was merged into the save-audit branch; its version lines were set to v196,
+the only conflicts. v194 and v195 never deployed.

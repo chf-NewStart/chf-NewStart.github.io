@@ -534,6 +534,15 @@
         <p id="pdfReferencePreviewText" aria-live="polite">Finding the linked passage…</p>
         <a class="pdf-reference-open" id="pdfReferenceOpen" href="#">Go to reference</a>
       </aside>
+      <div class="highlight-quick hidden" id="highlightQuick" role="toolbar" aria-label="Highlight actions">
+        <button class="marker-swatch" data-quick-color="yellow" type="button" aria-label="Make this highlight yellow" aria-pressed="false"></button>
+        <button class="marker-swatch" data-quick-color="mint" type="button" aria-label="Make this highlight mint" aria-pressed="false"></button>
+        <button class="marker-swatch" data-quick-color="coral" type="button" aria-label="Make this highlight coral" aria-pressed="false"></button>
+        <button class="marker-swatch" data-quick-color="blue" type="button" aria-label="Make this highlight blue" aria-pressed="false"></button>
+        <span class="highlight-quick-rule" aria-hidden="true"></span>
+        <button class="highlight-quick-button" id="highlightQuickDefine" type="button" aria-label="Look up a definition" title="Define"><span aria-hidden="true">⌕</span></button>
+        <button class="highlight-quick-button" id="highlightQuickMore" type="button" aria-label="More actions for this highlight" title="Note, excerpt, workspace and more"><span aria-hidden="true">⋯</span></button>
+      </div>
       <aside class="selection-card hidden" id="selectionCard" aria-label="Actions for selected text">
         <div class="lookup-head">
           <div><span class="lookup-eyebrow" id="selectionEyebrow">Selected passage</span><span class="lookup-selection" id="selectionExcerpt"></span></div>

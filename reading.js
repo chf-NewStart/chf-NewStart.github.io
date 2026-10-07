@@ -7864,7 +7864,10 @@
   }
   function commitPendingHighlight(){
     if(pdfWriteMode)setPdfWriteMode(false);
-    var saved=savePendingHighlight('',false);if(saved)showReaderToast(saved.existing?'Already highlighted · reopened':'Passage highlighted');return saved;
+    var saved=savePendingHighlight('',false);if(saved)showReaderToast(saved.existing?'Already highlighted · reopened':'Passage highlighted');
+    // A new highlight offers the quick bar, unless a color toolbar or the card opens instead.
+    if(saved&&!saved.existing){var ref={kind:saved.kind,page:saved.page,id:saved.id};requestAnimationFrame(function(){if(!highlightToolbarOpen()&&byId('selectionCard').classList.contains('hidden'))showHighlightQuick(ref);});}
+    return saved;
   }
   function ensureSelectionNoteTarget(){
     if(selectionNoteTarget)return selectionNoteTarget;selectionNoteTarget=savePendingHighlight('',true);return selectionNoteTarget;
@@ -7993,12 +7996,14 @@
   }
   function undoHighlight(){
     if(pdfInkController)pdfInkController.cancel();
+    requestAnimationFrame(refreshHighlightQuick);
     var action=highlightHistory.pop();
     if(!action){showReaderToast('Nothing to undo');return;}
     if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.kind==='annotations'?'Erased annotations restored':action.kind==='ink'?'Handwriting change undone':action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();syncPdfInkUi();
   }
   function redoHighlight(){
     if(pdfInkController)pdfInkController.cancel();
+    requestAnimationFrame(refreshHighlightQuick);
     var action=highlightFuture.pop();
     if(!action){showReaderToast('Nothing to redo');return;}
     if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.kind==='annotations'?'Annotations erased':action.kind==='ink'?'Handwriting change redone':action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();syncPdfInkUi();
@@ -8020,14 +8025,60 @@
     card.classList.remove('hidden');placeSelectionCard(anchor||{left:innerWidth/2,right:innerWidth/2,top:innerHeight/2,bottom:innerHeight/2});
   }
   byId('selectionRemoveHighlight').onclick=function(){if(activeCardRef)removeHighlight(activeCardRef.kind,activeCardRef.page,activeCardRef.id);};
-  document.querySelectorAll('[data-card-color]').forEach(function(b){b.onclick=function(){
-    var rec=findHighlightRecord(activeCardRef);if(!rec)return;
-    var to=b.dataset.cardColor;if(to===(rec.color||'yellow'))return;
-    recordHighlightAction({op:'recolor',kind:activeCardRef.kind,page:activeCardRef.page,item:rec,from:rec.color||'yellow',to:to});
+  // One recolor for the card and the quick bar: same record, same id, one Undo step.
+  function recolorHighlight(ref,to){
+    var rec=findHighlightRecord(ref);if(!rec||!to||to===(rec.color||'yellow'))return false;
+    recordHighlightAction({op:'recolor',kind:ref.kind,page:ref.page,item:rec,from:rec.color||'yellow',to:to});
     rec.color=to;var ch=find(currentId);if(ch)touch(ch);
-    document.querySelectorAll('[data-card-color]').forEach(function(x){var selected=x===b;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
-    refreshHighlightViews(activeCardRef.kind,activeCardRef.page);
+    if(activeCardRef&&activeCardRef.id===rec.id)document.querySelectorAll('[data-card-color]').forEach(function(x){var selected=x.dataset.cardColor===to;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});
+    refreshHighlightViews(ref.kind,ref.page);return true;
+  }
+  document.querySelectorAll('[data-card-color]').forEach(function(b){b.onclick=function(){if(activeCardRef)recolorHighlight(activeCardRef,b.dataset.cardColor);};});
+  /* Quick bar after a highlight lands: four colors recolor that exact highlight, Define looks
+     it up, ⋯ opens the full card (note, excerpt, Workspace, question, remove). It listens
+     only on itself and closes on the next touch, Pencil, scroll or key elsewhere, so the
+     next stroke and scrolling go to the paper as before. */
+  var quickRef=null,quickPaper=null;
+  function quickHighlightNodes(ref){
+    if(!ref)return[];var scope=ref.kind==='pdf'?document.querySelector('.pdf-page[data-page="'+(+ref.page)+'"]'):byId('documentPane');
+    return scope?Array.from(scope.querySelectorAll('[data-hl-id]')).filter(function(el){return el.dataset.hlId===ref.id&&el.getClientRects().length;}):[];
+  }
+  function hideHighlightQuick(){quickRef=null;quickPaper=null;byId('highlightQuick').classList.add('hidden');}
+  function quickRefLive(){return!!(quickRef&&quickPaper===currentId&&findHighlightRecord(quickRef)&&quickHighlightNodes(quickRef).length);}
+  function placeHighlightQuick(){
+    var bar=byId('highlightQuick'),nodes=quickHighlightNodes(quickRef);if(!nodes.length){hideHighlightQuick();return;}
+    var box=nodes.reduce(function(a,el){var r=el.getBoundingClientRect();return a?{left:Math.min(a.left,r.left),right:Math.max(a.right,r.right),top:Math.min(a.top,r.top),bottom:Math.max(a.bottom,r.bottom)}:{left:r.left,right:r.right,top:r.top,bottom:r.bottom};},null);
+    var pane=byId('documentPane').getBoundingClientRect(),view=readerVisualViewport(),gap=10;
+    var left=Math.max(pane.left,view.left)+8,right=Math.min(pane.right,view.right)-8,top=Math.max(pane.top,view.top)+8,bottom=Math.min(pane.bottom,view.bottom)-8;
+    if(box.bottom<top||box.top>bottom){hideHighlightQuick();return;}
+    var w=bar.offsetWidth,h=bar.offsetHeight,x=Math.max(left,Math.min((box.left+box.right)/2-w/2,right-w)),y=box.top-h-gap;
+    if(y<top)y=box.bottom+gap;if(y+h>bottom)y=Math.max(top,bottom-h);
+    bar.style.left=Math.round(x)+'px';bar.style.top=Math.round(y)+'px';
+  }
+  function showHighlightQuick(ref){
+    var rec=findHighlightRecord(ref);if(!rec)return;quickRef={kind:ref.kind,page:ref.page,id:ref.id};quickPaper=currentId;
+    syncHighlightQuickColors();var bar=byId('highlightQuick');bar.classList.remove('hidden');placeHighlightQuick();
+  }
+  // Undo or Redo (also from the keyboard) can recolor or remove the bar's highlight.
+  function refreshHighlightQuick(){if(!quickRef)return;if(!quickRefLive()){hideHighlightQuick();return;}syncHighlightQuickColors();placeHighlightQuick();}
+  function syncHighlightQuickColors(){var rec=findHighlightRecord(quickRef),color=rec&&rec.color||'yellow';document.querySelectorAll('[data-quick-color]').forEach(function(b){var on=b.dataset.quickColor===color;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});}
+  document.querySelectorAll('[data-quick-color]').forEach(function(b){b.onclick=function(){
+    if(!quickRefLive()){hideHighlightQuick();return;}
+    recolorHighlight(quickRef,b.dataset.quickColor);syncHighlightQuickColors();
+    // Redrawing the highlight replaces its elements; keep the bar beside the new ones.
+    requestAnimationFrame(function(){if(quickRef)placeHighlightQuick();});
   };});
+  function quickAnchorRect(){var nodes=quickHighlightNodes(quickRef);return nodes.length?nodes[0].getBoundingClientRect():null;}
+  byId('highlightQuickMore').onclick=function(){if(!quickRefLive()){hideHighlightQuick();return;}var ref=quickRef,rect=quickAnchorRect();hideHighlightQuick();openHighlightCard(ref,rect);};
+  byId('highlightQuickDefine').onclick=function(){
+    if(!quickRefLive()){hideHighlightQuick();return;}var ref=quickRef,rect=quickAnchorRect();hideHighlightQuick();openHighlightCard(ref,rect);
+    // The existing lookup flow, with its short-phrase limit, inside the highlight's card.
+    if(lastAskSelection)queueLookup(lastAskSelection.text,selectionAnchor||rect,lastAskSelection,0);
+  };
+  addEventListener('pointerdown',function(e){if(quickRef&&!e.target.closest('#highlightQuick'))hideHighlightQuick();},{capture:true,passive:true});
+  addEventListener('keydown',function(e){if(quickRef&&e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();hideHighlightQuick();}},true);
+  byId('documentPane').addEventListener('scroll',function(){if(quickRef)hideHighlightQuick();},{passive:true});
+  ['resize','blur'].forEach(function(type){addEventListener(type,function(){if(quickRef)hideHighlightQuick();});});
   function renderPdfHighlights(pageNum){
     var ch=find(currentId);if(!ch)return;
     (pageNum?[pageNum]:renderedPages.slice()).forEach(function(n){

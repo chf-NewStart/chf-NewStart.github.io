@@ -23,7 +23,7 @@ function harness() {
     document: { visibilityState: 'visible', addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); } },
     syncCfg: { repo: 'owner/name' }, gdriveOn: () => false, iCloudOn: () => true,
     doSync() { runs.push(clock); }, gdriveSync() {}, iCloudSync() {},
-    syncTimer: null, workspacePenDown: 0
+    syncTimer: null, workspacePenDown: 0, penOnGlass: () => context.workspacePenDown
   });
   vm.runInContext(section('  /* A sync downloads, parses', '  /* A device link is a direct hand-off'), context);
   function advance(ms) {

@@ -28,7 +28,7 @@ function harness() {
     queueStateSnapshot(serialized) { calls.recovery.push(serialized); return Promise.resolve(false); },
     scheduleSync() { calls.sync++; }, showError() { calls.warnings++; },
     // Deferred handwriting saves run at once here: no Pencil is resting.
-    setTimeout: fn => { fn(); return 0; }, clearTimeout() {}, workspacePenDown: 0, workspacePenAt: 0
+    setTimeout: fn => { fn(); return 0; }, clearTimeout() {}, workspacePenDown: 0, workspacePenAt: 0, penOnGlass: () => context.workspacePenDown
   });
   vm.runInContext(workspace, context);
   vm.runInContext([

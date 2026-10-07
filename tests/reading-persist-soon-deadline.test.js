@@ -13,7 +13,7 @@ function harness() {
   let clock = 1000000, serial = 0;
   const timers = new Map(), writes = [];
   const context = vm.createContext({
-    Date: { now: () => clock }, workspacePenDown: 0, workspacePenAt: 0,
+    Date: { now: () => clock }, workspacePenDown: 0, workspacePenAt: 0, penOnGlass: () => context.workspacePenDown,
     setTimeout(fn, ms) { const id = ++serial; timers.set(id, { fn, at: clock + Math.max(0, ms || 0) }); return id; },
     clearTimeout(id) { timers.delete(id); },
     persist() { writes.push(clock); if (context.persistSoonTimer) { timers.delete(context.persistSoonTimer); context.persistSoonTimer = 0; } context.persistSoonSince = 0; return true; }

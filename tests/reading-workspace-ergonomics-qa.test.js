@@ -37,14 +37,17 @@ const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('readi
 const live = workspace => (workspace?.strokes || []).filter(stroke => Number((workspace.deleted || {})[stroke.id] || 0) < Number(stroke.updatedAt || 0));
 const paperHighlights = ch => Object.values(ch.highlights || {}).flat();
 async function highlightPaper(page, phrase) {
-  await page.waitForFunction(phrase => [...document.querySelectorAll('.pdf-page .text-layer span')].some(span => span.textContent.includes(phrase)), phrase);
-  await page.evaluate(phrase => {
+  // Opening the Workspace narrows the paper and rebuilds its text layer, so find the span and
+  // select in one step, retrying until a settled span holds the phrase.
+  await page.waitForFunction(phrase => {
     const span = [...document.querySelectorAll('.pdf-page .text-layer span')].find(node => node.textContent.includes(phrase) && node.firstChild);
+    if (!span) return false;
     const start = span.firstChild.textContent.indexOf(phrase), range = document.createRange();
     range.setStart(span.firstChild, start); range.setEnd(span.firstChild, start + phrase.length);
     getSelection().removeAllRanges(); getSelection().addRange(range);
     document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
     document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse', pointerId: 92 }));
+    return true;
   }, phrase);
   await page.locator('#selectionCreateHighlight').waitFor({ state: 'visible' });
   await page.locator('#selectionCreateHighlight [data-selection-highlight-color="yellow"]').click();

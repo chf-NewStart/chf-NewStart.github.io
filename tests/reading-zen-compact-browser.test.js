@@ -55,11 +55,11 @@ async function railAt(page, viewport) {
         width: rect.width, height: rect.height };
     }));
   assert.deepEqual(controls.map(item => item.id),
-    ['zenExit', 'zenGuide', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'],
-    'Zen has six top-level controls, including direct paper Undo, at ' + JSON.stringify(viewport));
+    ['zenExit', 'zenGuide', 'zenLayout', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'],
+    'Zen has seven top-level controls, including layout and paper Undo, at ' + JSON.stringify(viewport));
   assert(controls.every(item => item.width >= 43.5 && item.height >= 43.5 && item.x >= -1 && item.y >= -1
     && item.right <= viewport.width + 1 && item.bottom <= viewport.height + 1),
-  'all six Zen controls remain on-screen and touch-sized: ' + JSON.stringify({ viewport, controls }));
+  'all seven Zen controls remain on-screen and touch-sized: ' + JSON.stringify({ viewport, controls }));
 }
 async function stroke(page) {
   await page.locator('#workspaceInk').evaluate(canvas => {
@@ -140,16 +140,18 @@ async function stroke(page) {
       if (viewport.width === 1280) await page.screenshot({ path: '/tmp/phloem-zen-compact-more-' + ENGINE + '.png' });
       await page.locator('#zenLayout').click();
       await page.locator('#zenLayoutMenu').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#zenMoreMenu #zenLayoutMenu').count(), 1,
-        'layout choices expand inline within More');
+      assert.equal(await page.locator('#zenMoreMenu').isVisible(), false,
+        'the direct Layout selector closes More');
+      assert.equal(await page.locator('#zenDock > #zenLayoutTool #zenLayoutMenu').count(), 1,
+        'layout choices open directly from the dock');
       await menuBounds(page, '#zenLayoutMenu');
-      await page.locator('#zenMore').focus();
+      if (viewport.width === 390) await page.screenshot({ path: '/tmp/phloem-zen-layout-compact-' + ENGINE + '.png' });
+      await page.locator('[data-zen-pdf-layout="page"]').focus();
       await page.keyboard.press('Escape');
-      await page.locator('#zenMoreMenu').waitFor({ state: 'hidden' });
       assert.equal(await page.locator('#zenLayoutMenu').isVisible(), false,
-        'Escape closes nested layout choices');
-      assert.equal(await page.locator('#zenMore').evaluate(node => document.activeElement === node), true,
-        'Escape returns focus to the visible More trigger');
+        'Escape closes layout choices');
+      assert.equal(await page.locator('#zenLayout').evaluate(node => document.activeElement === node), true,
+        'Escape returns focus to the direct Layout trigger');
       await page.locator('#zenGuide').click();
       await page.locator('#zenGuideMenu').waitFor({ state: 'visible' });
       await page.locator('#zenAnnotate').click();
@@ -166,22 +168,58 @@ async function stroke(page) {
       node.style.setProperty('--zen-safe-top', '30px');
       node.style.setProperty('--zen-safe-bottom', '24px');
     });
-    await page.locator('#zenMore').click();
-    await page.locator('#zenLayout').click();
+    await page.locator('#zenLayout').tap();
     await page.locator('#zenLayoutMenu').waitFor({ state: 'visible' });
-    const safeMenu = await page.locator('#zenMoreMenu').evaluate(node => {
+    const safeMenu = await page.locator('#zenLayoutMenu').evaluate(node => {
       const rect = node.getBoundingClientRect();
       return { top: rect.top, bottom: rect.bottom, viewportHeight: innerHeight };
     });
     assert(safeMenu.top >= 40 && safeMenu.bottom <= safeMenu.viewportHeight - 34,
-      'short landscape More/Layout respects simulated top and bottom safe areas: ' + JSON.stringify(safeMenu));
-    await page.locator('#zenMore').focus();
+      'short landscape Layout respects simulated top and bottom safe areas: ' + JSON.stringify(safeMenu));
+    await page.locator('#zenLayout').focus();
     await page.keyboard.press('Escape');
-    await page.locator('#zenMoreMenu').waitFor({ state: 'hidden' });
+    await page.locator('#zenLayoutMenu').waitFor({ state: 'hidden' });
     await page.locator('#zenDock').evaluate(node => {
       node.style.removeProperty('--zen-safe-top');
       node.style.removeProperty('--zen-safe-bottom');
     });
+
+    // Resting controls stay discoverable; an open choice or keyboard focus is active use.
+    await page.mouse.move(220, 210);
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.waitForFunction(() => document.body.classList.contains('zen-idle'));
+    await page.waitForTimeout(300);
+    const restingOpacity = await page.locator('#zenLayout').evaluate(node => +getComputedStyle(node).opacity);
+    assert(restingOpacity >= .45 && restingOpacity <= .6, 'the resting layout label remains subtly visible: ' + restingOpacity);
+    await page.locator('#zenLayout').tap();
+    await page.locator('#zenLayoutMenu').waitFor({ state: 'visible' });
+    await page.waitForTimeout(3500);
+    assert.equal(await page.locator('body').evaluate(node => node.classList.contains('zen-idle')), false,
+      'touch-open layout choices hold the dock awake');
+    await menuBounds(page, '#zenLayoutMenu');
+    await page.screenshot({ path: '/tmp/phloem-zen-layout-open-' + ENGINE + '.png' });
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(3500);
+    assert.equal(await page.locator('#zenLayout').evaluate(node => document.activeElement === node
+      && +getComputedStyle(node).opacity >= .85), true, 'keyboard focus remains readable after the idle delay');
+    await page.locator('#zenLayout').press('Enter');
+    await page.locator('[data-zen-pdf-layout="book"]').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#zenLayoutLabel').textContent(), 'Book');
+    for (const viewport of [{ width: 768, height: 1024 }, { width: 1024, height: 768 }]) {
+      await railAt(page, viewport);
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.comfort.v1')).pdfLayout), 'book',
+        'rotation preserves the chosen Book layout');
+      assert.equal(await page.locator('#zenLayoutLabel').textContent(), 'Book');
+      assert.equal(await page.locator('[data-zen-pdf-layout="book"]').getAttribute('aria-pressed'), 'true');
+    }
+    await page.locator('#zenLayout').tap();
+    await page.locator('[data-zen-pdf-layout="scroll"]').tap();
+    assert.equal(await page.locator('#zenLayoutLabel').textContent(), 'Scroll');
+    assert.equal(await page.locator('#zenLayoutMenu').isVisible(), false);
+    await page.locator('#zenLayout').tap();
+    await page.locator('[data-zen-pdf-layout="page"]').tap();
+    assert.equal(await page.locator('#zenLayoutLabel').textContent(), 'Page');
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await railAt(page, { width: 1280, height: 900 });
@@ -269,7 +307,7 @@ async function stroke(page) {
     assert.equal(await page.locator('#workspaceInk path[data-stroke-id]').count(), 1,
       'direct Workspace toggle retains saved ink');
     assert.deepEqual(errors, [], 'compact Zen interactions have no page errors');
-    console.log('PASS  Compact Zen rail with direct paper Undo, popups, palette focus and direct Workspace');
+    console.log('PASS  Compact Zen layout selector, idle/focus, rotation, popups and Workspace');
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.close(resolve));

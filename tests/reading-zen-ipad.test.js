@@ -304,7 +304,7 @@ async function zenAction(page, name, selector) {
   check('choosing Page in Zen updates its own selected state', await page.locator('[data-zen-pdf-layout="page"]').getAttribute('aria-pressed') === 'true');
   check('a Zen layout choice closes its popout', !(await page.locator('#zenLayoutMenu').isVisible()) && await page.locator('#zenLayout').getAttribute('aria-expanded') === 'false');
 
-  await zenAction(page, 'More', '#zenLayout');
+  await page.click('#zenLayout');
   await page.keyboard.press('Escape');
   check('Escape closes the Zen layout popout without leaving Zen', !(await page.locator('#zenLayoutMenu').isVisible()) && await page.locator('#zenLayout').getAttribute('aria-expanded') === 'false' && await page.locator('body').evaluate(body => body.classList.contains('zen')));
 

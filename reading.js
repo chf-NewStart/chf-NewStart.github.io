@@ -2694,6 +2694,7 @@
     var previewButton=byId('pdfLinkPreviewBtn');previewButton.setAttribute('aria-pressed',String(!!comfort.linkPreviews));previewButton.textContent=comfort.linkPreviews?'Previews on':'Previews off';
     var layoutName=comfort.pdfLayout.charAt(0).toUpperCase()+comfort.pdfLayout.slice(1);
     byId('zenLayout').setAttribute('aria-label','Page layout: '+layoutName+'. Choose layout');
+    byId('zenLayoutLabel').textContent=layoutName;
     document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideScope===comfort.guideScope));});
     document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideSize===comfort.guideSize));});
     byId('guideSpanGroup').hidden=comfort.guideOrientation==='column';
@@ -2900,7 +2901,7 @@
     syncZenAnnotateUi();
   }
   function placeZenPopouts(){
-    ['zenGuideMenu','zenAnnotateMenu','zenMoreMenu'].forEach(function(id){
+    ['zenGuideMenu','zenLayoutMenu','zenAnnotateMenu','zenMoreMenu'].forEach(function(id){
       var menu=byId(id);if(!menu||menu.classList.contains('hidden'))return;
       var owner=menu.parentElement.getBoundingClientRect(),height=Math.min(window.innerHeight,window.visualViewport?window.visualViewport.height:window.innerHeight),style=getComputedStyle(menu);
       // In very short windows the rail has two columns. Open beside the whole
@@ -2917,7 +2918,6 @@
   }
   function closeZenPopouts(returnFocus){
     var openTrigger=null,closed=false;
-    // Parents precede the inline Layout disclosure, so focus never returns to a hidden row.
     [['zenGuide','zenGuideMenu','zenGuideTool'],['zenAnnotate','zenAnnotateMenu','zenAnnotateTool'],['zenMore','zenMoreMenu','zenMoreTool'],['zenLayout','zenLayoutMenu','zenLayoutTool']].forEach(function(parts){
       var trigger=byId(parts[0]),menu=byId(parts[1]),tool=byId(parts[2]);
       if(!menu.classList.contains('hidden')){closed=true;if(!openTrigger)openTrigger=trigger;}
@@ -2926,15 +2926,11 @@
     byId('zenDock').classList.remove('popout-open');
     syncZenMarkerUi();
     if(returnFocus&&openTrigger)openTrigger.focus();
+    if(closed)zenWake();
     return closed;
   }
   function toggleZenPopout(triggerId,menuId,toolId){
     var trigger=byId(triggerId),menu=byId(menuId),opening=menu.classList.contains('hidden');
-    if(triggerId==='zenLayout'){
-      if(byId('zenMoreMenu').classList.contains('hidden'))toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');
-      menu.classList.toggle('hidden',!opening);byId(toolId).classList.toggle('popout-open',opening);trigger.setAttribute('aria-expanded',String(opening));
-      placeZenPopouts();zenWake();return;
-    }
     closeZenPopouts(false);
     if(opening)setHighlightToolbarOpen(false);
     if(opening&&!byId('findBar').classList.contains('hidden'))toggleFindBar(false,false);
@@ -3169,12 +3165,24 @@
   /* One quiet reader. Notes and occasional controls float above the paper; only
      leaving the reader clears Zen. Browser fullscreen is independent. */
   var zenOn=false,zenViaFullscreen=false,zenIdleTimer=0,zenWakeLock=null,zenWakePending=false;
+  var zenDockPointerId=null;
   function zenWake(){
     if(!zenOn)return;
     document.body.classList.remove('zen-idle');clearTimeout(zenIdleTimer);
-    zenIdleTimer=setTimeout(function(){if(zenOn)document.body.classList.add('zen-idle');},3200);
+    zenIdleTimer=setTimeout(function(){
+      var dock=byId('zenDock');
+      if(!zenOn||zenDockPointerId!==null||dock.classList.contains('popout-open')||dock.classList.contains('find-open')||dock.querySelector(':focus-visible'))return;
+      document.body.classList.add('zen-idle');
+    },3200);
   }
   ['pointermove','pointerdown','wheel','touchstart','keydown'].forEach(function(type){document.addEventListener(type,zenWake,{passive:true});});
+  byId('zenDock').addEventListener('pointerdown',function(event){zenDockPointerId=event.pointerId;zenWake();},{passive:true});
+  ['pointerup','pointercancel'].forEach(function(type){document.addEventListener(type,function(event){if(event.pointerId===zenDockPointerId){zenDockPointerId=null;zenWake();}},{passive:true});});
+  // A mouse can leave the window before its release reaches this document.
+  document.addEventListener('pointermove',function(event){if(event.pointerId===zenDockPointerId&&event.pointerType==='mouse'&&!event.buttons){zenDockPointerId=null;zenWake();}},{passive:true});
+  window.addEventListener('blur',function(){zenDockPointerId=null;zenWake();});
+  byId('zenDock').addEventListener('focusin',zenWake);
+  byId('zenDock').addEventListener('focusout',zenWake);
   /* Long stretches of hands-off reading are exactly when a tablet decides to lock
      its screen; zen holds a wake lock for as long as it owns the room. */
   function holdZenWake(){
@@ -3186,7 +3194,7 @@
     },function(){}).finally(function(){zenWakePending=false;});
   }
   function dropZenWake(){if(zenWakeLock){zenWakeLock.release().catch(function(){});zenWakeLock=null;}}
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')holdZenWake();});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){zenWake();holdZenWake();}else zenDockPointerId=null;});
   function setZen(on,options){
     options=options||{};
     zenOn=!!on;document.body.classList.toggle('zen',zenOn);
@@ -3196,7 +3204,7 @@
        return point on a control that is actually visible in the new mode. */
     if(!byId('findBar').classList.contains('hidden'))findReturnFocus=visibleFindReturnTarget(zenOn?byId('zenMore'):null);
     if(zenOn){zenWake();holdZenWake();}
-    else{closeZenPopouts(false);clearTimeout(zenIdleTimer);document.body.classList.remove('zen-idle');dropZenWake();}
+    else{zenDockPointerId=null;closeZenPopouts(false);clearTimeout(zenIdleTimer);document.body.classList.remove('zen-idle');dropZenWake();}
     if(zenOn){toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false');}
     if(!zenOn&&zenViaFullscreen){zenViaFullscreen=false;if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});}
     if(options.refit!==false)requestAnimationFrame(function(){
@@ -7444,10 +7452,10 @@
     toolbar.classList.toggle('docked',docked);
     if(!docked){toolbar.style.removeProperty('top');toolbar.style.removeProperty('left');return;}
     var anchor=trigger.getClientRects().length?trigger:byId('zenAnnotate');if(!anchor||!anchor.getClientRects().length){toolbar.classList.remove('docked');return;}
-    var a=anchor.getBoundingClientRect(),t=toolbar.getBoundingClientRect(),gap=10,margin=12;
+    var a=anchor.getBoundingClientRect(),rail=dock.getBoundingClientRect(),t=toolbar.getBoundingClientRect(),gap=10,margin=12;
     // Fold out toward the paper the dock sits on (left of a right-edge dock), never over Workspace.
     var pane=byId('documentPane'),p=pane&&pane.getClientRects().length?pane.getBoundingClientRect():{left:0,right:innerWidth};
-    var left=a.left+a.width/2>(p.left+p.right)/2?a.left-gap-t.width:a.right+gap;
+    var left=a.left+a.width/2>(p.left+p.right)/2?rail.left-gap-t.width:rail.right+gap;
     var top=Math.max(margin,Math.min(innerHeight-t.height-margin,a.top+a.height/2-t.height/2));
     toolbar.style.left=Math.max(margin,Math.min(innerWidth-t.width-margin,left))+'px';toolbar.style.top=top+'px';
   }

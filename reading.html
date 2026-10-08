@@ -618,6 +618,14 @@
             </div>
           </div>
         </div>
+        <div class="zen-tool" id="zenLayoutTool">
+          <button class="zen-exit zen-layout" id="zenLayout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout: Scroll. Choose layout" title="Choose page layout"><span id="zenLayoutLabel">Scroll</span><svg class="zen-layout-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
+          <div class="zen-popout zen-layout-menu hidden" id="zenLayoutMenu" role="group" aria-label="Page layout">
+            <button class="zen-popout-option" type="button" data-zen-pdf-layout="scroll" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V3m-3 3 3-3 3 3M17 16v5m-3-3 3 3 3-3M4 11h16M4 13h16"/></svg><span>Scroll</span></button>
+            <button class="zen-popout-option" type="button" data-zen-pdf-layout="page" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Page</span></button>
+            <button class="zen-popout-option" type="button" data-zen-pdf-layout="book" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5C9 3 5 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Zm0 0v16"/></svg><span>Book</span></button>
+          </div>
+        </div>
         <div class="zen-tool" id="zenAnnotateTool">
           <button class="zen-exit" id="zenAnnotate" type="button" aria-expanded="false" aria-controls="zenAnnotateMenu" aria-haspopup="true" aria-label="Annotation tools" title="Annotation tools"><span aria-hidden="true">✎</span></button>
           <div class="zen-popout zen-action-menu hidden" id="zenAnnotateMenu" role="group" aria-label="Annotation tools">
@@ -637,14 +645,6 @@
             <button class="zen-exit zen-menu-action" id="zenReadingControls" data-label="This paper" type="button" aria-haspopup="dialog" aria-controls="readerControlsDialog" aria-label="This paper: title, pages and zoom"><span aria-hidden="true">▤</span></button>
             <button class="zen-exit zen-menu-action" id="zenNotebook" data-label="Notebook" type="button" aria-haspopup="dialog" aria-controls="notebook" aria-expanded="false" aria-label="Open notebook: notes, clips and discussions"><span aria-hidden="true">✎</span></button>
             <button class="zen-exit zen-find zen-menu-action" id="zenFind" data-label="Find" type="button" aria-expanded="false" aria-controls="findBar" aria-keyshortcuts="/" aria-label="Find in this paper" title="Find in this paper (/)">⌕</button>
-            <div class="zen-tool zen-menu-subtool" id="zenLayoutTool">
-              <button class="zen-exit zen-menu-action" id="zenLayout" data-label="Page layout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout. Choose layout" title="Switch page layout"><span aria-hidden="true">⇄</span></button>
-              <div class="zen-popout zen-layout-menu hidden" id="zenLayoutMenu" role="group" aria-label="Page layout">
-                <button class="zen-popout-option" type="button" data-zen-pdf-layout="scroll" aria-pressed="true"><span aria-hidden="true">↕</span><span>Scroll</span></button>
-                <button class="zen-popout-option" type="button" data-zen-pdf-layout="page" aria-pressed="false"><span aria-hidden="true">▯</span><span>Page</span></button>
-                <button class="zen-popout-option" type="button" data-zen-pdf-layout="book" aria-pressed="false"><span aria-hidden="true">▯▯</span><span>Book</span></button>
-              </div>
-            </div>
             <button class="zen-exit zen-paper paper-appearance-shortcut zen-menu-action" id="zenPaperAppearance" data-label="Paper appearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
             <button class="zen-exit zen-theme zen-menu-action" id="zenTheme" data-label="Theme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
             <button class="zen-exit zen-menu-action" id="zenSettings" data-label="Reading settings" type="button" aria-haspopup="dialog" aria-controls="comfortBar" aria-expanded="false" aria-label="Open reading settings"><span aria-hidden="true">⚙</span></button>

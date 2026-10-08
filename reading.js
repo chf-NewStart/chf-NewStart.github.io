@@ -823,7 +823,15 @@
     var ch=find(currentId),termKey=term.toLocaleLowerCase(),key=String(currentId||'')+'|'+termKey;
     try{
       // Lookups saved before LOOKUP_V may hold an unrelated article; look those up again.
-      var memoryHit=Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)&&ch.termLookups[termKey]&&ch.termLookups[termKey].lookupV===LOOKUP_V),expansion=memoryHit||paperHit?null:lookupExpansion(term,ch),result=memoryHit?lookupCache[key]:paperHit?ch.termLookups[termKey]:await wikipediaEntry(expansion?expansion.term:term);
+      var memoryHit=Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)&&ch.termLookups[termKey]&&ch.termLookups[termKey].lookupV===LOOKUP_V);
+      // A PDF opened only in paper view may have extracted its visible page but not
+      // the page where the authors first spelled out EC. Finish the same page-text
+      // build Find uses before deciding that the abbreviation has no definition.
+      if(!memoryHit&&!paperHit&&ch&&ch.kind==='pdf'&&pdfDoc&&/\b[A-Z][A-Z0-9]{1,5}\b/.test(term)&&!pdfFindTextsReady(ch,pdfDoc)){
+        try{await ensurePdfFindTexts(ch,pdfDoc);}catch(paperTextError){}
+        if(serial!==lookupSerial||currentId!==ch.id)return;
+      }
+      var expansion=memoryHit||paperHit?null:lookupExpansion(term,ch),result=memoryHit?lookupCache[key]:paperHit?ch.termLookups[termKey]:await wikipediaEntry(expansion?expansion.term:term);
       if(!result&&expansion&&expansion.term!==expansion.full)result=await wikipediaEntry(expansion.full);
       if(result&&expansion)result=Object.assign({},result,{expansion:{abbr:expansion.abbr,full:expansion.full}});
       if(serial!==lookupSerial)return;

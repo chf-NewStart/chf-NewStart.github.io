@@ -61,3 +61,32 @@ test('a matching article is still found once the abbreviation is spelled out', a
   assert.equal(found.title, 'Electrical resistivity and conductivity');
   assert.deepEqual(queries, ['Solution electrical conductivity', 'electrical conductivity']);
 });
+
+test('Define reads a PDF-only paper before resolving an abbreviation', async () => {
+  const { context, queries } = harness(query => query === 'electrical conductivity'
+    ? [page('Electrical conductivity meter', 'Measures electrical conductivity in a solution.', 1)]
+    : []);
+  const ch = { id: 'paper', kind: 'pdf', termLookups: {}, pageTexts: ['Table 5. Solution EC'] };
+  let builds = 0, shown = null;
+  Object.assign(context, {
+    currentId: 'paper', pdfDoc: { numPages: 2 }, lookupSerial: 1,
+    lookupCache: Object.create(null),
+    find: () => ch,
+    pdfFindTextsReady: () => ch.pageTexts.length === 2,
+    ensurePdfFindTexts: async () => {
+      builds++;
+      ch.pageTexts = ['Table 5. Solution EC', 'Feed at an electrical conductivity (EC) of 1.5 mS/cm.'];
+      return true;
+    },
+    renderLookup: (_term, result) => { shown = result; },
+    rememberLookup: () => {}, commonsImage: async () => null,
+    hasAiRoute: () => false, showLookupProblem: () => {},
+    byId: () => ({ classList: { remove() {} } })
+  });
+  vm.runInContext(section('  async function loadLookup(', '  function queueLookup('), context);
+  await context.loadLookup('Solution EC', 1, 'Table 5');
+  assert.equal(builds, 1, 'PDF text is completed before checking the paper for EC');
+  assert.equal(shown?.expansion?.full, 'electrical conductivity');
+  assert.equal(shown?.title, 'Electrical conductivity meter');
+  assert.deepEqual(queries, ['Solution electrical conductivity', 'electrical conductivity']);
+});

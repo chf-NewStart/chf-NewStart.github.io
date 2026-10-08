@@ -28,6 +28,21 @@ In Xcode:
 
 After changing the shared reader or native adapter, run `npm run ios:sync` before building. `ios:open` alone does not rebuild the bundled web app.
 
+### Xcode Cloud
+
+The executable [`ci_post_clone.sh`](ios/App/ci_scripts/ci_post_clone.sh) sits beside
+`App.xcodeproj` in its `ci_scripts` directory. Xcode Cloud runs it before resolving
+Swift packages. It selects Node.js 22+ (installing Node 22 through Homebrew when
+needed), installs locked npm dependencies including the Capacitor CLI, runs the
+native contract tests, then builds and syncs the web bundle into the iOS project.
+
+This step is required on a fresh checkout: the local `CapacitorBrowser` Swift
+package lives inside ignored `node_modules`, and the native app's `public` assets
+and Capacitor configuration are generated too. Keep the committed Swift
+`Package.resolved`; the hook does not override Xcode Cloud's package resolution.
+To exercise the same preparation locally, run
+`./apps/ipad/ios/App/ci_scripts/ci_post_clone.sh` from the repository root.
+
 Historical signed archives **1.1.0 (14)**, **(15)**, and **(16)** were built and verified locally. Build 15 added the ink-smoothing fix; build 16 added Zen Undo. They do not contain build 17's new features. The historical **1.1.0 (17)** archive at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (17).xcarchive` has verified version/build metadata, a strict code signature, and exact HTML/JavaScript/CSS/ink-source matches after the native bundle transforms, including the older-iPadOS palette layout fallback. It lacks build 18's Pen/Highlighter switching fix. The historical **1.1.0 (18)** archive at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (18).xcarchive` also passed version/build, strict code-signature, and exact bundled-source verification against the build 18 source after native transforms. The current **1.1.0 (19)** archive at `/Users/chf/Library/Developer/Xcode/Archives/2026-09-29/Phloem 1.1.0 (19).xcarchive` passes the same checks against build 19 source. Check App Store Connect for an already used build number before uploading; if 19 is used, increment to the next unused number and archive again.
 
 ## New in 1.2

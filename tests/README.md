@@ -31,6 +31,16 @@ global list with category filters, row metadata, existing search and sort
 controls, multi-select moves into existing or newly created categories,
 one-click opening, and a non-clipping phone layout.
 
+`reading-define-lookup.test.js` (`node --test`) covers Define: an abbreviation in
+the selection (EC, pH, K) must appear in the article offered, so "Solution EC" can no
+longer be answered with "Ammonia solution", and the paper's own spelling of an
+abbreviation ("electrical conductivity (EC)") is found and looked up instead.
+
+`reading-pdf-find-contents.test.js` covers a guide read only as a PDF: Find searches
+every page without Reader view having run first, and a mouse click on a contents
+entry goes to that page while Backspace returns. Its fixture PDF is written by hand,
+so it needs no pdf-lib.
+
 `reading-library-long-press.test.js` covers the wall on a touch screen: one tap
 opens a paper, holding a note only selects it for the card without opening its
 Move menu, and the note's own Move button still opens the menu.
@@ -212,6 +222,8 @@ node tests/reading-selection-note-ai.test.js
 node tests/reading-library-stack.test.js
 node tests/reading-library-list.test.js
 node tests/reading-library-long-press.test.js
+node --test tests/reading-define-lookup.test.js
+node tests/reading-pdf-find-contents.test.js
 node --test tests/reading-paper-details-sync.test.js
 node --test tests/reading-pdf-title-diacritics.test.js
 node --test tests/reading-cloud-provider-status.test.js

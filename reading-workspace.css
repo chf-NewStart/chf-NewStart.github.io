@@ -128,12 +128,20 @@ body.workspace-open.zen .zen-workspace-marker { display:flex !important; }
      the last word. pageScale() reads the same gutter. Touch dock: 64px wide, 10px in;
      Zen rail: 44px circles, 12px in. */
   body.touch-tablet-reader.workspace-open:not(.zen) { --paper-dock-gutter:84px; }
-  body.workspace-open.zen { --paper-dock-gutter:66px; }
+  body.workspace-open.zen { --paper-dock-gutter:66px; --zen-find-rail-width:44px; }
   body.workspace-open .pdf-frame:not(.paged-pdf-flow) { padding-right:var(--paper-dock-gutter,0px); }
   /* The layout pill would reach back over the text; beside Workspace it is one circle. */
   body.workspace-open.zen #zenLayout { width:44px; flex-basis:44px; padding:0; border-radius:50%; }
   body.workspace-open.zen #zenLayout :is(#zenLayoutLabel,.zen-layout-chevron) { display:none; }
   body.workspace-open.zen #zenLayoutIcon { display:flex; }
+}
+/* Match the short-height rail's extra 44px columns and 4px gaps. Both the
+   paper fit and Find need to clear the whole rail beside Workspace. */
+@media (min-width:900px) and (orientation:landscape) and (max-height:440px) {
+  body.workspace-open.zen { --paper-dock-gutter:114px; --zen-find-rail-width:92px; }
+}
+@media (min-width:900px) and (orientation:landscape) and (max-height:325px) {
+  body.workspace-open.zen { --paper-dock-gutter:162px; --zen-find-rail-width:140px; }
 }
 #zenLayoutIcon { display:none; }
 #zenLayoutIcon svg { width:20px; height:20px; }

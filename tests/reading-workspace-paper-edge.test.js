@@ -137,6 +137,25 @@ async function highlights(page) {
   saved = await highlights(page);
   check('an accent drawn as its own glyph rejoins its letter', saved[saved.length - 1] === 'The Münch hypothesis', saved[saved.length - 1]);
 
+  // Fit must leave the dock clear even at the smallest allowed paper split,
+  // including the two/three-column rail used by a short landscape viewport.
+  for (const size of [{ width:1024, height:768 }, { width:900, height:600 }, { width:1024, height:420 }, { width:1024, height:300 }]) {
+    await page.setViewportSize(size);
+    await page.locator('#workspaceDivider').focus();
+    for (let step=0; step<20; step++) await page.keyboard.press('ArrowLeft');
+    for (const mode of ['scroll','page','book']) {
+      await page.locator('[data-pdf-layout="'+mode+'"]').evaluate(button => button.click());
+      await page.waitForFunction(() => {
+        const frame=document.getElementById('pdfFrame');
+        const paper=document.querySelector('.pdf-page.book-active') || document.querySelector('.pdf-page');
+        const dock=document.getElementById('zenDock');
+        return paper && (!frame.classList.contains('paged-pdf-flow') || frame.dataset.pagedReady==='true')
+          && paper.getBoundingClientRect().right <= dock.getBoundingClientRect().left + 1;
+      }, null, {timeout:10000});
+      check('paper clears dock in '+mode+' at '+size.width+'×'+size.height+' and minimum split', true);
+    }
+  }
+
   check('no page errors', errors.length === 0, errors.join(' | '));
   await browser.close();
   server.close();

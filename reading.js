@@ -4645,7 +4645,7 @@
   /* Beside Workspace the paper's dock sits on the paper's edge; reading-workspace.css
      reserves that strip as --paper-dock-gutter and the page fits in what is left. */
   function paperDockGutter(){return parseFloat(getComputedStyle(document.body).getPropertyValue('--paper-dock-gutter'))||0;}
-  function pdfFitWidth(){return Math.max(280,(byId('documentPane').clientWidth||800)-1-paperDockGutter());}
+  function pdfFitWidth(){return Math.max(1,Math.max(280,(byId('documentPane').clientWidth||800)-1)-paperDockGutter());}
   function currentBuildKey(){var pane=byId('documentPane');return pdfDoc?[currentId,pdfDoc.numPages,pdfFit,pdfZoom,comfort.pdfLayout,bookSpread(),pane.clientWidth,pane.clientHeight,paperDockGutter()].join('|'):'';}
   async function buildPdfScroll(){
     clearExcerptSourceCue();

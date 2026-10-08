@@ -271,3 +271,9 @@ the PDF checks also require the browser dependencies described above.
 `scripts/add-daily-fact.js` (run by the daily fun-fact workflow) against the real
 queue and both queue entry shapes, and needs no browser:
 `node --test tests/daily-fun-fact.test.js`.
+
+`reading-pdf-accent-text.test.js` verifies separate accent glyph composition without
+losing real word spaces or native selection offsets. `reading-zen-find-clearance.test.js`
+checks responsive Find controls against the full Zen rail and resized Workspace paper.
+`reading-workspace-paper-edge.test.js` also covers minimum paper splits and short
+landscape rails in Scroll, Page and Book.

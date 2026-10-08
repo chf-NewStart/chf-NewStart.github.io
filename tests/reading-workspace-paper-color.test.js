@@ -52,11 +52,11 @@ const visibleDock = page => page.locator('#zenDock > button, #zenDock > .zen-too
     await page.waitForFunction(() => document.body.classList.contains('zen') && !!document.querySelector('.pdf-page canvas')?.width);
 
     assert.equal(await page.locator('#zenWorkspaceMarker').isVisible(), false, 'reading alone keeps the quiet Zen dock');
-    assert.deepEqual(await visibleDock(page), ['zenExit', 'zenGuide', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore']);
+    assert.deepEqual(await visibleDock(page), ['zenExit', 'zenGuide', 'zenLayout', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore']);
 
     await page.locator('#zenWorkspace').click();
     await page.locator('#workspacePanel').waitFor({ state: 'visible' });
-    assert.deepEqual(await visibleDock(page), ['zenExit', 'zenGuide', 'zenAnnotate', 'zenWorkspaceMarker', 'zenUndo', 'zenWorkspace', 'zenMore'],
+    assert.deepEqual(await visibleDock(page), ['zenExit', 'zenGuide', 'zenLayout', 'zenAnnotate', 'zenWorkspaceMarker', 'zenUndo', 'zenWorkspace', 'zenMore'],
       'Workspace adds one direct paper color button beside Annotate');
     const geometry = await page.evaluate(() => {
       const box = id => document.getElementById(id).getBoundingClientRect().toJSON();

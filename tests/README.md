@@ -39,6 +39,19 @@ page opening, responsive results, and List-mode category and bulk-move controls.
 individual-occurrence arrows, saved-marker cleanup, PDF/Reader switching, Page
 rebuilds, and phrases split between PDF.js text-layer spans.
 
+`reading-pdf-excerpt-text.test.js` covers actual PDF line-break spaces and hyphens,
+preserved inline compounds and exact native endpoints, and a normalized highlight
+saved into Workspace, reloaded, and located back across its original PDF lines.
+`reading-pencil-boundaries.test.js` also checks grouped numeric endpoints with
+and without `Intl.Segmenter`, including numbers split across touching style runs.
+
+`reading-cloud-auto-sync.test.js` runs the real PDF/Word import and cloud functions
+against delayed storage and mocked private cloud APIs. It covers original-ready
+uploads, in-flight imports, replacement-byte races, silent native Google renewal,
+and recoverable transfer failures. `reading-sync-quiet.test.js` checks bounded
+retries, foreground/online refresh, and waiting for Pencil lift even past the
+normal sync deadline. These tests do not connect to a real cloud account.
+
 `reading-pdf-links.test.js` covers real pointer hit-testing for PDF annotations,
 phone-sized superscript citations, safe external URLs, blocked script actions,
 safe text-only external URL previews without third-party requests, the persisted
@@ -202,6 +215,19 @@ place, set `CHROME_PATH` when running the AI provider test or pass it via
 `chromium.launch({ executablePath: ... })` in the highlight test.
 
 `reading-icloud-web.test.js` covers iCloud on the website through a fake CloudKit JS: hidden until an API token is set, Apple ID sign-in, merging the library the iPad app wrote, uploading the browser's originals under the native record names and field types, and downloading an iPad-only original when it is opened.
+
+`reading-pdf-ink-render-cache.test.js` checks that adding one stroke preserves
+existing SVG paths, while equal-clock merges, in-place edits, page geometry,
+erasing and Undo still update the correct outlines and stacking order.
+`reading-pdf-derived-persistence.test.js` checks that extracted PDF text reaches
+IndexedDB without rewriting the main library, while repaired review anchors
+still save immediately and survive reopening.
+
+`reading-workspace-restore-group-state.test.js` checks bulk lasso move/restore
+compatibility, timestamps, exact optional metadata, validation and input
+immutability. Its 1,000-stroke fixtures bound point-copy work rather than relying
+on machine-specific timing thresholds. Run these state checks with `node --test`;
+the PDF checks also require the browser dependencies described above.
 
 `daily-fun-fact.test.js` is a site test, not a reader test. It checks
 `scripts/add-daily-fact.js` (run by the daily fun-fact workflow) against the real

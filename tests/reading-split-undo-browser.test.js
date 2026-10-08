@@ -186,7 +186,7 @@ async function checkSplitBounds(page) {
       && document.getElementById('pdfFrame').dataset.pagedReady === 'true');
     assert.deepEqual(await page.locator('#zenDock > button, #zenDock > .zen-tool > button').evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length).map(node => node.id)),
-    ['zenExit', 'zenGuide', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'], 'paper Undo is a direct Zen control');
+    ['zenExit', 'zenGuide', 'zenLayout', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'], 'paper Undo is a direct Zen control');
     await page.locator('#zenWorkspace').click();
     await page.locator('#workspacePanel').waitFor({ state: 'visible' });
     await page.waitForFunction(() => !!document.querySelector('.pdf-page.book-active canvas')?.width);

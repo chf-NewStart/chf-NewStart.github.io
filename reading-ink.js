@@ -138,10 +138,44 @@
     var found=sheet.querySelector('.pdf-ink-layer');if(found)return found;
     var el=svg('svg');el.classList.add('pdf-ink-layer');el.setAttribute('aria-hidden','true');el.setAttribute('preserveAspectRatio','none');sheet.appendChild(el);return el;
   }
+  var renderedInk = new WeakMap();
+  function inkGeometry(stroke, aspect) {
+    return { aspect:aspect,width:stroke.width,style:stroke.style,shape:stroke.shape,stabilize:stroke.stabilize,
+      response:stroke.response?[stroke.response[0],stroke.response[1]]:null,
+      points:stroke.points.map(function(p){return[p[0],p[1],p[2]];}) };
+  }
+  function sameInkGeometry(saved, stroke, aspect) {
+    if(saved.aspect!==aspect||saved.width!==stroke.width||saved.style!==stroke.style||saved.shape!==stroke.shape||saved.stabilize!==stroke.stabilize||saved.points.length!==stroke.points.length)return false;
+    var response=stroke.response;
+    if(!!saved.response!==!!response||response&&(saved.response[0]!==response[0]||saved.response[1]!==response[1]))return false;
+    for(var i=0;i<saved.points.length;i++){
+      var a=saved.points[i],b=stroke.points[i];
+      if(a[0]!==b[0]||a[1]!==b[1]||a[2]!==b[2])return false;
+    }
+    return true;
+  }
   function render(sheet, strokes) {
-    var el=layer(sheet),aspect=(sheet.offsetHeight||1)/(sheet.offsetWidth||1);
-    el.setAttribute('viewBox','0 0 1000 '+(1000*aspect));el.replaceChildren();
-    (strokes||[]).forEach(function (stroke) { el.appendChild(strokeNode(stroke,aspect)); });return el;
+    var el=layer(sheet),aspect=(sheet.offsetHeight||1)/(sheet.offsetWidth||1),previous=renderedInk.get(el)||new Map(),next=new Map(),cursor=el.firstChild;
+    var viewBox='0 0 1000 '+(1000*aspect);if(el.getAttribute('viewBox')!==viewBox)el.setAttribute('viewBox',viewBox);
+    (strokes||[]).forEach(function(stroke){
+      var key=stroke.id||stroke,entry=previous.get(key);
+      // Compare display inputs, not timestamps: a tied sync revision may still replace
+      // geometry. Snapshots also catch in-place edits without serializing the page.
+      if(!entry||next.has(key))entry={node:strokeNode(stroke,aspect),geometry:inkGeometry(stroke,aspect)};
+      else{
+        if(!sameInkGeometry(entry.geometry,stroke,aspect)){entry.node.setAttribute('d',pathData(stroke,aspect));entry.geometry=inkGeometry(stroke,aspect);}
+        var fill=COLORS[stroke.color]||COLORS.black;
+        if(entry.node.getAttribute('fill')!==fill)entry.node.setAttribute('fill',fill);
+        if(entry.node.dataset.inkColor!==String(stroke.color))entry.node.dataset.inkColor=stroke.color;
+        if(entry.node.classList.contains('pdf-ink-erasing'))entry.node.classList.remove('pdf-ink-erasing');
+      }
+      if(!next.has(key))next.set(key,entry);
+      // Preserve the caller's stacking order after merges and Undo as well as appends.
+      // Already ordered nodes stay attached, so a new stroke only inserts its own path.
+      if(entry.node===cursor)cursor=cursor.nextSibling;else el.insertBefore(entry.node,cursor);
+    });
+    while(cursor){var obsolete=cursor;cursor=cursor.nextSibling;obsolete.remove();}
+    renderedInk.set(el,next);return el;
   }
   function distance(p,a,b) { var dx=b.x-a.x,dy=b.y-a.y,t=clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy); }
   function segmentsNear(a,b,c,d,r) {

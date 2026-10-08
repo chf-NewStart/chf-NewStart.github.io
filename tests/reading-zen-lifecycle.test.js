@@ -18,7 +18,7 @@ function classList() {
     contains(name) { return values.has(name); }
   };
 }
-function node() { return { classList: classList(), attributes: {}, setAttribute(key, value) { this.attributes[key] = value; } }; }
+function node() { return { classList: classList(), attributes: {}, addEventListener() {}, querySelector() { return null; }, setAttribute(key, value) { this.attributes[key] = value; } }; }
 function deferred() { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; }
 async function tick() { await new Promise(resolve => setImmediate(resolve)); }
 function lock() {
@@ -41,7 +41,7 @@ function harness(wakeRequest) {
     addEventListener(name, callback) { (handlers[name] ||= []).push(callback); }
   };
   const context = vm.createContext({
-    document, navigator: { wakeLock: wakeRequest ? { request: wakeRequest } : null },
+    document, window: { addEventListener(name, callback) { (handlers[name] ||= []).push(callback); } }, navigator: { wakeLock: wakeRequest ? { request: wakeRequest } : null },
     byId: id => elements[id], innerWidth: 1180, comfort: { focus: false },
     readerMode: 'text', pdfDoc: null,
     matchMedia: () => ({ matches: true }),
@@ -57,7 +57,7 @@ function harness(wakeRequest) {
   vm.runInContext(section('  var zenOn=false,zenViaFullscreen=false,zenIdleTimer=0,zenWakeLock=null,zenWakePending=false;',
     '  /* Auto-scroll:'), context,
   { filename: 'reading.js Zen lifecycle' });
-  return { context, elements, calls, document, emit(name) { for (const handler of handlers[name] || []) handler(); } };
+  return { context, elements, calls, document, emit(name, event) { for (const handler of handlers[name] || []) handler(event); } };
 }
 
 test('sole reader entry applies quiet reading without fullscreen, toast, or competing refit', () => {
@@ -209,4 +209,23 @@ test('a late release from an old lock cannot clear a newer lock', async () => {
   assert.equal(context.zenWakeLock, current);
   old.fireRelease();
   assert.equal(context.zenWakeLock, current);
+});
+
+// A release outside the browser must not leave the dock awake for the rest of a session.
+test('a lost dock pointer releases on blur, background, exit or an unpressed mouse return', () => {
+  const { context, document, emit } = harness();
+  context.setZen(true, { quiet: true, refit: false });
+  context.zenDockPointerId = 9;
+  emit('blur');
+  assert.equal(context.zenDockPointerId, null);
+  context.zenDockPointerId = 9;
+  emit('pointermove', { pointerId: 9, pointerType: 'mouse', buttons: 0 });
+  assert.equal(context.zenDockPointerId, null);
+  context.zenDockPointerId = 9;
+  document.visibilityState = 'hidden';
+  emit('visibilitychange');
+  assert.equal(context.zenDockPointerId, null);
+  context.zenDockPointerId = 9;
+  context.setZen(false, { refit: false });
+  assert.equal(context.zenDockPointerId, null);
 });

@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "PLANTS",
+            title: "Cathedral oaks barely exist inside",
+            fact: "A mature oak trunk is mostly dead wood: only a thin rim of sapwood under the bark actually carries water, and just a few rings of cambium grow new wood each year. The heartwood at the center is the tree's steel skeleton, not its plumbing.",
+            detail: "That is why hollow trees can stay alive and leafy for decades — as long as the thin living rim stays connected, the tree keeps working."
+        },
+        {
+            tag: "PLANTS",
             title: "Bananas are slightly radioactive",
             fact: "Bananas are rich in potassium, and about 0.012% of natural potassium is potassium-40, a radioactive isotope. The dose from one banana is tiny — it's the standard 'banana equivalent dose' used to make radiation levels intuitive.",
             detail: "You would need around 10 million bananas in one sitting to approach a dangerous dose. Truckloads of bananas have been known to set off radiation sensors at ports."

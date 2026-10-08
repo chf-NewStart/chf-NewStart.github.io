@@ -155,7 +155,6 @@ function linkedPdfBuffer() {
       await page.waitForTimeout(100);
       check(type + ' hover stays quiet for ' + selector, await previewHidden());
     }
-    await page.mouse.click(point.x, point.y);
     await page.mouse.click(point.x, point.y, { button: 'middle' });
     await page.touchscreen.tap(point.x, point.y);
     await pointer(selector, 'pointerdown', 'pen', { point });
@@ -163,7 +162,21 @@ function linkedPdfBuffer() {
     await page.locator(selector).evaluate(link => link.click());
     await page.waitForTimeout(650);
     const after = await readerPosition();
-    check('ordinary mouse clicks (including middle), finger and synthetic pen taps do not open or navigate ' + selector, await previewHidden() && JSON.stringify(before) === JSON.stringify(after) && popups === 0, JSON.stringify({ before, after, popups }));
+    check('middle clicks, finger and synthetic pen taps do not open or navigate ' + selector, await previewHidden() && JSON.stringify(before) === JSON.stringify(after) && popups === 0, JSON.stringify({ before, after, popups }));
+    // A left mouse click is deliberate (the cursor is a pointing hand): an internal
+    // link jumps and Backspace returns; a web link opens its card, never a tab.
+    await page.mouse.click(point.x, point.y);
+    await page.waitForTimeout(1200);
+    if (selector === externalSelector) {
+      check('a left click on a web link opens its card without leaving the paper', !await previewHidden() && popups === 0 && JSON.stringify(before) === JSON.stringify(await readerPosition()));
+      await page.locator('#pdfReferenceClose').click();
+    } else {
+      const jumped = await readerPosition();
+      check('a left click on an internal link jumps to its destination', JSON.stringify(jumped) !== JSON.stringify(before) && await previewHidden() && popups === 0, JSON.stringify({ before, jumped }));
+      await page.keyboard.press('Backspace');
+      await page.waitForTimeout(1200);
+      check('Backspace returns from a clicked internal link', JSON.stringify(await readerPosition()) === JSON.stringify(before), JSON.stringify({ before, back: await readerPosition() }));
+    }
   }
   await page.locator(refSelector('refA')).focus();
   await page.waitForTimeout(650);

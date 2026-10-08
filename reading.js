@@ -741,7 +741,7 @@
     return (stop>260?cut.slice(0,stop+1):cut.trimEnd())+'…';
   }
   function renderLookup(term,result){
-    byId('lookupTitle').textContent=result.title||term;var definition=byId('lookupDefinition');definition.textContent=conciseExtract(result.extract)||'No concise explanation was available for this entry.';definition.classList.remove('loading');
+    byId('lookupTitle').textContent=result.title||term;var definition=byId('lookupDefinition'),meaning=result.expansion?'In this paper, '+result.expansion.abbr+' means '+result.expansion.full+'. ':'';definition.textContent=meaning+(conciseExtract(result.extract)||'No concise explanation was available for this entry.');definition.classList.remove('loading');
     var source=byId('lookupSource'),isAi=result.source==='ai';source.textContent=isAi?(result.provider||'AI')+' explanation · verify':'Wikipedia';source.classList.toggle('ai',isAi);source.classList.remove('hidden');byId('lookupAiSetup').classList.add('hidden');
     var article=byId('lookupArticle');article.href=result.url||'#';article.classList.toggle('hidden',!result.url);
     var photoLink=byId('lookupPhotoLink'),photo=byId('lookupPhoto'),imageSource=byId('lookupImageSource');
@@ -753,9 +753,40 @@
     var response=await fetch(base+'?'+new URLSearchParams(params).toString(),{headers:{Accept:'application/json'}});
     if(!response.ok)throw new Error('Lookup failed');return response.json();
   }
+  /* Words of one or two letters were dropped as noise, which also dropped the
+     abbreviation that carries the meaning: "Solution EC" was matched as "solution"
+     and answered with "Ammonia solution". A short word now counts when it is written
+     as an abbreviation or symbol (EC, pH, K, N2); short lowercase words still don't. */
+  function lookupTokens(term){
+    return String(term||'').split(/[^\p{L}\p{N}]+/u).filter(function(word){
+      if(word.length>2)return true;if(!word||/^[AI]$/.test(word))return false;
+      return /\p{N}/u.test(word)||word===word.toLocaleUpperCase()&&word!==word.toLocaleLowerCase()||/^.\p{Lu}/u.test(word);
+    }).map(function(word){return word.toLocaleLowerCase();});
+  }
+  /* Papers spell an abbreviation out once ("electrical conductivity (EC)") and use
+     the short form in tables. Define looks up what the authors meant. */
+  var LOOKUP_V=2;
+  function paperAbbreviation(ch,abbr){
+    var text=ch?(ch.kind==='pdf'?(ch.pageTexts||[]).join(' '):String(ch.readerText||ch.fr||'')):'';if(!text)return '';
+    var letters=abbr.toLocaleLowerCase(),small=/^(?:of|and|the|in|for|to|on|by|a|an)$/i,pattern=new RegExp('((?:[\\p{L}][\\p{L}-]*\\s+){1,'+(abbr.length+3)+'})\\(\\s*'+abbr.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*\\)','gu'),match;
+    text=text.replace(/\s+/g,' ');
+    while((match=pattern.exec(text))){
+      var words=match[1].trim().split(' ');
+      for(var start=words.length-1;start>=0&&start>=words.length-abbr.length-3;start--){
+        var phrase=words.slice(start),initials=phrase.filter(function(word){return !small.test(word);}).map(function(word){return word.charAt(0).toLocaleLowerCase();}).join('');
+        if(initials===letters&&!small.test(phrase[0]))return phrase.join(' ').toLocaleLowerCase();
+      }
+    }
+    return '';
+  }
+  function lookupExpansion(term,ch){
+    var abbrs=String(term).match(/\b[A-Z][A-Z0-9]{1,5}\b/g)||[];
+    for(var i=0;i<abbrs.length;i++){if(!/[A-Z].*[A-Z]|^[A-Z]{2}/.test(abbrs[i]))continue;var full=paperAbbreviation(ch,abbrs[i]);if(full)return{abbr:abbrs[i],full:full,term:term.replace(new RegExp('\\b'+abbrs[i]+'\\b'),full)};}
+    return null;
+  }
   async function wikipediaEntry(term){
     var data=await lookupJson('https://en.wikipedia.org/w/api.php',{action:'query',format:'json',formatversion:'2',origin:'*',generator:'search',gsrsearch:term,gsrnamespace:'0',gsrlimit:'6',prop:'extracts|pageimages|info',exintro:'1',explaintext:'1',exchars:'700',piprop:'thumbnail|name',pithumbsize:'720',pilicense:'free',inprop:'url'});
-    var normalized=term.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim(),tokens=normalized.split(/\s+/).filter(function(t){return t.length>2;}),pages=data&&data.query&&data.query.pages||[];
+    var normalized=term.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim(),tokens=lookupTokens(term),pages=data&&data.query&&data.query.pages||[];
     var ranked=pages.filter(function(page){return page&&!page.missing&&page.extract;}).map(function(page){
       var title=String(page.title||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim(),body=(title+' '+String(page.extract||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ')),covered=tokens.filter(function(t){return body.split(/\s+/).some(function(word){return word===t;});}).length,titleCovered=tokens.filter(function(t){return title.split(/\s+/).some(function(word){return word===t;});}).length;
       var allCovered=!tokens.length||covered===tokens.length,phraseMatch=body.indexOf(normalized)>=0,titleMatch=title===normalized||title.indexOf(normalized)>=0||normalized.indexOf(title)>=0;
@@ -784,16 +815,28 @@
     return{title:String(parsed.title||term).trim().slice(0,100),extract:String(parsed.definition).trim(),url:'',image:'',imagePage:'',imageQuery:String(parsed.image_query||'').trim().slice(0,100),source:'ai',provider:result.provider};
   }
   function rememberLookup(ch,termKey,result){
-    if(!ch||!result)return;result=Object.assign({},result,{cachedAt:now()});ch.termLookups=ch.termLookups||{};ch.termLookups[termKey]=result;
+    if(!ch||!result)return;result=Object.assign({},result,{cachedAt:now(),lookupV:LOOKUP_V});ch.termLookups=ch.termLookups||{};ch.termLookups[termKey]=result;
     var keys=Object.keys(ch.termLookups);if(keys.length>120)keys.sort(function(a,b){return(ch.termLookups[b].cachedAt||0)-(ch.termLookups[a].cachedAt||0);}).slice(120).forEach(function(key){delete ch.termLookups[key];});
     ch.updatedAt=now();if(ch.kind==='pdf')saveDerivedSoon(ch);persist();
   }
   async function loadLookup(term,serial,context){
     var ch=find(currentId),termKey=term.toLocaleLowerCase(),key=String(currentId||'')+'|'+termKey;
     try{
-      var memoryHit=Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)),result=memoryHit?lookupCache[key]:paperHit?ch.termLookups[termKey]:await wikipediaEntry(term);
+      // Lookups saved before LOOKUP_V may hold an unrelated article; look those up again.
+      var memoryHit=Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)&&ch.termLookups[termKey]&&ch.termLookups[termKey].lookupV===LOOKUP_V);
+      // A PDF opened only in paper view may have extracted its visible page but not
+      // the page where the authors first spelled out EC. Finish the same page-text
+      // build Find uses before deciding that the abbreviation has no definition.
+      if(!memoryHit&&!paperHit&&ch&&ch.kind==='pdf'&&pdfDoc&&/\b[A-Z][A-Z0-9]{1,5}\b/.test(term)&&!pdfFindTextsReady(ch,pdfDoc)){
+        try{await ensurePdfFindTexts(ch,pdfDoc);}catch(paperTextError){}
+        if(serial!==lookupSerial||currentId!==ch.id)return;
+      }
+      var expansion=memoryHit||paperHit?null:lookupExpansion(term,ch),result=memoryHit?lookupCache[key]:paperHit?ch.termLookups[termKey]:await wikipediaEntry(expansion?expansion.term:term);
+      if(!result&&expansion&&expansion.term!==expansion.full)result=await wikipediaEntry(expansion.full);
+      if(result&&expansion)result=Object.assign({},result,{expansion:{abbr:expansion.abbr,full:expansion.full}});
       if(serial!==lookupSerial)return;
       if(!result){
+        if(expansion)context='In this paper, '+expansion.abbr+' means '+expansion.full+'. '+context;
         if(!hasAiRoute()){lookupCache[key]=null;showLookupProblem(term,'Wikipedia has no clean entry for this phrase. Set up on-device Gemini or add an AI provider key to explain it from the nearby paper context.');byId('lookupAiSetup').classList.remove('hidden');return;}
         result=await aiGlossaryEntry(term,context);if(serial!==lookupSerial)return;
       }
@@ -3771,10 +3814,35 @@
     else{findPaintToken++;clearTimeout(findTimer);clearFindTargets();findMatches=[];findIndex=-1;byId('findCount').textContent='';var target=visibleFindReturnTarget(findReturnFocus);findReturnFocus=null;if(returnFocus&&target)try{target.focus({preventScroll:true});}catch(e){try{target.focus();}catch(err){}}}
   }
   byId('findBtn').onclick=function(){toggleFindBar(undefined,false,byId('findBtn'));};
+  /* Find searches the page texts that Reader view builds. A paper only ever read as
+     a PDF had none, or a set left from an older build, so "table 3" reported no
+     matches or one hit on the contents page. Build just those page texts on demand:
+     one text read per page, laid out exactly as ensureReaderData lays them out. */
+  var findTextBuilds={},FIND_TEXTS_V=1;
+  // Page texts left by an older Reader build are rebuilt once rather than trusted.
+  function pdfFindTextsReady(ch,doc){return !!(ch&&doc&&Array.isArray(ch.pageTexts)&&ch.pageTexts.length===doc.numPages&&(ch.readerV===READER_V||ch.findTextsV===FIND_TEXTS_V));}
+  function ensurePdfFindTexts(ch,doc){
+    if(pdfFindTextsReady(ch,doc))return Promise.resolve(true);if(!ch||!doc)return Promise.resolve(false);
+    if(findTextBuilds[ch.id])return findTextBuilds[ch.id];
+    var build=findTextBuilds[ch.id]=(async function(){
+      var pages=[];
+      for(var p=1;p<=doc.numPages;p++){var content=await (await doc.getPage(p)).getTextContent();pages.push(contentLayout(content).map(function(line){return line.text;}).join(' '));if(pdfDoc!==doc)return false;}
+      if(find(ch.id)!==ch)return false;
+      if(!pdfFindTextsReady(ch,doc)){ch.pageTexts=pages;ch.findTextsV=FIND_TEXTS_V;saveDerivedSoon(ch);persist(false);}
+      return true;
+    })();
+    build.then(function(){if(findTextBuilds[ch.id]===build)delete findTextBuilds[ch.id];},function(){if(findTextBuilds[ch.id]===build)delete findTextBuilds[ch.id];});
+    return build;
+  }
   function runFind(){
     clearExcerptSourceCue();
     var ch=find(currentId),q=byId('findInput').value.trim();findPaintToken++;clearFindTargets();findMatches=[];findIndex=-1;
     if(!ch||q.length<2){byId('findCount').textContent=q?'Type a bit more':'';return;}
+    if(ch.kind==='pdf'&&readerMode==='pdf'&&pdfDoc&&!pdfFindTextsReady(ch,pdfDoc)){
+      var waitToken=findPaintToken,waitDoc=pdfDoc;byId('findCount').textContent='Reading the whole paper…';
+      ensurePdfFindTexts(ch,waitDoc).then(function(ready){if(ready&&waitToken===findPaintToken&&pdfDoc===waitDoc&&byId('findInput').value.trim()===q&&pdfFindTextsReady(ch,waitDoc))runFind();},function(){if(waitToken===findPaintToken)byId('findCount').textContent='Could not read this paper\u2019s text';});
+      return;
+    }
     if(ch.kind==='pdf'&&readerMode==='pdf'){
       (ch.pageTexts||[]).forEach(function(text,i){findOccurrenceRanges(text,q).forEach(function(range,occurrence){findMatches.push({page:i+1,occurrence:occurrence});});});
     }else{
@@ -3825,7 +3893,7 @@
   byId('findPrev').onclick=function(){gotoFindMatch(findIndex-1);};
   byId('findNext').onclick=function(){gotoFindMatch(findIndex+1);};
 
-  var linkReturnSpot=null,pdfLinkNavigationToken=0,pdfReferencePreviewToken=0,pdfReferencePreviewAnchor=null,pdfDestinationFlashTimer=null;
+  var pdfLinkPointerType='',pdfLinkPressAt=0,linkReturnSpot=null,pdfLinkNavigationToken=0,pdfReferencePreviewToken=0,pdfReferencePreviewAnchor=null,pdfDestinationFlashTimer=null;
   var pdfReferenceHold=null,pdfReferenceTouches=new Set();
   function cancelPdfReferenceHold(){
     var hold=pdfReferenceHold;if(!hold)return;pdfReferenceHold=null;clearTimeout(hold.timer);hold.anchor.classList.remove('reference-holding');
@@ -3920,6 +3988,7 @@
   // A reference is an explicit reading detour: hovering, focusing and tapping stay
   // quiet. Keep one finger free to scroll and a second finger free to zoom.
   window.addEventListener('pointerdown',function(event){
+    pdfLinkPointerType=event.pointerType||'';pdfLinkPressAt=Date.now();
     if(event.pointerType==='touch')pdfReferenceTouches.add(event.pointerId);
     if(pdfReferenceTouches.size>1){hidePdfReferencePreview();return;}
     var target=event.target;if(!target.closest)return;
@@ -4750,7 +4819,14 @@
             ev.preventDefault();ev.stopPropagation();
             // Assistive activation can arrive as a trusted click without a pointer
             // or keydown. It may open the card, never follow the PDF destination.
-            if(ev.isTrusted&&ev.detail===0&&!ev.pointerType&&!pdfReferenceGestureBusy()){cancelPdfReferenceHold();openPdfReferenceCard(el,true);}
+            if(ev.isTrusted&&ev.detail===0&&!ev.pointerType&&!pdfReferenceGestureBusy()){cancelPdfReferenceHold();openPdfReferenceCard(el,true);return;}
+            /* A mouse click is deliberate and the cursor shows a pointing hand, so it
+               acts as a link: a contents entry, "Table 3" or a figure reference jumps
+               there (Backspace returns); a web link opens its card. A press held long
+               enough to show the preview stays on the preview. Touch keeps
+               hold-to-preview so a finger stays free to scroll. */
+            var previewShown=pdfReferencePreviewAnchor===el&&!byId('pdfReferencePreview').classList.contains('hidden'),heldForPreview=Date.now()-pdfLinkPressAt>=500;
+            if(ev.isTrusted&&ev.detail>0&&(ev.pointerType||pdfLinkPointerType)==='mouse'&&!previewShown&&!heldForPreview&&!pdfReferenceGestureBusy()){cancelPdfReferenceHold();if(el.dataset.pdfLinkKind==='internal')followPdfDest(el._pdfDestination);else openPdfReferenceCard(el,false);}
           };
           el.ondblclick=el.onauxclick=el.ondragstart=function(ev){ev.preventDefault();ev.stopPropagation();};
           el.onkeydown=function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();ev.stopPropagation();if(!ev.repeat){cancelPdfReferenceHold();openPdfReferenceCard(el,true);}}};

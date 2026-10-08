@@ -34,6 +34,7 @@ function harness(chapters) {
   vm.runInContext([
     section('  function normalizeReadingWorkspace(ch){', '  function normalizeReadingExcerpts(ch){'),
     section('  function mergeDuplicateRecord(', '  function canonicalPaper('),
+    section('  var STAMPED_FIELDS=', '  // Typing saves once'),
     section('  function mergeState(inc){', '  var syncDecryptBlocked')
   ].join('\n'), context, { filename: 'reading.js workspace integration' });
   return context;

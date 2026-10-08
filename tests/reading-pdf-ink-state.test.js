@@ -47,6 +47,7 @@ function libraryHarness(chapters) {
     readerSection('  function normalize(ch,options){', '\n  var pendingDuplicateStorage'),
     readerSection('  function mergePdfInk(', '\n  function pdfInkStamp('),
     readerSection('  function mergeDuplicateRecord(', '\n  function canonicalPaper('),
+    readerSection('  var STAMPED_FIELDS=', '\n  // Typing saves once'),
     readerSection('  function mergeState(inc){', '\n  var syncDecryptBlocked')
   ].join('\n'), ctx);
   return ctx;

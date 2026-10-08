@@ -94,6 +94,11 @@ panel, portrait fallback, keyboard-safe page-note editing, adaptive settings,
 dialog focus/return, and 44px touch targets. Set `PHLOEM_BROWSER=webkit` to run
 the same workflow against Playwright WebKit.
 
+`reading-pdf-position-state.test.js` (`node --test`) deterministically checks
+keyboard dismissal during the PDF restore settling frames, unchanged-size
+completion, and cancellation by reader interaction. It preserves the intended
+passage until the resized PDF geometry is ready.
+
 `reading-ipad-header.test.js` covers tablet masthead button fit, separation from
 the reader's Library row and landscape Settings sheet, root viewport offsets,
 and Zen/phone/library transitions.

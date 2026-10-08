@@ -4909,7 +4909,11 @@
        previous spot (for example the page a clip came from). Store the target itself:
        sampling here could catch half-resized geometry. */
     rememberStablePdfPosition(position);
-    await pdfLayoutFrames();if(!stillCurrent())return stopped();restoringPdfPosition=false;rememberStablePdfPosition(capturePdfReadingPosition()||position);
+    await pdfLayoutFrames();if(!stillCurrent())return stopped();restoringPdfPosition=false;
+    // A keyboard dismissal or rotation can change the pane during these settling
+    // frames. Sampling that new pane against the old build would replace the
+    // intended passage with a different one before the resize restore can run.
+    if(pdfBuildKey===currentBuildKey())rememberStablePdfPosition(capturePdfReadingPosition()||position);
     if(announce)showReaderToast('Picked up at the exact reading spot');return true;
   }
   function savePdfReadingPosition(schedule,writeState){

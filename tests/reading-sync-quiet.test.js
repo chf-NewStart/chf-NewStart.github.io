@@ -21,6 +21,8 @@ function harness() {
     setTimeout(fn, ms) { const id = ++serial; timers.set(id, { fn, at: clock + Math.max(0, ms || 0) }); return id; },
     clearTimeout(id) { timers.delete(id); },
     document: { visibilityState: 'visible', addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); } },
+    window: { addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); } },
+    navigator: { onLine: true }, syncing: false, gdriveSyncing: false, iCloudSyncing: false,
     syncCfg: { repo: 'owner/name' }, gdriveOn: () => false, iCloudOn: () => true,
     doSync() { runs.push(clock); }, gdriveSync() {}, iCloudSync() {},
     syncTimer: null, workspacePenDown: 0, penOnGlass: () => context.workspacePenDown
@@ -96,4 +98,58 @@ test('hiding the page runs a waiting sync at once', () => {
   h.advance(1000); assert.equal(h.runs.length, 0);
   h.hide(); assert.equal(h.runs.length, 1);
   h.advance(60000); assert.equal(h.runs.length, 1, 'and only once');
+});
+
+test('the deadline and hiding never start a sync in the middle of a Pencil stroke', () => {
+  const h = harness();
+  h.context.workspacePenDown = 1;
+  h.context.scheduleSync();
+  h.advance(100000); assert.equal(h.runs.length, 0, '90-second deadline cannot interrupt a held stroke');
+  h.hide(); assert.equal(h.runs.length, 0, 'hiding does not override an active stroke');
+  h.context.workspacePenDown = 0;
+  h.advance(1000); assert.equal(h.runs.length, 1);
+});
+
+test('a save during any in-flight provider waits and then gets another sync', () => {
+  for (const provider of ['syncing', 'gdriveSyncing', 'iCloudSyncing']) {
+    const h = harness();
+    h.context[provider] = true;
+    h.context.scheduleSync();
+    h.advance(100000); assert.equal(h.runs.length, 0, `${provider} retains the pending request`);
+    h.context[provider] = false;
+    h.advance(1000); assert.equal(h.runs.length, 1, `${provider} completion allows the new snapshot`);
+  }
+});
+
+test('offline changes are retained and returning online checks them after input settles', () => {
+  const h = harness();
+  h.context.navigator.onLine = false;
+  h.context.scheduleSync();
+  h.advance(10000); assert.equal(h.runs.length, 0);
+  h.context.navigator.onLine = true;
+  h.input('online'); h.input('pointerup');
+  h.advance(5999); assert.equal(h.runs.length, 0);
+  h.advance(1); assert.equal(h.runs.length, 1);
+});
+
+test('foreground and online refresh even without a local edit, but disconnected libraries do not', () => {
+  const h = harness();
+  h.input('visibilitychange');
+  h.advance(4000); assert.equal(h.runs.length, 1);
+  h.input('online');
+  h.advance(4000); assert.equal(h.runs.length, 2);
+  h.context.syncCfg = null; h.context.iCloudOn = () => false;
+  h.input('online'); h.input('visibilitychange');
+  h.advance(10000); assert.equal(h.runs.length, 2);
+});
+
+test('transient failures retry with bounded backoff; a new local change starts a fresh attempt', () => {
+  const h = harness();
+  h.context.doSync = () => { h.runs.push(h.now()); h.context.scheduleSyncRetry(); };
+  h.context.scheduleSync();
+  h.advance(200000);
+  assert.equal(h.runs.length, 4, 'initial attempt plus three automatic retries');
+  assert.deepEqual(h.runs.map((at, i) => i ? at - h.runs[i - 1] : at - 1000000), [4000, 19000, 34000, 64000]);
+  h.context.scheduleSync();
+  h.advance(4000); assert.equal(h.runs.length, 5, 'new work does not remain stuck after exhausted retries');
 });

@@ -45,6 +45,13 @@ saved into Workspace, reloaded, and located back across its original PDF lines.
 `reading-pencil-boundaries.test.js` also checks grouped numeric endpoints with
 and without `Intl.Segmenter`, including numbers split across touching style runs.
 
+`reading-cloud-auto-sync.test.js` runs the real PDF/Word import and cloud functions
+against delayed storage and mocked private cloud APIs. It covers original-ready
+uploads, in-flight imports, replacement-byte races, silent native Google renewal,
+and recoverable transfer failures. `reading-sync-quiet.test.js` checks bounded
+retries, foreground/online refresh, and waiting for Pencil lift even past the
+normal sync deadline. These tests do not connect to a real cloud account.
+
 `reading-pdf-links.test.js` covers real pointer hit-testing for PDF annotations,
 phone-sized superscript citations, safe external URLs, blocked script actions,
 safe text-only external URL previews without third-party requests, the persisted

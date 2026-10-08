@@ -965,6 +965,9 @@
     .pdf-links { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
     .pdf-link { position: absolute; pointer-events: auto; border-radius: 3px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .pdf-link.reference-holding { background: rgba(64, 137, 174, .1); }
+    /* With the marker on, a mouse drag that starts on a citation selects its words.
+       Mouse links stay quiet in annotation modes anyway; touch keeps hold-to-preview. */
+    @media (hover: hover) and (pointer: fine) { body.marker-on .pdf-link { pointer-events: none; } }
     .pdf-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; background: rgba(64, 137, 174, .16); }
     .pdf-destination-flash { position: absolute; z-index: 5; min-width: 34px; min-height: 14px; border: 1px solid rgba(64,137,174,.78); border-radius: 4px; background: rgba(91,169,255,.23); box-shadow: 0 0 0 4px rgba(91,169,255,.1); pointer-events: none; animation: pdf-destination-flash 2.4s ease-out both; }
     .pdf-destination-flash.pdf-reference-flash { border-radius: 6px; background: rgba(91,169,255,.14); box-shadow: 0 0 0 3px rgba(91,169,255,.09), inset 3px 0 rgba(64,137,174,.5); }

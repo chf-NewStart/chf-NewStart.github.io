@@ -31,6 +31,23 @@ global list with category filters, row metadata, existing search and sort
 controls, multi-select moves into existing or newly created categories,
 one-click opening, and a non-clipping phone layout.
 
+`reading-library-long-press.test.js` covers the wall on a touch screen: one tap
+opens a paper, holding a note only selects it for the card without opening its
+Move menu, and the note's own Move button still opens the menu.
+
+`reading-paper-details-sync.test.js` (`node --test`) covers hand-edited paper
+details in the library merge: a rename on one device survives a later highlight
+on another, the later of two renames wins, and category and tags merge the same
+way. It also covers PDF titles that are prepress IDs ("14683958683096 1..16") or
+repository banners ("NIH Public Access") rather than the paper's own title.
+
+`reading-workspace-paper-edge.test.js` covers the paper beside Workspace on an
+iPad-sized touch screen: the page fits beside the Zen dock instead of under it,
+the layout control is a compact circle there, and Pencil highlights are exact from
+the end of a line, from a citation link (holding still on the link still opens its
+preview), and across an accent the PDF draws as its own glyph ("Münch"). Its
+fixture PDF is written by hand, so it needs no pdf-lib.
+
 `reading-library-thinking-search.test.js` covers library search across ordinary
 page notes, highlighted passages, reviewer work, paired highlight notes, exact
 page opening, responsive results, and List-mode category and bulk-move controls.
@@ -178,6 +195,9 @@ node tests/reading-ai-providers.test.js
 node tests/reading-selection-note-ai.test.js
 node tests/reading-library-stack.test.js
 node tests/reading-library-list.test.js
+node tests/reading-library-long-press.test.js
+node --test tests/reading-paper-details-sync.test.js
+node tests/reading-workspace-paper-edge.test.js
 node tests/reading-library-thinking-search.test.js
 node tests/reading-find-highlight.test.js
 node tests/reading-pdf-links.test.js

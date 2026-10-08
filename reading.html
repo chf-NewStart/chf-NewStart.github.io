@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=198">
-  <link rel="stylesheet" href="/reading-fold.css?v=198">
-  <link rel="stylesheet" href="/reading-workspace.css?v=198">
+  <link rel="stylesheet" href="/reading.css?v=199">
+  <link rel="stylesheet" href="/reading-fold.css?v=199">
+  <link rel="stylesheet" href="/reading-workspace.css?v=199">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -619,7 +619,7 @@
           </div>
         </div>
         <div class="zen-tool" id="zenLayoutTool">
-          <button class="zen-exit zen-layout" id="zenLayout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout: Scroll. Choose layout" title="Choose page layout"><span id="zenLayoutLabel">Scroll</span><svg class="zen-layout-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
+          <button class="zen-exit zen-layout" id="zenLayout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout: Scroll. Choose layout" title="Choose page layout"><span id="zenLayoutIcon" aria-hidden="true"></span><span id="zenLayoutLabel">Scroll</span><svg class="zen-layout-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
           <div class="zen-popout zen-layout-menu hidden" id="zenLayoutMenu" role="group" aria-label="Page layout">
             <button class="zen-popout-option" type="button" data-zen-pdf-layout="scroll" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V3m-3 3 3-3 3 3M17 16v5m-3-3 3 3 3-3M4 11h16M4 13h16"/></svg><span>Scroll</span></button>
             <button class="zen-popout-option" type="button" data-zen-pdf-layout="page" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Page</span></button>
@@ -959,19 +959,19 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=198',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=199',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=198" defer></script>
-<script src="/reading-keeps.js?v=198" defer></script>
-<script src="/reading-excerpts.js?v=198" defer></script>
-<script src="/reading-excerpts-view.js?v=198" defer></script>
-<script src="/reading-workspace.js?v=198" defer></script>
-<script src="/reading-workspace-viewport.js?v=198" defer></script>
-<script src="/reading-workspace-view.js?v=198" defer></script>
-<script src="/reading-folds.js?v=198" defer></script>
-<script src="/reading-pdf-projection.js?v=198" defer></script>
-<script src="/reading-fold-view.js?v=198" defer></script>
-<script src="/reading.js?v=198" defer></script>
+<script src="/reading-ink.js?v=199" defer></script>
+<script src="/reading-keeps.js?v=199" defer></script>
+<script src="/reading-excerpts.js?v=199" defer></script>
+<script src="/reading-excerpts-view.js?v=199" defer></script>
+<script src="/reading-workspace.js?v=199" defer></script>
+<script src="/reading-workspace-viewport.js?v=199" defer></script>
+<script src="/reading-workspace-view.js?v=199" defer></script>
+<script src="/reading-folds.js?v=199" defer></script>
+<script src="/reading-pdf-projection.js?v=199" defer></script>
+<script src="/reading-fold-view.js?v=199" defer></script>
+<script src="/reading.js?v=199" defer></script>
 </body>
 </html>

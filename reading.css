@@ -965,6 +965,9 @@
     .pdf-links { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
     .pdf-link { position: absolute; pointer-events: auto; border-radius: 3px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .pdf-link.reference-holding { background: rgba(64, 137, 174, .1); }
+    /* With the marker on, a mouse drag that starts on a citation selects its words.
+       Mouse links stay quiet in annotation modes anyway; touch keeps hold-to-preview. */
+    @media (hover: hover) and (pointer: fine) { body.marker-on .pdf-link { pointer-events: none; } }
     .pdf-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; background: rgba(64, 137, 174, .16); }
     .pdf-destination-flash { position: absolute; z-index: 5; min-width: 34px; min-height: 14px; border: 1px solid rgba(64,137,174,.78); border-radius: 4px; background: rgba(91,169,255,.23); box-shadow: 0 0 0 4px rgba(91,169,255,.1); pointer-events: none; animation: pdf-destination-flash 2.4s ease-out both; }
     .pdf-destination-flash.pdf-reference-flash { border-radius: 6px; background: rgba(91,169,255,.14); box-shadow: 0 0 0 3px rgba(91,169,255,.09), inset 3px 0 rgba(64,137,174,.5); }
@@ -994,9 +997,17 @@
     body.zen #readerPage { height: calc(100vh - var(--kb-inset, 0px)); height: calc(100dvh - var(--kb-inset, 0px)); }
     body.zen .reader-layout { --notebook-width: 0px !important; grid-template-columns: minmax(0, 1fr); }
     .zen-dock { --zen-safe-top: env(safe-area-inset-top, 0px); --zen-safe-bottom: env(safe-area-inset-bottom, 0px); position: fixed; z-index: 48; top: calc(10px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); display: none; flex-direction: column; align-items: flex-end; gap: 8px; }
+    body.zen { --zen-find-paper-width: 100%; --zen-find-rail-width: 86px; }
     body.zen .zen-dock { display: flex; }
-    body.zen .find-bar:not(.hidden) { position: fixed; z-index: 47; top: calc(62px + env(safe-area-inset-top)); right: calc(68px + env(safe-area-inset-right)); width: min(560px, calc(100vw - 96px - env(safe-area-inset-left) - env(safe-area-inset-right))); padding: 8px 10px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
-    body.zen .find-bar input { max-width: none; }
+    /* Leave a 12px gap beside the entire rail, including the visible layout label.
+       Workspace moves the rail to the paper edge; Find follows that same edge. */
+    body.workspace-open.zen { --zen-find-paper-width: var(--workspace-paper-width); }
+    body.zen .find-bar:not(.hidden) { position: fixed; z-index: 47; top: calc(62px + env(safe-area-inset-top)); right: calc(100% - var(--zen-find-paper-width) + var(--zen-find-rail-width) + 24px + env(safe-area-inset-right)); width: min(560px, calc(var(--zen-find-paper-width) - var(--zen-find-rail-width) - 34px - env(safe-area-inset-left) - env(safe-area-inset-right))); padding: 8px 10px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
+    body.zen .find-bar input { max-width: none; min-height: 44px; font-size: 16px; }
+    body.zen .find-bar .step-btn { width: 44px; min-width: 44px; height: 44px; }
+    body.workspace-open.zen .find-bar:not(.hidden) { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 7px; }
+    body.workspace-open.zen .find-bar input { grid-column: 1 / -1; width: 100%; }
+    body.workspace-open.zen .find-bar .count { min-width: 0; align-self: center; }
     .zen-tool { position: relative; display: flex; justify-content: flex-end; }
     .zen-exit { position: relative; z-index: 2; width: 44px; height: 44px; padding: 0; display: flex; flex: 0 0 44px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease, color .2s ease, background .2s ease; }
     .zen-popout { position: absolute; z-index: 1; top: 50%; right: calc(100% + 9px); min-height: 50px; transform: translateY(-50%); border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
@@ -1074,7 +1085,7 @@
     body.zen.zen-idle .zen-marker:is(.active,.ready) { opacity: .46; }
     #zenBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     @media (max-width: 560px) {
-      body.zen .find-bar:not(.hidden) { left: max(10px, env(safe-area-inset-left)); right: calc(66px + env(safe-area-inset-right)); width: auto; display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 7px; }
+      body.zen .find-bar:not(.hidden) { left: max(10px, env(safe-area-inset-left)); width: auto; display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 7px; }
       body.zen .find-bar input { grid-column: 1 / -1; width: 100%; min-height: 44px; font-size: 16px; }
       body.zen .find-bar .count { min-width: 0; align-self: center; }
       body.zen .find-bar .step-btn { width: 44px; min-width: 44px; height: 44px; }
@@ -1084,14 +1095,25 @@
     @media (max-height: 600px) {
       body.zen .zen-dock { gap: 5px; }
       body.zen .zen-tool.popout-open { z-index: 3; }
-      body.zen .find-bar:not(.hidden) { right: calc(68px + env(safe-area-inset-right)); max-width: calc(100vw - 88px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
     }
     @media (max-height: 440px) {
+      body.zen { --zen-find-rail-width: 134px; }
       body.zen .zen-dock { display: grid; grid-template-rows: repeat(4, 44px); grid-auto-flow: column; grid-auto-columns: max-content; gap: 4px; direction: rtl; }
       body.zen .zen-dock > * { direction: ltr; }
     }
     @media (max-height: 325px) {
+      body.zen { --zen-find-rail-width: 182px; }
       body.zen .zen-dock { grid-template-rows: repeat(3, 44px); }
+    }
+    /* A narrow, short viewport has room below the folded rail, not beside it. */
+    @media (max-width: 560px) and (max-height: 440px) {
+      body.zen .find-bar:not(.hidden) { top: calc(208px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); }
+    }
+    @media (max-width: 560px) and (max-height: 325px) {
+      body.zen .find-bar:not(.hidden) { top: calc(160px + env(safe-area-inset-top)); }
+    }
+    @media (max-width: 899px), (orientation: portrait) {
+      body.workspace-open.zen .find-bar { visibility: hidden; }
     }
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     .highlight-layer { z-index: 1; pointer-events: none; }

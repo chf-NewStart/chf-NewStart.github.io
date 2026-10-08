@@ -2754,6 +2754,7 @@
     var layoutName=comfort.pdfLayout.charAt(0).toUpperCase()+comfort.pdfLayout.slice(1);
     byId('zenLayout').setAttribute('aria-label','Page layout: '+layoutName+'. Choose layout');
     byId('zenLayoutLabel').textContent=layoutName;
+    var layoutOption=document.querySelector('[data-zen-pdf-layout="'+comfort.pdfLayout+'"] svg');byId('zenLayoutIcon').innerHTML=layoutOption?layoutOption.outerHTML:'';
     document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideScope===comfort.guideScope));});
     document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideSize===comfort.guideSize));});
     byId('guideSpanGroup').hidden=comfort.guideOrientation==='column';
@@ -3656,9 +3657,25 @@
   function findTextGroups(root,query,isPdf,includeFindWrappers){
     return mappedTextGroups(findTextMap(root,isPdf,includeFindWrappers),query);
   }
+  /* Some PDFs draw an accent separately over the preceding letter. Compose only
+     that overlapping glyph; source nodes and their offsets remain unchanged. A
+     space may be removed when its gap is clearly smaller than the font's actual
+     space, or an intact spelling elsewhere on the page resolves the ambiguity. */
+  var SPACING_ACCENTS={'\u00a8':'\u0308','\u00b4':'\u0301','`':'\u0300','\u02c6':'\u0302','\u02dc':'\u0303','\u00b8':'\u0327','\u02da':'\u030a','\u02c7':'\u030c','\u02d8':'\u0306','\u02d9':'\u0307','\u02dd':'\u030b','\u00af':'\u0304'};
+  function pdfAccentWordKey(value){
+    return value.replace(/([\p{L}\p{M}])([¨´`ˆ˜¸˚ˇ˘˙˝¯])/gu,function(_,base,accent){return(base+SPACING_ACCENTS[accent]).normalize('NFC');}).normalize('NFC').toLowerCase();
+  }
+  function pdfTextCharacterBox(node,offset){
+    try{var r=document.createRange();r.setStart(node,offset);r.setEnd(node,offset+1);return r.getBoundingClientRect();}catch(e){return null;}
+  }
+  function accentSpaceIsReal(node,letterAt,baseBox,knownJoined){
+    var letter=pdfTextCharacterBox(node,letterAt),space=pdfTextCharacterBox(node,letterAt-1);
+    return !(letter&&space&&letter.width>0&&space.width>0&&letter.left-baseBox.right<space.width*(knownJoined?1.05:.75));
+  }
   function pdfPassageTextMap(root,range){
-    var source=findTextMap(root,true,true),text='',entries=[],previous=null,vocab=Object.create(null);
+    var source=findTextMap(root,true,true),text='',entries=[],previous=null,vocab=Object.create(null),accentVocab=Object.create(null);
     (source.text.toLowerCase().match(/[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*/gu)||[]).forEach(function(word){vocab[word]=true;});
+    (pdfAccentWordKey(source.text).match(/[\p{L}\p{M}\p{N}]+/gu)||[]).forEach(function(word){accentVocab[word]=true;});
     source.entries.forEach(function(entry){
       if(range&&!range.intersectsNode(entry.node))return;
       var offset=range&&range.startContainer===entry.node?range.startOffset:0;
@@ -3668,6 +3685,18 @@
       if(previous&&previous.span!==entry.span){
         var a=previous.span.getBoundingClientRect(),b=entry.span.getBoundingClientRect();
         newLine=a.height>0&&b.height>0&&Math.abs((a.top+a.bottom-b.top-b.bottom)/2)>Math.max(2,a.height*.55,b.height*.55);
+      }
+      var mark=!newLine&&previous&&previous.span!==entry.span&&offset===0&&SPACING_ACCENTS[value.charAt(0)];
+      if(mark&&/[A-Za-z\u00c0-\u024f]$/.test(text)){
+        var baseBox=pdfTextCharacterBox(previous.node,previous.node.length-1),accentBox=pdfTextCharacterBox(entry.node,0),composed=(text.slice(-1)+mark).normalize('NFC');
+        var accentCenter=accentBox&&(accentBox.left+accentBox.right)/2;
+        if(baseBox&&accentBox&&baseBox.width>0&&accentBox.width>0&&accentCenter>=baseBox.left&&accentCenter<=baseBox.right&&composed.length===1){
+          var leftWord=source.text.slice(0,entry.start).match(/[\p{L}\p{M}¨´`ˆ˜¸˚ˇ˘˙˝¯]+$/u),rightWord=entry.node.nodeValue.slice(1).match(/^\s([\p{L}\p{M}]+)/u);
+          var knownJoined=leftWord&&rightWord&&accentVocab[pdfAccentWordKey(leftWord[0]+value.charAt(0)+rightWord[1])];
+          text=text.slice(0,-1)+composed;offset++;value=value.slice(1);separator='';
+          if(/^\s\p{Ll}/u.test(value)&&!accentSpaceIsReal(entry.node,offset+1,baseBox,knownJoined)){offset++;value=value.slice(1);}
+          if(!value){previous=entry;return;}
+        }
       }
       if(newLine){
         var left=text.match(/([\p{L}\p{N}]+)([-‐‑\u00ad])$/u),right=value.match(/^[\p{L}\p{N}]+/u);
@@ -4516,9 +4545,9 @@
     var pane=byId('documentPane'),nowZoom=currentZoom(),actualZoom=Math.max(.01,layoutZoom),baseWidth=0,baseHeight=0;
     views.forEach(function(view){baseWidth+=view.pageWidth/actualZoom;baseHeight=Math.max(baseHeight,view.pageHeight/actualZoom);});
     if(spread&&views.length===1)baseWidth*=2;
-    var availableWidth=Math.max(1,pane.clientWidth-40),availableHeight=Math.max(1,pane.clientHeight-40);
+    var availableWidth=Math.max(1,pane.clientWidth-40-2*paperDockGutter()),availableHeight=Math.max(1,pane.clientHeight-40);
     var desired=Math.max(.05,Math.min(2.4,Math.min(availableWidth/Math.max(1,baseWidth),availableHeight/Math.max(1,baseHeight))));
-    var token=currentId+'|'+comfort.pdfLayout+'|'+(spread?'spread':'page')+'|'+pageNos.join('-')+'|'+pane.clientWidth+'x'+pane.clientHeight;
+    var token=currentId+'|'+comfort.pdfLayout+'|'+(spread?'spread':'page')+'|'+pageNos.join('-')+'|'+pane.clientWidth+'x'+pane.clientHeight+'|'+paperDockGutter();
     var shouldZoom=force||(!pagedManualZoom&&(pagedFitToken!==token||Math.abs(nowZoom-desired)>.005));pagedFitToken=token;
     if(shouldZoom&&Math.abs(desired-nowZoom)>.002){
       if(fitEpoch!==pagedFitEpoch||fitRunId!==pagedFitRunId)return false;
@@ -4611,10 +4640,13 @@
   /* Zoom is a multiple of fit-to-width, so 100% always means "the page fills this pane"
      and one − / + step feels the same on a phone as on a desktop. */
   function pageScale(natural){
-    var pane=byId('documentPane'),fitWidth=Math.max(280,(pane.clientWidth||800)-1);
-    return (fitWidth/natural.width)*(pdfFit?1:pdfZoom);
+    return (pdfFitWidth()/natural.width)*(pdfFit?1:pdfZoom);
   }
-  function currentBuildKey(){var pane=byId('documentPane');return pdfDoc?[currentId,pdfDoc.numPages,pdfFit,pdfZoom,comfort.pdfLayout,bookSpread(),pane.clientWidth,pane.clientHeight].join('|'):'';}
+  /* Beside Workspace the paper's dock sits on the paper's edge; reading-workspace.css
+     reserves that strip as --paper-dock-gutter and the page fits in what is left. */
+  function paperDockGutter(){return parseFloat(getComputedStyle(document.body).getPropertyValue('--paper-dock-gutter'))||0;}
+  function pdfFitWidth(){return Math.max(1,Math.max(280,(byId('documentPane').clientWidth||800)-1)-paperDockGutter());}
+  function currentBuildKey(){var pane=byId('documentPane');return pdfDoc?[currentId,pdfDoc.numPages,pdfFit,pdfZoom,comfort.pdfLayout,bookSpread(),pane.clientWidth,pane.clientHeight,paperDockGutter()].join('|'):'';}
   async function buildPdfScroll(){
     clearExcerptSourceCue();
     if(pdfInkController)pdfInkController.cancel();
@@ -4877,7 +4909,11 @@
        previous spot (for example the page a clip came from). Store the target itself:
        sampling here could catch half-resized geometry. */
     rememberStablePdfPosition(position);
-    await pdfLayoutFrames();if(!stillCurrent())return stopped();restoringPdfPosition=false;rememberStablePdfPosition(capturePdfReadingPosition()||position);
+    await pdfLayoutFrames();if(!stillCurrent())return stopped();restoringPdfPosition=false;
+    // A keyboard dismissal or rotation can change the pane during these settling
+    // frames. Sampling that new pane against the old build would replace the
+    // intended passage with a different one before the resize restore can run.
+    if(pdfBuildKey===currentBuildKey())rememberStablePdfPosition(capturePdfReadingPosition()||position);
     if(announce)showReaderToast('Picked up at the exact reading spot');return true;
   }
   function savePdfReadingPosition(schedule,writeState){
@@ -6903,7 +6939,7 @@
     if(!workspaceOpen||readerMode!=='pdf'||!pdfDoc)return null;
     /* A paper the reader zoomed into keeps its on-screen size while the divider moves:
        zoom is relative to the pane width, so it is rescaled instead of reset to fit. */
-    if(pagedPdfFlow()?pagedManualZoom:!pdfFit)return{keepZoom:true,fitWidth:Math.max(280,(byId('documentPane').clientWidth||800)-1)};
+    if(pagedPdfFlow()?pagedManualZoom:!pdfFit)return{keepZoom:true,fitWidth:pdfFitWidth()};
     var needsFit=pagedPdfFlow()?pagedManualZoom:!pdfFit||pdfZoom!==1;
     var position=needsFit?stablePdfPositionForRebuild():null;
     scrollPdfFit=true;scrollPdfZoom=1;
@@ -6924,7 +6960,7 @@
     if(save){workspaceWidthPreference=width;try{localStorage.setItem(WORKSPACE_WIDTH_KEY,String(width));}catch(e){}}
     if(!workspaceBoardResizeFrame)workspaceBoardResizeFrame=requestAnimationFrame(sizeWorkspaceBoard);
     if(fitPosition&&fitPosition.keepZoom){
-      var fitWidth=Math.max(280,(byId('documentPane').clientWidth||800)-1);
+      var fitWidth=pdfFitWidth();
       if(fitWidth!==fitPosition.fitWidth){pdfZoom=Math.max(pagedPdfFlow()?.05:.5,Math.min(4,pdfZoom*fitPosition.fitWidth/fitWidth));updateZoomChrome();}
       return;
     }
@@ -7843,12 +7879,18 @@
     if(savedHighlightDrag||pencilStroke||bookCurlOwned||pagedTurning||reviewLinkTargetId||guideDragging||selectionPointerDown||e.button>0)return false;
     var target=e.target,host=target&&target.closest&&target.closest(readerMode==='pdf'?'.text-layer':'.original');
     if(!host&&highlightEraseMode&&readerMode==='pdf'){var page=target.closest('.pdf-page');host=page&&page.querySelector('.text-layer');}
-    if(!host||!byId('documentPane').contains(host)||target.closest('a,button,input,textarea,[contenteditable="true"]'))return false;
+    /* A citation or figure link lies over its own words, so a stroke that began on
+       one used to highlight nothing. It now highlights from there; holding still on
+       the link keeps the half-second reference preview. */
+    var link=readerMode==='pdf'&&!highlightEraseMode&&!host&&target&&target.closest&&target.closest('.pdf-link');
+    if(link){link=nearestPdfLink(link.closest('.pdf-links'),e.clientX,e.clientY)||link;var linkPage=link.closest('.pdf-page');host=linkPage&&linkPage.querySelector('.text-layer');}
+    if(!host||!byId('documentPane').contains(host)||!link&&target.closest('a,button,input,textarea,[contenteditable="true"]'))return false;
     var start=highlightEraseMode?null:pencilTextPoint(host,e.clientX,e.clientY);if(!start&&!highlightEraseMode)return false;
     clearPendingSelection();clearTimeout(guideLockClickTimer);holdDrift(1200);
     var preview=document.createElement('div');preview.className='pencil-highlight-preview';preview.setAttribute('aria-hidden','true');document.body.appendChild(preview);
     pencilStroke={id:id,source:source,touchId:source==='touch'?id:null,documentId:currentId,mode:readerMode,host:host,start:start,x:e.clientX,y:e.clientY,moved:false,range:null,preview:preview,erasing:highlightEraseMode};
     if(highlightEraseMode){pencilStroke.targets=eraserTargets(host);pencilStroke.erased=new Map();pencilStroke.last={x:e.clientX,y:e.clientY};collectEraserHits(pencilStroke,e.clientX,e.clientY);}
+    if(link){var linkStroke=pencilStroke;linkStroke.linkTimer=setTimeout(function(){if(pencilStroke!==linkStroke||linkStroke.moved||!link.isConnected)return;finishPencilStroke(true);openPdfReferenceCard(link,false);},500);}
     selectionInputType='pen';suppressHighlightAutoCommit=true;document.body.classList.add('pencil-highlighting');
     return true;
   }
@@ -7866,7 +7908,7 @@
     g.preview.style.cssText='left:'+box.left+'px;top:'+box.top+'px;width:'+box.width+'px;height:'+box.height+'px';g.preview.replaceChildren(fragment);
   }
   function finishPencilStroke(cancelled){
-    var g=pencilStroke;if(!g)return;
+    var g=pencilStroke;if(!g)return;clearTimeout(g.linkTimer);
     var valid=!cancelled&&pencilStrokeValid(g),passage=valid&&g.moved&&g.range?paperSelectionFromRange(g.range):null;
     pencilStroke=null;g.preview.remove();document.body.classList.remove('pencil-highlighting');pencilSuppressClickUntil=Date.now()+500;pencilSuppressedTouchId=g.touchId;
     document.querySelectorAll('.erasing-highlight').forEach(function(el){el.classList.remove('erasing-highlight');});

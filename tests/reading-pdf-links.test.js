@@ -116,11 +116,12 @@ function linkedPdfBuffer() {
     const point = options.point || await citationPoint(selector);
     await page.locator(selector).evaluate((link, args) => {
       const active = args.type === 'pointerdown' || args.type === 'pointermove' && args.options.buttons === 1;
-      link.dispatchEvent(new PointerEvent(args.type, { bubbles: true, cancelable: true, isPrimary: true, pointerId: 71, pointerType: args.pointerType, button: 0, buttons: active ? 1 : 0, pressure: active ? 0.5 : 0, clientX: args.point.x, clientY: args.point.y, ...args.options }));
+      const target = args.options.hitTest ? document.elementFromPoint(args.point.x, args.point.y) || link : link;
+      target.dispatchEvent(new PointerEvent(args.type, { bubbles: true, cancelable: true, isPrimary: true, pointerId: 71, pointerType: args.pointerType, button: 0, buttons: active ? 1 : 0, pressure: active ? 0.5 : 0, clientX: args.point.x, clientY: args.point.y, ...args.options }));
     }, { type, pointerType, point, options });
     return point;
   }
-  async function hold(selector, pointerType = 'mouse') {
+  async function hold(selector, pointerType = 'mouse', hitTest = false) {
     const point = await citationPoint(selector);
     if (pointerType === 'mouse') {
       await page.mouse.move(point.x, point.y);
@@ -128,9 +129,9 @@ function linkedPdfBuffer() {
       await page.waitForTimeout(600);
       await page.mouse.up();
     } else {
-      await pointer(selector, 'pointerdown', pointerType, { point });
+      await pointer(selector, 'pointerdown', pointerType, { point, hitTest });
       await page.waitForTimeout(600);
-      await pointer(selector, 'pointerup', pointerType, { point });
+      await pointer(selector, 'pointerup', pointerType, { point, hitTest });
     }
     await page.waitForFunction(() => !document.getElementById('pdfReferencePreview').classList.contains('hidden'));
   }
@@ -284,6 +285,16 @@ function linkedPdfBuffer() {
     await closePreview();
   }
   check('overlapping phone hitboxes route each authored citation center to its own reference', true);
+  const adjacentPoint = await citationPoint(refSelector('refA'));
+  check('adjacent citation regression reaches the overlapping link above the intended one',
+    await page.evaluate(point => document.elementFromPoint(point.x, point.y).dataset.pdfDestination !== 'refA', adjacentPoint));
+  for (const expected of [{ dest: 'refA', text: 'Alpha reference' }, { dest: 'refB', text: 'Beta reference' }]) {
+    await hold(refSelector(expected.dest), 'pen', true);
+    const previewText = await page.locator('#pdfReferencePreviewText').textContent();
+    check('Pencil hold resolves the authored citation beneath overlapping targets: ' + expected.dest,
+      previewText.includes(expected.text), previewText);
+    await closePreview();
+  }
   await hold(refSelector('refTiny'), 'touch');
   await page.waitForFunction(() => /Alpha reference/.test(document.getElementById('pdfReferencePreviewText').textContent));
   check('a tiny authored citation remains reachable by a touch hold on a phone', !await previewHidden());

@@ -47,6 +47,13 @@ repository banners ("NIH Public Access") rather than the paper's own title.
 overlapping diaeresis in publisher PDF text runs, including the eLife paper's
 "Münch", while preserving original PDF text and selection offsets.
 
+`reading-workspace-paper-edge.test.js` covers the paper beside Workspace on an
+iPad-sized touch screen: the page fits beside the Zen dock instead of under it,
+the layout control is a compact circle there, and Pencil highlights are exact from
+the end of a line, from a citation link (holding still on the link still opens its
+preview), and across an accent the PDF draws as its own glyph ("Münch"). Its
+fixture PDF is written by hand, so it needs no pdf-lib.
+
 `reading-library-thinking-search.test.js` covers library search across ordinary
 page notes, highlighted passages, reviewer work, paired highlight notes, exact
 page opening, responsive results, and List-mode category and bulk-move controls.
@@ -86,6 +93,11 @@ notes that preserve PDF size and position, the explicit wide-landscape pinned
 panel, portrait fallback, keyboard-safe page-note editing, adaptive settings,
 dialog focus/return, and 44px touch targets. Set `PHLOEM_BROWSER=webkit` to run
 the same workflow against Playwright WebKit.
+
+`reading-pdf-position-state.test.js` (`node --test`) deterministically checks
+keyboard dismissal during the PDF restore settling frames, unchanged-size
+completion, and cancellation by reader interaction. It preserves the intended
+passage until the resized PDF geometry is ready.
 
 `reading-ipad-header.test.js` covers tablet masthead button fit, separation from
 the reader's Library row and landscape Settings sheet, root viewport offsets,
@@ -203,6 +215,7 @@ node tests/reading-library-long-press.test.js
 node --test tests/reading-paper-details-sync.test.js
 node --test tests/reading-pdf-title-diacritics.test.js
 node --test tests/reading-cloud-provider-status.test.js
+node tests/reading-workspace-paper-edge.test.js
 node tests/reading-library-thinking-search.test.js
 node tests/reading-find-highlight.test.js
 node tests/reading-pdf-links.test.js
@@ -258,3 +271,9 @@ the PDF checks also require the browser dependencies described above.
 `scripts/add-daily-fact.js` (run by the daily fun-fact workflow) against the real
 queue and both queue entry shapes, and needs no browser:
 `node --test tests/daily-fun-fact.test.js`.
+
+`reading-pdf-accent-text.test.js` verifies separate accent glyph composition without
+losing real word spaces or native selection offsets. `reading-zen-find-clearance.test.js`
+checks responsive Find controls against the full Zen rail and resized Workspace paper.
+`reading-workspace-paper-edge.test.js` also covers minimum paper splits and short
+landscape rails in Scroll, Page and Book.

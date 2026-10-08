@@ -37,6 +37,7 @@ function importHarness(kind) {
     renderShelf() {}, updateReviewBadge() {}, showReaderToast() {},
     showError: error => errors.push(error), openReader: () => reader.promise, currentId: 'new-paper'
   });
+  vm.runInContext(section('  var STAMPED_FIELDS=', '  // Typing saves once'), context);
   vm.runInContext(section('  function findImportedPaper(', '  function importSourceFile('), context);
   const file = { name: `new-paper.${kind}`, arrayBuffer: async () => bytes };
   const done = kind === 'pdf' ? context.importPdf(file) : context.importDocx(file);
@@ -47,6 +48,7 @@ for (const kind of ['pdf', 'docx']) {
   test(`${kind} import queues both originals after durable storage, even while the reader is opening`, async () => {
     const h = importHarness(kind);
     await settle();
+    assert.deepEqual(h.errors, [], 'import did not fail before the storage wait');
     assert.equal(h.context.state.chapters.length, 1);
     assert.deepEqual(h.queued, ['metadata']);
     assert.equal(h.states.length, 0, 'no original claimed queued before storage commits');

@@ -121,6 +121,23 @@ function check(name, condition, detail) {
       const outside = await page.evaluate(() => pencilTextPoint(document.querySelector('.fixture'), 1190, 990));
       check(label + 'blank page space does not invent a text endpoint', outside === null);
     }
+    for (const fallback of [false, true]) {
+      await page.evaluate(fallback => {
+        pencilWordSegmenter = fallback ? null : new Intl.Segmenter(undefined, { granularity: 'word' });
+      }, fallback);
+      const label = fallback ? 'word fallback: ' : 'word segmenter: ';
+      await fixture([{ text: '6,689 reactions and 12.75 units' }]);
+      let result = await passage([0, 2, .8], [0, 4, .2]);
+      check(label + 'a stroke over the trailing digits includes the complete grouped number', result.text === '6,689', result);
+      result = await passage([0, 22, .8], [0, 23, .2]);
+      check(label + 'decimal number endpoints remain complete', result.text === '12.75', result);
+      await fixture([{ text: '6,' }, { text: '689' }, { text: ' reactions' }]);
+      result = await passage([1, 0, .8], [1, 2, .2]);
+      check(label + 'grouped numbers span touching PDF style runs', result.text === '6,689', result);
+      await fixture([{ text: '6,' }, { text: '689', gap: 12 }]);
+      result = await passage([1, 0, .8], [1, 2, .2]);
+      check(label + 'a visible word gap is not swallowed into a grouped number', result.text === '689', result);
+    }
     const ordinary = await page.evaluate(() => {
       const host = makeFixture([{ text: 'Alpha beta gamma' }], false), node = host.firstChild.firstChild;
       const range = document.createRange(); range.setStart(node, 1); range.setEnd(node, 15);

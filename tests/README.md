@@ -39,6 +39,12 @@ page opening, responsive results, and List-mode category and bulk-move controls.
 individual-occurrence arrows, saved-marker cleanup, PDF/Reader switching, Page
 rebuilds, and phrases split between PDF.js text-layer spans.
 
+`reading-pdf-excerpt-text.test.js` covers actual PDF line-break spaces and hyphens,
+preserved inline compounds and exact native endpoints, and a normalized highlight
+saved into Workspace, reloaded, and located back across its original PDF lines.
+`reading-pencil-boundaries.test.js` also checks grouped numeric endpoints with
+and without `Intl.Segmenter`, including numbers split across touching style runs.
+
 `reading-pdf-links.test.js` covers real pointer hit-testing for PDF annotations,
 phone-sized superscript citations, safe external URLs, blocked script actions,
 safe text-only external URL previews without third-party requests, the persisted

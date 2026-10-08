@@ -153,7 +153,10 @@ async function selectPdfAcrossLines(page, pageNo) {
   assert.match(selected.quote, /remarkablecontinuity/,
     'native Range concatenates adjacent PDF.js lines without an intervening space');
   await page.locator('#selectionToWorkspace').waitFor({ state: 'visible' });
-  return selected.quote;
+  const readable = selected.quote.replace('remarkablecontinuity', 'remarkable continuity');
+  assert.equal(await page.locator('#selectionExcerpt').textContent(), '“' + readable + '”',
+    'PDF quote restores the visual line-break space without changing the native range');
+  return readable;
 }
 async function openPaper(page, id) {
   // The masthead is hidden while reading; Zen's X returns to the library (1a215db5).

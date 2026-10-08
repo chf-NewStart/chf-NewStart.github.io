@@ -34,7 +34,9 @@ async function fixture() {
 }
 
 async function ready(page) {
-  await page.waitForFunction(() => document.querySelector('#pdfFrame[data-position-ready="true"] .pdf-page .text-layer span') && document.querySelector('.pdf-page canvas')?.width > 0);
+  // Leaving the reader retains its old canvas and ready flag. Reopening awaits
+  // stored data before clearing that flag, so require the reader to be visible too.
+  await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && document.querySelector('#pdfFrame[data-position-ready="true"] .pdf-page .text-layer span') && document.querySelector('.pdf-page canvas')?.width > 0);
 }
 
 async function chapter(page) {

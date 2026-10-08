@@ -165,8 +165,11 @@ async function dispatchTouches(page, selector, type, touches, changedTouches) {
       targetTouches: active,
       changedTouches: changed
     });
+    // Inspect the synchronous touch handler in one browser task. Layout restoration
+    // from the preceding Page → Scroll switch can run between separate evaluations.
+    const beforeScrollTop = target.scrollTop;
     const dispatched = target.dispatchEvent(event);
-    return { defaultPrevented: event.defaultPrevented, dispatched };
+    return { defaultPrevented: event.defaultPrevented, dispatched, beforeScrollTop, afterScrollTop: target.scrollTop };
   }, { type, touches, changedTouches: changedTouches === undefined ? touches : changedTouches });
 }
 
@@ -407,8 +410,7 @@ async function curlFxMetrics(page) {
   const nativeScrollMove = { id: nativeScrollStart.id, x: nativeScrollStart.x + 4, y: nativeScrollStart.y + 96 };
   await dispatchTouches(page, '#documentPane', 'touchstart', [nativeScrollStart]);
   const nativeScrollEvent = await dispatchTouches(page, '#documentPane', 'touchmove', [nativeScrollMove]);
-  const nativeScrollAfter = await page.locator('#documentPane').evaluate(pane => pane.scrollTop);
-  check('Scroll leaves one-finger movement to native iPad momentum', nativeScrollStart.touchAction.includes('pan-y') && !nativeScrollEvent.defaultPrevented && Math.abs(nativeScrollAfter-nativeScrollStart.top) < 1, JSON.stringify({ touchAction: nativeScrollStart.touchAction, prevented: nativeScrollEvent.defaultPrevented, before: nativeScrollStart.top, after: nativeScrollAfter }));
+  check('Scroll leaves one-finger movement to native iPad momentum', nativeScrollStart.touchAction.includes('pan-y') && !nativeScrollEvent.defaultPrevented && Math.abs(nativeScrollEvent.afterScrollTop-nativeScrollEvent.beforeScrollTop) < 1, JSON.stringify({ touchAction: nativeScrollStart.touchAction, prevented: nativeScrollEvent.defaultPrevented, before: nativeScrollEvent.beforeScrollTop, after: nativeScrollEvent.afterScrollTop }));
   await dispatchTouches(page, '#documentPane', 'touchend', [], [nativeScrollMove]);
   await openReadingSettings(page);
   await page.click('[data-pdf-layout="book"]');

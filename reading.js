@@ -3582,16 +3582,16 @@
       if(newLine){
         var left=text.match(/([\p{L}\p{N}]+)([-‐‑\u00ad])$/u),right=value.match(/^[\p{L}\p{N}]+/u);
         if(left&&right){
-          // Only join a layout break, never an inline compound. Like Reader mode,
-          // prefer the spelling used elsewhere on this page; keep a capitalized
-          // continuation when the paper gives us no spelling evidence.
+          // Only join a layout break, never an inline compound. A soft hyphen is
+          // explicit; a visible hyphen needs an unhyphenated spelling elsewhere
+          // on this page. Preserve ambiguous compounds rather than guessing.
           // The spelling decision uses the whole endpoint words even when a
           // native selection deliberately starts or ends inside one of them.
           var wholeLeft=source.text.slice(0,previous.end).match(/([\p{L}\p{N}]+)[-‐‑\u00ad]$/u);
           var wholeRight=source.text.slice(entry.start).match(/^[\p{L}\p{N}]+/u);
           var leftWord=wholeLeft?wholeLeft[1]:left[1],rightWord=wholeRight?wholeRight[0]:right[0];
-          var solid=(leftWord+rightWord).toLowerCase(),hyphenated=(leftWord+'-'+rightWord).toLowerCase();
-          var keep=left[2]==='‑'||left[2]!=='\u00ad'&&!vocab[solid]&&(vocab[hyphenated]||/^[\p{Lu}\p{N}]/u.test(value));
+          var solid=(leftWord+rightWord).toLowerCase();
+          var keep=left[2]==='‑'||left[2]!=='\u00ad'&&!vocab[solid];
           if(!keep){text=text.slice(0,-1);entries[entries.length-1].end--;if(entries[entries.length-1].end===entries[entries.length-1].start)entries.pop();}
           separator='';
         }else separator=/[\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff]$/.test(text)&&/^[\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff]/.test(value)?'':' ';

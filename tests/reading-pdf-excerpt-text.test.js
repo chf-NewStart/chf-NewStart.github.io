@@ -25,7 +25,10 @@ async function fixture() {
     ['nutritional', 710], ['sources support meta-', 684], ['bolic flux.', 658],
     ['Known spellings: metabolic and nitrogen-fixing.', 610],
     ['nitrogen-', 564], ['fixing bacteria.', 538],
-    ['An inline meta-bolic example.', 490], ['6,689 reactions (VYTOP)', 444]
+    ['An inline meta-bolic example.', 490], ['6,689 reactions (VYTOP)', 444],
+    ['long-', 350], ['distance transport.', 324],
+    ['unfami-', 278], ['liar token.', 252],
+    ['soft\u00ad', 206], ['ware export.', 180]
   ].forEach(([text, y]) => page.drawText(text, { x: 50, y, size: 18, font }));
   page.drawText('micro', { x: 50, y: 398, size: 18, font: bold });
   page.drawText('scope', { x: 50 + bold.widthOfTextAtSize('micro', 18), y: 398, size: 18, font });
@@ -39,8 +42,9 @@ async function ready(page) {
 async function select(page, first, start, last, end, expected) {
   const raw = await page.evaluate(({ first, start, last, end }) => {
     const spans = [...document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span')];
-    const a = spans.find(span => span.textContent === first).firstChild;
-    const b = spans.find(span => span.textContent === last).firstChild;
+    const firstSpan = spans.find(span => span.textContent === first), lastSpan = spans.find(span => span.textContent === last);
+    if (!firstSpan || !lastSpan) throw new Error('Missing fixture span: ' + JSON.stringify({ first, last, spans: spans.map(span => span.textContent) }));
+    const a = firstSpan.firstChild, b = lastSpan.firstChild;
     const range = document.createRange(); range.setStart(a, start); range.setEnd(b, end);
     const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
     const native = selection.toString();
@@ -89,6 +93,23 @@ async function current(page) {
     await select(page, 'An inline meta-bolic example.', 10, 'An inline meta-bolic example.', 20, 'meta-bolic');
     await page.locator('#selectionClose').click();
     await select(page, 'micro', 0, 'scope', 5, 'microscope');
+    await page.locator('#selectionClose').click();
+    await select(page, 'long-', 0, 'distance transport.', 8, 'long-distance');
+    await page.locator('#selectionClose').click();
+    // A visible hyphen alone cannot distinguish a compound from a word wrapped
+    // by the typesetter. Keep it when this page supplies no spelling evidence.
+    await select(page, 'unfami-', 0, 'liar token.', 4, 'unfami-liar');
+    await page.locator('#selectionClose').click();
+    // This PDF font maps its soft-hyphen glyph to a visible hyphen. Without an
+    // explicit marker in the text layer, extraction must remain conservative.
+    await select(page, 'soft-', 0, 'ware export.', 4, 'soft-ware');
+    await page.locator('#selectionClose').click();
+    // Also cover text layers that do retain the explicit discretionary marker.
+    await page.evaluate(() => {
+      [...document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span')]
+        .find(span => span.textContent === 'soft-').textContent = 'soft\u00ad';
+    });
+    await select(page, 'soft\u00ad', 0, 'ware export.', 4, 'software');
     await page.locator('#selectionClose').click();
     const number = '6,689 reactions (VYTOP)';
     await select(page, number, 0, number, number.length, number);

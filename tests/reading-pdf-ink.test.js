@@ -265,8 +265,8 @@ async function checkZenUndo(browser) {
         });
         return { controls, viewport: { width: innerWidth, height: innerHeight } };
       });
-      /* Six since 62af6da4 "Expose paper undo" moved Undo out of Annotate onto the dock. */
-      check('Zen dock keeps all six 44px controls onscreen at ' + viewport.width + '×' + viewport.height, geometry.controls.length === 6
+      check('Zen dock keeps all seven touch-sized controls onscreen at ' + viewport.width + '×' + viewport.height,
+        same(geometry.controls.map(rect => rect.id), ['zenExit', 'zenGuide', 'zenLayout', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'])
         && geometry.controls.every(rect => rect.width >= 44 && rect.height >= 44 && rect.x >= 0 && rect.y >= 0
           && rect.right <= geometry.viewport.width + 1 && rect.bottom <= geometry.viewport.height + 1), JSON.stringify(geometry));
       if (process.env.PHLOEM_ZEN_SCREENSHOT) await page.screenshot({ path: process.env.PHLOEM_ZEN_SCREENSHOT + '-' + viewport.width + 'x' + viewport.height + '.png' });

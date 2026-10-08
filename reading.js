@@ -3657,18 +3657,25 @@
   function findTextGroups(root,query,isPdf,includeFindWrappers){
     return mappedTextGroups(findTextMap(root,isPdf,includeFindWrappers),query);
   }
-  /* Some PDFs (eLife's among them) draw an accent as its own glyph over the letter
-     before it, so PDF.js reads "Münch" as "Mu" + "¨ nch". The mark goes back on its
-     letter, and the space PDF.js guessed after it stays only when it is as wide as a
-     real one ("Hölttä et al." keeps it; "Münch" loses it). Measured on that paper:
-     invented gaps 0.16–0.28em, real word gaps 0.37em. */
+  /* Some PDFs draw an accent separately over the preceding letter. Compose only
+     that overlapping glyph; source nodes and their offsets remain unchanged. A
+     space may be removed when its gap is clearly smaller than the font's actual
+     space, or an intact spelling elsewhere on the page resolves the ambiguity. */
   var SPACING_ACCENTS={'\u00a8':'\u0308','\u00b4':'\u0301','`':'\u0300','\u02c6':'\u0302','\u02dc':'\u0303','\u00b8':'\u0327','\u02da':'\u030a','\u02c7':'\u030c','\u02d8':'\u0306','\u02d9':'\u0307','\u02dd':'\u030b','\u00af':'\u0304'};
-  function accentSpaceIsReal(node,letterAt,baseBox,accentBox){
-    try{var r=document.createRange();r.setStart(node,letterAt);r.setEnd(node,letterAt+1);var letter=r.getBoundingClientRect();return letter.width>0?(letter.left-baseBox.right)/Math.max(1,accentBox.height)>=.31:true;}catch(e){return true;}
+  function pdfAccentWordKey(value){
+    return value.replace(/([\p{L}\p{M}])([¨´`ˆ˜¸˚ˇ˘˙˝¯])/gu,function(_,base,accent){return(base+SPACING_ACCENTS[accent]).normalize('NFC');}).normalize('NFC').toLowerCase();
+  }
+  function pdfTextCharacterBox(node,offset){
+    try{var r=document.createRange();r.setStart(node,offset);r.setEnd(node,offset+1);return r.getBoundingClientRect();}catch(e){return null;}
+  }
+  function accentSpaceIsReal(node,letterAt,baseBox,knownJoined){
+    var letter=pdfTextCharacterBox(node,letterAt),space=pdfTextCharacterBox(node,letterAt-1);
+    return !(letter&&space&&letter.width>0&&space.width>0&&letter.left-baseBox.right<space.width*(knownJoined?1.05:.75));
   }
   function pdfPassageTextMap(root,range){
-    var source=findTextMap(root,true,true),text='',entries=[],previous=null,vocab=Object.create(null);
+    var source=findTextMap(root,true,true),text='',entries=[],previous=null,vocab=Object.create(null),accentVocab=Object.create(null);
     (source.text.toLowerCase().match(/[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*/gu)||[]).forEach(function(word){vocab[word]=true;});
+    (pdfAccentWordKey(source.text).match(/[\p{L}\p{M}\p{N}]+/gu)||[]).forEach(function(word){accentVocab[word]=true;});
     source.entries.forEach(function(entry){
       if(range&&!range.intersectsNode(entry.node))return;
       var offset=range&&range.startContainer===entry.node?range.startOffset:0;
@@ -3681,11 +3688,14 @@
       }
       var mark=!newLine&&previous&&previous.span!==entry.span&&offset===0&&SPACING_ACCENTS[value.charAt(0)];
       if(mark&&/[A-Za-z\u00c0-\u024f]$/.test(text)){
-        var baseBox=previous.span.getBoundingClientRect(),accentBox=entry.span.getBoundingClientRect(),composed=(text.slice(-1)+mark).normalize('NFC');
-        if(accentBox.left<baseBox.right&&composed.length===1){
+        var baseBox=pdfTextCharacterBox(previous.node,previous.node.length-1),accentBox=pdfTextCharacterBox(entry.node,0),composed=(text.slice(-1)+mark).normalize('NFC');
+        var accentCenter=accentBox&&(accentBox.left+accentBox.right)/2;
+        if(baseBox&&accentBox&&baseBox.width>0&&accentBox.width>0&&accentCenter>=baseBox.left&&accentCenter<=baseBox.right&&composed.length===1){
+          var leftWord=source.text.slice(0,entry.start).match(/[\p{L}\p{M}¨´`ˆ˜¸˚ˇ˘˙˝¯]+$/u),rightWord=entry.node.nodeValue.slice(1).match(/^\s([\p{L}\p{M}]+)/u);
+          var knownJoined=leftWord&&rightWord&&accentVocab[pdfAccentWordKey(leftWord[0]+value.charAt(0)+rightWord[1])];
           text=text.slice(0,-1)+composed;offset++;value=value.slice(1);separator='';
-          if(/^\s\p{Ll}/u.test(value)&&!accentSpaceIsReal(entry.node,offset+1,baseBox,accentBox)){offset++;value=value.slice(1);}
-          if(!value)return;
+          if(/^\s\p{Ll}/u.test(value)&&!accentSpaceIsReal(entry.node,offset+1,baseBox,knownJoined)){offset++;value=value.slice(1);}
+          if(!value){previous=entry;return;}
         }
       }
       if(newLine){
@@ -7869,7 +7879,7 @@
        one used to highlight nothing. It now highlights from there; holding still on
        the link keeps the half-second reference preview. */
     var link=readerMode==='pdf'&&!highlightEraseMode&&!host&&target&&target.closest&&target.closest('.pdf-link');
-    if(link){var linkPage=link.closest('.pdf-page');host=linkPage&&linkPage.querySelector('.text-layer');}
+    if(link){link=nearestPdfLink(link.closest('.pdf-links'),e.clientX,e.clientY)||link;var linkPage=link.closest('.pdf-page');host=linkPage&&linkPage.querySelector('.text-layer');}
     if(!host||!byId('documentPane').contains(host)||!link&&target.closest('a,button,input,textarea,[contenteditable="true"]'))return false;
     var start=highlightEraseMode?null:pencilTextPoint(host,e.clientX,e.clientY);if(!start&&!highlightEraseMode)return false;
     clearPendingSelection();clearTimeout(guideLockClickTimer);holdDrift(1200);

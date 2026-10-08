@@ -7560,7 +7560,9 @@
   }
   function captureSelection(anchor){
     if(savedHighlightDrag){clearSavedHighlightNativeSelection();return;}
-    if(pencilStroke||byId('readerPage').classList.contains('hidden'))return;
+    // Native selection paints itself during a drag. Normalize its PDF text once
+    // the pointer lifts instead of scanning the page on every selectionchange.
+    if(pencilStroke||selectionPointerDown||byId('readerPage').classList.contains('hidden'))return;
     var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
     var range=selection.getRangeAt(0),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:range.getBoundingClientRect(),passage=paperSelectionFromRange(range);if(!passage)return;
     if(highlightEraseMode)setHighlightEraseMode(false,true);

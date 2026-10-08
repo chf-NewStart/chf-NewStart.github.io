@@ -82,6 +82,32 @@ async function current(page) {
     await page.waitForFunction(() => document.body.classList.contains('library-ready'));
     await page.locator('#pdfFile').setInputFiles({ name: 'excerpt-layout.pdf', mimeType: 'application/pdf', buffer: await fixture() });
     await ready(page);
+    const activeDrag = await page.evaluate(async () => {
+      const spans = [...document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span')];
+      const first = spans.find(span => span.textContent === 'nutritional'), last = spans.find(span => span.textContent === 'sources support meta-');
+      getSelection().removeAllRanges();
+      first.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', pointerId: 96, isPrimary: true }));
+      window.__quoteGeometryReads = 0;
+      spans.forEach(span => {
+        const original = span.getBoundingClientRect.bind(span);
+        span.getBoundingClientRect = function () { window.__quoteGeometryReads++; return original(); };
+      });
+      for (let end = 1; end <= 7; end++) {
+        const range = document.createRange(); range.setStart(first.firstChild, 0); range.setEnd(last.firstChild, end);
+        getSelection().removeAllRanges(); getSelection().addRange(range);
+        document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
+        await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+      const result = { reads: window.__quoteGeometryReads, native: getSelection().toString() };
+      spans.forEach(span => { delete span.getBoundingClientRect; });
+      document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch', pointerId: 96, isPrimary: true }));
+      return result;
+    });
+    assert.equal(activeDrag.reads, 0, 'active native selection drag does not scan PDF span geometry');
+    assert(activeDrag.native.includes('nutritional') && activeDrag.native.includes('sources'), 'native selection still follows the drag');
+    await page.locator('#selectionToWorkspace').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#selectionExcerpt').textContent(), '“nutritional sources”', 'release prepares the final readable quote');
+    await page.locator('#selectionClose').click();
     assert.equal(await select(page, 'nutritional', 0, 'sources support meta-', 7, 'nutritional sources'), 'nutritionalsources');
     await page.locator('#selectionClose').click();
     await select(page, 'nitrogen-', 0, 'fixing bacteria.', 6, 'nitrogen-fixing');

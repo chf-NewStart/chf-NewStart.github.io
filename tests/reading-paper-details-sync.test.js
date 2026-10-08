@@ -16,7 +16,7 @@ function section(start, end) {
 function mergeHarness(localChapters) {
   let clock = 1000;
   const context = vm.createContext({
-    state: { chapters: localChapters, deleted: {}, merged: {} }, currentId: null, pdfDoc: null,
+    state: { chapters: structuredClone(localChapters), deleted: {}, merged: {} }, currentId: null, pdfDoc: null,
     PDF_ZOOM_PREFERENCE_VERSION: 1, LAST_OPEN_KEY: 'last', localStorage: { setItem() {} },
     now: () => clock, normalize: ch => ch, saveDerivedSoon() {}, mergePdfInk: () => false,
     reviewStateStamp: () => 0, newerPdfPosition: () => null, copyReviewState() {},
@@ -72,6 +72,157 @@ test('stampFields records only the fields named', () => {
   const ch = paper({ fieldUpdatedAt: { tags: 5 } });
   h.at(900); h.context.stampFields(ch, ['title']);
   assert.deepEqual({ ...ch.fieldUpdatedAt }, { tags: 5, title: 900 });
+});
+
+const plain = value => JSON.parse(JSON.stringify(value));
+
+function dedupHarness(chapters) {
+  const h = mergeHarness(chapters), ctx = h.context;
+  Object.assign(ctx, { pendingDuplicateStorage: [], pdfTitleLooksGenerated: () => false, pdfTitleIsBanner: () => false });
+  vm.runInContext(section('  function sourceIdentity(', '  function itemIdentity('), ctx);
+  vm.runInContext(section('  function itemIdentity(', '  function emptyState('), ctx);
+  return h;
+}
+
+test('automatic duplicate collapse preserves explicit details in either canonical order', () => {
+  const edited = paper({ id: 'edited', title: 'demoOct8', titleEditedByUser: true, authors: '', tags: [], fieldUpdatedAt: { title: 200, authors: 200, tags: 200, category: 200 }, updatedAt: 200, contentHash: 'same-file' });
+  const stale = paper({ id: 'stale', title: 'Testing the Münch hypothesis of long distance phloem transport in plants', authors: 'Old author credit', tags: ['removed'], category: 'Old category', updatedAt: 300, contentHash: 'same-file' });
+  for (const canonical of ['edited', 'stale']) {
+    const a = { ...edited, addedAt: canonical === 'edited' ? 10 : 20 };
+    const b = { ...stale, addedAt: canonical === 'stale' ? 10 : 20 };
+    for (const reverse of [false, true]) {
+      const h = dedupHarness([reverse ? b : a]);
+      h.context.mergeState({ chapters: [structuredClone(reverse ? a : b)] });
+      const [kept] = h.context.state.chapters;
+      assert.equal(h.context.state.chapters.length, 1);
+      assert.equal(kept.id, canonical);
+      assert.equal(kept.title, 'demoOct8');
+      assert.equal(kept.titleEditedByUser, true);
+      assert.equal(kept.authors, '');
+      assert.deepEqual(plain(kept.tags), []);
+      assert.equal(kept.category, undefined);
+      assert.deepEqual(plain(kept.fieldUpdatedAt), edited.fieldUpdatedAt);
+    }
+  }
+});
+
+test('duplicate collapse takes each newest field clock rather than one record clock', () => {
+  const older = paper({ id: 'older', addedAt: 10, title: 'Latest rename', titleEditedByUser: true, authors: 'Old authors', tags: ['old'], category: 'Research', fieldUpdatedAt: { title: 400, authors: 100, tags: 100, category: 400 }, contentHash: 'same' });
+  const newer = paper({ id: 'newer', addedAt: 20, title: 'An obsolete long title from another device', authors: 'New authors', tags: ['new'], category: 'Old', fieldUpdatedAt: { title: 200, authors: 500, tags: 500, category: 100 }, contentHash: 'same' });
+  const h = dedupHarness([older]); h.context.mergeState({ chapters: [newer] });
+  const kept = h.context.state.chapters[0];
+  assert.equal(kept.title, 'Latest rename'); assert.equal(kept.authors, 'New authors');
+  assert.equal(kept.category, 'Research'); assert.deepEqual(plain(kept.tags), ['new']);
+  assert.deepEqual(plain(kept.fieldUpdatedAt), { title: 400, authors: 500, tags: 500, category: 400 });
+});
+
+test('existing manual renames without a clock survive automatic titles on newer copies', () => {
+  const manual = paper({ title: 'demoOct8', titleEditedByUser: true, updatedAt: 200 });
+  const automatic = paper({ title: '14683958683096 1..16', updatedAt: 300 });
+  for (const reverse of [false, true]) {
+    const h = mergeHarness([reverse ? automatic : manual]);
+    h.context.mergeState({ chapters: [structuredClone(reverse ? manual : automatic)] });
+    assert.equal(h.context.find('elife').title, 'demoOct8');
+    assert.equal(h.context.find('elife').titleEditedByUser, true);
+    assert.equal(h.context.find('elife').fieldUpdatedAt, undefined, 'does not fabricate a rename time');
+  }
+  const h = mergeHarness([manual]);
+  h.context.mergeState({ chapters: [paper({ title: 'Later explicit choice', titleEditedByUser: true, fieldUpdatedAt: { title: 250 }, updatedAt: 250 })] });
+  assert.equal(h.context.find('elife').title, 'Later explicit choice');
+});
+
+test('simultaneous field edits converge in both directions', () => {
+  const first = paper({ title: 'Alpha', tags: ['a'], fieldUpdatedAt: { title: 400, tags: 400 }, updatedAt: 500 });
+  const second = paper({ title: 'Zeta', tags: ['z'], fieldUpdatedAt: { title: 400, tags: 400 }, updatedAt: 500 });
+  const a = mergeHarness([first]), b = mergeHarness([second]);
+  a.context.mergeState({ chapters: [structuredClone(second)] });
+  b.context.mergeState({ chapters: [structuredClone(first)] });
+  assert.equal(a.context.find('elife').title, b.context.find('elife').title);
+  assert.deepEqual(plain(a.context.find('elife').tags), plain(b.context.find('elife').tags));
+  assert.equal(a.context.mergeState({ chapters: [plain(b.context.find('elife'))] }), false, 'the settled state does not repeatedly change');
+});
+
+test('invalid field clocks cannot outrank a valid edit, and a local edit advances its clock', () => {
+  for (const bad of [Infinity, -10, '900', NaN, 1e99, 12.5]) {
+    const h = mergeHarness([paper({ title: 'Good', fieldUpdatedAt: { title: 200 }, updatedAt: 200 })]);
+    h.context.mergeState({ chapters: [paper({ title: 'Bad clock', fieldUpdatedAt: { title: bad }, updatedAt: 300 })] });
+    assert.equal(h.context.find('elife').title, 'Good');
+  }
+  const h = mergeHarness([]), ch = paper({ fieldUpdatedAt: { title: 2000 } });
+  h.at(1000); h.context.stampFields(ch, ['title']);
+  assert.equal(ch.fieldUpdatedAt.title, 2001);
+});
+
+test('text save stamps manual title and author changes but not body-only edits', () => {
+  const h = mergeHarness([paper({ kind: 'text', title: 'Before', authors: 'Before author' })]);
+  const controls = { textBody: { value: 'New body' }, textTitle: { value: 'Manual title' }, textAuthors: { value: 'Manual author' }, saveTextBtn: {}, textDialog: { close() {} } };
+  Object.assign(h.context, { editingId: 'elife', byId: id => controls[id], persist() {}, openReader() {} });
+  vm.runInContext(section("  byId('saveTextBtn').onclick=", '\n\n  /* Reader typography'), h.context);
+  h.at(500); controls.saveTextBtn.onclick();
+  assert.deepEqual(plain(h.context.find('elife').fieldUpdatedAt), { title: 500, authors: 500 });
+  assert.equal(h.context.find('elife').titleEditedByUser, true);
+  controls.textBody.value = 'Another body edit'; h.at(600); controls.saveTextBtn.onclick();
+  assert.deepEqual(plain(h.context.find('elife').fieldUpdatedAt), { title: 500, authors: 500 });
+});
+
+test('local and cloud snapshots retain the field clocks and explicit clears', async () => {
+  const ch = paper({ title: 'Chosen', authors: '', tags: [], fieldUpdatedAt: { title: 200, authors: 200, tags: 200, category: 200 } });
+  const h = mergeHarness([ch]);
+  Object.assign(h.context, { DERIVED_FIELDS: ['pageTexts'], getDerived: async () => null });
+  vm.runInContext(section('  function localState(){', '  function flushStateSnapshot('), h.context);
+  vm.runInContext(section('  async function chaptersForSync(){', '  function ghUrl('), h.context);
+  for (const copy of [h.context.localState().chapters[0], (await h.context.chaptersForSync())[0]]) {
+    const persisted = plain(copy);
+    assert.deepEqual(persisted.fieldUpdatedAt, ch.fieldUpdatedAt);
+    assert.equal(persisted.authors, ''); assert.deepEqual(persisted.tags, []);
+    assert.equal(persisted.category, undefined);
+  }
+});
+
+function importHarness(ch) {
+  const h = mergeHarness([ch]), button = { textContent: 'Import' };
+  Object.assign(h.context, {
+    importedSourceWrites: {}, byId: () => button, pdfFingerprint: async () => 'same',
+    loadPdfLib: async () => ({ getDocument: () => ({ promise: Promise.resolve({ numPages: 1 }) }) }),
+    derivePdfDetails: async () => ({ title: 'An automatically derived long paper title', authors: 'Automatic authors' }),
+    findImportedPaper: () => h.context.find(ch.id), keepImportedSource: async () => true,
+    titleQuality: item => String(item.title || '').length, filenameTitle: name => name,
+    persist() {}, renderShelf() {}, showReaderToast() {}, openReader: async () => true,
+    showError(message) { throw new Error(message); },
+    identityText: value => String(value || ''),
+    parseDocx: async () => ({ title: 'An automatically derived long paper title', authors: 'Automatic authors', paragraphs: ['Body'], kinds: [], comments: [], trackedChanges: {} }),
+    mergeImportedReviewState: () => [], updateReviewBadge() {}
+  });
+  vm.runInContext(section('  async function importPdf(', '  function mergeImportedReviewState('), h.context);
+  vm.runInContext(section('  async function importDocx(', '  function importSourceFile('), h.context);
+  return h;
+}
+
+test('refreshing PDF or Word originals preserves manual names and deliberately empty authors', async () => {
+  for (const kind of ['pdf', 'docx']) {
+    const ch = paper({ title: 'My name', titleEditedByUser: true, authors: '', fieldUpdatedAt: { title: 200, authors: 200 }, sourceType: kind, sourceName: 'paper.' + kind, contentHash: 'same' });
+    const h = importHarness(ch), file = { name: ch.sourceName, arrayBuffer: async () => new Uint8Array([0x50, 0x4b, 1, 2]).buffer };
+    if (kind === 'pdf') await h.context.importPdf(file, '', '', null, true);
+    else await h.context.importDocx(file, null, true);
+    assert.equal(h.context.find(ch.id).title, 'My name');
+    assert.equal(h.context.find(ch.id).authors, '');
+    assert.deepEqual(plain(h.context.find(ch.id).fieldUpdatedAt), ch.fieldUpdatedAt);
+  }
+});
+
+test('background PDF metadata repair respects an author clear made while extraction runs', async () => {
+  const h = mergeHarness([paper({ title: 'A normal paper title', authors: '' })]);
+  let finish;
+  Object.assign(h.context, { ch: h.context.find('elife'), pdfDoc: {}, pdfTitleNeedsRepair: () => false,
+    derivePdfDetails: () => new Promise(resolve => { finish = resolve; }), touch() { throw new Error('manual clear must not be overwritten'); }, showReaderToast() {} });
+  const start = source.indexOf("        if((!manualPaperField(ch,'title')&&pdfTitleNeedsRepair");
+  const end = source.indexOf("        if(readerMode==='text'", start);
+  assert.ok(start >= 0 && end > start);
+  vm.runInContext(source.slice(start, end), h.context);
+  h.at(700); h.context.stampFields(h.context.ch, ['authors']);
+  finish({ title: 'Derived title', authors: 'Restored old authors' });
+  await Promise.resolve();
+  assert.equal(h.context.find('elife').authors, '');
 });
 
 function titleHarness() {

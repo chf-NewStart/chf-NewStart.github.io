@@ -467,6 +467,9 @@
   function titleQuality(ch){var title=String(ch.title||''),score=Math.min(title.length,220);if(!title||/^untitled$/i.test(title))score-=500;if(ch.sourceName&&title===filenameTitle(ch.sourceName))score-=120;if(ch.kind==='pdf'&&(pdfTitleLooksGenerated(title)||pdfTitleIsBanner(title)))score-=160;return score;}
   function mergeDuplicateRecord(keep,extra){
     var validationNow=now();normalize(keep,{foldValidationNow:validationNow});normalize(extra,{foldValidationNow:validationNow});
+    // Decide explicit details before the legacy import-quality merge fills blanks.
+    var details=Object.assign({},keep);mergeStampedFields(details,extra);
+    if(!fieldStamp(details,'title')&&!details.titleEditedByUser&&extra.titleEditedByUser)copyPaperField(details,extra,'title');
     mergePdfInk(keep,keep,extra);
     if(typeof mergeReadingKeeps==='function')mergeReadingKeeps(keep,keep,extra);
     if(typeof mergeReadingExcerpts==='function')mergeReadingExcerpts(keep,keep,extra);
@@ -481,6 +484,8 @@
     var cursor=newerPdfPosition(keep.pdfPosition,extra.pdfPosition);if(cursor){keep.pdfPosition=cursor;keep.readPage=cursor.page;if(Number.isFinite(cursor.zoom)){keep.zoom=cursor.zoom;keep.zoomPreferenceV=PDF_ZOOM_PREFERENCE_VERSION;}}else keep.readPage=Math.max(+keep.readPage||1,+extra.readPage||1);
     keep.readThroughPage=Math.max(+keep.readThroughPage||0,+extra.readThroughPage||0)||keep.readThroughPage;keep.pageCount=Math.max(+keep.pageCount||0,+extra.pageCount||0)||keep.pageCount;keep.fileSize=Math.max(+keep.fileSize||0,+extra.fileSize||0)||keep.fileSize;keep.lastOpenedAt=Math.max(+keep.lastOpenedAt||0,+extra.lastOpenedAt||0);
     keep.addedAt=Math.min(+keep.addedAt||now(),+extra.addedAt||now());keep.updatedAt=Math.max(+keep.updatedAt||0,+extra.updatedAt||0);
+    STAMPED_FIELDS.forEach(function(field){if(fieldStamp(details,field)){copyPaperField(keep,details,field);var stamps=Object.assign({},keep.fieldUpdatedAt);stamps[field]=fieldStamp(details,field);keep.fieldUpdatedAt=stamps;}});
+    if(!fieldStamp(details,'title')&&details.titleEditedByUser)copyPaperField(keep,details,'title');
     if(extra.kind==='pdf')mergeDerivedInto(keep,derivedData(extra));return keep;
   }
   function canonicalPaper(group){return group.slice().sort(function(a,b){var age=(+a.addedAt||0)-(+b.addedAt||0);return age||String(a.id).localeCompare(String(b.id));})[0];}
@@ -582,13 +587,29 @@
      would quietly bring back the title renamed a minute earlier on the Mac. Details a
      reader sets by hand carry their own clock and merge field by field instead. */
   var STAMPED_FIELDS=['title','authors','tags','category'];
-  function stampFields(ch,fields){var at=now(),stamps=Object.assign({},ch.fieldUpdatedAt);fields.forEach(function(field){stamps[field]=at;});ch.fieldUpdatedAt=stamps;}
+  function fieldStamp(ch,field){var value=ch&&ch.fieldUpdatedAt&&ch.fieldUpdatedAt[field];return typeof value==='number'&&Number.isSafeInteger(value)&&value>0?value:0;}
+  function manualPaperField(ch,field){return !!fieldStamp(ch,field)||(field==='title'&&!!ch.titleEditedByUser);}
+  function copyPaperField(target,source,field){
+    if(source[field]===undefined)delete target[field];else target[field]=Array.isArray(source[field])?source[field].slice():source[field];
+    if(field==='title')target.titleEditedByUser=!!source.titleEditedByUser;
+  }
+  function stampFields(ch,fields){
+    var at=now(),stamps=Object.assign({},ch.fieldUpdatedAt);
+    fields.forEach(function(field){stamps[field]=Math.max(at,fieldStamp(ch,field)+1);});ch.fieldUpdatedAt=stamps;
+  }
+  function paperFieldTieKey(ch,field){return JSON.stringify([ch[field]===undefined?null:ch[field],field==='title'&&!!ch.titleEditedByUser]);}
   function mergeStampedFields(target,source){
-    var changed=false,from=source.fieldUpdatedAt||{};
+    var changed=false;
     STAMPED_FIELDS.forEach(function(field){
-      var at=+from[field]||0;if(at<=(+(target.fieldUpdatedAt||{})[field]||0))return;
-      if(source[field]===undefined)delete target[field];else target[field]=Array.isArray(source[field])?source[field].slice():source[field];
-      if(field==='title')target.titleEditedByUser=!!source.titleEditedByUser;
+      var at=fieldStamp(source,field),current=fieldStamp(target,field);
+      // Pre-clock versions already marked manual renames. Keep that intent over an
+      // automatic title, without inventing a rename time from unrelated note edits.
+      if(field==='title'&&!at&&source.titleEditedByUser&&!manualPaperField(target,'title')){copyPaperField(target,source,field);changed=true;return;}
+      if(!at||at<current)return;
+      // Concurrent edits can share a millisecond. A stable tie-break prevents two
+      // devices from exchanging different values forever at the same field clock.
+      if(at===current&&paperFieldTieKey(source,field)<=paperFieldTieKey(target,field))return;
+      copyPaperField(target,source,field);
       var stamps=Object.assign({},target.fieldUpdatedAt);stamps[field]=at;target.fieldUpdatedAt=stamps;changed=true;
     });
     return changed;
@@ -1335,7 +1356,7 @@
     var tags=(ch.tags||[]).slice(0,4),kind=ch.kind==='pdf'?'PDF paper':ch.sourceType==='docx'?'Word draft':'text note',source=ch.authors||ch.sourceName||'No authors yet',title=String(ch.title||'Untitled'),titleClass=title.length>118?' very-long':(title.length>72?' long':'');
     var progressLabel=ch.kind==='pdf'?(stats.total?'Page '+stats.page+' of '+stats.total:'Page '+stats.page):(stats.total+' paragraph'+(stats.total===1?'':'s'));
     var local=localReadingAvailability(ch),localMarkup='<div class="cover-local '+local.state+'" id="paperLocalStatus" data-paper-id="'+esc(ch.id)+'" data-local-availability="'+local.state+'" role="status"><span class="cover-local-dot" aria-hidden="true"></span><span>'+esc(local.label)+'</span></div>';
-    var drive=binarySourceSpec(ch)?gdrivePaperStatus(ch):null,driveMarkup=drive?'<div class="cover-cloud '+drive.tone+'" id="paperDriveStatus" data-paper-id="'+esc(ch.id)+'" data-backup-status="'+esc(drive.tone)+'" role="status" aria-label="'+esc(drive.label)+'"><span class="cover-cloud-dot" aria-hidden="true"></span><span class="cover-cloud-label">'+esc(drive.label)+'</span><span class="cover-cloud-track" aria-hidden="true"><i style="--cloud-progress:'+drive.progress+'%"></i></span></div>':'';
+    var drive=binarySourceSpec(ch)?gdrivePaperStatus(ch):null,driveMarkup=drive?'<div class="cover-cloud '+drive.tone+'" id="paperDriveStatus" data-paper-id="'+esc(ch.id)+'" data-backup-status="'+esc(drive.tone)+'" role="status" aria-label="'+esc(drive.detail||drive.label)+'" title="'+esc(drive.detail||drive.label)+'"><span class="cover-cloud-dot" aria-hidden="true"></span><span class="cover-cloud-label">'+esc(drive.label)+'</span><span class="cover-cloud-track" aria-hidden="true"><i style="--cloud-progress:'+drive.progress+'%"></i></span></div>':'';
     var detail=document.createElement('div');detail.className='open-book-wrap';detail.id='selectedPaper';detail.setAttribute('aria-live','polite');
     var sourceSpec=binarySourceSpec(ch),downloadMarkup=sourceSpec?'<button class="soft-button download-paper" type="button" title="Original file only; handwriting stays in Phloem and library backups" aria-label="Export original '+esc(sourceSpec.label)+' for '+esc(title)+'">Export original '+(ch.sourceType==='docx'?'Word':'PDF')+'</button>':'',offlineMarkup=ch.kind==='pdf'&&!local.available?'<button class="soft-button download-offline" type="button"'+(local.known?'':' disabled')+'>'+(local.known?'Download for offline':'Checking device…')+'</button>':'';
     detail.innerHTML='<span class="cover-focus-guide" aria-hidden="true"><span>Focus guide</span></span><article class="closed-book" aria-label="Selected paper: '+esc(title)+'">'+renderBookPunches(ch,false)+'<div class="closed-book-inner"><div class="closed-book-kicker">'+esc(kind)+' · field notebook</div><h3 class="closed-book-title'+titleClass+'">'+esc(title)+'</h3><p class="closed-book-byline">'+esc(source)+'</p><div class="tag-row paper-tags">'+(tags.length?tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join(''):'<span class="tag">untagged</span>')+'</div><div class="cover-availability" aria-label="Reading and backup availability">'+localMarkup+driveMarkup+'</div><div class="cover-record"><div class="cover-stat"><span>Marks</span><b>'+stats.notes+'</b></div><div class="cover-stat"><span>Questions</span><b>'+stats.questions+'</b></div><div class="cover-stat"><span>Last opened</span><b>'+esc(openedDate(ch))+'</b></div></div><div class="cover-progress"><div><span>Reading trail</span><span>'+esc(progressLabel)+'</span></div><div class="cover-progress-track"><i style="--paper-progress:'+stats.progress+'%"></i></div></div><div class="cover-actions"><button class="button open-selected" type="button">Continue reading&nbsp; →</button>'+offlineMarkup+downloadMarkup+'<button class="soft-button remove-paper" type="button" aria-label="Remove '+esc(title)+' from library">Remove</button></div></div></article>';
@@ -2493,13 +2514,28 @@
     });
     return best;
   }
+  function pdfMetadataLayout(content){
+    /* Some publisher fonts draw the diaeresis in the next, overlapping text run
+       ("Mu" + "¨ nch"). Compose that glyph only for metadata. Keep the original
+       PDF text items and shared selection offsets exactly as PDF.js supplied them. */
+    var items=(content.items||[]).map(function(item){return Object.assign({},item);});
+    for(var i=1;i<items.length;i++){
+      var previous=items[i-1],item=items[i],a=previous.transform||[],b=item.transform||[],height=+previous.height||Math.abs(+a[3]||0),end=+a[4]+ +previous.width;
+      if(!/[AEIOUYaeiouy]$/.test(previous.str||'')||!/^¨\s*(?=\p{L})/u.test(item.str||''))continue;
+      if(a[1]||a[2]||b[1]||b[2]||previous.fontName!==item.fontName||!height||!Number.isFinite(end))continue;
+      if(Math.abs(+a[5]- +b[5])>height*.25||+b[4]>=end||+b[4]<end-height*.65)continue;
+      previous.str=previous.str.replace(/[AEIOUYaeiouy]$/,function(letter){return(letter+'\u0308').normalize('NFC');});
+      item.str=item.str.replace(/^¨\s*/,'');
+    }
+    return contentLayout(Object.assign({},content,{items:items}));
+  }
   async function derivePdfDetails(doc){
     var details={title:'',authors:''},meta=null,layout=[];
     try{meta=await doc.getMetadata().catch(function(){return null;});}catch(e){}
     var infoTitle=meta&&meta.info&&cleanMetaTitle(meta.info.Title);
     if(infoTitle&&plausibleTitleLength(infoTitle)&&!pdfTitleIsBanner(infoTitle)&&!/untitled|microsoft word|powerpoint|\.pdf$|\.docx?$|\.tex$|^\d+$/i.test(infoTitle))details.title=infoTitle;
     details.authors=metadataAuthorCredit(meta);
-    try{layout=contentLayout(await (await doc.getPage(1)).getTextContent());}catch(e){}
+    try{layout=pdfMetadataLayout(await (await doc.getPage(1)).getTextContent());}catch(e){}
     var pageTitle=guessTitleFromLayout(layout);
     if(!details.title||(pdfTitleLooksGenerated(details.title)&&crediblePageTitle(pageTitle)))details.title=pageTitle;
     var pageAuthors=guessAuthorsFromLayout(layout);
@@ -2543,8 +2579,8 @@
       var probe={kind:'pdf',title:title,sourceName:file.name,sourcePath:sourcePath||'',sourceUrl:sourceUrl||'',pageCount:doc.numPages,fileSize:bytes.byteLength,contentHash:contentHash};
       var existing=findImportedPaper(probe),id=existing?existing.id:uid('p'),keepPromise=keepImportedSource(id,bytes);
       var ch=existing||normalize({id:id,title:title,authors:details.authors||'',kind:'pdf',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now(),readPage:1});
-      if(existing&&titleQuality(probe)>titleQuality(existing))existing.title=title;
-      if(existing&&!String(existing.authors||'').trim()&&details.authors)existing.authors=details.authors;
+      if(existing&&!manualPaperField(existing,'title')&&titleQuality(probe)>titleQuality(existing))existing.title=title;
+      if(existing&&!manualPaperField(existing,'authors')&&!String(existing.authors||'').trim()&&details.authors)existing.authors=details.authors;
       ch.sourceName=file.name;ch.sourcePath=sourcePath||ch.sourcePath||'';ch.sourceUrl=sourceUrl||ch.sourceUrl||'';ch.pageCount=doc.numPages;ch.fileSize=bytes.byteLength;if(contentHash)ch.contentHash=contentHash;ch.updatedAt=now();
       if(!existing)state.chapters.push(ch);persist();renderShelf();if(!stayPut)await openReader(id,doc);if(existing&&!stayPut)showReaderToast('Already in your library — notes kept, local PDF refreshed.');var kept=await keepPromise;if(!kept)showReaderToast('PDF opened, but this browser may not keep it after closing the tab.');imported=true;
     } catch(e){ showError(e.message||'The PDF reader could not open this file.'); }
@@ -2564,7 +2600,7 @@
       var hashPromise=pdfFingerprint(bytes).catch(function(){return '';}),parsed=await parseDocx(bytes,file.name),contentHash=await hashPromise;
       if(!parsed.paragraphs.length)throw new Error('The Word draft does not contain readable manuscript text.');
       var wordDrafts=state.chapters.filter(function(ch){return ch.sourceType==='docx';}),existing=contentHash&&wordDrafts.find(function(ch){return ch.contentHash===contentHash;});if(!existing)existing=wordDrafts.find(function(ch){return identityText(ch.sourceName)===identityText(file.name);});var id=existing?existing.id:uid('w'),keepPromise=keepImportedSource(id,bytes),ch=existing||normalize({id:id,kind:'text',sourceType:'docx',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now(),readPage:1});
-      ch.title=parsed.title||ch.title||filenameTitle(file.name);ch.authors=parsed.authors||ch.authors||'';ch.sourceName=file.name;ch.sourceType='docx';ch.fileSize=bytes.byteLength;if(contentHash)ch.contentHash=contentHash;ch.fr=parsed.paragraphs.join('\n\n');ch.docxParagraphKinds=parsed.kinds;ch.reviewComments=mergeImportedReviewState(parsed.comments,existing&&existing.reviewComments);ch.trackedChanges=parsed.trackedChanges;ch.updatedAt=now();if(ch.reviewComments.length){ch.reviewUpdatedAt=ch.updatedAt;ch.reviewClearedAt=0;}
+      if(!manualPaperField(ch,'title'))ch.title=parsed.title||ch.title||filenameTitle(file.name);if(!manualPaperField(ch,'authors'))ch.authors=parsed.authors||ch.authors||'';ch.sourceName=file.name;ch.sourceType='docx';ch.fileSize=bytes.byteLength;if(contentHash)ch.contentHash=contentHash;ch.fr=parsed.paragraphs.join('\n\n');ch.docxParagraphKinds=parsed.kinds;ch.reviewComments=mergeImportedReviewState(parsed.comments,existing&&existing.reviewComments);ch.trackedChanges=parsed.trackedChanges;ch.updatedAt=now();if(ch.reviewComments.length){ch.reviewUpdatedAt=ch.updatedAt;ch.reviewClearedAt=0;}
       if(!existing)state.chapters.push(ch);persist();renderShelf();updateReviewBadge();var kept=await keepPromise;if(!stayPut){var opened=await openReader(id);if(opened&&currentId===id&&ch.reviewComments.length)revealRevisionDesk();}
       var openCount=ch.reviewComments.filter(function(comment){return !comment.resolved;}).length,changeCount=(ch.trackedChanges.insertions||0)+(ch.trackedChanges.deletions||0);showReaderToast((existing?'Word draft refreshed':'Word draft added')+(openCount?' · '+openCount+' reviewer comment'+(openCount===1?'':'s'):'')+(changeCount?' · '+changeCount+' tracked change'+(changeCount===1?'':'s'):''));if(!kept)showReaderToast('Draft opened, but this browser may not keep the original file after closing the tab.');imported=true;
     }catch(e){showError(e.message||'Phloem could not read this Word draft.','Could not import Word draft');}
@@ -2608,7 +2644,7 @@
   byId('saveTextBtn').onclick=function(){
     var body=byId('textBody').value.trim(); if(!body){ byId('textBody').focus(); return; }
     var ch=editingId ? find(editingId) : normalize({id:uid('t'),kind:'text',notes:{},pageNotes:{},tags:[],questions:[],addedAt:now()});
-    ch.title=byId('textTitle').value.trim()||'Untitled'; ch.authors=byId('textAuthors').value.trim(); ch.fr=body; ch.updatedAt=now();
+    var title=byId('textTitle').value.trim()||'Untitled',authors=byId('textAuthors').value.trim(),edited=[];if(title!==ch.title){ch.titleEditedByUser=true;edited.push('title');}if(authors!==(ch.authors||''))edited.push('authors');ch.title=title;ch.authors=authors;if(edited.length)stampFields(ch,edited);ch.fr=body;ch.updatedAt=now();
     if(!editingId) state.chapters.push(ch); persist(); byId('textDialog').close(); openReader(ch.id);
   };
 
@@ -4288,13 +4324,13 @@
         loadPdfOutline();
         /* Older imports may still wear a filename/publisher code or have no author
            credit. Repair both from the local PDF without replacing a normal title. */
-        if((!ch.titleEditedByUser&&pdfTitleNeedsRepair(ch.title,ch.sourceName))||!String(ch.authors||'').trim()){
+        if((!manualPaperField(ch,'title')&&pdfTitleNeedsRepair(ch.title,ch.sourceName))||(!manualPaperField(ch,'authors')&&!String(ch.authors||'').trim())){
           var titleDoc=pdfDoc,titleId=ch.id,titleBefore=ch.title;
           derivePdfDetails(titleDoc).then(function(details){
             var target=find(titleId);
             if(!target)return;var changed=false,titleChanged=false,authorsChanged=false;
-            if(details.title&&!target.titleEditedByUser&&target.title===titleBefore&&pdfTitleNeedsRepair(target.title,target.sourceName)&&details.title!==target.title){target.title=details.title;changed=titleChanged=true;}
-            if(details.authors&&!String(target.authors||'').trim()){target.authors=details.authors;changed=authorsChanged=true;}
+            if(details.title&&!manualPaperField(target,'title')&&target.title===titleBefore&&pdfTitleNeedsRepair(target.title,target.sourceName)&&details.title!==target.title){target.title=details.title;changed=titleChanged=true;}
+            if(details.authors&&!manualPaperField(target,'authors')&&!String(target.authors||'').trim()){target.authors=details.authors;changed=authorsChanged=true;}
             if(!changed)return;touch(target);
             if(currentId===titleId){byId('readerTitle').textContent=target.title;byId('readerMeta').textContent=target.authors||target.sourceName||'';}
             showReaderToast(titleChanged&&authorsChanged?'Title and authors read from the paper':(authorsChanged?'Authors read from the paper':'Title read from the paper'));
@@ -8805,15 +8841,16 @@
     else if(item&&item.state==='uploading'){label='Uploading to iCloud · '+progress+'%';tone='uploading';}
     else if(item&&item.state==='fetching'){label='Downloading from iCloud · '+progress+'%';tone='fetching';}
     else if(item&&item.state==='queued'){label='iCloud upload pending · '+size;tone='queued';}
-    else if(item&&item.state==='too-large'){label='Not synced · over Phloem’s 200 MB limit';tone='paused';}
+    else if(item&&item.state==='too-large'){label='Not synced to iCloud · over Phloem’s 200 MB limit';tone='paused';}
     else if(item&&item.state==='paused'){label=item.sourceMismatch?'Re-import original to finish iCloud sync':'iCloud transfer paused · tap the cloud to retry';tone='paused';}
     else if(item&&item.state==='missing'){label='Original not in iCloud';tone='paused';}
+    else if(item){label='iCloud transfer paused · tap the cloud to retry';tone='paused';}
     return{label:label,tone:tone,progress:progress};
   }
   function iCloudRefreshPaper(id){
     var box=byId('paperDriveStatus'),ch=find(id);if(!box||box.dataset.paperId!==id||!ch)return;
-    var view=iCloudPaperStatus(ch),label=box.querySelector('.cover-cloud-label'),fill=box.querySelector('.cover-cloud-track i');
-    box.className='cover-cloud '+view.tone;box.dataset.backupStatus=view.tone;box.setAttribute('aria-label',view.label);if(label)label.textContent=view.label;if(fill)fill.style.setProperty('--cloud-progress',view.progress+'%');
+    var view=gdrivePaperStatus(ch),label=box.querySelector('.cover-cloud-label'),fill=box.querySelector('.cover-cloud-track i');
+    box.className='cover-cloud '+view.tone;box.dataset.backupStatus=view.tone;box.setAttribute('aria-label',view.detail||view.label);box.setAttribute('title',view.detail||view.label);if(label)label.textContent=view.label;if(fill)fill.style.setProperty('--cloud-progress',view.progress+'%');
   }
   function iCloudSetDocumentState(id,next){iCloudDocumentStates[id]=next||{};iCloudRefreshPaper(id);}
   async function iCloudUploadSource(ch,stored){
@@ -9015,25 +9052,34 @@
     if(ch.sourceType==='docx')return{name:'docx-'+ch.id+'.docx',mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',label:'Word draft'};return null;
   }
   function gdriveFormatBytes(value){var n=+value||0;if(!n)return 'size unknown';if(n<1048576)return Math.max(1,Math.round(n/1024))+' KB';return(n/1048576).toFixed(n<10485760?1:0)+' MB';}
-  function gdrivePaperStatus(ch){
-    if(window.PHLOEM_NATIVE||iCloudOn())return iCloudPaperStatus(ch);
+  function gdriveOnlyPaperStatus(ch){
     var stateInfo=gdrivePdfStates[ch.id],size=gdriveFormatBytes((stateInfo&&stateInfo.size)||ch.fileSize),label='',tone='local',progress=Math.max(0,Math.min(100,stateInfo?(+stateInfo.progress||0):0));
     if(!gdriveOn())label='Backup not connected · '+size;
     else if(!stateInfo){label='Backup · checking Drive';tone='checking';}
     else if(stateInfo.state==='synced'){label='Synced to Drive · '+size;tone='synced';progress=100;}
     else if(stateInfo.state==='uploading'){label='Backing up to Drive · '+progress+'%';tone='uploading';}
     else if(stateInfo.state==='fetching'){label='Restoring from Drive · '+progress+'%';tone='fetching';}
-    else if(stateInfo.state==='queued'){label='Backup upload pending · '+size;tone='queued';}
+    else if(stateInfo.state==='queued'){label='Backup upload pending in Drive · '+size;tone='queued';}
     else if(stateInfo.state==='remote'){label='Stored in Drive · '+size;tone='synced';progress=100;}
-    else if(stateInfo.state==='too-large'){label='Not backed up · over Phloem’s 200 MB limit';tone='paused';}
+    else if(stateInfo.state==='too-large'){label='Not backed up in Drive · over Phloem’s 200 MB limit';tone='paused';}
     else if(stateInfo.state==='missing'){label='Not backed up in Drive';tone='paused';}
     else{label=stateInfo.sourceMismatch?'Re-import original to finish Drive sync':'Drive transfer paused · tap the cloud to retry';tone='paused';}
     return {label:label,tone:tone,progress:progress};
   }
+  function gdrivePaperStatus(ch){
+    var driveOn=gdriveOn()&&(!window.PHLOEM_NATIVE||!!nativeGooglePlugin()),cloudOn=iCloudOn();
+    if(!driveOn&&!cloudOn)return{label:'Backup not connected · '+gdriveFormatBytes(ch.fileSize),tone:'local',progress:0};
+    if(!driveOn)return iCloudPaperStatus(ch);
+    var drive=gdriveOnlyPaperStatus(ch);if(!cloudOn)return drive;
+    var cloud=iCloudPaperStatus(ch),priority={paused:5,uploading:4,fetching:4,queued:3,checking:2,synced:1,local:0},active=priority[cloud.tone]>priority[drive.tone]?cloud:drive;
+    var summary=active.tone==='paused'?'needs attention':active.tone==='uploading'?'uploading '+active.progress+'%':active.tone==='fetching'?'downloading '+active.progress+'%':active.tone==='queued'?'upload pending':active.tone==='checking'?'checking':'synced';
+    if(drive.label.indexOf('Re-import original')===0||cloud.label.indexOf('Re-import original')===0)summary='re-import original';
+    return{label:'Drive + iCloud · '+summary,detail:drive.label+'; '+cloud.label,tone:active.tone,progress:active.progress};
+  }
   function gdriveSetPdfState(id,next){
     gdrivePdfStates[id]=next||{};var box=byId('paperDriveStatus');if(!box||box.dataset.paperId!==id)return;
     var ch=find(id);if(!ch)return;var view=gdrivePaperStatus(ch),label=box.querySelector('.cover-cloud-label'),fill=box.querySelector('.cover-cloud-track i');
-    box.className='cover-cloud '+view.tone;box.dataset.backupStatus=view.tone;box.setAttribute('aria-label',view.label);if(label)label.textContent=view.label;if(fill)fill.style.setProperty('--cloud-progress',view.progress+'%');
+    box.className='cover-cloud '+view.tone;box.dataset.backupStatus=view.tone;box.setAttribute('aria-label',view.detail||view.label);box.setAttribute('title',view.detail||view.label);if(label)label.textContent=view.label;if(fill)fill.style.setProperty('--cloud-progress',view.progress+'%');
   }
   function gdriveSaveUploads(){
     var fresh={},cutoff=now()-6*86400000;Object.keys(gdriveUploads||{}).forEach(function(id){var item=gdriveUploads[id];if(item&&item.session&&(+item.at||0)>cutoff)fresh[id]=item;});gdriveUploads=fresh;

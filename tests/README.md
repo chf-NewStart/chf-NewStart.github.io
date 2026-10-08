@@ -38,8 +38,14 @@ Move menu, and the note's own Move button still opens the menu.
 `reading-paper-details-sync.test.js` (`node --test`) covers hand-edited paper
 details in the library merge: a rename on one device survives a later highlight
 on another, the later of two renames wins, and category and tags merge the same
-way. It also covers PDF titles that are prepress IDs ("14683958683096 1..16") or
+way. Duplicate cleanup, PDF/Word reimports, and delayed metadata extraction
+preserve manual values and explicit clears; equal-time edits converge. It also
+covers PDF titles that are prepress IDs ("14683958683096 1..16") or
 repository banners ("NIH Public Access") rather than the paper's own title.
+
+`reading-pdf-title-diacritics.test.js` covers metadata-only recovery of an
+overlapping diaeresis in publisher PDF text runs, including the eLife paper's
+"Münch", while preserving original PDF text and selection offsets.
 
 `reading-workspace-paper-edge.test.js` covers the paper beside Workspace on an
 iPad-sized touch screen: the page fits beside the Zen dock instead of under it,
@@ -68,6 +74,11 @@ uploads, in-flight imports, replacement-byte races, silent native Google renewal
 and recoverable transfer failures. `reading-sync-quiet.test.js` checks bounded
 retries, foreground/online refresh, and waiting for Pencil lift even past the
 normal sync deadline. These tests do not connect to a real cloud account.
+
+`reading-cloud-provider-status.test.js` covers Drive-only, iCloud-only, and
+combined per-paper status on native and browser clients. Disabled providers
+cannot show stale success, and failures or pending work remain visible when
+another provider has finished.
 
 `reading-pdf-links.test.js` covers real pointer hit-testing for PDF annotations,
 phone-sized superscript citations, safe external URLs, blocked script actions,
@@ -197,6 +208,8 @@ node tests/reading-library-stack.test.js
 node tests/reading-library-list.test.js
 node tests/reading-library-long-press.test.js
 node --test tests/reading-paper-details-sync.test.js
+node --test tests/reading-pdf-title-diacritics.test.js
+node --test tests/reading-cloud-provider-status.test.js
 node tests/reading-workspace-paper-edge.test.js
 node tests/reading-library-thinking-search.test.js
 node tests/reading-find-highlight.test.js

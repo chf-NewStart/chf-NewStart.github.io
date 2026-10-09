@@ -784,6 +784,14 @@
     for(var i=0;i<abbrs.length;i++){if(!/[A-Z].*[A-Z]|^[A-Z]{2}/.test(abbrs[i]))continue;var full=paperAbbreviation(ch,abbrs[i]);if(full)return{abbr:abbrs[i],full:full,term:term.replace(new RegExp('\\b'+abbrs[i]+'\\b'),full)};}
     return null;
   }
+  /* Before LOOKUP_V 2 short words were dropped, so only a saved Wikipedia answer for a
+     term containing one (EC, pH, K) can be the wrong article. Those are looked up again;
+     every other saved answer, and any AI explanation, is kept rather than refetched. */
+  function savedLookupTrusted(term,saved){
+    if(!saved)return false;if(saved.lookupV===LOOKUP_V||saved.source==='ai')return true;
+    var oldTokens=String(term||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim().split(/\s+/).filter(function(t){return t.length>2;});
+    return lookupTokens(term).every(function(t){return oldTokens.indexOf(t)>=0;});
+  }
   async function wikipediaEntry(term){
     var data=await lookupJson('https://en.wikipedia.org/w/api.php',{action:'query',format:'json',formatversion:'2',origin:'*',generator:'search',gsrsearch:term,gsrnamespace:'0',gsrlimit:'6',prop:'extracts|pageimages|info',exintro:'1',explaintext:'1',exchars:'700',piprop:'thumbnail|name',pithumbsize:'720',pilicense:'free',inprop:'url'});
     var normalized=term.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim(),tokens=lookupTokens(term),pages=data&&data.query&&data.query.pages||[];
@@ -822,8 +830,7 @@
   async function loadLookup(term,serial,context){
     var ch=find(currentId),termKey=term.toLocaleLowerCase(),key=String(currentId||'')+'|'+termKey;
     try{
-      // Lookups saved before LOOKUP_V may hold an unrelated article; look those up again.
-      var memoryHit=Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)&&ch.termLookups[termKey]&&ch.termLookups[termKey].lookupV===LOOKUP_V);
+      var memoryHit=Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)&&savedLookupTrusted(term,ch.termLookups[termKey]));
       // A PDF opened only in paper view may have extracted its visible page but not
       // the page where the authors first spelled out EC. Finish the same page-text
       // build Find uses before deciding that the abbreviation has no definition.

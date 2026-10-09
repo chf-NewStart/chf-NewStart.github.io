@@ -90,3 +90,14 @@ test('Define reads a PDF-only paper before resolving an abbreviation', async () 
   assert.equal(shown?.title, 'Electrical conductivity meter');
   assert.deepEqual(queries, ['Solution electrical conductivity', 'electrical conductivity']);
 });
+
+test('answers saved before the fix are kept unless a short word could have been dropped', () => {
+  const { context } = harness(() => []);
+  const old = { title: 'Alpha definition', source: 'wikipedia' };
+  assert.equal(context.savedLookupTrusted('alpha', old), true, 'nothing was dropped from "alpha"');
+  assert.equal(context.savedLookupTrusted('beta gamma', old), true);
+  assert.equal(context.savedLookupTrusted('Solution EC', { title: 'Ammonia solution', source: 'wikipedia' }), false, '"EC" was dropped before');
+  assert.equal(context.savedLookupTrusted('Solution EC', { title: 'Electrical conductivity meter', source: 'wikipedia', lookupV: 2 }), true);
+  assert.equal(context.savedLookupTrusted('pH', { title: 'Acidity', source: 'ai' }), true, 'an AI explanation read the paper itself');
+  assert.equal(context.savedLookupTrusted('alpha', null), false);
+});

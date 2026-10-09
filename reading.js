@@ -3274,7 +3274,7 @@
     document.body.classList.remove('zen-idle');clearTimeout(zenIdleTimer);
     zenIdleTimer=setTimeout(function(){
       var dock=byId('zenDock');
-      if(!zenOn||zenDockPointerId!==null||dock.classList.contains('popout-open')||dock.classList.contains('find-open')||dock.querySelector(':focus-visible'))return;
+      if(!zenOn||zenDockPointerId!==null||dock.classList.contains('popout-open')||dock.classList.contains('find-open')||dock.querySelector(':focus-visible')||byId('zenLayoutTip')&&!byId('zenLayoutTip').classList.contains('hidden'))return;
       document.body.classList.add('zen-idle');
     },3200);
   }
@@ -3298,6 +3298,17 @@
   }
   function dropZenWake(){if(zenWakeLock){zenWakeLock.release().catch(function(){});zenWakeLock=null;}}
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){zenWake();holdZenWake();}else zenDockPointerId=null;});
+  /* The layout control fades with the rail like every other circle, so the first Zen
+     visit names it once. The tip lets taps through and leaves on the next one. */
+  var ZEN_LAYOUT_TIP_KEY='readingRoom.zenLayoutTip.v1';
+  function showZenLayoutTipOnce(){
+    var tip=byId('zenLayoutTip'),button=byId('zenLayout');
+    if(!zenOn||!tip||!button||!button.getClientRects().length)return;
+    try{if(localStorage.getItem(ZEN_LAYOUT_TIP_KEY))return;localStorage.setItem(ZEN_LAYOUT_TIP_KEY,'1');}catch(e){return;}
+    tip.classList.remove('hidden');zenWake();
+    var timer=0,hide=function(){clearTimeout(timer);document.removeEventListener('pointerdown',hide,true);tip.classList.add('hidden');zenWake();};
+    timer=setTimeout(hide,6000);document.addEventListener('pointerdown',hide,true);
+  }
   function setZen(on,options){
     options=options||{};
     zenOn=!!on;document.body.classList.toggle('zen',zenOn);
@@ -3306,8 +3317,9 @@
     /* Find can remain open while the surrounding chrome changes. Keep Escape's
        return point on a control that is actually visible in the new mode. */
     if(!byId('findBar').classList.contains('hidden'))findReturnFocus=visibleFindReturnTarget(zenOn?byId('zenMore'):null);
-    if(zenOn){zenWake();holdZenWake();}
-    else{zenDockPointerId=null;closeZenPopouts(false);clearTimeout(zenIdleTimer);document.body.classList.remove('zen-idle');dropZenWake();}
+    // The hint waits for Zen to settle; a frame callback here would compete with the refit.
+    if(zenOn){zenWake();holdZenWake();setTimeout(showZenLayoutTipOnce,600);}
+    else{var layoutTip=byId('zenLayoutTip');if(layoutTip)layoutTip.classList.add('hidden');zenDockPointerId=null;closeZenPopouts(false);clearTimeout(zenIdleTimer);document.body.classList.remove('zen-idle');dropZenWake();}
     if(zenOn){toggleSheet(false);byId('readerPage').classList.remove('show-tools');byId('mMore').setAttribute('aria-expanded','false');}
     if(!zenOn&&zenViaFullscreen){zenViaFullscreen=false;if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});}
     if(options.refit!==false)requestAnimationFrame(function(){

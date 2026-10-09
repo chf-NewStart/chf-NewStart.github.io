@@ -36,6 +36,11 @@ the selection (EC, pH, K) must appear in the article offered, so "Solution EC" c
 longer be answered with "Ammonia solution", and the paper's own spelling of an
 abbreviation ("electrical conductivity (EC)") is found and looked up instead.
 
+`reading-zen-layout-icon.test.js` covers Zen's page-layout control: a 44px rail circle
+whose icon is the current layout (no "Scroll" label or chevron), an accessible label that
+names the layout, the same resting fade as the other circles, and a hint that names the
+control on the first Zen visit only. Its fixture PDF is written by hand (no pdf-lib).
+
 `reading-pdf-find-contents.test.js` covers a guide read only as a PDF: Find searches
 every page without Reader view having run first, and a mouse click on a contents
 entry goes to that page while Backspace returns. Its fixture PDF is written by hand,
@@ -224,6 +229,7 @@ node tests/reading-library-list.test.js
 node tests/reading-library-long-press.test.js
 node --test tests/reading-define-lookup.test.js
 node tests/reading-pdf-find-contents.test.js
+node tests/reading-zen-layout-icon.test.js
 node --test tests/reading-paper-details-sync.test.js
 node --test tests/reading-pdf-title-diacritics.test.js
 node --test tests/reading-cloud-provider-status.test.js

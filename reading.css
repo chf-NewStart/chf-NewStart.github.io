@@ -1011,8 +1011,12 @@
     .zen-tool { position: relative; display: flex; justify-content: flex-end; }
     .zen-exit { position: relative; z-index: 2; width: 44px; height: 44px; padding: 0; display: flex; flex: 0 0 44px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease, color .2s ease, background .2s ease; }
     .zen-popout { position: absolute; z-index: 1; top: 50%; right: calc(100% + 9px); min-height: 50px; transform: translateY(-50%); border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
-    .zen-layout { width: 86px; flex-basis: 86px; gap: 5px; padding: 0 10px; border-radius: 14px; color: var(--ink); font: 650 .75rem/1 var(--sans); }
-    .zen-layout-chevron { width: 14px; height: 14px; flex: none; }
+    /* The layout control is a circle like the rest of the rail. Its icon shows the current
+       layout; the menu keeps the words, and the button's label names the layout for VoiceOver. */
+    .zen-layout :is(#zenLayoutLabel, .zen-layout-chevron) { display: none; }
+    #zenLayoutIcon { display: flex; }
+    #zenLayoutIcon svg { width: 20px; height: 20px; }
+    .zen-layout-tip { position: absolute; z-index: 3; top: 50%; right: calc(100% + 9px); margin: 0; padding: 8px 12px; transform: translateY(-50%); border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: 0 10px 30px rgba(20,24,25,.16); color: var(--ink); font: 650 .72rem/1.2 var(--sans); white-space: nowrap; pointer-events: none; }
     .zen-layout-menu { width: 142px; display: flex; flex-direction: column; gap: 3px; padding: 5px; }
     .zen-layout-menu .zen-popout-option { width: 100%; justify-content: flex-start; gap: 10px; font-size: .75rem; }
     .zen-layout-menu svg { width: 20px; height: 20px; flex: none; }
@@ -1050,14 +1054,8 @@
        of themselves, video-player style, and any movement or touch wakes them. They
        stay tappable while faded so one tap still exits — never a wake-then-tap dance. */
     body.zen.zen-idle .zen-exit { opacity: .08; }
-    /* The current layout is a quiet, readable anchor even when the rail rests. */
-    body.zen #zenLayout { opacity: .88; }
-    body.zen.zen-idle #zenLayout { opacity: .5; }
     body.zen #zenLayout:is(:focus-visible,:active), body.zen #zenLayout[aria-expanded="true"] { opacity: 1; }
     body.zen .zen-dock:focus-within .zen-exit:focus-visible { opacity: 1; }
-    @media (hover: hover) {
-      body.zen #zenLayout:hover { opacity: 1; }
-    }
     body.zen .zen-dock.popout-open > .zen-exit, body.zen .zen-dock.find-open > .zen-exit, body.zen.zen-idle .zen-dock > .zen-tool.popout-open > .zen-exit { opacity: .72; }
     .zen-tool.popout-open > .zen-exit { border-color: color-mix(in srgb, var(--accent) 36%, var(--line)); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--ink); }
     body.zen.zen-idle .zen-action-menu .zen-menu-action:not(:disabled) { opacity: 1; }

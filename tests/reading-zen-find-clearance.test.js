@@ -83,8 +83,8 @@ function clearOf(a, b) { return a.right <= b.left || a.left >= b.right || a.bott
       const controlsContained = [geometry.input, ...geometry.buttons].every(control => control.left >= geometry.bar.left && control.right <= geometry.bar.right && control.top >= geometry.bar.top && control.bottom <= geometry.bar.bottom);
       const paperContained = !size.workspace || geometry.bar.right <= geometry.pane.right;
       if (!size.workspace) {
-        assert.equal(geometry.rail.find(control => control.id === 'zenLayout').width, 86, 'full-page Zen retains the readable layout pill');
-        assert.equal(await page.locator('#zenLayoutLabel').textContent(), 'Scroll');
+        assert.equal(geometry.rail.find(control => control.id === 'zenLayout').width, 44, 'the layout control is a rail circle like the others');
+        assert.match(await page.locator('#zenLayout').getAttribute('aria-label'), /Page layout: Scroll/);
       }
       console.log((contained && clearance && targets && controlsContained && paperContained ? 'PASS' : 'FAIL') + ' ' + name + ' ' + JSON.stringify(geometry));
       if (!(contained && clearance && targets && controlsContained && paperContained)) failures.push(name);

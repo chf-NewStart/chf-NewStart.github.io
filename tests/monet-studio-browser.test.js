@@ -1,8 +1,11 @@
 /* Monet studio, end to end: the real /monet/ page and the real Worker (with
-   in-memory quota storage and a fake OpenAI behind it). A visitor picks a photo, watches partial
-   images arrive, downloads the painting, compares it with the photo, switches
-   language, meets the daily limit, and on a phone nothing overflows. Without
-   a Worker URL the page keeps the personal request flow. */
+   in-memory quota storage and a fake OpenAI behind it). A visitor picks a
+   photo, watches partial images arrive, downloads the painting, compares it
+   with the photo, switches language mid-painting, meets a refusal, a refunded
+   failure, and the daily limit; a slow photo can't be double-submitted; a
+   dropped connection after the painting arrived still delivers it; and on a
+   phone nothing overflows. Without a Worker URL the page keeps the personal
+   request flow. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -16,6 +19,7 @@ const SHOTS = process.env.MONET_STUDIO_SHOTS || '';
 const ORIGIN = `http://localhost:${PORT}`;
 const SKILL = 'https://skill.test/';
 const PHOTO = path.join(ROOT, 'assets/monet-light-strokes/original-water-duck.jpg');
+const TINY = path.join(ROOT, 'favicon_io/tomato-favicon-16x16.png');
 const base64 = (file) => fs.readFileSync(path.join(ROOT, 'assets/monet-light-strokes', file)).toString('base64');
 const PARTIALS = [base64('original-water-duck.jpg'), base64('water-duck-approved.jpg')];
 const FINAL = base64('water-duck-approved.jpg');
@@ -29,7 +33,7 @@ const env = {
   ALLOWED_ORIGINS: ORIGIN,
   OPENAI_API_KEY: 'sk-test',
   OPENAI_IMAGE_MODEL: 'gpt-image-2',
-  DAILY_LIMIT_PER_VISITOR: '2',
+  DAILY_LIMIT_PER_VISITOR: '3',
   DAILY_LIMIT_TOTAL: '25',
   SKILL_BASE_URL: SKILL,
   QUOTA: null
@@ -52,7 +56,7 @@ async function bridge(request, response, subpath) {
   const chunks = [];
   for await (const chunk of request) chunks.push(chunk);
   const headers = new Headers({ Origin: request.headers.origin || ORIGIN, 'CF-Connecting-IP': '198.51.100.4' });
-  if (request.headers['content-type']) headers.set('Content-Type', request.headers['content-type']);
+  for (const name of ['content-type', 'content-length']) if (request.headers[name]) headers.set(name, request.headers[name]);
   const result = await worker.default.fetch(new Request(`https://monet-studio.test${subpath}`, {
     method: request.method,
     headers,
@@ -68,7 +72,7 @@ const server = http.createServer((request, response) => {
   const url = decodeURIComponent(request.url.split('?')[0]);
   if (url.startsWith('/__studio')) {
     bridge(request, response, url.slice('/__studio'.length) || '/').catch((error) => {
-      console.error(error);
+      if (!/connection dropped/.test(error?.message)) console.error(error);
       response.destroy();
     });
     return;
@@ -76,7 +80,8 @@ const server = http.createServer((request, response) => {
   const file = path.join(ROOT, url.endsWith('/') ? `${url}index.html` : url);
   fs.readFile(file, (error, data) => {
     if (error) { response.writeHead(404); response.end(); return; }
-    if (url === '/monet/' && withEndpoint) data = Buffer.from(String(data).replace('data-endpoint=""', 'data-endpoint="/__studio"'));
+    // Whatever URL main holds, the test page talks to the in-process Worker.
+    if (url === '/monet/') data = Buffer.from(String(data).replace(/data-endpoint="[^"]*"/, withEndpoint ? 'data-endpoint="/__studio"' : 'data-endpoint=""'));
     response.setHeader('content-type', types[path.extname(file)] || 'application/octet-stream');
     response.end(data);
   });
@@ -115,7 +120,7 @@ async function run() {
 
     await page.click('[data-studio-open]');
     assert.ok(await page.locator('#monetStudio').evaluate((dialog) => dialog.open), 'dialog opens');
-    await page.waitForFunction(() => document.querySelector('[data-studio-left]').textContent.includes('2 paintings left'));
+    await page.waitForFunction(() => document.querySelector('[data-studio-left]').textContent.includes('3 paintings left'));
     await shot(page, 'studio-1-pick');
 
     await choosePhoto(page);
@@ -143,7 +148,7 @@ async function run() {
     assert.equal(done.name, 'original-water-duck-monet-light-strokes.jpg');
     assert.match(done.alt, /Monet Light Strokes/);
     assert.match(done.status, /Finished/);
-    assert.match(done.left, /1 painting left/);
+    assert.match(done.left, /2 paintings left/);
     await shot(page, 'studio-4-done');
 
     // What the Worker sent to OpenAI: the downscaled JPEG and a matching canvas.
@@ -156,7 +161,8 @@ async function run() {
 
     // Compare with the original photo.
     await page.click('[data-studio-compare]');
-    assert.equal(await page.locator('[data-studio-compare]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('[data-studio-compare]').getAttribute('aria-pressed'), null, 'the label carries the state');
+    assert.ok(await page.locator('[data-studio-compare]').evaluate((button) => button.classList.contains('is-on')));
     await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-studio-photo]')).opacity === '1');
     assert.equal(await page.locator('[data-studio-compare]').textContent(), 'Show the painting');
     await page.click('[data-studio-compare]');
@@ -168,7 +174,14 @@ async function run() {
     await page.evaluate(() => document.getElementById('languageToggle').click());
     assert.equal(await page.locator('[data-studio-download]').textContent(), 'Download painting');
 
-    // A refusal from OpenAI's safety system is explained and costs no turn.
+    // A new photo that can't be used doesn't cost the painting already made.
+    await page.locator('[data-studio-file]').setInputFiles(TINY);
+    await page.waitForFunction(() => document.querySelector('[data-studio-status]').textContent.includes('too small'));
+    assert.ok(await visible(page, '[data-studio-download]'), 'the painting can still be downloaded');
+    assert.equal(await page.locator('[data-studio-painting]').getAttribute('src'), done.src);
+    assert.ok(await page.locator('[data-studio-status]').evaluate((status) => status.classList.contains('is-error')));
+
+    // A refusal from OpenAI's safety system is explained, and spends the turn.
     openai = () => new Response(JSON.stringify({ error: { code: 'moderation_blocked', message: 'rejected by the safety system' } }), { status: 400 });
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('[data-studio-again]')]);
     await chooser.setFiles(PHOTO);
@@ -179,19 +192,39 @@ async function run() {
     assert.match(await page.locator('[data-studio-status]').textContent(), /safety check/);
     assert.ok(await visible(page, '[data-studio-personal]'), 'personal route offered after an error');
     assert.ok(!(await visible(page, '[data-studio-retry]')), 'a blocked photo is not retried as is');
+    await page.waitForFunction(() => document.querySelector('[data-studio-left]').textContent.includes('1 painting left'));
 
-    // A failure mid-stream can be retried.
+    // While a newly chosen photo is still decoding, nothing can start a painting.
+    await page.evaluate(() => {
+      const original = window.createImageBitmap;
+      window.createImageBitmap = (...args) => new Promise((resolve) => setTimeout(resolve, 800)).then(() => original(...args));
+      window.restoreBitmap = () => { window.createImageBitmap = original; };
+    });
+    await page.locator('[data-studio-file]').setInputFiles(PHOTO);
+    assert.equal(await page.locator('[data-studio-status]').textContent(), 'Opening your photo…');
+    for (const control of ['start', 'retry', 'again']) assert.ok(!(await visible(page, `[data-studio-${control}]`)), `${control} hidden while preparing`);
+    await page.locator('[data-studio-start]').waitFor({ state: 'visible' });
+    await page.evaluate(() => window.restoreBitmap());
+
+    // A failure mid-stream is given back and can be retried.
     openai = () => sseResponse([[{ type: 'response.created', response: {} }], [{ type: 'response.failed', response: { error: { code: 'server_error', message: 'boom' } } }, 100]]);
-    await choosePhoto(page);
     await page.click('[data-studio-start]');
     await page.waitForFunction(() => document.querySelector('[data-studio-status]').classList.contains('is-error'));
     assert.match(await page.locator('[data-studio-status]').textContent(), /couldn’t finish/);
     assert.ok(await visible(page, '[data-studio-retry]'), 'retry offered');
+    await page.waitForFunction(() => document.querySelector('[data-studio-left]').textContent.includes('1 painting left'));
 
-    // Second real painting uses the last turn; the next is turned away kindly.
-    openai = () => sseResponse(paintingEvents(PARTIALS, FINAL));
+    // The retry uses the last turn. Switching language mid-painting relabels
+    // the stage at once.
+    openai = () => sseResponse(paintingEvents(PARTIALS, FINAL, 400));
     await page.click('[data-studio-retry]');
+    await page.waitForFunction(() => /^(Reading the light|Laying in the masses|Painting|Underpainting) · /.test(document.querySelector('[data-studio-stage]').textContent));
+    await page.evaluate(() => document.getElementById('languageToggle').click());
+    assert.match(await page.locator('[data-studio-stage]').textContent(), /^[\u4e00-\u9fff]+ · \d:\d\d$/);
+    await page.evaluate(() => document.getElementById('languageToggle').click());
     await page.locator('[data-studio-download]').waitFor({ state: 'visible', timeout: 15000 });
+
+    // The next one is turned away kindly.
     await choosePhoto(page);
     await page.click('[data-studio-start]');
     await page.waitForFunction(() => document.querySelector('[data-studio-status]').classList.contains('is-error'));
@@ -223,7 +256,29 @@ async function run() {
     assert.ok(fit.scroll <= 0 && fit.page <= 0, `no horizontal scroll: ${JSON.stringify(fit)}`);
     assert.ok(fit.frameRight <= fit.right, 'frame stays inside the dialog');
     await shot(phone, 'studio-7-phone-ready');
+
+    // The connection drops right after the painting arrives: it is still shown.
+    openai = () => sseResponse([
+      [{ type: 'response.created', response: {} }],
+      [{ type: 'response.output_item.done', item: { type: 'image_generation_call', status: 'completed', result: FINAL } }, 200],
+      [{ drop: true }, 600]      // after the bytes already sent have arrived
+    ]);
+    await phone.click('[data-studio-start]');
+    await phone.locator('[data-studio-download]').waitFor({ state: 'visible', timeout: 15000 });
+    assert.match(await phone.locator('[data-studio-status]').textContent(), /Finished/);
+    await shot(phone, 'studio-8-phone-done');
     await phone.close();
+
+    // With no OpenAI key on the Worker, the studio says it is closed up front.
+    const key = env.OPENAI_API_KEY;
+    delete env.OPENAI_API_KEY;
+    const closed = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    closed.on('pageerror', (error) => errors.push(error.message));
+    await closed.goto(`${ORIGIN}/monet/#studio`, { waitUntil: 'networkidle' });
+    await closed.waitForFunction(() => document.querySelector('[data-studio-status]').textContent.includes('closed for now'));
+    assert.ok(await visible(closed, '[data-studio-personal]'), 'personal route offered while closed');
+    await closed.close();
+    env.OPENAI_API_KEY = key;
 
     // No Worker configured: the page is exactly the personal request flow.
     withEndpoint = false;

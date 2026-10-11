@@ -175,11 +175,13 @@
         </section>
     </main>
 
-    <!-- Self-serve studio. Put the deployed monet-studio Worker URL in
-         data-endpoint (see /monet-studio/README.md). While it is empty the
-         page keeps the personal request flow and never shows the studio. A
-         Worker on a domain other than *.workers.dev also has to be added to
-         connect-src in the Content-Security-Policy at the top of this file. -->
+    <!-- Self-serve studio. data-endpoint holds the monet-studio Worker URL;
+         the "Deploy Monet studio" workflow fills it in (see
+         /monet-studio/README.md). While it is empty the page keeps the
+         personal request flow and never shows the studio. Clearing it only
+         hides the button; to stop spending, see the README. A Worker on a
+         domain other than *.workers.dev also has to be added to connect-src
+         in the Content-Security-Policy above. -->
     <dialog class="monet-studio" id="monetStudio" aria-labelledby="monetStudioTitle" data-endpoint="">
         <div class="monet-studio-sheet">
             <header class="monet-studio-head">
@@ -211,7 +213,7 @@
                 <button class="cta-button monet-studio-primary" type="button" data-studio-start hidden></button>
                 <a class="cta-button monet-studio-primary" data-studio-download hidden></a>
                 <button class="cta-button monet-studio-primary" type="button" data-studio-retry hidden></button>
-                <button class="monet-studio-secondary" type="button" data-studio-compare aria-pressed="false" hidden></button>
+                <button class="monet-studio-secondary" type="button" data-studio-compare hidden></button>
                 <button class="monet-studio-secondary" type="button" data-studio-again hidden></button>
                 <a class="text-link" href="https://www.dropbox.com/request/1gfnide4h2a3dvbmuhe4" target="_blank" rel="noopener noreferrer" data-studio-personal hidden></a>
             </div>

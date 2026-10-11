@@ -282,9 +282,12 @@ the PDF checks also require the browser dependencies described above.
 `monet-studio-worker.test.mjs`, `monet-studio-workerd.test.mjs`, and
 `monet-studio-browser.test.js` are site tests for the self-serve Monet studio.
 The first runs `monet-studio/src/worker.js` and its `PaintQuota` Durable Object
-over in-memory storage with a fake OpenAI: allowed origins, the per-visitor and
-total daily allowance, refunds when OpenAI refuses or fails mid-stream, the
-skill-based request, and canvas sizing. The second runs the same Worker in
+over in-memory storage with a fake OpenAI. It covers:
+allowed origins; the per-visitor and total daily allowance; free refunds for
+failures before OpenAI starts; at most one mid-stream refund per visitor and
+five per day; refusals and delivered paintings never refunded; owner-side
+problems reported as "closed"; the upload cap for chunked bodies; visitor IDs
+that cannot be reversed; the skill-based request; and canvas sizing. The second runs the same Worker in
 Cloudflare's runtime through `wrangler dev` (`npx wrangler@4`, or the binary in
 `MONET_WRANGLER`). The third drives `/monet/` in Chromium through the Worker:
 choosing a photo, partial previews, download, compare, language switch, the

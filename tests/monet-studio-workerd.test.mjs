@@ -69,7 +69,7 @@ before(async () => {
     OPENAI_BASE_URL: `http://127.0.0.1:${FAKE_PORT}/v1`,
     SKILL_BASE_URL: `http://127.0.0.1:${FAKE_PORT}/skill/`,
     ALLOWED_ORIGINS: ORIGIN,
-    DAILY_LIMIT_PER_VISITOR: '2'
+    DAILY_LIMIT_PER_VISITOR: '4'
   };
   const [command, ...prefix] = process.env.MONET_WRANGLER ? [process.env.MONET_WRANGLER] : ['npx', '--yes', 'wrangler@4'];
   wrangler = spawn(command, [...prefix, 'dev', '--local', '--ip', '127.0.0.1', '--port', String(WORKER_PORT),
@@ -105,48 +105,56 @@ test('in workerd: origins, preflight, and the starting allowance', async () => {
   assert.equal((await call('GET', '/', { origin: 'https://evil.example' })).status, 403);
   const preflight = await call('OPTIONS', '/paint');
   assert.equal(preflight.headers.get('access-control-allow-origin'), ORIGIN);
-  assert.equal(await left(), 2);
+  assert.equal(await left(), 4);
 });
 
 test('in workerd: a painting streams through whole and spends a turn', async () => {
   respond = painting;
   const response = await paint();
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('x-paintings-left'), '1');
+  assert.equal(response.headers.get('x-paintings-left'), '3');
   const text = await response.text();
   assert.ok(text.includes(`"result":"${FINAL}"`), 'the full painting arrives intact');
-  assert.equal(await left(), 1);
+  assert.equal(await left(), 3);
 
   const [sent] = requests.slice(-1);
   assert.equal(sent.url, '/v1/responses');
   assert.equal(sent.auth, 'Bearer sk-workerd-test');
   assert.ok(sent.body.instructions.includes('# fake skill SKILL.md'), 'skill fetched from SKILL_BASE_URL');
+  assert.ok(sent.body.input[0].content[1].image_url.startsWith('data:image/jpeg;base64,/9j/'), 'photo spliced in');
   assert.equal(sent.body.tools[0].size, '1088x1456');   // the photo's 3:4 portrait shape
+  assert.equal(sent.body.max_tool_calls, 1);
+  assert.match(sent.body.safety_identifier, /^[0-9a-f]{24}$/);
   assert.equal(sent.body.store, false);
 });
 
-test('in workerd: refusals and mid-stream failures give the turn back', async () => {
+test('in workerd: a refusal spends the turn; a mid-stream failure is given back once', async () => {
   respond = () => [400, JSON.stringify({ error: { code: 'moderation_blocked', message: 'safety system' } })];
   const blocked = await paint();
   assert.equal(blocked.status, 422);
-  assert.equal(await left(), 1);
+  assert.equal(await left(), 2);
 
-  respond = () => [200, sse([
+  const failing = () => [200, sse([
     { type: 'response.created', response: { instructions: 'x'.repeat(100_000) } },
     { type: 'response.image_generation_call.partial_image', partial_image_index: 0, partial_image_b64: 'P'.repeat(400_000) },
     { type: 'response.failed', response: { instructions: 'x'.repeat(100_000), error: { code: 'server_error' } } }
   ])];
-  const failed = await paint();
-  assert.equal(failed.status, 200);
-  await failed.text();
-  assert.equal(await left(), 1);
+  respond = failing;
+  await (await paint()).text();
+  assert.equal(await left(), 2, 'first mid-stream failure refunded');
+  await (await paint()).text();
+  assert.equal(await left(), 1, 'second one is not');
 });
 
-test('in workerd: the Durable Object enforces the daily limit', async () => {
-  respond = painting;
-  assert.equal((await paint()).status, 200);
+test('in workerd: a delivered painting is never refunded, and the limit holds', async () => {
+  respond = () => [200, sse([
+    { type: 'response.image_generation_call.completed', item_id: 'ig' },
+    { type: 'response.output_item.done', item: { type: 'image_generation_call', status: 'completed', result: FINAL } },
+    { type: 'response.incomplete', response: { incomplete_details: { reason: 'max_output_tokens' } } }
+  ])];
+  await (await paint()).text();
+  assert.equal(await left(), 0);
   const refused = await paint();
   assert.equal(refused.status, 429);
   assert.deepEqual(await refused.json(), { error: 'limit', scope: 'visitor' });
-  assert.equal(await left(), 0);
 });

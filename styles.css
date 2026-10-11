@@ -2649,7 +2649,7 @@ html:has(.monet-studio[open]) {
     background: rgba(226, 192, 140, 0.1);
 }
 
-.monet-studio-secondary[aria-pressed="true"] {
+.monet-studio-secondary.is-on {
     border-color: #e2c08c;
     background: rgba(226, 192, 140, 0.16);
 }

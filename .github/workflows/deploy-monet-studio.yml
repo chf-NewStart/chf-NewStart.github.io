@@ -1,0 +1,113 @@
+name: Deploy Monet studio
+
+# Deploys the monet-studio Worker to Cloudflare, gives it the OpenAI key, and
+# points /monet/ at it, so the "Paint my photo" studio goes live. One-time
+# setup (two repository secrets) is in monet-studio/README.md.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'monet-studio/**'
+      - '.github/workflows/deploy-monet-studio.yml'
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: deploy-monet-studio
+  cancel-in-progress: false
+
+env:
+  WRANGLER_VERSION: 4.149.0
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check the secrets are set
+        id: secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$OPENAI_API_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "::error::Add the CLOUDFLARE_API_TOKEN and OPENAI_API_KEY repository secrets first. See monet-studio/README.md."
+            exit 1
+          else
+            echo "::notice::Monet studio not deployed: the CLOUDFLARE_API_TOKEN and OPENAI_API_KEY secrets are not set yet."
+          fi
+
+      - name: Install Wrangler
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/wrangler" "wrangler@$WRANGLER_VERSION"
+          echo "MONET_WRANGLER=$RUNNER_TEMP/wrangler/node_modules/.bin/wrangler" >> "$GITHUB_ENV"
+
+      - name: Test the Worker in Node and in Cloudflare's runtime
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          node --test tests/monet-studio-worker.test.mjs
+          node --test tests/monet-studio-workerd.test.mjs
+
+      - name: Deploy the Worker and give it the OpenAI key
+        id: deploy
+        if: steps.secrets.outputs.ready == 'true'
+        working-directory: monet-studio
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          set -o pipefail
+          if [ -n "$ACCOUNT_ID" ]; then export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"; fi
+          "$MONET_WRANGLER" deploy 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          printf '%s' "$OPENAI_API_KEY" | "$MONET_WRANGLER" secret put OPENAI_API_KEY
+          url=$(grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          if [ -n "$url" ]; then
+            echo "Monet studio Worker: $url" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Deployed, but no workers.dev URL appeared in Wrangler's output. Put the Worker's URL in data-endpoint in monet/index.html by hand."
+          fi
+
+      - name: Point /monet/ at the Worker
+        if: steps.deploy.outputs.url != '' && github.ref == 'refs/heads/main'
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          want="data-endpoint=\"$URL\""
+          if grep -qF "$want" monet/index.html; then
+            echo "/monet/ already uses $URL."
+            exit 0
+          fi
+          sed -i -E "s#data-endpoint=\"[^\"]*\"#$want#" monet/index.html
+          grep -qF "$want" monet/index.html
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add monet/index.html
+          git commit -m "Point the Monet studio at its Worker"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push origin main && echo "changed=true" >> "$GITHUB_ENV" && exit 0
+            sleep $((attempt * 10))
+          done
+          exit 1
+
+      - name: Nudge GitHub Pages to rebuild
+        if: success() && env.changed == 'true'
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" || true

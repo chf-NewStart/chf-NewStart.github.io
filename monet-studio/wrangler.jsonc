@@ -3,11 +3,14 @@
   "name": "monet-studio",
   "main": "src/worker.js",
   "compatibility_date": "2026-08-27",
+  "workers_dev": true,
   "observability": {
     "enabled": true
   },
   "vars": {
     "ALLOWED_ORIGINS": "https://houfu72.com,https://www.houfu72.com,https://chf-newstart.github.io",
+    // Point at a Cloudflare AI Gateway URL here to get request logs and analytics.
+    "OPENAI_BASE_URL": "https://api.openai.com/v1",
     // Reads the skill and the photo, then writes the edit prompt.
     "OPENAI_MODEL": "gpt-5.5",
     "REASONING_EFFORT": "low",
@@ -24,11 +27,20 @@
     "DAILY_LIMIT_TOTAL": "25",
     "SKILL_BASE_URL": "https://raw.githubusercontent.com/chf-NewStart/Monet-light-stroke/main/skills/monet-light-strokes/"
   },
-  "d1_databases": [
+  // The daily counters live in one SQLite-backed Durable Object, which the
+  // first deploy creates by itself (also on the free plan).
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "QUOTA",
+        "class_name": "PaintQuota"
+      }
+    ]
+  },
+  "migrations": [
     {
-      "binding": "DB",
-      "database_name": "monet-studio",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+      "tag": "v1",
+      "new_sqlite_classes": ["PaintQuota"]
     }
   ]
 }

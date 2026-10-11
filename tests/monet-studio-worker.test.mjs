@@ -1,12 +1,13 @@
 /* The Monet studio Worker: who may call it, the daily allowance, refunds when
    OpenAI refuses, the request it builds from the skill, and canvas sizing.
-   Runs the real Worker against fake D1 (SQLite) and a fake OpenAI. */
+   Runs the real Worker and its PaintQuota Durable Object against in-memory
+   storage and a fake OpenAI. */
 import { test, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import support from './monet-studio-support.js';
 
-const { WORKER, createD1, sseResponse, paintingEvents } = support;
+const { WORKER, createQuota, sseResponse, paintingEvents } = support;
 const worker = await import(pathToFileURL(WORKER).href);
 const ORIGIN = 'https://houfu72.com';
 const SKILL = 'https://skill.test/skills/monet-light-strokes/';
@@ -31,7 +32,7 @@ beforeEach(() => {
     DAILY_LIMIT_PER_VISITOR: '2',
     DAILY_LIMIT_TOTAL: '3',
     SKILL_BASE_URL: SKILL,
-    DB: createD1()
+    QUOTA: createQuota(worker.PaintQuota)
   };
   globalThis.fetch = async (url, init = {}) => {
     calls.push({ url: String(url), init });
@@ -184,9 +185,38 @@ test('without an OpenAI key the studio reports closed and spends nothing', async
 });
 
 test('the first painting of a day clears earlier days', async () => {
-  env.DB.sqlite.prepare("INSERT INTO paint_usage (bucket, day, count) VALUES ('2020-01-01:all', '2020-01-01', 9)").run();
+  const { data } = env.QUOTA.storage;
+  for (let index = 0; index < 300; index++) data.set(`2020-01-01:visitor${index}`, 1);
+  data.set('2020-01-01:all', 300);
   await (await paint()).text();
-  assert.equal(env.DB.sqlite.prepare("SELECT COUNT(*) AS n FROM paint_usage WHERE day = '2020-01-01'").get().n, 0);
+  assert.deepEqual([...data.keys()].filter((key) => key.startsWith('2020-')), []);
+  assert.equal(data.size, 2);
+  // Later paintings that day leave today's counters alone.
+  await (await paint({ ip: '198.51.100.30' })).text();
+  assert.equal(data.size, 3);
+});
+
+test('requests go to OPENAI_BASE_URL when set, e.g. a Cloudflare AI Gateway', async () => {
+  env.OPENAI_BASE_URL = 'https://gateway.ai.cloudflare.com/v1/acct/monet/openai/';
+  const seen = [];
+  globalThis.fetch = async (url) => {
+    seen.push(String(url));
+    return String(url).startsWith(SKILL) ? new Response('# skill') : sseResponse([]);
+  };
+  await (await paint()).text();
+  assert.ok(seen.includes('https://gateway.ai.cloudflare.com/v1/acct/monet/openai/responses'), seen.join(' '));
+});
+
+test('a visitor\'s count is a salted hash, never the address', async () => {
+  await (await paint()).text();
+  const keys = [...env.QUOTA.storage.data.keys()].join(' ');
+  assert.doesNotMatch(keys, /203\.0\.113\.7/);
+  // Without VISITOR_SALT the secret OpenAI key salts it, so rotating either changes the hash.
+  const before = keys;
+  env.QUOTA = createQuota(worker.PaintQuota);
+  env.OPENAI_API_KEY = 'sk-other';
+  await (await paint()).text();
+  assert.notEqual([...env.QUOTA.storage.data.keys()].join(' '), before);
 });
 
 test('canvas sizes follow the photo within the image model\'s rules', () => {

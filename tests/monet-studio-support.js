@@ -1,37 +1,43 @@
-/* Shared fakes for the Monet studio tests: Cloudflare D1 backed by Node's
-   built-in SQLite (so the Worker's real SQL runs), and OpenAI's Responses
-   event stream. */
-const fs = require('node:fs');
+/* Shared fakes for the Monet studio tests: the Worker's PaintQuota Durable
+   Object over an in-memory copy of Durable Object storage, and OpenAI's
+   Responses event stream. tests/monet-studio-workerd.test.mjs runs the same
+   Worker in Cloudflare's real runtime instead. */
 const path = require('node:path');
-const { DatabaseSync } = require('node:sqlite');
 
 const ROOT = path.resolve(__dirname, '..');
 const WORKER = path.join(ROOT, 'monet-studio', 'src', 'worker.js');
 
-function createD1() {
-  const db = new DatabaseSync(':memory:');
-  db.exec(fs.readFileSync(path.join(ROOT, 'monet-studio', 'schema.sql'), 'utf8'));
-  const statement = (sql, args = []) => ({
-    bind: (...values) => statement(sql, values),
-    rows: () => db.prepare(sql).all(...args),
-    all: async () => ({ results: db.prepare(sql).all(...args) }),
-    first: async () => db.prepare(sql).get(...args) ?? null,
-    run: async () => { db.prepare(sql).run(...args); return { success: true, results: [] }; }
-  });
+// The subset of DurableObjectStorage the Worker uses: get/put/delete with
+// one key or many, and list({ end }) in key order.
+function memoryStorage() {
+  const data = new Map();
   return {
-    sqlite: db,
-    prepare: (sql) => statement(sql),
-    async batch(statements) {
-      db.exec('BEGIN');
-      try {
-        const results = statements.map((item) => ({ results: item.rows() }));
-        db.exec('COMMIT');
-        return results;
-      } catch (error) {
-        db.exec('ROLLBACK');
-        throw error;
-      }
+    data,
+    async get(keys) {
+      if (!Array.isArray(keys)) return data.get(keys);
+      return new Map(keys.filter((key) => data.has(key)).map((key) => [key, data.get(key)]));
+    },
+    async put(entries) {
+      for (const [key, value] of Object.entries(entries)) data.set(key, value);
+    },
+    async delete(keys) {
+      if (Array.isArray(keys) && keys.length > 128) throw new Error('delete takes at most 128 keys');
+      for (const key of [].concat(keys)) data.delete(key);
+    },
+    async list({ end } = {}) {
+      return new Map([...data.keys()].sort().filter((key) => end === undefined || key < end).map((key) => [key, data.get(key)]));
     }
+  };
+}
+
+// env.QUOTA: a namespace whose one object is the Worker's own PaintQuota.
+function createQuota(PaintQuota) {
+  const storage = memoryStorage();
+  const object = new PaintQuota({ storage });
+  return {
+    storage,
+    idFromName: (name) => `id:${name}`,
+    get: () => ({ fetch: (url, init) => object.fetch(new Request(url, init)) })
   };
 }
 
@@ -65,4 +71,4 @@ function paintingEvents(partials, finalBase64, delay = 0) {
   ];
 }
 
-module.exports = { ROOT, WORKER, createD1, sseResponse, paintingEvents };
+module.exports = { ROOT, WORKER, createQuota, sseResponse, paintingEvents };

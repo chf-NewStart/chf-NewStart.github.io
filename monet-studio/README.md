@@ -10,29 +10,58 @@ Billing uses an OpenAI **API** account, which is separate from ChatGPT and needs
 
 At the defaults, expect very roughly $0.05–0.15 per painting: a medium-quality image of about 1.5 MP, plus a few thousand reasoning tokens. The ~25k-token skill is the same in every request, so OpenAI's prompt caching bills most of it at the cached rate. Check real numbers on the OpenAI usage page after the first few paintings.
 
-Spending has two daily caps, both counted in UTC days in D1:
+Spending has two daily caps, both counted in UTC days:
 
-- `DAILY_LIMIT_PER_VISITOR` (default 2). Visitors are a salted hash of their IP address. An IPv6 /64 counts as one visitor.
+- `DAILY_LIMIT_PER_VISITOR` (default 2). A visitor is a salted hash of their IP address. An IPv6 /64 counts as one visitor.
 - `DAILY_LIMIT_TOTAL` (default 25) for the whole studio.
 
 A turn is refunded if OpenAI refuses the photo (for example its safety check), is unreachable, or fails partway through the stream.
 
-The photo is sent to OpenAI with `store: false` and never written anywhere by the Worker. D1 holds only the counters.
+The counters live in one SQLite-backed Durable Object (`PaintQuota`). The first deploy creates it, so there is no database to set up, and it works on Cloudflare's free plan. It stores only hashed visitor keys and counts, and it forgets earlier days at the first painting of each new day. The photo is sent to OpenAI with `store: false` and never written anywhere by the Worker.
 
-## Deploy once
+## Go live
 
-From this folder, with Node installed:
+### 1. OpenAI (once)
+
+1. Make sure the API account has credit: platform.openai.com → Settings → Billing.
+2. **Verify the organization:** Settings → Organization → General → Verify Organization. OpenAI requires this ID check before any account can use its image models, `gpt-image-2` included. Without it, every painting fails with a 403. After verifying, access can take about 15 minutes.
+3. Create an API key for the studio: platform.openai.com/api-keys. Give the studio its own key so you can revoke it without touching anything else. Never commit a key to this public repository.
+
+### 2. Cloudflare (once, free plan is fine)
+
+1. Sign up at dash.cloudflare.com and open **Workers & Pages** once, so the account gets its `<name>.workers.dev` subdomain.
+2. My Profile → API Tokens → Create Token → use the **Edit Cloudflare Workers** template → choose your account → Create, and copy the token.
+
+### 3. GitHub (once)
+
+In this repository: Settings → Secrets and variables → Actions → New repository secret. Add:
+
+- `CLOUDFLARE_API_TOKEN`: the token from step 2.
+- `OPENAI_API_KEY`: the key from step 1.
+- `CLOUDFLARE_ACCOUNT_ID`: only needed if the deploy says the token can see more than one account. It's on the right of the Workers & Pages page.
+
+### 4. Deploy
+
+Actions → **Deploy Monet studio** → Run workflow, on `main`. The workflow:
+
+1. tests the Worker in Node and in Cloudflare's runtime;
+2. deploys it and stores the OpenAI key as a Worker secret;
+3. writes the Worker's URL into `data-endpoint` in `monet/index.html`, commits that to `main`, and asks Pages to rebuild.
+
+A minute later "Paint my photo" appears on /monet/. Later pushes to `main` that change `monet-studio/` redeploy by themselves. To change the OpenAI key, update the secret and run the workflow again.
+
+Until `data-endpoint` has a URL, the page keeps the Dropbox request flow and never shows the studio. A custom domain instead of `*.workers.dev` also has to be added to `connect-src` in that page's Content-Security-Policy.
+
+### Deploying from a terminal instead
 
 ```sh
+cd monet-studio
 npx wrangler login
-npx wrangler d1 create monet-studio          # copy the database_id into wrangler.jsonc
-npx wrangler d1 execute monet-studio --remote --file=schema.sql
-npx wrangler secret put OPENAI_API_KEY       # an API key from platform.openai.com/api-keys
-npx wrangler secret put VISITOR_SALT         # optional: any long random string
-npx wrangler deploy
+npx wrangler deploy                      # prints https://monet-studio.<name>.workers.dev
+npx wrangler secret put OPENAI_API_KEY   # paste the key when asked
 ```
 
-`wrangler deploy` prints the Worker URL, for example `https://monet-studio.<account>.workers.dev`. Put it in `data-endpoint` on the `<dialog id="monetStudio">` in `monet/index.html` and push. Until that attribute is set, the page keeps the Dropbox request flow and never shows the studio. A custom domain instead of `*.workers.dev` also has to be added to `connect-src` in that page's Content-Security-Policy.
+Then put the printed URL in `data-endpoint` on the `<dialog id="monetStudio">` in `monet/index.html` and push.
 
 ## Settings
 
@@ -48,6 +77,8 @@ All settings are `vars` in `wrangler.jsonc`. Change one and run `npx wrangler de
 | `IMAGE_SIZE` | `match` | `match` follows the photo; or `auto`, or a fixed size like `1024x1536` |
 | `PARTIAL_IMAGES` | `2` | Rough previews streamed while painting (0–3) |
 | `ALLOWED_ORIGINS` | the site's origins | Only these pages may call the Worker |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Point at a Cloudflare AI Gateway's OpenAI URL for request logs and analytics |
+| `VISITOR_SALT` (secret, optional) | the OpenAI key | Salt for the visitor hash |
 
 If OpenAI renames or retires a model, the Worker logs its error. See Workers → monet-studio → Logs. Change the model name and redeploy.
 
@@ -59,8 +90,9 @@ If OpenAI renames or retires a model, the Worker logs its error. See Workers →
 ## Tests
 
 ```sh
-node --test tests/monet-studio-worker.test.mjs   # Worker, against SQLite and a fake OpenAI
-node tests/monet-studio-browser.test.js          # the /monet/ page end to end in Chromium
+node --test tests/monet-studio-worker.test.mjs    # Worker + Durable Object, fake OpenAI
+node --test tests/monet-studio-workerd.test.mjs   # the same in Cloudflare's runtime (wrangler dev)
+node tests/monet-studio-browser.test.js           # the /monet/ page end to end in Chromium
 ```
 
-For local testing against a deployed Worker, temporarily add `http://localhost:<port>` to `ALLOWED_ORIGINS`. Do not keep it in production.
+The workerd test runs `npx wrangler@4`, or the binary in `MONET_WRANGLER`. For local testing against a deployed Worker, temporarily add `http://localhost:<port>` to `ALLOWED_ORIGINS`. Do not keep it in production.

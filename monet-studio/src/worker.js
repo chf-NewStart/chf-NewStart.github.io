@@ -3,14 +3,16 @@
 //
 // The site is static, so this Worker holds the OpenAI key and does only three
 // things: accept requests from the site, spend from a daily allowance (per
-// visitor and in total) so the bill stays bounded, and relay one Responses API
-// call whose instructions are the skill itself, fetched from its public repo.
+// visitor and in total, kept by the PaintQuota Durable Object below) so the
+// bill stays bounded, and relay one Responses API call whose instructions are
+// the skill itself, fetched from its public repo.
 // A reasoning model reads the skill and the photo, writes the edit prompt the
 // way Codex would, and calls the image tool once. The photo is sent with
 // store:false and never kept here.
 //
-// One-time deploy steps are in README.md next to this folder's wrangler.jsonc.
+// Deploy steps are in README.md next to this folder's wrangler.jsonc.
 
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 const DEFAULT_SKILL_BASE_URL = 'https://raw.githubusercontent.com/chf-NewStart/Monet-light-stroke/main/skills/monet-light-strokes/';
 const SKILL_FILES = ['SKILL.md', 'references/style-system.md', 'references/people-in-scenes.md'];
 const SKILL_CACHE_MS = 60 * 60 * 1000;
@@ -40,9 +42,6 @@ const PAINT_REQUEST = 'Here is my photo. Please repaint it as a Monet Light & St
 // kept and read; the images streaming past are never parsed.
 const TAIL_BYTES = 512 * 1024;
 const FAILED_EVENT = /^data:\s?\{\s*"type"\s*:\s*"(?:response\.failed|response\.incomplete|error)"/;
-
-const BUMP = 'INSERT INTO paint_usage (bucket, day, count) VALUES (?1, ?2, 1) ON CONFLICT(bucket) DO UPDATE SET count = count + 1 RETURNING count';
-const UNBUMP = 'UPDATE paint_usage SET count = MAX(count - 1, 0) WHERE bucket = ?1';
 
 let skillCache = { text: '', at: 0 };
 
@@ -100,42 +99,69 @@ export function visitorAddress(ip) {
     return `${groups.slice(0, 4).map((group) => group.replace(/^0+(?=.)/, '')).join(':')}::/64`;
 }
 
+// Only a salted hash is stored. The OpenAI key is already a secret, so it
+// salts the hash unless VISITOR_SALT is set.
 async function visitorKey(request, env) {
     const address = visitorAddress(request.headers.get('CF-Connecting-IP'));
-    const bytes = new TextEncoder().encode(`${env.VISITOR_SALT || 'monet-studio'}|${address}`);
+    const salt = env.VISITOR_SALT || env.OPENAI_API_KEY || 'monet-studio';
+    const bytes = new TextEncoder().encode(`${salt}|${address}`);
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
     return Array.from(digest.slice(0, 12), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function buckets(day, visitor) {
-    return [`${day}:all`, `${day}:${visitor}`];
+// One Durable Object holds every counter, so each check-and-spend is atomic
+// and there is no database to create. Keys are "<day>:all" for the studio and
+// "<day>:<visitor>" per visitor; days are UTC dates, so old keys sort first.
+export class PaintQuota {
+    constructor(state) {
+        this.storage = state.storage;
+    }
+
+    async fetch(request) {
+        const { action, day, visitor, limits: limit } = await request.json();
+        const keys = [`${day}:all`, `${day}:${visitor}`];
+        const counts = await this.storage.get(keys);
+        const total = counts.get(keys[0]) || 0;
+        const used = counts.get(keys[1]) || 0;
+
+        if (action === 'reserve') {
+            if (used >= limit.visitor || total >= limit.total) {
+                return Response.json({ ok: false, scope: used >= limit.visitor ? 'visitor' : 'total' });
+            }
+            await this.storage.put({ [keys[0]]: total + 1, [keys[1]]: used + 1 });
+            // First painting of the day: earlier days' counters are done with.
+            if (total === 0) await this.forgetBefore(day);
+            return Response.json({ ok: true, left: Math.min(limit.visitor - used, limit.total - total) - 1 });
+        }
+        if (action === 'release') {
+            if (total > 0 || used > 0) await this.storage.put({ [keys[0]]: Math.max(0, total - 1), [keys[1]]: Math.max(0, used - 1) });
+            return Response.json({ ok: true });
+        }
+        return Response.json({ left: Math.max(0, Math.min(limit.visitor - used, limit.total - total)) });
+    }
+
+    async forgetBefore(day) {
+        const old = [...(await this.storage.list({ end: day })).keys()];
+        for (let index = 0; index < old.length; index += 128) await this.storage.delete(old.slice(index, index + 128));
+    }
 }
 
-async function release(env, keys) {
-    await env.DB.batch(keys.map((bucket) => env.DB.prepare(UNBUMP).bind(bucket)));
+async function askQuota(env, action, day, visitor) {
+    const quota = env.QUOTA.get(env.QUOTA.idFromName('studio'));
+    const response = await quota.fetch('https://quota.internal/', {
+        method: 'POST',
+        body: JSON.stringify({ action, day, visitor, limits: limits(env) })
+    });
+    return response.json();
 }
 
 async function reserve(env, day, visitor) {
-    const limit = limits(env);
-    const keys = buckets(day, visitor);
-    const [all, mine] = await env.DB.batch(keys.map((bucket) => env.DB.prepare(BUMP).bind(bucket, day)));
-    const total = all.results[0].count;
-    const used = mine.results[0].count;
-    if (used > limit.visitor || total > limit.total) {
-        await release(env, keys);
-        return { ok: false, scope: used > limit.visitor ? 'visitor' : 'total' };
-    }
-    // First painting of the day: yesterday's counters are no longer needed.
-    if (total === 1) await env.DB.prepare('DELETE FROM paint_usage WHERE day < ?1').bind(day).run();
-    return { ok: true, keys, left: Math.min(limit.visitor - used, limit.total - total) };
+    const result = await askQuota(env, 'reserve', day, visitor);
+    return { ...result, release: () => askQuota(env, 'release', day, visitor) };
 }
 
 async function paintingsLeft(env, day, visitor) {
-    const limit = limits(env);
-    const [allKey, mineKey] = buckets(day, visitor);
-    const { results } = await env.DB.prepare('SELECT bucket, count FROM paint_usage WHERE bucket IN (?1, ?2)').bind(allKey, mineKey).all();
-    const counts = Object.fromEntries(results.map((row) => [row.bucket, row.count]));
-    return Math.max(0, Math.min(limit.visitor - (counts[mineKey] || 0), limit.total - (counts[allKey] || 0)));
+    return (await askQuota(env, 'left', day, visitor)).left;
 }
 
 async function studioInstructions(env) {
@@ -257,7 +283,7 @@ async function paint(request, env, cors) {
 
     let upstream;
     try {
-        upstream = await fetch('https://api.openai.com/v1/responses', {
+        upstream = await fetch(`${String(env.OPENAI_BASE_URL || DEFAULT_OPENAI_BASE_URL).replace(/\/+$/, '')}/responses`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -267,7 +293,7 @@ async function paint(request, env, cors) {
         });
     } catch (error) {
         console.error('OpenAI unreachable', String(error));
-        await release(env, quota.keys);
+        await quota.release();
         return json({ error: 'upstream' }, 502, cors);
     }
 
@@ -275,14 +301,14 @@ async function paint(request, env, cors) {
         // Refused before painting started: the visitor keeps their turn.
         const detail = await upstream.text().catch(() => '');
         console.error('OpenAI refused the painting', upstream.status, detail.slice(0, 2000));
-        await release(env, quota.keys);
+        await quota.release();
         const blocked = /moderation|safety|content[ _-]?policy/i.test(detail);
         return json({ error: blocked ? 'blocked' : 'upstream' }, blocked ? 422 : 502, cors);
     }
 
     // Relay OpenAI's event stream as is: the page shows the partial images
     // as they arrive, and the Worker never parses them.
-    const relay = upstream.body.pipeThrough(refundOnFailure(() => release(env, quota.keys)));
+    const relay = upstream.body.pipeThrough(refundOnFailure(quota.release));
     return new Response(relay, {
         status: 200,
         headers: {

@@ -1,5 +1,5 @@
-/* Monet studio, end to end: the real /monet/ page and the real Worker (fake
-   D1 and fake OpenAI behind it). A visitor picks a photo, watches partial
+/* Monet studio, end to end: the real /monet/ page and the real Worker (with
+   in-memory quota storage and a fake OpenAI behind it). A visitor picks a photo, watches partial
    images arrive, downloads the painting, compares it with the photo, switches
    language, meets the daily limit, and on a phone nothing overflows. Without
    a Worker URL the page keeps the personal request flow. */
@@ -9,7 +9,7 @@ const http = require('node:http');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
-const { ROOT, WORKER, createD1, sseResponse, paintingEvents } = require('./monet-studio-support.js');
+const { ROOT, WORKER, createQuota, sseResponse, paintingEvents } = require('./monet-studio-support.js');
 
 const PORT = +(process.env.MONET_STUDIO_PORT || 8417);
 const SHOTS = process.env.MONET_STUDIO_SHOTS || '';
@@ -32,7 +32,7 @@ const env = {
   DAILY_LIMIT_PER_VISITOR: '2',
   DAILY_LIMIT_TOTAL: '25',
   SKILL_BASE_URL: SKILL,
-  DB: createD1()
+  QUOTA: null
 };
 
 const realFetch = globalThis.fetch;
@@ -95,6 +95,7 @@ async function choosePhoto(page) {
 
 async function run() {
   worker = await import(pathToFileURL(WORKER).href);
+  env.QUOTA = createQuota(worker.PaintQuota);
   await new Promise((resolve) => server.listen(PORT, resolve));
   const browser = await chromium.launch();
   const errors = [];
@@ -205,7 +206,7 @@ async function run() {
     await page.close();
 
     // Phone: the dialog fits the screen with no sideways scroll.
-    env.DB = createD1();
+    env.QUOTA = createQuota(worker.PaintQuota);
     const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     phone.on('pageerror', (error) => errors.push(error.message));
     await phone.goto(`${ORIGIN}/monet/#studio`, { waitUntil: 'networkidle' });

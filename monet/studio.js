@@ -15,6 +15,10 @@
     const MIN_EDGE = 256;
     const MAX_FILE_BYTES = 40 * 1024 * 1024;
     const TIMEOUT_MS = 5 * 60 * 1000;
+    // OpenAI refusing a photo; the Worker recognises the same words.
+    const POLICY = /moderation|safety|content[ _-]?policy|usage policy|invalid_prompt|bio_policy|content_filter/i;
+    // Errors that the same photo cannot fix by trying again.
+    const FINAL_ERRORS = /^(limit|blocked|closed|bad_photo|not_image|too_)/;
 
     const COPY = {
         en: {
@@ -30,6 +34,7 @@
             paintingAlt: 'Your photo repainted in Monet Light Strokes',
             left: (n) => (n === 1 ? '1 painting left for you today.' : `${n} paintings left for you today.`),
             ready: 'One photo becomes one painting. Ready when you are.',
+            preparing: 'Opening your photo…',
             wait: 'Usually about a minute. Keep this window open.',
             done: 'Finished. Every painting is one of a kind; the light falls differently each time.',
             stages: {
@@ -47,6 +52,9 @@
                 not_image: 'This browser can’t open that file as a photo. Try a JPG or PNG.',
                 too_big: 'That file is over 40 MB. Try a smaller photo.',
                 too_small: 'That photo is too small to paint. Use one at least 256 pixels on each side.',
+                too_narrow: 'That photo is too long and thin to paint. Try one with a more usual shape.',
+                bad_photo: 'The studio couldn’t read that photo. Try a different one.',
+                closed: 'The studio is closed for now. Houfu can still paint one for you personally.',
                 timeout: 'This one is taking too long. Try again in a moment.',
                 upstream: 'The studio couldn’t finish this one. Try again in a moment.'
             }
@@ -64,6 +72,7 @@
             paintingAlt: '以莫奈光影笔触重绘的照片',
             left: (n) => `今天你还可以画 ${n} 幅。`,
             ready: '一张照片，换一幅画。准备好了就开始。',
+            preparing: '正在打开照片…',
             wait: '通常约一分钟，请保持此窗口打开。',
             done: '完成。每一幅都独一无二，光每次都落得不同。',
             stages: {
@@ -81,6 +90,9 @@
                 not_image: '浏览器无法把这个文件当作照片打开，请换成 JPG 或 PNG。',
                 too_big: '文件超过 40 MB，请换一张小一些的照片。',
                 too_small: '照片太小，无法作画。请使用每边至少 256 像素的照片。',
+                too_narrow: '这张照片太细长了，无法作画。请换一张比例常见一些的照片。',
+                bad_photo: '画室无法读取这张照片，请换一张。',
+                closed: '画室暂时关闭，厚孚仍可以亲自为你画一幅。',
                 timeout: '这次等待太久了，请稍后再试。',
                 upstream: '画室这次没能完成，请稍后再试。'
             }
@@ -109,14 +121,16 @@
     const state = {
         view: 'pick',      // pick | ready | painting | done | error
         photo: null,       // { dataUrl, previewUrl, width, height, name }
+        preparing: false,  // a newly chosen photo is still being decoded
         paintingUrl: '',
-        stage: '',
+        stage: '',         // a key of COPY.*.stages, or partial0, partial1, ...
         startedAt: 0,
         error: '',
         left: null,
         comparing: false
     };
     let ticker = 0;
+    let chosen = 0;        // counts photo choices, so only the latest one lands
 
     class StudioError extends Error {
         constructor(code) {
@@ -132,17 +146,28 @@
         return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
     }
 
+    // The stage caption is not a live region, so it can tick every second.
+    function renderStage() {
+        const stages = copy().stages;
+        const partial = /^partial(\d+)$/.exec(state.stage);
+        const label = partial
+            ? stages.partial[Math.min(Number(partial[1]), stages.partial.length - 1)]
+            : stages[state.stage];
+        els.stage.textContent = state.view === 'painting' && label ? `${label} · ${elapsed()}` : '';
+    }
+
     function render() {
         const text = copy();
         const { view } = state;
+        const settled = !state.preparing;
         const show = {
             drop: view === 'pick' || (view === 'error' && !state.photo),
             easel: view !== 'pick' && Boolean(state.photo),
-            start: view === 'ready',
+            start: view === 'ready' && settled,
             download: view === 'done',
-            retry: view === 'error' && Boolean(state.photo) && !/^(limit|blocked|not_image|too_)/.test(state.error),
+            retry: view === 'error' && settled && Boolean(state.photo) && !FINAL_ERRORS.test(state.error),
             compare: view === 'done',
-            again: view === 'ready' || view === 'done' || (view === 'error' && Boolean(state.photo)),
+            again: settled && (view === 'ready' || view === 'done' || (view === 'error' && Boolean(state.photo))),
             personal: view === 'error' || (view === 'pick' && state.left === 0)
         };
         Object.entries(show).forEach(([name, visible]) => { els[name].hidden = !visible; });
@@ -153,8 +178,9 @@
         els.retry.textContent = text.retry;
         els.again.textContent = text.again;
         els.personal.textContent = text.personal;
+        // The label names the action, so it is not also a pressed toggle.
         els.compare.textContent = state.comparing ? text.compareOn : text.compareOff;
-        els.compare.setAttribute('aria-pressed', String(state.comparing));
+        els.compare.classList.toggle('is-on', state.comparing);
         els.photo.alt = text.photoAlt;
         els.painting.alt = view === 'done' ? text.paintingAlt : '';
 
@@ -163,18 +189,18 @@
         els.easel.classList.toggle('is-comparing', view === 'done' && state.comparing);
         els.painting.classList.toggle('is-visible', Boolean(state.paintingUrl));
 
-        els.stage.textContent = view === 'painting' && state.stage
-            ? `${state.stage} · ${elapsed()}`
-            : '';
+        renderStage();
 
         let status = '';
-        if (view === 'error') status = text.errors[state.error] || text.errors.upstream;
+        if (state.preparing) status = text.preparing;
+        else if (view === 'error') status = text.errors[state.error] || text.errors.upstream;
         else if (view === 'painting') status = text.wait;
         else if (view === 'done') status = text.done;
         else if (view === 'ready') status = text.ready;
         else if (state.left === 0) status = text.errors.limit;
-        els.status.textContent = status;
-        els.status.classList.toggle('is-error', view === 'error' || (view === 'pick' && state.left === 0));
+        // Rewriting a live region re-announces it, so only write real changes.
+        if (els.status.textContent !== status) els.status.textContent = status;
+        els.status.classList.toggle('is-error', !state.preparing && (view === 'error' || (view === 'pick' && state.left === 0)));
         els.left.textContent = typeof state.left === 'number' && state.left > 0 ? `${text.left(state.left)} ` : '';
 
         // Keep keyboard focus inside the dialog when the focused control hides.
@@ -245,6 +271,7 @@
         const scale = Math.min(1, MAX_EDGE / Math.max(sourceWidth, sourceHeight));
         const width = Math.round(sourceWidth * scale);
         const height = Math.round(sourceHeight * scale);
+        if (Math.min(width, height) < 64) throw new StudioError('too_narrow');
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
@@ -273,20 +300,32 @@
         state.comparing = false;
     }
 
+    // Decoding a large phone photo takes a moment; until it lands, nothing
+    // that would paint or replace the current photo is offered.
     async function choose(file) {
         if (state.view === 'painting') return;
-        let photo;
+        const choice = ++chosen;
+        state.preparing = true;
+        render();
+        let photo = null;
+        let failure = '';
         try {
             photo = await preparePhoto(file);
         } catch (error) {
-            if (state.photo) URL.revokeObjectURL(state.photo.previewUrl);
-            state.photo = null;
-            clearPainting();
-            fail(error instanceof StudioError ? error.code : 'not_image');
+            failure = error instanceof StudioError ? error.code : 'not_image';
+        }
+        if (choice !== chosen || state.view === 'painting') {
+            if (photo) URL.revokeObjectURL(photo.previewUrl);
             return;
         }
+        state.preparing = false;
         if (state.photo) URL.revokeObjectURL(state.photo.previewUrl);
         clearPainting();
+        if (failure) {
+            state.photo = null;
+            fail(failure);
+            return;
+        }
         state.photo = photo;
         els.photo.src = photo.previewUrl;
         state.view = 'ready';
@@ -305,7 +344,7 @@
         render();
     }
 
-    function showFinal(base64) {
+    function showFinal(base64, photo) {
         const type = imageType(base64);
         const binary = atob(base64);
         const bytes = new Uint8Array(binary.length);
@@ -314,45 +353,48 @@
         state.paintingUrl = URL.createObjectURL(new Blob([bytes], { type }));
         els.painting.src = state.paintingUrl;
         els.download.href = state.paintingUrl;
-        els.download.download = `${state.photo.name}-monet-light-strokes.${type.split('/')[1].replace('jpeg', 'jpg')}`;
+        els.download.download = `${photo.name}-monet-light-strokes.${type.split('/')[1].replace('jpeg', 'jpg')}`;
         clearInterval(ticker);
         state.view = 'done';
         render();
     }
 
+    function errorCode(error, reason = '') {
+        const detail = `${error?.code || ''} ${error?.message || ''} ${reason}`;
+        return POLICY.test(detail) ? 'blocked' : 'upstream';
+    }
+
     function streamError(event) {
-        const error = event.response?.error || event.error || event;
-        const detail = `${error?.code || ''} ${error?.message || ''}`;
-        return /moderation|safety|content[ _-]?policy/i.test(detail) ? 'blocked' : 'upstream';
+        const response = event.response || {};
+        return errorCode(response.error || event.error || event, response.incomplete_details?.reason);
     }
 
     // OpenAI's Responses stream, relayed untouched by the Worker.
     function handleEvent(event, progress) {
-        const text = copy().stages;
         switch (event.type) {
             case 'response.created':
             case 'response.in_progress':
-                if (!progress.partials) setStage(text.reading);
+                if (!progress.partials) setStage('reading');
                 break;
             case 'response.output_item.added':
-                if (event.item?.type === 'image_generation_call') setStage(text.composing);
+                if (event.item?.type === 'image_generation_call') setStage('composing');
                 break;
             case 'response.image_generation_call.in_progress':
-                setStage(text.composing);
+                setStage('composing');
                 break;
             case 'response.image_generation_call.generating':
-                if (!progress.partials) setStage(text.painting);
+                if (!progress.partials) setStage('painting');
                 break;
             case 'response.image_generation_call.partial_image':
                 if (!event.partial_image_b64) break;
                 progress.partials += 1;
                 showPartial(event.partial_image_b64);
-                setStage(text.partial[Math.min(Number(event.partial_image_index) || 0, text.partial.length - 1)]);
+                setStage(`partial${Number(event.partial_image_index) || 0}`);
                 break;
             case 'response.output_item.done':
                 if (event.item?.type !== 'image_generation_call') break;
                 if (event.item.result) progress.final = event.item.result;
-                else if (event.item.status === 'failed') progress.error = 'blocked';
+                else if (event.item.status === 'failed') progress.error = errorCode(event.item.error);
                 break;
             case 'response.completed': {
                 const call = (event.response?.output || []).find((item) => item.type === 'image_generation_call' && item.result);
@@ -394,6 +436,12 @@
                     continue;
                 }
                 handleEvent(event, progress);
+                // The painting is in hand. response.completed would only send
+                // the same image again, so stop downloading.
+                if (progress.final) {
+                    reader.cancel().catch(() => {});
+                    return;
+                }
             }
             // A multi-megabyte image event arrives in many chunks; don't rescan it.
             scanned = Math.max(0, buffer.length - 1);
@@ -402,14 +450,15 @@
     }
 
     async function paint() {
-        if (!state.photo || state.view === 'painting') return;
+        if (!state.photo || state.preparing || state.view === 'painting') return;
+        const photo = state.photo;
         clearPainting();
         state.view = 'painting';
         state.error = '';
         state.startedAt = Date.now();
-        state.stage = copy().stages.sending;
+        state.stage = 'sending';
         clearInterval(ticker);
-        ticker = setInterval(render, 1000);
+        ticker = setInterval(renderStage, 1000);
         render();
 
         const controller = new AbortController();
@@ -419,29 +468,36 @@
             const response = await fetch(`${endpoint}/paint`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: state.photo.dataUrl, width: state.photo.width, height: state.photo.height }),
+                body: JSON.stringify({ image: photo.dataUrl, width: photo.width, height: photo.height }),
                 signal: controller.signal
             });
             if (!response.ok) {
                 const body = await response.json().catch(() => ({}));
+                if (Number.isFinite(body.left)) state.left = body.left;
                 if (body.error === 'limit') {
                     state.left = 0;
                     fail(body.scope === 'total' ? 'limit_total' : 'limit');
+                } else if (body.error === 'blocked' || body.error === 'closed') {
+                    fail(body.error);
                 } else {
-                    fail(body.error === 'blocked' ? 'blocked' : 'upstream');
+                    fail(response.status === 400 || response.status === 413 ? 'bad_photo' : 'upstream');
                 }
                 return;
             }
             const left = Number.parseInt(response.headers.get('X-Paintings-Left') || '', 10);
             if (Number.isFinite(left)) state.left = left;
-            setStage(copy().stages.reading);
+            setStage('reading');
             await readStream(response, progress);
-            if (progress.final) showFinal(progress.final);
+            if (progress.final) showFinal(progress.final, photo);
             else fail(progress.error || 'upstream');
         } catch (error) {
-            fail(error?.name === 'AbortError' ? 'timeout' : 'upstream');
+            // A dropped connection after the painting arrived still delivers it.
+            if (progress.final) showFinal(progress.final, photo);
+            else fail(error?.name === 'AbortError' ? 'timeout' : 'upstream');
         } finally {
             clearTimeout(timer);
+            // A failed painting may have been given back after the count was sent.
+            refreshLeft();
         }
     }
 

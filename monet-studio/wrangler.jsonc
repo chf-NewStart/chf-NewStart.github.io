@@ -9,7 +9,9 @@
   },
   "vars": {
     "ALLOWED_ORIGINS": "https://houfu72.com,https://www.houfu72.com,https://chf-newstart.github.io",
-    // Point at a Cloudflare AI Gateway URL here to get request logs and analytics.
+    // A Cloudflare AI Gateway's OpenAI URL also works here, for usage analytics.
+    // The Worker asks the gateway not to log payloads, since they hold visitors'
+    // photos; keep the gateway's own payload logging off as well.
     "OPENAI_BASE_URL": "https://api.openai.com/v1",
     // Reads the skill and the photo, then writes the edit prompt.
     "OPENAI_MODEL": "gpt-5.5",
@@ -20,8 +22,11 @@
     "IMAGE_ACTION": "edit",
     // "match" keeps the photo's aspect ratio; or pin a size such as "1024x1536" or "auto".
     "IMAGE_SIZE": "match",
-    // Rough previews streamed to the page while it paints (0-3).
-    "PARTIAL_IMAGES": "2",
+    // Rough previews streamed to the page while it paints (0-3). Each one is a
+    // full-size image the Worker relays, so more costs CPU and data.
+    "PARTIAL_IMAGES": "1",
+    // Hard cap on the reasoning model's reasoning and text per painting.
+    "MAX_OUTPUT_TOKENS": "16000",
     // Paintings per visitor per day, and for the whole studio per day (UTC).
     "DAILY_LIMIT_PER_VISITOR": "2",
     "DAILY_LIMIT_TOTAL": "25",

@@ -37,11 +37,31 @@ const FALLBACK_SKILL = `Monet Light & Strokes, condensed. Repaint the photo as a
 
 const PAINT_REQUEST = 'Here is my photo. Please repaint it as a Monet Light & Strokes painting.';
 
-// A stream that ends in failure gives the visitor's turn back. Failure events
-// are always last and far smaller than this, so only the stream's tail is
-// kept and read; the images streaming past are never parsed.
-const TAIL_BYTES = 512 * 1024;
+// How a painting's stream ends decides whether the turn is given back. The
+// relay reads only the first bytes of each event: newlines occur only between
+// events, so the multi-megabyte images streaming past are never decoded.
+const EVENT_HEAD_BYTES = 1024;
+const NEWLINE = 10;
+const EMPTY = new Uint8Array(0);
+const TERMINAL_EVENT = /^data:\s?\{\s*"type"\s*:\s*"(?:response\.completed|response\.failed|response\.incomplete|error)"/;
 const FAILED_EVENT = /^data:\s?\{\s*"type"\s*:\s*"(?:response\.failed|response\.incomplete|error)"/;
+const IMAGE_DONE_EVENT = /^data:\s?\{\s*"type"\s*:\s*"response\.image_generation_call\.completed"/;
+const IMAGE_ITEM_DONE = /^data:\s?\{\s*"type"\s*:\s*"response\.output_item\.done"[\s\S]*"type"\s*:\s*"image_generation_call"[\s\S]*(?:"status"\s*:\s*"completed"|"result"\s*:\s*")/;
+
+// OpenAI refusing a photo; monet/studio.js recognises the same words.
+const POLICY = /moderation|safety|content[ _-]?policy|usage policy|invalid_prompt|bio_policy|content_filter/i;
+// Problems only the owner can fix: key, organization verification, credit,
+// a retired model, or a parameter OpenAI no longer accepts.
+const OWNER_PROBLEM = /insufficient_quota|invalid_api_key|model_not_found|must be verified|unknown parameter|unsupported parameter/i;
+
+// A painting that fails mid-stream has already been partly billed (reading
+// the skill and photo, writing the prompt), so only a few are given back.
+const DAILY_REFUNDS_PER_VISITOR = 1;
+const DAILY_REFUNDS_TOTAL = 5;
+
+// The photo is spliced into the serialized request rather than re-escaped by
+// JSON.stringify, which costs several ms of CPU for a megabyte of base64.
+const PHOTO_PLACEHOLDER = '\u0000monet-photo\u0000';
 
 let skillCache = { text: '', at: 0 };
 
@@ -75,7 +95,9 @@ function intSetting(value, fallback, min, max) {
 function limits(env) {
     return {
         visitor: intSetting(env.DAILY_LIMIT_PER_VISITOR, 2, 0, 1000),
-        total: intSetting(env.DAILY_LIMIT_TOTAL, 25, 0, 100000)
+        total: intSetting(env.DAILY_LIMIT_TOTAL, 25, 0, 100000),
+        refundsPerVisitor: DAILY_REFUNDS_PER_VISITOR,
+        refundsTotal: DAILY_REFUNDS_TOTAL
     };
 }
 
@@ -118,7 +140,7 @@ export class PaintQuota {
     }
 
     async fetch(request) {
-        const { action, day, visitor, limits: limit } = await request.json();
+        const { action, kind, day, visitor, limits: limit } = await request.json();
         const keys = [`${day}:all`, `${day}:${visitor}`];
         const counts = await this.storage.get(keys);
         const total = counts.get(keys[0]) || 0;
@@ -134,6 +156,16 @@ export class PaintQuota {
             return Response.json({ ok: true, left: Math.min(limit.visitor - used, limit.total - total) - 1 });
         }
         if (action === 'release') {
+            // Failures before OpenAI starts cost nothing and are always given
+            // back; failures mid-stream only up to the daily refund caps.
+            if (kind === 'stream') {
+                const refundKeys = [`${day}:refunds:all`, `${day}:refunds:${visitor}`];
+                const refunds = await this.storage.get(refundKeys);
+                const refundedTotal = refunds.get(refundKeys[0]) || 0;
+                const refundedMine = refunds.get(refundKeys[1]) || 0;
+                if (refundedTotal >= limit.refundsTotal || refundedMine >= limit.refundsPerVisitor) return Response.json({ ok: false });
+                await this.storage.put({ [refundKeys[0]]: refundedTotal + 1, [refundKeys[1]]: refundedMine + 1 });
+            }
             if (total > 0 || used > 0) await this.storage.put({ [keys[0]]: Math.max(0, total - 1), [keys[1]]: Math.max(0, used - 1) });
             return Response.json({ ok: true });
         }
@@ -146,18 +178,18 @@ export class PaintQuota {
     }
 }
 
-async function askQuota(env, action, day, visitor) {
+async function askQuota(env, action, day, visitor, kind) {
     const quota = env.QUOTA.get(env.QUOTA.idFromName('studio'));
     const response = await quota.fetch('https://quota.internal/', {
         method: 'POST',
-        body: JSON.stringify({ action, day, visitor, limits: limits(env) })
+        body: JSON.stringify({ action, kind, day, visitor, limits: limits(env) })
     });
     return response.json();
 }
 
 async function reserve(env, day, visitor) {
     const result = await askQuota(env, 'reserve', day, visitor);
-    return { ...result, release: () => askQuota(env, 'release', day, visitor) };
+    return { ...result, release: (kind) => askQuota(env, 'release', day, visitor, kind) };
 }
 
 async function paintingsLeft(env, day, visitor) {
@@ -184,11 +216,15 @@ async function studioInstructions(env) {
 
 // Match the photo's aspect ratio so the painting keeps its framing. Older
 // gpt-image-1 models only accept three sizes; IMAGE_SIZE can pin one.
+function imageModel(env) {
+    return env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
+}
+
 export function canvasSize(width, height, env = {}) {
     const fixed = String(env.IMAGE_SIZE || 'match').trim();
     if (fixed !== 'match') return fixed;
     const ratio = Math.min(3, Math.max(1 / 3, width / height));
-    if (/^gpt-image-1/.test(String(env.OPENAI_IMAGE_MODEL || ''))) {
+    if (/^gpt-image-1/.test(imageModel(env))) {
         return ratio > 1.15 ? '1536x1024' : ratio < 1 / 1.15 ? '1024x1536' : '1024x1024';
     }
     const round16 = (value) => Math.max(16, Math.round(value / 16) * 16);
@@ -203,16 +239,19 @@ export function canvasSize(width, height, env = {}) {
     return `${outWidth}x${outHeight}`;
 }
 
-export async function paintRequest(env, image, width, height) {
+// The Responses request, with PHOTO_PLACEHOLDER where the photo goes. The
+// hard caps matter more than the brief's wording: one image, no runaway text.
+export async function paintRequest(env, width, height, visitor) {
+    const model = imageModel(env);
     const tool = {
         type: 'image_generation',
-        size: canvasSize(width, height, env),
+        model,
+        size: canvasSize(width, height, { ...env, OPENAI_IMAGE_MODEL: model }),
         quality: env.IMAGE_QUALITY || 'medium',
         output_format: 'jpeg',
         output_compression: 92,
-        partial_images: intSetting(env.PARTIAL_IMAGES, 2, 0, 3)
+        partial_images: intSetting(env.PARTIAL_IMAGES, 1, 0, 3)
     };
-    if (env.OPENAI_IMAGE_MODEL) tool.model = env.OPENAI_IMAGE_MODEL;
     if (env.IMAGE_ACTION) tool.action = env.IMAGE_ACTION;
     const body = {
         model: env.OPENAI_MODEL || 'gpt-5.5',
@@ -221,11 +260,16 @@ export async function paintRequest(env, image, width, height) {
             role: 'user',
             content: [
                 { type: 'input_text', text: PAINT_REQUEST },
-                { type: 'input_image', image_url: image, detail: 'high' }
+                { type: 'input_image', image_url: PHOTO_PLACEHOLDER, detail: 'high' }
             ]
         }],
         tools: [tool],
         tool_choice: { type: 'image_generation' },
+        max_tool_calls: 1,
+        parallel_tool_calls: false,
+        max_output_tokens: intSetting(env.MAX_OUTPUT_TOKENS, 16000, 2000, 128000),
+        // Lets OpenAI act on one abusive visitor rather than the whole studio.
+        safety_identifier: visitor,
         store: false,
         stream: true
     };
@@ -233,82 +277,160 @@ export async function paintRequest(env, image, width, height) {
     return body;
 }
 
-export function refundOnFailure(refund) {
-    const tail = [];
-    let size = 0;
+// The photo is a validated data URL with no quote or backslash, so it can sit
+// between quotes in the JSON as is.
+export function requestBody(body, photo) {
+    const [before, after, extra] = JSON.stringify(body).split(JSON.stringify(PHOTO_PLACEHOLDER));
+    if (after === undefined || extra !== undefined) throw new Error('photo placeholder must appear exactly once');
+    return `${before}"${photo}"${after}`;
+}
+
+function concat(first, second) {
+    const joined = new Uint8Array(first.length + second.length);
+    joined.set(first);
+    joined.set(second, first.length);
+    return joined;
+}
+
+// The code, message, and reason values in an error event's head; never the
+// instructions it echoes.
+function errorText(head) {
+    return [...head.matchAll(/"(?:code|message|reason)"\s*:\s*"([^"]*)"/g)].map((match) => match[1]).join(' ');
+}
+
+// Passes the stream through untouched and, at its end, reports whether a
+// painting was delivered and the head of the last event.
+export function watchStream(onEnd) {
+    const decoder = new TextDecoder();
+    let carry = Uint8Array.of(NEWLINE);     // the stream starts at a line start
+    let lastEvent = '';
+    let delivered = false;
+    const scan = (bytes, final) => {
+        let at = bytes.indexOf(NEWLINE);
+        while (at !== -1) {
+            const start = at + 1;
+            if (!final && bytes.length - start < EVENT_HEAD_BYTES) return bytes.slice(at);
+            const window = decoder.decode(bytes.subarray(start, start + EVENT_HEAD_BYTES));
+            // Short events fit whole in the window, so stop at this line's end.
+            const end = window.indexOf('\n');
+            const head = end === -1 ? window : window.slice(0, end);
+            if (head.startsWith('data:')) {
+                lastEvent = head;
+                if (IMAGE_DONE_EVENT.test(head) || IMAGE_ITEM_DONE.test(head)) delivered = true;
+            }
+            at = bytes.indexOf(NEWLINE, start);
+        }
+        return EMPTY;
+    };
     return new TransformStream({
         transform(chunk, controller) {
             controller.enqueue(chunk);
-            tail.push(chunk);
-            size += chunk.byteLength;
-            while (tail.length > 1 && size - tail[0].byteLength >= TAIL_BYTES) size -= tail.shift().byteLength;
+            carry = scan(carry.length ? concat(carry, chunk) : chunk, false);
         },
         async flush() {
-            const bytes = new Uint8Array(size);
-            let offset = 0;
-            for (const chunk of tail) {
-                bytes.set(chunk, offset);
-                offset += chunk.byteLength;
-            }
-            const text = new TextDecoder().decode(bytes);
-            // JSON escapes newlines, so a line starting "data:" is a real event.
-            const lastEvent = text.slice(text.lastIndexOf('\ndata:') + 1);
-            if (FAILED_EVENT.test(lastEvent)) await refund();
+            scan(carry, true);
+            await onEnd({ delivered, lastEvent });
         }
     });
 }
 
+// Whether a finished stream earns the turn back.
+export function refundable({ delivered, lastEvent }) {
+    if (delivered || !TERMINAL_EVENT.test(lastEvent)) return false;
+    // OpenAI refusing the photo spends the turn, so refusals are not free retries.
+    return !(FAILED_EVENT.test(lastEvent) && POLICY.test(errorText(lastEvent)));
+}
+
+// Reads at most `limit` bytes, whether or not the request declared a length.
+async function readCapped(request, limit) {
+    if (!request.body) return '';
+    const reader = request.body.getReader();
+    const parts = [];
+    let size = 0;
+    for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > limit) {
+            await reader.cancel().catch(() => {});
+            return null;
+        }
+        parts.push(value);
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const part of parts) {
+        bytes.set(part, offset);
+        offset += part.byteLength;
+    }
+    return new TextDecoder().decode(bytes);
+}
+
 async function paint(request, env, cors) {
     if (!env.OPENAI_API_KEY) return json({ error: 'not_configured' }, 503, cors);
-    if (Number(request.headers.get('Content-Length') || 0) > MAX_BODY_BYTES) {
-        return json({ error: 'too_large' }, 413, cors);
-    }
+    const declared = request.headers.get('Content-Length');
+    if (Number(declared || 0) > MAX_BODY_BYTES) return json({ error: 'too_large' }, 413, cors);
 
+    // HTTP framing holds a declared body to its length, so the runtime can read
+    // it natively. A chunked upload declares none; the cap applies while reading.
+    const text = declared !== null ? await request.text() : await readCapped(request, MAX_BODY_BYTES);
+    if (text === null) return json({ error: 'too_large' }, 413, cors);
     let input;
     try {
-        input = await request.json();
+        input = JSON.parse(text);
     } catch {
         return json({ error: 'bad_request' }, 400, cors);
     }
     const image = typeof input?.image === 'string' ? input.image : '';
     const width = Math.round(Number(input?.width));
     const height = Math.round(Number(input?.height));
-    if (!IMAGE_PREFIX.test(image.slice(0, 32)) || !(width >= 64 && width <= 8192 && height >= 64 && height <= 8192)) {
+    if (!IMAGE_PREFIX.test(image.slice(0, 32)) || image.includes('"') || image.includes('\\')
+        || !(width >= 64 && width <= 8192 && height >= 64 && height <= 8192)) {
         return json({ error: 'bad_request' }, 400, cors);
     }
-    if (image.length > MAX_BODY_BYTES) return json({ error: 'too_large' }, 413, cors);
 
-    const quota = await reserve(env, today(), await visitorKey(request, env));
+    const visitor = await visitorKey(request, env);
+    const quota = await reserve(env, today(), visitor);
     if (!quota.ok) return json({ error: 'limit', scope: quota.scope }, 429, cors);
+
+    const base = String(env.OPENAI_BASE_URL || DEFAULT_OPENAI_BASE_URL).replace(/\/+$/, '');
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+    };
+    // An AI Gateway logs payloads by default; visitors' photos must not be kept.
+    if (new URL(base).hostname === 'gateway.ai.cloudflare.com') headers['cf-aig-collect-log'] = 'false';
 
     let upstream;
     try {
-        upstream = await fetch(`${String(env.OPENAI_BASE_URL || DEFAULT_OPENAI_BASE_URL).replace(/\/+$/, '')}/responses`, {
+        upstream = await fetch(`${base}/responses`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${env.OPENAI_API_KEY}`
-            },
-            body: JSON.stringify(await paintRequest(env, image, width, height))
+            headers,
+            body: requestBody(await paintRequest(env, width, height, visitor), image)
         });
     } catch (error) {
         console.error('OpenAI unreachable', String(error));
-        await quota.release();
+        await quota.release('free');
         return json({ error: 'upstream' }, 502, cors);
     }
 
     if (!upstream.ok) {
-        // Refused before painting started: the visitor keeps their turn.
         const detail = await upstream.text().catch(() => '');
         console.error('OpenAI refused the painting', upstream.status, detail.slice(0, 2000));
-        await quota.release();
-        const blocked = /moderation|safety|content[ _-]?policy/i.test(detail);
-        return json({ error: blocked ? 'blocked' : 'upstream' }, blocked ? 422 : 502, cors);
+        // A refusal spends the turn, so a visitor cannot keep resubmitting a
+        // photo OpenAI rejects under the studio's account.
+        if (POLICY.test(detail)) return json({ error: 'blocked', left: quota.left }, 422, cors);
+        // Anything else was rejected before OpenAI did any work: free to give back.
+        await quota.release('free');
+        const ownerProblem = [401, 403, 404].includes(upstream.status) || OWNER_PROBLEM.test(detail);
+        return json({ error: ownerProblem ? 'closed' : 'upstream' }, ownerProblem ? 503 : 502, cors);
     }
 
     // Relay OpenAI's event stream as is: the page shows the partial images
-    // as they arrive, and the Worker never parses them.
-    const relay = upstream.body.pipeThrough(refundOnFailure(quota.release));
+    // as they arrive.
+    const relay = upstream.body.pipeThrough(watchStream(async (ending) => {
+        if (refundable(ending)) await quota.release('stream');
+    }));
     return new Response(relay, {
         status: 200,
         headers: {

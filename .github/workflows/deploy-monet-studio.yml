@@ -74,7 +74,7 @@ jobs:
           if [ -n "$ACCOUNT_ID" ]; then export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"; fi
           "$MONET_WRANGLER" deploy 2>&1 | tee "$RUNNER_TEMP/deploy.log"
           printf '%s' "$OPENAI_API_KEY" | "$MONET_WRANGLER" secret put OPENAI_API_KEY
-          url=$(grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -1)
+          url=$(grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -1 || true)
           echo "url=$url" >> "$GITHUB_OUTPUT"
           if [ -n "$url" ]; then
             echo "Monet studio Worker: $url" >> "$GITHUB_STEP_SUMMARY"
@@ -92,6 +92,21 @@ jobs:
             echo "/monet/ already uses $URL."
             exit 0
           fi
+          # The workflow fills a blank endpoint only when run by hand, and only
+          # replaces an earlier workers.dev URL: a custom domain stays, and
+          # clearing the endpoint keeps the studio paused across later deploys.
+          current=$(grep -oE 'data-endpoint="[^"]*"' monet/index.html | head -1)
+          case "$current" in
+            'data-endpoint=""')
+              if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
+                echo "data-endpoint is blank, so the studio stays paused. Run this workflow by hand to switch it on."
+                exit 0
+              fi ;;
+            data-endpoint=\"https://*.workers.dev\") ;;
+            *)
+              echo "data-endpoint points somewhere else ($current); leaving it."
+              exit 0 ;;
+          esac
           sed -i -E "s#data-endpoint=\"[^\"]*\"#$want#" monet/index.html
           grep -qF "$want" monet/index.html
           git config user.name "github-actions[bot]"

@@ -41,13 +41,18 @@ function createQuota(PaintQuota) {
   };
 }
 
-// Each step is [event, delayMs before it]. The body arrives as real SSE text.
+// Each step is [event, delayMs before it]; { drop: true } kills the connection.
+// The body arrives as real SSE text.
 function sseResponse(steps) {
   const encoder = new TextEncoder();
   const body = new ReadableStream({
     async start(controller) {
       for (const [event, delay = 0] of steps) {
         if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+        if (event.drop) {      // the connection dies here
+          controller.error(new Error('connection dropped'));
+          return;
+        }
         const text = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
         // Split large events across chunks like a real network would.
         for (let offset = 0; offset < text.length; offset += 65536) {

@@ -2,7 +2,7 @@
 <html lang="en" class="monet-page-root">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://*.workers.dev; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Monet Light Strokes is an open-source Codex Skill for translating personal photographs into light-driven, painterly interpretations through broken color, atmosphere, and material-specific brushwork.">
     <meta name="keywords" content="Monet Light Strokes, Codex Skill, OpenAI Codex, Impressionism, photo to painting, Houfu Chen">
@@ -28,7 +28,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/tomato-favicon-32x32.png?v=4">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png?v=4">
     <link rel="preload" href="/fonts/dm-sans-var-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/styles.css?v=20260813-7">
+    <link rel="stylesheet" href="/styles.css?v=20261011-1">
     <script type="application/ld+json">
         {
             "@context": "https://schema.org",
@@ -97,10 +97,15 @@
 
                                 <div class="monet-feature-request" id="request">
                                     <div class="monet-feature-actions">
-                                        <div class="monet-request-action">
+                                        <div class="monet-request-action" data-studio-entry hidden>
+                                            <button class="cta-button monet-request-link" type="button" data-studio-open aria-haspopup="dialog" aria-controls="monetStudio" data-en="Paint my photo" data-zh="把我的照片画成油画">Paint my photo</button>
+                                            <span class="monet-request-meta" data-en="SELF-SERVE · ABOUT A MINUTE" data-zh="自助生成 · 约一分钟">SELF-SERVE · ABOUT A MINUTE</span>
+                                        </div>
+                                        <div class="monet-request-action" data-personal-entry>
                                             <a class="cta-button monet-request-link" href="https://www.dropbox.com/request/1gfnide4h2a3dvbmuhe4" target="_blank" rel="noopener noreferrer" data-en="Request your painting ↗" data-zh="申请个人油画转化 ↗">Request your painting ↗</a>
                                             <span class="monet-request-meta" data-en="PERSONALLY REVIEWED · NOT INSTANT" data-zh="人工审核 · 非即时生成">PERSONALLY REVIEWED · NOT INSTANT</span>
                                         </div>
+                                        <a class="text-link" href="https://www.dropbox.com/request/1gfnide4h2a3dvbmuhe4" target="_blank" rel="noopener noreferrer" data-personal-link hidden data-en="Ask Houfu personally ↗" data-zh="请厚孚亲自画 ↗">Ask Houfu personally ↗</a>
                                         <a class="text-link" href="mailto:houfuchen0702@gmail.com?subject=Monet%20Light%20Strokes%20special%20request&amp;body=Hi%20Houfu%2C%0A%0AI%20uploaded%20my%20photos%20through%20Dropbox.%0A%0AWHAT%20MUST%20STAY%20UNCHANGED%3A%0ASPECIAL%20REQUESTS%3A%0AINTENDED%20USE%20%2F%20CROP%3A%0AMAY%20THE%20RESULT%20BE%20SHARED%20AS%20A%20BENCHMARK%3F%20yes%20%2F%20no%0AMY%20NAME%20%2B%20BEST%20EMAIL%3A%0A%0AThank%20you%21" data-en="Special requests ↗" data-zh="特殊要求 ↗">Special requests ↗</a>
                                         <a class="text-link" href="https://github.com/chf-NewStart/Monet-light-stroke" target="_blank" rel="noopener noreferrer" data-en="Open skill ↗" data-zh="开源技能 ↗">Open skill ↗</a>
                                     </div>
@@ -170,6 +175,54 @@
         </section>
     </main>
 
+    <!-- Self-serve studio. Put the deployed monet-studio Worker URL in
+         data-endpoint (see /monet-studio/README.md). While it is empty the
+         page keeps the personal request flow and never shows the studio. A
+         Worker on a domain other than *.workers.dev also has to be added to
+         connect-src in the Content-Security-Policy at the top of this file. -->
+    <dialog class="monet-studio" id="monetStudio" aria-labelledby="monetStudioTitle" data-endpoint="">
+        <div class="monet-studio-sheet">
+            <header class="monet-studio-head">
+                <div>
+                    <p class="monet-studio-kicker" data-en="THE STUDIO · MONET LIGHT STROKES" data-zh="画室 · 莫奈光影笔触">THE STUDIO · MONET LIGHT STROKES</p>
+                    <h2 id="monetStudioTitle" data-en="Paint my photo" data-zh="把我的照片画成油画">Paint my photo</h2>
+                </div>
+                <button class="monet-studio-close" type="button" data-studio-close aria-label="Close">&times;</button>
+            </header>
+
+            <label class="monet-studio-drop" data-studio-drop>
+                <input class="monet-studio-file" type="file" accept="image/*" data-studio-file>
+                <span class="monet-studio-drop-mark" aria-hidden="true"><span class="pixel-palette"></span></span>
+                <strong data-en="Choose a photo" data-zh="选择一张照片">Choose a photo</strong>
+                <span data-en="or drop one here · landscapes, water, flowers, people" data-zh="或拖到这里 · 风景、水面、花、人物皆可">or drop one here · landscapes, water, flowers, people</span>
+            </label>
+
+            <figure class="monet-studio-easel" data-studio-easel hidden>
+                <div class="monet-studio-frame">
+                    <img class="monet-studio-photo" data-studio-photo alt="">
+                    <img class="monet-studio-painting" data-studio-painting alt="">
+                </div>
+                <figcaption class="monet-studio-stage" data-studio-stage></figcaption>
+            </figure>
+
+            <p class="monet-studio-status" data-studio-status role="status" aria-live="polite"></p>
+
+            <div class="monet-studio-actions">
+                <button class="cta-button monet-studio-primary" type="button" data-studio-start hidden></button>
+                <a class="cta-button monet-studio-primary" data-studio-download hidden></a>
+                <button class="cta-button monet-studio-primary" type="button" data-studio-retry hidden></button>
+                <button class="monet-studio-secondary" type="button" data-studio-compare aria-pressed="false" hidden></button>
+                <button class="monet-studio-secondary" type="button" data-studio-again hidden></button>
+                <a class="text-link" href="https://www.dropbox.com/request/1gfnide4h2a3dvbmuhe4" target="_blank" rel="noopener noreferrer" data-studio-personal hidden></a>
+            </div>
+
+            <p class="monet-studio-fine">
+                <span data-studio-left></span>
+                <span data-en="Your photo is sent to OpenAI to be painted and is not stored on this site." data-zh="照片会发送给 OpenAI 用于作画，本站不会保存。">Your photo is sent to OpenAI to be painted and is not stored on this site.</span>
+            </p>
+        </div>
+    </dialog>
+
     <footer class="monet-page-footer">
         <p>
             <span>MONET LIGHT STROKES</span>
@@ -180,5 +233,6 @@
     </footer>
 
     <script src="/site.js" defer></script>
+    <script src="/monet/studio.js" defer></script>
 </body>
 </html>

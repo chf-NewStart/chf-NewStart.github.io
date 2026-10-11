@@ -2311,6 +2311,411 @@ body.monet-page-body::before {
     color: rgba(255, 244, 219, 0.62);
 }
 
+/* Monet studio: the self-serve painting dialog opened from the salon. */
+[data-studio-entry][hidden],
+[data-personal-entry][hidden],
+[data-personal-link][hidden],
+.monet-studio [hidden] {
+    display: none !important;
+}
+
+button.monet-request-link {
+    cursor: pointer;
+}
+
+.monet-studio {
+    width: min(920px, calc(100vw - 32px));
+    max-width: none;
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    overflow: auto;
+    border: 1px solid rgba(226, 192, 140, 0.28);
+    color: #e9e1cf;
+    background:
+        radial-gradient(circle at 14% 0%, rgba(91, 133, 137, 0.32), transparent 26rem),
+        radial-gradient(circle at 94% 100%, rgba(109, 69, 49, 0.26), transparent 24rem),
+        #17262a;
+    box-shadow: 0 40px 120px rgba(0, 6, 8, 0.62);
+    overscroll-behavior: contain;
+}
+
+.monet-studio::backdrop {
+    background: rgba(6, 12, 14, 0.74);
+    backdrop-filter: blur(6px);
+}
+
+html:has(.monet-studio[open]) {
+    overflow: hidden;
+}
+
+.monet-studio-sheet {
+    display: grid;
+    gap: 18px;
+    padding: clamp(20px, 3vw, 34px);
+}
+
+.monet-studio-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.monet-studio-kicker {
+    margin: 0 0 8px;
+    color: #d6ad76;
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+}
+
+.monet-studio-head h2 {
+    margin: 0;
+    color: #f5ead5;
+    font-size: clamp(1.55rem, 3vw, 2.15rem);
+    line-height: 1.05;
+}
+
+.monet-studio-close {
+    display: inline-grid;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(244, 234, 214, 0.2);
+    color: #eadfc9;
+    background: rgba(244, 234, 214, 0.06);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.monet-studio-close:hover,
+.monet-studio-close:focus-visible {
+    border-color: rgba(226, 192, 140, 0.6);
+    color: #fff5df;
+    background: rgba(226, 192, 140, 0.12);
+}
+
+.monet-studio-drop {
+    display: flex;
+    position: relative;
+    min-height: clamp(240px, 44vh, 420px);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    padding: 28px 20px;
+    border: 1px dashed rgba(226, 192, 140, 0.45);
+    background: rgba(244, 234, 214, 0.03);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 200ms ease, background 200ms ease;
+}
+
+.monet-studio-drop:hover,
+.monet-studio.is-dragging .monet-studio-drop {
+    border-color: #e2c08c;
+    background: rgba(226, 192, 140, 0.08);
+}
+
+.monet-studio-drop:focus-within {
+    outline: 2px solid #e2c08c;
+    outline-offset: 3px;
+}
+
+.monet-studio-drop strong {
+    color: #f5ead5;
+    font-size: 1.15rem;
+}
+
+.monet-studio-drop > span:last-child {
+    max-width: 34ch;
+    color: rgba(233, 225, 207, 0.62);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    line-height: 1.6;
+}
+
+.monet-studio-drop-mark {
+    display: grid;
+    width: 72px;
+    height: 72px;
+    margin-bottom: 6px;
+    place-items: center;
+    border: 1px solid rgba(226, 192, 140, 0.32);
+    border-radius: 50%;
+    background: rgba(226, 192, 140, 0.08);
+}
+
+.monet-studio-drop-mark .pixel-palette {
+    transform: scale(1.6);
+}
+
+/* Visually hidden but still the keyboard target inside the label. */
+.monet-studio-file {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.monet-studio-easel {
+    display: flex;
+    min-width: 0;
+    margin: 0;
+    align-items: center;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.monet-studio-frame {
+    position: relative;
+    max-width: 100%;
+    padding: clamp(7px, 0.9vw, 12px);
+    border: clamp(6px, 0.8vw, 11px) solid #3b2c20;
+    background: #9d7446;
+    box-shadow:
+        0 2px 0 #c99e61,
+        0 0 0 2px #19130f,
+        0 24px 54px rgba(0, 8, 11, 0.42);
+}
+
+.monet-studio-frame::before {
+    position: absolute;
+    inset: 3px;
+    z-index: 3;
+    border: 1px solid rgba(239, 203, 140, 0.62);
+    content: '';
+    pointer-events: none;
+}
+
+.monet-studio-frame img {
+    display: block;
+    max-width: 100%;
+    max-height: min(56vh, 600px);
+    width: auto;
+    height: auto;
+    border: 1px solid rgba(16, 12, 8, 0.74);
+}
+
+/* While painting, the photo sits under the canvas and partial images fade in
+   over it. Once done, the painting takes the frame and the photo waits
+   underneath for "Show my photo". */
+.monet-studio-frame .monet-studio-painting {
+    position: absolute;
+    top: clamp(7px, 0.9vw, 12px);
+    left: clamp(7px, 0.9vw, 12px);
+    z-index: 1;
+    width: calc(100% - 2 * clamp(7px, 0.9vw, 12px));
+    height: calc(100% - 2 * clamp(7px, 0.9vw, 12px));
+    max-height: none;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 900ms ease;
+}
+
+.monet-studio-frame .monet-studio-painting.is-visible {
+    opacity: 1;
+}
+
+.monet-studio.is-painting .monet-studio-photo {
+    filter: saturate(0.55) brightness(0.72);
+    transition: filter 1200ms ease;
+}
+
+.monet-studio.is-painting .monet-studio-frame::after {
+    position: absolute;
+    inset: clamp(7px, 0.9vw, 12px);
+    z-index: 2;
+    background: linear-gradient(105deg, transparent 30%, rgba(255, 228, 176, 0.16) 48%, transparent 66%) 0 0 / 250% 100%;
+    content: '';
+    pointer-events: none;
+    animation: monet-studio-light 2.8s ease-in-out infinite;
+}
+
+@keyframes monet-studio-light {
+    from {
+        background-position: 120% 0;
+    }
+
+    to {
+        background-position: -120% 0;
+    }
+}
+
+.monet-studio-easel.is-done .monet-studio-painting {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+    height: auto;
+    max-height: min(56vh, 600px);
+}
+
+/* The photo fades out behind the finished painting, and only comes forward
+   while "Show my photo" is pressed. */
+.monet-studio-easel.is-done .monet-studio-photo {
+    position: absolute;
+    top: clamp(7px, 0.9vw, 12px);
+    left: clamp(7px, 0.9vw, 12px);
+    z-index: 0;
+    width: calc(100% - 2 * clamp(7px, 0.9vw, 12px));
+    height: calc(100% - 2 * clamp(7px, 0.9vw, 12px));
+    max-height: none;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 360ms ease;
+}
+
+.monet-studio-easel.is-comparing .monet-studio-photo {
+    z-index: 2;
+    opacity: 1;
+}
+
+.monet-studio-stage {
+    min-height: 1.4em;
+    color: #d6ad76;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+}
+
+.monet-studio-status {
+    max-width: 58ch;
+    min-height: 1.5em;
+    margin: 0 auto;
+    color: rgba(233, 225, 207, 0.82);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    text-align: center;
+}
+
+.monet-studio-status:empty {
+    display: none;
+}
+
+.monet-studio-status.is-error {
+    color: #f2c3a6;
+}
+
+.monet-studio-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px 18px;
+}
+
+.monet-studio-actions:not(:has(> :not([hidden]))) {
+    display: none;
+}
+
+.monet-studio .cta-button.monet-studio-primary {
+    border-color: #d4aa73;
+    color: #17262a;
+    background: #d4aa73;
+    box-shadow: 6px 6px 0 rgba(212, 170, 115, 0.16);
+    cursor: pointer;
+}
+
+.monet-studio .cta-button.monet-studio-primary:hover {
+    border-color: #ecd09f;
+    color: #17262a;
+    background: #ecd09f;
+    box-shadow: 9px 9px 0 rgba(212, 170, 115, 0.14);
+}
+
+.monet-studio-secondary {
+    min-height: 50px;
+    padding: 0 20px;
+    border: 1px solid rgba(226, 192, 140, 0.45);
+    color: #f0dfbf;
+    background: transparent;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.monet-studio-secondary:hover,
+.monet-studio-secondary:focus-visible {
+    border-color: #e2c08c;
+    color: #fff5df;
+    background: rgba(226, 192, 140, 0.1);
+}
+
+.monet-studio-secondary[aria-pressed="true"] {
+    border-color: #e2c08c;
+    background: rgba(226, 192, 140, 0.16);
+}
+
+.monet-studio .text-link {
+    color: #e2c08c;
+    text-decoration-color: rgba(226, 192, 140, 0.36);
+}
+
+.monet-studio .text-link:hover {
+    color: #fff0d2;
+}
+
+.monet-studio-fine {
+    max-width: 60ch;
+    margin: 0 auto;
+    color: rgba(233, 225, 207, 0.52);
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.04em;
+    line-height: 1.6;
+    text-align: center;
+}
+
+@media (max-width: 640px) {
+    .monet-studio {
+        width: calc(100vw - 24px);
+        max-height: calc(100dvh - 24px);
+    }
+
+    .monet-studio-sheet {
+        gap: 14px;
+        padding: 18px 16px 20px;
+    }
+
+    .monet-studio-drop {
+        min-height: 220px;
+    }
+
+    .monet-studio-frame img,
+    .monet-studio-easel.is-done .monet-studio-painting {
+        max-height: 48vh;
+    }
+
+    .monet-studio-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .monet-studio-actions .text-link {
+        align-self: center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .monet-studio.is-painting .monet-studio-frame::after {
+        animation: none;
+        background-position: 50% 0;
+    }
+
+    .monet-studio-frame .monet-studio-painting,
+    .monet-studio.is-painting .monet-studio-photo {
+        transition: none;
+    }
+}
+
 .tool-bench {
     margin-top: 64px;
     padding-top: 28px;

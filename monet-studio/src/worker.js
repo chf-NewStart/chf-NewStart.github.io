@@ -49,10 +49,15 @@ const IMAGE_DONE_EVENT = /^data:\s?\{\s*"type"\s*:\s*"response\.image_generation
 const IMAGE_ITEM_DONE = /^data:\s?\{\s*"type"\s*:\s*"response\.output_item\.done"[\s\S]*"type"\s*:\s*"image_generation_call"[\s\S]*(?:"status"\s*:\s*"completed"|"result"\s*:\s*")/;
 
 // OpenAI refusing a photo; monet/studio.js recognises the same words.
-const POLICY = /moderation|safety|content[ _-]?policy|usage policy|invalid_prompt|bio_policy|content_filter/i;
-// Problems only the owner can fix: key, organization verification, credit,
-// a retired model, or a parameter OpenAI no longer accepts.
-const OWNER_PROBLEM = /insufficient_quota|invalid_api_key|model_not_found|must be verified|unknown parameter|unsupported parameter/i;
+// ("safety_identifier" is a request parameter, not a refusal.)
+const POLICY = /moderation|safety(?!_identifier)|content[ _-]?policy|usage policy|invalid_prompt|bio_policy|content_filter/i;
+// Problems only the owner can fix: key, organization verification, credit or
+// billing, a retired model, or a parameter OpenAI no longer accepts.
+const OWNER_PROBLEM = /insufficient_quota|billing_not_active|account is not active|invalid_api_key|model_not_found|must be verified|unknown parameter|unsupported parameter/i;
+
+// The Durable Object's own random salt for visitor IDs; "salt" sorts after
+// every "<day>:" key, so clearing old days never removes it.
+const SALT_KEY = 'salt';
 
 // A painting that fails mid-stream has already been partly billed (reading
 // the skill and photo, writing the prompt), so only a few are given back.
@@ -121,15 +126,7 @@ export function visitorAddress(ip) {
     return `${groups.slice(0, 4).map((group) => group.replace(/^0+(?=.)/, '')).join(':')}::/64`;
 }
 
-// Only a salted hash is stored. The OpenAI key is already a secret, so it
-// salts the hash unless VISITOR_SALT is set.
-async function visitorKey(request, env) {
-    const address = visitorAddress(request.headers.get('CF-Connecting-IP'));
-    const salt = env.VISITOR_SALT || env.OPENAI_API_KEY || 'monet-studio';
-    const bytes = new TextEncoder().encode(`${salt}|${address}`);
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-    return Array.from(digest.slice(0, 12), (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
+const hex = (bytes) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 
 // One Durable Object holds every counter, so each check-and-spend is atomic
 // and there is no database to create. Keys are "<day>:all" for the studio and
@@ -137,10 +134,28 @@ async function visitorKey(request, env) {
 export class PaintQuota {
     constructor(state) {
         this.storage = state.storage;
+        this.hmacKey = null;
+    }
+
+    // A visitor is an HMAC of their address under a random salt that only this
+    // object knows, so neither its keys nor the safety_identifier sent to
+    // OpenAI can be turned back into an address.
+    async visitorId(address) {
+        if (!this.hmacKey) {
+            let salt = await this.storage.get(SALT_KEY);
+            if (!salt) {
+                salt = hex(crypto.getRandomValues(new Uint8Array(32)));
+                await this.storage.put(SALT_KEY, salt);
+            }
+            this.hmacKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(salt), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+        }
+        const mac = await crypto.subtle.sign('HMAC', this.hmacKey, new TextEncoder().encode(String(address)));
+        return hex(new Uint8Array(mac).slice(0, 12));
     }
 
     async fetch(request) {
-        const { action, kind, day, visitor, limits: limit } = await request.json();
+        const { action, kind, day, address, limits: limit } = await request.json();
+        const visitor = await this.visitorId(address);
         const keys = [`${day}:all`, `${day}:${visitor}`];
         const counts = await this.storage.get(keys);
         const total = counts.get(keys[0]) || 0;
@@ -153,7 +168,7 @@ export class PaintQuota {
             await this.storage.put({ [keys[0]]: total + 1, [keys[1]]: used + 1 });
             // First painting of the day: earlier days' counters are done with.
             if (total === 0) await this.forgetBefore(day);
-            return Response.json({ ok: true, left: Math.min(limit.visitor - used, limit.total - total) - 1 });
+            return Response.json({ ok: true, visitor, left: Math.min(limit.visitor - used, limit.total - total) - 1 });
         }
         if (action === 'release') {
             // Failures before OpenAI starts cost nothing and are always given
@@ -178,22 +193,34 @@ export class PaintQuota {
     }
 }
 
-async function askQuota(env, action, day, visitor, kind) {
+// The address goes only to the studio's own Durable Object, which hashes it.
+async function askQuota(env, action, day, address, kind) {
     const quota = env.QUOTA.get(env.QUOTA.idFromName('studio'));
     const response = await quota.fetch('https://quota.internal/', {
         method: 'POST',
-        body: JSON.stringify({ action, kind, day, visitor, limits: limits(env) })
+        body: JSON.stringify({ action, kind, day, address, limits: limits(env) })
     });
     return response.json();
 }
 
-async function reserve(env, day, visitor) {
-    const result = await askQuota(env, 'reserve', day, visitor);
-    return { ...result, release: (kind) => askQuota(env, 'release', day, visitor, kind) };
+async function reserve(env, day, address) {
+    const result = await askQuota(env, 'reserve', day, address);
+    return { ...result, release: (kind) => askQuota(env, 'release', day, address, kind) };
 }
 
-async function paintingsLeft(env, day, visitor) {
-    return (await askQuota(env, 'left', day, visitor)).left;
+async function paintingsLeft(env, day, address) {
+    return (await askQuota(env, 'left', day, address)).left;
+}
+
+function ownerProblem(status, detail) {
+    if ([401, 403, 404].includes(status) || OWNER_PROBLEM.test(detail)) return true;
+    // A retired or unknown image model comes back as an invalid model value.
+    try {
+        const { error } = JSON.parse(detail);
+        return error?.code === 'invalid_value' && /model$/.test(String(error?.param || ''));
+    } catch {
+        return false;
+    }
 }
 
 async function studioInstructions(env) {
@@ -367,7 +394,16 @@ async function readCapped(request, limit) {
 }
 
 async function paint(request, env, cors) {
-    if (!env.OPENAI_API_KEY) return json({ error: 'not_configured' }, 503, cors);
+    // Misconfiguration closes the studio before any turn is spent.
+    if (!env.OPENAI_API_KEY) return json({ error: 'closed' }, 503, cors);
+    const base = String(env.OPENAI_BASE_URL || '').trim().replace(/\/+$/, '') || DEFAULT_OPENAI_BASE_URL;
+    let host;
+    try {
+        host = new URL(base).hostname;
+    } catch {
+        console.error('OPENAI_BASE_URL is not a valid URL', base);
+        return json({ error: 'closed' }, 503, cors);
+    }
     const declared = request.headers.get('Content-Length');
     if (Number(declared || 0) > MAX_BODY_BYTES) return json({ error: 'too_large' }, 413, cors);
 
@@ -389,24 +425,22 @@ async function paint(request, env, cors) {
         return json({ error: 'bad_request' }, 400, cors);
     }
 
-    const visitor = await visitorKey(request, env);
-    const quota = await reserve(env, today(), visitor);
+    const quota = await reserve(env, today(), visitorAddress(request.headers.get('CF-Connecting-IP')));
     if (!quota.ok) return json({ error: 'limit', scope: quota.scope }, 429, cors);
 
-    const base = String(env.OPENAI_BASE_URL || DEFAULT_OPENAI_BASE_URL).replace(/\/+$/, '');
     const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${env.OPENAI_API_KEY}`
     };
     // An AI Gateway logs payloads by default; visitors' photos must not be kept.
-    if (new URL(base).hostname === 'gateway.ai.cloudflare.com') headers['cf-aig-collect-log'] = 'false';
+    if (host === 'gateway.ai.cloudflare.com') headers['cf-aig-collect-log'] = 'false';
 
     let upstream;
     try {
         upstream = await fetch(`${base}/responses`, {
             method: 'POST',
             headers,
-            body: requestBody(await paintRequest(env, width, height, visitor), image)
+            body: requestBody(await paintRequest(env, width, height, quota.visitor), image)
         });
     } catch (error) {
         console.error('OpenAI unreachable', String(error));
@@ -417,13 +451,13 @@ async function paint(request, env, cors) {
     if (!upstream.ok) {
         const detail = await upstream.text().catch(() => '');
         console.error('OpenAI refused the painting', upstream.status, detail.slice(0, 2000));
+        const closed = ownerProblem(upstream.status, detail);
         // A refusal spends the turn, so a visitor cannot keep resubmitting a
         // photo OpenAI rejects under the studio's account.
-        if (POLICY.test(detail)) return json({ error: 'blocked', left: quota.left }, 422, cors);
+        if (!closed && POLICY.test(detail)) return json({ error: 'blocked', left: quota.left }, 422, cors);
         // Anything else was rejected before OpenAI did any work: free to give back.
         await quota.release('free');
-        const ownerProblem = [401, 403, 404].includes(upstream.status) || OWNER_PROBLEM.test(detail);
-        return json({ error: ownerProblem ? 'closed' : 'upstream' }, ownerProblem ? 503 : 502, cors);
+        return json({ error: closed ? 'closed' : 'upstream' }, closed ? 503 : 502, cors);
     }
 
     // Relay OpenAI's event stream as is: the page shows the partial images
@@ -455,7 +489,7 @@ export default {
 
         const path = new URL(request.url).pathname.replace(/\/+$/, '');
         if (request.method === 'GET' && path === '') {
-            const left = await paintingsLeft(env, today(), await visitorKey(request, env));
+            const left = await paintingsLeft(env, today(), visitorAddress(request.headers.get('CF-Connecting-IP')));
             return json({ open: Boolean(env.OPENAI_API_KEY), left, limit: limits(env).visitor }, 200, cors);
         }
         if (request.method === 'POST' && path === '/paint') {

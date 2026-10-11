@@ -19,6 +19,7 @@ const SHOTS = process.env.MONET_STUDIO_SHOTS || '';
 const ORIGIN = `http://localhost:${PORT}`;
 const SKILL = 'https://skill.test/';
 const PHOTO = path.join(ROOT, 'assets/monet-light-strokes/original-water-duck.jpg');
+const TINY = path.join(ROOT, 'favicon_io/tomato-favicon-16x16.png');
 const base64 = (file) => fs.readFileSync(path.join(ROOT, 'assets/monet-light-strokes', file)).toString('base64');
 const PARTIALS = [base64('original-water-duck.jpg'), base64('water-duck-approved.jpg')];
 const FINAL = base64('water-duck-approved.jpg');
@@ -173,6 +174,13 @@ async function run() {
     await page.evaluate(() => document.getElementById('languageToggle').click());
     assert.equal(await page.locator('[data-studio-download]').textContent(), 'Download painting');
 
+    // A new photo that can't be used doesn't cost the painting already made.
+    await page.locator('[data-studio-file]').setInputFiles(TINY);
+    await page.waitForFunction(() => document.querySelector('[data-studio-status]').textContent.includes('too small'));
+    assert.ok(await visible(page, '[data-studio-download]'), 'the painting can still be downloaded');
+    assert.equal(await page.locator('[data-studio-painting]').getAttribute('src'), done.src);
+    assert.ok(await page.locator('[data-studio-status]').evaluate((status) => status.classList.contains('is-error')));
+
     // A refusal from OpenAI's safety system is explained, and spends the turn.
     openai = () => new Response(JSON.stringify({ error: { code: 'moderation_blocked', message: 'rejected by the safety system' } }), { status: 400 });
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('[data-studio-again]')]);
@@ -260,6 +268,17 @@ async function run() {
     assert.match(await phone.locator('[data-studio-status]').textContent(), /Finished/);
     await shot(phone, 'studio-8-phone-done');
     await phone.close();
+
+    // With no OpenAI key on the Worker, the studio says it is closed up front.
+    const key = env.OPENAI_API_KEY;
+    delete env.OPENAI_API_KEY;
+    const closed = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    closed.on('pageerror', (error) => errors.push(error.message));
+    await closed.goto(`${ORIGIN}/monet/#studio`, { waitUntil: 'networkidle' });
+    await closed.waitForFunction(() => document.querySelector('[data-studio-status]').textContent.includes('closed for now'));
+    assert.ok(await visible(closed, '[data-studio-personal]'), 'personal route offered while closed');
+    await closed.close();
+    env.OPENAI_API_KEY = key;
 
     // No Worker configured: the page is exactly the personal request flow.
     withEndpoint = false;

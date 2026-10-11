@@ -178,9 +178,10 @@
     <!-- Self-serve studio. data-endpoint holds the monet-studio Worker URL;
          the "Deploy Monet studio" workflow fills it in (see
          /monet-studio/README.md). While it is empty the page keeps the
-         personal request flow and never shows the studio, so clearing it
-         pauses the studio. A Worker on a domain other than *.workers.dev also
-         has to be added to connect-src in the Content-Security-Policy above. -->
+         personal request flow and never shows the studio. Clearing it only
+         hides the button; to stop spending, see the README. A Worker on a
+         domain other than *.workers.dev also has to be added to connect-src
+         in the Content-Security-Policy above. -->
     <dialog class="monet-studio" id="monetStudio" aria-labelledby="monetStudioTitle" data-endpoint="">
         <div class="monet-studio-sheet">
             <header class="monet-studio-head">

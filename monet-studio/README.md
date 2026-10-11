@@ -12,21 +12,21 @@ At the defaults, expect very roughly $0.05–0.15 per painting: a medium-quality
 
 Spending has two daily caps, both counted in UTC days:
 
-- `DAILY_LIMIT_PER_VISITOR` (default 2). A visitor is a salted hash of their IP address. An IPv6 /64 counts as one visitor.
+- `DAILY_LIMIT_PER_VISITOR` (default 2). A visitor is an HMAC of their IP address under a random salt that only the studio's Durable Object knows. An IPv6 /64 counts as one visitor.
 - `DAILY_LIMIT_TOTAL` (default 25) for the whole studio.
 
 Whether a turn is given back depends on how far the painting got:
 
 - **OpenAI rejects the request before doing any work** (an outage, or a bad request): always given back. OpenAI bills nothing for these.
-- **The painting fails partway** (or the response finishes without an image): given back at most once per visitor and five times a day across the studio. By then OpenAI has already billed the reading and prompt-writing, so these refunds are capped.
+- **The painting fails partway** (or the response finishes without an image): given back at most once per visitor and five times a day across the studio. By then OpenAI has already billed the reading and prompt-writing, so these refunds are capped. A connection that drops before OpenAI reports how the response ended is not given back. That includes a Worker stopped for exceeding its CPU limit.
 - **A painting was delivered:** never given back, however the response ends.
-- **OpenAI's safety check refuses the photo:** the turn is spent. Otherwise one person could keep resubmitting a refused photo under your organization. Each request also carries a hashed visitor ID (`safety_identifier`), so OpenAI can act on one abusive visitor rather than the whole studio.
+- **OpenAI's safety check refuses the photo:** the turn is spent. Otherwise one person could keep resubmitting a refused photo under your organization. Each request also carries the visitor's HMAC as `safety_identifier`, so OpenAI can act on one abusive visitor rather than the whole studio. OpenAI cannot turn that ID back into an address, because the salt never leaves the Durable Object.
 
 Each request is also hard-capped: one image call (`max_tool_calls`), and at most `MAX_OUTPUT_TOKENS` of reasoning and text.
 
-When OpenAI reports a problem only you can fix, visitors see "The studio is closed for now" with the personal-request link instead of an endless "try again", and the details are in Workers & Pages → monet-studio → Logs. That covers a revoked key, an unverified organization, used-up credit, and a retired model or parameter.
+When OpenAI reports a problem only you can fix, visitors see "The studio is closed for now" with the personal-request link instead of an endless "try again", and the details are in Workers & Pages → monet-studio → Logs. That covers a revoked key, an unverified organization, used-up credit or inactive billing, and a retired model or parameter. A missing `OPENAI_API_KEY` secret or an invalid `OPENAI_BASE_URL` also shows "closed", without spending anyone's turn.
 
-The counters live in one SQLite-backed Durable Object (`PaintQuota`). The first deploy creates it, so there is no database to set up. It stores only hashed visitor keys and counts, and it forgets earlier days at the first painting of each new day. The photo is sent to OpenAI with `store: false` and never written anywhere by the Worker.
+The counters live in one SQLite-backed Durable Object (`PaintQuota`). The first deploy creates it, so there is no database to set up. It stores only visitor HMACs, counts, and its salt, and it forgets earlier days at the first painting of each new day. The photo is sent to OpenAI with `store: false` and never written anywhere by the Worker.
 
 On CPU: each painting needs a few milliseconds of Worker CPU to read the upload, build the request, and relay the stream. That was measured at roughly 5–8 ms in Node, which is close to the free plan's 10 ms per request. After the first paintings, check Workers & Pages → monet-studio → Observability. If requests show "Exceeded CPU limit", move the account to the Workers Paid plan. No code change is needed.
 
@@ -61,7 +61,13 @@ Actions → **Deploy Monet studio** → Run workflow, on `main`. The workflow:
 
 A minute later "Paint my photo" appears on /monet/. Later pushes to `main` that change `monet-studio/` redeploy by themselves. To change the OpenAI key, update the secret and run the workflow again.
 
-Until `data-endpoint` has a URL, the page keeps the Dropbox request flow and never shows the studio. **To pause the studio**, clear `data-endpoint` in `monet/index.html` (or set `DAILY_LIMIT_TOTAL` to `0`). Automatic deploys leave a blank endpoint alone; running the workflow by hand fills it in again. The workflow also never replaces an endpoint on another domain. A custom domain instead of `*.workers.dev` also has to be added to `connect-src` in that page's Content-Security-Policy.
+Until `data-endpoint` has a URL, the page keeps the Dropbox request flow and never shows the studio.
+
+**To stop spending**, set `DAILY_LIMIT_TOTAL` to `0` in `wrangler.jsonc` and push, which redeploys. Or delete the `OPENAI_API_KEY` secret under Workers & Pages → monet-studio → Settings. Visitors then see "closed".
+
+**Clearing `data-endpoint`** in `monet/index.html` only hides the button. The Worker stays live at its URL, which is in this repository's history. Automatic deploys leave a blank endpoint alone; running the workflow by hand fills it in again. The workflow never replaces an endpoint on another domain.
+
+A custom domain instead of `*.workers.dev` also has to be added to `connect-src` in that page's Content-Security-Policy.
 
 ### Deploying from a terminal instead
 
@@ -90,7 +96,6 @@ All settings are `vars` in `wrangler.jsonc`. Change one and run `npx wrangler de
 | `MAX_OUTPUT_TOKENS` | `16000` | Hard cap on the reasoning model's reasoning and text per painting |
 | `ALLOWED_ORIGINS` | the site's origins | Only these pages may call the Worker |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | A Cloudflare AI Gateway's OpenAI URL also works, for usage analytics. The Worker sends `cf-aig-collect-log: false` so the gateway doesn't keep visitors' photos; leave the gateway's payload logging off too |
-| `VISITOR_SALT` (secret, optional) | the OpenAI key | Salt for the visitor hash |
 
 If OpenAI renames or retires a model, the studio shows "closed" and the Worker logs OpenAI's error in Workers & Pages → monet-studio → Logs. Change the model name and redeploy.
 
@@ -103,8 +108,7 @@ If OpenAI renames or retires a model, the studio shows "closed" and the Worker l
   - `bad_request` (400)
   - `too_large` (413, also enforced while reading a chunked upload)
   - `upstream` (502)
-  - `closed` (503)
-  - `not_configured` (503)
+  - `closed` (503, nothing spent)
 
 ## Tests
 

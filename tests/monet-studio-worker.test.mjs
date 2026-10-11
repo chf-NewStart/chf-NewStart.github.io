@@ -180,7 +180,11 @@ test('problems only the owner can fix close the studio instead of inviting retri
     [429, { error: { code: 'insufficient_quota', message: 'You exceeded your current quota.' } }],
     [404, { error: { code: 'model_not_found', message: 'The model `gpt-9` does not exist.' } }],
     [401, { error: { code: 'invalid_api_key', message: 'Incorrect API key provided.' } }],
-    [400, { error: { message: "Unknown parameter: 'max_tool_calls'." } }]
+    [400, { error: { message: "Unknown parameter: 'max_tool_calls'." } }],
+    // Names a parameter with "safety" in it, but is not a refusal.
+    [400, { error: { message: "Unknown parameter: 'safety_identifier'.", param: 'safety_identifier', code: 'unknown_parameter' } }],
+    [429, { error: { type: 'billing_not_active', code: 'billing_not_active', message: 'Your account is not active, please check your billing details on our website.' } }],
+    [400, { error: { code: 'invalid_value', param: 'tools[0].model', message: "Invalid value: 'gpt-image-9'." } }]
   ];
   for (const [status, body] of cases) {
     openai = () => new Response(JSON.stringify(body), { status });
@@ -317,11 +321,27 @@ test('bad input is rejected before any turn is spent', async () => {
   assert.equal(calls.filter((item) => item.url.includes('openai')).length, 0);
 });
 
-test('without an OpenAI key the studio reports closed and spends nothing', async () => {
+test('a missing key or an invalid OPENAI_BASE_URL closes the studio and spends nothing', async () => {
   delete env.OPENAI_API_KEY;
   assert.equal((await (await call('GET', '/')).json()).open, false);
-  assert.equal((await paint()).status, 503);
+  const noKey = await paint();
+  assert.equal(noKey.status, 503);
+  assert.equal((await noKey.json()).error, 'closed');
   assert.equal(await left(), 2);
+
+  env.OPENAI_API_KEY = 'sk-test';
+  for (const bad of ['api.openai.com/v1', 'gateway.ai.cloudflare.com/v1/acct/gw/openai']) {
+    env.OPENAI_BASE_URL = bad;
+    const response = await paint();
+    assert.equal(response.status, 503, bad);
+    assert.match(response.headers.get('Access-Control-Allow-Origin'), /houfu72/);
+    assert.equal((await response.json()).error, 'closed');
+  }
+  assert.equal(await left(), 2);
+  assert.equal(calls.filter((item) => item.url.includes('openai')).length, 0);
+
+  env.OPENAI_BASE_URL = '   ';     // blank falls back to OpenAI itself
+  assert.equal((await paint()).status, 200);
 });
 
 test('the first painting of a day clears earlier days', async () => {
@@ -330,10 +350,11 @@ test('the first painting of a day clears earlier days', async () => {
   data.set('2020-01-01:all', 300);
   await (await paint()).text();
   assert.deepEqual([...data.keys()].filter((key) => key.startsWith('2020-')), []);
-  assert.equal(data.size, 2);
+  assert.deepEqual([...data.keys()].filter((key) => !key.startsWith('2020-')).length, 3, 'today\'s two counters and the salt');
+  assert.ok(data.has('salt'), 'clearing old days keeps the salt');
   // Later paintings that day leave today's counters alone.
   await (await paint({ ip: '198.51.100.30' })).text();
-  assert.equal(data.size, 3);
+  assert.equal(data.size, 4);
 });
 
 test('requests go to OPENAI_BASE_URL when set; an AI Gateway is told not to log photos', async () => {
@@ -351,16 +372,29 @@ test('requests go to OPENAI_BASE_URL when set; an AI Gateway is told not to log 
   assert.deepEqual(seen.find(([url]) => url.endsWith('/responses')), ['https://api.openai.com/v1/responses', undefined]);
 });
 
-test('a visitor\'s count is a salted hash, never the address', async () => {
+test('visitor IDs come from a salt only the Durable Object knows', async () => {
+  const sent = [];
+  openai = (body) => { sent.push(body.safety_identifier); return sseResponse([]); };
+  await (await paint()).text();
   await (await paint()).text();
   const keys = [...env.QUOTA.storage.data.keys()].join(' ');
   assert.doesNotMatch(keys, /203\.0\.113\.7/);
-  // Without VISITOR_SALT the secret OpenAI key salts it, so rotating either changes the hash.
-  const before = keys;
+  assert.equal(sent[0], sent[1], 'stable for one visitor');
+  assert.match(sent[0], /^[0-9a-f]{24}$/);
+  assert.ok(keys.includes(`:${sent[0]}`), 'the same ID counts their paintings');
+
+  // Nothing OpenAI holds (its key, the address) reproduces the ID.
+  const { createHash } = await import('node:crypto');
+  for (const guess of ['sk-test|203.0.113.7', '203.0.113.7', 'monet-studio|203.0.113.7']) {
+    assert.notEqual(createHash('sha256').update(guess).digest('hex').slice(0, 24), sent[0]);
+  }
+  const salt = env.QUOTA.storage.data.get('salt');
+  assert.match(salt, /^[0-9a-f]{64}$/);
+
+  // Another studio (another salt) gives the same visitor a different ID.
   env.QUOTA = createQuota(worker.PaintQuota);
-  env.OPENAI_API_KEY = 'sk-other';
   await (await paint()).text();
-  assert.notEqual([...env.QUOTA.storage.data.keys()].join(' '), before);
+  assert.notEqual(sent[2], sent[0]);
 });
 
 test('canvas sizes follow the photo within the image model\'s rules', () => {

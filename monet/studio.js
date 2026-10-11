@@ -16,7 +16,7 @@
     const MAX_FILE_BYTES = 40 * 1024 * 1024;
     const TIMEOUT_MS = 5 * 60 * 1000;
     // OpenAI refusing a photo; the Worker recognises the same words.
-    const POLICY = /moderation|safety|content[ _-]?policy|usage policy|invalid_prompt|bio_policy|content_filter/i;
+    const POLICY = /moderation|safety(?!_identifier)|content[ _-]?policy|usage policy|invalid_prompt|bio_policy|content_filter/i;
     // Errors that the same photo cannot fix by trying again.
     const FINAL_ERRORS = /^(limit|blocked|closed|bad_photo|not_image|too_)/;
 
@@ -122,6 +122,8 @@
         view: 'pick',      // pick | ready | painting | done | error
         photo: null,       // { dataUrl, previewUrl, width, height, name }
         preparing: false,  // a newly chosen photo is still being decoded
+        notice: '',        // a problem with a newly chosen photo, shown without losing the current one
+        closed: false,     // the Worker reports the studio closed
         paintingUrl: '',
         stage: '',         // a key of COPY.*.stages, or partial0, partial1, ...
         startedAt: 0,
@@ -168,7 +170,7 @@
             retry: view === 'error' && settled && Boolean(state.photo) && !FINAL_ERRORS.test(state.error),
             compare: view === 'done',
             again: settled && (view === 'ready' || view === 'done' || (view === 'error' && Boolean(state.photo))),
-            personal: view === 'error' || (view === 'pick' && state.left === 0)
+            personal: view === 'error' || (view === 'pick' && (state.left === 0 || state.closed))
         };
         Object.entries(show).forEach(([name, visible]) => { els[name].hidden = !visible; });
 
@@ -193,14 +195,17 @@
 
         let status = '';
         if (state.preparing) status = text.preparing;
+        else if (state.notice) status = text.errors[state.notice] || text.errors.not_image;
         else if (view === 'error') status = text.errors[state.error] || text.errors.upstream;
         else if (view === 'painting') status = text.wait;
         else if (view === 'done') status = text.done;
         else if (view === 'ready') status = text.ready;
+        else if (state.closed) status = text.errors.closed;
         else if (state.left === 0) status = text.errors.limit;
         // Rewriting a live region re-announces it, so only write real changes.
         if (els.status.textContent !== status) els.status.textContent = status;
-        els.status.classList.toggle('is-error', !state.preparing && (view === 'error' || (view === 'pick' && state.left === 0)));
+        els.status.classList.toggle('is-error', !state.preparing
+            && (Boolean(state.notice) || view === 'error' || (view === 'pick' && (state.left === 0 || state.closed))));
         els.left.textContent = typeof state.left === 'number' && state.left > 0 ? `${text.left(state.left)} ` : '';
 
         // Keep keyboard focus inside the dialog when the focused control hides.
@@ -230,6 +235,7 @@
             if (!response.ok) return;
             const body = await response.json();
             if (Number.isFinite(body.left)) state.left = body.left;
+            state.closed = body.open === false;
             render();
         } catch {
             // The count is a courtesy; painting still reports limits itself.
@@ -306,6 +312,7 @@
         if (state.view === 'painting') return;
         const choice = ++chosen;
         state.preparing = true;
+        state.notice = '';
         render();
         let photo = null;
         let failure = '';
@@ -319,13 +326,19 @@
             return;
         }
         state.preparing = false;
-        if (state.photo) URL.revokeObjectURL(state.photo.previewUrl);
-        clearPainting();
         if (failure) {
-            state.photo = null;
-            fail(failure);
+            // Keep the current photo and any painting (already paid for);
+            // just say why the new one can't be used.
+            if (state.photo) {
+                state.notice = failure;
+                render();
+            } else {
+                fail(failure);
+            }
             return;
         }
+        if (state.photo) URL.revokeObjectURL(state.photo.previewUrl);
+        clearPainting();
         state.photo = photo;
         els.photo.src = photo.previewUrl;
         state.view = 'ready';
@@ -455,6 +468,7 @@
         clearPainting();
         state.view = 'painting';
         state.error = '';
+        state.notice = '';
         state.startedAt = Date.now();
         state.stage = 'sending';
         clearInterval(ticker);
@@ -477,8 +491,8 @@
                 if (body.error === 'limit') {
                     state.left = 0;
                     fail(body.scope === 'total' ? 'limit_total' : 'limit');
-                } else if (body.error === 'blocked' || body.error === 'closed') {
-                    fail(body.error);
+                } else if (body.error === 'blocked' || body.error === 'closed' || body.error === 'not_configured') {
+                    fail(body.error === 'blocked' ? 'blocked' : 'closed');
                 } else {
                     fail(response.status === 400 || response.status === 413 ? 'bad_photo' : 'upstream');
                 }
@@ -491,9 +505,9 @@
             if (progress.final) showFinal(progress.final, photo);
             else fail(progress.error || 'upstream');
         } catch (error) {
-            // A dropped connection after the painting arrived still delivers it.
-            if (progress.final) showFinal(progress.final, photo);
-            else fail(error?.name === 'AbortError' ? 'timeout' : 'upstream');
+            // readStream returns as soon as the painting arrives, so a drop
+            // after that never reaches here.
+            fail(error?.name === 'AbortError' ? 'timeout' : 'upstream');
         } finally {
             clearTimeout(timer);
             // A failed painting may have been given back after the count was sent.

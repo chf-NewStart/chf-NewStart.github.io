@@ -8,7 +8,8 @@ const ROOT = path.resolve(__dirname, '..');
 const WORKER = path.join(ROOT, 'monet-studio', 'src', 'worker.js');
 
 // The subset of DurableObjectStorage the Worker uses: get/put/delete with
-// one key or many, and list({ end }) in key order.
+// one key or many (put(key, value) or put({ entries })), and list({ end })
+// in key order.
 function memoryStorage() {
   const data = new Map();
   return {
@@ -17,8 +18,9 @@ function memoryStorage() {
       if (!Array.isArray(keys)) return data.get(keys);
       return new Map(keys.filter((key) => data.has(key)).map((key) => [key, data.get(key)]));
     },
-    async put(entries) {
-      for (const [key, value] of Object.entries(entries)) data.set(key, value);
+    async put(keyOrEntries, value) {
+      const entries = typeof keyOrEntries === 'string' ? [[keyOrEntries, value]] : Object.entries(keyOrEntries);
+      for (const [key, item] of entries) data.set(key, item);
     },
     async delete(keys) {
       if (Array.isArray(keys) && keys.length > 128) throw new Error('delete takes at most 128 keys');

@@ -279,6 +279,17 @@ immutability. Its 1,000-stroke fixtures bound point-copy work rather than relyin
 on machine-specific timing thresholds. Run these state checks with `node --test`;
 the PDF checks also require the browser dependencies described above.
 
+`monet-studio-worker.test.mjs` and `monet-studio-browser.test.js` are site tests
+for the self-serve Monet studio. The first runs `monet-studio/src/worker.js`
+against Node's built-in SQLite (standing in for D1) and a fake OpenAI: allowed
+origins, the per-visitor and total daily allowance, refunds when OpenAI refuses
+or fails mid-stream, the skill-based request, and canvas sizing. The second
+drives `/monet/` in Chromium through that same Worker: choosing a photo,
+partial previews, download, compare, language switch, the daily limit, the
+phone layout, and the unchanged Dropbox flow when no Worker is configured.
+`node --test tests/monet-studio-worker.test.mjs` and
+`node tests/monet-studio-browser.test.js`.
+
 `daily-fun-fact.test.js` is a site test, not a reader test. It checks
 `scripts/add-daily-fact.js` (run by the daily fun-fact workflow) against the real
 queue and both queue entry shapes, and needs no browser:

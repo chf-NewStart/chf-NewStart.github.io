@@ -84,7 +84,17 @@ async function press(locator) {
 }
 async function click(page, selector, pointerType) {
   if (/^#zen(?:Marker|Write|Undo)$/.test(selector)) {
-    if (!await page.locator('#zenAnnotateMenu').isVisible()) await press(page.locator('#zenAnnotate'));
+    if (!await page.locator('#zenAnnotateMenu').isVisible()) {
+      const on = await page.evaluate(() => ({ '#zenWrite': document.getElementById('zenWrite').getAttribute('aria-pressed') === 'true',
+        '#zenMarker': !document.getElementById('highlightToolbar').classList.contains('hidden') }));
+      await press(page.locator('#zenAnnotate'));
+      // Second-tap rule: with a tool on, ✎ itself ends it. Asking to turn that same tool
+      // off is then already done; anything else takes one more ✎ tap to reach the menu.
+      if (!await page.locator('#zenAnnotateMenu').isVisible()) {
+        if (on[selector]) { await page.waitForTimeout(40); return; }
+        await press(page.locator('#zenAnnotate'));
+      }
+    }
     await press(page.locator(selector));
     await page.waitForTimeout(40);
     return;

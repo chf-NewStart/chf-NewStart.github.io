@@ -132,14 +132,22 @@ function identities(strokes) { return JSON.stringify(strokes.map(({ updatedAt, .
 async function markCount(page) { return Object.values((await chapter(page)).highlights || {}).reduce((count, items) => count + items.length, 0); }
 async function click(page, selector) { await page.locator(selector).evaluate(element => element.click()); }
 // Paper Undo sits directly on the Zen dock since 62af6da4 "Expose paper undo".
+/* Second-tap rule: with Find or a tool on, its dock button (••• or ✎) closes it first.
+   Asking to turn that same thing off is then done; otherwise one more tap opens the menu. */
 async function zenAction(page, selector) {
   const menu = selector === '#zenFind' ? 'More' : 'Annotate';
-  if (selector !== '#zenUndo' && !await page.locator('#zen' + menu + 'Menu').isVisible()) await page.locator('#zen' + menu).click();
+  if (selector !== '#zenUndo' && !await page.locator('#zen' + menu + 'Menu').isVisible()) {
+    const on = await page.evaluate(sel => sel === '#zenFind' ? !document.getElementById('findBar').classList.contains('hidden')
+      : sel === '#zenWrite' ? document.getElementById('zenWrite').getAttribute('aria-pressed') === 'true'
+      : sel === '#zenMarker' && !document.getElementById('highlightToolbar').classList.contains('hidden'), selector);
+    await page.locator('#zen' + menu).click();
+    if (!await page.locator('#zen' + menu + 'Menu').isVisible()) { if (on) return; await page.locator('#zen' + menu).click(); }
+  }
   await page.locator(selector).click();
 }
 async function showZenAction(page, selector) {
   const menu = selector === '#zenFind' ? 'More' : 'Annotate';
-  if (selector !== '#zenUndo' && !await page.locator('#zen' + menu + 'Menu').isVisible()) await page.locator('#zen' + menu).click();
+  for (let i = 0; selector !== '#zenUndo' && i < 2 && !await page.locator('#zen' + menu + 'Menu').isVisible(); i++) await page.locator('#zen' + menu).click();
 }
 async function writeMode(page, enabled = true) {
   if ((await page.locator('#zenWrite').getAttribute('aria-pressed') === 'true') !== enabled) await zenAction(page, '#zenWrite');

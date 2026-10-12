@@ -45,8 +45,11 @@ function seedReader() {
 }
 async function activate(page, selector, touch) {
   if (/^#zen(?:Marker|Write|Undo)$/.test(selector) && !await page.locator('#zenAnnotateMenu').isVisible()) {
-    if (touch) await page.locator('#zenAnnotate').tap();
-    else await page.locator('#zenAnnotate').click();
+    // With a tool on, the first ✎ tap ends it (second-tap rule); the next opens the menu.
+    for (let i = 0; i < 2 && !await page.locator('#zenAnnotateMenu').isVisible(); i++) {
+      if (touch) await page.locator('#zenAnnotate').tap();
+      else await page.locator('#zenAnnotate').click();
+    }
   }
   if (touch) await page.locator(selector).tap();
   else await page.locator(selector).click();

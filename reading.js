@@ -863,7 +863,8 @@
     /* Color controls stay available while marking the paper, just like the Pen
        toolbar. Other controls, Escape, or switching tools dismiss them. */
     var markingPaper=!!e.target.closest('.pdf-page,.original');
-    if(!markingPaper&&!e.target.closest('#markerTools,#touchMarkerTool,#zenAnnotateTool,#highlightToolbar'))setHighlightToolbarOpen(false);
+    // Its own buttons are not "outside": their tap toggles it, so a second tap closes it.
+    if(!markingPaper&&!e.target.closest('#markerTools,#touchMarkerTool,#zenAnnotateTool,#highlightToolbar,[aria-controls="highlightToolbar"]'))setHighlightToolbarOpen(false);
   },true);
   window.addEventListener('resize',function(){placeLookupCard();placeSelectionCard();});
 
@@ -3161,8 +3162,33 @@
   window.addEventListener('resize',placeZenPopouts);
   /* Undo stays directly on the paper; annotation choices and occasional settings
      live in disclosures. The workspace owns a separate handwriting history. */
-  byId('zenAnnotate').onclick=function(){toggleZenPopout('zenAnnotate','zenAnnotateMenu','zenAnnotateTool');};
-  byId('zenMore').onclick=function(){var ch=find(currentId);byId('zenExportAnnotated').classList.toggle('hidden',!(ch&&ch.kind==='pdf'&&annotatedExportAvailable()));toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');};
+  /* Readers' feedback: tapping a button that shows something open closes it, and only
+     that. With a tool on, ✎ ends it (highlighter, eraser or pen) instead of opening its
+     menu; with Find, Reading settings or the Notebook open, ••• closes it instead of
+     opening the menu on top. A finger-down outside some of those already closes them,
+     so remember what was open when this press began. */
+  var zenPress={};
+  function zenAnnotatingNow(){return highlightToolbarOpen()||!!pdfWriteMode||!!highlightEraseMode;}
+  function zenMoreSurfaceNow(){return !byId('findBar').classList.contains('hidden')?'find':!byId('comfortBar').classList.contains('hidden')?'settings':byId('notebook').classList.contains('sheet-open')?'notebook':'';}
+  window.addEventListener('pointerdown',function(e){var t=e.target.closest&&e.target.closest('#zenAnnotate,#zenMore');zenPress=t?{id:t.id,at:Date.now(),annotating:zenAnnotatingNow(),surface:zenMoreSurfaceNow()}:{};},true);
+  function zenPressFor(id){var press=zenPress;zenPress={};return press.id===id&&Date.now()-press.at<2000?press:null;}
+  byId('zenAnnotate').onclick=function(){
+    var press=zenPressFor('zenAnnotate'),menuOpen=!byId('zenAnnotateMenu').classList.contains('hidden');
+    // A passage just selected keeps the menu one tap away, so it can still be highlighted.
+    if(!menuOpen&&!pendingSelection&&(press?press.annotating:zenAnnotatingNow())){
+      clearPendingSelection();setHighlightEraseMode(false);setHighlightMode(false);setHighlightToolbarOpen(false);if(pdfWriteMode)setPdfWriteMode(false);syncZenMarkerUi();zenWake();return;
+    }
+    toggleZenPopout('zenAnnotate','zenAnnotateMenu','zenAnnotateTool');
+  };
+  byId('zenMore').onclick=function(){
+    var press=zenPressFor('zenMore'),surface=press?press.surface:zenMoreSurfaceNow();
+    if(byId('zenMoreMenu').classList.contains('hidden')&&surface){
+      if(surface==='find'&&!byId('findBar').classList.contains('hidden'))toggleFindBar(false,false);
+      if(surface==='settings')setComfortBarOpen(false);
+      if(surface==='notebook')toggleSheet(false);
+      zenWake();return;
+    }
+    var ch=find(currentId);byId('zenExportAnnotated').classList.toggle('hidden',!(ch&&ch.kind==='pdf'&&annotatedExportAvailable()));toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');};
   byId('zenExportAnnotated').onclick=function(){closeZenPopouts(true);setComfortBarOpen(false);exportAnnotatedPdf(find(currentId),null);};
   byId('zenReadingControls').onclick=function(){closeZenPopouts(true);setComfortBarOpen(false);byId('readerControlsDialog').showModal();};
   byId('zenNotebook').onclick=function(){closeZenPopouts(true);setComfortBarOpen(false);switchTab('notesPanel');toggleSheet(true);};
@@ -3197,7 +3223,7 @@
   function guideClickCanPin(e){
     var type=e&&e.pointerType;
     if(!type&&Date.now()-guidePointerAt<1000)type=guidePointerType;
-    return type?type==='mouse'||type==='pen':matchMedia('(hover: hover)').matches;
+    return type?type==='mouse':matchMedia('(hover: hover)').matches;
   }
   byId('documentPane').addEventListener('pointerdown',rememberGuidePointer,true);
   byId('focusBtn').onclick=function(){
@@ -3217,7 +3243,10 @@
   };
   byId('documentPane').addEventListener('pointermove',function(e){
     rememberGuidePointer(e);
-    if(bookCurlOwned||!comfort.focus||comfort.guideLock||e.pointerType==='touch')return;setReadingGuide(e.clientX,e.clientY,e.target);
+    // Only a mouse or trackpad cursor carries the guide. A pen hovering above the screen
+    // (Galaxy S Pen, Apple Pencil hover) is about to write, not to read; it places the
+    // guide with a tap, like a finger.
+    if(bookCurlOwned||!comfort.focus||comfort.guideLock||e.pointerType==='touch'||e.pointerType==='pen')return;setReadingGuide(e.clientX,e.clientY,e.target);
   });
   /* A released page curl can synthesize a click over whatever the folded corner lands
      on. Stop that click in capture phase, before a PDF link/highlight sees it. */
@@ -4117,20 +4146,39 @@
     // Pencil/mouse annotation modes retain their strokes; a finger can still hold a reference.
     if(event.pointerType!=='touch'&&(pdfWriteMode||highlightEraseMode||highlightMode))return;
     var anchor=nearestPdfLink(layer,event.clientX,event.clientY);if(!anchor)return;
-    var hold={anchor:anchor,pointer:event.pointerId,x:event.clientX,y:event.clientY,id:currentId,epoch:pdfOpenEpoch,doc:pdfDoc,fired:false,timer:0};
+    var hold={anchor:anchor,pointer:event.pointerId,x:event.clientX,y:event.clientY,at:Date.now(),id:currentId,epoch:pdfOpenEpoch,doc:pdfDoc,fired:false,timer:0};
     pdfReferenceHold=hold;
-    hold.timer=setTimeout(function(){
-      if(pdfReferenceHold!==hold||!anchor.isConnected||currentId!==hold.id||pdfOpenEpoch!==hold.epoch||pdfDoc!==hold.doc)return;
-      if(pdfReferenceGestureBusy()){cancelPdfReferenceHold();return;}
-      hold.fired=true;anchor.classList.add('reference-holding');openPdfReferenceCard(anchor,false);
-    },500);
+    hold.timer=setTimeout(function(){firePdfReferenceHold(hold);},500);
+  },true);
+  function firePdfReferenceHold(hold){
+    if(!hold||hold.fired||pdfReferenceHold!==hold||!hold.anchor.isConnected||currentId!==hold.id||pdfOpenEpoch!==hold.epoch||pdfDoc!==hold.doc)return false;
+    if(pdfReferenceGestureBusy()){cancelPdfReferenceHold();return false;}
+    clearTimeout(hold.timer);hold.fired=true;hold.anchor.classList.add('reference-holding');openPdfReferenceCard(hold.anchor,false);return true;
+  }
+  /* Android (Chrome, Samsung Internet) runs its own long-press for a held finger or S Pen
+     at about 400 ms, before the half-second timer: it fires contextmenu and may cancel the
+     pointer for its menu, link drag or text selection. Both mean "held still on this link",
+     so open the card then instead of losing the hold. iPadOS fires no touch contextmenu;
+     a mouse right-click keeps its quiet no-op. */
+  window.addEventListener('contextmenu',function(event){
+    if(pdfLinkPointerType==='mouse')return;
+    var hold=pdfReferenceHold,stroke=pencilStroke&&pencilStroke.link&&!pencilStroke.moved?pencilStroke:null;
+    if(hold&&!hold.fired&&event.target.closest&&event.target.closest(".pdf-links")){event.preventDefault();firePdfReferenceHold(hold);return;}
+    if(stroke){event.preventDefault();clearTimeout(stroke.linkTimer);var link=stroke.link;finishPencilStroke(true);if(link.isConnected)openPdfReferenceCard(link,false);}
   },true);
   window.addEventListener('pointermove',function(event){
     var hold=pdfReferenceHold;if(!hold||hold.pointer!==event.pointerId)return;
     if(Math.hypot(event.clientX-hold.x,event.clientY-hold.y)>8)hidePdfReferencePreview();
   },true);
   window.addEventListener('pointerup',function(event){pdfReferenceTouches.delete(event.pointerId);if(pdfReferenceHold&&pdfReferenceHold.pointer===event.pointerId)cancelPdfReferenceHold();},true);
-  window.addEventListener('pointercancel',function(event){pdfReferenceTouches.delete(event.pointerId);if(pdfReferenceHold&&pdfReferenceHold.pointer===event.pointerId)hidePdfReferencePreview();},true);
+  window.addEventListener('pointercancel',function(event){
+    pdfReferenceTouches.delete(event.pointerId);
+    var hold=pdfReferenceHold;if(!hold||hold.pointer!==event.pointerId)return;
+    // The system took a pointer that had already held still on the link (any move past
+    // 8 px has ended the hold): keep or open the card. An early cancel is a scroll or zoom.
+    if(hold.fired||Date.now()-hold.at>=300&&!pdfReferenceTouches.size&&firePdfReferenceHold(hold)){cancelPdfReferenceHold();return;}
+    hidePdfReferencePreview();
+  },true);
   byId('documentPane').addEventListener('scroll',hidePdfReferencePreview,{passive:true});
   ['blur','pagehide','resize'].forEach(function(type){window.addEventListener(type,function(){pdfReferenceTouches.clear();hidePdfReferencePreview();});});
   document.addEventListener('visibilitychange',function(){if(document.hidden){pdfReferenceTouches.clear();hidePdfReferencePreview();}});
@@ -4901,7 +4949,7 @@
       if(view.buildId!==pdfBuildId||view.buildId!==renderBuildId||pdfDoc!==renderDoc||currentId!==renderId)return;
       view.text.innerHTML='';view.text.style.width=Math.ceil(viewport.width)+'px';view.text.style.height=Math.ceil(viewport.height)+'px';
       // Extracted text has its own derived-data store; only review repairs below need a library save.
-      try{var textContent=await page.getTextContent({includeMarkedContent:true});await new pdfLib.TextLayer({textContentSource:textContent,container:view.text,viewport:viewport}).render();if(view.buildId!==pdfBuildId||view.buildId!==renderBuildId||pdfDoc!==renderDoc||currentId!==renderId)return;var textCh=find(renderId),pageText=contentToLines(textContent).join(' ');if(textCh&&pageText){textCh.pageTexts=textCh.pageTexts||[];if(textCh.pageTexts[n-1]!==pageText){textCh.pageTexts[n-1]=pageText;saveDerivedSoon(textCh);}if(repairPdfReviewQuotes(textCh,n)){persist(false);renderReviewerPanel(textCh);}}}catch(textError){view.text.innerHTML='';}
+      try{var textContent=await page.getTextContent({includeMarkedContent:true});await new pdfLib.TextLayer({textContentSource:textContent,container:view.text,viewport:viewport}).render();if(textSelectionGuard)textSelectionGuard.attach(view.text);if(view.buildId!==pdfBuildId||view.buildId!==renderBuildId||pdfDoc!==renderDoc||currentId!==renderId)return;var textCh=find(renderId),pageText=contentToLines(textContent).join(' ');if(textCh&&pageText){textCh.pageTexts=textCh.pageTexts||[];if(textCh.pageTexts[n-1]!==pageText){textCh.pageTexts[n-1]=pageText;saveDerivedSoon(textCh);}if(repairPdfReviewQuotes(textCh,n)){persist(false);renderReviewerPanel(textCh);}}}catch(textError){view.text.innerHTML='';}
       /* Authored PDF links are deliberate detours: hold to inspect, then use the
          card's explicit action to navigate. Hover and ordinary taps stay quiet. */
       try{
@@ -8111,7 +8159,7 @@
     var preview=document.createElement('div');preview.className='pencil-highlight-preview';preview.setAttribute('aria-hidden','true');document.body.appendChild(preview);
     pencilStroke={id:id,source:source,touchId:source==='touch'?id:null,documentId:currentId,mode:readerMode,host:host,start:start,x:e.clientX,y:e.clientY,moved:false,range:null,preview:preview,erasing:highlightEraseMode};
     if(highlightEraseMode){pencilStroke.targets=eraserTargets(host);pencilStroke.erased=new Map();pencilStroke.last={x:e.clientX,y:e.clientY};collectEraserHits(pencilStroke,e.clientX,e.clientY);}
-    if(link){var linkStroke=pencilStroke;linkStroke.linkTimer=setTimeout(function(){if(pencilStroke!==linkStroke||linkStroke.moved||!link.isConnected)return;finishPencilStroke(true);openPdfReferenceCard(link,false);},500);}
+    if(link){var linkStroke=pencilStroke;linkStroke.link=link;linkStroke.at=Date.now();linkStroke.linkTimer=setTimeout(function(){if(pencilStroke!==linkStroke||linkStroke.moved||!link.isConnected)return;finishPencilStroke(true);openPdfReferenceCard(link,false);},500);}
     selectionInputType='pen';suppressHighlightAutoCommit=true;document.body.classList.add('pencil-highlighting');
     return true;
   }
@@ -8163,7 +8211,12 @@
   },true);
   ['pointerup','pointercancel'].forEach(function(type){document.addEventListener(type,function(e){
     var g=pencilStroke;if(!g)return;
-    if(g.source==='pointer'&&g.id===e.pointerId){if(type==='pointerup')movePencilStroke(e);finishPencilStroke(type==='pointercancel');ownPencilEvent(e);}
+    if(g.source==='pointer'&&g.id===e.pointerId){
+      // Android takes a held S Pen for its own long-press: a still hold on a citation
+      // still opens the reference card (see the reference-hold contextmenu note).
+      if(type==='pointercancel'&&g.link&&!g.moved&&Date.now()-g.at>=300){var heldLink=g.link;finishPencilStroke(true);if(heldLink.isConnected)openPdfReferenceCard(heldLink,false);ownPencilEvent(e);return;}
+      if(type==='pointerup')movePencilStroke(e);finishPencilStroke(type==='pointercancel');ownPencilEvent(e);
+    }
     else if(e.pointerType==='touch')ownPencilEvent(e);
   },true);});
   document.addEventListener('lostpointercapture',function(e){if(pencilStroke&&pencilStroke.source==='pointer'&&pencilStroke.id===e.pointerId)finishPencilStroke(true);},true);
@@ -8201,6 +8254,33 @@
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')finishPencilStroke(true);});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')finishPencilStroke(true);},true);
   document.addEventListener('selectionchange',function(){captureSelection();});
+  /* Dragging a selection (a finger on an Android handle, or a mouse) over the blank gap
+     between lines or past a line's end hit-tests the empty text layer, and the browser
+     snapped the selection to the page's start or end, so it jumped around. This is the
+     PDF.js viewer's guard: an empty block, under the words, that follows the selection's
+     moving end in reading order, so a gap extends the selection only to the nearest words.
+     iPad and iPhone keep WebKit's own selection handles exactly as before. */
+  var textSelectionGuard=appleTouchDevice?null:(function(){
+    var prevRange=null,pointerDown=false;
+    function reset(layer){var end=layer._selectionEnd;if(end){end.style.width='';end.style.height='';if(end.parentNode!==layer)layer.appendChild(end);}layer.classList.remove('selecting');}
+    function resetAll(){document.querySelectorAll('.text-layer.selecting').forEach(reset);prevRange=null;}
+    document.addEventListener('pointerdown',function(){pointerDown=true;},true);
+    document.addEventListener('pointerup',function(){pointerDown=false;resetAll();},true);
+    window.addEventListener('blur',function(){pointerDown=false;resetAll();});
+    document.addEventListener('keyup',function(){if(!pointerDown)resetAll();});
+    document.addEventListener('selectionchange',function(){
+      var selection=document.getSelection();if(!selection||!selection.rangeCount||selection.isCollapsed){resetAll();return;}
+      var range=selection.getRangeAt(0);
+      document.querySelectorAll('.text-layer').forEach(function(layer){if(layer._selectionEnd&&range.intersectsNode(layer))layer.classList.add('selecting');else reset(layer);});
+      var modifyStart=!!prevRange&&(range.compareBoundaryPoints(Range.END_TO_END,prevRange)===0||range.compareBoundaryPoints(Range.START_TO_END,prevRange)===0);
+      var anchor=modifyStart?range.startContainer:range.endContainer;if(anchor.nodeType===3)anchor=anchor.parentNode;
+      if(!modifyStart&&range.endOffset===0){do{while(anchor&&!anchor.previousSibling)anchor=anchor.parentNode;anchor=anchor&&anchor.previousSibling;}while(anchor&&!anchor.childNodes.length);}
+      var layer=anchor&&anchor.parentElement&&anchor.parentElement.closest('.text-layer'),end=layer&&layer._selectionEnd;
+      if(end&&anchor!==end){end.style.width=layer.style.width;end.style.height=layer.style.height;anchor.parentElement.insertBefore(end,modifyStart?anchor:anchor.nextSibling);}
+      prevRange=range.cloneRange();
+    });
+    return{attach:function(layer){var end=document.createElement('div');end.className='text-layer-end';end.setAttribute('aria-hidden','true');layer.appendChild(end);layer._selectionEnd=end;}};
+  })();
   byId('documentPane').addEventListener('pointerdown',function(e){
     if(bookCurlOwned)return;
     if(!e.target.closest('.text-layer,.original'))return;

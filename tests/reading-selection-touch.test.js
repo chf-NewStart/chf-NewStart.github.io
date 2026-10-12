@@ -194,7 +194,8 @@ async function selectPartialAcrossSpans(page, leftLabel, rightLabel, pointerId, 
 
 /* Reach the Zen Marker the way a reader does: open Annotate, then tap Marker. */
 async function openZenAnnotate(page) {
-  if (!await page.locator('#zenAnnotateMenu').isVisible()) await page.locator('#zenAnnotate').click();
+  // With a tool on, the first ✎ tap ends it (second-tap rule); the next opens the menu.
+  for (let i = 0; i < 2 && !await page.locator('#zenAnnotateMenu').isVisible(); i++) await page.locator('#zenAnnotate').click();
   await page.locator('#zenAnnotateMenu').waitFor({ state: 'visible' });
 }
 async function clickZenMarker(page) {
@@ -206,7 +207,7 @@ async function tapZenMarker(page) {
     const box = await page.locator(selector).boundingBox();
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
   };
-  if (!await page.locator('#zenAnnotateMenu').isVisible()) await tap('#zenAnnotate');
+  for (let i = 0; i < 2 && !await page.locator('#zenAnnotateMenu').isVisible(); i++) await tap('#zenAnnotate');
   await page.locator('#zenAnnotateMenu').waitFor({ state: 'visible' });
   await tap('#zenMarker');
 }

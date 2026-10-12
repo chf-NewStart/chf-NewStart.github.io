@@ -34,6 +34,18 @@
     // Each stroke's outline is smoothed once and kept with its path, keyed by what changes
     // its shape. A new stroke then adds one path instead of every path being rebuilt.
     const inkCache = new Map();
+    // Set only while rendering right after this view's own pen or eraser commit, which adds
+    // or removes paths and changes no other stroke: then the other cached paths are current
+    // and re-keying every stroke (its full content) after each lift is skipped. With a full
+    // sheet that re-keying made every new stroke wait. inkGeneration tells a live eraser the
+    // ink was redrawn under it.
+    let inkTrusted = false, inkGeneration = 0;
+    // The stroke being written lives in its own layer above the saved ink. Inside the ink
+    // SVG, every Pencil sample made the browser lay out (and repaint) every saved stroke,
+    // so writing and erasing lagged more the fuller the sheet got.
+    const liveLayer = document.createElementNS(NS, 'svg');
+    liveLayer.classList.add('workspace-live-ink'); liveLayer.setAttribute('aria-hidden', 'true'); liveLayer.setAttribute('preserveAspectRatio', 'none');
+    liveLayer.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;overflow:visible';
     const lassoLayer = document.createElementNS(NS, 'svg');
     lassoLayer.classList.add('workspace-lasso-layer'); lassoLayer.setAttribute('aria-hidden', 'true');
     const selectionBox = document.createElement('div');
@@ -54,7 +66,7 @@
       selectionActions.appendChild(button);
     }
     selectionBox.appendChild(selectionActions);
-    board.append(lassoLayer, selectionBox);
+    board.append(liveLayer, lassoLayer, selectionBox);
     const viewport = global.PhloemWorkspaceViewport ? global.PhloemWorkspaceViewport.create({ onNeedSpace: ensurePaperAt, isBusy: () => !!gesture }) : null;
     function resizeLayout() {
       board.dataset.logicalWidth = String(observedWidth);
@@ -66,6 +78,7 @@
         board.style.height = `${baseWidth * observedHeight / 1000}px`;
       }
       lassoLayer.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
+      liveLayer.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
     }
     function ensurePaperAt(y, x = 0) {
       if (growingPaper || !Number.isFinite(y) || !Number.isFinite(x) || !available(context()) || context().busy || !adapter.ensureSpace) return false;
@@ -471,19 +484,37 @@
       // Leftover eraser fading or a lasso preview offset ends with the gesture that made it.
       const settled = !gesture || (gesture.kind !== 'group' && gesture.kind !== 'scale' && !(gesture.kind === 'stroke' && gesture.mode === 'eraser'));
       const preview = gesture && gesture.kind === 'stroke' && gesture.preview && gesture.preview.parentNode === ink ? gesture.preview : null;
+      if (inkTrusted) {
+        // Right after this view's own commit: place only paths that are not on the sheet yet,
+        // before the next stored stroke that is, so the stored order still holds.
+        for (let i = 0; i < live.length; i++) {
+          let entry = inkCache.get(live[i].id);
+          if (entry && entry.node.parentNode === ink) continue;
+          if (!entry) { entry = { node: makePath(live[i]), key: inkKey(live[i]) }; inkCache.set(live[i].id, entry); }
+          let next = null;
+          for (let j = i + 1; j < live.length && !next; j++) { const later = inkCache.get(live[j].id); if (later && later.node.parentNode === ink) next = later.node; }
+          ink.insertBefore(entry.node, next);
+        }
+        inkGeneration++;
+        ink.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
+        liveLayer.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
+        return;
+      }
       // Paths keep the stored stroke order, so overlapping ink stacks the same after a reload.
       let cursor = ink.firstChild;
       for (const stroke of live) {
         let entry = inkCache.get(stroke.id);
         if (!entry) { entry = { node: makePath(stroke), key: inkKey(stroke) }; inkCache.set(stroke.id, entry); }
-        else repaintCached(stroke);
+        else if (!inkTrusted) repaintCached(stroke);
         while (cursor && cursor !== preview && cursor !== entry.node && !(cursor.dataset && inkCache.has(cursor.dataset.strokeId) && wanted.has(cursor.dataset.strokeId))) cursor = cursor.nextSibling;
         if (cursor === entry.node) cursor = cursor.nextSibling;
         else ink.insertBefore(entry.node, cursor || preview);
         if (settled) { entry.node.style.opacity = ''; entry.node.removeAttribute('transform'); }
       }
       for (const node of [...ink.children]) if (node !== preview && !(node.dataset && inkCache.has(node.dataset.strokeId) && inkCache.get(node.dataset.strokeId).node === node)) node.remove();
+      inkGeneration++;
       ink.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
+      liveLayer.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
       ink.style.pointerEvents = 'none';
     }
     function setBox(state, box, height) {
@@ -930,24 +961,44 @@
         list.push(path); paths.set(path.dataset.strokeId, list);
       });
       const clips = new Set(itemsOf(c).map(item => item.id));
-      return strokesOf(c).filter(stroke => activeStroke(c, stroke) && !(stroke.anchor && !clips.has(stroke.anchor.clipId))).map(stroke => {
+      const targets = strokesOf(c).filter(stroke => activeStroke(c, stroke) && !(stroke.anchor && !clips.has(stroke.anchor.clipId))).map(stroke => {
         const shown = displayStroke(stroke), pts = (shown.points || []).map(p => ({ x: p[0], y: p[1] }));
         const reach = 16 + (shown.width || 1);
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         pts.forEach(p => { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); });
         return { stroke, pts, reach, minX: minX - reach, maxX: maxX + reach, minY: minY - reach, maxY: maxY + reach, paths: paths.get(stroke.id) || [] };
       });
+      // Bucket strokes by the grid cells their bounds cover, so each eraser sample only tests
+      // the strokes near it, not every stroke on the sheet.
+      const grid = new Map();
+      targets.forEach(target => {
+        for (let gx = Math.floor(target.minX / ERASER_CELL); gx <= Math.floor(target.maxX / ERASER_CELL); gx++)
+          for (let gy = Math.floor(target.minY / ERASER_CELL); gy <= Math.floor(target.maxY / ERASER_CELL); gy++) {
+            const key = gx + ',' + gy; let list = grid.get(key); if (!list) grid.set(key, list = []); list.push(target);
+          }
+      });
+      targets.grid = grid; targets.generation = inkGeneration;
+      return targets;
+    }
+    const ERASER_CELL = 120;
+    function eraserCandidates(targets, lowX, lowY, highX, highY) {
+      const found = new Set();
+      for (let gx = Math.floor(lowX / ERASER_CELL); gx <= Math.floor(highX / ERASER_CELL); gx++)
+        for (let gy = Math.floor(lowY / ERASER_CELL); gy <= Math.floor(highY / ERASER_CELL); gy++) {
+          const list = targets.grid.get(gx + ',' + gy); if (list) for (const target of list) found.add(target);
+        }
+      return found;
     }
     function eraseAt(g, point, previous) {
       const c = context(); if (!same(c)) return;
       // Growing the paper mid-sweep can redraw the ink; measure again and re-fade.
-      if (!g.targets || g.targets.some(target => target.paths.length && !target.paths[0].isConnected)) {
+      if (!g.targets || g.targets.generation !== inkGeneration) {
         g.targets = eraserTargets(c);
         g.targets.forEach(target => { if (g.ids.has(target.stroke.id)) target.paths.forEach(path => { path.style.opacity = '.2'; }); });
       }
       const lowX = Math.min(point.x, previous.x), highX = Math.max(point.x, previous.x);
       const lowY = Math.min(point.y, previous.y), highY = Math.max(point.y, previous.y);
-      for (const target of g.targets) {
+      for (const target of eraserCandidates(g.targets, lowX, lowY, highX, highY)) {
         const stroke = target.stroke;
         if (g.ids.has(stroke.id) || highX < target.minX || lowX > target.maxX || highY < target.minY || lowY > target.maxY) continue;
         const pts = target.pts; let close = false;
@@ -973,7 +1024,7 @@
       gesture = g; board.classList.add('workspace-drawing');
       // A resting palm during handwriting is never a deliberate history tap.
       if (multiTap) multiTap.valid = false;
-      if (mode === 'pen') { g.preview = document.createElementNS(NS, 'path'); g.preview.classList.add('workspace-ink-preview'); ink.appendChild(g.preview); }
+      if (mode === 'pen') { g.preview = document.createElementNS(NS, 'path'); g.preview.classList.add('workspace-ink-preview'); liveLayer.appendChild(g.preview); }
       addPoint(g, event); return true;
     }
     // Writing that started just off a note but lies mostly on it belongs to that note,
@@ -998,18 +1049,23 @@
       if (previewFrame) cancelAnimationFrame(previewFrame); previewFrame = 0;
       if (g.preview) g.preview.remove();
       if (!commit || !currentScope() || g.paperId !== scope.id || g.epoch !== scope.epoch) { render(); return; }
+      let committed = false;
       if (g.mode === 'pen' && g.points.length) {
         const at = Date.now(), stroke = { id: uid(), color: g.color, width: g.width, style: 'natural', points: rawPoints(g.points), createdAt: at, updatedAt: at };
         const anchor = g.anchor || noteUnderStroke(g.points);
         if (anchor) stroke.anchor = anchor;
         if (g.straight) stroke.shape = 'line';
-        if (adapter.addStroke(stroke) === true) { recordUndo({ kind: 'add', stroke: canonicalStroke(stroke.id) || stroke }, undoStack); redoStack = []; }
+        if (adapter.addStroke(stroke) === true) { committed = true; recordUndo({ kind: 'add', stroke: canonicalStroke(stroke.id) || stroke }, undoStack); redoStack = []; }
         else setStatus('Could not save this stroke.');
       } else if (g.mode === 'eraser' && g.ids.size) {
-        if (adapter.eraseStrokes([...g.ids]) === true) { recordUndo({ kind: 'erase', strokes: g.erased }, undoStack); redoStack = []; }
+        if (adapter.eraseStrokes([...g.ids]) === true) { committed = true; recordUndo({ kind: 'erase', strokes: g.erased }, undoStack); redoStack = []; }
         else setStatus('Could not erase these strokes.');
       }
-      render();
+      // A saved stroke or erase only added or removed paths, unless it also resized the sheet.
+      // A failed one takes the full render, which also restores faded strokes.
+      const after = context();
+      inkTrusted = committed && same(after) && heightOf(after) === observedHeight && widthOf(after) === observedWidth;
+      try { render(); } finally { inkTrusted = false; }
     }
     // A note's top strip (above its text, beside the ⋯ menu) is its grip while writing:
     // the Pencil there moves the note instead of drawing on it.

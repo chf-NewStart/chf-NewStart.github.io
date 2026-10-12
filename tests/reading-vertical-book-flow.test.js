@@ -118,7 +118,8 @@ async function paperControl(page, selector) {
   // next paper gesture, key or settings change closes it first.
   const dialog = page.locator('#readerControlsDialog');
   if (!await dialog.evaluate(node => node.open)) {
-    await page.click('#zenMore');
+    // Second-tap rule: with Reading settings open, ••• closes it first; the next tap opens the menu.
+    for (let i = 0; i < 2 && !await page.locator('#zenMoreMenu').isVisible(); i++) await page.click('#zenMore');
     await page.click('#zenReadingControls');
     await dialog.waitFor({ state: 'visible' });
   }
@@ -132,7 +133,7 @@ async function closePaperControls(page) {
 async function openReadingSettings(page) {
   await closePaperControls(page);
   if (await page.locator('#comfortBar').isVisible()) return;
-  await page.click('#zenMore');
+  for (let i = 0; i < 2 && !await page.locator('#zenMoreMenu').isVisible(); i++) await page.click('#zenMore');
   await page.click('#zenSettings');
   await page.locator('#comfortBar').waitFor({ state: 'visible' });
 }

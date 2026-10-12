@@ -128,7 +128,8 @@ async function storedPdfHighlights(page) {
   });
 }
 async function showZenMenu(page, name) {
-  if (!await page.locator('#zen' + name + 'Menu').isVisible()) await page.locator('#zen' + name).click();
+  // With a tool on, the first ✎ tap ends it (second-tap rule); the next opens the menu.
+  for (let i = 0; i < 2 && !await page.locator('#zen' + name + 'Menu').isVisible(); i++) await page.locator('#zen' + name).click();
 }
 async function zenAction(page, name, selector) {
   await showZenMenu(page, name);

@@ -326,3 +326,23 @@ screen, including on a cropped page and a rotated page; notes become standard PD
 The Zen ••• menu downloads it on the web; in the iPad app it goes to the share sheet (a
 second tap shares the finished file if iOS says the first tap expired) and stays hidden
 without one. Run with `PHLOEM_BROWSER=webkit` too.
+
+`reading-android-touch.test.js` covers Galaxy (Android) feedback: dragging a selection over
+the blank gap between lines or past a line's end stays with the nearest words instead of
+jumping to the page's start or end (PDF.js's end-of-content guard; the iPad text layer is
+unchanged); a hovering pen no longer drags the reading guide (a pen tap places it, a mouse
+still carries it); and holding a citation opens its card when Android's own long-press
+(contextmenu, or the pointer taken at ~400 ms) arrives before the half-second timer, for
+a finger and an S Pen, while an early cancel (scroll) and a mouse right-click stay quiet.
+Run with `PHLOEM_BROWSER=webkit` too.
+
+`reading-zen-second-tap.test.js` covers the Zen rule from readers' feedback: tapping the
+button that shows something open closes it and opens nothing else. That includes the dock
+popouts, the Workspace, the highlighter (via ✎ and the Highlight button beside the
+Workspace), the pen (via ✎), and Find, Reading settings and the Notebook (via •••). Run
+with `PHLOEM_BROWSER=webkit` too.
+
+`reading-workspace-fast-ink.test.js` covers writing speed on a full Workspace (Galaxy tablet
+feedback): the stroke being written draws in its own layer above the saved ink, a pen lift
+adds one path without re-reading every saved stroke, and the eraser tests only nearby
+strokes yet erases exactly the one it crosses. Run with `PHLOEM_BROWSER=webkit` too.

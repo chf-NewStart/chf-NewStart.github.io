@@ -875,6 +875,8 @@
     /* The button shows where a tap goes, not where you are: a moon all day, a sun
        all night. U+FE0E keeps the sun a glyph — iOS would otherwise paint it as
        a full-color emoji among the monochrome icons. */
+    var blackInk = document.querySelector('[data-workspace-color="black"]');
+    if (blackInk) blackInk.setAttribute('aria-label', dark ? 'White ink' : 'Black ink');
     var tb = byId('themeBtn'), zt = byId('zenTheme');
     tb.textContent = zt.textContent = dark ? '☀︎' : '☾';
     var themeLabel = dark ? 'Switch to light interface' : 'Switch to dark interface';

@@ -197,6 +197,10 @@
       path.setAttribute('fill', smooth ? (COLORS[stroke.color] || COLORS.black) : 'none');
       path.setAttribute('fill-opacity', shown.nib === 'marker' ? '.94' : '1');
       if (!smooth) { path.setAttribute('stroke', COLORS[stroke.color] || COLORS.black); path.setAttribute('stroke-width', String(stroke.width * 1000 / 612)); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round'); }
+      // The theme decides how black ink shows (white on the dark sheet; see reading-workspace.css).
+      // Writing on a sticky note keeps its dark ink: notes stay light in either theme.
+      path.dataset.inkColor = COLORS[stroke.color] ? stroke.color : 'black';
+      if (stroke.anchor) path.dataset.onNote = ''; else delete path.dataset.onNote;
     }
     function makePath(stroke) { const path = document.createElementNS(NS, 'path'); path.dataset.strokeId = stroke.id || ''; paintPath(path, stroke); return path; }
     function activeStroke(c, stroke) { return !!(stroke && stroke.id && Number((c.workspace && c.workspace.deleted || {})[stroke.id] || 0) < Number(stroke.updatedAt || 0)); }
@@ -898,6 +902,7 @@
       previewFrame = 0;
       const g = gesture; if (!g || g.kind !== 'stroke' || g.mode !== 'pen') return;
       paintPath(g.preview, { color: g.color, width: g.width, style: 'natural', shape: g.straight ? 'line' : undefined, points: rawPoints(g.points) });
+      if (g.anchor) g.preview.dataset.onNote = '';
     }
     function armStraightLine(g, event) {
       if (g.straight || g.mode !== 'pen' || g.points.length < 2) return;

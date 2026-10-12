@@ -67,6 +67,13 @@
 /* Plain sticky notes: no tape or pin. A faint top strip marks where to grab the note. */
 .workspace-card::after { content:""; position:absolute; top:0; left:0; right:0; height:44px; border-radius:2px 3px 0 0; background:color-mix(in srgb,var(--note-ink) 5%,transparent); pointer-events:none; }
 html[data-theme="dark"] .workspace-card::after { background:rgba(255,255,255,.04); }
+/* Dark theme: black handwriting on the dark sheet shows as white ink, and the Black swatch
+   becomes White. Display only: it is saved as black, so the notes read in either theme and
+   older app versions sync them unchanged. Writing on a (light) sticky note stays dark. */
+:root { --workspace-white-ink:#ece7dc; }
+html[data-theme="dark"] :is(.workspace-ink,.workspace-live-ink) path[data-ink-color="black"]:not([data-on-note]):not([fill="none"]) { fill:var(--workspace-white-ink); }
+html[data-theme="dark"] :is(.workspace-ink,.workspace-live-ink) path[data-ink-color="black"][fill="none"]:not([data-on-note]) { stroke:var(--workspace-white-ink); }
+html[data-theme="dark"] [data-workspace-color="black"] { --workspace-color:var(--workspace-white-ink) !important; }
 /* A short grabber bar, the standard iPadOS sheet cue, marks the strip as the place to grab. */
 .workspace-card::before { content:""; position:absolute; top:9px; left:50%; width:34px; height:4px; border-radius:2px; background:color-mix(in srgb,var(--note-ink) 32%,transparent); transform:translateX(-50%); pointer-events:none; }
 .workspace-card:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }

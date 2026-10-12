@@ -346,3 +346,9 @@ with `PHLOEM_BROWSER=webkit` too.
 feedback): the stroke being written draws in its own layer above the saved ink, a pen lift
 adds one path without re-reading every saved stroke, and the eraser tests only nearby
 strokes yet erases exactly the one it crosses. Run with `PHLOEM_BROWSER=webkit` too.
+
+`reading-workspace-dark-ink.test.js` covers Workspace ink in the dark theme: the black pen
+writes and shows white on the dark sheet (its swatch reads "White ink") and the same
+handwriting is black again in the light theme. It is still saved as black, so older app
+versions sync it unchanged; writing on a light sticky note stays dark. Run with
+`PHLOEM_BROWSER=webkit` too.

@@ -200,6 +200,10 @@
             <button class="marker-swatch" data-highlight-color="coral" type="button" aria-label="Coral highlight color" aria-pressed="false" title="Coral"></button>
             <button class="marker-swatch" data-highlight-color="blue" type="button" aria-label="Blue highlight color" aria-pressed="false" title="Blue"></button>
           </div>
+          <div class="highlight-group highlight-strength" title="Highlight strength: how strong the colour is behind the words">
+            <span class="highlight-strength-swatch" aria-hidden="true"></span>
+            <input id="highlightStrength" type="range" min="25" max="100" step="5" value="85" aria-label="Highlight strength, percent">
+          </div>
           <div class="highlight-actions" role="group" aria-label="Highlight actions">
             <button data-highlight-eraser type="button" aria-pressed="false" aria-label="Eraser: remove whole highlights and handwriting strokes" title="Eraser: remove whole highlights and handwriting strokes"><span class="eraser-icon" aria-hidden="true"></span></button>
             <button data-marker-action="define" type="button">Define</button>
@@ -279,12 +283,9 @@
                 <button class="toggle" type="button" data-guide-scope="page" aria-pressed="true">Full page</button>
               </div>
             </div>
-            <div class="group"><span class="group-label" id="guideSizeLabel">Height</span>
-              <div class="guide-scope" id="guideSizeGroup" role="group" aria-label="Reading guide height">
-                <button class="toggle" type="button" data-guide-size="s" aria-pressed="false">S</button>
-                <button class="toggle" type="button" data-guide-size="m" aria-pressed="true">M</button>
-                <button class="toggle" type="button" data-guide-size="l" aria-pressed="false">L</button>
-              </div>
+            <div class="group guide-dim-control" id="guideSizeGroup"><span class="group-label" id="guideSizeLabel">Height</span>
+              <input class="drift-range" id="guideSizeRange" type="range" min="40" max="250" step="5" value="100" aria-label="Reading guide height, percent">
+              <span class="value" id="guideSizeValue">100%</span>
             </div>
             <div class="group"><span class="group-label">Color</span>
               <div class="guide-palette" role="group" aria-label="Reading guide color">
@@ -615,6 +616,11 @@
               <label for="zenGuideDimRange">Outside dimness</label>
               <input id="zenGuideDimRange" type="range" min="70" max="100" step="5" value="85" aria-label="Dimness outside the focused lines">
               <output id="zenGuideDimValue" for="zenGuideDimRange">85%</output>
+            </div>
+            <div class="zen-guide-dim-control">
+              <label for="zenGuideSizeRange" id="zenGuideSizeLabel">Height</label>
+              <input id="zenGuideSizeRange" type="range" min="40" max="250" step="5" value="100" aria-label="Reading guide height, percent">
+              <output id="zenGuideSizeValue" for="zenGuideSizeRange">100%</output>
             </div>
           </div>
         </div>
@@ -959,7 +965,7 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=200',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=201',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
 <script src="/reading-ink.js?v=200" defer></script>

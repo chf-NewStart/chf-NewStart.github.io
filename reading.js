@@ -2694,7 +2694,7 @@
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
   var GUIDE_DISCOVERY_KEY='readingRoom.guideDiscoverySeen.v1';
-  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfLayout:'scroll',inkStyle:'natural',linkPreviews:true,guideScope:'page',guideSize:'m',guideDim:85,guideDimScale:2,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
+  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfLayout:'scroll',inkStyle:'natural',linkPreviews:true,guideScope:'page',guideSize:'m',guidePct:100,hlStrength:85,guideDim:85,guideDimScale:2,guideX:.72,guideY:.38,guideLock:false,tone:'cream',driftSpeed:4};
   var comfort=Object.assign({},DEFAULT_COMFORT);
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   var migratedLegacyPagedComfort=!!(savedComfort&&!Object.prototype.hasOwnProperty.call(savedComfort,'pdfLayout')&&savedComfort.pdfDirection==='vertical');
@@ -2722,6 +2722,17 @@
   if(['scroll','page','book'].indexOf(comfort.pdfLayout)<0)comfort.pdfLayout='scroll';
   if(['column','page'].indexOf(comfort.guideScope)<0)comfort.guideScope='page';
   if(['s','m','l'].indexOf(comfort.guideSize)<0)comfort.guideSize='m';
+  /* Guide thickness is a percentage now (feedback: S/M/L was too coarse). An older saved
+     S/M/L carries over once: S 60%, M 100%, L 160%. */
+  if(!savedComfort||typeof savedComfort.guidePct!=='number'||!isFinite(savedComfort.guidePct))comfort.guidePct=comfort.guideSize==='s'?60:comfort.guideSize==='l'?160:100;
+  comfort.guidePct=Math.max(40,Math.min(250,Math.round(comfort.guidePct/5)*5));
+  comfort.hlStrength=Math.max(25,Math.min(100,Math.round((+comfort.hlStrength||85)/5)*5));
+  /* Highlight strength: how strong the colour sits behind the words (the words stay black). */
+  function applyHighlightStrength(){
+    document.documentElement.style.setProperty('--hl-strength',(comfort.hlStrength/100).toFixed(2));
+    var range=byId('highlightStrength');if(range){range.value=String(comfort.hlStrength);range.setAttribute('aria-valuetext',comfort.hlStrength+' percent');}
+  }
+  applyHighlightStrength();
   /* Dimness runs 70-100% with 85% in the middle (it used to run 20-85% from 55%). A saved
      value below the new range moves once to the new default rather than to the floor. */
   if(savedComfort&&savedComfort.guideDimScale!==2&&!(+savedComfort.guideDim>=70))comfort.guideDim=85;
@@ -2799,10 +2810,12 @@
     byId('zenLayoutLabel').textContent=layoutName;
     var layoutOption=document.querySelector('[data-zen-pdf-layout="'+comfort.pdfLayout+'"] svg');byId('zenLayoutIcon').innerHTML=layoutOption?layoutOption.outerHTML:'';
     document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideScope===comfort.guideScope));});
-    document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideSize===comfort.guideSize));});
+    ['guideSizeRange','zenGuideSizeRange'].forEach(function(id){var range=byId(id);range.value=String(comfort.guidePct);range.setAttribute('aria-valuetext',comfort.guidePct+' percent');});
+    byId('guideSizeValue').textContent=byId('zenGuideSizeValue').textContent=comfort.guidePct+'%';
+    byId('zenGuideSizeLabel').textContent=comfort.guideOrientation==='column'?'Width':'Height';
     byId('guideSpanGroup').hidden=comfort.guideOrientation==='column';
     byId('guideSizeLabel').textContent=comfort.guideOrientation==='column'?'Width':'Height';
-    byId('guideSizeGroup').setAttribute('aria-label','Reading guide '+(comfort.guideOrientation==='column'?'width':'height'));
+    ['guideSizeRange','zenGuideSizeRange'].forEach(function(id){byId(id).setAttribute('aria-label','Reading guide '+(comfort.guideOrientation==='column'?'width':'height')+', percent');});
     applyPdfFlowMode();
     applyFocus();
     try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}
@@ -2851,7 +2864,6 @@
   document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideColor.charAt(0).toUpperCase()+btn.dataset.guideColor.slice(1)+' reading guide');};});
   document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.onclick=function(){comfort.guideOrientation=btn.dataset.guideOrientation;comfort.focus=true;guideOffset=null;applyComfort();placeGuide();showReaderToast(comfort.guideOrientation==='column'?'Vertical guide · follows one top-to-bottom column':'Row guide · follows one horizontal passage');};});
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
-  document.querySelectorAll('[data-guide-size]').forEach(function(btn){btn.onclick=function(){comfort.guideSize=btn.dataset.guideSize;comfort.focus=true;applyComfort();placeGuide();showReaderToast('Guide '+(comfort.guideOrientation==='column'?'width':'height')+' · '+btn.dataset.guideSize.toUpperCase());};});
   function setGuideDim(value){
     comfort.guideDim=Math.max(70,Math.min(100,+value||85));
     ['guideDimRange','zenGuideDimRange'].forEach(function(id){var range=byId(id);range.value=String(comfort.guideDim);range.setAttribute('aria-valuetext',comfort.guideDim+' percent');});
@@ -2859,6 +2871,8 @@
     byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));saveComfortSoon();
   }
   byId('guideDimRange').oninput=function(){setGuideDim(this.value);};
+  byId('highlightStrength').oninput=function(){comfort.hlStrength=Math.max(25,Math.min(100,Math.round((+this.value||85)/5)*5));applyHighlightStrength();saveComfortSoon();};
+  byId('guideSizeRange').oninput=byId('zenGuideSizeRange').oninput=function(){comfort.guidePct=Math.max(40,Math.min(250,Math.round((+this.value||100)/5)*5));comfort.focus=true;applyComfort();placeGuide();};
   byId('zenGuideDimRange').oninput=function(){setGuideDim(this.value);};
   byId('comfortReset').onclick=function(){Object.assign(comfort,DEFAULT_COMFORT);paperAppearance='cream';try{localStorage.setItem(PAPER_APPEARANCE_KEY,paperAppearance);}catch(e){}if(driftSpeed)driftSpeed=DEFAULT_COMFORT.driftSpeed;applyComfort();showReaderToast('Reading settings reset · cream paper · guide off');};
   var comfortReturnFocus=null;
@@ -2918,7 +2932,7 @@
     if(!surfaceRect||!surfaceRect.width)return false;
     var paneRect=byId('documentPane').getBoundingClientRect();
     if(paneRect.width)guideOffset={x:clientX-paneRect.left,y:clientY-paneRect.top};
-    var sizeFactor=comfort.guideSize==='s'?.62:comfort.guideSize==='l'?1.6:1;
+    var sizeFactor=(comfort.guidePct||100)/100;
     if(comfort.guideOrientation==='column'){
       var visibleLeft=Math.max(rect.left,surfaceRect.left),visibleRight=Math.min(rect.right,surfaceRect.right);
       var visibleTop=Math.max(rect.top,surfaceRect.top),visibleBottom=Math.min(rect.bottom,surfaceRect.bottom);
@@ -3387,7 +3401,7 @@
     range.addEventListener('pointerup',stopRangeDrag);
     range.addEventListener('pointercancel',stopRangeDrag);
   }
-  wireTouchRange(byId('driftRange'));wireTouchRange(byId('guideDimRange'));wireTouchRange(byId('zenGuideDimRange'));
+  wireTouchRange(byId('driftRange'));wireTouchRange(byId('guideDimRange'));wireTouchRange(byId('guideSizeRange'));wireTouchRange(byId('highlightStrength'));wireTouchRange(byId('zenGuideSizeRange'));wireTouchRange(byId('zenGuideDimRange'));
   byId('documentPane').addEventListener('touchstart',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('touchmove',function(){holdDrift(1200);},{passive:true});
   byId('documentPane').addEventListener('wheel',function(){holdDrift(1500);},{passive:true});
@@ -7521,15 +7535,40 @@
   }
   function cancelSavedHighlightDrag(){
     var drag=savedHighlightDrag;if(!drag)return;
-    finishPaperSelection(true);clearSavedHighlightNativeSelection();drag.source.classList.remove('workspace-highlight-source');
+    if(!drag.fromSelection||drag.active){finishPaperSelection(true);clearSavedHighlightNativeSelection();}   // a tap on a live selection keeps it
+    drag.source.classList.remove('workspace-highlight-source');
     savedHighlightDrag=null;clearTimeout(drag.holdTimer);
     if(drag.ghost)drag.ghost.remove();document.body.classList.remove('workspace-highlight-dragging');
     byId('workspaceBoard').classList.remove('workspace-drop-target');
     if(drag.captured&&drag.pane.hasPointerCapture(drag.pointer)){try{drag.pane.releasePointerCapture(drag.pointer);}catch(error){}}
   }
+  /* Apple touch devices (iPhone, iPad, and an iPad presenting as a Mac) already drag a selection
+     natively and use the Pencil for marking; the selection hold below is only for the others
+     (Android phones and tablets), so iPad behaviour stays exactly as it was. */
+  var appleTouchDevice=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)||!!window.PHLOEM_NATIVE;
+  /* Is a point on the live (not yet saved) text selection? */
+  function pointInLiveSelection(x,y){
+    var selection=window.getSelection&&window.getSelection();if(!selection||!selection.rangeCount||selection.isCollapsed)return false;
+    var rects=selection.getRangeAt(0).getClientRects();
+    for(var i=0;i<rects.length;i++){var r=rects[i];if(r.width&&x>=r.left-8&&x<=r.right+8&&y>=r.top-8&&y<=r.bottom+8)return true;}
+    return false;
+  }
   byId('documentPane').addEventListener('pointerdown',function(event){
     if(savedHighlightDrag){if(event.pointerType==='touch'&&event.pointerId!==savedHighlightDrag.pointer)cancelSavedHighlightDrag();return;}
     if(event.target.closest&&event.target.closest('.pdf-link'))return;
+    /* A fresh selection, dragged by finger or stylus. Android has no native drag for selected
+       text (feedback: it only worked from the drag handle), so a short hold on the selected
+       words picks the passage up, exactly like a saved highlight. A quick tap leaves the
+       selection alone. Mouse drags keep the native drag-and-drop below. */
+    if(!appleTouchDevice&&pendingSelection&&event.pointerType!=='mouse'&&workspaceOpen&&workspaceWide()&&!pencilStroke&&!(pdfInkController&&pdfInkController.active())&&!bookCurlOwned&&!pagedTurning&&
+       !(event.pointerType==='touch'&&(savedHighlightTouches.size!==1||event.isPrimary===false))&&pointInLiveSelection(event.clientX,event.clientY)){
+      var held={pointer:event.pointerId,type:event.pointerType,id:currentId,epoch:pdfOpenEpoch,pane:byId('documentPane'),source:byId('documentPane'),
+        startX:event.clientX,startY:event.clientY,lastX:event.clientX,lastY:event.clientY,holdTimer:0,armed:false,active:false,captured:false,ghost:null,
+        selection:JSON.parse(JSON.stringify(pendingSelection)),highlightId:null,fromSelection:true};
+      savedHighlightDrag=held;
+      held.holdTimer=setTimeout(function(){if(savedHighlightDrag===held){held.armed=true;activateSavedHighlightDrag(held,held.lastX,held.lastY);}},380);
+      return;
+    }
     if(event.pointerType==='touch'&&(savedHighlightTouches.size!==1||event.isPrimary===false))return;
     if(!workspaceOpen||!workspaceWide()||readerMode!=='pdf'||!pdfDoc||(event.pointerType!=='touch'&&(highlightEraseMode||pdfWriteMode||highlightMode))||pencilStroke||pdfInkController&&pdfInkController.active()||bookCurlOwned||pagedTurning||pendingSelection)return;
     if(event.pointerType==='mouse'&&event.button!==0)return;
@@ -7569,6 +7608,7 @@
     var active=drag.active,point=active&&currentId===drag.id&&pdfOpenEpoch===drag.epoch?savedHighlightDropPoint(event.clientX,event.clientY):null;
     cancelSavedHighlightDrag();
     if(active){savedHighlightIgnoredClick={x:event.clientX,y:event.clientY,until:Date.now()+550};event.preventDefault();event.stopImmediatePropagation();if(point)addWorkspaceExcerpt(drag.selection,point);}
+    else if(drag.fromSelection){/* a tap on the live selection: leave it and its card as they are */}
     else if(Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY)<10){
       finishPaperSelection(true,event);event.preventDefault();event.stopImmediatePropagation();openHighlightCard({kind:'pdf',page:drag.selection.page,id:drag.highlightId},{left:event.clientX,right:event.clientX,top:event.clientY,bottom:event.clientY});
     }

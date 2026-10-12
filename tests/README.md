@@ -306,3 +306,16 @@ losing real word spaces or native selection offsets. `reading-zen-find-clearance
 checks responsive Find controls against the full Zen rail and resized Workspace paper.
 `reading-workspace-paper-edge.test.js` also covers minimum paper splits and short
 landscape rails in Scroll, Page and Book.
+
+`reading-guide-thickness-percent.test.js` covers the guide's thickness as a percent slider
+(40–250%) in the reading settings and the Zen guide menu: an older saved S/M/L carries over
+once (S 60%, M 100%, L 160%), both sliders agree, the band grows with the value, and it persists.
+
+`reading-highlight-crisp-text.test.js` covers highlight rendering: words under a PDF
+highlight stay black (the highlight layer blends with the page instead of tinting the words),
+and the Highlight strength slider lightens or deepens the colour without fading the words.
+Run with `PHLOEM_BROWSER=webkit` too.
+
+`reading-selection-workspace-drag.test.js` covers dragging a fresh (unsaved) selection into
+the open workspace by finger on Android-style touch screens: a short hold picks the passage
+up, a quick tap keeps the selection, and an iPad keeps its native behaviour untouched.

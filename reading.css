@@ -1116,10 +1116,15 @@
       body.workspace-open.zen .find-bar { visibility: hidden; }
     }
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
-    .highlight-layer { z-index: 1; pointer-events: none; }
+    /* The layer is its own stacking context (z-index), which cut its highlights off from the
+       page: their multiply blend mixed with nothing and the colour sat over the words like
+       tinted glass. Blending the whole layer with the page keeps text black under a highlight,
+       as in a paper notebook. */
+    .highlight-layer { z-index: 1; pointer-events: none; mix-blend-mode: multiply; }
+    .pdf-frame.dark-paper .highlight-layer { mix-blend-mode: screen; }
     /* Marker ink still crosses the whole letterform, but its nearly straight, softly
        uneven edge reads as one restrained pass rather than a rounded label. */
-    .saved-highlight { position: absolute; border-radius: 2px 4px 3px 2px; opacity: .86; mix-blend-mode: multiply; clip-path: polygon(.2% 4%,99.7% 1%,100% 95%,.3% 99%); box-shadow: inset 0 .5px rgba(255,255,255,.13), inset 0 -.5px rgba(63,48,10,.035); transform: rotate(-.035deg); transform-origin: center; }
+    .saved-highlight { position: absolute; border-radius: 2px 4px 3px 2px; opacity: var(--hl-strength, .86); mix-blend-mode: multiply; clip-path: polygon(.2% 4%,99.7% 1%,100% 95%,.3% 99%); box-shadow: inset 0 .5px rgba(255,255,255,.13), inset 0 -.5px rgba(63,48,10,.035); transform: rotate(-.035deg); transform-origin: center; }
     .saved-highlight:nth-child(even) { border-radius: 4px 2px 2px 3px; clip-path: polygon(.3% 1%,99.8% 4%,99.6% 99%,0 95%); transform: rotate(.035deg); }
     .review-comment-highlight { position: absolute; border-bottom: 2px solid rgba(184,121,31,.88); border-radius: 3px; background: rgba(255,202,108,.34); mix-blend-mode: multiply; }
     .review-comment-highlight.review-level-section { border-bottom-color: rgba(50,112,139,.82); background: rgba(105,185,218,.24); }
@@ -1142,7 +1147,7 @@
     .review-page-marker.review-level-editorial::after { color: #873927; }
     .review-page-marker.review-level-general::after { color: #38522f; }
     .review-page-marker.review-level-mixed::after { color: #49355e; }
-    .pdf-frame.dark-paper .saved-highlight { mix-blend-mode: screen; opacity: .78; }
+    .pdf-frame.dark-paper .saved-highlight { mix-blend-mode: screen; opacity: calc(var(--hl-strength, .86) * .9); }
     .pdf-frame.dark-paper :is(.review-comment-highlight,.review-page-marker) { mix-blend-mode: screen; opacity: .86; }
     .hl-yellow { background: linear-gradient(178deg, rgba(255,229,104,.42) 0%, rgba(255,216,61,.66) 18%, rgba(247,203,39,.59) 82%, rgba(255,224,88,.4) 100%) !important; }
     .hl-mint { background: linear-gradient(178deg, rgba(125,228,169,.35) 0%, rgba(92,213,145,.56) 18%, rgba(67,196,121,.5) 82%, rgba(120,225,164,.34) 100%) !important; }
@@ -1266,6 +1271,14 @@
     body.zen .highlight-toolbar.docked .highlight-group { padding: 3px 0; }
     .highlight-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; }
     .highlight-group { display: flex; flex: 0 0 auto; align-items: center; gap: 0; padding: 0 3px; border-radius: 11px; background: var(--surface-2); }
+    /* Highlight strength: a small slider beside the colours; the swatch previews the strength. */
+    .highlight-strength { gap: 6px; padding: 0 8px; min-height: 40px; }
+    .highlight-strength input { width: 92px; min-height: 32px; accent-color: var(--accent); touch-action: none; }
+    .highlight-strength-swatch { width: 14px; height: 14px; border-radius: 4px; background: rgb(255,216,61); opacity: var(--hl-strength, .86); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+    /* Docked (a vertical column): stand the slider upright by rotating it, which every iPadOS
+       the app supports can do (vertical writing-mode for range inputs needs iOS 17.4). */
+    body.zen .highlight-toolbar.docked .highlight-strength { flex-direction: column; justify-content: flex-start; padding: 6px 3px 4px; width: 38px; height: 124px; position: relative; }
+    body.zen .highlight-toolbar.docked .highlight-strength input { position: absolute; left: 50%; top: 72px; width: 92px; margin: 0; transform: translate(-50%, -50%) rotate(-90deg); }
     .highlight-toolbar button {
       min-width: 44px; min-height: 44px; padding: 7px 9px; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
       border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--muted); font: 650 .7rem/1.2 var(--sans);

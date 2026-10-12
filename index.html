@@ -29,7 +29,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png?v=4">
     <link rel="manifest" href="/site.webmanifest?v=4">
     <link rel="preload" href="fonts/dm-sans-var-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="home.css?v=5">
+    <link rel="stylesheet" href="home.css?v=6">
     <link rel="stylesheet" href="tomato-facts.css">
     <script src="deepseek-config.js" defer></script>
     <script src="tomato-facts.js" defer></script>
@@ -153,9 +153,9 @@
                             </ul>
                         </div>
                         <div class="mini panel">
-                            <h3 data-en="Play with the plant" data-zh="玩一玩植物模型">Play with the plant</h3>
-                            <p data-en="Grow a Tomato is a small game built on a real plant-metabolism model: balance light and feed to grow the biggest, sweetest fruit." data-zh="「种番茄」是建立在真实植物代谢模型上的小游戏：平衡光照与施肥，种出又大又甜的果实。">Grow a Tomato is a small game built on a real plant-metabolism model: balance light and feed to grow the biggest, sweetest fruit.</p>
-                            <a class="more" href="https://lifegameproject.com/game/tomato.html" target="_blank" rel="noopener noreferrer" data-en="Grow one →" data-zh="去种一个 →">Grow one →</a>
+                            <h3 data-en="A plant fact a day" data-zh="每天一条植物冷知识">A plant fact a day</h3>
+                            <p data-en="Verified facts about plants, fruit and the odd corners of my research, with a new one every day." data-zh="关于植物、果实和我研究中有趣角落的冷知识，全部经过核实，每天更新一条。">Verified facts about plants, fruit and the odd corners of my research, with a new one every day.</p>
+                            <button class="more" type="button" id="factLink" data-en="Show me today's →" data-zh="看看今天的 →">Show me today's →</button>
                         </div>
                     </div>
                 </div>
@@ -379,6 +379,8 @@
                 if (visible) bg.start(); else bg.stop();
             }).observe(hero);
         });
+        // "Show me today's" opens the same fun-fact card as the 🍅 in the menu.
+        document.getElementById('factLink')?.addEventListener('click', () => document.getElementById('tomatoToggle')?.click());
         // Demo clips play only while on screen, and never with reduced motion.
         (function () {
             if (matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;

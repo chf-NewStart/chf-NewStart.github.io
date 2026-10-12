@@ -189,6 +189,8 @@ body.has-bio-bg {
 .mini .chips { margin-top: 16px; }
 .mini a.more { display: inline-block; margin-top: 14px; color: var(--accent); text-decoration: none; font-weight: 600; font-size: 0.94rem; }
 .mini a.more:hover { text-decoration: underline; }
+.mini button.more { padding: 0; border: 0; background: none; cursor: pointer; font: 600 0.94rem var(--display); color: var(--accent); }
+.mini button.more:hover { text-decoration: underline; }
 @media (max-width: 900px) { .research { grid-template-columns: 1fr; } .facts li { grid-template-columns: 1fr; gap: 4px; } .research-main { padding: 26px 22px; } }
 
 /* ── shipped ── */

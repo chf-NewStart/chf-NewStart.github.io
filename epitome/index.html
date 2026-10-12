@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://commons.wikimedia.org https://upload.wikimedia.org; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Epitome</title>
+  <meta name="description" content="UI prototype for Epitome, a living knowledge platform for the research literature.">
+  <meta name="color-scheme" content="dark">
+  <link rel="stylesheet" href="epitome.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div id="app"></div>
+
+  <dialog id="signin-dialog" aria-labelledby="si-h">
+    <form method="dialog">
+      <h2 id="si-h"><span class="orcid-id" aria-hidden="true">iD</span> Sign in with ORCID</h2>
+      <p>Epitome uses your ORCID iD so every request and comment is tied to a real, checkable researcher identity. Reading never needs an account.</p>
+      <p class="demo-note"><strong>Prototype:</strong> ORCID isn’t connected yet. Continuing signs you in as ORCID’s public example iD, 0000-0002-1825-0097 (Josiah Carberry, a fictional test researcher).</p>
+      <div class="actions">
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="ok" class="primary">Continue (demo)</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="comment-dialog" aria-labelledby="cd-h">
+    <form method="dialog">
+      <h2 id="cd-h">Comment on this passage</h2>
+      <blockquote data-cd-quote></blockquote>
+      <fieldset>
+        <legend>What’s the problem?</legend>
+        <label><input type="radio" name="kind" value="citation" checked> A citation is wrong or doesn’t support the claim</label>
+        <label><input type="radio" name="kind" value="unclear"> It’s unclear</label>
+        <label><input type="radio" name="kind" value="missing"> Something important is missing</label>
+        <label><input type="radio" name="kind" value="other"> Something else</label>
+      </fieldset>
+      <label for="cd-text">Explain, as specifically as you can</label>
+      <textarea id="cd-text" name="text" rows="4" required></textarea>
+      <label class="check-row"><input type="checkbox" name="public"> Make my comment public for a limited time once it’s been reviewed</label>
+      <p class="muted small">Signed in as <span data-cd-who></span>. Comments stay private unless you tick the box.</p>
+      <div class="actions">
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="send" class="primary">Send privately</button>
+      </div>
+    </form>
+  </dialog>
+
+  <p id="toast" class="toast" role="status"></p>
+
+  <script src="markdown.js"></script>
+  <script src="fixtures.js"></script>
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

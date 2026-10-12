@@ -164,6 +164,10 @@ Each page is self-contained and keeps its data in the visitor's own browser
   On phones the paper gets the whole screen: a thumb-height bottom bar, the
   notebook as a bottom sheet, ⋯ revealing the full toolbar, and the layout
   tracking the visual viewport so the on-screen keyboard never covers the input.
+- `epitome/` — UI prototype (work package WP4) for Epitome, a living research wiki:
+  search over a full-screen research image, Cold/Warm/Mature topic pages, demo
+  ORCID sign-in, and comments on a selected passage. Demo data only, kept out of
+  search indexes; see `epitome/README.md`.
 - `moneymanage/` — local-first personal finance tracker (OFX/QFX import, learned
   categorisation rules, optional AI key — all stored locally).
 - `msg/` — terminal-style message box; the one page that sends data out (Formspree,

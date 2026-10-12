@@ -352,3 +352,8 @@ writes and shows white on the dark sheet (its swatch reads "White ink") and the 
 handwriting is black again in the light theme. It is still saved as black, so older app
 versions sync it unchanged; writing on a light sticky note stays dark. Run with
 `PHLOEM_BROWSER=webkit` too.
+
+`reading-paged-zoom-turn.test.js` covers zoomed-in page turns in Page/Book layout: turning
+forward from a page's bottom-right opens the next page at the same zoom on its top-left,
+turning back opens the previous page on its bottom-right, and a page jump opens on the
+top-left. Not zoomed in, pages stay centred. Run with `PHLOEM_BROWSER=webkit` too.

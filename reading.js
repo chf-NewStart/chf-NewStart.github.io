@@ -4747,6 +4747,16 @@
       if(!on){resetFullBookView(view);view.holder.classList.remove('book-turning','book-flip-next','book-flip-prev','book-flip-single','book-flip-cover','book-stay-left','book-stay-right');}
     });
   }
+  /* Zoomed in, a page turn lands where reading continues (readers' feedback): forward on
+     the next page's top-left, back on the previous page's bottom-right, and a jump on its
+     top-left. It used to keep the old scroll, so finishing page 1 at its bottom-right
+     opened page 2 at its bottom-right too. Not zoomed in, the page stays centred. */
+  var pagedLastLayout=null;
+  function pagedLanding(pageNos,spread,center){
+    var start=pageNos[0],last=pagedLastLayout;pagedLastLayout={id:currentId,start:start};
+    if(center!==false||!last||last.id!==currentId||last.start===start)return '';
+    return start<last.start&&last.start-start<=(spread?2:1)?'end':'start';
+  }
   function layoutPagedPages(pageNos,spread,center,fitEpoch,fitRunId){
     var layoutBuildId=pdfBuildId;
     if((fitEpoch!==undefined&&fitEpoch!==pagedFitEpoch)||(fitRunId!==undefined&&fitRunId!==pagedFitRunId)||!pagedPdfFlow()||pdfBuildKey!==currentBuildKey()||bookSpread()!==spread||!samePages(pageNos,pagedPageNos(currentPage)))return Promise.resolve(false);
@@ -4756,8 +4766,10 @@
     var pane=byId('documentPane'),keptLeft=pane.scrollLeft,keptTop=pane.scrollTop;return new Promise(function(resolve){requestAnimationFrame(function(){
       if((fitEpoch!==undefined&&fitEpoch!==pagedFitEpoch)||(fitRunId!==undefined&&fitRunId!==pagedFitRunId)||layoutBuildId!==pdfBuildId||!pagedPdfFlow()||pdfBuildKey!==currentBuildKey()||bookSpread()!==spread||!samePages(pageNos,pagedPageNos(currentPage))){resolve(false);return;}
       pagedMinLeft=0;pagedMaxLeft=Math.max(0,pane.scrollWidth-pane.clientWidth);var maxTop=Math.max(0,pane.scrollHeight-pane.clientHeight);
-      pagedFits=pagedMaxLeft<=2&&maxTop<=2;
-      pane.scrollTo({left:center===false?Math.max(0,Math.min(pagedMaxLeft,keptLeft)):pagedMaxLeft/2,top:center===false?Math.max(0,Math.min(maxTop,keptTop)):maxTop/2,behavior:'auto'});
+      pagedFits=pagedMaxLeft<=2&&maxTop<=2;var landing=pagedLanding(pageNos,spread,center);
+      var left=center===false?Math.max(0,Math.min(pagedMaxLeft,keptLeft)):pagedMaxLeft/2,top=center===false?Math.max(0,Math.min(maxTop,keptTop)):maxTop/2;
+      if(landing==='start'){left=0;top=0;}else if(landing==='end'){left=pagedMaxLeft;top=maxTop;}
+      pane.scrollTo({left:left,top:top,behavior:'auto'});
       setPagedReady(true,fitEpoch,fitRunId,layoutBuildId);if(comfort.focus)requestAnimationFrame(placeGuide);resolve(true);
     });});
   }

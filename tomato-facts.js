@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "PLANTS",
+            title: "The oldest seeds ever sprouted were 2,000 years old",
+            fact: "Seeds of the Judean date palm found at Masada and in ancient storehouses were germinated in 2005 after ~2,000 years of dormancy. The resulting palms — nicknamed Methuselah and friends — are alive and bearing fruit today.",
+            detail: "A closely related record: Silene stenophylla was regrown from placental tissue frozen in Siberian permafrost for about 32,000 years."
+        },
+        {
+            tag: "PLANTS",
             title: "Bamboo can outrun a measuring tape",
             fact: "Some bamboo species grow up to 90 cm in a single day — about 4 cm per hour, visible in real time. All the growth is pre-built: the shoot telescopes upward using cells already formed underground.",
             detail: "A bamboo culm reaches full height in weeks, then spends the rest of its life thickening its walls rather than getting taller. Cut it down and it never regrows from that culm."

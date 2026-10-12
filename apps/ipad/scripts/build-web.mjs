@@ -18,7 +18,7 @@ export const readerFiles = Object.freeze([
   'favicon_io/phloem-book-vine-clean-192.png',
   'favicon_io/phloem-book-vine-clean-512.png',
   'vendor/pdfjs/pdf.min.js', 'vendor/pdfjs/pdf.worker.compat.js',
-  'vendor/pdfjs/pdf.worker.min.js',
+  'vendor/pdfjs/pdf.worker.min.js', 'vendor/pdf-lib/pdf-lib.min.js',
   'vendor/tesseract/tesseract.min.js', 'vendor/tesseract/worker.min.js',
   'vendor/tesseract/tesseract-core-lstm.wasm.js',
   'vendor/tesseract/tesseract-core-simd-lstm.wasm.js',

@@ -319,3 +319,10 @@ Run with `PHLOEM_BROWSER=webkit` too.
 `reading-selection-workspace-drag.test.js` covers dragging a fresh (unsaved) selection into
 the open workspace by finger on Android-style touch screens: a short hold picks the passage
 up, a quick tap keeps the selection, and an iPad keeps its native behaviour untouched.
+
+`reading-export-annotated-pdf.test.js` covers Export annotated PDF: highlights (words still
+dark under them), handwriting and notes are written into the original at the spots shown on
+screen, including on a cropped page and a rotated page; notes become standard PDF comments.
+The Zen ••• menu downloads it on the web; in the iPad app it goes to the share sheet (a
+second tap shares the finished file if iOS says the first tap expired) and stays hidden
+without one. Run with `PHLOEM_BROWSER=webkit` too.

@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=200">
-  <link rel="stylesheet" href="/reading-fold.css?v=200">
-  <link rel="stylesheet" href="/reading-workspace.css?v=200">
+  <link rel="stylesheet" href="/reading.css?v=202">
+  <link rel="stylesheet" href="/reading-fold.css?v=202">
+  <link rel="stylesheet" href="/reading-workspace.css?v=202">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -649,6 +649,7 @@
           <button class="zen-exit" id="zenMore" type="button" aria-expanded="false" aria-controls="zenMoreMenu" aria-haspopup="true" aria-label="More reading tools" title="More reading tools"><span aria-hidden="true">⋯</span></button>
           <div class="zen-popout zen-action-menu hidden" id="zenMoreMenu" role="group" aria-label="More reading tools">
             <button class="zen-exit zen-menu-action" id="zenReadingControls" data-label="This paper" type="button" aria-haspopup="dialog" aria-controls="readerControlsDialog" aria-label="This paper: title, pages and zoom"><span aria-hidden="true">▤</span></button>
+            <button class="zen-exit zen-menu-action hidden" id="zenExportAnnotated" data-label="Export annotated PDF" type="button" aria-label="Export this PDF with your highlights, handwriting and notes" title="Export annotated PDF"><span aria-hidden="true">⇪</span></button>
             <button class="zen-exit zen-menu-action" id="zenNotebook" data-label="Notebook" type="button" aria-haspopup="dialog" aria-controls="notebook" aria-expanded="false" aria-label="Open notebook: notes, clips and discussions"><span aria-hidden="true">✎</span></button>
             <button class="zen-exit zen-find zen-menu-action" id="zenFind" data-label="Find" type="button" aria-expanded="false" aria-controls="findBar" aria-keyshortcuts="/" aria-label="Find in this paper" title="Find in this paper (/)">⌕</button>
             <button class="zen-exit zen-paper paper-appearance-shortcut zen-menu-action" id="zenPaperAppearance" data-label="Paper appearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
@@ -965,19 +966,19 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=201',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=202',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=200" defer></script>
-<script src="/reading-keeps.js?v=200" defer></script>
-<script src="/reading-excerpts.js?v=200" defer></script>
-<script src="/reading-excerpts-view.js?v=200" defer></script>
-<script src="/reading-workspace.js?v=200" defer></script>
-<script src="/reading-workspace-viewport.js?v=200" defer></script>
-<script src="/reading-workspace-view.js?v=200" defer></script>
-<script src="/reading-folds.js?v=200" defer></script>
-<script src="/reading-pdf-projection.js?v=200" defer></script>
-<script src="/reading-fold-view.js?v=200" defer></script>
-<script src="/reading.js?v=200" defer></script>
+<script src="/reading-ink.js?v=202" defer></script>
+<script src="/reading-keeps.js?v=202" defer></script>
+<script src="/reading-excerpts.js?v=202" defer></script>
+<script src="/reading-excerpts-view.js?v=202" defer></script>
+<script src="/reading-workspace.js?v=202" defer></script>
+<script src="/reading-workspace-viewport.js?v=202" defer></script>
+<script src="/reading-workspace-view.js?v=202" defer></script>
+<script src="/reading-folds.js?v=202" defer></script>
+<script src="/reading-pdf-projection.js?v=202" defer></script>
+<script src="/reading-fold-view.js?v=202" defer></script>
+<script src="/reading.js?v=202" defer></script>
 </body>
 </html>

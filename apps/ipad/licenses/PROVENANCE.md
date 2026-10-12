@@ -10,6 +10,7 @@ Collected on 2026-09-15 for the Phloem iPad prototype. These files preserve upst
 | `vendor/tesseract/tesseract.min.js`, `worker.min.js` | Exact bytes from `tesseract.js@5.1.1`, `dist/` | `Tesseract.js-LICENSE.md` and both `.LICENSE.txt` companion files copied from that npm archive |
 | Both `vendor/tesseract/tesseract-core-*-lstm.wasm.js` files | Exact bytes from `tesseract.js-core@5.1.1` | `Tesseract.js-core-LICENSE.txt` copied from that npm archive |
 | `vendor/tesseract/{eng,fra,spa,chi_sim,jpn}.traineddata.gz` | Decompressed bytes exactly match `naptha/tessdata`, `gh-pages/4.0.0_fast/`; gzip container bytes differ | `Tessdata-LICENSE.txt` from that repository, license blob `261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64` |
+| `vendor/pdf-lib/pdf-lib.min.js` | Exact bytes from `pdf-lib@1.17.1`, `dist/pdf-lib.min.js` (MIT); loaded only for Export annotated PDF | `pdf-lib-LICENSE.md` copied from that npm archive |
 | `fonts/dm-sans-var-latin.woff2` | Embedded name table identifies DM Sans 9pt, Version 4.004;gftools[0.9.30], copyright 2014 The DM Sans Project Authors, with SIL OFL URL | `DM-Sans-OFL.txt` from `google/fonts/ofl/dmsans/OFL.txt`, blob `4430b85ac62998e2edb914360f9ebdfe43f4deaa`; matching copyright |
 | `fonts/houfu-hand.woff2` | Embedded name table says Myfont Regular, Version 001.001; no copyright/license entry was found there. Repository README explicitly identifies it as personal handwriting content, all rights reserved | No third-party license invented or applied. Preserve the repository owner's rights statement |
 

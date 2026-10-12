@@ -1137,6 +1137,109 @@
     }catch(e){showError('Phloem could not download this '+spec.label+'. Re-add the local file and try again.','Could not download file');}
     finally{if(button){button.disabled=false;button.textContent=original;}}
   }
+  /* Export annotated PDF (readers' feedback): the original paper with this reader's
+     highlights, handwriting and notes written into it, to share, print or open in any PDF
+     app. Highlights use a multiply blend so the words stay black; handwriting goes in as the
+     same vector outlines drawn on screen; highlight and page notes become standard PDF
+     comments. Coordinates come from PDF.js's own viewport, so rotated and cropped pages land
+     exactly. pdf-lib (MIT) loads only when someone exports. Nothing on the paper changes. */
+  var PDF_WRITER_URL='/vendor/pdf-lib/pdf-lib.min.js',pdfWriterLoading=null;
+  var EXPORT_HL_RGB={yellow:[255,216,61],mint:[92,213,145],coral:[255,126,105],blue:[91,169,255]};
+  var EXPORT_INK_HEX={black:'#20313b',blue:'#245bc1',red:'#ba3f35',green:'#24734b',purple:'#7842a3',orange:'#c26a1c',teal:'#157d86',gray:'#687782'};
+  function loadPdfWriter(){
+    if(window.PDFLib)return Promise.resolve(window.PDFLib);
+    if(!pdfWriterLoading)pdfWriterLoading=new Promise(function(resolve,reject){
+      var script=document.createElement('script');script.src=PDF_WRITER_URL;
+      script.onload=function(){if(window.PDFLib)resolve(window.PDFLib);else{pdfWriterLoading=null;reject(new Error('PDF writer did not load'));}};
+      script.onerror=function(){pdfWriterLoading=null;reject(new Error('PDF writer failed to load'));};
+      document.head.appendChild(script);
+    });
+    return pdfWriterLoading;
+  }
+  /* In the iPad app a browser download does nothing; share the file there when the system
+     share sheet takes files, and otherwise keep the action hidden (no dead button). */
+  function annotatedExportAvailable(){
+    if(!window.PHLOEM_NATIVE)return true;
+    try{return !!(navigator.canShare&&navigator.canShare({files:[new File(['%PDF-1.4'],'probe.pdf',{type:'application/pdf'})]}));}catch(e){return false;}
+  }
+  function annotatedFilename(ch){
+    var name=originalSourceFilename(ch)||((ch.title||'paper')+'.pdf');
+    return name.replace(/\.pdf$/i,'')+' — annotated.pdf';
+  }
+  function exportHexColor(lib,hex){var n=parseInt(String(hex).slice(1),16);return lib.rgb((n>>16&255)/255,(n>>8&255)/255,(n&255)/255);}
+  async function buildAnnotatedPdf(ch,bytes){
+    var writer=await loadPdfWriter(),reader=await loadPdfLib();
+    var source=await reader.getDocument({data:bytes.slice(0)}).promise;
+    var doc=await writer.PDFDocument.load(bytes,{ignoreEncryption:true}),pages=doc.getPages(),counts={highlights:0,strokes:0,notes:0};
+    if(doc.isEncrypted){try{source.destroy();}catch(e){}throw new Error('encrypted');}
+    var strength=Math.max(.25,Math.min(1,(comfort.hlStrength||85)/100));
+    for(var index=0;index<Math.min(pages.length,source.numPages);index++){
+      var number=index+1,page=pages[index],view=(await source.getPage(number)).getViewport({scale:1});
+      var origin=view.convertToPdfPoint(0,0),alongX=view.convertToPdfPoint(1,0),alongY=view.convertToPdfPoint(0,1);
+      var A=alongX[0]-origin[0],B=alongX[1]-origin[1],C=alongY[0]-origin[0],D=alongY[1]-origin[1];
+      var toPdf=function(u,v){var x=u*view.width,y=v*view.height;return[origin[0]+A*x+C*y,origin[1]+B*x+D*y];};
+      var addComment=function(u,v,text,color){
+        text=String(text||'').trim();if(!text)return;
+        var at=toPdf(Math.max(0,Math.min(.97,u)),Math.max(.03,Math.min(1,v))),size=18;
+        var annot=doc.context.obj({Type:'Annot',Subtype:'Text',Rect:[at[0],at[1]-size,at[0]+size,at[1]],Contents:writer.PDFHexString.fromText(text),
+          Name:'Comment',C:color||[1,.85,.25],F:4,Open:false,T:writer.PDFHexString.fromText('Phloem'),M:writer.PDFString.fromDate(new Date())});
+        page.node.addAnnot(doc.context.register(annot));counts.notes++;
+      };
+      ((ch.highlights||{})[String(number)]||[]).forEach(function(h){
+        var rgb=EXPORT_HL_RGB[h.color]||EXPORT_HL_RGB.yellow,rects=mergeHighlightRects(h.rects||[]);
+        rects.forEach(function(stored){
+          var r=paperHighlightRect(stored),a=toPdf(r.x,r.y),b=toPdf(r.x+r.w,r.y+r.h);
+          page.drawRectangle({x:Math.min(a[0],b[0]),y:Math.min(a[1],b[1]),width:Math.abs(b[0]-a[0]),height:Math.abs(b[1]-a[1]),
+            color:writer.rgb(rgb[0]/255,rgb[1]/255,rgb[2]/255),opacity:.62*strength,blendMode:writer.BlendMode.Multiply});
+        });
+        if(rects.length)counts.highlights++;
+        if(h.note&&rects.length){var last=rects[rects.length-1];addComment(last.x+last.w,last.y,h.note,[rgb[0]/255,rgb[1]/255,rgb[2]/255]);}
+      });
+      var strokes=(ch.pdfInk||{})[String(number)]||[];
+      if(strokes.length&&window.PhloemInk){
+        var scale=view.width/1000,aspect=view.height/view.width;
+        page.pushOperators(writer.pushGraphicsState(),writer.concatTransformationMatrix(A*scale,B*scale,-C*scale,-D*scale,origin[0],origin[1]));
+        strokes.forEach(function(stroke){var path=window.PhloemInk.pathData(stroke,aspect);if(path){page.drawSvgPath(path,{x:0,y:0,scale:1,color:exportHexColor(writer,EXPORT_INK_HEX[stroke.color]||EXPORT_INK_HEX.black),borderWidth:0});counts.strokes++;}});
+        page.pushOperators(writer.popGraphicsState());
+      }
+      addComment(.94,.02,(ch.pageNotes||{})[String(number)]);
+      if(number===1)addComment(.02,.02,(ch.pageNotes||{}).document);
+    }
+    try{source.destroy();}catch(e){}
+    return{bytes:await doc.save(),counts:counts};
+  }
+  /* iOS only opens the share sheet straight after a tap. If building a long paper used up
+     that tap, keep the finished file and share it on the next tap instead of rebuilding. */
+  var annotatedShareReady=null;
+  async function shareAnnotatedFile(file){await navigator.share({files:[file],title:file.name});annotatedShareReady=null;}
+  async function exportAnnotatedPdf(ch,button){
+    if(!ch||ch.kind!=='pdf')return;
+    if(window.PHLOEM_NATIVE&&annotatedShareReady&&annotatedShareReady.id===ch.id&&Date.now()-annotatedShareReady.at<120000){
+      try{await shareAnnotatedFile(annotatedShareReady.file);}catch(e){if(!e||e.name!=='AbortError')showError('The share sheet did not open. Try Export annotated PDF again.','Could not share annotated PDF');}
+      return;
+    }
+    var original=button&&button.textContent;if(button){button.disabled=true;button.textContent='Preparing…';}else showReaderToast('Preparing annotated PDF…');
+    try{
+      var stored=await getPdf(ch.id);
+      if(!stored&&gdriveOn())stored=await gdriveFetchSource(ch,true,function(loaded,total){if(button&&total)button.textContent=Math.min(99,Math.round(loaded/total*100))+'%';});
+      if(!stored){showError('The original PDF is not stored on this device yet. Re-add it here or sync it from Drive first.','Original file not on this device');return;}
+      var bytes=stored instanceof Blob?await stored.arrayBuffer():stored instanceof ArrayBuffer?stored:new Uint8Array(stored).buffer;
+      var built=await buildAnnotatedPdf(ch,bytes),name=annotatedFilename(ch),blob=new Blob([built.bytes],{type:'application/pdf'});
+      if(window.PHLOEM_NATIVE){
+        var file=new File([blob],name,{type:'application/pdf'});
+        try{await shareAnnotatedFile(file);}
+        catch(e){if(e&&e.name==='NotAllowedError'){annotatedShareReady={id:ch.id,file:file,at:Date.now()};showReaderToast('Annotated PDF ready · tap Export annotated PDF again to share it');return;}throw e;}
+      }else{
+        var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+        setTimeout(function(){URL.revokeObjectURL(url);},60000);
+      }
+      var c=built.counts;showReaderToast('Annotated PDF ready · '+c.highlights+' highlight'+(c.highlights===1?'':'s')+', '+c.strokes+' stroke'+(c.strokes===1?'':'s')+', '+c.notes+' note'+(c.notes===1?'':'s'));
+    }catch(e){
+      if(e&&e.name==='AbortError')return;
+      showError(e&&e.message==='encrypted'?'This PDF is password-protected, so Phloem cannot write into it. Export the original instead.':'Phloem could not build the annotated PDF. Try again, or export the original instead.','Could not export annotated PDF');
+    }finally{if(button){button.disabled=false;button.textContent=original;}}
+  }
+  window.__phloemBuildAnnotatedPdf=buildAnnotatedPdf;   // for the regression test only
   async function downloadForOfflineReading(ch,button){
     if(!ch||ch.kind!=='pdf')return;var original=button&&button.textContent;if(button){button.disabled=true;button.textContent='Downloading…';}
     try{
@@ -1505,6 +1608,7 @@
       var source=binarySourceSpec(ch);
       if(ch.kind==='pdf'&&!localReadingAvailability(ch).available)actionButton(panel,'Download for offline reading','',function(){details.removeAttribute('open');downloadForOfflineReading(ch,this);});
       if(source)actionButton(panel,'Export original '+source.label,'',function(){details.removeAttribute('open');downloadOriginalFile(ch,this);});
+      if(ch.kind==='pdf'&&annotatedExportAvailable())actionButton(panel,'Export annotated PDF','',function(){details.removeAttribute('open');exportAnnotatedPdf(ch,this);});
       actionButton(panel,'Remove from library','danger',function(){details.removeAttribute('open');removePaper(ch,false);});return move;
     }
     visibleList.forEach(function(ch,index){
@@ -3058,7 +3162,8 @@
   /* Undo stays directly on the paper; annotation choices and occasional settings
      live in disclosures. The workspace owns a separate handwriting history. */
   byId('zenAnnotate').onclick=function(){toggleZenPopout('zenAnnotate','zenAnnotateMenu','zenAnnotateTool');};
-  byId('zenMore').onclick=function(){toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');};
+  byId('zenMore').onclick=function(){var ch=find(currentId);byId('zenExportAnnotated').classList.toggle('hidden',!(ch&&ch.kind==='pdf'&&annotatedExportAvailable()));toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');};
+  byId('zenExportAnnotated').onclick=function(){closeZenPopouts(true);setComfortBarOpen(false);exportAnnotatedPdf(find(currentId),null);};
   byId('zenReadingControls').onclick=function(){closeZenPopouts(true);setComfortBarOpen(false);byId('readerControlsDialog').showModal();};
   byId('zenNotebook').onclick=function(){closeZenPopouts(true);setComfortBarOpen(false);switchTab('notesPanel');toggleSheet(true);};
   byId('zenSettings').onclick=function(){closeZenPopouts(true);setComfortBarOpen(true,false,byId('zenMore'));};

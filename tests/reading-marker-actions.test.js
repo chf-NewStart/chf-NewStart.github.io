@@ -28,9 +28,10 @@ function seed() {
     fr: 'Alpha beta gamma delta epsilon zeta eta theta.\n\nSecond paragraph for nearby passage context.',
     textHighlights: [{ id: 'chosen-highlight', para: 0, start: 6, end: 16, text: 'beta gamma', color: 'yellow', note: 'A note that must not be sent automatically.', at: Date.now() }],
     readerHighlights: [], highlights: {}, notes: {}, readerNotes: {}, pageNotes: {}, questions: [], aiThreads: [],
+    // lookupV matches LOOKUP_V in reading.js: older cached entries are looked up again.
     termLookups: {
-      'beta gamma': { title: 'Beta gamma definition', extract: 'A cached definition fixture.', source: 'wikipedia', url: 'https://en.wikipedia.org/wiki/Beta', imageChecked: true },
-      'alpha': { title: 'Alpha definition', extract: 'An exact selected term fixture.', source: 'wikipedia', url: 'https://en.wikipedia.org/wiki/Alpha', imageChecked: true }
+      'beta gamma': { title: 'Beta gamma definition', extract: 'A cached definition fixture.', source: 'wikipedia', url: 'https://en.wikipedia.org/wiki/Beta', imageChecked: true, lookupV: 2 },
+      'alpha': { title: 'Alpha definition', extract: 'An exact selected term fixture.', source: 'wikipedia', url: 'https://en.wikipedia.org/wiki/Alpha', imageChecked: true, lookupV: 2 }
     }, tags: [], at: Date.now()
   };
   localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [paper], deleted: {}, merged: {}, savedAt: Date.now() }));

@@ -5005,9 +5005,12 @@
                acts as a link: a contents entry, "Table 3" or a figure reference jumps
                there (Backspace returns); a web link opens its card. A press held long
                enough to show the preview stays on the preview. Touch keeps
-               hold-to-preview so a finger stays free to scroll. */
+               hold-to-preview so a finger stays free to scroll. WebKit labels the
+               click that follows a finger or Pencil tap "mouse", so the press that
+               started it decides; both must agree before a click counts as a mouse. */
             var previewShown=pdfReferencePreviewAnchor===el&&!byId('pdfReferencePreview').classList.contains('hidden'),heldForPreview=Date.now()-pdfLinkPressAt>=500;
-            if(ev.isTrusted&&ev.detail>0&&(ev.pointerType||pdfLinkPointerType)==='mouse'&&!previewShown&&!heldForPreview&&!pdfReferenceGestureBusy()){cancelPdfReferenceHold();if(el.dataset.pdfLinkKind==='internal')followPdfDest(el._pdfDestination);else openPdfReferenceCard(el,false);}
+            var mouseClick=(pdfLinkPointerType||ev.pointerType)==='mouse'&&(!ev.pointerType||ev.pointerType==='mouse');
+            if(ev.isTrusted&&ev.detail>0&&mouseClick&&!previewShown&&!heldForPreview&&!pdfReferenceGestureBusy()){cancelPdfReferenceHold();if(el.dataset.pdfLinkKind==='internal')followPdfDest(el._pdfDestination);else openPdfReferenceCard(el,false);}
           };
           el.ondblclick=el.onauxclick=el.ondragstart=function(ev){ev.preventDefault();ev.stopPropagation();};
           el.onkeydown=function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();ev.stopPropagation();if(!ev.repeat){cancelPdfReferenceHold();openPdfReferenceCard(el,true);}}};

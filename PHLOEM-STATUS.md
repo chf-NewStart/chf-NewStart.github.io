@@ -6,8 +6,8 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-13)
 
-- **Web:** houfu72.com/reading.html serves **v212**: Escape after a tap in the Workspace no longer closes the paper
-  (iPad keyboards); v211: DeepSeek removed, AI data note, accessibility fixes, the Workspace rail tucked under
+- **Web:** houfu72.com/reading.html serves **v213**: saved Define answers are kept instead of refetched (from PR #72);
+  v212: Escape after a tap in the Workspace no longer closes the paper (iPad keyboards); v211: DeepSeek removed, AI data note, accessibility fixes, the Workspace rail tucked under
   sheets; v210: no re-merge of the sync's own upload after a stroke. The iPad app (1.2.1, in review) bundles v211.
 - **Promo kit (drafts only):** `output/phloem-school-promo-2026-10/` (local): SCHOOL-FIT, pitches, channel texts,
   social posts, flyer (HTML and PDF). Gmail drafts in houfuchen0702@gmail.com: ChemE comms, Daily Bulletin, Media
@@ -100,6 +100,11 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - **Cost:** free tools only; flag any cost first.
 
 ## Open questions for Houfu
+
+- **Old open PRs:** #29 (iPad prototype) and #28 (Book guide fix) are already on main in other forms, and #30
+  (calm homepage) was superseded by the current homepage. Close them? #72's Define fix is now on main (v213); its other
+  half, the Zen layout control as a quiet rail circle with a first-visit hint (v201), never landed and would need
+  rebasing onto v213.
 
 - The **shared review pass** (`cloud-review-pass/` worker) still calls DeepSeek on the server. Ordinary
   readers can't pick it. Switch the worker's model, or retire the pass?

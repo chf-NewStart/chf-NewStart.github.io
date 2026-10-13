@@ -11,8 +11,12 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 - **Promo kit (drafts only):** `output/phloem-school-promo-2026-10/` (local): SCHOOL-FIT, pitches, channel texts,
   social posts, flyer (HTML and PDF). Gmail drafts in houfuchen0702@gmail.com: ChemE comms, Daily Bulletin, Media
   Relations (send later). Nothing has been sent.
-- **Sites and CV (2026-10-13):** houfu72.com and lifegameproject.com list Game Life first, then Qi, Plank Pilot,
-  Manilha (coming soon); the Phloem name story is on both. The CV has one "Shipped Software" line.
+- **Sites and CV (2026-10-13):** houfu72.com and lifegameproject.com list Game Life first, then Qi, Plank Constant,
+  Manilha (coming soon); the Phloem name story is on both. The CV has one "Shipped Software" line. Afternoon: the
+  homepage hero has a "See my apps" button (app icons fan out, ring in their colours) to lifegameproject.com; the app
+  tiles glow in their icons' colours; the Phloem card keeps the reading-guide loop (Houfu's call) and no longer
+  mentions DeepSeek. lifegameproject.com's Phloem card plays the two new iPad recordings; Glyph Run's featured clip
+  and the Grow a Tomato / Tomatoswipe / Sudoku thumbnails were re-shot from the live games.
 - **App Store:** Phloem **iOS 1.2.0 (39) live**. **iOS 1.2.1 (40) submitted 2026-10-13 07:25, Waiting for
   Review**, manual release (Houfu presses Release). Houfu tested build 40 on his iPad ("works well"), and the
   freeze is gone. New listing media cut from his iPad recordings: two **silent** captioned previews (landscape
@@ -21,11 +25,13 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   which **he should rotate after review**. The macOS 1.0 draft is untouched. EU trader status is still unset.
 - **Narrated promo films** (Jamie Premium voice, "not an app feature" credit): `output/phloem-demo-2026-10-13/`
   (61 s at 1920×1080 and 1080×1920, 33 s social cut). Never use them as App Store previews.
-- **Other apps (2026-10-13):** Game Life iOS 1.0 live; Qi: Go & Gomoku iOS 1.0 live; Plank Pilot 1.0 not
-  submitted; **Manilha 1.0 (6) resubmitted, Waiting for Review**. It was rejected under 2.3.6 as simulated
-  gambling; the fix says "guess" instead of "bid", rates 4+, and drops the "Apuestas"/叫牌 names and metadata
-  (es: "Manilha: Juego de Bazas", zh: "Manilha 巴西纸牌"). A reply was sent to App Review. Next for Manilha: 1.1
-  cross-platform online play (4 seats) through the existing web relay rooms.
+- **Other apps (2026-10-13):** Game Life iOS 1.0 live (since 10-12; hard to find yet: see
+  `~/Developer/GameLife/store/DISCOVERY.md`, rating prompt committed for 1.0.1); Qi: Go & Gomoku iOS 1.0 live;
+  **Manilha 1.0 (6) resubmitted, Waiting for Review** (2.3.6 fix: "guess", 4+, no "Apuestas"/叫牌; lifegameproject.com
+  now says "guess" too). **Plank Pilot is renamed Plank Constant** (Planck's constant pun; bundle ID unchanged).
+  Build 26 (new pillow-vs-frying-pan icon, new name, duel copy for the kits) is attached to 1.0 with 5 iPhone + 5 iPad
+  screenshots, uploaded through Claude in Chrome. **Not submitted:** Houfu must make the Regulated Medical Device
+  declaration (App Information; "not a medical device") and press Add for Review → Submit.
 - **Local checkout warning:** `~/Desktop/houfu0702.github.io` `main` has diverged from
   `origin/main` (rewritten history) and holds Houfu's uncommitted work. Work in a worktree
   from `origin/main`; do not reset or stash his checkout.
@@ -105,6 +111,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - The FAW-Volkswagen dates conflict between the site and the CV.
 
 ## Log
+
+- **2026-10-13 late morning:** promo drafts say "PhD student" (not candidate) and warn that the Gmail connector wraps
+  links in google.com redirects. LinkedIn kit (headline, About, three posts, banner) and the UofT featured-alum capture
+  are in `~/Desktop/Career/Houfu_Chen_CV_2026/`. Sites and other apps: see Now.
 
 - **2026-10-13 morning:** Houfu confirmed build 40 on his iPad and submitted 1.2.1. App Store media were cut from
   his screen recordings; narration was kept off the store, so it can't be mistaken for read-aloud. Manilha's

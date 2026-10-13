@@ -8,12 +8,18 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 - **Web:** houfu72.com/reading.html serves **v211**: DeepSeek removed, AI data note, accessibility fixes, the
   Workspace rail tucked under sheets, and (v210) no re-merge of the sync's own upload after a stroke.
-- **In progress (scheduled task, 2026-10-13):** iOS 1.2.1 (40) on branch `ipad-release-1.2.1-40`; promo kit in
-  `output/phloem-school-promo-2026-10/` (local, untracked); websites and CV next.
-- **App Store:** Phloem: Paper Reader **iOS 1.2.0 live**. 1.2.1 is being prepared by the
-  scheduled task below. A macOS 1.0 draft exists; leave it alone.
-  The EU trader status (Digital Services Act) is missing in App Store Connect, and only
-  Houfu, as Account Holder, can fill it in.
+- **Promo kit (drafts only):** `output/phloem-school-promo-2026-10/` (local): SCHOOL-FIT, pitches, channel texts,
+  social posts, flyer (HTML and PDF). Gmail drafts in houfuchen0702@gmail.com: ChemE comms, Daily Bulletin, Media
+  Relations (send later). Nothing has been sent.
+- **Sites and CV (2026-10-13):** houfu72.com and lifegameproject.com list Game Life first, then Qi, Plank Pilot,
+  Manilha (coming soon); the Phloem name story is on both. The CV has one "Shipped Software" line.
+- **App Store:** Phloem: Paper Reader **iOS 1.2.0 (39) live**. **iOS 1.2.1 (40)** is built, uploaded,
+  processed and attached in App Store Connect with What's New, the name-story Promotional Text (also set
+  on the live 1.2.0) and **Manually release**. It is **not submitted**: waiting for Houfu to test the freeze
+  fix on his iPad via TestFlight and to add an AI reviewer key (the DeepSeek key was removed from the review
+  notes). PR for the version bump: chf-NewStart/chf-NewStart.github.io#76. Evidence:
+  `output/phloem-ios-1.2.1-verification/` (local, untracked). The macOS 1.0 draft is untouched.
+  EU trader status (DSA) is still missing; only Houfu, as Account Holder, can set it.
 - **Other apps (App Store Connect, 2026-10-12):** Game Life iOS 1.0 live; Qi: Go & Gomoku iOS
   1.0 live; Plank Pilot 1.0 not submitted; Manilha 1.0 **Rejected**.
 - **Local checkout warning:** `~/Desktop/houfu0702.github.io` `main` has diverged from
@@ -100,6 +106,9 @@ If it runs out of time, it schedules its own follow-up and records it here.
 - The **shared review pass** (`cloud-review-pass/` worker) still calls DeepSeek on the server. Ordinary
   readers can't pick it. Switch the worker's model, or retire the pass?
 
+- Please test **TestFlight build 40** on the iPad with the 573-page book (iCloud on): does the freeze still
+  happen? Then submit 1.2.1 (Add for Review → Submit), with an OpenAI or Anthropic reviewer key in the notes if
+  you want AI reviewed. Consider revoking the DeepSeek key that was in the 1.2.0 review notes.
 - Was the iPad freeze in the App Store app or the Home Screen web app? Is iCloud or Drive
   sync on there? (v210 removes the main suspect, the sync after each save; please retry
   with the big book.)
@@ -108,6 +117,12 @@ If it runs out of time, it schedules its own follow-up and records it here.
 - The FAW-Volkswagen dates conflict between the site and the CV.
 
 ## Log
+
+- **2026-10-13 iOS 1.2.1 (40)** uploaded (not submitted). Reader suite: Chromium 84/84, WebKit 83/84; the one
+  failure, `reading-workspace-lasso-resize` (WebKit), also fails on v200 and v210, so it predates this release.
+  The simulator tool can't tap in scheduled sessions, so feature checks ran in Playwright WebKit (see VERIFICATION.md).
+- **2026-10-13 sites/CV:** homepage strip and badges, Phloem card (new features, name story), "BASc
+  Nanotechnology Engineering". lifegameproject.com reorder (`site-order-1013`). CV line on shipped apps.
 
 - **2026-10-13 v211:** school fit (Waterloo). DeepSeek is no longer an AI provider: keys are deleted (web storage;
   iPad Keychain natively, via the known-minus-supported purge), a reader who had chosen it falls back

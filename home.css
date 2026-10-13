@@ -34,7 +34,7 @@
     --ink: #edf7f1;
     --soft: #cdd4d0;
     --muted: #949c98;
-    --faint: #6c736f;
+    --faint: #7d847f;   /* 4.9:1 on the panels (WCAG AA for small labels) */
     --line: rgba(255, 255, 255, 0.09);
     --line-strong: rgba(118, 247, 165, 0.34);
     --accent: #76f7a5;
@@ -321,5 +321,5 @@ body.has-bio-bg {
 footer { padding: 46px 0 56px; color: var(--faint); font-size: 0.86rem; }
 .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px 30px; border-top: 1px solid var(--line); padding-top: 26px; }
 .foot strong { color: var(--soft); font-weight: 600; }
-.foot a { color: var(--muted); text-decoration: none; }
+.foot a { color: var(--muted); text-decoration: underline; text-decoration-color: rgba(148, 156, 152, 0.45); text-underline-offset: 3px; }
 .foot a:hover { color: var(--accent); }

@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "PLANTS",
+            title: "Trees are mostly air and water, and mostly carbon",
+            fact: "Where does a tree's mass come from? Not from the soil. About 95% of a tree's dry mass is pulled from the air as CO2 and split into carbon and oxygen by photosynthesis. A forest is solidified atmosphere.",
+            detail: "Van Helmont's classic 1648 experiment: a willow in 90 kg of soil gained 76 kg over 5 years while the soil lost only grams. The soil is mineral supply, not bulk material."
+        },
+        {
+            tag: "PLANTS",
             title: "The oldest seeds ever sprouted were 2,000 years old",
             fact: "Seeds of the Judean date palm found at Masada and in ancient storehouses were germinated in 2005 after ~2,000 years of dormancy. The resulting palms — nicknamed Methuselah and friends — are alive and bearing fruit today.",
             detail: "A closely related record: Silene stenophylla was regrown from placental tissue frozen in Siberian permafrost for about 32,000 years."

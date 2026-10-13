@@ -163,8 +163,9 @@ async function drag(page, targetPercent, expectPaged = true) {
     await fitted(page);
     assert(Math.abs((await geometry(page)).percent - 68) <= 1, 'saved split returns');
     await page.setViewportSize({ width: 900, height: 1280 });
-    await page.waitForFunction(() => !document.getElementById('workspaceDivider').getClientRects().length);
-    assert.equal(await page.locator('#workspaceDivider').isVisible(), false, 'portrait shows only workspace');
+    await page.waitForFunction(() => document.body.classList.contains('workspace-bottom'));
+    assert.equal(await page.locator('#workspaceDivider').getAttribute('aria-orientation'), 'horizontal', 'portrait docks the workspace below the paper');
+    assert.equal(await page.evaluate(() => Number(localStorage.getItem('readingRoom.workspacePaperWidth.v1'))), 68, 'the bottom dock leaves the side split alone');
     await page.setViewportSize({ width: 1280, height: 900 });
     await fitted(page);
     assert(Math.abs((await geometry(page)).percent - 68) <= 1, 'landscape restores saved split');

@@ -654,9 +654,13 @@
       var left=Math.max(leftEdge,Math.min(center-box.width/2,rightEdge-box.width));
       card.style.left=Math.round(left)+'px';
       if(document.body.classList.contains('keyboard-open'))return;
+      /* Above a bottom-docked Workspace the card stays on the paper half when it fits there,
+         so it never covers the sheet a passage is being dragged to. */
+      var floor=viewport.bottom;
+      if(workspaceOpen&&workspaceDock==='bottom'){var paper=byId('documentPane').getBoundingClientRect();if(box.height<=paper.bottom-Math.max(viewport.top,paper.top)-gap*2)floor=Math.min(floor,paper.bottom);}
       var top=selectionAnchor.bottom+gap;
-      if(top+box.height>viewport.bottom-gap)top=selectionAnchor.top-box.height-gap;
-      top=Math.max(viewport.top+gap,Math.min(top,viewport.bottom-box.height-gap));
+      if(top+box.height>floor-gap)top=selectionAnchor.top-box.height-gap;
+      top=Math.max(viewport.top+gap,Math.min(top,floor-box.height-gap));
       card.style.top=Math.round(top)+'px';
     });
   }
@@ -7183,16 +7187,49 @@
     if(!saved)failed();
     return saved;
   }
-  function workspaceWide(){return innerWidth>=900&&matchMedia('(orientation: landscape)').matches;}
-  var WORKSPACE_WIDTH_KEY='readingRoom.workspacePaperWidth.v1',workspaceWidthPreference=50,workspaceDividerDrag=null,workspaceBoardResizeFrame=0,workspacePdfZoomBeforeOpen=null;
-  try{var savedWorkspaceWidth=Number(localStorage.getItem(WORKSPACE_WIDTH_KEY));if(Number.isFinite(savedWorkspaceWidth)&&savedWorkspaceWidth>=30&&savedWorkspaceWidth<=70)workspaceWidthPreference=savedWorkspaceWidth;}catch(e){}
-  function workspaceWidthLimits(){
-    var available=byId('readerLayout').clientWidth||innerWidth;
-    return{min:Math.max(30,Math.ceil(320/available*100)),max:Math.min(70,Math.floor((available-320)/available*100))};
+  /* Where the Workspace sits: beside the paper ('side'), below it ('bottom'), or over it
+     ('full') when the window has room for neither. The reader's choice is remembered per
+     orientation; a choice this window cannot fit falls back without being forgotten. */
+  var WORKSPACE_WIDTH_KEY='readingRoom.workspacePaperWidth.v1',WORKSPACE_HEIGHT_KEY='readingRoom.workspacePaperHeight.v1',WORKSPACE_DOCK_KEY='readingRoom.workspaceDock.v1';
+  function savedWorkspaceSplit(key){try{var saved=localStorage.getItem(key),value=Number(saved);return saved!==null&&Number.isFinite(value)&&value>=30&&value<=70?value:null;}catch(e){return null;}}
+  // No saved height yet (null): the split starts at half, or just tall enough for the Zen rail.
+  var workspaceWidthPreference=savedWorkspaceSplit(WORKSPACE_WIDTH_KEY)||50,workspaceHeightPreference=savedWorkspaceSplit(WORKSPACE_HEIGHT_KEY);
+  var workspaceDockPreference={},workspaceDock='',workspaceDividerDrag=null,workspaceBoardResizeFrame=0,workspacePdfZoomBeforeOpen=null;
+  try{var savedWorkspaceDock=JSON.parse(localStorage.getItem(WORKSPACE_DOCK_KEY)||'{}');['portrait','landscape'].forEach(function(key){if(savedWorkspaceDock&&(savedWorkspaceDock[key]==='side'||savedWorkspaceDock[key]==='bottom'))workspaceDockPreference[key]=savedWorkspaceDock[key];});}catch(e){}
+  function workspaceOrientation(){return matchMedia('(orientation: landscape)').matches?'landscape':'portrait';}
+  function workspaceSideFits(){return innerWidth>=900;}
+  function workspaceBottomFits(){return innerHeight>=560;}
+  function workspaceLayoutFor(){
+    var orientation=workspaceOrientation(),wanted=workspaceDockPreference[orientation]||(orientation==='landscape'?'side':'bottom');
+    var side=workspaceSideFits(),bottom=workspaceBottomFits();
+    if(wanted==='side'?side:bottom)return wanted;
+    return side?'side':bottom?'bottom':'full';
+  }
+  // The paper stays in view, beside or above the Workspace, rather than under it.
+  function workspaceBesidePaper(){return workspaceOpen&&(workspaceDock==='side'||workspaceDock==='bottom');}
+  /* How far down the paper half the Zen rail needs to reach, unfolded: its top plus 44px
+     buttons with 8px gaps. Measured from the rail's visible buttons. */
+  function zenRailOnPaper(){
+    var dock=byId('zenDock');if(!document.body.classList.contains('zen')||!dock||!dock.getClientRects().length)return null;
+    var count=Array.from(dock.children).filter(function(child){return child.getClientRects().length;}).length;if(!count)return null;
+    var top=dock.getBoundingClientRect().top-byId('documentPane').getBoundingClientRect().top;
+    return{top:top,reach:top+count*44+(count-1)*8};
+  }
+  function workspaceSplitPreference(){
+    if(workspaceDock!=='bottom')return workspaceWidthPreference;
+    if(workspaceHeightPreference!==null)return workspaceHeightPreference;
+    var height=byId('readerLayout').clientHeight||innerHeight,rail=zenRailOnPaper();
+    return rail?Math.max(50,Math.min(60,Math.ceil((rail.reach+34)/height*100))):50;
+  }
+  function workspaceSplitLimits(){
+    var layout=byId('readerLayout'),bottom=workspaceDock==='bottom',available=(bottom?layout.clientHeight:layout.clientWidth)||(bottom?innerHeight:innerWidth);
+    // Below, the paper keeps room for a page and the Workspace for its tool row and menus.
+    var paper=bottom?300:320,workspace=bottom?260:320;
+    return{min:Math.max(30,Math.ceil(paper/available*100)),max:Math.min(70,Math.floor((available-workspace)/available*100))};
   }
   function sizeWorkspaceBoard(){
     workspaceBoardResizeFrame=0;
-    if(!workspaceOpen||!workspaceWide())return;
+    if(!workspaceBesidePaper())return;
     if(workspaceView&&workspaceView.resizeLayout)workspaceView.resizeLayout();
   }
   function fitWorkspacePdfAfterResize(){
@@ -7209,26 +7246,78 @@
     if(columnZoomState!=='full'){columnZoomOperation++;columnZoomState='full';syncColumnZoomUi();}
     return needsFit?{position:position}:null;
   }
-  function setWorkspaceWidth(value,save){
-    var limits=workspaceWidthLimits(),requested=Number(value),width=limits.min<=limits.max?Math.max(limits.min,Math.min(limits.max,Number.isFinite(requested)?requested:50)):50;
-    width=Math.round(width*10)/10;
-    var previous=+byId('workspaceDivider').getAttribute('aria-valuenow')||50;
+  function setWorkspaceSplit(value,save){
+    var bottom=workspaceDock==='bottom';if(!bottom&&workspaceDock!=='side')return;
+    var limits=workspaceSplitLimits(),requested=Number(value),split=limits.min<=limits.max?Math.max(limits.min,Math.min(limits.max,Number.isFinite(requested)?requested:50)):50;
+    split=Math.round(split*10)/10;
+    var divider=byId('workspaceDivider'),previous=+divider.getAttribute('aria-valuenow')||50;
     var fitPosition=workspaceOpen?fitWorkspacePdfAfterResize():null;
-    document.body.style.setProperty('--workspace-paper-width',width+'%');
-    var divider=byId('workspaceDivider');divider.setAttribute('aria-valuemin',String(limits.min));divider.setAttribute('aria-valuemax',String(limits.max));
-    divider.setAttribute('aria-valuenow',String(width));divider.setAttribute('aria-valuetext','Paper '+width+' percent, workspace '+Math.round((100-width)*10)/10+' percent');
-    if(save){workspaceWidthPreference=width;try{localStorage.setItem(WORKSPACE_WIDTH_KEY,String(width));}catch(e){}}
+    document.body.style.setProperty(bottom?'--workspace-paper-height':'--workspace-paper-width',split+'%');
+    divider.setAttribute('aria-valuemin',String(limits.min));divider.setAttribute('aria-valuemax',String(limits.max));
+    divider.setAttribute('aria-valuenow',String(split));divider.setAttribute('aria-valuetext','Paper '+split+' percent, workspace '+Math.round((100-split)*10)/10+' percent');
+    if(save){
+      if(bottom){workspaceHeightPreference=split;try{localStorage.setItem(WORKSPACE_HEIGHT_KEY,String(split));}catch(e){}}
+      else{workspaceWidthPreference=split;try{localStorage.setItem(WORKSPACE_WIDTH_KEY,String(split));}catch(e){}}
+    }
     if(!workspaceBoardResizeFrame)workspaceBoardResizeFrame=requestAnimationFrame(sizeWorkspaceBoard);
+    syncWorkspaceDockMetrics();
     if(fitPosition&&fitPosition.keepZoom){
       var fitWidth=pdfFitWidth();
       if(fitWidth!==fitPosition.fitWidth){pdfZoom=Math.max(pagedPdfFlow()?.05:.5,Math.min(4,pdfZoom*fitPosition.fitWidth/fitWidth));updateZoomChrome();}
       return;
     }
-    if(fitPosition&&Math.abs(width-previous)<.05)requestAnimationFrame(function(){
+    if(fitPosition&&Math.abs(split-previous)<.05)requestAnimationFrame(function(){
       if(!workspaceOpen||!pdfDoc||readerMode!=='pdf')return;
       if(pagedPdfFlow())fitPagedPages(currentPage,true);
       else renderPdfPage(fitPosition.position);
     });
+  }
+  /* Fixed shelves (highlight and pen toolbars, cards, chips) read the paper's measured
+     edge below the bottom dock, and a short paper half folds the Zen rail into columns. */
+  function syncWorkspaceDockMetrics(){
+    var body=document.body,names=['--workspace-paper-inset','--workspace-paper-px','--workspace-panel-px'];
+    if(!workspaceOpen||workspaceDock!=='bottom'){names.forEach(function(name){body.style.removeProperty(name);});body.classList.remove('workspace-paper-short','workspace-paper-shorter');return;}
+    var pane=byId('documentPane').getBoundingClientRect(),panel=byId('workspacePanel').getBoundingClientRect();
+    body.style.setProperty(names[0],Math.max(0,Math.round(innerHeight-pane.bottom))+'px');
+    body.style.setProperty(names[1],Math.round(pane.height)+'px');body.style.setProperty(names[2],Math.round(panel.height)+'px');
+    // Fold the rail into four rows when its single column would reach the divider, three if even that would.
+    var rail=zenRailOnPaper();
+    body.classList.toggle('workspace-paper-short',!!rail&&pane.height<rail.reach+8);body.classList.toggle('workspace-paper-shorter',!!rail&&pane.height<rail.top+4*44+3*4+8);
+  }
+  if(window.ResizeObserver){var workspaceMetricsObserver=new ResizeObserver(function(){if(workspaceOpen&&workspaceDock==='bottom')syncWorkspaceDockMetrics();});workspaceMetricsObserver.observe(byId('documentPane'));workspaceMetricsObserver.observe(byId('workspacePanel'));}
+  var DOCK_ICONS={bottom:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 12h17" /><path d="M4.5 13h15v6h-15z" fill="currentColor" stroke="none" opacity=".35"/></svg>',
+    side:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M12 4v16"/><path d="M13 5h6.5v14H13z" fill="currentColor" stroke="none" opacity=".35"/></svg>'};
+  function syncWorkspaceDockControls(){
+    var bottom=workspaceDock==='bottom',target=workspaceDock==='side'?'bottom':bottom?'side':'',fits=target==='bottom'?workspaceBottomFits():target==='side'&&workspaceSideFits();
+    var divider=byId('workspaceDivider');divider.setAttribute('aria-orientation',bottom?'horizontal':'vertical');
+    divider.title='Drag to resize paper and workspace'+(fits?bottom?' · drag to the right edge to dock beside':' · drag down to the bottom to dock below':'')+' · double-click to reset';
+    var button=byId('workspaceDockToggle');if(!button)return;
+    button.classList.toggle('hidden',!fits);button.dataset.dock=fits?target:'';
+    button.innerHTML=fits?DOCK_ICONS[target]+'<span>'+(target==='bottom'?'Dock below':'Dock beside')+'</span>':'';
+  }
+  function applyWorkspaceDock(dock){
+    workspaceDock=dock;
+    ['side','bottom','full'].forEach(function(name){document.body.classList.toggle('workspace-'+name,dock===name);});
+    syncWorkspaceDockControls();
+    if(dock==='side'||dock==='bottom')setWorkspaceSplit(workspaceSplitPreference(),false);
+    syncWorkspaceDockMetrics();
+  }
+  /* Rotation, a window resize or the reader's own choice can move the Workspace. The
+     paper keeps its reading position across the move. */
+  function relayoutWorkspace(){
+    if(!workspaceOpen)return false;
+    var next=workspaceLayoutFor();
+    if(next===workspaceDock){if(next==='side'||next==='bottom')setWorkspaceSplit(workspaceSplitPreference(),false);syncWorkspaceDockControls();syncWorkspaceDockMetrics();return false;}
+    var position=readerMode==='pdf'&&pdfDoc?stablePdfPositionForRebuild():null;
+    cancelWorkspaceDividerDrag();closeWorkspacePanels();cancelSavedHighlightDrag();
+    applyWorkspaceDock(next);
+    requestAnimationFrame(function(){if(!workspaceOpen)return;if(readerMode==='pdf'&&pdfDoc)renderPdfPage(position);if(comfort.focus)placeGuide();refreshWorkspace();syncWorkspaceDockMetrics();});
+    return true;
+  }
+  function setWorkspaceDock(dock,save){
+    if(dock==='side'?!workspaceSideFits():!workspaceBottomFits()){showReaderToast(dock==='side'?'Too narrow to dock beside':'Too short to dock below');return false;}
+    if(save){workspaceDockPreference[workspaceOrientation()]=dock;try{localStorage.setItem(WORKSPACE_DOCK_KEY,JSON.stringify(workspaceDockPreference));}catch(e){}}
+    return relayoutWorkspace();
   }
   var workspaceDivider=byId('workspaceDivider');
   /* A hand resting while writing must not resize the panes: the divider ignores touches
@@ -7276,53 +7365,73 @@
       // No contact-size test: iPad reports ordinary fingertips as 40-70px contacts.
       if(penOnGlass()||Date.now()-workspacePenAt<800)return false;
     }
-    if(e.pointerType==='pen'){var r=byId('workspaceDividerGrip').getBoundingClientRect();if(e.clientY<r.top||e.clientY>r.bottom)return false;}
+    if(e.pointerType==='pen'){var r=byId('workspaceDividerGrip').getBoundingClientRect();if(workspaceDock==='bottom'?e.clientX<r.left||e.clientX>r.right:e.clientY<r.top||e.clientY>r.bottom)return false;}
     return true;
   }
+  /* The divider is the Workspace's own edge: carried toward the bottom of the window it
+     docks the Workspace below the paper; carried to the right edge, beside it. Moving
+     along the divider's own axis still just resizes. */
+  function workspaceDockSnap(drag,x,y){
+    var rect=byId('readerLayout').getBoundingClientRect();
+    if(drag.dock==='side'&&y-drag.y>80&&y>rect.top+rect.height*.8)return workspaceBottomFits()?'bottom':'bottom-blocked';
+    if(drag.dock==='bottom'&&x-drag.x>80&&x>rect.left+rect.width*.8)return workspaceSideFits()?'side':'side-blocked';
+    return '';
+  }
+  function showWorkspaceDockPreview(snap){
+    var preview=byId('workspaceDockPreview'),target=String(snap||'').replace('-blocked',''),blocked=/-blocked$/.test(snap||'');
+    preview.classList.toggle('hidden',!snap);preview.classList.toggle('blocked',blocked);preview.dataset.dock=target;
+    byId('workspaceDockPreviewLabel').textContent=!snap?'':blocked?(target==='side'?'Too narrow to dock beside':'Too short to dock below'):(target==='side'?'Workspace beside':'Workspace below');
+  }
   workspaceDivider.onpointerdown=function(e){
-    if(!workspaceOpen||!workspaceWide()||workspaceDividerDrag||(e.pointerType==='mouse'&&e.button!==0))return;
+    if(!workspaceBesidePaper()||workspaceDividerDrag||(e.pointerType==='mouse'&&e.button!==0))return;
     e.preventDefault();
     if(!workspaceDividerAccepts(e))return;
-    workspaceDividerDrag={id:e.pointerId,start:+workspaceDivider.getAttribute('aria-valuenow')||50,x:e.clientX,moving:false};
+    workspaceDividerDrag={id:e.pointerId,dock:workspaceDock,start:+workspaceDivider.getAttribute('aria-valuenow')||50,x:e.clientX,y:e.clientY,moving:false,snap:''};
     try{workspaceDivider.setPointerCapture(e.pointerId);}catch(err){}
   };
   workspaceDivider.onpointermove=function(e){
-    if(!workspaceDividerDrag||workspaceDividerDrag.id!==e.pointerId)return;
+    var drag=workspaceDividerDrag;if(!drag||drag.id!==e.pointerId)return;
     e.preventDefault();
-    if(!workspaceDividerDrag.moving){
-      if(Math.abs(e.clientX-workspaceDividerDrag.x)<6)return;
-      workspaceDividerDrag.moving=true;
+    if(!drag.moving){
+      if(Math.max(Math.abs(e.clientX-drag.x),Math.abs(e.clientY-drag.y))<6)return;
+      drag.moving=true;
       if(workspaceView)workspaceView.cancel();
       if(pdfInkController&&pdfInkController.active())pdfInkController.cancel();
       document.body.classList.add('resizing-workspace');
     }
-    var rect=byId('readerLayout').getBoundingClientRect();setWorkspaceWidth((e.clientX-rect.left)/rect.width*100,false);
+    var snap=workspaceDockSnap(drag,e.clientX,e.clientY);
+    if(snap!==drag.snap){drag.snap=snap;showWorkspaceDockPreview(snap);if(snap)setWorkspaceSplit(drag.start,false);}
+    if(snap)return;
+    var rect=byId('readerLayout').getBoundingClientRect();
+    setWorkspaceSplit(drag.dock==='bottom'?(e.clientY-rect.top)/rect.height*100:(e.clientX-rect.left)/rect.width*100,false);
   };
   function finishWorkspaceResize(e,cancel){
-    if(!workspaceDividerDrag||workspaceDividerDrag.id!==e.pointerId)return;
-    var previous=workspaceDividerDrag.start,moved=workspaceDividerDrag.moving;workspaceDividerDrag=null;document.body.classList.remove('resizing-workspace');
+    var drag=workspaceDividerDrag;if(!drag||drag.id!==e.pointerId)return;
+    workspaceDividerDrag=null;document.body.classList.remove('resizing-workspace');showWorkspaceDockPreview('');
     if(workspaceDivider.hasPointerCapture(e.pointerId))workspaceDivider.releasePointerCapture(e.pointerId);
-    if(!moved)return;
-    if(cancel)setWorkspaceWidth(previous,false);
-    else setWorkspaceWidth(+workspaceDivider.getAttribute('aria-valuenow'),true);
-    if(workspaceDivider.hasPointerCapture(e.pointerId))workspaceDivider.releasePointerCapture(e.pointerId);
+    if(!drag.moving)return;
+    if(drag.dock!==workspaceDock)return;
+    if(cancel||drag.snap)setWorkspaceSplit(drag.start,false);
+    else setWorkspaceSplit(+workspaceDivider.getAttribute('aria-valuenow'),true);
+    if(!cancel&&drag.snap){if(setWorkspaceDock(drag.snap.replace('-blocked',''),true))return;}
     requestAnimationFrame(function(){refreshWorkspace();if(!window.ResizeObserver&&readerMode==='pdf'&&pdfDoc)renderPdfPage();});
   }
   function cancelWorkspaceDividerDrag(){
     if(!workspaceDividerDrag)return;
-    var drag=workspaceDividerDrag;workspaceDividerDrag=null;document.body.classList.remove('resizing-workspace');
-    setWorkspaceWidth(drag.start,false);
+    var drag=workspaceDividerDrag;workspaceDividerDrag=null;document.body.classList.remove('resizing-workspace');showWorkspaceDockPreview('');
+    if(drag.dock===workspaceDock)setWorkspaceSplit(drag.start,false);
     if(workspaceDivider.hasPointerCapture(drag.id))workspaceDivider.releasePointerCapture(drag.id);
     requestAnimationFrame(refreshWorkspace);
   }
   workspaceDivider.onpointerup=function(e){finishWorkspaceResize(e,false);};
   workspaceDivider.onpointercancel=function(e){finishWorkspaceResize(e,true);};
   workspaceDivider.onlostpointercapture=function(e){finishWorkspaceResize(e,true);};
-  workspaceDivider.ondblclick=function(){if(!workspaceOpen||!workspaceWide())return;setWorkspaceWidth(50,true);requestAnimationFrame(refreshWorkspace);};
+  workspaceDivider.ondblclick=function(){if(!workspaceBesidePaper())return;setWorkspaceSplit(50,true);requestAnimationFrame(refreshWorkspace);};
   workspaceDivider.onkeydown=function(e){
-    if(!workspaceOpen||!workspaceWide())return;
-    if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight'&&e.key!=='Home')return;
-    e.preventDefault();e.stopPropagation();setWorkspaceWidth(e.key==='Home'?50:(+workspaceDivider.getAttribute('aria-valuenow')||50)+(e.key==='ArrowLeft'?-2:2),true);
+    if(!workspaceBesidePaper())return;
+    var bottom=workspaceDock==='bottom',less=bottom?'ArrowUp':'ArrowLeft',more=bottom?'ArrowDown':'ArrowRight';
+    if(e.key!==less&&e.key!==more&&e.key!=='Home')return;
+    e.preventDefault();e.stopPropagation();setWorkspaceSplit(e.key==='Home'?50:(+workspaceDivider.getAttribute('aria-valuenow')||50)+(e.key===less?-2:2),true);
     requestAnimationFrame(refreshWorkspace);
   };
   window.addEventListener('blur',cancelWorkspaceDividerDrag);
@@ -7362,7 +7471,7 @@
         pdfFit=true;pdfZoom=1;scrollPdfFit=true;scrollPdfZoom=1;pagedManualZoom=false;pagedFitToken='';invalidatePagedFit();
         columnZoomOperation++;columnZoomState='full';syncColumnZoomUi();updateZoomChrome();
       }
-      setWorkspaceWidth(workspaceWidthPreference,false);
+      applyWorkspaceDock(workspaceLayoutFor());workspaceLayoutWidth=innerWidth;
     }else if(!on&&wasOpen&&workspacePdfZoomBeforeOpen){
       if(workspacePdfZoomBeforeOpen.id===currentId&&workspacePdfZoomBeforeOpen.epoch===pdfOpenEpoch){
         pdfFit=workspacePdfZoomBeforeOpen.fit;pdfZoom=workspacePdfZoomBeforeOpen.zoom;pagedManualZoom=workspacePdfZoomBeforeOpen.manual;
@@ -7371,8 +7480,9 @@
       }
       workspacePdfZoomBeforeOpen=null;pagedFitToken='';invalidatePagedFit();updateZoomChrome();
     }
+    if(!on)applyWorkspaceDock('');
     document.querySelectorAll('[data-workspace-open]').forEach(function(button){button.setAttribute('aria-pressed',String(on));});
-    byId('zenWorkspace').setAttribute('aria-label',on?'Close Workspace. Return to paper only':'Open Workspace beside the paper');
+    byId('zenWorkspace').setAttribute('aria-label',on?'Close Workspace. Return to paper only':'Open Workspace with the paper');
     if(on)initializeWorkspace(find(currentId));
     refreshWorkspace();
     if(on!==wasOpen)requestAnimationFrame(function(){
@@ -7607,7 +7717,7 @@
   if(window.PhloemWorkspaceView&&window.PhloemWorkspaceState){
     workspaceView=window.PhloemWorkspaceView.create({context:workspaceContext,place:placeWorkspaceClip,updateNote:updateExcerptNote,
       stickyStyle:function(item){var hash=paperVisualHash({id:item.id}),note=WALL_NOTES[(hash>>>1)%WALL_NOTES.length];return{paper:note.cover,ink:note.ink,tapeTilt:((((hash>>>27)%11)-5)*.45)+'deg'};},
-      goToSource:async function(id){if(!workspaceWide())setWorkspaceOpen(false,false);var moved=await goToExcerptSource(id);if(!moved)workspaceStatus(byId('excerptStatus').textContent||'Could not open the source. Your notes are safe.');return moved;},removeClip:removeReadingExcerpt,
+      goToSource:async function(id){if(!workspaceBesidePaper())setWorkspaceOpen(false,false);var moved=await goToExcerptSource(id);if(!moved)workspaceStatus(byId('excerptStatus').textContent||'Could not open the source. Your notes are safe.');return moved;},removeClip:removeReadingExcerpt,
       addNote:function(point){return addWorkspaceExcerpt(null,point);},addStroke:workspaceAddStroke,eraseStrokes:workspaceEraseStrokes,moveGroup:workspaceMoveGroup,restoreGroup:workspaceRestoreGroup,deleteGroup:workspaceDeleteGroup,restoreDeleted:workspaceRestoreDeleted,duplicateGroup:workspaceDuplicateGroup,grow:workspaceGrow,ensureSpace:workspaceEnsureSpace,
       close:function(){setWorkspaceOpen(false);},onTool:function(){if(pdfInkController&&pdfInkController.active())pdfInkController.cancel();}});
   }
@@ -7635,7 +7745,7 @@
     if(!penOpen&&!moreOpen)return;event.preventDefault();event.stopPropagation();closeWorkspacePanels();
     (penOpen?byId('workspacePenToggle'):byId('workspaceMore').querySelector('summary')).focus({preventScroll:true});
   });
-  byId('workspaceReturn').onclick=async function(){if(!workspaceWide())setWorkspaceOpen(false,false);await returnFromExcerpt();refreshWorkspace();};
+  byId('workspaceReturn').onclick=async function(){if(!workspaceBesidePaper())setWorkspaceOpen(false,false);await returnFromExcerpt();refreshWorkspace();};
   byId('selectionToWorkspace').onclick=function(){var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection;if(selection)addWorkspaceExcerpt(selection);};
 
   /* Only this document's live selection token is accepted. An external webpage
@@ -7685,7 +7795,7 @@
     var selection=window.getSelection&&window.getSelection();if(selection&&selection.rangeCount)selection.removeAllRanges();
   }
   function savedHighlightDropPoint(x,y){
-    if(!workspaceOpen||!workspaceWide()||!workspaceView)return null;
+    if(!workspaceBesidePaper()||!workspaceView)return null;
     var rect=byId('workspaceBoard').getBoundingClientRect(),scroll=byId('workspaceScroll'),visible=scroll.getBoundingClientRect(),target=document.elementFromPoint(x,y);
     return x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom&&
       x>=visible.left&&x<=visible.right&&y>=visible.top&&y<=visible.bottom&&target&&scroll.contains(target)?workspaceView.pointFromClient(x,y):null;
@@ -7730,7 +7840,7 @@
        text (feedback: it only worked from the drag handle), so a short hold on the selected
        words picks the passage up, exactly like a saved highlight. A quick tap leaves the
        selection alone. Mouse drags keep the native drag-and-drop below. */
-    if(!appleTouchDevice&&pendingSelection&&event.pointerType!=='mouse'&&workspaceOpen&&workspaceWide()&&!pencilStroke&&!(pdfInkController&&pdfInkController.active())&&!bookCurlOwned&&!pagedTurning&&
+    if(!appleTouchDevice&&pendingSelection&&event.pointerType!=='mouse'&&workspaceBesidePaper()&&!pencilStroke&&!(pdfInkController&&pdfInkController.active())&&!bookCurlOwned&&!pagedTurning&&
        !(event.pointerType==='touch'&&(savedHighlightTouches.size!==1||event.isPrimary===false))&&pointInLiveSelection(event.clientX,event.clientY)){
       var held={pointer:event.pointerId,type:event.pointerType,id:currentId,epoch:pdfOpenEpoch,pane:byId('documentPane'),source:byId('documentPane'),
         startX:event.clientX,startY:event.clientY,lastX:event.clientX,lastY:event.clientY,holdTimer:0,armed:false,active:false,captured:false,ghost:null,
@@ -7740,7 +7850,7 @@
       return;
     }
     if(event.pointerType==='touch'&&(savedHighlightTouches.size!==1||event.isPrimary===false))return;
-    if(!workspaceOpen||!workspaceWide()||readerMode!=='pdf'||!pdfDoc||(event.pointerType!=='touch'&&(highlightEraseMode||pdfWriteMode||highlightMode))||pencilStroke||pdfInkController&&pdfInkController.active()||bookCurlOwned||pagedTurning||pendingSelection)return;
+    if(!workspaceBesidePaper()||readerMode!=='pdf'||!pdfDoc||(event.pointerType!=='touch'&&(highlightEraseMode||pdfWriteMode||highlightMode))||pencilStroke||pdfInkController&&pdfInkController.active()||bookCurlOwned||pagedTurning||pendingSelection)return;
     if(event.pointerType==='mouse'&&event.button!==0)return;
     var page=event.target.closest&&event.target.closest('.pdf-page');if(!page||pdfReviewAtPoint(page,event.clientX,event.clientY))return;
     var hit=pdfHighlightAtPoint(page,event.clientX,event.clientY);if(!hit||!hit.item.text)return;
@@ -7765,7 +7875,7 @@
   },true);
   document.addEventListener('pointermove',function(event){
     var drag=savedHighlightDrag;if(!drag||event.pointerId!==drag.pointer)return;
-    if(!workspaceOpen||!workspaceWide()||currentId!==drag.id||pdfOpenEpoch!==drag.epoch){cancelSavedHighlightDrag();return;}
+    if(!workspaceBesidePaper()||currentId!==drag.id||pdfOpenEpoch!==drag.epoch){cancelSavedHighlightDrag();return;}
     drag.lastX=event.clientX;drag.lastY=event.clientY;
     var distance=Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY);
     if(!drag.armed){if(distance>10)cancelSavedHighlightDrag();return;}
@@ -7802,7 +7912,22 @@
   window.addEventListener('resize',cancelSavedHighlightDrag);
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')resetSavedHighlightTouches();});
   document.addEventListener('keydown',function(event){if(event.key==='Escape')cancelSavedHighlightDrag();},true);
-  window.addEventListener('resize',function(){if(workspaceOpen){if(!workspaceWide())cancelWorkspaceDividerDrag();setWorkspaceWidth(workspaceWidthPreference,false);requestAnimationFrame(refreshWorkspace);}});
+  /* Rotating or resizing the window can move the Workspace to the dock remembered for the
+     new orientation. A software keyboard only shortens the window (and on Android can flip
+     its orientation), so the dock holds still while a field is being typed in. */
+  var workspaceLayoutWidth=innerWidth;
+  function workspaceTyping(element){return!!element&&(element.tagName==='TEXTAREA'||element.isContentEditable||element.tagName==='INPUT'&&/^(text|search|email|url|tel|number|password)$/i.test(element.type||'text'));}
+  window.addEventListener('resize',function(){
+    if(!workspaceOpen)return;
+    var typing=innerWidth===workspaceLayoutWidth&&workspaceTyping(document.activeElement);workspaceLayoutWidth=innerWidth;
+    if(typing){syncWorkspaceDockMetrics();return;}
+    relayoutWorkspace();requestAnimationFrame(refreshWorkspace);
+  });
+  byId('workspaceDockToggle').onclick=function(){
+    var target=this.dataset.dock;if(!target)return;
+    byId('workspaceMore').open=false;
+    if(setWorkspaceDock(target,true))requestAnimationFrame(function(){var summary=byId('workspaceMore').querySelector('summary');if(summary&&summary.getClientRects().length)summary.focus({preventScroll:true});});
+  };
 
   /* Selectable PDF/text layers and a direct, color marker interaction. */
   var markerPointerDown=false,selectionPointerDown=false,selectionPointerType='',lastHighlightPointerType='',selectionInputType='',suppressHighlightAutoCommit=false;
@@ -7837,7 +7962,9 @@
     // Fold out toward the paper the dock sits on (left of a right-edge dock), never over Workspace.
     var pane=byId('documentPane'),p=pane&&pane.getClientRects().length?pane.getBoundingClientRect():{left:0,right:innerWidth};
     var left=a.left+a.width/2>(p.left+p.right)/2?rail.left-gap-t.width:rail.right+gap;
-    var top=Math.max(margin,Math.min(innerHeight-t.height-margin,a.top+a.height/2-t.height/2));
+    // Above a bottom-docked Workspace the column stays on the paper half.
+    var floor=workspaceOpen&&workspaceDock==='bottom'&&p.bottom?Math.min(innerHeight,p.bottom):innerHeight;
+    var top=Math.max(margin,Math.min(floor-t.height-margin,a.top+a.height/2-t.height/2));
     toolbar.style.left=Math.max(margin,Math.min(innerWidth-t.width-margin,left))+'px';toolbar.style.top=top+'px';
   }
   window.addEventListener('resize',function(){var toolbar=byId('highlightToolbar');if(toolbar&&!toolbar.classList.contains('hidden'))placeDockedHighlightToolbar(true);});

@@ -105,62 +105,105 @@ body.workspace-highlight-dragging { cursor:grabbing; user-select:none; -webkit-u
 .workspace-highlight-source, .workspace-highlight-source * { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .selection-card #selectionToWorkspace { min-height:44px; touch-action:none; }
 .workspace-divider { display:none; }
-body.workspace-open { --workspace-paper-width:50%; }
+body.workspace-open { --workspace-paper-width:50%; --workspace-paper-height:50%; }
 body.workspace-open #notebook, body.workspace-open :is(#notebookResizer,#notebookTuck,#notebookReopen) { display:none !important; }
-body.workspace-open .reader-layout { --notebook-width:calc(100% - var(--workspace-paper-width)) !important; display:grid; grid-template-columns:minmax(0,var(--workspace-paper-width)) minmax(0,1fr); }
-body.workspace-open #workspacePanel { grid-column:2; grid-row:1; }
-body.workspace-open #documentPane { grid-column:1; grid-row:1; min-width:0; }
-body.workspace-open .workspace-divider { position:absolute; z-index:15; top:0; bottom:0; left:var(--workspace-paper-width); display:block; box-sizing:border-box; width:44px; transform:translateX(-50%); cursor:col-resize; touch-action:none; user-select:none; -webkit-user-select:none; }
-body.workspace-open .workspace-divider::before { content:""; position:absolute; top:0; bottom:0; left:20px; width:4px; background:color-mix(in srgb,var(--accent) 42%,var(--line)); box-shadow:0 0 0 1px var(--surface); }
-body.workspace-open .workspace-divider::after { content:"⋮"; position:absolute; top:50%; left:50%; display:grid; place-items:center; width:18px; height:52px; border:1px solid var(--line); border-radius:11px; background:var(--surface); color:var(--accent); box-shadow:var(--shadow); font:700 20px var(--sans); transform:translate(-50%,-50%); }
+/* JS picks one of three docks (see workspaceLayoutFor): beside the paper, below it, or over
+   it when the window has room for neither. Each is a body class, never a media query, so
+   the toolbars below follow the dock the reader chose rather than the window's shape. */
+body.workspace-side .reader-layout { --notebook-width:calc(100% - var(--workspace-paper-width)) !important; display:grid; grid-template-columns:minmax(0,var(--workspace-paper-width)) minmax(0,1fr); }
+body.workspace-side #workspacePanel { grid-column:2; grid-row:1; }
+body.workspace-side #documentPane { grid-column:1; grid-row:1; min-width:0; }
+body.workspace-side .workspace-divider { position:absolute; z-index:15; top:0; bottom:0; left:var(--workspace-paper-width); display:block; box-sizing:border-box; width:44px; transform:translateX(-50%); cursor:col-resize; touch-action:none; user-select:none; -webkit-user-select:none; }
+body.workspace-side .workspace-divider::before { content:""; position:absolute; top:0; bottom:0; left:20px; width:4px; background:color-mix(in srgb,var(--accent) 42%,var(--line)); box-shadow:0 0 0 1px var(--surface); }
+body.workspace-side .workspace-divider::after { content:"⋮"; position:absolute; top:50%; left:50%; display:grid; place-items:center; width:18px; height:52px; border:1px solid var(--line); border-radius:11px; background:var(--surface); color:var(--accent); box-shadow:var(--shadow); font:700 20px var(--sans); transform:translate(-50%,-50%); }
+/* Bottom dock: the paper on top, the Workspace below, split by a horizontal divider whose
+   44px strip straddles the seam like the vertical one does. */
+body.workspace-bottom .reader-layout { --notebook-width:0px !important; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,var(--workspace-paper-height)) minmax(0,1fr); }
+body.workspace-bottom #documentPane { grid-column:1; grid-row:1; min-width:0; min-height:0; height:auto; }
+body.workspace-bottom #workspacePanel { grid-column:1; grid-row:2; border-left:0; border-top:1px solid var(--line); }
+body.workspace-bottom .workspace-divider { position:absolute; z-index:15; left:0; right:0; top:var(--workspace-paper-height); display:block; box-sizing:border-box; height:44px; transform:translateY(-50%); cursor:row-resize; touch-action:none; user-select:none; -webkit-user-select:none; }
+body.workspace-bottom .workspace-divider::before { content:""; position:absolute; left:0; right:0; top:20px; height:4px; background:color-mix(in srgb,var(--accent) 42%,var(--line)); box-shadow:0 0 0 1px var(--surface); }
+body.workspace-bottom .workspace-divider::after { content:"⋯"; position:absolute; top:50%; left:50%; display:grid; place-items:center; width:52px; height:18px; border:1px solid var(--line); border-radius:11px; background:var(--surface); color:var(--accent); box-shadow:var(--shadow); font:700 20px/1 var(--sans); transform:translate(-50%,-50%); }
 /* While Apple Pencil is in use, only the grip in the middle grabs the divider; strokes
    that start beside the line go to the paper or Workspace underneath. */
 .workspace-divider-grip { position:absolute; top:50%; left:0; width:44px; height:96px; transform:translateY(-50%); }
+body.workspace-bottom .workspace-divider-grip { top:0; left:50%; width:96px; height:44px; transform:translateX(-50%); }
 body.workspace-open .workspace-divider.workspace-pen-active { pointer-events:none; }
 body.workspace-open .workspace-divider.workspace-pen-active .workspace-divider-grip { pointer-events:auto; }
 body.workspace-open .workspace-divider:focus-visible { outline:2px solid var(--accent); outline-offset:-5px; }
-body.workspace-open.resizing-workspace .workspace-divider { cursor:col-resize; }
-body.workspace-open .pane-spotlight, body.workspace-open .recall-shield { right:calc(100% - var(--workspace-paper-width)); }
+body.workspace-side.resizing-workspace .workspace-divider { cursor:col-resize; }
+body.workspace-bottom.resizing-workspace .workspace-divider { cursor:row-resize; }
+/* Where the Workspace will land when the divider is let go near an edge. */
+.workspace-dock-preview { position:absolute; z-index:16; display:grid; place-items:center; box-sizing:border-box; border:2px dashed var(--accent); border-radius:14px; background:color-mix(in srgb,var(--accent) 13%,transparent); color:var(--accent); font:700 14px/1.2 var(--sans); pointer-events:none; }
+.workspace-dock-preview[data-dock="bottom"] { left:8px; right:8px; top:50%; bottom:8px; }
+.workspace-dock-preview[data-dock="side"] { top:8px; bottom:8px; left:50%; right:8px; }
+.workspace-dock-preview.blocked { border-color:var(--line); background:color-mix(in srgb,var(--surface) 82%,transparent); color:var(--muted); }
+.workspace-dock-preview span { padding:8px 13px; border-radius:999px; background:var(--surface); box-shadow:var(--shadow); }
+body.workspace-side :is(.pane-spotlight,.recall-shield) { right:calc(100% - var(--workspace-paper-width)); }
+body.workspace-bottom :is(.pane-spotlight,.recall-shield) { inset:0 0 calc(100% - var(--workspace-paper-height)) 0; }
 body.workspace-open #sheetScrim { display:none !important; }
 body.workspace-open #workspaceReturn.hidden { display:none; }
-body.workspace-open #touchDock { right:calc(100% - var(--workspace-paper-width) + 10px); left:auto; top:max(180px,25dvh); transform:none; }
-body.workspace-open.zen #zenDock { right:calc(100% - var(--workspace-paper-width) + 12px); }
+body.workspace-side #touchDock { right:calc(100% - var(--workspace-paper-width) + 10px); left:auto; top:max(180px,25dvh); transform:none; }
+body.workspace-side.zen #zenDock { right:calc(100% - var(--workspace-paper-width) + 12px); }
 .zen-workspace-marker { display:none !important; }
 body.workspace-open.zen .zen-workspace-marker { display:flex !important; }
 /* Paper highlight and handwriting shelves center on the paper, never over the workspace. */
-@media (min-width:900px) and (orientation:landscape) {
-  body.workspace-open :is(.highlight-toolbar,.pdf-ink-toolbar) { left:calc(var(--workspace-paper-width) / 2); max-width:calc(var(--workspace-paper-width) - 24px); }
-  /* The paper's dock moves onto the paper's own edge here, so the page fits beside it
-     instead of under it: the ends of lines stay visible and a highlight can start on
-     the last word. pageScale() reads the same gutter. Touch dock: 64px wide, 10px in;
-     Zen rail: 44px circles, 12px in. */
-  body.touch-tablet-reader.workspace-open:not(.zen) { --paper-dock-gutter:84px; }
-  body.workspace-open.zen { --paper-dock-gutter:66px; --zen-find-rail-width:44px; }
-  body.workspace-open .pdf-frame:not(.paged-pdf-flow) { padding-right:var(--paper-dock-gutter,0px); }
-  /* The layout pill would reach back over the text; beside Workspace it is one circle. */
-  body.workspace-open.zen #zenLayout { width:44px; flex-basis:44px; padding:0; border-radius:50%; }
-  body.workspace-open.zen #zenLayout :is(#zenLayoutLabel,.zen-layout-chevron) { display:none; }
-  body.workspace-open.zen #zenLayoutIcon { display:flex; }
-}
+body.workspace-side :is(.highlight-toolbar,.pdf-ink-toolbar) { left:calc(var(--workspace-paper-width) / 2); max-width:calc(var(--workspace-paper-width) - 24px); }
+/* The paper's dock moves onto the paper's own edge here, so the page fits beside it
+   instead of under it: the ends of lines stay visible and a highlight can start on
+   the last word. pageScale() reads the same gutter. Touch dock: 64px wide, 10px in;
+   Zen rail: 44px circles, 12px in. */
+body.touch-tablet-reader.workspace-side:not(.zen) { --paper-dock-gutter:84px; }
+body.workspace-side.zen { --paper-dock-gutter:66px; --zen-find-rail-width:44px; }
+body.workspace-side .pdf-frame:not(.paged-pdf-flow) { padding-right:var(--paper-dock-gutter,0px); }
+/* The layout pill would reach back over the text; beside Workspace it is one circle. */
+body.workspace-side.zen #zenLayout { width:44px; flex-basis:44px; padding:0; border-radius:50%; }
+body.workspace-side.zen #zenLayout :is(#zenLayoutLabel,.zen-layout-chevron) { display:none; }
+body.workspace-side.zen #zenLayoutIcon { display:flex; }
 /* Match the short-height rail's extra 44px columns and 4px gaps. Both the
    paper fit and Find need to clear the whole rail beside Workspace. */
-@media (min-width:900px) and (orientation:landscape) and (max-height:440px) {
-  body.workspace-open.zen { --paper-dock-gutter:114px; --zen-find-rail-width:92px; }
+@media (max-height:440px) {
+  body.workspace-side.zen { --paper-dock-gutter:114px; --zen-find-rail-width:92px; }
 }
-@media (min-width:900px) and (orientation:landscape) and (max-height:325px) {
-  body.workspace-open.zen { --paper-dock-gutter:162px; --zen-find-rail-width:140px; }
+@media (max-height:325px) {
+  body.workspace-side.zen { --paper-dock-gutter:162px; --zen-find-rail-width:140px; }
 }
 #zenLayoutIcon { display:none; }
 #zenLayoutIcon svg { width:20px; height:20px; }
-body.workspace-open #excerptReturnChip { left:calc(var(--workspace-paper-width) / 2); bottom:26px; }
+body.workspace-side #excerptReturnChip { left:calc(var(--workspace-paper-width) / 2); bottom:26px; }
 body.workspace-open #workspaceOpen { color:var(--accent); }
-@media (max-width:899px), (orientation:portrait) {
-  body.workspace-open .reader-layout { display:block; --notebook-width:0px !important; }
-  body.workspace-open .workspace-divider { display:none; }
-  body.workspace-open #workspacePanel { position:absolute; inset:0; z-index:45; border-left:0; }
-  body.workspace-open :is(#touchDock,#paneSpotlight,#recallShield,#excerptReturnChip,#zenDock) { visibility:hidden; }
-  body.workspace-open #documentPane { visibility:hidden; }
+/* Bottom dock: whatever floats on the paper stays on the top half. JS measures the paper
+   (syncWorkspaceDockMetrics): --workspace-paper-inset is the distance from the paper's
+   lower edge to the bottom of the window, --workspace-paper-px the paper's height. */
+body.workspace-bottom :is(.highlight-toolbar,.pdf-ink-toolbar):not(.docked) { bottom:calc(var(--workspace-paper-inset,0px) + 12px); max-height:calc(var(--workspace-paper-px,400px) - 24px); }
+body.workspace-bottom.zen .highlight-toolbar.docked { max-height:calc(var(--workspace-paper-px,400px) - 24px); }
+body.workspace-bottom #excerptReturnChip { left:50%; bottom:calc(var(--workspace-paper-inset,0px) + 26px); }
+body.workspace-bottom .reader-toast { bottom:calc(var(--workspace-paper-inset,0px) + 16px); }
+body.workspace-bottom .link-return { bottom:calc(var(--workspace-paper-inset,0px) + 64px); }
+@media (max-width:720px) {
+  /* A sheet on the paper half: above the rail, like any sheet, so its close button is reachable. */
+  body.workspace-bottom:not(.keyboard-open) :is(.selection-card,.lookup-card) { z-index:49; bottom:calc(var(--workspace-paper-inset,0px) + 12px); max-height:calc(var(--workspace-paper-px,400px) - 24px); }
 }
+/* A short paper half folds the Zen rail into columns, as a short window does. */
+body.workspace-bottom.workspace-paper-short.zen { --zen-find-rail-width:134px; }
+body.workspace-bottom.workspace-paper-short.zen .zen-dock { display:grid; grid-template-rows:repeat(4,44px); grid-auto-flow:column; grid-auto-columns:max-content; gap:4px; direction:rtl; }
+body.workspace-bottom.workspace-paper-short.zen .zen-dock > * { direction:ltr; }
+body.workspace-bottom.workspace-paper-short.zen .zen-tool.popout-open { z-index:3; }
+body.workspace-bottom.workspace-paper-shorter.zen { --zen-find-rail-width:182px; }
+body.workspace-bottom.workspace-paper-shorter.zen .zen-dock { grid-template-rows:repeat(3,44px); }
+/* The Workspace's tools become one row along its top edge, clear of the divider's strip;
+   their menus open downward and scroll if the Workspace is short. */
+body.workspace-bottom .workspace-close { top:28px; right:12px; }
+body.workspace-bottom .workspace-tools { top:23px; right:64px; }
+body.workspace-bottom .workspace-tool-row { flex-direction:row; }
+body.workspace-bottom :is(.workspace-pen-options,.workspace-more-panel) { top:calc(100% + 8px); right:0; max-height:max(120px,calc(var(--workspace-panel-px,400px) - 100px)); overflow-y:auto; overscroll-behavior:contain; }
+.workspace-more-panel #workspaceDockToggle { display:flex; align-items:center; gap:8px; }
+#workspaceDockToggle svg { width:18px; height:18px; flex:none; }
+/* Over the paper: a window with room for neither split (a phone on its side). */
+body.workspace-full .reader-layout { display:block; --notebook-width:0px !important; }
+body.workspace-full #workspacePanel { position:absolute; inset:0; z-index:45; border-left:0; }
+body.workspace-full :is(#touchDock,#paneSpotlight,#recallShield,#excerptReturnChip,#zenDock) { visibility:hidden; }
+body.workspace-full #documentPane { visibility:hidden; }
 @media (max-width:420px) {
   .workspace-close { right:12px; }
   .workspace-tools { right:7px; }

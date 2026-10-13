@@ -98,7 +98,10 @@ function clearOf(a, b) { return a.right <= b.left || a.left >= b.right || a.bott
     }
     assert.deepEqual(failures, [], 'Find remains usable, on the paper, and clear of every rail button after rotation');
     await page.setViewportSize({ width: 768, height: 1024 });
-    assert.equal(await page.locator('#findBar').isVisible(), false, 'Find follows the hidden paper while Workspace fills a portrait window');
+    await page.waitForFunction(() => document.body.classList.contains('workspace-bottom'));
+    const portrait = await bounds(page);
+    assert(await page.locator('#findBar').isVisible() && portrait.bar.bottom <= portrait.pane.bottom && portrait.rail.every(control => clearOf(portrait.bar, control)),
+      'Find stays on the paper above a portrait Workspace: ' + JSON.stringify(portrait));
     await page.locator('#workspaceClose').click();
     await page.locator('#findBar').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#findInput').inputValue(), 'Find', 'returning to the paper preserves the search');

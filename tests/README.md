@@ -357,3 +357,13 @@ versions sync it unchanged; writing on a light sticky note stays dark. Run with
 forward from a page's bottom-right opens the next page at the same zoom on its top-left,
 turning back opens the previous page on its bottom-right, and a page jump opens on the
 top-left. Not zoomed in, pages stay centred. Run with `PHLOEM_BROWSER=webkit` too.
+
+`reading-workspace-bottom-dock.test.js` covers the Workspace docked below the paper, the
+default in portrait and tall windows (iPad portrait 820×1180 with touch and an iPad user
+agent, and a 390×844 phone): the horizontal divider's drag, keys and saved split; rotation
+to side by side and back; carrying the divider to the bottom edge (docks below) or the
+right edge (docks beside, or says it is too narrow); the ⋯ menu's Dock below / Dock beside,
+remembered per orientation; the Zen rail, pen and highlight toolbars, Find and the
+selection card staying on the paper half; a saved highlight dragged down into the
+Workspace; writing and sticky notes below; and the full-screen Workspace on a phone on
+its side. Run with `PHLOEM_BROWSER=webkit` too.

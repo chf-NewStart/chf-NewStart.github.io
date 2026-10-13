@@ -894,13 +894,14 @@ async function sourceCueVisual(page, cue) {
       'cross-line temporary cue never becomes a saved highlight');
 
     await page.setViewportSize({ width: 900, height: 1280 });
+    await page.waitForFunction(() => document.body.classList.contains('workspace-bottom'));
     const portrait = await page.evaluate(() => {
-      const panel = document.getElementById('workspacePanel').getBoundingClientRect();
-      return { panelWidth: panel.width, viewport: innerWidth, panelLeft: panel.left, panelRight: panel.right };
+      const panel = document.getElementById('workspacePanel').getBoundingClientRect(), pane = document.getElementById('documentPane').getBoundingClientRect();
+      return { panelWidth: panel.width, viewport: innerWidth, panelLeft: panel.left, panelRight: panel.right, panelTop: panel.top, paneBottom: pane.bottom };
     });
     assert(portrait.panelWidth >= portrait.viewport * .9 && portrait.panelLeft >= -2
-      && portrait.panelRight <= portrait.viewport + 2,
-    'portrait workspace fills the screen: ' + JSON.stringify(portrait));
+      && portrait.panelRight <= portrait.viewport + 2 && Math.abs(portrait.panelTop - portrait.paneBottom) < 2,
+    'portrait workspace docks full width below the paper: ' + JSON.stringify(portrait));
     await page.screenshot({ path: '/tmp/phloem-workspace-' + ENGINE + '-portrait.png' });
     await page.screenshot({ path: '/tmp/phloem-workspace-sticky-' + ENGINE + '-portrait.png' });
     await page.locator('#workspaceClose').click();
@@ -911,14 +912,16 @@ async function sourceCueVisual(page, cue) {
     const portraitCard = page.locator('.workspace-card[data-clip-id="' + clip.id + '"]');
     await openCardMenu(portraitCard);
     await portraitCard.locator('.workspace-source').click();
-    await page.locator('#workspacePanel').waitFor({ state: 'hidden' });
+    // Docked below, the paper is in view: the source opens above and the Workspace stays.
+    await page.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active'));
+    assert.equal(await page.locator('#workspacePanel').isVisible(), true, 'a portrait source visit keeps the bottom Workspace open');
     await page.waitForFunction(() => !!document.querySelector('.pdf-page[data-page="2"].book-active')
       && document.getElementById('pdfFrame').dataset.pagedReady === 'true');
     const portraitCue = page.locator('.excerpt-source-cue-layer[data-excerpt-id="' + clip.id + '"][data-source-page="2"]');
     await portraitCue.waitFor({ state: 'visible' });
     await page.waitForFunction(() => document.querySelector('.excerpt-source-cue')?.getAnimations()[0]?.currentTime >= 2700);
     const portraitCueLate = await sourceCueVisual(page, portraitCue);
-    assert(portraitCueLate.connected && portraitCueLate.onScreen && portraitCueLate.opacity > .12,
+    assert(portraitCueLate.connected && portraitCueLate.onScreen && portraitCueLate.inPane && portraitCueLate.opacity > .12,
       'portrait source cue stays visible late in its 3.2-second interval: ' + JSON.stringify(portraitCueLate));
     assert.equal(Object.values((await paperById(page, pdfId)).highlights || {}).flat().length, 0,
       'portrait source visit shows a transient cue without saving a PDF highlight');

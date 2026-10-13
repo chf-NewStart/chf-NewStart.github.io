@@ -5,6 +5,11 @@ repo over a local HTTP port, seed `localStorage` with a small paper, and drive a
 real Chromium through the highlight workflows: marker strokes, explicit
 edit-card erasure, recoloring, per-highlight notes, and undo/redo.
 
+`reading-workspace-escape-after-tap.test.js` checks Escape after a tap in the Workspace when
+nothing is focused (Safari and the iPad don't focus tapped buttons): it drops a lasso
+selection and never closes the paper, while Escape after a tap on the paper still goes back
+to the library. Run it with `PHLOEM_BROWSER=webkit` too.
+
 `reading-sync-own-copy.test.js` checks that a sync after a stroke skips the copy this
 device just uploaded (iCloud and Drive) and never re-reads stored originals.
 

@@ -69,7 +69,7 @@
   var pdfFoldView=null,foldSourceId='',foldSourceHash='',cancelPdfTouchInteraction=null;
   var excerptView=null,excerptReturnSpot=null,excerptNavigationSerial=0,excerptNavigationBusy=false;
   var excerptSourceCueSerial=0,excerptSourceCueTimer=null;
-  var workspaceView=null,workspaceOpen=false,workspaceDragSelection=null,workspaceSaveFailed=false;
+  var workspaceView=null,workspaceOpen=false,workspaceDragSelection=null,workspaceSaveFailed=false,workspacePointerLast=false;
   var pdfZoom = 1, pdfFit = true, paperAppearance = 'cream', readerBuildPromises = {}, pendingSelection = null, highlightMode = false, highlightColor = 'yellow', highlightCommitTimer = null, readerToastTimer = null, recallActive = false;
   var selectionAnchor = null, selectionNoteTarget = null;
   var lookupTimer = null, lookupSerial = 0, lookupAnchor = null, lookupCache = Object.create(null);
@@ -5964,7 +5964,9 @@
     if(document.querySelector('dialog[open]'))return;
     // A card handle, canvas, or workspace button owns its keyboard interaction.
     // Arrow keys and Undo here must not turn pages or erase PDF annotations.
-    if(workspaceOpen&&byId('workspacePanel').contains(e.target))return;
+    // Safari doesn't focus a tapped button, so keys can arrive on <body> right after a tap in
+    // the Workspace: they are still the Workspace's, and Escape must not close the paper.
+    if(workspaceOpen&&(byId('workspacePanel').contains(e.target)||((e.target===document.body||e.target===document.documentElement)&&workspacePointerLast)))return;
     if(e.key==='Escape'&&(pdfReferenceHold||!byId('pdfReferencePreview').classList.contains('hidden'))){e.preventDefault();dismissPdfReferencePreview();return;}
     // The reference card owns its native button/link keys, not the reader shortcuts.
     if(byId('pdfReferencePreview').contains(e.target))return;
@@ -7792,7 +7794,7 @@
   byId('workspaceMore').addEventListener('toggle',function(){
     if(this.open){byId('workspacePenOptions').classList.add('hidden');byId('workspacePenToggle').setAttribute('aria-expanded','false');}
   });
-  document.addEventListener('pointerdown',function(event){if(!byId('workspaceTools').contains(event.target))closeWorkspacePanels();},true);
+  document.addEventListener('pointerdown',function(event){workspacePointerLast=!!(workspaceOpen&&byId('workspacePanel').contains(event.target));if(!byId('workspaceTools').contains(event.target))closeWorkspacePanels();},true);
   byId('workspaceTools').addEventListener('keydown',function(event){
     if(event.key!=='Escape')return;
     var penOpen=byId('workspacePenToggle').getAttribute('aria-expanded')==='true',moreOpen=byId('workspaceMore').open;

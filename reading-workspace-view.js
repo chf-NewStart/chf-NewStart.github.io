@@ -31,6 +31,9 @@
     let observedHeight = 2000, observedWidth = 1000;
     let growingPaper = false;
     let selection = null;
+    // Safari and the iPad don't focus a button or the board when they're tapped, so keys then
+    // arrive on <body>. They still belong to the Workspace when it was the last thing touched.
+    let pointerLastInPanel = false;
     // Each stroke's outline is smoothed once and kept with its path, keyed by what changes
     // its shape. A new stroke then adds one path instead of every path being rebuilt.
     const inkCache = new Map();
@@ -1214,10 +1217,13 @@
       if (!gesture || gesture.kind !== 'pinch') cardTouches.delete(event.pointerId);
     }));
     scroll.addEventListener('scroll', () => { if (gesture && performance.now() - manualCardScrollAt > 100) cancel(); }, { passive: true }); global.addEventListener('resize', cancel); global.addEventListener('blur', cancel); global.addEventListener('pagehide', cancel);
+    document.addEventListener('pointerdown', event => { pointerLastInPanel = panel.contains(event.target); }, true);
+    const ownsKey = event => panel.contains(event.target)
+      || ((event.target === document.body || event.target === document.documentElement) && pointerLastInPanel);
     document.addEventListener('keydown', event => {
       if (!context().open) return;
-      if (event.key === 'Escape' && gesture && panel.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); cancel(); return; }
-      if (event.key === 'Escape' && selection && panel.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); clearSelection(); board.focus({ preventScroll: true }); return; }
+      if (event.key === 'Escape' && gesture && ownsKey(event)) { event.preventDefault(); event.stopImmediatePropagation(); cancel(); return; }
+      if (event.key === 'Escape' && selection && ownsKey(event)) { event.preventDefault(); event.stopImmediatePropagation(); clearSelection(); board.focus({ preventScroll: true }); return; }
       const focusedCard = event.target.closest && event.target.closest('.workspace-card');
       if (event.key === 'Escape' && focusedCard && [...cards.values()].some(state => state.card === focusedCard && state.menu.open) && closeOpenMenus(null, true)) {
         event.preventDefault(); event.stopImmediatePropagation(); return;

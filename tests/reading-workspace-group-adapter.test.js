@@ -34,7 +34,7 @@ function harness() {
   vm.runInContext([
     section('  function readingWorkspaceUnavailable(ch){', '  function mergeReadingWorkspace('),
     section('  function persist(schedule,atomic){', '  function find(id){'),
-    section('  function saveWorkspace(', '  function workspaceWide()'),
+    section('  function saveWorkspace(', '  var WORKSPACE_WIDTH_KEY='),
     section('  function workspaceDropPoint(', '  function showWorkspaceClip('),
     section('  function workspaceGroupEqual(', '  function workspaceEnsureSpace('),
     section('  function workspaceEnsureSpace(', '  function workspaceGrow(')

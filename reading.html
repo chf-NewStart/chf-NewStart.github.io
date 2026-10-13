@@ -327,6 +327,7 @@
           <article class="text-document hidden" id="textDocument"></article>
         </div>
         <div class="workspace-divider" id="workspaceDivider" role="separator" aria-label="Resize paper and workspace" aria-controls="documentPane workspacePanel" aria-orientation="vertical" aria-valuemin="30" aria-valuemax="70" aria-valuenow="50" aria-valuetext="Paper 50 percent, workspace 50 percent" title="Drag to resize paper and workspace · double-click to reset" tabindex="0"><span class="workspace-divider-grip" id="workspaceDividerGrip" aria-hidden="true"></span></div>
+        <div class="workspace-dock-preview hidden" id="workspaceDockPreview" aria-hidden="true"><span id="workspaceDockPreviewLabel"></span></div>
         <div class="pane-spotlight" id="paneSpotlight">
           <div class="guide-shade guide-shade-top"></div>
           <div class="guide-shade guide-shade-left"></div>
@@ -470,6 +471,7 @@
                   </div>
                   <button id="workspaceRedo" type="button" aria-label="Redo the last undone Workspace change" title="Redo the last undone Workspace change" disabled>↷ Redo</button>
                   <button id="workspaceReturn" type="button">↩ Return to reading</button>
+                  <button id="workspaceDockToggle" class="hidden" type="button"></button>
                 </div>
               </details>
             </div>

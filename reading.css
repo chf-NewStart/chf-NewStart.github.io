@@ -1001,13 +1001,13 @@
     body.zen .zen-dock { display: flex; }
     /* Leave a 12px gap beside the entire rail, including the visible layout label.
        Workspace moves the rail to the paper edge; Find follows that same edge. */
-    body.workspace-open.zen { --zen-find-paper-width: var(--workspace-paper-width); }
+    body.workspace-side.zen { --zen-find-paper-width: var(--workspace-paper-width); }
     body.zen .find-bar:not(.hidden) { position: fixed; z-index: 47; top: calc(62px + env(safe-area-inset-top)); right: calc(100% - var(--zen-find-paper-width) + var(--zen-find-rail-width) + 24px + env(safe-area-inset-right)); width: min(560px, calc(var(--zen-find-paper-width) - var(--zen-find-rail-width) - 34px - env(safe-area-inset-left) - env(safe-area-inset-right))); padding: 8px 10px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
     body.zen .find-bar input { max-width: none; min-height: 44px; font-size: 16px; }
     body.zen .find-bar .step-btn { width: 44px; min-width: 44px; height: 44px; }
-    body.workspace-open.zen .find-bar:not(.hidden) { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 7px; }
-    body.workspace-open.zen .find-bar input { grid-column: 1 / -1; width: 100%; }
-    body.workspace-open.zen .find-bar .count { min-width: 0; align-self: center; }
+    body.workspace-side.zen .find-bar:not(.hidden) { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 7px; }
+    body.workspace-side.zen .find-bar input { grid-column: 1 / -1; width: 100%; }
+    body.workspace-side.zen .find-bar .count { min-width: 0; align-self: center; }
     .zen-tool { position: relative; display: flex; justify-content: flex-end; }
     .zen-exit { position: relative; z-index: 2; width: 44px; height: 44px; padding: 0; display: flex; flex: 0 0 44px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease, color .2s ease, background .2s ease; }
     .zen-popout { position: absolute; z-index: 1; top: 50%; right: calc(100% + 9px); min-height: 50px; transform: translateY(-50%); border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
@@ -1112,9 +1112,8 @@
     @media (max-width: 560px) and (max-height: 325px) {
       body.zen .find-bar:not(.hidden) { top: calc(160px + env(safe-area-inset-top)); }
     }
-    @media (max-width: 899px), (orientation: portrait) {
-      body.workspace-open.zen .find-bar { visibility: hidden; }
-    }
+    /* Find follows the paper: hidden only while the Workspace covers it. */
+    body.workspace-full.zen .find-bar { visibility: hidden; }
     .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
     /* The layer is its own stacking context (z-index), which cut its highlights off from the
        page: their multiply blend mixed with nothing and the colour sat over the words like

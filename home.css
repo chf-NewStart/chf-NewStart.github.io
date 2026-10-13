@@ -246,10 +246,17 @@ body.has-bio-bg {
 .phloem-clip { margin-top: 24px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #0f1210; }
 .phloem-clip video { width: 100%; }
 .games-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
-.games-row a { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 8px; border-radius: 16px; border: 1px solid var(--line); text-decoration: none; text-align: center; font-size: 0.84rem; color: var(--soft); background: rgba(4, 10, 8, 0.35); transition: border-color .15s, transform .15s; }
-.games-row a:hover { border-color: var(--line-strong); transform: translateY(-2px); }
-.games-row img { width: 58px; height: 58px; border-radius: 22.5%; }
-.games-row small { color: var(--faint); font: 0.66rem var(--mono); }
+/* Each app tile glows in its own icon's colours, the way the App Store's product pages do:
+   the icon itself, blown up and blurred behind the tile, under a dark wash for the label. */
+.games-row a { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 8px 14px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); text-decoration: none; text-align: center; font-size: 0.84rem; font-weight: 600; color: var(--ink); background: #0a0f0d; transition: border-color .2s, transform .2s; }
+.games-row a::before { content: ""; position: absolute; inset: -40%; z-index: -2; background: var(--icon) center / cover no-repeat; filter: blur(26px) saturate(1.6); opacity: 0.5; transition: opacity .25s, transform .4s; }
+.games-row a::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(6, 10, 8, 0.05) 0%, rgba(6, 10, 8, 0.55) 60%, rgba(6, 10, 8, 0.85) 100%); }
+.games-row a:hover { border-color: rgba(255, 255, 255, 0.22); transform: translateY(-2px); }
+.games-row a:hover::before, .games-row a:focus-visible::before { opacity: 0.8; transform: scale(1.08); }
+.games-row img { width: 58px; height: 58px; border-radius: 22.5%; box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08); transition: transform .25s; }
+.games-row a:hover img { transform: translateY(-2px) scale(1.04); }
+.games-row small { color: rgba(237, 247, 241, 0.62); font: 0.66rem var(--mono); }
+@media (prefers-reduced-motion: reduce) { .games-row a, .games-row a::before, .games-row img { transition: none; } .games-row a:hover, .games-row a:hover img { transform: none; } }
 .why { margin-top: 22px; padding: 16px 18px; border-left: 2px solid var(--accent); background: rgba(118, 247, 165, 0.05); border-radius: 0 12px 12px 0; color: var(--soft); font-size: 0.95rem; }
 .why b { display: block; margin-bottom: 4px; color: var(--accent); font: 500 0.7rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
 @media (max-width: 900px) { .ship { grid-template-columns: 1fr; } .ship-card { padding: 26px 20px; } }

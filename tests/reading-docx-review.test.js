@@ -257,7 +257,7 @@ async function run() {
   check('missing classification items receive one targeted retry', source.includes('var missing=batch.filter') && source.includes('if(missing.length)try{await ask(missing);'));
   check('invalid passage matches receive one targeted retry', source.includes('if(!passed[prepared[p].id])') && source.includes('if(!textPassed[prepared[t].id])'));
   check('one selected AI mode handles the complete review consistently', source.includes('function reviewAiPlan') && source.includes("route=selected==='auto'") && source.includes('classification:route,location:route'));
-  check('DeepSeek review calls request strict JSON output', source.includes("if(/return only json/i.test(system))deepseekBody.response_format={type:'json_object'}"));
+  check('DeepSeek is no longer a review provider (removed Oct 2026)', !source.includes('api.deepseek.com') && !source.includes('deepseekBody'));
   check('exact quoted passages bypass AI without weakening validation', source.includes('function locateReviewFromExactQuote') && source.includes("'Exact manuscript text'") && source.includes('var remaining=comments.filter'));
   check('review imports record classification, location, and total timing', source.includes('classificationMs:classificationMs,locationMs:locationMs,totalMs:totalMs') && source.includes('elapsedLabel(totalMs)'));
   check('weak passage matches stay unresolved instead of becoming highlights', source.includes("+comment.matchConfidence>=.72") && source.includes("comment.locationStatus=confident?'confident':'needs-checking'") && source.includes('No verified passage yet'));

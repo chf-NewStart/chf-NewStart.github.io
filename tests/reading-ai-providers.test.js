@@ -76,16 +76,19 @@ function check(name, condition, extra) {
   check('on-device flow has no page errors', localErrors.length === 0, localErrors.join('; '));
   await localContext.close();
 
+  /* DeepSeek left Phloem (Oct 2026; Waterloo IST lists it as not approved for University
+     data). A reader who had it set up, through the old single-key slot or the provider
+     settings, never sends it another request: the keys are deleted, the reader falls back
+     to the private on-device mode, and a plain notice says so once. */
   const deepSeekContext = await browser.newContext();
   const deepSeekPage = await deepSeekContext.newPage();
-  let requestBody = null;
-  let authorization = '';
-  await deepSeekPage.route('https://api.deepseek.com/**', async route => {
-    requestBody = route.request().postDataJSON();
-    authorization = route.request().headers().authorization || '';
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: '• DeepSeek answer' } }] }) });
-  });
+  const deepSeekErrors = [];
+  deepSeekPage.on('pageerror', error => deepSeekErrors.push(error.message));
+  let deepSeekRequests = 0;
+  await deepSeekPage.route(/deepseek\.com/, route => { deepSeekRequests++; return route.abort(); });
   await deepSeekPage.addInitScript(() => {
+    if (localStorage.getItem('deepseek.fixture')) return;
+    localStorage.setItem('deepseek.fixture', '1');
     const ch = {
       id: 'ch_ai_test', kind: 'text', title: 'AI provider test', authors: 'Tester',
       fr: 'Photosynthesis converts light energy into chemical energy in plant cells.',
@@ -95,22 +98,46 @@ function check(name, condition, extra) {
     localStorage.setItem('readingRoom.v1', JSON.stringify({ chapters: [ch] }));
     localStorage.setItem('readingRoom.lastOpen.v1', ch.id);
     localStorage.setItem('readingRoom.ai.v1', 'legacy-test-key');
+    localStorage.setItem('readingRoom.ai.providers.v1', JSON.stringify({ provider: 'deepseek', providers: {
+      deepseek: { key: 'saved-deepseek-key', model: 'deepseek-flash', endpoint: '' },
+      openai: { key: '', model: 'gpt-5-mini', endpoint: '' } } }));
   });
   await deepSeekPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
   await deepSeekPage.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
+  await deepSeekPage.waitForFunction(() => document.getElementById('errorDialog').open, null, { timeout: 5000 }).catch(() => {});
+  check('a reader who used DeepSeek is told once that it was removed', await deepSeekPage.locator('#errorTitle').textContent() === 'DeepSeek support was removed' &&
+    await deepSeekPage.evaluate(() => document.getElementById('errorDialog').open));
+  await deepSeekPage.click('[data-close="errorDialog"]');
+  const retired = await deepSeekPage.evaluate(() => ({ legacy: localStorage.getItem('readingRoom.ai.v1'), saved: JSON.parse(localStorage.getItem('readingRoom.ai.providers.v1')) }));
+  check('the old single DeepSeek key is deleted', retired.legacy === null);
+  check('the saved DeepSeek key and provider are deleted', !('deepseek' in retired.saved.providers) && retired.saved.provider === 'auto' && !JSON.stringify(retired.saved).includes('deepseek-key'), JSON.stringify(retired.saved));
   await openZenNotebook(deepSeekPage);
   await deepSeekPage.click('[data-tab="aiPanel"]');
   await deepSeekPage.click('#aiUseCurrent');
   await deepSeekPage.fill('#aiQuestion', 'Summarize this.');
   await deepSeekPage.click('#aiAskBtn');
-  await deepSeekPage.waitForFunction(() => document.getElementById('qaList').textContent.includes('DeepSeek answer'));
-  check('legacy key migrates to DeepSeek', authorization === 'Bearer legacy-test-key', authorization);
-  check('DeepSeek uses current default model', requestBody && requestBody.model === 'deepseek-flash', requestBody && requestBody.model);
-  check('thread history reaches provider', requestBody && requestBody.messages && requestBody.messages.some(message => message.role === 'user' && message.content.includes('Summarize this.')));
+  await deepSeekPage.waitForTimeout(800);
+  check('asking AI afterwards sends nothing to DeepSeek', deepSeekRequests === 0);
   await openDeskSettings(deepSeekPage);
-  check('migrated provider appears in settings', await deepSeekPage.locator('#aiProvider').inputValue() === 'deepseek');
-  check('editable model appears in settings', await deepSeekPage.locator('#aiModel').inputValue() === 'deepseek-flash');
+  check('settings fall back to the private on-device mode', await deepSeekPage.locator('#aiProvider').inputValue() === 'auto');
+  check('DeepSeek is no longer offered', !(await deepSeekPage.locator('#aiProvider option').evaluateAll(options => options.map(option => option.value))).includes('deepseek'));
+  check('AI settings say cloud AI is optional and off until chosen, and warn about university material',
+    /Cloud AI stays off until you choose a provider/.test(await deepSeekPage.locator('#aiDataNote').textContent()) &&
+    /unpublished, confidential or restricted university material/.test(await deepSeekPage.locator('#aiDataNote').textContent()) &&
+    /keeps the text on this device/.test(await deepSeekPage.locator('#aiDataNote').textContent()));
+  await deepSeekPage.reload({ waitUntil: 'load' });
+  await deepSeekPage.waitForTimeout(1300);
+  check('the notice does not come back', !(await deepSeekPage.evaluate(() => document.getElementById('errorDialog').open)) && deepSeekRequests === 0);
+  check('DeepSeek removal has no page errors', deepSeekErrors.length === 0, deepSeekErrors.join('; '));
   await deepSeekContext.close();
+
+  // A new reader never sees the DeepSeek notice.
+  const freshContext = await browser.newContext();
+  const freshPage = await freshContext.newPage();
+  await freshPage.goto('http://localhost:8125/reading.html', { waitUntil: 'load' });
+  await freshPage.waitForTimeout(1300);
+  check('a new reader is not shown the DeepSeek notice', !(await freshPage.evaluate(() => document.getElementById('errorDialog').open && document.getElementById('errorTitle').textContent === 'DeepSeek support was removed')));
+  await freshContext.close();
 
   const setupSourceContext = await browser.newContext();
   const setupSourcePage = await setupSourceContext.newPage();

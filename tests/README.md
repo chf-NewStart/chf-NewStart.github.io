@@ -5,9 +5,12 @@ repo over a local HTTP port, seed `localStorage` with a small paper, and drive a
 real Chromium through the highlight workflows: marker strokes, explicit
 edit-card erasure, recoloring, per-highlight notes, and undo/redo.
 
+`reading-sync-own-copy.test.js` checks that a sync after a stroke skips the copy this
+device just uploaded (iCloud and Drive) and never re-reads stored originals.
+
 `reading-ai-providers.test.js` covers the AI provider router: keyless on-device
-Gemini, migration of an existing DeepSeek key, current model selection, saved
-thread context, the provider settings UI, and AI-key transfer through a private
+Gemini, the removal of DeepSeek (keys deleted, one notice, no request), the
+AI data note, the provider settings UI, and AI-key transfer through a private
 device setup link even when GitHub sync is not configured.
 
 `reading-selection-note-ai.test.js` covers the compact, note-first selection

@@ -244,7 +244,7 @@ function samePdfVerticalAnchor(before, after, tolerance) {
     await page.click('#zenPaperAppearance');
     quickPaperStates.push(await page.evaluate(() => {
       const state = document.body.dataset.paperAppearance;
-      return { state, frame: document.getElementById('pdfFrame').dataset.paperAppearance, saved: localStorage.getItem('readingRoom.paperAppearance.v1'), selected: document.querySelector('[data-paper-appearance="' + state + '"]').getAttribute('aria-pressed'), theme: document.documentElement.dataset.theme || 'light' };
+      return { state, frame: document.getElementById('pdfFrame').dataset.paperAppearance, saved: localStorage.getItem('readingRoom.paperAppearance.v1'), selected: document.querySelector('button[data-paper-appearance="' + state + '"]').getAttribute('aria-pressed'), theme: document.documentElement.dataset.theme || 'light' };
     }));
   }
   check('the masthead shortcut cycles Inverted, Original, and Cream everywhere', quickPaperStates.map(item => item.state).join(',') === 'inverted,original,cream' && quickPaperStates.every(item => item.state === item.frame && item.state === item.saved && item.selected === 'true' && item.theme === 'dark'), JSON.stringify(quickPaperStates));

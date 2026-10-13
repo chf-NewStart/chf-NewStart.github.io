@@ -286,7 +286,7 @@ async function zenAction(page, name, selector) {
     theme: document.documentElement.dataset.theme || 'light',
     body: document.body.dataset.paperAppearance,
     frame: document.getElementById('pdfFrame').dataset.paperAppearance,
-    setting: document.querySelector('[data-paper-appearance="inverted"]').getAttribute('aria-pressed'),
+    setting: document.querySelector('button[data-paper-appearance="inverted"]').getAttribute('aria-pressed'),
     saved: localStorage.getItem('readingRoom.paperAppearance.v1')
   }));
   check('Zen changes paper appearance without changing the interface theme', zenPaperChanged.theme === 'light' && zenPaperChanged.body === 'inverted' && zenPaperChanged.frame === 'inverted' && zenPaperChanged.setting === 'true' && zenPaperChanged.saved === 'inverted', JSON.stringify(zenPaperChanged));

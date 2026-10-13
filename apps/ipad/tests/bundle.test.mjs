@@ -109,6 +109,7 @@ test('native AI metadata never exposes a key and requests cross the registered b
     pick(/  function nativeAiPlugin\(\)\{[^\n]+\}/),
     pick(/  function defaultAiSettings\(\)\{[\s\S]*?\n  \}/),
     pick(/  function loadAiSettings\(\)\{[\s\S]*?\n  \}/),
+    pick(/  function retireDeepSeek\(saved\)\{[\s\S]*?\n  \}/),
     pick(/  function saveAiSettings\(\)\{[^\n]+\}/),
     pick(/  function cloudAiRoute\(preferred\)\{[\s\S]*?\n  \}/),
     pick(/  function activeAiRoute\(skipBrowser\)\{[^\n]+\}/),
@@ -123,6 +124,7 @@ test('native AI metadata never exposes a key and requests cross the registered b
     }
   };
   let saved = null;
+  const notices = {};
   const bridgeCalls = [];
   const context = vm.createContext({
     window: { PHLOEM_NATIVE: true, Capacitor: { Plugins: { PhloemAI: {
@@ -132,14 +134,13 @@ test('native AI metadata never exposes a key and requests cross the registered b
     NATIVE_AI_CONSENT_VERSION: 2,
     AI_PROVIDERS: {
       gemini: { label: 'Gemini API', model: 'gemini-test' },
-      deepseek: { label: 'DeepSeek', model: 'deepseek-test' },
       openai: { label: 'OpenAI', model: 'gpt-test' },
       anthropic: { label: 'Anthropic', model: 'claude-test' },
       compatible: { label: 'OpenAI-compatible', model: '', endpoint: '' }
     },
     localStorage: {
       getItem(key) { return key === 'readingRoom.ai.providers.v1' ? JSON.stringify(persisted) : 'legacy-key-must-not-load'; },
-      setItem(key, value) { saved = { key, value }; },
+      setItem(key, value) { if (key === 'readingRoom.ai.providers.v1') saved = { key, value }; else notices[key] = value; },
       removeItem(key) { assert.equal(key, 'readingRoom.ai.v1'); }
     },
     browserLanguageModel: () => null,
@@ -151,32 +152,35 @@ test('native AI metadata never exposes a key and requests cross the registered b
   });
   vm.runInContext(functions, context);
   context.aiSettings = context.loadAiSettings();
-  assert.equal(context.aiSettings.provider, 'deepseek', 'an enabled DeepSeek choice must survive startup');
-  assert.equal(context.aiSettings.providers.deepseek.key, '');
-  assert.equal(context.aiSettings.providers.deepseek.keyPresent, true, 'native credential metadata must survive startup');
+  // DeepSeek was removed in 1.2.1: a reader who had chosen it lands on OpenAI with no request sent.
+  assert.equal(context.aiSettings.provider, 'openai', 'a DeepSeek choice falls back after the removal');
+  assert.equal(context.aiSettings.providers.deepseek, undefined);
+  assert.equal(notices['readingRoom.deepseekRemoved.v1'], 'pending', 'the reader is told once');
+  assert.equal(context.aiSettings.providers.openai.keyPresent, true, 'native credential metadata must survive startup');
   context.saveAiSettings();
   assert.equal(saved.key, 'readingRoom.ai.providers.v1');
-  assert.equal(JSON.parse(saved.value).providers.deepseek.key, '');
-  for (const provider of ['deepseek', 'openai', 'anthropic']) {
+  assert.equal(JSON.parse(saved.value).providers.deepseek, undefined);
+  assert.equal(JSON.parse(saved.value).providers.openai.key, '');
+  for (const provider of ['openai', 'anthropic']) {
     persisted.provider = provider;
     const result = await context.runAiMessages([{ role: 'user', content: 'Explain this.' }], 240);
     assert.equal(result.text, 'Native reply');
     assert.equal(result.provider, provider);
   }
-  assert.deepEqual(JSON.parse(JSON.stringify(bridgeCalls)), ['deepseek', 'openai', 'anthropic'].map(provider => ({
+  assert.deepEqual(JSON.parse(JSON.stringify(bridgeCalls)), ['openai', 'anthropic'].map(provider => ({
     provider, model: persisted.providers[provider].model, messages: [{ role: 'user', content: 'Explain this.' }],
     maxTokens: 240, consentVersion: 2
   })));
   assert.equal(JSON.stringify(bridgeCalls).includes('must-be-scrubbed'), false);
-  for (const provider of ['gemini', 'compatible', 'browser']) {
+  for (const provider of ['gemini', 'compatible', 'browser', 'deepseek']) {
     await assert.rejects(context.runAiMessages([], 240, null, {
       id: provider, label: provider, cfg: { key: 'never-send-this', model: 'test', endpoint: 'https://example.invalid' }
     }), /Choose|not enabled|not supported|unavailable/i);
   }
-  assert.equal(bridgeCalls.length, 3, 'unsupported native routes must never cross the bridge');
+  assert.equal(bridgeCalls.length, 2, 'unsupported native routes must never cross the bridge');
   context.window.Capacitor.Plugins.PhloemAI = null;
   await assert.rejects(context.runAiMessages([], 240, null, {
-    id: 'deepseek', label: 'DeepSeek', cfg: { key: 'must-not-fallback-to-web', model: 'deepseek-test' }
+    id: 'openai', label: 'OpenAI', cfg: { key: 'must-not-fallback-to-web', model: 'gpt-test' }
   }), /native|bridge|unavailable|restart|reopen/i);
 });
 
@@ -263,14 +267,17 @@ test('native AI security and privacy declarations remain attached to the app tar
   }
   assert.match(html, /id="aiSettingsSection"/);
   assert.doesNotMatch(reader, /nativePlugin\.configure\(\{provider:id,key:/);
-  for (const host of ['api.openai.com', 'api.anthropic.com', 'api.deepseek.com']) {
+  for (const host of ['api.openai.com', 'api.anthropic.com']) {
     assert.match(plugin, new RegExp(host.replaceAll('.', '\\.')));
   }
-  for (const heldHost of ['generativelanguage.googleapis.com']) {
+  for (const heldHost of ['generativelanguage.googleapis.com', 'api.deepseek.com']) {
     assert.doesNotMatch(plugin, new RegExp(heldHost.replaceAll('.', '\\.')));
   }
   const supported = plugin.match(/supportedProviders = Set\(\[([^\]]+)\]\)/)?.[1].match(/"([^"]+)"/g).map(value => JSON.parse(value));
-  assert.deepEqual(supported?.sort(), ['anthropic', 'deepseek', 'openai']);
+  assert.deepEqual(supported?.sort(), ['anthropic', 'openai']);
+  // DeepSeek stays known only so a launch deletes its Keychain key and consent.
+  assert.match(plugin, /knownProviders = Set\(\[[^\]]*"deepseek"/);
+  assert.match(plugin, /for provider in Self\.knownProviders\.subtracting\(Self\.supportedProviders\)/);
   assert.match(adapter, /\['auto', 'compatible', 'gemini'\]/);
   assert.match(adapter, /providerSelect\.onchange\(\)/);
   assert.match(reader, /\['auto','compatible','gemini'\]\.indexOf\(cfg\.provider\)/);
@@ -285,7 +292,7 @@ test('native AI security and privacy declarations remain attached to the app tar
 
 test('native provider defaults avoid retired compatibility model names', async () => {
   const reader = await readFile(path.join(defaultRepoRoot, 'reading.js'), 'utf8');
-  assert.match(reader, /deepseek:\{label:'DeepSeek',model:'deepseek-flash'\}/);
+  assert.doesNotMatch(reader, /deepseek:\{label:'DeepSeek'/);
   assert.match(reader, /anthropic:\{label:'Anthropic',model:'claude-sonnet-4-6'\}/);
   assert.doesNotMatch(reader, /anthropic:\{label:'Anthropic',model:'claude-sonnet-4-20250514'\}/);
 });

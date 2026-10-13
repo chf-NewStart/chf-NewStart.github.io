@@ -16,7 +16,6 @@
   var pdfInkController=null,pdfWriteMode=false,pdfInkTool='pen',pdfInkColor='black',pdfInkWidth=1.5;
   var AI_PROVIDERS = {
     gemini:{label:'Gemini API',model:'gemini-3.6-flash'},
-    deepseek:{label:'DeepSeek',model:'deepseek-flash'},
     openai:{label:'OpenAI',model:'gpt-5-mini'},
     anthropic:{label:'Anthropic',model:'claude-sonnet-4-6'},
     compatible:{label:'OpenAI-compatible',model:'',endpoint:''}
@@ -29,10 +28,9 @@
      Store region where Google is reachable. */
   function nativeGooglePlugin(){return window.PHLOEM_NATIVE&&window.PHLOEM_GOOGLE_DRIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemGoogle||null;}
   function nativeCloudPlugin(){return window.PHLOEM_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemCloud||null;}
-  function nativeAiDestination(id){return{id:'',gemini:'generativelanguage.googleapis.com',deepseek:'api.deepseek.com',openai:'api.openai.com',anthropic:'api.anthropic.com'}[id]||'';}
+  function nativeAiDestination(id){return{id:'',gemini:'generativelanguage.googleapis.com',openai:'api.openai.com',anthropic:'api.anthropic.com'}[id]||'';}
   function nativeAiPrivacy(id){return{
     gemini:{url:'https://ai.google.dev/gemini-api/terms',label:'Google Gemini terms and data use',detail:'Google’s data use depends on your API plan; unpaid Gemini services may use submitted content to improve Google products and may involve human review.'},
-    deepseek:{url:'https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html',label:'DeepSeek privacy policy',detail:'DeepSeek’s published policy describes processing and storage in China, retention for service and other stated purposes, and possible model improvement use. Phloem cannot guarantee no training or a fixed deletion period for API content. Review your DeepSeek account terms before sending sensitive material.'},
     openai:{url:'https://developers.openai.com/api/docs/guides/your-data',label:'OpenAI API data controls',detail:'OpenAI says API data is not used for model training unless the API customer opts in; abuse-monitoring logs may retain prompts and responses for up to 30 days by default.'},
     anthropic:{url:'https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data',label:'Anthropic API data retention',detail:'Anthropic says API inputs and outputs are not used for training by default. Standard content is normally deleted within 30 days, but safety, feedback, legal, contractual, or feature-specific exceptions can last longer.'}
   }[id]||{url:'',label:'Provider privacy information',detail:'Review the provider’s terms and privacy policy before sending reading context.'};}
@@ -151,12 +149,32 @@
       cfg.provider=saved.provider==='browser'?'auto':(saved.provider||'auto');
       Object.keys(cfg.providers).forEach(function(id){if(saved.providers[id])cfg.providers[id]=Object.assign(cfg.providers[id],saved.providers[id]);});
     }
-    if(cfg.providers.deepseek.model==='deepseek-v4-flash')cfg.providers.deepseek.model='deepseek-flash';
+    // DeepSeek left Phloem (Waterloo IST lists it as not approved for University data).
+    if(retireDeepSeek(saved))cfg.provider='auto';
     if(cfg.providers.anthropic.model==='claude-sonnet-4-20250514')cfg.providers.anthropic.model='claude-sonnet-4-6';
-    var legacy='';if(!window.PHLOEM_NATIVE)try{legacy=localStorage.getItem(LEGACY_AI_KEY)||'';}catch(e){}
-    if(legacy&&!cfg.providers.deepseek.key){cfg.providers.deepseek.key=legacy;if(!saved)cfg.provider='deepseek';try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg));}catch(e){}}
     if(window.PHLOEM_NATIVE){var scrubbed=false;Object.keys(cfg.providers).forEach(function(id){if(cfg.providers[id].key)scrubbed=true;cfg.providers[id].key='';cfg.providers[id].keyPresent=!!cfg.providers[id].keyPresent;if(id==='gemini'&&cfg.providers[id].keyPresent){cfg.providers[id].keyPresent=false;scrubbed=true;}});if(['auto','compatible','gemini'].indexOf(cfg.provider)>=0){cfg.provider='openai';scrubbed=true;}if(scrubbed)try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(cfg));localStorage.removeItem(LEGACY_AI_KEY);}catch(e){}}
     if(!AI_PROVIDERS[cfg.provider]&&cfg.provider!=='auto')cfg.provider='auto';return cfg;
+  }
+  /* DeepSeek was an AI provider until Oct 2026. Its saved key (and the older single-key slot,
+     which only ever held a DeepSeek key) are deleted, a reader who had chosen it falls back
+     to the private on-device mode, and Phloem says so once. The iPad app deletes its
+     Keychain key and consent natively. Returns whether DeepSeek was the chosen provider.
+     The first settings load runs before later var lines, hence the literal storage key. */
+  function retireDeepSeek(saved){
+    var chosen=!!(saved&&saved.provider==='deepseek'),legacy='';try{legacy=localStorage.getItem(LEGACY_AI_KEY)||'';}catch(e){}
+    var dk=saved&&saved.providers&&saved.providers.deepseek;if(!chosen&&!legacy&&!dk)return false;
+    try{
+      if(saved&&saved.providers){delete saved.providers.deepseek;if(chosen)saved.provider='auto';localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(saved));}
+      localStorage.removeItem(LEGACY_AI_KEY);
+      // Only someone who had set DeepSeek up is told; a new reader never hears of it.
+      if(chosen||legacy||(dk&&(dk.key||dk.keyPresent)))localStorage.setItem('readingRoom.deepseekRemoved.v1','pending');
+    }catch(e){}
+    return chosen;
+  }
+  function showDeepSeekNotice(){
+    var pending='';try{pending=localStorage.getItem('readingRoom.deepseekRemoved.v1');}catch(e){}if(pending!=='pending')return;
+    try{localStorage.setItem('readingRoom.deepseekRemoved.v1','shown');}catch(e){}
+    showError('Phloem no longer offers DeepSeek as an AI provider, and the DeepSeek key saved on this device has been deleted. Nothing more is sent to DeepSeek. AI stays optional: you can keep reading without it, use the private on-device mode where your device supports it, or choose another provider in settings.','DeepSeek support was removed');
   }
   function saveAiSettings(){try{var saved=aiSettings;if(window.PHLOEM_NATIVE){saved=JSON.parse(JSON.stringify(aiSettings));Object.keys(saved.providers||{}).forEach(function(id){saved.providers[id].key='';});}localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(saved));}catch(e){} }
   function normalizePassEndpoint(value){
@@ -181,7 +199,7 @@
   }
   function browserLanguageModel(){return window.LanguageModel||(window.ai&&window.ai.languageModel)||null;}
   function cloudAiRoute(preferred){
-    var ids=preferred&&preferred!=='auto'?[preferred]:['gemini','deepseek','openai','anthropic','compatible'];
+    var ids=preferred&&preferred!=='auto'?[preferred]:['gemini','openai','anthropic','compatible'];
     for(var i=0;i<ids.length;i++){var id=ids[i],cfg=aiSettings.providers[id]||{},credential=cfg.key||(nativeAiPlugin()&&cfg.keyPresent);if(AI_PROVIDERS[id]&&credential&&cfg.model&&(id!=='compatible'||cfg.endpoint))return{id:id,label:AI_PROVIDERS[id].label,cfg:cfg};}
     return null;
   }
@@ -204,7 +222,7 @@
   function aiTranscript(messages){return aiTurns(messages).map(function(message){return(message.role==='assistant'?'Assistant':'Reader')+': '+message.content;}).join('\n\n');}
   function browserAiOptions(api,system){return api===window.LanguageModel?{initialPrompts:[{role:'system',content:system}]}:{systemPrompt:system};}
   function browserDownloadMessage(loaded){loaded=Number(loaded);if(!Number.isFinite(loaded)||loaded<=0)return'Chrome is starting the on-device Gemini download…';if(loaded>=1)return'Gemini is downloaded. Chrome is preparing it for use…';return'Downloading on-device Gemini… '+Math.max(1,Math.round(loaded*100))+'%';}
-  function browserAiFriendlyError(error){if(error&&(error.name==='NotAllowedError'||error.name==='InvalidStateError'))return aiSetupError('Chrome needs a direct click to download Gemini. Open Desk settings and press Prepare on-device Gemini.');if(error&&error.name==='NotSupportedError')return aiSetupError('This device cannot run Gemini Nano. Choose DeepSeek or another cloud provider in settings.');return error;}
+  function browserAiFriendlyError(error){if(error&&(error.name==='NotAllowedError'||error.name==='InvalidStateError'))return aiSetupError('Chrome needs a direct click to download Gemini. Open Desk settings and press Prepare on-device Gemini.');if(error&&error.name==='NotSupportedError')return aiSetupError('This device cannot run Gemini Nano. Choose a cloud provider in settings, or keep reading without AI.');return error;}
   function prepareBrowserAi(onProgress){
     if(localAiPreparePromise)return localAiPreparePromise;var api=browserLanguageModel();if(!api)return Promise.reject(aiSetupError('On-device Gemini is not available in this browser. Choose a cloud provider in settings.'));
     var options=browserAiOptions(api,'You are a concise research reading partner.');options.monitor=function(m){if(!m||!m.addEventListener)return;m.addEventListener('downloadprogress',function(event){var loaded=Number(event.loaded);aiProgress(onProgress,browserDownloadMessage(loaded),loaded>=1?null:Math.max(0,loaded*100));});};aiProgress(onProgress,'Asking Chrome to prepare on-device Gemini…',null);
@@ -217,7 +235,7 @@
     var api=browserLanguageModel();if(!api)throw aiSetupError('On-device Gemini is not available in this browser. Choose a cloud provider in settings.');
     if(localAiPreparePromise)await localAiPreparePromise;var system=aiSystem(messages),options=browserAiOptions(api,system),availability='available';
     try{if(api.availability)availability=await api.availability(options);else if(api.capabilities){var caps=await api.capabilities();availability=caps&&caps.available||'unavailable';}}catch(e){availability='unavailable';}
-    if(availability==='unavailable'||availability==='no')throw aiSetupError('This device cannot run Gemini Nano. Choose Gemini, DeepSeek, or another cloud provider in settings.');
+    if(availability==='unavailable'||availability==='no')throw aiSetupError('This device cannot run Gemini Nano. Choose a cloud provider in settings, or keep reading without AI.');
     if(availability==='downloadable'||availability==='after-download'||availability==='downloading')aiProgress(onProgress,'Preparing on-device Gemini…',null);
     options.monitor=function(m){if(!m||!m.addEventListener)return;m.addEventListener('downloadprogress',function(e){var loaded=Number(e.loaded);aiProgress(onProgress,browserDownloadMessage(loaded),loaded>=1?null:Math.max(0,loaded*100));});};
     var session;
@@ -238,9 +256,6 @@
     }else if(id==='gemini'){
       response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(cfg.model)+':generateContent',{method:'POST',headers:{'x-goog-api-key':cfg.key,'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:system}]},contents:turns.map(function(message){return{role:message.role==='assistant'?'model':'user',parts:[{text:message.content}]};}),generationConfig:{maxOutputTokens:maxTokens}})});
       await aiResponseError(response,route.label);data=await response.json();text=((((data.candidates||[])[0]||{}).content||{}).parts||[]).map(function(part){return part.text||'';}).join('');
-    }else if(id==='deepseek'){
-      var deepseekBody={model:cfg.model,max_tokens:maxTokens,thinking:{type:'disabled'},messages:(messages||[]).map(function(message){return{role:message.role,content:message.content};})};if(/return only json/i.test(system))deepseekBody.response_format={type:'json_object'};response=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},body:JSON.stringify(deepseekBody)});
-      await aiResponseError(response,route.label);data=await response.json();text=String(((((data.choices||[])[0]||{}).message||{}).content)||'');
     }else if(id==='openai'){
       response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},body:JSON.stringify({model:cfg.model,max_output_tokens:maxTokens,instructions:system,input:turns})});
       await aiResponseError(response,route.label);data=await response.json();text=String(data.output_text||'');if(!text)text=(data.output||[]).reduce(function(all,item){return all.concat((item.content||[]).filter(function(part){return part.type==='output_text';}).map(function(part){return part.text||'';}));},[]).join('');
@@ -255,7 +270,7 @@
   }
   async function runAiMessages(messages,maxTokens,onProgress,routeOverride){
     aiSettings=loadAiSettings();var route=routeOverride||activeAiRoute(false);if(!route)throw aiSetupError('Choose an AI provider and add its API key in settings.');
-    var nativePlugin=nativeAiPlugin();if(window.PHLOEM_NATIVE&&!nativePlugin)throw aiSetupError('The secure iPad AI connection is unavailable. Close and reopen Phloem, then try again.');if(nativePlugin){if(route.id!=='deepseek'&&route.id!=='openai'&&route.id!=='anthropic')throw aiSetupError('Choose DeepSeek, OpenAI, or Anthropic in iPad settings.');aiProgress(onProgress,'Asking '+route.label+'…');try{return await nativePlugin.request({provider:route.id,model:route.cfg.model,messages:messages,maxTokens:maxTokens,consentVersion:NATIVE_AI_CONSENT_VERSION});}catch(error){throw aiSetupError(error&&error.message||'The native AI request failed.');}}
+    var nativePlugin=nativeAiPlugin();if(window.PHLOEM_NATIVE&&!nativePlugin)throw aiSetupError('The secure iPad AI connection is unavailable. Close and reopen Phloem, then try again.');if(nativePlugin){if(route.id!=='openai'&&route.id!=='anthropic')throw aiSetupError('Choose OpenAI or Anthropic in iPad settings.');aiProgress(onProgress,'Asking '+route.label+'…');try{return await nativePlugin.request({provider:route.id,model:route.cfg.model,messages:messages,maxTokens:maxTokens,consentVersion:NATIVE_AI_CONSENT_VERSION});}catch(error){throw aiSetupError(error&&error.message||'The native AI request failed.');}}
     if(route.id==='browser')return runBrowserAi(messages,onProgress);
     aiProgress(onProgress,'Asking '+route.label+'…');return runCloudAi(route,messages,maxTokens);
   }
@@ -1460,7 +1475,7 @@
   }
   function syncLibraryNoteStyleControl(){
     document.documentElement.dataset.libraryNoteStyle=libraryNoteStyle;
-    document.querySelectorAll('[data-library-note-style]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.libraryNoteStyle===libraryNoteStyle));});
+    document.querySelectorAll('button[data-library-note-style]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.libraryNoteStyle===libraryNoteStyle));});
   }
   syncLibraryNoteStyleControl();
   function localReadingAvailability(ch){
@@ -1818,7 +1833,7 @@
   document.querySelectorAll('[data-library-view]').forEach(function(button){
     button.onclick=function(){var next=button.dataset.libraryView;if(next===libraryViewMode)return;libraryListSelected={};libraryViewMode=next;try{localStorage.setItem(LIBRARY_VIEW_KEY,libraryViewMode);}catch(e){}syncLibraryViewControl();renderShelf();};
   });
-  document.querySelectorAll('[data-library-note-style]').forEach(function(button){
+  document.querySelectorAll('button[data-library-note-style]').forEach(function(button){
     button.onclick=function(){var next=button.dataset.libraryNoteStyle;if(next===libraryNoteStyle)return;libraryNoteStyle=next;try{localStorage.setItem(LIBRARY_NOTE_STYLE_KEY,libraryNoteStyle);}catch(e){}syncLibraryNoteStyleControl();};
   });
   byId('cleanDuplicatesBtn').onclick=async function(){
@@ -2939,7 +2954,7 @@
     guideOverlay.dataset.guideOrientation=comfort.guideOrientation;
     guideOverlay.style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));
     document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
-    document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideOrientation===comfort.guideOrientation));});
+    document.querySelectorAll('button[data-guide-orientation]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideOrientation===comfort.guideOrientation));});
     document.querySelectorAll('[data-pdf-layout]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.pdfLayout===comfort.pdfLayout));});
     document.querySelectorAll('[data-zen-pdf-layout]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.zenPdfLayout===comfort.pdfLayout));});
     var previewButton=byId('pdfLinkPreviewBtn');previewButton.setAttribute('aria-pressed',String(!!comfort.linkPreviews));previewButton.textContent=comfort.linkPreviews?'Previews on':'Previews off';
@@ -2983,7 +2998,7 @@
     if(announce!==false)showReaderToast(value==='original'?'Original paper colors':value==='cream'?'Cream paper · softer white':'Inverted paper');
   }
   function cyclePaperAppearance(){var at=PAPER_APPEARANCE_ORDER.indexOf(paperAppearance);setPaperAppearance(PAPER_APPEARANCE_ORDER[(Math.max(0,at)+1)%PAPER_APPEARANCE_ORDER.length]);}
-  document.querySelectorAll('[data-paper-appearance]').forEach(function(btn){btn.onclick=function(){setPaperAppearance(btn.dataset.paperAppearance);};});
+  document.querySelectorAll('button[data-paper-appearance]').forEach(function(btn){btn.onclick=function(){setPaperAppearance(btn.dataset.paperAppearance);};});
   byId('paperAppearanceBtn').onclick=cyclePaperAppearance;
   function setPdfLayout(layout,restoreSpot){
     if(['scroll','page','book'].indexOf(layout)<0)return;
@@ -3000,7 +3015,7 @@
   document.querySelectorAll('[data-pdf-ink-style]').forEach(function(btn){btn.onclick=function(){if(pdfInkController)pdfInkController.cancel();comfort.inkStyle=btn.dataset.pdfInkStyle;applyComfort();showReaderToast(btn.textContent+' ink for new strokes · existing notes unchanged');};});
   byId('pdfLinkPreviewBtn').onclick=function(){comfort.linkPreviews=!comfort.linkPreviews;if(!comfort.linkPreviews)hidePdfReferencePreview();applyComfort();showReaderToast('PDF link previews '+(comfort.linkPreviews?'on':'off'));};
   document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.onclick=function(){comfort.guide=btn.dataset.guideColor;comfort.focus=true;applyComfort();showReaderToast(btn.dataset.guideColor.charAt(0).toUpperCase()+btn.dataset.guideColor.slice(1)+' reading guide');};});
-  document.querySelectorAll('[data-guide-orientation]').forEach(function(btn){btn.onclick=function(){comfort.guideOrientation=btn.dataset.guideOrientation;comfort.focus=true;guideOffset=null;applyComfort();placeGuide();showReaderToast(comfort.guideOrientation==='column'?'Vertical guide · follows one top-to-bottom column':'Row guide · follows one horizontal passage');};});
+  document.querySelectorAll('button[data-guide-orientation]').forEach(function(btn){btn.onclick=function(){comfort.guideOrientation=btn.dataset.guideOrientation;comfort.focus=true;guideOffset=null;applyComfort();placeGuide();showReaderToast(comfort.guideOrientation==='column'?'Vertical guide · follows one top-to-bottom column':'Row guide · follows one horizontal passage');};});
   document.querySelectorAll('[data-guide-scope]').forEach(function(btn){btn.onclick=function(){comfort.guideScope=btn.dataset.guideScope;comfort.focus=true;applyComfort();placeGuide();showReaderToast(btn.textContent+' guide');};});
   function setGuideDim(value){
     comfort.guideDim=Math.max(70,Math.min(100,+value||85));
@@ -4699,7 +4714,7 @@
     if(frame){frame.classList.toggle('cream',cream);frame.classList.toggle('dark-paper',inverted);frame.dataset.paperAppearance=paperAppearance;}
     if(doc){doc.classList.toggle('paper-original',paperAppearance==='original');doc.classList.toggle('paper-cream',cream);doc.classList.toggle('paper-inverted',inverted);}
     document.body.dataset.paperAppearance=paperAppearance;
-    document.querySelectorAll('[data-paper-appearance]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.paperAppearance===paperAppearance));});
+    document.querySelectorAll('button[data-paper-appearance]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.paperAppearance===paperAppearance));});
     syncPaperAppearanceShortcuts();
   }
   /* Continuous vertical scroll: every page has a placeholder box up front, and real
@@ -9673,9 +9688,6 @@
      merge when the record still carries the change tag of this device's own save, and
      skips the upload when nothing changed since. Both are in memory only: a relaunch
      merges in full once. */
-  var iCloudOwnTag='',iCloudOwnPayload='';
-  // A sync gives the page a turn between its heavy steps, and waits while the Pencil writes.
-  async function syncBreath(){await new Promise(function(res){setTimeout(res,0);});for(var waited=0;penOnGlass()&&waited<5000;waited+=250)await new Promise(function(res){setTimeout(res,250);});}
   async function iCloudSync(interactive){
     if(!iCloudOn())return;if(iCloudSyncing||penOnGlass()){scheduleSync();return;}iCloudSyncing=true;iCloudSetStatus('Checking your private iCloud library…','☁ iCloud · syncing');
     var plugin=iCloudPlugin(),sent=0,remoteOnly=0,paused=0;
@@ -9685,8 +9697,8 @@
       if(!account.available){var accountError=new Error(iCloudAccountMessage(account.accountStatus));accountError.accountUnavailable=['noAccount','restricted','signInRequired'].indexOf(account.accountStatus)>=0;throw accountError;}
       for(var attempt=0;attempt<3;attempt++){
         var remote=await plugin.fetchLibrary(),changeTag=remote&&remote.changeTag||'',ownCopy=!!(remote&&remote.found&&changeTag&&changeTag===iCloudOwnTag);
-        if(remote&&remote.found&&!ownCopy){await syncBreath();var incoming=JSON.parse(remote.payload);await syncBreath();if(!incoming||!Array.isArray(incoming.chapters))throw new Error('The iCloud library has an unexpected format. Phloem did not overwrite it.');if(mergeState(incoming)){persist(false);renderShelf();updateReviewBadge();}}
-        await repairDuplicateStorage();await syncBreath();
+        if(remote&&remote.found&&!ownCopy){var incoming=JSON.parse(remote.payload);if(!incoming||!Array.isArray(incoming.chapters))throw new Error('The iCloud library has an unexpected format. Phloem did not overwrite it.');if(mergeState(incoming)){persist(false);renderShelf();updateReviewBadge();}}
+        await repairDuplicateStorage();
         /* OCR/extracted PDF text is rebuildable and can make a snapshot enormous. The
            native cloud record follows localState(): durable reading work plus metadata,
            while each original rides separately as a CKAsset. */
@@ -9716,6 +9728,9 @@
     }catch(error){if(!error||!error.accountUnavailable)scheduleSyncRetry();var reason=error&&error.message||'iCloud sync failed';iCloudSetStatus(reason,'☁ iCloud · attention');byId('syncSignal').title=reason;if(interactive&&!byId('readerPage').classList.contains('hidden'))showReaderToast('iCloud: '+reason.slice(0,80));}
     finally{iCloudSyncing=false;}
   }
+
+  // Declared after iCloudSync (var hoists) so it travels with it.
+  var iCloudOwnTag='',iCloudOwnPayload='';
 
   /* Google Drive sync — the no-setup path. The library file lives in the account's
      hidden per-app folder (drive.appdata): Phloem can see only its own file, and the
@@ -9968,8 +9983,6 @@
     for(var i=0;i<drops.length;i++){var dropId=drops[i],keepId=resolvedPaperId(dropId),drop=byName['pdf-'+dropId+'.pdf'],keep=byName['pdf-'+keepId+'.pdf'];if(!drop||!keep||drop.id===keep.id)continue;try{var gone=await fetch('https://www.googleapis.com/drive/v3/files/'+drop.id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});if(gone.ok)removed++;}catch(e){}}
     return removed;
   }
-  // The Drive twin of iCloudOwnTag: the file version of this device's last upload.
-  var gdriveOwnVersion='',gdriveOwnFile='',gdriveOwnPayload='';
   async function gdriveSync(interactive,retried){
     if(!gdriveOn())return;if(gdriveSyncing||penOnGlass()){scheduleSync();return;}
     /* The iPad bridge calls again after its region/account check. Do not fall back
@@ -9988,9 +10001,9 @@
         if(!got.ok){var readErr=new Error('Drive library download failed ('+got.status+')');if(got.status===401)readErr.auth=true;throw readErr;}
         var remote;try{remote=await got.json();}catch(parseError){throw new Error('The Drive library could not be read safely. Phloem did not overwrite it.');}
         if(!remote||!Array.isArray(remote.chapters))throw new Error('The Drive library has an unexpected format. Phloem did not overwrite it.');
-        await syncBreath();if(mergeState(remote)){persist(false);renderShelf();updateReviewBadge();}
+        if(mergeState(remote)){persist(false);renderShelf();updateReviewBadge();}
       }
-      await repairDuplicateStorage();await syncBreath();
+      await repairDuplicateStorage();
       var payload=JSON.stringify({chapters:await chaptersForSync(),deleted:state.deleted||{},merged:state.merged||{},categoryOrder:state.categoryOrder||[],categoryOrderUpdatedAt:state.categoryOrderUpdatedAt||0}),up;
       if(ownCopy&&payload===gdriveOwnPayload)up={ok:true,json:function(){return Promise.resolve({id:fileId,version:gdriveOwnVersion});}};
       else if(fileId){
@@ -10023,6 +10036,8 @@
     }
     gdriveSyncing=false;
   }
+  // The Drive twin of iCloudOwnTag: the file version of this device's last upload.
+  var gdriveOwnVersion='',gdriveOwnFile='',gdriveOwnPayload='';
   byId('gdriveConnectBtn').onclick=async function(){
     var btn=this;btn.disabled=true;byId('gdriveStatus').textContent='Waiting for Google sign-in…';
     try{
@@ -10060,7 +10075,7 @@
   }
   function renderAiProviderFields(){
     var id=byId('aiProvider').value,cfg=aiSettings.providers[id]||{},cloud=id!=='auto',prepare=byId('aiPrepareLocal'),nativePlugin=nativeAiPlugin();byId('aiCloudFields').classList.toggle('hidden',!cloud);byId('aiEndpointFields').classList.toggle('hidden',id!=='compatible');byId('aiProviderNote').textContent=aiProviderNote(id);prepare.classList.toggle('hidden',!!nativePlugin||id!=='auto'||!browserLanguageModel());prepare.disabled=false;prepare.textContent='Prepare on-device Gemini';setTaskProgress('aiKeyProgress',false);
-    renderNativeAiConsent(id);if(nativePlugin&&cloud){var privacy=nativeAiPrivacy(id),policy=byId('nativeAiProviderPolicy');byId('nativeAiDisclosure').textContent='Before enabling '+AI_PROVIDERS[id].label+': you must be 18 or older. The context described above will be sent securely to '+nativeAiDestination(id)+' only when you press an AI action. Phloem does not receive it. '+privacy.detail+' AI output may be inaccurate; verify important claims. Do not send confidential, sensitive, or third-party personal information.';policy.href=privacy.url;policy.textContent=privacy.label;}
+    renderNativeAiConsent(id);if(nativePlugin&&cloud){var privacy=nativeAiPrivacy(id),policy=byId('nativeAiProviderPolicy');byId('nativeAiDisclosure').textContent='Before enabling '+AI_PROVIDERS[id].label+': you must be 18 or older. The context described above will be sent securely to '+nativeAiDestination(id)+' only when you press an AI action. Phloem does not receive it. Do not send unpublished, confidential or restricted university material. '+privacy.detail+' AI output may be inaccurate; verify important claims. Do not send confidential, sensitive, or third-party personal information.';policy.href=privacy.url;policy.textContent=privacy.label;}
     if(cloud){byId('aiKey').value=nativePlugin?'':cfg.key||'';byId('aiKey').placeholder=nativePlugin&&cfg.keyPresent?'Key stored in iOS Keychain · enter only to replace':AI_PROVIDERS[id].label+' API key';byId('aiModel').value=cfg.model||AI_PROVIDERS[id].model||'';byId('aiEndpoint').value=cfg.endpoint||'';}refreshAiSettingsStatus(id);
   }
   async function refreshAiSettingsStatus(id){
@@ -10072,7 +10087,7 @@
   function fillAiSettings(){
     var statusEpoch=++nativeAiSettingsEpoch;aiSettings=loadAiSettings();byId('aiProvider').value=aiSettings.provider||'auto';byId('nativeAiConsentCheck').checked=false;renderAiProviderFields();
     var plugin=nativeAiPlugin();if(!plugin||!plugin.status)return;
-    plugin.status().then(function(result){if(statusEpoch!==nativeAiSettingsEpoch)return;var present={};nativeAiConsentedProviders={};(result.providers||[]).forEach(function(id){present[id]=true;});if(result.consentVersion===NATIVE_AI_CONSENT_VERSION)(result.consentedProviders||[]).forEach(function(id){if(present[id])nativeAiConsentedProviders[id]=true;});['gemini','deepseek','openai','anthropic'].forEach(function(id){var cfg=aiSettings.providers[id]||{};cfg.key='';cfg.keyPresent=!!present[id];aiSettings.providers[id]=cfg;});saveAiSettings();var id=byId('aiProvider').value;renderNativeAiConsent(id);refreshAiSettingsStatus(id);}).catch(function(){if(statusEpoch===nativeAiSettingsEpoch)byId('aiKeyStatus').textContent='Phloem could not check iOS Keychain. Close settings and try again.';});
+    plugin.status().then(function(result){if(statusEpoch!==nativeAiSettingsEpoch)return;var present={};nativeAiConsentedProviders={};(result.providers||[]).forEach(function(id){present[id]=true;});if(result.consentVersion===NATIVE_AI_CONSENT_VERSION)(result.consentedProviders||[]).forEach(function(id){if(present[id])nativeAiConsentedProviders[id]=true;});['gemini','openai','anthropic'].forEach(function(id){var cfg=aiSettings.providers[id]||{};cfg.key='';cfg.keyPresent=!!present[id];aiSettings.providers[id]=cfg;});saveAiSettings();var id=byId('aiProvider').value;renderNativeAiConsent(id);refreshAiSettingsStatus(id);}).catch(function(){if(statusEpoch===nativeAiSettingsEpoch)byId('aiKeyStatus').textContent='Phloem could not check iOS Keychain. Close settings and try again.';});
   }
   function fillPassSettings(){
     var service='';try{service=localStorage.getItem(AI_PASS_SERVICE_KEY)||'';}catch(e){}byId('aiPassService').value=service;byId('aiPassOwnerCode').value='';renderSharedAiPass();if(!loadSharedAiPass())byId('aiPassStatus').textContent=service?'Ready to make a one-review link. Your approval code is never saved here.':'Add the address of your private pass service once it is deployed.';
@@ -10243,12 +10258,10 @@
     try{
       var cfg=decodeSetup(m[1]),linkedSync=cfg.github&&cfg.github.repo&&cfg.github.token&&cfg.github.pass?cfg.github:(cfg.repo&&cfg.token&&cfg.pass?{repo:cfg.repo,token:cfg.token,pass:cfg.pass}:null),linkedAi=cfg.aiSettings&&cfg.aiSettings.providers?cfg.aiSettings:null,parts=[];
       if(linkedAi)parts.push(aiKeyCount(linkedAi)+' saved AI '+(aiKeyCount(linkedAi)===1?'key':'keys')+' and provider settings');
-      else if(cfg.ai)parts.push('a saved DeepSeek key');
       if(linkedSync)parts.push('GitHub sync for '+linkedSync.repo);
       if(cfg.googleDrive)parts.push('a reminder to sign in to Google Drive');
       if(parts.length&&confirm('Configure this device with '+parts.join(', ')+'? Only continue if you made this private link yourself.')){
-        if(linkedAi){try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(linkedAi));var linkedDeepSeek=linkedAi.providers.deepseek&&linkedAi.providers.deepseek.key;if(linkedDeepSeek)localStorage.setItem(LEGACY_AI_KEY,linkedDeepSeek);else localStorage.removeItem(LEGACY_AI_KEY);}catch(e){}}
-        else if(cfg.ai){try{localStorage.setItem(LEGACY_AI_KEY,cfg.ai);localStorage.removeItem(AI_SETTINGS_KEY);}catch(e){}}
+        if(linkedAi){try{localStorage.setItem(AI_SETTINGS_KEY,JSON.stringify(linkedAi));}catch(e){}}
         aiSettings=loadAiSettings();if(linkedSync){syncCfg={repo:linkedSync.repo,token:linkedSync.token,pass:linkedSync.pass};localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg));}
         byId('syncSignal').title='';fillSettings();byId('deviceLinkStatus').textContent='This device is configured'+(cfg.googleDrive&&!gdriveOn()?'. Sign in to Google Drive above to reconnect library sync.':'.');if(linkedSync)doSync();
       }
@@ -10269,6 +10282,7 @@
   }
   importSetup();
   importSharedReview();
+  aiSettings=loadAiSettings();setTimeout(showDeepSeekNotice,900);
   importSharedAiPass();
   addEventListener('hashchange',importSetup);
   addEventListener('hashchange',importSharedReview);
@@ -10366,7 +10380,7 @@
         }catch(error){if(byId('aiProvider').value===id)byId('aiKeyStatus').textContent=error&&error.message||'The API key could not be saved securely.';}
         finally{saveButton.disabled=false;}return;
       }
-      aiSettings.providers[id]={key:key,keyPresent:false,model:model,endpoint:id==='compatible'?endpoint:''};if(id==='deepseek'){if(key)localStorage.setItem(LEGACY_AI_KEY,key);else localStorage.removeItem(LEGACY_AI_KEY);}
+      aiSettings.providers[id]={key:key,keyPresent:false,model:model,endpoint:id==='compatible'?endpoint:''};
     }
     saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Asking Chrome to prepare Gemini now…':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');if(id==='auto'&&browserLanguageModel())startLocalAiPreparation();else setTaskProgress('aiKeyProgress',false);
   };

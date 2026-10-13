@@ -6,8 +6,10 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-13)
 
-- **Web:** houfu72.com/reading.html serves **v210** (iPad freeze after a stroke: sync no longer re-merges its own upload).
-- **In progress (scheduled task, 2026-10-13):** Part 0 school-fit (DeepSeek removal, AI data note, a11y, divider under sheets), then iOS 1.2.1.
+- **Web:** houfu72.com/reading.html serves **v211**: DeepSeek removed, AI data note, accessibility fixes, the
+  Workspace rail tucked under sheets, and (v210) no re-merge of the sync's own upload after a stroke.
+- **In progress (scheduled task, 2026-10-13):** iOS 1.2.1 (40) on branch `ipad-release-1.2.1-40`; promo kit in
+  `output/phloem-school-promo-2026-10/` (local, untracked); websites and CV next.
 - **App Store:** Phloem: Paper Reader **iOS 1.2.0 live**. 1.2.1 is being prepared by the
   scheduled task below. A macOS 1.0 draft exists; leave it alone.
   The EU trader status (Digital Services Act) is missing in App Store Connect, and only
@@ -95,6 +97,9 @@ If it runs out of time, it schedules its own follow-up and records it here.
 
 ## Open questions for Houfu
 
+- The **shared review pass** (`cloud-review-pass/` worker) still calls DeepSeek on the server. Ordinary
+  readers can't pick it. Switch the worker's model, or retire the pass?
+
 - Was the iPad freeze in the App Store app or the Home Screen web app? Is iCloud or Drive
   sync on there? (v210 removes the main suspect, the sync after each save; please retry
   with the big book.)
@@ -104,14 +109,24 @@ If it runs out of time, it schedules its own follow-up and records it here.
 
 ## Log
 
+- **2026-10-13 v211:** school fit (Waterloo). DeepSeek is no longer an AI provider: keys are deleted (web storage;
+  iPad Keychain natively, via the known-minus-supported purge), a reader who had chosen it falls back
+  to the private mode, and a one-time notice says so (`readingRoom.deepseekRemoved.v1`). An AI data note
+  went into settings and the iPad consent. axe-core (WCAG 2.1 A/AA) now reports 0 violations on the
+  library, settings, reader and Workspace (light and dark); the fixes were selectors that put
+  `aria-pressed` on `<html>`/`<body>`/`#pdfFrame`/`#paneSpotlight` (now `button[...]`), a region role
+  on the Workspace scroller, and the `--muted`/`--accent-button` contrast tokens. In the split, the Zen
+  rail tucks under sheets (`reading-workspace.css`; test
+  `tests/reading-workspace-divider-under-sheets.test.js`). v210 follow-up: the sync's between-step
+  yields were dropped (they reordered snapshots against imports; `reading-cloud-auto-sync` caught it).
+
 - **2026-10-13 v210:** iPad "freeze after a stroke" with the 573-page book. Each stroke's save
   started a quiet sync that downloaded, parsed and merged back the library this device had
   just uploaded, and read every original PDF's bytes (33 MB for the book) from IndexedDB.
   Seeded WebKit repro (3 MB library, 2000 Workspace strokes, book with ink, fake iPad
   iCloud): longest main-thread block after a lift 165 ms in v200 (the build inside 1.2.0),
-  189 ms in v209, 49 ms now. A sync now skips its own last upload (iCloud change tag,
-  Drive file version), uploads only on change, checks originals without reading them, and
-  yields between steps. Test: `tests/reading-sync-own-copy.test.js` (iCloud + Drive).
+  189 ms in v209, 83 ms after the fix. A sync now skips its own last upload (iCloud change tag,
+  Drive file version), uploads only on change, and checks originals without reading them. Test: `tests/reading-sync-own-copy.test.js` (iCloud + Drive).
   Not new in v203–v209; the 1.2.0 app has it too.
 
 - **2026-10-12 v209** (`ccbab5e6`): the Workspace ink kept falling behind the pen on Android.

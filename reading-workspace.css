@@ -213,3 +213,8 @@ body.workspace-full #documentPane { visibility:hidden; }
 #workspaceNewNote { touch-action:none; }
 .workspace-note-ghost { position:fixed; top:0; left:0; z-index:60; box-sizing:border-box; border:1.5px dashed color-mix(in srgb,#234f91 45%,transparent); border-radius:4px; background:color-mix(in srgb,#e5df73 55%,transparent); box-shadow:0 10px 22px rgba(42,38,30,.18); pointer-events:none; }
 .workspace-note-ghost-away { opacity:.35; }
+/* In the split the Zen rail sits on the divider, right where sheets open (Reading settings,
+   the Notebook, Find, the selection, lookup and sticky-note cards). It tucks beneath them
+   instead of showing through; while one of its own menus is open it stays on top. Alone on
+   the paper's edge, nothing covers it and it keeps its place. (Android tester, Oct 2026) */
+body.zen.workspace-open:not(.workspace-full) .zen-dock:not(.popout-open) { z-index:43; }

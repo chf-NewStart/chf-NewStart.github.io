@@ -23,9 +23,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=210">
-  <link rel="stylesheet" href="/reading-fold.css?v=210">
-  <link rel="stylesheet" href="/reading-workspace.css?v=210">
+  <link rel="stylesheet" href="/reading.css?v=211">
+  <link rel="stylesheet" href="/reading-fold.css?v=211">
+  <link rel="stylesheet" href="/reading-workspace.css?v=211">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -491,7 +491,7 @@
             </div>
           </div>
           <p id="workspaceStatus" class="workspace-status" role="status" aria-live="polite"></p>
-          <div id="workspaceScroll" class="workspace-scroll" tabindex="0" aria-label="Scrollable workspace paper">
+          <div id="workspaceScroll" class="workspace-scroll" tabindex="0" role="region" aria-label="Scrollable workspace paper">
             <div id="workspaceStage" class="workspace-stage">
               <div id="workspaceBoard" class="workspace-board">
                 <div id="workspaceCards" class="workspace-cards"></div>
@@ -815,13 +815,13 @@
       </section>
       <section id="aiSettingsSection">
         <h3>AI assistant</h3>
+        <p class="ai-data-note" id="aiDataNote"><strong>AI is optional.</strong> Cloud AI stays off until you choose a provider and add your own key. Do not send unpublished, confidential or restricted university material (unpublished manuscripts, research data, student records) to a cloud provider. The private on-device mode keeps the text on this device.</p>
         <p>Choose one AI mode. Private uses Gemini Nano inside compatible desktop Chrome. Choosing a cloud provider uses that provider for review classification and passage matching, while exact quoted passages are linked locally before any model call. Cloud providers receive extracted review text and candidate excerpts—never the PDF file itself.</p>
         <div class="ai-provider-grid">
           <label class="field-label" for="aiProvider">AI mode</label>
           <select class="field" id="aiProvider">
             <option value="auto">Private · on-device Gemini</option>
             <option value="gemini">Gemini API</option>
-            <option value="deepseek">DeepSeek API</option>
             <option value="openai">OpenAI API</option>
             <option value="anthropic">Anthropic API</option>
             <option value="compatible">Other OpenAI-compatible API</option>
@@ -984,20 +984,20 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=210',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=211',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=210" defer></script>
-<script src="/reading-stickies.js?v=210" defer></script>
-<script src="/reading-keeps.js?v=210" defer></script>
-<script src="/reading-excerpts.js?v=210" defer></script>
-<script src="/reading-excerpts-view.js?v=210" defer></script>
-<script src="/reading-workspace.js?v=210" defer></script>
-<script src="/reading-workspace-viewport.js?v=210" defer></script>
-<script src="/reading-workspace-view.js?v=210" defer></script>
-<script src="/reading-folds.js?v=210" defer></script>
-<script src="/reading-pdf-projection.js?v=210" defer></script>
-<script src="/reading-fold-view.js?v=210" defer></script>
-<script src="/reading.js?v=210" defer></script>
+<script src="/reading-ink.js?v=211" defer></script>
+<script src="/reading-stickies.js?v=211" defer></script>
+<script src="/reading-keeps.js?v=211" defer></script>
+<script src="/reading-excerpts.js?v=211" defer></script>
+<script src="/reading-excerpts-view.js?v=211" defer></script>
+<script src="/reading-workspace.js?v=211" defer></script>
+<script src="/reading-workspace-viewport.js?v=211" defer></script>
+<script src="/reading-workspace-view.js?v=211" defer></script>
+<script src="/reading-folds.js?v=211" defer></script>
+<script src="/reading-pdf-projection.js?v=211" defer></script>
+<script src="/reading-fold-view.js?v=211" defer></script>
+<script src="/reading.js?v=211" defer></script>
 </body>
 </html>

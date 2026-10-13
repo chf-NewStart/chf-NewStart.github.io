@@ -134,7 +134,7 @@ Each page is self-contained and keeps its data in the visitor's own browser
   PDF already knows) plus a cropped snapshot of the spot for the record; question
   chips (What is… / Why… / How…) and keyboard-free Summarize / Explain simply;
   answers come back as short bullets. Automatic uses Chrome's on-device Gemini
-  Nano when available; Gemini API, DeepSeek, OpenAI, Anthropic, and custom
+  Nano when available; Gemini API, OpenAI, Anthropic, and custom
   OpenAI-compatible endpoints are optional bring-your-own-key alternatives.
   Screenshot OCR runs on-device via vendored Tesseract; only selected text is
   sent to cloud providers, and provider keys never leave the device except inside

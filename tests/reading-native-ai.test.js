@@ -210,6 +210,11 @@ function check(name, actual) {
   await page.goto(origin + '/reading.html', { waitUntil: 'load' });
   await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden'));
   await page.waitForFunction(() => typeof window.__emitStorefrontChanged === 'function');
+  // DeepSeek was removed (Oct 2026): someone who had set it up is told once, plainly.
+  await page.waitForFunction(() => document.getElementById('errorDialog').open, null, { timeout: 5000 });
+  check('a one-time notice says DeepSeek support was removed', await page.locator('#errorTitle').textContent() === 'DeepSeek support was removed' &&
+    /deleted/.test(await page.locator('#errorMessage').textContent()));
+  await page.click('[data-close="errorDialog"]');
   const originalPaper = await savedPaper();
   await page.evaluate(() => window.__emitStorefrontChanged({ countryCode: 'CHN', storefrontKnown: true, cloudAIAllowed: false }));
   await page.waitForFunction(() => document.documentElement.classList.contains('phloem-ai-region-restricted'));
@@ -236,20 +241,22 @@ function check(name, actual) {
   await page.waitForFunction(() => window.PHLOEM_AI_REGION && window.PHLOEM_AI_REGION.cloudAIAllowed &&
     !document.documentElement.classList.contains('phloem-ai-region-restricted'));
   await openSettings();
-  assert.deepEqual(await page.locator('#aiProvider option').evaluateAll(options => options.map(option => option.value).sort()), ['anthropic', 'deepseek', 'openai']);
-  check('native settings offer DeepSeek, OpenAI, and Anthropic only', true);
-  check('existing DeepSeek provider remains selected', await page.locator('#aiProvider').inputValue() === 'deepseek');
-  check('existing DeepSeek Keychain metadata remains present', await page.locator('#aiKeyRemove').isVisible());
+  assert.deepEqual(await page.locator('#aiProvider option').evaluateAll(options => options.map(option => option.value).sort()), ['anthropic', 'openai']);
+  check('native settings offer OpenAI and Anthropic only (DeepSeek removed)', true);
+  check('a reader who had chosen DeepSeek moves to OpenAI', await page.locator('#aiProvider').inputValue() === 'openai');
+  check('the DeepSeek entry is gone from saved settings', !('deepseek' in (await settings()).providers) && (await settings()).provider !== 'deepseek');
+  check('existing OpenAI Keychain metadata remains present', await page.locator('#aiKeyRemove').isVisible());
   check('an existing key without a native consent receipt still requires disclosure', await page.locator('#nativeAiConsent').isVisible() &&
     await page.locator('#nativeAiConsentLabel').isVisible() && !(await page.locator('#nativeAiEnabled').isVisible()));
   check('native key input stays hidden and disabled', !(await page.locator('#aiKey').isVisible()) && await page.locator('#aiKey').isDisabled());
   check('old JavaScript credentials are scrubbed without removing Keychain metadata',
-    (await settings()).providers.deepseek.key === '' && (await settings()).providers.deepseek.keyPresent === true &&
+    (await settings()).providers.openai.key === '' && (await settings()).providers.openai.keyPresent === true &&
     await page.evaluate(() => localStorage.getItem('readingRoom.ai.v1') === null));
-  check('DeepSeek destination and China privacy disclosure are shown',
-    /api\.deepseek\.com/.test(await page.locator('#nativeAiDisclosure').textContent()) &&
-    /China/.test(await page.locator('#nativeAiDisclosure').textContent()));
-  check('DeepSeek privacy policy link is provider-specific', (await page.locator('#nativeAiProviderPolicy').getAttribute('href')).includes('deepseek'));
+  check('OpenAI destination, its data-use note and the university data note are shown',
+    /api\.openai\.com/.test(await page.locator('#nativeAiDisclosure').textContent()) &&
+    /not used for model training/.test(await page.locator('#nativeAiDisclosure').textContent()) &&
+    /unpublished, confidential or restricted university material/.test(await page.locator('#nativeAiDisclosure').textContent()));
+  check('OpenAI privacy policy link is provider-specific', (await page.locator('#nativeAiProviderPolicy').getAttribute('href')).includes('openai'));
   await page.click('#aiKeySave');
   check('saving requires affirmative consent before the native prompt', (await configureCalls()).length === 0 &&
     (await page.locator('#aiKeyStatus').textContent()).includes('accept the data-sharing disclosure'));
@@ -271,7 +278,7 @@ function check(name, actual) {
   await page.evaluate(() => { window.__nativeConfigureHasCredential = true; });
   await page.click('#aiKeySave');
   await page.waitForFunction(() => document.getElementById('aiKeyStatus').textContent.includes('stored in iOS Keychain'));
-  assert.deepEqual((await configureCalls()).at(-1), { method: 'configure', payload: { provider: 'deepseek', consentVersion: 2, consentGranted: true } });
+  assert.deepEqual((await configureCalls()).at(-1), { method: 'configure', payload: { provider: 'openai', consentVersion: 2, consentGranted: true } });
   check('secure native configure receives consent but no API key', true);
   check('consent checkbox resets after saving', !(await page.locator('#nativeAiConsentCheck').isChecked()));
   check('successful key save replaces the age/privacy form with an enabled summary',
@@ -282,16 +289,16 @@ function check(name, actual) {
   await page.click('#nativeAiReviewConsent');
   check('review disclosure reopens provider information without asking for age consent again',
     await page.locator('#nativeAiConsent').isVisible() && !(await page.locator('#nativeAiConsentLabel').isVisible()) &&
-    /api\.deepseek\.com/.test(await page.locator('#nativeAiDisclosure').textContent()));
+    /api\.openai\.com/.test(await page.locator('#nativeAiDisclosure').textContent()));
   if (process.env.PHLOEM_NATIVE_AI_SCREENSHOTS) {
     await page.locator('#settingsDialog').screenshot({ path: path.join(process.env.PHLOEM_NATIVE_AI_SCREENSHOTS, 'phloem-ai-consent-review-' + browserName + '.png') });
   }
   await page.click('#nativeAiReviewConsent');
   check('review disclosure can be collapsed again', !(await page.locator('#nativeAiConsent').isVisible()));
   const configuredBeforeModelChange = (await configureCalls()).length;
-  await page.fill('#aiModel', 'deepseek-v4-pro');
+  await page.fill('#aiModel', 'gpt-5-pro');
   await page.click('#aiKeySave');
-  await page.waitForFunction(() => JSON.parse(localStorage.getItem('readingRoom.ai.providers.v1')).providers.deepseek.model === 'deepseek-v4-pro');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('readingRoom.ai.providers.v1')).providers.openai.model === 'gpt-5-pro');
   check('changing a consented provider model does not prompt for consent or API key again',
     (await configureCalls()).length === configuredBeforeModelChange && await page.locator('#nativeAiEnabled').isVisible() &&
     !(await page.locator('#nativeAiConsent').isVisible()));
@@ -300,9 +307,11 @@ function check(name, actual) {
   check('reopening settings keeps the accepted disclosure collapsed',
     await page.locator('#nativeAiEnabled').isVisible() && !(await page.locator('#nativeAiConsent').isVisible()));
   await reloadApp();
+  await page.waitForTimeout(1300);
+  check('the DeepSeek notice is shown only once', !(await page.evaluate(() => document.getElementById('errorDialog').open)));
   await openSettings();
-  check('DeepSeek selection and credential presence survive reload', await page.locator('#aiProvider').inputValue() === 'deepseek' &&
-    (await settings()).providers.deepseek.keyPresent === true);
+  check('OpenAI selection and credential presence survive reload', await page.locator('#aiProvider').inputValue() === 'openai' &&
+    (await settings()).providers.openai.keyPresent === true);
   check('native consent receipt survives reload independently of JavaScript UI state',
     await page.locator('#nativeAiEnabled').isVisible() && !(await page.locator('#nativeAiConsent').isVisible()) &&
     (await calls()).some(call => call.method === 'status'));
@@ -310,12 +319,12 @@ function check(name, actual) {
   await openAi();
   await page.fill('#aiQuestion', 'Explain the selected page.');
   await page.click('#aiAskBtn');
-  await page.waitForFunction(() => document.getElementById('qaList').textContent.includes('Mock native deepseek reply.'));
-  const deepseekRequest = (await calls()).find(call => call.method === 'request').payload;
-  check('DeepSeek requests use native bridge with current model and consent', deepseekRequest.provider === 'deepseek' &&
-    deepseekRequest.model === 'deepseek-v4-pro' && deepseekRequest.consentVersion === 2 && deepseekRequest.maxTokens === 1200);
-  check('native request carries only chosen reading context and messages', deepseekRequest.messages.some(message => message.content.includes('Photosynthesis')) &&
-    deepseekRequest.messages.some(message => message.content.includes('Explain the selected page.')) && !('key' in deepseekRequest));
+  await page.waitForFunction(() => document.getElementById('qaList').textContent.includes('Mock native openai reply.'));
+  const openaiRequest = (await calls()).find(call => call.method === 'request').payload;
+  check('OpenAI requests use native bridge with current model and consent', openaiRequest.provider === 'openai' &&
+    openaiRequest.model === 'gpt-5-pro' && openaiRequest.consentVersion === 2 && openaiRequest.maxTokens === 1200);
+  check('native request carries only chosen reading context and messages', openaiRequest.messages.some(message => message.content.includes('Photosynthesis')) &&
+    openaiRequest.messages.some(message => message.content.includes('Explain the selected page.')) && !('key' in openaiRequest));
   const goodThread = await page.locator('#qaList').textContent();
   for (const failure of ['The AI provider returned HTTP 401: Invalid API key.', 'The AI provider returned HTTP 429: Rate limit reached.']) {
     await page.evaluate(message => { window.__nativeFailure = message; }, failure);
@@ -328,7 +337,7 @@ function check(name, actual) {
     check('failed native AI preserves the library, notes, highlights, and prior answer', await page.locator('#qaList').textContent() === goodThread);
   }
   await page.evaluate(() => { window.__nativeFailure = ''; });
-  for (const provider of ['openai', 'anthropic']) {
+  for (const provider of ['anthropic']) {
     await openSettings();
     await page.selectOption('#aiProvider', provider);
     check('switching to an unconsented ' + provider + ' key requires its own disclosure',
@@ -345,17 +354,17 @@ function check(name, actual) {
     check(provider + ' still routes through native bridge', (await calls()).some(call => call.method === 'request' && call.payload.provider === provider));
   }
   await openSettings();
-  await page.selectOption('#aiProvider', 'deepseek');
+  await page.selectOption('#aiProvider', 'openai');
   await page.click('#aiKeyRemove');
   await page.waitForFunction(() => document.getElementById('aiKeyStatus').textContent.includes('removed from iOS Keychain'));
-  check('remove key reaches native Keychain bridge for DeepSeek only', (await calls()).some(call => call.method === 'removeCredential' && call.payload.provider === 'deepseek'));
-  check('removing DeepSeek clears readiness without affecting other credentials', !(await settings()).providers.deepseek.keyPresent &&
-    (await settings()).providers.openai.keyPresent && (await settings()).providers.anthropic.keyPresent);
+  check('remove key reaches native Keychain bridge for OpenAI only', (await calls()).some(call => call.method === 'removeCredential' && call.payload.provider === 'openai'));
+  check('removing OpenAI clears readiness without affecting other credentials', !(await settings()).providers.openai.keyPresent &&
+    (await settings()).providers.anthropic.keyPresent);
   check('removing a key brings the required consent form back', await page.locator('#nativeAiConsent').isVisible() &&
     await page.locator('#nativeAiConsentLabel').isVisible() && !(await page.locator('#nativeAiEnabled').isVisible()));
   await reloadApp();
   await openSettings();
-  check('removed DeepSeek key remains removed after reload', await page.locator('#aiProvider').inputValue() === 'deepseek' &&
+  check('removed OpenAI key remains removed after reload', await page.locator('#aiProvider').inputValue() === 'openai' &&
     (await page.locator('#aiKeyStatus').textContent()).includes('No key stored') && !(await page.locator('#aiKeyRemove').isVisible()));
 
   await reloadWithDelayedStatus();
@@ -364,19 +373,19 @@ function check(name, actual) {
   await releaseDelayedStatus();
   await page.waitForFunction(() => window.PHLOEM_AI_REGION && window.PHLOEM_AI_REGION.cloudAIAllowed);
   await page.check('#nativeAiConsentCheck');
-  await page.fill('#aiModel', 'deepseek-draft-model');
+  await page.fill('#aiModel', 'gpt-draft-model');
   check('verified non-China storefront enables consent and model editing',
-    await page.locator('#nativeAiConsentCheck').isChecked() && await page.locator('#aiModel').inputValue() === 'deepseek-draft-model');
+    await page.locator('#nativeAiConsentCheck').isChecked() && await page.locator('#aiModel').inputValue() === 'gpt-draft-model');
 
   await reloadWithDelayedStatus();
   await releaseDelayedStatus();
   await page.waitForFunction(() => window.PHLOEM_AI_REGION && window.PHLOEM_AI_REGION.cloudAIAllowed);
   await page.check('#nativeAiConsentCheck');
-  await page.fill('#aiModel', 'deepseek-flash');
+  await page.fill('#aiModel', 'gpt-5-mini');
   await page.click('#aiKeySave');
   await page.waitForFunction(() => document.getElementById('aiKeyStatus').textContent.includes('stored in iOS Keychain'));
   check('verified non-China storefront can complete key and consent setup',
-    (await settings()).providers.deepseek.keyPresent && await page.locator('#nativeAiEnabled').isVisible() &&
+    (await settings()).providers.openai.keyPresent && await page.locator('#nativeAiEnabled').isVisible() &&
     !(await page.locator('#nativeAiConsent').isVisible()) && await page.locator('#aiKeyRemove').isVisible());
 
   await reloadWithDelayedStatus();
@@ -385,7 +394,7 @@ function check(name, actual) {
   await page.click('#aiKeyRemove');
   await page.waitForFunction(() => document.getElementById('aiKeyStatus').textContent.includes('removed from iOS Keychain'));
   check('verified non-China storefront can remove its key and consent receipt',
-    !(await settings()).providers.deepseek.keyPresent && !(await page.locator('#nativeAiEnabled').isVisible()) &&
+    !(await settings()).providers.openai.keyPresent && !(await page.locator('#nativeAiEnabled').isVisible()) &&
     await page.locator('#nativeAiConsent').isVisible() && !(await page.locator('#aiKeyRemove').isVisible()));
 
   await page.evaluate(() => { window.__nativeConfigureHold = true; });
@@ -400,7 +409,7 @@ function check(name, actual) {
   await page.waitForFunction(() => document.getElementById('aiKeyStatus').textContent.includes('stored in iOS Keychain'));
   await releaseDelayedStatus();
   check('status started while a secure key save is pending cannot undo that completed save',
-    (await settings()).providers.deepseek.keyPresent && await page.locator('#nativeAiEnabled').isVisible() &&
+    (await settings()).providers.openai.keyPresent && await page.locator('#nativeAiEnabled').isVisible() &&
     !(await page.locator('#nativeAiConsent').isVisible()));
 
   await page.evaluate(() => { window.__nativeRemoveHold = true; });
@@ -414,7 +423,7 @@ function check(name, actual) {
   await page.waitForFunction(() => document.getElementById('aiKeyStatus').textContent.includes('removed from iOS Keychain'));
   await releaseDelayedStatus();
   check('status started while key removal is pending cannot restore that removed key or receipt',
-    !(await settings()).providers.deepseek.keyPresent && !(await page.locator('#nativeAiEnabled').isVisible()) &&
+    !(await settings()).providers.openai.keyPresent && !(await page.locator('#nativeAiEnabled').isVisible()) &&
     await page.locator('#nativeAiConsent').isVisible() && !(await page.locator('#aiKeyRemove').isVisible()));
   assert.deepEqual(await savedPaper(), originalPaper);
   check('provider setup, requests, and removal preserve existing paper data', true);

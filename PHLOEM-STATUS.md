@@ -72,8 +72,9 @@ If it runs out of time, it schedules its own follow-up and records it here.
   (rebuild with `build_resume_ooxml.py`, copy the PDF to `resumes/` here). Homepage rules:
   bilingual `data-en`/`data-zh` on every visible string, each project appears once, no
   build step.
-- **Testers:** one Android tablet on Chrome (web reader), and Houfu's iPad (App Store app or
-  Home Screen web app). Their videos and screenshots are in the scheduled task's folder.
+- **Testers:** Jieun (Android tablet, Chrome, web reader) and Houfu's iPad (App Store app or
+  Home Screen web app). Jieun is credited on lifegameproject.com ("Made with friends",
+  `ffd3580`); credit her too wherever Phloem lists testers or thanks people. Their videos and screenshots are in the scheduled task's folder.
 
 ## Decisions to keep
 

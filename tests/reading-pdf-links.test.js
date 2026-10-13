@@ -353,6 +353,9 @@ function linkedPdfBuffer() {
   await page.locator(refSelector('refA')).focus();
   await page.keyboard.press('Enter');
   await page.locator('#pdfReferenceOpen').evaluate(action => action.click());
+  // Let the first jump land: its scroll closes any card opened meanwhile, as a reader's scroll
+  // would, and no reader opens the next reference within the same few milliseconds.
+  await page.waitForFunction(() => document.querySelector('.pdf-destination-flash[data-pdf-y="596"]'));
   await page.locator(refSelector('refB')).evaluate(link => link.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Enter' })));
   await page.locator('#pdfReferenceOpen').evaluate(action => action.click());
   await page.waitForFunction(() => document.querySelector('.pdf-destination-flash[data-pdf-y="26"]'));

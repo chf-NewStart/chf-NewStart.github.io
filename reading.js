@@ -3911,8 +3911,24 @@
   function pdfAccentWordKey(value){
     return value.replace(/([\p{L}\p{M}])([¨´`ˆ˜¸˚ˇ˘˙˝¯])/gu,function(_,base,accent){return(base+SPACING_ACCENTS[accent]).normalize('NFC');}).normalize('NFC').toLowerCase();
   }
+  var pdfGlyphCanvas=null;
   function pdfTextCharacterBox(node,offset){
-    try{var r=document.createRange();r.setStart(node,offset);r.setEnd(node,offset+1);return r.getBoundingClientRect();}catch(e){return null;}
+    var box;try{var r=document.createRange();r.setStart(node,offset);r.setEnd(node,offset+1);box=r.getBoundingClientRect();}catch(e){return null;}
+    /* WebKit (Safari, the iPad) snaps a character's box to whole pixels; at text-layer sizes
+       that rounding is as large as a space, so an accent's gap was misjudged. Rebuild the
+       horizontal edges from the span's exact box and the font's own advance widths, and keep
+       the browser's box whenever the two disagree by more than a pixel or two. */
+    try{
+      var span=node.parentNode,text=node.nodeValue||'';
+      if(!span||span.nodeType!==1||span.childNodes.length!==1||!text)return box;
+      var sr=span.getBoundingClientRect(),cs=getComputedStyle(span);if(!(sr.width>0))return box;
+      pdfGlyphCanvas=pdfGlyphCanvas||document.createElement('canvas').getContext('2d');
+      pdfGlyphCanvas.font=[cs.fontStyle,cs.fontWeight,cs.fontSize,cs.fontFamily].join(' ');
+      var whole=pdfGlyphCanvas.measureText(text).width;if(!(whole>0))return box;
+      var scale=sr.width/whole,left=sr.left+pdfGlyphCanvas.measureText(text.slice(0,offset)).width*scale,right=sr.left+pdfGlyphCanvas.measureText(text.slice(0,offset+1)).width*scale;
+      if(!(right>left)||Math.abs(left-box.left)>2||Math.abs(right-box.right)>2)return box;
+      return {left:left,right:right,width:right-left,top:box.top,bottom:box.bottom,height:box.height,x:left,y:box.top};
+    }catch(e){return box;}
   }
   function accentSpaceIsReal(node,letterAt,baseBox,knownJoined){
     var letter=pdfTextCharacterBox(node,letterAt),space=pdfTextCharacterBox(node,letterAt-1);

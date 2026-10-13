@@ -18,12 +18,14 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   tiles glow in their icons' colours; the Phloem card keeps the reading-guide loop (Houfu's call) and no longer
   mentions DeepSeek. lifegameproject.com's Phloem card plays the two new iPad recordings; Glyph Run's featured clip
   and the Grow a Tomato / Tomatoswipe / Sudoku thumbnails were re-shot from the live games.
-- **App Store:** Phloem **iOS 1.2.0 (39) live**. **iOS 1.2.1 (40) submitted 2026-10-13 07:25, Waiting for
-  Review**, manual release (Houfu presses Release). Houfu tested build 40 on his iPad ("works well"), and the
+- **App Store:** Phloem **iOS 1.2.1 (40) live since 2026-10-13 14:19 EDT** (released by Houfu); PR #76 merged,
+  so `apps/ipad` on main is 1.2.1 (40). Next: 1.2.2 (41) carrying reader v212–v215 (draft text in
+  `output/phloem-ios-1.2.1-verification/STORE-TEXT-1.2.2-DRAFT.md`), no rush. Houfu tested build 40 on his iPad ("works well"), and the
   freeze is gone. New listing media cut from his iPad recordings: two **silent** captioned previews (landscape
   Ask AI / Workspace / export; portrait leaf→fruit, paper→brain) and screenshots 4–5 (Ask about any passage,
-  Export one PDF). Files are in `output/phloem-app-preview-1.2.1/`. The review notes carry Houfu's Anthropic test key,
-  which **he should rotate after review**. The macOS 1.0 draft is untouched. EU trader status is still unset.
+  Export one PDF). Files are in `output/phloem-app-preview-1.2.1/`. The review notes carry Houfu's Anthropic test key:
+  **review is done, so rotate it now**. The macOS 1.0 draft is untouched. **EU: non-trader declared 2026-10-13**, so
+  every app is in the EU storefronts. Featuring nominations went in for all five apps (Phloem: 1.2.1 App Enhancements).
 - **Narrated promo films** (Jamie Premium voice, "not an app feature" credit): `output/phloem-demo-2026-10-13/`
   (61 s at 1920×1080 and 1080×1920, 33 s social cut). Never use them as App Store previews.
 - **Other apps (2026-10-13):** Game Life iOS 1.0 live (since 10-12; hard to find yet: see
@@ -109,15 +111,19 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - The **shared review pass** (`cloud-review-pass/` worker) still calls DeepSeek on the server. Ordinary
   readers can't pick it. Switch the worker's model, or retire the pass?
 
-- Rotate the Anthropic key used in the 1.2.1 review notes once 1.2.1 is reviewed.
+- Rotate the Anthropic key used in the 1.2.1 review notes: 1.2.1 is live, so it can go now.
 - Was the iPad freeze in the App Store app or the Home Screen web app? Is iCloud or Drive
   sync on there? (v210 removes the main suspect, the sync after each save; please retry
   with the big book.)
-- EU trader status in App Store Connect.
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
 
+- **2026-10-13 afternoon:** Phloem iOS 1.2.1 (40) is live (Houfu released it); PR #76 merged. Elsewhere today: EU
+  non-trader status set; featuring nominations for every app; Manilha online rooms moved from Firebase to the new
+  lifegame relay (Cloudflare Worker, deployed from houfu-sam-lifegame with its own token, locked to
+  lifegameproject.com and houfu72.com), tested live from the site and the iOS app; Glyph Run b66–b67 (etymology
+  checked against Houfu's references, pause on focus loss, form notes for every glyph).
 - **2026-10-13 midday v212:** Workspace writing check. All 49 Workspace/ink tests on WebKit and Chromium; the only
   failure was `reading-workspace-lasso-resize` on WebKit (since v200): with nothing focused after a tap (Safari),
   Escape went to the reader and Zen closed the paper. Keys on <body> now belong to the Workspace when it was touched

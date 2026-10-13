@@ -81,11 +81,14 @@
       liveLayer.setAttribute('viewBox', `0 0 ${observedWidth} ${observedHeight}`);
     }
     function ensurePaperAt(y, x = 0) {
-      if (growingPaper || !Number.isFinite(y) || !Number.isFinite(x) || !available(context()) || context().busy || !adapter.ensureSpace) return false;
+      if (growingPaper || !Number.isFinite(y) || !Number.isFinite(x) || !adapter.ensureSpace) return false;
       const api = global.PhloemWorkspaceState;
       y = clamp(y, 0, (api && api.MAX_HEIGHT || 1000000) - 1);
       x = clamp(x, 0, (api && api.MAX_WIDTH || 1000000) - 1);
+      // Every Pencil sample lands here. Reading the context checks the whole saved
+      // Workspace, so it waits until the paper actually has to grow.
       if (y < observedHeight && x < observedWidth) return true;
+      if (!available(context()) || context().busy) return false;
       growingPaper = true;
       try {
         if (adapter.ensureSpace(y, x) !== true) return false;
@@ -177,7 +180,9 @@
     function paintPath(path, stroke) {
       const smooth = global.PhloemInk && global.PhloemInk.pathData;
       const shown = displayStroke(stroke);
-      const copy = { ...shown, points: shown.points.map(p => [p[0] / 1000, p[1] / observedHeight, p[2]]) };
+      // Outlines are drawn in sheet units (aspect 1), so they never depend on how far the
+      // paper has grown: growing it must not regenerate every stroke on the sheet.
+      const copy = { ...shown, points: shown.points.map(p => [p[0] / 1000, p[1] / 1000, p[2]]) };
       // Workspace handwriting: a light stabilizer against tremor and a wider pressure
       // response (about 0.55x to 1.55x the nib), so light and firm strokes read like ink.
       // Display only; the saved Pencil samples are unchanged.
@@ -189,11 +194,11 @@
         copy.style = 'clean'; copy.width *= 1.35;
         copy.points = copy.points.map((p, i, pts) => {
           const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
-          const angle = Math.atan2((b[1] - a[1]) * observedHeight, (b[0] - a[0]) * 1000);
+          const angle = Math.atan2((b[1] - a[1]) * 1000, (b[0] - a[0]) * 1000);
           return [p[0], p[1], clamp(.12 + .76 * Math.abs(Math.sin(angle - .65)) + .12 * p[2], 0, 1)];
         });
       }
-      path.setAttribute('d', smooth ? smooth(copy, observedHeight / 1000) : fallbackPath(stroke));
+      path.setAttribute('d', smooth ? smooth(copy, 1) : fallbackPath(stroke));
       path.setAttribute('fill', smooth ? (COLORS[stroke.color] || COLORS.black) : 'none');
       path.setAttribute('fill-opacity', shown.nib === 'marker' ? '.94' : '1');
       if (!smooth) { path.setAttribute('stroke', COLORS[stroke.color] || COLORS.black); path.setAttribute('stroke-width', String(stroke.width * 1000 / 612)); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round'); }
@@ -473,7 +478,7 @@
     }
     function inkKey(stroke) {
       const id = stroke.anchor && stroke.anchor.clipId, box = id ? (cards.has(id) ? cards.get(id).box : positionsOf(context())[id]) : null;
-      return `${stroke.updatedAt}|${inkContent(stroke)}|${observedWidth}|${observedHeight}|${box ? `${box.x},${box.y},${box.width},${box.height || ''}` : ''}`;
+      return `${stroke.updatedAt}|${inkContent(stroke)}|${box ? `${box.x},${box.y},${box.width},${box.height || ''}` : ''}`;
     }
     function repaintCached(stroke) {
       const entry = inkCache.get(stroke.id); if (!entry) return;

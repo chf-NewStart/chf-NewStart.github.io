@@ -84,7 +84,7 @@ async function fixture(browser, withClip = true, savedWorkspace = null) {
     // Synthetic pen events are deliberately used to cover the same path in both engines.
     board.setPointerCapture = () => {}; board.hasPointerCapture = () => false;
     const view = PhloemWorkspaceView.create(adapter);
-    window.fixture = { state, calls, view, pointer: 30,
+    window.fixture = { state, calls, view, adapter, pointer: 30,
       emit(type, x, y, pointerId = 30, pointerType = 'pen') {
         const rect = board.getBoundingClientRect();
         board.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true,
@@ -166,7 +166,31 @@ async function fixture(browser, withClip = true, savedWorkspace = null) {
     assert.equal(kept.after, kept.before + 1, 'one stroke adds one path');
     assert.equal(kept.reused, kept.before, 'every unchanged path stays the same element with the same outline');
     assert.equal(kept.order, true, 'the new path takes its stored place');
+
+    // An Android tester's Workspace lagged behind the pen: every sample re-checked the whole
+    // saved Workspace, and each time the paper grew every stroke on it was smoothed again.
+    const grown = await page.evaluate(() => {
+      const smooth = PhloemInk.pathData, context = fixture.adapter.context;
+      let outlines = 0, reads = 0;
+      PhloemInk.pathData = function () { outlines++; return smooth.apply(this, arguments); };
+      fixture.adapter.context = () => { reads++; return context(); };
+      try {
+        const height = fixture.state.workspace.height, before = document.querySelectorAll('[data-stroke-id]').length;
+        fixture.emit('pointerdown', 300, 500);
+        reads = 0;
+        for (let i = 1; i <= 40; i++) fixture.emit('pointermove', 300 + i * 3, 500 + i);
+        const readsWhileWriting = reads;
+        fixture.emit('pointerup', 420, 540);
+        outlines = 0;
+        fixture.draw([[300, height - 300], [340, height - 280], [380, height - 260]]);
+        return { grew: fixture.state.workspace.height > height, outlines, readsWhileWriting, added: document.querySelectorAll('[data-stroke-id]').length - before };
+      } finally { PhloemInk.pathData = smooth; fixture.adapter.context = context; }
+    });
+    assert.equal(grown.readsWhileWriting, 0, 'pen samples inside the sheet never read the saved Workspace');
+    assert.equal(grown.grew, true, 'writing near the bottom grows the paper');
+    assert.equal(grown.added, 2, 'both strokes are drawn');
+    assert.ok(grown.outlines <= 1, `growing the paper redraws only the new stroke, not the ${grown.added + 300} on the sheet (got ${grown.outlines})`);
     await page.close();
-    console.log('PASS cached ink repaints merge winners, keeps stored order, and leaves unchanged paths alone');
+    console.log('PASS cached ink repaints merge winners, keeps stored order, leaves unchanged paths alone, and survives paper growth');
   } finally { await browser.close(); }
 })().catch(error => { console.error('FAIL', error); process.exitCode = 1; });

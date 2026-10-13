@@ -329,9 +329,17 @@
     catch(error){if(!error||error.code!=='UNSUPPORTED_VERSION')throw error;}
     if(ch.readingWorkspacePending!==undefined&&!Array.isArray(ch.readingWorkspacePending))ch.readingWorkspacePending=[ch.readingWorkspacePending];
   }
+  /* The Workspace view asks this on every Pencil sample and for every stroke it draws.
+     Checking copies the whole saved Workspace, so each saved object is checked once:
+     every change replaces ch.readingWorkspace with a new object, never edits it in place. */
   function readingWorkspaceUnavailable(ch){
     if(!window.PhloemWorkspaceState||!ch||Array.isArray(ch.readingWorkspacePending)&&ch.readingWorkspacePending.length)return true;
-    try{window.PhloemWorkspaceState.normalize(ch.readingWorkspace);return false;}catch(error){return true;}
+    var checkedWorkspaces=readingWorkspaceUnavailable.checked||(readingWorkspaceUnavailable.checked=new WeakMap());
+    var saved=ch.readingWorkspace,known=saved&&typeof saved==='object'?checkedWorkspaces.get(saved):undefined;
+    if(known!==undefined)return known;
+    var unavailable;try{window.PhloemWorkspaceState.normalize(saved);unavailable=false;}catch(error){unavailable=true;}
+    if(saved&&typeof saved==='object')checkedWorkspaces.set(saved,unavailable);
+    return unavailable;
   }
   function mergeReadingWorkspace(target,first,second){
     if(!window.PhloemWorkspaceState)return false;

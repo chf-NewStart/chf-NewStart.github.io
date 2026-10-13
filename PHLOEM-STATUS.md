@@ -6,8 +6,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-13)
 
-- **Web:** houfu72.com/reading.html serves **v211**: DeepSeek removed, AI data note, accessibility fixes, the
-  Workspace rail tucked under sheets, and (v210) no re-merge of the sync's own upload after a stroke.
+- **Web:** houfu72.com/reading.html serves **v212**: Escape after a tap in the Workspace no longer closes the paper
+  (iPad keyboards); v211: DeepSeek removed, AI data note, accessibility fixes, the Workspace rail tucked under
+  sheets; v210: no re-merge of the sync's own upload after a stroke. The iPad app (1.2.1, in review) bundles v211.
 - **Promo kit (drafts only):** `output/phloem-school-promo-2026-10/` (local): SCHOOL-FIT, pitches, channel texts,
   social posts, flyer (HTML and PDF). Gmail drafts in houfuchen0702@gmail.com: ChemE comms, Daily Bulletin, Media
   Relations (send later). Nothing has been sent.
@@ -30,8 +31,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   **Manilha 1.0 (6) resubmitted, Waiting for Review** (2.3.6 fix: "guess", 4+, no "Apuestas"/叫牌; lifegameproject.com
   now says "guess" too). **Plank Pilot is renamed Plank Constant** (Planck's constant pun; bundle ID unchanged).
   Build 26 (new pillow-vs-frying-pan icon, new name, duel copy for the kits) is attached to 1.0 with 5 iPhone + 5 iPad
-  screenshots, uploaded through Claude in Chrome. **Not submitted:** Houfu must make the Regulated Medical Device
-  declaration (App Information; "not a medical device") and press Add for Review → Submit.
+  screenshots, uploaded through Claude in Chrome. **Submitted by Houfu 10-13, Waiting for Review.** Game Life **1.0.1**
+  (build 10: rating prompt; new subtitle "Conway's Life, puzzles & music", sharper keywords, 元胞自动机, a new
+  Spanish (Mexico) listing for US search) is drafted in ASC, not submitted.
 - **Local checkout warning:** `~/Desktop/houfu0702.github.io` `main` has diverged from
   `origin/main` (rewritten history) and holds Houfu's uncommitted work. Work in a worktree
   from `origin/main`; do not reset or stash his checkout.
@@ -111,6 +113,12 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - The FAW-Volkswagen dates conflict between the site and the CV.
 
 ## Log
+
+- **2026-10-13 midday v212:** Workspace writing check. All 49 Workspace/ink tests on WebKit and Chromium; the only
+  failure was `reading-workspace-lasso-resize` on WebKit (since v200): with nothing focused after a tap (Safari),
+  Escape went to the reader and Zen closed the paper. Keys on <body> now belong to the Workspace when it was touched
+  last (`reading-workspace-escape-after-tap`). Pen strokes cancelled by the system (pointercancel) are still dropped,
+  as on the PDF; deliberate. Both sites pass axe WCAG 2.1 A/AA (contrast fixes).
 
 - **2026-10-13 late morning:** promo drafts say "PhD student" (not candidate) and warn that the Gmail connector wraps
   links in google.com redirects. LinkedIn kit (headline, About, three posts, banner) and the UofT featured-alum capture

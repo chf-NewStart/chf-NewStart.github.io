@@ -71,7 +71,10 @@ html[data-theme="dark"] .workspace-card::after { background:rgba(255,255,255,.04
    becomes White. Display only: it is saved as black, so the notes read in either theme and
    older app versions sync them unchanged. Writing on a (light) sticky note stays dark. */
 :root { --workspace-white-ink:#ece7dc; }
-html[data-theme="dark"] :is(.workspace-ink,.workspace-live-ink) path[data-ink-color="black"]:not([data-on-note]):not([fill="none"]) { fill:var(--workspace-white-ink); }
+/* White ink can still lie on a note it doesn't belong to (an arrow drawn onto one, writing
+   moved there, a note dragged over it). A thin rim in the sheet's own colour keeps it
+   readable on the pale note and can't be seen on the sheet. */
+html[data-theme="dark"] :is(.workspace-ink,.workspace-live-ink) path[data-ink-color="black"]:not([data-on-note]):not([fill="none"]) { fill:var(--workspace-white-ink); stroke:var(--paper); stroke-width:2px; stroke-linejoin:round; paint-order:stroke; vector-effect:non-scaling-stroke; }
 html[data-theme="dark"] :is(.workspace-ink,.workspace-live-ink) path[data-ink-color="black"][fill="none"]:not([data-on-note]) { stroke:var(--workspace-white-ink); }
 html[data-theme="dark"] [data-workspace-color="black"] { --workspace-color:var(--workspace-white-ink) !important; }
 /* A short grabber bar, the standard iPadOS sheet cue, marks the strip as the place to grab. */

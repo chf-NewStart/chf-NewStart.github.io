@@ -47,7 +47,20 @@ async function select(page) {
   assert.equal(await page.evaluate(() => getSelection().toString()), PHRASE, 'a quick tap keeps the selection');
   assert.equal(await page.locator('.workspace-highlight-ghost').count(), 0);
 
-  // 2. Hold, then drag the selected words into the workspace.
+  // 2. Hold until the passage is picked up, then let go over the paper instead of the
+  //    workspace: nothing is added and the selection comes back as it was.
+  from = await select(page); await page.waitForTimeout(200);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...from, id: 4 }] });
+  await page.waitForTimeout(450);
+  assert.equal(await page.locator('.workspace-highlight-ghost').isVisible(), true, 'the held finger picks the passage up');
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x + 30, y: from.y + 60, id: 4 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForTimeout(300);
+  assert.equal(await page.evaluate(() => getSelection().toString()), PHRASE, 'letting go off the workspace keeps the selection');
+  assert.equal(await page.locator('.workspace-card .workspace-quote').count(), 0, 'and adds nothing to the workspace');
+  assert.equal(await page.locator('.workspace-highlight-ghost').count(), 0);
+
+  // 3. Hold, then drag the selected words into the workspace.
   from = await select(page); await page.waitForTimeout(200);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...from, id: 2 }] });
   await page.waitForTimeout(450);
@@ -59,7 +72,7 @@ async function select(page) {
   assert.equal(saved.readingExcerpts.items.length, 1, 'one excerpt lands on the workspace');
   assert.equal(saved.readingExcerpts.items[0].quote, PHRASE);
   assert.equal(await page.locator('.workspace-highlight-ghost').count(), 0, 'the ghost is gone after the drop');
-  // 3. iPad: untouched. Its native selection drag and Pencil marking stay as they were, so the
+  // 4. iPad: untouched. Its native selection drag and Pencil marking stay as they were, so the
   //    hold never claims the selection there.
   const ipad = await browser.newContext({ viewport: { width: 1280, height: 900 }, hasTouch: true, serviceWorkers: 'block',
     userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' });
@@ -76,6 +89,6 @@ async function select(page) {
   assert.equal(await pad.locator('.workspace-highlight-ghost').count(), 0, 'on an iPad the hold does not claim the selection');
   await padCdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   assert.deepEqual(errors, []);
-  console.log('PASS a fresh selection drags into the workspace by finger hold; a quick tap keeps the selection; iPad behaviour unchanged');
+  console.log('PASS a fresh selection drags into the workspace by finger hold; a quick tap or a drop off the workspace keeps the selection; iPad behaviour unchanged');
   await browser.close(); server.close();
 })().catch(e => { console.error(e); process.exit(1); });

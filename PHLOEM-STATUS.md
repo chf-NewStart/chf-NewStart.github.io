@@ -4,9 +4,10 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-10-12, late)
+## Now (2026-10-13)
 
-- **Web:** houfu72.com/reading.html serves **v209**.
+- **Web:** houfu72.com/reading.html serves **v210** (iPad freeze after a stroke: sync no longer re-merges its own upload).
+- **In progress (scheduled task, 2026-10-13):** Part 0 school-fit (DeepSeek removal, AI data note, a11y, divider under sheets), then iOS 1.2.1.
 - **App Store:** Phloem: Paper Reader **iOS 1.2.0 live**. 1.2.1 is being prepared by the
   scheduled task below. A macOS 1.0 draft exists; leave it alone.
   The EU trader status (Digital Services Act) is missing in App Store Connect, and only
@@ -94,13 +95,24 @@ If it runs out of time, it schedules its own follow-up and records it here.
 
 ## Open questions for Houfu
 
-- Was the iPad freeze in the App Store app or the Home Screen web app? Does it go away with
-  iCloud sync off?
+- Was the iPad freeze in the App Store app or the Home Screen web app? Is iCloud or Drive
+  sync on there? (v210 removes the main suspect, the sync after each save; please retry
+  with the big book.)
 - EU trader status in App Store Connect.
 - Manilha was rejected: read App Review's message and decide on a fix.
 - The FAW-Volkswagen dates conflict between the site and the CV.
 
 ## Log
+
+- **2026-10-13 v210:** iPad "freeze after a stroke" with the 573-page book. Each stroke's save
+  started a quiet sync that downloaded, parsed and merged back the library this device had
+  just uploaded, and read every original PDF's bytes (33 MB for the book) from IndexedDB.
+  Seeded WebKit repro (3 MB library, 2000 Workspace strokes, book with ink, fake iPad
+  iCloud): longest main-thread block after a lift 165 ms in v200 (the build inside 1.2.0),
+  189 ms in v209, 49 ms now. A sync now skips its own last upload (iCloud change tag,
+  Drive file version), uploads only on change, checks originals without reading them, and
+  yields between steps. Test: `tests/reading-sync-own-copy.test.js` (iCloud + Drive).
+  Not new in v203–v209; the 1.2.0 app has it too.
 
 - **2026-10-12 v209** (`ccbab5e6`): the Workspace ink kept falling behind the pen on Android.
   Every pen sample re-validated the whole saved Workspace twice, and paper growth re-smoothed

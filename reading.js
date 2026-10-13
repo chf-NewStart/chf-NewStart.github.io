@@ -1130,6 +1130,11 @@
     var bytes=value instanceof ArrayBuffer?value:await pdfBytes(value);localSourceMutation++;
     try{var d=await db();await new Promise(function(res,rej){var transaction=d.transaction('pdfs','readwrite');transaction.oncomplete=res;transaction.onabort=function(){rej(transaction.error||new Error('PDF storage was aborted'));};transaction.onerror=function(){rej(transaction.error||new Error('PDF storage failed'));};transaction.objectStore('pdfs').put(bytes,id);});delete memoryPdfs[id];localSourceReady[id]=true;scheduleLocalAvailabilityRender();return true;}catch(e){memoryPdfs[id]=bytes;delete localSourceReady[id];scheduleLocalAvailabilityRender();return false;}
   }
+  // Whether the original is on this device, without reading its bytes (a book can be 30+ MB).
+  async function hasLocalPdf(id){
+    if(memoryPdfs[id])return true;
+    try{var d=await db();return await new Promise(function(res,rej){var r=d.transaction('pdfs').objectStore('pdfs').count(id);r.onsuccess=function(){res(r.result>0);};r.onerror=function(){rej(r.error);};});}catch(e){return false;}
+  }
   async function getLocalPdf(id){
     try{var d=await db(),saved=await new Promise(function(res,rej){var r=d.transaction('pdfs').objectStore('pdfs').get(id);r.onsuccess=function(){res(r.result||null);};r.onerror=function(){rej(r.error);};});if(saved)return saved;}catch(e){}
     return memoryPdfs[id]||null;
@@ -9662,6 +9667,15 @@
     })();
     try{return await iCloudDownloads[id];}finally{delete iCloudDownloads[id];}
   }
+  /* After a save, the next pass almost always finds in the cloud the very copy this device
+     wrote. Parsing and merging that copy again stalled the iPad for seconds after each
+     stroke once the library held a large annotated book (Oct 2026), so a pass skips the
+     merge when the record still carries the change tag of this device's own save, and
+     skips the upload when nothing changed since. Both are in memory only: a relaunch
+     merges in full once. */
+  var iCloudOwnTag='',iCloudOwnPayload='';
+  // A sync gives the page a turn between its heavy steps, and waits while the Pencil writes.
+  async function syncBreath(){await new Promise(function(res){setTimeout(res,0);});for(var waited=0;penOnGlass()&&waited<5000;waited+=250)await new Promise(function(res){setTimeout(res,250);});}
   async function iCloudSync(interactive){
     if(!iCloudOn())return;if(iCloudSyncing||penOnGlass()){scheduleSync();return;}iCloudSyncing=true;iCloudSetStatus('Checking your private iCloud library…','☁ iCloud · syncing');
     var plugin=iCloudPlugin(),sent=0,remoteOnly=0,paused=0;
@@ -9670,14 +9684,15 @@
       if(!account.available&&interactive&&plugin.web&&account.accountStatus==='signInRequired'){iCloudSetStatus('Sign in with your Apple ID to continue…');iCloudSyncing=false;await plugin.signIn();return;}
       if(!account.available){var accountError=new Error(iCloudAccountMessage(account.accountStatus));accountError.accountUnavailable=['noAccount','restricted','signInRequired'].indexOf(account.accountStatus)>=0;throw accountError;}
       for(var attempt=0;attempt<3;attempt++){
-        var remote=await plugin.fetchLibrary(),changeTag=remote&&remote.changeTag||'';
-        if(remote&&remote.found){var incoming=JSON.parse(remote.payload);if(!incoming||!Array.isArray(incoming.chapters))throw new Error('The iCloud library has an unexpected format. Phloem did not overwrite it.');if(mergeState(incoming)){persist(false);renderShelf();updateReviewBadge();}}
-        await repairDuplicateStorage();
+        var remote=await plugin.fetchLibrary(),changeTag=remote&&remote.changeTag||'',ownCopy=!!(remote&&remote.found&&changeTag&&changeTag===iCloudOwnTag);
+        if(remote&&remote.found&&!ownCopy){await syncBreath();var incoming=JSON.parse(remote.payload);await syncBreath();if(!incoming||!Array.isArray(incoming.chapters))throw new Error('The iCloud library has an unexpected format. Phloem did not overwrite it.');if(mergeState(incoming)){persist(false);renderShelf();updateReviewBadge();}}
+        await repairDuplicateStorage();await syncBreath();
         /* OCR/extracted PDF text is rebuildable and can make a snapshot enormous. The
            native cloud record follows localState(): durable reading work plus metadata,
            while each original rides separately as a CKAsset. */
         var snapshot=localState(),payload=JSON.stringify({chapters:snapshot.chapters,deleted:snapshot.deleted||{},merged:snapshot.merged||{},categoryOrder:snapshot.categoryOrder||[],categoryOrderUpdatedAt:snapshot.categoryOrderUpdatedAt||0,savedAt:snapshot.savedAt||now()});
-        try{await plugin.saveLibrary({payload:payload,changeTag:changeTag});break;}catch(error){if(error&&error.code==='ICLOUD_CONFLICT'&&attempt<2)continue;throw error;}
+        if(ownCopy&&payload===iCloudOwnPayload)break;
+        try{var savedLibrary=await plugin.saveLibrary({payload:payload,changeTag:changeTag});iCloudOwnTag=savedLibrary&&savedLibrary.changeTag||'';iCloudOwnPayload=iCloudOwnTag?payload:'';break;}catch(error){iCloudOwnTag='';iCloudOwnPayload='';if(error&&error.code==='ICLOUD_CONFLICT'&&attempt<2)continue;throw error;}
       }
       var documents=state.chapters.filter(binarySourceSpec),ids=documents.map(function(ch){return ch.id;}),listed=await plugin.fetchDocuments({ids:ids}),remoteMap={};
       (listed.documents||[]).forEach(function(item){if(item&&item.id)remoteMap[item.id]=item;});
@@ -9685,8 +9700,9 @@
         /* A replaced original must not acquire its new metadata until its own
            bytes are durable. Recheck after the async read in case an import won. */
         var ch=Object.assign({},documents[i]),write=importedSourceWrites[ch.id];if(write&&!write.ready)continue;
-        var remoteDocument=remoteMap[ch.id],stored=await getLocalPdf(ch.id);if(importedSourceWrites[ch.id]!==write)continue;
-        var localDocument=iCloudDocumentStates[ch.id],same=remoteDocument&&!(localDocument&&localDocument.state==='queued')&&(+remoteDocument.byteCount||0)===(+ch.fileSize||0)&&(!ch.contentHash||!remoteDocument.contentHash||remoteDocument.contentHash===ch.contentHash);
+        var remoteDocument=remoteMap[ch.id],localDocument=iCloudDocumentStates[ch.id],same=remoteDocument&&!(localDocument&&localDocument.state==='queued')&&(+remoteDocument.byteCount||0)===(+ch.fileSize||0)&&(!ch.contentHash||!remoteDocument.contentHash||remoteDocument.contentHash===ch.contentHash);
+        // An original already in iCloud is only looked up here; its bytes are read only to upload.
+        var stored=same?await hasLocalPdf(ch.id):await getLocalPdf(ch.id);if(importedSourceWrites[ch.id]!==write)continue;
         if(same){iCloudSetDocumentState(ch.id,{state:stored?'synced':'remote',byteCount:+remoteDocument.byteCount||ch.fileSize,contentHash:remoteDocument.contentHash||'',progress:100});if(!stored)remoteOnly++;continue;}
         if(stored){try{if(await iCloudUploadSource(ch,stored))sent++;}catch(error){paused++;}}
         else if(remoteDocument){iCloudSetDocumentState(ch.id,{state:'remote',byteCount:+remoteDocument.byteCount||ch.fileSize,contentHash:remoteDocument.contentHash||'',progress:100});remoteOnly++;}
@@ -9803,7 +9819,7 @@
     return gdriveTokenPending;
   }
   async function gdriveListAll(token){
-    var r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size,appProperties)',{headers:{Authorization:'Bearer '+token}});
+    var r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size,version,appProperties)',{headers:{Authorization:'Bearer '+token}});
     if(r.status===401){gdriveToken=null;gdriveSaveAuth();var stale=new Error('Google signed this device out — Phloem reconnects on your next tap.');stale.auth=true;throw stale;}
     if(!r.ok)throw new Error('Drive list failed ('+r.status+')');
     return ((await r.json()).files)||[];
@@ -9952,6 +9968,8 @@
     for(var i=0;i<drops.length;i++){var dropId=drops[i],keepId=resolvedPaperId(dropId),drop=byName['pdf-'+dropId+'.pdf'],keep=byName['pdf-'+keepId+'.pdf'];if(!drop||!keep||drop.id===keep.id)continue;try{var gone=await fetch('https://www.googleapis.com/drive/v3/files/'+drop.id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});if(gone.ok)removed++;}catch(e){}}
     return removed;
   }
+  // The Drive twin of iCloudOwnTag: the file version of this device's last upload.
+  var gdriveOwnVersion='',gdriveOwnFile='',gdriveOwnPayload='';
   async function gdriveSync(interactive,retried){
     if(!gdriveOn())return;if(gdriveSyncing||penOnGlass()){scheduleSync();return;}
     /* The iPad bridge calls again after its region/account check. Do not fall back
@@ -9962,26 +9980,29 @@
     gdriveSyncing=true;syncUi('☁ syncing…');
     try{
       var token=await gdriveGetToken(interactive===true);
-      var files=await gdriveListAll(token),fileId=null;
-      files.some(function(f){if(f.name===GDRIVE_FILE){fileId=f.id;return true;}return false;});
+      var files=await gdriveListAll(token),fileId=null,ownCopy=false;
+      files.some(function(f){if(f.name===GDRIVE_FILE){fileId=f.id;ownCopy=!!(gdriveOwnVersion&&f.version!==undefined&&String(f.version)===gdriveOwnVersion&&f.id===gdriveOwnFile);return true;}return false;});
       libraryDriveRestoreArmed=false;libraryDriveRestoreMessage='';
-      if(fileId){
+      if(fileId&&!ownCopy){
         var got=await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',{headers:{Authorization:'Bearer '+token}});
         if(!got.ok){var readErr=new Error('Drive library download failed ('+got.status+')');if(got.status===401)readErr.auth=true;throw readErr;}
         var remote;try{remote=await got.json();}catch(parseError){throw new Error('The Drive library could not be read safely. Phloem did not overwrite it.');}
         if(!remote||!Array.isArray(remote.chapters))throw new Error('The Drive library has an unexpected format. Phloem did not overwrite it.');
-        if(mergeState(remote)){persist(false);renderShelf();updateReviewBadge();}
+        await syncBreath();if(mergeState(remote)){persist(false);renderShelf();updateReviewBadge();}
       }
-      await repairDuplicateStorage();
+      await repairDuplicateStorage();await syncBreath();
       var payload=JSON.stringify({chapters:await chaptersForSync(),deleted:state.deleted||{},merged:state.merged||{},categoryOrder:state.categoryOrder||[],categoryOrderUpdatedAt:state.categoryOrderUpdatedAt||0}),up;
-      if(fileId){
-        up=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:payload});
+      if(ownCopy&&payload===gdriveOwnPayload)up={ok:true,json:function(){return Promise.resolve({id:fileId,version:gdriveOwnVersion});}};
+      else if(fileId){
+        up=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media&fields=id,version',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:payload});
       }else{
         var boundary='phloem'+now();
         var body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:GDRIVE_FILE,parents:['appDataFolder']})+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+payload+'\r\n--'+boundary+'--';
-        up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:body});
+        up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,version',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:body});
       }
-      if(!up.ok){var upErr=new Error('Drive upload failed ('+up.status+')');if(up.status===401)upErr.auth=true;throw upErr;}
+      if(!up.ok){gdriveOwnVersion='';gdriveOwnPayload='';var upErr=new Error('Drive upload failed ('+up.status+')');if(up.status===401)upErr.auth=true;throw upErr;}
+      // Remember this device's own upload, so the next pass need not download and merge it again.
+      var uploaded=null;try{uploaded=await up.json();}catch(e){}gdriveOwnVersion=uploaded&&uploaded.version!==undefined?String(uploaded.version):'';gdriveOwnFile=uploaded&&uploaded.id||fileId||'';gdriveOwnPayload=gdriveOwnVersion?payload:'';
       byId('gdriveStatus').textContent='Library synced — checking original files…';
       var roam=await gdriveRoamPdfs(token,files);
       if(roam.failed)scheduleSyncRetry();

@@ -53,7 +53,10 @@ test('reader keeps local data first, merges conflicts, and lazily restores origi
   assert.match(reader, /function iCloudOn\(\)/);
   assert.match(reader, /var local=await getLocalPdf\(id\);if\(local\)return local;/);
   assert.match(reader, /if\(iCloudOn\(\)\)return iCloudDownloadSource\(id\)/);
-  assert.match(reader, /if\(remote&&remote\.found\).*mergeState\(incoming\)/s);
+  assert.match(reader, /if\(remote&&remote\.found&&!ownCopy\).*mergeState\(incoming\)/s);
+  // A pass skips merging the copy this device just saved (the iPad froze after strokes).
+  assert.match(reader, /ownCopy=!!\(remote&&remote\.found&&changeTag&&changeTag===iCloudOwnTag\)/);
+  assert.match(reader, /var stored=same\?await hasLocalPdf\(ch\.id\):await getLocalPdf\(ch\.id\)/);
   assert.match(reader, /error&&error\.code==='ICLOUD_CONFLICT'&&attempt<2/);
   assert.match(reader, /await iCloudPlugin\(\)\.deleteCloudData\(\)/);
   assert.match(reader, /paused\?'☁ iCloud · attention'/);

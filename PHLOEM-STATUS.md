@@ -13,15 +13,19 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Relations (send later). Nothing has been sent.
 - **Sites and CV (2026-10-13):** houfu72.com and lifegameproject.com list Game Life first, then Qi, Plank Pilot,
   Manilha (coming soon); the Phloem name story is on both. The CV has one "Shipped Software" line.
-- **App Store:** Phloem: Paper Reader **iOS 1.2.0 (39) live**. **iOS 1.2.1 (40)** is built, uploaded,
-  processed and attached in App Store Connect with What's New, the name-story Promotional Text (also set
-  on the live 1.2.0) and **Manually release**. It is **not submitted**: waiting for Houfu to test the freeze
-  fix on his iPad via TestFlight and to add an AI reviewer key (the DeepSeek key was removed from the review
-  notes). PR for the version bump: chf-NewStart/chf-NewStart.github.io#76. Evidence:
-  `output/phloem-ios-1.2.1-verification/` (local, untracked). The macOS 1.0 draft is untouched.
-  EU trader status (DSA) is still missing; only Houfu, as Account Holder, can set it.
-- **Other apps (App Store Connect, 2026-10-12):** Game Life iOS 1.0 live; Qi: Go & Gomoku iOS
-  1.0 live; Plank Pilot 1.0 not submitted; Manilha 1.0 **Rejected**.
+- **App Store:** Phloem **iOS 1.2.0 (39) live**. **iOS 1.2.1 (40) submitted 2026-10-13 07:25, Waiting for
+  Review**, manual release (Houfu presses Release). Houfu tested build 40 on his iPad ("works well"), and the
+  freeze is gone. New listing media cut from his iPad recordings: two **silent** captioned previews (landscape
+  Ask AI / Workspace / export; portrait leaf→fruit, paper→brain) and screenshots 4–5 (Ask about any passage,
+  Export one PDF). Files are in `output/phloem-app-preview-1.2.1/`. The review notes carry Houfu's Anthropic test key,
+  which **he should rotate after review**. The macOS 1.0 draft is untouched. EU trader status is still unset.
+- **Narrated promo films** (Jamie Premium voice, "not an app feature" credit): `output/phloem-demo-2026-10-13/`
+  (61 s at 1920×1080 and 1080×1920, 33 s social cut). Never use them as App Store previews.
+- **Other apps (2026-10-13):** Game Life iOS 1.0 live; Qi: Go & Gomoku iOS 1.0 live; Plank Pilot 1.0 not
+  submitted; **Manilha 1.0 (6) resubmitted, Waiting for Review**. It was rejected under 2.3.6 as simulated
+  gambling; the fix says "guess" instead of "bid", rates 4+, and drops the "Apuestas"/叫牌 names and metadata
+  (es: "Manilha: Juego de Bazas", zh: "Manilha 巴西纸牌"). A reply was sent to App Review. Next for Manilha: 1.1
+  cross-platform online play (4 seats) through the existing web relay rooms.
 - **Local checkout warning:** `~/Desktop/houfu0702.github.io` `main` has diverged from
   `origin/main` (rewritten history) and holds Houfu's uncommitted work. Work in a worktree
   from `origin/main`; do not reset or stash his checkout.
@@ -92,9 +96,7 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - The **shared review pass** (`cloud-review-pass/` worker) still calls DeepSeek on the server. Ordinary
   readers can't pick it. Switch the worker's model, or retire the pass?
 
-- Please test **TestFlight build 40** on the iPad with the 573-page book (iCloud on): does the freeze still
-  happen? Then submit 1.2.1 (Add for Review → Submit), with an OpenAI or Anthropic reviewer key in the notes if
-  you want AI reviewed. Consider revoking the DeepSeek key that was in the 1.2.0 review notes.
+- Rotate the Anthropic key used in the 1.2.1 review notes once 1.2.1 is reviewed.
 - Was the iPad freeze in the App Store app or the Home Screen web app? Is iCloud or Drive
   sync on there? (v210 removes the main suspect, the sync after each save; please retry
   with the big book.)
@@ -103,6 +105,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - The FAW-Volkswagen dates conflict between the site and the CV.
 
 ## Log
+
+- **2026-10-13 morning:** Houfu confirmed build 40 on his iPad and submitted 1.2.1. App Store media were cut from
+  his screen recordings; narration was kept off the store, so it can't be mistaken for read-aloud. Manilha's
+  listing was cleaned in four languages, then resubmitted with a reply to App Review.
 
 - **2026-10-13 demo:** 43 s name-story demo (leaf→fruit, then paper→brain) of the web reader with the eLife
   Münch paper (CC BY, credited), landscape and vertical, in `output/phloem-demo-2026-10-13/`.

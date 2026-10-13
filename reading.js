@@ -380,6 +380,7 @@
     if(typeof normalizeReadingWorkspace==='function')normalizeReadingWorkspace(ch);
     if(typeof normalizePdfFolds==='function')normalizePdfFolds(ch,options&&options.foldValidationNow);
     if(window.PhloemInk&&(ch.kind==='pdf'||ch.pdfInk||ch.pdfInkDeleted)){var ink=window.PhloemInk.normalize(ch.pdfInk,ch.pdfInkDeleted);ch.pdfInk=ink.pages;ch.pdfInkDeleted=ink.deleted;}
+    if(window.PhloemStickies&&(ch.pdfStickies!==undefined||ch.pdfStickiesDeleted!==undefined)){var stickies=window.PhloemStickies.normalize(ch.pdfStickies,ch.pdfStickiesDeleted);ch.pdfStickies=stickies.pages;ch.pdfStickiesDeleted=stickies.deleted;}
     ch.notes = ch.notes&&typeof ch.notes==='object'&&!Array.isArray(ch.notes)?ch.notes:{}; ch.pageNotes = ch.pageNotes&&typeof ch.pageNotes==='object'&&!Array.isArray(ch.pageNotes)?ch.pageNotes:{}; ch.tags = Array.isArray(ch.tags)?ch.tags:[];
     ch.questions = Array.isArray(ch.questions)?ch.questions:[]; ch.highlights = ch.highlights&&typeof ch.highlights==='object'&&!Array.isArray(ch.highlights)?ch.highlights:{}; ch.textHighlights = Array.isArray(ch.textHighlights)?ch.textHighlights:[];
     if(!Array.isArray(ch.aiThreads))ch.aiThreads=[];
@@ -471,6 +472,7 @@
     var details=Object.assign({},keep);mergeStampedFields(details,extra);
     if(!fieldStamp(details,'title')&&!details.titleEditedByUser&&extra.titleEditedByUser)copyPaperField(details,extra,'title');
     mergePdfInk(keep,keep,extra);
+    if(typeof mergePdfStickies==='function')mergePdfStickies(keep,keep,extra);
     if(typeof mergeReadingKeeps==='function')mergeReadingKeeps(keep,keep,extra);
     if(typeof mergeReadingExcerpts==='function')mergeReadingExcerpts(keep,keep,extra);
     if(typeof mergeReadingWorkspace==='function')mergeReadingWorkspace(keep,keep,extra);
@@ -910,7 +912,7 @@
   function showPage(id){
     var wasReading=!byId('readerPage').classList.contains('hidden');
     if(id!=='readerPage'&&byId('readingKeepDialog').open)byId('readingKeepDialog').close();
-    if(id!=='readerPage')setPdfWriteMode(false);
+    if(id!=='readerPage'){setPdfWriteMode(false);closeStickyEditor();setStickyPlacing(false);}
     if(wasReading&&id!=='readerPage')saveCurrentReadingPosition(false);
     if(id!=='readerPage'&&pdfFoldView){pdfFoldView.reset();foldSourceId='';foldSourceHash='';}
     ['libraryPage','reviewPage','connectionsPage','readerPage'].forEach(function(v){ byId(v).classList.toggle('hidden', v !== id); });
@@ -1211,6 +1213,16 @@
       }
       addComment(.94,.02,(ch.pageNotes||{})[String(number)]);
       if(number===1)addComment(.02,.02,(ch.pageNotes||{}).document);
+      // A sticky note becomes a comment whose icon is centred on the note's spot.
+      ((ch.pdfStickies||{})[String(number)]||[]).forEach(function(note){
+        var text=String(note&&note.text||'').trim();if(!text||!Number.isFinite(note.x)||!Number.isFinite(note.y))return;
+        var at=toPdf(Math.max(0,Math.min(1,note.x)),Math.max(0,Math.min(1,note.y))),box=page.getCropBox?page.getCropBox():null,size=24,half=size/2,cx=at[0],cy=at[1];
+        if(box){cx=Math.max(box.x+half,Math.min(box.x+box.width-half,cx));cy=Math.max(box.y+half,Math.min(box.y+box.height-half,cy));}
+        var rgb=EXPORT_HL_RGB[note.color]||EXPORT_HL_RGB.yellow;
+        var annot=doc.context.obj({Type:'Annot',Subtype:'Text',Rect:[cx-half,cy-half,cx+half,cy+half],Contents:writer.PDFHexString.fromText(text),
+          Name:'Note',C:[rgb[0]/255,rgb[1]/255,rgb[2]/255],F:4,Open:false,T:writer.PDFHexString.fromText('Phloem'),NM:writer.PDFHexString.fromText(String(note.id||'')),M:writer.PDFString.fromDate(new Date())});
+        page.node.addAnnot(doc.context.register(annot));counts.notes++;
+      });
     }
     try{source.destroy();}catch(e){}
     return{bytes:await doc.save(),counts:counts};
@@ -1396,6 +1408,7 @@
     Object.keys(ch.notes||{}).forEach(function(key){var para=+key;if(!Number.isInteger(para)||para<0)return;add({kind:'Margin note',para:para,excerpt:sourceParagraph(para),note:ch.notes[key]});});
     Object.keys(ch.readerNotes||{}).forEach(function(key){var para=+key;if(!Number.isInteger(para)||para<0)return;add({kind:'Reader note',para:para,page:libraryParagraphPage(ch,para),excerpt:readerParagraph(para),note:ch.readerNotes[key]});});
     Object.keys(ch.highlights||{}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(mark){add({kind:'Highlight',page:+page||0,excerpt:mark.text,note:mark.note,color:mark.color,at:mark.at});});});
+    Object.keys(ch.pdfStickies||{}).forEach(function(page){(Array.isArray(ch.pdfStickies[page])?ch.pdfStickies[page]:[]).forEach(function(note){add({kind:'Sticky note',page:+page||0,note:note&&note.text,color:note&&note.color,at:note&&note.at});});});
     (ch.textHighlights||[]).forEach(function(mark){var para=+mark.para;add({kind:'Highlight',para:Number.isInteger(para)&&para>=0?para:null,excerpt:mark.text,note:mark.note,color:mark.color,at:mark.at});});
     (ch.readerHighlights||[]).forEach(function(mark){var para=+mark.para;add({kind:'Reader highlight',para:Number.isInteger(para)&&para>=0?para:null,page:libraryParagraphPage(ch,para),excerpt:mark.text,note:mark.note,color:mark.color,at:mark.at});});
     return hits.sort(function(a,b){return b.score-a.score||b.at-a.at||(+a.page||0)-(+b.page||0)||(+a.para||0)-(+b.para||0);});
@@ -1466,7 +1479,8 @@
   syncLibraryViewControl();
   function shelfPaperStats(ch){
     var highlights=Object.keys(ch.highlights||{}).reduce(function(n,k){return n+(ch.highlights[k]||[]).length;},0)+(ch.textHighlights||[]).length+(ch.readerHighlights||[]).length;
-    var notes=Object.keys(ch.notes||{}).length+Object.keys(ch.readerNotes||{}).length+Object.keys(ch.pageNotes||{}).filter(function(k){return ch.pageNotes[k];}).length+highlights;
+    var stickies=Object.keys(ch.pdfStickies||{}).reduce(function(n,k){return n+(Array.isArray(ch.pdfStickies[k])?ch.pdfStickies[k].length:0);},0);
+    var notes=Object.keys(ch.notes||{}).length+Object.keys(ch.readerNotes||{}).length+Object.keys(ch.pageNotes||{}).filter(function(k){return ch.pageNotes[k];}).length+highlights+stickies;
     var questions=(ch.questions||[]).length,page=ch.kind==='pdf'?Math.max(+ch.readPage||1,+ch.readThroughPage||0):(+ch.readPage||1),total=ch.kind==='pdf'?(+ch.pageCount||0):paras(ch.fr).length;
     var progress=ch.kind==='pdf'&&total?Math.max(1,Math.min(100,Math.round(page/total*100))):(total?Math.min(100,Math.round(page/total*100)):0);
     return {highlights:highlights,notes:notes,questions:questions,page:page,total:total,progress:progress};
@@ -3106,9 +3120,9 @@
   }
   function syncZenAnnotateUi(){
     var trigger=byId('zenAnnotate');if(!trigger)return;
-    var active=!!(pdfWriteMode||highlightMode||highlightEraseMode||highlightToolbarOpen());
+    var active=!!(pdfWriteMode||highlightMode||highlightEraseMode||highlightToolbarOpen()||stickyPlacing);
     trigger.classList.toggle('active',active);
-    trigger.setAttribute('aria-label','Annotation tools'+(active?'. '+(pdfWriteMode?(pdfInkTool==='eraser'?'Eraser':'Pen'):highlightEraseMode?'Eraser':'Highlighter')+' active':''));
+    trigger.setAttribute('aria-label','Annotation tools'+(active?'. '+(pdfWriteMode?(pdfInkTool==='eraser'?'Eraser':'Pen'):highlightEraseMode?'Eraser':stickyPlacing?'Sticky note':'Highlighter')+' active':''));
   }
   function syncZenMarkerUi(){
     var trigger=byId('zenMarker'),tool=byId('zenMarkerTool');if(!trigger)return;
@@ -3174,7 +3188,7 @@
      opening the menu on top. A finger-down outside some of those already closes them,
      so remember what was open when this press began. */
   var zenPress={};
-  function zenAnnotatingNow(){return highlightToolbarOpen()||!!pdfWriteMode||!!highlightEraseMode;}
+  function zenAnnotatingNow(){return highlightToolbarOpen()||!!pdfWriteMode||!!highlightEraseMode||!!stickyPlacing;}
   function zenMoreSurfaceNow(){return !byId('findBar').classList.contains('hidden')?'find':!byId('comfortBar').classList.contains('hidden')?'settings':byId('notebook').classList.contains('sheet-open')?'notebook':'';}
   window.addEventListener('pointerdown',function(e){var t=e.target.closest&&e.target.closest('#zenAnnotate,#zenMore');zenPress=t?{id:t.id,at:Date.now(),annotating:zenAnnotatingNow(),surface:zenMoreSurfaceNow()}:{};},true);
   function zenPressFor(id){var press=zenPress;zenPress={};return press.id===id&&Date.now()-press.at<2000?press:null;}
@@ -3182,7 +3196,7 @@
     var press=zenPressFor('zenAnnotate'),menuOpen=!byId('zenAnnotateMenu').classList.contains('hidden');
     // A passage just selected keeps the menu one tap away, so it can still be highlighted.
     if(!menuOpen&&!pendingSelection&&(press?press.annotating:zenAnnotatingNow())){
-      clearPendingSelection();setHighlightEraseMode(false);setHighlightMode(false);setHighlightToolbarOpen(false);if(pdfWriteMode)setPdfWriteMode(false);syncZenMarkerUi();zenWake();return;
+      clearPendingSelection();setHighlightEraseMode(false);setHighlightMode(false);setHighlightToolbarOpen(false);if(pdfWriteMode)setPdfWriteMode(false);if(stickyPlacing)setStickyPlacing(false);syncZenMarkerUi();zenWake();return;
     }
     toggleZenPopout('zenAnnotate','zenAnnotateMenu','zenAnnotateTool');
   };
@@ -4529,7 +4543,7 @@
       await hydrateDerived(ch);
       if(openEpoch!==pdfOpenEpoch)return false;
     }
-    currentId=id;reviewFocusId='';reviewFocusPage=0;reviewFocusAnchorIndex=-1;reviewPassageGroupIds=[];reviewLinkTargetId='';reviewLinkUndo=null; currentPage=ch.pdfPosition&&ch.pdfPosition.page||ch.readPage||1; pdfOutline=null; pdfViews=[]; pdfBuildKey='';lastStablePdfPosition=null;lastStablePdfPositionId='';pagedFits=true;pagedMinLeft=0;pagedMaxLeft=0;pagedManualZoom=false;pagedFitToken='';columnBandCache=Object.create(null);columnZoomOperation++;columnZoomState=ch.pdfPosition&&['left','right','text'].indexOf(ch.pdfPosition.zoomMode)>=0?ch.pdfPosition.zoomMode:'full';ch.lastOpenedAt=now();persist(false); try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} restorePdfZoom(ch); setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); highlightHistory=[]; highlightFuture=[];syncTouchDockStates(); lastAskSelection=null; toggleFindBar(false); linkReturnSpot=null; byId('linkReturn').classList.add('hidden');
+    currentId=id;reviewFocusId='';reviewFocusPage=0;reviewFocusAnchorIndex=-1;reviewPassageGroupIds=[];reviewLinkTargetId='';reviewLinkUndo=null; currentPage=ch.pdfPosition&&ch.pdfPosition.page||ch.readPage||1; pdfOutline=null; pdfViews=[]; pdfBuildKey='';lastStablePdfPosition=null;lastStablePdfPositionId='';pagedFits=true;pagedMinLeft=0;pagedMaxLeft=0;pagedManualZoom=false;pagedFitToken='';columnBandCache=Object.create(null);columnZoomOperation++;columnZoomState=ch.pdfPosition&&['left','right','text'].indexOf(ch.pdfPosition.zoomMode)>=0?ch.pdfPosition.zoomMode:'full';ch.lastOpenedAt=now();persist(false); try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} restorePdfZoom(ch); setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); closeStickyEditor(); setStickyPlacing(false); highlightHistory=[]; highlightFuture=[];syncTouchDockStates(); lastAskSelection=null; toggleFindBar(false); linkReturnSpot=null; byId('linkReturn').classList.add('hidden');
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
@@ -5021,7 +5035,7 @@
           view.links.appendChild(el);
         });
       }catch(annotError){}
-      view.rendered=true;view.renderFailures=0;renderedPages.push(n);renderPdfHighlights(n);renderPdfInk(n);renderPdfReviewFocus(n);freeFarPages();syncPdfInkUi();
+      view.rendered=true;view.renderFailures=0;renderedPages.push(n);renderPdfHighlights(n);renderPdfInk(n);renderPdfStickies(n);renderPdfReviewFocus(n);freeFarPages();syncPdfInkUi();
       if(pdfFoldView)pdfFoldView.refresh(view,n);
       var activeFind=findMatches[findIndex],findQuery=byId('findInput').value.trim();
       if(activeFind&&activeFind.page===n&&findQuery&&!byId('findBar').classList.contains('hidden'))flashPdfFind(n,findQuery,activeFind.occurrence,findPaintToken);
@@ -5040,6 +5054,7 @@
       if(pdfFoldView)pdfFoldView.clear(view);
       view.canvas.width=0;view.canvas.height=0;view.text.innerHTML='';view.highlights.innerHTML='';view.rendered=false;
       var inkLayer=view.sheet.querySelector('.pdf-ink-layer');if(inkLayer)inkLayer.remove();
+      var stickyLayer=view.sheet.querySelector('.pdf-sticky-layer');if(stickyLayer&&!(stickyEditing&&stickyEditing.page===n))stickyLayer.remove();
       if(pageObserver){pageObserver.unobserve(view.holder);pageObserver.observe(view.holder);}
       return false;
     });
@@ -5928,6 +5943,9 @@
     /* Escape belongs to the focused Find surface before it affects any persistent
        reader mode, such as Marker, that happens to be active underneath it. */
     if(e.key==='Escape'&&!byId('findBar').classList.contains('hidden')&&byId('findBar').contains(e.target)){e.preventDefault();toggleFindBar(false,true);return;}
+    // An open sticky note owns its typing; Escape closes it.
+    if(e.key==='Escape'&&stickyEditing){e.preventDefault();closeStickyEditor();return;}
+    if(byId('stickyEditor').contains(e.target))return;
     if(e.key==='Escape'&&zenOn&&closeZenPopouts(true)){e.preventDefault();return;}
     if(e.key==='Escape'&&highlightToolbarOpen()){e.preventDefault();setHighlightToolbarOpen(false);var trigger=zenOn?zenHighlightReturn():highlightToolbarTrigger||byId('highlightColorBtn');if(trigger)trigger.focus();return;}
     if(e.key==='Escape'&&!byId('touchDockMenu').classList.contains('hidden')){e.preventDefault();closeTouchDockMore(true);return;}
@@ -5944,6 +5962,7 @@
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
     if(e.key==='Escape'&&!byId('lookupCard').classList.contains('hidden')){e.preventDefault();hideLookup();return;}
     if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
+    if(e.key==='Escape'&&stickyPlacing){e.preventDefault();setStickyPlacing(false);showReaderToast('Sticky note off');return;}
     if(e.key==='Escape'&&highlightEraseMode){e.preventDefault();setHighlightEraseMode(false);showReaderToast('Eraser off');return;}
     if(e.key==='Escape'&&pdfWriteMode){e.preventDefault();setPdfWriteMode(false);if(zenOn)byId('zenAnnotate').focus();showReaderToast('Write mode off');return;}
     if(e.key==='Escape'&&highlightMode){e.preventDefault();hideLookup();clearPendingSelection();setHighlightMode(false);showReaderToast('Marker off');return;}
@@ -6704,6 +6723,9 @@
     Object.keys(ch.highlights||{}).sort(function(a,b){return+a-+b;}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(mark){
       if(!String(mark.text||'').trim()&&!String(mark.note||'').trim())return;annotations++;lines.push('### Highlight · page '+page,'');if(mark.text)lines.push('**Highlighted passage**','',listeningQuote(mark.text),'');if(mark.note)lines.push('**Reader note**','',listeningQuote(mark.note),'');
     });});
+    if(window.PhloemStickies)window.PhloemStickies.list(ch.pdfStickies).forEach(function(entry){
+      var note=String(entry.item.text||'').trim();if(!note)return;annotations++;lines.push('### Sticky note · page '+entry.page,'','**Reader note**','',listeningQuote(note),'');
+    });
     (ch.textHighlights||[]).forEach(function(mark){
       if(!String(mark.text||'').trim()&&!String(mark.note||'').trim())return;annotations++;lines.push('### Highlight · paragraph '+(+mark.para+1),'');if(mark.text)lines.push('**Highlighted passage**','',listeningQuote(mark.text),'');if(mark.note)lines.push('**Reader note**','',listeningQuote(mark.note),'');
     });
@@ -6739,6 +6761,7 @@
   function notebookAnnotationCount(ch){
     var count=0;
     [ch.pageNotes,ch.notes,ch.readerNotes].forEach(function(map){Object.keys(map||{}).forEach(function(key){if(String(map[key]||'').trim())count++;});});
+    Object.keys(ch.pdfStickies||{}).forEach(function(page){(Array.isArray(ch.pdfStickies[page])?ch.pdfStickies[page]:[]).forEach(function(note){if(String(note&&note.text||'').trim())count++;});});
     Object.keys(ch.highlights||{}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(mark){if(String(mark.text||'').trim()||String(mark.note||'').trim())count++;});});
     [ch.textHighlights,ch.readerHighlights].forEach(function(marks){(marks||[]).forEach(function(mark){if(String(mark.text||'').trim()||String(mark.note||'').trim())count++;});});
     return count;
@@ -6841,9 +6864,12 @@
     Object.keys(ch.notes||{}).forEach(function(k){ if(ch.notes[k]) all.push('<div class="mini-note note-written" data-jump-para="'+(+k)+'"><b>Paragraph '+(+k+1)+'</b><br>'+esc(ch.notes[k].slice(0,150))+'</div>'); });
     Object.keys(ch.readerNotes||{}).forEach(function(k){ if(ch.readerNotes[k]) all.push('<div class="mini-note note-written" data-jump-para="'+(+k)+'"><b>Reader paragraph '+(+k+1)+'</b><br>'+esc(ch.readerNotes[k].slice(0,150))+'</div>'); });
     Object.keys(ch.highlights||{}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(h){all.push('<div class="mini-note" data-jump-page="'+esc(page)+'"><b><span class="tag hl-'+esc(h.color||'yellow')+'">Highlight</span> · page '+esc(page)+'</b><br>“'+esc((h.text||'').slice(0,145))+'”'+(h.note?'<span class="hl-note">✎ '+esc(h.note.slice(0,120))+'</span>':'')+'<button class="remove-highlight" data-remove-highlight="'+esc(h.id)+'" data-highlight-page="'+esc(page)+'" aria-label="Remove highlight">×</button></div>');});});
+    if(window.PhloemStickies)window.PhloemStickies.list(ch.pdfStickies).forEach(function(entry){var s=entry.item,text=stickyText(s);all.push('<div class="mini-note sticky-mini" data-jump-sticky="'+esc(s.id)+'"><b><span class="tag sticky-tag st-'+esc(s.color)+'">Sticky note</span> · page '+entry.page+'</b><br>'+(text?esc(text.slice(0,150)):'<i>Empty</i>')+'<button class="remove-highlight" data-remove-sticky="'+esc(s.id)+'" aria-label="Delete sticky note">×</button></div>');});
     (ch.textHighlights||[]).forEach(function(h){all.push('<div class="mini-note" data-jump-para="'+h.para+'"><b><span class="tag hl-'+esc(h.color||'yellow')+'">Highlight</span> · paragraph '+(h.para+1)+'</b><br>“'+esc((h.text||'').slice(0,145))+'”'+(h.note?'<span class="hl-note">✎ '+esc(h.note.slice(0,120))+'</span>':'')+'<button class="remove-highlight" data-remove-text-highlight="'+esc(h.id)+'" aria-label="Remove highlight">×</button></div>');});
     (ch.readerHighlights||[]).forEach(function(h){all.push('<div class="mini-note" data-jump-para="'+h.para+'"><b><span class="tag hl-'+esc(h.color||'yellow')+'">Highlight</span> · Reader paragraph '+(h.para+1)+'</b><br>“'+esc((h.text||'').slice(0,145))+'”'+(h.note?'<span class="hl-note">✎ '+esc(h.note.slice(0,120))+'</span>':'')+'<button class="remove-highlight" data-remove-reader-highlight="'+esc(h.id)+'" aria-label="Remove Reader highlight">×</button></div>');});
     byId('noteIndex').innerHTML=all.length?all.join(''):'<div class="notebook-empty">No saved notes or highlights yet. Select a passage to mark it, or write beside this page below.</div>';
+    byId('noteIndex').querySelectorAll('[data-jump-sticky]').forEach(function(d){d.onclick=function(e){if(!e.target.closest('.remove-highlight'))jumpToSticky(d.dataset.jumpSticky);};});
+    byId('noteIndex').querySelectorAll('[data-remove-sticky]').forEach(function(b){b.onclick=function(){deleteSticky(b.dataset.removeSticky);};});
     byId('noteIndex').querySelectorAll('[data-jump-page],[data-jump-para]').forEach(function(d){d.onclick=function(e){
       if(e.target.closest('.remove-highlight'))return;
       if(d.dataset.jumpPage)gotoPdfPage(+d.dataset.jumpPage);
@@ -7852,6 +7878,8 @@
     if(event.pointerType==='touch'&&(savedHighlightTouches.size!==1||event.isPrimary===false))return;
     if(!workspaceBesidePaper()||readerMode!=='pdf'||!pdfDoc||(event.pointerType!=='touch'&&(highlightEraseMode||pdfWriteMode||highlightMode))||pencilStroke||pdfInkController&&pdfInkController.active()||bookCurlOwned||pagedTurning||pendingSelection)return;
     if(event.pointerType==='mouse'&&event.button!==0)return;
+    // A sticky note above a highlight is picked up as the note, not the passage.
+    if(event.target.closest&&event.target.closest('.pdf-sticky'))return;
     var page=event.target.closest&&event.target.closest('.pdf-page');if(!page||pdfReviewAtPoint(page,event.clientX,event.clientY))return;
     var hit=pdfHighlightAtPoint(page,event.clientX,event.clientY);if(!hit||!hit.item.text)return;
     var drag={pointer:event.pointerId,type:event.pointerType||'mouse',id:currentId,epoch:pdfOpenEpoch,pane:byId('documentPane'),source:page.querySelector('.text-layer')||page,
@@ -7943,6 +7971,7 @@
   function highlightToolbarOpen(){var toolbar=byId('highlightToolbar');return !!toolbar&&!toolbar.classList.contains('hidden');}
   function setHighlightToolbarOpen(on,trigger){
     if(on&&pdfWriteMode)setPdfWriteMode(false);
+    if(on&&stickyPlacing)setStickyPlacing(false);
     var toolbar=byId('highlightToolbar');if(!toolbar)return;
     if(on){if(trigger)highlightToolbarTrigger=trigger;closeZenPopouts(false);closeTouchDockMore(false);}
     toolbar.classList.toggle('hidden',!on);document.body.classList.toggle('highlight-toolbar-open',!!on);
@@ -7987,6 +8016,7 @@
   function setHighlightEraseMode(on,preserveSelection){
     if(pdfInkController)pdfInkController.cancel();
     if(on&&pdfWriteMode)setPdfWriteMode(false);
+    if(on&&stickyPlacing)setStickyPlacing(false);
     if(!preserveSelection)clearPendingSelection();highlightEraseMode=!!on;
     if(highlightEraseMode)setHighlightMode(false);
     syncHighlightColorUi();syncTouchDockStates();
@@ -8005,6 +8035,7 @@
   }
   function setHighlightMode(on){
     if(on&&pdfWriteMode)setPdfWriteMode(false);
+    if(on&&stickyPlacing)setStickyPlacing(false);
     if(on&&highlightEraseMode)setHighlightEraseMode(false);
     highlightMode=!!on;var btn=byId('highlightBtn');if(!btn)return;
     if(!highlightMode)clearTimeout(highlightCommitTimer);
@@ -8115,6 +8146,13 @@
   function mergePdfInk(target,first,second){
     if(!window.PhloemInk)return false;var before=JSON.stringify([target.pdfInk,target.pdfInkDeleted]),merged=window.PhloemInk.merge(first.pdfInk,first.pdfInkDeleted,second.pdfInk,second.pdfInkDeleted);target.pdfInk=merged.pages;target.pdfInkDeleted=merged.deleted;return before!==JSON.stringify([target.pdfInk,target.pdfInkDeleted]);
   }
+  /* Sticky notes merge note by note, like handwriting; see reading-stickies.js. */
+  function mergePdfStickies(target,first,second){
+    if(!window.PhloemStickies||first.pdfStickies===undefined&&first.pdfStickiesDeleted===undefined&&second.pdfStickies===undefined&&second.pdfStickiesDeleted===undefined)return false;
+    var before=window.PhloemStickies.signature(target.pdfStickies,target.pdfStickiesDeleted),merged=window.PhloemStickies.merge(first.pdfStickies,first.pdfStickiesDeleted,second.pdfStickies,second.pdfStickiesDeleted);
+    target.pdfStickies=merged.pages;target.pdfStickiesDeleted=merged.deleted;
+    return before!==window.PhloemStickies.signature(target.pdfStickies,target.pdfStickiesDeleted);
+  }
   function pdfInkStamp(ch){var stamp=now();Object.values(ch.pdfInkDeleted||{}).forEach(function(t){stamp=Math.max(stamp,t+1);});Object.values(ch.pdfInk||{}).forEach(function(list){list.forEach(function(s){stamp=Math.max(stamp,(s.updatedAt||s.at||0)+1);});});return stamp;}
   function renderPdfInk(page){
     var ch=find(currentId);if(!ch||!window.PhloemInk)return;
@@ -8128,12 +8166,12 @@
     document.querySelectorAll('[data-pdf-ink-color]').forEach(function(button){button.setAttribute('aria-pressed',String(!!active&&button.dataset.pdfInkColor===pdfInkColor));});
     document.querySelectorAll('[data-pdf-ink-width]').forEach(function(button){button.setAttribute('aria-pressed',String(!!active&&+button.dataset.pdfInkWidth===pdfInkWidth));});
     byId('pdfInkUndo').disabled=!(highlightHistory&&highlightHistory.length);byId('pdfInkRedo').disabled=!(highlightFuture&&highlightFuture.length);
-    syncZenAnnotateUi();
+    syncStickyUi();syncZenAnnotateUi();
   }
   function setPdfWriteMode(on){
     if(pdfInkController)pdfInkController.cancel();
     var ch=find(currentId);pdfWriteMode=!!(on&&window.PhloemInk&&ch&&ch.kind==='pdf'&&readerMode==='pdf');
-    if(pdfWriteMode){pdfInkTool='pen';finishPencilStroke(true);setHighlightEraseMode(false);setHighlightMode(false);clearPendingSelection();setHighlightToolbarOpen(false);closeZenPopouts(false);setDrift(0);}
+    if(pdfWriteMode){if(stickyPlacing)setStickyPlacing(false);pdfInkTool='pen';finishPencilStroke(true);setHighlightEraseMode(false);setHighlightMode(false);clearPendingSelection();setHighlightToolbarOpen(false);closeZenPopouts(false);setDrift(0);}
     // Leaving Write ends a run of strokes, so ink still waiting to save is written now.
     else flushPersistSoon(true);
     syncHighlightColorUi();syncTouchDockStates();
@@ -8177,6 +8215,268 @@
   document.querySelectorAll('[data-pdf-ink-color]').forEach(function(button){button.onclick=function(){if(pdfInkController)pdfInkController.cancel();pdfInkColor=button.dataset.pdfInkColor;pdfInkTool='pen';syncPdfInkUi();};});
   document.querySelectorAll('[data-pdf-ink-width]').forEach(function(button){button.onclick=function(){if(pdfInkController)pdfInkController.cancel();pdfInkWidth=+button.dataset.pdfInkWidth;pdfInkTool='pen';syncPdfInkUi();};});
   byId('pdfInkDone').onclick=function(){setPdfWriteMode(false);if(zenOn)byId('zenAnnotate').focus();};byId('pdfInkUndo').onclick=undoHighlight;byId('pdfInkRedo').onclick=redoHighlight;
+  /* Sticky notes: a small folded note pinned to one spot on a PDF page, like a paper
+     sticky. Pick the tool, tap the page (finger, Pencil, S Pen or mouse) and the note is
+     placed there and opens for typing. Tap a note to open or close it; drag it to move it.
+     Positions are fractions of the page as shown, so notes follow zoom, every layout and
+     rotated or cropped pages. Add, move, recolor and delete share the paper's Undo. */
+  var STICKY_COLOR_KEY='readingRoom.stickyColor.v1',stickyPlacing=false,stickyPress=null,stickyEditing=null,stickyDrag=null,stickySuppressClick=0,stickyColor='yellow',stickyIndexTimer=null;
+  try{var savedStickyColor=localStorage.getItem(STICKY_COLOR_KEY);if(window.PhloemStickies&&window.PhloemStickies.COLORS.indexOf(savedStickyColor)>=0)stickyColor=savedStickyColor;}catch(e){}
+  var STICKY_ICON='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="pdf-sticky-paper" d="M3.5 3.5h17v11l-6 6h-11z"/><path class="pdf-sticky-lines" d="M7.5 8.5h9M7.5 12h9M7.5 15.5h4.5"/><path class="pdf-sticky-fold" d="M14.5 20.5v-6h6"/></svg>';
+  function stickiesAvailable(){var ch=find(currentId);return !!(window.PhloemStickies&&ch&&ch.kind==='pdf'&&readerMode==='pdf'&&!byId('readerPage').classList.contains('hidden'));}
+  function stickyList(ch,page){return ch&&ch.pdfStickies&&ch.pdfStickies[String(page)]||[];}
+  function findSticky(ch,id){
+    var pages=ch&&ch.pdfStickies||{},found=null;
+    Object.keys(pages).some(function(page){var item=(pages[page]||[]).find(function(s){return s.id===id;});if(item)found={page:+page,item:item};return !!item;});
+    return found;
+  }
+  function stickyStamp(ch){var stamp=now();Object.values(ch.pdfStickiesDeleted||{}).forEach(function(t){stamp=Math.max(stamp,t+1);});Object.values(ch.pdfStickies||{}).forEach(function(list){list.forEach(function(s){stamp=Math.max(stamp,(s.updatedAt||s.at||0)+1);});});return stamp;}
+  function stickyText(item){return String(item&&item.text||'').trim();}
+  function stickyButton(id){return Array.from(document.querySelectorAll('#pdfFrame .pdf-sticky')).find(function(b){return b.dataset.stickyId===id;})||null;}
+  function paintStickyButton(button,item){
+    var open=!!(stickyEditing&&stickyEditing.id===item.id),text=stickyText(item).replace(/\s+/g,' ');
+    button.className='pdf-sticky st-'+item.color+(text?' has-text':'')+(open?' open':'');
+    button.style.left=(item.x*100)+'%';button.style.top=(item.y*100)+'%';
+    button.setAttribute('aria-label',text?'Sticky note: '+(text.length>80?text.slice(0,79)+'…':text):'Empty sticky note');
+    button.title=text.slice(0,300)||'Sticky note';button.setAttribute('aria-expanded',String(open));
+  }
+  function renderPdfStickies(page){
+    var ch=find(currentId);if(!ch||!window.PhloemStickies)return;
+    (page?[+page]:renderedPages.slice()).forEach(function(n){
+      var view=pdfViews[n-1];if(!view||!view.rendered||stickyDrag&&stickyDrag.page===n)return;
+      var layer=view.sheet.querySelector('.pdf-sticky-layer'),list=stickyList(ch,n),focused=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.stickyId:'';
+      if(!list.length){if(layer)layer.remove();return;}
+      if(!layer){layer=document.createElement('div');layer.className='pdf-sticky-layer';view.sheet.appendChild(layer);}
+      layer.replaceChildren.apply(layer,list.map(function(item){
+        var button=document.createElement('button');button.type='button';button.dataset.stickyId=item.id;button.dataset.stickyPage=String(n);button.setAttribute('aria-controls','stickyEditor');button.innerHTML=STICKY_ICON;paintStickyButton(button,item);return button;
+      }));
+      if(focused){var again=Array.from(layer.children).find(function(b){return b.dataset.stickyId===focused;});if(again)again.focus({preventScroll:true});}
+    });
+    if(stickyEditing)requestAnimationFrame(placeStickyEditor);
+  }
+  function syncStickyUi(){
+    var available=stickiesAvailable();if(!available&&stickyPlacing){stickyPlacing=false;stickyPress=null;}
+    document.querySelectorAll('[data-pdf-sticky-toggle]').forEach(function(button){button.classList.toggle('hidden',!available);button.classList.toggle('active',!!stickyPlacing);button.setAttribute('aria-pressed',String(!!stickyPlacing));});
+    document.body.classList.toggle('pdf-sticky-placing',!!stickyPlacing);
+    if(!available&&stickyEditing)closeStickyEditor();
+  }
+  function setStickyPlacing(on){
+    on=!!on&&stickiesAvailable();
+    if(on){if(pdfWriteMode)setPdfWriteMode(false);if(highlightEraseMode)setHighlightEraseMode(false);if(highlightMode)setHighlightMode(false);if(highlightToolbarOpen())setHighlightToolbarOpen(false);clearPendingSelection();closeStickyEditor();}
+    stickyPlacing=on;stickyPress=null;syncStickyUi();syncZenAnnotateUi();
+  }
+  // Half the note's on-screen size, as fractions of the page: a note stays wholly on its page.
+  function stickySpot(view,clientX,clientY){
+    var rect=view.sheet.getBoundingClientRect();if(!rect.width||!rect.height)return null;
+    var scale=parseFloat(view.holder.style.getPropertyValue('--scale-factor'))||1,shown=rect.width/Math.max(1,view.sheet.offsetWidth||rect.width),half=Math.max(22,Math.min(48,18*scale))*shown/2;
+    var mx=Math.min(.5,half/rect.width),my=Math.min(.5,half/rect.height);
+    return{x:Math.max(mx,Math.min(1-mx,(clientX-rect.left)/rect.width)),y:Math.max(my,Math.min(1-my,(clientY-rect.top)/rect.height))};
+  }
+  // Only a press on the page itself counts: the dock and cards floating over it keep theirs.
+  function stickyPageAt(target){return target&&target.closest?target.closest('#pdfFrame .pdf-page'):null;}
+  function placeSticky(pageEl,clientX,clientY){
+    var ch=find(currentId),n=+pageEl.dataset.page,view=pdfViews[n-1];if(!ch||!view)return;
+    if(pdfFoldView&&pdfFoldView.isFolded(n)){showReaderToast('Unfold this page to add a note');return;}
+    if(!view.rendered){showReaderToast('Page still loading · tap again');return;}
+    var spot=stickySpot(view,clientX,clientY);if(!spot)return;
+    var stamp=stickyStamp(ch),item={id:uid('st'),x:spot.x,y:spot.y,text:'',color:stickyColor,at:stamp,updatedAt:stamp};
+    ch.pdfStickies=ch.pdfStickies||{};ch.pdfStickiesDeleted=ch.pdfStickiesDeleted||{};(ch.pdfStickies[n]||(ch.pdfStickies[n]=[])).push(item);
+    recordHighlightAction({kind:'sticky',op:'add',page:n,item:item});touch(ch);
+    stickyPlacing=false;stickyPress=null;syncStickyUi();syncZenAnnotateUi();
+    if(currentPage!==n&&!pagedPdfFlow()){currentPage=n;updatePageChrome();loadPageNote();}
+    renderPdfStickies(n);renderNoteIndex();openStickyEditor(item.id,{isNew:true,focus:true});
+  }
+  /* Placing owns the next tap on a page; a drag still scrolls. The tap is read from the
+     click every input sends (finger, Pencil, S Pen, mouse), and only the press is held
+     back from text selection, the Pencil highlighter and the Book page curl. */
+  window.addEventListener('pointerdown',function(e){
+    if(!stickyPlacing||e.button>0||e.target.closest&&e.target.closest('#stickyEditor,.pdf-sticky'))return;
+    if(!stickyPageAt(e.target))return;
+    stickyPress={id:e.pointerId,type:e.pointerType,x:e.clientX,y:e.clientY};e.stopImmediatePropagation();if(e.pointerType==='mouse')e.preventDefault();
+  },true);
+  window.addEventListener('click',function(e){
+    if(!stickyPlacing||e.target.closest&&e.target.closest('#stickyEditor,.pdf-sticky'))return;
+    var pageEl=stickyPageAt(e.target);if(!pageEl)return;
+    e.preventDefault();e.stopImmediatePropagation();
+    var press=stickyPress;stickyPress=null;
+    if(press&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>(press.type==='touch'?14:8))return;
+    placeSticky(pageEl,e.clientX,e.clientY);
+  },true);
+  document.querySelectorAll('[data-pdf-sticky-toggle]').forEach(function(button){button.onclick=function(){
+    if(button.id==='zenSticky')closeZenPopouts(true);
+    // From This paper's controls, put the dialog away so the page can take the tap.
+    var dialog=button.closest('dialog');if(dialog&&dialog.open)dialog.close();
+    setStickyPlacing(!stickyPlacing);showReaderToast(stickyPlacing?'Tap the page to place a note':'Sticky note off');
+  };});
+  /* A note is a button on the page: tap opens or closes it, a drag moves it. */
+  byId('pdfFrame').addEventListener('pointerdown',function(e){
+    var button=e.target.closest&&e.target.closest('.pdf-sticky');if(!button||e.button>0)return;
+    e.stopPropagation();if(e.pointerType==='mouse')e.preventDefault();
+    var r=button.getBoundingClientRect();
+    stickyDrag={id:button.dataset.stickyId,page:+button.dataset.stickyPage,pointerId:e.pointerId,type:e.pointerType,button:button,startX:e.clientX,startY:e.clientY,dx:e.clientX-(r.left+r.width/2),dy:e.clientY-(r.top+r.height/2),moved:false,spot:null};
+    try{button.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  byId('pdfFrame').addEventListener('pointermove',function(e){
+    var d=stickyDrag;if(!d||d.pointerId!==e.pointerId)return;
+    if(!d.moved&&Math.hypot(e.clientX-d.startX,e.clientY-d.startY)<(d.type==='touch'?10:5))return;
+    if(!d.moved){d.moved=true;d.button.classList.add('dragging');}
+    e.preventDefault();var view=pdfViews[d.page-1],spot=view&&stickySpot(view,e.clientX-d.dx,e.clientY-d.dy);if(!spot)return;
+    d.spot=spot;d.button.style.left=(spot.x*100)+'%';d.button.style.top=(spot.y*100)+'%';
+    if(stickyEditing&&stickyEditing.id===d.id)placeStickyEditor();
+  });
+  function moveSticky(id,to){
+    var ch=find(currentId),found=ch&&findSticky(ch,id);if(!found)return false;
+    var item=found.item,from={x:item.x,y:item.y};if(Math.abs(from.x-to.x)<1e-6&&Math.abs(from.y-to.y)<1e-6)return false;
+    item.updatedAt=stickyStamp(ch);item.x=to.x;item.y=to.y;
+    recordHighlightAction({kind:'sticky',op:'move',page:found.page,id:id,from:from,to:{x:to.x,y:to.y}});touch(ch);renderPdfStickies(found.page);return true;
+  }
+  function endStickyDrag(e,cancelled){
+    var d=stickyDrag;if(!d||d.pointerId!==e.pointerId)return;stickyDrag=null;d.button.classList.remove('dragging');
+    if(!d.moved)return;
+    stickySuppressClick=Date.now()+500;
+    if(cancelled||!d.spot||!moveSticky(d.id,d.spot))renderPdfStickies(d.page);
+  }
+  byId('pdfFrame').addEventListener('pointerup',function(e){endStickyDrag(e,false);});
+  byId('pdfFrame').addEventListener('pointercancel',function(e){endStickyDrag(e,true);});
+  byId('pdfFrame').addEventListener('lostpointercapture',function(e){if(stickyDrag&&stickyDrag.pointerId===e.pointerId)endStickyDrag(e,true);});
+  byId('pdfFrame').addEventListener('click',function(e){
+    var button=e.target.closest&&e.target.closest('.pdf-sticky');if(!button)return;
+    e.preventDefault();e.stopPropagation();
+    if(Date.now()<stickySuppressClick){stickySuppressClick=0;return;}
+    var id=button.dataset.stickyId;if(stickyEditing&&stickyEditing.id===id)closeStickyEditor();else openStickyEditor(id,{});
+  },true);
+  // Arrow keys nudge a focused note; Delete removes it.
+  byId('pdfFrame').addEventListener('keydown',function(e){
+    var button=e.target.closest&&e.target.closest('.pdf-sticky');if(!button)return;
+    var ch=find(currentId),found=ch&&findSticky(ch,button.dataset.stickyId);if(!found)return;
+    var step=e.shiftKey?.05:.01,dx={ArrowLeft:-step,ArrowRight:step}[e.key]||0,dy={ArrowUp:-step,ArrowDown:step}[e.key]||0;
+    if(dx||dy){e.preventDefault();e.stopPropagation();moveSticky(found.item.id,{x:Math.max(0,Math.min(1,found.item.x+dx)),y:Math.max(0,Math.min(1,found.item.y+dy))});return;}
+    if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopPropagation();deleteSticky(found.item.id);}
+  });
+  /* The open note sits beside its icon like a note peeled up from the page. */
+  function placeStickyEditor(){
+    var editor=byId('stickyEditor');if(!stickyEditing||editor.classList.contains('hidden'))return;
+    var button=stickyButton(stickyEditing.id);if(!button||!button.getClientRects().length){editor.style.visibility='hidden';return;}
+    var r=button.getBoundingClientRect(),pane=byId('documentPane').getBoundingClientRect(),vv=window.visualViewport,ox=vv?vv.offsetLeft:0,oy=vv?vv.offsetTop:0,vw=vv?vv.width:innerWidth,vh=vv?vv.height:innerHeight;
+    editor.style.visibility=r.bottom>pane.top&&r.top<pane.bottom&&r.right>pane.left&&r.left<pane.right?'':'hidden';
+    var w=editor.offsetWidth,h=editor.offsetHeight,gap=10,m=12,left,top;
+    // Stay on the paper's side of an open Workspace when it fits there, else the screen.
+    var minX=ox,maxX=ox+vw,minY=oy,maxY=oy+vh;
+    if(Math.min(maxX,pane.right)-Math.max(minX,pane.left)>=w+2*m){minX=Math.max(minX,pane.left);maxX=Math.min(maxX,pane.right);}
+    if(Math.min(maxY,pane.bottom)-Math.max(minY,pane.top)>=h+2*m){minY=Math.max(minY,pane.top);maxY=Math.min(maxY,pane.bottom);}
+    if(r.right+gap+w<=maxX-m){left=r.right+gap;top=r.top-6;}
+    else if(r.left-gap-w>=minX+m){left=r.left-gap-w;top=r.top-6;}
+    else{left=r.left+r.width/2-w/2;top=r.bottom+gap+h<=maxY-m?r.bottom+gap:r.top-gap-h;}
+    editor.style.left=Math.max(minX+m,Math.min(maxX-m-w,left))+'px';editor.style.top=Math.max(minY+m,Math.min(maxY-m-h,top))+'px';
+  }
+  function syncStickyEditor(){
+    if(!stickyEditing)return;var ch=find(stickyEditing.chId),found=ch&&findSticky(ch,stickyEditing.id);
+    if(!found||stickyEditing.chId!==currentId){closeStickyEditor(true);return;}
+    stickyEditing.page=found.page;var editor=byId('stickyEditor');editor.dataset.color=found.item.color;editor.setAttribute('aria-label','Sticky note, page '+found.page);
+    document.querySelectorAll('[data-sticky-color]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.stickyColor===found.item.color));});
+    var text=byId('stickyText');if(document.activeElement!==text&&text.value!==found.item.text)text.value=found.item.text||'';
+    var button=stickyButton(found.item.id);if(button)paintStickyButton(button,found.item);
+  }
+  function openStickyEditor(id,options){
+    options=options||{};var ch=find(currentId),found=ch&&findSticky(ch,id);if(!found)return;
+    if(stickyEditing&&stickyEditing.id!==id)closeStickyEditor();
+    if(stickyPlacing){stickyPlacing=false;syncStickyUi();syncZenAnnotateUi();}
+    if(!stickyEditing||stickyEditing.id!==id)stickyEditing={id:id,chId:currentId,page:found.page,isNew:!!options.isNew,originalText:found.item.text||''};
+    var editor=byId('stickyEditor'),text=byId('stickyText');text.value=found.item.text||'';
+    editor.classList.remove('hidden');syncStickyEditor();placeStickyEditor();requestAnimationFrame(placeStickyEditor);
+    if(options.focus)text.focus({preventScroll:true});else editor.focus({preventScroll:true});
+  }
+  function forgetStickyHistory(id){
+    function other(action){return !(action.kind==='sticky'&&(action.id===id||action.item&&action.item.id===id));}
+    highlightHistory=highlightHistory.filter(other);highlightFuture=highlightFuture.filter(other);syncTouchDockStates();
+  }
+  /* Closing a note that holds no words removes it: a stray tap leaves no empty notes. */
+  function closeStickyEditor(skipCleanup){
+    var editing=stickyEditing;if(!editing)return;stickyEditing=null;
+    var editor=byId('stickyEditor'),hadFocus=editor.contains(document.activeElement);editor.classList.add('hidden');editor.style.visibility='';
+    var ch=find(editing.chId),found=ch&&findSticky(ch,editing.id);
+    if(!skipCleanup&&found&&!stickyText(found.item)){
+      var stamp=stickyStamp(ch),list=stickyList(ch,found.page),index=list.indexOf(found.item);
+      if(index>=0)list.splice(index,1);if(!list.length)delete ch.pdfStickies[found.page];
+      ch.pdfStickiesDeleted=ch.pdfStickiesDeleted||{};ch.pdfStickiesDeleted[editing.id]=stamp;
+      if(editing.isNew){forgetStickyHistory(editing.id);showReaderToast('Empty note removed');}
+      else{recordHighlightAction({kind:'sticky',op:'remove',page:found.page,item:Object.assign({},found.item,{text:editing.originalText})});showReaderToast('Empty note removed · Undo restores it');}
+      touch(ch);if(editing.chId===currentId){renderPdfStickies(found.page);renderNoteIndex();}
+      return;
+    }
+    flushPersistSoon(true);
+    var button=found&&editing.chId===currentId&&stickyButton(editing.id);if(button){paintStickyButton(button,found.item);if(hadFocus)button.focus({preventScroll:true});}
+  }
+  function deleteSticky(id){
+    var ch=find(currentId),found=ch&&findSticky(ch,id);if(!found)return false;
+    if(stickyEditing&&stickyEditing.id===id){stickyEditing=null;byId('stickyEditor').classList.add('hidden');}
+    var stamp=stickyStamp(ch),list=stickyList(ch,found.page);list.splice(list.indexOf(found.item),1);if(!list.length)delete ch.pdfStickies[found.page];
+    ch.pdfStickiesDeleted=ch.pdfStickiesDeleted||{};ch.pdfStickiesDeleted[id]=stamp;
+    recordHighlightAction({kind:'sticky',op:'remove',page:found.page,item:found.item});touch(ch);renderPdfStickies(found.page);renderNoteIndex();
+    showReaderToast('Note deleted · Undo restores it');return true;
+  }
+  function applyStickyAction(ch,action,undoing){
+    var id=action.item?action.item.id:action.id,stamp=stickyStamp(ch);ch.pdfStickies=ch.pdfStickies||{};ch.pdfStickiesDeleted=ch.pdfStickiesDeleted||{};
+    var list=ch.pdfStickies[action.page]||(ch.pdfStickies[action.page]=[]),index=list.findIndex(function(s){return s.id===id;});
+    if(action.op==='add'||action.op==='remove'){
+      if(action.op==='add'?!undoing:undoing){var restored=Object.assign({},action.item,{updatedAt:stamp});if(index<0)list.push(restored);else list[index]=restored;}
+      else{if(index>=0){action.item=list[index];list.splice(index,1);}ch.pdfStickiesDeleted[id]=stamp;if(stickyEditing&&stickyEditing.id===id)closeStickyEditor(true);}
+    }else{
+      if(index<0){if(!list.length)delete ch.pdfStickies[action.page];return false;}
+      var item=list[index];if(action.op==='move'){var spot=undoing?action.from:action.to;item.x=spot.x;item.y=spot.y;}else if(action.op==='recolor')item.color=undoing?action.from:action.to;
+      item.updatedAt=stamp;
+    }
+    if(!list.length)delete ch.pdfStickies[action.page];
+    touch(ch);renderPdfStickies(+action.page);renderNoteIndex();syncStickyEditor();if(stickyEditing)placeStickyEditor();return true;
+  }
+  function stickyActionMessage(action,undoing){
+    if(action.op==='move')return undoing?'Note moved back':'Note moved again';
+    if(action.op==='recolor')return undoing?'Note color undone':'Note color reapplied';
+    return (action.op==='add')===undoing?'Sticky note removed':'Sticky note restored';
+  }
+  byId('stickyText').addEventListener('input',function(){
+    if(!stickyEditing)return;var ch=find(stickyEditing.chId),found=ch&&findSticky(ch,stickyEditing.id);if(!found)return;
+    found.item.text=this.value.slice(0,window.PhloemStickies.MAX_TEXT);found.item.updatedAt=stickyStamp(ch);touchTyping(ch);
+    var button=stickyButton(found.item.id);if(button)paintStickyButton(button,found.item);
+    clearTimeout(stickyIndexTimer);stickyIndexTimer=setTimeout(renderNoteIndex,300);
+  });
+  document.querySelectorAll('[data-sticky-color]').forEach(function(b){b.onclick=function(){
+    if(!stickyEditing)return;var ch=find(currentId),found=ch&&findSticky(ch,stickyEditing.id),color=b.dataset.stickyColor;
+    stickyColor=color;try{localStorage.setItem(STICKY_COLOR_KEY,color);}catch(e){}
+    restoreStickyCaret();
+    if(!found||found.item.color===color)return;
+    recordHighlightAction({kind:'sticky',op:'recolor',page:found.page,id:found.item.id,from:found.item.color,to:color});
+    found.item.color=color;found.item.updatedAt=stickyStamp(ch);touch(ch);syncStickyEditor();renderNoteIndex();
+  };});
+  /* Choosing a color keeps the caret, and the iPad keyboard, in the note. WebKit keeps the
+     focus but drops the caret on the press, so it is put back where it was. */
+  var stickyCaret=[0,0],stickyRefocus=0;
+  ['focus','input','keyup','mouseup','touchend','select'].forEach(function(type){byId('stickyText').addEventListener(type,function(){var text=byId('stickyText');stickyCaret=[text.selectionStart,text.selectionEnd];});});
+  byId('stickyEditor').querySelectorAll('.sticky-editor-bar button').forEach(function(b){['pointerdown','mousedown'].forEach(function(type){b.addEventListener(type,function(e){if(document.activeElement!==byId('stickyText'))return;e.preventDefault();stickyRefocus=Date.now();});});});
+  function restoreStickyCaret(){var text=byId('stickyText');if(!stickyEditing||Date.now()-stickyRefocus>3000)return;stickyRefocus=0;text.focus({preventScroll:true});try{text.setSelectionRange(stickyCaret[0],stickyCaret[1]);}catch(e){}}
+  byId('stickyDelete').onclick=function(){if(stickyEditing)deleteSticky(stickyEditing.id);};
+  byId('stickyClose').onclick=function(){closeStickyEditor();};
+  // A press anywhere else closes the open note, except paper Undo/Redo, which act on it.
+  window.addEventListener('pointerdown',function(e){
+    if(!stickyEditing)return;var t=e.target,icon=t.closest&&t.closest('.pdf-sticky');
+    if(t.closest&&t.closest('#stickyEditor,#zenUndo,#zenRedo,#highlightUndo,#pdfInkUndo,#pdfInkRedo,#touchUndo')||icon&&icon.dataset.stickyId===stickyEditing.id)return;
+    closeStickyEditor();
+  },true);
+  byId('documentPane').addEventListener('scroll',function(){if(stickyEditing)requestAnimationFrame(placeStickyEditor);},{passive:true});
+  window.addEventListener('resize',function(){if(stickyEditing)placeStickyEditor();});
+  if(window.visualViewport){visualViewport.addEventListener('resize',function(){if(stickyEditing)placeStickyEditor();});visualViewport.addEventListener('scroll',function(){if(stickyEditing)placeStickyEditor();});}
+  /* From the Notebook: go to the note's page, bring its spot into view and open it. */
+  async function jumpToSticky(id){
+    var ch=find(currentId),found=ch&&findSticky(ch,id);if(!found)return;
+    if(await gotoPdfPage(found.page,'auto')===false)return;
+    found=findSticky(find(currentId),id);if(!found)return;
+    var view=pdfViews[found.page-1];if(view&&!view.rendered)await renderPdfPageAt(found.page);
+    function reveal(){var b=stickyButton(id),pane=byId('documentPane');if(!b||pagedPdfFlow())return;var r=b.getBoundingClientRect(),p=pane.getBoundingClientRect();if(r.top<p.top+24||r.bottom>p.bottom-24)pane.scrollTop+=r.top+r.height/2-(p.top+p.height*.4);}
+    reveal();requestAnimationFrame(reveal);
+    var button=stickyButton(id);if(!button)return;
+    button.classList.remove('found');void button.offsetWidth;button.classList.add('found');setTimeout(function(){button.classList.remove('found');},1600);
+    openStickyEditor(id,{});
+  }
   function eraserTargets(host){
     var ch=find(currentId),page=host.closest('.pdf-page'),base=page&&page.getBoundingClientRect(),kind=readerMode==='pdf'?'pdf':ch.kind==='pdf'?'reader':'text';
     // Hit testing must not create empty highlight lists, especially on scanned
@@ -8288,7 +8588,7 @@
     return g&&g.documentId===currentId&&g.mode===readerMode&&g.host.isConnected&&(g.erasing||g.host.contains(g.start.node))&&!byId('readerPage').classList.contains('hidden');
   }
   function startPencilStroke(e,id,source){
-    if(readerMode==='pdf'&&(pdfWriteMode||highlightEraseMode&&pdfInkController))return false;
+    if(readerMode==='pdf'&&(pdfWriteMode||highlightEraseMode&&pdfInkController||stickyPlacing))return false;
     if(savedHighlightDrag||pencilStroke||bookCurlOwned||pagedTurning||reviewLinkTargetId||guideDragging||selectionPointerDown||e.button>0)return false;
     var target=e.target,host=target&&target.closest&&target.closest(readerMode==='pdf'?'.text-layer':'.original');
     if(!host&&highlightEraseMode&&readerMode==='pdf'){var page=target.closest('.pdf-page');host=page&&page.querySelector('.text-layer');}
@@ -8588,6 +8888,7 @@
     if(action.kind==='annotations'){
       action.actions.forEach(function(edit){applyHighlightAction(edit,undoing);});return true;
     }
+    if(action.kind==='sticky')return applyStickyAction(ch,action,undoing);
     if(action.kind==='ink'){
       if(pdfInkController)pdfInkController.cancel();var stamp=pdfInkStamp(ch);ch.pdfInk=ch.pdfInk||{};ch.pdfInkDeleted=ch.pdfInkDeleted||{};var inkList=ch.pdfInk[action.page]||(ch.pdfInk[action.page]=[]),insert=action.op==='add'?!undoing:undoing;
       action.entries.forEach(function(entry){var index=inkList.findIndex(function(item){return item.id===entry.item.id;});if(insert){var restored=Object.assign({},entry.item,{updatedAt:stamp});if(index<0)inkList.splice(Math.min(entry.index,inkList.length),0,restored);else inkList[index]=restored;}else{if(index>=0)inkList.splice(index,1);ch.pdfInkDeleted[entry.item.id]=stamp;}});
@@ -8629,14 +8930,14 @@
     requestAnimationFrame(refreshHighlightQuick);
     var action=highlightHistory.pop();
     if(!action){showReaderToast('Nothing to undo');return;}
-    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.kind==='annotations'?'Erased annotations restored':action.kind==='ink'?'Handwriting change undone':action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();syncPdfInkUi();
+    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.kind==='sticky'?stickyActionMessage(action,true):action.kind==='annotations'?'Erased annotations restored':action.kind==='ink'?'Handwriting change undone':action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();syncPdfInkUi();
   }
   function redoHighlight(){
     if(pdfInkController)pdfInkController.cancel();
     requestAnimationFrame(refreshHighlightQuick);
     var action=highlightFuture.pop();
     if(!action){showReaderToast('Nothing to redo');return;}
-    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.kind==='annotations'?'Annotations erased':action.kind==='ink'?'Handwriting change redone':action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();syncPdfInkUi();
+    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.kind==='sticky'?stickyActionMessage(action,false):action.kind==='annotations'?'Annotations erased':action.kind==='ink'?'Handwriting change redone':action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();syncPdfInkUi();
   }
   /* A saved highlight reuses the same passage card as a fresh selection. Its small
      management row adds recolor/remove without sending the reader to another UI. */
@@ -9780,6 +10081,16 @@
       if(!remote||!remote.id||state.deleted[remote.id])return;normalize(remote,{foldValidationNow:foldValidationNow});var local=find(remote.id);
       if(!local){state.chapters.push(remote);if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;return;}
       if(mergePdfInk(local,local,remote))changed=true;remote.pdfInk=local.pdfInk;remote.pdfInkDeleted=local.pdfInkDeleted;
+      /* Sticky notes merge note by note on both paths below. An older version keeps them
+         when it takes a newer copy but drops them when its own copy is newer, so when the
+         incoming copy lacked notes held here, the merged copy is stamped newer than it:
+         that device then takes it whole and keeps the notes from then on. */
+      var stickyHeal=false;
+      if(typeof mergePdfStickies==='function'&&window.PhloemStickies&&(local.pdfStickies!==undefined||local.pdfStickiesDeleted!==undefined||remote.pdfStickies!==undefined||remote.pdfStickiesDeleted!==undefined)){
+        var incomingStickies=window.PhloemStickies.signature(remote.pdfStickies,remote.pdfStickiesDeleted);
+        if(mergePdfStickies(local,local,remote))changed=true;remote.pdfStickies=local.pdfStickies;remote.pdfStickiesDeleted=local.pdfStickiesDeleted;
+        stickyHeal=incomingStickies!==window.PhloemStickies.signature(local.pdfStickies,local.pdfStickiesDeleted);
+      }
       if(typeof mergeReadingKeeps==='function'){
         if(mergeReadingKeeps(remote,local,remote))changed=true;
         if(mergeReadingKeeps(local,local,remote))changed=true;
@@ -9797,7 +10108,8 @@
         if(mergePdfFolds(local,local,remote,foldValidationNow))changed=true;
       }
       var localReviewAt=reviewStateStamp(local),remoteReviewAt=reviewStateStamp(remote),cursor=newerPdfPosition(local.pdfPosition,remote.pdfPosition),lastOpened=Math.max(+local.lastOpenedAt||0,+remote.lastOpenedAt||0),readThrough=Math.max(+local.readThroughPage||0,+remote.readThroughPage||0);
-      if((remote.updatedAt||0)>(local.updatedAt||0)){mergeStampedFields(remote,local);if(localReviewAt>remoteReviewAt)copyReviewState(remote,local);if(cursor){remote.pdfPosition=cursor;remote.readPage=cursor.page;if(Number.isFinite(cursor.zoom)){remote.zoom=cursor.zoom;remote.zoomPreferenceV=PDF_ZOOM_PREFERENCE_VERSION;}}remote.lastOpenedAt=lastOpened;remote.readThroughPage=readThrough||remote.readThroughPage;state.chapters[state.chapters.indexOf(local)]=remote;if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;return;}
+      if(stickyHeal&&(+local.updatedAt||0)===(+remote.updatedAt||0)){local.updatedAt=(+remote.updatedAt||0)+1;changed=true;}
+      if((remote.updatedAt||0)>(local.updatedAt||0)){if(stickyHeal)remote.updatedAt=(+remote.updatedAt||0)+1;mergeStampedFields(remote,local);if(localReviewAt>remoteReviewAt)copyReviewState(remote,local);if(cursor){remote.pdfPosition=cursor;remote.readPage=cursor.page;if(Number.isFinite(cursor.zoom)){remote.zoom=cursor.zoom;remote.zoomPreferenceV=PDF_ZOOM_PREFERENCE_VERSION;}}remote.lastOpenedAt=lastOpened;remote.readThroughPage=readThrough||remote.readThroughPage;state.chapters[state.chapters.indexOf(local)]=remote;if(remote.kind==='pdf')saveDerivedSoon(remote);changed=true;return;}
       if(cursor&&(!local.pdfPosition||(cursor.updatedAt||0)>(local.pdfPosition.updatedAt||0))){local.pdfPosition=cursor;local.readPage=cursor.page;if(Number.isFinite(cursor.zoom)){local.zoom=cursor.zoom;local.zoomPreferenceV=PDF_ZOOM_PREFERENCE_VERSION;}changed=true;}
       if(lastOpened>(+local.lastOpenedAt||0)){local.lastOpenedAt=lastOpened;changed=true;}if(readThrough>(+local.readThroughPage||0)){local.readThroughPage=readThrough;changed=true;}
       if(mergeStampedFields(local,remote))changed=true;
@@ -9808,6 +10120,7 @@
     var exact=duplicateGroups(state.chapters,true);if(exact.length){collapseDuplicateGroups(exact);changed=true;}
     if(currentId&&state.deleted[currentId]){var resolved=resolvedPaperId(currentId);if(find(resolved)){currentId=resolved;try{localStorage.setItem(LAST_OPEN_KEY,resolved);}catch(e){}}else{currentId=null;pdfDoc=null;if(!byId('readerPage').classList.contains('hidden'))showPage('libraryPage');}}
     if(changed&&currentId&&typeof renderReadingKeeps==='function')renderReadingKeeps();
+    if(changed&&currentId&&typeof renderPdfStickies==='function'){renderPdfStickies();syncStickyEditor();}
     if(changed&&typeof renderReadingExcerpts==='function')renderReadingExcerpts();
     return changed;
   }

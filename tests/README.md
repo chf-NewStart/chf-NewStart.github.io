@@ -327,6 +327,18 @@ The Zen ••• menu downloads it on the web; in the iPad app it goes to the s
 second tap shares the finished file if iOS says the first tap expired) and stays hidden
 without one. Run with `PHLOEM_BROWSER=webkit` too.
 
+`reading-pdf-sticky-notes.test.js` covers sticky notes on PDF pages: Sticky note in the ✎
+menu (also the toolbar and touch dock), placing one with a mouse, Pencil or finger tap (in
+Scroll and on a Book leaf, without highlighting or turning the page), typing, editing, a
+second tap closing it, colors, dragging to move, deleting, Undo/Redo of each, an empty new
+note leaving nothing behind, the Notebook list and its jump, every note staying on its spot
+across zoom, Page/Book layouts, a rotated and a cropped page and a reload, and Export
+annotated PDF writing each as a PDF comment centred on that spot. It also runs the frozen
+v206 merge code (`fixtures/reading-merge-v206.js`) as an older installed Phloem through a
+sync round trip: it drops the unknown notes field when its own copy is newer, this version
+restores the notes and stamps the paper newer so the old copy takes them, and tombstones
+keep deleted notes deleted. Run with `PHLOEM_BROWSER=webkit` too.
+
 `reading-android-touch.test.js` covers Galaxy (Android) feedback: dragging a selection over
 the blank gap between lines or past a line's end stays with the nearest words instead of
 jumping to the page's start or end (PDF.js's end-of-content guard; the iPad text layer is

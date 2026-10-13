@@ -42,6 +42,39 @@ order:
 
 If it runs out of time, it schedules its own follow-up and records it here.
 
+## How to work on it
+
+- **Where things live:** the reader is `reading.html`, `reading.js` (app, storage, sync,
+  adapters), `reading-ink.js` (PDF ink and the `PhloemInk.pathData` smoothing),
+  `reading-workspace*.js/.css` (Workspace state, viewport, view), `reading-stickies.js`,
+  `reading-sw.js` (offline shell). iPad app: `apps/ipad` (Capacitor). Its bundler
+  `apps/ipad/scripts/build-web.mjs` has an **explicit file allowlist (`readerFiles`)**, so
+  any new reader file must be added there, along with `apps/ipad/tests/bundle.test.mjs`.
+- **Ship the web reader:** bump `phloem-shell-vNNN` in `reading-sw.js` and every `?v=NNN` in
+  `reading.html` together, push to `main` (GitHub Pages deploys in about 1 minute), and check
+  with `curl -s https://houfu72.com/reading-sw.js | grep phloem-shell`. Fetch and rebase
+  first, because other sessions push to `main` too.
+- **Tests:** `node tests/<name>.test.js`, one file at a time (Playwright from the main
+  checkout's `node_modules`; symlink it into a worktree). Most relevant to Phloem:
+  `tests/*workspace*`, `tests/*ink*`, `tests/*ai*`, `tests/reading-app-update.test.js`; set
+  `PHLOEM_BROWSER=webkit` for iPad's engine. Some files extract functions from `reading.js`
+  by name, so state a function needs must live inside it. iPad: `cd apps/ipad && npm ci &&
+  npm test && npm run ios:sync`; the user skill `ship-ios-app` covers archive, upload and
+  App Store Connect (sign-in happens in the built-in browser pane).
+- **Performance lessons (2026-10-12):** the Workspace adapter's `context()` used to re-validate
+  the whole saved Workspace (`readingWorkspaceUnavailable` → `PhloemWorkspaceState.normalize`)
+  on every call; it is now cached per saved object. Keep per-pen-sample code free of
+  `context()` and whole-library work. Measure with a seeded large library (thousands of
+  strokes) and count calls, not just wall time on a fast Mac.
+- **App Store IDs:** Phloem `id6813510395`, Game Life `id6821541367`, Qi `id6821608519`.
+- **Other places to update:** lifegameproject.com is `~/Desktop/untitled folder 3/lifegame`.
+  The CV source is `~/Desktop/Career/Houfu_Chen_CV_2026/Source/Houfu_Chen_Resume_2026.md`
+  (rebuild with `build_resume_ooxml.py`, copy the PDF to `resumes/` here). Homepage rules:
+  bilingual `data-en`/`data-zh` on every visible string, each project appears once, no
+  build step.
+- **Testers:** one Android tablet on Chrome (web reader), and Houfu's iPad (App Store app or
+  Home Screen web app). Their videos and screenshots are in the scheduled task's folder.
+
 ## Decisions to keep
 
 - **Name story (Houfu's words):** in his project, phloem carries sugar from carbon sources

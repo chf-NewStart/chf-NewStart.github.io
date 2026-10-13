@@ -28,28 +28,14 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Scheduled
 
-**`phloem-appstore-update-school-promo-demo`**, one-time, **2026-10-13 00:55** (needs the
-Claude desktop app open). Prompt and attachments live in
-`~/.claude/scheduled-tasks/phloem-appstore-update-school-promo-demo/` (`SKILL.md`, the
-large-book PDF, the eLife demo paper, the iPad freeze video, the tester screenshots). In
-order:
-
-1. **iPad freeze after a stroke** (gates the App Store submission). It freezes with a 573-page,
-   33 MB book open but not with a 16-page paper. Suspects: the idle save about 1.2 s after
-   the pen lifts, which serializes the whole library; a sync started after the save; per-page
-   work on pen lift.
-2. **Waterloo school-fit:** remove DeepSeek (Waterloo IST lists it as "Problematic"), add an
-   AI data note, quick accessibility fixes, and tuck the Workspace divider under the Reading
-   settings sheet (Android tester: a visual bug only).
-3. **iOS 1.2.1:** test every fix since 1.2.0 in light and dark mode on the simulator,
-   then submit with **manual release** (Houfu presses Release).
-4. **UWaterloo promo kit:** drafts only, in `output/phloem-school-promo-2026-10/`.
-5. **Websites and CV:** houfu72.com and lifegameproject.com list **Game Life first, then Qi**,
-   then Plank Pilot and Manilha, with true statuses. Add the Phloem name story. CV gets one
-   line on shipped apps.
-6. **Demo video:** uses the eLife Münch paper (CC BY, credited), built around the name story.
-
-If it runs out of time, it schedules its own follow-up and records it here.
+Nothing scheduled. **`phloem-appstore-update-school-promo-demo`** ran on 2026-10-13 (00:55–03:00) and
+finished every part. iOS 1.2.1 submission was deliberately left for Houfu (see Now and Open questions).
+Its prompt and attachments stay in `~/.claude/scheduled-tasks/phloem-appstore-update-school-promo-demo/`.
+Outputs (local, untracked, in the main checkout's `output/`):
+- `phloem-school-promo-2026-10/`: SCHOOL-FIT, pitches, channels, social, flyer
+- `phloem-ios-1.2.1-verification/`
+- `phloem-demo-2026-10-13/`: 43 s demo at 1920×1080 and 1080×1920, posters, description
+- `site-update-2026-10-13/`: before/after screenshots
 
 ## How to work on it
 
@@ -118,6 +104,8 @@ If it runs out of time, it schedules its own follow-up and records it here.
 
 ## Log
 
+- **2026-10-13 demo:** 43 s name-story demo (leaf→fruit, then paper→brain) of the web reader with the eLife
+  Münch paper (CC BY, credited), landscape and vertical, in `output/phloem-demo-2026-10-13/`.
 - **2026-10-13 iOS 1.2.1 (40)** uploaded (not submitted). Reader suite: Chromium 84/84, WebKit 83/84; the one
   failure, `reading-workspace-lasso-resize` (WebKit), also fails on v200 and v210, so it predates this release.
   The simulator tool can't tap in scheduled sessions, so feature checks ran in Playwright WebKit (see VERIFICATION.md).

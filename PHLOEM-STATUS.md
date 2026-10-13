@@ -110,7 +110,6 @@ Outputs (local, untracked, in the main checkout's `output/`):
   with the big book.)
 - EU trader status in App Store Connect.
 - Manilha was rejected: read App Review's message and decide on a fix.
-- The FAW-Volkswagen dates conflict between the site and the CV.
 
 ## Log
 

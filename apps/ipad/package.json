@@ -1,6 +1,6 @@
 {
   "name": "@phloem/ipad",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Phloem for iPad 1.2 release candidate, bundled from the shared web reader",
   "type": "module",

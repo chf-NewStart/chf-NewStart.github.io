@@ -1,6 +1,6 @@
 # Phloem for iPad
 
-This checkout targets **1.2.0 build 26**, reader cache **v144**. Version 1.2 adds opt-in, offline-first iCloud sync for library metadata, notes, highlights, handwriting, progress, PDFs, and Word originals. It also fail-closes cloud generative-assistant setup and requests for the China mainland (`CHN`) App Store storefront and while StoreKit cannot verify a storefront. Local reading, Pencil tools, and private iCloud sync remain available. Native assets must be synced before building. Production CloudKit schema deployment, two-device TestFlight validation, privacy-report reconciliation, and China-mainland account testing remain release gates.
+This checkout targets **1.2.1 build 40**, reader cache **v211**. Version 1.2.1 removes DeepSeek as an AI provider (its saved key and consent are deleted on launch), adds the AI data note, stops the post-stroke stall from the sync re-merging its own upload, and brings the web reader's v201–v211 fixes (sticky notes on PDF pages, annotated PDF export, fast Workspace ink, portrait Workspace dock). Version 1.2 adds opt-in, offline-first iCloud sync for library metadata, notes, highlights, handwriting, progress, PDFs, and Word originals. It also fail-closes cloud generative-assistant setup and requests for the China mainland (`CHN`) App Store storefront and while StoreKit cannot verify a storefront. Local reading, Pencil tools, and private iCloud sync remain available. Native assets must be synced before building. Production CloudKit schema deployment, two-device TestFlight validation, privacy-report reconciliation, and China-mainland account testing remain release gates.
 
 The current development-signed candidate is `/Users/chf/Library/Developer/Xcode/Archives/2026-10-01/Phloem 1.2.0 (26) China-safe.xcarchive`. Its version/build, strict signature, CloudKit entitlements, and all 54 bundled-file hashes are verified locally. It uses a development profile and is not a distribution/TestFlight artifact. The build 25 archive predates the regional gate and is historical; do not upload it.
 
@@ -21,7 +21,7 @@ npm run ios:open
 
 In Xcode:
 
-1. Confirm the **App** target shows Version **1.2.0** and Build **26**.
+1. Confirm the **App** target shows Version **1.2.1** and Build **40**.
 2. Under **Signing & Capabilities**, select the correct Team and keep automatic signing enabled.
 3. Connect a physical iPad, trust the Mac, enable Developer Mode if requested, and choose it as the run destination.
 4. Use disposable documents and provider keys for the release checklist. Do not test with confidential or third-party personal data.

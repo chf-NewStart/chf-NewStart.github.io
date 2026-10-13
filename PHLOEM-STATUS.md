@@ -33,7 +33,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Build 26 (new pillow-vs-frying-pan icon, new name, duel copy for the kits) is attached to 1.0 with 5 iPhone + 5 iPad
   screenshots, uploaded through Claude in Chrome. **Submitted by Houfu 10-13, Waiting for Review.** Game Life **1.0.1**
   (build 10: rating prompt; new subtitle "Conway's Life, puzzles & music", sharper keywords, 元胞自动机, a new
-  Spanish (Mexico) listing for US search) is drafted in ASC, not submitted.
+  Spanish (Mexico) listing for US search) was **submitted 10-13 11:01, Waiting for Review**, automatic release.
 - **Local checkout warning:** `~/Desktop/houfu0702.github.io` `main` has diverged from
   `origin/main` (rewritten history) and holds Houfu's uncommitted work. Work in a worktree
   from `origin/main`; do not reset or stash his checkout.

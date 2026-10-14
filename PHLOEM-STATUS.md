@@ -66,7 +66,10 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   mentions DeepSeek. lifegameproject.com's Phloem card plays the two new iPad recordings; Glyph Run's featured clip
   and the Grow a Tomato / Tomatoswipe / Sudoku thumbnails were re-shot from the live games.
 - **App Store:** Phloem **iOS 1.2.1 (40) live since 2026-10-13 14:19 EDT** (released by Houfu); PR #76 merged,
-  so `apps/ipad` on main is 1.2.1 (40). Next: 1.2.2 (41) carrying reader v212–v221 (draft text in
+  so `apps/ipad` on main is 1.2.1 (40). **1.2.2 (41) uploaded to TestFlight 2026-10-14 ~18:15 EDT** (not submitted)
+  from branch `ipad-release-1.2.2-41`, PR #77 (merge after release): reader v221 plus an App Store update notice
+  (bundle-manifest.json carries the app version; Desk settings shows "Version 1.2.2 (41) · the newest version"; a newer
+  store version gets a dismissible Update banner). Houfu tests on his iPad, then decides on submitting (draft text in
   `output/phloem-ios-1.2.1-verification/STORE-TEXT-1.2.2-DRAFT.md`), no rush. Houfu tested build 40 on his iPad ("works well"), and the
   freeze is gone. New listing media cut from his iPad recordings: two **silent** captioned previews (landscape
   Ask AI / Workspace / export; portrait leaf→fruit, paper→brain) and screenshots 4–5 (Ask about any passage,
@@ -165,6 +168,11 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 1.2.2 (41):** archived and uploaded (Release, automatic signing); archive verified to carry reader v221
+  and `app: 1.2.2 (41)`. `apps/ipad` tests 21/21. `cap sync` through a symlinked node_modules rewrote
+  `CapApp-SPM/Package.swift` with an absolute path; restored before archiving (the relative path resolves through
+  the link). Waiting on Houfu's TestFlight check: Listen voices (Jamie), lock screen, reading lists, Desk settings version.
 
 - **2026-10-14 v221:** Listen (with "start from": a selection, a tapped paragraph, or the "Read from…" section menu;
   running heads and page counters skipped), What does this mean?, Copy, the selection card's six action tiles ("Save

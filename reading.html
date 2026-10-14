@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=218">
-  <link rel="stylesheet" href="/reading-fold.css?v=218">
-  <link rel="stylesheet" href="/reading-workspace.css?v=218">
+  <link rel="stylesheet" href="/reading.css?v=219">
+  <link rel="stylesheet" href="/reading-fold.css?v=219">
+  <link rel="stylesheet" href="/reading-workspace.css?v=219">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -111,7 +111,7 @@
           <div class="eyebrow">Read in order</div>
           <h1 id="listsTitle">Reading lists</h1>
         </div>
-        <p>Line up what to read next and what to look for in each paper, then tick it off. A paper can wait here as a title or DOI until you add its PDF.</p>
+        <p>Line up papers in the order you want to read them and tick them off. Peek at an abstract before you open one. A paper can wait here as a title or DOI until you add its PDF.</p>
       </div>
       <p class="rl-locked hidden" id="listsLocked" role="status">These lists were saved by a newer version of Phloem. Reload Phloem to edit them.</p>
 
@@ -853,12 +853,13 @@
     <div class="dialog-head"><div><span class="panel-eyebrow">Reading list</span><h2 id="listImportTitle">Import a list</h2></div><button class="icon-btn" data-close="listImportDialog" aria-label="Close import">×</button></div>
     <div class="dialog-body">
       <p class="hint">Paste anything below, or choose a file. Phloem understands BibTeX and RIS exports (Zotero, Mendeley, Google Scholar, EndNote), Markdown checklists, and plain lists with one DOI, link or title per line.</p>
-      <textarea class="field rl-import-text" id="listImportText" rows="9" spellcheck="false" placeholder="10.3389/fpls.2014.00516&#10;- [ ] Osorio, Ruan &amp; Fernie (2014) — source-to-sink partitioning in tomato&#10;  - Look for: where regulation happens&#10;Stanfield &amp; Bartlett (2022) Coordination between phloem loading and structure" aria-label="Paste a reading list"></textarea>
+      <textarea class="field rl-import-text" id="listImportText" rows="9" spellcheck="false" placeholder="10.3389/fpls.2014.00516&#10;- [ ] Osorio, Ruan &amp; Fernie (2014) — source-to-sink partitioning in tomato&#10;Stanfield &amp; Bartlett (2022) Coordination between phloem loading and structure" aria-label="Paste a reading list"></textarea>
       <div class="rl-import-row">
         <button class="soft-button" id="listImportChoose" type="button">Choose file…</button>
         <input class="hidden" type="file" id="listImportFile" accept=".bib,.ris,.md,.markdown,.txt,text/plain,text/markdown,application/x-bibtex,application/x-research-info-systems">
         <p class="rl-import-summary" id="listImportSummary" role="status" aria-live="polite"></p>
       </div>
+      <label class="rl-import-keep hidden" id="listImportNotesRow"><input type="checkbox" id="listImportNotes"> Also bring in the list's notes about each paper (left out by default, so you read first and decide yourself)</label>
       <div class="rl-import-row">
         <select class="field" id="listImportTarget" aria-label="Where to add"></select>
         <button class="button" id="listImportGo" type="button" disabled>Import</button>
@@ -1078,22 +1079,22 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=218',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=219',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=218" defer></script>
-<script src="/reading-stickies.js?v=218" defer></script>
-<script src="/reading-keeps.js?v=218" defer></script>
-<script src="/reading-excerpts.js?v=218" defer></script>
-<script src="/reading-excerpts-view.js?v=218" defer></script>
-<script src="/reading-lists.js?v=218" defer></script>
-<script src="/reading-lists-view.js?v=218" defer></script>
-<script src="/reading-workspace.js?v=218" defer></script>
-<script src="/reading-workspace-viewport.js?v=218" defer></script>
-<script src="/reading-workspace-view.js?v=218" defer></script>
-<script src="/reading-folds.js?v=218" defer></script>
-<script src="/reading-pdf-projection.js?v=218" defer></script>
-<script src="/reading-fold-view.js?v=218" defer></script>
-<script src="/reading.js?v=218" defer></script>
+<script src="/reading-ink.js?v=219" defer></script>
+<script src="/reading-stickies.js?v=219" defer></script>
+<script src="/reading-keeps.js?v=219" defer></script>
+<script src="/reading-excerpts.js?v=219" defer></script>
+<script src="/reading-excerpts-view.js?v=219" defer></script>
+<script src="/reading-lists.js?v=219" defer></script>
+<script src="/reading-lists-view.js?v=219" defer></script>
+<script src="/reading-workspace.js?v=219" defer></script>
+<script src="/reading-workspace-viewport.js?v=219" defer></script>
+<script src="/reading-workspace-view.js?v=219" defer></script>
+<script src="/reading-folds.js?v=219" defer></script>
+<script src="/reading-pdf-projection.js?v=219" defer></script>
+<script src="/reading-fold-view.js?v=219" defer></script>
+<script src="/reading.js?v=219" defer></script>
 </body>
 </html>

@@ -75,6 +75,7 @@ const titles = page => page.locator('#listItems .rl-title').allTextContents();
       const url = new URL(route.request().url());
       const json = body => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) });
       if (url.hostname === 'www.ebi.ac.uk') {
+        if (/\/search$/.test(url.pathname) && url.searchParams.get('resultType') === 'core') return json({ resultList: { result: /fpls\.2014\.00516/.test(url.searchParams.get('query')) ? [{ doi: '10.3389/fpls.2014.00516', title: OSORIO.title[0] + '.', abstractText: '<h4>Background</h4>Plant growth and carbon metabolism are <i>closely</i> associated.<script>window.ranAbstract = true</script><h4>Scope</h4>Tomato is the model.' }] : [] } });
         if (/\/search$/.test(url.pathname)) return json({ resultList: { result: /10\.1093\/aob\/mcm258/.test(url.searchParams.get('query')) ? [{ pmcid: 'PMC2701831', isOpenAccess: 'Y', doi: '10.1093/aob/mcm258', title: SUGARCANE.title[0] + '.' }] : [] } });
         if (/PMC2701831\/fullTextXML$/.test(url.pathname)) return route.fulfill({ status: 200, contentType: 'application/xml', headers: { 'access-control-allow-origin': '*' }, body: JATS });
         return route.fulfill({ status: 404, body: '' });
@@ -142,7 +143,19 @@ const titles = page => page.locator('#listItems .rl-title').allTextContents();
     assert.deepEqual(await titles(page), ['Sucrose is a signal molecule in assimilate partitioning', 'An update on source-to-sink carbon partitioning in tomato']);
     assert.equal(await page.locator('#listDoneItems .rl-title').textContent(), 'Konuntakiet 2020 DPhil thesis');
 
-    // Edit what to look for.
+    // Peek shows the abstract before opening, as text only.
+    const osorioRow = page.locator('#listItems .rl-item', { hasText: 'An update on source-to-sink' });
+    await osorioRow.locator('[data-rl-peek]').click();
+    await page.waitForFunction(() => /closely associated/.test(document.querySelector('#listItems .rl-peek')?.textContent || ''));
+    const peek = await page.evaluate(() => { const box = document.querySelector('#listItems .rl-peek'); return { paragraphs: Array.from(box.querySelectorAll('p')).map(p => p.textContent), script: !!box.querySelector('script, i'), ran: !!window.ranAbstract }; });
+    assert.deepEqual(peek.paragraphs.slice(0, 2), ['Background: Plant growth and carbon metabolism are closely associated.', 'Scope: Tomato is the model.'], JSON.stringify(peek));
+    assert.equal(peek.script || peek.ran, false, 'the abstract is plain text');
+    assert.equal(await osorioRow.locator('[data-rl-peek]').textContent(), 'Hide abstract');
+    await osorioRow.locator('[data-rl-peek]').click();
+    assert.equal(await page.locator('#listItems .rl-peek').count(), 0);
+    console.log('  ok  Peek shows the abstract first');
+
+    // Write my own question.
     await page.locator('#listItems .rl-item').first().locator('[data-rl-edit]').click();
     await page.locator('#listItems .rl-editor [name="note"]').fill('Table 2: Vmax falls, Km barely moves');
     await page.locator('#listItems .rl-editor button[type="submit"]').click();
@@ -159,13 +172,15 @@ const titles = page => page.locator('#listItems .rl-title').allTextContents();
       '- [x] Konuntakiet (2020) Whole-plant flux balance model of tomato'
     ].join('\n'));
     assert.match(await page.locator('#listImportSummary').textContent(), /Found 3 papers · 1 with a DOI · 1 already ticked/);
+    assert.equal(await page.locator('#listImportNotesRow').isVisible(), true, 'the list has notes; keeping them is offered');
+    assert.equal(await page.locator('#listImportNotes').isChecked(), false, 'notes are left out by default');
     assert.equal(await page.locator('#listImportTarget').inputValue(), '__new');
     await page.locator('#listImportGo').click();
     await page.waitForFunction(() => /Changes in Photosynthetic Rates/.test(document.getElementById('listItems').textContent));
     assert.equal(await page.locator('#listName').textContent(), 'Night 1');
     const stanfield = (await saved(page)).items.find(item => /Coordination/.test(item.title));
     assert.equal(stanfield.paperId, 'stanfield', 'a clear title match links the library paper');
-    assert.equal(stanfield.note, 'equations 7–10');
+    assert.equal(stanfield.note, '', "the list's own notes stay out: you read first");
     const sugar = (await saved(page)).items.find(item => item.doi === '10.1093/aob/mcm258');
     assert.equal(sugar.authors, 'A. J. McCormick, M. D. Cramer, D. A. Watt');
     const nightList = (await saved(page)).lists.find(list => list.name === 'Night 1');
@@ -196,7 +211,8 @@ const titles = page => page.locator('#listItems .rl-title').allTextContents();
     await page.locator('#listTab').click();
     await page.locator('#listPanel .rl-panel-card').waitFor({ state: 'visible' });
     assert.match(await page.locator('#listPanel .rl-panel-card-head').textContent(), /This paper · 1 of 3/);
-    assert.equal(await page.locator('#listPanel [data-rl-field="note"]').inputValue(), 'equations 7–10');
+    assert.equal(await page.locator('#listPanel [data-rl-field="note"]').inputValue(), '');
+    assert.equal(await page.locator('#listPanel .rl-panel-field span').first().textContent(), 'My question');
     assert.match(await page.locator('#listPanel .rl-panel-next').textContent(), /Changes in Photosynthetic Rates/);
     assert.match(await page.locator('#listPanel .rl-panel-next button').textContent(), /Open next/, 'the fetched paper is now in the library');
     await page.locator('#listPanel [data-rl-field="takeaway"]').fill('Loading and structure scale together');

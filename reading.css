@@ -2614,6 +2614,14 @@ html.rl-dragging, html.rl-dragging * { cursor: grabbing !important; user-select:
 .rl-note, .rl-takeaway { margin: 6px 0 0; color: color-mix(in srgb, var(--ink) 82%, var(--muted)); font: italic .84rem/1.5 var(--serif); white-space: pre-line; }
 .rl-note span, .rl-takeaway span { margin-right: 6px; color: var(--muted); font: 650 .66rem/1 var(--sans); font-style: normal; letter-spacing: .02em; }
 .rl-takeaway span { color: var(--accent-dark); }
+.rl-peek-toggle { padding: 0; border: 0; background: none; color: var(--blue); font: inherit; font-weight: 650; }
+.rl-peek-toggle:hover, .rl-peek-toggle:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.rl-peek { margin: 8px 0 2px; padding: 10px 12px; border-left: 3px solid color-mix(in srgb, var(--blue) 45%, var(--line)); border-radius: 0 10px 10px 0; background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.rl-peek p { margin: 0 0 8px; font: .86rem/1.55 var(--serif); }
+.rl-peek p:last-child { margin-bottom: 0; }
+.rl-peek .rl-peek-note { color: var(--muted); font: .72rem/1.4 var(--sans); }
+.rl-import-keep { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; color: var(--muted); font-size: .76rem; line-height: 1.45; }
+.rl-import-keep input { margin-top: 2px; accent-color: var(--accent-button); }
 .rl-add-takeaway, .rl-suggest { display: block; margin-top: 6px; padding: 0; border: 0; background: none; color: var(--blue); font-size: .74rem; font-weight: 650; text-align: left; }
 .rl-add-takeaway:hover, .rl-suggest:hover { text-decoration: underline; text-underline-offset: 3px; }
 .rl-trail { display: flex; align-items: center; gap: 4px; margin-top: -3px; }

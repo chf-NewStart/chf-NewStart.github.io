@@ -32,12 +32,13 @@
       renameForm: byId('listRenameForm'), renameInput: byId('listRenameInput'), manage: byId('listManage'),
       dialog: byId('listImportDialog'), importText: byId('listImportText'), importFile: byId('listImportFile'),
       importSummary: byId('listImportSummary'), importTarget: byId('listImportTarget'), importGo: byId('listImportGo'),
+      importNotes: byId('listImportNotes'), importNotesRow: byId('listImportNotesRow'),
       locked: byId('listsLocked')
     };
     let activeId = readActive();
     let editingId = '';
     let searchSerial = 0, searchTimer = 0, searchAbort = null, searchSettled = null;
-    const notices = new Map(), fetching = new Set();
+    const notices = new Map(), fetching = new Set(), peeks = new Map(), abstracts = new Map();
     let lastQuery = '', searchResults = { library: [], online: [], state: 'idle', query: '' };
     let importPreview = null;
     let pendingRefresh = false;
@@ -408,7 +409,56 @@
         else if (item.doi) link = '<a href="https://doi.org/' + esc(item.doi) + '" target="_blank" rel="noopener">DOI ↗</a>';
         else link = '<a href="' + esc(scholarUrl(item)) + '" target="_blank" rel="noopener">Find it ↗</a>';
       }
-      return text || link ? '<div class="rl-meta">' + text + (text && link ? '<span aria-hidden="true"> · </span>' : '') + link + '</div>' : '';
+      const peek = item.done ? '' : '<button class="rl-peek-toggle" type="button" data-rl-peek aria-expanded="' + peeks.has(item.id) + '" aria-controls="rl-peek-' + esc(item.id) + '">' + (peeks.has(item.id) ? 'Hide abstract' : 'Peek') + '</button>';
+      const parts = [text, link, peek].filter(Boolean);
+      return parts.length ? '<div class="rl-meta">' + parts.join('<span aria-hidden="true"> · </span>') + '</div>' : '';
+    }
+    /* Peek: the abstract, before you open the paper, so you know what to expect. It comes
+       from Europe PMC (most biology) or Crossref, as plain text; nothing is generated. */
+    function peekHtml(item) {
+      const peek = peeks.get(item.id);
+      if (!peek) return '';
+      const body = peek.state === 'loading' ? '<p class="rl-peek-note">Finding the abstract…</p>' :
+        peek.paragraphs && peek.paragraphs.length ? peek.paragraphs.map(text => '<p>' + esc(text) + '</p>').join('') + '<p class="rl-peek-note">Abstract from ' + esc(peek.source) + '. Then flip through the figures and the conclusion.</p>' :
+        '<p class="rl-peek-note">No abstract found online. Skim the figures and the conclusion instead.</p>';
+      return '<div class="rl-peek" id="rl-peek-' + esc(item.id) + '" role="region" aria-label="Abstract">' + body + '</div>';
+    }
+    // Structured abstracts keep their headings as a lead-in: "Background: …".
+    function abstractParagraphs(markup) {
+      const marked = String(markup || '').replace(/<\/(?:jats:)?(?:title|h\d)>/gi, ': ').replace(/<\/?(?:jats:)?(?:p|sec|title|h\d|br)\b[^>]*>/gi, '\n\n');
+      const doc = new DOMParser().parseFromString('<div>' + marked + '</div>', 'text/html');
+      doc.querySelectorAll('script, style').forEach(node => node.remove());
+      return (doc.body.textContent || '').split(/\n\s*\n/).map(text => text.replace(/\s+/g, ' ').replace(/^abstract[.:]?\s*/i, '').trim()).filter(text => text.length > 1 && !/:$/.test(text));
+    }
+    async function abstractFor(item) {
+      let query = item.doi ? 'DOI:"' + item.doi + '"' : item.title && item.title.length >= 20 ? 'TITLE:"' + item.title.replace(/["\\]/g, ' ') + '"' : '';
+      if (query) {
+        try {
+          const response = await fetch(EUROPE_PMC + '/search?format=json&resultType=core&pageSize=3&query=' + encodeURIComponent(query));
+          const found = response.ok ? await response.json() : null;
+          const hit = (found && found.resultList && found.resultList.result || []).find(result => result.abstractText &&
+            (item.doi ? String(result.doi || '').toLowerCase() === item.doi : normalTitle(result.title) === normalTitle(item.title)));
+          if (hit) return { paragraphs: abstractParagraphs(hit.abstractText), source: 'Europe PMC' };
+        } catch (error) {}
+      }
+      if (item.doi) {
+        try {
+          const work = await crossref(CROSSREF + '/' + encodeURIComponent(item.doi));
+          if (work && work.abstract) return { paragraphs: abstractParagraphs(work.abstract), source: 'Crossref' };
+        } catch (error) {}
+      }
+      return { paragraphs: [], source: '' };
+    }
+    async function togglePeek(item) {
+      if (peeks.has(item.id)) { peeks.delete(item.id); refresh(); return; }
+      const cached = abstracts.get(item.id);
+      peeks.set(item.id, cached || { state: 'loading' });
+      refresh();
+      if (cached) return;
+      const found = await abstractFor(item);
+      const entry = { state: 'done', paragraphs: found.paragraphs, source: found.source };
+      if (found.paragraphs.length) abstracts.set(item.id, entry);
+      if (peeks.has(item.id)) { peeks.set(item.id, entry); refresh(); }
     }
     function sourceUrl(item) { return item.url || (item.doi ? 'https://doi.org/' + item.doi : scholarUrl(item)); }
     function trailHtml(item, paper) {
@@ -437,8 +487,8 @@
         '<label><span>Title</span><input class="field" name="title" value="' + esc(item.title) + '" maxlength="500"></label>' +
         ('<div class="rl-editor-row"><label><span>Authors</span><input class="field" name="authors" value="' + esc(item.authors) + '" maxlength="600"></label><label class="rl-editor-year"><span>Year</span><input class="field" name="year" value="' + esc(item.year) + '" inputmode="numeric" maxlength="4"></label></div>' +
           '<label><span>DOI or link</span><input class="field" name="ref" value="' + esc(item.doi || item.url) + '" spellcheck="false"></label>') +
-        '<label><span>Look for</span><textarea class="field" name="note" rows="2" placeholder="Why read it, or what to find in it">' + esc(item.note) + '</textarea></label>' +
-        '<label><span>Takeaway</span><textarea class="field" name="takeaway" rows="2" placeholder="One line to remember, in your own words">' + esc(item.takeaway) + '</textarea></label>' +
+        '<label><span>My question</span><textarea class="field" name="note" rows="2" placeholder="After a quick look (Peek, figures): what do you want to find out, or what do you predict?">' + esc(item.note) + '</textarea></label>' +
+        '<label><span>Takeaway</span><textarea class="field" name="takeaway" rows="2" placeholder="From memory: what did they find, and what surprised you?">' + esc(item.takeaway) + '</textarea></label>' +
         ('<label><span>Library paper</span><select class="field" name="paperId"><option value="">Not in my library yet</option>' +
           options.map(id => { const entry = byIdMap.get(id); return entry ? '<option value="' + esc(id) + '"' + (paper && paper.id === id ? ' selected' : '') + '>' + esc((entry.title || 'Untitled').slice(0, 90)) + '</option>' : ''; }).join('') + '</select></label>') +
         (others.length ? '<label><span>List</span><select class="field" name="listId"><option value="">' + esc(currentList(s).name) + '</option>' + others.map(list => '<option value="' + esc(list.id) + '">Move to ' + esc(list.name) + '</option>').join('') + '</select></label>' : '') +
@@ -455,8 +505,8 @@
         '<div class="rl-body">' +
         (item.id === upNextId ? '<span class="rl-next-tag">Up next</span>' : '') +
         '<button class="rl-title" type="button" data-rl-read>' + esc(label) + '</button>' +
-        metaHtml(item, paper) + noticeHtml(item) +
-        (item.note && !editing ? '<p class="rl-note"><span>Look for</span>' + esc(item.note) + '</p>' : '') +
+        metaHtml(item, paper) + peekHtml(item) + noticeHtml(item) +
+        (item.note && !editing ? '<p class="rl-note"><span>My question</span>' + esc(item.note) + '</p>' : '') +
         (item.takeaway && !editing ? '<p class="rl-takeaway"><span>Takeaway</span>' + esc(item.takeaway) + '</p>' : '') +
         (item.done && !item.takeaway && !editing ? '<button class="rl-add-takeaway" type="button" data-rl-edit>＋ Add a takeaway</button>' : '') +
         (guess ? '<button class="rl-suggest" type="button" data-rl-link="' + esc(guess.id) + '">In your library as “' + esc(guess.title.slice(0, 56)) + (guess.title.length > 56 ? '…' : '') + '” · Link it</button>' : '') +
@@ -674,6 +724,7 @@
       else if (target.hasAttribute('data-rl-remove')) removeItem(item);
       else if (target.dataset.rlLink) { apply(s => L.upsertItem(s, { id: item.id, paperId: target.dataset.rlLink }, adapter.now())); status('Linked to your library copy.'); }
       else if (target.hasAttribute('data-rl-read')) readItem(item);
+      else if (target.hasAttribute('data-rl-peek')) togglePeek(item);
       else if (target.hasAttribute('data-rl-addpdf')) addPdfFor(item);
     });
     page.addEventListener('change', event => {
@@ -728,6 +779,8 @@
     function openImport() {
       importPreview = null;
       el.importText.value = '';
+      el.importNotes.checked = false;
+      el.importNotesRow.classList.add('hidden');
       el.importSummary.textContent = 'Paste a list or choose a file to see what Phloem finds.';
       el.importGo.disabled = true;
       renderImportTarget('');
@@ -747,7 +800,8 @@
       const parsed = L.parseImport(text, filename);
       importPreview = parsed;
       const papersFound = parsed.items.length;
-      const dois = parsed.items.filter(item => item.doi).length, done = parsed.items.filter(item => item.done).length;
+      const dois = parsed.items.filter(item => item.doi).length, done = parsed.items.filter(item => item.done).length, notes = parsed.items.filter(item => item.note).length;
+      el.importNotesRow.classList.toggle('hidden', !notes);
       el.importSummary.textContent = parsed.items.length ? 'Found ' + plural(papersFound, 'paper') +
         (dois ? ' · ' + dois + ' with a DOI' : '') + (done ? ' · ' + done + ' already ticked' : '') + ' (' + ({ bibtex: 'BibTeX', ris: 'RIS', markdown: 'text' })[parsed.format] + ').' :
         text.trim() ? 'Phloem could not find any papers in that. Try one per line.' : 'Paste a list or choose a file to see what Phloem finds.';
@@ -771,7 +825,9 @@
       if (target === '__new') target = createList(importPreview.title || 'Imported list');
       if (!target) return;
       activeId = target; writeActive(target);
-      const added = addEntries(importPreview.items, target);
+      // A list's own notes would tell you what to find before you have read a word; they stay out unless asked for.
+      const keepNotes = el.importNotes.checked;
+      const added = addEntries(importPreview.items.map(item => keepNotes ? item : Object.assign({}, item, { note: '' })), target);
       el.dialog.close();
       if (adapter.showPage) adapter.showPage('listsPage');
       if (!added) status('Everything in that list is already here.');
@@ -792,7 +848,7 @@
       if (active && panel.contains(active) && active.tagName === 'TEXTAREA') return;
       const s = store(), paperId = adapter.currentPaperId(), found = panelList(s, paperId), list = found.list;
       if (!list) {
-        panel.innerHTML = '<div class="rl-panel-empty"><span class="panel-eyebrow">Reading list</span><h3>Read in order</h3><p class="hint">Line up what to read next and what to look for in each paper, then tick it off here while you read.</p><button class="button" type="button" data-rl-panel-go>Start a reading list</button></div>';
+        panel.innerHTML = '<div class="rl-panel-empty"><span class="panel-eyebrow">Reading list</span><h3>Read in order</h3><p class="hint">Line up papers in the order you want to read them, then tick them off here while you read.</p><button class="button" type="button" data-rl-panel-go>Start a reading list</button></div>';
         return;
       }
       const all = listItems(s, list.id), undone = all.filter(item => !item.done), done = all.length - undone.length;
@@ -807,8 +863,8 @@
       if (here) {
         html += '<section class="rl-panel-card" data-rl-item="' + esc(here.id) + '"><div class="rl-panel-card-head"><span>This paper · ' + position + ' of ' + all.length + '</span>' +
           '<label class="rl-panel-done"><input type="checkbox" data-rl-done' + (here.done ? ' checked' : '') + '> Done</label></div>' +
-          '<label class="rl-panel-field"><span>Look for</span><textarea class="field" rows="3" data-rl-field="note" placeholder="What do you want from this paper?">' + esc(here.note) + '</textarea></label>' +
-          '<label class="rl-panel-field"><span>Takeaway</span><textarea class="field" rows="2" data-rl-field="takeaway" placeholder="One line to remember, in your own words">' + esc(here.takeaway) + '</textarea></label></section>';
+          '<label class="rl-panel-field"><span>My question</span><textarea class="field" rows="3" data-rl-field="note" placeholder="What do you want to find out, or what do you predict?">' + esc(here.note) + '</textarea></label>' +
+          '<label class="rl-panel-field"><span>Takeaway</span><textarea class="field" rows="2" data-rl-field="takeaway" placeholder="From memory: what did they find, and what surprised you?">' + esc(here.takeaway) + '</textarea></label></section>';
       } else if (paperId && paper) {
         html += '<section class="rl-panel-card rl-panel-add"><p>This paper is not on “' + esc(list.name) + '”.</p>' +
           (guess ? '<button class="soft-button" type="button" data-rl-panel-link="' + esc(guess.id) + '">It is “' + esc(guess.title.slice(0, 60)) + '”: link it</button>' : '') +

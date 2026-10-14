@@ -23,7 +23,11 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 - **Unlinked citations (v216, Jieun's Android report):** a finger/pen long-press that selects "[5]" or an author-year
   citation in a PDF without link annotations now shows the reference card from the paper's reference list instead of
   the highlight prompt. Mouse selections and marker mode still highlight. Test: `tests/reading-unlinked-citations.test.js`.
-- **Web:** houfu72.com/reading.html serves **v218** (citation hold, above); v217 (v216 above; v217: two copies of one paper no longer block the
+- **Web:** houfu72.com/reading.html serves **v219**: the list's "Look for" is now **My question**, blank until Houfu
+  writes it (imports leave a list's own notes out unless a checkbox is ticked), the takeaway asks "from memory: what
+  did they find, and what surprised you?", and **Peek** shows the abstract (Europe PMC, else Crossref; plain text)
+  before opening. Houfu's reasoning: read first and decide yourself; his professor ruled out AI drafting, so Phloem
+  never writes questions, takeaways or proposal sentences. v218: citation hold (above); v217 (v216 above; v217: two copies of one paper no longer block the
   automatic link, the most recently read copy wins); v213: saved Define answers are kept instead of refetched (from PR #72);
   v212: Escape after a tap in the Workspace no longer closes the paper (iPad keyboards); v211: DeepSeek removed, AI data note, accessibility fixes, the Workspace rail tucked under
   sheets; v210: no re-merge of the sync's own upload after a stroke. The iPad app (1.2.1, in review) bundles v211.
@@ -136,6 +140,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 v219:** My question / Peek / import without notes (see Web). `reading-lists-browser` passes on
+  Chromium and WebKit (Peek strips markup; a script in an abstract never runs).
 
 - **2026-10-14 v218:** citation cards start at the cited entry (XYZ destinations read downward; `cite.` names count as
   references); a touch/pen selection over a link opens its card; plain-text "[6]" skips a "6. References" heading.

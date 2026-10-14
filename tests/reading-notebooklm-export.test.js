@@ -160,7 +160,8 @@ function check(name, condition, extra) {
   });
   // ea4c9f09 added Rename to the cover actions, between PDF and Remove.
   check('cover actions include Rename before Remove', await page.locator('#selectedPaper .cover-actions .rename-paper + .remove-paper').count() === 1);
-  check('Continue, Offline, PDF, Rename, and Remove all fit the mobile notebook', mobileActions.children.length === 5 && mobileActions.children.every(rect => rect.left >= mobileActions.parent.left - 1 && rect.right <= mobileActions.parent.right + 1), JSON.stringify(mobileActions));
+  // v216 added "＋ Reading list" before Rename.
+  check('Continue, Offline, PDF, Reading list, Rename, and Remove all fit the mobile notebook', mobileActions.children.length === 6 && mobileActions.children.every(rect => rect.left >= mobileActions.parent.left - 1 && rect.right <= mobileActions.parent.right + 1), JSON.stringify(mobileActions));
   check('export has no page errors', errors.length === 0, errors.join('; '));
 
   await context.close();

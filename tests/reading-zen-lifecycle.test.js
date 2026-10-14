@@ -43,7 +43,7 @@ function harness(wakeRequest) {
   const context = vm.createContext({
     document, window: { addEventListener(name, callback) { (handlers[name] ||= []).push(callback); } }, navigator: { wakeLock: wakeRequest ? { request: wakeRequest } : null },
     byId: id => elements[id], innerWidth: 1180, comfort: { focus: false },
-    readerMode: 'text', pdfDoc: null,
+    readerMode: 'text', pdfDoc: null, readerReturnPage: '',
     matchMedia: () => ({ matches: true }),
     syncTabletReaderUi() { calls.tablet++; },
     visibleFindReturnTarget: () => null, closeZenPopouts() {},
@@ -83,6 +83,9 @@ test('X delegates directly to the library instead of toggling the old reader int
   elements.zenExit.onclick();
   assert.deepEqual(calls.pages, ['libraryPage']);
   assert.equal(context.zenOn, true, 'showPage owns reading cleanup, not an intermediate desk transition');
+  context.readerReturnPage = 'listsPage';
+  elements.zenExit.onclick();
+  assert.deepEqual(calls.pages, ['libraryPage', 'listsPage'], 'a paper opened from a reading list closes back to it');
 });
 
 test('browser fullscreen can enter and leave without changing the reading interface', async () => {

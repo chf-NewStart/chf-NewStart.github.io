@@ -24,15 +24,16 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=215">
-  <link rel="stylesheet" href="/reading-fold.css?v=215">
-  <link rel="stylesheet" href="/reading-workspace.css?v=215">
+  <link rel="stylesheet" href="/reading.css?v=216">
+  <link rel="stylesheet" href="/reading-fold.css?v=216">
+  <link rel="stylesheet" href="/reading-workspace.css?v=216">
 </head>
 <body class="library-view">
   <header class="masthead">
     <button class="brand" id="brandBtn" aria-label="Open library"><strong>Phloem</strong><span>Breathe · Focus · Read</span></button>
     <nav class="nav" aria-label="Main navigation">
       <button class="nav-btn active" data-view="libraryPage">Library</button>
+      <button class="nav-btn" data-view="listsPage">Reading list</button>
       <button class="nav-btn" data-view="reviewPage">Revision</button>
       <button class="nav-btn" data-view="connectionsPage">Connections</button>
       <button class="nav-btn" id="installNav">Install app</button>
@@ -102,6 +103,77 @@
       </div>
       <p class="support-line hidden" id="supportLine">Phloem is free, and built to make papers easier to focus on. If it helps you read, <a id="supportLink" href="#" target="_blank" rel="noopener">a coffee is always appreciated ☕</a></p>
       <p class="support-line">Phloem is part of <a id="homeLink" href="/">houfu72.com ↗</a></p>
+    </section>
+
+    <section id="listsPage" class="page hidden" aria-labelledby="listsTitle">
+      <div class="rl-hero">
+        <div>
+          <div class="eyebrow">Read in order</div>
+          <h1 id="listsTitle">Reading lists</h1>
+        </div>
+        <p>Line up what to read next and what to look for in each paper, then tick it off. A paper can wait here as a title or DOI until you add its PDF.</p>
+      </div>
+      <p class="rl-locked hidden" id="listsLocked" role="status">These lists were saved by a newer version of Phloem. Reload Phloem to edit them.</p>
+
+      <div class="rl-welcome" id="listsEmpty">
+        <h2>Start a reading list</h2>
+        <p>Give it a name, like “Proposal background” or “Manuscript introduction”. Then add papers by title, author or DOI, in the order you want to read them.</p>
+        <form class="rl-inline-form" id="listFirstForm">
+          <input class="field" id="listFirstName" maxlength="120" placeholder="Name your first list" aria-label="Name your first list" autocomplete="off">
+          <button class="button" type="submit">Create list</button>
+        </form>
+        <p class="rl-welcome-or">Already have a list? <button class="text-button" id="listFirstImport" type="button">Import it</button> from Zotero, Mendeley or Google Scholar (BibTeX or RIS), a Markdown checklist, or one DOI or title per line.</p>
+      </div>
+
+      <div class="rl-workspace hidden" id="listsWorkspace">
+        <div class="rl-tabs-row">
+          <div class="rl-tabs" id="listTabs" role="group" aria-label="Your reading lists"></div>
+        </div>
+        <form class="rl-inline-form hidden" id="listNewForm">
+          <input class="field" id="listNewName" maxlength="120" placeholder="Name the new list" aria-label="New list name" autocomplete="off">
+          <button class="button" type="submit">Create</button>
+        </form>
+        <div class="rl-sheet">
+          <div class="rl-title-row">
+            <div class="rl-title-block">
+              <h2 id="listName"></h2>
+              <div class="rl-progress"><span id="listProgress" role="status" aria-live="polite"></span><span class="rl-progress-track" id="listProgressBar" aria-hidden="true"><i></i></span></div>
+            </div>
+            <details class="rl-manage" id="listManage">
+              <summary class="soft-button">List options</summary>
+              <div class="rl-manage-menu" role="menu">
+                <button type="button" role="menuitem" data-rl-manage="rename">Rename list</button>
+                <button type="button" role="menuitem" data-rl-manage="copy">Copy as Markdown</button>
+                <button type="button" role="menuitem" data-rl-manage="md">Export Markdown</button>
+                <button type="button" role="menuitem" data-rl-manage="bib">Export BibTeX</button>
+                <span class="rl-manage-rule" aria-hidden="true"></span>
+                <button class="danger" type="button" role="menuitem" data-rl-manage="delete">Delete list</button>
+              </div>
+            </details>
+          </div>
+          <form class="rl-inline-form hidden" id="listRenameForm">
+            <input class="field" id="listRenameInput" maxlength="120" aria-label="List name" autocomplete="off">
+            <button class="button" type="submit">Rename</button>
+          </form>
+          <div class="rl-add">
+            <div class="rl-add-row">
+              <label class="rl-add-field"><span class="rl-add-plus" aria-hidden="true">＋</span><input id="listAddInput" type="search" enterkeyhint="done" autocomplete="off" spellcheck="false" placeholder="Add a paper: title, authors or DOI" aria-label="Add a paper by title, authors or DOI" aria-controls="listAddResults"></label>
+              <button class="button" id="listAddBtn" type="button">Add</button>
+              <button class="soft-button" id="listImportBtn" type="button">Import…</button>
+            </div>
+            <div class="rl-results hidden" id="listAddResults" aria-label="Add to this list"></div>
+          </div>
+          <p class="rl-status" id="listStatus" role="status" aria-live="polite"></p>
+          <ol class="rl-items" id="listItems"></ol>
+          <button class="rl-add-more" id="listAddMore" type="button"><span aria-hidden="true">＋</span> Add a paper</button>
+          <details class="rl-done hidden" id="listDoneWrap">
+            <summary>Done <span id="listDoneCount"></span></summary>
+            <ol class="rl-items" id="listDoneItems"></ol>
+          </details>
+        </div>
+        <p class="rl-footnote">Search uses <a href="https://www.crossref.org/" target="_blank" rel="noopener">Crossref</a>; free full texts come from arXiv and <a href="https://europepmc.org/" target="_blank" rel="noopener">Europe PMC</a>. Only the title or DOI is sent, and no AI is involved. Lists sync with your library.</p>
+      </div>
+      <input class="hidden" type="file" id="listPdfFile" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
     </section>
 
     <section id="connectionsPage" class="page hidden">
@@ -348,6 +420,7 @@
             <button class="tab" id="excerptsTab" data-tab="excerptsPanel" role="tab" aria-selected="false" aria-controls="excerptsPanel">Clips</button>
             <button class="tab" id="reviewsTab" data-tab="reviewsPanel" role="tab" aria-selected="false" aria-controls="reviewsPanel">Reviews <span id="readerReviewerCount"></span></button>
             <button class="tab" data-tab="aiPanel" role="tab" aria-selected="false" aria-controls="aiPanel">Discuss</button>
+            <button class="tab" id="listTab" data-tab="listPanel" role="tab" aria-selected="false" aria-controls="listPanel">List</button>
           </div>
           <div class="tab-panel" id="notesPanel" role="tabpanel">
             <div class="notebook-intro">
@@ -425,6 +498,9 @@
               <div class="reviewer-filter-row" id="reviewerFilters" role="group" aria-label="Filter comments by scope"></div>
             </div>
             <div class="reviewer-comment-list" id="readerReviewList"></div>
+          </div>
+          <div class="tab-panel hidden" id="listPanel" role="tabpanel" aria-labelledby="listTab">
+            <div class="rl-panel" id="listPanelBody"></div>
           </div>
           <div class="tab-panel hidden" id="aiPanel" role="tabpanel">
             <div class="ai-panel-head"><div><span class="panel-eyebrow">Reading partner</span><h3>Discuss this paper</h3><p class="hint">Choose what to discuss. Only that context is sent to your selected AI provider.</p></div><button class="text-button" id="aiNewThread" type="button">+ New thread</button></div>
@@ -773,6 +849,23 @@
     </div>
   </dialog>
 
+  <dialog id="listImportDialog" class="rl-import-dialog" aria-labelledby="listImportTitle">
+    <div class="dialog-head"><div><span class="panel-eyebrow">Reading list</span><h2 id="listImportTitle">Import a list</h2></div><button class="icon-btn" data-close="listImportDialog" aria-label="Close import">×</button></div>
+    <div class="dialog-body">
+      <p class="hint">Paste anything below, or choose a file. Phloem understands BibTeX and RIS exports (Zotero, Mendeley, Google Scholar, EndNote), Markdown checklists, and plain lists with one DOI, link or title per line.</p>
+      <textarea class="field rl-import-text" id="listImportText" rows="9" spellcheck="false" placeholder="10.3389/fpls.2014.00516&#10;- [ ] Osorio, Ruan &amp; Fernie (2014) — source-to-sink partitioning in tomato&#10;  - Look for: where regulation happens&#10;Stanfield &amp; Bartlett (2022) Coordination between phloem loading and structure" aria-label="Paste a reading list"></textarea>
+      <div class="rl-import-row">
+        <button class="soft-button" id="listImportChoose" type="button">Choose file…</button>
+        <input class="hidden" type="file" id="listImportFile" accept=".bib,.ris,.md,.markdown,.txt,text/plain,text/markdown,application/x-bibtex,application/x-research-info-systems">
+        <p class="rl-import-summary" id="listImportSummary" role="status" aria-live="polite"></p>
+      </div>
+      <div class="rl-import-row">
+        <select class="field" id="listImportTarget" aria-label="Where to add"></select>
+        <button class="button" id="listImportGo" type="button" disabled>Import</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="linkDialog">
     <div class="dialog-head"><h2>Add a PDF from a link</h2><button class="icon-btn" data-close="linkDialog">×</button></div>
     <div class="dialog-body">
@@ -985,20 +1078,22 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=215',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=216',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=215" defer></script>
-<script src="/reading-stickies.js?v=215" defer></script>
-<script src="/reading-keeps.js?v=215" defer></script>
-<script src="/reading-excerpts.js?v=215" defer></script>
-<script src="/reading-excerpts-view.js?v=215" defer></script>
-<script src="/reading-workspace.js?v=215" defer></script>
-<script src="/reading-workspace-viewport.js?v=215" defer></script>
-<script src="/reading-workspace-view.js?v=215" defer></script>
-<script src="/reading-folds.js?v=215" defer></script>
-<script src="/reading-pdf-projection.js?v=215" defer></script>
-<script src="/reading-fold-view.js?v=215" defer></script>
-<script src="/reading.js?v=215" defer></script>
+<script src="/reading-ink.js?v=216" defer></script>
+<script src="/reading-stickies.js?v=216" defer></script>
+<script src="/reading-keeps.js?v=216" defer></script>
+<script src="/reading-excerpts.js?v=216" defer></script>
+<script src="/reading-excerpts-view.js?v=216" defer></script>
+<script src="/reading-lists.js?v=216" defer></script>
+<script src="/reading-lists-view.js?v=216" defer></script>
+<script src="/reading-workspace.js?v=216" defer></script>
+<script src="/reading-workspace-viewport.js?v=216" defer></script>
+<script src="/reading-workspace-view.js?v=216" defer></script>
+<script src="/reading-folds.js?v=216" defer></script>
+<script src="/reading-pdf-projection.js?v=216" defer></script>
+<script src="/reading-fold-view.js?v=216" defer></script>
+<script src="/reading.js?v=216" defer></script>
 </body>
 </html>

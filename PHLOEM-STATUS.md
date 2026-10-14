@@ -4,9 +4,21 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-10-13)
+## Now (2026-10-14)
 
-- **Web:** houfu72.com/reading.html serves **v213**: saved Define answers are kept instead of refetched (from PR #72);
+- **Reading lists (v216, Houfu asked for them for the next build):** a **Reading list** page (nav) and a **List** tab
+  in the reader's notebook. Houfu's rules: it is a *reading* list, never a to-do list (no tasks, no "Email Nasser");
+  reorder by **drag** (handle; arrow keys on the handle), no up/down buttons; tapping an item **opens the paper in
+  Phloem** (library copy, else a free copy: arXiv PDF or Europe PMC open-access full text as a text paper, else a
+  "Choose the PDF" / publisher-page fallback); a clear **＋ Add a paper** row (search Crossref, library, or as written).
+  Import BibTeX/RIS/Markdown/plain lists; export Markdown/BibTeX; "＋ Reading list" on library cards; X from a paper
+  opened from the list returns to the list. Lists live in the library file (`readingLists`), merge record by record,
+  and sync over iCloud, Drive and GitHub. Files: `reading-lists.js` (data), `reading-lists-view.js` (UI). Next:
+  iPad **1.2.2 (41)** once Houfu is happy with the design (the bundler allowlist already has both files).
+- **Unlinked citations (v216, Jieun's Android report):** a finger/pen long-press that selects "[5]" or an author-year
+  citation in a PDF without link annotations now shows the reference card from the paper's reference list instead of
+  the highlight prompt. Mouse selections and marker mode still highlight. Test: `tests/reading-unlinked-citations.test.js`.
+- **Web:** houfu72.com/reading.html serves **v216** (above); v213: saved Define answers are kept instead of refetched (from PR #72);
   v212: Escape after a tap in the Workspace no longer closes the paper (iPad keyboards); v211: DeepSeek removed, AI data note, accessibility fixes, the Workspace rail tucked under
   sheets; v210: no re-merge of the sync's own upload after a stroke. The iPad app (1.2.1, in review) bundles v211.
 - **Promo kit (drafts only):** `output/phloem-school-promo-2026-10/` (local): SCHOOL-FIT, pitches, channel texts,
@@ -19,7 +31,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   mentions DeepSeek. lifegameproject.com's Phloem card plays the two new iPad recordings; Glyph Run's featured clip
   and the Grow a Tomato / Tomatoswipe / Sudoku thumbnails were re-shot from the live games.
 - **App Store:** Phloem **iOS 1.2.1 (40) live since 2026-10-13 14:19 EDT** (released by Houfu); PR #76 merged,
-  so `apps/ipad` on main is 1.2.1 (40). Next: 1.2.2 (41) carrying reader v212–v215 (draft text in
+  so `apps/ipad` on main is 1.2.1 (40). Next: 1.2.2 (41) carrying reader v212–v216 (draft text in
   `output/phloem-ios-1.2.1-verification/STORE-TEXT-1.2.2-DRAFT.md`), no rush. Houfu tested build 40 on his iPad ("works well"), and the
   freeze is gone. New listing media cut from his iPad recordings: two **silent** captioned previews (landscape
   Ask AI / Workspace / export; portrait leaf→fruit, paper→brain) and screenshots 4–5 (Ask about any passage,
@@ -118,6 +130,12 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 v216:** reading lists (see Now) and unlinked-citation cards. Tests: `reading-lists-state` (19),
+  `reading-lists-browser` and `reading-unlinked-citations` on Chromium and WebKit; the whole suite passes on both
+  (133/133; `reading-notebooklm-export` now expects the sixth cover action, `reading-zen-lifecycle` the list return);
+  iPad bundle tests 19/19. Crossref (search, DOI details),
+  arXiv and Europe PMC are free, keyless, and CORS-open; OpenAlex now meters per request, so it is not used.
 
 - **2026-10-13 afternoon:** Phloem iOS 1.2.1 (40) is live (Houfu released it); PR #76 merged. Elsewhere today: EU
   non-trader status set; featuring nominations for every app; Manilha online rooms moved from Firebase to the new

@@ -23,7 +23,13 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 - **Unlinked citations (v216, Jieun's Android report):** a finger/pen long-press that selects "[5]" or an author-year
   citation in a PDF without link annotations now shows the reference card from the paper's reference list instead of
   the highlight prompt. Mouse selections and marker mode still highlight. Test: `tests/reading-unlinked-citations.test.js`.
-- **Web:** houfu72.com/reading.html serves **v219**: the list's "Look for" is now **My question**, blank until Houfu
+- **Define (v220, Houfu: "angiosperm" gave something strange from Wikipedia):** a one-word selection is a dictionary
+  question: Wiktionary first (part of speech + sense, "plural of" followed once), then the Wikipedia article the word
+  names (redirects followed, disambiguation skipped), then the search, ranked by Wikipedia's own order for one word.
+  Abbreviations/symbols skip the dictionary. Saved answers are still kept (v213); the card has **"Not this? Look it up
+  again"**, which replaces a saved answer (offline, the saved one stays). Wikipedia/Wiktionary are blocked in mainland
+  China, so Define there needs AI or a VPN.
+- **Web:** houfu72.com/reading.html serves **v220** (Define, above); v219: the list's "Look for" is now **My question**, blank until Houfu
   writes it (imports leave a list's own notes out unless a checkbox is ticked), the takeaway asks "from memory: what
   did they find, and what surprised you?", and **Peek** shows the abstract (Europe PMC, else Crossref; plain text)
   before opening. Houfu's reasoning: read first and decide yourself; his professor ruled out AI drafting, so Phloem
@@ -140,6 +146,13 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 v220:** Define for one word (Wiktionary → exact article → search). `reading-define-lookup` 13/13;
+  `reading-marker-actions` and `reading-selection-note-ai` pass on Chromium and WebKit.
+- **2026-10-14 answers for Houfu (no code):** AI keys move with Settings → "Copy device setup link" (plain, not
+  encrypted; the iPad app cannot take it). China: the iPad app hides Drive and online AI in the CHN storefront and uses
+  native CloudKit (should work with China Apple IDs; untested); the website has no iCloud (hidden since 10-06) and
+  Drive is blocked there.
 
 - **2026-10-14 v219:** My question / Peek / import without notes (see Web). `reading-lists-browser` passes on
   Chromium and WebKit (Peek strips markup; a script in an abstract never runs).

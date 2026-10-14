@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=219">
-  <link rel="stylesheet" href="/reading-fold.css?v=219">
-  <link rel="stylesheet" href="/reading-workspace.css?v=219">
+  <link rel="stylesheet" href="/reading.css?v=220">
+  <link rel="stylesheet" href="/reading-fold.css?v=220">
+  <link rel="stylesheet" href="/reading-workspace.css?v=220">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -683,7 +683,7 @@
             <h3 id="lookupTitle">Looking up…</h3>
             <span class="lookup-source hidden" id="lookupSource"></span>
             <p class="lookup-definition loading" id="lookupDefinition" role="status" aria-live="polite">Finding a useful explanation and image.</p>
-            <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up AI →</button></div>
+            <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up AI →</button><button class="text-button hidden" id="lookupRetry" type="button">Not this? Look it up again</button></div>
           </div>
         </aside>
       </aside>
@@ -1079,22 +1079,22 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=219',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=220',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=219" defer></script>
-<script src="/reading-stickies.js?v=219" defer></script>
-<script src="/reading-keeps.js?v=219" defer></script>
-<script src="/reading-excerpts.js?v=219" defer></script>
-<script src="/reading-excerpts-view.js?v=219" defer></script>
-<script src="/reading-lists.js?v=219" defer></script>
-<script src="/reading-lists-view.js?v=219" defer></script>
-<script src="/reading-workspace.js?v=219" defer></script>
-<script src="/reading-workspace-viewport.js?v=219" defer></script>
-<script src="/reading-workspace-view.js?v=219" defer></script>
-<script src="/reading-folds.js?v=219" defer></script>
-<script src="/reading-pdf-projection.js?v=219" defer></script>
-<script src="/reading-fold-view.js?v=219" defer></script>
-<script src="/reading.js?v=219" defer></script>
+<script src="/reading-ink.js?v=220" defer></script>
+<script src="/reading-stickies.js?v=220" defer></script>
+<script src="/reading-keeps.js?v=220" defer></script>
+<script src="/reading-excerpts.js?v=220" defer></script>
+<script src="/reading-excerpts-view.js?v=220" defer></script>
+<script src="/reading-lists.js?v=220" defer></script>
+<script src="/reading-lists-view.js?v=220" defer></script>
+<script src="/reading-workspace.js?v=220" defer></script>
+<script src="/reading-workspace-viewport.js?v=220" defer></script>
+<script src="/reading-workspace-view.js?v=220" defer></script>
+<script src="/reading-folds.js?v=220" defer></script>
+<script src="/reading-pdf-projection.js?v=220" defer></script>
+<script src="/reading-fold-view.js?v=220" defer></script>
+<script src="/reading.js?v=220" defer></script>
 </body>
 </html>

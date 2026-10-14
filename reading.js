@@ -765,7 +765,7 @@
   function prepareLookup(term,rect){
     var card=byId('lookupCard');byId('lookupSelection').textContent='“'+term+'”';byId('lookupTitle').textContent='Looking up…';
     var definition=byId('lookupDefinition');definition.textContent='Finding a useful explanation and image.';definition.classList.add('loading');
-    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');byId('lookupSource').classList.add('hidden');byId('lookupAiSetup').classList.add('hidden');
+    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');byId('lookupSource').classList.add('hidden');byId('lookupAiSetup').classList.add('hidden');byId('lookupRetry').classList.add('hidden');
     hideHighlightCard();card.classList.remove('hidden');placeLookupCard(rect);
   }
   function showLookupProblem(term,message){
@@ -779,7 +779,8 @@
   }
   function renderLookup(term,result){
     byId('lookupTitle').textContent=result.title||term;var definition=byId('lookupDefinition'),meaning=result.expansion?'In this paper, '+result.expansion.abbr+' means '+result.expansion.full+'. ':'';definition.textContent=meaning+(conciseExtract(result.extract)||'No concise explanation was available for this entry.');definition.classList.remove('loading');
-    var source=byId('lookupSource'),isAi=result.source==='ai';source.textContent=isAi?(result.provider||'AI')+' explanation · verify':'Wikipedia';source.classList.toggle('ai',isAi);source.classList.remove('hidden');byId('lookupAiSetup').classList.add('hidden');
+    byId('lookupRetry').classList.toggle('hidden',result.source==='ai');
+    var source=byId('lookupSource'),isAi=result.source==='ai';source.textContent=isAi?(result.provider||'AI')+' explanation · verify':result.source==='wiktionary'?'Wiktionary':'Wikipedia';source.classList.toggle('ai',isAi);source.classList.remove('hidden');byId('lookupAiSetup').classList.add('hidden');
     var article=byId('lookupArticle');article.href=result.url||'#';article.classList.toggle('hidden',!result.url);
     var photoLink=byId('lookupPhotoLink'),photo=byId('lookupPhoto'),imageSource=byId('lookupImageSource');
     if(result.image){photo.src=result.image;photo.alt='Image for '+(result.title||term);photoLink.href=result.imagePage||result.url||result.image;photoLink.classList.remove('hidden');imageSource.href=result.imagePage||result.url||result.image;imageSource.classList.remove('hidden');}
@@ -802,7 +803,7 @@
   }
   /* Papers spell an abbreviation out once ("electrical conductivity (EC)") and use
      the short form in tables. Define looks up what the authors meant. */
-  var LOOKUP_V=2;
+  var LOOKUP_V=3;
   function paperAbbreviation(ch,abbr){
     var text=ch?(ch.kind==='pdf'?(ch.pageTexts||[]).join(' '):String(ch.readerText||ch.fr||'')):'';if(!text)return '';
     var letters=abbr.toLocaleLowerCase(),small=/^(?:of|and|the|in|for|to|on|by|a|an)$/i,pattern=new RegExp('((?:[\\p{L}][\\p{L}-]*\\s+){1,'+(abbr.length+3)+'})\\(\\s*'+abbr.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*\\)','gu'),match;
@@ -826,16 +827,56 @@
      every other saved answer, and any AI explanation, is kept rather than refetched. */
   function savedLookupTrusted(term,saved){
     if(!saved)return false;if(saved.lookupV===LOOKUP_V||saved.source==='ai')return true;
+    // v2 already counted short words. A single word saved before v3 may be a search hit
+    // ("angiosperm" got the Angiosperm Phylogeny Group); it stays, with "Look it up again".
+    if(saved.lookupV>=2)return true;
     var oldTokens=String(term||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim().split(/\s+/).filter(function(t){return t.length>2;});
     return lookupTokens(term).every(function(t){return oldTokens.indexOf(t)>=0;});
+  }
+  function plainLookupText(markup){
+    var doc=new DOMParser().parseFromString('<div>'+String(markup||'')+'</div>','text/html');doc.querySelectorAll('script,style,sup.reference').forEach(function(node){node.remove();});
+    return String(doc.body.textContent||'').replace(/\s+/g,' ').trim();
+  }
+  /* One word is a dictionary question first: its sense on Wiktionary ("angiosperm: any
+     plant of the clade Angiospermae…"), following "plural of" once. Abbreviations and
+     symbols (EC, pH, N2) skip this and keep the paper's own spelled-out meaning. */
+  async function wiktionaryEntry(term){
+    var word=String(term||'').trim();if(!/^\p{Ll}[\p{L}'’-]{2,}$/u.test(word)&&!/^\p{Lu}\p{Ll}[\p{L}'’-]+$/u.test(word))return null;
+    var tries=[word],seen={};if(word!==word.toLocaleLowerCase())tries.unshift(word.toLocaleLowerCase());
+    for(var i=0;i<tries.length&&i<4;i++){
+      var entry=tries[i];if(seen[entry])continue;seen[entry]=true;
+      var response=await fetch('https://en.wiktionary.org/api/rest_v1/page/definition/'+encodeURIComponent(entry.replace(/ /g,'_')),{headers:{Accept:'application/json'}});
+      if(response.status===404)continue;if(!response.ok)throw new Error('Lookup failed');
+      var data=await response.json(),senses=[],lemma='';
+      (data&&data.en||[]).forEach(function(part){(part.definitions||[]).forEach(function(sense){
+        var text=plainLookupText(sense.definition),form=/^(?:plural|alternative (?:form|spelling)|inflection|present participle|past participle|simple past|third-person singular|comparative|superlative) of\b/i.test(text);
+        if(form&&!lemma){var link=String(sense.definition||'').match(/<a[^>]*>([^<]+)<\/a>/);if(link)lemma=link[1].trim();}
+        else if(text&&!form&&senses.length<2)senses.push((part.partOfSpeech?String(part.partOfSpeech).toLowerCase()+': ':'')+text);
+      });});
+      if(senses.length)return{title:entry,extract:senses.join(' '),url:'https://en.wiktionary.org/wiki/'+encodeURIComponent(entry.replace(/ /g,'_')),image:'',imagePage:'',source:'wiktionary'};
+      if(lemma)tries.push(lemma);
+    }
+    return null;
+  }
+  // The article a term names, following redirects ("Angiosperm" is "Flowering plant").
+  async function wikipediaExactEntry(term){
+    var data=await lookupJson('https://en.wikipedia.org/w/api.php',{action:'query',format:'json',formatversion:'2',origin:'*',titles:term,redirects:'1',prop:'extracts|pageimages|info|pageprops',exintro:'1',explaintext:'1',exchars:'700',piprop:'thumbnail|name',pithumbsize:'720',pilicense:'free',inprop:'url',ppprop:'disambiguation'});
+    var page=data&&data.query&&data.query.pages&&data.query.pages[0];
+    if(!page||page.missing||page.invalid||!page.extract||page.pageprops&&page.pageprops.disambiguation!==undefined)return null;
+    return{title:page.title,extract:page.extract,url:page.fullurl||'',image:page.thumbnail&&page.thumbnail.source||'',imagePage:page.pageimage?'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(page.pageimage.replace(/ /g,'_')):page.fullurl||'',source:'wikipedia'};
+  }
+  async function definitionEntry(term){
+    var steps=[wiktionaryEntry,wikipediaExactEntry,wikipediaEntry],failed=null;
+    for(var i=0;i<steps.length;i++){try{var found=await steps[i](term);if(found)return found;}catch(error){failed=error;}}
+    if(failed)throw failed;return null;
   }
   async function wikipediaEntry(term){
     var data=await lookupJson('https://en.wikipedia.org/w/api.php',{action:'query',format:'json',formatversion:'2',origin:'*',generator:'search',gsrsearch:term,gsrnamespace:'0',gsrlimit:'6',prop:'extracts|pageimages|info',exintro:'1',explaintext:'1',exchars:'700',piprop:'thumbnail|name',pithumbsize:'720',pilicense:'free',inprop:'url'});
     var normalized=term.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim(),tokens=lookupTokens(term),pages=data&&data.query&&data.query.pages||[];
     var ranked=pages.filter(function(page){return page&&!page.missing&&page.extract;}).map(function(page){
-      var title=String(page.title||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim(),body=(title+' '+String(page.extract||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ')),covered=tokens.filter(function(t){return body.split(/\s+/).some(function(word){return word===t;});}).length,titleCovered=tokens.filter(function(t){return title.split(/\s+/).some(function(word){return word===t;});}).length;
+      var title=String(page.title||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim(),body=(title+' '+String(page.extract||'').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ')),covered=tokens.filter(function(t){return body.split(/\s+/).some(function(word){return word===t||t.length>4&&word.indexOf(t)===0&&word.length-t.length<=3;});}).length,titleCovered=tokens.filter(function(t){return title.split(/\s+/).some(function(word){return word===t;});}).length;
       var allCovered=!tokens.length||covered===tokens.length,phraseMatch=body.indexOf(normalized)>=0,titleMatch=title===normalized||title.indexOf(normalized)>=0||normalized.indexOf(title)>=0;
-      return{page:page,valid:allCovered&&(phraseMatch||titleMatch||titleCovered>=Math.max(1,Math.ceil(tokens.length*.66))),score:(title===normalized?20:titleMatch?10:0)+(phraseMatch?7:0)+titleCovered*3+covered-(page.index||20)*.01};
+      return{page:page,valid:allCovered&&(phraseMatch||titleMatch||titleCovered>=Math.max(1,Math.ceil(tokens.length*.66))),score:tokens.length===1?(title===normalized?20:0)-(page.index||20):(title===normalized?20:normalized.indexOf(title)>=0?10:titleMatch?4:0)+(phraseMatch?7:0)+titleCovered*3+covered-(page.index||20)*.01};
     }).filter(function(item){return item.valid;}).sort(function(a,b){return b.score-a.score;});
     var page=ranked[0]&&ranked[0].page;if(!page)return null;
     return{title:page.title,extract:page.extract,url:page.fullurl||'',image:page.thumbnail&&page.thumbnail.source||'',imagePage:page.pageimage?'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(page.pageimage.replace(/ /g,'_')):page.fullurl||'',source:'wikipedia'};
@@ -864,10 +905,10 @@
     var keys=Object.keys(ch.termLookups);if(keys.length>120)keys.sort(function(a,b){return(ch.termLookups[b].cachedAt||0)-(ch.termLookups[a].cachedAt||0);}).slice(120).forEach(function(key){delete ch.termLookups[key];});
     ch.updatedAt=now();if(ch.kind==='pdf')saveDerivedSoon(ch);persist();
   }
-  async function loadLookup(term,serial,context){
-    var ch=find(currentId),termKey=term.toLocaleLowerCase(),key=String(currentId||'')+'|'+termKey;
+  async function loadLookup(term,serial,context,fresh){
+    var ch=find(currentId),termKey=term.toLocaleLowerCase(),key=String(currentId||'')+'|'+termKey;lastLookup={term:term,context:context};
     try{
-      var memoryHit=Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)&&savedLookupTrusted(term,ch.termLookups[termKey]));
+      var memoryHit=!fresh&&Object.prototype.hasOwnProperty.call(lookupCache,key),paperHit=!fresh&&!!(ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)&&savedLookupTrusted(term,ch.termLookups[termKey]));
       // A PDF opened only in paper view may have extracted its visible page but not
       // the page where the authors first spelled out EC. Finish the same page-text
       // build Find uses before deciding that the abbreviation has no definition.
@@ -875,8 +916,12 @@
         try{await ensurePdfFindTexts(ch,pdfDoc);}catch(paperTextError){}
         if(serial!==lookupSerial||currentId!==ch.id)return;
       }
-      var expansion=memoryHit||paperHit?null:lookupExpansion(term,ch),result=memoryHit?lookupCache[key]:paperHit?ch.termLookups[termKey]:await wikipediaEntry(expansion?expansion.term:term);
-      if(!result&&expansion&&expansion.term!==expansion.full)result=await wikipediaEntry(expansion.full);
+      var stale=!memoryHit&&!paperHit&&ch&&ch.termLookups&&Object.prototype.hasOwnProperty.call(ch.termLookups,termKey)?ch.termLookups[termKey]:null;
+      var expansion=memoryHit||paperHit?null:lookupExpansion(term,ch),result=null;
+      try{result=memoryHit?lookupCache[key]:paperHit?ch.termLookups[termKey]:expansion?await wikipediaEntry(expansion.term):await definitionEntry(term);
+        if(!result&&expansion&&expansion.term!==expansion.full)result=await definitionEntry(expansion.full);}
+      catch(fetchError){if(!stale)throw fetchError;result=stale;}
+      if(!result&&stale)result=stale;
       if(result&&expansion)result=Object.assign({},result,{expansion:{abbr:expansion.abbr,full:expansion.full}});
       if(serial!==lookupSerial)return;
       if(!result){
@@ -886,9 +931,18 @@
       }
       lookupCache[key]=result;renderLookup(term,result);
       if(!result.image&&!result.imageChecked){var image=null;try{image=await commonsImage(result.imageQuery||result.title||term);}catch(imageError){}if(serial!==lookupSerial)return;result=Object.assign({},result,{imageChecked:true});if(image){result.image=image.url;result.imagePage=image.page;}lookupCache[key]=result;renderLookup(term,result);}
-      if(ch&&(!paperHit||ch.termLookups[termKey]!==result))rememberLookup(ch,termKey,result);
+      // A stale answer shown offline stays unconfirmed, so it is asked again next time.
+      if(ch&&result!==stale&&(!paperHit||ch.termLookups[termKey]!==result))rememberLookup(ch,termKey,result);
     }catch(e){if(serial===lookupSerial){showLookupProblem(term,e&&e.aiSetup?e.message:'The reference lookup could not finish. Your highlight is still safe—try again when you are online.');if(e&&e.aiSetup)byId('lookupAiSetup').classList.remove('hidden');}}
   }
+  /* A saved answer that is not what the reader meant is asked for again, once, past both
+     caches. Offline the saved answer stays. */
+  var lastLookup=null;
+  if(byId('lookupRetry'))byId('lookupRetry').onclick=function(){
+    if(!lastLookup)return;var serial=++lookupSerial;byId('lookupRetry').classList.add('hidden');byId('lookupTitle').textContent='Looking up…';
+    var definition=byId('lookupDefinition');definition.textContent='Asking the dictionary and Wikipedia again.';definition.classList.add('loading');
+    loadLookup(lastLookup.term,serial,lastLookup.context,true);
+  };
   function queueLookup(text,rect,selection,delay){
     var term=String(text||'').replace(/\s+/g,' ').replace(/^[\s"'“”‘’.,;:!?]+|[\s"'“”‘’.,;:!?]+$/g,'').trim();if(term.length<2)return;
     clearTimeout(lookupTimer);var serial=++lookupSerial,context=lookupPaperContext(selection);

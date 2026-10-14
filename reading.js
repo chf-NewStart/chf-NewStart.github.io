@@ -4301,7 +4301,10 @@
       if(rect){return item.right<rect.left?rect.left-item.right:(item.left>rect.right?item.left-rect.right:0);}
       if(!target)return 0;return target.x<item.left?item.left-target.x:(target.x>item.right?target.x-item.right:0);
     }
-    var boundary=!!(target&&((resolved.type==='FitR'&&(!rect||rect.bottom-rect.top<Math.max(1,median*.35)))||resolved.type==='FitH'||resolved.type==='FitBH')),namedNumberMatch=String(resolved.name||'').match(/(?:l?bc|ref|bib)[^\d]*(\d{1,3})$/i),namedNumber=namedNumberMatch?+namedNumberMatch[1]:null;
+    /* An XYZ destination is the top-left corner a viewer scrolls to, so its passage starts at
+       or below that point. LaTeX raises it above the entry's first line: the nearest line by
+       distance was the end of the previous reference. */
+    var boundary=!!(target&&((resolved.type==='FitR'&&(!rect||rect.bottom-rect.top<Math.max(1,median*.35)))||resolved.type==='FitH'||resolved.type==='FitBH'||resolved.type==='XYZ')),namedNumberMatch=String(resolved.name||'').match(/(?:l?bc|ref|bib)[^\d]*(\d{1,3})$/i),namedNumber=namedNumberMatch?+namedNumberMatch[1]:null;
     var best=null,bestScore=Infinity;if(namedNumber!==null)candidates.forEach(function(item){
       if(pdfReferenceEntryNumber(item.line.text)!==namedNumber)return;var score=xDistance(item)*.16+(target?Math.abs(item.y-target.y):item.index);if(score<bestScore){best=item;bestScore=score;}
     });
@@ -4311,7 +4314,7 @@
     });
     if(!best){candidates.forEach(function(item){var score=(target?Math.abs(item.y-target.y):item.index)+xDistance(item)*.16;if(score<bestScore){best=item;bestScore=score;}});}if(!best)return'';
     var columnLeft=rect?rect.left:best.left-median,columnRight=rect?rect.right:best.right+median;
-    var column=candidates.filter(function(item){return item.right>=columnLeft-median&&item.left<=columnRight+median;}).sort(function(a,b){return a.y-b.y||a.left-b.left;}),start=column.indexOf(best),namedReference=/^(?:l?bc|ref|bib)/i.test(String(resolved&&resolved.name||'')),referencePage=lines.some(function(line){return /^references?$/i.test(String(line.text||'').trim());});if(start<0)start=0;
+    var column=candidates.filter(function(item){return item.right>=columnLeft-median&&item.left<=columnRight+median;}).sort(function(a,b){return a.y-b.y||a.left-b.left;}),start=column.indexOf(best),namedReference=/^(?:l?bc|ref|bib|cite\.)/i.test(String(resolved&&resolved.name||'')),referencePage=lines.some(function(line){return /^references?$/i.test(String(line.text||'').trim());});if(start<0)start=0;
     /* A few publishers point into the middle of an entry. Walk back to its numbered
        first line when the destination or page identifies this as a bibliography. */
     if((namedReference||referencePage)&&!pdfReferenceEntryStart(column[start].line.text))for(var before=start-1;before>=0&&column[before+1].y-column[before].y<=median*2.4;before--){if(pdfReferenceEntryStart(column[before].line.text)){start=before;break;}}
@@ -4334,7 +4337,7 @@
     try{
       var resolved=await resolvePdfDestination(doc,dest);if(!comfort.linkPreviews||token!==pdfReferencePreviewToken||doc!==pdfDoc||id!==currentId||epoch!==pdfOpenEpoch||pdfReferencePreviewAnchor!==anchor)return;
       var page=await doc.getPage(resolved.page),content=await page.getTextContent({includeMarkedContent:true});if(!comfort.linkPreviews||token!==pdfReferencePreviewToken||doc!==pdfDoc||id!==currentId||epoch!==pdfOpenEpoch||pdfReferencePreviewAnchor!==anchor)return;
-      var snippet=pdfPreviewSnippet(contentLayout(content),resolved),isReference=/^(?:l?bc|ref|bib)/i.test(resolved.name)||pdfReferenceEntryStart(snippet)||anchor.dataset.pdfCitation==='text';
+      var snippet=pdfPreviewSnippet(contentLayout(content),resolved),isReference=/^(?:l?bc|ref|bib|cite\.)/i.test(resolved.name)||pdfReferenceEntryStart(snippet)||anchor.dataset.pdfCitation==='text';
       label.textContent=(isReference?'Reference':'Linked passage')+' · p. '+resolved.page;copy.textContent=snippet||'The PDF links here, but does not expose readable text at that spot.';placePdfReferencePreview(anchor);
     }catch(e){if(comfort.linkPreviews&&token===pdfReferencePreviewToken&&doc===pdfDoc&&id===currentId&&epoch===pdfOpenEpoch&&pdfReferencePreviewAnchor===anchor){label.textContent='Linked passage unavailable';copy.textContent='This PDF does not include a usable destination for the link.';placePdfReferencePreview(anchor);}}
   }
@@ -4384,20 +4387,35 @@
     return null;
   }
   async function findPdfReferenceEntry(doc,citation){
-    var pages=doc.numPages,headingPage=0,heading=/^(?:[\dIVX]+\.?\s*)?(?:references?|bibliography|literature cited|works cited|reference list)$/i;
-    for(var p=pages;p>=1&&!headingPage;p--){var lines=await pdfDocLines(doc,p);if(lines.some(function(line){return heading.test(String(line.text||'').trim());}))headingPage=p;}
+    var pages=doc.numPages,headingPage=0,headingIndex=-1,heading=/^(?:[\dIVX]+\.?\s*)?(?:references?|bibliography|literature cited|works cited|reference list)$/i;
+    for(var p=pages;p>=1&&!headingPage;p--){var lines=await pdfDocLines(doc,p);headingIndex=lines.findIndex(function(line){return heading.test(String(line.text||'').trim());});if(headingIndex>=0)headingPage=p;}
     // Without a References heading only "[n]"-style entries are trusted.
     if(!headingPage&&!citation.number)return null;
     for(var page=headingPage||1;page<=pages;page++){
       var list=await pdfDocLines(doc,page);
-      for(var i=0;i<list.length;i++){
-        var text=String(list[i].text||'').trim();
+      // Entries follow the heading ("6. References" is the heading, not entry 6).
+      for(var i=page===headingPage?headingIndex+1:0;i<list.length;i++){
+        var text=String(list[i].text||'').trim();if(heading.test(text))continue;
         if(citation.number){if(pdfReferenceEntryNumber(text)===citation.number&&(headingPage||/^\[/.test(text)))return{page:page,line:list[i]};continue;}
         if(text.toLowerCase().indexOf(citation.surname.toLowerCase())!==0)continue;
         var entry=list.slice(i,i+4).map(function(line){return line.text;}).join(' ');if(entry.indexOf(citation.year)>=0)return{page:page,line:list[i]};
       }
     }
     return null;
+  }
+  /* The authored link under a finger or pen selection. Its source rectangle (not the
+     enlarged touch target) must hold most of the selected words. */
+  function pdfLinkUnderRange(range){
+    var rect=range.getBoundingClientRect(),node=range.startContainer,element=node.nodeType===3?node.parentElement:node,page=element&&element.closest&&element.closest('.pdf-page'),layer=page&&page.querySelector('.pdf-links');
+    if(!layer||!(rect.width>0&&rect.height>0))return null;
+    var box=layer.getBoundingClientRect(),sx=layer.offsetWidth?box.width/layer.offsetWidth:1,sy=layer.offsetHeight?box.height/layer.offsetHeight:1,best=null,bestShare=0;
+    layer.querySelectorAll('.pdf-link').forEach(function(link){
+      if(link.dataset.pdfCitation)return;
+      var left=box.left+(+link.dataset.pdfSourceLeft||0)*sx,top=box.top+(+link.dataset.pdfSourceTop||0)*sy,right=left+(+link.dataset.pdfSourceWidth||0)*sx,bottom=top+(+link.dataset.pdfSourceHeight||0)*sy;
+      var overlap=Math.max(0,Math.min(right,rect.right)-Math.max(left,rect.left))*Math.max(0,Math.min(bottom,rect.bottom)-Math.max(top,rect.top)),share=overlap/(rect.width*rect.height);
+      if(share>bestShare){best=link;bestShare=share;}
+    });
+    return bestShare>=.5?best:null;
   }
   function pdfCitationAnchor(range){
     var rect=range.getBoundingClientRect(),node=range.startContainer,element=node.nodeType===3?node.parentElement:node,page=element&&element.closest&&element.closest('.pdf-page'),layer=page&&page.querySelector('.pdf-links');
@@ -8314,8 +8332,15 @@
     var range=selection.getRangeAt(0),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:range.getBoundingClientRect(),passage=paperSelectionFromRange(range);if(!passage)return;
     if(highlightEraseMode)setHighlightEraseMode(false,true);
     if(!reviewLinkTargetId&&reopenExistingHighlight(passage,selectionRect))return;
-    // A finger or pen long-press on a citation shows its reference, not the highlight prompt.
-    if(!reviewLinkTargetId&&!highlightMode&&readerMode==='pdf'&&pdfDoc&&(selectionInputType==='touch'||selectionInputType==='pen')){var citation=pdfCitationAtRange(range);if(citation){openPdfCitationCard(range,citation,passage,selectionRect);return;}}
+    /* A finger or pen long-press on a citation shows its reference, not the highlight prompt:
+       a linked one whenever the system selected its words instead of letting the link see the
+       hold (Android, or links set aside while the marker is on), an unlinked one from the
+       paper's reference list. */
+    if(!reviewLinkTargetId&&readerMode==='pdf'&&pdfDoc&&(selectionInputType==='touch'||selectionInputType==='pen')){
+      var heldLink=pdfLinkUnderRange(range);
+      if(heldLink){var native=window.getSelection();if(native)native.removeAllRanges();clearPendingSelection(false,true);hideSelectionCard();openPdfReferenceCard(heldLink,false);return;}
+      var citation=pdfCitationAtRange(range);if(citation){openPdfCitationCard(range,citation,passage,selectionRect);return;}
+    }
     setPendingSelection(passage);if(!selectionPointerDown&&!highlightMode)showSelectionCard(passage,selectionRect);
   }
 

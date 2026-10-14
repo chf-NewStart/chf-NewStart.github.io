@@ -15,10 +15,15 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   opened from the list returns to the list. Lists live in the library file (`readingLists`), merge record by record,
   and sync over iCloud, Drive and GitHub. Files: `reading-lists.js` (data), `reading-lists-view.js` (UI). Next:
   iPad **1.2.2 (41)** once Houfu is happy with the design (the bundler allowlist already has both files).
+- **Citation hold (v218, Jieun's Android report):** her paper is arXiv 2405.07097 (IEEE MLSP 2024), whose 91
+  citations *are* links. In emulated Android Chrome a real long-press opened the card in scroll, page and book layouts,
+  but the card showed the end of the previous reference (LaTeX's XYZ destination sits above the entry; v218 reads from
+  the destination down). If the system selects a link's words instead (links set aside while the marker is on with a
+  fine pointer, or any Android variant), the selection now opens that link's card. Not yet confirmed on her tablet.
 - **Unlinked citations (v216, Jieun's Android report):** a finger/pen long-press that selects "[5]" or an author-year
   citation in a PDF without link annotations now shows the reference card from the paper's reference list instead of
   the highlight prompt. Mouse selections and marker mode still highlight. Test: `tests/reading-unlinked-citations.test.js`.
-- **Web:** houfu72.com/reading.html serves **v217** (v216 above; v217: two copies of one paper no longer block the
+- **Web:** houfu72.com/reading.html serves **v218** (citation hold, above); v217 (v216 above; v217: two copies of one paper no longer block the
   automatic link, the most recently read copy wins); v213: saved Define answers are kept instead of refetched (from PR #72);
   v212: Escape after a tap in the Workspace no longer closes the paper (iPad keyboards); v211: DeepSeek removed, AI data note, accessibility fixes, the Workspace rail tucked under
   sheets; v210: no re-merge of the sync's own upload after a stroke. The iPad app (1.2.1, in review) bundles v211.
@@ -131,6 +136,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 v218:** citation cards start at the cited entry (XYZ destinations read downward; `cite.` names count as
+  references); a touch/pen selection over a link opens its card; plain-text "[6]" skips a "6. References" heading.
+  `reading-unlinked-citations` (7 checks) and the 28 link/selection/touch test files pass on Chromium and WebKit.
 
 - **2026-10-14 v217:** first real import, Houfu's `source_sink_feedback_reading_list.md` (7 papers) into his library
   from the browser pane: 5 linked to his PDFs on their own. Chiou & Bush 1998 has two copies in his library (now links

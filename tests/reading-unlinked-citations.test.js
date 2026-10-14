@@ -2,11 +2,14 @@
    pen long-press that selects "[5]" or an author-year citation shows the reference card
    from the paper's own reference list instead of the highlight prompt (Android tester
    feedback, Oct 2026). A mouse selection of the same words still offers to highlight.
+   Linked citations: when the system selects a link's words instead of letting the link see
+   the hold (links set aside while the marker is on), the selection opens that link's card,
+   and the card starts at the cited entry even though LaTeX points just above it.
    Run with PHLOEM_BROWSER=chromium or webkit. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), http = require('node:http'), path = require('node:path');
 let playwright; try { playwright = require('playwright'); } catch (_) { playwright = require('playwright-core'); }
-const { PDFDocument, StandardFonts } = require('pdf-lib');
+const { PDFDocument, PDFName, StandardFonts } = require('pdf-lib');
 const ROOT = path.resolve(__dirname, '..');
 const server = http.createServer((q, r) => { const p = decodeURIComponent(q.url.split('?')[0]); const f = path.join(ROOT, p === '/' ? 'reading.html' : p);
   fs.readFile(f, (e, b) => { if (e) { r.writeHead(404); r.end(); return; } r.setHeader('content-type', f.endsWith('.html') ? 'text/html' : /\.m?js$/.test(f) ? 'text/javascript' : f.endsWith('.css') ? 'text/css' : 'application/octet-stream'); r.end(b); }); });
@@ -18,11 +21,21 @@ async function paperPdf() {
   first.drawText('Sinks pull sugar from leaves [5] in tomato.', { x: 72, y: 700, size: 16, font });
   first.drawText('As Smith et al. (2020) showed for roots.', { x: 72, y: 660, size: 16, font });
   first.drawText('Roots matter too (Brown, 2019; Smith et al., 2020).', { x: 72, y: 620, size: 16, font });
-  refs.drawText('References', { x: 72, y: 720, size: 16, font });
+  first.drawText('Shoots matter less [6] here.', { x: 72, y: 580, size: 16, font });
+  first.drawText('A linked claim [2] follows.', { x: 72, y: 540, size: 16, font });
+  refs.drawText('[1] First entry, whose last line', { x: 72, y: 760, size: 12, font });
+  refs.drawText('ends just above the second entry.', { x: 72, y: 746, size: 12, font });
+  refs.drawText('[2] Second entry about linked loading.', { x: 72, y: 732, size: 12, font });
+  refs.drawText('6. References', { x: 72, y: 712, size: 16, font });
   refs.drawText('[4] Fourth entry about leaves.', { x: 72, y: 690, size: 12, font });
   refs.drawText('[5] Fifth entry about sucrose sinks.', { x: 72, y: 670, size: 12, font });
   refs.drawText('Brown, A. 2019. Roots and shoots.', { x: 72, y: 640, size: 12, font });
   refs.drawText('Smith, J., Jones, K. 2020. Sources and sinks in tomato.', { x: 72, y: 620, size: 12, font });
+  refs.drawText('[6] Sixth entry about shoots.', { x: 72, y: 600, size: 12, font });
+  // hyperref-style link: the destination sits just above entry [2], below the end of [1].
+  const width = font.widthOfTextAtSize('A linked claim ', 16), mark = font.widthOfTextAtSize('[2]', 16);
+  const link = doc.context.register(doc.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [72 + width, 536, 72 + width + mark, 554], Border: [0, 0, 0], Dest: [refs.ref, PDFName.of('XYZ'), 72, 743, 0] }));
+  first.node.set(PDFName.of('Annots'), doc.context.obj([link]));
   return Buffer.from(await doc.save());
 }
 async function openPaper(browser, options) {
@@ -31,7 +44,7 @@ async function openPaper(browser, options) {
   await page.goto(`http://127.0.0.1:${server.address().port}/reading.html`, { waitUntil: 'load' });
   await page.locator('#pdfFile').setInputFiles({ name: 'unlinked.pdf', mimeType: 'application/pdf', buffer: await paperPdf() });
   await page.waitForFunction(() => document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span').length >= 3);
-  assert.equal(await page.locator('.pdf-page[data-page="1"] .pdf-link').count(), 0, 'the fixture has no link annotations');
+  assert.equal(await page.locator('.pdf-page[data-page="1"] .pdf-link').count(), 1, 'one citation in the fixture is linked; the rest are plain text');
   await page.waitForTimeout(500);
   return { page, errors };
 }
@@ -87,6 +100,20 @@ async function closeCard(page) { await page.evaluate(() => document.getElementBy
     assert.match(shown.text, /^Brown, A\. 2019\. Roots and shoots/, 'the citation under the finger is chosen in a group: ' + shown.text);
     await closeCard(page);
     console.log('PASS  (Brown, 2019; Smith et al., 2020) picks Brown 2019 under the finger');
+
+    await longPressSelect(page, 'touch', 'Shoots matter', '6');
+    shown = await card(page);
+    assert.match(shown.text, /^\[6\] Sixth entry about shoots/, 'the "6. References" heading is not entry 6: ' + shown.text);
+    await closeCard(page);
+    console.log('PASS  [6] skips the "6. References" heading');
+
+    await page.addStyleTag({ content: '.pdf-link { pointer-events: none !important; }' });
+    await longPressSelect(page, 'touch', 'A linked claim', '2');
+    shown = await card(page);
+    assert.match(shown.text, /^\[2\] Second entry about linked loading/, 'a selection over a link opens its card, starting at the cited entry: ' + shown.text);
+    assert.equal(shown.prompt, false);
+    await closeCard(page);
+    console.log('PASS  a long-press that selects a linked [2] opens its card at entry [2], not the end of [1]');
 
     await longPressSelect(page, 'touch', 'Sinks pull', 'sugar');
     await page.waitForFunction(() => !document.getElementById('selectionCard').classList.contains('hidden'));

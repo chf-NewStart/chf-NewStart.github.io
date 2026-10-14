@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=220">
-  <link rel="stylesheet" href="/reading-fold.css?v=220">
-  <link rel="stylesheet" href="/reading-workspace.css?v=220">
+  <link rel="stylesheet" href="/reading.css?v=221">
+  <link rel="stylesheet" href="/reading-fold.css?v=221">
+  <link rel="stylesheet" href="/reading-workspace.css?v=221">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -645,11 +645,13 @@
           </div>
         </div>
         <div class="selection-context hidden" id="selectionContext"><span class="selection-context-copy" id="selectionContextText"></span></div>
-        <div class="selection-secondary" id="selectionSecondary">
-          <button class="selection-explain" id="selectionSaveExcerpt" type="button">Save excerpt</button>
-          <button class="selection-explain" id="selectionToWorkspace" type="button" draggable="true" title="Tap to place, or drag this passage into the workspace">To workspace</button>
-          <button class="selection-explain" id="selectionParkQuestion" type="button">Park question</button>
-          <button class="selection-explain" id="selectionExplain" type="button" aria-label="Look up a definition"><span aria-hidden="true">⌕</span> Define</button>
+        <div class="selection-secondary" id="selectionSecondary" role="group" aria-label="More for this passage">
+          <button class="selection-explain" id="selectionExplain" type="button" aria-label="Define: look up a word or short phrase" title="Look up a word or short phrase"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg><span>Define</span></button>
+          <button class="selection-explain" id="selectionMeaning" type="button" aria-label="What does this mean? Explain the passage in plain words" title="Explain this passage in plain words (AI)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><path d="M12 17h.01"/></svg><span>What does it mean?</span></button>
+          <button class="selection-explain" id="selectionCopy" type="button" aria-label="Copy the selected text" title="Copy the text"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button>
+          <button class="selection-explain" id="selectionSaveExcerpt" type="button" aria-label="Save to Clips: keep this passage in the notebook's Clips tab" title="Keep this passage in the notebook's Clips tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v16l-5-3.5L7 20z"/></svg><span>Save to Clips</span></button>
+          <button class="selection-explain" id="selectionToWorkspace" type="button" draggable="true" aria-label="Place this passage in the workspace" title="Tap to place, or drag this passage into the workspace"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg><span>To workspace</span></button>
+          <button class="selection-explain" id="selectionParkQuestion" type="button" aria-label="Park a question about this passage to come back to" title="Park a question to come back to"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H10l-5 4z"/><path d="M12 8.2v3"/><path d="M12 13.2h.01"/></svg><span>Park question</span></button>
         </div>
         <div class="selection-saved-tools hidden" id="selectionSavedTools">
           <div class="selection-saved-colors" role="group" aria-label="Highlight color">
@@ -737,6 +739,7 @@
             <button class="zen-exit zen-paper paper-appearance-shortcut zen-menu-action" id="zenPaperAppearance" data-label="Paper appearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
             <button class="zen-exit zen-theme zen-menu-action" id="zenTheme" data-label="Theme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
             <button class="zen-exit zen-menu-action" id="zenSettings" data-label="Reading settings" type="button" aria-haspopup="dialog" aria-controls="comfortBar" aria-expanded="false" aria-label="Open reading settings"><span aria-hidden="true">⚙</span></button>
+            <button class="zen-exit zen-menu-action" id="zenListen" data-label="Listen" type="button" aria-controls="voiceBar" aria-expanded="false" aria-label="Listen: read this paper aloud" title="Read aloud"><span aria-hidden="true">♪</span></button>
             <button class="zen-exit zen-refresh zen-menu-action" id="zenRefresh" data-label="Refresh" type="button" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
           </div>
         </div>
@@ -755,6 +758,18 @@
         <textarea id="stickyText" rows="6" maxlength="20000" aria-label="Note" placeholder="Note"></textarea>
       </div>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
+      <section class="voice-bar hidden" id="voiceBar" aria-label="Read aloud">
+        <p class="voice-line" id="voiceLine"></p>
+        <div class="voice-controls">
+          <button class="voice-button" id="voiceBack" type="button" aria-label="Previous sentence" title="Previous sentence"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 6h2v12H7zM20 6v12l-9-6z"/></svg></button>
+          <button class="voice-button voice-play" id="voicePlay" type="button" aria-label="Play" title="Play or pause"><svg class="voice-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><svg class="voice-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
+          <button class="voice-button" id="voiceNext" type="button" aria-label="Next sentence" title="Next sentence"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6h2v12h-2zM4 6v12l9-6z"/></svg></button>
+          <select class="voice-section" id="voiceSection" aria-label="Read from section"></select>
+          <button class="voice-rate" id="voiceRate" type="button" aria-label="Speaking speed 1×">1×</button>
+          <select class="voice-select" id="voiceVoice" aria-label="Voice"></select>
+          <button class="voice-button" id="voiceClose" type="button" aria-label="Stop reading aloud" title="Stop">✕</button>
+        </div>
+      </section>
     </section>
   </main>
   <div class="sheet-scrim hidden" id="sheetScrim"></div>
@@ -1039,8 +1054,15 @@
   <dialog id="installDialog">
     <div class="dialog-head"><h2>Install Phloem</h2><button class="icon-btn" data-close="installDialog">×</button></div>
     <div class="dialog-body">
+      <div class="install-store hidden" id="installStore">
+        <img src="/favicon_io/phloem-book-vine-clean-180.png" alt="" width="56" height="56">
+        <div><b>Phloem for iPad</b><span id="installStoreVersion">Free on the App Store</span></div>
+        <a class="button" id="installStoreLink" href="https://apps.apple.com/app/id6813510395" target="_blank" rel="noopener">Get it on the App Store</a>
+      </div>
       <p id="installDialogHint"></p>
       <button class="button hidden" id="installDialogBtn">Install now</button>
+      <p class="install-ipad-link hidden" id="installIpadLink">Have an iPad? <a href="https://apps.apple.com/app/id6813510395" target="_blank" rel="noopener">Get Phloem for iPad on the App Store ↗</a></p>
+      <p class="install-version" id="installVersion" role="status" aria-live="polite"></p>
     </div>
   </dialog>
 
@@ -1079,22 +1101,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=220',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=221',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=220" defer></script>
-<script src="/reading-stickies.js?v=220" defer></script>
-<script src="/reading-keeps.js?v=220" defer></script>
-<script src="/reading-excerpts.js?v=220" defer></script>
-<script src="/reading-excerpts-view.js?v=220" defer></script>
-<script src="/reading-lists.js?v=220" defer></script>
-<script src="/reading-lists-view.js?v=220" defer></script>
-<script src="/reading-workspace.js?v=220" defer></script>
-<script src="/reading-workspace-viewport.js?v=220" defer></script>
-<script src="/reading-workspace-view.js?v=220" defer></script>
-<script src="/reading-folds.js?v=220" defer></script>
-<script src="/reading-pdf-projection.js?v=220" defer></script>
-<script src="/reading-fold-view.js?v=220" defer></script>
-<script src="/reading.js?v=220" defer></script>
+<script src="/reading-ink.js?v=221" defer></script>
+<script src="/reading-stickies.js?v=221" defer></script>
+<script src="/reading-keeps.js?v=221" defer></script>
+<script src="/reading-excerpts.js?v=221" defer></script>
+<script src="/reading-excerpts-view.js?v=221" defer></script>
+<script src="/reading-lists.js?v=221" defer></script>
+<script src="/reading-lists-view.js?v=221" defer></script>
+<script src="/reading-voice.js?v=221" defer></script>
+<script src="/reading-workspace.js?v=221" defer></script>
+<script src="/reading-workspace-viewport.js?v=221" defer></script>
+<script src="/reading-workspace-view.js?v=221" defer></script>
+<script src="/reading-folds.js?v=221" defer></script>
+<script src="/reading-pdf-projection.js?v=221" defer></script>
+<script src="/reading-fold-view.js?v=221" defer></script>
+<script src="/reading.js?v=221" defer></script>
 </body>
 </html>

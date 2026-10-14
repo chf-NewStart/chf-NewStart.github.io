@@ -23,13 +23,32 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 - **Unlinked citations (v216, Jieun's Android report):** a finger/pen long-press that selects "[5]" or an author-year
   citation in a PDF without link annotations now shows the reference card from the paper's reference list instead of
   the highlight prompt. Mouse selections and marker mode still highlight. Test: `tests/reading-unlinked-citations.test.js`.
+- **Listen (v221, Houfu asked for a Jamie voice-over):** ••• → **Listen** reads the paper aloud with a voice already
+  on the device (Web Speech; Jamie (Premium) is chosen first when installed, then Premium/Enhanced voices; Android uses
+  Google voices; nothing leaves the device). `reading-voice.js` prepares the text from the reader's labelled paragraphs:
+  skips equations (layout `eq`, symbol-heavy lines, Wiley/Elsevier ¼ð þ glyphs), captions, tables and header rows,
+  figure labels, citations ([12], (Smith et al., 2020), Fig. pointers), front matter (authors, affiliations, journal and
+  copyright lines, arXiv stamps, e-mail/funding footnotes), back matter (acknowledgements…), and stops at References
+  (resumes at a real Appendix, not "Appendix S7."). Player bar: back / play-pause / next sentence, speed 0.8–1.5×, voice
+  picker (remembered), current sentence shown; PDFs turn pages, text papers mark the paragraph. Checked against arXiv
+  2405.07097, Colombie 2015 and Osorio 2014 transcripts. Not yet heard on Houfu's iPad: whether WKWebView/Safari lists
+  Jamie (Premium) after it is downloaded in Settings → Accessibility → Spoken Content, and whether speech continues
+  with the screen locked (iOS pauses web speech in the background).
+- **What does this mean? + Copy (v221):** two new selection-card buttons. "What does this mean?" explains the selected
+  passage in plain words from the surrounding excerpt, on the Define card, labelled "AI explanation · verify"; Define
+  on a sentence goes there automatically when AI is set up. Hidden in the iPad app where cloud AI is off (CHN).
+- **Install app (v221):** on an iPad the dialog leads with "Phloem for iPad" on the App Store (iTunes lookup shows the
+  store version and date); iPhone gets the Home Screen steps (the app is iPad-only); other browsers the web install plus
+  a "Have an iPad?" link. Every case says whether the web version is the newest (compares `/reading-sw.js`) and offers
+  "Reload to update". The App Store iPad app still has no "update available" notice: it needs its own version in the
+  bundle (do this with 1.2.2).
 - **Define (v220, Houfu: "angiosperm" gave something strange from Wikipedia):** a one-word selection is a dictionary
   question: Wiktionary first (part of speech + sense, "plural of" followed once), then the Wikipedia article the word
   names (redirects followed, disambiguation skipped), then the search, ranked by Wikipedia's own order for one word.
   Abbreviations/symbols skip the dictionary. Saved answers are still kept (v213); the card has **"Not this? Look it up
   again"**, which replaces a saved answer (offline, the saved one stays). Wikipedia/Wiktionary are blocked in mainland
   China, so Define there needs AI or a VPN.
-- **Web:** houfu72.com/reading.html serves **v220** (Define, above); v219: the list's "Look for" is now **My question**, blank until Houfu
+- **Web:** houfu72.com/reading.html serves **v221** (Listen, Explain/Copy, Install, above); v220 (Define); v219: the list's "Look for" is now **My question**, blank until Houfu
   writes it (imports leave a list's own notes out unless a checkbox is ticked), the takeaway asks "from memory: what
   did they find, and what surprised you?", and **Peek** shows the abstract (Europe PMC, else Crossref; plain text)
   before opening. Houfu's reasoning: read first and decide yourself; his professor ruled out AI drafting, so Phloem
@@ -47,7 +66,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   mentions DeepSeek. lifegameproject.com's Phloem card plays the two new iPad recordings; Glyph Run's featured clip
   and the Grow a Tomato / Tomatoswipe / Sudoku thumbnails were re-shot from the live games.
 - **App Store:** Phloem **iOS 1.2.1 (40) live since 2026-10-13 14:19 EDT** (released by Houfu); PR #76 merged,
-  so `apps/ipad` on main is 1.2.1 (40). Next: 1.2.2 (41) carrying reader v212–v216 (draft text in
+  so `apps/ipad` on main is 1.2.1 (40). Next: 1.2.2 (41) carrying reader v212–v221 (draft text in
   `output/phloem-ios-1.2.1-verification/STORE-TEXT-1.2.2-DRAFT.md`), no rush. Houfu tested build 40 on his iPad ("works well"), and the
   freeze is gone. New listing media cut from his iPad recordings: two **silent** captioned previews (landscape
   Ask AI / Workspace / export; portrait leaf→fruit, paper→brain) and screenshots 4–5 (Ask about any passage,
@@ -146,6 +165,15 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 v221:** Listen (with "start from": a selection, a tapped paragraph, or the "Read from…" section menu;
+  running heads and page counters skipped), What does this mean?, Copy, the selection card's six action tiles ("Save
+  excerpt" is now "Save to Clips"), Install dialog. Real-engine check in the pane (silent): Houfu's Mac lists Jamie
+  (Premium) and Listen picks it, sentences advance on real end events, PDFs turn pages, a tap jumps. Suite: Chromium
+  135/135, WebKit 135/136 (`reading-zen-compact-browser` passed twice on rerun: a render-timing flake), then the 76
+  affected Chromium files again on the final code; iPad bundle 19/19 (the Install dialog uses the bundled 180px icon).
+  New tests: `reading-voice` (8), `reading-voice-browser`, `reading-install-dialog`. Houfu asked about using REA
+  (github.com/morluto/rea) on NaturalReader: advised against (terms of service; black-box comparison instead).
 
 - **2026-10-14 v220:** Define for one word (Wiktionary → exact article → search). `reading-define-lookup` 13/13;
   `reading-marker-actions` and `reading-selection-note-ai` pass on Chromium and WebKit.

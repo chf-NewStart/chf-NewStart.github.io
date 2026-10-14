@@ -943,12 +943,28 @@
     var definition=byId('lookupDefinition');definition.textContent='Asking the dictionary and Wikipedia again.';definition.classList.add('loading');
     loadLookup(lastLookup.term,serial,lastLookup.context,true);
   };
+  /* "What does this mean?": a sentence or passage explained in plain words from the paper
+     around it, by the reader's chosen AI, labelled as AI on the card. Nothing is saved. */
+  async function explainSelection(selection,rect){
+    var text=String(selection&&selection.text||'').replace(/\s+/g,' ').trim();if(!text)return;
+    clearTimeout(lookupTimer);var serial=++lookupSerial,ch=find(currentId),shown=text.length>160?text.slice(0,157)+'…':text;
+    prepareLookup(shown,rect);byId('lookupTitle').textContent='What it means';byId('lookupDefinition').textContent='Reading the passage around it…';
+    if(!hasAiRoute()){showLookupProblem('What it means','Explaining a passage needs AI: set up on-device Gemini or add a provider key in settings.');byId('lookupAiSetup').classList.remove('hidden');return;}
+    try{
+      if(ch&&ch.kind==='pdf'&&pdfDoc&&!pdfFindTextsReady(ch,pdfDoc)){try{await ensurePdfFindTexts(ch,pdfDoc);}catch(textError){}}
+      if(serial!==lookupSerial)return;
+      var context=lookupPaperContext(selection),result=await runAi('You help a reader understand a passage from a scientific paper. Explain what the selected passage means in plain words, in 2 to 4 short sentences, using the surrounding excerpt for context. Say briefly what any technical term means. Do not add claims that are not in the text; if the excerpt is not enough, say so. Plain text only, no markdown.',
+        'Paper: '+(ch&&ch.title||'Untitled')+'\nSurrounding excerpt:\n'+(context||'(not available)')+'\n\nSelected passage:\n'+text,450,function(message){if(serial===lookupSerial)byId('lookupDefinition').textContent=message;});
+      if(serial!==lookupSerial)return;
+      renderLookup(shown,{title:'What it means',extract:String(result.text||'').replace(/[*_#`]+/g,'').trim(),source:'ai',provider:result.provider,url:'',image:'',imageChecked:true});
+    }catch(error){if(serial===lookupSerial){showLookupProblem('What it means',error&&error.aiSetup?error.message:'Could not explain this passage right now. Try again in a moment.');if(error&&error.aiSetup)byId('lookupAiSetup').classList.remove('hidden');}}
+  }
   function queueLookup(text,rect,selection,delay){
     var term=String(text||'').replace(/\s+/g,' ').replace(/^[\s"'“”‘’.,;:!?]+|[\s"'“”‘’.,;:!?]+$/g,'').trim();if(term.length<2)return;
     clearTimeout(lookupTimer);var serial=++lookupSerial,context=lookupPaperContext(selection);
     lookupTimer=setTimeout(function(){
       if(serial!==lookupSerial||selectionPointerDown)return;prepareLookup(term,rect);
-      if(term.length>140||term.split(/\s+/).length>14){showLookupProblem(term,'Select a word or short phrase for a clearer definition and a more relevant image.');return;}
+      if(term.length>140||term.split(/\s+/).length>14){var aiOffered=!/\bphloem-ai-region-(?:pending|restricted|unavailable)\b/.test(document.documentElement.className);showLookupProblem(term,'Define works on a word or a short phrase.'+(aiOffered?' For a sentence, use “What does this mean?” (it needs AI set up).':''));return;}
       loadLookup(term,serial,context);
     },delay===undefined?LOOKUP_DELAY:delay);
   }
@@ -1004,7 +1020,7 @@
   function showPage(id){
     var wasReading=!byId('readerPage').classList.contains('hidden');
     if(id!=='readerPage'&&byId('readingKeepDialog').open)byId('readingKeepDialog').close();
-    if(id!=='readerPage'){setPdfWriteMode(false);closeStickyEditor();setStickyPlacing(false);}
+    if(id!=='readerPage'){setPdfWriteMode(false);closeStickyEditor();setStickyPlacing(false);if(typeof stopVoice==='function'&&voicePaperId)stopVoice();}
     if(wasReading&&id!=='readerPage')saveCurrentReadingPosition(false);
     if(id!=='readerPage')readerReturnPage='';
     if(id!=='readerPage'&&pdfFoldView){pdfFoldView.reset();foldSourceId='';foldSourceHash='';}
@@ -3331,6 +3347,129 @@
   byId('zenTheme').onclick=function(){closeZenPopouts(true);byId('themeBtn').onclick();};
   byId('zenFind').onclick=function(){closeZenPopouts(false);toggleFindBar(undefined,false,byId('zenMore'));zenWake();};
   byId('zenRefresh').onclick=refreshPhloem;
+
+  /* Listen: the paper read aloud by a voice already on this device (Jamie and other
+     Apple voices on iPad and Mac, Google voices on Android), skipping equations, tables,
+     captions, citations and the reference list. Nothing leaves the device. */
+  var VOICE_KEY='readingRoom.voice.v1',VOICE_RATES=[.8,1,1.15,1.3,1.5],voicePlayer=null,voicePaperId='',voiceChunks=[],voicePrefs={voice:'',rate:1};
+  // Opening ••• clears the selection card, so the last selection's place is kept for a minute.
+  var voiceSelectionPlace=null;
+  try{var savedVoice=JSON.parse(localStorage.getItem(VOICE_KEY)||'null');if(savedVoice&&typeof savedVoice==='object'){voicePrefs.voice=String(savedVoice.voice||'');if(VOICE_RATES.indexOf(+savedVoice.rate)>=0)voicePrefs.rate=+savedVoice.rate;}}catch(e){}
+  function voiceSupported(){return !!(window.PhloemVoice&&window.speechSynthesis&&window.SpeechSynthesisUtterance);}
+  function saveVoicePrefs(){try{localStorage.setItem(VOICE_KEY,JSON.stringify(voicePrefs));}catch(e){}}
+  function voiceList(){return window.PhloemVoice.rankVoices(speechSynthesis.getVoices()||[]);}
+  function chosenVoice(){var list=voiceList();return list.find(function(voice){return voice.voiceURI===voicePrefs.voice;})||list[0]||null;}
+  function fillVoiceSelect(){
+    var select=byId('voiceVoice');if(!select||!voiceSupported())return;var list=voiceList(),current=chosenVoice();
+    select.innerHTML=list.length?list.map(function(voice){return '<option value="'+esc(voice.voiceURI)+'"'+(current&&voice.voiceURI===current.voiceURI?' selected':'')+'>'+esc(voice.name.replace(/\s*\((?:English|en)[^)]*\)\s*$/i,''))+'</option>';}).join(''):'<option value="">System voice</option>';
+    select.disabled=!list.length;
+  }
+  function voiceBlocks(ch){
+    if(ch.kind==='pdf'){
+      var built=readerStructure(ch.pageLines||[],ch.pageParagraphs||[]),blocks=[],cursor=0;
+      built.pages.forEach(function(pageText,i){var count=paras(pageText).length;for(var n=0;n<count;n++){var p=built.meta[cursor+n];if(p)blocks.push({text:p.t,kind:p.k||'',page:i+1,para:cursor+n});}cursor+=count;});
+      return blocks;
+    }
+    var kinds=ch.sourceType==='docx'?(ch.docxParagraphKinds||[]):[];
+    return paras(ch.fr).map(function(text,i){
+      var kind=kinds[i]||(text.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(text)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(text))?'h3':'');
+      return{text:/^Open-access full text from Europe PMC/.test(text)?'':text,kind:kind,para:i,page:0};
+    });
+  }
+  /* Where a place on the paper falls in the spoken text: a text paper by paragraph; a PDF
+     by page, then by the words of the tapped or selected line. */
+  function voiceWords(text){var set={};String(text||'').toLowerCase().replace(/[^a-z0-9à-ÿ]+/g,' ').split(' ').forEach(function(word){if(word.length>3)set[word]=true;});return set;}
+  function voiceChunkAt(chunks,place){
+    if(place.para!==undefined&&place.page===undefined){var at=chunks.findIndex(function(chunk){return chunk.para>=place.para;});return at<0?-1:at;}
+    var onPage=[];chunks.forEach(function(chunk,index){if(chunk.page===place.page)onPage.push(index);});
+    if(!onPage.length){var after=chunks.findIndex(function(chunk){return chunk.page>place.page;});return after;}
+    var wanted=voiceWords(place.text),keys=Object.keys(wanted),best=onPage[0],bestScore=0;
+    if(keys.length)onPage.forEach(function(index){var have=voiceWords(chunks[index].text),score=keys.filter(function(word){return have[word];}).length/keys.length;if(score>bestScore+.001){bestScore=score;best=index;}});
+    return best;
+  }
+  function voicePlaceOfSelection(selection){
+    if(!selection||!selection.text)return null;
+    if(selection.kind==='pdf')return{page:+selection.page||currentPage,text:selection.text};
+    return selection.para!==undefined?{para:+selection.para}:null;
+  }
+  function voiceStartIndex(ch,chunks){
+    var recent=voiceSelectionPlace&&voiceSelectionPlace.id===ch.id&&Date.now()-voiceSelectionPlace.at<60000?voiceSelectionPlace.place:null,picked=voicePlaceOfSelection(pendingSelection)||recent;voiceSelectionPlace=null;
+    if(picked){var fromSelection=voiceChunkAt(chunks,picked);if(fromSelection>=0)return fromSelection;}
+    if(ch.kind==='pdf'&&readerMode==='pdf'){var at=chunks.findIndex(function(chunk){return chunk.page>=currentPage;});return at<0?0:at;}
+    var pane=byId('documentPane').getBoundingClientRect(),visible=Array.prototype.findIndex.call(paraSections(),function(section){return section.getBoundingClientRect().bottom>pane.top+40;});
+    if(visible<0)return 0;var start=chunks.findIndex(function(chunk){return chunk.para>=visible;});return start<0?0:start;
+  }
+  function markVoicePara(index){
+    document.querySelectorAll('#textDocument .para.voice-reading').forEach(function(node){node.classList.remove('voice-reading');});
+    if(index===null||index===undefined)return;var section=paraSections()[index];if(!section)return;section.classList.add('voice-reading');
+    var pane=byId('documentPane').getBoundingClientRect(),box=section.getBoundingClientRect();if(box.top<pane.top+20||box.top>pane.bottom-120)section.scrollIntoView({block:'center',behavior:'smooth'});
+  }
+  function fillVoiceSections(){
+    var select=byId('voiceSection');if(!select)return;var options=['<option value="">Read from…</option>'];
+    window.PhloemVoice.sections(voiceChunks).forEach(function(section){options.push('<option value="'+section.index+'">'+esc(section.text.length>48?section.text.slice(0,46)+'…':section.text)+'</option>');});
+    select.innerHTML=options.join('');select.disabled=options.length<2;select.value='';
+  }
+  function voiceJump(index,message){
+    if(!voicePlayer||index<0||index>=voiceChunks.length)return;voicePlayer.seek(index);if(voicePlayer.state()!=='playing')voicePlayer.play();
+    if(message)showReaderToast(message);
+  }
+  function syncVoiceUi(state){
+    var bar=byId('voiceBar'),playing=state==='playing';bar.classList.toggle('playing',playing);document.body.classList.toggle('voice-on',!bar.classList.contains('hidden'));
+    byId('voicePlay').setAttribute('aria-label',playing?'Pause':'Play');byId('zenListen').setAttribute('aria-expanded',String(!bar.classList.contains('hidden')));
+    byId('voiceRate').textContent=voicePrefs.rate+'×';byId('voiceRate').setAttribute('aria-label','Speaking speed '+voicePrefs.rate+'×');
+    if(state==='finished')byId('voiceLine').textContent='Finished. Tap play to start again.';
+  }
+  function stopVoice(){if(voicePlayer)voicePlayer.stop();voicePaperId='';byId('voiceBar').classList.add('hidden');markVoicePara(null);syncVoiceUi('stopped');}
+  function ensureVoicePlayer(){
+    if(voicePlayer)return voicePlayer;
+    voicePlayer=window.PhloemVoice.createPlayer({synth:speechSynthesis,Utterance:SpeechSynthesisUtterance,
+      onChunk:function(chunk){
+        byId('voiceLine').textContent=chunk.text;var ch=find(currentId);if(!ch||voicePaperId!==ch.id)return;
+        if(ch.kind==='pdf'&&readerMode==='pdf'){if(chunk.page&&chunk.page!==currentPage&&voicePlayer&&voicePlayer.state()==='playing')gotoPdfPage(chunk.page);}
+        else markVoicePara(chunk.para);
+      },
+      onState:function(state){syncVoiceUi(state);}});
+    voicePlayer.setRate(voicePrefs.rate);voicePlayer.setVoice(chosenVoice());return voicePlayer;
+  }
+  async function startVoice(){
+    var ch=find(currentId);if(!ch)return;
+    if(!voiceSupported()){showReaderToast('This browser cannot read aloud.');return;}
+    // iOS only lets speech start inside the tap, and the PDF text may still need building.
+    try{var warm=new SpeechSynthesisUtterance(' ');warm.volume=0;speechSynthesis.speak(warm);}catch(e){}
+    closeZenPopouts(false);fillVoiceSelect();var bar=byId('voiceBar');bar.classList.remove('hidden');byId('voiceLine').textContent='Getting the text ready…';syncVoiceUi('stopped');
+    try{if(ch.kind==='pdf'&&pdfDoc)await ensureReaderData(pdfDoc,ch);}catch(e){}
+    if(currentId!==ch.id)return;
+    var prepared=window.PhloemVoice.prepare(voiceBlocks(ch));
+    if(!prepared.chunks.length){byId('voiceLine').textContent='No readable text was found in this paper.';return;}
+    var player=ensureVoicePlayer(),startAt=voiceStartIndex(ch,prepared.chunks);voicePaperId=ch.id;voiceChunks=prepared.chunks;fillVoiceSections();
+    player.load(prepared.chunks,startAt);player.setVoice(chosenVoice());player.play();
+    var left=[];if(prepared.skipped.equations)left.push('equations');if(prepared.skipped.tables)left.push('tables');if(prepared.skipped.captions)left.push('captions');if(prepared.skipped.references)left.push('the reference list');
+    showReaderToast('Reading aloud'+(left.length?' · skipping '+left.join(', ').replace(/, ([^,]*)$/,' and $1'):'')+' · tap a paragraph to read from there');
+  }
+  if(byId('zenListen'))byId('zenListen').onclick=function(){if(!byId('voiceBar').classList.contains('hidden')&&voicePaperId===currentId){closeZenPopouts(false);if(voicePlayer)voicePlayer.toggle();return;}startVoice();};
+  if(byId('voiceBar')){
+    byId('voicePlay').onclick=function(){if(voicePlayer&&voicePaperId===currentId&&voicePlayer.length())voicePlayer.toggle();else startVoice();};
+    byId('voiceBack').onclick=function(){if(voicePlayer)voicePlayer.back();};
+    byId('voiceNext').onclick=function(){if(voicePlayer)voicePlayer.next();};
+    byId('voiceClose').onclick=stopVoice;
+    byId('voiceSection').onchange=function(){var index=this.value===''?-1:+this.value;this.value='';if(index>=0)voiceJump(index);};
+    /* While Listen is open, a plain tap on the paper's text reads from there. Selections,
+       links, highlights, notes and pen strokes keep their own meaning. */
+    byId('documentPane').addEventListener('click',function(event){
+      if(byId('voiceBar').classList.contains('hidden')||!voicePlayer||!voiceChunks.length||voicePaperId!==currentId)return;
+      var target=event.target;if(!target||!target.closest||event.defaultPrevented)return;
+      if(target.closest('a,button,input,textarea,select,mark,.pdf-link,.sticky-note,.pdf-sticky,#workspacePanel,[data-hl-id],[data-review-comment-id]'))return;
+      var native=window.getSelection&&window.getSelection();if(native&&!native.isCollapsed)return;
+      var place=null,para=target.closest('#textDocument .para');
+      if(para){var index=Array.prototype.indexOf.call(paraSections(),para);if(index>=0)place={para:index};}
+      else{var span=target.closest('.text-layer span'),pageEl=target.closest('.pdf-page');if(span&&pageEl)place={page:+pageEl.dataset.page,text:span.textContent};}
+      if(!place)return;var at=voiceChunkAt(voiceChunks,place);if(at>=0)voiceJump(at,'Reading from here');
+    });
+    byId('voiceRate').onclick=function(){var at=VOICE_RATES.indexOf(voicePrefs.rate);voicePrefs.rate=VOICE_RATES[(at+1)%VOICE_RATES.length];saveVoicePrefs();if(voicePlayer)voicePlayer.setRate(voicePrefs.rate);syncVoiceUi(voicePlayer?voicePlayer.state():'stopped');};
+    byId('voiceVoice').onchange=function(){voicePrefs.voice=this.value;saveVoicePrefs();if(voicePlayer)voicePlayer.setVoice(chosenVoice());};
+    if(window.speechSynthesis&&speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',fillVoiceSelect);
+    addEventListener('pagehide',function(){if(voicePlayer)voicePlayer.stop();});
+  }
   document.addEventListener('pointerdown',function(event){
     if(!zenOn||event.target.closest('.zen-tool,#zenDock'))return;
     closeZenPopouts(false);
@@ -4734,6 +4873,7 @@
   }
   async function openReader(id,preparedDoc){
     setPdfWriteMode(false);
+    if(voicePaperId&&voicePaperId!==id)stopVoice();
     resetExcerptNavigation();
     if(byId('readingKeepDialog').open)byId('readingKeepDialog').close();
     /* pdfViews must go too: renderPdfPage's spot-preserving rebuild otherwise measures
@@ -8278,7 +8418,7 @@
   function scheduleHighlightCommit(delay){clearTimeout(highlightCommitTimer);highlightCommitTimer=setTimeout(function(){if(highlightMode)commitPendingHighlight();},delay);}
   /* Coarse-pointer readers keep their native selection alive until an explicit Mark
      tap. This leaves iPad handles free to refine either edge without a save timer. */
-  function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;byId('highlightBtn').classList.add('ready');var inputType=selectionPointerType||selectionInputType;if(highlightMode&&!markerPointerDown&&inputType!=='touch'&&!suppressHighlightAutoCommit)scheduleHighlightCommit(550);syncHighlightColorUi();syncTouchDockStates();}
+  function setPendingSelection(selection){pendingSelection=selection;lastAskSelection=selection;voiceSelectionPlace={id:currentId,place:voicePlaceOfSelection(selection),at:Date.now()};byId('highlightBtn').classList.add('ready');var inputType=selectionPointerType||selectionInputType;if(highlightMode&&!markerPointerDown&&inputType!=='touch'&&!suppressHighlightAutoCommit)scheduleHighlightCommit(550);syncHighlightColorUi();syncTouchDockStates();}
   function setHighlightColor(color){
     if(pdfWriteMode)setPdfWriteMode(false);
     if(highlightEraseMode)setHighlightEraseMode(false);
@@ -9065,8 +9205,24 @@
     if(selectionNoteTarget)return selectionNoteTarget;selectionNoteTarget=savePendingHighlight('',true);return selectionNoteTarget;
   }
   byId('selectionClose').onclick=function(){clearPendingSelection();};
+  // Define is for a word or short phrase; a sentence goes to "What does this mean?".
+  function longPassage(text){text=String(text||'').replace(/\s+/g,' ').trim();return text.length>140||text.split(' ').length>14;}
   byId('selectionExplain').onclick=function(){
-    var selection=pendingSelection||lastAskSelection,rect=selectionAnchor;if(!selection)return;queueLookup(selection.text,rect,selection,0);
+    var selection=pendingSelection||lastAskSelection,rect=selectionAnchor;if(!selection)return;
+    if(longPassage(selection.text)&&hasAiRoute()){explainSelection(selection,rect);return;}
+    queueLookup(selection.text,rect,selection,0);
+  };
+  if(byId('selectionMeaning'))byId('selectionMeaning').onclick=function(){var selection=pendingSelection||lastAskSelection;if(selection)explainSelection(selection,selectionAnchor);};
+  /* Copy the selected words as plain text. WebKit can refuse the async clipboard, so a
+     hidden textarea copy is the fallback. */
+  function copyPlainText(text){
+    var area=document.createElement('textarea'),ok=false;area.value=text;area.setAttribute('readonly','');area.style.cssText='position:fixed;top:0;left:0;opacity:0;pointer-events:none';document.body.appendChild(area);area.select();
+    try{ok=document.execCommand('copy');}catch(e){}area.remove();return ok;
+  }
+  if(byId('selectionCopy'))byId('selectionCopy').onclick=function(){
+    var selection=pendingSelection||lastAskSelection,text=String(selection&&selection.text||'').replace(/\s+/g,' ').trim();if(!text)return;
+    function done(ok){showReaderToast(ok?'Copied':'Copy was blocked here. Use the system Copy instead.');}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(function(){done(true);},function(){done(copyPlainText(text));});else done(copyPlainText(text));
   };
   byId('selectionHighlight').onclick=function(){setSelectionAction('selectionHighlight');commitPendingHighlight();};
   byId('selectionLinkReview').onclick=function(){linkSelectionToReview(pendingSelection);};
@@ -10658,14 +10814,37 @@
   byId('installBtn2').onclick=promptInstall;
   /* The nav's Install entry is always there: one click installs where the browser
      offers a prompt, and opens the how-to (with iOS steps) everywhere else. */
+  /* Install: an iPad is offered the App Store app first (it is iPad-only); an iPhone gets
+     the Home Screen web app; other browsers install the web app. Every case says whether
+     this page is the newest version, and an iPad sees the App Store's current version. */
+  var APP_STORE_ID='6813510395';
+  function isIpad(){return /iPad/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+  function runningWebVersion(){var script=document.querySelector('script[src*="/reading.js?v="]'),match=script&&script.getAttribute('src').match(/v=(\d+)/);return match?+match[1]:0;}
+  async function checkInstallVersions(){
+    var line=byId('installVersion'),running=runningWebVersion();line.textContent=running?'Checking for a newer version…':'';
+    try{
+      var worker=await fetch('/reading-sw.js?check='+Date.now(),{cache:'no-store'}),latest=+((await worker.text()).match(/phloem-shell-v(\d+)/)||[])[1]||0;
+      if(!running||!latest)line.textContent='';
+      else if(latest>running){line.textContent='A newer version (v'+latest+') is ready. ';var reload=document.createElement('button');reload.type='button';reload.className='text-button';reload.textContent='Reload to update';reload.onclick=refreshPhloem;line.appendChild(reload);}
+      else line.textContent='You have the newest version of Phloem on the web (v'+running+').';
+    }catch(error){line.textContent=running?'Phloem on the web, v'+running+'. Could not check for updates (offline?).':'';}
+    if(!isIpad())return;
+    try{
+      var response=await fetch('https://itunes.apple.com/lookup?id='+APP_STORE_ID+'&country=us',{cache:'no-store'}),data=await response.json(),app=data&&data.results&&data.results[0];
+      if(app&&app.version){var date='';try{date=new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',year:'numeric'}).format(new Date(app.currentVersionReleaseDate));}catch(e){}
+        byId('installStoreVersion').textContent='Free · version '+app.version+(date?' · updated '+date:'');}
+    }catch(error){}
+  }
   byId('installNav').onclick=function(){
-    if(installPrompt&&!isStandalone()){promptInstall();return;}
-    var hint=byId('installDialogHint'),btn=byId('installDialogBtn');
-    btn.classList.add('hidden');
-    if(isStandalone())hint.textContent='Phloem is already installed — you are reading in the app right now.';
-    else if(isIos())hint.textContent='On iPhone or iPad: open this page in Safari, tap Share, then “Add to Home Screen”. Phloem gets its own icon and works offline for papers already on this device.';
+    var hint=byId('installDialogHint'),btn=byId('installDialogBtn'),ipad=isIpad(),iphone=/iPhone|iPod/.test(navigator.userAgent);
+    byId('installStore').classList.toggle('hidden',!ipad);byId('installIpadLink').classList.toggle('hidden',ipad||iphone);
+    btn.classList.toggle('hidden',!(installPrompt&&!isStandalone()));
+    if(ipad)hint.textContent=(isStandalone()?'You are reading the web version from your Home Screen. ':'')+'The iPad app syncs your library through iCloud and keeps AI keys in the iPad’s Keychain.'+(isStandalone()?'':' Prefer the web version? In Safari, tap Share, then “Add to Home Screen”.');
+    else if(isStandalone())hint.textContent='Phloem is already installed — you are reading in the app right now.';
+    else if(iphone)hint.textContent='The App Store app is made for iPad. On iPhone, open this page in Safari, tap Share, then “Add to Home Screen”. Phloem gets its own icon and works offline for papers already on this device.';
+    else if(installPrompt)hint.textContent='Phloem opens in its own window with its own icon, and papers already on this device open with no network.';
     else hint.textContent='Your browser has not offered an install prompt on this visit. In Chrome or Edge, look for the small install icon at the right end of the address bar. Once installed, Phloem opens in its own window and works offline.';
-    byId('installDialog').showModal();
+    byId('installDialog').showModal();checkInstallVersions();
   };
   byId('installDialogBtn').onclick=function(){byId('installDialog').close();promptInstall();};
   /* In the installed window, the portfolio link opens in a real browser tab. */

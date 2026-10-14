@@ -292,12 +292,18 @@
   function libraryMatches(item, papers, limit) {
     return (papers || []).map(function (paper) { return { id: paper.id, score: matchScore(item, paper) }; })
       .filter(function (match) { return match.score >= 0.45; })
-      .sort(function (a, b) { return b.score - a.score || compare(a.id, b.id); })
+      // Equal scores keep the caller's order (most recently read first).
+      .sort(function (a, b) { return b.score - a.score; })
       .slice(0, limit || 5);
   }
   /* Only an unambiguous match links on its own: a clear score and a clear lead. */
   function confidentMatch(item, papers) {
     var found = libraryMatches(item, papers, 2);
+    // Two copies of the same paper (one title) are not ambiguous: take the first one.
+    if (found.length === 2 && found[0].score === found[1].score) {
+      var titleOf = function (id) { var paper = (papers || []).find(function (entry) { return entry.id === id; }); return words(paper && paper.title).join(' '); };
+      if (titleOf(found[0].id) && titleOf(found[0].id) === titleOf(found[1].id)) found = [found[0]];
+    }
     // A two- or three-word title matches too much by chance; it links only by DOI.
     if (found.length && found[0].score < 1 && words(item && item.title).length < 4) return '';
     if (!found.length || found[0].score < 0.8) return '';

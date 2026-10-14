@@ -18,7 +18,8 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 - **Unlinked citations (v216, Jieun's Android report):** a finger/pen long-press that selects "[5]" or an author-year
   citation in a PDF without link annotations now shows the reference card from the paper's reference list instead of
   the highlight prompt. Mouse selections and marker mode still highlight. Test: `tests/reading-unlinked-citations.test.js`.
-- **Web:** houfu72.com/reading.html serves **v216** (above); v213: saved Define answers are kept instead of refetched (from PR #72);
+- **Web:** houfu72.com/reading.html serves **v217** (v216 above; v217: two copies of one paper no longer block the
+  automatic link, the most recently read copy wins); v213: saved Define answers are kept instead of refetched (from PR #72);
   v212: Escape after a tap in the Workspace no longer closes the paper (iPad keyboards); v211: DeepSeek removed, AI data note, accessibility fixes, the Workspace rail tucked under
   sheets; v210: no re-merge of the sync's own upload after a stroke. The iPad app (1.2.1, in review) bundles v211.
 - **Promo kit (drafts only):** `output/phloem-school-promo-2026-10/` (local): SCHOOL-FIT, pitches, channel texts,
@@ -130,6 +131,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 v217:** first real import, Houfu's `source_sink_feedback_reading_list.md` (7 papers) into his library
+  from the browser pane: 5 linked to his PDFs on their own. Chiou & Bush 1998 has two copies in his library (now links
+  to the recent one); Matsuda 2011's PDF is titled "Scientia Horticulturae / paper.pdf", so it needs the ⋯ picker.
 
 - **2026-10-14 v216:** reading lists (see Now) and unlinked-citation cards. Tests: `reading-lists-state` (19),
   `reading-lists-browser` and `reading-unlinked-citations` on Chromium and WebKit; the whole suite passes on both

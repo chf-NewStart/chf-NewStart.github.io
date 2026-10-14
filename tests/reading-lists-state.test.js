@@ -255,6 +255,12 @@ test('library matching links only clear matches', () => {
   assert.equal(L.confidentMatch(item, papers), 'osorio');
   assert.equal(L.confidentMatch({ title: 'Tomato fluxes' }, papers), '');
   assert.equal(L.confidentMatch({ title: 'x', doi: '10.1/abc' }, [{ id: 'd', sourceUrl: 'https://doi.org/10.1/abc' }]), 'd');
+  const copies = [{ id: 'recent', title: 'Sucrose is a signal molecule in assimilate partitioning', sourceName: 'pq004784.pdf' },
+    { id: 'older', title: 'Sucrose is a signal molecule in assimilate partitioning', sourceName: 'chiou-bush-1998.pdf' }];
+  assert.equal(L.confidentMatch({ title: 'Sucrose Is a Signal Molecule in Assimilate Partitioning', authors: 'Chiou & Bush', year: '1998' }, copies), 'recent',
+    'two copies of one paper link to the first (most recently read) copy');
+  assert.equal(L.confidentMatch({ title: 'Sucrose signalling in assimilate partitioning of beet' }, [{ id: 'a', title: 'Sucrose signalling in assimilate partitioning of beet leaves' }, { id: 'b', title: 'Sucrose signalling in assimilate partitioning of beet roots' }]), '',
+    'two different papers with the same score stay ambiguous');
 });
 
 test('Crossref works become list items, without markup', () => {

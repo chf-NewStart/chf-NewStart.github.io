@@ -7349,7 +7349,7 @@
       store:function(){return state.readingLists;},
       save:function(next){state.readingLists=next;return persist();},
       locked:function(){return readingListsLocked;},
-      papers:function(){return state.chapters.filter(function(ch){return !state.deleted[ch.id];}).map(function(ch){return{id:ch.id,title:ch.title||'Untitled',authors:ch.authors||'',sourceName:ch.sourceName||'',sourceUrl:ch.sourceUrl||''};});},
+      papers:function(){return state.chapters.filter(function(ch){return !state.deleted[ch.id];}).sort(function(a,b){return (+b.lastOpenedAt||0)-(+a.lastOpenedAt||0)||(+b.updatedAt||0)-(+a.updatedAt||0);}).map(function(ch){return{id:ch.id,title:ch.title||'Untitled',authors:ch.authors||'',sourceName:ch.sourceName||'',sourceUrl:ch.sourceUrl||''};});},
       paper:readingListPaper,
       resolve:resolvedPaperId,
       open:function(id){var ch=find(resolvedPaperId(id));if(!ch)return;readerReturnPage='listsPage';openReader(ch.id);},

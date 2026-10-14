@@ -32,7 +32,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   (resumes at a real Appendix, not "Appendix S7."). Player bar: back / play-pause / next sentence, speed 0.8–1.5×, voice
   picker (remembered), current sentence shown; PDFs turn pages, text papers mark the paragraph. Checked against arXiv
   2405.07097, Colombie 2015 and Osorio 2014 transcripts. Not yet heard on Houfu's iPad: whether WKWebView/Safari lists
-  Jamie (Premium) after it is downloaded in Settings → Accessibility → Spoken Content, and whether speech continues
+  Jamie (Premium) after it is downloaded in Settings → Accessibility → Read & Speak → Voices → English, and whether speech continues
   with the screen locked (iOS pauses web speech in the background).
 - **Voice guide (v222, Houfu: "people won't know where to download the voice"):** apps cannot download system voices
   (and private Settings deep links get apps rejected), so Listen detects a device with only basic voices (no
@@ -176,6 +176,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-10-14 v223:** Listen hides Apple's novelty voices (Bahh, Whisper, Bad News, Zarvox…) and the robotic Eloquence
+  voices (Eddy, Grandma, Rocko…) after Houfu called them creepy; each person is listed once in their best quality, under
+  Natural / Basic groups. The voice guide says Read & Speak (iPadOS/macOS 26 name). Tests: `reading-voice` 10/10 with
+  Houfu's Mac voice list; voice browser tests on Chromium and WebKit.
 - **2026-10-14 v222:** Listen's natural-voice guide and auto-switch. Tests: `reading-voice` 10/10,
   `reading-voice-quality-browser` (iPad, back-from-Settings, Android) and `reading-voice-browser` on Chromium and WebKit.
 

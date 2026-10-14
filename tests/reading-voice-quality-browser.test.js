@@ -41,7 +41,7 @@ function setup() {
     await page.locator('#voiceHelpBtn').click();
     await page.locator('#voiceHelpDialog').waitFor({ state: 'visible' });
     assert.match(await page.locator('#voiceHelpTitle').textContent(), /iPad or iPhone/);
-    assert.match(await page.locator('#voiceHelpSteps').textContent(), /Spoken Content.*Voices.*Jamie.*Premium/);
+    assert.match(await page.locator('#voiceHelpSteps').textContent(), /Read & Speak.*Voices.*English.*Jamie.*Premium/);
     await page.locator('#voiceHelpDialog [data-close]').click();
     console.log('PASS  basic voices only: the bar offers the guide with the iPad steps (' + name + ')');
 

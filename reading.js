@@ -3383,7 +3383,10 @@
   }
   function fillVoiceSelect(){
     var select=byId('voiceVoice');if(!select||!voiceSupported())return;var list=voiceList(),current=chosenVoice();
-    select.innerHTML=list.length?list.map(function(voice){return '<option value="'+esc(voice.voiceURI)+'"'+(current&&voice.voiceURI===current.voiceURI?' selected':'')+'>'+esc(voice.name.replace(/\s*\((?:English|en)[^)]*\)\s*$/i,''))+'</option>';}).join(''):'<option value="">System voice</option>';
+    function option(voice){return '<option value="'+esc(voice.voiceURI)+'"'+(current&&voice.voiceURI===current.voiceURI?' selected':'')+'>'+esc(voice.name.replace(/\s*\((?:English|en)[^)]*\)\s*$/i,''))+'</option>';}
+    var natural=list.filter(window.PhloemVoice.naturalVoice),basic=list.filter(function(voice){return !window.PhloemVoice.naturalVoice(voice);});
+    // Natural voices first, then the basic ones a device starts with.
+    select.innerHTML=!list.length?'<option value="">System voice</option>':natural.length&&basic.length?'<optgroup label="Natural">'+natural.map(option).join('')+'</optgroup><optgroup label="Basic">'+basic.map(option).join('')+'</optgroup>':list.map(option).join('');
     select.disabled=!list.length;
     refreshVoiceQuality(false);
   }

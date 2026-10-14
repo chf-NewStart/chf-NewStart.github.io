@@ -1,12 +1,6 @@
 [
   {
     "tag": "PLANTS",
-    "title": "Tomatoes were once feared as poison",
-    "fact": "European elites avoided tomatoes for two centuries, partly because wealthy diners who ate them (off pewter plates acid-leached by the fruit's juice) did sicken and die — the lead, not the tomato, was the killer.",
-    "detail": "The tomato family, Solanaceae, also gives us potatoes, eggplants, peppers, belladonna, and tobacco. Many of its members really do synthesize toxins, so the fear was not baseless."
-  },
-  {
-    "tag": "PLANTS",
     "title": "Sunflowers secretly do math",
     "fact": "A sunflower's florets spiral in Fibonacci counts because each new primordium grows at the golden angle (~137.5°) from the last. That packing rule fills the head with near-equal, non-overlapping slots — nature's best answer to a geometry problem.",
     "detail": "The same rule sizes the spiral rows on pinecones, pineapples, and artichokes. It emerges automatically from simple growth timing, no blueprint required."

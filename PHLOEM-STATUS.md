@@ -34,6 +34,13 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   2405.07097, Colombie 2015 and Osorio 2014 transcripts. Not yet heard on Houfu's iPad: whether WKWebView/Safari lists
   Jamie (Premium) after it is downloaded in Settings → Accessibility → Spoken Content, and whether speech continues
   with the screen locked (iOS pauses web speech in the background).
+- **Voice guide (v222, Houfu: "people won't know where to download the voice"):** apps cannot download system voices
+  (and private Settings deep links get apps rejected), so Listen detects a device with only basic voices (no
+  Premium/Enhanced/Natural/Google voice) and shows "Get a more natural voice →" with steps for iPad/iPhone, Mac,
+  Android (incl. Samsung's General management path) and Windows (Edge's natural voices). Android names no voice
+  quality, so there the link is always shown ("Voice sounds robotic?"). Coming back to Phloem (visibilitychange /
+  voiceschanged) with a new natural voice switches Listen to it and says "Jamie (Premium) is ready for Listen", unless
+  the reader picked a natural voice themselves. Not in iPad 1.2.2 (41); next build.
 - **What does this mean? + Copy (v221):** two new selection-card buttons. "What does this mean?" explains the selected
   passage in plain words from the surrounding excerpt, on the Define card, labelled "AI explanation · verify"; Define
   on a sentence goes there automatically when AI is set up. Hidden in the iPad app where cloud AI is off (CHN).
@@ -48,7 +55,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Abbreviations/symbols skip the dictionary. Saved answers are still kept (v213); the card has **"Not this? Look it up
   again"**, which replaces a saved answer (offline, the saved one stays). Wikipedia/Wiktionary are blocked in mainland
   China, so Define there needs AI or a VPN.
-- **Web:** houfu72.com/reading.html serves **v221** (Listen, Explain/Copy, Install, above); v220 (Define); v219: the list's "Look for" is now **My question**, blank until Houfu
+- **Web:** houfu72.com/reading.html serves **v222**: Listen's voice guide (below); v221 (Listen, Explain/Copy, Install, above); v220 (Define); v219: the list's "Look for" is now **My question**, blank until Houfu
   writes it (imports leave a list's own notes out unless a checkbox is ticked), the takeaway asks "from memory: what
   did they find, and what surprised you?", and **Peek** shows the abstract (Europe PMC, else Crossref; plain text)
   before opening. Houfu's reasoning: read first and decide yourself; his professor ruled out AI drafting, so Phloem
@@ -168,6 +175,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 v222:** Listen's natural-voice guide and auto-switch. Tests: `reading-voice` 10/10,
+  `reading-voice-quality-browser` (iPad, back-from-Settings, Android) and `reading-voice-browser` on Chromium and WebKit.
 
 - **2026-10-14 1.2.2 (41):** archived and uploaded (Release, automatic signing); archive verified to carry reader v221
   and `app: 1.2.2 (41)`. `apps/ipad` tests 21/21. `cap sync` through a symlinked node_modules rewrote

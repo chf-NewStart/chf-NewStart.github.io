@@ -3359,10 +3359,33 @@
   function saveVoicePrefs(){try{localStorage.setItem(VOICE_KEY,JSON.stringify(voicePrefs));}catch(e){}}
   function voiceList(){return window.PhloemVoice.rankVoices(speechSynthesis.getVoices()||[]);}
   function chosenVoice(){var list=voiceList();return list.find(function(voice){return voice.voiceURI===voicePrefs.voice;})||list[0]||null;}
+  function voicePlatform(){
+    var ua=navigator.userAgent||'';
+    if(window.PHLOEM_NATIVE||/iPhone|iPad|iPod/.test(ua)||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)return'ios';
+    if(/Android/.test(ua))return'android';if(/Macintosh/.test(ua))return'mac';if(/Windows/.test(ua))return'windows';return'other';
+  }
+  /* Only basic voices on this device: offer the steps to a natural one. When the reader
+     comes back with a new natural voice, Listen switches to it unless they chose a natural
+     voice themselves. */
+  var knownVoices=null;
+  function refreshVoiceQuality(announce){
+    if(!voiceSupported())return;var list=voiceList(),natural=list.filter(window.PhloemVoice.naturalVoice),uris=list.map(function(voice){return voice.voiceURI;});
+    // Android voices do not name their quality, so the guide stays one tap away there.
+    var android=voicePlatform()==='android',help=byId('voiceHelpBtn');
+    help.textContent=android?'Voice sounds robotic? How to get a better one →':'This device has only basic voices. Get a more natural voice →';
+    help.classList.toggle('hidden',!list.length||(!android&&natural.length>0));
+    var fresh=knownVoices&&knownVoices.length?natural.filter(function(voice){return knownVoices.indexOf(voice.voiceURI)<0;}):[];if(uris.length)knownVoices=uris;
+    var current=list.find(function(voice){return voice.voiceURI===voicePrefs.voice;});
+    if(announce&&fresh.length&&!(current&&window.PhloemVoice.naturalVoice(current))){
+      voicePrefs.voice=fresh[0].voiceURI;saveVoicePrefs();fillVoiceSelect();if(voicePlayer)voicePlayer.setVoice(chosenVoice());
+      showReaderToast(fresh[0].name.replace(/\s*\((?:English|en)[^)]*\)\s*$/i,'')+' is ready for Listen');
+    }
+  }
   function fillVoiceSelect(){
     var select=byId('voiceVoice');if(!select||!voiceSupported())return;var list=voiceList(),current=chosenVoice();
     select.innerHTML=list.length?list.map(function(voice){return '<option value="'+esc(voice.voiceURI)+'"'+(current&&voice.voiceURI===current.voiceURI?' selected':'')+'>'+esc(voice.name.replace(/\s*\((?:English|en)[^)]*\)\s*$/i,''))+'</option>';}).join(''):'<option value="">System voice</option>';
     select.disabled=!list.length;
+    refreshVoiceQuality(false);
   }
   function voiceBlocks(ch){
     if(ch.kind==='pdf'){
@@ -3467,7 +3490,14 @@
     });
     byId('voiceRate').onclick=function(){var at=VOICE_RATES.indexOf(voicePrefs.rate);voicePrefs.rate=VOICE_RATES[(at+1)%VOICE_RATES.length];saveVoicePrefs();if(voicePlayer)voicePlayer.setRate(voicePrefs.rate);syncVoiceUi(voicePlayer?voicePlayer.state():'stopped');};
     byId('voiceVoice').onchange=function(){voicePrefs.voice=this.value;saveVoicePrefs();if(voicePlayer)voicePlayer.setVoice(chosenVoice());};
-    if(window.speechSynthesis&&speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',fillVoiceSelect);
+    if(window.speechSynthesis&&speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',function(){refreshVoiceQuality(true);fillVoiceSelect();});
+    // Back from the Settings app with a new voice: browsers do not always say so.
+    // New voices are looked for before the menu refresh records them as known.
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&voiceSupported()){refreshVoiceQuality(true);fillVoiceSelect();}});
+    byId('voiceHelpBtn').onclick=function(){
+      var help=window.PhloemVoice.voiceHelp(voicePlatform());byId('voiceHelpTitle').textContent=help.title;
+      byId('voiceHelpSteps').innerHTML=help.steps.map(function(step){return '<li>'+esc(step)+'</li>';}).join('');byId('voiceHelpDialog').showModal();
+    };
     addEventListener('pagehide',function(){if(voicePlayer)voicePlayer.stop();});
   }
   document.addEventListener('pointerdown',function(event){

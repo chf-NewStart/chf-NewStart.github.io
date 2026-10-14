@@ -129,3 +129,23 @@ test('a cancelled utterance never advances the player', () => {
   assert.equal(player.index(), 0);
   assert.equal(player.state(), 'paused');
 });
+
+test('natural voices are told apart from the basic ones a device starts with', () => {
+  const natural = voice => V.naturalVoice(voice);
+  assert.equal(natural({ name: 'Jamie (Premium)', voiceURI: 'com.apple.voice.premium.en-GB.Jamie' }), true);
+  assert.equal(natural({ name: 'Ava', voiceURI: 'com.apple.voice.enhanced.en-US.Ava' }), true, 'Safari may drop the label from the name');
+  assert.equal(natural({ name: 'Microsoft Aria Online (Natural) - English (United States)', voiceURI: 'x' }), true);
+  assert.equal(natural({ name: 'Google UK English Female', voiceURI: 'Google UK English Female' }), true);
+  assert.equal(natural({ name: 'Samantha', voiceURI: 'com.apple.voice.compact.en-US.Samantha' }), false);
+  assert.equal(natural({ name: 'Microsoft David - English (United States)', voiceURI: 'x' }), false);
+});
+
+test('the voice guide gives steps for the device, ending back in Phloem', () => {
+  for (const platform of ['ios', 'mac', 'android', 'windows', 'other']) {
+    const help = V.voiceHelp(platform);
+    assert.ok(help.title && help.steps.length >= 1, platform);
+  }
+  assert.match(V.voiceHelp('ios').steps.join(' '), /Accessibility.*Spoken Content.*Voices.*Jamie.*Premium/);
+  assert.match(V.voiceHelp('ios').steps.at(-1), /Come back to Phloem/);
+  assert.match(V.voiceHelp('mac').steps.join(' '), /Manage Voices/);
+});

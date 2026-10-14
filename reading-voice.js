@@ -176,6 +176,34 @@
       .map(function (entry) { return entry.voice; });
   }
 
+  /* Whether a voice sounds natural: Apple's Premium and Enhanced voices, Microsoft's
+     Natural/Online voices, Google's voices. Apple's compact voices (Samantha, Daniel…) and
+     the old Windows ones are what a device has before anything is downloaded. */
+  function naturalVoice(voice) {
+    var name = String(voice && voice.name || '') + ' ' + String(voice && voice.voiceURI || '');
+    return /premium|enhanced|neural|natural|online|google/i.test(name);
+  }
+  /* Where to get a natural voice on this device: steps for the Settings app, since no app can
+     download system voices itself. */
+  function voiceHelp(platform) {
+    if (platform === 'ios') return { title: 'Get a natural voice on iPad or iPhone', steps: [
+      'Open the Settings app.', 'Go to Accessibility, then Spoken Content (on newer iPadOS it can be called Read & Speak).',
+      'Tap Voices, then English.', 'Tap Jamie (or Ava, Zoe or Serena), then tap Premium to download it. It is a few hundred MB, so use Wi-Fi.',
+      'Come back to Phloem. Listen switches to the new voice by itself.'] };
+    if (platform === 'mac') return { title: 'Get a natural voice on a Mac', steps: [
+      'Open System Settings, then Accessibility, then Spoken Content.', 'Next to System voice, open the menu and choose Manage Voices.',
+      'Under English, download Jamie (Premium) or another Premium voice.', 'Quit and reopen your browser, then come back to Phloem.'] };
+    if (platform === 'android') return { title: 'Get a better voice on Android', steps: [
+      'Open Settings, then Accessibility, then Text-to-speech output. On a Samsung Galaxy it is under General management, then Text-to-speech.',
+      'Set the preferred engine to Speech Services by Google (Samsung\'s own engine also works).',
+      'Tap the gear next to the engine, then Install voice data, then English (United States or United Kingdom).',
+      'Pick a voice, download it, and try it with Play. Then come back to Phloem.'] };
+    if (platform === 'windows') return { title: 'Get a natural voice on Windows', steps: [
+      'Open Phloem in Microsoft Edge: its natural voices appear in Listen\'s voice menu.',
+      'Or, in Windows 11, go to Settings, then Accessibility, then Narrator, then Add natural voices.'] };
+    return { title: 'Get a natural voice', steps: ['Install a higher-quality English text-to-speech voice in your device\'s settings, then come back to Phloem.'] };
+  }
+
   /* Plays chunks one utterance at a time. Pausing cancels and resumes from the start of
      the sentence, which every engine handles the same way. env: { synth, Utterance,
      onChunk(chunk, index), onState(state), setTimeout, clearTimeout }. */
@@ -242,7 +270,7 @@
   }
 
   global.PhloemVoice = Object.freeze({
-    prepare: prepare, sections: sections, sentences: sentences, stripCitations: stripCitations,
+    prepare: prepare, sections: sections, naturalVoice: naturalVoice, voiceHelp: voiceHelp, sentences: sentences, stripCitations: stripCitations,
     tableLike: tableLike, formulaLike: formulaLike, rankVoices: rankVoices, createPlayer: createPlayer
   });
 })(typeof window !== 'undefined' ? window : globalThis);

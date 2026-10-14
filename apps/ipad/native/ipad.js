@@ -129,8 +129,9 @@
     aiRegionNote.className = 'native-ai-region-note';
     aiRegionNote.hidden = true;
     var lookupNote = document.createElement('p');
-    lookupNote.textContent = 'Define uses Wikipedia and Wikimedia online when you ask for a lookup. ' +
-      'Your selected term is sent to those services.';
+    lookupNote.textContent = 'Define uses Wiktionary, Wikipedia and Wikimedia online when you ask for a lookup; ' +
+      'reading lists search Crossref and fetch free full texts from arXiv and Europe PMC. Only the term, title or DOI ' +
+      'you look up is sent to those services. Listen uses the voices on this iPad.';
     localSection.append(heading, nativeLocalDescription, aiRegionNote, lookupNote);
     if (window.PHLOEM_NATIVE_BLOCKED_SETUP) {
       var blockedNote = document.createElement('p');
@@ -249,6 +250,70 @@
   if (!nativeBrowser && capacitor && typeof capacitor.registerPlugin === 'function') {
     nativeBrowser = capacitor.registerPlugin('Browser');
   }
+  /* Updates: the bundle carries this app's version (bundle-manifest.json, read from the
+     Xcode project at build time) and the App Store lookup says which version is current.
+     Desk settings shows the status; a newer version gets a small banner, once per version. */
+  var APP_STORE_URL = 'https://apps.apple.com/app/id6813510395';
+  var UPDATE_DISMISSED_KEY = 'phloem.updateDismissed.v1';
+  function compareVersions(a, b) {
+    var x = String(a || '').split('.').map(Number), y = String(b || '').split('.').map(Number);
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var d = (x[i] || 0) - (y[i] || 0);
+      if (d) return d > 0 ? 1 : -1;
+    }
+    return 0;
+  }
+  var versionLine = null;
+  if (settings) {
+    var aboutSection = document.createElement('section');
+    aboutSection.className = 'native-about';
+    var aboutHeading = document.createElement('h3');
+    aboutHeading.textContent = 'Phloem for iPad';
+    versionLine = document.createElement('p');
+    versionLine.id = 'nativeVersionStatus';
+    versionLine.textContent = 'Checking the version…';
+    aboutSection.append(aboutHeading, versionLine);
+    settings.append(aboutSection);
+  }
+  function updateLink(label) {
+    var link = document.createElement('a');
+    link.href = APP_STORE_URL;
+    link.textContent = label;
+    return link;
+  }
+  async function checkAppVersion() {
+    var mine = null, store = null;
+    try { mine = (await (await fetch('./bundle-manifest.json', { cache: 'no-store' })).json()).app; } catch (error) {}
+    if (!mine || !mine.version) { if (versionLine) versionLine.textContent = ''; return; }
+    var installed = 'Version ' + mine.version + (mine.build ? ' (' + mine.build + ')' : '');
+    try { var data = await (await fetch('https://itunes.apple.com/lookup?id=6813510395', { cache: 'no-store' })).json(); store = data && data.results && data.results[0]; } catch (error) {}
+    if (!versionLine) versionLine = document.createElement('p');
+    if (!store || !store.version) { versionLine.textContent = installed + '. Could not check the App Store right now.'; return; }
+    if (compareVersions(store.version, mine.version) <= 0) { versionLine.textContent = installed + ' · the newest version.'; return; }
+    versionLine.textContent = installed + ' · Phloem ' + store.version + ' is on the App Store. ';
+    versionLine.append(updateLink('Update'));
+    try { if (localStorage.getItem(UPDATE_DISMISSED_KEY) === store.version) return; } catch (error) {}
+    var banner = document.createElement('div');
+    banner.className = 'native-update-banner';
+    banner.setAttribute('role', 'status');
+    var message = document.createElement('span');
+    message.textContent = 'Phloem ' + store.version + ' is on the App Store.';
+    var link = updateLink('Update');
+    link.className = 'button';
+    var dismiss = document.createElement('button');
+    dismiss.type = 'button';
+    dismiss.className = 'icon-btn';
+    dismiss.setAttribute('aria-label', 'Dismiss update notice');
+    dismiss.textContent = '×';
+    dismiss.addEventListener('click', function () {
+      try { localStorage.setItem(UPDATE_DISMISSED_KEY, store.version); } catch (error) {}
+      banner.remove();
+    });
+    banner.append(message, link, dismiss);
+    document.body.insertBefore(banner, document.querySelector('main'));
+  }
+  setTimeout(checkAppVersion, 2500);
+
   document.addEventListener('click', function (event) {
     var anchor = event.target.closest && event.target.closest('a[href]');
     if (!anchor || anchor.hasAttribute('download') || event.defaultPrevented) return;

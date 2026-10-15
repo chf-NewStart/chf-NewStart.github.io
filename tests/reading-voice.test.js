@@ -81,10 +81,22 @@ test('without an Abstract heading nothing after the title is skipped except byli
   ]), ['An update on source-to-sink carbon partitioning in tomato', 'Plant growth and carbon metabolism are closely associated.', 'INTRODUCTION']);
 });
 
-test('voices: Jamie first, then Premium and Enhanced, novelty voices last, English only', () => {
-  const voices = [{ name: 'Albert', lang: 'en-US' }, { name: 'Samantha', lang: 'en-US', default: true }, { name: 'Thomas', lang: 'fr-FR' },
-    { name: 'Daniel (Enhanced)', lang: 'en-GB' }, { name: 'Jamie (Premium)', lang: 'en-GB' }, { name: 'Ava (Premium)', lang: 'en-US' }];
-  assert.deepEqual(plain(V.rankVoices(voices).map(voice => voice.name)), ['Jamie (Premium)', 'Ava (Premium)', 'Daniel (Enhanced)', 'Samantha', 'Albert']);
+test('voices: Jamie first, then Premium and Enhanced; novelty and Eloquence voices hidden; each person once', () => {
+  // The English voices on Houfu's Mac (Oct 2026), as Chromium lists them.
+  const names = ['Samantha', 'Albert', 'Ava', 'Ava (Enhanced)', 'Ava (Premium)', 'Bad News', 'Bahh', 'Bells', 'Boing', 'Bubbles', 'Cellos', 'Daniel',
+    'Eddy (English (United States))', 'Flo (English (United Kingdom))', 'Fred', 'Good News', 'Grandma (English (United States))', 'Grandpa (English (United Kingdom))',
+    'Jamie (Premium)', 'Jester', 'Junior', 'Karen', 'Kathy', 'Moira', 'Organ', 'Ralph', 'Reed (English (United States))', 'Rishi',
+    'Rocko (English (United States))', 'Sandy (English (United States))', 'Serena (Premium)', 'Shelley (English (United States))', 'Superstar', 'Tessa',
+    'Trinoids', 'Whisper', 'Wobble', 'Zarvox', 'Zoe (Premium)'];
+  const lang = name => ({ Daniel: 'en-GB', 'Jamie (Premium)': 'en-GB', 'Serena (Premium)': 'en-GB', Karen: 'en-AU', Moira: 'en-IE', Rishi: 'en-IN', Tessa: 'en-ZA' })[name] || 'en-US';
+  const voices = names.map(name => ({ name, voiceURI: name, lang: lang(name), localService: true, default: name === 'Samantha' })).concat([{ name: 'Thomas', lang: 'fr-FR' }]);
+  assert.deepEqual(plain(V.rankVoices(voices).map(voice => voice.name)),
+    ['Jamie (Premium)', 'Serena (Premium)', 'Ava (Premium)', 'Zoe (Premium)', 'Samantha', 'Daniel', 'Karen', 'Moira', 'Rishi', 'Tessa']);
+  assert.equal(V.oddVoice({ name: 'Bahh', voiceURI: 'com.apple.speech.synthesis.voice.Bahh' }), true);
+  assert.equal(V.oddVoice({ name: 'Eddy', voiceURI: 'com.apple.eloquence.en-US.Eddy' }), true);
+  assert.equal(V.oddVoice({ name: 'Samantha', voiceURI: 'com.apple.voice.compact.en-US.Samantha' }), false);
+  assert.equal(V.oddVoice({ name: 'Alex', voiceURI: 'com.apple.speech.synthesis.voice.Alex' }), false, 'Alex shares the novelty voices\' identifier prefix but is a real voice');
+  assert.deepEqual(plain(V.rankVoices([{ name: 'Bahh', lang: 'en-US' }]).map(voice => voice.name)), ['Bahh'], 'a device with only odd voices still gets one');
 });
 
 function fakeEnv() {
@@ -128,4 +140,24 @@ test('a cancelled utterance never advances the player', () => {
   first.onend();
   assert.equal(player.index(), 0);
   assert.equal(player.state(), 'paused');
+});
+
+test('natural voices are told apart from the basic ones a device starts with', () => {
+  const natural = voice => V.naturalVoice(voice);
+  assert.equal(natural({ name: 'Jamie (Premium)', voiceURI: 'com.apple.voice.premium.en-GB.Jamie' }), true);
+  assert.equal(natural({ name: 'Ava', voiceURI: 'com.apple.voice.enhanced.en-US.Ava' }), true, 'Safari may drop the label from the name');
+  assert.equal(natural({ name: 'Microsoft Aria Online (Natural) - English (United States)', voiceURI: 'x' }), true);
+  assert.equal(natural({ name: 'Google UK English Female', voiceURI: 'Google UK English Female' }), true);
+  assert.equal(natural({ name: 'Samantha', voiceURI: 'com.apple.voice.compact.en-US.Samantha' }), false);
+  assert.equal(natural({ name: 'Microsoft David - English (United States)', voiceURI: 'x' }), false);
+});
+
+test('the voice guide gives steps for the device, ending back in Phloem', () => {
+  for (const platform of ['ios', 'mac', 'android', 'windows', 'other']) {
+    const help = V.voiceHelp(platform);
+    assert.ok(help.title && help.steps.length >= 1, platform);
+  }
+  assert.match(V.voiceHelp('ios').steps.join(' '), /Accessibility, then Read & Speak.*Voices, then English.*Jamie.*Premium/);
+  assert.match(V.voiceHelp('ios').steps.at(-1), /Come back to Phloem/);
+  assert.match(V.voiceHelp('mac').steps.join(' '), /Manage Voices/);
 });

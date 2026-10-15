@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=221">
-  <link rel="stylesheet" href="/reading-fold.css?v=221">
-  <link rel="stylesheet" href="/reading-workspace.css?v=221">
+  <link rel="stylesheet" href="/reading.css?v=223">
+  <link rel="stylesheet" href="/reading-fold.css?v=223">
+  <link rel="stylesheet" href="/reading-workspace.css?v=223">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -760,6 +760,7 @@
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
       <section class="voice-bar hidden" id="voiceBar" aria-label="Read aloud">
         <p class="voice-line" id="voiceLine"></p>
+        <button class="voice-help hidden" id="voiceHelpBtn" type="button" aria-haspopup="dialog" aria-controls="voiceHelpDialog">This device has only basic voices. Get a more natural voice →</button>
         <div class="voice-controls">
           <button class="voice-button" id="voiceBack" type="button" aria-label="Previous sentence" title="Previous sentence"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 6h2v12H7zM20 6v12l-9-6z"/></svg></button>
           <button class="voice-button voice-play" id="voicePlay" type="button" aria-label="Play" title="Play or pause"><svg class="voice-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><svg class="voice-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
@@ -861,6 +862,14 @@
       <label class="field-label" for="paperAuthorsEdit">Authors / citation</label><input class="field" id="paperAuthorsEdit">
       <label class="field-label" for="paperTagsEdit">Tags</label><input class="field" id="paperTagsEdit" placeholder="method, metabolism, revisit">
       <button class="button" id="savePaperDetails">Save details</button>
+    </div>
+  </dialog>
+
+  <dialog id="voiceHelpDialog" aria-labelledby="voiceHelpTitle">
+    <div class="dialog-head"><div><span class="panel-eyebrow">Listen</span><h2 id="voiceHelpTitle">Get a natural voice</h2></div><button class="icon-btn" data-close="voiceHelpDialog" aria-label="Close">×</button></div>
+    <div class="dialog-body">
+      <p class="hint">Apps cannot download voices themselves, so this takes a minute in your device's settings. The voice is free, stays on the device, and every app that reads aloud can use it.</p>
+      <ol class="voice-help-steps" id="voiceHelpSteps"></ol>
     </div>
   </dialog>
 
@@ -1101,23 +1110,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=221',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=223',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=221" defer></script>
-<script src="/reading-stickies.js?v=221" defer></script>
-<script src="/reading-keeps.js?v=221" defer></script>
-<script src="/reading-excerpts.js?v=221" defer></script>
-<script src="/reading-excerpts-view.js?v=221" defer></script>
-<script src="/reading-lists.js?v=221" defer></script>
-<script src="/reading-lists-view.js?v=221" defer></script>
-<script src="/reading-voice.js?v=221" defer></script>
-<script src="/reading-workspace.js?v=221" defer></script>
-<script src="/reading-workspace-viewport.js?v=221" defer></script>
-<script src="/reading-workspace-view.js?v=221" defer></script>
-<script src="/reading-folds.js?v=221" defer></script>
-<script src="/reading-pdf-projection.js?v=221" defer></script>
-<script src="/reading-fold-view.js?v=221" defer></script>
-<script src="/reading.js?v=221" defer></script>
+<script src="/reading-ink.js?v=223" defer></script>
+<script src="/reading-stickies.js?v=223" defer></script>
+<script src="/reading-keeps.js?v=223" defer></script>
+<script src="/reading-excerpts.js?v=223" defer></script>
+<script src="/reading-excerpts-view.js?v=223" defer></script>
+<script src="/reading-lists.js?v=223" defer></script>
+<script src="/reading-lists-view.js?v=223" defer></script>
+<script src="/reading-voice.js?v=223" defer></script>
+<script src="/reading-workspace.js?v=223" defer></script>
+<script src="/reading-workspace-viewport.js?v=223" defer></script>
+<script src="/reading-workspace-view.js?v=223" defer></script>
+<script src="/reading-folds.js?v=223" defer></script>
+<script src="/reading-pdf-projection.js?v=223" defer></script>
+<script src="/reading-fold-view.js?v=223" defer></script>
+<script src="/reading.js?v=223" defer></script>
 </body>
 </html>

@@ -32,8 +32,15 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   (resumes at a real Appendix, not "Appendix S7."). Player bar: back / play-pause / next sentence, speed 0.8–1.5×, voice
   picker (remembered), current sentence shown; PDFs turn pages, text papers mark the paragraph. Checked against arXiv
   2405.07097, Colombie 2015 and Osorio 2014 transcripts. Not yet heard on Houfu's iPad: whether WKWebView/Safari lists
-  Jamie (Premium) after it is downloaded in Settings → Accessibility → Spoken Content, and whether speech continues
+  Jamie (Premium) after it is downloaded in Settings → Accessibility → Read & Speak → Voices → English, and whether speech continues
   with the screen locked (iOS pauses web speech in the background).
+- **Voice guide (v222, Houfu: "people won't know where to download the voice"):** apps cannot download system voices
+  (and private Settings deep links get apps rejected), so Listen detects a device with only basic voices (no
+  Premium/Enhanced/Natural/Google voice) and shows "Get a more natural voice →" with steps for iPad/iPhone, Mac,
+  Android (incl. Samsung's General management path) and Windows (Edge's natural voices). Android names no voice
+  quality, so there the link is always shown ("Voice sounds robotic?"). Coming back to Phloem (visibilitychange /
+  voiceschanged) with a new natural voice switches Listen to it and says "Jamie (Premium) is ready for Listen", unless
+  the reader picked a natural voice themselves. Not in iPad 1.2.2 (41); next build.
 - **What does this mean? + Copy (v221):** two new selection-card buttons. "What does this mean?" explains the selected
   passage in plain words from the surrounding excerpt, on the Define card, labelled "AI explanation · verify"; Define
   on a sentence goes there automatically when AI is set up. Hidden in the iPad app where cloud AI is off (CHN).
@@ -48,7 +55,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Abbreviations/symbols skip the dictionary. Saved answers are still kept (v213); the card has **"Not this? Look it up
   again"**, which replaces a saved answer (offline, the saved one stays). Wikipedia/Wiktionary are blocked in mainland
   China, so Define there needs AI or a VPN.
-- **Web:** houfu72.com/reading.html serves **v221** (Listen, Explain/Copy, Install, above); v220 (Define); v219: the list's "Look for" is now **My question**, blank until Houfu
+- **Web:** houfu72.com/reading.html serves **v222**: Listen's voice guide (below); v221 (Listen, Explain/Copy, Install, above); v220 (Define); v219: the list's "Look for" is now **My question**, blank until Houfu
   writes it (imports leave a list's own notes out unless a checkbox is ticked), the takeaway asks "from memory: what
   did they find, and what surprised you?", and **Peek** shows the abstract (Europe PMC, else Crossref; plain text)
   before opening. Houfu's reasoning: read first and decide yourself; his professor ruled out AI drafting, so Phloem
@@ -66,7 +73,10 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   mentions DeepSeek. lifegameproject.com's Phloem card plays the two new iPad recordings; Glyph Run's featured clip
   and the Grow a Tomato / Tomatoswipe / Sudoku thumbnails were re-shot from the live games.
 - **App Store:** Phloem **iOS 1.2.1 (40) live since 2026-10-13 14:19 EDT** (released by Houfu); PR #76 merged,
-  so `apps/ipad` on main is 1.2.1 (40). Next: 1.2.2 (41) carrying reader v212–v221 (draft text in
+  so `apps/ipad` on main is 1.2.1 (40). **1.2.2 (41) uploaded to TestFlight 2026-10-14 ~18:15 EDT** (not submitted)
+  from branch `ipad-release-1.2.2-41`, PR #77 (merge after release): reader v221 plus an App Store update notice
+  (bundle-manifest.json carries the app version; Desk settings shows "Version 1.2.2 (41) · the newest version"; a newer
+  store version gets a dismissible Update banner). Houfu tests on his iPad, then decides on submitting (draft text in
   `output/phloem-ios-1.2.1-verification/STORE-TEXT-1.2.2-DRAFT.md`), no rush. Houfu tested build 40 on his iPad ("works well"), and the
   freeze is gone. New listing media cut from his iPad recordings: two **silent** captioned previews (landscape
   Ask AI / Workspace / export; portrait leaf→fruit, paper→brain) and screenshots 4–5 (Ask about any passage,
@@ -165,6 +175,18 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 v223:** Listen hides Apple's novelty voices (Bahh, Whisper, Bad News, Zarvox…) and the robotic Eloquence
+  voices (Eddy, Grandma, Rocko…) after Houfu called them creepy; each person is listed once in their best quality, under
+  Natural / Basic groups. The voice guide says Read & Speak (iPadOS/macOS 26 name). Tests: `reading-voice` 10/10 with
+  Houfu's Mac voice list; voice browser tests on Chromium and WebKit.
+- **2026-10-14 v222:** Listen's natural-voice guide and auto-switch. Tests: `reading-voice` 10/10,
+  `reading-voice-quality-browser` (iPad, back-from-Settings, Android) and `reading-voice-browser` on Chromium and WebKit.
+
+- **2026-10-14 1.2.2 (41):** archived and uploaded (Release, automatic signing); archive verified to carry reader v221
+  and `app: 1.2.2 (41)`. `apps/ipad` tests 21/21. `cap sync` through a symlinked node_modules rewrote
+  `CapApp-SPM/Package.swift` with an absolute path; restored before archiving (the relative path resolves through
+  the link). Waiting on Houfu's TestFlight check: Listen voices (Jamie), lock screen, reading lists, Desk settings version.
 
 - **2026-10-14 v221:** Listen (with "start from": a selection, a tapped paragraph, or the "Read from…" section menu;
   running heads and page counters skipped), What does this mean?, Copy, the selection card's six action tiles ("Save

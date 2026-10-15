@@ -162,18 +162,61 @@
     return { chunks: chunks, skipped: skipped };
   }
 
-  /* English voices, best first: Jamie, then Premium and Enhanced voices, then the rest. */
+  /* Apple's novelty voices (a bleating "Bahh", a "Whisper", "Bad News"…) and the old
+     robotic Eloquence voices (Eddy, Grandma, Rocko…) are jokes or accessibility leftovers,
+     never a voice to read a paper in. They are hidden from Listen. */
+  var NOVELTY = /^(?:albert|bad news|bahh|bells|boing|bubbles|cellos|fred|good news|jester|junior|kathy|organ|ralph|superstar|trinoids|whisper|wobble|zarvox|deranged|hysterical|pipe organ|princess|agnes|bruce|vicki|victoria)\b/i;
+  var ELOQUENCE = /^(?:eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley)\b/i;
+  function oddVoice(voice) {
+    var name = String(voice && voice.name || '').trim(), uri = String(voice && voice.voiceURI || '');
+    return NOVELTY.test(name) || ELOQUENCE.test(name) || /com\.apple\.eloquence\./i.test(uri);
+  }
+  function person(voice) { return String(voice.name || '').replace(/\s*\(.*\)\s*$/, '').trim().toLowerCase() + '|' + String(voice.lang || '').toLowerCase(); }
+  /* English voices to offer, best first: Jamie, then Premium and Enhanced voices, then the
+     rest; each person once, in the best quality the device has. */
   function rankVoices(voices) {
     function score(voice) {
       var name = String(voice.name || '') + ' ' + String(voice.voiceURI || '');
       return (/jamie/i.test(name) ? 100 : 0) + (/premium/i.test(name) ? 40 : 0) + (/enhanced|neural|natural/i.test(name) ? 30 : 0) +
         (voice.localService ? 4 : 0) + (voice.default ? 3 : 0) + (/^en[-_]GB/i.test(voice.lang) ? 2 : 0) + (/^en[-_]US/i.test(voice.lang) ? 1 : 0) -
-        (/compact|eloquence|novelty|bells|bubbles|cellos|whisper|zarvox|trinoids|organ|bad news|good news|jester|superstar|wobble|boing|albert|fred|junior|ralph|kathy/i.test(name) ? 60 : 0);
+        (/compact/i.test(name) ? 5 : 0);
     }
-    return (voices || []).filter(function (voice) { return /^en(?:[-_]|$)/i.test(voice.lang || ''); })
-      .map(function (voice, index) { return { voice: voice, score: score(voice), index: index }; })
+    var english = (voices || []).filter(function (voice) { return /^en(?:[-_]|$)/i.test(voice.lang || ''); });
+    var usable = english.filter(function (voice) { return !oddVoice(voice); });
+    if (!usable.length) usable = english;
+    var seen = {};
+    return usable.map(function (voice, index) { return { voice: voice, score: score(voice), index: index }; })
       .sort(function (a, b) { return b.score - a.score || a.index - b.index; })
+      .filter(function (entry) { var key = person(entry.voice); if (seen[key]) return false; seen[key] = true; return true; })
       .map(function (entry) { return entry.voice; });
+  }
+
+  /* Whether a voice sounds natural: Apple's Premium and Enhanced voices, Microsoft's
+     Natural/Online voices, Google's voices. Apple's compact voices (Samantha, Daniel…) and
+     the old Windows ones are what a device has before anything is downloaded. */
+  function naturalVoice(voice) {
+    var name = String(voice && voice.name || '') + ' ' + String(voice && voice.voiceURI || '');
+    return /premium|enhanced|neural|natural|online|google/i.test(name);
+  }
+  /* Where to get a natural voice on this device: steps for the Settings app, since no app can
+     download system voices itself. */
+  function voiceHelp(platform) {
+    if (platform === 'ios') return { title: 'Get a natural voice on iPad or iPhone', steps: [
+      'Open the Settings app.', 'Go to Accessibility, then Read & Speak (Spoken Content on older versions).',
+      'Tap Voices, then English.', 'Tap Jamie (or Ava, Zoe or Serena), then tap Premium to download it. It is a few hundred MB, so use Wi-Fi.',
+      'Come back to Phloem. Listen switches to the new voice by itself.'] };
+    if (platform === 'mac') return { title: 'Get a natural voice on a Mac', steps: [
+      'Open System Settings, then Accessibility, then Read & Speak (Spoken Content on older versions).', 'Next to System voice, open the menu and choose Manage Voices.',
+      'Under English, download Jamie (Premium) or another Premium voice.', 'Quit and reopen your browser, then come back to Phloem.'] };
+    if (platform === 'android') return { title: 'Get a better voice on Android', steps: [
+      'Open Settings, then Accessibility, then Text-to-speech output. On a Samsung Galaxy it is under General management, then Text-to-speech.',
+      'Set the preferred engine to Speech Services by Google (Samsung\'s own engine also works).',
+      'Tap the gear next to the engine, then Install voice data, then English (United States or United Kingdom).',
+      'Pick a voice, download it, and try it with Play. Then come back to Phloem.'] };
+    if (platform === 'windows') return { title: 'Get a natural voice on Windows', steps: [
+      'Open Phloem in Microsoft Edge: its natural voices appear in Listen\'s voice menu.',
+      'Or, in Windows 11, go to Settings, then Accessibility, then Narrator, then Add natural voices.'] };
+    return { title: 'Get a natural voice', steps: ['Install a higher-quality English text-to-speech voice in your device\'s settings, then come back to Phloem.'] };
   }
 
   /* Plays chunks one utterance at a time. Pausing cancels and resumes from the start of
@@ -242,7 +285,7 @@
   }
 
   global.PhloemVoice = Object.freeze({
-    prepare: prepare, sections: sections, sentences: sentences, stripCitations: stripCitations,
+    prepare: prepare, sections: sections, naturalVoice: naturalVoice, voiceHelp: voiceHelp, oddVoice: oddVoice, sentences: sentences, stripCitations: stripCitations,
     tableLike: tableLike, formulaLike: formulaLike, rankVoices: rankVoices, createPlayer: createPlayer
   });
 })(typeof window !== 'undefined' ? window : globalThis);

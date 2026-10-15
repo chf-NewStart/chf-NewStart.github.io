@@ -81,7 +81,11 @@ async function geometry(page) {
 }
 async function settle(page) { await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
 async function openWorkspace(page) {
-  if (!(await page.locator('#workspacePanel').isVisible())) await page.locator('#zenWorkspace').click();
+  if (!(await page.locator('#workspacePanel').isVisible())) {
+    // A phone (v224) keeps the Workspace under More instead of on its bar.
+    if (await page.evaluate(() => document.body.classList.contains('phone-ui'))) { await page.locator('#zenMore').click(); await page.locator('#zenPhoneWorkspace').click(); }
+    else await page.locator('#zenWorkspace').click();
+  }
   await page.locator('#workspacePanel').waitFor({ state: 'visible' });
   await settle(page);
 }
@@ -304,7 +308,8 @@ async function phone(browser, port) {
   await fitted(page);
   let g = await geometry(page);
   assert.equal(g.dock, 'bottom', 'a phone docks the Workspace below the paper: ' + JSON.stringify(g));
-  assert(g.percent >= 50 && g.percent <= 60 && !g.folded && g.rail.bottom <= g.pane.bottom, 'the default split leaves room for the whole rail: ' + JSON.stringify(g));
+  // v224: a phone's reader controls are one bar below the Workspace, so nothing folds on the paper half.
+  assert(g.percent >= 50 && g.percent <= 60 && !g.folded && g.rail.top >= g.panel.bottom - 1, 'the default split sits above the phone bar: ' + JSON.stringify(g));
   const buttons = await page.locator('#workspaceTools .workspace-tool-row > :is(button,details)').evaluateAll(nodes => nodes.map(node => { const r = node.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }; }));
   assert(buttons.length === 6 && buttons.every(box => box.width >= 44 && box.height >= 44 && inside(box, g.panel)), 'every Workspace tool is a full target inside the Workspace');
   assert(inside(g.close, g.panel) && g.close.left >= g.tools.right, 'close sits at the end of the tool row');
@@ -320,7 +325,7 @@ async function phone(browser, port) {
   await dragDivider(page, { x: 195, y: 844 * .4 });
   await fitted(page);
   g = await geometry(page);
-  assert(g.percent < 45 && g.folded && g.rail.bottom <= g.pane.bottom, 'the folded rail fits the short paper half: ' + JSON.stringify(g));
+  assert(g.percent < 45 && !g.folded && g.rail.top >= g.panel.bottom - 1, 'a shorter paper half leaves the phone bar below: ' + JSON.stringify(g));
   assert.equal(await page.evaluate(() => Number(localStorage.getItem('readingRoom.workspacePaperHeight.v1'))), g.percent);
 
   await stroke(page, .25);
@@ -337,7 +342,7 @@ async function phone(browser, port) {
   await page.setViewportSize({ width: 844, height: 390 });
   await dockIs(page, 'full');
   g = await geometry(page);
-  assert(g.panel.width >= 840 && g.panel.height >= 386 && !(await page.locator('#documentPane').isVisible()), 'landscape phone keeps the full-screen Workspace');
+  assert(g.panel.width >= 844 - 66 - 2 && g.panel.height >= 386 && !(await page.locator('#documentPane').isVisible()), 'landscape phone keeps the Workspace over the paper, beside the rail: ' + JSON.stringify(g));
   await page.setViewportSize({ width: 390, height: 844 });
   await dockIs(page, 'bottom');
   await fitted(page);

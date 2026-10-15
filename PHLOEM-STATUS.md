@@ -6,6 +6,18 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-14)
 
+- **Phone layout (v224, Houfu: "prioritize the listening and define search, it will be hard to take notes on
+  phone"; "tidy and non-burdensome"):** `body.phone-ui` = a window ≤600px wide, or a short (≤500px) touch window ≤1000px
+  wide (a phone on its side), and **never an iPad** (`isIpad()`), so the iPad web reader and the iPad app keep the side
+  rail. The reader's controls become one bar: **Library · Look up · Listen · Find · More** (bottom in portrait, a right
+  rail on its side). Pens, marker, Undo and Workspace leave the bar; More gains Reading guide, Page layout (PDFs),
+  Workspace and Undo. **Look up** opens a card with a search field; while it is open, tapping any word in the paper
+  looks that word up (caret under the tap → word). The selection card shows **Define · Highlight · Copy · More**; More
+  reveals Add note, colours, What does this mean?, Save to Clips, Park question. Denser text on phones (paper fills the
+  width, leading ×0.9, smaller paragraph and heading gaps, no invisible "Add margin note" line); on its side the text is
+  a centred column of at most 640px. Test: `tests/reading-phone-browser.test.js`; six rail tests now skip their rail
+  checks at phone sizes (their iPad and desktop sizes are unchanged). Next ideas: an iPhone app (universal build) for
+  Listen with the screen locked; a "cards" reading mode (one paragraph per screen) Houfu floated.
 - **Reading lists (v216, Houfu asked for them for the next build):** a **Reading list** page (nav) and a **List** tab
   in the reader's notebook. Houfu's rules: it is a *reading* list, never a to-do list (no tasks, no "Email Nasser");
   reorder by **drag** (handle; arrow keys on the handle), no up/down buttons; tapping an item **opens the paper in
@@ -177,6 +189,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-14 v224:** phone layout (see Now). iPad bundle tests 19/19; the submitted iPad build 42 bundles v223 and
+  is untouched.
 
 - **2026-10-14 1.2.2 (42):** archived from the release branch merged with v223, uploaded, attached to the new 1.2.2
   version and submitted for review (manual release). `apps/ipad` tests 21/21; bundle `app: 1.2.2 (42)`, `reading.js?v=223`.

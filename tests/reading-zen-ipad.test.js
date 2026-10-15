@@ -459,7 +459,9 @@ async function zenAction(page, name, selector) {
   await phonePage.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
   await phonePage.waitForFunction(() => document.querySelector('#textDocument .original') && !document.getElementById('readerPage').classList.contains('hidden'));
   await phonePage.waitForFunction(() => document.body.classList.contains('zen'));
-  await zenAction(phonePage, 'More', '#zenFind');
+  // v224: a phone has Find on its bottom bar.
+  await phonePage.locator('#zenPhoneFind').click();
+  await phonePage.locator('#findBar').waitFor({ state: 'visible' });
   const phoneFind = await phonePage.locator('#findBar').evaluate(bar => {
     const panel = bar.getBoundingClientRect(), input = document.getElementById('findInput'), previous = document.getElementById('findPrev').getBoundingClientRect(), next = document.getElementById('findNext').getBoundingClientRect();
     return { left: panel.left, right: panel.right, top: panel.top, bottom: panel.bottom, width: innerWidth, height: innerHeight, inputFont: parseFloat(getComputedStyle(input).fontSize), previous: { width: previous.width, height: previous.height }, next: { width: next.width, height: next.height } };

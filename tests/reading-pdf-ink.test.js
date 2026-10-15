@@ -260,7 +260,8 @@ async function checkZenUndo(browser) {
     check('Zen Undo then removes the older ink and disables the empty history', (await ink(page)).length === 0
       && await markCount(page) === 0 && await undo.isDisabled());
 
-    for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 844, height: 390 }]) {
+    // 844×390 is a phone on its side since v224 (its bar: reading-phone-browser); a short wide window keeps the rail.
+    for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 1024, height: 390 }]) {
       await page.setViewportSize(viewport);
       await page.waitForTimeout(100);
       const geometry = await page.locator('#zenDock').evaluate(dock => {

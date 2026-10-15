@@ -81,7 +81,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && a.right > b.x + 1 && a.y <
        so the toolbar geometry is checked on the only reader that remains. */
     for (const zen of [true]) {
       check('the PDF ink toolbar is shown inside the Zen reader', await page.evaluate(() => document.body.classList.contains('zen')));
-      for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 390, height: 844 }, { width: 320, height: 800 }, { width: 844, height: 390 }]) {
+      // Phones in portrait (v224) have no pen: their bottom bar is covered by reading-phone-browser.
+      for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 844, height: 390 }]) {
         await page.setViewportSize(viewport);
         await page.waitForTimeout(180);
         const geometry = await page.locator('#pdfInkToolbar').evaluate(toolbar => {

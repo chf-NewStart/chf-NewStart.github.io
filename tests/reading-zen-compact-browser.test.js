@@ -48,6 +48,8 @@ async function railAt(page, viewport) {
   await page.setViewportSize(viewport);
   await page.waitForFunction(() => document.body.classList.contains('zen') && !!document.querySelector('.pdf-page.book-active canvas')?.width);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  // A phone-sized touch window (v224) has the phone bar instead; reading-phone-browser covers it.
+  if (await page.evaluate(() => document.body.classList.contains('phone-ui'))) return 'phone';
   const controls = await page.evaluate(() => [...document.querySelectorAll('#zenDock > button, #zenDock > .zen-tool > button')]
     .filter(node => node.getClientRects().length).map(node => {
       const rect = node.getBoundingClientRect();
@@ -124,10 +126,11 @@ async function stroke(page) {
 
     const sizes = [
       { width: 1280, height: 900 }, { width: 1024, height: 768 },
-      { width: 844, height: 390 }, { width: 844, height: 300 }, { width: 390, height: 844 }
+      { width: 1024, height: 390 }, { width: 1024, height: 300 }, { width: 844, height: 390 }, { width: 390, height: 844 }
     ];
+    const phoneSizes = [];
     for (const viewport of sizes) {
-      await railAt(page, viewport);
+      if (await railAt(page, viewport) === 'phone') { phoneSizes.push(viewport.width + 'x' + viewport.height); continue; }
       if (viewport.width === 1280) await page.screenshot({ path: '/tmp/phloem-zen-compact-' + ENGINE + '.png' });
       await page.locator('#zenAnnotate').click();
       await page.locator('#zenAnnotateMenu').waitFor({ state: 'visible' });
@@ -163,7 +166,8 @@ async function stroke(page) {
       await page.locator('#zenAnnotateMenu').waitFor({ state: 'hidden' });
     }
 
-    await page.setViewportSize({ width: 844, height: 390 });
+    assert.deepEqual(phoneSizes, ['844x390', '390x844'], 'phone-sized touch windows get the phone bar');
+    await page.setViewportSize({ width: 1024, height: 390 });
     await page.locator('#zenDock').evaluate(node => {
       node.style.setProperty('--zen-safe-top', '30px');
       node.style.setProperty('--zen-safe-bottom', '24px');

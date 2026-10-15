@@ -273,7 +273,13 @@ async function checkPendingMark(page, surface) {
         // The separate non-Zen reader layout was removed in 1a215db5.
         for (const zen of [true]) {
           await page.setViewportSize({ width: 1024, height: 768 });
-          for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 390, height: 844 }, { width: 320, height: 800 }]) {
+          // Phones (v224) have no pen or marker tools: highlights come from the selection card.
+          for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 800 }]) {
+            await page.setViewportSize(viewport);
+            await page.waitForFunction(() => document.body.classList.contains('phone-ui'));
+            check('Zen ' + viewport.width + '×' + viewport.height + ' (phone) leaves pens out of the bar', !(await page.locator('#zenAnnotate').isVisible()) && await page.locator('#zenPhoneListen').isVisible());
+          }
+          for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }]) {
             await page.setViewportSize(viewport);
             await page.waitForTimeout(80);
             await activate(page, '#zenWrite', true);

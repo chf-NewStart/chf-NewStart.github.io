@@ -2762,3 +2762,92 @@ body.voice-on .reader-toast { bottom: calc(132px + env(safe-area-inset-bottom));
 .voice-help:hover, .voice-help:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
 .voice-help-steps { margin: 12px 0 0; padding-left: 22px; }
 .voice-help-steps li { margin: 0 0 10px; font-size: .9rem; line-height: 1.5; }
+
+/* Phone (body.phone-ui: a window at most 600px wide that is not an iPad). A phone is for
+   listening and looking things up, not for pens and sheets: the reader's controls become one
+   bar at the bottom (Library, Look up, Listen, Find, More), the paper ends above it, and the
+   menus open as sheets over it. The selection card leads with four actions. */
+.zen-dock .phone-icon, .zen-dock .phone-bar-button, .zen-action-menu .phone-only, .selection-phone-row { display: none; }
+body.phone-ui { --phone-bar: 58px; }
+body.phone-ui.zen #readerPage { height: calc(100vh - var(--phone-bar) - env(safe-area-inset-bottom)); height: calc(100dvh - var(--phone-bar) - env(safe-area-inset-bottom)); }
+body.phone-ui.zen .zen-dock { top: auto; left: 0; right: 0; bottom: 0; display: flex; height: calc(var(--phone-bar) + env(safe-area-inset-bottom)); padding: 4px max(6px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(6px, env(safe-area-inset-left)); flex-direction: row; align-items: center; justify-content: space-around; gap: 0; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); direction: ltr; }
+body.phone-ui.zen .zen-dock > :is(#zenAnnotateTool, #zenWorkspaceMarker, #zenUndo, #zenWorkspace), body.phone-ui.zen :is(#zenGuide, #zenLayout) { display: none !important; }
+body.phone-ui.zen .zen-dock > :is(#zenGuideTool, #zenLayoutTool) { position: static; width: 0; height: 0; }
+body.phone-ui.zen .zen-dock > * { order: 9; }
+body.phone-ui.zen #zenExit { order: 1; }
+body.phone-ui.zen #zenPhoneLookup { order: 2; }
+body.phone-ui.zen #zenPhoneListen { order: 3; }
+body.phone-ui.zen #zenPhoneFind { order: 4; }
+body.phone-ui.zen #zenMoreTool { order: 5; }
+body.phone-ui.zen .zen-dock .phone-bar-button { display: flex; }
+body.phone-ui.zen :is(.zen-dock > .zen-exit, #zenMore) { width: 62px; height: 50px; flex: 0 0 auto; flex-direction: column; gap: 3px; border: 0; border-radius: 12px; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; color: var(--muted); font-size: 1.25rem; line-height: 1; opacity: 1 !important; }
+body.phone-ui.zen :is(.zen-dock > .zen-exit, #zenMore)::after { content: attr(data-phone-label); color: inherit; font: 650 10.5px/1 var(--sans); letter-spacing: .01em; }
+body.phone-ui.zen :is(.zen-dock > .zen-exit, #zenMore):is(:focus-visible, :active) { background: var(--surface-2); color: var(--ink); }
+@media (hover: hover) { body.phone-ui.zen :is(.zen-dock > .zen-exit, #zenMore):hover { background: var(--surface-2); color: var(--ink); } }
+body.phone-ui.zen #zenMore > span { height: 22px; display: grid; place-items: center; }
+body.phone-ui.zen #zenExit .zen-exit-x { display: none; }
+body.phone-ui.zen .zen-dock .phone-icon { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+body.phone-ui.zen .phone-listen { color: var(--ink); }
+body.phone-ui.zen .zen-dock .phone-listen .phone-icon { width: 34px; height: 34px; margin-top: -6px; padding: 8px; border-radius: 50%; background: var(--accent-button); fill: var(--on-accent); stroke: none; }
+body.phone-ui.zen .zen-dock .phone-listen .phone-icon-pause, body.phone-ui.zen .zen-dock .phone-listen[aria-pressed="true"] .phone-icon-play { display: none; }
+body.phone-ui.zen .zen-dock .phone-listen[aria-pressed="true"] .phone-icon-pause { display: block; }
+body.phone-ui.zen :is(#zenPhoneLookup[aria-expanded="true"], #zenPhoneFind.active, #zenMore[aria-expanded="true"]) { color: var(--accent); }
+/* Menus open as sheets above the bar, in two columns. */
+body.phone-ui.zen .zen-dock .zen-popout { position: fixed; top: auto !important; left: 10px; right: 10px !important; bottom: calc(var(--phone-bar) + env(safe-area-inset-bottom) + 8px); width: auto; max-width: none !important; max-height: min(62dvh, 460px) !important; transform: none !important; }
+body.phone-ui.zen #zenMoreMenu:not(.hidden) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; }
+body.phone-ui.zen #zenMoreMenu :is(#zenFind, #zenListen) { display: none; }
+body.phone-ui.zen #zenMoreMenu .phone-only { display: flex; }
+#zenLayoutTool.hidden ~ #zenMoreTool #zenPhoneLayout { display: none !important; }
+body.phone-ui.zen .find-bar:not(.hidden) { top: calc(10px + env(safe-area-inset-top)); left: 10px; right: 10px; width: auto; }
+body.phone-ui.zen .voice-bar { bottom: calc(var(--phone-bar) + env(safe-area-inset-bottom) + 8px); width: calc(100vw - 20px); }
+body.phone-ui.zen:not(.workspace-bottom) .reader-toast { bottom: calc(var(--phone-bar) + env(safe-area-inset-bottom) + 10px); }
+body.phone-ui.zen.voice-on:not(.workspace-bottom) .reader-toast { bottom: calc(var(--phone-bar) + env(safe-area-inset-bottom) + 132px); }
+body.phone-ui.zen :is(.selection-card, .lookup-card) { bottom: calc(8px + max(var(--phone-bar) + env(safe-area-inset-bottom), var(--kb-inset, 0px))); }
+/* Sheets over the paper are solid on a phone: the text behind a definition is noise. */
+body.phone-ui :is(.selection-card, .lookup-card, .voice-bar, .zen-dock .zen-popout) { background: var(--surface); }
+/* Look up: type a term, or tap any word while the card is open. */
+.lookup-search { display: flex; gap: 8px; padding: 0 14px 12px; }
+.lookup-search input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 16px var(--sans); }
+.lookup-search input:focus { border-color: var(--accent); outline: none; }
+.lookup-search .button { min-height: 44px; }
+body.lookup-tapping :is(#textDocument .original, .text-layer) { cursor: help; }
+/* Selection: Define, Highlight, Copy and More; More shows the rest in place. */
+body.phone-ui .selection-phone-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 2px 14px 12px; }
+.selection-phone-row .selection-explain { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 58px; padding: 8px 4px; border: 1px solid color-mix(in srgb, var(--line) 80%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--surface-2) 35%, transparent); color: var(--ink); font: 650 .68rem/1.2 var(--sans); text-align: center; }
+.selection-phone-row .selection-explain svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; opacity: .8; }
+.selection-phone-row .selection-explain[aria-pressed="true"], .selection-phone-row .selection-explain[aria-expanded="true"] { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: var(--accent-soft); }
+.selection-phone-row .selection-explain:disabled { opacity: .5; }
+body.phone-ui .selection-card:not(.phone-more) :is(.selection-actions, .selection-create-highlight, .selection-secondary) { display: none !important; }
+body.phone-ui .selection-card:is(.note-open, .ai-open) .selection-phone-row { display: none; }
+body.phone-ui .selection-card.phone-more :is(#selectionHighlight, #selectionExplain, #selectionCopy, #selectionToWorkspace) { display: none; }
+body.phone-ui .selection-card.phone-more .selection-actions { grid-template-columns: minmax(0, 1fr); }
+/* Library on a phone: the wall's handwriting switch is one row too many. */
+body.phone-ui #libraryNoteStyleToggle { display: none; }
+/* Phone density: the paper fills the width, lines sit a little closer (the reader's own
+   spacing setting still scales it), and gaps between paragraphs and sections shrink, so a
+   screen holds about a third more of the paper at the same type size. */
+body.phone-ui .text-document { width: 100%; min-height: 100%; margin: 0; padding: 22px 18px 32px; box-shadow: none; }
+body.phone-ui .text-document h1 { font-size: 1.55rem; }
+body.phone-ui .text-document .byline { margin-bottom: 24px; }
+body.phone-ui .para .original { line-height: calc(var(--read-leading) * .9); }
+body.phone-ui .para + .para { margin-top: .6em; }
+body.phone-ui .para.reader-heading { margin-top: 1.5em; padding-top: .8em; }
+body.phone-ui .para.reader-h1 { margin-top: 1.7em; }
+body.phone-ui .para.reader-h2 { margin-top: 1.4em; }
+/* Margin notes are a desk habit: on a phone the invisible "Add margin note" line left a
+   gap under every paragraph. A note still starts from the selection card (More → Add note),
+   and a paragraph that already has one keeps its note box. */
+body.phone-ui .para-action { display: none; }
+/* Phone on its side: the bar becomes a rail on the right so the paper keeps the full
+   height, text stays in a readable column, and sheets open beside the rail. */
+body.phone-ui.phone-land { --phone-rail: 66px; }
+body.phone-ui.phone-land.zen #readerPage { width: calc(100% - var(--phone-rail) - env(safe-area-inset-right)); height: 100vh; height: 100dvh; }
+body.phone-ui.phone-land.zen .zen-dock { top: 0; bottom: 0; left: auto; right: 0; width: calc(var(--phone-rail) + env(safe-area-inset-right)); height: auto; padding: max(4px, env(safe-area-inset-top)) env(safe-area-inset-right) max(4px, env(safe-area-inset-bottom)) 0; flex-direction: column; justify-content: space-evenly; border-top: 0; border-left: 1px solid var(--line); }
+body.phone-ui.phone-land.zen :is(.zen-dock > .zen-exit, #zenMore) { width: 60px; height: 54px; }
+body.phone-ui.phone-land.zen .zen-dock .zen-popout { left: auto; right: calc(var(--phone-rail) + env(safe-area-inset-right) + 8px) !important; bottom: calc(8px + env(safe-area-inset-bottom)); width: min(380px, calc(100vw - var(--phone-rail) - 24px)); max-height: calc(100dvh - 16px) !important; }
+body.phone-ui.phone-land.zen .voice-bar { left: auto; right: calc(var(--phone-rail) + env(safe-area-inset-right) + 10px); bottom: calc(8px + env(safe-area-inset-bottom)); transform: none; width: min(560px, calc(100vw - var(--phone-rail) - 30px)); }
+body.phone-ui.phone-land.zen .reader-toast { bottom: calc(10px + env(safe-area-inset-bottom)); }
+body.phone-ui.phone-land.zen.voice-on .reader-toast { bottom: calc(150px + env(safe-area-inset-bottom)); }
+body.phone-ui.phone-land.zen .find-bar:not(.hidden) { right: calc(var(--phone-rail) + env(safe-area-inset-right) + 10px); }
+body.phone-ui.phone-land.zen :is(.selection-card, .lookup-card) { left: auto !important; right: calc(var(--phone-rail) + env(safe-area-inset-right) + 10px) !important; top: auto !important; bottom: calc(8px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px))); width: min(440px, calc(100vw - var(--phone-rail) - 30px)); max-height: calc(100dvh - 16px - var(--kb-inset, 0px)); }
+body.phone-ui.phone-land .text-document { padding-inline: max(18px, calc((100% - 640px) / 2)); }

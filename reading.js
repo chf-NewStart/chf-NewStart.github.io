@@ -659,7 +659,7 @@
      AI becomes available inside that note only after the reader has written one. */
   function hideSelectionCard(){
     hideLookup();
-    selectionAnchor=null;activeCardRef=null;selectionNoteTarget=null;var card=byId('selectionCard');card.classList.add('hidden');card.classList.remove('ai-open','note-open');
+    selectionAnchor=null;activeCardRef=null;selectionNoteTarget=null;var card=byId('selectionCard');card.classList.add('hidden');card.classList.remove('ai-open','note-open','phone-more');
     byId('selectionAiBox').classList.add('hidden');byId('selectionCreateHighlight').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
   }
   function readerVisualViewport(){
@@ -669,7 +669,7 @@
   function placeSelectionCard(rect){
     if(rect)selectionAnchor={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width||Math.max(0,rect.right-rect.left)};
     var card=byId('selectionCard');if(!selectionAnchor||card.classList.contains('hidden'))return;
-    if(innerWidth<=720){card.style.left='';card.style.top='';card.style.maxHeight='';card.style.maxWidth='';return;}
+    if(innerWidth<=720||document.body.classList.contains('phone-ui')){card.style.left='';card.style.top='';card.style.maxHeight='';card.style.maxWidth='';return;}
     var viewport=readerVisualViewport();
     card.style.maxHeight=Math.max(80,Math.min(700,viewport.height-24))+'px';card.style.maxWidth=Math.max(260,viewport.width-24)+'px';
     if(document.body.classList.contains('keyboard-open'))card.style.top='';
@@ -729,7 +729,7 @@
   }
   function showSelectionCard(selection,rect){
     if(!selection||!selection.text)return;hideLookup();hideHighlightCard();selectionNoteTarget=null;byId('selectionEyebrow').textContent='Selected passage';
-    byId('selectionCard').classList.remove('ai-open','note-open');byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
+    byId('selectionCard').classList.remove('ai-open','note-open','phone-more');byId('selectionAiBox').classList.add('hidden');byId('selectionSavedTools').classList.add('hidden');byId('selectionNoteAi').classList.add('hidden');byId('selectionContext').classList.add('hidden');
     byId('selectionExcerpt').textContent='“'+selection.text+'”';byId('selectionNote').value='';byId('selectionAiNoteText').textContent='';byId('selectionNoteStatus').textContent='';byId('selectionNoteBox').classList.add('hidden');
     var highlight=byId('selectionHighlight');highlight.disabled=false;highlight.textContent='Highlight';byId('selectionCreateHighlight').classList.remove('hidden');syncHighlightColorUi();
     byId('selectionSecondary').classList.remove('hidden');
@@ -747,12 +747,12 @@
 
   /* A selection stays on the paper while this small, source-labelled reference card
      looks up an encyclopedic definition and a freely hosted image. */
-  function hideLookup(){clearTimeout(lookupTimer);lookupSerial++;lookupAnchor=null;byId('lookupCard').classList.add('hidden');byId('selectionCard').classList.remove('lookup-open');placeSelectionCard();}
+  function hideLookup(){clearTimeout(lookupTimer);lookupSerial++;lookupAnchor=null;byId('lookupCard').classList.add('hidden');byId('selectionCard').classList.remove('lookup-open');endLookupSearch();placeSelectionCard();}
   function placeLookupCard(rect){
     if(rect)lookupAnchor={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
     var card=byId('lookupCard');if(!lookupAnchor||card.classList.contains('hidden'))return;
     if(card.parentElement===byId('selectionCard')){byId('selectionCard').classList.add('lookup-open');placeSelectionCard();return;}
-    if(innerWidth<=720){card.style.left='';card.style.top='';return;}
+    if(innerWidth<=720||document.body.classList.contains('phone-ui')){card.style.left='';card.style.top='';return;}
     requestAnimationFrame(function(){
       if(card.classList.contains('hidden')||!lookupAnchor)return;
       var viewport=readerVisualViewport(),box=card.getBoundingClientRect(),gap=12,left=lookupAnchor.right+gap;
@@ -972,8 +972,10 @@
   byId('lookupAiSetup').onclick=function(){hideLookup();fillSettings();byId('settingsDialog').showModal();};
   byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
   document.addEventListener('pointerdown',function(e){
-    if(!e.target.closest('#lookupCard'))hideLookup();
-    if(!e.target.closest('#selectionCard,#touchDock,#markerTools,#zenAnnotateTool,#highlightToolbar')&&!e.target.closest('.text-layer,.original'))clearPendingSelection();
+    // While Look up waits for a tapped word, the paper scrolls and taps without closing it.
+    var tappingPaper=lookupTapping()&&!!e.target.closest('#documentPane,#zenPhoneLookup');
+    if(!e.target.closest('#lookupCard')&&!tappingPaper)hideLookup();
+    if(!e.target.closest('#selectionCard,#lookupCard,#zenPhoneLookup,#touchDock,#markerTools,#zenAnnotateTool,#highlightToolbar')&&!e.target.closest('.text-layer,.original')&&!tappingPaper)clearPendingSelection();
     /* Color controls stay available while marking the paper, just like the Pen
        toolbar. Other controls, Escape, or switching tools dismiss them. */
     var markingPaper=!!e.target.closest('.pdf-page,.original');
@@ -3259,6 +3261,8 @@
     syncZenAnnotateUi();
   }
   function placeZenPopouts(){
+    // On a phone the menus are sheets above the bottom bar, placed by CSS alone.
+    if(document.body.classList.contains('phone-ui')){['zenGuideMenu','zenLayoutMenu','zenAnnotateMenu','zenMoreMenu'].forEach(function(id){var menu=byId(id);if(menu){menu.style.right='';menu.style.maxWidth='';menu.style.maxHeight='';menu.style.top='';menu.style.transform='';}});return;}
     ['zenGuideMenu','zenLayoutMenu','zenAnnotateMenu','zenMoreMenu'].forEach(function(id){
       var menu=byId(id);if(!menu||menu.classList.contains('hidden'))return;
       var owner=menu.parentElement.getBoundingClientRect(),height=Math.min(window.innerHeight,window.visualViewport?window.visualViewport.height:window.innerHeight),style=getComputedStyle(menu);
@@ -3442,6 +3446,7 @@
   function syncVoiceUi(state){
     var bar=byId('voiceBar'),playing=state==='playing';bar.classList.toggle('playing',playing);document.body.classList.toggle('voice-on',!bar.classList.contains('hidden'));
     byId('voicePlay').setAttribute('aria-label',playing?'Pause':'Play');byId('zenListen').setAttribute('aria-expanded',String(!bar.classList.contains('hidden')));
+    var phoneListen=byId('zenPhoneListen');phoneListen.setAttribute('aria-pressed',String(playing));phoneListen.setAttribute('aria-label',playing?'Pause reading aloud':'Listen: read this paper aloud');
     byId('voiceRate').textContent=voicePrefs.rate+'×';byId('voiceRate').setAttribute('aria-label','Speaking speed '+voicePrefs.rate+'×');
     if(state==='finished')byId('voiceLine').textContent='Finished. Tap play to start again.';
   }
@@ -3503,6 +3508,105 @@
     };
     addEventListener('pagehide',function(){if(voicePlayer)voicePlayer.stop();});
   }
+
+  /* Phone (Houfu, Oct 2026: "prioritize the listening and define search, it will be hard
+     to take notes on phone"). A window at most 600px wide that is not an iPad gets
+     body.phone-ui: the reader's controls become one bottom bar (Library, Look up, Listen,
+     Find, More), pens and the Workspace leave it, and the selection card leads with Define,
+     Highlight, Copy and More. Look up takes a typed term, or any word tapped while it is open. */
+  function syncPhoneUi(){
+    // A phone on its side is short, wide and touch-driven; a short desktop window is not.
+    var coarse=matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0;
+    var on=!isIpad()&&(innerWidth<=600||(coarse&&innerHeight<=500&&innerWidth<=1000)),land=on&&innerWidth>innerHeight;
+    document.body.classList.toggle('phone-ui',on);document.body.classList.toggle('phone-land',land);
+    byId('zenDock').setAttribute('aria-orientation',on&&!land?'horizontal':'vertical');
+    if(!on&&lookupTapping())hideLookup();
+  }
+  syncPhoneUi();addEventListener('resize',syncPhoneUi);
+  byId('zenPhoneListen').onclick=function(){closeZenPopouts(false);byId('zenListen').click();};
+  byId('zenPhoneFind').onclick=function(){byId('zenFind').click();};
+  new MutationObserver(function(){byId('zenPhoneFind').classList.toggle('active',byId('zenFind').classList.contains('active'));}).observe(byId('zenFind'),{attributes:true,attributeFilter:['class']});
+  byId('zenPhoneGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
+  byId('zenPhoneLayout').onclick=function(){toggleZenPopout('zenLayout','zenLayoutMenu','zenLayoutTool');};
+  byId('zenPhoneUndo').onclick=function(){byId('zenUndo').click();};
+  // The Workspace stays on a phone, one step away: More → Workspace; it closes from its own ✕.
+  byId('zenPhoneWorkspace').onclick=function(){closeZenPopouts(false);byId('zenWorkspace').click();};
+
+  var lookupEyebrowText='';
+  function lookupTapping(){return document.body.classList.contains('lookup-tapping');}
+  /* The definition card normally lives inside the selection card. Look up without a
+     selection lifts it out beside it, and puts it back when it closes. */
+  function startLookupSearch(){
+    clearPendingSelection();hideLookup();
+    var card=byId('lookupCard'),selectionCard=byId('selectionCard'),eyebrow=card.querySelector('.lookup-eyebrow');
+    selectionCard.parentElement.insertBefore(card,selectionCard.nextSibling);
+    lookupEyebrowText=eyebrow.textContent;eyebrow.textContent='Look up';
+    card.classList.add('search-mode');byId('lookupSearch').classList.remove('hidden');byId('lookupSearchInput').value='';
+    byId('lookupSelection').textContent='';byId('lookupTitle').textContent='Look up a word';
+    var definition=byId('lookupDefinition');definition.textContent='Type a word or term, or tap any word in the paper.';definition.classList.remove('loading');
+    ['lookupPhotoLink','lookupArticle','lookupImageSource','lookupSource','lookupAiSetup','lookupRetry'].forEach(function(id){var node=byId(id);if(node)node.classList.add('hidden');});
+    card.classList.remove('hidden');document.body.classList.add('lookup-tapping');byId('zenPhoneLookup').setAttribute('aria-expanded','true');
+  }
+  function endLookupSearch(){
+    var card=byId('lookupCard');if(!card.classList.contains('search-mode'))return;
+    card.classList.remove('search-mode');byId('lookupSearch').classList.add('hidden');document.body.classList.remove('lookup-tapping');
+    byId('zenPhoneLookup').setAttribute('aria-expanded','false');card.querySelector('.lookup-eyebrow').textContent=lookupEyebrowText||'Definition for selection';
+    byId('selectionCard').appendChild(card);
+  }
+  byId('zenPhoneLookup').onclick=function(){
+    var card=byId('lookupCard');closeZenPopouts(false);
+    if(card.classList.contains('search-mode')&&!card.classList.contains('hidden')){hideLookup();return;}
+    startLookupSearch();
+  };
+  byId('lookupSearch').onsubmit=function(event){
+    event.preventDefault();var input=byId('lookupSearchInput'),term=input.value.trim();if(term.length<2)return;
+    input.blur();queueLookup(term,null,null,0);
+  };
+  // The word under a tap, from the caret the browser places there.
+  function wordAtPoint(x,y){
+    var node=null,offset=0;
+    if(document.caretRangeFromPoint){var caret=document.caretRangeFromPoint(x,y);if(caret){node=caret.startContainer;offset=caret.startOffset;}}
+    else if(document.caretPositionFromPoint){var position=document.caretPositionFromPoint(x,y);if(position){node=position.offsetNode;offset=position.offset;}}
+    if(!node||node.nodeType!==3)return null;
+    var text=node.textContent,letter=/[\p{L}\p{N}'’-]/u,start=offset,end=offset;
+    while(start>0&&letter.test(text.charAt(start-1)))start--;
+    while(end<text.length&&letter.test(text.charAt(end)))end++;
+    var raw=text.slice(start,end),lead=raw.match(/^['’-]*/)[0].length,trail=raw.match(/['’-]*$/)[0].length;
+    var word=raw.slice(lead,raw.length-trail).replace(/['’]s$/i,'');
+    if(word.length<2||!/\p{L}/u.test(word))return null;
+    var range=document.createRange();range.setStart(node,start+lead);range.setEnd(node,start+lead+word.length);var rect=range.getBoundingClientRect();
+    if(x<rect.left-8||x>rect.right+8||y<rect.top-8||y>rect.bottom+8)return null;
+    return{text:word,rect:rect};
+  }
+  function tappedPlace(target,text){
+    var ch=find(currentId);if(!ch||!target.closest)return null;
+    var pageEl=target.closest('.pdf-page');if(pageEl)return{kind:'pdf',page:+pageEl.dataset.page,text:text};
+    var para=target.closest('#textDocument .para');if(!para)return null;
+    var index=Array.prototype.indexOf.call(paraSections(),para);return index>=0?{kind:ch.kind==='pdf'?'reader':'text',para:index,text:text}:null;
+  }
+  byId('documentPane').addEventListener('click',function(event){
+    if(!lookupTapping()||byId('lookupCard').classList.contains('hidden'))return;
+    var target=event.target;if(!target||!target.closest||target.closest('a,button,input,textarea,select,.pdf-link,.sticky-note,.pdf-sticky,#workspacePanel'))return;
+    var native=window.getSelection&&window.getSelection();if(native&&!native.isCollapsed)return;
+    var word=wordAtPoint(event.clientX,event.clientY);if(!word)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    byId('lookupSearchInput').value=word.text;queueLookup(word.text,word.rect,tappedPlace(target,word.text),0);
+  },true);
+
+  function syncSelectionPhoneRow(){
+    document.querySelectorAll('[data-phone-proxy]').forEach(function(proxy){
+      var source=byId(proxy.dataset.phoneProxy);if(!source)return;
+      proxy.disabled=source.disabled;proxy.classList.toggle('hidden',source.classList.contains('hidden'));
+    });
+    var label=document.querySelector('[data-phone-proxy="selectionHighlight"] span');if(label)label.textContent=byId('selectionHighlight').disabled?'Highlighted':'Highlight';
+    byId('selectionPhoneMore').setAttribute('aria-expanded',String(byId('selectionCard').classList.contains('phone-more')));
+  }
+  document.querySelectorAll('[data-phone-proxy]').forEach(function(proxy){proxy.onclick=function(){var source=byId(proxy.dataset.phoneProxy);if(source&&!source.disabled)source.click();};});
+  byId('selectionPhoneMore').onclick=function(){byId('selectionCard').classList.toggle('phone-more');syncSelectionPhoneRow();};
+  var phoneRowWatch=new MutationObserver(syncSelectionPhoneRow);
+  ['selectionExplain','selectionHighlight','selectionCopy'].forEach(function(id){phoneRowWatch.observe(byId(id),{attributes:true,childList:true,characterData:true,subtree:true});});
+  phoneRowWatch.observe(byId('selectionCard'),{attributes:true,attributeFilter:['class']});
+  syncSelectionPhoneRow();
   document.addEventListener('pointerdown',function(event){
     if(!zenOn||event.target.closest('.zen-tool,#zenDock'))return;
     closeZenPopouts(false);
@@ -3853,6 +3957,7 @@
     if(undo){undo.disabled=!(highlightHistory&&highlightHistory.length);undo.innerHTML='<span aria-hidden="true">↶</span> Undo last edit';}
     var highlightUndo=byId('highlightUndo');if(highlightUndo)highlightUndo.disabled=!(highlightHistory&&highlightHistory.length);
     var zenUndo=byId('zenUndo');if(zenUndo)zenUndo.disabled=!(highlightHistory&&highlightHistory.length);
+    var phoneUndo=byId('zenPhoneUndo');if(phoneUndo)phoneUndo.disabled=!(highlightHistory&&highlightHistory.length);
     var zenRedo=byId('zenRedo');if(zenRedo)zenRedo.disabled=!(highlightFuture&&highlightFuture.length);syncPdfInkUi();
   }
   function syncTabletReaderUi(){
@@ -7662,7 +7767,8 @@
   /* How far down the paper half the Zen rail needs to reach, unfolded: its top plus 44px
      buttons with 8px gaps. Measured from the rail's visible buttons. */
   function zenRailOnPaper(){
-    var dock=byId('zenDock');if(!document.body.classList.contains('zen')||!dock||!dock.getClientRects().length)return null;
+    // A phone's bar sits below the paper and the Workspace, never on the paper.
+    var dock=byId('zenDock');if(!document.body.classList.contains('zen')||document.body.classList.contains('phone-ui')||!dock||!dock.getClientRects().length)return null;
     var count=Array.from(dock.children).filter(function(child){return child.getClientRects().length;}).length;if(!count)return null;
     var top=dock.getBoundingClientRect().top-byId('documentPane').getBoundingClientRect().top;
     return{top:top,reach:top+count*44+(count-1)*8};
@@ -9166,7 +9272,8 @@
     /* Do not collapse an existing native range here: on iPad this pointer may be a
        selection-handle adjustment. A plain new press has no range to preserve. */
     var nativeSelection=window.getSelection&&window.getSelection();
-    if(nativeSelection&&!nativeSelection.isCollapsed&&nativeSelection.rangeCount)hideSelectionCard();else clearPendingSelection(false,true);
+    // A press while Look up waits for a word keeps the Look up card open.
+    if(nativeSelection&&!nativeSelection.isCollapsed&&nativeSelection.rangeCount)hideSelectionCard();else clearPendingSelection(lookupTapping(),true);
     selectionPointerType=e.pointerType||'';selectionInputType=selectionPointerType||selectionInputType;suppressHighlightAutoCommit=false;
     selectionPointerDown=true;document.body.classList.add('selecting-paper');
     if(highlightMode){markerPointerDown=true;clearTimeout(highlightCommitTimer);}

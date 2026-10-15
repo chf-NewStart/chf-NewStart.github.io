@@ -69,6 +69,10 @@ function clearOf(a, b) { return a.right <= b.left || a.left >= b.right || a.bott
     ];
     for (const size of cases) {
       await page.setViewportSize({ width: size.width, height: size.height });
+      // Phones (v224) trade the rail for a bottom bar or side rail of five buttons and have no
+      // Workspace; Find must still sit on the paper, clear of that bar.
+      const phone = await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(document.body.classList.contains('phone-ui')))));
+      if (phone && size.workspace) continue;
       if (size.workspace && !await page.locator('body').evaluate(node => node.classList.contains('workspace-open'))) await page.locator('#zenWorkspace').click();
       if (size.splitKey) {
         await page.locator('#workspaceDivider').press('Home');
@@ -82,7 +86,7 @@ function clearOf(a, b) { return a.right <= b.left || a.left >= b.right || a.bott
       const targets = geometry.input.height >= 44 && geometry.input.width >= 100 && geometry.buttons.every(button => button.width >= 44 && button.height >= 44);
       const controlsContained = [geometry.input, ...geometry.buttons].every(control => control.left >= geometry.bar.left && control.right <= geometry.bar.right && control.top >= geometry.bar.top && control.bottom <= geometry.bar.bottom);
       const paperContained = !size.workspace || geometry.bar.right <= geometry.pane.right;
-      if (!size.workspace) {
+      if (!size.workspace && !phone) {
         assert.equal(geometry.rail.find(control => control.id === 'zenLayout').width, 86, 'full-page Zen retains the readable layout pill');
         assert.equal(await page.locator('#zenLayoutLabel').textContent(), 'Scroll');
       }

@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=223">
-  <link rel="stylesheet" href="/reading-fold.css?v=223">
-  <link rel="stylesheet" href="/reading-workspace.css?v=223">
+  <link rel="stylesheet" href="/reading.css?v=224">
+  <link rel="stylesheet" href="/reading-fold.css?v=224">
+  <link rel="stylesheet" href="/reading-workspace.css?v=224">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -630,6 +630,12 @@
           <div><span class="lookup-eyebrow" id="selectionEyebrow">Selected passage</span><span class="lookup-selection" id="selectionExcerpt"></span></div>
           <button class="lookup-close" id="selectionClose" type="button" aria-label="Close selection actions">×</button>
         </div>
+        <div class="selection-phone-row" id="selectionPhoneRow" role="group" aria-label="Quick actions">
+          <button class="selection-explain" type="button" data-phone-proxy="selectionExplain"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg><span>Define</span></button>
+          <button class="selection-explain" type="button" data-phone-proxy="selectionHighlight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 4.5 5 5L10 19H5v-5z"/><path d="M4 21h16"/></svg><span>Highlight</span></button>
+          <button class="selection-explain" type="button" data-phone-proxy="selectionCopy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button>
+          <button class="selection-explain" type="button" id="selectionPhoneMore" aria-expanded="false" aria-controls="selectionSecondary"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>More</span></button>
+        </div>
         <div class="selection-actions" role="group" aria-label="Selected passage action">
           <button class="selection-action selection-link-review hidden" id="selectionLinkReview" type="button">Link to reviewer comment</button>
           <button class="selection-action" id="selectionHighlight" type="button" aria-pressed="false">Highlight</button>
@@ -680,6 +686,10 @@
             <div><span class="lookup-eyebrow">Definition for selection</span><span class="lookup-selection" id="lookupSelection"></span></div>
             <button class="lookup-close" id="lookupClose" type="button" aria-label="Close definition">×</button>
           </div>
+          <form class="lookup-search hidden" id="lookupSearch" role="search">
+            <input id="lookupSearchInput" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type a word or term" aria-label="Look up a word or term">
+            <button class="button" type="submit">Look up</button>
+          </form>
           <a class="lookup-photo-link hidden" id="lookupPhotoLink" href="#" target="_blank" rel="noopener noreferrer"><img class="lookup-photo" id="lookupPhoto" alt="" decoding="async"></a>
           <div class="lookup-body">
             <h3 id="lookupTitle">Looking up…</h3>
@@ -690,7 +700,10 @@
         </aside>
       </aside>
       <div class="zen-dock" id="zenDock" role="toolbar" aria-label="Zen reading controls" aria-orientation="vertical">
-        <button class="zen-exit" id="zenExit" type="button" aria-label="Back to library" title="Back to library">✕</button>
+        <button class="zen-exit" id="zenExit" type="button" aria-label="Back to library" title="Back to library" data-phone-label="Library"><span class="zen-exit-x" aria-hidden="true">✕</span><svg class="phone-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></button>
+        <button class="zen-exit phone-bar-button" id="zenPhoneLookup" type="button" aria-label="Look up a word or term" aria-expanded="false" aria-controls="lookupCard" data-phone-label="Look up"><svg class="phone-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
+        <button class="zen-exit phone-bar-button phone-listen" id="zenPhoneListen" type="button" aria-label="Listen: read this paper aloud" aria-pressed="false" data-phone-label="Listen"><svg class="phone-icon phone-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg><svg class="phone-icon phone-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5.5h3.5v13H7zM13.5 5.5H17v13h-3.5z"/></svg></button>
+        <button class="zen-exit phone-bar-button" id="zenPhoneFind" type="button" aria-label="Find in this paper" aria-controls="findBar" data-phone-label="Find"><svg class="phone-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21H11"/><path d="M13 3l5 5v3"/><circle cx="16" cy="16" r="3.2"/><path d="M18.4 18.4 21 21"/></svg></button>
         <div class="zen-tool" id="zenGuideTool">
           <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-expanded="false" aria-controls="zenGuideMenu" aria-haspopup="true" aria-label="Reading guide off. Open guide controls" title="Guide controls (G toggles)">▰</button>
           <div class="zen-popout zen-guide-menu hidden" id="zenGuideMenu" role="group" aria-label="Reading guide controls">
@@ -730,7 +743,7 @@
         <button class="zen-exit zen-undo" id="zenUndo" type="button" aria-label="Undo paper highlight or handwriting" aria-keyshortcuts="Meta+Z Control+Z" title="Undo paper highlight or handwriting only" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4 3 9l5 5M3 9h10a7 7 0 0 1 0 14" transform="translate(0 -2)"/></svg><span aria-hidden="true">Undo</span></button>
         <button class="zen-exit zen-workspace" id="zenWorkspace" data-workspace-open type="button" aria-label="Toggle Workspace" aria-pressed="false" aria-controls="workspacePanel" title="Workspace"><span aria-hidden="true">▥</span><span class="zen-workspace-caption" aria-hidden="true">Workspace</span></button>
         <div class="zen-tool" id="zenMoreTool">
-          <button class="zen-exit" id="zenMore" type="button" aria-expanded="false" aria-controls="zenMoreMenu" aria-haspopup="true" aria-label="More reading tools" title="More reading tools"><span aria-hidden="true">⋯</span></button>
+          <button class="zen-exit" id="zenMore" type="button" aria-expanded="false" aria-controls="zenMoreMenu" aria-haspopup="true" aria-label="More reading tools" title="More reading tools" data-phone-label="More"><span aria-hidden="true">⋯</span></button>
           <div class="zen-popout zen-action-menu hidden" id="zenMoreMenu" role="group" aria-label="More reading tools">
             <button class="zen-exit zen-menu-action" id="zenReadingControls" data-label="This paper" type="button" aria-haspopup="dialog" aria-controls="readerControlsDialog" aria-label="This paper: title, pages and zoom"><span aria-hidden="true">▤</span></button>
             <button class="zen-exit zen-menu-action hidden" id="zenExportAnnotated" data-label="Export annotated PDF" type="button" aria-label="Export this PDF with your highlights, handwriting and notes" title="Export annotated PDF"><span aria-hidden="true">⇪</span></button>
@@ -740,6 +753,10 @@
             <button class="zen-exit zen-theme zen-menu-action" id="zenTheme" data-label="Theme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
             <button class="zen-exit zen-menu-action" id="zenSettings" data-label="Reading settings" type="button" aria-haspopup="dialog" aria-controls="comfortBar" aria-expanded="false" aria-label="Open reading settings"><span aria-hidden="true">⚙</span></button>
             <button class="zen-exit zen-menu-action" id="zenListen" data-label="Listen" type="button" aria-controls="voiceBar" aria-expanded="false" aria-label="Listen: read this paper aloud" title="Read aloud"><span aria-hidden="true">♪</span></button>
+            <button class="zen-exit zen-menu-action phone-only" id="zenPhoneGuide" data-label="Reading guide" type="button" aria-controls="zenGuideMenu" aria-label="Reading guide"><span aria-hidden="true">▰</span></button>
+            <button class="zen-exit zen-menu-action phone-only" id="zenPhoneLayout" data-label="Page layout" type="button" aria-controls="zenLayoutMenu" aria-label="Page layout"><span aria-hidden="true">▤</span></button>
+            <button class="zen-exit zen-menu-action phone-only" id="zenPhoneWorkspace" data-label="Workspace" type="button" aria-controls="workspacePanel" aria-label="Open the Workspace"><span aria-hidden="true">▦</span></button>
+            <button class="zen-exit zen-menu-action phone-only" id="zenPhoneUndo" data-label="Undo highlight" type="button" aria-label="Undo the last highlight" disabled><span aria-hidden="true">↶</span></button>
             <button class="zen-exit zen-refresh zen-menu-action" id="zenRefresh" data-label="Refresh" type="button" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
           </div>
         </div>
@@ -1110,23 +1127,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=223',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=224',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=223" defer></script>
-<script src="/reading-stickies.js?v=223" defer></script>
-<script src="/reading-keeps.js?v=223" defer></script>
-<script src="/reading-excerpts.js?v=223" defer></script>
-<script src="/reading-excerpts-view.js?v=223" defer></script>
-<script src="/reading-lists.js?v=223" defer></script>
-<script src="/reading-lists-view.js?v=223" defer></script>
-<script src="/reading-voice.js?v=223" defer></script>
-<script src="/reading-workspace.js?v=223" defer></script>
-<script src="/reading-workspace-viewport.js?v=223" defer></script>
-<script src="/reading-workspace-view.js?v=223" defer></script>
-<script src="/reading-folds.js?v=223" defer></script>
-<script src="/reading-pdf-projection.js?v=223" defer></script>
-<script src="/reading-fold-view.js?v=223" defer></script>
-<script src="/reading.js?v=223" defer></script>
+<script src="/reading-ink.js?v=224" defer></script>
+<script src="/reading-stickies.js?v=224" defer></script>
+<script src="/reading-keeps.js?v=224" defer></script>
+<script src="/reading-excerpts.js?v=224" defer></script>
+<script src="/reading-excerpts-view.js?v=224" defer></script>
+<script src="/reading-lists.js?v=224" defer></script>
+<script src="/reading-lists-view.js?v=224" defer></script>
+<script src="/reading-voice.js?v=224" defer></script>
+<script src="/reading-workspace.js?v=224" defer></script>
+<script src="/reading-workspace-viewport.js?v=224" defer></script>
+<script src="/reading-workspace-view.js?v=224" defer></script>
+<script src="/reading-folds.js?v=224" defer></script>
+<script src="/reading-pdf-projection.js?v=224" defer></script>
+<script src="/reading-fold-view.js?v=224" defer></script>
+<script src="/reading.js?v=224" defer></script>
 </body>
 </html>

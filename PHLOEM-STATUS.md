@@ -73,11 +73,13 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   mentions DeepSeek. lifegameproject.com's Phloem card plays the two new iPad recordings; Glyph Run's featured clip
   and the Grow a Tomato / Tomatoswipe / Sudoku thumbnails were re-shot from the live games.
 - **App Store:** Phloem **iOS 1.2.1 (40) live since 2026-10-13 14:19 EDT** (released by Houfu); PR #76 merged,
-  so `apps/ipad` on main is 1.2.1 (40). **1.2.2 (41) uploaded to TestFlight 2026-10-14 ~18:15 EDT** (not submitted)
-  from branch `ipad-release-1.2.2-41`, PR #77 (merge after release): reader v221 plus an App Store update notice
-  (bundle-manifest.json carries the app version; Desk settings shows "Version 1.2.2 (41) · the newest version"; a newer
-  store version gets a dismissible Update banner). Houfu tests on his iPad, then decides on submitting (draft text in
-  `output/phloem-ios-1.2.1-verification/STORE-TEXT-1.2.2-DRAFT.md`), no rush. Houfu tested build 40 on his iPad ("works well"), and the
+  so `apps/ipad` on main is 1.2.1 (40). **1.2.2 (42) submitted for review 2026-10-14 20:20 EDT, Waiting for Review,
+  manual release** (Houfu asked for it as the new App Store version; press Release after approval, then merge PR #77,
+  branch `ipad-release-1.2.2-41`). Build 42 carries reader v223 (41 had v221; both are in TestFlight for friends2 and
+  Internal Testers) plus an App Store update notice (bundle-manifest.json carries the app version; Desk settings shows
+  "Version 1.2.2 (42) · the newest version"; a newer store version gets a dismissible Update banner). What's New and
+  review notes were rewritten for 1.2.2 in App Store Connect (notes 3,934 of 4,000 characters; the reviewer key line was
+  left as it was). Houfu tested build 40 on his iPad ("works well"), and the
   freeze is gone. New listing media cut from his iPad recordings: two **silent** captioned previews (landscape
   Ask AI / Workspace / export; portrait leaf→fruit, paper→brain) and screenshots 4–5 (Ask about any passage,
   Export one PDF). Files are in `output/phloem-app-preview-1.2.1/`. The review notes carry Houfu's Anthropic test key:
@@ -176,6 +178,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-10-14 1.2.2 (42):** archived from the release branch merged with v223, uploaded, attached to the new 1.2.2
+  version and submitted for review (manual release). `apps/ipad` tests 21/21; bundle `app: 1.2.2 (42)`, `reading.js?v=223`.
 - **2026-10-14 v223:** Listen hides Apple's novelty voices (Bahh, Whisper, Bad News, Zarvox…) and the robotic Eloquence
   voices (Eddy, Grandma, Rocko…) after Houfu called them creepy; each person is listed once in their best quality, under
   Natural / Basic groups. The voice guide says Read & Speak (iPadOS/macOS 26 name). Tests: `reading-voice` 10/10 with

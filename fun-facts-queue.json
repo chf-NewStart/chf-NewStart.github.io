@@ -1,11 +1,5 @@
 [
   {
-    "tag": "PLANTS",
-    "title": "Sunflowers secretly do math",
-    "fact": "A sunflower's florets spiral in Fibonacci counts because each new primordium grows at the golden angle (~137.5°) from the last. That packing rule fills the head with near-equal, non-overlapping slots — nature's best answer to a geometry problem.",
-    "detail": "The same rule sizes the spiral rows on pinecones, pineapples, and artichokes. It emerges automatically from simple growth timing, no blueprint required."
-  },
-  {
     "tag": "PHYSICS",
     "title": "Hot water can freeze faster than cold",
     "fact": "Under the right conditions — open containers, evaporation, dissolved gases — warm water can beat cold water to ice. The Mpemba effect, noticed by a Tanzanian student in 1963, still has no single settled explanation.",

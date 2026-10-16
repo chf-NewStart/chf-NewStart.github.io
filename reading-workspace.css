@@ -168,8 +168,8 @@ body.workspace-side.zen #zenLayoutIcon { display:flex; }
 @media (max-height:325px) {
   body.workspace-side.zen { --paper-dock-gutter:162px; --zen-find-rail-width:140px; }
 }
-#zenLayoutIcon { display:none; }
-#zenLayoutIcon svg { width:20px; height:20px; }
+#zenLayoutIcon { display:flex; }
+#zenLayoutIcon svg { width:19px; height:19px; }
 body.workspace-side #excerptReturnChip { left:calc(var(--workspace-paper-width) / 2); bottom:26px; }
 body.workspace-open #workspaceOpen { color:var(--accent); }
 /* Bottom dock: whatever floats on the paper stays on the top half. JS measures the paper

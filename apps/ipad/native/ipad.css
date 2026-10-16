@@ -72,3 +72,19 @@ html.phloem-native body.reading:not(.zen) .masthead {
   }
 }
 .phloem-native .native-only{display:block!important}
+
+/* Update notice: a newer version on the App Store. */
+html.phloem-native .native-update-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px max(16px, env(safe-area-inset-left)) 10px max(16px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 12%, var(--paper));
+  color: var(--ink);
+  font-size: .82rem;
+  font-weight: 650;
+}
+html.phloem-native .native-update-banner span { flex: 1; }
+html.phloem-native .native-update-banner .button { min-height: 36px; padding: 6px 14px; text-decoration: none; }
+html.phloem-native body.reading .native-update-banner { display: none; }

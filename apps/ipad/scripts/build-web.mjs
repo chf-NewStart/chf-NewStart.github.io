@@ -112,6 +112,19 @@ async function extraLicenseFiles(repoRoot) {
   return entries.sort((a, b) => a.destination.localeCompare(b.destination));
 }
 
+/* The app's own version, read from the Xcode project, so the bundled reader can tell the
+   App Store's current version apart from the one installed. */
+export async function appVersion(repoRoot = defaultRepoRoot) {
+  try {
+    const project = await readFile(path.join(repoRoot, 'apps/ipad/ios/App/App.xcodeproj/project.pbxproj'), 'utf8');
+    const version = (project.match(/MARKETING_VERSION = ([^;]+);/) || [])[1];
+    const build = (project.match(/CURRENT_PROJECT_VERSION = ([^;]+);/) || [])[1];
+    return version ? { version: version.trim(), build: String(build || '').trim() } : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function buildWeb({ repoRoot = defaultRepoRoot, outDir = path.join(repoRoot, 'apps/ipad/www') } = {}) {
   repoRoot = path.resolve(repoRoot);
   outDir = path.resolve(outDir);
@@ -166,6 +179,7 @@ export async function buildWeb({ repoRoot = defaultRepoRoot, outDir = path.join(
       serviceWorker: 'disabled in the native HTML only',
       cloudRoutes: 'Native bundle disables saved GitHub/Drive sync. Optional iCloud sync uses the registered CloudKit bridge and the user private database. Optional AI requests use the registered native Keychain and network bridge after explicit provider consent.',
       storage: 'Reader state stays in app-local web storage first. Optional iCloud sync merges library snapshots and transfers original documents through CloudKit assets.',
+      app: await appVersion(repoRoot),
       files: inventory.sort((a, b) => a.path.localeCompare(b.path)),
       thirdPartyNotices: entries.some(entry => entry.destination.startsWith('licenses/')) ? 'See licenses/; review dependency licensing before distribution.' : 'Upstream vendored third-party notices are incomplete. Restore and review those notices before distribution.',
     };

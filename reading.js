@@ -3235,6 +3235,8 @@
     var zg=byId('zenGuide'),toggle=byId('zenGuideToggle'),label=byId('zenGuideToggleLabel');zg.classList.toggle('active',on);zg.setAttribute('aria-label','Reading guide '+(on?'on':'off')+'. Open guide controls');zg.title='Guide controls · G turns guide '+(on?'off':'on');toggle.setAttribute('aria-pressed',String(on));label.textContent=on?'Guide on':'Guide off';
     syncTouchDockStates();
     if(on)requestAnimationFrame(placeGuide);
+    // Listen open: the guide takes over from the dimming, or hands back to it.
+    if(voiceFocusIndex>=0)focusVoiceChunk(voiceFocusIndex);
   }
   function syncZenAnnotateUi(){
     var trigger=byId('zenAnnotate');if(!trigger)return;
@@ -3355,14 +3357,29 @@
   /* Listen: the paper read aloud by a voice already on this device (Jamie and other
      Apple voices on iPad and Mac, Google voices on Android), skipping equations, tables,
      captions, citations and the reference list. Nothing leaves the device. */
-  var VOICE_KEY='readingRoom.voice.v1',VOICE_RATES=[.8,1,1.15,1.3,1.5],voicePlayer=null,voicePaperId='',voiceChunks=[],voicePrefs={voice:'',rate:1};
+  var VOICE_KEY='readingRoom.voice.v1',VOICE_RATE_MIN=.6,VOICE_RATE_MAX=2,voicePlayer=null,voicePaperId='',voiceChunks=[],voicePrefs={voice:'',rate:1};
   // Opening ••• clears the selection card, so the last selection's place is kept for a minute.
   var voiceSelectionPlace=null;
-  try{var savedVoice=JSON.parse(localStorage.getItem(VOICE_KEY)||'null');if(savedVoice&&typeof savedVoice==='object'){voicePrefs.voice=String(savedVoice.voice||'');if(VOICE_RATES.indexOf(+savedVoice.rate)>=0)voicePrefs.rate=+savedVoice.rate;}}catch(e){}
-  function voiceSupported(){return !!(window.PhloemVoice&&window.speechSynthesis&&window.SpeechSynthesisUtterance);}
+  try{var savedVoice=JSON.parse(localStorage.getItem(VOICE_KEY)||'null');if(savedVoice&&typeof savedVoice==='object'){voicePrefs.voice=String(savedVoice.voice||'');if(+savedVoice.rate>=VOICE_RATE_MIN&&+savedVoice.rate<=VOICE_RATE_MAX)voicePrefs.rate=+savedVoice.rate;}}catch(e){}
+  /* The iPad app speaks through iPadOS (PhloemSpeech): WKWebView's Web Speech lists no
+     voices there, and Safari's only the ones that ship with the system, never a Premium
+     voice downloaded in Settings. Both stay on the device. */
+  function nativeSpeechPlugin(){var plugin=window.PHLOEM_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemSpeech;return plugin&&typeof plugin.speak==='function'?plugin:null;}
+  var voiceEngineCache=null;
+  function voiceEngine(){
+    if(voiceEngineCache||!window.PhloemVoice)return voiceEngineCache;
+    var plugin=nativeSpeechPlugin();
+    if(plugin){
+      voiceEngineCache=window.PhloemVoice.nativeEngine(plugin);voiceEngineCache.synth.refresh().catch(function(){});
+      if(typeof plugin.addListener==='function')Promise.resolve(plugin.addListener('voicesChanged',function(){voiceEngineCache.synth.refresh().catch(function(){});})).catch(function(){});
+    }else if(window.speechSynthesis&&window.SpeechSynthesisUtterance)voiceEngineCache={synth:speechSynthesis,Utterance:SpeechSynthesisUtterance,native:false};
+    return voiceEngineCache;
+  }
+  function voiceSupported(){return !!voiceEngine();}
   function saveVoicePrefs(){try{localStorage.setItem(VOICE_KEY,JSON.stringify(voicePrefs));}catch(e){}}
-  function voiceList(){return window.PhloemVoice.rankVoices(speechSynthesis.getVoices()||[]);}
+  function voiceList(){return window.PhloemVoice.rankVoices(voiceEngine().synth.getVoices()||[]);}
   function chosenVoice(){var list=voiceList();return list.find(function(voice){return voice.voiceURI===voicePrefs.voice;})||list[0]||null;}
+  function voiceWhere(){return voicePlatform()==='ios'&&!(voiceEngine()&&voiceEngine().native)?'safari':'';}
   function voicePlatform(){
     var ua=navigator.userAgent||'';
     if(window.PHLOEM_NATIVE||/iPhone|iPad|iPod/.test(ua)||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)return'ios';
@@ -3376,24 +3393,27 @@
     if(!voiceSupported())return;var list=voiceList(),natural=list.filter(window.PhloemVoice.naturalVoice),uris=list.map(function(voice){return voice.voiceURI;});
     // Android voices do not name their quality, so the guide stays one tap away there.
     var android=voicePlatform()==='android',help=byId('voiceHelpBtn');
-    help.textContent=android?'Voice sounds robotic? How to get a better one →':'This device has only basic voices. Get a more natural voice →';
+    help.textContent=android?'Voice sounds robotic? How to get a better one →':voiceWhere()==='safari'?'Safari offers only the basic voices. How to use Jamie →':'This device has only basic voices. Get a more natural voice →';
     help.classList.toggle('hidden',!list.length||(!android&&natural.length>0));
     var fresh=knownVoices&&knownVoices.length?natural.filter(function(voice){return knownVoices.indexOf(voice.voiceURI)<0;}):[];if(uris.length)knownVoices=uris;
     var current=list.find(function(voice){return voice.voiceURI===voicePrefs.voice;});
     if(announce&&fresh.length&&!(current&&window.PhloemVoice.naturalVoice(current))){
       voicePrefs.voice=fresh[0].voiceURI;saveVoicePrefs();fillVoiceSelect();if(voicePlayer)voicePlayer.setVoice(chosenVoice());
-      showReaderToast(fresh[0].name.replace(/\s*\((?:English|en)[^)]*\)\s*$/i,'')+' is ready for Listen');
+      showReaderToast(fresh[0].name.replace(/\s*\((?:English\b|en[-_][A-Za-z]{2})[^)]*\)\s*$/i,'')+' is ready for Listen');
     }
   }
   function fillVoiceSelect(){
     var select=byId('voiceVoice');if(!select||!voiceSupported())return;var list=voiceList(),current=chosenVoice();
-    function option(voice){return '<option value="'+esc(voice.voiceURI)+'"'+(current&&voice.voiceURI===current.voiceURI?' selected':'')+'>'+esc(voice.name.replace(/\s*\((?:English|en)[^)]*\)\s*$/i,''))+'</option>';}
+    function option(voice){return '<option value="'+esc(voice.voiceURI)+'"'+(current&&voice.voiceURI===current.voiceURI?' selected':'')+'>'+esc(voice.name.replace(/\s*\((?:English\b|en[-_][A-Za-z]{2})[^)]*\)\s*$/i,''))+'</option>';}
     var natural=list.filter(window.PhloemVoice.naturalVoice),basic=list.filter(function(voice){return !window.PhloemVoice.naturalVoice(voice);});
     // Natural voices first, then the basic ones a device starts with.
     select.innerHTML=!list.length?'<option value="">System voice</option>':natural.length&&basic.length?'<optgroup label="Natural">'+natural.map(option).join('')+'</optgroup><optgroup label="Basic">'+basic.map(option).join('')+'</optgroup>':list.map(option).join('');
-    select.disabled=!list.length;
+    // Never greyed out: an empty list is "System voice", and the voices are asked for again.
+    select.disabled=false;
+    if(!list.length&&voiceListTries<8){voiceListTries++;clearTimeout(voiceListTimer);voiceListTimer=setTimeout(fillVoiceSelect,600);}
     refreshVoiceQuality(false);
   }
+  var voiceListTries=0,voiceListTimer=0;
   function voiceBlocks(ch){
     if(ch.kind==='pdf'){
       var built=readerStructure(ch.pageLines||[],ch.pageParagraphs||[]),blocks=[],cursor=0;
@@ -3429,10 +3449,94 @@
     var pane=byId('documentPane').getBoundingClientRect(),visible=Array.prototype.findIndex.call(paraSections(),function(section){return section.getBoundingClientRect().bottom>pane.top+40;});
     if(visible<0)return 0;var start=chunks.findIndex(function(chunk){return chunk.para>=visible;});return start<0?0:start;
   }
-  function markVoicePara(index){
+  /* The sentence being read stays in view and in focus (Houfu: "the passage being read
+     should be automatically focused"). Reader view: the rest of the paper dims and the
+     sentence keeps full ink; on PDF pages its words get a highlighter. With the reading
+     guide on, the guide follows the voice instead of the pointer and nothing else dims.
+     Scrolling by hand pauses the following for a few seconds. */
+  var voiceFocusIndex=-1,voiceSpotCache={},voiceScrolledByHandAt=0,voiceGuideFrame=0,voicePdfRetry={index:-1,n:0};
+  function voiceHighlights(){return !!(window.CSS&&CSS.highlights&&typeof Highlight==='function');}
+  function voiceGuideOwns(){return !!comfort.focus&&!!voicePlayer&&voicePlayer.state()==='playing'&&voicePaperId===currentId&&!byId('voiceBar').classList.contains('hidden');}
+  function clearVoiceFocus(){
+    voiceFocusIndex=-1;cancelAnimationFrame(voiceGuideFrame);
     document.querySelectorAll('#textDocument .para.voice-reading').forEach(function(node){node.classList.remove('voice-reading');});
-    if(index===null||index===undefined)return;var section=paraSections()[index];if(!section)return;section.classList.add('voice-reading');
-    var pane=byId('documentPane').getBoundingClientRect(),box=section.getBoundingClientRect();if(box.top<pane.top+20||box.top>pane.bottom-120)section.scrollIntoView({block:'center',behavior:'smooth'});
+    document.querySelectorAll('#pdfFrame .voice-span').forEach(function(node){node.classList.remove('voice-span');});
+    if(voiceHighlights())CSS.highlights.delete('voice-sentence');
+    document.body.classList.remove('voice-focus','voice-sentence-on');
+  }
+  // Offsets of every spoken chunk in one paragraph or page, located in reading order.
+  function voiceSpot(index,text,key){
+    if(!voiceSpotCache[key]){
+      var spots={},from=0,group=key.split(':')[0];
+      voiceChunks.forEach(function(chunk,i){
+        if((group.charAt(0)==='g'?'g'+chunk.page:'p'+chunk.para)!==group)return;
+        var at=window.PhloemVoice.locate(text,chunk.text,from);if(at){spots[i]=at;from=at.end;}
+      });
+      voiceSpotCache[key]=spots;
+    }
+    return voiceSpotCache[key][index]||null;
+  }
+  function voiceRange(root,start,end){
+    var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),node,seen=0,range=document.createRange(),begun=false;
+    while((node=walker.nextNode())){
+      var length=node.nodeValue.length;
+      if(!begun&&start<seen+length){range.setStart(node,Math.max(0,start-seen));begun=true;}
+      if(begun&&end<=seen+length){range.setEnd(node,Math.max(0,end-seen));return range;}
+      seen+=length;
+    }
+    return null;
+  }
+  function focusVoiceText(chunk,index){
+    document.querySelectorAll('#textDocument .para.voice-reading').forEach(function(node){node.classList.remove('voice-reading');});
+    var section=paraSections()[chunk.para];if(!section)return null;section.classList.add('voice-reading');
+    var original=section.querySelector('.original')||section,text=original.textContent,spot=voiceSpot(index,text,'p'+chunk.para+':'+text.length),range=spot&&voiceRange(original,spot.start,spot.end);
+    var sentence=!!(range&&voiceHighlights());
+    if(voiceHighlights()){if(sentence)CSS.highlights.set('voice-sentence',new Highlight(range));else CSS.highlights.delete('voice-sentence');}
+    document.body.classList.toggle('voice-sentence-on',sentence);
+    return{element:section,rect:function(){return(range||section).getBoundingClientRect();}};
+  }
+  function focusVoicePdf(chunk,index){
+    document.querySelectorAll('#pdfFrame .voice-span').forEach(function(node){node.classList.remove('voice-span');});
+    var layer=byId('pdfFrame').querySelector('.pdf-page[data-page="'+chunk.page+'"] .text-layer');
+    var spans=layer?Array.prototype.filter.call(layer.querySelectorAll('span'),function(span){return !span.classList.contains('markedContent')&&!span.children.length;}):[];
+    if(!spans.length){
+      // The page's text layer may still be drawing after a page turn.
+      if(voicePdfRetry.index!==index)voicePdfRetry={index:index,n:0};
+      if(voicePdfRetry.n++<8)setTimeout(function(){if(voiceFocusIndex===index)focusVoiceChunk(index);},250);
+      return null;
+    }
+    var text='',starts=[];spans.forEach(function(span){starts.push(text.length);text+=span.textContent+' ';});
+    var spot=voiceSpot(index,text,'g'+chunk.page+':'+text.length);if(!spot)return null;
+    var hit=spans.filter(function(span,i){return starts[i]+span.textContent.length>spot.start&&starts[i]<spot.end;});
+    hit.forEach(function(span){span.classList.add('voice-span');});
+    if(!hit.length)return null;
+    return{element:hit[0],rect:function(){
+      var box=null;hit.forEach(function(span){var r=span.getBoundingClientRect();if(!r.width&&!r.height)return;box=box?{left:Math.min(box.left,r.left),top:Math.min(box.top,r.top),right:Math.max(box.right,r.right),bottom:Math.max(box.bottom,r.bottom)}:{left:r.left,top:r.top,right:r.right,bottom:r.bottom};});
+      if(box){box.width=box.right-box.left;box.height=box.bottom-box.top;}return box;
+    }};
+  }
+  function followVoice(target){
+    var pane=byId('documentPane'),paneRect=pane.getBoundingClientRect(),box=target.rect();
+    if(!box||!paneRect.height)return;
+    var bar=byId('voiceBar').getBoundingClientRect(),top=paneRect.top+Math.min(80,paneRect.height*.12);
+    var bottom=Math.min(paneRect.bottom,bar.height?bar.top:paneRect.bottom)-24;
+    var byHand=Date.now()-voiceScrolledByHandAt<6000,paged=readerMode==='pdf'&&pagedPdfFlow();
+    // Out of the clear part of the page: bring the sentence to about a third of the way down.
+    if(!byHand&&!paged&&(box.top<top||box.bottom>bottom))pane.scrollBy({top:box.top-(paneRect.top+(bottom-paneRect.top)*.3),behavior:'smooth'});
+    if(!comfort.focus)return;
+    // The guide band rides along while the paper scrolls.
+    cancelAnimationFrame(voiceGuideFrame);var until=Date.now()+900;
+    (function step(){
+      var r=target.rect();if(r&&r.height)setReadingGuide(r.left+r.width/2,r.top+Math.min(r.height,110)/2,target.element);
+      if(Date.now()<until)voiceGuideFrame=requestAnimationFrame(step);
+    })();
+  }
+  function focusVoiceChunk(index){
+    var chunk=voiceChunks[index],ch=find(currentId);if(!chunk||!ch||voicePaperId!==ch.id||byId('voiceBar').classList.contains('hidden'))return;
+    voiceFocusIndex=index;
+    document.body.classList.toggle('voice-focus',!comfort.focus);
+    var target=ch.kind==='pdf'&&readerMode==='pdf'?focusVoicePdf(chunk,index):focusVoiceText(chunk,index);
+    if(target)followVoice(target);
   }
   function fillVoiceSections(){
     var select=byId('voiceSection');if(!select)return;var options=['<option value="">Read from…</option>'];
@@ -3440,24 +3544,34 @@
     select.innerHTML=options.join('');select.disabled=options.length<2;select.value='';
   }
   function voiceJump(index,message){
+    voiceScrolledByHandAt=0;
     if(!voicePlayer||index<0||index>=voiceChunks.length)return;voicePlayer.seek(index);if(voicePlayer.state()!=='playing')voicePlayer.play();
     if(message)showReaderToast(message);
+  }
+  function syncVoiceRate(fromSlider){
+    var range=byId('voiceRate'),label=voicePrefs.rate.toFixed(2).replace(/0$/,'').replace(/\.0$/,'')+'×';
+    if(!fromSlider)range.value=String(voicePrefs.rate);
+    range.setAttribute('aria-valuetext',label);byId('voiceRateValue').textContent=label;
   }
   function syncVoiceUi(state){
     var bar=byId('voiceBar'),playing=state==='playing';bar.classList.toggle('playing',playing);document.body.classList.toggle('voice-on',!bar.classList.contains('hidden'));
     byId('voicePlay').setAttribute('aria-label',playing?'Pause':'Play');byId('zenListen').setAttribute('aria-expanded',String(!bar.classList.contains('hidden')));
     var phoneListen=byId('zenPhoneListen');phoneListen.setAttribute('aria-pressed',String(playing));phoneListen.setAttribute('aria-label',playing?'Pause reading aloud':'Listen: read this paper aloud');
-    byId('voiceRate').textContent=voicePrefs.rate+'×';byId('voiceRate').setAttribute('aria-label','Speaking speed '+voicePrefs.rate+'×');
+    syncVoiceRate();
     if(state==='finished')byId('voiceLine').textContent='Finished. Tap play to start again.';
   }
-  function stopVoice(){if(voicePlayer)voicePlayer.stop();voicePaperId='';byId('voiceBar').classList.add('hidden');markVoicePara(null);syncVoiceUi('stopped');}
+  function stopVoice(){if(voicePlayer)voicePlayer.stop();voicePaperId='';byId('voiceBar').classList.add('hidden');clearVoiceFocus();syncVoiceUi('stopped');}
   function ensureVoicePlayer(){
     if(voicePlayer)return voicePlayer;
-    voicePlayer=window.PhloemVoice.createPlayer({synth:speechSynthesis,Utterance:SpeechSynthesisUtterance,
-      onChunk:function(chunk){
+    var engine=voiceEngine();
+    voicePlayer=window.PhloemVoice.createPlayer({synth:engine.synth,Utterance:engine.Utterance,
+      onChunk:function(chunk,index){
         byId('voiceLine').textContent=chunk.text;var ch=find(currentId);if(!ch||voicePaperId!==ch.id)return;
-        if(ch.kind==='pdf'&&readerMode==='pdf'){if(chunk.page&&chunk.page!==currentPage&&voicePlayer&&voicePlayer.state()==='playing')gotoPdfPage(chunk.page);}
-        else markVoicePara(chunk.para);
+        if(ch.kind==='pdf'&&readerMode==='pdf'){
+          if(chunk.page&&chunk.page!==currentPage&&voicePlayer&&voicePlayer.state()==='playing')Promise.resolve(gotoPdfPage(chunk.page)).then(function(){focusVoiceChunk(index);});
+          else focusVoiceChunk(index);
+        }
+        else focusVoiceChunk(index);
       },
       onState:function(state){syncVoiceUi(state);}});
     voicePlayer.setRate(voicePrefs.rate);voicePlayer.setVoice(chosenVoice());return voicePlayer;
@@ -3466,22 +3580,25 @@
     var ch=find(currentId);if(!ch)return;
     if(!voiceSupported()){showReaderToast('This browser cannot read aloud.');return;}
     // iOS only lets speech start inside the tap, and the PDF text may still need building.
-    try{var warm=new SpeechSynthesisUtterance(' ');warm.volume=0;speechSynthesis.speak(warm);}catch(e){}
+    if(!voiceEngine().native)try{var warm=new SpeechSynthesisUtterance(' ');warm.volume=0;speechSynthesis.speak(warm);}catch(e){}
     closeZenPopouts(false);fillVoiceSelect();var bar=byId('voiceBar');bar.classList.remove('hidden');byId('voiceLine').textContent='Getting the text ready…';syncVoiceUi('stopped');
     try{if(ch.kind==='pdf'&&pdfDoc)await ensureReaderData(pdfDoc,ch);}catch(e){}
     if(currentId!==ch.id)return;
     var prepared=window.PhloemVoice.prepare(voiceBlocks(ch));
     if(!prepared.chunks.length){byId('voiceLine').textContent='No readable text was found in this paper.';return;}
-    var player=ensureVoicePlayer(),startAt=voiceStartIndex(ch,prepared.chunks);voicePaperId=ch.id;voiceChunks=prepared.chunks;fillVoiceSections();
+    var player=ensureVoicePlayer(),startAt=voiceStartIndex(ch,prepared.chunks);voicePaperId=ch.id;voiceChunks=prepared.chunks;voiceSpotCache={};voiceScrolledByHandAt=0;fillVoiceSections();
     player.load(prepared.chunks,startAt);player.setVoice(chosenVoice());player.play();
     var left=[];if(prepared.skipped.equations)left.push('equations');if(prepared.skipped.tables)left.push('tables');if(prepared.skipped.captions)left.push('captions');if(prepared.skipped.references)left.push('the reference list');
     showReaderToast('Reading aloud'+(left.length?' · skipping '+left.join(', ').replace(/, ([^,]*)$/,' and $1'):'')+' · tap a paragraph to read from there');
   }
   if(byId('zenListen'))byId('zenListen').onclick=function(){if(!byId('voiceBar').classList.contains('hidden')&&voicePaperId===currentId){closeZenPopouts(false);if(voicePlayer)voicePlayer.toggle();return;}startVoice();};
   if(byId('voiceBar')){
-    byId('voicePlay').onclick=function(){if(voicePlayer&&voicePaperId===currentId&&voicePlayer.length())voicePlayer.toggle();else startVoice();};
-    byId('voiceBack').onclick=function(){if(voicePlayer)voicePlayer.back();};
-    byId('voiceNext').onclick=function(){if(voicePlayer)voicePlayer.next();};
+    byId('voicePlay').onclick=function(){voiceScrolledByHandAt=0;if(voicePlayer&&voicePaperId===currentId&&voicePlayer.length())voicePlayer.toggle();else startVoice();};
+    byId('voiceBack').onclick=function(){voiceScrolledByHandAt=0;if(voicePlayer)voicePlayer.back();};
+    byId('voiceNext').onclick=function(){voiceScrolledByHandAt=0;if(voicePlayer)voicePlayer.next();};
+    // A hand on the paper (wheel, finger, keys) means "let me look": following waits a moment.
+    ['wheel','touchmove'].forEach(function(type){byId('documentPane').addEventListener(type,function(){if(voicePaperId)voiceScrolledByHandAt=Date.now();},{passive:true});});
+    document.addEventListener('keydown',function(event){if(voicePaperId&&/^(?:PageUp|PageDown|ArrowUp|ArrowDown|Home|End| )$/.test(event.key)&&!(event.target&&event.target.closest&&event.target.closest('input,textarea,select,[contenteditable]')))voiceScrolledByHandAt=Date.now();});
     byId('voiceClose').onclick=stopVoice;
     byId('voiceSection').onchange=function(){var index=this.value===''?-1:+this.value;this.value='';if(index>=0)voiceJump(index);};
     /* While Listen is open, a plain tap on the paper's text reads from there. Selections,
@@ -3496,14 +3613,25 @@
       else{var span=target.closest('.text-layer span'),pageEl=target.closest('.pdf-page');if(span&&pageEl)place={page:+pageEl.dataset.page,text:span.textContent};}
       if(!place)return;var at=voiceChunkAt(voiceChunks,place);if(at>=0)voiceJump(at,'Reading from here');
     });
-    byId('voiceRate').onclick=function(){var at=VOICE_RATES.indexOf(voicePrefs.rate);voicePrefs.rate=VOICE_RATES[(at+1)%VOICE_RATES.length];saveVoicePrefs();if(voicePlayer)voicePlayer.setRate(voicePrefs.rate);syncVoiceUi(voicePlayer?voicePlayer.state():'stopped');};
+    /* Speed slider: the label follows the thumb; the voice changes speed once the thumb
+       rests, since a new speed restarts the sentence. */
+    var voiceRateTimer=0;wireTouchRange(byId('voiceRate'));
+    byId('voiceRate').addEventListener('input',function(){
+      voicePrefs.rate=Math.max(VOICE_RATE_MIN,Math.min(VOICE_RATE_MAX,Math.round(+this.value*20)/20));syncVoiceRate(true);
+      clearTimeout(voiceRateTimer);voiceRateTimer=setTimeout(function(){saveVoicePrefs();if(voicePlayer)voicePlayer.setRate(voicePrefs.rate);},350);
+    });
     byId('voiceVoice').onchange=function(){voicePrefs.voice=this.value;saveVoicePrefs();if(voicePlayer)voicePlayer.setVoice(chosenVoice());};
-    if(window.speechSynthesis&&speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',function(){refreshVoiceQuality(true);fillVoiceSelect();});
+    var engineNow=voiceEngine();
+    if(engineNow&&engineNow.synth.addEventListener)engineNow.synth.addEventListener('voiceschanged',function(){refreshVoiceQuality(true);fillVoiceSelect();});
     // Back from the Settings app with a new voice: browsers do not always say so.
     // New voices are looked for before the menu refresh records them as known.
-    document.addEventListener('visibilitychange',function(){if(!document.hidden&&voiceSupported()){refreshVoiceQuality(true);fillVoiceSelect();}});
+    document.addEventListener('visibilitychange',function(){
+      if(document.hidden||!voiceSupported())return;
+      if(voiceEngine().native){voiceEngine().synth.refresh().catch(function(){});return;}
+      refreshVoiceQuality(true);fillVoiceSelect();
+    });
     byId('voiceHelpBtn').onclick=function(){
-      var help=window.PhloemVoice.voiceHelp(voicePlatform());byId('voiceHelpTitle').textContent=help.title;
+      var help=window.PhloemVoice.voiceHelp(voicePlatform(),voiceWhere());byId('voiceHelpTitle').textContent=help.title;
       byId('voiceHelpSteps').innerHTML=help.steps.map(function(step){return '<li>'+esc(step)+'</li>';}).join('');byId('voiceHelpDialog').showModal();
     };
     addEventListener('pagehide',function(){if(voicePlayer)voicePlayer.stop();});
@@ -3635,6 +3763,7 @@
       message=matchMedia('(hover: hover)').matches?(comfort.guideLock?'Reading guide on · pinned — click the paper to release':'Reading guide follows your pointer · click the paper to pin it'):'Reading guide on · drag its ⠿ handle or tap the page';
     }
     if(comfort.focus&&bookSpread()&&!matchMedia('(hover: hover)').matches)message='Reading guide on · tap either page or drag the ⠿ handle across the spine';
+    if(comfort.focus&&voiceGuideOwns())message='Reading guide follows the voice while Listen plays';
     showReaderToast(message);
   };
   byId('documentPane').addEventListener('pointermove',function(e){
@@ -3642,7 +3771,7 @@
     // Only a mouse or trackpad cursor carries the guide. A pen hovering above the screen
     // (Galaxy S Pen, Apple Pencil hover) is about to write, not to read; it places the
     // guide with a tap, like a finger.
-    if(bookCurlOwned||!comfort.focus||comfort.guideLock||e.pointerType==='touch'||e.pointerType==='pen')return;setReadingGuide(e.clientX,e.clientY,e.target);
+    if(bookCurlOwned||!comfort.focus||comfort.guideLock||voiceGuideOwns()||e.pointerType==='touch'||e.pointerType==='pen')return;setReadingGuide(e.clientX,e.clientY,e.target);
   });
   /* A released page curl can synthesize a click over whatever the folded corner lands
      on. Stop that click in capture phase, before a PDF link/highlight sees it. */
@@ -3651,7 +3780,8 @@
   },true);
   byId('documentPane').addEventListener('click',function(e){
     if(Date.now()<pagedSuppressClickUntil){e.preventDefault();e.stopImmediatePropagation();return;}
-    if(!comfort.focus)return;
+    // While Listen plays, a tap reads from there and the guide follows the voice to it.
+    if(!comfort.focus||voiceGuideOwns())return;
     var selection=window.getSelection&&window.getSelection();if(selection&&!selection.isCollapsed)return;
     if(!guideClickCanPin(e)){setReadingGuide(e.clientX,e.clientY,e.target);return;}
     /* Laptop: a click pins the guide to its line so trips to the notebook or toolbar

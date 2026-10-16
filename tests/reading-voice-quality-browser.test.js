@@ -35,15 +35,17 @@ function setup() {
     await page.addInitScript(setup);
     await page.goto(`http://127.0.0.1:${server.address().port}/reading.html`);
     await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && document.querySelectorAll('#textDocument .para').length === 3);
-    await page.locator('#zenMore').click(); await page.locator('#zenListen').click();
+    await page.locator('#zenListen').click();
     await page.waitForFunction(() => window.__said.length === 1);
     assert.equal(await page.locator('#voiceHelpBtn').isVisible(), true, 'only a basic voice: the guide is offered');
     await page.locator('#voiceHelpBtn').click();
     await page.locator('#voiceHelpDialog').waitFor({ state: 'visible' });
-    assert.match(await page.locator('#voiceHelpTitle').textContent(), /iPad or iPhone/);
-    assert.match(await page.locator('#voiceHelpSteps').textContent(), /Read & Speak.*Voices.*English.*Jamie.*Premium/);
+    // Safari only offers the voices that ship with iPadOS: the guide says so and points to the app.
+    assert.match(await page.locator('#voiceHelpBtn').textContent(), /Safari offers only the basic voices/);
+    assert.match(await page.locator('#voiceHelpTitle').textContent(), /iPad and iPhone/);
+    assert.match(await page.locator('#voiceHelpSteps').textContent(), /Safari only lets websites use.*Phloem iPad app.*Read & Speak.*Voices.*English.*Jamie \(Premium\)/);
     await page.locator('#voiceHelpDialog [data-close]').click();
-    console.log('PASS  basic voices only: the bar offers the guide with the iPad steps (' + name + ')');
+    console.log('PASS  basic voices only: Safari on iPad explains its limit and points to the app (' + name + ')');
 
     // Back from Settings with Jamie downloaded.
     await page.evaluate(() => {
@@ -72,7 +74,7 @@ function setup() {
     await android.addInitScript(() => { window.__voices = [{ name: 'English United States', lang: 'en-US', voiceURI: 'English United States', default: true }]; });
     await android.goto(`http://127.0.0.1:${server.address().port}/reading.html`);
     await android.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && document.querySelectorAll('#textDocument .para').length === 3);
-    await android.locator('#zenMore').click(); await android.locator('#zenListen').click();
+    await android.locator('#zenListen').click();
     await android.waitForFunction(() => window.__said.length === 1);
     assert.match(await android.locator('#voiceHelpBtn').textContent(), /Voice sounds robotic/);
     await android.locator('#voiceHelpBtn').click();

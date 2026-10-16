@@ -199,15 +199,21 @@
     return /premium|enhanced|neural|natural|online|google/i.test(name);
   }
   /* Where to get a natural voice on this device: steps for the Settings app, since no app can
-     download system voices itself. */
-  function voiceHelp(platform) {
-    if (platform === 'ios') return { title: 'Get a natural voice on iPad or iPhone', steps: [
-      'Open the Settings app.', 'Go to Accessibility, then Read & Speak (Spoken Content on older versions).',
-      'Tap Voices, then English.', 'Tap Jamie (or Ava, Zoe or Serena), then tap Premium to download it. It is a few hundred MB, so use Wi-Fi.',
-      'Come back to Phloem. Listen switches to the new voice by itself.'] };
+     download system voices itself. Safari on iPad and iPhone (Web Speech in WebKit) only
+     offers the voices that come with the system, so there a downloaded voice reaches Listen
+     in the Phloem app, which speaks through iPadOS itself. */
+  function voiceHelp(platform, where) {
+    var download = ['Open the Settings app.', 'Go to Accessibility, then Read & Speak (Spoken Content on older versions).',
+      'Tap Voices, then English.', 'Tap Jamie (or Ava, Zoe or Serena), then tap Premium to download it. It is a few hundred MB, so use Wi-Fi.'];
+    if (platform === 'ios' && where === 'safari') return { title: 'Natural voices on iPad and iPhone', steps: [
+      'Safari only lets websites use the voices that come with the system (Samantha, Daniel and the like), even after you download a better one.',
+      'The Phloem iPad app (version 1.2.3 and later) reads with the voices you download.',
+      'In the Settings app, go to Accessibility, then Read & Speak, then Voices, then English, and download Jamie (Premium) or Ava, Zoe or Serena. It is a few hundred MB, so use Wi-Fi.',
+      'Open your paper in the Phloem app and tap Listen: the new voice is in the voice menu.'] };
+    if (platform === 'ios') return { title: 'Get a natural voice on iPad or iPhone', steps: download.concat(['Come back to Phloem. Listen switches to the new voice by itself.']) };
     if (platform === 'mac') return { title: 'Get a natural voice on a Mac', steps: [
       'Open System Settings, then Accessibility, then Read & Speak (Spoken Content on older versions).', 'Next to System voice, open the menu and choose Manage Voices.',
-      'Under English, download Jamie (Premium) or another Premium voice.', 'Quit and reopen your browser, then come back to Phloem.'] };
+      'Under English, download Jamie (Premium) or another Premium voice.', 'Quit and reopen your browser, then come back to Phloem. Chrome lists downloaded voices; Safari may still offer only the basic ones.'] };
     if (platform === 'android') return { title: 'Get a better voice on Android', steps: [
       'Open Settings, then Accessibility, then Text-to-speech output. On a Samsung Galaxy it is under General management, then Text-to-speech.',
       'Set the preferred engine to Speech Services by Google (Samsung\'s own engine also works).',
@@ -272,6 +278,80 @@
     };
   }
 
+  /* The iPad app's own voices behind the shape of speechSynthesis, so createPlayer drives
+     either one. plugin: voices() -> {voices}, speak({text, voiceURI, rate}) -> {finished}
+     once the sentence ends or is cancelled, cancel(). refresh() reads the voice list again
+     and tells the voiceschanged listeners. */
+  function nativeEngine(plugin) {
+    var voices = [], serial = 0, listeners = [];
+    var synth = {
+      speaking: false, pending: false,
+      getVoices: function () { return voices.slice(); },
+      addEventListener: function (type, listener) { if (type === 'voiceschanged') listeners.push(listener); },
+      refresh: function () {
+        return Promise.resolve(plugin.voices()).then(function (result) {
+          voices = result && Array.isArray(result.voices) ? result.voices : [];
+          listeners.forEach(function (listener) { try { listener(); } catch (e) {} });
+          return voices;
+        });
+      },
+      speak: function (utterance) {
+        var mine = ++serial;
+        synth.speaking = true;
+        Promise.resolve(plugin.speak({ text: String(utterance.text || ''), voiceURI: utterance.voice && utterance.voice.voiceURI || '', rate: +utterance.rate || 1 }))
+          .then(function (result) {
+            if (mine !== serial) return;
+            synth.speaking = false;
+            if (result && result.finished === false) { if (utterance.onerror) utterance.onerror({ error: 'canceled' }); }
+            else if (utterance.onend) utterance.onend();
+          }, function (error) {
+            if (mine !== serial) return;
+            synth.speaking = false;
+            if (utterance.onerror) utterance.onerror({ error: String(error && error.message || error || 'failed') });
+          });
+      },
+      cancel: function () { serial++; synth.speaking = false; try { Promise.resolve(plugin.cancel()).catch(function () {}); } catch (e) {} }
+    };
+    function Utterance(text) { this.text = text; this.rate = 1; this.voice = null; this.lang = ''; this.volume = 1; }
+    return { synth: synth, Utterance: Utterance, native: true };
+  }
+
+  /* Where a spoken sentence sits in the text on the page, as character offsets into `text`
+     (a paragraph, or a PDF page's text layer), at or after `from`. Citations and links were
+     taken out of the spoken text, so the page may have extra words in between: the match
+     starts at the sentence's first words and follows its words in order. */
+  var WORD = /[A-Za-z0-9À-ɏ]+/g;
+  function words(text) {
+    var out = [], match;
+    WORD.lastIndex = 0;
+    while ((match = WORD.exec(text))) out.push({ w: match[0].toLowerCase(), start: match.index, end: match.index + match[0].length });
+    return out;
+  }
+  function locate(text, sentence, from) {
+    var page = words(String(text || '')), said = words(String(sentence || '')).map(function (t) { return t.w; });
+    if (!said.length || !page.length) return null;
+    var lead = Math.min(3, said.length);
+    // Follow the spoken words in order from page word `begin`; a citation or link is a gap.
+    function follow(begin) {
+      var at = begin, matched = 0, last = begin;
+      for (var s = 0; s < said.length; s++) {
+        var limit = s < lead ? 8 : 24, found = false;
+        for (var look = at; look < page.length && look - at <= limit; look++) {
+          if (page[look].w === said[s]) { matched++; last = look; at = look + 1; found = true; break; }
+        }
+        if (!found && s < lead) return null;
+      }
+      return matched >= Math.max(lead, said.length * 0.6) ? { begin: begin, last: last } : null;
+    }
+    var hit = null;
+    for (var i = 0; i < page.length && !hit; i++) if (page[i].start >= (from || 0) && page[i].w === said[0]) hit = follow(i);
+    if (!hit) return null;
+    var begin = hit.begin, end = page[hit.last].end;
+    // Keep a trailing figure pointer or citation and the closing punctuation with the sentence.
+    var tail = /^(?:\s*(?:\([^()]{0,60}\)|\[[^\]]{0,40}\]))?[.!?…,;:]?["”’')\]]?/.exec(String(text).slice(end));
+    return { start: page[begin].start, end: end + (tail ? tail[0].length : 0) };
+  }
+
   /* Section titles for "Read from…": headings that read like titles, once each. */
   function sections(chunks) {
     var seen = {}, out = [];
@@ -286,6 +366,6 @@
 
   global.PhloemVoice = Object.freeze({
     prepare: prepare, sections: sections, naturalVoice: naturalVoice, voiceHelp: voiceHelp, oddVoice: oddVoice, sentences: sentences, stripCitations: stripCitations,
-    tableLike: tableLike, formulaLike: formulaLike, rankVoices: rankVoices, createPlayer: createPlayer
+    tableLike: tableLike, formulaLike: formulaLike, rankVoices: rankVoices, createPlayer: createPlayer, nativeEngine: nativeEngine, locate: locate
   });
 })(typeof window !== 'undefined' ? window : globalThis);

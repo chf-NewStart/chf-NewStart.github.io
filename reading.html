@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=224">
-  <link rel="stylesheet" href="/reading-fold.css?v=224">
-  <link rel="stylesheet" href="/reading-workspace.css?v=224">
+  <link rel="stylesheet" href="/reading.css?v=225">
+  <link rel="stylesheet" href="/reading-fold.css?v=225">
+  <link rel="stylesheet" href="/reading-workspace.css?v=225">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -720,6 +720,7 @@
             </div>
           </div>
         </div>
+        <button class="zen-exit zen-listen" id="zenListen" type="button" aria-controls="voiceBar" aria-expanded="false" aria-label="Listen: read this paper aloud" title="Listen: read aloud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="13" width="4" height="6.5" rx="1.6"/><rect x="16.5" y="13" width="4" height="6.5" rx="1.6"/></svg><span class="zen-listen-caption" aria-hidden="true">Listen</span></button>
         <div class="zen-tool" id="zenLayoutTool">
           <button class="zen-exit zen-layout" id="zenLayout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout: Scroll. Choose layout" title="Choose page layout"><span id="zenLayoutIcon" aria-hidden="true"></span><span id="zenLayoutLabel">Scroll</span><svg class="zen-layout-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
           <div class="zen-popout zen-layout-menu hidden" id="zenLayoutMenu" role="group" aria-label="Page layout">
@@ -752,7 +753,6 @@
             <button class="zen-exit zen-paper paper-appearance-shortcut zen-menu-action" id="zenPaperAppearance" data-label="Paper appearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
             <button class="zen-exit zen-theme zen-menu-action" id="zenTheme" data-label="Theme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
             <button class="zen-exit zen-menu-action" id="zenSettings" data-label="Reading settings" type="button" aria-haspopup="dialog" aria-controls="comfortBar" aria-expanded="false" aria-label="Open reading settings"><span aria-hidden="true">⚙</span></button>
-            <button class="zen-exit zen-menu-action" id="zenListen" data-label="Listen" type="button" aria-controls="voiceBar" aria-expanded="false" aria-label="Listen: read this paper aloud" title="Read aloud"><span aria-hidden="true">♪</span></button>
             <button class="zen-exit zen-menu-action phone-only" id="zenPhoneGuide" data-label="Reading guide" type="button" aria-controls="zenGuideMenu" aria-label="Reading guide"><span aria-hidden="true">▰</span></button>
             <button class="zen-exit zen-menu-action phone-only" id="zenPhoneLayout" data-label="Page layout" type="button" aria-controls="zenLayoutMenu" aria-label="Page layout"><span aria-hidden="true">▤</span></button>
             <button class="zen-exit zen-menu-action phone-only" id="zenPhoneWorkspace" data-label="Workspace" type="button" aria-controls="workspacePanel" aria-label="Open the Workspace"><span aria-hidden="true">▦</span></button>
@@ -783,7 +783,7 @@
           <button class="voice-button voice-play" id="voicePlay" type="button" aria-label="Play" title="Play or pause"><svg class="voice-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><svg class="voice-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
           <button class="voice-button" id="voiceNext" type="button" aria-label="Next sentence" title="Next sentence"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6h2v12h-2zM4 6v12l9-6z"/></svg></button>
           <select class="voice-section" id="voiceSection" aria-label="Read from section"></select>
-          <button class="voice-rate" id="voiceRate" type="button" aria-label="Speaking speed 1×">1×</button>
+          <label class="voice-speed" title="Speaking speed"><span aria-hidden="true">Speed</span><input id="voiceRate" type="range" min="0.6" max="2" step="0.05" value="1" aria-label="Speaking speed" aria-valuetext="1×"><output id="voiceRateValue" for="voiceRate">1×</output></label>
           <select class="voice-select" id="voiceVoice" aria-label="Voice"></select>
           <button class="voice-button" id="voiceClose" type="button" aria-label="Stop reading aloud" title="Stop">✕</button>
         </div>
@@ -1127,23 +1127,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=224',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=225',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=224" defer></script>
-<script src="/reading-stickies.js?v=224" defer></script>
-<script src="/reading-keeps.js?v=224" defer></script>
-<script src="/reading-excerpts.js?v=224" defer></script>
-<script src="/reading-excerpts-view.js?v=224" defer></script>
-<script src="/reading-lists.js?v=224" defer></script>
-<script src="/reading-lists-view.js?v=224" defer></script>
-<script src="/reading-voice.js?v=224" defer></script>
-<script src="/reading-workspace.js?v=224" defer></script>
-<script src="/reading-workspace-viewport.js?v=224" defer></script>
-<script src="/reading-workspace-view.js?v=224" defer></script>
-<script src="/reading-folds.js?v=224" defer></script>
-<script src="/reading-pdf-projection.js?v=224" defer></script>
-<script src="/reading-fold-view.js?v=224" defer></script>
-<script src="/reading.js?v=224" defer></script>
+<script src="/reading-ink.js?v=225" defer></script>
+<script src="/reading-stickies.js?v=225" defer></script>
+<script src="/reading-keeps.js?v=225" defer></script>
+<script src="/reading-excerpts.js?v=225" defer></script>
+<script src="/reading-excerpts-view.js?v=225" defer></script>
+<script src="/reading-lists.js?v=225" defer></script>
+<script src="/reading-lists-view.js?v=225" defer></script>
+<script src="/reading-voice.js?v=225" defer></script>
+<script src="/reading-workspace.js?v=225" defer></script>
+<script src="/reading-workspace-viewport.js?v=225" defer></script>
+<script src="/reading-workspace-view.js?v=225" defer></script>
+<script src="/reading-folds.js?v=225" defer></script>
+<script src="/reading-pdf-projection.js?v=225" defer></script>
+<script src="/reading-fold-view.js?v=225" defer></script>
+<script src="/reading.js?v=225" defer></script>
 </body>
 </html>

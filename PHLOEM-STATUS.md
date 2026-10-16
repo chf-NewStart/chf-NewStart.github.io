@@ -4,8 +4,28 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-10-14)
+## Now (2026-10-15)
 
+- **Listen, v225 (Houfu, on the iPad: the voice menu "can't be clicked"; "the web ver only have those even after i
+  downloaded voice, and app ver only have a greyed out system voice dropdown"; "the passage being read should be
+  automatically focused"; "listen should be one of the button"; "the speed change can be made into a slide bar").**
+  Cause: WebKit's Web Speech only offers the voices that ship with iPadOS (Samantha, Daniel…), never a Premium/Enhanced
+  voice downloaded in Settings ([Apple forum](https://developer.apple.com/forums/thread/723503),
+  [WebKit 250665](https://bugs.webkit.org/show_bug.cgi?id=250665)); in the app's WKWebView it lists none, so the menu
+  was disabled. Fixes: (1) **iPad app:** new native `PhloemSpeech` plugin (`apps/ipad/ios/App/App/PhloemSpeechPlugin.swift`,
+  AVSpeechSynthesizer, on-device, `.playback`/`.spokenAudio` session) lists every installed voice with "(Premium)" /
+  "(Enhanced)" in the name and speaks with WebKit's rate mapping; `PhloemVoice.nativeEngine` gives it speechSynthesis's
+  shape so the same player drives it. **Needs the next app build (1.2.3)**. (2) **Web:** the menu is never greyed out
+  (empty list = "System voice", asked again for ~5 s); Safari on iPad says "Safari offers only the basic voices. How to
+  use Jamie →" and the guide points to the app; the Mac guide notes Safari may not list downloaded voices. (3) **Focus:**
+  Reader view marks the spoken sentence (CSS Custom Highlight `voice-sentence`, located in the page text with its
+  citations by `PhloemVoice.locate`), dims the other paragraphs (`body.voice-focus`) and scrolls so the sentence sits a
+  third of the way down; PDF view puts a highlighter on the sentence's text-layer spans (`.voice-span`) and follows
+  pages. Scrolling by hand (wheel, finger, keys) pauses the following for 6 s. **With the reading guide on**, the guide
+  band follows the voice instead of the pointer while Listen plays (no dimming); paused, the pointer has it again.
+  (4) **Listen is a dock button** (headphones, captioned, lit while the bar is open); phones keep their bar's Listen.
+  (5) **Speed is a slider**, 0.6–2×, applied when the thumb rests. Test: `tests/reading-voice-focus-browser.test.js`
+  (Chromium and WebKit), `reading-voice` 13/13.
 - **Phone layout (v224, Houfu: "prioritize the listening and define search, it will be hard to take notes on
   phone"; "tidy and non-burdensome"):** `body.phone-ui` = a window ≤600px wide, or a short (≤500px) touch window ≤1000px
   wide (a phone on its side), and **never an iPad** (`isIpad()`), so the iPad web reader and the iPad app keep the side
@@ -189,6 +209,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-15 v225:** Listen: native voices in the iPad app (PhloemSpeech, needs build 1.2.3), never-greyed voice menu,
+  Safari's voice limit explained, spoken sentence focused and followed (reader + PDF), guide follows the voice, Listen
+  on the dock, speed slider (see Now). Simulator build of `apps/ipad` compiles with the plugin; not yet run on a device.
 
 - **2026-10-14 v224:** phone layout (see Now). iPad bundle tests 19/19; the submitted iPad build 42 bundles v223 and
   is untouched.

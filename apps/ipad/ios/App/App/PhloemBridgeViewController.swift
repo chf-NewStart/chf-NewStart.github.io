@@ -7,5 +7,6 @@ final class PhloemBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(PhloemAIPlugin())
         bridge?.registerPluginInstance(PhloemCloudPlugin())
         bridge?.registerPluginInstance(PhloemGooglePlugin())
+        bridge?.registerPluginInstance(PhloemSpeechPlugin())
     }
 }

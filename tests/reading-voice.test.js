@@ -161,3 +161,44 @@ test('the voice guide gives steps for the device, ending back in Phloem', () => 
   assert.match(V.voiceHelp('ios').steps.at(-1), /Come back to Phloem/);
   assert.match(V.voiceHelp('mac').steps.join(' '), /Manage Voices/);
 });
+
+test('a spoken sentence is found on the page with its citations, in reading order', () => {
+  const page = 'Sucrose loading [12, 14–16] is regulated (Chiou and Bush, 1998), as Smith et al. (2020) showed (Fig. 3B). It works. It works.';
+  const said = V.prepare([{ text: page, kind: '', para: 0 }]).chunks.map(chunk => chunk.text);
+  let from = 0;
+  const found = said.map(sentence => { const at = V.locate(page, sentence, from); from = at.end; return page.slice(at.start, at.end); });
+  assert.deepEqual(plain(found), ['Sucrose loading [12, 14–16] is regulated (Chiou and Bush, 1998), as Smith et al. (2020) showed (Fig. 3B).', 'It works.', 'It works.']);
+  const first = V.locate(page, 'It works.', 0);
+  assert.ok(V.locate(page, 'It works.', first.end).start > first.start, 'the second copy is found after the first');
+  assert.equal(V.locate(page, 'Nothing like this is here.', 0), null);
+});
+
+test('the iPad app voices drive the player like speechSynthesis', async () => {
+  const calls = [], answers = [];
+  const plugin = {
+    voices: async () => ({ voices: [{ voiceURI: 'jamie', name: 'Jamie (Premium)', lang: 'en-GB', quality: 3 }] }),
+    speak: options => { calls.push(options); return new Promise(resolve => answers.push(resolve)); },
+    cancel: async () => { answers.splice(0).forEach(resolve => resolve({ finished: false })); }
+  };
+  const engine = V.nativeEngine(plugin);
+  let changed = 0; engine.synth.addEventListener('voiceschanged', () => changed++);
+  await engine.synth.refresh();
+  assert.equal(changed, 1); assert.equal(engine.synth.getVoices()[0].name, 'Jamie (Premium)');
+  const states = [];
+  const player = V.createPlayer({ synth: engine.synth, Utterance: engine.Utterance, onState: state => states.push(state), setTimeout: fn => { fn(); return 0; }, clearTimeout() {} });
+  player.load([{ text: 'One.' }, { text: 'Two.' }]); player.setVoice(engine.synth.getVoices()[0]); player.setRate(1.3); player.play();
+  assert.deepEqual(plain(calls[0]), { text: 'One.', voiceURI: 'jamie', rate: 1.3 });
+  answers.shift()({ finished: true }); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls[1].text, 'Two.', 'a finished sentence moves on');
+  player.pause(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(player.index(), 1, 'a cancelled sentence does not advance');
+  answers.splice(0).forEach(resolve => resolve({ finished: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls.length, 2);
+});
+
+test('Safari on iPad explains that it only offers the system voices, and points to the app', () => {
+  const help = V.voiceHelp('ios', 'safari');
+  assert.match(help.steps[0], /Safari only lets websites use the voices that come with the system/);
+  assert.match(help.steps.join(' '), /Phloem iPad app.*Read & Speak.*Jamie \(Premium\)/);
+});

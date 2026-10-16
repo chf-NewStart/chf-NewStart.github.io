@@ -2720,7 +2720,7 @@ html.rl-dragging, html.rl-dragging * { cursor: grabbing !important; user-select:
   .rl-manage-menu { left: 0; right: auto; }
 }
 /* Listen: a quiet player at the foot of the paper, showing the sentence being read. */
-.voice-bar { position: fixed; z-index: 41; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(640px, calc(100vw - 32px)); padding: 10px 12px 10px 16px; transform: translateX(-50%); border: 1px solid var(--line); border-radius: 18px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 40px rgba(20, 24, 22, .18); backdrop-filter: blur(14px); }
+.voice-bar { position: fixed; z-index: 41; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(720px, calc(100vw - 32px)); padding: 10px 12px 10px 16px; transform: translateX(-50%); border: 1px solid var(--line); border-radius: 18px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 40px rgba(20, 24, 22, .18); backdrop-filter: blur(14px); }
 .voice-line { display: -webkit-box; margin: 0 0 8px; overflow: hidden; color: var(--ink); font: .92rem/1.45 var(--serif); -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .voice-controls { display: flex; align-items: center; gap: 6px; }
 .voice-button { display: grid; flex: 0 0 auto; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink); font-size: .9rem; }
@@ -2730,11 +2730,27 @@ html.rl-dragging, html.rl-dragging * { cursor: grabbing !important; user-select:
 .voice-play:hover, .voice-play:focus-visible { background: var(--accent-dark); }
 .voice-play .voice-icon-pause, .voice-bar.playing .voice-play .voice-icon-play { display: none; }
 .voice-bar.playing .voice-play .voice-icon-pause { display: block; }
-.voice-rate { flex: 0 0 auto; min-width: 48px; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink); font: 700 .74rem/1 var(--sans); font-variant-numeric: tabular-nums; }
+.voice-speed { flex: 0 1 172px; min-width: 116px; height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 9px 0 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font: 700 .64rem/1 var(--sans); }
+.voice-speed input { flex: 1 1 auto; min-width: 44px; height: 28px; margin: 0; accent-color: var(--accent); touch-action: none; }
+.voice-speed output { flex: 0 0 32px; color: var(--ink); font: 700 .72rem/1 var(--sans); font-variant-numeric: tabular-nums; text-align: right; }
 .voice-select { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); font: 600 .74rem/1 var(--sans); }
 #voiceClose { margin-left: auto; color: var(--muted); }
 body.voice-on .reader-toast { bottom: calc(132px + env(safe-area-inset-bottom)); }
 #textDocument .para.voice-reading { border-radius: 10px; background: color-mix(in srgb, var(--yellow) 22%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--yellow) 22%, transparent); transition: background .25s; }
+/* Listen keeps the sentence being read in focus: the rest of the paper dims and the sentence
+   keeps full ink with a soft highlighter. With the reading guide on, the guide frames it instead. */
+body.voice-focus #textDocument .para { transition: opacity .35s ease; }
+body.voice-focus #textDocument .para:not(.voice-reading) { opacity: .4; }
+body.voice-sentence-on #textDocument .para.voice-reading { background: transparent; box-shadow: none; }
+body.voice-focus.voice-sentence-on #textDocument .para.voice-reading .original { color: color-mix(in srgb, var(--ink) 50%, transparent); }
+::highlight(voice-sentence) { color: var(--ink); background-color: color-mix(in srgb, var(--yellow) 36%, transparent); }
+.text-layer span.voice-span { background: color-mix(in srgb, var(--yellow) 42%, transparent); border-radius: 3px; }
+/* Listen on the side rail, captioned like Workspace and lit while its bar is open. */
+.zen-listen { flex-direction: column; gap: 1px; border-radius: 13px; }
+.zen-listen svg { width: 19px; height: 19px; }
+.zen-listen-caption { font: 700 8px/1 var(--sans); letter-spacing: -.02em; }
+.zen-listen[aria-expanded="true"] { opacity: .9; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+body.zen.zen-idle .zen-listen[aria-expanded="true"] { opacity: .46; }
 @media (max-width: 720px) {
   .voice-bar { width: calc(100vw - 20px); bottom: calc(10px + env(safe-area-inset-bottom)); padding: 8px 8px 8px 12px; }
   .voice-line { font-size: .84rem; }
@@ -2757,6 +2773,7 @@ body.voice-on .reader-toast { bottom: calc(132px + env(safe-area-inset-bottom));
   .voice-controls { flex-wrap: wrap; }
   .voice-bar .voice-section { order: 10; flex: 1 1 45%; }
   .voice-bar .voice-select { order: 11; flex: 1 1 45%; max-width: none; }
+  .voice-bar .voice-speed { flex: 1 1 auto; }
 }
 .voice-help { display: block; width: 100%; margin: -2px 0 8px; padding: 0; border: 0; background: none; color: var(--blue); font: 650 .74rem/1.4 var(--sans); text-align: left; }
 .voice-help:hover, .voice-help:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
@@ -2795,7 +2812,7 @@ body.phone-ui.zen :is(#zenPhoneLookup[aria-expanded="true"], #zenPhoneFind.activ
 /* Menus open as sheets above the bar, in two columns. */
 body.phone-ui.zen .zen-dock .zen-popout { position: fixed; top: auto !important; left: 10px; right: 10px !important; bottom: calc(var(--phone-bar) + env(safe-area-inset-bottom) + 8px); width: auto; max-width: none !important; max-height: min(62dvh, 460px) !important; transform: none !important; }
 body.phone-ui.zen #zenMoreMenu:not(.hidden) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; }
-body.phone-ui.zen #zenMoreMenu :is(#zenFind, #zenListen) { display: none; }
+body.phone-ui.zen #zenMoreMenu #zenFind, body.phone-ui.zen .zen-dock > #zenListen { display: none; }
 body.phone-ui.zen #zenMoreMenu .phone-only { display: flex; }
 #zenLayoutTool.hidden ~ #zenMoreTool #zenPhoneLayout { display: none !important; }
 body.phone-ui.zen .find-bar:not(.hidden) { top: calc(10px + env(safe-area-inset-top)); left: 10px; right: 10px; width: auto; }

@@ -66,7 +66,7 @@ async function select(page, text) {
     await page.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && document.querySelectorAll('#textDocument .para').length === 8);
 
     // Listen reads the paper's own words, skipping the caption and the reference list.
-    await page.locator('#zenMore').click(); await page.locator('#zenListen').click();
+    await page.locator('#zenListen').click();
     await page.waitForFunction(() => window.__said.length === 1);
     let said = await page.evaluate(() => window.__said.map(s => s.text));
     assert.deepEqual(said, ['INTRODUCTION']);
@@ -82,7 +82,8 @@ async function select(page, text) {
     console.log('PASS  Listen reads the text, skips the caption and references, and marks the paragraph (' + name + ')');
 
     // Speed and voice choices are remembered; play restarts after the end.
-    await page.locator('#voiceRate').click();
+    await page.locator('#voiceRate').fill('1.15');
+    await page.waitForTimeout(450);
     await page.locator('#voiceVoice').selectOption('samantha');
     const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.voice.v1')));
     assert.deepEqual(prefs, { voice: 'samantha', rate: 1.15 });
@@ -104,7 +105,7 @@ async function select(page, text) {
     assert.equal(await page.locator('#voiceBar').isHidden(), true);
     // Starting with a sentence selected reads from that sentence.
     await select(page, 'Second paragraph here');
-    await page.locator('#zenMore').click(); await page.locator('#zenListen').click();
+    await page.locator('#zenListen').click();
     await page.waitForFunction(() => window.__said[window.__said.length - 1].text === 'Second paragraph here.');
     assert.equal(await lastSaid(), 'Second paragraph here.');
     await page.locator('#voiceClose').click();
@@ -141,7 +142,7 @@ async function select(page, text) {
 
     // Leaving the paper stops reading aloud.
     await page.locator('#lookupClose').click();
-    await page.locator('#zenMore').click(); await page.locator('#zenListen').click();
+    await page.locator('#zenListen').click();
     await page.waitForFunction(() => !document.getElementById('voiceBar').classList.contains('hidden'));
     await page.locator('#zenExit').click();
     assert.equal(await page.locator('#voiceBar').isHidden(), true);

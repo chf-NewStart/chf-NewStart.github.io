@@ -81,6 +81,30 @@ function setup() {
     assert.match(await android.locator('#voiceHelpTitle').textContent(), /Android/);
     assert.match(await android.locator('#voiceHelpSteps').textContent(), /Samsung Galaxy.*General management.*Install voice data/);
     console.log('PASS  Android: the guide is always one tap away, with the Samsung path');
+
+    // Edge on Windows: the Online (Natural) cloud voices send the text away, so Listen leaves
+    // them out (no network, no AI) and points to the voices Windows installs on the PC.
+    const edge = await browser.newPage({ viewport: { width: 1280, height: 900 },
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0' });
+    await edge.addInitScript(setup);
+    await edge.addInitScript(() => {
+      const voice = (name, local, isDefault) => ({ name: `Microsoft ${name} - English (United States)`, lang: 'en-US', voiceURI: `Microsoft ${name} - English (United States)`, localService: local, default: !!isDefault });
+      window.__voices = [voice('David', true, true), voice('Zira', true), voice('Aria Online (Natural)', false), voice('Jenny Online (Natural)', false),
+        { name: 'Google US English', lang: 'en-US', voiceURI: 'Google US English', localService: false, default: false }];
+      // A voice chosen before v226 that is now hidden.
+      localStorage.setItem('readingRoom.voice.v1', JSON.stringify({ voice: 'Microsoft Aria Online (Natural) - English (United States)', rate: 1 }));
+    });
+    await edge.goto(`http://127.0.0.1:${server.address().port}/reading.html`);
+    await edge.waitForFunction(() => !document.getElementById('readerPage').classList.contains('hidden') && document.querySelectorAll('#textDocument .para').length === 3);
+    await edge.locator('#zenListen').click();
+    await edge.waitForFunction(() => window.__said.length === 1);
+    assert.deepEqual(await edge.locator('#voiceVoice option').allTextContents(), ['Microsoft David - English (United States)', 'Microsoft Zira - English (United States)']);
+    assert.equal(await edge.evaluate(() => window.__said[0].voice), 'Microsoft David - English (United States)', 'a saved Online voice falls back to one on the PC');
+    assert.equal(await edge.locator('#voiceHelpBtn').isVisible(), true, 'only basic voices left: the guide is offered');
+    await edge.locator('#voiceHelpBtn').click();
+    assert.match(await edge.locator('#voiceHelpSteps').textContent(), /Time & language, then Speech.*Manage voices/);
+    assert.doesNotMatch(await edge.locator('#voiceHelpSteps').textContent(), /\bEdge\b|Online/);
+    console.log('PASS  Edge: Online (Natural) and Google voices are left out; the guide points to voices on the PC');
   } finally {
     await browser.close();
     server.close();

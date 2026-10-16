@@ -172,8 +172,16 @@
     return NOVELTY.test(name) || ELOQUENCE.test(name) || /com\.apple\.eloquence\./i.test(uri);
   }
   function person(voice) { return String(voice.name || '').replace(/\s*\(.*\)\s*$/, '').trim().toLowerCase() + '|' + String(voice.lang || '').toLowerCase(); }
-  /* English voices to offer, best first: Jamie, then Premium and Enhanced voices, then the
-     rest; each person once, in the best quality the device has. */
+  /* Listen's promise is no network and no AI: Houfu's supervisor forbids AI for the proposal
+     and manuscript, and Listen is how papers get heard. A voice the browser marks as not
+     local (localService false) sends the text away: Chrome's "Google US English" and
+     "Google UK English Female/Male" go to Google, Edge's "Microsoft … Online (Natural)" are
+     cloud AI voices. Those are never offered, not even when nothing else speaks English.
+     The flag decides, never the name: Android's Google engine voices live on the phone and
+     stay, as do the iPad app's own voices. */
+  function onDevice(voice) { return !!voice && voice.localService !== false; }
+  /* English voices on this device to offer, best first: Jamie, then Premium and Enhanced
+     voices, then the rest; each person once, in the best quality the device has. */
   function rankVoices(voices) {
     function score(voice) {
       var name = String(voice.name || '') + ' ' + String(voice.voiceURI || '');
@@ -181,7 +189,7 @@
         (voice.localService ? 4 : 0) + (voice.default ? 3 : 0) + (/^en[-_]GB/i.test(voice.lang) ? 2 : 0) + (/^en[-_]US/i.test(voice.lang) ? 1 : 0) -
         (/compact/i.test(name) ? 5 : 0);
     }
-    var english = (voices || []).filter(function (voice) { return /^en(?:[-_]|$)/i.test(voice.lang || ''); });
+    var english = (voices || []).filter(function (voice) { return onDevice(voice) && /^en(?:[-_]|$)/i.test(voice.lang || ''); });
     var usable = english.filter(function (voice) { return !oddVoice(voice); });
     if (!usable.length) usable = english;
     var seen = {};
@@ -191,12 +199,15 @@
       .map(function (entry) { return entry.voice; });
   }
 
-  /* Whether a voice sounds natural: Apple's Premium and Enhanced voices, Microsoft's
-     Natural/Online voices, Google's voices. Apple's compact voices (Samantha, Daniel…) and
-     the old Windows ones are what a device has before anything is downloaded. */
+  /* Whether a voice sounds natural: Apple's Premium and Enhanced voices, and neural or
+     "Natural" voices installed on the device. Being Google's or "Online" does not count:
+     those are network voices, which Listen never uses (see onDevice). Apple's compact voices
+     (Samantha, Daniel…) and the old Windows ones are what a device has before anything is
+     downloaded. */
   function naturalVoice(voice) {
-    var name = String(voice && voice.name || '') + ' ' + String(voice && voice.voiceURI || '');
-    return /premium|enhanced|neural|natural|online|google/i.test(name);
+    if (!onDevice(voice)) return false;
+    var name = String(voice.name || '') + ' ' + String(voice.voiceURI || '');
+    return /premium|enhanced|neural|natural/i.test(name);
   }
   /* Where to get a natural voice on this device: steps for the Settings app, since no app can
      download system voices itself. Safari on iPad and iPhone (Web Speech in WebKit) only
@@ -219,10 +230,13 @@
       'Set the preferred engine to Speech Services by Google (Samsung\'s own engine also works).',
       'Tap the gear next to the engine, then Install voice data, then English (United States or United Kingdom).',
       'Pick a voice, download it, and try it with Play. Then come back to Phloem.'] };
-    if (platform === 'windows') return { title: 'Get a natural voice on Windows', steps: [
-      'Open Phloem in Microsoft Edge: its natural voices appear in Listen\'s voice menu.',
-      'Or, in Windows 11, go to Settings, then Accessibility, then Narrator, then Add natural voices.'] };
-    return { title: 'Get a natural voice', steps: ['Install a higher-quality English text-to-speech voice in your device\'s settings, then come back to Phloem.'] };
+    // Only voices Windows installs on the PC: Edge's online voices are never in Listen.
+    if (platform === 'windows') return { title: 'Get a better voice on Windows', steps: [
+      'Open Settings, then Time & language, then Speech.',
+      'Under Manage voices, choose Add voices and install an English voice, such as English (United Kingdom). Windows keeps it on this PC.',
+      'In Windows 11 you can also add Narrator\'s natural voices: Settings, then Accessibility, then Narrator, then Add natural voices. They are downloaded to this PC too.',
+      'Close and reopen your browser, then come back to Phloem. Listen offers every voice installed on this PC that the browser can use, and nothing else, so the text never leaves the PC.'] };
+    return { title: 'Get a natural voice', steps: ['Install a higher-quality English text-to-speech voice in your device\'s settings, one that is stored on the device and works offline, then come back to Phloem.'] };
   }
 
   /* Plays chunks one utterance at a time. Pausing cancels and resumes from the start of

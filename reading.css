@@ -1068,8 +1068,11 @@
     .zen-tool { position: relative; display: flex; justify-content: flex-end; }
     .zen-exit { position: relative; z-index: 2; width: 44px; height: 44px; padding: 0; display: flex; flex: 0 0 44px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: blur(10px); color: var(--muted); font-size: .9rem; opacity: .4; transition: opacity .25s ease, color .2s ease, background .2s ease; }
     .zen-popout { position: absolute; z-index: 1; top: 50%; right: calc(100% + 9px); min-height: 50px; transform: translateY(-50%); border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
-    .zen-layout { width: 86px; flex-basis: 86px; gap: 5px; padding: 0 10px; border-radius: 14px; color: var(--ink); font: 650 .75rem/1 var(--sans); }
-    .zen-layout-chevron { width: 14px; height: 14px; flex: none; }
+    /* Page layout is a round dock button like Listen and Workspace: the current layout's icon
+       with its name as a caption (Houfu: the wide "Scroll" pill was the only text button). */
+    .zen-layout { flex-direction: column; gap: 1px; border-radius: 13px; color: var(--ink); }
+    #zenLayoutLabel { font: 700 8px/1 var(--sans); letter-spacing: -.02em; }
+    .zen-layout-chevron { display: none; }
     .zen-layout-menu { width: 142px; display: flex; flex-direction: column; gap: 3px; padding: 5px; }
     .zen-layout-menu .zen-popout-option { width: 100%; justify-content: flex-start; gap: 10px; font-size: .75rem; }
     .zen-layout-menu svg { width: 20px; height: 20px; flex: none; }
@@ -2730,8 +2733,11 @@ html.rl-dragging, html.rl-dragging * { cursor: grabbing !important; user-select:
 .voice-play:hover, .voice-play:focus-visible { background: var(--accent-dark); }
 .voice-play .voice-icon-pause, .voice-bar.playing .voice-play .voice-icon-play { display: none; }
 .voice-bar.playing .voice-play .voice-icon-pause { display: block; }
-.voice-speed { flex: 0 1 172px; min-width: 116px; height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 9px 0 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font: 700 .64rem/1 var(--sans); }
+.voice-speed { flex: 1 1 210px; min-width: 150px; height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 9px 0 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font: 700 .64rem/1 var(--sans); }
+.voice-rate-track { position: relative; display: flex; flex: 1 1 auto; min-width: 44px; }
 .voice-speed input { flex: 1 1 auto; min-width: 44px; height: 28px; margin: 0; accent-color: var(--accent); touch-action: none; }
+/* A small notch marks 1× in the middle of the track. */
+.voice-rate-track::after { content: ""; position: absolute; left: 50%; top: 50%; width: 2px; height: 12px; margin: -6px 0 0 -1px; border-radius: 1px; background: currentColor; opacity: .45; pointer-events: none; }
 .voice-speed output { flex: 0 0 32px; color: var(--ink); font: 700 .72rem/1 var(--sans); font-variant-numeric: tabular-nums; text-align: right; }
 .voice-select { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); font: 600 .74rem/1 var(--sans); }
 #voiceClose { margin-left: auto; color: var(--muted); }
@@ -2767,13 +2773,30 @@ body.zen.zen-idle .zen-listen[aria-expanded="true"] { opacity: .46; }
 .install-ipad-link a { color: var(--blue); font-weight: 650; }
 .install-version { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: .76rem; }
 .install-version .text-button { font-size: .76rem; }
-.voice-section { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); font: 600 .74rem/1 var(--sans); }
+/* Read from: a play pin dragged out of the bar onto the line to start at; a tap lists sections. */
+.voice-from .pin-head, .voice-drop .pin-head { fill: var(--accent); }
+.voice-from .pin-play, .voice-drop .pin-play { fill: var(--on-accent); }
+.voice-from { cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.voice-from svg { width: 26px; height: 26px; }
+.voice-from[aria-expanded="true"] { background: var(--surface-2); }
+body.voice-dragging, body.voice-dragging * { cursor: grabbing !important; -webkit-user-select: none !important; user-select: none !important; }
+.voice-from-menu { position: absolute; bottom: calc(100% + 8px); left: 132px; display: grid; gap: 2px; width: min(340px, calc(100% - 144px)); max-height: min(50vh, 360px); overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 14px 40px rgba(20, 24, 22, .18); }
+.voice-from-hint { margin: 2px 6px 6px; color: var(--muted); font: 600 .72rem/1.4 var(--sans); }
+.voice-from-menu button { padding: 9px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); font: 600 .8rem/1.3 var(--sans); text-align: left; }
+.voice-from-menu button:hover, .voice-from-menu button:focus-visible { background: var(--surface-2); outline: none; }
+/* On the paper the pin's point sits at the start of its line; a hairline runs along the line. */
+.voice-drop { position: fixed; z-index: 60; top: 0; left: 0; display: flex; align-items: flex-end; height: 32px; color: var(--accent); pointer-events: none; }
+.voice-drop svg { flex: 0 0 32px; width: 32px; height: 32px; filter: drop-shadow(0 2px 3px rgba(20, 24, 22, .28)); }
+.voice-drop span { flex: 1 1 auto; height: 2px; margin: 0 0 2px -10px; border-radius: 2px; background: currentColor; opacity: .5; }
+#textDocument .para.voice-drop-target { border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 12%, transparent); }
+body.voice-focus #textDocument .para.voice-drop-target { opacity: 1; }
+.text-layer span.voice-drop-target { border-radius: 3px; background: color-mix(in srgb, var(--accent) 28%, transparent); }
 .voice-bar .voice-select { flex: 0 1 150px; }
 @media (max-width: 720px) {
   .voice-controls { flex-wrap: wrap; }
-  .voice-bar .voice-section { order: 10; flex: 1 1 45%; }
-  .voice-bar .voice-select { order: 11; flex: 1 1 45%; max-width: none; }
-  .voice-bar .voice-speed { flex: 1 1 auto; }
+  .voice-bar .voice-speed { order: 10; flex: 1 1 55%; }
+  .voice-bar .voice-select { order: 11; flex: 1 1 35%; max-width: none; }
+  .voice-from-menu { left: 8px; width: calc(100% - 16px); }
 }
 .voice-help { display: block; width: 100%; margin: -2px 0 8px; padding: 0; border: 0; background: none; color: var(--blue); font: 650 .74rem/1.4 var(--sans); text-align: left; }
 .voice-help:hover, .voice-help:focus-visible { text-decoration: underline; text-underline-offset: 3px; }

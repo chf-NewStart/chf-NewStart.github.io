@@ -82,7 +82,13 @@ async function select(page, text) {
     console.log('PASS  Listen reads the text, skips the caption and references, and marks the paragraph (' + name + ')');
 
     // Speed and voice choices are remembered; play restarts after the end.
-    await page.locator('#voiceRate').fill('1.15');
+    // 1× sits in the middle of the slider (log scale, 0.5× to 2×), and the ends are 0.5× and 2×.
+    assert.equal(await page.locator('#voiceRate').inputValue(), '0');
+    await page.locator('#voiceRate').fill('-1');
+    assert.equal(await page.locator('#voiceRateValue').textContent(), '0.5×');
+    await page.locator('#voiceRate').fill('0.03');
+    assert.equal(await page.locator('#voiceRateValue').textContent(), '1×', 'settles on 1× near the middle');
+    await page.locator('#voiceRate').fill('0.2');
     await page.waitForTimeout(450);
     await page.locator('#voiceVoice').selectOption('samantha');
     const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.voice.v1')));
@@ -94,10 +100,50 @@ async function select(page, text) {
 
     // Read from a section, or from any paragraph tapped while listening.
     const lastSaid = () => page.evaluate(() => window.__said[window.__said.length - 1].text);
-    const sections = await page.locator('#voiceSection option').allTextContents();
-    assert.deepEqual(sections, ['Read from…', 'INTRODUCTION', 'RESULTS']);
-    await page.locator('#voiceSection').selectOption({ label: 'RESULTS' });
+    // The speed slider has room to be dragged (Houfu: "the speed slide bar is so short").
+    assert.ok((await page.locator('#voiceRate').boundingBox()).width >= 150, 'speed slider is wide enough');
+    // A tap on the read-from pin lists the sections.
+    await page.locator('#voiceFrom').click();
+    assert.equal(await page.locator('#voiceFrom').getAttribute('aria-expanded'), 'true');
+    const sections = await page.locator('#voiceFromMenu [role=menuitem]').allTextContents();
+    assert.deepEqual(sections, ['INTRODUCTION', 'RESULTS']);
+    await page.locator('#voiceFromMenu [role=menuitem]', { hasText: 'RESULTS' }).click();
     await page.waitForFunction(() => window.__said[window.__said.length - 1].text === 'RESULTS');
+    assert.equal(await page.locator('#voiceFromMenu').isHidden(), true);
+    // Dragging the pin onto a line marks it on the way and reads from it on release.
+    const arrow = await page.locator('#voiceFrom').boundingBox();
+    const target = await page.locator('#textDocument .para', { hasText: 'Second paragraph here' }).boundingBox();
+    await page.mouse.move(arrow.x + arrow.width / 2, arrow.y + arrow.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(target.x - 12, target.y + target.height / 2, { steps: 12 });
+    await page.waitForFunction(() => /Second paragraph here/.test((document.querySelector('#textDocument .para.voice-drop-target') || {}).textContent || ''));
+    assert.equal(await page.locator('.voice-drop-target').count(), 1);
+    assert.equal(await page.locator('#voiceDrop').isVisible(), true);
+    await page.mouse.up();
+    await page.waitForFunction(() => window.__said[window.__said.length - 1].text === 'Second paragraph here.');
+    assert.equal(await page.locator('#voiceDrop').isHidden(), true);
+    assert.equal(await page.locator('.voice-drop-target').count(), 0);
+    assert.equal(await page.locator('#voiceFromMenu').isHidden(), true, 'a drag does not open the section list');
+    // Let go back over the bar: nothing changes.
+    const before = await page.evaluate(() => window.__said.length);
+    await page.mouse.move(arrow.x + arrow.width / 2, arrow.y + arrow.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(arrow.x + 60, arrow.y + arrow.height / 2, { steps: 4 });
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+    assert.equal(await page.evaluate(() => window.__said.length), before);
+    if (name === 'chromium') {
+      // A finger, as on Android Chrome: touch input, with the pin riding 44px above the finger.
+      const cdp = await context.newCDPSession(page);
+      const line = await page.locator('#textDocument .para', { hasText: 'Sinks pull sugar' }).boundingBox();
+      const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+      const from = [arrow.x + arrow.width / 2, arrow.y + arrow.height / 2], to = [line.x + 30, line.y + line.height / 2 + 44];
+      await touch('touchStart', ...from);
+      for (let i = 1; i <= 12; i++) { await touch('touchMove', from[0] + (to[0] - from[0]) * i / 12, from[1] + (to[1] - from[1]) * i / 12); await page.waitForTimeout(16); }
+      await page.waitForFunction(() => /Sinks pull sugar/.test((document.querySelector('#textDocument .para.voice-drop-target') || {}).textContent || ''));
+      await touch('touchEnd');
+      await page.waitForFunction(() => window.__said[window.__said.length - 1].text === 'Sinks pull sugar from leaves.');
+    }
     await page.locator('#textDocument .para', { hasText: 'Sinks pull sugar' }).locator('.original').click();
     await page.waitForFunction(() => window.__said[window.__said.length - 1].text === 'Sinks pull sugar from leaves.');
     assert.match(await page.locator('#readerToast').textContent(), /Reading from here/);
@@ -110,7 +156,7 @@ async function select(page, text) {
     assert.equal(await lastSaid(), 'Second paragraph here.');
     await page.locator('#voiceClose').click();
     await page.evaluate(() => { getSelection().removeAllRanges(); document.getElementById('selectionClose').click(); });
-    console.log('PASS  read from a section, a tapped paragraph, or a selection; ✕ stops');
+    console.log('PASS  read from a section, the dragged pin (mouse and finger), a tapped paragraph, or a selection; ✕ stops');
 
     // Copy puts the selected words on the clipboard.
     await select(page, 'Sinks pull sugar');

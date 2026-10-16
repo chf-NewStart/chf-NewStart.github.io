@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "PHYSICS",
+            title: "Hot water can freeze faster than cold",
+            fact: "Under the right conditions — open containers, evaporation, dissolved gases — warm water can beat cold water to ice. The Mpemba effect, noticed by a Tanzanian student in 1963, still has no single settled explanation.",
+            detail: "Erasto Mpemba pushed the observation past embarrassed teachers until physicists tested it. The lesson survived: an inconvenient observation is data, not noise."
+        },
+        {
             tag: "PLANTS",
             title: "Sunflowers secretly do math",
             fact: "A sunflower's florets spiral in Fibonacci counts because each new primordium grows at the golden angle (~137.5°) from the last. That packing rule fills the head with near-equal, non-overlapping slots — nature's best answer to a geometry problem.",

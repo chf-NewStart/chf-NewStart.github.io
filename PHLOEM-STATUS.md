@@ -6,6 +6,29 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-15)
 
+- **iPad 1.2.3 (44) in App Review, reader v227 (2026-10-15 night; Houfu, before going to sleep: "you can ship it
+  once everything works ok? and put into app store as well").** 1.2.3 is the build that lets Listen use voices
+  downloaded in Settings: the `PhloemSpeech` plugin (v225) plus a fix so names are not doubled ("Jamie (Premium)
+  (Premium)": Apple's names already carry the quality). **Submitted 22:45 EDT, Waiting for Review, manual release:
+  press Release after approval, then merge PR #78** (branch `ipad-release-1.2.3-44`, built on the merged 1.2.2
+  branch). Builds 43 (v225) and 44 (v227) are in TestFlight for friends2 and Internal Testers; 44's What to Test walks
+  through downloading Jamie (Premium) and Listen. **Verified:** iPad 13" simulator (iOS 26.5): the voice menu lists
+  iPadOS voices through the plugin (Daniel), speech plays (AudioQueue running, utterances end at speaking pace),
+  sentences advance, PDF pages turn, pause/next/back work, touch drags of the pin (also with a 2 s hold) read from the
+  dropped line; Mac: `AVSpeechSynthesizer` lists Jamie (Premium) and synthesizes it by identifier, the plugin's API.
+  **Not verified:** a Premium voice inside the app on a real iPad (the simulator has no Voices download; Capacitor's
+  xcframeworks have no Mac Catalyst slice; running the iPad app on this Mac needs the Mac registered as a development
+  device, not done). **v227** (Houfu, watching the simulator): the Listen bar's "Read from…" menu is a **play pin**
+  (an arrow pointed at the speed slider and a twig looked off; Houfu picked the pin from four mock-ups). Drag it onto
+  the paper: its point marks the line (lifted 44px above a finger; the nearest text on that line from the margin), the
+  paper scrolls near its edges, and letting go reads from there; a tap lists sections. iOS can skip `pointerup` for a
+  finger held still, so `touchend`/`touchcancel` end the drag too. **Speed** runs in doublings, 0.5×–2×, with 1× in
+  the middle (notch, snaps near 1×; "put 1x as the middle, make more slower ones"), and the slider took the menu's
+  space (~40 → ~200 px). The Zen **page-layout** control is a round dock button with icon + caption ("the scroll
+  button is too special"). Android Chrome gets the pin and slider too (web changes); a finger drag is tested on
+  Chromium through CDP touch input (no Android emulator on this Mac). Failing on main before v227 and unchanged:
+  `reading-pdf-ink`, `reading-split-undo-browser`, `reading-workspace-paper-color`, `reading-workspace-paper-edge`;
+  `reading-book-guide` (Chromium) and `reading-zen-compact-browser` (WebKit) flake.
 - **Listen uses on-device voices only, v226 (Houfu: Listen must stay no network, no AI; their supervisor forbids AI
   for the proposal and manuscript).** `PhloemVoice.rankVoices` drops every voice with `localService === false`, and
   `naturalVoice` no longer counts a name with "Google" or "Online" as natural. Gone: desktop Chrome's "Google US
@@ -115,10 +138,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   tiles glow in their icons' colours; the Phloem card keeps the reading-guide loop (Houfu's call) and no longer
   mentions DeepSeek. lifegameproject.com's Phloem card plays the two new iPad recordings; Glyph Run's featured clip
   and the Grow a Tomato / Tomatoswipe / Sudoku thumbnails were re-shot from the live games.
-- **App Store:** Phloem **iOS 1.2.1 (40) live since 2026-10-13 14:19 EDT** (released by Houfu); PR #76 merged,
-  so `apps/ipad` on main is 1.2.1 (40). **1.2.2 (42) submitted for review 2026-10-14 20:20 EDT, Waiting for Review,
-  manual release** (Houfu asked for it as the new App Store version; press Release after approval, then merge PR #77,
-  branch `ipad-release-1.2.2-41`). Build 42 carries reader v223 (41 had v221; both are in TestFlight for friends2 and
+- **App Store:** Phloem **iOS 1.2.2 (42) is live** (Ready for Distribution by the evening of 2026-10-15; PR #77 merged
+  that night, so `apps/ipad` on main is 1.2.2 (42)). **1.2.3 (44) Waiting for Review**, manual release (see Now).
+  Earlier: 1.2.1 (40) live 2026-10-13 14:19 EDT (PR #76). Build 42 carries reader v223 (41 had v221; both are in TestFlight for friends2 and
   Internal Testers) plus an App Store update notice (bundle-manifest.json carries the app version; Desk settings shows
   "Version 1.2.2 (42) · the newest version"; a newer store version gets a dismissible Update banner). What's New and
   review notes were rewritten for 1.2.2 in App Store Connect (notes 3,934 of 4,000 characters; the reviewer key line was
@@ -205,6 +227,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Open questions for Houfu
 
+- Register this Mac as a development device so the iPad app runs on it ("Designed for iPad") with the Mac's Premium
+  voices? Free; it adds the Mac ("pls_dont_change") to the developer account's device list. Until then a Premium
+  voice in the app is checked only on the iPad through TestFlight.
+
 - **Old open PRs:** #29 (iPad prototype) and #28 (Book guide fix) are already on main in other forms, and #30
   (calm homepage) was superseded by the current homepage. Close them? #72's Define fix is now on main (v213); its other
   half, the Zen layout control as a quiet rail circle with a first-visit hint (v201), never landed and would need
@@ -220,6 +246,15 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-15 1.2.3 (43, 44):** 43 = v225 + the voice-name fix, uploaded 21:47; 44 = v227 + v226, uploaded 22:36,
+  attached to the new 1.2.3 version (What's New and review notes rewritten for 1.2.3, notes 3,979 of 4,000; the
+  reviewer key line left as it was) and submitted 22:45 EDT (manual release). PR #77 merged (1.2.2 live); PR #78
+  open for 1.2.3. `apps/ipad` tests 21/21; archive 44 carries `app: 1.2.3 (44)` and `reading.js?v=227`.
+
+- **2026-10-15 v227:** play pin for Listen's start, 1×-centred speed slider (0.5×–2×), round page-layout button (see
+  Now). `reading-voice-browser` (mouse on Chromium and WebKit, touch on Chromium), `reading-voice-focus-browser`,
+  `reading-voice-quality-browser`, `reading-phone-browser` on both engines; touch drags in the iPad simulator.
 
 - **2026-10-15 v226:** Listen offers only on-device voices (`localService !== false`): Chrome's Google voices and
   Edge's Online (Natural) voices are hidden; Windows voice guide rewritten for voices on the PC (see Now). Voice tests

@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=228">
-  <link rel="stylesheet" href="/reading-fold.css?v=228">
-  <link rel="stylesheet" href="/reading-workspace.css?v=228">
+  <link rel="stylesheet" href="/reading.css?v=229">
+  <link rel="stylesheet" href="/reading-fold.css?v=229">
+  <link rel="stylesheet" href="/reading-workspace.css?v=229">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -761,7 +761,7 @@
           </div>
         </div>
       </div>
-      <div class="sticky-editor hidden" id="stickyEditor" role="dialog" aria-label="Sticky note" tabindex="-1" data-color="yellow">
+      <div class="sticky-editor hidden" id="stickyEditor" role="dialog" aria-label="Sticky note" tabindex="-1" data-color="yellow" data-mode="write">
         <div class="sticky-editor-bar">
           <div class="sticky-colors" role="group" aria-label="Note color">
             <button type="button" data-sticky-color="yellow" aria-label="Yellow note" aria-pressed="true" title="Yellow"></button>
@@ -772,7 +772,18 @@
           <button class="sticky-editor-icon" id="stickyDelete" type="button" aria-label="Delete note" title="Delete note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></svg></button>
           <button class="sticky-editor-icon" id="stickyClose" type="button" aria-label="Close note" title="Close note"><span aria-hidden="true">✓</span></button>
         </div>
-        <textarea id="stickyText" rows="6" maxlength="20000" aria-label="Note" placeholder="Note"></textarea>
+        <div class="sticky-surface" id="stickySurface">
+          <textarea id="stickyText" rows="6" maxlength="20000" aria-label="Note" placeholder="Note"></textarea>
+          <div class="sticky-pad" id="stickyPad" tabindex="-1" role="img" aria-label="Handwriting on the note. Write with Pencil, finger or mouse; start typing to switch to the keyboard."><svg class="sticky-ink" id="stickyInk" viewBox="0 0 1000 750" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg><span class="sticky-pad-hint" id="stickyPadHint" aria-hidden="true">Write here</span></div>
+        </div>
+        <div class="sticky-editor-tools">
+          <div class="sticky-modes" role="group" aria-label="Write or type">
+            <button class="sticky-mode" type="button" data-sticky-mode="write" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1.2-4.6L15.6 5a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z"/><path d="M13.8 6.8l3.4 3.4"/></svg>Write</button>
+            <button class="sticky-mode" type="button" data-sticky-mode="type" aria-pressed="false"><span class="sticky-mode-aa" aria-hidden="true">Aa</span>Type</button>
+          </div>
+          <button class="sticky-editor-icon" id="stickyEraser" type="button" aria-pressed="false" aria-label="Eraser" title="Eraser: touch a stroke to remove it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 19.5h11M4.8 14.6l8.9-8.9a2 2 0 0 1 2.8 0l2.8 2.8a2 2 0 0 1 0 2.8l-7.9 7.9a2 2 0 0 1-1.4.6H9.1a2 2 0 0 1-1.4-.6l-2.9-2.9a1.2 1.2 0 0 1 0-1.7z"/><path d="M9.6 9.8l5.6 5.6"/></svg></button>
+          <button class="sticky-editor-icon" id="stickyInkUndo" type="button" aria-label="Undo the last stroke" title="Undo the last stroke" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4 3 9l5 5M3 9h10a7 7 0 0 1 0 14" transform="translate(0 -2)"/></svg></button>
+        </div>
       </div>
       <div class="reader-toast hidden" id="readerToast" role="status" aria-live="polite"></div>
       <section class="voice-bar hidden" id="voiceBar" aria-label="Read aloud">
@@ -1128,23 +1139,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=228',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=229',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=228" defer></script>
-<script src="/reading-stickies.js?v=228" defer></script>
-<script src="/reading-keeps.js?v=228" defer></script>
-<script src="/reading-excerpts.js?v=228" defer></script>
-<script src="/reading-excerpts-view.js?v=228" defer></script>
-<script src="/reading-lists.js?v=228" defer></script>
-<script src="/reading-lists-view.js?v=228" defer></script>
-<script src="/reading-voice.js?v=228" defer></script>
-<script src="/reading-workspace.js?v=228" defer></script>
-<script src="/reading-workspace-viewport.js?v=228" defer></script>
-<script src="/reading-workspace-view.js?v=228" defer></script>
-<script src="/reading-folds.js?v=228" defer></script>
-<script src="/reading-pdf-projection.js?v=228" defer></script>
-<script src="/reading-fold-view.js?v=228" defer></script>
-<script src="/reading.js?v=228" defer></script>
+<script src="/reading-ink.js?v=229" defer></script>
+<script src="/reading-stickies.js?v=229" defer></script>
+<script src="/reading-keeps.js?v=229" defer></script>
+<script src="/reading-excerpts.js?v=229" defer></script>
+<script src="/reading-excerpts-view.js?v=229" defer></script>
+<script src="/reading-lists.js?v=229" defer></script>
+<script src="/reading-lists-view.js?v=229" defer></script>
+<script src="/reading-voice.js?v=229" defer></script>
+<script src="/reading-workspace.js?v=229" defer></script>
+<script src="/reading-workspace-viewport.js?v=229" defer></script>
+<script src="/reading-workspace-view.js?v=229" defer></script>
+<script src="/reading-folds.js?v=229" defer></script>
+<script src="/reading-pdf-projection.js?v=229" defer></script>
+<script src="/reading-fold-view.js?v=229" defer></script>
+<script src="/reading.js?v=229" defer></script>
 </body>
 </html>

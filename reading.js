@@ -1332,7 +1332,7 @@
       if(number===1)addComment(.02,.02,(ch.pageNotes||{}).document);
       // A sticky note becomes a comment whose icon is centred on the note's spot.
       ((ch.pdfStickies||{})[String(number)]||[]).forEach(function(note){
-        var text=String(note&&note.text||'').trim();if(!text||!Number.isFinite(note.x)||!Number.isFinite(note.y))return;
+        var text=String(note&&note.text||'').trim();if(!text&&note&&Array.isArray(note.ink)&&note.ink.length)text='(Handwritten note)';if(!text||!Number.isFinite(note.x)||!Number.isFinite(note.y))return;
         var at=toPdf(Math.max(0,Math.min(1,note.x)),Math.max(0,Math.min(1,note.y))),box=page.getCropBox?page.getCropBox():null,size=24,half=size/2,cx=at[0],cy=at[1];
         if(box){cx=Math.max(box.x+half,Math.min(box.x+box.width-half,cx));cy=Math.max(box.y+half,Math.min(box.y+box.height-half,cy));}
         var rgb=EXPORT_HL_RGB[note.color]||EXPORT_HL_RGB.yellow;
@@ -1525,7 +1525,7 @@
     Object.keys(ch.notes||{}).forEach(function(key){var para=+key;if(!Number.isInteger(para)||para<0)return;add({kind:'Margin note',para:para,excerpt:sourceParagraph(para),note:ch.notes[key]});});
     Object.keys(ch.readerNotes||{}).forEach(function(key){var para=+key;if(!Number.isInteger(para)||para<0)return;add({kind:'Reader note',para:para,page:libraryParagraphPage(ch,para),excerpt:readerParagraph(para),note:ch.readerNotes[key]});});
     Object.keys(ch.highlights||{}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(mark){add({kind:'Highlight',page:+page||0,excerpt:mark.text,note:mark.note,color:mark.color,at:mark.at});});});
-    Object.keys(ch.pdfStickies||{}).forEach(function(page){(Array.isArray(ch.pdfStickies[page])?ch.pdfStickies[page]:[]).forEach(function(note){add({kind:'Sticky note',page:+page||0,note:note&&note.text,color:note&&note.color,at:note&&note.at});});});
+    Object.keys(ch.pdfStickies||{}).forEach(function(page){(Array.isArray(ch.pdfStickies[page])?ch.pdfStickies[page]:[]).forEach(function(note){add({kind:'Sticky note',page:+page||0,note:note&&(String(note.text||'').trim()||(Array.isArray(note.ink)&&note.ink.length?'(Handwritten note)':'')),color:note&&note.color,at:note&&note.at});});});
     (ch.textHighlights||[]).forEach(function(mark){var para=+mark.para;add({kind:'Highlight',para:Number.isInteger(para)&&para>=0?para:null,excerpt:mark.text,note:mark.note,color:mark.color,at:mark.at});});
     (ch.readerHighlights||[]).forEach(function(mark){var para=+mark.para;add({kind:'Reader highlight',para:Number.isInteger(para)&&para>=0?para:null,page:libraryParagraphPage(ch,para),excerpt:mark.text,note:mark.note,color:mark.color,at:mark.at});});
     return hits.sort(function(a,b){return b.score-a.score||b.at-a.at||(+a.page||0)-(+b.page||0)||(+a.para||0)-(+b.para||0);});
@@ -7441,7 +7441,8 @@
       if(!String(mark.text||'').trim()&&!String(mark.note||'').trim())return;annotations++;lines.push('### Highlight · page '+page,'');if(mark.text)lines.push('**Highlighted passage**','',listeningQuote(mark.text),'');if(mark.note)lines.push('**Reader note**','',listeningQuote(mark.note),'');
     });});
     if(window.PhloemStickies)window.PhloemStickies.list(ch.pdfStickies).forEach(function(entry){
-      var note=String(entry.item.text||'').trim();if(!note)return;annotations++;lines.push('### Sticky note · page '+entry.page,'','**Reader note**','',listeningQuote(note),'');
+      var note=String(entry.item.text||'').trim(),ink=window.PhloemStickies.hasInk(entry.item);if(!note&&!ink)return;annotations++;lines.push('### Sticky note · page '+entry.page,'');
+      if(note)lines.push('**Reader note**','',listeningQuote(note),'');if(ink)lines.push('*Handwritten note (handwriting is kept in Phloem, not in this text).*','');
     });
     (ch.textHighlights||[]).forEach(function(mark){
       if(!String(mark.text||'').trim()&&!String(mark.note||'').trim())return;annotations++;lines.push('### Highlight · paragraph '+(+mark.para+1),'');if(mark.text)lines.push('**Highlighted passage**','',listeningQuote(mark.text),'');if(mark.note)lines.push('**Reader note**','',listeningQuote(mark.note),'');
@@ -7478,7 +7479,7 @@
   function notebookAnnotationCount(ch){
     var count=0;
     [ch.pageNotes,ch.notes,ch.readerNotes].forEach(function(map){Object.keys(map||{}).forEach(function(key){if(String(map[key]||'').trim())count++;});});
-    Object.keys(ch.pdfStickies||{}).forEach(function(page){(Array.isArray(ch.pdfStickies[page])?ch.pdfStickies[page]:[]).forEach(function(note){if(String(note&&note.text||'').trim())count++;});});
+    Object.keys(ch.pdfStickies||{}).forEach(function(page){(Array.isArray(ch.pdfStickies[page])?ch.pdfStickies[page]:[]).forEach(function(note){if(String(note&&note.text||'').trim()||note&&Array.isArray(note.ink)&&note.ink.length)count++;});});
     Object.keys(ch.highlights||{}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(mark){if(String(mark.text||'').trim()||String(mark.note||'').trim())count++;});});
     [ch.textHighlights,ch.readerHighlights].forEach(function(marks){(marks||[]).forEach(function(mark){if(String(mark.text||'').trim()||String(mark.note||'').trim())count++;});});
     return count;
@@ -7581,7 +7582,7 @@
     Object.keys(ch.notes||{}).forEach(function(k){ if(ch.notes[k]) all.push('<div class="mini-note note-written" data-jump-para="'+(+k)+'"><b>Paragraph '+(+k+1)+'</b><br>'+esc(ch.notes[k].slice(0,150))+'</div>'); });
     Object.keys(ch.readerNotes||{}).forEach(function(k){ if(ch.readerNotes[k]) all.push('<div class="mini-note note-written" data-jump-para="'+(+k)+'"><b>Reader paragraph '+(+k+1)+'</b><br>'+esc(ch.readerNotes[k].slice(0,150))+'</div>'); });
     Object.keys(ch.highlights||{}).forEach(function(page){(ch.highlights[page]||[]).forEach(function(h){all.push('<div class="mini-note" data-jump-page="'+esc(page)+'"><b><span class="tag hl-'+esc(h.color||'yellow')+'">Highlight</span> · page '+esc(page)+'</b><br>“'+esc((h.text||'').slice(0,145))+'”'+(h.note?'<span class="hl-note">✎ '+esc(h.note.slice(0,120))+'</span>':'')+'<button class="remove-highlight" data-remove-highlight="'+esc(h.id)+'" data-highlight-page="'+esc(page)+'" aria-label="Remove highlight">×</button></div>');});});
-    if(window.PhloemStickies)window.PhloemStickies.list(ch.pdfStickies).forEach(function(entry){var s=entry.item,text=stickyText(s);all.push('<div class="mini-note sticky-mini" data-jump-sticky="'+esc(s.id)+'"><b><span class="tag sticky-tag st-'+esc(s.color)+'">Sticky note</span> · page '+entry.page+'</b><br>'+(text?esc(text.slice(0,150)):'<i>Empty</i>')+'<button class="remove-highlight" data-remove-sticky="'+esc(s.id)+'" aria-label="Delete sticky note">×</button></div>');});
+    if(window.PhloemStickies)window.PhloemStickies.list(ch.pdfStickies).forEach(function(entry){var s=entry.item,text=stickyText(s),ink=stickyInk(s).length>0;all.push('<div class="mini-note sticky-mini" data-jump-sticky="'+esc(s.id)+'"><b><span class="tag sticky-tag st-'+esc(s.color)+'">'+(ink&&!text?'Handwritten note':'Sticky note')+'</span> · page '+entry.page+'</b><br>'+(text?esc(text.slice(0,150)):ink?'':'<i>Empty</i>')+(ink?stickyInkSvg(s,'sticky-mini-ink'):'')+'<button class="remove-highlight" data-remove-sticky="'+esc(s.id)+'" aria-label="Delete sticky note">×</button></div>');});
     (ch.textHighlights||[]).forEach(function(h){all.push('<div class="mini-note" data-jump-para="'+h.para+'"><b><span class="tag hl-'+esc(h.color||'yellow')+'">Highlight</span> · paragraph '+(h.para+1)+'</b><br>“'+esc((h.text||'').slice(0,145))+'”'+(h.note?'<span class="hl-note">✎ '+esc(h.note.slice(0,120))+'</span>':'')+'<button class="remove-highlight" data-remove-text-highlight="'+esc(h.id)+'" aria-label="Remove highlight">×</button></div>');});
     (ch.readerHighlights||[]).forEach(function(h){all.push('<div class="mini-note" data-jump-para="'+h.para+'"><b><span class="tag hl-'+esc(h.color||'yellow')+'">Highlight</span> · Reader paragraph '+(h.para+1)+'</b><br>“'+esc((h.text||'').slice(0,145))+'”'+(h.note?'<span class="hl-note">✎ '+esc(h.note.slice(0,120))+'</span>':'')+'<button class="remove-highlight" data-remove-reader-highlight="'+esc(h.id)+'" aria-label="Remove Reader highlight">×</button></div>');});
     byId('noteIndex').innerHTML=all.length?all.join(''):'<div class="notebook-empty">No saved notes or highlights yet. Select a passage to mark it, or write beside this page below.</div>';
@@ -9001,13 +9002,15 @@
   }
   function stickyStamp(ch){var stamp=now();Object.values(ch.pdfStickiesDeleted||{}).forEach(function(t){stamp=Math.max(stamp,t+1);});Object.values(ch.pdfStickies||{}).forEach(function(list){list.forEach(function(s){stamp=Math.max(stamp,(s.updatedAt||s.at||0)+1);});});return stamp;}
   function stickyText(item){return String(item&&item.text||'').trim();}
+  function stickyInk(item){return item&&Array.isArray(item.ink)?item.ink:[];}
+  function stickyHasContent(item){return !!(stickyText(item)||stickyInk(item).length);}
   function stickyButton(id){return Array.from(document.querySelectorAll('#pdfFrame .pdf-sticky')).find(function(b){return b.dataset.stickyId===id;})||null;}
   function paintStickyButton(button,item){
-    var open=!!(stickyEditing&&stickyEditing.id===item.id),text=stickyText(item).replace(/\s+/g,' ');
-    button.className='pdf-sticky st-'+item.color+(text?' has-text':'')+(open?' open':'');
+    var open=!!(stickyEditing&&stickyEditing.id===item.id),text=stickyText(item).replace(/\s+/g,' '),ink=stickyInk(item).length>0;
+    button.className='pdf-sticky st-'+item.color+(text||ink?' has-text':'')+(open?' open':'');
     button.style.left=(item.x*100)+'%';button.style.top=(item.y*100)+'%';
-    button.setAttribute('aria-label',text?'Sticky note: '+(text.length>80?text.slice(0,79)+'…':text):'Empty sticky note');
-    button.title=text.slice(0,300)||'Sticky note';button.setAttribute('aria-expanded',String(open));
+    button.setAttribute('aria-label',text?'Sticky note: '+(text.length>80?text.slice(0,79)+'…':text)+(ink?' (and handwriting)':''):ink?'Handwritten sticky note':'Empty sticky note');
+    button.title=text.slice(0,300)||(ink?'Handwritten note':'Sticky note');button.setAttribute('aria-expanded',String(open));
   }
   function renderPdfStickies(page){
     var ch=find(currentId);if(!ch||!window.PhloemStickies)return;
@@ -9043,7 +9046,7 @@
   }
   // Only a press on the page itself counts: the dock and cards floating over it keep theirs.
   function stickyPageAt(target){return target&&target.closest?target.closest('#pdfFrame .pdf-page'):null;}
-  function placeSticky(pageEl,clientX,clientY){
+  function placeSticky(pageEl,clientX,clientY,pointerType){
     var ch=find(currentId),n=+pageEl.dataset.page,view=pdfViews[n-1];if(!ch||!view)return;
     if(pdfFoldView&&pdfFoldView.isFolded(n)){showReaderToast('Unfold this page to add a note');return;}
     if(!view.rendered){showReaderToast('Page still loading · tap again');return;}
@@ -9053,7 +9056,7 @@
     recordHighlightAction({kind:'sticky',op:'add',page:n,item:item});touch(ch);
     stickyPlacing=false;stickyPress=null;syncStickyUi();syncZenAnnotateUi();
     if(currentPage!==n&&!pagedPdfFlow()){currentPage=n;updatePageChrome();loadPageNote();}
-    renderPdfStickies(n);renderNoteIndex();openStickyEditor(item.id,{isNew:true,focus:true});
+    renderPdfStickies(n);renderNoteIndex();openStickyEditor(item.id,{isNew:true,focus:true,mode:pointerType==='mouse'?'type':'write'});
   }
   /* Placing owns the next tap on a page; a drag still scrolls. The tap is read from the
      click every input sends (finger, Pencil, S Pen, mouse), and only the press is held
@@ -9069,7 +9072,7 @@
     e.preventDefault();e.stopImmediatePropagation();
     var press=stickyPress;stickyPress=null;
     if(press&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>(press.type==='touch'?14:8))return;
-    placeSticky(pageEl,e.clientX,e.clientY);
+    placeSticky(pageEl,e.clientX,e.clientY,press&&press.type);
   },true);
   document.querySelectorAll('[data-pdf-sticky-toggle]').forEach(function(button){button.onclick=function(){
     if(button.id==='zenSticky')closeZenPopouts(true);
@@ -9124,7 +9127,7 @@
   });
   /* The open note sits beside its icon like a note peeled up from the page. */
   function placeStickyEditor(){
-    var editor=byId('stickyEditor');if(!stickyEditing||editor.classList.contains('hidden'))return;
+    var editor=byId('stickyEditor');if(!stickyEditing||editor.classList.contains('hidden')||stickyStroke)return;
     var button=stickyButton(stickyEditing.id);if(!button||!button.getClientRects().length){editor.style.visibility='hidden';return;}
     var r=button.getBoundingClientRect(),pane=byId('documentPane').getBoundingClientRect(),vv=window.visualViewport,ox=vv?vv.offsetLeft:0,oy=vv?vv.offsetTop:0,vw=vv?vv.width:innerWidth,vh=vv?vv.height:innerHeight;
     editor.style.visibility=r.bottom>pane.top&&r.top<pane.bottom&&r.right>pane.left&&r.left<pane.right?'':'hidden';
@@ -9133,6 +9136,10 @@
     var minX=ox,maxX=ox+vw,minY=oy,maxY=oy+vh;
     if(Math.min(maxX,pane.right)-Math.max(minX,pane.left)>=w+2*m){minX=Math.max(minX,pane.left);maxX=Math.min(maxX,pane.right);}
     if(Math.min(maxY,pane.bottom)-Math.max(minY,pane.top)>=h+2*m){minY=Math.max(minY,pane.top);maxY=Math.min(maxY,pane.bottom);}
+    // Keep clear of the Zen dock (a rail on the right, or a bar along the bottom), which sits above the note.
+    var dock=byId('zenDock'),d=dock&&dock.getClientRects().length?dock.getBoundingClientRect():null;
+    if(d&&d.height>d.width&&d.left>(minX+maxX)/2&&d.left-gap-minX>=w+2*m)maxX=Math.min(maxX,d.left-gap);
+    else if(d&&d.width>=d.height&&d.top>(minY+maxY)/2&&d.top-gap-minY>=h+2*m)maxY=Math.min(maxY,d.top-gap);
     if(r.right+gap+w<=maxX-m){left=r.right+gap;top=r.top-6;}
     else if(r.left-gap-w>=minX+m){left=r.left-gap-w;top=r.top-6;}
     else{left=r.left+r.width/2-w/2;top=r.bottom+gap+h<=maxY-m?r.bottom+gap:r.top-gap-h;}
@@ -9145,15 +9152,18 @@
     document.querySelectorAll('[data-sticky-color]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.stickyColor===found.item.color));});
     var text=byId('stickyText');if(document.activeElement!==text&&text.value!==found.item.text)text.value=found.item.text||'';
     var button=stickyButton(found.item.id);if(button)paintStickyButton(button,found.item);
+    if(!stickyStroke)renderStickyInk();syncStickyTools();
   }
   function openStickyEditor(id,options){
     options=options||{};var ch=find(currentId),found=ch&&findSticky(ch,id);if(!found)return;
     if(stickyEditing&&stickyEditing.id!==id)closeStickyEditor();
     if(stickyPlacing){stickyPlacing=false;syncStickyUi();syncZenAnnotateUi();}
-    if(!stickyEditing||stickyEditing.id!==id)stickyEditing={id:id,chId:currentId,page:found.page,isNew:!!options.isNew,originalText:found.item.text||''};
+    if(!stickyEditing||stickyEditing.id!==id){stickyEditing={id:id,chId:currentId,page:found.page,isNew:!!options.isNew,originalText:found.item.text||''};stickyEraser=false;}
     var editor=byId('stickyEditor'),text=byId('stickyText');text.value=found.item.text||'';
+    // Write unless the note holds only typed words (or the caller says otherwise).
+    setStickyMode(options.mode||(stickyText(found.item)&&!stickyInk(found.item).length?'type':'write'));
     editor.classList.remove('hidden');syncStickyEditor();placeStickyEditor();requestAnimationFrame(placeStickyEditor);
-    if(options.focus)text.focus({preventScroll:true});else editor.focus({preventScroll:true});
+    if(options.focus)(stickyMode==='type'?text:byId('stickyPad')).focus({preventScroll:true});else editor.focus({preventScroll:true});
   }
   function forgetStickyHistory(id){
     function other(action){return !(action.kind==='sticky'&&(action.id===id||action.item&&action.item.id===id));}
@@ -9161,10 +9171,12 @@
   }
   /* Closing a note that holds no words removes it: a stray tap leaves no empty notes. */
   function closeStickyEditor(skipCleanup){
-    var editing=stickyEditing;if(!editing)return;stickyEditing=null;
+    var editing=stickyEditing;if(!editing)return;
+    if(stickyStroke)finishStickyStroke(true);
+    stickyEditing=null;stickyEraser=false;
     var editor=byId('stickyEditor'),hadFocus=editor.contains(document.activeElement);editor.classList.add('hidden');editor.style.visibility='';
     var ch=find(editing.chId),found=ch&&findSticky(ch,editing.id);
-    if(!skipCleanup&&found&&!stickyText(found.item)){
+    if(!skipCleanup&&found&&!stickyHasContent(found.item)){
       var stamp=stickyStamp(ch),list=stickyList(ch,found.page),index=list.indexOf(found.item);
       if(index>=0)list.splice(index,1);if(!list.length)delete ch.pdfStickies[found.page];
       ch.pdfStickiesDeleted=ch.pdfStickiesDeleted||{};ch.pdfStickiesDeleted[editing.id]=stamp;
@@ -9178,7 +9190,7 @@
   }
   function deleteSticky(id){
     var ch=find(currentId),found=ch&&findSticky(ch,id);if(!found)return false;
-    if(stickyEditing&&stickyEditing.id===id){stickyEditing=null;byId('stickyEditor').classList.add('hidden');}
+    if(stickyEditing&&stickyEditing.id===id){if(stickyStroke)finishStickyStroke(false);stickyEditing=null;byId('stickyEditor').classList.add('hidden');}
     var stamp=stickyStamp(ch),list=stickyList(ch,found.page);list.splice(list.indexOf(found.item),1);if(!list.length)delete ch.pdfStickies[found.page];
     ch.pdfStickiesDeleted=ch.pdfStickiesDeleted||{};ch.pdfStickiesDeleted[id]=stamp;
     recordHighlightAction({kind:'sticky',op:'remove',page:found.page,item:found.item});touch(ch);renderPdfStickies(found.page);renderNoteIndex();
@@ -9193,6 +9205,7 @@
     }else{
       if(index<0){if(!list.length)delete ch.pdfStickies[action.page];return false;}
       var item=list[index];if(action.op==='move'){var spot=undoing?action.from:action.to;item.x=spot.x;item.y=spot.y;}else if(action.op==='recolor')item.color=undoing?action.from:action.to;
+      else if(action.op==='ink'){if(stickyStroke&&stickyStroke.id===id)finishStickyStroke(false);var ink=(undoing?action.from:action.to).slice();if(ink.length)item.ink=ink;else delete item.ink;}
       item.updatedAt=stamp;
     }
     if(!list.length)delete ch.pdfStickies[action.page];
@@ -9201,6 +9214,7 @@
   function stickyActionMessage(action,undoing){
     if(action.op==='move')return undoing?'Note moved back':'Note moved again';
     if(action.op==='recolor')return undoing?'Note color undone':'Note color reapplied';
+    if(action.op==='ink')return undoing?'Handwriting on the note undone':'Handwriting on the note redone';
     return (action.op==='add')===undoing?'Sticky note removed':'Sticky note restored';
   }
   byId('stickyText').addEventListener('input',function(){
@@ -9223,12 +9237,134 @@
   ['focus','input','keyup','mouseup','touchend','select'].forEach(function(type){byId('stickyText').addEventListener(type,function(){var text=byId('stickyText');stickyCaret=[text.selectionStart,text.selectionEnd];});});
   byId('stickyEditor').querySelectorAll('.sticky-editor-bar button').forEach(function(b){['pointerdown','mousedown'].forEach(function(type){b.addEventListener(type,function(e){if(document.activeElement!==byId('stickyText'))return;e.preventDefault();stickyRefocus=Date.now();});});});
   function restoreStickyCaret(){var text=byId('stickyText');if(!stickyEditing||Date.now()-stickyRefocus>3000)return;stickyRefocus=0;text.focus({preventScroll:true});try{text.setSelectionRange(stickyCaret[0],stickyCaret[1]);}catch(e){}}
+  /* Handwriting on a note (Houfu: "make the note writable"). A note opens in Write unless
+     it holds only typed words or was placed with a mouse. In Write the Pencil, a mouse or a
+     finger draws; once a Pencil has touched a note, fingers rest (a palm on the glass draws
+     nothing and does not close the note). Typing a key in Write goes to Type with that key,
+     and a Pencil on a note in Type goes back to Write. Strokes are stored as fractions of
+     the note's 4:3 face and drawn with PhloemInk's smoothing; each stroke and each erase is
+     one step of the paper's Undo. */
+  var STICKY_INK={color:'black',width:4.5,style:'natural'},SVG_NS='http://www.w3.org/2000/svg';
+  var stickyMode='write',stickyEraser=false,stickyPenSeen=false,stickyStroke=null,stickyStrokeFrame=0;
+  function stickyInkAspect(){return window.PhloemStickies?window.PhloemStickies.INK_ASPECT:.75;}
+  function stickyInkPath(stroke){return window.PhloemInk?window.PhloemInk.pathData(stroke,stickyInkAspect()):'';}
+  // The handwriting as an SVG string (Notebook list); path data holds only numbers and letters.
+  function stickyInkSvg(item,cls){
+    return '<svg class="'+cls+' st-'+esc(item.color||'yellow')+'" viewBox="0 0 1000 '+(1000*stickyInkAspect())+'" aria-hidden="true" focusable="false">'+stickyInk(item).map(function(stroke){var d=stickyInkPath(stroke);return d?'<path d="'+esc(d)+'"/>':'';}).join('')+'</svg>';
+  }
+  function editingSticky(){var ch=stickyEditing&&find(stickyEditing.chId),found=ch&&findSticky(ch,stickyEditing.id);return found?{ch:ch,found:found}:null;}
+  function renderStickyInk(){
+    var svg=byId('stickyInk'),open=editingSticky(),item=open&&open.found.item,ink=stickyInk(item);
+    svg.replaceChildren.apply(svg,ink.map(function(stroke,i){var path=document.createElementNS(SVG_NS,'path');path.setAttribute('d',stickyInkPath(stroke));path.dataset.stroke=String(i);return path;}));
+    var live=document.createElementNS(SVG_NS,'g');live.id='stickyInkLive';svg.appendChild(live);
+    byId('stickyPadHint').hidden=!(stickyMode==='write'&&!ink.length&&!stickyText(item));
+    byId('stickyText').placeholder=stickyMode==='type'&&!ink.length?'Note':'';
+  }
+  function syncStickyTools(){
+    var open=editingSticky(),eraser=byId('stickyEraser'),undo=byId('stickyInkUndo'),last=highlightHistory[highlightHistory.length-1];
+    eraser.disabled=!(open&&stickyInk(open.found.item).length);if(eraser.disabled)stickyEraser=false;
+    eraser.setAttribute('aria-pressed',String(stickyEraser));byId('stickyEditor').classList.toggle('erasing',stickyEraser);
+    undo.disabled=!(open&&last&&last.kind==='sticky'&&last.op==='ink'&&last.id===open.found.item.id);
+  }
+  function setStickyMode(mode,options){
+    options=options||{};stickyMode=mode==='type'?'type':'write';if(stickyMode==='type')stickyEraser=false;
+    var text=byId('stickyText'),pad=byId('stickyPad');byId('stickyEditor').dataset.mode=stickyMode;
+    text.readOnly=stickyMode==='write';text.tabIndex=stickyMode==='write'?-1:0;pad.tabIndex=stickyMode==='write'?0:-1;
+    document.querySelectorAll('[data-sticky-mode]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.stickyMode===stickyMode));});
+    renderStickyInk();syncStickyTools();
+    if(options.focus)(stickyMode==='type'?text:pad).focus({preventScroll:true});
+  }
+  function setStickyInk(open,ink){
+    var item=open.found.item;if(ink.length)item.ink=ink;else delete item.ink;
+    item.updatedAt=stickyStamp(open.ch);touch(open.ch);
+    var button=stickyButton(item.id);if(button)paintStickyButton(button,item);
+    clearTimeout(stickyIndexTimer);stickyIndexTimer=setTimeout(renderNoteIndex,300);
+  }
+  function stickyPoint(e,g){
+    var last=g.points[g.points.length-1],pressure=Number.isFinite(e.pressure)&&e.pressure>0?e.pressure:last?last[2]:.5;
+    return [Math.round(Math.max(0,Math.min(1,(e.clientX-g.rect.left)/g.rect.width))*1e4)/1e4,Math.round(Math.max(0,Math.min(1,(e.clientY-g.rect.top)/g.rect.height))*1e4)/1e4,Math.round(Math.max(0,Math.min(1,pressure))*100)/100];
+  }
+  function stickySegmentGap(a,b,c,d){
+    function toSegment(p,s,t){var dx=t.x-s.x,dy=t.y-s.y,k=Math.max(0,Math.min(1,((p.x-s.x)*dx+(p.y-s.y)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(p.x-s.x-k*dx,p.y-s.y-k*dy);}
+    function side(p,q,r){return (q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x);}
+    if(side(a,b,c)*side(a,b,d)<0&&side(c,d,a)*side(c,d,b)<0)return 0;
+    return Math.min(toSegment(a,c,d),toSegment(b,c,d),toSegment(c,a,b),toSegment(d,a,b));
+  }
+  function paintStickyStroke(){
+    stickyStrokeFrame=0;var g=stickyStroke,live=byId('stickyInkLive');if(!g||g.eraser||!live||!g.points.length)return;
+    var path=live.firstChild||live.appendChild(document.createElementNS(SVG_NS,'path'));
+    path.setAttribute('d',stickyInkPath(Object.assign({points:g.points},STICKY_INK)));
+  }
+  function moveStickyStroke(e){
+    var g=stickyStroke;if(!g)return;var at={x:e.clientX,y:e.clientY};
+    if(g.eraser){
+      // Whole strokes go, as with the paper's eraser: any stroke the sweep passes over.
+      g.targets.forEach(function(target){
+        if(g.erased.has(target.index))return;
+        for(var i=0;i<target.pts.length;i++){if(stickySegmentGap(g.last,at,target.pts[Math.max(0,i-1)],target.pts[i])<=target.r){g.erased.add(target.index);var node=byId('stickyInk').querySelector('[data-stroke="'+target.index+'"]');if(node)node.classList.add('erasing');break;}}
+      });
+      g.last=at;return;
+    }
+    if(g.points.length&&Math.hypot(at.x-g.last.x,at.y-g.last.y)<.6)return;
+    g.points.push(stickyPoint(e,g));g.last=at;
+    if(g.points.length>4096)g.points=g.points.filter(function(_,i,list){return i%2===0||i===list.length-1;});
+    if(!stickyStrokeFrame)stickyStrokeFrame=requestAnimationFrame(paintStickyStroke);
+  }
+  function finishStickyStroke(commit){
+    var g=stickyStroke;if(!g)return;stickyStroke=null;cancelAnimationFrame(stickyStrokeFrame);stickyStrokeFrame=0;
+    try{if(byId('stickyPad').hasPointerCapture(g.pointerId))byId('stickyPad').releasePointerCapture(g.pointerId);}catch(e){}
+    var open=editingSticky();
+    if(commit&&open&&open.found.item.id===g.id){
+      var before=stickyInk(open.found.item).slice(),after=null;
+      if(g.eraser){if(g.erased.size)after=before.filter(function(_,i){return !g.erased.has(i);});}
+      else if(g.points.length){if(before.length>=window.PhloemStickies.MAX_STROKES)showReaderToast('This note is full · start another note');else after=before.concat([Object.assign({points:g.points},STICKY_INK)]);}
+      if(after){setStickyInk(open,after);recordHighlightAction({kind:'sticky',op:'ink',page:open.found.page,id:g.id,from:before,to:after});}
+    }
+    if(stickyEditing){renderStickyInk();syncStickyTools();placeStickyEditor();}
+  }
+  byId('stickySurface').addEventListener('pointerdown',function(e){
+    if(!stickyEditing||e.button>0)return;
+    if(e.pointerType==='pen')stickyPenSeen=true;
+    if(stickyMode!=='write'){if(e.pointerType!=='pen')return;setStickyMode('write',{focus:true});}
+    e.preventDefault();e.stopPropagation();
+    if(stickyStroke||e.pointerType==='touch'&&stickyPenSeen)return;
+    var open=editingSticky(),pad=byId('stickyPad'),rect=pad.getBoundingClientRect();if(!open||!rect.width||!rect.height)return;
+    if(document.activeElement!==pad)pad.focus({preventScroll:true});
+    var g=stickyStroke={pointerId:e.pointerId,id:open.found.item.id,rect:rect,eraser:stickyEraser,points:[],erased:new Set(),last:{x:e.clientX,y:e.clientY}};
+    if(g.eraser)g.targets=stickyInk(open.found.item).map(function(stroke,index){
+      return{index:index,r:8+stroke.width*rect.width/612,pts:stroke.points.map(function(p){return{x:rect.left+p[0]*rect.width,y:rect.top+p[1]*rect.height};})};
+    });
+    try{pad.setPointerCapture(e.pointerId);}catch(err){}
+    moveStickyStroke(e);
+  },true);
+  byId('stickyPad').addEventListener('pointermove',function(e){
+    var g=stickyStroke;if(!g||g.pointerId!==e.pointerId)return;e.preventDefault();
+    var samples=e.getCoalescedEvents?e.getCoalescedEvents():[];(samples.length?samples:[e]).forEach(moveStickyStroke);
+  });
+  byId('stickyPad').addEventListener('pointerup',function(e){var g=stickyStroke;if(!g||g.pointerId!==e.pointerId)return;e.preventDefault();moveStickyStroke(e);finishStickyStroke(true);});
+  byId('stickyPad').addEventListener('pointercancel',function(e){if(stickyStroke&&stickyStroke.pointerId===e.pointerId)finishStickyStroke(false);});
+  byId('stickyPad').addEventListener('lostpointercapture',function(e){if(stickyStroke&&stickyStroke.pointerId===e.pointerId)finishStickyStroke(true);});
+  // No text selection, magnifier, callout or Scribble from the glass while writing.
+  byId('stickyPad').addEventListener('touchstart',function(e){if(stickyMode==='write'&&e.cancelable)e.preventDefault();},{passive:false});
+  byId('stickyPad').addEventListener('keydown',function(e){
+    if(!stickyEditing||stickyMode!=='write')return;
+    var key=e.key&&e.key.toLowerCase();
+    if((e.metaKey||e.ctrlKey)&&!e.altKey&&(key==='z'||key==='y')){e.preventDefault();e.stopPropagation();if(e.shiftKey||key==='y')redoHighlight();else undoHighlight();return;}
+    if(e.key&&e.key.length===1&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!e.isComposing){
+      e.preventDefault();setStickyMode('type',{focus:true});
+      var text=byId('stickyText'),end=text.value.length;text.setRangeText(e.key,end,end,'end');text.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+  });
+  document.querySelectorAll('[data-sticky-mode]').forEach(function(b){b.onclick=function(){if(stickyEditing)setStickyMode(b.dataset.stickyMode,{focus:true});};});
+  byId('stickyEraser').onclick=function(){if(!stickyEditing)return;stickyEraser=!stickyEraser;syncStickyTools();byId('stickyPad').focus({preventScroll:true});};
+  byId('stickyInkUndo').onclick=function(){if(!stickyEditing||this.disabled)return;undoHighlight();byId('stickyPad').focus({preventScroll:true});};
   byId('stickyDelete').onclick=function(){if(stickyEditing)deleteSticky(stickyEditing.id);};
   byId('stickyClose').onclick=function(){closeStickyEditor();};
   // A press anywhere else closes the open note, except paper Undo/Redo, which act on it.
   window.addEventListener('pointerdown',function(e){
     if(!stickyEditing)return;var t=e.target,icon=t.closest&&t.closest('.pdf-sticky');
     if(t.closest&&t.closest('#stickyEditor,#zenUndo,#zenRedo,#highlightUndo,#pdfInkUndo,#pdfInkRedo,#touchUndo')||icon&&icon.dataset.stickyId===stickyEditing.id)return;
+    if(e.pointerType==='touch'&&(stickyStroke||stickyMode==='write'&&stickyPenSeen))return;
     closeStickyEditor();
   },true);
   byId('documentPane').addEventListener('scroll',function(){if(stickyEditing)requestAnimationFrame(placeStickyEditor);},{passive:true});
@@ -9668,7 +9804,7 @@
   /* One shared undo trail for marker work: strokes, erasures and recolors all rewind
      in order (⌘Z) and roll forward again (⇧⌘Z / ⌘Y). Cleared when another paper opens. */
   var highlightHistory=[],highlightFuture=[];
-  function recordHighlightAction(action){highlightHistory.push(action);if(highlightHistory.length>100)highlightHistory.shift();highlightFuture=[];syncTouchDockStates();syncPdfInkUi();}
+  function recordHighlightAction(action){highlightHistory.push(action);if(highlightHistory.length>100)highlightHistory.shift();highlightFuture=[];syncTouchDockStates();syncPdfInkUi();if(stickyEditing)syncStickyTools();}
   function applyHighlightAction(action,undoing){
     var ch=find(currentId);if(!ch)return false;
     if(action.kind==='annotations'){
@@ -9716,14 +9852,14 @@
     requestAnimationFrame(refreshHighlightQuick);
     var action=highlightHistory.pop();
     if(!action){showReaderToast('Nothing to undo');return;}
-    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.kind==='sticky'?stickyActionMessage(action,true):action.kind==='annotations'?'Erased annotations restored':action.kind==='ink'?'Handwriting change undone':action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();syncPdfInkUi();
+    if(applyHighlightAction(action,true)){highlightFuture.push(action);showReaderToast(action.kind==='sticky'?stickyActionMessage(action,true):action.kind==='annotations'?'Erased annotations restored':action.kind==='ink'?'Handwriting change undone':action.op==='erase'?'Erased highlights restored':action.op==='add'?'Highlight undone':action.op==='remove'?'Highlight restored':'Color undone');}syncTouchDockStates();syncPdfInkUi();if(stickyEditing)syncStickyTools();
   }
   function redoHighlight(){
     if(pdfInkController)pdfInkController.cancel();
     requestAnimationFrame(refreshHighlightQuick);
     var action=highlightFuture.pop();
     if(!action){showReaderToast('Nothing to redo');return;}
-    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.kind==='sticky'?stickyActionMessage(action,false):action.kind==='annotations'?'Annotations erased':action.kind==='ink'?'Handwriting change redone':action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();syncPdfInkUi();
+    if(applyHighlightAction(action,false)){highlightHistory.push(action);showReaderToast(action.kind==='sticky'?stickyActionMessage(action,false):action.kind==='annotations'?'Annotations erased':action.kind==='ink'?'Handwriting change redone':action.op==='erase'?'Highlights erased':action.op==='add'?'Highlight restored':action.op==='remove'?'Highlight removed':'Color reapplied');}syncTouchDockStates();syncPdfInkUi();if(stickyEditing)syncStickyTools();
   }
   /* A saved highlight reuses the same passage card as a fresh selection. Its small
      management row adds recolor/remove without sending the reader to another UI. */

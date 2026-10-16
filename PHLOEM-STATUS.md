@@ -4,7 +4,25 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-10-15)
+## Now (2026-10-16)
+
+- **Handwritten sticky notes, v229 (web; Houfu: "make the note 'writable' instead of only do text … default to
+  write").** A PDF sticky note now has a 4:3 writing face with **Write | Type** under it. A note placed with the
+  Pencil or a finger opens in **Write** (the face is focused, so no keyboard pops up); one placed with a mouse or
+  trackpad opens in Type; reopening a note picks Write unless it holds only typed words. In Write the Pencil, a
+  mouse or a finger draws (PhloemInk smoothing, natural taper, dark ink); once a Pencil has touched a note, fingers
+  rest: a palm neither draws nor closes the note (a Pencil tap, ✓ or Escape closes it). A Pencil on a note in Type
+  goes back to Write; a key typed in Write goes to Type with that key. **Eraser** takes whole strokes; the note's
+  **↶** and the paper's Undo/Redo step through strokes and erases. Handwriting alone keeps a note (only a note with
+  no words and no ink is removed on close). Stored as `ink: [{color,width,style,points:[[x,y,p]]}]` on the note
+  (fractions of the face; `PhloemStickies.cleanInk` validates it; merges with the note by `updatedAt`). The icon
+  shows lines, its label says "Handwritten sticky note"; the Notebook shows the handwriting as a small picture;
+  Markdown/NotebookLM exports say "Handwritten note"; Export annotated PDF puts a "(Handwritten note)" comment at the
+  spot (the strokes themselves are not drawn into the PDF). The note is 300 px wide (was 264) and now keeps clear of
+  the Zen dock. **Older Phloem copies (the iPad app 1.2.3 bundles v227) do not show the ink, and closing a
+  handwriting-only note there removes it as empty** (Undo there brings it back), so write handwritten notes in the
+  web reader until a build with v229 is out. Not checked with a real Pencil (Scribble, palm behaviour); tested with
+  synthetic pen/touch/mouse input in Chromium and WebKit. Test: `tests/reading-sticky-handwriting.test.js` (34).
 
 - **Listen fixes, v228 (web; Houfu's iPad Safari recording of Taiz & Zeiger ch. 4, 2026-10-15 23:06: "why still not
   highlighted where is being read", "why tapping paper would put where it reads, it's supposed to be the sole
@@ -271,6 +289,12 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-16 v229:** handwriting on sticky notes, Write by default (see Now). `reading-sticky-handwriting` 34/34
+  and `reading-pdf-sticky-notes` 55/55 on Chromium and WebKit; iPad bundle 21/21. Suite: Chromium 137/141, WebKit
+  137/141; the four failures (`reading-pdf-ink`, `reading-split-undo-browser`, `reading-workspace-paper-color`,
+  `reading-workspace-paper-edge`) fail the same way on v228. Running both engines' suites at once makes tests with a
+  fixed port collide (`keeps-browser`/`pdf-ink` share 8167); run them one engine at a time.
 
 - **2026-10-16 v228:** Listen: PDF highlight survives text-order differences and marks only the sentence; the
   pin alone moves the voice; figure labels and their captions are not read. Checked on the real Taiz & Zeiger

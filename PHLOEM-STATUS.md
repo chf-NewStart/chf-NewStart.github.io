@@ -6,6 +6,17 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-15)
 
+- **Listen uses on-device voices only, v226 (Houfu: Listen must stay no network, no AI; their supervisor forbids AI
+  for the proposal and manuscript).** `PhloemVoice.rankVoices` drops every voice with `localService === false`, and
+  `naturalVoice` no longer counts a name with "Google" or "Online" as natural. Gone: desktop Chrome's "Google US
+  English" / "Google UK English Female/Male" (text goes to Google) and Edge's "Microsoft … Online (Natural)" (cloud
+  AI voices). Kept: Apple's voices incl. Premium/Enhanced, Windows voices on the PC (David, Zira, Mark, and a Natural
+  voice if it reports `localService: true`), Android's Google engine voices (local), the iPad app's PhloemSpeech voices.
+  No "online" group; with no on-device English voice the menu says "System voice". A saved network voice falls back
+  to the best on-device one. The Windows guide now points to Settings > Time & language > Speech > Manage voices and
+  Narrator's natural voices, not Edge. Edge case left: a browser with no on-device voice at all (Linux Chrome without
+  speech-dispatcher) speaks "System voice" with whatever the browser picks. Tests: `reading-voice` 17/17 (Chrome, Edge,
+  Android lists), Edge page in `reading-voice-quality-browser`.
 - **Listen, v225 (Houfu, on the iPad: the voice menu "can't be clicked"; "the web ver only have those even after i
   downloaded voice, and app ver only have a greyed out system voice dropdown"; "the passage being read should be
   automatically focused"; "listen should be one of the button"; "the speed change can be made into a slide bar").**
@@ -209,6 +220,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-15 v226:** Listen offers only on-device voices (`localService !== false`): Chrome's Google voices and
+  Edge's Online (Natural) voices are hidden; Windows voice guide rewritten for voices on the PC (see Now). Voice tests
+  (unit + three browser suites, Chromium and WebKit) pass.
 
 - **2026-10-15 v225:** Listen: native voices in the iPad app (PhloemSpeech, needs build 1.2.3), never-greyed voice menu,
   Safari's voice limit explained, spoken sentence focused and followed (reader + PDF), guide follows the voice, Listen

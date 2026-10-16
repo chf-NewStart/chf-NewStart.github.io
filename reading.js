@@ -3377,6 +3377,9 @@
   }
   function voiceSupported(){return !!voiceEngine();}
   function saveVoicePrefs(){try{localStorage.setItem(VOICE_KEY,JSON.stringify(voicePrefs));}catch(e){}}
+  /* On-device voices only (PhloemVoice.rankVoices): Chrome's Google voices and Edge's Online
+     (Natural) voices send the text away, and Listen promises no network and no AI. A voice
+     saved from before falls back to the best one on the device. */
   function voiceList(){return window.PhloemVoice.rankVoices(voiceEngine().synth.getVoices()||[]);}
   function chosenVoice(){var list=voiceList();return list.find(function(voice){return voice.voiceURI===voicePrefs.voice;})||list[0]||null;}
   function voiceWhere(){return voicePlatform()==='ios'&&!(voiceEngine()&&voiceEngine().native)?'safari':'';}

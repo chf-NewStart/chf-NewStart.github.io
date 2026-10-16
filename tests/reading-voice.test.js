@@ -146,10 +146,59 @@ test('natural voices are told apart from the basic ones a device starts with', (
   const natural = voice => V.naturalVoice(voice);
   assert.equal(natural({ name: 'Jamie (Premium)', voiceURI: 'com.apple.voice.premium.en-GB.Jamie' }), true);
   assert.equal(natural({ name: 'Ava', voiceURI: 'com.apple.voice.enhanced.en-US.Ava' }), true, 'Safari may drop the label from the name');
-  assert.equal(natural({ name: 'Microsoft Aria Online (Natural) - English (United States)', voiceURI: 'x' }), true);
-  assert.equal(natural({ name: 'Google UK English Female', voiceURI: 'Google UK English Female' }), true);
+  assert.equal(natural({ name: 'Microsoft Jenny (Natural) - English (United States)', voiceURI: 'x', localService: true }), true, 'a Natural voice installed on the PC');
+  assert.equal(natural({ name: 'Microsoft Aria Online (Natural) - English (United States)', voiceURI: 'x', localService: false }), false, 'Edge\'s cloud voices are not offered at all');
+  assert.equal(natural({ name: 'Google UK English Female', voiceURI: 'Google UK English Female', localService: false }), false, 'Chrome\'s Google voices are network voices');
+  assert.equal(natural({ name: 'Google US English', voiceURI: 'Google US English', localService: true }), false, 'being Google\'s does not make a voice natural');
   assert.equal(natural({ name: 'Samantha', voiceURI: 'com.apple.voice.compact.en-US.Samantha' }), false);
   assert.equal(natural({ name: 'Microsoft David - English (United States)', voiceURI: 'x' }), false);
+});
+
+/* Listen promises no network and no AI, so a voice the browser marks localService: false
+   is never offered, whatever its name. */
+test('desktop Chrome: Google\'s network voices are left out; Samantha and Jamie stay', () => {
+  const voices = [
+    { name: 'Samantha', lang: 'en-US', voiceURI: 'Samantha', localService: true, default: true },
+    { name: 'Jamie (Premium)', lang: 'en-GB', voiceURI: 'Jamie (Premium)', localService: true, default: false },
+    { name: 'Google US English', lang: 'en-US', voiceURI: 'Google US English', localService: false, default: false },
+    { name: 'Google UK English Female', lang: 'en-GB', voiceURI: 'Google UK English Female', localService: false, default: false },
+    { name: 'Google UK English Male', lang: 'en-GB', voiceURI: 'Google UK English Male', localService: false, default: false },
+    { name: 'Google Deutsch', lang: 'de-DE', voiceURI: 'Google Deutsch', localService: false, default: false }];
+  const ranked = V.rankVoices(voices);
+  assert.deepEqual(plain(ranked.map(voice => voice.name)), ['Jamie (Premium)', 'Samantha']);
+  assert.deepEqual(plain(ranked.filter(V.naturalVoice).map(voice => voice.name)), ['Jamie (Premium)']);
+  assert.deepEqual(plain(V.rankVoices(voices.filter(voice => voice.localService === false)).map(voice => voice.name)), [],
+    'with only network voices in English, nothing is offered ("System voice"), never a Google voice');
+});
+
+test('Edge: the Online (Natural) cloud voices are left out; voices on the PC stay', () => {
+  const edge = (name, lang, local, isDefault) => ({ name: `Microsoft ${name} - English (${lang === 'en-GB' ? 'United Kingdom' : 'United States'})`, lang,
+    voiceURI: `Microsoft ${name} - English (${lang === 'en-GB' ? 'United Kingdom' : 'United States'})`, localService: local, default: !!isDefault });
+  const voices = [edge('David', 'en-US', true, true), edge('Mark', 'en-US', true), edge('Zira', 'en-US', true),
+    edge('Aria Online (Natural)', 'en-US', false), edge('Guy Online (Natural)', 'en-US', false), edge('Jenny Online (Natural)', 'en-US', false),
+    edge('Ryan Online (Natural)', 'en-GB', false), edge('Sonia Online (Natural)', 'en-GB', false)];
+  assert.deepEqual(plain(V.rankVoices(voices).map(voice => voice.name)),
+    ['Microsoft David - English (United States)', 'Microsoft Mark - English (United States)', 'Microsoft Zira - English (United States)']);
+  assert.equal(V.rankVoices(voices).filter(V.naturalVoice).length, 0, 'only basic voices left: the guide to a better one is offered');
+  // A Natural voice Windows installed on the PC reports localService: true and is kept.
+  const installed = V.rankVoices(voices.concat([edge('Jenny (Natural)', 'en-US', true)]));
+  assert.deepEqual(plain(installed.filter(V.naturalVoice).map(voice => voice.name)), ['Microsoft Jenny (Natural) - English (United States)']);
+});
+
+test('Android: Google\'s engine voices on the phone stay; its network variants do not', () => {
+  const voices = [
+    { name: 'Google US English', lang: 'en-US', voiceURI: 'Google US English', localService: true, default: true },
+    { name: 'Google UK English', lang: 'en-GB', voiceURI: 'Google UK English', localService: true, default: false },
+    { name: 'en-us-x-iol-network', lang: 'en-US', voiceURI: 'en-us-x-iol-network', localService: false, default: false },
+    { name: 'en-us-x-iol-local', lang: 'en-US', voiceURI: 'en-us-x-iol-local', localService: true, default: false }];
+  assert.deepEqual(plain(V.rankVoices(voices).map(voice => voice.name)), ['Google US English', 'Google UK English', 'en-us-x-iol-local']);
+});
+
+test('the iPad app\'s own voices are on the device and stay', () => {
+  // As PhloemSpeechPlugin.swift reports them.
+  const voices = [{ voiceURI: 'com.apple.voice.premium.en-GB.Malcolm', name: 'Jamie (Premium)', lang: 'en-GB', quality: 3, localService: true, default: false },
+    { voiceURI: 'com.apple.voice.compact.en-US.Samantha', name: 'Samantha', lang: 'en-US', quality: 1, localService: true, default: false }];
+  assert.deepEqual(plain(V.rankVoices(voices).map(voice => voice.name)), ['Jamie (Premium)', 'Samantha']);
 });
 
 test('the voice guide gives steps for the device, ending back in Phloem', () => {
@@ -160,6 +209,12 @@ test('the voice guide gives steps for the device, ending back in Phloem', () => 
   assert.match(V.voiceHelp('ios').steps.join(' '), /Accessibility, then Read & Speak.*Voices, then English.*Jamie.*Premium/);
   assert.match(V.voiceHelp('ios').steps.at(-1), /Come back to Phloem/);
   assert.match(V.voiceHelp('mac').steps.join(' '), /Manage Voices/);
+  const windows = V.voiceHelp('windows').steps.join(' ');
+  assert.match(windows, /Time & language, then Speech.*Manage voices.*Add voices/);
+  assert.match(windows, /Narrator.*Add natural voices.*downloaded to this PC/);
+  for (const platform of ['ios', 'mac', 'android', 'windows', 'other']) {
+    assert.doesNotMatch(V.voiceHelp(platform).steps.join(' '), /\bEdge\b|\bonline\b|\bOnline\b|Google US English|Google UK English/, `${platform}: no pointer to a network voice`);
+  }
 });
 
 test('a spoken sentence is found on the page with its citations, in reading order', () => {

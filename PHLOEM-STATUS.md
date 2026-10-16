@@ -6,6 +6,31 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-15)
 
+- **Listen fixes, v228 (web; Houfu's iPad Safari recording of Taiz & Zeiger ch. 4, 2026-10-15 23:06: "why still not
+  highlighted where is being read", "why tapping paper would put where it reads, it's supposed to be the sole
+  functionality of the pointer", "it cannot still perfectly pick up the right passages").** (1) **Highlight on PDF
+  pages:** sentences are located in the page's text-layer text in reading order, but a PDF can list text in another
+  order (book p. 48: the figure's labels and caption come last), and once one sentence matched there every later one
+  was searched only after it, so nothing else on the page lit up. `voiceSpot` now searches the whole page when the
+  next match is not after the last. The marker now covers just the spoken sentence (CSS highlight `voice-pdf`, a
+  range from its first to its last word across the line spans; the old whole-line `.voice-span` class is the
+  fallback without CSS highlights). `PhloemVoice.locate` joins line-end hyphens ("vol-" + "ume"), prefers the place
+  where a sentence's opening words sit together (no more starting at an earlier "a"), and tolerates up to three stray
+  words glued to the front. (2) **Only the pin moves the voice:** the v222 "tap a paragraph to read from there" is
+  gone on every device; the toast says "drag the pin to read from elsewhere". (3) **Passages:** diagram labels glued
+  to the front of a paragraph ("Across root (ΔΨw) When a soil…", one to four words and a short symbol in parentheses
+  before a capital) are dropped, so a caption behind them ("Leaf air spaces (Δcwv) FIGURE 4.1 …") is recognised and
+  skipped. Still imperfect on this book: a section heading merged with its first paragraph is read as one sentence,
+  the left column under the figure is read after the right one, and symbol-font letters read as letters ("Ys" for
+  Ψs). Tests: new `reading-voice-pdf-focus-browser` (two columns, right one first in the PDF; fails on v227),
+  `reading-voice` +2, `reading-voice-browser` (a tap leaves the voice), `reading-voice-focus-browser` (speed step now
+  set on the doubling slider; it had failed since v227). **The iPad app 1.2.3 (44) in review bundles v227**, so it
+  still has tap-to-read and the figure-page gap until the next build.
+  Suite on v228: Chromium 136/140, WebKit 135/140; every failure also fails on clean v227 (`reading-pdf-ink`,
+  `reading-split-undo-browser`, `reading-workspace-paper-color`, `reading-workspace-paper-edge`; WebKit
+  `reading-zen-compact-browser`, line 273: the annotation passage reads ''). Two tests stale since v225/v227 now
+  match the dock: `reading-zen-default-browser` (Listen on the dock) and `reading-zen-find-clearance` (round layout
+  button).
 - **iPad 1.2.3 (44) in App Review, reader v227 (2026-10-15 night; Houfu, before going to sleep: "you can ship it
   once everything works ok? and put into app store as well").** 1.2.3 is the build that lets Listen use voices
   downloaded in Settings: the `PhloemSpeech` plugin (v225) plus a fix so names are not doubled ("Jamie (Premium)
@@ -246,6 +271,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-16 v228:** Listen: PDF highlight survives text-order differences and marks only the sentence; the
+  pin alone moves the voice; figure labels and their captions are not read. Checked on the real Taiz & Zeiger
+  chapter in WebKit at iPad size (every sentence on book p. 48 marked; none before).
 
 - **2026-10-15 1.2.3 (43, 44):** 43 = v225 + the voice-name fix, uploaded 21:47; 44 = v227 + v226, uploaded 22:36,
   attached to the new 1.2.3 version (What's New and review notes rewritten for 1.2.3, notes 3,979 of 4,000; the

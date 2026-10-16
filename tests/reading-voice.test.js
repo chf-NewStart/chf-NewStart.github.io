@@ -257,3 +257,30 @@ test('Safari on iPad explains that it only offers the system voices, and points 
   assert.match(help.steps[0], /Safari only lets websites use the voices that come with the system/);
   assert.match(help.steps.join(' '), /Phloem iPad app.*Read & Speak.*Jamie \(Premium\)/);
 });
+
+/* Houfu, Oct 15 2026, reading Taiz & Zeiger ch. 4 on the iPad: the voice began
+   "Across root (DYw) When a soil is heavily watered…" and nothing on that page was
+   highlighted. The layout pass glues a diagram's labels to the paragraph after them. */
+test('figure labels glued to a paragraph are dropped; a caption behind them is skipped', () => {
+  const blocks = [
+    { text: 'Leaf air spaces (Dcwv ) FIGURE 4.1 Main driving forces for water flow from the soil through the plant to the atmosphere.', page: 2, para: 8 },
+    { text: 'Across root (DYw ) When a soil is heavily watered by rain or by irrigation, the water percolates downward.', page: 2, para: 11 },
+    { text: 'Xylem (ΔΨp) Soil line Across root (ΔΨw) When water moves, it flows.', page: 2, para: 12 },
+    { text: 'Water potential (Ψw) is a measure of the free energy of water.', page: 2, para: 13 }];
+  assert.deepEqual(spoken(blocks), ['When a soil is heavily watered by rain or by irrigation, the water percolates downward.',
+    'When water moves, it flows.', 'Water potential (Ψw) is a measure of the free energy of water.']);
+  assert.equal(V.prepare(blocks).skipped.captions, 1);
+});
+test('a spoken sentence is found despite a glued label, a line-end hyphen, or a common first word', () => {
+  const page = 'Leaf air spaces (Dcwv ) When a soil is heavily watered by rain or by irrigation, the water percolates downward. ' +
+    'Clay soils have a large field capacity. A few days after being saturated, they might retain 40% water by vol- ume. ' +
+    'In contrast, sandy soils typically retain 3% water by volume after saturation.';
+  const at = sentence => { const spot = V.locate(page, sentence, 0); return spot && page.slice(spot.start, spot.end); };
+  assert.equal(at('Across root (DYw ) When a soil is heavily watered by rain or by irrigation, the water percolates downward.'),
+    'When a soil is heavily watered by rain or by irrigation, the water percolates downward.');
+  assert.equal(at('A few days after being saturated, they might retain 40% water by volume.'),
+    'A few days after being saturated, they might retain 40% water by vol- ume.', 'starts at "A few", ends at "vol- ume"');
+  assert.equal(at('In contrast, sandy soils typically retain 3% water by volume after saturation.'),
+    'In contrast, sandy soils typically retain 3% water by volume after saturation.');
+  assert.equal(V.locate('Sinks pull (Smith et al., 2020) sugar from leaves.', 'Sinks pull sugar from leaves.', 0).start, 0, 'a citation inside the opening words still fits');
+});

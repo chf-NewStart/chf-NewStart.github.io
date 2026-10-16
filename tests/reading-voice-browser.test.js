@@ -144,9 +144,13 @@ async function select(page, text) {
       await touch('touchEnd');
       await page.waitForFunction(() => window.__said[window.__said.length - 1].text === 'Sinks pull sugar from leaves.');
     }
-    await page.locator('#textDocument .para', { hasText: 'Sinks pull sugar' }).locator('.original').click();
-    await page.waitForFunction(() => window.__said[window.__said.length - 1].text === 'Sinks pull sugar from leaves.');
-    assert.match(await page.locator('#readerToast').textContent(), /Reading from here/);
+    // Only the pin moves the voice (Houfu, Oct 15): a tap on another paragraph is just a tap.
+    const saidBeforeTap = await page.evaluate(() => window.__said.length), sentenceBeforeTap = await lastSaid();
+    await page.locator('#textDocument .para', { hasText: 'Quantifying the joint impact' }).locator('.original').click();
+    await page.waitForTimeout(500);
+    assert.doesNotMatch(sentenceBeforeTap, /Quantifying/);
+    assert.equal(await page.evaluate(() => window.__said.length), saidBeforeTap, 'tapping the paper does not move the voice');
+    assert.equal(await lastSaid(), sentenceBeforeTap);
     await page.locator('#voiceClose').click();
     assert.equal(await page.locator('#voiceBar').isHidden(), true);
     // Starting with a sentence selected reads from that sentence.
@@ -156,7 +160,7 @@ async function select(page, text) {
     assert.equal(await lastSaid(), 'Second paragraph here.');
     await page.locator('#voiceClose').click();
     await page.evaluate(() => { getSelection().removeAllRanges(); document.getElementById('selectionClose').click(); });
-    console.log('PASS  read from a section, the dragged pin (mouse and finger), a tapped paragraph, or a selection; ✕ stops');
+    console.log('PASS  read from a section, the dragged pin (mouse and finger), or a selection; a tap on the paper does not move the voice; ✕ stops');
 
     // Copy puts the selected words on the clipboard.
     await select(page, 'Sinks pull sugar');

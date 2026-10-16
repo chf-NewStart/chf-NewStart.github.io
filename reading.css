@@ -2750,6 +2750,8 @@ body.voice-focus #textDocument .para:not(.voice-reading) { opacity: .4; }
 body.voice-sentence-on #textDocument .para.voice-reading { background: transparent; box-shadow: none; }
 body.voice-focus.voice-sentence-on #textDocument .para.voice-reading .original { color: color-mix(in srgb, var(--ink) 50%, transparent); }
 ::highlight(voice-sentence) { color: var(--ink); background-color: color-mix(in srgb, var(--yellow) 36%, transparent); }
+/* PDF pages: the drawn page shows the words, so the text layer stays invisible under the marker. */
+::highlight(voice-pdf) { color: transparent; background-color: color-mix(in srgb, var(--yellow) 42%, transparent); }
 .text-layer span.voice-span { background: color-mix(in srgb, var(--yellow) 42%, transparent); border-radius: 3px; }
 /* Listen on the side rail, captioned like Workspace and lit while its bar is open. */
 .zen-listen { flex-direction: column; gap: 1px; border-radius: 13px; }

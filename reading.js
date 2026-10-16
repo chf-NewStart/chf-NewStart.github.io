@@ -3464,7 +3464,7 @@
     voiceFocusIndex=-1;cancelAnimationFrame(voiceGuideFrame);
     document.querySelectorAll('#textDocument .para.voice-reading').forEach(function(node){node.classList.remove('voice-reading');});
     document.querySelectorAll('#pdfFrame .voice-span').forEach(function(node){node.classList.remove('voice-span');});
-    if(voiceHighlights())CSS.highlights.delete('voice-sentence');
+    if(voiceHighlights()){CSS.highlights.delete('voice-sentence');CSS.highlights.delete('voice-pdf');}
     document.body.classList.remove('voice-focus','voice-sentence-on');
   }
   // Offsets of every spoken chunk in one paragraph or page, located in reading order.
@@ -3473,7 +3473,8 @@
       var spots={},from=0,group=key.split(':')[0];
       voiceChunks.forEach(function(chunk,i){
         if((group.charAt(0)==='g'?'g'+chunk.page:'p'+chunk.para)!==group)return;
-        var at=window.PhloemVoice.locate(text,chunk.text,from);if(at){spots[i]=at;from=at.end;}
+        // A PDF's text layer can list a figure's labels last: look again from the top of the page.
+        var at=window.PhloemVoice.locate(text,chunk.text,from)||(from?window.PhloemVoice.locate(text,chunk.text,0):null);if(at){spots[i]=at;from=at.end;}
       });
       voiceSpotCache[key]=spots;
     }
@@ -3500,6 +3501,7 @@
   }
   function focusVoicePdf(chunk,index){
     document.querySelectorAll('#pdfFrame .voice-span').forEach(function(node){node.classList.remove('voice-span');});
+    if(voiceHighlights())CSS.highlights.delete('voice-pdf');
     var layer=byId('pdfFrame').querySelector('.pdf-page[data-page="'+chunk.page+'"] .text-layer');
     var spans=layer?Array.prototype.filter.call(layer.querySelectorAll('span'),function(span){return !span.classList.contains('markedContent')&&!span.children.length;}):[];
     if(!spans.length){
@@ -3511,8 +3513,17 @@
     var text='',starts=[];spans.forEach(function(span){starts.push(text.length);text+=span.textContent+' ';});
     var spot=voiceSpot(index,text,'g'+chunk.page+':'+text.length);if(!spot)return null;
     var hit=spans.filter(function(span,i){return starts[i]+span.textContent.length>spot.start&&starts[i]<spot.end;});
-    hit.forEach(function(span){span.classList.add('voice-span');});
     if(!hit.length)return null;
+    /* Mark the sentence itself, not the whole lines it shares with its neighbours: a range
+       from its first word to its last across the text layer's spans. Browsers without CSS
+       highlights mark the lines. */
+    var first=spans.indexOf(hit[0]),last=spans.indexOf(hit[hit.length-1]),startNode=hit[0].firstChild,endNode=hit[hit.length-1].firstChild;
+    if(voiceHighlights()&&startNode&&endNode&&startNode.nodeType===3&&endNode.nodeType===3){
+      var range=document.createRange();
+      range.setStart(startNode,Math.max(0,Math.min(startNode.length,spot.start-starts[first])));
+      range.setEnd(endNode,Math.max(0,Math.min(endNode.length,spot.end-starts[last])));
+      CSS.highlights.set('voice-pdf',new Highlight(range));
+    }else hit.forEach(function(span){span.classList.add('voice-span');});
     return{element:hit[0],rect:function(){
       var box=null;hit.forEach(function(span){var r=span.getBoundingClientRect();if(!r.width&&!r.height)return;box=box?{left:Math.min(box.left,r.left),top:Math.min(box.top,r.top),right:Math.max(box.right,r.right),bottom:Math.max(box.bottom,r.bottom)}:{left:r.left,top:r.top,right:r.right,bottom:r.bottom};});
       if(box){box.width=box.right-box.left;box.height=box.bottom-box.top;}return box;
@@ -3648,7 +3659,7 @@
     var player=ensureVoicePlayer(),startAt=voiceStartIndex(ch,prepared.chunks);voicePaperId=ch.id;voiceChunks=prepared.chunks;voiceSpotCache={};voiceScrolledByHandAt=0;fillVoiceSections();
     player.load(prepared.chunks,startAt);player.setVoice(chosenVoice());player.play();
     var left=[];if(prepared.skipped.equations)left.push('equations');if(prepared.skipped.tables)left.push('tables');if(prepared.skipped.captions)left.push('captions');if(prepared.skipped.references)left.push('the reference list');
-    showReaderToast('Reading aloud'+(left.length?' · skipping '+left.join(', ').replace(/, ([^,]*)$/,' and $1'):'')+' · tap a paragraph or drag the pin to read from there');
+    showReaderToast('Reading aloud'+(left.length?' · skipping '+left.join(', ').replace(/, ([^,]*)$/,' and $1'):'')+' · drag the pin to read from elsewhere');
   }
   if(byId('zenListen'))byId('zenListen').onclick=function(){if(!byId('voiceBar').classList.contains('hidden')&&voicePaperId===currentId){closeZenPopouts(false);if(voicePlayer)voicePlayer.toggle();return;}startVoice();};
   if(byId('voiceBar')){
@@ -3693,12 +3704,9 @@
     document.addEventListener('keydown',function(event){if(event.key!=='Escape')return;if(voiceDrag)endVoiceDrag(true);else if(!fromMenu.classList.contains('hidden')){closeVoiceFromMenu();from.focus();}else return;
       // The reader's own Escape would close the paper in Zen.
       event.preventDefault();event.stopPropagation();},true);
-    // While Listen is open, a plain tap on the paper's text reads from there.
-    byId('documentPane').addEventListener('click',function(event){
-      if(byId('voiceBar').classList.contains('hidden')||!voicePlayer||!voiceChunks.length||voicePaperId!==currentId||event.defaultPrevented)return;
-      var native=window.getSelection&&window.getSelection();if(native&&!native.isCollapsed)return;
-      var hit=voicePlaceAt(event.target);if(!hit)return;var at=voiceChunkAt(voiceChunks,hit.place);if(at>=0)voiceJump(at,'Reading from here');
-    });
+    /* Only the pin moves where Listen reads (Houfu, Oct 15: tapping the paper "is supposed to
+       be the sole functionality of the pointer"). A tap on the paper while listening stays a
+       tap: scrolling, turning pages and selecting never move the voice. */
     /* Speed slider: the label follows the thumb; the voice changes speed once the thumb
        rests, since a new speed restarts the sentence. */
     var voiceRateTimer=0;wireTouchRange(byId('voiceRate'));

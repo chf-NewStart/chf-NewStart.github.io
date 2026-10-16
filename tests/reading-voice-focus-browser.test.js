@@ -121,7 +121,8 @@ const spokenRange = page => page.evaluate(() => { const h = CSS.highlights && CS
     console.log('PASS  with the reading guide on, the guide follows the voice instead of the pointer');
 
     // Speed is a slider; a new speed is kept and used for the next sentence.
-    await page.locator('#voiceRate').fill('1.3');
+    // v227: the slider runs in doublings (−1…1 = 0.5×…2×), so 1.3× sits at log2(1.3).
+    await page.locator('#voiceRate').fill(Math.log2(1.3).toFixed(2));
     await page.waitForTimeout(450);
     assert.equal(await page.locator('#voiceRateValue').textContent(), '1.3×');
     assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.voice.v1')).rate), 1.3);

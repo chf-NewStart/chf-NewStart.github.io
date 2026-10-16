@@ -100,6 +100,10 @@
     return chunks;
   }
 
+  /* One to four short words and a symbol in parentheses, once or more, before a capital:
+     a diagram's labels ("Xylem (ΔΨp)", "Across root (DYw )" with a symbol font's letters). */
+  var FIGURE_LABELS = /^(?:(?:[A-Za-z][\w'’-]{0,14}\s+){0,3}[A-Za-z][\w'’-]{0,14}\s*\(\s*[^()\s,;]{1,6}\s*\)\s*)+(?=(?:[A-Z][a-z]|FIGURE|Figure|Fig\.|TABLE|Table))/;
+
   /* blocks: [{text, kind: ''|h1|h2|h3|cap|eq, page, para}] in reading order.
      Returns the spoken chunks and what was left out. */
   function prepare(blocks) {
@@ -149,6 +153,10 @@
       }
       if (mode !== 'read') return;
       if (kind === 'eq') { skipped.equations++; return; }
+      // Figure labels the layout pass glued to the front ("Across root (ΔΨw) When a soil…",
+      // "Leaf air spaces (Δcwv) FIGURE 4.1 Main driving…"): drop them, then judge the rest.
+      var unlabelled = text.replace(FIGURE_LABELS, '');
+      if (unlabelled !== text && unlabelled.length >= 2) { skipped.figureText++; text = unlabelled; }
       if (kind === 'cap' || /^(?:Supplementary\s+)?(?:Figure|Fig\.|Table|Scheme)\s*[A-Z]?\d+/i.test(text)) { skipped.captions++; return; }
       if (tableLike(text)) { skipped.tables++; return; }
       if (figureText(text)) { skipped.figureText++; return; }
@@ -338,7 +346,12 @@
   function words(text) {
     var out = [], match;
     WORD.lastIndex = 0;
-    while ((match = WORD.exec(text))) out.push({ w: match[0].toLowerCase(), start: match.index, end: match.index + match[0].length });
+    while ((match = WORD.exec(text))) {
+      var prev = out[out.length - 1];
+      // A word broken at a line end ("vol-" + "ume") is one word, as the voice says it.
+      if (prev && /^[a-z]/.test(match[0]) && /^-\s+$/.test(text.slice(prev.end, match.index))) { prev.w += match[0].toLowerCase(); prev.end = match.index + match[0].length; continue; }
+      out.push({ w: match[0].toLowerCase(), start: match.index, end: match.index + match[0].length });
+    }
     return out;
   }
   function locate(text, sentence, from) {
@@ -347,18 +360,35 @@
     var lead = Math.min(3, said.length);
     // Follow the spoken words in order from page word `begin`; a citation or link is a gap.
     function follow(begin) {
-      var at = begin, matched = 0, last = begin;
+      var at = begin, matched = 0, last = begin, tight = true;
       for (var s = 0; s < said.length; s++) {
         var limit = s < lead ? 8 : 24, found = false;
         for (var look = at; look < page.length && look - at <= limit; look++) {
-          if (page[look].w === said[s]) { matched++; last = look; at = look + 1; found = true; break; }
+          if (page[look].w === said[s]) { if (s > 0 && s < lead && look - at > 1) tight = false; matched++; last = look; at = look + 1; found = true; break; }
         }
         if (!found && s < lead) return null;
       }
-      return matched >= Math.max(lead, said.length * 0.6) ? { begin: begin, last: last } : null;
+      return matched >= Math.max(lead, said.length * 0.6) ? { begin: begin, last: last, tight: tight } : null;
     }
-    var hit = null;
-    for (var i = 0; i < page.length && !hit; i++) if (page[i].start >= (from || 0) && page[i].w === said[0]) hit = follow(i);
+    // The first place where the opening words sit together wins; a looser fit (a citation
+    // inside the opening words) only when there is none, so "A few days…" is not found
+    // at an earlier "a" with "few days" a few words on.
+    function find() {
+      var loose = null;
+      for (var i = 0; i < page.length; i++) {
+        if (page[i].start < (from || 0) || page[i].w !== said[0]) continue;
+        var fit = follow(i);if (fit && fit.tight) return fit;if (fit && !loose) loose = fit;
+      }
+      return loose;
+    }
+    var hit = find();
+    // A few stray words glued to the front (a figure label the layout pass joined to the
+    // paragraph) must not hide the sentence: try again from its 2nd, 3rd or 4th word.
+    if (!hit && said.length > 6) {
+      for (var skip = 1; skip <= 3 && !hit; skip++) {
+        said = said.slice(1); lead = Math.min(3, said.length); hit = find();
+      }
+    }
     if (!hit) return null;
     var begin = hit.begin, end = page[hit.last].end;
     // Keep a trailing figure pointer or citation and the closing punctuation with the sentence.

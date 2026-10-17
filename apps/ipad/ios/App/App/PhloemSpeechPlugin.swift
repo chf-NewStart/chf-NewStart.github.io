@@ -39,11 +39,12 @@ final class PhloemSpeechPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizer
     }
 
     /// Names carry the quality the way macOS shows it ("Jamie (Premium)"), which is what the
-    /// reader ranks and labels voices by.
+    /// reader ranks and labels voices by. Apple's names often say it already; never twice.
     @objc func voices(_ call: CAPPluginCall) {
         let list: [[String: Any]] = AVSpeechSynthesisVoice.speechVoices().map { voice in
             let quality = voice.quality.rawValue
-            let suffix = quality >= 3 ? " (Premium)" : quality == 2 ? " (Enhanced)" : ""
+            let tagged = voice.name.contains("(Premium)") || voice.name.contains("(Enhanced)")
+            let suffix = tagged ? "" : quality >= 3 ? " (Premium)" : quality == 2 ? " (Enhanced)" : ""
             return ["voiceURI": voice.identifier, "name": voice.name + suffix, "lang": voice.language,
                     "quality": quality, "localService": true, "default": false]
         }

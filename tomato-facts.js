@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "PHYSICS",
+            title: "Glass is a liquid that forgot how to flow",
+            fact: "The old 'windows are flowing liquid' claim is a myth — medieval glass is thick at the bottom because of how it was spun, not because it dripped. But glass genuinely is an amorphous solid: atoms locked in a liquid's disorder with none of its mobility.",
+            detail: "The everyday miracle: glass is rigid like a solid yet structurally a frozen liquid, and it never fully crystallizes no matter how slowly you cool it."
+        },
+        {
+            tag: "PHYSICS",
             title: "You are glowing right now",
             fact: "Every warm object emits infrared light, and your 37 °C body is no exception — about 100 watts of it, mostly escaping as heat radiation. Thermal cameras see you because you are literally shining.",
             detail: "Snakes in the pit-viper family, like rattlesnakes, 'see' this glow with pit organs sensitive enough to track a mouse by its body heat in total darkness."

@@ -4,7 +4,33 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-10-16)
+## Now (2026-10-19)
+
+- **Spotlight guide, v230 (branch `phloem-spotlight-guide`, NOT merged; Houfu: "for the guide make another mode …
+  circular spotlight effect on a certain part, mag 1.1x … dim or blur the outside parts"). Waiting for another agent's
+  review before it goes to `main`.** The guide's shape picker (Settings "Shape", and new Rows | Columns | Spotlight
+  buttons in the Zen guide menu) gains **Spotlight**: a round lens follows the pointer (mouse) or is placed by a
+  tap / dragged by its grip (touch), showing the paper under it **enlarged 1.1×** (`SPOT_ZOOM`), while the rest of the
+  pane is **dimmed** (the existing Dimness slider, 70–100%) and **blurred** (3.5px backdrop blur). The Size slider
+  scales the lens (150–260 px at 100%). Works on PDFs (scroll, page, book) and text/Reader view; pins with a click
+  like the band; persists (`comfort.guideOrientation='spot'`, `spotX/spotY`). How: the lens holds **inert copies**
+  of the page(s) under it (`paintSpotLens`): PDF pixels are copied only for the circle's patch into a small canvas
+  (no full-page canvas duplicates, so iPad canvas memory stays flat); highlights, ink, sticky notes and Find marks
+  come along as DOM copies, refreshed by a MutationObserver when the page changes; Listen's CSS-highlight sentence
+  is redrawn as plain rectangles. Copies drop ids, `data-page`, links and the text layer, so nothing in the app can
+  find them. **While the reader selects text or uses the pen/marker/eraser/sticky tools, during a pinch or a page
+  turn, the copy hides and the circle shows the real paper unenlarged**, so taps and strokes land where they are
+  seen. Grip drags keep the finger where it took hold (it never covers the enlarged words).
+  **Review points:** (1) WebKit/iPad: Playwright WebKit (and so maybe iPad Safari) does **not** apply
+  `backdrop-filter` under a CSS mask, so there the outside is dimmed but **not blurred** (Chromium blurs). Options:
+  accept dim-only on iPad, or blur via a filtered copy instead. Needs a look on a real iPad. (2) The blur sits on a
+  full-pane layer; check scrolling smoothness on an older iPad. (3) Copies render with the reader's own CSS; a
+  paper-level style that keys on an id would not reach them (none found). Test:
+  `tests/reading-spotlight-guide.test.js` (19 checks: geometry, a red square measured at 1.08× under the centre,
+  scroll alignment, pen mode steps aside, Rows restores the band, text papers, persistence), Chromium 19/19 and
+  WebKit 19/19.
+
+## Earlier (2026-10-16)
 
 - **Handwritten sticky notes, v229 (web; Houfu: "make the note 'writable' instead of only do text … default to
   write").** A PDF sticky note now has a 4:3 writing face with **Write | Type** under it. A note placed with the

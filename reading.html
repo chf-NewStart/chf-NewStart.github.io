@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=229">
-  <link rel="stylesheet" href="/reading-fold.css?v=229">
-  <link rel="stylesheet" href="/reading-workspace.css?v=229">
+  <link rel="stylesheet" href="/reading.css?v=230">
+  <link rel="stylesheet" href="/reading-fold.css?v=230">
+  <link rel="stylesheet" href="/reading-workspace.css?v=230">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -341,10 +341,11 @@
         <div class="comfort-section comfort-guide" aria-label="Guide settings">
           <span class="comfort-section-title">Guide</span>
           <div class="comfort-section-body">
-            <div class="group"><span class="group-label">Direction</span>
-              <div class="guide-scope" role="group" aria-label="Reading guide direction">
+            <div class="group"><span class="group-label">Shape</span>
+              <div class="guide-scope" role="group" aria-label="Reading guide shape">
                 <button class="toggle" type="button" data-guide-orientation="row" aria-pressed="true">Rows</button>
                 <button class="toggle" type="button" data-guide-orientation="column" aria-pressed="false" title="Top to bottom, then right to left">Columns</button>
+                <button class="toggle" type="button" data-guide-orientation="spot" aria-pressed="false" title="A round lens that enlarges the words under it; the rest blurs and dims">Spotlight</button>
               </div>
             </div>
             <div class="group guide-dim-control" id="guideDimGroup"><span class="group-label">Dimness</span>
@@ -403,6 +404,8 @@
         <div class="workspace-divider" id="workspaceDivider" role="separator" aria-label="Resize paper and workspace" aria-controls="documentPane workspacePanel" aria-orientation="vertical" aria-valuemin="30" aria-valuemax="70" aria-valuenow="50" aria-valuetext="Paper 50 percent, workspace 50 percent" title="Drag to resize paper and workspace · double-click to reset" tabindex="0"><span class="workspace-divider-grip" id="workspaceDividerGrip" aria-hidden="true"></span></div>
         <div class="workspace-dock-preview hidden" id="workspaceDockPreview" aria-hidden="true"><span id="workspaceDockPreviewLabel"></span></div>
         <div class="pane-spotlight" id="paneSpotlight">
+          <div class="spot-veil" aria-hidden="true"></div>
+          <div class="spot-lens" id="spotLens" aria-hidden="true" inert><div class="spot-lens-content" id="spotLensContent"></div></div>
           <div class="guide-shade guide-shade-top"></div>
           <div class="guide-shade guide-shade-left"></div>
           <div class="guide-shade guide-shade-right"></div>
@@ -708,6 +711,11 @@
           <button class="zen-exit zen-guide" id="zenGuide" type="button" aria-expanded="false" aria-controls="zenGuideMenu" aria-haspopup="true" aria-label="Reading guide off. Open guide controls" title="Guide controls (G toggles)">▰</button>
           <div class="zen-popout zen-guide-menu hidden" id="zenGuideMenu" role="group" aria-label="Reading guide controls">
             <button class="zen-popout-option zen-guide-toggle" id="zenGuideToggle" type="button" aria-pressed="false"><span aria-hidden="true">▰</span><span id="zenGuideToggleLabel">Guide off</span></button>
+            <div class="zen-guide-modes" role="group" aria-label="Reading guide shape">
+              <button class="zen-popout-option" type="button" data-zen-guide-orientation="row" aria-pressed="true" title="One line at a time">Rows</button>
+              <button class="zen-popout-option" type="button" data-zen-guide-orientation="column" aria-pressed="false" title="Top to bottom, then right to left">Columns</button>
+              <button class="zen-popout-option" type="button" data-zen-guide-orientation="spot" aria-pressed="false" title="A round lens that enlarges the words under it; the rest blurs and dims">Spotlight</button>
+            </div>
             <div class="zen-guide-dim-control">
               <label for="zenGuideDimRange">Outside dimness</label>
               <input id="zenGuideDimRange" type="range" min="70" max="100" step="5" value="85" aria-label="Dimness outside the focused lines">
@@ -1139,23 +1147,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=229',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=230',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=229" defer></script>
-<script src="/reading-stickies.js?v=229" defer></script>
-<script src="/reading-keeps.js?v=229" defer></script>
-<script src="/reading-excerpts.js?v=229" defer></script>
-<script src="/reading-excerpts-view.js?v=229" defer></script>
-<script src="/reading-lists.js?v=229" defer></script>
-<script src="/reading-lists-view.js?v=229" defer></script>
-<script src="/reading-voice.js?v=229" defer></script>
-<script src="/reading-workspace.js?v=229" defer></script>
-<script src="/reading-workspace-viewport.js?v=229" defer></script>
-<script src="/reading-workspace-view.js?v=229" defer></script>
-<script src="/reading-folds.js?v=229" defer></script>
-<script src="/reading-pdf-projection.js?v=229" defer></script>
-<script src="/reading-fold-view.js?v=229" defer></script>
-<script src="/reading.js?v=229" defer></script>
+<script src="/reading-ink.js?v=230" defer></script>
+<script src="/reading-stickies.js?v=230" defer></script>
+<script src="/reading-keeps.js?v=230" defer></script>
+<script src="/reading-excerpts.js?v=230" defer></script>
+<script src="/reading-excerpts-view.js?v=230" defer></script>
+<script src="/reading-lists.js?v=230" defer></script>
+<script src="/reading-lists-view.js?v=230" defer></script>
+<script src="/reading-voice.js?v=230" defer></script>
+<script src="/reading-workspace.js?v=230" defer></script>
+<script src="/reading-workspace-viewport.js?v=230" defer></script>
+<script src="/reading-workspace-view.js?v=230" defer></script>
+<script src="/reading-folds.js?v=230" defer></script>
+<script src="/reading-pdf-projection.js?v=230" defer></script>
+<script src="/reading-fold-view.js?v=230" defer></script>
+<script src="/reading.js?v=230" defer></script>
 </body>
 </html>

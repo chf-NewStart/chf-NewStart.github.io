@@ -1122,6 +1122,8 @@
     body.zen.zen-idle .zen-workspace[aria-pressed="true"] { opacity: .48; }
     .zen-guide-menu { width: min(286px, calc(100vw - 76px)); padding: 6px; display: grid; gap: 4px; }
     .zen-guide-toggle { width: 100%; justify-content: flex-start; }
+    .zen-guide-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .zen-guide-modes .zen-popout-option { min-width: 0; padding: 6px 4px; }
     .zen-guide-dim-control { padding: 5px 7px; display: grid; grid-template-columns: auto minmax(92px, 1fr) 38px; align-items: center; gap: 9px; }
     .zen-guide-dim-control label { color: var(--muted); font-size: .62rem; font-weight: 700; white-space: nowrap; }
     .zen-guide-dim-control input { width: 100%; min-height: 32px; accent-color: var(--accent); touch-action: none; }
@@ -1285,6 +1287,39 @@
     .pane-spotlight.locked.guide-left .guide-band::after { left: auto; right: 9px; }
     .pane-spotlight.dragging .guide-grip { transform: scale(1.14); color: var(--ink); }
     @media (hover: hover) and (pointer: fine) { .guide-grip { display: none; } }
+    /* Spotlight shape: a round lens shows the paper under it enlarged (an inert copy, see
+       paintSpotLens); everything outside blurs and dims behind one masked veil. The lens
+       is the box --guide-x/-y/-w/-h describe, so the grip, pin dot and Ask-AI crop keep
+       working on it unchanged. */
+    .spot-veil, .spot-lens { display: none; }
+    .pane-spotlight[data-guide-orientation="spot"] .guide-shade { display: none; }
+    .pane-spotlight[data-guide-orientation="spot"] .spot-veil { display: block; position: absolute; inset: 0; pointer-events: none;
+      --spot-cx: calc(var(--guide-x, 40%) + var(--guide-w, 200px) / 2); --spot-cy: calc(var(--guide-y, 30%) + var(--guide-h, 200px) / 2); --spot-r: calc(var(--guide-w, 200px) / 2);
+      background: color-mix(in srgb, var(--paper) var(--spot-wash, 85%), transparent);
+      -webkit-backdrop-filter: blur(3.5px); backdrop-filter: blur(3.5px);
+      -webkit-mask: radial-gradient(circle at var(--spot-cx) var(--spot-cy), transparent calc(var(--spot-r) - .5px), #000 calc(var(--spot-r) + 1.5px));
+      mask: radial-gradient(circle at var(--spot-cx) var(--spot-cy), transparent calc(var(--spot-r) - .5px), #000 calc(var(--spot-r) + 1.5px)); }
+    .pane-spotlight[data-guide-orientation="spot"] .spot-lens { display: block; position: absolute; left: var(--guide-x, 40%); top: var(--guide-y, 30%); width: var(--guide-w, 200px); height: var(--guide-h, 200px);
+      overflow: hidden; border-radius: 50%; pointer-events: none; background: var(--spot-lens-bg, #d8d6d0); contain: strict; }
+    .pane-spotlight[data-guide-orientation="spot"].spot-lens-off .spot-lens { visibility: hidden; }
+    .spot-lens-content { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+    .spot-lens-content > .spot-frame { position: absolute; display: block; width: 0; height: 0; min-width: 0; min-height: 0; margin: 0; padding: 0; gap: 0; perspective: none; filter: none; overflow: visible; }
+    .spot-lens-content > .spot-frame .pdf-page { display: block; animation: none; transition: none; }
+    .spot-lens-content > .spot-doc { position: absolute; margin: 0; min-height: 0; max-width: none; box-sizing: border-box; overflow: visible; }
+    .spot-lens-content .spot-window { position: absolute; display: none; max-width: none; }
+    .spot-lens-content :is(textarea, .para-action) { visibility: hidden; }
+    .spot-marks { position: absolute; left: 0; top: 0; }
+    .spot-marks i { position: absolute; border-radius: 3px; background: color-mix(in srgb, var(--yellow) 42%, transparent); mix-blend-mode: multiply; }
+    html[data-theme="dark"] .spot-marks i { mix-blend-mode: screen; }
+    .pane-spotlight[data-guide-orientation="spot"] .guide-band { border-radius: 50%; background: none;
+      box-shadow: inset 0 0 0 1.5px rgba(204,158,66,.62), 0 0 0 1px rgba(142,103,36,.14), 0 10px 30px rgba(37,33,25,.18); transition: width .12s ease, height .12s ease; }
+    .pane-spotlight[data-guide-orientation="spot"][data-guide-color="green"] .guide-band { box-shadow: inset 0 0 0 1.5px rgba(91,174,101,.62), 0 0 0 1px rgba(43,125,57,.14), 0 10px 30px rgba(37,33,25,.18); }
+    .pane-spotlight[data-guide-orientation="spot"][data-guide-color="blue"] .guide-band { box-shadow: inset 0 0 0 1.5px rgba(78,154,184,.62), 0 0 0 1px rgba(41,113,143,.14), 0 10px 30px rgba(37,33,25,.18); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="spot"] .guide-band { background: none; box-shadow: inset 0 0 0 1.5px rgba(244,210,111,.42), 0 10px 30px rgba(0,0,0,.4); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="spot"][data-guide-color="green"] .guide-band { background: none; box-shadow: inset 0 0 0 1.5px rgba(135,211,151,.42), 0 10px 30px rgba(0,0,0,.4); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="spot"][data-guide-color="blue"] .guide-band { background: none; box-shadow: inset 0 0 0 1.5px rgba(139,207,228,.42), 0 10px 30px rgba(0,0,0,.4); }
+    .pane-spotlight[data-guide-orientation="spot"] .guide-grip { left: auto; right: -10px; top: auto; bottom: -10px; margin: 0; }
+    .pane-spotlight[data-guide-orientation="spot"].locked .guide-band::after { left: 50%; top: 9px; margin: 0 0 0 -4px; }
     html[data-theme="dark"] .guide-band { background: linear-gradient(90deg, rgba(190,150,43,.08), rgba(220,177,58,.19) 12%, rgba(220,177,58,.19) 88%, rgba(190,150,43,.08)); box-shadow: inset 0 1px rgba(244,210,111,.34), inset 0 -1px rgba(137,98,19,.38), 0 0 0 1px rgba(220,177,58,.08); }
     html[data-theme="dark"] .pane-spotlight[data-guide-color="green"] .guide-band { background: linear-gradient(90deg, rgba(62,145,87,.08), rgba(78,171,102,.19) 12%, rgba(78,171,102,.19) 88%, rgba(62,145,87,.08)); box-shadow: inset 0 1px rgba(135,211,151,.32), inset 0 -1px rgba(31,104,52,.38), 0 0 0 1px rgba(78,171,102,.08); }
     html[data-theme="dark"] .pane-spotlight[data-guide-color="blue"] .guide-band { background: linear-gradient(90deg, rgba(58,137,167,.08), rgba(77,163,194,.2) 12%, rgba(77,163,194,.2) 88%, rgba(58,137,167,.08)); box-shadow: inset 0 1px rgba(139,207,228,.32), inset 0 -1px rgba(32,102,130,.4), 0 0 0 1px rgba(77,163,194,.08); }

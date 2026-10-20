@@ -4,11 +4,22 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-10-19)
+## Now (2026-10-20)
 
-- **Spotlight guide, v230 (branch `phloem-spotlight-guide`, NOT merged; Houfu: "for the guide make another mode …
-  circular spotlight effect on a certain part, mag 1.1x … dim or blur the outside parts"). Waiting for another agent's
-  review before it goes to `main`.** The guide's shape picker (Settings "Shape", and new Rows | Columns | Spotlight
+- **iPad 1.2.4 (45), reader v230 (2026-10-20; Houfu: "push to main and to App Store. And check why App Store is
+  still not publishing our code").** Why the App Store lagged: the app ships a **copy of the reader bundled at build
+  time** (`apps/ipad/scripts/build-web.mjs`), so a push to `main` only updates the website. 1.2.3 (44) went live on
+  2026-10-16 22:27 UTC with reader v227; v228 (Listen highlight on PDF pages, pin-only), v229 (handwritten sticky
+  notes) and v230 (Spotlight) were web-only until this build. Every reader change needs a new build + App Review.
+  This build: PR #78 (the released 1.2.3 branch) merged into `main`, version 1.2.4 / build 45, iPad bundle tests
+  21/21, `cap sync` bundles v230, Release archive signed for team DCC763A996. **Checked in the iPad 13" simulator
+  (iOS 27 runtime, real WKWebView):** Spotlight from the Zen guide menu enlarges the words under the lens and
+  **blurs and dims the outside** (so the v230 worry below about WebKit was Playwright's headless WebKit, which draws
+  no `backdrop-filter` at all, mask or not); dragging the lens by its grip moves it and the copy follows,
+  highlights included. Upload and App Store Connect state: see Log.
+
+- **Spotlight guide, v230 (merged to `main` 2026-10-20 after review; Houfu: "for the guide make another mode …
+  circular spotlight effect on a certain part, mag 1.1x … dim or blur the outside parts").** The guide's shape picker (Settings "Shape", and new Rows | Columns | Spotlight
   buttons in the Zen guide menu) gains **Spotlight**: a round lens follows the pointer (mouse) or is placed by a
   tap / dragged by its grip (touch), showing the paper under it **enlarged 1.1×** (`SPOT_ZOOM`), while the rest of the
   pane is **dimmed** (the existing Dimness slider, 70–100%) and **blurred** (3.5px backdrop blur). The Size slider
@@ -21,9 +32,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   find them. **While the reader selects text or uses the pen/marker/eraser/sticky tools, during a pinch or a page
   turn, the copy hides and the circle shows the real paper unenlarged**, so taps and strokes land where they are
   seen. Grip drags keep the finger where it took hold (it never covers the enlarged words).
-  **Review points:** (1) WebKit/iPad: Playwright WebKit (and so maybe iPad Safari) does **not** apply
-  `backdrop-filter` under a CSS mask, so there the outside is dimmed but **not blurred** (Chromium blurs). Options:
-  accept dim-only on iPad, or blur via a filtered copy instead. Needs a look on a real iPad. (2) The blur sits on a
+  **Review points:** (1) ~~WebKit/iPad does not blur under a CSS mask~~: resolved 2026-10-20. Playwright's headless
+  WebKit draws no `backdrop-filter` at all (checked with a plain unmasked blur), so its screenshots show dim-only;
+  the iPad app in the simulator blurs and dims as designed. (2) The blur sits on a
   full-pane layer; check scrolling smoothness on an older iPad. (3) Copies render with the reader's own CSS; a
   paper-level style that keys on an id would not reach them (none found). Test:
   `tests/reading-spotlight-guide.test.js` (19 checks: geometry, a red square measured at 1.08× under the centre,
@@ -315,6 +326,12 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-20 v230 + iPad 1.2.4 (45):** reviewed `phloem-spotlight-guide` and merged it to `main` with PR #78 and
+  the 1.2.4 (45) bump. `reading-spotlight-guide` 19/19 on Chromium and WebKit; guide/Zen/Listen neighbours match
+  `main` (`reading-guide-pen-controls` and `reading-zen-default-browser` fail on both; `reading-zen-compact-browser`
+  and `reading-voice-focus-browser` flake on both, pass or fail run to run). iPad bundle 21/21. Archive 1.2.4 (45)
+  verified (version, build, reader v230 inside).
 
 - **2026-10-16 v229:** handwriting on sticky notes, Write by default (see Now). `reading-sticky-handwriting` 34/34
   and `reading-pdf-sticky-notes` 55/55 on Chromium and WebKit; iPad bundle 21/21. Suite: Chromium 137/141, WebKit

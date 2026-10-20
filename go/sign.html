@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Phloem Booth Sign</title>
+  <style>
+    @page { size: letter portrait; margin: 0; }
+    :root { color-scheme: light; --ink: #292c27; --leaf: #345634; --leaf-2: #52664b; --paper: #f3f0e8; font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #888; }
+    .sheet { width: 8.5in; height: 11in; margin: 24px auto; padding: .7in .75in; background: var(--paper); display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .head { display: flex; align-items: center; gap: .25in; }
+    .head img { width: 1.1in; height: 1.1in; border-radius: .24in; }
+    .eyebrow { margin: 0; color: var(--leaf-2); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 15pt; text-align: left; }
+    h1 { margin: 0; font-size: 44pt; line-height: 1.05; text-align: left; }
+    .pitch { margin: .35in 0 0; font-size: 24pt; line-height: 1.25; max-width: 6.5in; }
+    .qr { margin-top: .45in; padding: .18in; background: #fff; border-radius: .2in; border: 3px solid var(--leaf); }
+    .qr img { display: block; width: 4.2in; height: 4.2in; image-rendering: pixelated; }
+    .scan { margin: .3in 0 0; font-size: 26pt; font-weight: 700; color: var(--leaf); }
+    .try { margin: .12in 0 0; font-size: 17pt; }
+    .url { margin-top: auto; font-size: 13pt; color: var(--leaf-2); }
+    @media print { body { background: none; } .sheet { margin: 0; } }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="head">
+      <img src="/assets/home/phloem-icon.webp" alt="">
+      <div>
+        <p class="eyebrow">Free on iPad</p>
+        <h1>Phloem</h1>
+      </div>
+    </div>
+    <p class="pitch">A calm reading desk for research papers.<br>Stop skimming. Actually read.</p>
+    <div class="qr"><img src="qr-library.svg" alt="QR code linking to houfu72.com/go"></div>
+    <p class="scan">Scan to get it free</p>
+    <p class="try">or try it on our iPad right here →</p>
+    <p class="url">houfu72.com/go</p>
+  </div>
+</body>
+</html>

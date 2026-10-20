@@ -223,7 +223,7 @@ passages override AI, and unsafe locations are omitted from shared layers.
 Run with Node 18+ and Playwright's bundled Chromium:
 
 ```sh
-npm install playwright
+npm install playwright pdf-lib
 node tests/reading-highlights.test.js
 node tests/reading-ai-providers.test.js
 node tests/reading-selection-note-ai.test.js

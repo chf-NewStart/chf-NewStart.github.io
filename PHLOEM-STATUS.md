@@ -6,6 +6,23 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **Phloem 1.2.5 (48) prepared for the App Store, not submitted (Houfu: "for phloem shall we publish the newest on
+  iphone and mac and ipad too? the build 45 went through").** 1.2.4 (45) is Ready for Sale. **Version record iOS 1.2.5
+  created** (manual release, copyright "2026 Houfu Chen"), **build 48 attached**: universal, reader **v239** (v239 landed
+  while build 47 with v238 was uploading, so 48 replaced it; 47 stays in TestFlight). Both VALID, each with a What to
+  Test list. Commits 40edf019 (47) and 529c4dfd (48). Checked before upload: `apps/ipad` 22/22; `reading-zen-ipad`,
+  `reading-workspace-bottom-dock`, `reading-phone-browser`, `reading-ipad-touch-dock`, `reading-workspace-move-tool`,
+  `reading-night-light`, `reading-voice-exit-resume-browser` pass in Chromium and WebKit; in the simulators the iPad
+  app's Zen dock has **Night** under Listen and its Workspace tools are Pen (default), Eraser, Lasso with **no Move**
+  (the Move button is removed when `PHLOEM_NATIVE`), and the iPhone keeps Library · Look up · Listen · Find · More
+  with Night light under More. **Listing:** the iPad 13" set (5 screenshots and the preview) carried over; the four
+  **6.9-inch iPhone screenshots** are uploaded (`APP_IPHONE_67`, 1320×2868, processed). **What's New (en-CA)** drafted:
+  iPhone, Night light, Listen resumes, the mirrored one-page turn, the whole-page highlight fix. **Description:** first
+  line now "…research papers on iPad and iPhone." plus one iPhone sentence; the rest unchanged. Subtitle unchanged
+  ("Read papers. Stay focused."). **App Review notes not changed:** the copy on 1.2.5 still says 1.2.4 (build 45) and
+  still holds the reviewer Anthropic key; the API only replaces the whole text, so the edits are written out for Houfu
+  (fits: 3,845 of 4,000 characters). The macOS 1.0 draft is untouched. No review submission was created.
+
 - **Listen leaves no marks behind and resumes where it stopped; the lamp switch only where it lights paper, v239 (web;
   Houfu: "the speakers highlight wont go when i exit the speaker mode, also if i reenter the speaker mode, dont make it
   speak elsewhere"; "the night mode and night light mode in library are the same it seems").** (1) The Zen dock's
@@ -502,15 +519,18 @@ Outputs (local, untracked, in the main checkout's `output/`):
   identity", try a phone hotspot, then check the Apple ID's country/region (Settings › your name › Media &
   Purchases › View Account). Steps in `apps/ipad/plans/ICLOUD-SYNC-FIX.md`, "Sixth round".
 
-- **iPhone (1.2.5 (46) in TestFlight):** (1) try it on the iPhone from TestFlight (Listen, Look up, a highlight, on
-  its side). (2) Ship iPhone support with the next version? Once released it cannot be withdrawn (the iPad app stays as
-  it is). If yes, after 1.2.4 is out of review: create 1.2.5, add the four 6.9-inch screenshots, attach 46, and say
-  "submit Phloem 1.2.5". If no, revert commit 14b3f2a2's device family before the next iPad build.
-  (3) Keep Listen going with the screen locked? Needs the `audio` background mode in Info.plist (iPhone and iPad alike).
-- **Mac:** the iPad app is already offered on Apple silicon Macs. Optional: install build 46 on this Mac with
+- **Phloem 1.2.5 is ready to submit (iPad, iPhone, Mac), waiting for Houfu's words.** Before saying "submit Phloem
+  1.2.5": (1) edit the App Review notes in App Store Connect (three in-place edits in
+  `output/phloem-iphone-1.2.5-2026-10-21/REVIEW-NOTES-EDITS-1.2.5.md`; Claude did not re-send the notes because they
+  still carry the reviewer Anthropic key); (2) **rotate that key** (it has been in the notes since 1.2.1), then paste
+  the new one on the key line; (3) glance at What's New and the description's new iPhone sentence; (4) optionally try
+  build 48 on the iPhone from TestFlight. Shipping iPhone support cannot be withdrawn later.
+- Keep Listen going with the screen locked? Needs the `audio` background mode in Info.plist (iPhone and iPad alike).
+- **Mac:** the iPad app is already offered on Apple silicon Macs. Optional: install build 48 on this Mac with
   TestFlight (replaces the old "register this Mac" question: not needed), then App Store Connect › Pricing and
-  Availability › Verify Compatibility to drop "Not verified for macOS". Keep or delete the empty macOS 1.0 draft
-  (harmless either way; Claude left it).
+  Availability › Verify Compatibility to drop "Not verified for macOS". In the Mac app the Workspace has no Move tool
+  (v238 keeps it to browsers), so a mouse drag there draws; the PDF paper's mouse drag (v236/v237) works. Keep or
+  delete the empty macOS 1.0 draft (harmless either way; Claude left it).
 
 - **Old open PRs:** #29 (iPad prototype) and #28 (Book guide fix) are already on main in other forms, and #30
   (calm homepage) was superseded by the current homepage. Close them? #72's Define fix is now on main (v213); its other
@@ -527,6 +547,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 1.2.5 (47, 48) and the 1.2.5 version record:** see Now. Uploaded with the API key; screenshots
+  through the API (`appScreenshotSets` / `appScreenshots`, chunked upload, MD5 commit). Not submitted.
 
 - **2026-10-21 v239:** Listen closes from the dock and resumes at its sentence; lamp switch only in the reader
   (see Now). Voice, phone, iPad dock, Zen iPad and Night light suites pass in Chromium and WebKit.

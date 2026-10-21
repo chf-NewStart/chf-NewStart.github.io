@@ -21,7 +21,14 @@
     let scope = null;
     let cards = new Map();
     const drafts = new Map();
-    let tool = 'pen', color = 'black', width = 2.4, gesture = null, previewFrame = 0;
+    /* On a laptop (a mouse or trackpad, no touch screen, not the iPad app) the mouse is the
+       only hand, so the Workspace starts with Move: dragging blank paper moves it, as a finger
+       does on the iPad (Houfu: "same issue for workplace scroll"; "on ipad app or browser,
+       idont think we need a move button"). Pen draws with the mouse once picked. */
+    const laptopPointer = !!(global.matchMedia && global.matchMedia('(hover: hover) and (pointer: fine)').matches) && !global.PHLOEM_NATIVE &&
+      !(global.navigator && (global.navigator.maxTouchPoints > 1 || /iPhone|iPad|iPod|Android/.test(global.navigator.userAgent)));
+    const moveButton = tools.querySelector('[data-workspace-tool="move"]');
+    let tool = laptopPointer && moveButton ? 'move' : 'pen', color = 'black', width = 2.4, gesture = null, previewFrame = 0;
     let suppressClickUntil = 0;
     let suppressCardClickUntil = 0;
     const cardTouches = new Map();
@@ -844,6 +851,7 @@
       resizeLayout();
       const usable = available(c);
       board.classList.toggle('workspace-selecting', tool === 'select');
+      board.classList.toggle('workspace-moving', tool === 'move');
       tools.querySelectorAll('[data-workspace-tool]').forEach(button => { const on = button.dataset.workspaceTool === tool; button.classList.toggle('active', on); button.setAttribute('aria-pressed', String(on)); });
       tools.querySelectorAll('[data-workspace-color]').forEach(button => { const on = button.dataset.workspaceColor === color; button.classList.toggle('active', on); button.setAttribute('aria-pressed', String(on)); });
       if (sizeSelect && document.activeElement !== sizeSelect) sizeSelect.value = String(width);
@@ -1133,6 +1141,9 @@
     board.addEventListener('pointerdown', event => {
       if (onSelectionActions(event)) return;
       if (startGripDrag(event)) return;
+      // Move is the mouse's hand; a stylus still writes with the pen, as the Pencil does on the iPad.
+      if (tool === 'move' && event.pointerType !== 'pen') { startPaperMove(event); return; }
+      const strokeTool = tool === 'move' ? 'pen' : tool;
       if (tool === 'select') {
         if (event.button !== 0) return;
         if (gesture) { if (gesture.pointerId !== event.pointerId) cancel(); event.preventDefault(); event.stopImmediatePropagation(); return; }
@@ -1149,10 +1160,10 @@
         }
         return;
       }
-      if (tool !== 'pen' && tool !== 'eraser') return;
+      if (strokeTool !== 'pen' && strokeTool !== 'eraser') return;
       if (event.pointerType === 'touch') return;
       if (event.pointerType !== 'pen' && event.target.closest('.workspace-card')) return;
-      if (startStroke(event, event.pointerId, tool)) {
+      if (startStroke(event, event.pointerId, strokeTool)) {
         if (event.pointerType === 'pen') suppressClickUntil = performance.now() + 600;
         event.preventDefault(); event.stopPropagation(); board.setPointerCapture(event.pointerId);
       }
@@ -1184,8 +1195,8 @@
       }
       if (gesture && gesture.kind === 'stroke') { event.preventDefault(); return; }
       const touch = [...event.changedTouches].find(t => t.touchType === 'stylus');
-      if (!touch || gesture || (tool !== 'pen' && tool !== 'eraser')) return;
-      if (startStroke({ clientX: touch.clientX, clientY: touch.clientY, pressure: touch.force }, `touch-${touch.identifier}`, tool)) { suppressClickUntil = performance.now() + 600; event.preventDefault(); }
+      if (!touch || gesture || (tool !== 'pen' && tool !== 'eraser' && tool !== 'move')) return;
+      if (startStroke({ clientX: touch.clientX, clientY: touch.clientY, pressure: touch.force }, `touch-${touch.identifier}`, tool === 'move' ? 'pen' : tool)) { suppressClickUntil = performance.now() + 600; event.preventDefault(); }
     }, { capture: true, passive: false });
     board.addEventListener('touchmove', event => {
       if (tool === 'select') {
@@ -1255,6 +1266,60 @@
       }
     }, true);
     document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); });
+
+    /* Move: the hand holds blank paper and the paper follows it 1:1; a flick glides on and
+       slows like trackpad scrolling, until any press, scroll or key stops it. A plain click is
+       still a click (the move starts after MOVE_SLOP px). Notes, their grips and the selection
+       keep their own presses; fingers and the Pencil keep scrolling natively. */
+    const MOVE_SLOP = 4, GLIDE_TAU = 325, GLIDE_REST = 100;
+    let paperMove = null, paperGlide = null;
+    if (moveButton && !laptopPointer) moveButton.remove(); else if (moveButton) moveButton.hidden = false;
+    function stopPaperGlide() { if (paperGlide) { cancelAnimationFrame(paperGlide.raf); paperGlide = null; } }
+    function paperGlideTick(ts) {
+      const g = paperGlide; if (!g) return;
+      const dt = Math.min(40, ts - g.t); g.t = ts;
+      const left = scroll.scrollLeft, top = scroll.scrollTop;
+      scroll.scrollLeft = left + g.vx * dt; scroll.scrollTop = top + g.vy * dt;
+      const decay = Math.exp(-dt / GLIDE_TAU); g.vx *= decay; g.vy *= decay;
+      const stuck = Math.abs(scroll.scrollLeft - left) < .01 && Math.abs(scroll.scrollTop - top) < .01;
+      if (Math.hypot(g.vx, g.vy) < .02 || (stuck && dt > 0)) { paperGlide = null; return; }
+      g.raf = requestAnimationFrame(paperGlideTick);
+    }
+    ['wheel', 'keydown', 'touchstart', 'pointerdown'].forEach(type => global.addEventListener(type, stopPaperGlide, { capture: true, passive: true }));
+    function startPaperMove(event) {
+      paperMove = null;
+      if (event.pointerType !== 'mouse' || event.button !== 0) return;
+      if (event.target.closest('.workspace-card, .workspace-selection-box, .workspace-selection-actions, button, input, textarea, select, summary, a, [contenteditable="true"]')) return;
+      paperMove = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: scroll.scrollLeft, top: scroll.scrollTop, moving: false,
+        samples: [{ t: event.timeStamp, x: event.clientX, y: event.clientY }] };
+    }
+    board.addEventListener('pointermove', event => {
+      const m = paperMove; if (!m || m.pointerId !== event.pointerId) return;
+      if (!(event.buttons & 1)) { paperMove = null; board.classList.remove('workspace-grabbing'); return; }
+      const dx = event.clientX - m.x, dy = event.clientY - m.y;
+      if (!m.moving) {
+        if (Math.hypot(dx, dy) < MOVE_SLOP) return;
+        m.moving = true; board.classList.add('workspace-grabbing');
+        try { board.setPointerCapture(event.pointerId); } catch (error) { /* A synthetic pointer may not be capturable. */ }
+      }
+      event.preventDefault();
+      scroll.scrollLeft = m.left - dx; scroll.scrollTop = m.top - dy;
+      m.samples.push({ t: event.timeStamp, x: event.clientX, y: event.clientY });
+      while (m.samples.length > 2 && event.timeStamp - m.samples[0].t > 90) m.samples.shift();
+    });
+    function endPaperMove(event) {
+      const m = paperMove; if (!m || m.pointerId !== event.pointerId) return;
+      paperMove = null; if (!m.moving) return;
+      board.classList.remove('workspace-grabbing'); suppressClickUntil = performance.now() + 350;
+      const last = m.samples[m.samples.length - 1], first = m.samples[0], span = last.t - first.t, rest = event.timeStamp - last.t;
+      const vx = span > 8 ? -(last.x - first.x) / span : 0, vy = span > 8 ? -(last.y - first.y) / span : 0;
+      if (event.type === 'pointerup' && rest < GLIDE_REST && Math.hypot(vx, vy) > .25) {
+        paperGlide = { vx, vy, t: performance.now(), raf: 0 }; paperGlide.raf = requestAnimationFrame(paperGlideTick);
+      }
+    }
+    board.addEventListener('pointerup', endPaperMove);
+    board.addEventListener('pointercancel', endPaperMove);
+    board.addEventListener('lostpointercapture', event => { if (paperMove && paperMove.moving) endPaperMove(event); });
 
     tools.addEventListener('click', event => {
       const button = event.target.closest('[data-workspace-tool], [data-workspace-color]'); if (!button || !tools.contains(button)) return;

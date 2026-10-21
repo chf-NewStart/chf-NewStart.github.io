@@ -36,9 +36,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=237">
-  <link rel="stylesheet" href="/reading-fold.css?v=237">
-  <link rel="stylesheet" href="/reading-workspace.css?v=237">
+  <link rel="stylesheet" href="/reading.css?v=238">
+  <link rel="stylesheet" href="/reading-fold.css?v=238">
+  <link rel="stylesheet" href="/reading-workspace.css?v=238">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -558,6 +558,7 @@
           <button class="workspace-close" id="workspaceClose" type="button" aria-label="Close workspace and return to paper" title="Return to paper">✕</button>
           <div id="workspaceTools" class="workspace-tools" role="toolbar" aria-label="Workspace tools">
             <div class="workspace-tool-row">
+              <button type="button" class="workspace-move-tool" data-workspace-tool="move" aria-label="Move the paper" aria-pressed="false" title="Move: drag the paper" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/></svg></button>
               <button id="workspacePenToggle" type="button" data-workspace-tool="pen" aria-label="Pen, color and size" aria-pressed="true" aria-expanded="false" aria-controls="workspacePenOptions" title="Pen, color and size"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg></button>
               <button type="button" data-workspace-tool="eraser" aria-label="Eraser" aria-pressed="false" title="Eraser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 3 6 6-11 11H6l-4-4L15 3ZM8 10l6 6M10 20h11"/></svg></button>
               <button type="button" data-workspace-tool="select" aria-label="Select handwriting and notes" aria-pressed="false" title="Lasso: circle handwriting and notes, then drag to move"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="9" rx="9" ry="6" stroke-dasharray="3 3"/><path d="M6 13c-3 4 0 7 4 6s3-4 0-4H8m2 4c0 2-2 3-4 3"/></svg></button>
@@ -1171,23 +1172,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=237',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=238',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=237" defer></script>
-<script src="/reading-stickies.js?v=237" defer></script>
-<script src="/reading-keeps.js?v=237" defer></script>
-<script src="/reading-excerpts.js?v=237" defer></script>
-<script src="/reading-excerpts-view.js?v=237" defer></script>
-<script src="/reading-lists.js?v=237" defer></script>
-<script src="/reading-lists-view.js?v=237" defer></script>
-<script src="/reading-voice.js?v=237" defer></script>
-<script src="/reading-workspace.js?v=237" defer></script>
-<script src="/reading-workspace-viewport.js?v=237" defer></script>
-<script src="/reading-workspace-view.js?v=237" defer></script>
-<script src="/reading-folds.js?v=237" defer></script>
-<script src="/reading-pdf-projection.js?v=237" defer></script>
-<script src="/reading-fold-view.js?v=237" defer></script>
-<script src="/reading.js?v=237" defer></script>
+<script src="/reading-ink.js?v=238" defer></script>
+<script src="/reading-stickies.js?v=238" defer></script>
+<script src="/reading-keeps.js?v=238" defer></script>
+<script src="/reading-excerpts.js?v=238" defer></script>
+<script src="/reading-excerpts-view.js?v=238" defer></script>
+<script src="/reading-lists.js?v=238" defer></script>
+<script src="/reading-lists-view.js?v=238" defer></script>
+<script src="/reading-voice.js?v=238" defer></script>
+<script src="/reading-workspace.js?v=238" defer></script>
+<script src="/reading-workspace-viewport.js?v=238" defer></script>
+<script src="/reading-workspace-view.js?v=238" defer></script>
+<script src="/reading-folds.js?v=238" defer></script>
+<script src="/reading-pdf-projection.js?v=238" defer></script>
+<script src="/reading-fold-view.js?v=238" defer></script>
+<script src="/reading.js?v=238" defer></script>
 </body>
 </html>

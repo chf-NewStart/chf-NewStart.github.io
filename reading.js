@@ -6964,7 +6964,7 @@
      edge page curl and every drawing mode keep their presses. A zoomed-in paper also shows thin
      scrollbars in Zen. */
   (function(){
-    var GRAB_SLOP=4,GLIDE_TAU=325,pane=byId('documentPane'),frame=byId('pdfFrame'),press=null,glide=null,syncFrame=0;
+    var GRAB_SLOP=4,GLIDE_TAU=325,GLIDE_REST=100,pane=byId('documentPane'),frame=byId('pdfFrame'),press=null,glide=null,syncFrame=0;
     function overflow(){return{wide:pane.scrollWidth>pane.clientWidth+2,tall:pane.scrollHeight>pane.clientHeight+2};}
     function movable(){if(readerMode!=='pdf'||!pdfDoc)return false;var o=overflow();return o.wide||o.tall;}
     function zoomed(){if(readerMode!=='pdf'||!pdfDoc)return false;var o=overflow();return pagedPdfFlow()?o.wide||o.tall:o.wide;}
@@ -7022,7 +7022,7 @@
       /* A flick: the hand's speed over its last moments, unless it had come to rest. */
       var last=done.samples[done.samples.length-1],first=done.samples[0],span=last.t-first.t,rest=e.timeStamp-last.t;
       var vx=span>8?-(last.x-first.x)/span:0,vy=span>8?-(last.y-first.y)/span:0;
-      if(e.type==='pointerup'&&rest<60&&Math.hypot(vx,vy)>.25){glide={vx:vx,vy:vy,t:performance.now(),raf:0};glide.raf=requestAnimationFrame(glideTick);}
+      if(e.type==='pointerup'&&rest<GLIDE_REST&&Math.hypot(vx,vy)>.25){glide={vx:vx,vy:vy,t:performance.now(),raf:0};glide.raf=requestAnimationFrame(glideTick);}
       else savePdfReadingPosition(false);
     }
     pane.addEventListener('pointerup',endPress);

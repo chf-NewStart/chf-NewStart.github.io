@@ -61,6 +61,10 @@
 .workspace-ink .workspace-selected { filter:drop-shadow(0 0 1px var(--accent)); }
 .workspace-board.workspace-selecting, .workspace-selecting * { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .workspace-selecting { cursor:crosshair; }
+.workspace-moving { cursor:grab; }
+.workspace-moving .workspace-card { cursor:auto; }
+.workspace-grabbing, .workspace-grabbing * { cursor:grabbing !important; user-select:none; -webkit-user-select:none; }
+.workspace-tool-row > [hidden] { display:none !important; }
 /* The library wall's pastel paper and blue ink. No individual
    note rotation: the shared sheet transform keeps Pencil ink aligned. */
 .workspace-card { --note-paper:#e5df73; --note-ink:#234f91; position:absolute; display:flex; flex-direction:column; box-sizing:border-box; min-width:0; min-height:120px; padding:0 14px 14px; border:1px solid color-mix(in srgb,var(--note-ink) 14%,transparent); border-radius:2px 3px 7px 4px; background:linear-gradient(165deg,rgba(255,255,255,.15),transparent 58%),color-mix(in srgb,var(--note-paper) 62%,#fffbed); color:var(--note-ink); box-shadow:0 7px 15px rgba(42,38,30,.13),inset 0 1px rgba(255,255,255,.24); pointer-events:auto; touch-action:auto; font:14px/1.5 var(--sans); overflow-wrap:anywhere; }

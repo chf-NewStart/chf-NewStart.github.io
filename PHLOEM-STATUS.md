@@ -6,6 +6,19 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **Workspace Move tool on laptops, v238 (web; Houfu: "same issue for workplace scroll"; then "on ipad app or browser,
+  idont think we need a move button for the workplace section").** On a laptop every Workspace tool claimed the mouse
+  drag (Pen, the default, drew; Lasso selected; Eraser erased), so the paper moved only with the trackpad. A **Move**
+  tool (four-arrow icon, first in the toolbar) now exists **only on laptops** (`laptopPointer`: fine pointer with hover,
+  no touch points, no iPhone/iPad/iPod/Android user agent, not the native app) and is their default: dragging blank
+  Workspace paper moves it 1:1 and a flick glides (same feel as the PDF paper, v237); notes, grips and the selection
+  keep their own drags; a stylus still writes while Move is on, as the Pencil does on the iPad. Picking Pen makes the
+  mouse draw. On iPad (app or Safari) and phones the button is removed and the Pen stays the default, exactly as before.
+  Also: a flick on the PDF paper now glides if released within `GLIDE_REST` = 100 ms of the last move (was 60 ms, too
+  tight under load). Test: new `reading-workspace-move-tool` (7). The 45 Workspace-related suites pass in both engines
+  except `reading-pdf-ink`, `reading-split-undo-browser`, `reading-workspace-paper-color`/`-paper-edge`, which fail as
+  on main.
+
 - **Natural dragging at any zoom, v237 (web; Houfu, after v236: at the normal zoom "dragging down" was "sometimes not
   respondant ... maybe you should mimic natural dragging").** At the normal zoom in Scroll layout a drag never moved the
   paper (v236 only grabbed a zoomed-in paper): from a word it selected, from blank paper it started a selection that
@@ -503,6 +516,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 v238:** Workspace Move tool on laptops only (see Now) and the PDF glide's 100 ms release window. v237's
+  87-suite run finished at 166/174: the only new failure was `reading-zoomed-paper-grab`'s flick under parallel load,
+  fixed by the window (passes four runs at once in both engines). Workspace suites 82/90, all others as on main.
 
 - **2026-10-21 v237:** natural dragging at any zoom (grab blank paper whenever it runs off the pane, 1:1, glide after
   a flick; see Now). `reading-zoomed-paper-grab` 37 (5 fail on v236), passing twice in a row in Chromium and WebKit.

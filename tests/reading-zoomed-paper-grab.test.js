@@ -88,8 +88,7 @@ async function drag(page, from, dx, dy) {
         check('scroll, normal zoom: a drag that came to rest does not glide on', after.t === held.t && held.selected === 0, `${held.t} -> ${after.t}`);
         /* A flick: the paper keeps going after the release, slows, and stops by itself. */
         await page.mouse.move(blank.x, blank.y); await page.mouse.down();
-        for (let i = 1; i <= 8; i++) { await page.mouse.move(blank.x, blank.y - 30 * i); await page.waitForTimeout(8); }
-        await page.mouse.up();
+        await page.mouse.move(blank.x, blank.y - 240, { steps: 8 }); await page.mouse.up();
         const released = await state(page);
         await page.waitForTimeout(250); const gliding = await state(page);
         await page.waitForTimeout(2200); const settled = await state(page); await page.waitForTimeout(300); const still = await state(page);
@@ -97,8 +96,7 @@ async function drag(page, from, dx, dy) {
         check('scroll, normal zoom: the glide slows and stops by itself', still.t === settled.t && settled.t > gliding.t, `${gliding.t} -> ${settled.t} -> ${still.t}`);
         /* A click stops a glide at once. */
         await page.mouse.move(blank.x, blank.y); await page.mouse.down();
-        for (let i = 1; i <= 8; i++) { await page.mouse.move(blank.x, blank.y - 30 * i); await page.waitForTimeout(8); }
-        await page.mouse.up(); await page.waitForTimeout(80);
+        await page.mouse.move(blank.x, blank.y - 240, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(80);
         await page.mouse.click(blank.x, blank.y); const clicked = await state(page);
         await page.waitForTimeout(400); const afterClick = await state(page);
         check('scroll, normal zoom: a click stops the glide', afterClick.t === clicked.t, `${clicked.t} -> ${afterClick.t}`);

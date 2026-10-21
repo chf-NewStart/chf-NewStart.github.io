@@ -2941,7 +2941,10 @@
   var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfLayout:'scroll',inkStyle:'natural',linkPreviews:true,guideScope:'page',guideSize:'m',guidePct:100,hlStrength:85,guideDim:85,guideDimScale:2,guideX:.72,guideY:.38,spotX:.5,spotY:.42,guideLock:false,tone:'cream',driftSpeed:4};
   var comfort=Object.assign({},DEFAULT_COMFORT);
   /* Spotlight guide state (declared before the first applyComfort runs). */
-  var SPOT_ZOOM=1.1,spotLens={frame:0,observer:null,wrap:null,wrapKind:'',wrapStale:false,root:null,items:[],observed:[],observedRoot:null,marks:null,bg:''};
+  /* SPOT_WASH: the Dimness slider (70-100%) washes the outside 42-60%, so the page stays readable
+     around the glass. While the paper scrolls the copy steps aside (spotScrolling) and fades back
+     SPOT_SETTLE ms after it stops: a copy redrawn by script trails a natively scrolled page. */
+  var SPOT_ZOOM=1.1,SPOT_WASH=.6,SPOT_SETTLE=140,spotScrolling=false,spotScrollTimer=null,spotLens={frame:0,observer:null,wrap:null,wrapKind:'',wrapStale:false,root:null,items:[],observed:[],observedRoot:null,marks:null,bg:''};
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   var migratedLegacyPagedComfort=!!(savedComfort&&!Object.prototype.hasOwnProperty.call(savedComfort,'pdfLayout')&&savedComfort.pdfDirection==='vertical');
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
@@ -3047,7 +3050,7 @@
     var guideOverlay=byId('paneSpotlight');
     guideOverlay.dataset.guideColor=comfort.guide;
     guideOverlay.dataset.guideOrientation=comfort.guideOrientation;
-    guideOverlay.style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));guideOverlay.style.setProperty('--spot-wash',comfort.guideDim+'%');
+    guideOverlay.style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));guideOverlay.style.setProperty('--spot-wash',Math.round(comfort.guideDim*SPOT_WASH)+'%');
     document.querySelectorAll('.guide-color[data-guide-color]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideColor===comfort.guide));});
     document.querySelectorAll('button[data-guide-orientation]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.guideOrientation===comfort.guideOrientation));});
     document.querySelectorAll('button[data-zen-guide-orientation]').forEach(function(btn){btn.setAttribute('aria-pressed',String(btn.dataset.zenGuideOrientation===comfort.guideOrientation));});
@@ -3115,7 +3118,7 @@
   function setGuideOrientation(value){
     if(['row','column','spot'].indexOf(value)<0)return;
     comfort.guideOrientation=value;comfort.focus=true;guideOffset=null;applyComfort();placeGuide();
-    showReaderToast(value==='column'?'Vertical guide · follows one top-to-bottom column':value==='spot'?'Spotlight · words in the circle grow, the rest blurs':'Row guide · follows one horizontal passage');
+    showReaderToast(value==='column'?'Vertical guide · follows one top-to-bottom column':value==='spot'?'Spotlight · a magnifying glass over the words, the rest dims':'Row guide · follows one horizontal passage');
   }
   document.querySelectorAll('button[data-guide-orientation]').forEach(function(btn){btn.onclick=function(){setGuideOrientation(btn.dataset.guideOrientation);};});
   document.querySelectorAll('button[data-zen-guide-orientation]').forEach(function(btn){btn.onclick=function(){setGuideOrientation(btn.dataset.zenGuideOrientation);};});
@@ -3124,7 +3127,7 @@
     comfort.guideDim=Math.max(70,Math.min(100,+value||85));
     ['guideDimRange','zenGuideDimRange'].forEach(function(id){var range=byId(id);range.value=String(comfort.guideDim);range.setAttribute('aria-valuetext',comfort.guideDim+' percent');});
     byId('guideDimValue').textContent=byId('zenGuideDimValue').textContent=comfort.guideDim+'%';
-    byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));byId('paneSpotlight').style.setProperty('--spot-wash',comfort.guideDim+'%');saveComfortSoon();
+    byId('paneSpotlight').style.setProperty('--guide-dim-opacity',(comfort.guideDim/100).toFixed(2));byId('paneSpotlight').style.setProperty('--spot-wash',Math.round(comfort.guideDim*SPOT_WASH)+'%');saveComfortSoon();
   }
   byId('guideDimRange').oninput=function(){setGuideDim(this.value);};
   byId('highlightStrength').oninput=function(){comfort.hlStrength=Math.max(25,Math.min(100,Math.round((+this.value||85)/5)*5));applyHighlightStrength();saveComfortSoon();};
@@ -3267,7 +3270,7 @@
     if(voiceFocusIndex>=0)focusVoiceChunk(voiceFocusIndex);
   }
   /* Spotlight guide: a round lens shows the paper under it enlarged SPOT_ZOOM times,
-     while the rest of the pane blurs and dims (the veil, a masked backdrop filter).
+     while the rest of the pane dims (the veil, a masked paper-coloured wash).
      The lens holds inert copies of the page(s) under it. PDF pixels are copied only
      for the patch the lens shows, so iPad canvas memory stays flat; highlights, ink,
      notes and Find marks are copied DOM, refreshed when the page changes. While the
@@ -3275,6 +3278,7 @@
      paper, so every tap and stroke lands exactly where it is seen. */
   var SPOT_MARKED='.find-span,.find-target,.voice-span,.review-focus-span';
   function spotLensBlocked(){
+    if(spotScrolling)return true;
     if(pdfWriteMode||highlightMode||highlightEraseMode||stickyPlacing||stickyEditing||pendingSelection||pencilStroke||bookCurlOwned||pagedTurning)return true;
     var selection=window.getSelection&&window.getSelection();
     if(selection&&selection.rangeCount&&!selection.isCollapsed&&byId('documentPane').contains(selection.anchorNode))return true;
@@ -4579,6 +4583,10 @@
   var pageTrackTick=false;
   ['pointerdown','touchstart'].forEach(function(type){byId('documentPane').addEventListener(type,function(){cancelPdfPositionRestore();},{capture:true,passive:true});});
   byId('documentPane').addEventListener('scroll',function(){
+    if(comfort.focus&&comfort.guideOrientation==='spot'){
+      spotScrolling=true;byId('paneSpotlight').classList.add('spot-lens-off');
+      clearTimeout(spotScrollTimer);spotScrollTimer=setTimeout(function(){spotScrolling=false;scheduleSpotLens();},SPOT_SETTLE);
+    }
     if(!pageTrackTick){pageTrackTick=true;requestAnimationFrame(function(){pageTrackTick=false;trackCurrentPage();updateProgress();if(comfort.focus&&!guideDragging)placeGuide();});}
     clearTimeout(scrollSaveTimer);
     scrollSaveTimer=setTimeout(function(){

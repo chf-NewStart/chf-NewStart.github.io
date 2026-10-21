@@ -1295,13 +1295,12 @@
     .pane-spotlight[data-guide-orientation="spot"] .guide-shade { display: none; }
     .pane-spotlight[data-guide-orientation="spot"] .spot-veil { display: block; position: absolute; inset: 0; pointer-events: none;
       --spot-cx: calc(var(--guide-x, 40%) + var(--guide-w, 200px) / 2); --spot-cy: calc(var(--guide-y, 30%) + var(--guide-h, 200px) / 2); --spot-r: calc(var(--guide-w, 200px) / 2);
-      background: color-mix(in srgb, var(--paper) var(--spot-wash, 85%), transparent);
-      -webkit-backdrop-filter: blur(3.5px); backdrop-filter: blur(3.5px);
+      background: color-mix(in srgb, var(--paper) var(--spot-wash, 51%), transparent);
       -webkit-mask: radial-gradient(circle at var(--spot-cx) var(--spot-cy), transparent calc(var(--spot-r) - .5px), #000 calc(var(--spot-r) + 1.5px));
       mask: radial-gradient(circle at var(--spot-cx) var(--spot-cy), transparent calc(var(--spot-r) - .5px), #000 calc(var(--spot-r) + 1.5px)); }
     .pane-spotlight[data-guide-orientation="spot"] .spot-lens { display: block; position: absolute; left: var(--guide-x, 40%); top: var(--guide-y, 30%); width: var(--guide-w, 200px); height: var(--guide-h, 200px);
-      overflow: hidden; border-radius: 50%; pointer-events: none; background: var(--spot-lens-bg, #d8d6d0); contain: strict; }
-    .pane-spotlight[data-guide-orientation="spot"].spot-lens-off .spot-lens { visibility: hidden; }
+      overflow: hidden; border-radius: 50%; pointer-events: none; background: var(--spot-lens-bg, #d8d6d0); contain: strict; transition: opacity .12s ease; }
+    .pane-spotlight[data-guide-orientation="spot"].spot-lens-off .spot-lens { visibility: hidden; opacity: 0; transition: none; }
     .spot-lens-content { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
     .spot-lens-content > .spot-frame { position: absolute; display: block; width: 0; height: 0; min-width: 0; min-height: 0; margin: 0; padding: 0; gap: 0; perspective: none; filter: none; overflow: visible; }
     .spot-lens-content > .spot-frame .pdf-page { display: block; animation: none; transition: none; }
@@ -1311,13 +1310,16 @@
     .spot-marks { position: absolute; left: 0; top: 0; }
     .spot-marks i { position: absolute; border-radius: 3px; background: color-mix(in srgb, var(--yellow) 42%, transparent); mix-blend-mode: multiply; }
     html[data-theme="dark"] .spot-marks i { mix-blend-mode: screen; }
-    .pane-spotlight[data-guide-orientation="spot"] .guide-band { border-radius: 50%; background: none;
-      box-shadow: inset 0 0 0 1.5px rgba(204,158,66,.62), 0 0 0 1px rgba(142,103,36,.14), 0 10px 30px rgba(37,33,25,.18); transition: width .12s ease, height .12s ease; }
-    .pane-spotlight[data-guide-orientation="spot"][data-guide-color="green"] .guide-band { box-shadow: inset 0 0 0 1.5px rgba(91,174,101,.62), 0 0 0 1px rgba(43,125,57,.14), 0 10px 30px rgba(37,33,25,.18); }
-    .pane-spotlight[data-guide-orientation="spot"][data-guide-color="blue"] .guide-band { box-shadow: inset 0 0 0 1.5px rgba(78,154,184,.62), 0 0 0 1px rgba(41,113,143,.14), 0 10px 30px rgba(37,33,25,.18); }
-    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="spot"] .guide-band { background: none; box-shadow: inset 0 0 0 1.5px rgba(244,210,111,.42), 0 10px 30px rgba(0,0,0,.4); }
-    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="spot"][data-guide-color="green"] .guide-band { background: none; box-shadow: inset 0 0 0 1.5px rgba(135,211,151,.42), 0 10px 30px rgba(0,0,0,.4); }
-    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="spot"][data-guide-color="blue"] .guide-band { background: none; box-shadow: inset 0 0 0 1.5px rgba(139,207,228,.42), 0 10px 30px rgba(0,0,0,.4); }
+    .pane-spotlight[data-guide-orientation="spot"] .guide-band { border-radius: 50%; --spot-rim: color-mix(in srgb, #cc9e42 62%, var(--paper)); --spot-rim-edge: rgba(142,103,36,.3);
+      background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.14), rgba(255,255,255,0) 38%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.55), 0 0 0 5px var(--spot-rim), 0 0 0 6px var(--spot-rim-edge), 0 12px 30px rgba(37,33,25,.22); transition: width .12s ease, height .12s ease; }
+    .pane-spotlight[data-guide-orientation="spot"][data-guide-color="green"] .guide-band { --spot-rim: color-mix(in srgb, #5bae65 58%, var(--paper)); --spot-rim-edge: rgba(43,125,57,.3); }
+    .pane-spotlight[data-guide-orientation="spot"][data-guide-color="blue"] .guide-band { --spot-rim: color-mix(in srgb, #4e9ab8 58%, var(--paper)); --spot-rim-edge: rgba(41,113,143,.3); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="spot"] .guide-band { --spot-rim: color-mix(in srgb, #f4d26f 40%, var(--paper)); --spot-rim-edge: rgba(0,0,0,.45);
+      background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.05), rgba(255,255,255,0) 38%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 0 0 5px var(--spot-rim), 0 0 0 6px var(--spot-rim-edge), 0 12px 30px rgba(0,0,0,.45); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="spot"][data-guide-color="green"] .guide-band { --spot-rim: color-mix(in srgb, #87d397 38%, var(--paper)); }
+    html[data-theme="dark"] .pane-spotlight[data-guide-orientation="spot"][data-guide-color="blue"] .guide-band { --spot-rim: color-mix(in srgb, #8bcfe4 38%, var(--paper)); }
     .pane-spotlight[data-guide-orientation="spot"] .guide-grip { left: auto; right: -10px; top: auto; bottom: -10px; margin: 0; }
     .pane-spotlight[data-guide-orientation="spot"].locked .guide-band::after { left: 50%; top: 9px; margin: 0 0 0 -4px; }
     html[data-theme="dark"] .guide-band { background: linear-gradient(90deg, rgba(190,150,43,.08), rgba(220,177,58,.19) 12%, rgba(220,177,58,.19) 88%, rgba(190,150,43,.08)); box-shadow: inset 0 1px rgba(244,210,111,.34), inset 0 -1px rgba(137,98,19,.38), 0 0 0 1px rgba(220,177,58,.08); }

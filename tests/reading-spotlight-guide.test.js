@@ -1,5 +1,5 @@
-/* Spotlight guide: a round lens that enlarges the paper under it 1.1x while the rest of
-   the pane blurs and dims. Checks the geometry (the lens shows the paper under its centre,
+/* Spotlight guide: a magnifying glass that enlarges the paper under it 1.1x while the rest
+   of the pane dims (a light wash, no blur, so nothing outside swims). Checks the geometry (the lens shows the paper under its centre,
    enlarged), PDF and text papers, the Zen and Settings mode buttons staying in step,
    persistence, the copy stepping aside while annotating, and a clean switch back to Rows.
    PHLOEM_BROWSER=chromium|webkit. */
@@ -89,14 +89,16 @@ function check(name, ok, detail) { results.push({ name, ok: !!ok }); console.log
     const win = content.querySelector('.spot-window');
     return { w: r.width, h: r.height, cx: r.left + r.width / 2, cy: r.top + r.height / 2, radius: cs.borderTopLeftRadius, vis: cs.visibility, display: cs.display,
       pages: content.querySelectorAll('.pdf-page').length, winShown: !!win && getComputedStyle(win).display !== 'none' && win.width > 0,
-      transform: content.style.transform, veilBlur: veil.backdropFilter || veil.webkitBackdropFilter || '', veilDisplay: veil.display,
+      transform: content.style.transform, veilBlur: veil.backdropFilter || veil.webkitBackdropFilter || '', veilBg: veil.backgroundColor, veilDisplay: veil.display,
       shadeDisplay: getComputedStyle(document.querySelector('.guide-shade-top')).display,
       ids: content.querySelectorAll('[id]').length, links: content.querySelectorAll('.pdf-link').length, dataPage: content.querySelectorAll('[data-page]').length };
   });
   check('lens is a circle centred on the pointer', Math.abs(lens.w - lens.h) < 1 && lens.radius === '50%' && Math.abs(lens.cx - target.x) < 2 && Math.abs(lens.cy - target.y) < 2, JSON.stringify({ w: lens.w, h: lens.h, cx: lens.cx, cy: lens.cy, t: target }));
   check('lens holds a page copy with its pixel window', lens.display === 'block' && lens.vis === 'visible' && lens.pages >= 1 && lens.winShown, JSON.stringify(lens));
   check('lens enlarges 1.1x', /scale\(1\.1\)/.test(lens.transform), lens.transform);
-  check('outside blurs (veil) instead of the band shades', /blur/.test(lens.veilBlur) && lens.veilDisplay === 'block' && lens.shadeDisplay === 'none', lens.veilBlur);
+  check('outside dims (veil, no blur) instead of the band shades', !/blur/.test(lens.veilBlur) && lens.veilDisplay === 'block' && lens.shadeDisplay === 'none', lens.veilBlur);
+  const wash = await page.evaluate(() => document.getElementById('paneSpotlight').style.getPropertyValue('--spot-wash'));
+  check('Dimness 85% washes the outside 51%, so the page stays readable around the glass', wash === '51%', wash);
   check('copies carry no ids, links or page numbers', lens.ids === 0 && lens.links === 0 && lens.dataPage === 0, JSON.stringify(lens));
 
   // 3. Pixel check: the red square drawn at a known PDF spot appears enlarged in the lens.
@@ -123,8 +125,17 @@ function check(name, ok, detail) { results.push({ name, ok: !!ok }); console.log
   check('red square sits under the lens centre', measured && Math.abs(measured.cx - square.x) < 2.5 && Math.abs(measured.cy - square.y) < 2.5, JSON.stringify({ measured, square }));
   check('red square is enlarged ~1.1x', measured && measured.w / square.size > 1.04 && measured.w / square.size < 1.18, measured && (measured.w / square.size).toFixed(3));
 
-  // 4. Scrolling keeps the lens magnifying what is under it now.
+  // 4. While the paper scrolls the copy steps aside (a copy redrawn by script trails a natively
+  //    scrolled page and judders); once the paper is still it is back, magnifying what is under it now.
+  const midScroll = await page.evaluate(async () => {
+    const pane = document.getElementById('documentPane'), lens = document.getElementById('spotLens');
+    pane.scrollTop += 60; await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return { off: document.getElementById('paneSpotlight').classList.contains('spot-lens-off'), vis: getComputedStyle(lens).visibility };
+  });
+  check('mid-scroll the copy steps aside', midScroll.off && midScroll.vis === 'hidden', JSON.stringify(midScroll));
   await page.mouse.wheel(0, 300); await page.waitForTimeout(500);
+  const settled = await page.evaluate(() => ({ off: document.getElementById('paneSpotlight').classList.contains('spot-lens-off'), vis: getComputedStyle(document.getElementById('spotLens')).visibility }));
+  check('once the paper is still the copy is back', !settled.off && settled.vis === 'visible', JSON.stringify(settled));
   const afterScroll = await page.evaluate(() => {
     const content = document.getElementById('spotLensContent'), lens = document.getElementById('spotLens').getBoundingClientRect();
     const k = 1.1, r = lens.width / 2, m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(content.style.transform);

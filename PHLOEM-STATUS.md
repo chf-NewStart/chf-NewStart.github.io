@@ -6,6 +6,23 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-20)
 
+- **Spotlight as a magnifying glass, v231 (web; Houfu: "for spotlight, is it gonna be dizzy for ppl to look at? if so
+  change, and idk if we should make it more like the magnifiying glass").** Two things in v230 could make people
+  dizzy. (1) **Scrolling:** the enlarged copy is redrawn by script each frame, but iPad Safari (and Chrome) scroll the
+  page on another thread, so the copy trailed the page and caught up, and the words in the lens juddered. Now the copy
+  **steps aside while the paper scrolls** (`spotScrolling`; the circle shows the real paper 1:1, like while
+  annotating) and fades back in 0.12 s once the paper has been still for `SPOT_SETTLE` = 140 ms. (2) **The fog:** the
+  outside had a full-pane 3.5px blur plus an 85% paper wash, so a sharp hole slid over unreadable haze. The **blur is
+  gone** (also the full-pane GPU layer from v230's review point 2), and the wash is lighter: Dimness 70–100% now
+  washes 42–60% (`SPOT_WASH` = .6; 85% → 51%), so the page stays readable around the glass. **Glass look:** an opaque
+  5px rim in the guide colour (yellow/green/blue, light and dark) with a thin dark edge, a bright inner edge, a faint
+  glare and a soft shadow. The rim sits just outside the lens edge, so it also covers the seam where 1.1x meets 1x.
+  Still 1.1x (`SPOT_ZOOM`, Houfu's number). Toast and button titles say "magnifying glass … the rest dims". Test:
+  `reading-spotlight-guide` 22/22 Chromium and WebKit (+3: no blur, 51% wash, steps aside mid-scroll and returns).
+  Neighbours on Chromium: 14/16 pass; `reading-pdf-ink` fails the same on v230, `reading-book-guide` flaked once and
+  passed on rerun. **The iPad 1.2.4 (45) archive bundles v230 (the old lens);** v231 needs a re-bundled build.
+  Not checked by people or on a real iPad.
+
 - **iPad 1.2.4 (45), reader v230 (2026-10-20; Houfu: "push to main and to App Store. And check why App Store is
   still not publishing our code").** Why the App Store lagged: the app ships a **copy of the reader bundled at build
   time** (`apps/ipad/scripts/build-web.mjs`), so a push to `main` only updates the website. 1.2.3 (44) went live on
@@ -326,6 +343,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-20 v231:** Spotlight as a magnifying glass: no blur, lighter wash, copy steps aside while scrolling, glass rim (see Now).
+  `reading-spotlight-guide` 22/22 on Chromium and WebKit.
 
 - **2026-10-20 v230 + iPad 1.2.4 (45):** reviewed `phloem-spotlight-guide` and merged it to `main` with PR #78 and
   the 1.2.4 (45) bump. `reading-spotlight-guide` 19/19 on Chromium and WebKit; guide/Zen/Listen neighbours match

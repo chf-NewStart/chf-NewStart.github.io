@@ -29,7 +29,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png?v=4">
     <link rel="manifest" href="/site.webmanifest?v=4">
     <link rel="preload" href="fonts/dm-sans-var-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="home.css?v=11">
+    <link rel="stylesheet" href="home.css?v=12">
     <link rel="stylesheet" href="tomato-facts.css">
     <script src="deepseek-config.js" defer></script>
     <script src="tomato-facts.js" defer></script>
@@ -141,11 +141,6 @@
                             <li><b data-en="Supervisors" data-zh="导师">Supervisors</b><span data-en="Prof. Nasser Mohieddin Abukhdeir and Prof. Christian Euler, Chemical Engineering" data-zh="化学工程系 Nasser Mohieddin Abukhdeir 教授与 Christian Euler 教授">Prof. Nasser Mohieddin Abukhdeir and Prof. Christian Euler, Chemical Engineering</span></li>
                             <li><b data-en="Disclosure" data-zh="说明">Disclosure</b><span data-en="Methods, data and results stay private until publication and IP review clear them. A fuller case study will appear here then." data-zh="具体方法、数据与结果在论文发表和知识产权审查通过前保持私密，届时这里会放出完整案例。">Methods, data and results stay private until publication and IP review clear them. A fuller case study will appear here then.</span></li>
                         </ul>
-                        <a class="try" href="https://lifegameproject.com/game/tomato.html">
-                            <span class="try-k" data-en="Try the idea" data-zh="亲手试试">Try the idea</span>
-                            <b data-en="Grow a Tomato: steer a toy greenhouse twin and race an autopilot →" data-zh="种番茄：操控一个玩具温室孪生，和自动驾驶比一比 →">Grow a Tomato: steer a toy greenhouse twin and race an autopilot →</b>
-                            <small data-en="A free browser game built from textbook plant physiology, not my research model." data-zh="一个免费的网页游戏，基于教科书植物生理，不是我的研究模型。">A free browser game built from textbook plant physiology, not my research model.</small>
-                        </a>
                     </article>
                     <div class="research-side">
                         <div class="mini panel">
@@ -164,6 +159,24 @@
                             <button class="more" type="button" id="factLink" data-en="Show me today's →" data-zh="看看今天的 →">Show me today's →</button>
                         </div>
                     </div>
+                    <figure class="flux panel" id="plantFlux">
+                        <div class="flux-stage">
+                            <canvas class="flux-canvas" tabindex="0" role="slider" aria-valuemin="0" aria-valuemax="24" aria-valuenow="9" aria-label="Live figure: a tomato plant sending sugar from its leaves to its fruit. Left and right arrow keys move the sun; Enter picks a ripe tomato."></canvas>
+                            <p class="flux-hud" aria-hidden="true"><i></i><span class="flux-clock">09:00</span></p>
+                            <p class="flux-drag" aria-hidden="true"><span data-en="← drag the sun →" data-zh="← 拖动太阳 →">← drag the sun →</span></p>
+                        </div>
+                        <figcaption class="flux-copy">
+                            <p class="flux-k"><span data-en="Live figure" data-zh="实时图示">Live figure</span></p>
+                            <h3 data-en="Sugar, from leaf to fruit" data-zh="糖，从叶片到果实">Sugar, from leaf to fruit</h3>
+                            <p data-en="Leaves turn light into sugar, the upper ones shade the rest, and the stem carries it to the fruit that pull hardest. At night, starch banked by day keeps it moving." data-zh="叶片把光变成糖，上层叶片替下层挡光，茎再把糖送到需求最旺的果实。入夜后，白天存下的淀粉继续供糖。">Leaves turn light into sugar, the upper ones shade the rest, and the stem carries it to the fruit that pull hardest. At night, starch banked by day keeps it moving.</p>
+                            <div class="flux-trace">
+                                <canvas class="flux-spark" aria-hidden="true"></canvas>
+                                <p class="flux-legend"><span class="li"><span class="sw sun" aria-hidden="true"></span><span data-en="Light" data-zh="光照">Light</span><b class="flux-light">0%</b></span><span class="li"><span class="sw sugar" aria-hidden="true"></span><span data-en="Sugar reaching fruit" data-zh="运到果实的糖">Sugar reaching fruit</span></span><span class="li when" data-en="last 60 s" data-zh="最近 60 秒">last 60 s</span></p>
+                            </div>
+                            <p class="flux-count"><span data-en="Tomatoes picked" data-zh="已摘番茄">Tomatoes picked</span><b class="flux-picked">0</b><small data-en="tap a red one" data-zh="点一下红色的">tap a red one</small></p>
+                            <p class="flux-note" data-en="A hand-tuned sketch of the flow my PhD models, not the model itself." data-zh="这是我博士课题所研究的糖分流动的手调示意，并非研究模型本身。">A hand-tuned sketch of the flow my PhD models, not the model itself.</p>
+                        </figcaption>
+                    </figure>
                 </div>
             </div>
         </section>
@@ -398,5 +411,6 @@
     </script>
     <script src="bio-bg.js" defer></script>
     <script src="site.js" defer></script>
+    <script src="plant-flux.js?v=1" defer></script>
 </body>
 </html>

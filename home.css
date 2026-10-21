@@ -211,8 +211,8 @@ body.has-bio-bg {
 }
 
 /* ── research ── */
-.research { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: 22px; }
-.research-main { padding: 34px; }
+.research { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); grid-template-areas: "main side" "fig fig"; gap: 22px; }
+.research-main { grid-area: main; padding: 34px; }
 .status { display: inline-flex; align-items: center; gap: 8px; color: var(--gold); font: 500 0.74rem var(--mono); }
 .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
 .research-main h3 { margin-top: 14px; font-size: clamp(1.45rem, 2.6vw, 1.95rem); line-height: 1.15; letter-spacing: -0.02em; }
@@ -221,12 +221,7 @@ body.has-bio-bg {
 .facts li { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .facts b { color: var(--accent); font: 500 0.74rem/1.9 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
 .facts span { color: var(--soft); font-size: 0.96rem; }
-.try { display: grid; gap: 4px; margin-top: 24px; padding: 16px 18px; border: 1px solid rgba(255, 118, 95, 0.28); border-radius: 14px; background: rgba(255, 118, 95, 0.06); color: var(--ink); text-decoration: none; transition: border-color .15s, background .15s; }
-.try:hover { border-color: var(--tomato); background: rgba(255, 118, 95, 0.1); }
-.try-k { font: 600 0.72rem/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--tomato); }
-.try b { font-size: 1rem; font-weight: 650; line-height: 1.4; }
-.try small { color: var(--muted); font-size: 0.86rem; }
-.research-side { display: grid; gap: 22px; align-content: start; }
+.research-side { grid-area: side; display: grid; gap: 22px; align-content: start; }
 .mini { padding: 26px; }
 .mini h3 { font-size: 1.1rem; letter-spacing: -0.01em; }
 .mini p { margin-top: 8px; color: var(--muted); font-size: 0.95rem; }
@@ -235,7 +230,46 @@ body.has-bio-bg {
 .mini a.more:hover { text-decoration: underline; }
 .mini button.more { padding: 0; border: 0; background: none; cursor: pointer; font: 600 0.94rem var(--display); color: var(--accent); }
 .mini button.more:hover { text-decoration: underline; }
-@media (max-width: 900px) { .research { grid-template-columns: 1fr; } .facts li { grid-template-columns: 1fr; gap: 4px; } .research-main { padding: 26px 22px; } }
+@media (max-width: 900px) { .research { grid-template-columns: 1fr; grid-template-areas: "main" "fig" "side"; } .facts li { grid-template-columns: 1fr; gap: 4px; } .research-main { padding: 26px 22px; } }
+
+/* Live figure (plant-flux.js): a tomato sending sugar from its leaves to its
+   fruit. The canvas sits flush in the panel like a window onto the glasshouse. */
+.flux { grid-area: fig; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 330px); overflow: hidden; }
+.flux-stage { position: relative; min-height: 460px; background: #050d0b; border-right: 1px solid var(--line); }
+.flux-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+.flux-canvas.is-dragging { cursor: grabbing; }
+.flux-canvas.on-fruit { cursor: pointer; }
+.flux-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: 0; }
+.flux-hud, .flux-drag { position: absolute; bottom: 0; display: flex; align-items: center; gap: 8px; height: max(16px, 6%); padding: 0 16px; font: 500 0.72rem/1 var(--mono); pointer-events: none; }
+.flux-hud { left: 0; color: var(--soft); letter-spacing: 0.06em; }
+.flux-hud i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: flux-live 2.4s ease-in-out infinite; }
+.flux-drag { right: 0; color: var(--muted); transition: opacity .8s ease; }
+.flux-drag.is-done { opacity: 0; }
+@keyframes flux-live { 50% { opacity: 0.35; } }
+.flux-copy { display: flex; flex-direction: column; padding: 30px 28px 26px; }
+.flux-k { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); font: 500 0.74rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.flux-k::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.flux-copy h3 { margin-top: 12px; font-size: 1.4rem; line-height: 1.2; letter-spacing: -0.015em; }
+.flux-copy > p:not([class]) { margin-top: 10px; color: var(--soft); font-size: 0.95rem; }
+.flux-trace { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.flux-spark { display: block; width: 100%; height: 64px; }
+.flux-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 8px; color: var(--muted); font: 0.7rem/1.4 var(--mono); }
+.flux-legend .li { display: inline-flex; align-items: center; gap: 7px; }
+.flux-legend .when { color: var(--faint); }
+.flux-legend b { color: var(--gold); font-weight: 500; }
+.flux-legend .sw { flex: none; width: 14px; height: 2px; border-radius: 2px; background: var(--gold); }
+.flux-legend .sw.sugar { height: 3px; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.flux-count { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 16px; color: var(--soft); font-size: 0.92rem; }
+.flux-count b { color: var(--tomato); font: 600 1.05rem var(--mono); }
+.flux-count small { color: var(--faint); font: 0.7rem var(--mono); }
+.flux-note { margin-top: auto; padding-top: 16px; color: var(--faint); font-size: 0.8rem; line-height: 1.5; }
+@media (max-width: 900px) {
+    .flux { grid-template-columns: 1fr; }
+    .flux-stage { min-height: 0; aspect-ratio: 16 / 10; border-right: 0; border-bottom: 1px solid var(--line); }
+    .flux-copy { padding: 24px 22px; }
+}
+@media (max-width: 600px) { .flux-stage { aspect-ratio: 10 / 11; } .flux-hud, .flux-drag { padding: 0 12px; font-size: 0.68rem; } }
+@media (prefers-reduced-motion: reduce) { .flux-hud i { animation: none; } .flux-drag { transition: none; } }
 
 /* ── shipped ── */
 .ship { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }

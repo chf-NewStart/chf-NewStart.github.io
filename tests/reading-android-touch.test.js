@@ -64,6 +64,23 @@ async function openPaper(browser, options, comfort) {
     assert.deepEqual(errors, []); await page.close(); passes.push('iPad text layer unchanged');
   }
 
+  // 1b. Android's selection handles send only selectionchange (no pointer events reach the page),
+  //     so the guard's page-sized block can sit inside the range while a handle moves. A highlight
+  //     saved from a handle-extended selection covers the selected lines, not the whole page.
+  {
+    const { page, errors } = await openPaper(browser, { viewport: { width: 1100, height: 900 }, userAgent: ANDROID, hasTouch: true }, { pdfLayout: 'scroll', focus: false });
+    await page.evaluate(async () => {
+      const lines = Array.from(document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span')).filter(s => /^Line/.test(s.textContent));
+      const wait = ms => new Promise(r => setTimeout(r, ms)), sel = getSelection(), start = lines[0].firstChild;
+      sel.setBaseAndExtent(start, 5, start, 12); await wait(80);
+      for (const line of lines.slice(1, 3)) { sel.setBaseAndExtent(start, 5, line.firstChild, 8); await wait(80); }
+    });
+    await page.evaluate(() => document.getElementById('highlightBtn').click()); await page.waitForTimeout(300);
+    const rects = await page.evaluate(() => (JSON.parse(localStorage.getItem('readingRoom.v1')).chapters[0].highlights[1] || []).flatMap(h => h.rects));
+    assert(rects.length >= 2 && rects.every(r => r.h < .05 && r.w < .6), `a handle-extended selection highlights only its lines: ${JSON.stringify(rects)}`);
+    assert.deepEqual(errors, []); await page.close(); passes.push('handle-extended selections highlight only their lines');
+  }
+
   // 2 + 3 on a Galaxy-sized Android phone.
   const phone = { viewport: { width: 384, height: 832 }, userAgent: ANDROID, hasTouch: true };
   if (ENGINE === 'chromium') Object.assign(phone, { isMobile: true, deviceScaleFactor: 3 });

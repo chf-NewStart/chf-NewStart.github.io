@@ -322,11 +322,13 @@ once (S 60%, M 100%, L 160%), both sliders agree, the band grows with the value,
 `reading-highlight-crisp-text.test.js` covers highlight rendering: words under a PDF
 highlight stay black (the highlight layer blends with the page instead of tinting the words),
 and the Highlight strength slider lightens or deepens the colour without fading the words.
-Run with `PHLOEM_BROWSER=webkit` too.
+In Zen's docked colour column the slider stands upright and follows the finger or mouse up
+and down. Run with `PHLOEM_BROWSER=webkit` too.
 
 `reading-selection-workspace-drag.test.js` covers dragging a fresh (unsaved) selection into
 the open workspace by finger on Android-style touch screens: a short hold picks the passage
-up, a quick tap keeps the selection, and an iPad keeps its native behaviour untouched.
+up, a quick tap keeps the selection, a hold let go anywhere but the workspace leaves the
+selection as it was, and an iPad keeps its native behaviour untouched.
 
 `reading-export-annotated-pdf.test.js` covers Export annotated PDF: highlights (words still
 dark under them), handwriting and notes are written into the original at the spots shown on
@@ -350,7 +352,8 @@ keep deleted notes deleted. Run with `PHLOEM_BROWSER=webkit` too.
 `reading-android-touch.test.js` covers Galaxy (Android) feedback: dragging a selection over
 the blank gap between lines or past a line's end stays with the nearest words instead of
 jumping to the page's start or end (PDF.js's end-of-content guard; the iPad text layer is
-unchanged); a hovering pen no longer drags the reading guide (a pen tap places it, a mouse
+unchanged), and a selection extended with the handles onto more lines highlights only those
+lines, not the whole page; a hovering pen no longer drags the reading guide (a pen tap places it, a mouse
 still carries it); and holding a citation opens its card when Android's own long-press
 (contextmenu, or the pointer taken at ~400 ms) arrives before the half-second timer, for
 a finger and an S Pen, while an early cancel (scroll) and a mouse right-click stay quiet.
@@ -370,8 +373,8 @@ strokes yet erases exactly the one it crosses. Run with `PHLOEM_BROWSER=webkit` 
 `reading-workspace-dark-ink.test.js` covers Workspace ink in the dark theme: the black pen
 writes and shows white on the dark sheet (its swatch reads "White ink") and the same
 handwriting is black again in the light theme. It is still saved as black, so older app
-versions sync it unchanged; writing on a light sticky note stays dark. Run with
-`PHLOEM_BROWSER=webkit` too.
+versions sync it unchanged; writing on a light sticky note stays dark, and white ink that
+runs onto a note it doesn't belong to stays visible there. Run with `PHLOEM_BROWSER=webkit` too.
 
 `reading-paged-zoom-turn.test.js` covers zoomed-in page turns in Page/Book layout: turning
 forward from a page's bottom-right opens the next page at the same zoom on its top-left,

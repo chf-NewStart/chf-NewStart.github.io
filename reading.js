@@ -4347,9 +4347,12 @@
   function wireTouchRange(range){
     var dragging=false;
     function setFromPointer(e){
-      var r=range.getBoundingClientRect();if(!r.width)return;
+      var r=range.getBoundingClientRect();if(!r.width||!r.height)return;
       var min=+range.min,max=+range.max,step=+range.step||1;
-      var val=min+Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(max-min);
+      // Zen's docked highlight column stands the strength slider upright (rotate(-90deg)),
+      // so its low end is at the bottom: follow the finger up and down there.
+      var along=r.height>r.width?(r.bottom-e.clientY)/r.height:(e.clientX-r.left)/r.width;
+      var val=min+Math.max(0,Math.min(1,along))*(max-min);
       val=Math.round(val/step)*step;
       if(String(val)!==range.value){range.value=String(val);range.dispatchEvent(new Event('input'));}
     }
@@ -8814,6 +8817,13 @@
     if(drag.ghost)drag.ghost.remove();document.body.classList.remove('workspace-highlight-dragging');
     byId('workspaceBoard').classList.remove('workspace-drop-target');
     if(drag.captured&&drag.pane.hasPointerCapture(drag.pointer)){try{drag.pane.releasePointerCapture(drag.pointer);}catch(error){}}
+    // A live selection picked up and then let go anywhere but the Workspace comes back as it was.
+    if(drag.fromSelection&&drag.active&&!drag.dropped)restoreLiveSelection(drag);
+  }
+  function restoreLiveSelection(drag){
+    var range=drag.range,selection=window.getSelection&&window.getSelection();
+    if(!range||!selection||currentId!==drag.id||pdfOpenEpoch!==drag.epoch||!range.startContainer.isConnected||!range.endContainer.isConnected)return;
+    selection.removeAllRanges();selection.addRange(range);
   }
   /* Apple touch devices (iPhone, iPad, and an iPad presenting as a Mac) already drag a selection
      natively and use the Pencil for marking; the selection hold below is only for the others
@@ -8822,7 +8832,7 @@
   /* Is a point on the live (not yet saved) text selection? */
   function pointInLiveSelection(x,y){
     var selection=window.getSelection&&window.getSelection();if(!selection||!selection.rangeCount||selection.isCollapsed)return false;
-    var rects=selection.getRangeAt(0).getClientRects();
+    var range=selection.getRangeAt(0),rects=selectionGeometry(function(){return range.getClientRects();});
     for(var i=0;i<rects.length;i++){var r=rects[i];if(r.width&&x>=r.left-8&&x<=r.right+8&&y>=r.top-8&&y<=r.bottom+8)return true;}
     return false;
   }
@@ -8837,7 +8847,7 @@
        !(event.pointerType==='touch'&&(savedHighlightTouches.size!==1||event.isPrimary===false))&&pointInLiveSelection(event.clientX,event.clientY)){
       var held={pointer:event.pointerId,type:event.pointerType,id:currentId,epoch:pdfOpenEpoch,pane:byId('documentPane'),source:byId('documentPane'),
         startX:event.clientX,startY:event.clientY,lastX:event.clientX,lastY:event.clientY,holdTimer:0,armed:false,active:false,captured:false,ghost:null,
-        selection:JSON.parse(JSON.stringify(pendingSelection)),highlightId:null,fromSelection:true};
+        selection:JSON.parse(JSON.stringify(pendingSelection)),highlightId:null,fromSelection:true,range:window.getSelection().getRangeAt(0).cloneRange()};
       savedHighlightDrag=held;
       held.holdTimer=setTimeout(function(){if(savedHighlightDrag===held){held.armed=true;activateSavedHighlightDrag(held,held.lastX,held.lastY);}},380);
       return;
@@ -8881,7 +8891,7 @@
     savedHighlightTouches.delete(event.pointerId);
     var drag=savedHighlightDrag;if(!drag||event.pointerId!==drag.pointer)return;
     var active=drag.active,point=active&&currentId===drag.id&&pdfOpenEpoch===drag.epoch?savedHighlightDropPoint(event.clientX,event.clientY):null;
-    cancelSavedHighlightDrag();
+    drag.dropped=!!point;cancelSavedHighlightDrag();
     if(active){savedHighlightIgnoredClick={x:event.clientX,y:event.clientY,until:Date.now()+550};event.preventDefault();event.stopImmediatePropagation();if(point)addWorkspaceExcerpt(drag.selection,point);}
     else if(drag.fromSelection){/* a tap on the live selection: leave it and its card as they are */}
     else if(Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY)<10){
@@ -9074,6 +9084,15 @@
     var top=Math.max(0,r.y-r.h*.14),bottom=Math.min(1,r.y+r.h+r.h*.28);
     return{x:r.x,y:top,w:r.w,h:Math.max(0,bottom-top)};
   }
+  /* The selection guard (textSelectionGuard, below) keeps an empty block as big as the page
+     next to the moving end of a selection. During an Android handle drag it can sit inside the
+     selected range, and the range's boxes then include the whole page: a highlight saved from
+     them covered the page. Read selection geometry with those blocks out of the layout. */
+  function selectionGeometry(read){
+    var blocks=document.querySelectorAll('.text-layer-end');if(!blocks.length)return read();
+    blocks.forEach(function(block){block.style.display='none';});
+    try{return read();}finally{blocks.forEach(function(block){block.style.display='';});}
+  }
   function paperSelectionFromRange(range){
     // The first folding slice is read-only: never serialize invisible PDF text.
     if(readerMode==='pdf'&&pdfFoldView&&pdfViews.some(function(view,index){return pdfFoldView.isFolded(index+1)&&range.intersectsNode(view.sheet);}))return null;
@@ -9082,7 +9101,7 @@
       var host=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;
       var page=host&&host.closest?host.closest('.pdf-page'):null;if(!page||!byId('pdfFrame').contains(page)||!page.querySelector('.text-layer').contains(range.commonAncestorContainer))return;
       text=pdfPassageTextMap(page.querySelector('.text-layer'),range).text.replace(/\s+/g,' ').trim();if(!text)return null;
-      var base=page.getBoundingClientRect(),rects=Array.from(range.getClientRects()).filter(function(r){return r.width>1&&r.height>1;}).map(function(r){var x=Math.max(0,(r.left-base.left-1.5)/base.width),y=Math.max(0,(r.top-base.top+r.height*.12)/base.height);return{x:x,y:y,w:Math.min(1-x,(r.width+3)/base.width),h:Math.min(1-y,(r.height*.76)/base.height)};}).filter(function(r){return r.x<1&&r.y<1;});rects=mergeHighlightRects(rects);
+      var base=page.getBoundingClientRect(),rects=selectionGeometry(function(){return Array.from(range.getClientRects());}).filter(function(r){return r.width>1&&r.height>1;}).map(function(r){var x=Math.max(0,(r.left-base.left-1.5)/base.width),y=Math.max(0,(r.top-base.top+r.height*.12)/base.height);return{x:x,y:y,w:Math.min(1-x,(r.width+3)/base.width),h:Math.min(1-y,(r.height*.76)/base.height)};}).filter(function(r){return r.x<1&&r.y<1;});rects=mergeHighlightRects(rects);
       if(rects.length)return{kind:'pdf',page:+page.dataset.page||currentPage,text:text,rects:rects};
     }else{
       var original=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;original=original&&original.closest('.original');if(!original||!byId('textDocument').contains(original))return;
@@ -9097,7 +9116,7 @@
     // the pointer lifts instead of scanning the page on every selectionchange.
     if(pencilStroke||selectionPointerDown||byId('readerPage').classList.contains('hidden'))return;
     var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
-    var range=selection.getRangeAt(0),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:range.getBoundingClientRect(),passage=paperSelectionFromRange(range);if(!passage)return;
+    var range=selection.getRangeAt(0),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:selectionGeometry(function(){return range.getBoundingClientRect();}),passage=paperSelectionFromRange(range);if(!passage)return;
     if(highlightEraseMode)setHighlightEraseMode(false,true);
     if(!reviewLinkTargetId&&reopenExistingHighlight(passage,selectionRect))return;
     /* A finger or pen long-press on a citation shows its reference, not the highlight prompt:

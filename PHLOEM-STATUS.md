@@ -6,6 +6,19 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-20)
 
+- **Four 12 Oct regressions fixed at last, v232 (web).** PR #75 (`claude/phloem-status-71ylos`, requested by Houfu on
+  2026-10-13) fixed them but was closed unmerged the same night while `main` took the v207/v208 numbers, and the bugs
+  stayed live. Re-landed its commit `a9991409` on v231 (the code applied cleanly; only version stamps conflicted).
+  (1) **Android:** a selection extended with the handles onto more lines saved one highlight covering the whole page
+  (the selection guard's page-sized block sat inside the range; geometry is now read with it out of layout).
+  (2) **Android:** holding a fresh selection until it was picked up, then letting go anywhere but the Workspace, wiped
+  the selection; it now comes back. (3) **Zen:** the docked, upright Highlight strength slider only followed sideways
+  movement; it now follows up and down. (4) **Dark Workspace:** white ink lying on a pale sticky note vanished; a thin
+  rim in the sheet's colour keeps it readable. All four checks failed on v231 and pass now on Chromium and WebKit
+  (`reading-android-touch`, `reading-selection-workspace-drag`, `reading-highlight-crisp-text`,
+  `reading-workspace-dark-ink`). Also: `reading.html`'s `?v=` asset stamps had stayed at 230 through v231; all are
+  v232 now. **Needs the next iPad build** (1.2.4 (45) bundles v230).
+
 - **Spotlight as a magnifying glass, v231 (web; Houfu: "for spotlight, is it gonna be dizzy for ppl to look at? if so
   change, and idk if we should make it more like the magnifiying glass").** Two things in v230 could make people
   dizzy. (1) **Scrolling:** the enlarged copy is redrawn by script each frame, but iPad Safari (and Chrome) scroll the
@@ -343,6 +356,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-20 v232:** PR #75's four regression fixes re-landed (see Now); its four checks pass on Chromium and WebKit.
 
 - **2026-10-20 v231:** Spotlight as a magnifying glass: no blur, lighter wash, copy steps aside while scrolling, glass rim (see Now).
   `reading-spotlight-guide` 22/22 on Chromium and WebKit.

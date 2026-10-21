@@ -46,7 +46,16 @@ function lumas(png) {            // decode an 8-bit RGB/RGBA PNG (Playwright's s
   assert(light.text < 25, 'and the words are still black');
   await page.waitForTimeout(800);
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('readingRoom.comfort.v1')).hlStrength), 30, 'strength persists');
+  // In Zen the colours fold out as a column beside the dock, where the strength slider stands
+  // upright: it follows the pointer up and down (top = strongest), not sideways.
+  await page.locator('#zenAnnotate').click(); await page.locator('#zenMarker').click();
+  await page.waitForFunction(() => document.getElementById('highlightToolbar').classList.contains('docked'));
+  const slider = await page.locator('#highlightStrength').evaluate(r => { const b = r.getBoundingClientRect(); return { x: b.left + b.width / 2, top: b.top, bottom: b.bottom, w: b.width, h: b.height }; });
+  assert(slider.h > slider.w, `the docked strength slider stands upright (${JSON.stringify(slider)})`);
+  const dragTo = async y => { await page.mouse.move(slider.x, (slider.top + slider.bottom) / 2); await page.mouse.down(); await page.mouse.move(slider.x, y, { steps: 6 }); await page.mouse.up(); return +(await page.locator('#highlightStrength').inputValue()); };
+  const up = await dragTo(slider.top + 2), down = await dragTo(slider.bottom - 2);
+  assert(up >= 95 && down <= 30, `dragging the upright slider up and down sets the strength (up ${up}, down ${down})`);
   assert.deepEqual(errors, []);
-  console.log(`PASS highlights keep words black (luma ${strong.text.toFixed(1)}), strength 85% → 30% lightens the colour (${strong.paper.toFixed(0)} → ${light.paper.toFixed(0)}), persists`);
+  console.log(`PASS highlights keep words black (luma ${strong.text.toFixed(1)}), strength 85% → 30% lightens the colour (${strong.paper.toFixed(0)} → ${light.paper.toFixed(0)}), persists; the upright Zen slider follows up/down`);
   await browser.close(); server.close();
 })().catch(e => { console.error(e); process.exit(1); });

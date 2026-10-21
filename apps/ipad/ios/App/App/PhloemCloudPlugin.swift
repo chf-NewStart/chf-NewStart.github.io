@@ -71,7 +71,7 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func status(_ call: CAPPluginCall) {
         container.accountStatus { status, error in
             if let error {
-                call.reject(self.explain("Phloem could not check this iPad's iCloud account.", error), "ICLOUD_STATUS_FAILED", error)
+                call.reject(self.explain("Phloem could not check this \(PhloemDevice.name)'s iCloud account.", error), "ICLOUD_STATUS_FAILED", error)
                 return
             }
             let label: String
@@ -544,9 +544,9 @@ final class PhloemCloudPlugin: CAPPlugin, CAPBridgedPlugin {
         let hint: String
         switch cloudError.code {
         case .notAuthenticated:
-            hint = "Sign in to iCloud in iPad Settings and make sure iCloud Drive is on."
+            hint = "Sign in to iCloud in \(PhloemDevice.settingsApp) and make sure iCloud Drive is on."
         case .networkUnavailable, .networkFailure:
-            hint = "This iPad is offline. Your local library is safe; try again when you are online."
+            hint = "This \(PhloemDevice.name) is offline. Your local library is safe; try again when you are online."
         case .quotaExceeded:
             hint = "Your iCloud storage is full."
         case .serviceUnavailable, .requestRateLimited, .zoneBusy:

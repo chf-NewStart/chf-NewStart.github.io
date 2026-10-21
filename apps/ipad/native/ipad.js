@@ -1,9 +1,12 @@
-/* Small UI adapter for the iPad app; the web reader remains shared. */
+/* Small UI adapter for the iPad and iPhone app; the web reader remains shared. */
 (function () {
   'use strict';
   if (!window.PHLOEM_NATIVE) return;
 
   function byId(id) { return document.getElementById(id); }
+  /* The native shell names the device (PhloemBridgeViewController) so the copy says
+     "this iPhone" on a phone; the reader's layout never depends on it. */
+  var device = /^(?:iPhone|iPad|Mac)$/.test(window.PHLOEM_DEVICE) ? window.PHLOEM_DEVICE : 'iPad';
   function text(element, value) { if (element) element.textContent = value; }
   function hide(element) {
     if (!element) return;
@@ -93,7 +96,7 @@
   var aiHeading = document.querySelector('#aiKeySave') && byId('aiKeySave').closest('section');
   if (aiHeading) {
     var intro = aiHeading.querySelector('p');
-    if (intro) intro.textContent = 'Choose a cloud provider and bring your own API key. iOS asks for the key in a native secure prompt and stores it in Keychain, never in a Phloem backup. Before saving, Phloem shows exactly what reading context leaves this iPad and where it goes.';
+    if (intro) intro.textContent = 'Choose a cloud provider and bring your own API key. iOS asks for the key in a native secure prompt and stores it in Keychain, never in a Phloem backup. Before saving, Phloem shows exactly what reading context leaves this ' + device + ' and where it goes.';
   }
   hide(document.querySelector('label[for="aiKey"]'));
   hide(byId('aiKey'));
@@ -116,12 +119,12 @@
 
   var settings = document.querySelector('#settingsDialog .settings-body');
   text(document.querySelector('#settingsDialog .settings-lede'),
-    'Your reading space on this iPad.');
+    'Your reading space on this ' + device + '.');
   if (settings) {
     var localSection = document.createElement('section');
     localSection.className = 'native-local-settings';
     var heading = document.createElement('h3');
-    heading.textContent = 'Saved on this iPad';
+    heading.textContent = 'Saved on this ' + device;
     nativeLocalDescription = document.createElement('p');
     nativeLocalDescription.textContent = 'Papers, highlights, and notes always stay available in this app’s local storage. ' +
       'Optional iCloud sync keeps a private copy in your iCloud account and merges it across your Apple devices. Optional AI uses a provider you choose, only after you accept its data-sharing disclosure; provider keys stay in iOS Keychain.';
@@ -131,7 +134,7 @@
     var lookupNote = document.createElement('p');
     lookupNote.textContent = 'Define uses Wiktionary, Wikipedia and Wikimedia online when you ask for a lookup; ' +
       'reading lists search Crossref and fetch free full texts from arXiv and Europe PMC. Only the term, title or DOI ' +
-      'you look up is sent to those services. Listen uses the voices on this iPad.';
+      'you look up is sent to those services. Listen uses the voices on this ' + device + '.';
     localSection.append(heading, nativeLocalDescription, aiRegionNote, lookupNote);
     if (window.PHLOEM_NATIVE_BLOCKED_SETUP) {
       var blockedNote = document.createElement('p');
@@ -143,7 +146,7 @@
     var privacyHeading = document.createElement('h3');
     privacyHeading.textContent = 'Privacy & support';
     var privacyCopy = document.createElement('p');
-    privacyCopy.textContent = 'Review what stays on this iPad, what leaves it when you choose an online feature, and how to remove an AI key.';
+    privacyCopy.textContent = 'Review what stays on this ' + device + ', what leaves it when you choose an online feature, and how to remove an AI key.';
     var privacyLink = document.createElement('a');
     privacyLink.href = 'https://houfu72.com/phloem-ipad/privacy.html';
     privacyLink.target = '_blank';
@@ -156,7 +159,7 @@
     supportLink.textContent = 'Support ↗';
     privacySection.append(privacyHeading, privacyCopy, privacyLink, document.createTextNode(' · '), supportLink);
     settings.appendChild(privacySection);
-    // The lede introduces the dialog, so the iPad's own section follows it.
+    // The lede introduces the dialog, so the device's own section follows it.
     var lede = settings.querySelector('.settings-lede');
     if (lede) lede.after(localSection);
     else settings.prepend(localSection);
@@ -165,7 +168,7 @@
   var signal = byId('syncSignal');
   if (signal) {
     var cloudEnabled = window.PHLOEM_ICLOUD && window.PHLOEM_ICLOUD.enabled();
-    if (!cloudEnabled) text(signal, 'on this iPad');
+    if (!cloudEnabled) text(signal, 'on this ' + device);
     signal.title = cloudEnabled ? 'Sync with iCloud now' : 'Local library and iCloud settings';
     signal.setAttribute('aria-label', signal.title);
     signal.onclick = function () {
@@ -181,7 +184,7 @@
     refresh.title = 'Reload reader';
     refresh.setAttribute('aria-label', 'Save and reload reader');
   }
-  text(byId('buildStamp'), 'Phloem for iPad · Version 1.2');
+  text(byId('buildStamp'), 'Phloem for ' + device + ' · Version 1.2');
   hide(byId('storageNote')); // Browser persistence promises do not describe native durability.
   text(document.querySelector('.hero-card .step:nth-child(2) span'),
     'Move the guide, turn the page, and keep notes beside the paper.');
@@ -209,7 +212,7 @@
 
   /* Google Drive stays hidden until the native plugin has an iOS client ID and the
      App Store region is not mainland China, where Google is unreachable (iCloud is
-     the sync there). Once shown, a Drive library already connected on this iPad
+     the sync there). Once shown, a Drive library already connected on this device
      syncs straight away, the way the website does at startup. */
   var nativeGoogle = capacitor && capacitor.Plugins && capacitor.Plugins.PhloemGoogle;
   function showSection(id) {
@@ -268,7 +271,7 @@
     var aboutSection = document.createElement('section');
     aboutSection.className = 'native-about';
     var aboutHeading = document.createElement('h3');
-    aboutHeading.textContent = 'Phloem for iPad';
+    aboutHeading.textContent = 'Phloem for ' + device;
     versionLine = document.createElement('p');
     versionLine.id = 'nativeVersionStatus';
     versionLine.textContent = 'Checking the version…';

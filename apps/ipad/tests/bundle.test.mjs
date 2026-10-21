@@ -216,8 +216,29 @@ test('Xcode Debug and Release agree on the next Apple build identity', async () 
   const project = await readFile(path.join(defaultRepoRoot, 'apps/ipad/ios/App/App.xcodeproj/project.pbxproj'), 'utf8');
   const builds = [...project.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map(match => match[1]);
   const versions = [...project.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map(match => match[1]);
-  assert.deepEqual(builds, ['45', '45']);
-  assert.deepEqual(versions, ['1.2.4', '1.2.4']);
+  assert.deepEqual(builds, ['46', '46']);
+  assert.deepEqual(versions, ['1.2.5', '1.2.5']);
+});
+
+test('one universal app: iPhone joins the iPad without changing what the iPad gets', async () => {
+  const appRoot = path.join(defaultRepoRoot, 'apps/ipad/ios/App');
+  const project = await readFile(path.join(appRoot, 'App.xcodeproj/project.pbxproj'), 'utf8');
+  const families = [...project.matchAll(/TARGETED_DEVICE_FAMILY = ([^;]+);/g)].map(match => match[1]);
+  assert.deepEqual(families, ['"1,2"', '"1,2"']);
+  const plist = await readFile(path.join(appRoot, 'App/Info.plist'), 'utf8');
+  const orientations = key => {
+    const block = plist.match(new RegExp(`<key>${key}</key>\\s*<array>([\\s\\S]*?)</array>`));
+    return block ? [...block[1].matchAll(/<string>([^<]+)<\/string>/g)].map(match => match[1]) : null;
+  };
+  assert.deepEqual(orientations('UISupportedInterfaceOrientations~ipad'), ['UIInterfaceOrientationPortrait',
+    'UIInterfaceOrientationPortraitUpsideDown', 'UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight']);
+  assert.deepEqual(orientations('UISupportedInterfaceOrientations'), ['UIInterfaceOrientationPortrait',
+    'UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight'], 'a phone also reads on its side');
+  const bridge = await readFile(path.join(appRoot, 'App/PhloemBridgeViewController.swift'), 'utf8');
+  assert.match(bridge, /window\.PHLOEM_DEVICE = /, 'the native shell names the device for the copy');
+  const adapter = await readFile(path.join(defaultRepoRoot, 'apps/ipad/native/ipad.js'), 'utf8');
+  assert.doesNotMatch(adapter, /'[^'\n]*this iPad[^'\n]*'/, 'device copy follows PHLOEM_DEVICE');
+  assert.match(adapter, /: 'iPad';/, 'an unnamed device keeps the iPad wording');
 });
 
 test('the App Store icon is the reviewed opaque Phloem artwork, not the starter icon', async () => {

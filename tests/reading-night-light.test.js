@@ -135,6 +135,21 @@ const settled = page => page.waitForTimeout(450);
       check('a theme chosen by hand during Night light is kept', !kept.on && kept.theme === 'dark', kept.theme);
       await context.close();
     }
+    /* 2a. In the library the lamp switch is hidden: there it would only repeat the theme. */
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 860 }, serviceWorkers: 'block' });
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${port}/reading.html`, { waitUntil: 'load' });
+      await page.waitForFunction(() => document.body.classList.contains('library-ready'));
+      const library = await page.evaluate(() => ({ reading: document.body.classList.contains('reading'), lamp: getComputedStyle(document.getElementById('nightLightTopBtn')).display, theme: getComputedStyle(document.getElementById('themeBtn')).display }));
+      check('in the library the lamp switch is hidden and the theme switch stays', !library.reading && library.lamp === 'none' && library.theme !== 'none', JSON.stringify(library));
+      await page.setInputFiles('#pdfFile', PDF);
+      await page.waitForFunction(() => !!document.querySelector('#pdfFrame .pdf-page canvas')?.width);
+      await page.evaluate(() => { if (document.body.classList.contains('zen')) document.getElementById('zenExit') && 0; });
+      const reader = await page.evaluate(() => ({ reading: document.body.classList.contains('reading'), lamp: getComputedStyle(document.getElementById('nightLightTopBtn')).display }));
+      check('with a paper open the lamp switch is offered', reader.reading && reader.lamp !== 'none', JSON.stringify(reader));
+      await context.close();
+    }
     /* 2b. One tap from outside the menus: the Zen dock and the top bar. */
     {
       const { context, page } = await openReader(browser, port, { pdfLayout: 'scroll', focus: false });

@@ -6,6 +6,17 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **Listen leaves no marks behind and resumes where it stopped; the lamp switch only where it lights paper, v239 (web;
+  Houfu: "the speakers highlight wont go when i exit the speaker mode, also if i reenter the speaker mode, dont make it
+  speak elsewhere"; "the night mode and night light mode in library are the same it seems").** (1) The Zen dock's
+  Listen paused on a second tap, so the sentence stayed marked and the paper dimmed with the bar open; it now **opens
+  and closes** Listen like the close button (play/pause stay on the bar; the phone's Listen stays play/pause).
+  (2) After closing, Listen restarted at the top of the page; it now **remembers the sentence** (`voiceResume`) and
+  resumes there when that sentence is still in view (a selected passage still wins; after moving to another page it
+  starts where the reader is). (3) The top-bar lamp is hidden in the library (`body:not(.reading)`), where it only
+  repeated the dark theme. Tests: new `reading-voice-exit-resume-browser` (4); `reading-night-light` 33. All Listen,
+  phone, iPad dock and Zen iPad suites pass in both engines.
+
 - **Workspace Move tool on laptops, v238 (web; Houfu: "same issue for workplace scroll"; then "on ipad app or browser,
   idont think we need a move button for the workplace section").** On a laptop every Workspace tool claimed the mouse
   drag (Pen, the default, drew; Lasso selected; Eraser erased), so the paper moved only with the trackpad. A **Move**
@@ -516,6 +527,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 v239:** Listen closes from the dock and resumes at its sentence; lamp switch only in the reader
+  (see Now). Voice, phone, iPad dock, Zen iPad and Night light suites pass in Chromium and WebKit.
 
 - **2026-10-21 v238:** Workspace Move tool on laptops only (see Now) and the PDF glide's 100 ms release window. v237's
   87-suite run finished at 166/174: the only new failure was `reading-zoomed-paper-grab`'s flick under parallel load,

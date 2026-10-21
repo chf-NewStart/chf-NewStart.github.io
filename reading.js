@@ -3738,6 +3738,11 @@
   function voiceStartIndex(ch,chunks){
     var recent=voiceSelectionPlace&&voiceSelectionPlace.id===ch.id&&Date.now()-voiceSelectionPlace.at<60000?voiceSelectionPlace.place:null,picked=voicePlaceOfSelection(pendingSelection)||recent;voiceSelectionPlace=null;
     if(picked){var fromSelection=voiceChunkAt(chunks,picked);if(fromSelection>=0)return fromSelection;}
+    var resume=voiceResume&&voiceResume.id===ch.id?voiceResume:null;voiceResume=null;
+    if(resume){
+      var again=chunks[resume.index]&&chunks[resume.index].text===resume.text?resume.index:chunks.findIndex(function(chunk){return chunk.text===resume.text;});
+      if(again>=0&&voiceChunkInView(ch,chunks[again]))return again;
+    }
     if(ch.kind==='pdf'&&readerMode==='pdf'){var at=chunks.findIndex(function(chunk){return chunk.page>=currentPage;});return at<0?0:at;}
     var pane=byId('documentPane').getBoundingClientRect(),visible=Array.prototype.findIndex.call(paraSections(),function(section){return section.getBoundingClientRect().bottom>pane.top+40;});
     if(visible<0)return 0;var start=chunks.findIndex(function(chunk){return chunk.para>=visible;});return start<0?0:start;
@@ -3915,12 +3920,26 @@
   }
   function syncVoiceUi(state){
     var bar=byId('voiceBar'),playing=state==='playing';bar.classList.toggle('playing',playing);document.body.classList.toggle('voice-on',!bar.classList.contains('hidden'));
-    byId('voicePlay').setAttribute('aria-label',playing?'Pause':'Play');byId('zenListen').setAttribute('aria-expanded',String(!bar.classList.contains('hidden')));
+    var open=!bar.classList.contains('hidden');byId('voicePlay').setAttribute('aria-label',playing?'Pause':'Play');byId('zenListen').setAttribute('aria-expanded',String(open));byId('zenListen').setAttribute('aria-label',open?'Stop reading aloud':'Listen: read this paper aloud');
     var phoneListen=byId('zenPhoneListen');phoneListen.setAttribute('aria-pressed',String(playing));phoneListen.setAttribute('aria-label',playing?'Pause reading aloud':'Listen: read this paper aloud');
     syncVoiceRate();
     if(state==='finished')byId('voiceLine').textContent='Finished. Tap play to start again.';
   }
-  function stopVoice(){endVoiceDrag(true);closeVoiceFromMenu();if(voicePlayer)voicePlayer.stop();voicePaperId='';byId('voiceBar').classList.add('hidden');clearVoiceFocus();syncVoiceUi('stopped');}
+  /* Listen remembers the sentence it stopped on, so coming back resumes there (Houfu: "if i
+     reenter the speaker mode, dont make it speak elsewhere") as long as that sentence is still
+     in view; after the reader has moved on, it starts where they are. */
+  var voiceResume=null;
+  function stopVoice(){
+    endVoiceDrag(true);closeVoiceFromMenu();
+    if(voicePlayer&&voicePaperId){var at=voicePlayer.index(),chunk=voiceChunks[at];voiceResume=chunk&&voicePlayer.state()!=='finished'?{id:voicePaperId,index:at,text:chunk.text}:null;}
+    if(voicePlayer)voicePlayer.stop();voicePaperId='';byId('voiceBar').classList.add('hidden');clearVoiceFocus();syncVoiceUi('stopped');
+  }
+  function voiceChunkInView(ch,chunk){
+    var pane=byId('documentPane').getBoundingClientRect(),node=null;
+    if(ch.kind==='pdf'&&readerMode==='pdf'){if(pagedPdfFlow())return pagedPageNos(currentPage).indexOf(chunk.page)>=0;node=byId('pdfFrame').querySelector('.pdf-page[data-page="'+chunk.page+'"]');}
+    else node=paraSections()[chunk.para];
+    if(!node)return false;var r=node.getBoundingClientRect();return r.bottom>pane.top+20&&r.top<pane.bottom-20;
+  }
   function ensureVoicePlayer(){
     if(voicePlayer)return voicePlayer;
     var engine=voiceEngine();
@@ -3951,7 +3970,10 @@
     var left=[];if(prepared.skipped.equations)left.push('equations');if(prepared.skipped.tables)left.push('tables');if(prepared.skipped.captions)left.push('captions');if(prepared.skipped.references)left.push('the reference list');
     showReaderToast('Reading aloud'+(left.length?' · skipping '+left.join(', ').replace(/, ([^,]*)$/,' and $1'):'')+' · drag the pin to read from elsewhere');
   }
-  if(byId('zenListen'))byId('zenListen').onclick=function(){if(!byId('voiceBar').classList.contains('hidden')&&voicePaperId===currentId){closeZenPopouts(false);if(voicePlayer)voicePlayer.toggle();return;}startVoice();};
+  /* The dock's Listen opens and closes Listen (Houfu: "the speakers highlight wont go when i
+     exit the speaker mode": a second tap used to pause, keeping the sentence marked and the
+     paper dimmed). Play and pause live on the bar; the phone's Listen stays play/pause. */
+  if(byId('zenListen'))byId('zenListen').onclick=function(){closeZenPopouts(false);if(!byId('voiceBar').classList.contains('hidden')&&voicePaperId===currentId){stopVoice();return;}startVoice();};
   if(byId('voiceBar')){
     byId('voicePlay').onclick=function(){voiceScrolledByHandAt=0;if(voicePlayer&&voicePaperId===currentId&&voicePlayer.length())voicePlayer.toggle();else startVoice();};
     byId('voiceBack').onclick=function(){voiceScrolledByHandAt=0;if(voicePlayer)voicePlayer.back();};
@@ -4039,7 +4061,7 @@
     if(!on&&lookupTapping())hideLookup();
   }
   syncPhoneUi();addEventListener('resize',syncPhoneUi);
-  byId('zenPhoneListen').onclick=function(){closeZenPopouts(false);byId('zenListen').click();};
+  byId('zenPhoneListen').onclick=function(){closeZenPopouts(false);if(!byId('voiceBar').classList.contains('hidden')&&voicePaperId===currentId&&voicePlayer){voicePlayer.toggle();return;}startVoice();};
   byId('zenPhoneFind').onclick=function(){byId('zenFind').click();};
   new MutationObserver(function(){byId('zenPhoneFind').classList.toggle('active',byId('zenFind').classList.contains('active'));}).observe(byId('zenFind'),{attributes:true,attributeFilter:['class']});
   byId('zenPhoneGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};

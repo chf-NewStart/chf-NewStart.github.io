@@ -1360,6 +1360,10 @@
     .zen-night-caption { font: 700 8px/1 var(--sans); letter-spacing: -.02em; }
     .night-light-shortcut svg { width: 18px; height: 18px; display: block; }
     body.phone-ui .zen-dock > #zenNightDock, body.phone-ui #nightLightTopBtn { display: none; }
+    /* The lamp lights paper, so its switch shows only once a paper is open. In the library it
+       would only darken the interface, which the theme (moon) already does (Houfu: "the night
+       mode and night light mode in library are the same it seems"). */
+    body:not(.reading) #nightLightTopBtn { display: none; }
     .recall-shield { position: absolute; z-index: 7; inset: 0 var(--notebook-width, 360px) 0 0; display: grid; place-items: center; padding: 28px; background: color-mix(in srgb, var(--paper) 94%, var(--yellow)); color: var(--ink); text-align: center; }
     .recall-shield.hidden { display: none; }
     .recall-shield div { width: min(430px, 90%); }

@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "PHYSICS",
+            title: "Light takes ~8 minutes to reach you from the Sun",
+            fact: "Sunlight you feel is 8 minutes 20 seconds old. But the photon itself may be far older: energy generated in the Sun's core can take tens of thousands of years to random-walk out to the surface before escaping.",
+            detail: "So the light on your face was made when humans were still hunter-gatherers — a reminder that the Sun you see is a slow, glowing history."
+        },
+        {
+            tag: "PHYSICS",
             title: "The air in your room weighs more than you think",
             fact: "A typical bedroom holds roughly 50–60 kg of air — about the weight of an adult. You breathe and live inside a small ocean of matter that is simply hard to notice because it is everywhere at once.",
             detail: "Atmospheric pressure is just that ocean's weight: 101 kPa, or about 10 tonnes pressing on every square metre of your desk — balanced from all sides, so nothing collapses."

@@ -19,7 +19,8 @@ const ACTION_SELECTORS = {
   annotate: '#zenAnnotate',
   more: '#zenMore'
 };
-const RAIL_IDS = ['zenExit', 'zenGuide', 'zenListen', 'zenLayout', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'];
+// v236: Night light sits on the rail under Listen (Houfu: "a button outside instead of inside").
+const RAIL_IDS = ['zenExit', 'zenGuide', 'zenListen', 'zenNightDock', 'zenLayout', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'];
 
 const server = http.createServer((req, res) => {
   const pathname = req.url.split('?')[0] === '/' ? '/reading.html' : req.url.split('?')[0];
@@ -252,7 +253,7 @@ async function openNotes(page) {
 
   const railIds = await tablet.locator('#zenDock > button, #zenDock > .zen-tool > button')
     .evaluateAll(buttons => buttons.filter(button => button.getClientRects().length).map(button => button.id));
-  check('the dock exposes Guide, Listen, Layout, Annotate (Highlight), Undo, Workspace, and More directly on the rail', JSON.stringify(railIds) === JSON.stringify(RAIL_IDS), JSON.stringify(railIds));
+  check('the dock exposes Guide, Listen, Night light, Layout, Annotate (Highlight), Undo, Workspace, and More directly on the rail', JSON.stringify(railIds) === JSON.stringify(RAIL_IDS), JSON.stringify(railIds));
 
   if (dockVisible) {
     const dockMetrics = await tablet.locator('#zenDock').evaluate((dock, selectors) => {

@@ -1139,6 +1139,15 @@
        Space drift still scroll — the paper just keeps its whole edge. */
     body.zen .document-pane { scrollbar-width: none; }
     body.zen .document-pane::-webkit-scrollbar { display: none; }
+    /* A zoomed-in paper can be grabbed on blank paper (words keep the text cursor) and, on a
+       laptop, shows thin scrollbars even in Zen so its position and extent stay visible. */
+    @media (hover: hover) and (pointer: fine) {
+      .document-pane.paper-zoomed #pdfFrame :is(.pdf-sheet, .text-layer, canvas) { cursor: grab; }
+      .document-pane.paper-zoomed #pdfFrame .text-layer span { cursor: text; }
+      body.paper-grabbing, body.paper-grabbing * { cursor: grabbing !important; user-select: none; }
+      body.zen .document-pane.paper-zoomed { scrollbar-width: thin; }
+      body.zen .document-pane.paper-zoomed::-webkit-scrollbar { display: block; width: 9px; height: 9px; }
+    }
     .zen-exit:hover, .zen-exit:focus-visible, .zen-exit:active { opacity: 1; color: var(--ink); }
     /* Still hands mean the reader is reading: the floating circles sink to a shadow
        of themselves, video-player style, and any movement or touch wakes them. They
@@ -1344,7 +1353,13 @@
       radial-gradient(ellipse 72% 58% at 60% -6%, rgba(132,94,50,.3), rgba(70,48,26,.1) 52%, transparent 78%), #120e0b; }
     html body.night-light .text-document { box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
     .zen-night svg { width: 19px; height: 19px; }
-    body.night-light .zen-night { color: #e8b866; }
+    body.night-light .zen-night, body.night-light .night-light-shortcut { color: #e8b866; }
+    /* One tap from the Zen dock and the top bar (Houfu: "a button outside instead of inside");
+       phones keep it under More, where their tidy bar has room. */
+    .zen-dock .zen-night-dock { flex-direction: column; gap: 1px; border-radius: 13px; }
+    .zen-night-caption { font: 700 8px/1 var(--sans); letter-spacing: -.02em; }
+    .night-light-shortcut svg { width: 18px; height: 18px; display: block; }
+    body.phone-ui .zen-dock > #zenNightDock, body.phone-ui #nightLightTopBtn { display: none; }
     .recall-shield { position: absolute; z-index: 7; inset: 0 var(--notebook-width, 360px) 0 0; display: grid; place-items: center; padding: 28px; background: color-mix(in srgb, var(--paper) 94%, var(--yellow)); color: var(--ink); text-align: center; }
     .recall-shield.hidden { display: none; }
     .recall-shield div { width: min(430px, 90%); }

@@ -135,6 +135,23 @@ const settled = page => page.waitForTimeout(450);
       check('a theme chosen by hand during Night light is kept', !kept.on && kept.theme === 'dark', kept.theme);
       await context.close();
     }
+    /* 2b. One tap from outside the menus: the Zen dock and the top bar. */
+    {
+      const { context, page } = await openReader(browser, port, { pdfLayout: 'scroll', focus: false });
+      const shown = await page.evaluate(() => { const v = id => { const el = document.getElementById(id); return !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0; };
+        return { dock: v('zenNightDock'), menu: getComputedStyle(document.getElementById('zenNightLight')).display, zen: document.body.classList.contains('zen') }; });
+      check('in Zen the dock shows a Night light button', shown.zen && shown.dock, JSON.stringify(shown));
+      check('and the More menu no longer carries it (phones keep it there)', shown.menu === 'none', shown.menu);
+      await page.click('#zenNightDock');
+      await settled(page);
+      const fromDock = await page.evaluate(readLamp);
+      check('the dock button turns it on in one tap', fromDock.on && fromDock.visible, JSON.stringify({ on: fromDock.on }));
+      check('and shows it is on', await page.evaluate(() => document.getElementById('zenNightDock').getAttribute('aria-pressed')) === 'true');
+      await page.evaluate(() => document.getElementById('nightLightTopBtn').click());
+      await settled(page);
+      check('the top-bar button turns it off', !(await page.evaluate(readLamp)).on);
+      await context.close();
+    }
     /* 3. Page and Book layouts, from the focus-mode menu. */
     for (const layout of ['page', 'book']) {
       const { context, page } = await openReader(browser, port, { pdfLayout: layout, focus: false });

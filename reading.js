@@ -3209,7 +3209,7 @@
   function applyNightLight(){
     var on=!!comfort.nightLight;
     document.body.classList.toggle('night-light',on);
-    ['nightLightBtn','zenNightLight'].forEach(function(id){var b=byId(id);if(b)b.setAttribute('aria-pressed',String(on));});
+    ['nightLightBtn','zenNightLight','zenNightDock','nightLightTopBtn'].forEach(function(id){var b=byId(id);if(b)b.setAttribute('aria-pressed',String(on));});
     byId('nightLightBtn').textContent=on?'On':'Off';
     var range=byId('nightReachRange');range.value=String(comfort.nightReach);range.setAttribute('aria-valuetext',comfort.nightReach+' percent');
     byId('nightReachValue').textContent='Reach '+comfort.nightReach+'%';
@@ -3640,6 +3640,7 @@
   byId('zenPaperAppearance').onclick=function(){closeZenPopouts(true);cyclePaperAppearance();};
   byId('zenTheme').onclick=function(){closeZenPopouts(true);byId('themeBtn').onclick();};
   byId('zenNightLight').onclick=function(){closeZenPopouts(true);setNightLight(!comfort.nightLight);};
+  byId('zenNightDock').onclick=byId('nightLightTopBtn').onclick=function(){closeZenPopouts(true);setNightLight(!comfort.nightLight);};
   byId('zenFind').onclick=function(){closeZenPopouts(false);toggleFindBar(undefined,false,byId('zenMore'));zenWake();};
   byId('zenRefresh').onclick=refreshPhloem;
 
@@ -6953,6 +6954,52 @@
       }else{lastTapAt=at;lastTapX=t.clientX;lastTapY=t.clientY;}
     },{passive:false});
   })();
+  /* A zoomed-in paper can be grabbed and moved with a mouse or trackpad click, as a finger
+     moves it on the iPad (Houfu: on the laptop he "cannot move the paper around" once zoomed
+     in and had to zoom out and back in). Only blank paper is a handle: a press on words still
+     starts a selection, and links, saved marks, notes, the outer-edge page curl and every
+     drawing mode keep their own presses. The pane also shows thin scrollbars while zoomed. */
+  (function(){
+    var pane=byId('documentPane'),frame=byId('pdfFrame'),grab=null,zoomedFrame=0;
+    function paperZoomed(){
+      if(readerMode!=='pdf'||!pdfDoc)return false;
+      var wide=pane.scrollWidth>pane.clientWidth+2,tall=pane.scrollHeight>pane.clientHeight+2;
+      return pagedPdfFlow()?wide||tall:wide;
+    }
+    function syncPaperZoomed(){zoomedFrame=0;pane.classList.toggle('paper-zoomed',paperZoomed());}
+    function scheduleSync(){if(!zoomedFrame)zoomedFrame=requestAnimationFrame(syncPaperZoomed);}
+    if(window.ResizeObserver){var observer=new ResizeObserver(scheduleSync);observer.observe(pane);observer.observe(frame);}
+    addEventListener('resize',scheduleSync);
+    function blankPaper(target){
+      if(!target||!target.closest||!frame.contains(target))return false;
+      if(target.closest('a,button,input,textarea,[contenteditable="true"],.pdf-link,.pdf-sticky,.pdf-sticky-layer *,[data-hl-id],.book-curl-grip,.saved-highlight'))return false;
+      if(target.closest('.text-layer')&&target.nodeName==='SPAN'&&target.textContent.trim())return false;   // words select
+      return true;
+    }
+    pane.addEventListener('pointerdown',function(e){
+      if(e.pointerType!=='mouse'||e.button!==0||e.shiftKey||e.metaKey||e.ctrlKey||e.altKey)return;
+      if(bookCurlOwned||pagedTurning||pencilStroke||savedHighlightDrag||guideDragging)return;
+      if(pdfWriteMode||highlightEraseMode||stickyPlacing||!paperZoomed()||!blankPaper(e.target))return;
+      grab={id:e.pointerId,x:e.clientX,y:e.clientY,left:pane.scrollLeft,top:pane.scrollTop,moved:false};
+      cancelPdfPositionRestore();
+      /* Cancelling the press also cancels the mouse's text selection from blank paper. */
+      e.preventDefault();
+      try{pane.setPointerCapture(e.pointerId);}catch(err){}
+    });
+    pane.addEventListener('pointermove',function(e){
+      if(!grab||e.pointerId!==grab.id)return;
+      var dx=e.clientX-grab.x,dy=e.clientY-grab.y;
+      if(!grab.moved){if(Math.hypot(dx,dy)<3)return;grab.moved=true;document.body.classList.add('paper-grabbing');}
+      e.preventDefault();pane.scrollLeft=grab.left-dx;pane.scrollTop=grab.top-dy;
+    });
+    function endGrab(e){
+      if(!grab||e.pointerId!==grab.id)return;var moved=grab.moved;grab=null;document.body.classList.remove('paper-grabbing');
+      if(moved){pagedSuppressClickUntil=Date.now()+350;savePdfReadingPosition(false);}
+    }
+    pane.addEventListener('pointerup',endGrab);
+    pane.addEventListener('pointercancel',endGrab);
+    pane.addEventListener('lostpointercapture',endGrab);
+  })();
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;
     // Native dialogs own Escape, focus and form shortcuts; none may exit the reader.
@@ -7031,8 +7078,14 @@
     else if(e.shiftKey&&e.key==='ArrowLeft'){e.preventDefault();placeGuideScoped('column','left');showReaderToast(comfort.guideOrientation==='spot'?'Spotlight moved left':comfort.guideOrientation==='column'?'Column guide moved left':'Guide hugs the left half · Shift+Enter for full page');}
     else if(e.shiftKey&&e.key==='ArrowRight'){e.preventDefault();placeGuideScoped('column','right');showReaderToast(comfort.guideOrientation==='spot'?'Spotlight moved right':comfort.guideOrientation==='column'?'Column guide moved right':'Guide hugs the right half · Shift+Enter for full page');}
     else if(e.shiftKey&&e.key==='Enter'){e.preventDefault();placeGuideScoped('page');showReaderToast(comfort.guideOrientation==='spot'?'Spotlight centred':comfort.guideOrientation==='column'?'Column guide returned to the right':'Guide spans the full page');}
-    else if(e.key==='ArrowRight'){e.preventDefault();byId('nextPage').click();}
-    else if(e.key==='ArrowLeft'){e.preventDefault();byId('prevPage').click();}
+    else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
+      e.preventDefault();
+      /* A zoomed-in paper that runs off the side moves sideways first; the page turns once
+         that edge is in view, as the arrows behave in a desktop PDF viewer. */
+      var forward=e.key==='ArrowRight',maxLeft=pane.scrollWidth-pane.clientWidth;
+      if(maxLeft>2&&(forward?pane.scrollLeft<maxLeft-2:pane.scrollLeft>2)){pane.scrollBy({left:(forward?1:-1)*Math.max(80,pane.clientWidth*.15)});return;}
+      byId(forward?'nextPage':'prevPage').click();
+    }
   });
   var refitTimer=null;
   addEventListener('resize',function(){

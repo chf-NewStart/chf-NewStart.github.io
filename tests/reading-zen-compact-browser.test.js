@@ -57,11 +57,11 @@ async function railAt(page, viewport) {
         width: rect.width, height: rect.height };
     }));
   assert.deepEqual(controls.map(item => item.id),
-    ['zenExit', 'zenGuide', 'zenListen', 'zenLayout', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'],
-    'Zen has eight top-level controls, including Listen (v225), layout and paper Undo, at ' + JSON.stringify(viewport));
+    ['zenExit', 'zenGuide', 'zenListen', 'zenNightDock', 'zenLayout', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'],
+    'Zen has nine top-level controls, including Listen (v225), Night light (v236), layout and paper Undo, at ' + JSON.stringify(viewport));
   assert(controls.every(item => item.width >= 43.5 && item.height >= 43.5 && item.x >= -1 && item.y >= -1
     && item.right <= viewport.width + 1 && item.bottom <= viewport.height + 1),
-  'all eight Zen controls remain on-screen and touch-sized: ' + JSON.stringify({ viewport, controls }));
+  'all nine Zen controls remain on-screen and touch-sized: ' + JSON.stringify({ viewport, controls }));
 }
 async function stroke(page) {
   await page.locator('#workspaceInk').evaluate(canvas => {

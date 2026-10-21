@@ -156,8 +156,8 @@ async function notebookExitReopenBack(page, paperId, pdfPage, closeFirst = false
       'default text Zen does not request fullscreen');
     assert.deepEqual(await page.locator('#zenDock > button, #zenDock > .zen-tool > button')
       .evaluateAll(buttons => buttons.filter(button => button.getClientRects().length).map(button => button.id)),
-    // v225: Listen is a dock button.
-    ['zenExit', 'zenGuide', 'zenListen', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'],
+    // v225: Listen is a dock button. v236: so is Night light (Houfu: "a button outside instead of inside").
+    ['zenExit', 'zenGuide', 'zenListen', 'zenNightDock', 'zenAnnotate', 'zenUndo', 'zenWorkspace', 'zenMore'],
     'Zen-only reading keeps the compact dock with direct paper Undo');
     await page.keyboard.press('f');
     await page.waitForFunction(() => window.__zenFullscreenRequests === 1 && !!document.fullscreenElement);

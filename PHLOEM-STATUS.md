@@ -6,6 +6,22 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **Zoomed-in paper moves on a laptop, and Night light is one tap, v236 (web; Houfu: "i cannot move the paper around
+  once i zoom them in, on laptop, i have to zoom out and zoom back in", in Chrome, Page or Book layout, by click-and-drag
+  and by scrollbars or keys; and "shall we make night light a button outside instead of inside?").** Trackpad
+  two-finger scrolling was never broken (checked in Chromium and WebKit, all layouts, the guide and a 15-page paper);
+  what was missing: (1) **click-and-drag** did nothing but select text, so a press on **blank paper** now grabs a
+  zoomed-in paper and moves it (hand cursor; words keep the text cursor and still select; links, saved marks, stickies,
+  the outer-edge page curl, Pencil, ink, eraser and sticky placing keep their presses); (2) **← →** always turned the
+  page, so they now move a zoomed paper that runs off the side first and turn the page only at that edge (↑ ↓ already
+  scrolled); (3) **Zen hid the scrollbars**, so a zoomed paper (`.document-pane.paper-zoomed`, kept current by a
+  ResizeObserver) shows thin scrollbars on laptops. Zoomed means: Page/Book, any overflow; Scroll, wider than the pane.
+  **Night light** is now a dock button ("Night", lamp icon, amber when on) under Listen and a lamp in the top bar next
+  to the theme button; the More menu keeps it only on phones (`phone-only`), whose tidy bar stays as it is; the Reach
+  slider stays in Reading settings. Tests: new `reading-zoomed-paper-grab` (29; 16 fail on v235), `reading-night-light`
+  now 31 (dock and top-bar buttons). The dock has nine controls; at 1024×768, 768×1024 and 1024×390 all stay on screen
+  (`reading-pdf-ink`'s dock check still expects seven ids, as on v235). Build 46 bundles v235, so these need build 47.
+
 - **iPhone and Mac: universal 1.2.5 (46) in TestFlight, not submitted (Houfu: "also make sure phloem app is on
   iphone and mac too... idk").** (1) **iPhone:** `TARGETED_DEVICE_FAMILY = "1,2"`, version 1.2.5 / build 46, reader
   v235 bundled. The shared reader's phone layout (`body.phone-ui`, v224) needed no change; `isIpad()` still sees the
@@ -476,6 +492,13 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 v236:** zoomed paper moves on a laptop (grab blank paper, edge-aware ← →, thin scrollbars in Zen) and
+  Night light on the Zen dock and the top bar (see Now). New test `reading-zoomed-paper-grab` (29; 16 fail on v235);
+  `reading-night-light` 31; the dock lists in `reading-ipad-touch-dock`, `reading-zen-default-browser` and
+  `reading-zen-compact-browser` now include `zenNightDock`. Regression: 87 suites x 2 engines, 162/174 in parallel; after
+  those three list updates the rest fail as on main (`reading-pdf-ink` Zen-dock checks, still 69 passing;
+  `reading-workspace-paper-color`/`-paper-edge` harness exits; `reading-zen-compact-browser` in WebKit, same assertion).
 
 - **2026-10-21 1.2.5 (46), universal:** iPhone joins the iPad app (see Now). Uploaded to TestFlight with the API key,
   not submitted; 1.2.4 (45) untouched in review. Tests: `apps/ipad` 22/22; `reading-zen-ipad`,

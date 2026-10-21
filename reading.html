@@ -36,9 +36,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=235">
-  <link rel="stylesheet" href="/reading-fold.css?v=235">
-  <link rel="stylesheet" href="/reading-workspace.css?v=235">
+  <link rel="stylesheet" href="/reading.css?v=236">
+  <link rel="stylesheet" href="/reading-fold.css?v=236">
+  <link rel="stylesheet" href="/reading-workspace.css?v=236">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -53,6 +53,7 @@
     <div class="head-actions">
       <button class="cloud" id="syncSignal" type="button" title="Sync now">this device</button>
       <button class="icon-btn" id="themeBtn" aria-label="Switch to night reading">☾</button>
+      <button class="icon-btn night-light-shortcut" id="nightLightTopBtn" type="button" aria-pressed="false" aria-label="Night light: a reading lamp over the page in a dark room" title="Night light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21h8M10 21v-6l-4-5 5-6"/><path d="M11 4l5.5 3.2-2.2 3.8L8.8 7.8z"/><path d="M15.2 10.6l2.3 4.6M14 10.2l-1.4 5"/></svg></button>
       <button class="icon-btn paper-appearance-shortcut" id="paperAppearanceBtn" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
       <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
       <button class="icon-btn" id="refreshBtn" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
@@ -750,6 +751,7 @@
           </div>
         </div>
         <button class="zen-exit zen-listen" id="zenListen" type="button" aria-controls="voiceBar" aria-expanded="false" aria-label="Listen: read this paper aloud" title="Listen: read aloud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="13" width="4" height="6.5" rx="1.6"/><rect x="16.5" y="13" width="4" height="6.5" rx="1.6"/></svg><span class="zen-listen-caption" aria-hidden="true">Listen</span></button>
+        <button class="zen-exit zen-night zen-night-dock" id="zenNightDock" type="button" aria-pressed="false" aria-label="Night light: a reading lamp over the page in a dark room" title="Night light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21h8M10 21v-6l-4-5 5-6"/><path d="M11 4l5.5 3.2-2.2 3.8L8.8 7.8z"/><path d="M15.2 10.6l2.3 4.6M14 10.2l-1.4 5"/></svg><span class="zen-night-caption" aria-hidden="true">Night</span></button>
         <div class="zen-tool" id="zenLayoutTool">
           <button class="zen-exit zen-layout" id="zenLayout" type="button" aria-expanded="false" aria-controls="zenLayoutMenu" aria-haspopup="true" aria-label="Page layout: Scroll. Choose layout" title="Choose page layout"><span id="zenLayoutIcon" aria-hidden="true"></span><span id="zenLayoutLabel">Scroll</span><svg class="zen-layout-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
           <div class="zen-popout zen-layout-menu hidden" id="zenLayoutMenu" role="group" aria-label="Page layout">
@@ -781,7 +783,7 @@
             <button class="zen-exit zen-find zen-menu-action" id="zenFind" data-label="Find" type="button" aria-expanded="false" aria-controls="findBar" aria-keyshortcuts="/" aria-label="Find in this paper" title="Find in this paper (/)">⌕</button>
             <button class="zen-exit zen-paper paper-appearance-shortcut zen-menu-action" id="zenPaperAppearance" data-label="Paper appearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
             <button class="zen-exit zen-theme zen-menu-action" id="zenTheme" data-label="Theme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
-            <button class="zen-exit zen-night zen-menu-action" id="zenNightLight" data-label="Night light" type="button" aria-pressed="false" aria-label="Night light: a reading lamp over the page in a dark room" title="Night light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21h8M10 21v-6l-4-5 5-6"/><path d="M11 4l5.5 3.2-2.2 3.8L8.8 7.8z"/><path d="M15.2 10.6l2.3 4.6M14 10.2l-1.4 5"/></svg></button>
+            <button class="zen-exit zen-night zen-menu-action phone-only" id="zenNightLight" data-label="Night light" type="button" aria-pressed="false" aria-label="Night light: a reading lamp over the page in a dark room" title="Night light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21h8M10 21v-6l-4-5 5-6"/><path d="M11 4l5.5 3.2-2.2 3.8L8.8 7.8z"/><path d="M15.2 10.6l2.3 4.6M14 10.2l-1.4 5"/></svg></button>
             <button class="zen-exit zen-menu-action" id="zenSettings" data-label="Reading settings" type="button" aria-haspopup="dialog" aria-controls="comfortBar" aria-expanded="false" aria-label="Open reading settings"><span aria-hidden="true">⚙</span></button>
             <button class="zen-exit zen-menu-action phone-only" id="zenPhoneGuide" data-label="Reading guide" type="button" aria-controls="zenGuideMenu" aria-label="Reading guide"><span aria-hidden="true">▰</span></button>
             <button class="zen-exit zen-menu-action phone-only" id="zenPhoneLayout" data-label="Page layout" type="button" aria-controls="zenLayoutMenu" aria-label="Page layout"><span aria-hidden="true">▤</span></button>
@@ -1169,23 +1171,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=235',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=236',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=235" defer></script>
-<script src="/reading-stickies.js?v=235" defer></script>
-<script src="/reading-keeps.js?v=235" defer></script>
-<script src="/reading-excerpts.js?v=235" defer></script>
-<script src="/reading-excerpts-view.js?v=235" defer></script>
-<script src="/reading-lists.js?v=235" defer></script>
-<script src="/reading-lists-view.js?v=235" defer></script>
-<script src="/reading-voice.js?v=235" defer></script>
-<script src="/reading-workspace.js?v=235" defer></script>
-<script src="/reading-workspace-viewport.js?v=235" defer></script>
-<script src="/reading-workspace-view.js?v=235" defer></script>
-<script src="/reading-folds.js?v=235" defer></script>
-<script src="/reading-pdf-projection.js?v=235" defer></script>
-<script src="/reading-fold-view.js?v=235" defer></script>
-<script src="/reading.js?v=235" defer></script>
+<script src="/reading-ink.js?v=236" defer></script>
+<script src="/reading-stickies.js?v=236" defer></script>
+<script src="/reading-keeps.js?v=236" defer></script>
+<script src="/reading-excerpts.js?v=236" defer></script>
+<script src="/reading-excerpts-view.js?v=236" defer></script>
+<script src="/reading-lists.js?v=236" defer></script>
+<script src="/reading-lists-view.js?v=236" defer></script>
+<script src="/reading-voice.js?v=236" defer></script>
+<script src="/reading-workspace.js?v=236" defer></script>
+<script src="/reading-workspace-viewport.js?v=236" defer></script>
+<script src="/reading-workspace-view.js?v=236" defer></script>
+<script src="/reading-folds.js?v=236" defer></script>
+<script src="/reading-pdf-projection.js?v=236" defer></script>
+<script src="/reading-fold-view.js?v=236" defer></script>
+<script src="/reading.js?v=236" defer></script>
 </body>
 </html>

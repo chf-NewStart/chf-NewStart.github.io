@@ -6,6 +6,38 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **iPhone and Mac: universal 1.2.5 (46) in TestFlight, not submitted (Houfu: "also make sure phloem app is on
+  iphone and mac too... idk").** (1) **iPhone:** `TARGETED_DEVICE_FAMILY = "1,2"`, version 1.2.5 / build 46, reader
+  v235 bundled. The shared reader's phone layout (`body.phone-ui`, v224) needed no change; `isIpad()` still sees the
+  iPad's desktop user agent with touch, so the iPad keeps its layout. The native shell now names the device
+  (`window.PHLOEM_DEVICE`, a document-start user script in `PhloemBridgeViewController.swift`), so the adapter
+  (`native/ipad.js`) and the iCloud plugin's messages say "this iPhone" / "this Mac"; iPad copy is word for word as
+  before. **Checked in the iPhone 18 Pro Max simulator (iOS 27) in the real WKWebView**, driven through the simulator's
+  Web Inspector socket (`output/phloem-iphone-1.2.5-2026-10-21/tools/sim-webinspector.py`, Debug builds only; the
+  Simulator panel had no device access): portrait 440×956 and on its side 956×440 (bar becomes a right rail, text
+  clears the Dynamic Island, landscape forced with a temporary Debug-only hook, not committed); Library; importing the
+  eLife PDF; Look up (Wiktionary and Wikipedia over the network); Listen through `PhloemSpeech` (68 voices, the spoken
+  sentence highlighted on the PDF page); select → Define · Highlight · Copy · More → Highlight; More menu; Night
+  light. **iPad unchanged:** same build in the "Shots iPad 13" simulator: desktop UA, 5 touch points, no `phone-ui`,
+  Zen side dock, "Phloem for iPad"; `reading-zen-ipad` 45/45 and `reading-workspace-bottom-dock` 2/2 (plus
+  `reading-phone-browser` 5/5) in Chromium and WebKit before and after; `apps/ipad` tests 22/22 (new test pins the
+  device families and the iPad orientation list). Commit 14b3f2a2; archive
+  `~/Library/Developer/Xcode/Archives/2026-10-21/Phloem 1.2.5 (46).xcarchive`, uploaded with the API key.
+  **iPhone screenshots (6.9-inch, 1320×2868), ready:** `output/phloem-iphone-1.2.5-2026-10-21/UPLOAD-iphone-6.9/`
+  (Listen to any paper · Look up any word · Mark what matters · Your papers, in your pocket): unedited simulator
+  captures, same frame as the live iPad set, eLife CC BY credit; the Look up card is a Wiktionary text entry (credited)
+  because Wikimedia photos are CC BY-SA. They go on the next version record, which App Store Connect only allows once
+  1.2.4 leaves review. (2) **Mac:** already on. The public listing shows "Designed for iPad. Not verified for macOS.
+  Requires macOS 12.0 or later and a Mac with Apple M1 chip or later", so the Apple-silicon availability setting is
+  on (the setting itself is not in the public API, and the in-app browser has no App Store Connect sign-in). All three
+  TestFlight groups have "iOS builds on Apple silicon Macs" on, so TestFlight on this Mac can install build 46: no
+  device registration needed. The **macOS 1.0 draft** (created 2026-10-02, no build, no description) is untouched.
+  While unreleased it does not block the iPad app on Macs; releasing a real macOS app on this record would replace it.
+  (3) **Web follow-ups, not done here** (another session owns `reading.js`): the reader's own native copy still says
+  "this iPad" on an iPhone (`iCloudDeviceName`, iCloud status lines, "Remove the saved … key from this iPad?"), which
+  `window.PHLOEM_DEVICE` can fix; the Look up card links a Wiktionary definition as "Wikipedia article ↗"; Night light in
+  a phone-sized portrait pane is barely visible.
+
 - **Whole-page highlights on the iPad, found and fixed, v235 (web; Houfu: "i mean the entire page not the next page";
   where: iPad app and iPad Safari; how: Apple Pencil swipe and finger select + Highlight).** Reproduced in the iOS
   Simulator's Safari with a debug beacon. iPad WebKit's selection handles hit-test the empty text layer whenever they sit
@@ -417,9 +449,15 @@ Outputs (local, untracked, in the main checkout's `output/`):
   identity", try a phone hotspot, then check the Apple ID's country/region (Settings › your name › Media &
   Purchases › View Account). Steps in `apps/ipad/plans/ICLOUD-SYNC-FIX.md`, "Sixth round".
 
-- Register this Mac as a development device so the iPad app runs on it ("Designed for iPad") with the Mac's Premium
-  voices? Free; it adds the Mac ("pls_dont_change") to the developer account's device list. Until then a Premium
-  voice in the app is checked only on the iPad through TestFlight.
+- **iPhone (1.2.5 (46) in TestFlight):** (1) try it on the iPhone from TestFlight (Listen, Look up, a highlight, on
+  its side). (2) Ship iPhone support with the next version? Once released it cannot be withdrawn (the iPad app stays as
+  it is). If yes, after 1.2.4 is out of review: create 1.2.5, add the four 6.9-inch screenshots, attach 46, and say
+  "submit Phloem 1.2.5". If no, revert commit 14b3f2a2's device family before the next iPad build.
+  (3) Keep Listen going with the screen locked? Needs the `audio` background mode in Info.plist (iPhone and iPad alike).
+- **Mac:** the iPad app is already offered on Apple silicon Macs. Optional: install build 46 on this Mac with
+  TestFlight (replaces the old "register this Mac" question: not needed), then App Store Connect › Pricing and
+  Availability › Verify Compatibility to drop "Not verified for macOS". Keep or delete the empty macOS 1.0 draft
+  (harmless either way; Claude left it).
 
 - **Old open PRs:** #29 (iPad prototype) and #28 (Book guide fix) are already on main in other forms, and #30
   (calm homepage) was superseded by the current homepage. Close them? #72's Define fix is now on main (v213); its other
@@ -436,6 +474,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 1.2.5 (46), universal:** iPhone joins the iPad app (see Now). Uploaded to TestFlight with the API key,
+  not submitted; 1.2.4 (45) untouched in review. Tests: `apps/ipad` 22/22; `reading-zen-ipad`,
+  `reading-workspace-bottom-dock`, `reading-phone-browser` all pass in Chromium and WebKit before and after.
 
 - **2026-10-21 v235:** iPad whole-page highlight fixed (see Now): `touchSelectionSnapGuard` keeps the last good
   selection through WebKit's handle snaps, clears selections that start snapped, and the Pencil highlighter starts

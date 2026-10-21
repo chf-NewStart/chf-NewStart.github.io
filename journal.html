@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com https://api.weather.gc.ca https://get.geojs.io https://api.open-meteo.com https://air-quality-api.open-meteo.com https://api.deepseek.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.apple-cloudkit.com; style-src 'self' 'unsafe-inline' https://cdn.apple-cloudkit.com; font-src 'self'; img-src 'self' data: https://cdn.apple-cloudkit.com; connect-src 'self' https://api.github.com https://api.apple-cloudkit.com https://*.icloud-content.com https://*.icloud-content.com.cn https://api.weather.gc.ca https://get.geojs.io https://api.open-meteo.com https://air-quality-api.open-meteo.com https://api.deepseek.com; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Journal intime // houfu72.com</title>
   <meta name="description" content="A quiet private journal — one page per day, saved only in your browser.">
@@ -14,10 +14,8 @@
   <link rel="manifest" href="/site.webmanifest?v=3">
   <meta name="theme-color" content="#e6dcb6" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#16121f" media="(prefers-color-scheme: dark)">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Homemade+Apple&family=Long+Cang&display=swap" rel="stylesheet">
+  <link href="/fonts/journal/journal-fonts.css" rel="stylesheet">
 
   <style>
     /* the owner's own handwriting, scanned via Calligraphr — covers A-Z a-z 0-9
@@ -283,7 +281,7 @@
       <a class="btn quiet" href="/">← houfu72.com</a>
     </div>
   </div>
-  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage), and leaves it in only two ways — both yours to switch off. Encrypted sync to your own private repo, set up below. And the reflection, which sends the open page to DeepSeek along with your last two weeks and the short note it keeps about you. That one now arrives on its own after you have been writing a while: “auto: off” stops it, and “memory…” lets you read, edit or erase the note.</p>
+  <p class="sub fade">One page per day, just for you. Everything stays in this browser (localStorage), and leaves it in only two ways — both yours to switch off. Encrypted sync to your own private repo or your iCloud, set up below. And the reflection, which sends the open page to DeepSeek along with your last two weeks and the short note it keeps about you. That one now arrives on its own after you have been writing a while: “auto: off” stops it, and “memory…” lets you read, edit or erase the note.</p>
 
   <div class="day">
     <h2 id="dayTitle"></h2><span id="dayCursor" aria-hidden="true">▋</span>
@@ -360,14 +358,24 @@
   </div>
 
   <div class="sync fade">
-    <div class="cap">SYNC <span id="syncState" role="status">— off (this browser only)</span> <button class="linkish quiet hidden" id="syncToggle">settings…</button></div>
+    <div class="cap">SYNC <span id="syncState" role="status">— off (this browser only)</span> <span id="icloudState" role="status" class="hidden"></span> <button class="linkish quiet hidden" id="syncToggle">settings…</button></div>
     <div id="syncBody">
     <div class="toolsrow" style="margin-top:0">
-      <button class="btn quiet" id="syncSetupBtn">set up sync…</button>
+      <button class="btn quiet" id="syncSetupBtn">sync with GitHub…</button>
+      <button class="btn quiet" id="icloudSetupBtn">sync with iCloud…</button>
+      <button class="btn quiet hidden" id="icloudSignInBtn">sign in to iCloud</button>
       <button class="btn quiet hidden" id="syncNowBtn">sync now</button>
       <button class="btn quiet hidden" id="syncLinkBtn">copy setup link for another device</button>
-      <button class="btn quiet hidden" id="syncOffBtn">turn off</button>
+      <button class="btn quiet hidden" id="syncOffBtn">turn off GitHub</button>
+      <button class="btn quiet hidden" id="icloudOffBtn">turn off iCloud</button>
     </div>
+    <div class="sync-form hidden" id="icloudForm">
+      <label>passphrase — pages are encrypted with it before they leave this device, so iCloud only ever holds ciphertext. Use the same one on every device.
+        <input id="icloudPass" type="password" autocomplete="off"></label>
+      <div><button class="btn" id="icloudSaveBtn">sign in with Apple &amp; first sync</button></div>
+      <p class="sub" style="margin:0">iCloud answers in mainland China, where Google and GitHub often don’t. You sign in on Apple’s own page and come straight back here.</p>
+    </div>
+    <div class="hidden" id="icloudAppleBox"><div id="icloudAppleSignIn"></div><div id="icloudAppleSignOut"></div></div>
     <div class="sync-form hidden" id="syncForm">
       <label>your private repo (owner/name)
         <input id="syncRepo" value="chf-NewStart/self-help" autocomplete="off" spellcheck="false"></label>
@@ -1231,21 +1239,35 @@
 
   var syncOpen = false;
   function setSyncStatus(msg){ byId('syncState').textContent = '— ' + msg; }
-  function setSyncSignal(s){ byId('syncSig').textContent = s; }
+  /* GitHub and iCloud share the little cloud by the date: it shows the worse
+     of the two, so a failing target is never hidden behind a working one. */
+  var syncSignals = { gh: '', ic: '' };
+  function setSyncSignal(s, who){
+    syncSignals[who || 'gh'] = s;
+    var both = [syncSignals.gh, syncSignals.ic];
+    byId('syncSig').textContent = both.indexOf('☁ !') >= 0 ? '☁ !' : both.indexOf('☁ …') >= 0 ? '☁ …' : (syncSignals.gh || syncSignals.ic);
+  }
+  function githubOn(){ return !!(syncCfg && syncCfg.repo && syncCfg.token && syncCfg.pass); }
   function syncUI(){
-    var on = !!(syncCfg && syncCfg.repo && syncCfg.token && syncCfg.pass);
-    setSyncStatus(on ? 'to ' + syncCfg.repo + ' (encrypted)' : 'off (this browser only)');
+    var gh = githubOn(), ic = icloudOn(), on = gh || ic;
+    setSyncStatus(gh ? 'to ' + syncCfg.repo + ' (encrypted)' : ic ? 'encrypted' : 'off (this browser only)');
+    byId('icloudState').classList.toggle('hidden', !ic);
+    if (ic && !byId('icloudState').textContent) setICloudStatus('on');
     /* once sync is on, the plumbing folds away into one quiet line */
     byId('syncToggle').classList.toggle('hidden', !on);
     byId('syncBody').classList.toggle('hidden', on && !syncOpen);
     byId('syncNowBtn').classList.toggle('hidden', !on);
-    byId('syncLinkBtn').classList.toggle('hidden', !on);
-    byId('syncOffBtn').classList.toggle('hidden', !on);
-    byId('syncSetupBtn').textContent = on ? 'change settings…' : 'set up sync…';
-    if (!on) setSyncSignal('');
+    byId('syncLinkBtn').classList.toggle('hidden', !gh);
+    byId('syncOffBtn').classList.toggle('hidden', !gh);
+    byId('icloudOffBtn').classList.toggle('hidden', !ic);
+    byId('icloudSetupBtn').classList.toggle('hidden', ic || !ICLOUD.apiToken);
+    byId('icloudSignInBtn').classList.toggle('hidden', !(ic && icloudSignedOut));
+    byId('syncSetupBtn').textContent = gh ? 'GitHub settings…' : 'sync with GitHub…';
+    if (!gh) setSyncSignal('', 'gh');
+    if (!ic) setSyncSignal('', 'ic');
   }
   byId('syncToggle').onclick = function(){ syncOpen = !syncOpen; syncUI(); };
-  byId('syncSig').onclick = function(){ doSync(); };
+  byId('syncSig').onclick = function(){ syncAll(); };
 
   byId('syncSetupBtn').onclick = function(){
     var f = byId('syncForm');
@@ -1259,6 +1281,7 @@
   byId('syncOffBtn').onclick = function(){
     localStorage.removeItem(SYNC_KEY); syncCfg = null; syncUI();
   };
+  byId('syncNowBtn').onclick = function(){ syncAll(); };
   byId('syncSaveBtn').onclick = function(){
     var repo = byId('syncRepo').value.trim();
     var token = byId('syncToken').value.trim();
@@ -1348,12 +1371,24 @@
     return changed;
   }
 
+  /* Both targets hold the same thing: the snapshot below, encrypted. A merge
+     that brings in words reopens the page only when nobody is typing in it. */
+  function syncSnapshot(){ return { entries: state.entries, held: state.held, wx: state.wx, memory: state.memory }; }
+  function takeRemote(remote){
+    if (!remote || !mergeState(remote)) return false;
+    persist();
+    /* don't yank the page out from under mid-sentence typing */
+    if (document.activeElement !== page) openEntry(openDay); else renderArchive();
+    renderHeld();
+    return true;
+  }
+
   function doSync(){
-    if (!syncCfg || syncing) return;
+    if (!syncCfg || syncing) return Promise.resolve();
     syncing = true;
     setSyncStatus('syncing…');
     setSyncSignal('☁ …');
-    gh('GET').then(function(r){
+    return gh('GET').then(function(r){
       if (r.status === 404) return { sha: null, remote: null };
       if (r.status === 401 || r.status === 403) throw new Error('token rejected — check its access to ' + syncCfg.repo);
       if (!r.ok) throw new Error('github said ' + r.status);
@@ -1364,18 +1399,13 @@
           function(){ throw new Error('could not decrypt — wrong passphrase? nothing was changed.'); });
       });
     }).then(function(got){
-      if (got.remote && mergeState(got.remote)){
-        persist();
-        /* don't yank the page out from under mid-sentence typing */
-        if (document.activeElement !== page) openEntry(openDay); else renderArchive();
-        renderHeld();
-      }
+      takeRemote(got.remote);
       /* The memory travels, unlike the reflections. A reflection belongs to the
          day it was written and is cheap to ask for again; the standing note is
          built up over months and would have to be earned back page by page on a
          new machine. It is inside the same AES-GCM blob as the entries, so the
          repo still only ever sees ciphertext. */
-      return encryptState(syncCfg.pass, { entries: state.entries, held: state.held, wx: state.wx, memory: state.memory })
+      return encryptState(syncCfg.pass, syncSnapshot())
         .then(function(enc){
           var body = { message: 'journal sync', content: btoa(enc) };
           if (got.sha) body.sha = got.sha;
@@ -1393,7 +1423,226 @@
       setSyncSignal('☁ !');
     }).then(function(){ syncing = false; });
   }
-  byId('syncNowBtn').onclick = doSync;
+
+  /* ====================================================================
+     OPTIONAL iCLOUD SYNC — the same encrypted blob, in your private iCloud
+     database instead of (or as well as) the repo. Apple's CloudKit JS talks
+     to api.apple-cloudkit.com, which answers in mainland China where Google
+     and GitHub often don't. iCloud only ever sees ciphertext: pages are
+     AES-GCM encrypted here with your passphrase first, as for the repo.
+
+     It lives in Phloem's container, iCloud.com.houfu72.phloem, so one API
+     token and one Apple sign-in serve both pages, stored as the record
+     "journal-v1" of Phloem's PhloemLibrary type (an asset `payload`,
+     `formatVersion`, `updatedAt`). That needs no schema change on Apple's
+     side. Phloem, on the web and on the iPad, only ever reads "library-v1" by
+     name and never lists that type, so it cannot see or delete this record.
+
+     The token's sign-in callback is reading.html (a token has exactly one),
+     so before leaving for Apple this page leaves a note, and reading.html
+     hands Apple's answer straight back here.
+     ==================================================================== */
+  var ICLOUD = Object.assign({
+    container: 'iCloud.com.houfu72.phloem', environment: 'production',
+    /* Phloem's "Phloem web" API token (CloudKit Console › Tokens & Keys, the same
+       value as WEB_CLOUDKIT in reading.js). Empty hides iCloud on this page. */
+    apiToken: '',
+    script: 'https://cdn.apple-cloudkit.com/ck/2/cloudkit.js',
+    recordType: 'PhloemLibrary', recordName: 'journal-v1'
+  }, window.JOURNAL_CLOUDKIT_CONFIG || {});
+  var ICLOUD_KEY = 'journalIntime.icloud.v1', ICLOUD_RETURN_KEY = 'houfu.icloudReturn.v1';
+  /* shared with Phloem: same token, so a sign-in on either page counts for both */
+  var ICLOUD_SESSION_KEY = 'phloem.icloudWebSession.v1', ICLOUD_CLIENT_KEY = 'phloem.icloudWebClient.v1';
+  var icloudCfg = null, icloudSyncing = false, icloudReady = null, icloudSignedOut = false;
+  var icloudOwn = { tag: '', plain: '' };
+  try { icloudCfg = JSON.parse(localStorage.getItem(ICLOUD_KEY)); } catch(e){}
+  function icloudOn(){ return !!(ICLOUD.apiToken && icloudCfg && icloudCfg.on && icloudCfg.pass); }
+  function setICloudStatus(msg){ byId('icloudState').textContent = '· iCloud ' + msg; }
+
+  /* CloudKit JS keeps its session in a cookie unless given a store; Safari can
+     drop that cookie, so it lives in localStorage like everything else here. */
+  var icloudTokenStore = {
+    putToken: function(id, token){ try { var all = JSON.parse(localStorage.getItem(ICLOUD_SESSION_KEY) || '{}'); if (token) all[id] = token; else delete all[id]; localStorage.setItem(ICLOUD_SESSION_KEY, JSON.stringify(all)); } catch(e){} },
+    getToken: function(id){ try { return JSON.parse(localStorage.getItem(ICLOUD_SESSION_KEY) || '{}')[id] || null; } catch(e){ return null; } }
+  };
+  /* one clientId per browser, so the request after Apple's redirect matches
+     the one that asked for the sign-in page */
+  var icloudClientId = (function(){
+    try { var id = localStorage.getItem(ICLOUD_CLIENT_KEY); if (!id){ id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2); localStorage.setItem(ICLOUD_CLIENT_KEY, id); } return id; } catch(e){ return undefined; }
+  })();
+  /* Back from Apple: the session arrives as ?ckSession=… (and ckWebAuthToken=…).
+     Read it with a regex so a literal "+" stays a "+", then wipe it from the
+     address bar at once. */
+  var icloudReturnToken = (function(){
+    try {
+      var all = location.search + location.hash;
+      var pick = function(name){ var m = all.match(new RegExp('[?&#]' + name + '=([^&#]*)')); return m ? m[1] : ''; };
+      var raw = pick('ckSession') || pick('ckWebAuthToken');
+      if (!raw) return '';
+      history.replaceState(null, '', location.pathname);
+      try { return decodeURIComponent(raw); } catch(e){ return raw; }
+    } catch(e){ return ''; }
+  })();
+
+  function icloudLoad(){
+    if (icloudReady) return icloudReady;
+    icloudReady = new Promise(function(resolve, reject){
+      if (window.CloudKit) return resolve(window.CloudKit);
+      /* a blocked or crawling network must not leave sync spinning forever */
+      var timer = setTimeout(function(){ reject(new Error('Apple’s iCloud script did not load. Check the connection and sync again.')); }, 20000);
+      var s = document.createElement('script');
+      s.src = ICLOUD.script; s.async = true;
+      s.onload = function(){ clearTimeout(timer); window.CloudKit ? resolve(window.CloudKit) : reject(new Error('Apple’s iCloud script loaded without CloudKit.')); };
+      s.onerror = function(){ clearTimeout(timer); reject(new Error('could not reach Apple’s iCloud service.')); };
+      document.head.appendChild(s);
+    }).then(function(CloudKit){
+      CloudKit.configure({
+        containers: [{ containerIdentifier: ICLOUD.container, environment: ICLOUD.environment, clientID: icloudClientId,
+          apiTokenAuth: { apiToken: ICLOUD.apiToken, persist: true, ckWebAuthToken: icloudReturnToken || undefined,
+            signInButton: { id: 'icloudAppleSignIn', theme: 'black' }, signOutButton: { id: 'icloudAppleSignOut', theme: 'black' } } }],
+        services: { authTokenStore: icloudTokenStore }
+      });
+      return CloudKit.getDefaultContainer();
+    });
+    icloudReady.catch(function(){ icloudReady = null; });
+    return icloudReady;
+  }
+  /* Sends this tab to Apple's sign-in page. CloudKit JS keeps the page's URL on
+     a private field; the signed-out error's redirectURL is the fallback. */
+  function icloudSignIn(){
+    return icloudLoad().then(function(container){
+      return container.setUpAuth().then(function(identity){
+        if (identity) return identity;
+        var go = function(url){
+          if (!url) throw new Error('Apple did not offer a sign-in page. Reload and try again.');
+          try { localStorage.setItem(ICLOUD_RETURN_KEY, JSON.stringify({ path: '/journal.html', at: Date.now() })); } catch(e){}
+          flushSave();
+          location.assign(url);
+          return new Promise(function(){});
+        };
+        var url = container._auth && container._auth._signInURL;
+        if (url) return go(url);
+        return container.fetchCurrentUserIdentity().then(function(found){ return found; }, function(error){ return go(error && error.redirectURL); });
+      });
+    });
+  }
+  function icloudCode(error){ return error && (error.ckErrorCode || error.serverErrorCode) || ''; }
+  /* the first real error in a CloudKit JS response; a missing record is not one */
+  function icloudProblem(response){
+    if (!response) return null;
+    var all = (response.errors || []).concat((response.records || []).filter(function(r){ return r && r.serverErrorCode; }));
+    return all.filter(function(e){ return icloudCode(e) !== 'NOT_FOUND'; })[0] || null;
+  }
+  function icloudMessage(error){
+    var code = icloudCode(error), why = error && (error.reason || error.message) || '';
+    if (code === 'AUTHENTICATION_REQUIRED' || code === 'AUTHENTICATION_FAILED') return 'signed out — tap “sign in to iCloud”';
+    if (code === 'QUOTA_EXCEEDED') return 'is full — free some iCloud storage';
+    if (code === 'THROTTLED' || code === 'TRY_AGAIN_LATER' || code === 'SERVICE_UNAVAILABLE') return 'is busy — sync again in a few minutes';
+    return 'sync: ' + (why || 'failed') + (code ? ' (' + code + ')' : '');
+  }
+  function icloudRound(db, attempt){
+    return Promise.resolve(db.fetchRecords([ICLOUD.recordName])).catch(function(error){
+      if (icloudCode(error) === 'NOT_FOUND') return { records: [] };
+      throw error;
+    }).then(function(response){
+      var problem = icloudProblem(response);
+      if (problem) throw problem;
+      var record = (response.records || []).filter(function(r){ return r && r.fields && !r.serverErrorCode; })[0] || null;
+      /* our own last upload: nothing new to read */
+      if (!record || (icloudOwn.tag && record.recordChangeTag === icloudOwn.tag)) return { record: record, remote: null };
+      var asset = record.fields.payload && record.fields.payload.value;
+      if (!asset || !asset.downloadURL) throw new Error('the iCloud copy has no readable file');
+      return fetch(asset.downloadURL, { credentials: 'omit' }).then(function(r){
+        if (!r.ok) throw new Error('iCloud returned ' + r.status + ' for the journal file');
+        return r.text();
+      }).then(function(enc){
+        return decryptState(icloudCfg.pass, enc).then(
+          function(remote){ return { record: record, remote: remote }; },
+          function(){ throw new Error('could not decrypt the iCloud copy — wrong passphrase? nothing was changed.'); });
+      });
+    }).then(function(got){
+      if (takeRemote(got.remote) && githubOn()) scheduleSync();
+      var snapshot = syncSnapshot(), plain = JSON.stringify(snapshot);
+      if (got.record && icloudOwn.tag && got.record.recordChangeTag === icloudOwn.tag && plain === icloudOwn.plain) return null;
+      return encryptState(icloudCfg.pass, snapshot).then(function(enc){
+        var rec = { recordType: ICLOUD.recordType, recordName: ICLOUD.recordName, fields: {
+          payload: { value: new Blob([enc], { type: 'application/json' }) },
+          formatVersion: { value: 1, type: 'INT64' },
+          updatedAt: { value: Date.now(), type: 'TIMESTAMP' }
+        } };
+        if (got.record && got.record.recordChangeTag) rec.recordChangeTag = got.record.recordChangeTag;
+        return Promise.resolve(db.saveRecords([rec])).then(function(response){
+          var problem = icloudProblem(response);
+          /* another device saved first: read theirs, merge, try again */
+          if (problem && icloudCode(problem) === 'CONFLICT' && attempt < 2){ icloudOwn = { tag: '', plain: '' }; return icloudRound(db, attempt + 1); }
+          if (problem) throw problem;
+          var saved = (response.records || [])[0];
+          icloudOwn = { tag: saved && saved.recordChangeTag || '', plain: plain };
+          return null;
+        });
+      });
+    });
+  }
+  function icloudSync(){
+    if (!icloudOn() || icloudSyncing) return Promise.resolve();
+    icloudSyncing = true;
+    setICloudStatus('syncing…');
+    setSyncSignal('☁ …', 'ic');
+    return icloudLoad().then(function(container){
+      return container.setUpAuth().then(function(identity){
+        if (!identity){ var out = new Error('signed out'); out.ckErrorCode = 'AUTHENTICATION_REQUIRED'; throw out; }
+        icloudSignedOut = false;
+        return icloudRound(container.privateCloudDatabase, 0);
+      });
+    }).then(function(){
+      var at = new Date();
+      setICloudStatus('✓ synced ' + pad2(at.getHours()) + ':' + pad2(at.getMinutes()));
+      setSyncSignal('☁ ✓', 'ic');
+      syncUI();
+    }).catch(function(e){
+      var code = icloudCode(e);
+      icloudSignedOut = code === 'AUTHENTICATION_REQUIRED' || code === 'AUTHENTICATION_FAILED';
+      if (icloudSignedOut) icloudOwn = { tag: '', plain: '' };
+      /* unfold the settings so the problem is visible, not silent */
+      syncOpen = true; syncUI();
+      setICloudStatus(icloudMessage(e));
+      setSyncSignal('☁ !', 'ic');
+    }).then(function(){ icloudSyncing = false; });
+  }
+  /* GitHub first, then iCloud, so words that arrive from one reach the other
+     in the same pass */
+  function syncAll(){ return doSync().then(icloudSync); }
+
+  byId('icloudSetupBtn').onclick = function(){
+    var f = byId('icloudForm');
+    f.classList.toggle('hidden');
+    if (!f.classList.contains('hidden') && !byId('icloudPass').value)
+      byId('icloudPass').value = (icloudCfg && icloudCfg.pass) || (syncCfg && syncCfg.pass) || '';
+  };
+  byId('icloudSaveBtn').onclick = function(){
+    var pass = byId('icloudPass').value;
+    if (!pass){ alert('Choose a passphrase first. Use the same one on every device.'); return; }
+    icloudCfg = { on: true, pass: pass };
+    localStorage.setItem(ICLOUD_KEY, JSON.stringify(icloudCfg));
+    byId('icloudForm').classList.add('hidden');
+    syncOpen = false; syncUI();
+    setICloudStatus('signing in…');
+    icloudSignIn().then(function(){ return icloudSync(); }, function(e){
+      syncOpen = true; syncUI();
+      setICloudStatus(icloudMessage(e));
+      setSyncSignal('☁ !', 'ic');
+    });
+  };
+  byId('icloudSignInBtn').onclick = function(){
+    setICloudStatus('signing in…');
+    icloudSignIn().then(function(){ return icloudSync(); }, function(e){ setICloudStatus(icloudMessage(e)); });
+  };
+  byId('icloudOffBtn').onclick = function(){
+    localStorage.removeItem(ICLOUD_KEY); icloudCfg = null; icloudSignedOut = false;
+    icloudOwn = { tag: '', plain: '' };
+    byId('icloudState').textContent = '';
+    syncUI();
+  };
 
   /* one-tap setup on another device: config rides in the URL fragment
      (never sent to any server), is saved on first open, then wiped from
@@ -1436,16 +1685,19 @@
   })();
 
   function scheduleSync(){
-    if (!syncCfg) return;
+    if (!syncCfg && !icloudOn()) return;
     clearTimeout(syncTimer);
-    syncTimer = setTimeout(doSync, 4000);
+    syncTimer = setTimeout(syncAll, 4000);
   }
 
   openEntry(today);
   renderHeld();
   fetchWx();
   syncUI();
-  if (syncCfg) doSync();
+  if (syncCfg || icloudOn()) syncAll();
+  /* opens from cache when houfu72.com is slow or out of reach; pages stay in localStorage */
+  if ('serviceWorker' in navigator)
+    navigator.serviceWorker.register('/journal-sw.js', { scope: '/journal.html' }).catch(function(){});
   if (window.matchMedia && matchMedia('(pointer: fine)').matches) page.focus();
 })();
 </script>

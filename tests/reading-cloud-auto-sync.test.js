@@ -78,7 +78,7 @@ function cloudHarness(provider) {
     ArrayBuffer, Uint8Array, Date, JSON, window: {}, navigator: {}, zenOn: false, gestureLive: () => false,
     state: { chapters: [{ id: 'old', kind: 'pdf', fileSize: 3 }], deleted: {} },
     iCloudSyncing: false, gdriveSyncing: false, gdriveRoaming: false,
-    gdriveToken: null, gdriveTokenAt: 0, gdriveEmail: '',
+    gdriveToken: null, gdriveTokenAt: 0, gdriveEmail: '', gdriveQuietUntil: 0,
     libraryDriveRestoreArmed: false, libraryDriveRestoreMessage: '', gdriveArmed: false,
     GDRIVE_FILE: 'carrel-library.json', GDRIVE_PDF_LIMIT: 200 * 1024 * 1024,
     gdrivePdfStates: {}, iCloudDocumentStates: {}, importedSourceWrites: {}, now: () => 1000000, penOnGlass: () => false,

@@ -4,7 +4,22 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-10-20)
+## Now (2026-10-21)
+
+- **iCloud on the website, for use in China, v233 (web; Houfu: "make sure icloud works for everything in my web,
+  including phloem and things like the journal writing" / "the goal is to allow me to use them in china").**
+  Web sign-in is still the open blocker and needs Houfu's own Apple ID: Apple's sign-in page loads for this
+  container (token, origin and Production schema checked read-only in CloudKit Console), so "Failed to verify
+  your identity" is Apple's account check. Morning steps and leads: `apps/ipad/plans/ICLOUD-SYNC-FIX.md`,
+  "Sixth round". Shipped: (1) website iCloud is an **opt-in**, `reading.html?icloud=1` (remembered,
+  `?icloud=0` hides), so nobody else meets a sign-in that may fail; (2) the **token slots are empty**
+  (`WEB_CLOUDKIT.apiToken` in reading.js, `ICLOUD.apiToken` in journal.html): Claude's safety check refused to
+  write the CloudKit token into the site, so Houfu fills both with the "Phloem web" value or says so;
+  (3) **journal.html syncs to iCloud** (same AES-GCM ciphertext as its GitHub sync, record `journal-v1` of type
+  `PhloemLibrary`, no schema change; Phloem and the iPad never list that type), signs in through reading.html,
+  and shares Phloem's session; (4) the journal's Google Fonts are self-hosted (`fonts/journal/`);
+  (5) Drive gives up after 20 s instead of holding the sync queue in China, then rests ten minutes; (6) `reading-sw.js` and a new
+  `journal-sw.js` open the cached page after 4 s of network silence (GitHub Pages is throttled in China).
 
 - **iPad 1.2.4 (45) rebuilt with reader v232 and uploaded (2026-10-20 evening; Houfu: "do what you need to do").**
   The earlier 1.2.4 (45) archive (reader v230, the old Spotlight) was never uploaded: it waited on an Xcode sign-in.
@@ -349,6 +364,12 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Open questions for Houfu
 
+- **Web iCloud (China):** (1) fill the two empty CloudKit token slots with the "Phloem web" token, or tell
+  Claude "put the CloudKit web token in"; (2) on the Mac, open `houfu72.com/reading.html?icloud=1` › Settings ›
+  Sync with iCloud › Turn on, and sign in on Apple's page. If Apple again says "Failed to verify your
+  identity", try a phone hotspot, then check the Apple ID's country/region (Settings › your name › Media &
+  Purchases › View Account). Steps in `apps/ipad/plans/ICLOUD-SYNC-FIX.md`, "Sixth round".
+
 - Register this Mac as a development device so the iPad app runs on it ("Designed for iPad") with the Mac's Premium
   voices? Free; it adds the Mac ("pls_dont_change") to the developer account's device list. Until then a Premium
   voice in the app is checked only on the iPad through TestFlight.
@@ -368,6 +389,16 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 v233:** web iCloud opt-in, journal iCloud sync through reading.html, Drive timeouts, slow-network
+  shells (see Now). New tests: `journal-icloud` (26), `offline-shell-slow-network` (5), `reading-gdrive-unreachable`
+  (4); `reading-icloud-web` adds the opt-in (25, now runs in WebKit too). Full suite: Chromium 140/144, WebKit
+  139/145; the failures are `reading-pdf-ink` (3 Zen-dock checks), `reading-split-undo-browser`,
+  `reading-workspace-paper-color` (they expect no `zenListen`) and `reading-workspace-paper-edge` (timeout), all
+  failing the same way on origin/main 32f7ba8e, as does `reading-zen-compact-browser` in WebKit (twice on main);
+  and `reading-cloud-auto-sync`, whose harness needed the new `gdriveQuietUntil` (fixed, 25/25). The sync, iCloud and
+  Drive tests were rerun on the final code in both engines. iPad bundle 21/21.
+  CloudKit Console: read only (Claude's safety check refused a new token and a Development record type).
 
 - **2026-10-20 iPad 1.2.4 (45):** re-archived with v232, uploaded via API key, version 1.2.4 (manual release) submitted, Waiting for Review.
 

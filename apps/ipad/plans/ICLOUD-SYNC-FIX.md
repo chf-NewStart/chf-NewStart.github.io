@@ -137,3 +137,48 @@ Open question: does a token from the popup flow (Apple's supported path) work fo
 The pop-up test page (`icloud-test.html`) runs CloudKit JS's own Post Message flow. Apple's sign-in page answered "Failed to verify your identity. Try again." for houfu's Apple ID on both iPhone and Mac. It did the same with the test token's Allowed Origins set to Any domain. Apple's sign-in itself fails for this container on the web, before Phloem's code is involved. The v178–v183 redirect tokens were most likely issued for a sign-in Apple never completed.
 
 Shell v184 hides "Sync with iCloud" on the website again by emptying `WEB_CLOUDKIT.apiToken` (a comment in reading.js keeps the Production token). The web adapter, the tests and the native app are unchanged. houfu then chose "Drive in app" on a decision card: the iPad app gets optional Google Drive sync, and iCloud stays for users in China.
+
+## Sixth round: China, the journal, and where web sign-in stands (2026-10-21, shell v233)
+
+Houfu will use the website from mainland China, where Google is blocked and GitHub is unreliable, so iCloud is
+the sync path for every page that keeps his data.
+
+### What was checked on Apple's side (read only)
+
+- Production schema has `PhloemLibrary` and `PhloemDocument` (deployed). Tokens in Production: "Phloem web"
+  (URL Redirect to `https://houfu72.com/reading.html`, origin `houfu72.com`) and "Phloem pop text" (Post
+  Message, origin `houfu72.com`). Both look right.
+- `users/caller` with the Phloem web token answers 421 `AUTHENTICATION_REQUIRED` with a `redirectURL` on
+  `idmsa.apple.com/IDMSWebAuth/auth`. That page loads ("Sign in to Phloem: Paper Reader", the App Store icon),
+  so the container, token and origin are accepted. "Failed to verify your identity" therefore comes after the
+  credentials are submitted, from Apple's account check, not from Phloem's setup.
+- CloudKit asset downloads (`cvws.icloud-content.com`) send `Access-Control-Allow-Origin: https://houfu72.com`,
+  so the website can read synced files (the open question from round one).
+- CloudKit JS 2 (`cdn.apple-cloudkit.com/ck/2/cloudkit.js`, 173,391 bytes, unchanged) talks only to
+  `api.apple-cloudkit.com`; files go through `*.icloud-content.com`.
+- Apple's own CloudKit Catalog sample cannot serve as a control: its token now answers `AUTHENTICATION_FAILED`.
+
+So the remaining blocker is Apple's sign-in for Houfu's Apple ID, which only Houfu can test. Leads, in order:
+another network (phone hotspot; several Apple forum reports clear this way), the Apple ID's country/region (a
+China-mainland account is run by GCBD and may not be served by CloudKit web services), security keys on the
+Apple ID, another Apple ID on the same page, then a DTS request (included in the membership).
+
+### Changes
+
+- **Opt-in on the website.** With a token set, Sync with iCloud shows only after `reading.html?icloud=1`
+  (remembered per browser, `?icloud=0` hides it). A return from Apple or iCloud already on also counts.
+  `WEB_CLOUDKIT.everyone` shows it to all readers once sign-in is confirmed.
+- **Token left empty.** Claude's safety check refused to write the CloudKit API token into the site (it reads
+  it as a credential, though Apple designs these tokens for public pages). Houfu fills `WEB_CLOUDKIT.apiToken`
+  in `reading.js` and `ICLOUD.apiToken` in `journal.html` with the "Phloem web" value, or tells Claude to.
+- **The journal syncs to iCloud** as record `journal-v1` of type `PhloemLibrary` in this container: the same
+  AES-GCM ciphertext it sends to GitHub, nothing else. No schema change was needed (Claude's safety check
+  also refused schema edits in CloudKit Console). The app and the website read only `library-v1` by name and
+  never list the type, so they cannot see or delete it. The journal borrows the Phloem web token; Apple
+  returns to `reading.html`, whose first script passes the answer on to `journal.html` when the journal left
+  a note in the last 15 minutes. One sign-in serves both pages (shared session store).
+- **Google Drive gives up after 20 s** (script load and first listing), with a message that names China,
+  so a blocked Drive no longer holds the sync queue that iCloud and GitHub wait on. After that, background
+  syncs leave Drive alone for ten minutes; a tap on the cloud still tries it.
+- **Slow network:** `reading-sw.js` serves the cached reader when the network is silent for 4 s, and keeps
+  the rest of that load on the cache. `journal-sw.js` (scope `/journal.html`) does the same for the journal.

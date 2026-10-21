@@ -10504,7 +10504,9 @@
      path and move as whole Blobs through uploadDocument/downloadDocument. The API token
      comes from CloudKit Console and is meant to be public; leaving it empty hides iCloud
      on the website. */
-  /* Hidden on 2026-10-06: Apple's sign-in page answers "Failed to verify your identity"
+  /* With a token set, the section shows only to readers who opt in (webCloudConfigured).
+     journal.html borrows the same token for its encrypted iCloud copy ("journal-v1").
+     Hidden on 2026-10-06: Apple's sign-in page answers "Failed to verify your identity"
      for this container on every browser, even with CloudKit JS's own popup flow (see
      apps/ipad/plans/ICLOUD-SYNC-FIX.md). The Production token was
      5c6f4cf802eac49c21fb137680e0bd99c199ba8c09ad82a239a3441c30ef04fb; put it back here
@@ -10548,7 +10550,9 @@
     });
   }
   var webCloudReturnToken=(function(){
-    if(window.PHLOEM_NATIVE)return'';
+    /* The journal borrows this token, and Apple's callback for it is this page; the
+       snippet at the top of reading.html is already passing the answer on to it. */
+    if(window.PHLOEM_NATIVE||window.PHLOEM_ICLOUD_HANDOFF)return'';
     try{
       /* Apple's redirect carries both ckWebAuthToken and ckSession. ckSession is the
          session CloudKit JS itself uses (its popup flow reads data.ckSession), so it
@@ -10562,7 +10566,24 @@
       try{return decodeURIComponent(m[1]);}catch(e){return m[1];}
     }catch(e){return'';}
   })();
-  function webCloudConfigured(){return !window.PHLOEM_NATIVE&&!!WEB_CLOUDKIT.apiToken;}
+  /* Until Apple's web sign-in is seen working, iCloud on the website is an opt-in:
+     reading.html?icloud=1 shows it in this browser (remembered; ?icloud=0 hides it).
+     Coming back from Apple's sign-in page, or having it switched on, counts as opting in.
+     WEB_CLOUDKIT.everyone (set it once sign-in works) shows it to every reader. */
+  var WEB_CLOUDKIT_OPT_IN='phloem.icloudWebOptIn.v1';
+  var webCloudOptIn=(function(){
+    if(window.PHLOEM_NATIVE)return false;
+    try{
+      var m=location.search.match(/[?&]icloud=([^&#]*)/);
+      if(m){
+        if(/^(?:0|off|no|false)$/i.test(m[1]))localStorage.removeItem(WEB_CLOUDKIT_OPT_IN);else localStorage.setItem(WEB_CLOUDKIT_OPT_IN,'1');
+        var rest=location.search.slice(1).split('&').filter(function(p){return p&&!/^icloud=/.test(p);});
+        history.replaceState(history.state,'',location.pathname+(rest.length?'?'+rest.join('&'):'')+location.hash);
+      }else if(webCloudReturnToken)localStorage.setItem(WEB_CLOUDKIT_OPT_IN,'1');
+      return localStorage.getItem(WEB_CLOUDKIT_OPT_IN)==='1';
+    }catch(e){return false;}
+  })();
+  function webCloudConfigured(){return !window.PHLOEM_NATIVE&&!!WEB_CLOUDKIT.apiToken&&!!(WEB_CLOUDKIT.everyone||webCloudOptIn||webCloudReturnToken||(iCloudCfg&&iCloudCfg.on));}
   function webCloudLoad(){
     if(webCloudReady)return webCloudReady;
     webCloudReady=new Promise(function(resolve,reject){
@@ -10669,6 +10690,8 @@
         var url=container._auth&&container._auth._signInURL;
         if(!url)try{await container.fetchCurrentUserIdentity();}catch(error){url=error&&error.redirectURL;}
         if(!url)throw new Error('Apple did not offer a sign-in page. Reload Phloem and try again.');
+        /* a stale note from an unfinished journal sign-in would send Apple's answer there */
+        try{localStorage.removeItem('houfu.icloudReturn.v1');}catch(e){}
         location.assign(url);
         return new Promise(function(){});
       },
@@ -10716,6 +10739,8 @@
         try{return{deleted:await webCloudDelete(await Promise.all(ids.map(webCloudDocumentName)))};}
         catch(error){throw webCloudError(error,'Phloem could not finish removing deleted iCloud originals.');}
       },
+      /* Only Phloem's own records. "journal-v1" shares the PhloemLibrary type but belongs
+         to journal.html, so nothing here may list or delete that type wholesale. */
       deleteCloudData:async function(){
         try{return{deleted:await webCloudDelete(['library-v1'].concat(await webCloudAllDocumentNames()))};}
         catch(error){throw webCloudError(error,'Phloem could not finish deleting the private iCloud copy.');}
@@ -10897,11 +10922,18 @@
        the browser out of fullscreen. Stay armed and wait for a tap at the desk. */
     addEventListener('click',function(){gdriveArmed=false;if(zenOn){gdriveArmGestureSync();return;}if(!gdriveOn())return;var restoring=!state.chapters.length;if(restoring){libraryDriveRestoreArmed=false;libraryHydrating=true;renderShelf();}Promise.resolve(gdriveSync(true)).finally(function(){if(restoring){libraryHydrating=false;renderShelf();updateReviewBadge();}});},{capture:true,once:true});
   }
+  /* Google is blocked in mainland China, where its requests hang instead of failing.
+     Drive sync holds the sync queue while it runs, so a hang would stall iCloud and
+     GitHub too: Google's script and the first Drive call give up after a while. */
+  /* After one such silence, background syncs leave Drive alone for ten minutes; a tap on
+     the cloud still tries it at once. */
+  var GDRIVE_UNREACHABLE='Google Drive did not answer. It is blocked in mainland China; iCloud and GitHub sync carry on without it.',gdriveQuietUntil=0;
+  function gdriveSilent(){gdriveQuietUntil=now()+10*60*1000;return new Error(GDRIVE_UNREACHABLE);}
   function loadGis(){
     return new Promise(function(res,rej){
       if(window.google&&window.google.accounts&&window.google.accounts.oauth2)return res();
-      var script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';
-      script.onload=function(){res();};script.onerror=function(){rej(new Error('Could not load Google sign-in (offline?)'));};
+      var script=document.createElement('script'),timer=setTimeout(function(){rej(gdriveSilent());},20000);script.src='https://accounts.google.com/gsi/client';
+      script.onload=function(){clearTimeout(timer);res();};script.onerror=function(){clearTimeout(timer);rej(new Error('Could not load Google sign-in (offline, or Google is blocked on this network).'));};
       document.head.appendChild(script);
     });
   }
@@ -10953,7 +10985,11 @@
     return gdriveTokenPending;
   }
   async function gdriveListAll(token){
-    var r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size,version,appProperties)',{headers:{Authorization:'Bearer '+token}});
+    var abort=typeof AbortController==='function'?new AbortController():null,timer=abort&&setTimeout(function(){abort.abort();},20000),r;
+    try{r=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size,version,appProperties)',{headers:{Authorization:'Bearer '+token},signal:abort?abort.signal:undefined});}
+    catch(error){if(abort&&abort.signal.aborted)throw gdriveSilent();throw error;}
+    finally{clearTimeout(timer);}
+    gdriveQuietUntil=0;
     if(r.status===401){gdriveToken=null;gdriveSaveAuth();var stale=new Error('Google signed this device out — Phloem reconnects on your next tap.');stale.auth=true;throw stale;}
     if(!r.ok)throw new Error('Drive list failed ('+r.status+')');
     return ((await r.json()).files)||[];
@@ -11103,7 +11139,7 @@
     return removed;
   }
   async function gdriveSync(interactive,retried){
-    if(!gdriveOn())return;if(gdriveSyncing||penOnGlass()){scheduleSync();return;}
+    if(!gdriveOn())return;if(!interactive&&gdriveQuietUntil>now())return;if(gdriveSyncing||penOnGlass()){scheduleSync();return;}
     /* The iPad bridge calls again after its region/account check. Do not fall back
        to browser OAuth while the native plugin is still becoming available. */
     if(window.PHLOEM_NATIVE&&!nativeGooglePlugin())return;

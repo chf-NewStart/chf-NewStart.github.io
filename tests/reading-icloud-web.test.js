@@ -1,5 +1,7 @@
+/* PHLOEM_BROWSER=webkit runs it in WebKit; the variable keeps its old name. */
+const ENGINE = process.env.PHLOEM_BROWSER || 'chromium';
 let chromium;
-try { chromium = require('playwright').chromium; } catch (e) { chromium = require('playwright-core').chromium; }
+try { chromium = require('playwright')[ENGINE]; } catch (e) { chromium = require('playwright-core')[ENGINE]; }
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -204,6 +206,28 @@ async function seedWebLibrary(page, chapters, stamp) {
     await plain.evaluate(() => document.getElementById('icloudSettings').classList.contains('native-only')));
   await plainContext.close();
 
+  /* With a token it is still an opt-in until Apple's web sign-in is confirmed:
+     ?icloud=1 shows it in this browser (remembered), ?icloud=0 hides it again. */
+  const gateContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
+  await gateContext.addInitScript(() => { window.PHLOEM_CLOUDKIT_CONFIG = { apiToken: 'test-token' }; });
+  const gate = await gateContext.newPage();
+  gate.setDefaultTimeout(12000);
+  await seedWebLibrary(gate, [webPaper], stamp);
+  const hidden = () => gate.evaluate(() => document.getElementById('icloudSettings').classList.contains('native-only'));
+  await gate.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  await gate.waitForFunction(() => document.body.classList.contains('library-ready'));
+  check('with a token but no opt-in, ordinary readers do not see iCloud', await hidden());
+  await gate.goto('http://localhost:' + PORT + '/reading.html?icloud=1', { waitUntil: 'load' });
+  await gate.waitForFunction(() => document.body.classList.contains('library-ready'));
+  check('?icloud=1 shows iCloud and leaves the address bar clean', !(await hidden()) && !/icloud=/.test(gate.url()), gate.url());
+  await gate.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  await gate.waitForFunction(() => document.body.classList.contains('library-ready'));
+  check('the opt-in is remembered in this browser', !(await hidden()));
+  await gate.goto('http://localhost:' + PORT + '/reading.html?icloud=0', { waitUntil: 'load' });
+  await gate.waitForFunction(() => document.body.classList.contains('library-ready'));
+  check('?icloud=0 hides it again', await hidden());
+  await gateContext.close();
+
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
   await context.addInitScript(fakeCloudKit, {
     library: { chapters: [ipadPaper], deleted: {}, merged: {}, categoryOrder: [], categoryOrderUpdatedAt: 0, savedAt: stamp - 2000 }
@@ -213,10 +237,10 @@ async function seedWebLibrary(page, chapters, stamp) {
   page.on('pageerror', error => errors.push(error.message));
   page.setDefaultTimeout(15000);
   await seedWebLibrary(page, [webPaper], stamp);
-  await page.goto('http://localhost:' + PORT + '/reading.html', { waitUntil: 'load' });
+  await page.goto('http://localhost:' + PORT + '/reading.html?icloud=1', { waitUntil: 'load' });
   await page.waitForFunction(() => document.body.classList.contains('library-ready'));
 
-  check('with a token, Settings shows Sync with iCloud on the website',
+  check('with a token and the opt-in, Settings shows Sync with iCloud on the website',
     await page.evaluate(() => !document.getElementById('icloudSettings').classList.contains('native-only')));
   await page.evaluate(() => { document.getElementById('settingsDialog').showModal(); });
   check('the off state names this browser, not an iPad',

@@ -13,9 +13,10 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   `~/.appstoreconnect/private_keys`, details in the Truco project's `asc-api-key` memory; add
   `-authenticationKeyPath … -authenticationKeyID 32QNHVX837 -authenticationKeyIssuerID …` to `-exportArchive`). Build 45
   is VALID and in TestFlight with a What to Test list (Spotlight, handwritten notes, Listen, Zen slider, dark ink).
-  Version record **1.2.4 created (manual release)**, What's New set (en-CA), build 45 attached. **Not submitted yet:**
-  auto mode blocks "Submit for Review" unless Houfu's message names it. **App Review notes still describe 1.2.3**
-  (they hold the reviewer's AI key, so they were left for Houfu to edit in App Store Connect).
+  Version record **1.2.4 created (manual release)**, What's New set (en-CA), build 45 attached. **Submitted
+  2026-10-20 ~21:00 EDT, Waiting for Review** (submission f2dce3fc; Houfu: "submit Phloem 1.2.4 for review"). Manual
+  release: press Release after approval. App Review notes now say 1.2.4 (build 45) with a 1.2.4 section 2 (edited in
+  place in App Store Connect so the reviewer's AI key in the notes was never retyped).
 
 - **Four 12 Oct regressions fixed at last, v232 (web).** PR #75 (`claude/phloem-status-71ylos`, requested by Houfu on
   2026-10-13) fixed them but was closed unmerged the same night while `main` took the v207/v208 numbers, and the bugs
@@ -368,7 +369,7 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
-- **2026-10-20 iPad 1.2.4 (45):** re-archived with v232, uploaded via API key, version 1.2.4 prepared (manual release), not submitted.
+- **2026-10-20 iPad 1.2.4 (45):** re-archived with v232, uploaded via API key, version 1.2.4 (manual release) submitted, Waiting for Review.
 
 - **2026-10-20 v232:** PR #75's four regression fixes re-landed (see Now); its four checks pass on Chromium and WebKit.
 

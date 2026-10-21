@@ -18,9 +18,10 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 - **Phloem 1.2.5 (48) prepared for the App Store, not submitted (Houfu: "for phloem shall we publish the newest on
   iphone and mac and ipad too? the build 45 went through").** 1.2.4 (45) is Ready for Sale. **Version record iOS 1.2.5
-  created** (manual release, copyright "2026 Houfu Chen"), **build 48 attached**: universal, reader **v239** (v239 landed
-  while build 47 with v238 was uploading, so 48 replaced it; 47 stays in TestFlight). Both VALID, each with a What to
-  Test list. Commits 40edf019 (47) and 529c4dfd (48). Checked before upload: `apps/ipad` 22/22; `reading-zen-ipad`,
+  created** (manual release, copyright "2026 Houfu Chen"), **no build attached (on hold)**: Houfu said "after i say ok
+  then make the build and make to app store connect", and v240 (one more Listen fix) is coming, so build 48 (universal,
+  reader **v239**) was detached again and stays in TestFlight with 47 (v238). Both VALID, each with a What to Test
+  list. **On Houfu's ok:** build 49 from the final reader, attach it, then he says "submit Phloem 1.2.5". Commits 40edf019 (47) and 529c4dfd (48). Checked before upload: `apps/ipad` 22/22; `reading-zen-ipad`,
   `reading-workspace-bottom-dock`, `reading-phone-browser`, `reading-ipad-touch-dock`, `reading-workspace-move-tool`,
   `reading-night-light`, `reading-voice-exit-resume-browser` pass in Chromium and WebKit; in the simulators the iPad
   app's Zen dock has **Night** under Listen and its Workspace tools are Pen (default), Eraser, Lasso with **no Move**
@@ -534,7 +535,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
   `output/phloem-iphone-1.2.5-2026-10-21/REVIEW-NOTES-EDITS-1.2.5.md`; Claude did not re-send the notes because they
   still carry the reviewer Anthropic key); (2) **rotate that key** (it has been in the notes since 1.2.1), then paste
   the new one on the key line; (3) glance at What's New and the description's new iPhone sentence; (4) optionally try
-  build 48 on the iPhone from TestFlight. Shipping iPhone support cannot be withdrawn later.
+  build 48 on the iPhone from TestFlight. Shipping iPhone support cannot be withdrawn later. (On hold until Houfu's ok:
+  no build is attached; the final reader becomes build 49.)
 - Keep Listen going with the screen locked? Needs the `audio` background mode in Info.plist (iPhone and iPad alike).
 - **Mac:** the iPad app is already offered on Apple silicon Macs. Optional: install build 48 on this Mac with
   TestFlight (replaces the old "register this Mac" question: not needed), then App Store Connect › Pricing and

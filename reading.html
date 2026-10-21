@@ -36,9 +36,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=233">
-  <link rel="stylesheet" href="/reading-fold.css?v=233">
-  <link rel="stylesheet" href="/reading-workspace.css?v=233">
+  <link rel="stylesheet" href="/reading.css?v=234">
+  <link rel="stylesheet" href="/reading-fold.css?v=234">
+  <link rel="stylesheet" href="/reading-workspace.css?v=234">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -399,6 +399,14 @@
             <button class="toggle" type="button" data-paper-appearance="inverted" aria-pressed="false">Inverted</button>
           </div>
         </div>
+        <div class="comfort-section comfort-night" aria-label="Night light">
+          <span class="comfort-section-title">Night light</span>
+          <div class="comfort-section-body">
+            <button class="toggle" id="nightLightBtn" type="button" aria-pressed="false" title="A reading lamp over the page in a dark room">Off</button>
+            <input class="drift-range" id="nightReachRange" type="range" min="0" max="100" step="5" value="35" aria-label="How far the lamp's light reaches, percent">
+            <span class="value" id="nightReachValue">Reach 35%</span>
+          </div>
+        </div>
         <button class="toggle comfort-reset" id="comfortReset" type="button">Reset all</button>
       </div>
       <div class="find-bar hidden" id="findBar" role="search" aria-label="Find in this paper">
@@ -424,6 +432,7 @@
           <div class="guide-band" id="guideBand"><button class="guide-grip" id="guideGrip" type="button" aria-label="Drag the reading guide">⠿</button></div>
           <div class="guide-shade guide-shade-bottom"></div>
         </div>
+        <div class="pane-night" id="paneNight" aria-hidden="true"></div>
         <div class="recall-shield hidden" id="recallShield" aria-hidden="true"><div><span>Quick recall</span><h2>The paper is hidden.</h2><p>Explain what you just read in the page note. Pull it from memory before checking the text.</p></div></div>
         <div class="notebook-resizer" id="notebookResizer" role="separator" aria-label="Resize notes panel" aria-controls="notebook" aria-orientation="vertical" aria-valuemin="280" aria-valuemax="620" aria-valuenow="360" title="Drag to resize notes · push far right to tuck away · double-click to reset" tabindex="0"></div>
         <button class="notebook-reopen" id="notebookReopen" type="button" aria-label="Show the notes panel" aria-expanded="true" title="Show notes">❮</button>
@@ -772,6 +781,7 @@
             <button class="zen-exit zen-find zen-menu-action" id="zenFind" data-label="Find" type="button" aria-expanded="false" aria-controls="findBar" aria-keyshortcuts="/" aria-label="Find in this paper" title="Find in this paper (/)">⌕</button>
             <button class="zen-exit zen-paper paper-appearance-shortcut zen-menu-action" id="zenPaperAppearance" data-label="Paper appearance" type="button" aria-label="Paper appearance: Cream. Change appearance" title="Paper: Cream"><span class="paper-appearance-swatch" aria-hidden="true"></span></button>
             <button class="zen-exit zen-theme zen-menu-action" id="zenTheme" data-label="Theme" type="button" aria-label="Switch to night reading" title="Night reading">☾</button>
+            <button class="zen-exit zen-night zen-menu-action" id="zenNightLight" data-label="Night light" type="button" aria-pressed="false" aria-label="Night light: a reading lamp over the page in a dark room" title="Night light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21h8M10 21v-6l-4-5 5-6"/><path d="M11 4l5.5 3.2-2.2 3.8L8.8 7.8z"/><path d="M15.2 10.6l2.3 4.6M14 10.2l-1.4 5"/></svg></button>
             <button class="zen-exit zen-menu-action" id="zenSettings" data-label="Reading settings" type="button" aria-haspopup="dialog" aria-controls="comfortBar" aria-expanded="false" aria-label="Open reading settings"><span aria-hidden="true">⚙</span></button>
             <button class="zen-exit zen-menu-action phone-only" id="zenPhoneGuide" data-label="Reading guide" type="button" aria-controls="zenGuideMenu" aria-label="Reading guide"><span aria-hidden="true">▰</span></button>
             <button class="zen-exit zen-menu-action phone-only" id="zenPhoneLayout" data-label="Page layout" type="button" aria-controls="zenLayoutMenu" aria-label="Page layout"><span aria-hidden="true">▤</span></button>
@@ -1159,23 +1169,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=233',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=234',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=233" defer></script>
-<script src="/reading-stickies.js?v=233" defer></script>
-<script src="/reading-keeps.js?v=233" defer></script>
-<script src="/reading-excerpts.js?v=233" defer></script>
-<script src="/reading-excerpts-view.js?v=233" defer></script>
-<script src="/reading-lists.js?v=233" defer></script>
-<script src="/reading-lists-view.js?v=233" defer></script>
-<script src="/reading-voice.js?v=233" defer></script>
-<script src="/reading-workspace.js?v=233" defer></script>
-<script src="/reading-workspace-viewport.js?v=233" defer></script>
-<script src="/reading-workspace-view.js?v=233" defer></script>
-<script src="/reading-folds.js?v=233" defer></script>
-<script src="/reading-pdf-projection.js?v=233" defer></script>
-<script src="/reading-fold-view.js?v=233" defer></script>
-<script src="/reading.js?v=233" defer></script>
+<script src="/reading-ink.js?v=234" defer></script>
+<script src="/reading-stickies.js?v=234" defer></script>
+<script src="/reading-keeps.js?v=234" defer></script>
+<script src="/reading-excerpts.js?v=234" defer></script>
+<script src="/reading-excerpts-view.js?v=234" defer></script>
+<script src="/reading-lists.js?v=234" defer></script>
+<script src="/reading-lists-view.js?v=234" defer></script>
+<script src="/reading-voice.js?v=234" defer></script>
+<script src="/reading-workspace.js?v=234" defer></script>
+<script src="/reading-workspace-viewport.js?v=234" defer></script>
+<script src="/reading-workspace-view.js?v=234" defer></script>
+<script src="/reading-folds.js?v=234" defer></script>
+<script src="/reading-pdf-projection.js?v=234" defer></script>
+<script src="/reading-fold-view.js?v=234" defer></script>
+<script src="/reading.js?v=234" defer></script>
 </body>
 </html>

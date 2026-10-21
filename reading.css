@@ -1000,6 +1000,11 @@
     /* Page mode keeps a single leaf at a virtual side binding: the outgoing print shows
        faintly through its own back while the next authored page is exposed underneath. */
     .book-curl-overlay.book-curl-single .book-curl-back-canvas { opacity: .23; filter: grayscale(.18) contrast(.76); }
+    /* One-page view: the back is the same leaf seen from behind. The fold reflection alone mirrors
+       its show-through, as on real paper; the spread's extra flip (which makes the NEXT page read
+       the right way round) would un-mirror it. Keep the wash's lighting where it was. */
+    .book-curl-overlay.book-curl-single .book-curl-back-sheet { transform: none; }
+    .book-curl-overlay.book-curl-single .book-curl-back-wash { transform: scaleX(-1); }
     .book-curl-back-fallback .book-curl-back-canvas { opacity: .2; filter: grayscale(.25) contrast(.72); }
     .book-curl-back-wash { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(56,47,32,.18), rgba(255,255,255,.22) 9%, rgba(255,255,255,.07) 72%, rgba(45,37,24,.11)); mix-blend-mode: multiply; }
     .book-curl-fx { position: absolute; z-index: 9; inset: 0; opacity: 0; overflow: visible; pointer-events: none; }
@@ -1328,6 +1333,18 @@
     html[data-theme="dark"] .pane-spotlight[data-guide-orientation="column"] .guide-band { background: linear-gradient(180deg, rgba(190,150,43,.08), rgba(220,177,58,.19) 10%, rgba(220,177,58,.19) 90%, rgba(190,150,43,.08)); box-shadow: inset 1px 0 rgba(244,210,111,.34), inset -1px 0 rgba(137,98,19,.38), 0 0 0 1px rgba(220,177,58,.08); }
     html[data-theme="dark"] .pane-spotlight[data-guide-orientation="column"][data-guide-color="green"] .guide-band { background: linear-gradient(180deg, rgba(62,145,87,.08), rgba(78,171,102,.19) 10%, rgba(78,171,102,.19) 90%, rgba(62,145,87,.08)); box-shadow: inset 1px 0 rgba(135,211,151,.32), inset -1px 0 rgba(31,104,52,.38), 0 0 0 1px rgba(78,171,102,.08); }
     html[data-theme="dark"] .pane-spotlight[data-guide-orientation="column"][data-guide-color="blue"] .guide-band { background: linear-gradient(180deg, rgba(58,137,167,.08), rgba(77,163,194,.2) 10%, rgba(77,163,194,.2) 90%, rgba(58,137,167,.08)); box-shadow: inset 1px 0 rgba(139,207,228,.32), inset -1px 0 rgba(32,102,130,.4), 0 0 0 1px rgba(77,163,194,.08); }
+    /* Night light: a lamp pool over the paper (painted by paintNightLight) and a dark room
+       around it. The layer is placed over #documentPane by script, above the guide (whose
+       paper wash would otherwise relight the room) and never takes a touch. */
+    .pane-night { position: absolute; z-index: 7; left: 0; top: 0; width: 0; height: 0; overflow: hidden; pointer-events: none; display: none; }
+    .pane-night canvas { display: block; width: 100%; height: 100%; }
+    body.night-light .pane-night { display: block; animation: nightLightOn .45s ease-out both; }
+    @keyframes nightLightOn { from { opacity: 0; } to { opacity: 1; } }
+    html body.night-light .document-pane, html body.night-light .document-pane.paged-pdf-flow { background:
+      radial-gradient(ellipse 72% 58% at 60% -6%, rgba(132,94,50,.3), rgba(70,48,26,.1) 52%, transparent 78%), #120e0b; }
+    html body.night-light .text-document { box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+    .zen-night svg { width: 19px; height: 19px; }
+    body.night-light .zen-night { color: #e8b866; }
     .recall-shield { position: absolute; z-index: 7; inset: 0 var(--notebook-width, 360px) 0 0; display: grid; place-items: center; padding: 28px; background: color-mix(in srgb, var(--paper) 94%, var(--yellow)); color: var(--ink); text-align: center; }
     .recall-shield.hidden { display: none; }
     .recall-shield div { width: min(430px, 90%); }

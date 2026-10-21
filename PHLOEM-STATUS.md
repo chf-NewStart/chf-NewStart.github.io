@@ -6,6 +6,33 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **Night light, the page-curl underside, and selections that jumped pages, v234 (web; Houfu sent two photos of a
+  paperback under a clip-on lamp: "idk if we could do a night light mode like this" / "the light doesnt have to be
+  like mine, esp the orientation"; "when we flip, the filpped page is supposed to be the mirrored if look from the
+  back right?"; "sometimes when trying to do highlight it will highlight the entire page").**
+  (1) **Night light** (Reading settings → Night light, or ⋯ → Night light in Zen): a lamp pool over the paper in a
+  dark room. One small canvas (about 430×290 px, ~30 ms to paint, repainted only when the pane's size or Reach
+  changes) is stretched over `#documentPane` as a plain alpha layer (`#paneNight`, z 7, above the guide, never takes
+  a touch, no blend modes or filters), so the light stays put while the paper scrolls or turns under it. The model is
+  a spot lamp above the top edge: a beam plus a wider spill, cos³ fall-off, a soft knee for a broad lit plateau, and a
+  seeded Neyman–Scott cluster of soft lobes (log-normal sizes) that makes the pool's edge uneven. The shade runs from
+  faint amber to deep brown. **Reach** 0–100 (default 35): at 35 the far corners keep about 40% of the light and stay
+  readable; at 0 about 15–20% (dramatic); at 100 it is a soft room light. The desk goes near-black with a warm spill.
+  Turning it on also turns the interface dark (and back when off, unless a theme was picked by hand meanwhile) and
+  moves Inverted paper to Cream. Saved in `readingRoom.comfort.v1` (`nightLight`, `nightReach`, `nightThemeAuto`) and
+  applied at start-up, so a reload never flashes the light interface.
+  (2) **Page-curl underside:** in the one-page (Page) layout the back of the turning leaf is the same page seen from
+  behind, so its show-through must be mirrored, but the spread's extra `scaleX(-1)` on `.book-curl-back-sheet`
+  un-mirrored it. One-page curls now drop that flip (the wash keeps its lighting). In Book spreads the back is the
+  next page, which still reads the right way round.
+  (3) **Selections that jumped pages (mouse, trackpad, Pencil):** a drag from a page's text into blank space (the
+  desk beside the page, a margin) let the browser move the selection's end to the "nearest" text in document order,
+  often on the next page; Highlight then refused it as spanning pages. `pageSelectionClamp` brings the end back to the
+  starting page only when it escapes (below the text → its last word, above → its first, beside → the nearest words on
+  that line). Finger selection keeps the native handles. **A whole-page highlight on the iPad was not reproduced**
+  (on Apple touch no page-sized element can sit inside a range); if it happens again, a screen recording would show
+  which path it takes. All three **need the next iPad build** (1.2.4 (45) bundles v232).
+
 - **iCloud on the website, for use in China, v233 (web; Houfu: "make sure icloud works for everything in my web,
   including phloem and things like the journal writing" / "the goal is to allow me to use them in china").**
   Web sign-in is still the open blocker and needs Houfu's own Apple ID: Apple's sign-in page loads for this
@@ -389,6 +416,15 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 v234:** Night light, the one-page curl's mirrored underside, and the cross-page selection clamp (see
+  Now). New tests: `reading-night-light` (26), `reading-book-curl-showthrough` (16; 2 failed on v233),
+  `reading-selection-page-clamp` (8; the desk case failed on v233 in both engines). Regression: 45 neighbouring suites
+  (selection, highlight, pencil, Android, book/curl, paged, Spotlight/guide, text layer, look-up, marker, Zen, and
+  every test touching the theme, comfort or paper settings) in Chromium and WebKit: 86/90 run in parallel. The rest:
+  `reading-pdf-ink` (its three Zen-dock checks expect seven controls, as on v233), `reading-zen-compact-browser` in
+  WebKit (fails on main too), and `reading-vertical-book-flow` (Chromium) and `reading-pencil-highlight` (WebKit),
+  which failed once under parallel load and pass alone on both v234 and main.
 
 - **2026-10-21 v233:** web iCloud opt-in, journal iCloud sync through reading.html, Drive timeouts, slow-network
   shells (see Now). New tests: `journal-icloud` (26), `offline-shell-slow-network` (5), `reading-gdrive-unreachable`

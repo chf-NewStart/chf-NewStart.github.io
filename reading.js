@@ -1009,6 +1009,8 @@
   byId('themeBtn').onclick = function(){
     var dark = document.documentElement.dataset.theme !== 'dark';
     try { localStorage.setItem('readingRoom.theme', dark ? 'dark' : 'light'); } catch(e){}
+    /* A theme chosen by hand while Night light is on stays when the lamp goes off. */
+    if (comfort && comfort.nightThemeAuto) { comfort.nightThemeAuto = false; saveComfortSoon(); }
     applyTheme(dark);
   };
   var historyEcho=0,navFromPop=false;
@@ -2938,13 +2940,15 @@
   /* Reader typography plus a PDF-native reading guide. */
   var COMFORT_KEY='readingRoom.comfort.v1';
   var GUIDE_DISCOVERY_KEY='readingRoom.guideDiscoverySeen.v1';
-  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfLayout:'scroll',inkStyle:'natural',linkPreviews:true,guideScope:'page',guideSize:'m',guidePct:100,hlStrength:85,guideDim:85,guideDimScale:2,guideX:.72,guideY:.38,spotX:.5,spotY:.42,guideLock:false,tone:'cream',driftSpeed:4};
+  var DEFAULT_COMFORT={size:100,measure:780,leading:1.7,typeface:'book',airy:false,focus:false,guide:'yellow',guideOrientation:'row',pdfLayout:'scroll',inkStyle:'natural',linkPreviews:true,guideScope:'page',guideSize:'m',guidePct:100,hlStrength:85,guideDim:85,guideDimScale:2,guideX:.72,guideY:.38,spotX:.5,spotY:.42,guideLock:false,tone:'cream',driftSpeed:4,nightLight:false,nightReach:35,nightThemeAuto:false};
   var comfort=Object.assign({},DEFAULT_COMFORT);
   /* Spotlight guide state (declared before the first applyComfort runs). */
   /* SPOT_WASH: the Dimness slider (70-100%) washes the outside 42-60%, so the page stays readable
      around the glass. While the paper scrolls the copy steps aside (spotScrolling) and fades back
      SPOT_SETTLE ms after it stops: a copy redrawn by script trails a natively scrolled page. */
   var SPOT_ZOOM=1.1,SPOT_WASH=.6,SPOT_SETTLE=140,spotScrolling=false,spotScrollTimer=null,spotLens={frame:0,observer:null,wrap:null,wrapKind:'',wrapStale:false,root:null,items:[],observed:[],observedRoot:null,marks:null,bg:''};
+  /* Night light state (declared before the first applyComfort runs; see applyNightLight). */
+  var NIGHT_SEED=1061,NIGHT_PEAK=.97,NIGHT_FLOOR=.06,nightLobes=null,nightKey='',nightObserver=null,nightFrame=0,nightPaintTimer=null;
   try{var savedComfort=JSON.parse(localStorage.getItem(COMFORT_KEY));if(savedComfort)Object.keys(comfort).forEach(function(k){if(typeof savedComfort[k]===typeof comfort[k])comfort[k]=savedComfort[k];});}catch(e){}
   var migratedLegacyPagedComfort=!!(savedComfort&&!Object.prototype.hasOwnProperty.call(savedComfort,'pdfLayout')&&savedComfort.pdfDirection==='vertical');
   comfort.size=Math.max(70,Math.min(190,+comfort.size||100));
@@ -2996,6 +3000,7 @@
      preference without coupling it to the interface theme. */
   if(!savedPaperAppearance){paperAppearance=comfort.tone==='white'?'original':'cream';try{localStorage.setItem(PAPER_APPEARANCE_KEY,paperAppearance);}catch(e){}}
   comfort.driftSpeed=Math.max(.5,Math.min(60,+comfort.driftSpeed||4));
+  comfort.nightReach=Math.max(0,Math.min(100,Math.round((isFinite(+comfort.nightReach)?+comfort.nightReach:35)/5)*5));
   var comfortSaveTimer=null;
   function saveComfortSoon(){clearTimeout(comfortSaveTimer);comfortSaveTimer=setTimeout(function(){try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}},600);}
   var guideDiscoveryTimer=null,guideDiscoveryLaunchTimer=null;
@@ -3071,6 +3076,7 @@
     ['guideSizeRange','zenGuideSizeRange'].forEach(function(id){byId(id).setAttribute('aria-label','Reading guide '+guideSizeWord.toLowerCase()+', percent');});
     applyPdfFlowMode();
     applyFocus();
+    applyNightLight();
     try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}
   }
   function stepComfort(field,delta,min,max,decimals){
@@ -3133,7 +3139,99 @@
   byId('highlightStrength').oninput=function(){comfort.hlStrength=Math.max(25,Math.min(100,Math.round((+this.value||85)/5)*5));applyHighlightStrength();saveComfortSoon();};
   byId('guideSizeRange').oninput=byId('zenGuideSizeRange').oninput=function(){comfort.guidePct=Math.max(40,Math.min(250,Math.round((+this.value||100)/5)*5));comfort.focus=true;applyComfort();placeGuide();};
   byId('zenGuideDimRange').oninput=function(){setGuideDim(this.value);};
-  byId('comfortReset').onclick=function(){Object.assign(comfort,DEFAULT_COMFORT);paperAppearance='cream';try{localStorage.setItem(PAPER_APPEARANCE_KEY,paperAppearance);}catch(e){}if(driftSpeed)driftSpeed=DEFAULT_COMFORT.driftSpeed;applyComfort();showReaderToast('Reading settings reset · cream paper · guide off');};
+  byId('comfortReset').onclick=function(){var nightTheme=comfort.nightLight&&comfort.nightThemeAuto;Object.assign(comfort,DEFAULT_COMFORT);if(nightTheme)applyTheme(preferredDark());paperAppearance='cream';try{localStorage.setItem(PAPER_APPEARANCE_KEY,paperAppearance);}catch(e){}if(driftSpeed)driftSpeed=DEFAULT_COMFORT.driftSpeed;applyComfort();showReaderToast('Reading settings reset · cream paper · guide off');};
+  /* Night light: a reading lamp over the page in a dark room (the brief was two photos of a
+     paperback under a clip-on lamp). One small canvas, painted once per pane size, is stretched
+     over the pane as a plain alpha layer: no blend modes or filters, so scrolling, zoom and page
+     turns cost nothing extra, and the light stays put while the paper moves under it. The pool
+     is a spot lamp above the top edge (a beam plus a wider spill, falling off with the cube of
+     the incidence cosine), its edge made uneven by a seeded cluster of soft lobes of mixed sizes,
+     as a real reflector throws a lumpy pool. The page keeps a readable floor everywhere; the
+     room's darkness comes from the desk colour. It is not a theme: it turns the interface dark
+     while on (and back when off, unless the reader chose a theme meanwhile). */
+  function preferredDark(){var t=null;try{t=localStorage.getItem('readingRoom.theme');}catch(e){}return t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;}
+  function nightRandom(seed){return function(){seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function nightLobeField(){
+    if(nightLobes)return nightLobes;
+    var rand=nightRandom(NIGHT_SEED),gauss=function(){return Math.sqrt(-2*Math.log(rand()||1e-9))*Math.cos(2*Math.PI*rand());},lobes=[];
+    /* Coarse layer: a few broad swells. Fine layer: Neyman-Scott clusters around the beam,
+       a random number of children each, log-normal sizes, signed weights. Units: pane heights
+       from the beam's aim point. */
+    for(var i=0;i<3;i++)lobes.push({x:gauss()*.45,y:.12+gauss()*.35,s:Math.exp(Math.log(.5)+gauss()*.35),w:gauss()*.1});
+    for(var p=0,parents=2+Math.floor(rand()*3);p<parents;p++){
+      var px=gauss()*.3,py=gauss()*.26,kids=1+Math.floor(-Math.log(rand()||1e-9)*2.4);
+      for(var k=0;k<kids;k++)lobes.push({x:px+gauss()*.1,y:py+gauss()*.1,s:Math.exp(Math.log(.08)+gauss()*.6),w:gauss()*.06});
+    }
+    return nightLobes=lobes;
+  }
+  function placeNightLight(){
+    var el=byId('paneNight'),pane=byId('documentPane'),layout=byId('readerLayout');if(!el||!pane||!layout)return;
+    var pr=pane.getBoundingClientRect(),lr=layout.getBoundingClientRect();
+    el.style.left=(pr.left-lr.left)+'px';el.style.top=(pr.top-lr.top)+'px';el.style.width=pr.width+'px';el.style.height=pr.height+'px';
+  }
+  function paintNightLight(){
+    var el=byId('paneNight'),pane=byId('documentPane');if(!el||!pane||!comfort.nightLight)return;
+    var W=pane.clientWidth,H=pane.clientHeight;if(W<8||H<8)return;
+    var ds=Math.max(2,Math.ceil(Math.max(W,H)/560)),cw=Math.ceil(W/ds),ch=Math.ceil(H/ds),key=cw+'x'+ch+'@'+comfort.nightReach;
+    var canvas=el.querySelector('canvas');if(key===nightKey&&canvas)return;
+    if(!canvas){canvas=document.createElement('canvas');el.appendChild(canvas);}
+    var ctx=canvas.getContext('2d');if(!ctx)return;
+    canvas.width=cw;canvas.height=ch;nightKey=key;
+    var img=ctx.createImageData(cw,ch),out=img.data,lobes=nightLobeField(),rand=nightRandom(NIGHT_SEED+7);
+    /* Reach 0 is a narrow, dramatic lamp (corners near a fifth of the light); 35 (the default)
+       keeps the reading area bright and the far corners near half; 100 is a soft room light. */
+    var t=comfort.nightReach/100,U=Math.max(H,W*.62),lx=W*.58,ly=-.3*U,lz=U*(.9+.7*t),tx=W*.5,ty=Math.min(H,U)*.4;
+    var ax=tx-lx,ay=ty-ly,az=-lz,al=Math.hypot(ax,ay,az);ax/=al;ay/=al;az/=al;
+    var beam=.45+.3*t,spillAngle=.85+.4*t,spill=.15+.15*t,floor=NIGHT_FLOOR+.3*t,knee=1-Math.exp(-2.5),E=new Float32Array(cw*ch),peak=0;
+    for(var j=0;j<ch;j++){var y=(j+.5)*ds;for(var i=0;i<cw;i++){
+      var x=(i+.5)*ds,rx=x-lx,ry=y-ly,r=Math.hypot(rx,ry,lz),th=Math.acos(Math.max(-1,Math.min(1,(rx*ax+ry*ay-lz*az)/r)));
+      var beamLight=(1-spill)*Math.exp(-Math.pow(th/beam,3.5))+spill*Math.exp(-(th/spillAngle)*(th/spillAngle));
+      var qx=(x-tx)/U,qy=(y-ty)/U,m=0;
+      for(var k=0;k<lobes.length;k++){var lobe=lobes[k],dx=qx-lobe.x,dy=qy-lobe.y;m+=lobe.w*Math.exp(-(dx*dx+dy*dy)/(2*lobe.s*lobe.s));}
+      var e=beamLight*Math.pow(lz/r,3)*Math.exp(m);E[j*cw+i]=e;if(e>peak)peak=e;
+    }}
+    /* A soft knee turns the lamp's peak into a broad lit plateau before the fall-off. Alpha is
+       the shadow; its colour runs from a faint amber where the paper is lit to a saturated deep
+       brown, so the shade reads as warm lamplight rather than grey. Triangular dither keeps the
+       8-bit gradient from banding. */
+    for(var n=0;n<E.length;n++){
+      var lit=(1-Math.exp(-2.5*Math.min(1,E[n]/peak)))/knee,light=NIGHT_PEAK*(floor+(1-floor)*lit);
+      var a=Math.max(0,Math.min(1,1-light+(rand()+rand()-1)/255)),w=Math.max(0,Math.min(1,(a-.04)/.36));w=w*w*(3-2*w);
+      out[n*4]=84-44*w;out[n*4+1]=52-28*w;out[n*4+2]=22-12*w;out[n*4+3]=a*255;
+    }
+    ctx.putImageData(img,0,0);
+  }
+  function scheduleNightLight(){
+    if(!comfort.nightLight)return;
+    cancelAnimationFrame(nightFrame);nightFrame=requestAnimationFrame(function(){nightFrame=0;placeNightLight();});
+    clearTimeout(nightPaintTimer);nightPaintTimer=setTimeout(function(){placeNightLight();paintNightLight();},byId('paneNight').querySelector('canvas')?120:0);
+  }
+  function applyNightLight(){
+    var on=!!comfort.nightLight;
+    document.body.classList.toggle('night-light',on);
+    ['nightLightBtn','zenNightLight'].forEach(function(id){var b=byId(id);if(b)b.setAttribute('aria-pressed',String(on));});
+    byId('nightLightBtn').textContent=on?'On':'Off';
+    var range=byId('nightReachRange');range.value=String(comfort.nightReach);range.setAttribute('aria-valuetext',comfort.nightReach+' percent');
+    byId('nightReachValue').textContent='Reach '+comfort.nightReach+'%';
+    if(on&&comfort.nightThemeAuto&&document.documentElement.dataset.theme!=='dark')applyTheme(true);
+    if(on&&!nightObserver&&window.ResizeObserver){nightObserver=new ResizeObserver(scheduleNightLight);nightObserver.observe(byId('documentPane'));nightObserver.observe(byId('readerLayout'));}
+    if(!on&&nightObserver){nightObserver.disconnect();nightObserver=null;}
+    scheduleNightLight();
+  }
+  function setNightLight(on){
+    var notes=[];
+    if(on){
+      if(document.documentElement.dataset.theme!=='dark'){comfort.nightThemeAuto=true;applyTheme(true);notes.push('dark interface');}else comfort.nightThemeAuto=false;
+      if(paperAppearance==='inverted'){setPaperAppearance('cream',false);notes.push('cream paper');}
+    }else if(comfort.nightThemeAuto){comfort.nightThemeAuto=false;applyTheme(preferredDark());}
+    comfort.nightLight=!!on;applyNightLight();saveComfortSoon();
+    showReaderToast(on?'Night light · a lamp over the page'+(notes.length?' · '+notes.join(' · '):''):'Night light off');
+  }
+  byId('nightLightBtn').onclick=function(){setNightLight(!comfort.nightLight);};
+  byId('nightReachRange').oninput=function(){comfort.nightReach=Math.max(0,Math.min(100,Math.round((+this.value||0)/5)*5));if(!comfort.nightLight)setNightLight(true);else applyNightLight();saveComfortSoon();};
+  window.addEventListener('resize',scheduleNightLight);
+  /* At start-up, before any paper opens, so a reload never flashes the light interface first. */
+  applyNightLight();
   var comfortReturnFocus=null;
   function setComfortBarOpen(open,returnFocus,trigger){
     var bar=byId('comfortBar'),btn=byId('comfortBtn'),touchButton=byId('touchSettings');
@@ -3541,6 +3639,7 @@
   byId('zenWorkspaceMarker').onclick=function(){zenMarkerAction(this);};
   byId('zenPaperAppearance').onclick=function(){closeZenPopouts(true);cyclePaperAppearance();};
   byId('zenTheme').onclick=function(){closeZenPopouts(true);byId('themeBtn').onclick();};
+  byId('zenNightLight').onclick=function(){closeZenPopouts(true);setNightLight(!comfort.nightLight);};
   byId('zenFind').onclick=function(){closeZenPopouts(false);toggleFindBar(undefined,false,byId('zenMore'));zenWake();};
   byId('zenRefresh').onclick=refreshPhloem;
 
@@ -9854,6 +9953,55 @@
       prevRange=range.cloneRange();
     });
     return{attach:function(layer){var end=document.createElement('div');end.className='text-layer-end';end.setAttribute('aria-hidden','true');layer.appendChild(end);layer._selectionEnd=end;}};
+  })();
+  /* A mouse, trackpad or Pencil drag that starts in a PDF page's text keeps its selection on that page.
+     Over blank space (a margin, a gap between lines, the desk, another page) browsers move the
+     selection's end to the "nearest" text in document order, which is often the end of the page or the
+     next page: the selection jumps across pages, and a highlight of it is then refused because it spans
+     pages. While the end stays on the starting page the browser's own selection is left alone (a drag
+     into the bottom margin still selects to the end of the page). Only when it escapes the page does it
+     come back: below the text to the page's last word, above it to the first, beside it to the nearest
+     words on that line. Finger selection keeps the native handles (iPad, Android). */
+  var pageSelectionClamp=(function(){
+    var drag=null,fixing=false,frame=0;
+    function textSpans(layer){return Array.from(layer.querySelectorAll('span')).filter(function(s){return !s.children.length&&s.firstChild&&s.firstChild.nodeType===3&&s.textContent.trim();});}
+    function nearest(layer,x,y){
+      var spans=textSpans(layer);if(!spans.length)return null;
+      var first=spans[0],last=spans[spans.length-1],lr=layer.getBoundingClientRect();
+      if(y>=lr.bottom)return{node:last.firstChild,offset:last.firstChild.length};
+      if(y<=lr.top)return{node:first.firstChild,offset:0};
+      var best=null,bestD=Infinity;
+      spans.forEach(function(s){var r=s.getBoundingClientRect();if(!r.width||!r.height)return;
+        var dx=x<r.left?r.left-x:x>r.right?x-r.right:0,dy=y<r.top?r.top-y:y>r.bottom?y-r.bottom:0,d=dy*4+dx;
+        if(d<bestD){bestD=d;best={span:s,rect:r};}});
+      if(!best)return null;
+      var node=best.span.firstChild,r=best.rect,len=node.length;
+      if(x<=r.left)return{node:node,offset:0};if(x>=r.right)return{node:node,offset:len};
+      var cx=Math.max(r.left+.5,Math.min(r.right-.5,x)),cy=r.top+r.height/2,hit=null;
+      if(document.caretPositionFromPoint){var p=document.caretPositionFromPoint(cx,cy);if(p)hit={node:p.offsetNode,offset:p.offset};}
+      else if(document.caretRangeFromPoint){var q=document.caretRangeFromPoint(cx,cy);if(q)hit={node:q.startContainer,offset:q.startOffset};}
+      if(hit&&hit.node===node)return hit;
+      return{node:node,offset:Math.round(len*(cx-r.left)/Math.max(1,r.width))};
+    }
+    function fix(){
+      frame=0;if(!drag)return;var selection=window.getSelection();if(!selection||!selection.rangeCount||!selection.anchorNode)return;
+      var layer=drag.layer;if(!layer.isConnected||!layer.contains(selection.anchorNode))return;
+      if(layer.contains(selection.focusNode))return;   // still on the starting page: native behaviour
+      var target=nearest(layer,drag.x,drag.y);if(!target)return;
+      fixing=true;try{selection.setBaseAndExtent(selection.anchorNode,selection.anchorOffset,target.node,target.offset);}catch(err){}fixing=false;
+    }
+    function schedule(){if(!frame)frame=requestAnimationFrame(fix);}
+    document.addEventListener('pointerdown',function(e){
+      drag=null;if(e.button!==0||(e.pointerType!=='mouse'&&e.pointerType!=='pen'))return;
+      var layer=e.target.closest&&e.target.closest('#pdfFrame .text-layer');if(!layer||highlightEraseMode||pdfWriteMode)return;
+      drag={layer:layer,x:e.clientX,y:e.clientY,pointerId:e.pointerId};
+    },true);
+    document.addEventListener('pointermove',function(e){if(!drag||e.pointerId!==drag.pointerId)return;drag.x=e.clientX;drag.y=e.clientY;schedule();},true);
+    document.addEventListener('selectionchange',function(){if(drag&&!fixing)schedule();});
+    function end(e){if(!drag||(e&&e.pointerId!==drag.pointerId))return;drag.x=e?e.clientX:drag.x;drag.y=e?e.clientY:drag.y;if(frame){cancelAnimationFrame(frame);frame=0;}fix();drag=null;}
+    document.addEventListener('pointerup',end,true);
+    document.addEventListener('pointercancel',function(){drag=null;},true);
+    return{active:function(){return !!drag;}};
   })();
   byId('documentPane').addEventListener('pointerdown',function(e){
     if(bookCurlOwned)return;

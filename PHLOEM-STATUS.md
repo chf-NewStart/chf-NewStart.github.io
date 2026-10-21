@@ -6,6 +6,17 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-20)
 
+- **iPad 1.2.4 (45) rebuilt with reader v232 and uploaded (2026-10-20 evening; Houfu: "do what you need to do").**
+  The earlier 1.2.4 (45) archive (reader v230, the old Spotlight) was never uploaded: it waited on an Xcode sign-in.
+  Re-archived from `main` a33f16f3 (iPad bundle tests 21/21; the bundle has `?v=232`, `SPOT_WASH`,
+  `restoreLiveSelection`) and uploaded with the **App Store Connect API key** (no Xcode sign-in needed; key file in
+  `~/.appstoreconnect/private_keys`, details in the Truco project's `asc-api-key` memory; add
+  `-authenticationKeyPath … -authenticationKeyID 32QNHVX837 -authenticationKeyIssuerID …` to `-exportArchive`). Build 45
+  is VALID and in TestFlight with a What to Test list (Spotlight, handwritten notes, Listen, Zen slider, dark ink).
+  Version record **1.2.4 created (manual release)**, What's New set (en-CA), build 45 attached. **Not submitted yet:**
+  auto mode blocks "Submit for Review" unless Houfu's message names it. **App Review notes still describe 1.2.3**
+  (they hold the reviewer's AI key, so they were left for Houfu to edit in App Store Connect).
+
 - **Four 12 Oct regressions fixed at last, v232 (web).** PR #75 (`claude/phloem-status-71ylos`, requested by Houfu on
   2026-10-13) fixed them but was closed unmerged the same night while `main` took the v207/v208 numbers, and the bugs
   stayed live. Re-landed its commit `a9991409` on v231 (the code applied cleanly; only version stamps conflicted).
@@ -356,6 +367,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-20 iPad 1.2.4 (45):** re-archived with v232, uploaded via API key, version 1.2.4 prepared (manual release), not submitted.
 
 - **2026-10-20 v232:** PR #75's four regression fixes re-landed (see Now); its four checks pass on Chromium and WebKit.
 

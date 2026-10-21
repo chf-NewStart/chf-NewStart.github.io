@@ -6,6 +6,17 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **Natural dragging at any zoom, v237 (web; Houfu, after v236: at the normal zoom "dragging down" was "sometimes not
+  respondant ... maybe you should mimic natural dragging").** At the normal zoom in Scroll layout a drag never moved the
+  paper (v236 only grabbed a zoomed-in paper): from a word it selected, from blank paper it started a selection that
+  the browser autoscrolled at its own pace. Now blank paper can be grabbed whenever the paper runs off the pane
+  (`.paper-movable`; thin Zen scrollbars stay for zoomed-in paper only, `.paper-zoomed`), it follows the hand 1:1, and a
+  flick **glides** on and slows like trackpad scrolling (`GLIDE_TAU` = 325 ms exponential decay; a drag that came to rest
+  before release does not glide; any click, scroll, key or touch stops it). The grab begins only after `GRAB_SLOP` = 4 px
+  of movement, so a plain click on the paper is still a click (it clears a selection, closes a card). Words still
+  select (they cover only 14–20% of a typical page, so most presses land on blank paper). Page and Book at Fit have
+  nothing to move. `reading-zoomed-paper-grab` now 37 checks (5 of the new ones fail on v236).
+
 - **Zoomed-in paper moves on a laptop, and Night light is one tap, v236 (web; Houfu: "i cannot move the paper around
   once i zoom them in, on laptop, i have to zoom out and zoom back in", in Chrome, Page or Book layout, by click-and-drag
   and by scrollbars or keys; and "shall we make night light a button outside instead of inside?").** Trackpad
@@ -492,6 +503,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 v237:** natural dragging at any zoom (grab blank paper whenever it runs off the pane, 1:1, glide after
+  a flick; see Now). `reading-zoomed-paper-grab` 37 (5 fail on v236), passing twice in a row in Chromium and WebKit.
+  Pushed on Houfu's word ("puhs pls") while the 87-suite regression run was still going; its result is logged next.
 
 - **2026-10-21 v236:** zoomed paper moves on a laptop (grab blank paper, edge-aware ← →, thin scrollbars in Zen) and
   Night light on the Zen dock and the top bar (see Now). New test `reading-zoomed-paper-grab` (29; 16 fail on v235);

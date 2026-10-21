@@ -1139,11 +1139,11 @@
        Space drift still scroll — the paper just keeps its whole edge. */
     body.zen .document-pane { scrollbar-width: none; }
     body.zen .document-pane::-webkit-scrollbar { display: none; }
-    /* A zoomed-in paper can be grabbed on blank paper (words keep the text cursor) and, on a
-       laptop, shows thin scrollbars even in Zen so its position and extent stay visible. */
+    /* Paper that can move is grabbed on blank paper (words keep the text cursor); a zoomed-in
+       paper also shows thin scrollbars on a laptop, even in Zen, so its extent stays visible. */
     @media (hover: hover) and (pointer: fine) {
-      .document-pane.paper-zoomed #pdfFrame :is(.pdf-sheet, .text-layer, canvas) { cursor: grab; }
-      .document-pane.paper-zoomed #pdfFrame .text-layer span { cursor: text; }
+      .document-pane.paper-movable #pdfFrame :is(.pdf-sheet, .text-layer, canvas) { cursor: grab; }
+      .document-pane.paper-movable #pdfFrame .text-layer span { cursor: text; }
       body.paper-grabbing, body.paper-grabbing * { cursor: grabbing !important; user-select: none; }
       body.zen .document-pane.paper-zoomed { scrollbar-width: thin; }
       body.zen .document-pane.paper-zoomed::-webkit-scrollbar { display: block; width: 9px; height: 9px; }

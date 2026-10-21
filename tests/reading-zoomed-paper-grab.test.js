@@ -1,7 +1,8 @@
-/* On a laptop a zoomed-in paper can be moved by clicking and dragging blank paper, by the
-   arrow keys (sideways first, then the page turns at the edge), and with scrollbars that stay
-   visible in Zen while zoomed. Houfu (Chrome, Page/Book layout): "i cannot move the paper
-   around once i zoom them in, on laptop, i have to zoom out and zoom back in".
+/* On a laptop the paper can be moved by clicking and dragging blank paper, at any zoom where it
+   runs off the pane, 1:1 and with a glide after a flick; by the arrow keys (sideways first, then
+   the page turns at the edge); and a zoomed-in paper keeps scrollbars visible in Zen. Houfu
+   (Chrome, Page/Book layout): "i cannot move the paper around once i zoom them in, on laptop",
+   then at the normal zoom dragging down was "sometimes not respondant ... mimic natural dragging".
    PHLOEM_BROWSER=chromium|webkit */
 const fs = require('fs');
 const http = require('http');
@@ -30,7 +31,7 @@ function check(name, ok, extra) {
 const state = page => page.evaluate(() => {
   const p = document.getElementById('documentPane');
   return { l: Math.round(p.scrollLeft), t: Math.round(p.scrollTop), maxL: p.scrollWidth - p.clientWidth, maxT: p.scrollHeight - p.clientHeight,
-    zoomed: p.classList.contains('paper-zoomed'), label: document.getElementById('pageNumber').textContent, selected: getSelection().toString().trim().length,
+    zoomed: p.classList.contains('paper-zoomed'), movable: p.classList.contains('paper-movable'), label: document.getElementById('pageNumber').textContent, selected: getSelection().toString().trim().length,
     scrollbar: getComputedStyle(p).scrollbarWidth };
 });
 /* A point on the visible page that is blank paper (not a word, link or mark), and one on a word. */
@@ -45,7 +46,7 @@ const points = page => page.evaluate(() => {
     blank = { x, y };
   }
   /* A word whose first letters are on screen, with room to drag right across it. */
-  const span = [...document.querySelectorAll('#pdfFrame .text-layer span')].find(s => { const r = s.getBoundingClientRect(); return !s.children.length && s.textContent.trim().length > 3 && r.width > 30 && r.left > pane.left + 20 && r.left < pane.right - 300 && r.top > pane.top + 60 && r.bottom < pane.bottom - 60 && document.elementFromPoint(r.left + 4, (r.top + r.bottom) / 2) === s; });
+  const span = [...document.querySelectorAll('#pdfFrame .text-layer span')].find(s => { const r = s.getBoundingClientRect(); return !s.children.length && s.textContent.trim().length > 3 && r.width > 30 && r.left > pane.left + 20 && r.left + 170 < pane.right - 20 && r.top > pane.top + 60 && r.bottom < pane.bottom - 60 && document.elementFromPoint(r.left + 4, (r.top + r.bottom) / 2) === s; });
   if (span) { const r = span.getBoundingClientRect(); word = { x: r.left + 4, y: (r.top + r.bottom) / 2 }; }
   return { blank, word };
 });
@@ -60,6 +61,58 @@ async function drag(page, from, dx, dy) {
   const port = server.address().port;
   const browser = await playwright[ENGINE].launch();
   try {
+    /* Scroll layout at its normal zoom: the paper runs on below the pane, so it can be grabbed. */
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+      const page = await context.newPage();
+      page.setDefaultTimeout(25000);
+      await page.addInitScript(() => localStorage.setItem('readingRoom.comfort.v1', JSON.stringify({ pdfLayout: 'scroll', guideOrientation: 'row', focus: false })));
+      await page.goto(`http://127.0.0.1:${port}/reading.html`, { waitUntil: 'load' });
+      await page.waitForFunction(() => document.body.classList.contains('library-ready'));
+      await page.setInputFiles('#pdfFile', PDF);
+      await page.waitForFunction(() => !!document.querySelector('#pdfFrame .pdf-page canvas')?.width);
+      await page.waitForTimeout(1200);
+      await page.evaluate(() => { document.getElementById('documentPane').scrollTop = 1200; });
+      await page.waitForTimeout(300);
+      const start = await state(page);
+      check('scroll, normal zoom: the paper can be grabbed but is not marked zoomed', start.movable && !start.zoomed && start.scrollbar !== 'thin', JSON.stringify(start));
+      const { blank } = await points(page);
+      check('scroll, normal zoom: found blank paper to press', !!blank);
+      if (blank) {
+        /* A slow, steady drag that comes to rest before letting go: 1:1, no glide. */
+        await page.mouse.move(blank.x, blank.y); await page.mouse.down();
+        for (let i = 1; i <= 10; i++) { await page.mouse.move(blank.x, blank.y - 20 * i); await page.waitForTimeout(25); }
+        await page.waitForTimeout(150); await page.mouse.up();
+        const held = await state(page); await page.waitForTimeout(500); const after = await state(page);
+        check('scroll, normal zoom: dragging up 200 px moves the paper up 200 px', Math.abs(held.t - start.t - 200) <= 3, `${start.t} -> ${held.t}`);
+        check('scroll, normal zoom: a drag that came to rest does not glide on', after.t === held.t && held.selected === 0, `${held.t} -> ${after.t}`);
+        /* A flick: the paper keeps going after the release, slows, and stops by itself. */
+        await page.mouse.move(blank.x, blank.y); await page.mouse.down();
+        for (let i = 1; i <= 8; i++) { await page.mouse.move(blank.x, blank.y - 30 * i); await page.waitForTimeout(8); }
+        await page.mouse.up();
+        const released = await state(page);
+        await page.waitForTimeout(250); const gliding = await state(page);
+        await page.waitForTimeout(2200); const settled = await state(page); await page.waitForTimeout(300); const still = await state(page);
+        check('scroll, normal zoom: a flick keeps the paper gliding', gliding.t > released.t + 40, `${released.t} -> ${gliding.t}`);
+        check('scroll, normal zoom: the glide slows and stops by itself', still.t === settled.t && settled.t > gliding.t, `${gliding.t} -> ${settled.t} -> ${still.t}`);
+        /* A click stops a glide at once. */
+        await page.mouse.move(blank.x, blank.y); await page.mouse.down();
+        for (let i = 1; i <= 8; i++) { await page.mouse.move(blank.x, blank.y - 30 * i); await page.waitForTimeout(8); }
+        await page.mouse.up(); await page.waitForTimeout(80);
+        await page.mouse.click(blank.x, blank.y); const clicked = await state(page);
+        await page.waitForTimeout(400); const afterClick = await state(page);
+        check('scroll, normal zoom: a click stops the glide', afterClick.t === clicked.t, `${clicked.t} -> ${afterClick.t}`);
+        /* A plain click on blank paper still behaves as a click: it clears a selection. */
+        const sp = await page.evaluate(() => { const s = [...document.querySelectorAll('#pdfFrame .text-layer span')].find(x => x.textContent.trim().length > 10 && x.getBoundingClientRect().top > 150 && x.getBoundingClientRect().bottom < 650); const r = s.getBoundingClientRect(); return { x: r.left + 2, y: (r.top + r.bottom) / 2, x2: r.right - 2 }; });
+        await page.mouse.move(sp.x, sp.y); await page.mouse.down(); await page.mouse.move(sp.x2, sp.y, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(400);
+        const picked = (await state(page)).selected;
+        const { blank: spot } = await points(page);
+        await page.mouse.click(spot.x, spot.y); await page.waitForTimeout(300);
+        const cleared = await state(page);
+        check('scroll, normal zoom: words still select by dragging, and a click on blank paper clears it', picked > 0 && cleared.selected === 0 && cleared.t === (await state(page)).t, `${picked} -> ${cleared.selected}`);
+      }
+      await context.close();
+    }
     for (const layout of ['page', 'book', 'scroll']) {
       const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
       const page = await context.newPage();
@@ -89,16 +142,21 @@ async function drag(page, from, dx, dy) {
         check(`${layout}: dragging blank paper moves it`, moved.l >= wantL && moved.t >= wantT && (zoomed.maxL > 5 || zoomed.maxT > 5), `${zoomed.l},${zoomed.t} -> ${moved.l},${moved.t} (max ${zoomed.maxL},${zoomed.maxT})`);
         check(`${layout}: and does not select text${layout === 'scroll' ? '' : ' or turn the page'}`, moved.selected === 0 && (layout === 'scroll' || moved.label === zoomed.label), JSON.stringify(moved));
       }
-      /* Bring a line of words to the middle of the view, then press its first word. */
-      await page.evaluate(() => { const s = [...document.querySelectorAll('#pdfFrame .pdf-page.book-active .text-layer span, #pdfFrame .pdf-page .text-layer span')].find(x => !x.children.length && x.textContent.trim().length > 12); if (s) s.scrollIntoView({ block: 'center', inline: 'start' }); });
-      await page.waitForTimeout(400);
-      const { word } = await points(page);
+      /* Bring a line of words to the middle of the view, then press its first word (a few
+         candidates, since a centred word can still sit under a page edge or a mark). */
+      let word = null;
+      for (let k = 0; k < 6 && !word; k++) {
+        await page.evaluate(k => { const list = [...document.querySelectorAll('#pdfFrame .pdf-page.book-active .text-layer span, #pdfFrame .pdf-page .text-layer span')].filter(x => !x.children.length && x.textContent.trim().length > 12); const s = list[k * 3]; if (s) s.scrollIntoView({ block: 'center', inline: 'center' }); }, k);
+        await page.waitForTimeout(400);
+        word = (await points(page)).word;
+      }
       check(`${layout}: found a word to press`, !!word);
       if (word) {
         const before = await state(page);
         await drag(page, word, 140, 0);
         const after = await state(page);
-        check(`${layout}: dragging across words still selects them and leaves the paper`, after.selected > 0 && Math.abs(after.l - before.l) < 3 && Math.abs(after.t - before.t) < 3, `${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
+        /* A grab would carry the paper the whole 140 px; the browser's own selection autoscroll may nudge it a little. */
+        check(`${layout}: dragging across words still selects them instead of grabbing the paper`, after.selected > 0 && Math.abs(after.l - before.l) < 40 && Math.abs(after.t - before.t) < 40, `${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
         await page.evaluate(() => getSelection().removeAllRanges());
       }
       if (zoomed.maxL > 5) {

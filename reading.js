@@ -6954,20 +6954,22 @@
       }else{lastTapAt=at;lastTapX=t.clientX;lastTapY=t.clientY;}
     },{passive:false});
   })();
-  /* A zoomed-in paper can be grabbed and moved with a mouse or trackpad click, as a finger
-     moves it on the iPad (Houfu: on the laptop he "cannot move the paper around" once zoomed
-     in and had to zoom out and back in). Only blank paper is a handle: a press on words still
-     starts a selection, and links, saved marks, notes, the outer-edge page curl and every
-     drawing mode keep their own presses. The pane also shows thin scrollbars while zoomed. */
+  /* The paper can be grabbed and moved with a mouse or trackpad click, as a finger moves it on
+     the iPad (Houfu: on the laptop he "cannot move the paper around" once zoomed in; then, at the
+     normal zoom, dragging down was "sometimes not respondant", and "maybe you should mimic natural
+     dragging"). It follows the hand 1:1 and keeps gliding after a flick, slowing like trackpad
+     scrolling, until any click, scroll or key stops it. Only blank paper is a handle (a press on
+     words still selects), and the grab starts only once the pointer has moved GRAB_SLOP px, so a
+     plain click still clears a selection or closes a card. Links, saved marks, notes, the outer-
+     edge page curl and every drawing mode keep their presses. A zoomed-in paper also shows thin
+     scrollbars in Zen. */
   (function(){
-    var pane=byId('documentPane'),frame=byId('pdfFrame'),grab=null,zoomedFrame=0;
-    function paperZoomed(){
-      if(readerMode!=='pdf'||!pdfDoc)return false;
-      var wide=pane.scrollWidth>pane.clientWidth+2,tall=pane.scrollHeight>pane.clientHeight+2;
-      return pagedPdfFlow()?wide||tall:wide;
-    }
-    function syncPaperZoomed(){zoomedFrame=0;pane.classList.toggle('paper-zoomed',paperZoomed());}
-    function scheduleSync(){if(!zoomedFrame)zoomedFrame=requestAnimationFrame(syncPaperZoomed);}
+    var GRAB_SLOP=4,GLIDE_TAU=325,pane=byId('documentPane'),frame=byId('pdfFrame'),press=null,glide=null,syncFrame=0;
+    function overflow(){return{wide:pane.scrollWidth>pane.clientWidth+2,tall:pane.scrollHeight>pane.clientHeight+2};}
+    function movable(){if(readerMode!=='pdf'||!pdfDoc)return false;var o=overflow();return o.wide||o.tall;}
+    function zoomed(){if(readerMode!=='pdf'||!pdfDoc)return false;var o=overflow();return pagedPdfFlow()?o.wide||o.tall:o.wide;}
+    function sync(){syncFrame=0;pane.classList.toggle('paper-movable',movable());pane.classList.toggle('paper-zoomed',zoomed());}
+    function scheduleSync(){if(!syncFrame)syncFrame=requestAnimationFrame(sync);}
     if(window.ResizeObserver){var observer=new ResizeObserver(scheduleSync);observer.observe(pane);observer.observe(frame);}
     addEventListener('resize',scheduleSync);
     function blankPaper(target){
@@ -6976,29 +6978,56 @@
       if(target.closest('.text-layer')&&target.nodeName==='SPAN'&&target.textContent.trim())return false;   // words select
       return true;
     }
+    function stopGlide(){if(glide){cancelAnimationFrame(glide.raf);glide=null;savePdfReadingPosition(false);}}
+    function glideTick(ts){
+      if(!glide)return;var dt=Math.min(40,ts-glide.t);glide.t=ts;
+      var left=pane.scrollLeft,top=pane.scrollTop;
+      pane.scrollLeft=left+glide.vx*dt;pane.scrollTop=top+glide.vy*dt;
+      var decay=Math.exp(-dt/GLIDE_TAU);glide.vx*=decay;glide.vy*=decay;
+      /* Stop when slow, or when an edge holds the paper still. */
+      var stuck=Math.abs(pane.scrollLeft-left)<.01&&Math.abs(pane.scrollTop-top)<.01;
+      if(Math.hypot(glide.vx,glide.vy)<.02||stuck&&dt>0){glide=null;savePdfReadingPosition(false);return;}
+      glide.raf=requestAnimationFrame(glideTick);
+    }
+    ['wheel','keydown','touchstart','pointerdown'].forEach(function(type){addEventListener(type,stopGlide,{capture:true,passive:true});});
     pane.addEventListener('pointerdown',function(e){
+      stopGlide();press=null;
       if(e.pointerType!=='mouse'||e.button!==0||e.shiftKey||e.metaKey||e.ctrlKey||e.altKey)return;
       if(bookCurlOwned||pagedTurning||pencilStroke||savedHighlightDrag||guideDragging)return;
-      if(pdfWriteMode||highlightEraseMode||stickyPlacing||!paperZoomed()||!blankPaper(e.target))return;
-      grab={id:e.pointerId,x:e.clientX,y:e.clientY,left:pane.scrollLeft,top:pane.scrollTop,moved:false};
-      cancelPdfPositionRestore();
-      /* Cancelling the press also cancels the mouse's text selection from blank paper. */
-      e.preventDefault();
-      try{pane.setPointerCapture(e.pointerId);}catch(err){}
+      if(pdfWriteMode||highlightEraseMode||stickyPlacing||!movable()||!blankPaper(e.target))return;
+      press={id:e.pointerId,x:e.clientX,y:e.clientY,left:pane.scrollLeft,top:pane.scrollTop,grabbing:false,samples:[{t:e.timeStamp,x:e.clientX,y:e.clientY}]};
     });
     pane.addEventListener('pointermove',function(e){
-      if(!grab||e.pointerId!==grab.id)return;
-      var dx=e.clientX-grab.x,dy=e.clientY-grab.y;
-      if(!grab.moved){if(Math.hypot(dx,dy)<3)return;grab.moved=true;document.body.classList.add('paper-grabbing');}
-      e.preventDefault();pane.scrollLeft=grab.left-dx;pane.scrollTop=grab.top-dy;
+      if(!press||e.pointerId!==press.id)return;
+      if(!(e.buttons&1)){press=null;return;}
+      var dx=e.clientX-press.x,dy=e.clientY-press.y;
+      if(!press.grabbing){
+        if(Math.hypot(dx,dy)<GRAB_SLOP)return;
+        /* From here the hand holds the paper: drop the selection the press began, stop more of
+           it, and keep the pointer even outside the pane. */
+        press.grabbing=true;cancelPdfPositionRestore();document.body.classList.add('paper-grabbing');
+        var native=window.getSelection();if(native&&!native.isCollapsed)native.removeAllRanges();
+        try{pane.setPointerCapture(e.pointerId);}catch(err){}
+      }
+      e.preventDefault();
+      pane.scrollLeft=press.left-dx;pane.scrollTop=press.top-dy;
+      press.samples.push({t:e.timeStamp,x:e.clientX,y:e.clientY});
+      while(press.samples.length>2&&e.timeStamp-press.samples[0].t>90)press.samples.shift();
     });
-    function endGrab(e){
-      if(!grab||e.pointerId!==grab.id)return;var moved=grab.moved;grab=null;document.body.classList.remove('paper-grabbing');
-      if(moved){pagedSuppressClickUntil=Date.now()+350;savePdfReadingPosition(false);}
+    function endPress(e){
+      if(!press||e.pointerId!==press.id)return;var done=press;press=null;
+      if(!done.grabbing)return;
+      document.body.classList.remove('paper-grabbing');pagedSuppressClickUntil=Date.now()+350;
+      var native=window.getSelection();if(native&&!native.isCollapsed)native.removeAllRanges();
+      /* A flick: the hand's speed over its last moments, unless it had come to rest. */
+      var last=done.samples[done.samples.length-1],first=done.samples[0],span=last.t-first.t,rest=e.timeStamp-last.t;
+      var vx=span>8?-(last.x-first.x)/span:0,vy=span>8?-(last.y-first.y)/span:0;
+      if(e.type==='pointerup'&&rest<60&&Math.hypot(vx,vy)>.25){glide={vx:vx,vy:vy,t:performance.now(),raf:0};glide.raf=requestAnimationFrame(glideTick);}
+      else savePdfReadingPosition(false);
     }
-    pane.addEventListener('pointerup',endGrab);
-    pane.addEventListener('pointercancel',endGrab);
-    pane.addEventListener('lostpointercapture',endGrab);
+    pane.addEventListener('pointerup',endPress);
+    pane.addEventListener('pointercancel',endPress);
+    pane.addEventListener('lostpointercapture',function(e){if(press&&press.grabbing)endPress(e);});
   })();
   document.addEventListener('keydown',function(e){
     if(byId('readerPage').classList.contains('hidden'))return;

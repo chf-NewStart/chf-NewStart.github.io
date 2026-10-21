@@ -9215,7 +9215,8 @@
     // the pointer lifts instead of scanning the page on every selectionchange.
     if(pencilStroke||selectionPointerDown||byId('readerPage').classList.contains('hidden'))return;
     var selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
-    var range=selection.getRangeAt(0),selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:selectionGeometry(function(){return range.getBoundingClientRect();}),passage=paperSelectionFromRange(range);if(!passage)return;
+    var range=touchSelectionSnapGuard?touchSelectionSnapGuard.range(selection):selection.getRangeAt(0);if(!range)return;
+    var selectionRect=anchor&&Number.isFinite(anchor.left)?anchor:selectionGeometry(function(){return range.getBoundingClientRect();}),passage=paperSelectionFromRange(range);if(!passage)return;
     if(highlightEraseMode)setHighlightEraseMode(false,true);
     if(!reviewLinkTargetId&&reopenExistingHighlight(passage,selectionRect))return;
     /* A finger or pen long-press on a citation shows its reference, not the highlight prompt:
@@ -9234,7 +9235,7 @@
      finger/mouse selection paths intact and save through the existing highlight and
      undo pipeline. A DOM Range gives us exact PDF geometry without iOS selection
      handles or Scribble deciding what the Pencil gesture means. */
-  var pencilStroke=null,pencilSuppressClickUntil=0,pencilSuppressedTouchId=null;
+  var pencilStroke=null,pencilSuppressClickUntil=0,pencilSuppressedTouchId=null,PENCIL_START_REACH=20;
   /* Handwriting belongs to PDF page coordinates, not selectable text. Its separate
      vector layer survives zoom/OCR and shares the normal chronological Undo trail. */
   function mergePdfInk(target,first,second){
@@ -9782,8 +9783,8 @@
     }
     bounds.start=boundary(word.start,false)||bounds.start;bounds.end=boundary(word.end,true)||bounds.end;return bounds;
   }
-  function pencilTextPoint(host,x,y){
-    var point=null;
+  function pencilTextPoint(host,x,y,reach){
+    var point=null;reach=reach||12;
     if(document.caretPositionFromPoint){var caret=document.caretPositionFromPoint(x,y);if(caret)point={node:caret.offsetNode,offset:caret.offset};}
     else if(document.caretRangeFromPoint){var caretRange=document.caretRangeFromPoint(x,y);if(caretRange)point={node:caretRange.startContainer,offset:caretRange.startOffset};}
     function distance(rect){return Math.hypot(Math.max(rect.left-x,0,x-rect.right),Math.max(rect.top-y,0,y-rect.bottom));}
@@ -9804,11 +9805,11 @@
     }
     /* Transparent/transformed PDF.js spans can defeat native caret hit-testing.
        Inspect only nearby text runs, then choose the closest complete glyph. */
-    var walker=document.createTreeWalker(host,NodeFilter.SHOW_TEXT),node,best=null,bestDistance=12,bestCenter=Infinity;
+    var walker=document.createTreeWalker(host,NodeFilter.SHOW_TEXT),node,best=null,bestDistance=reach,bestCenter=Infinity;
     while((node=walker.nextNode())){
       if(!node.textContent.trim())continue;
       var run=document.createRange();run.selectNodeContents(node);
-      if(!Array.from(run.getClientRects()).some(function(r){return r.width>0&&r.height>0&&distance(r)<=12;}))continue;
+      if(!Array.from(run.getClientRects()).some(function(r){return r.width>0&&r.height>0&&distance(r)<=reach;}))continue;
       var hit=nearestGlyph(node,pencilGlyphs(node),bestDistance);if(hit&&(hit.distance<bestDistance||hit.distance===bestDistance&&hit.center<bestCenter)){best=hit;bestDistance=hit.distance;bestCenter=hit.center;}
     }
     return best;
@@ -9827,7 +9828,9 @@
     var link=readerMode==='pdf'&&!highlightEraseMode&&!host&&target&&target.closest&&target.closest('.pdf-link');
     if(link){link=nearestPdfLink(link.closest('.pdf-links'),e.clientX,e.clientY)||link;var linkPage=link.closest('.pdf-page');host=linkPage&&linkPage.querySelector('.text-layer');}
     if(!host||!byId('documentPane').contains(host)||!link&&target.closest('a,button,input,textarea,[contenteditable="true"]'))return false;
-    var start=highlightEraseMode?null:pencilTextPoint(host,e.clientX,e.clientY);if(!start&&!highlightEraseMode)return false;
+    /* A swipe that touches down just above or below the line still starts on its words: left to
+       iPadOS, a Pencil drag from blank paper became a native selection from the page's first word. */
+    var start=highlightEraseMode?null:pencilTextPoint(host,e.clientX,e.clientY,PENCIL_START_REACH);if(!start&&!highlightEraseMode)return false;
     clearPendingSelection();clearTimeout(guideLockClickTimer);holdDrift(1200);
     var preview=document.createElement('div');preview.className='pencil-highlight-preview';preview.setAttribute('aria-hidden','true');document.body.appendChild(preview);
     pencilStroke={id:id,source:source,touchId:source==='touch'?id:null,documentId:currentId,mode:readerMode,host:host,start:start,x:e.clientX,y:e.clientY,moved:false,range:null,preview:preview,erasing:highlightEraseMode};
@@ -9953,6 +9956,115 @@
       prevRange=range.cloneRange();
     });
     return{attach:function(layer){var end=document.createElement('div');end.className='text-layer-end';end.setAttribute('aria-hidden','true');layer.appendChild(end);layer._selectionEnd=end;}};
+  })();
+  /* iPad and iPhone: WebKit's own selection handles (a finger, or a Pencil drag that iPadOS turns
+     into a text selection) hit-test the empty text layer whenever they sit over blank space, and the
+     moving end snaps to the page's first or last character. The end handle's knob hangs below the
+     line, so even a short drag along one line can end snapped: the selection then runs from the
+     page's header (or to its footer) to the passage, and Highlight saved that as one highlight over
+     the whole page. A handle drag sends the page a pointerdown and nothing more (no moves, no
+     pointerup), so nothing here may move the selection while it might be in hand: WebKit then
+     loses track of which end the finger holds. Instead keep the last selection that was not a snap
+     and hand that to whoever reads the selection (captureSelection), and put the visible
+     selection back once it has been still for SNAP_SETTLE ms. A snap is an end that
+     lands on a page's first or last character after skipping at least one line of text; moving
+     through the text onto the header, line by line, is not one. A selection can also start
+     snapped: a long-press, or a Pencil drag iPadOS turns into a selection, that begins on blank
+     paper selects from the page's first word. Such a selection (an end on the page's first or last
+     character, far from where the press landed) gives nothing to highlight and is cleared once
+     the press ends or it settles. The desktop guard cannot be used here: it would sit over the
+     words and take the long-press. */
+  var SNAP_SETTLE=900;
+  var touchSelectionSnapGuard=textSelectionGuard?null:(function(){
+    var good=null,snapped=false,stray=false,settleTimer=null,repairing=false,lastDown=null;
+    function owner(node){return node&&(node.nodeType===1?node:node.parentElement);}
+    function layerOf(node){var el=owner(node);return el&&el.closest?el.closest('#pdfFrame .text-layer'):null;}
+    function textNodes(layer){var out=[],walker=document.createTreeWalker(layer,NodeFilter.SHOW_TEXT),node;while((node=walker.nextNode()))if(node.textContent.trim())out.push(node);return out;}
+    /* At (or before) the page's first character, or at (or past) its last. */
+    function atPageEdge(node,offset,texts){
+      if(!texts.length)return false;var last=texts[texts.length-1],here=document.createRange(),head=document.createRange(),tail=document.createRange();
+      try{here.setStart(node,offset);head.setStart(texts[0],0);tail.setStart(last,last.length);}catch(err){return false;}
+      return here.compareBoundaryPoints(Range.START_TO_START,head)<=0||here.compareBoundaryPoints(Range.START_TO_START,tail)>=0;
+    }
+    function middle(node){var el=owner(node),r=el&&el.getBoundingClientRect?el.getBoundingClientRect():null;return r&&r.height?{y:(r.top+r.bottom)/2,h:r.height}:null;}
+    /* Did the end skip over a line of text on its way from `previous` to `moving`? */
+    function skippedALine(moving,previous,texts){
+      if(layerOf(moving)!==layerOf(previous))return true;
+      var a=middle(moving),b=middle(previous);if(!a||!b)return false;
+      var top=Math.min(a.y,b.y)+Math.max(a.h,b.h)*.6,bottom=Math.max(a.y,b.y)-Math.max(a.h,b.h)*.6;if(bottom<=top)return false;
+      return texts.some(function(t){var m=middle(t);return m&&m.y>top&&m.y<bottom;});
+    }
+    function same(a,aOffset,b,bOffset){return a===b&&aOffset===bOffset;}
+    function snapshot(selection,range){return{anchorNode:selection.anchorNode,anchorOffset:selection.anchorOffset,focusNode:selection.focusNode,focusOffset:selection.focusOffset,
+      start:range.startContainer,startOffset:range.startOffset,end:range.endContainer,endOffset:range.endOffset};}
+    /* Does `now` keep one end of the last good selection (a handle moved), or is it a new one? */
+    function sharesAnEnd(now){
+      return !!good&&(same(now.start,now.startOffset,good.start,good.startOffset)||same(now.end,now.endOffset,good.end,good.endOffset)||
+        same(now.end,now.endOffset,good.start,good.startOffset)||same(now.start,now.startOffset,good.end,good.endOffset));
+    }
+    function isSnap(now){
+      if(!good)return false;var moving=null,offset=0,previous=null;
+      /* Which end moved? A handle that crosses the other one flips the range, so the fixed end
+         may now be on the other side. */
+      if(same(now.start,now.startOffset,good.start,good.startOffset)){moving=now.end;offset=now.endOffset;previous=good.end;}
+      else if(same(now.end,now.endOffset,good.end,good.endOffset)){moving=now.start;offset=now.startOffset;previous=good.start;}
+      else if(same(now.end,now.endOffset,good.start,good.startOffset)){moving=now.start;offset=now.startOffset;previous=good.end;}
+      else if(same(now.start,now.startOffset,good.end,good.endOffset)){moving=now.end;offset=now.endOffset;previous=good.start;}
+      if(!moving)return false;
+      var layer=layerOf(moving);if(!layer)return false;
+      var texts=textNodes(layer);
+      return atPageEdge(moving,offset,texts)&&skippedALine(moving,previous,texts);
+    }
+    /* A fresh selection with an end on a page edge that the press did not land near. */
+    function strayStart(now){
+      if(!lastDown||Date.now()-lastDown.at>4000||lastDown.onText)return false;
+      return [[now.start,now.startOffset],[now.end,now.endOffset]].some(function(end){
+        var layer=layerOf(end[0]);if(!layer)return false;var texts=textNodes(layer);if(!atPageEdge(end[0],end[1],texts))return false;
+        var r=owner(end[0]).getBoundingClientRect(),dx=Math.max(r.left-lastDown.x,0,lastDown.x-r.right),dy=Math.max(r.top-lastDown.y,0,lastDown.y-r.bottom);
+        return Math.hypot(dx,dy)>Math.max(40,2.5*r.height);
+      });
+    }
+    function alive(){return !!good&&good.start.isConnected&&good.end.isConnected&&good.anchorNode.isConnected&&good.focusNode.isConnected;}
+    function repair(){
+      clearTimeout(settleTimer);
+      if(stray){var native=window.getSelection();repairing=true;if(native)native.removeAllRanges();stray=false;seen=null;setTimeout(function(){repairing=false;},0);return true;}
+      if(!snapped||!alive())return false;
+      var selection=window.getSelection();if(!selection)return false;
+      repairing=true;try{selection.setBaseAndExtent(good.anchorNode,good.anchorOffset,good.focusNode,good.focusOffset);}catch(err){}
+      snapped=false;seen=null;setTimeout(function(){repairing=false;},0);return true;
+    }
+    /* Classify the current selection. Runs on selectionchange and again whenever the selection
+       is read, because other selectionchange listeners (captureSelection) may run first. */
+    var seen=null;
+    function classify(){
+      var selection=window.getSelection();if(!selection||!selection.rangeCount||selection.isCollapsed){good=null;snapped=false;stray=false;seen=null;return;}
+      var range=selection.getRangeAt(0);if(!layerOf(range.startContainer)&&!layerOf(range.endContainer)){good=null;snapped=false;stray=false;seen=null;return;}
+      var now=snapshot(selection,range);
+      if(seen&&same(now.start,now.startOffset,seen.start,seen.startOffset)&&same(now.end,now.endOffset,seen.end,seen.endOffset))return;
+      seen=now;clearTimeout(settleTimer);
+      if(!sharesAnEnd(now)&&strayStart(now)){stray=true;settleTimer=setTimeout(repair,SNAP_SETTLE);return;}
+      if(isSnap(now)){snapped=true;settleTimer=setTimeout(repair,SNAP_SETTLE);return;}
+      good=now;snapped=false;stray=false;
+    }
+    document.addEventListener('selectionchange',function(){if(!repairing)classify();});
+    document.addEventListener('pointerdown',function(e){
+      var target=e.target&&e.target.closest?e.target:null;if(!target||!target.closest('#pdfFrame .text-layer'))return;
+      lastDown={x:e.clientX,y:e.clientY,at:Date.now(),onText:target.nodeName==='SPAN'&&!!target.textContent.trim()};
+    },true);
+    /* A long-press or Pencil drag that started on blank paper ends here (a handle drag sends no
+       pointerup; its selection settles instead). */
+    document.addEventListener('pointerup',function(){if(stray)setTimeout(repair,0);},true);
+    return{
+      /* The range a reader of the selection should use: the last good one while a snap shows,
+         none for a selection that started snapped. */
+      range:function(selection){
+        classify();
+        if(stray)return null;
+        if(snapped&&alive()){var r=document.createRange();try{r.setStart(good.start,good.startOffset);r.setEnd(good.end,good.endOffset);return r;}catch(err){}}
+        return selection.getRangeAt(0);
+      },
+      repair:repair
+    };
   })();
   /* A mouse, trackpad or Pencil drag that starts in a PDF page's text keeps its selection on that page.
      Over blank space (a margin, a gap between lines, the desk, another page) browsers move the

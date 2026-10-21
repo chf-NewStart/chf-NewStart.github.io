@@ -6,6 +6,26 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **Whole-page highlights on the iPad, found and fixed, v235 (web; Houfu: "i mean the entire page not the next page";
+  where: iPad app and iPad Safari; how: Apple Pencil swipe and finger select + Highlight).** Reproduced in the iOS
+  Simulator's Safari with a debug beacon. iPad WebKit's selection handles hit-test the empty text layer whenever they sit
+  over blank paper, and the moving end snaps to the page's **first character** (or last). The end handle's knob hangs
+  below the line, so the snap happens on the first move of a drag. The selection then runs from the page header
+  (and, in PDFs that draw it early, the footer) to the passage; the next tap captured it and Highlight saved it as one
+  highlight 0.93 of a page tall. A long-press on blank paper selects the page's first word the same way, and a Pencil
+  swipe that touched down more than 12 px from the words was left to iPadOS, which makes a native selection that can
+  start there. A handle drag sends the page one pointerdown and nothing else (no moves, no pointerup), and moving the
+  selection mid-drag makes WebKit lose track of which end the finger holds (tried and seen in the Simulator), so the
+  fix never touches a selection that may be in hand: `touchSelectionSnapGuard` (Apple touch only) keeps the last
+  selection that was not a snap and hands it to `captureSelection`, and puts the visible selection back once it has
+  been still for `SNAP_SETTLE` = 900 ms. A snap is an end that lands on a page's first or last character after
+  skipping at least one line of text, so moving through the text onto the header line by line is kept. A fresh
+  selection with an end on a page edge, far from where a press on blank paper landed, gives nothing to highlight and
+  is cleared on lift. The Pencil highlighter now starts within `PENCIL_START_REACH` = 20 px of the words (was 12).
+  Simulator check on the final code: the snapped drag settles back on the word, a long drag across the gap to the
+  next block keeps its start, a blank long-press selects nothing. Test `reading-touch-selection-snap` (11 checks, iPad
+  user agent) fails 8 on v234 and passes in Chromium and WebKit. Needs the next iPad build.
+
 - **Night light, the page-curl underside, and selections that jumped pages, v234 (web; Houfu sent two photos of a
   paperback under a clip-on lamp: "idk if we could do a night light mode like this" / "the light doesnt have to be
   like mine, esp the orientation"; "when we flip, the filpped page is supposed to be the mirrored if look from the
@@ -416,6 +436,14 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 v235:** iPad whole-page highlight fixed (see Now): `touchSelectionSnapGuard` keeps the last good
+  selection through WebKit's handle snaps, clears selections that start snapped, and the Pencil highlighter starts
+  within 20 px of the words. Found in the iOS Simulator (iPad Pro 13-inch, Safari) with a local debug beacon (not
+  committed). New test `reading-touch-selection-snap` (11; 8 fail on v234). Regression: 85 suites x 2 engines (the v234
+  list plus every test with an iPad/iPhone user agent or the native flag): 162/170 in parallel; the 8 others rerun
+  alone fail identically on main 66588611 (`reading-pdf-ink` Zen-dock checks, `reading-workspace-paper-color` and
+  `-paper-edge` harness exits, `reading-zen-compact-browser` in WebKit) or pass alone on both (`reading-book-guide`).
 
 - **2026-10-21 v234:** Night light, the one-page curl's mirrored underside, and the cross-page selection clamp (see
   Now). New tests: `reading-night-light` (26), `reading-book-curl-showthrough` (16; 2 failed on v233),

@@ -14,14 +14,17 @@ const server = http.createServer((q, r) => { const p = decodeURIComponent(q.url.
 async function paper() {
   const doc = await PDFDocument.create(), font = await doc.embedFont(StandardFonts.TimesRoman), bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const page = doc.addPage([612, 792]);
-  const left = ['Water in the soil may exist as a thin', 'film adhering to the surface of soil', 'particles, or it may fill the channel.',
-    'Clay soils hold water tightly because', 'their channels are small and narrow.'];
-  const right = ['In sandy soils the spaces between', 'particles are large, so water drains', 'from them and stays on the surfaces.',
-    'Field capacity is the water content', 'of a soil after excess water drains.'];
-  // The right column comes first in the PDF's own order, the left one is read first.
-  right.forEach((line, i) => page.drawText(line, { x: 330, y: 700 - i * 15, size: 11, font }));
-  left.forEach((line, i) => page.drawText(line, { x: 60, y: 700 - i * 15, size: 11, font }));
+  // A short sentence, one long enough to be spoken in pieces, then two short ones.
+  const lines = ['Water in the soil may exist as a thin film on particles.',
+    'Clay soils hold water tightly because their channels are small and narrow,',
+    'and the water that sits in those narrow channels is held by strong forces,',
+    'so that roots must work much harder to pull it away from the clay particles,',
+    'which is why a clay soil can still look damp while the plant above it wilts,',
+    'even on mornings when the surface of the field appears to be fully wet.',
+    'Sandy soils drain quickly and keep little water near the surface.',
+    'Field capacity is the water content of a soil after it drains.'];
   page.drawText('Water in Soil', { x: 60, y: 740, size: 15, font: bold });
+  lines.forEach((line, i) => page.drawText(line, { x: 60, y: 700 - i * 15, size: 11, font }));
   return Buffer.from(await doc.save());
 }
 function speech() {
@@ -37,38 +40,75 @@ const marked = page => page.evaluate(() => {
   return (h ? [...h].map(range => range.toString()).join(' ') : [...document.querySelectorAll('#pdfFrame .voice-span')].map(span => span.textContent).join(' ')).replace(/\s+/g, ' ').trim();
 });
 
+async function open(browser, port) {
+  const context = await browser.newContext({ viewport: { width: 1180, height: 820 }, serviceWorkers: 'block' });
+  const page = await context.newPage(), errors = [];
+  page.on('pageerror', e => errors.push(String(e)));
+  await page.addInitScript(speech);
+  await page.goto(`http://127.0.0.1:${port}/reading.html`);
+  await page.locator('#pdfFile').setInputFiles({ name: 'soil.pdf', mimeType: 'application/pdf', buffer: await paper() });
+  await page.waitForFunction(() => document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span').length >= 6);
+  await page.waitForTimeout(600);
+  await page.locator('#zenListen').click();
+  await page.waitForFunction(() => window.__said.length >= 1);
+  return { context, page, errors };
+}
+const last = page => page.evaluate(() => window.__said[window.__said.length - 1]);
+// Let the voice finish what it is saying until `pick` matches the sentence now being spoken.
+async function speakUntil(page, pick) {
+  for (let i = 0; i < 12 && !pick(await last(page)); i++) { await page.evaluate(() => window.__finish()); await page.waitForTimeout(120); }
+  assert.ok(pick(await last(page)), 'reached the sentence: ' + await last(page));
+}
+async function closeAndReturn(page, how) {
+  await page.locator(how === 'close' ? '#voiceClose' : '#zenListen').click();
+  await page.waitForTimeout(400);
+  assert.equal(await marked(page), '', 'after leaving Listen no sentence stays marked');
+  assert.deepEqual(await page.evaluate(() => ({ bar: !document.getElementById('voiceBar').classList.contains('hidden'), dim: document.body.classList.contains('voice-focus') })), { bar: false, dim: false }, 'the bar closes and the paper is no longer dimmed');
+  const n = await page.evaluate(() => window.__said.length);
+  await page.locator('#zenListen').click();
+  await page.waitForFunction(n => window.__said.length > n, n);
+  return page.evaluate(n => window.__said[n], n);
+}
+
 (async () => {
   await new Promise(res => server.listen(0, '127.0.0.1', res));
-  const name = process.env.PHLOEM_BROWSER || 'chromium', browser = await playwright[name].launch();
+  const name = process.env.PHLOEM_BROWSER || 'chromium', browser = await playwright[name].launch(), port = server.address().port;
   try {
-    for (const exit of ['the dock Listen button', 'the close button']) {
-      const context = await browser.newContext({ viewport: { width: 1180, height: 820 }, serviceWorkers: 'block' });
-      const page = await context.newPage(), errors = [];
-      page.on('pageerror', e => errors.push(String(e)));
-      await page.addInitScript(speech);
-      await page.goto(`http://127.0.0.1:${server.address().port}/reading.html`);
-      await page.locator('#pdfFile').setInputFiles({ name: 'soil.pdf', mimeType: 'application/pdf', buffer: await paper() });
-      await page.waitForFunction(() => document.querySelectorAll('.pdf-page[data-page="1"] .text-layer span').length >= 6);
-      await page.waitForTimeout(600);
-      await page.locator('#zenListen').click();
-      await page.waitForFunction(() => window.__said.length >= 1);
-      for (let i = 0; i < 3; i++) { await page.waitForTimeout(300); await page.evaluate(() => window.__finish()); }
-      await page.waitForTimeout(300);
-      const speaking = await page.evaluate(() => window.__said[window.__said.length - 1]);
-      assert.ok((await marked(page)).length > 0, 'while reading, the sentence is marked');
-      await page.locator(exit === 'the close button' ? '#voiceClose' : '#zenListen').click();
-      await page.waitForTimeout(500);
-      const after = await page.evaluate(() => ({ bar: !document.getElementById('voiceBar').classList.contains('hidden'), dim: document.body.classList.contains('voice-focus') }));
-      assert.equal(await marked(page), '', `after leaving with ${exit}, no sentence stays marked`);
-      assert.deepEqual(after, { bar: false, dim: false }, `after leaving with ${exit}, the bar closes and the paper is no longer dimmed`);
-      console.log(`PASS  leaving Listen with ${exit} clears its marks (${name})`);
-      const n = await page.evaluate(() => window.__said.length);
-      await page.locator('#zenListen').click();
-      await page.waitForFunction(n => window.__said.length > n, n);
-      assert.equal(await page.evaluate(n => window.__said[n], n), speaking, 'coming back resumes at the sentence it stopped on');
-      console.log(`PASS  coming back after ${exit} resumes at the same sentence (${name})`);
-      assert.deepEqual(errors, []);
-      await context.close();
+    /* 1. Well into a sentence: coming back starts that sentence again. Both ways of leaving. */
+    for (const how of ['dock', 'close']) {
+      const { context, page, errors } = await open(browser, port);
+      await speakUntil(page, t => /^Sandy soils/.test(t));
+      await page.waitForTimeout(1500);
+      const back = await closeAndReturn(page, how);
+      assert.ok(/^Sandy soils/.test(back), `left with the ${how} button well into a sentence, it resumes there: ` + back);
+      console.log(`PASS  leaving with the ${how} button clears the marks, and coming back resumes at the sentence (${name})`);
+      assert.deepEqual(errors, []); await context.close();
+    }
+    /* 2. Just after the voice moved on: coming back replays the sentence just heard, not the next. */
+    {
+      const { context, page, errors } = await open(browser, port);
+      await speakUntil(page, t => /^Sandy soils/.test(t));
+      await page.waitForTimeout(1500);
+      await page.evaluate(() => window.__finish());
+      await page.waitForTimeout(250);
+      assert.ok(/^Field capacity/.test(await last(page)), 'the voice has just moved on to the next sentence');
+      const back = await closeAndReturn(page, 'dock');
+      assert.ok(/^Sandy soils/.test(back), 'left a moment after the voice moved on, it does not skip ahead: ' + back);
+      console.log(`PASS  leaving just after a new sentence began resumes at the one just heard (${name})`);
+      assert.deepEqual(errors, []); await context.close();
+    }
+    /* 3. In the second piece of a long sentence: coming back starts the sentence from its beginning. */
+    {
+      const { context, page, errors } = await open(browser, port);
+      await speakUntil(page, t => /^Clay soils/.test(t));
+      await page.evaluate(() => window.__finish());
+      await page.waitForTimeout(1500);
+      const piece = await last(page);
+      assert.ok(!/^Clay soils/.test(piece) && /clay|roots|wilts|damp|wet/i.test(piece), 'the long sentence is spoken in pieces, and the voice is in a later one: ' + piece);
+      const back = await closeAndReturn(page, 'dock');
+      assert.ok(/^Clay soils/.test(back), 'left inside a long sentence, it resumes from that sentence\'s start: ' + back);
+      console.log(`PASS  leaving inside a long sentence resumes from its start (${name})`);
+      assert.deepEqual(errors, []); await context.close();
     }
   } finally {
     await browser.close();

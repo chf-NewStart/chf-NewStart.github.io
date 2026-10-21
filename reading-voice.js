@@ -78,8 +78,10 @@
   function heading(kind) { return /^h[1-6]$/.test(kind || ''); }
 
   /* Sentences, never broken after "et al.", "e.g.", "Fig." or an initial; long ones are
-     cut at a semicolon or comma so no utterance runs past what browsers will speak. */
-  function sentences(text) {
+     cut at a semicolon or comma so no utterance runs past what browsers will speak. Each piece
+     says whether it begins a sentence (`first`), so Listen can go back to a sentence's start. */
+  function sentences(text) { return sentencePieces(text).map(function (piece) { return piece.text; }); }
+  function sentencePieces(text) {
     // No look-behind: older iPadOS Safari cannot parse it.
     var out = [], parts = clean(text).replace(/([.!?…][”"')\]]?)\s+(?=[“"(\[]?[A-Z0-9])/g, '$1\u0001').split('\u0001');
     parts.forEach(function (part) {
@@ -88,14 +90,15 @@
     });
     var chunks = [];
     out.forEach(function (sentence) {
+      var first = true;
       while (sentence.length > MAX_CHUNK) {
         var slice = sentence.slice(0, MAX_CHUNK), cut = Math.max(slice.lastIndexOf('; '), slice.lastIndexOf(', '));
         if (cut < 60) cut = slice.lastIndexOf(' ');
         if (cut < 1) cut = MAX_CHUNK;
-        chunks.push(sentence.slice(0, cut + 1).trim());
+        chunks.push({ text: sentence.slice(0, cut + 1).trim(), first: first }); first = false;
         sentence = sentence.slice(cut + 1).trim();
       }
-      if (sentence) chunks.push(sentence);
+      if (sentence) chunks.push({ text: sentence, first: first });
     });
     return chunks;
   }
@@ -163,8 +166,8 @@
       if (formulaLike(text)) { skipped.equations++; return; }
       var spoken = stripCitations(text);
       if (!spoken || spoken.length < 2) return;
-      sentences(spoken).forEach(function (sentence) {
-        if (/[A-Za-zà-ÿ]{2,}/.test(sentence)) chunks.push({ text: sentence, kind: '', page: block.page || 0, para: block.para });
+      sentencePieces(spoken).forEach(function (piece) {
+        if (/[A-Za-zà-ÿ]{2,}/.test(piece.text)) chunks.push({ text: piece.text, kind: '', page: block.page || 0, para: block.para, first: piece.first });
       });
     });
     return { chunks: chunks, skipped: skipped };

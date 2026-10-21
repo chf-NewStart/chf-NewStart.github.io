@@ -6,6 +6,16 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **Listen resumes at the right sentence, v240 (web; Houfu, testing v239: "it jumps to the next sentence after i exit and
+  enter listen mode").** Two causes: a long sentence is spoken in pieces (`MAX_CHUNK` = 240), so leaving inside it
+  resumed mid-sentence; and leaving a moment after the voice moved on resumed at the new sentence, skipping the one just
+  heard. Each piece now records whether it begins a sentence (`first`, from `sentencePieces`), Listen resumes at the
+  start of the sentence being read, and if that sentence had begun less than `VOICE_JUST_BEGAN` = 1.2 s before leaving,
+  at the one before. `reading-voice-exit-resume-browser` now 8 checks (the skip-ahead case fails on v239). All Listen,
+  phone and iPad suites pass in both engines. **Native build waits for Houfu's "ok"** ("after everything, just push the
+  newest ver, after i say ok then make the build and make to app store connect"): 1.2.5 (48), prepared below, bundles
+  v239, so after his ok a build 49 with v240 replaces it on the 1.2.5 record.
+
 - **Phloem 1.2.5 (48) prepared for the App Store, not submitted (Houfu: "for phloem shall we publish the newest on
   iphone and mac and ipad too? the build 45 went through").** 1.2.4 (45) is Ready for Sale. **Version record iOS 1.2.5
   created** (manual release, copyright "2026 Houfu Chen"), **build 48 attached**: universal, reader **v239** (v239 landed
@@ -547,6 +557,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-21 v240:** Listen resumes at the start of the sentence, or the one just heard (see Now).
 
 - **2026-10-21 1.2.5 (47, 48) and the 1.2.5 version record:** see Now. Uploaded with the API key; screenshots
   through the API (`appScreenshotSets` / `appScreenshots`, chunked upload, MD5 commit). Not submitted.

@@ -3739,8 +3739,8 @@
     var recent=voiceSelectionPlace&&voiceSelectionPlace.id===ch.id&&Date.now()-voiceSelectionPlace.at<60000?voiceSelectionPlace.place:null,picked=voicePlaceOfSelection(pendingSelection)||recent;voiceSelectionPlace=null;
     if(picked){var fromSelection=voiceChunkAt(chunks,picked);if(fromSelection>=0)return fromSelection;}
     var resume=voiceResume&&voiceResume.id===ch.id?voiceResume:null;voiceResume=null;
-    if(resume){
-      var again=chunks[resume.index]&&chunks[resume.index].text===resume.text?resume.index:chunks.findIndex(function(chunk){return chunk.text===resume.text;});
+    if(resume)for(var r=0;r<resume.places.length;r++){
+      var place=resume.places[r],again=chunks[place.index]&&chunks[place.index].text===place.text?place.index:chunks.findIndex(function(chunk){return chunk.text===place.text;});
       if(again>=0&&voiceChunkInView(ch,chunks[again]))return again;
     }
     if(ch.kind==='pdf'&&readerMode==='pdf'){var at=chunks.findIndex(function(chunk){return chunk.page>=currentPage;});return at<0?0:at;}
@@ -3928,10 +3928,20 @@
   /* Listen remembers the sentence it stopped on, so coming back resumes there (Houfu: "if i
      reenter the speaker mode, dont make it speak elsewhere") as long as that sentence is still
      in view; after the reader has moved on, it starts where they are. */
-  var voiceResume=null;
+  /* It goes back to the start of the sentence being read (a long sentence is spoken in pieces),
+     and if that sentence had only just begun, to the one before, which the listener had just
+     heard: closing a moment after the voice moved on must not skip ahead (Houfu: "it jumps to the
+     next sentence after i exit and enter listen mode"). */
+  var VOICE_JUST_BEGAN=1200,voiceResume=null,voiceChunkBegan={index:-1,at:0};
+  function voiceSentenceStart(index){while(index>0&&voiceChunks[index]&&voiceChunks[index].first===false)index--;return index;}
   function stopVoice(){
     endVoiceDrag(true);closeVoiceFromMenu();
-    if(voicePlayer&&voicePaperId){var at=voicePlayer.index(),chunk=voiceChunks[at];voiceResume=chunk&&voicePlayer.state()!=='finished'?{id:voicePaperId,index:at,text:chunk.text}:null;}
+    if(voicePlayer&&voicePaperId){
+      var at=voicePlayer.index(),playing=voicePlayer.state()==='playing',start=voiceSentenceStart(at),places=[];
+      if(playing&&start>0&&voiceChunkBegan.index===start&&Date.now()-voiceChunkBegan.at<VOICE_JUST_BEGAN)places.push(voiceSentenceStart(start-1));
+      places.push(start);
+      voiceResume=voiceChunks[at]&&voicePlayer.state()!=='finished'?{id:voicePaperId,places:places.map(function(i){return{index:i,text:voiceChunks[i].text};})}:null;
+    }
     if(voicePlayer)voicePlayer.stop();voicePaperId='';byId('voiceBar').classList.add('hidden');clearVoiceFocus();syncVoiceUi('stopped');
   }
   function voiceChunkInView(ch,chunk){
@@ -3945,6 +3955,8 @@
     var engine=voiceEngine();
     voicePlayer=window.PhloemVoice.createPlayer({synth:engine.synth,Utterance:engine.Utterance,
       onChunk:function(chunk,index){
+        // When each sentence begins to be spoken (pausing, skipping and seeking also report chunks).
+        var head=voiceSentenceStart(index);if(voicePlayer&&voicePlayer.state()==='playing'&&head!==voiceChunkBegan.index)voiceChunkBegan={index:head,at:Date.now()};
         byId('voiceLine').textContent=chunk.text;var ch=find(currentId);if(!ch||voicePaperId!==ch.id)return;
         if(ch.kind==='pdf'&&readerMode==='pdf'){
           if(chunk.page&&chunk.page!==currentPage&&voicePlayer&&voicePlayer.state()==='playing')Promise.resolve(gotoPdfPage(chunk.page)).then(function(){focusVoiceChunk(index);});

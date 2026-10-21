@@ -22,7 +22,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Zen side dock, "Phloem for iPad"; `reading-zen-ipad` 45/45 and `reading-workspace-bottom-dock` 2/2 (plus
   `reading-phone-browser` 5/5) in Chromium and WebKit before and after; `apps/ipad` tests 22/22 (new test pins the
   device families and the iPad orientation list). Commit 14b3f2a2; archive
-  `~/Library/Developer/Xcode/Archives/2026-10-21/Phloem 1.2.5 (46).xcarchive`, uploaded with the API key.
+  `~/Library/Developer/Xcode/Archives/2026-10-21/Phloem 1.2.5 (46).xcarchive`, uploaded with the API key: build 46 is
+  **VALID**, in TestFlight for Internal Testers and friends2 with a What to Test list (iPhone, iPad, Mac); not sent to
+  the external "friends" group (that needs beta review).
   **iPhone screenshots (6.9-inch, 1320×2868), ready:** `output/phloem-iphone-1.2.5-2026-10-21/UPLOAD-iphone-6.9/`
   (Listen to any paper · Look up any word · Mark what matters · Your papers, in your pocket): unedited simulator
   captures, same frame as the live iPad set, eLife CC BY credit; the Look up card is a Wiktionary text entry (credited)

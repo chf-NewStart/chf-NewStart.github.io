@@ -6,6 +6,11 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **1.2.5 (49) submitted, 2026-10-22 16:11 EDT (Houfu: "submit Phloem 1.2.5").** iPad + iPhone, reader v240, Waiting for
+  Review (submission e7e06bc9), **manual release: press Release after approval**. Houfu edited the App Review notes
+  himself (now 1.2.5 (build 49), "What's new in 1.2.5", providers line; 3,823 characters); Claude checked them by
+  substring without reading the key back. If the reviewer key was not rotated before saving, rotate it after review.
+
 - **Listen resumes at the right sentence, v240 (web; Houfu, testing v239: "it jumps to the next sentence after i exit and
   enter listen mode").** Two causes: a long sentence is spoken in pieces (`MAX_CHUNK` = 240), so leaving inside it
   resumed mid-sentence; and leaving a moment after the voice moved on resumed at the new sentence, skipping the one just
@@ -558,6 +563,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-22 1.2.5 (49):** submitted for review on Houfu's word, manual release (see Now).
 
 - **2026-10-22 1.2.5 (49):** v240 bundled after Houfu's "ok"; archived and uploaded with the API key, VALID, attached
   to iOS 1.2.5 (manual release). Not submitted: that needs "submit Phloem 1.2.5". Tests as for 48, plus the iPad and

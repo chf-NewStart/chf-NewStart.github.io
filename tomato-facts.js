@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "PHYSICS",
+            title: "Water is weirdest at 4 °C",
+            fact: "Water reaches maximum density at about 4 °C, so lakes freeze from the top down: ice floats, insulating the water below, and fish survive under the ice. Almost any other liquid would freeze solid from the bottom up, killing its ecosystem.",
+            detail: "Hydrogen bonds lock ice into a lattice that holds molecules farther apart than the liquid — about 9% less dense. Life in lakes depends on that small number."
+        },
+        {
+            tag: "PHYSICS",
             title: "Light takes ~8 minutes to reach you from the Sun",
             fact: "Sunlight you feel is 8 minutes 20 seconds old. But the photon itself may be far older: energy generated in the Sun's core can take tens of thousands of years to random-walk out to the surface before escaping.",
             detail: "So the light on your face was made when humans were still hunter-gatherers — a reminder that the Sun you see is a slow, glowing history."

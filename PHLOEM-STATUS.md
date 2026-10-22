@@ -14,14 +14,14 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   at the one before. `reading-voice-exit-resume-browser` now 8 checks (the skip-ahead case fails on v239). All Listen,
   phone and iPad suites pass in both engines. **Native build waits for Houfu's "ok"** ("after everything, just push the
   newest ver, after i say ok then make the build and make to app store connect"): 1.2.5 (48), prepared below, bundles
-  v239, so after his ok a build 49 with v240 replaces it on the 1.2.5 record.
+  v239; he said ok and build 49 with v240 is now on the 1.2.5 record (see below).
 
-- **Phloem 1.2.5 (48) prepared for the App Store, not submitted (Houfu: "for phloem shall we publish the newest on
+- **Phloem 1.2.5 (49) prepared for the App Store, not submitted (Houfu: "for phloem shall we publish the newest on
   iphone and mac and ipad too? the build 45 went through").** 1.2.4 (45) is Ready for Sale. **Version record iOS 1.2.5
-  created** (manual release, copyright "2026 Houfu Chen"), **no build attached (on hold)**: Houfu said "after i say ok
-  then make the build and make to app store connect", and v240 (one more Listen fix) is coming, so build 48 (universal,
-  reader **v239**) was detached again and stays in TestFlight with 47 (v238). Both VALID, each with a What to Test
-  list. **On Houfu's ok:** build 49 from the final reader, attach it, then he says "submit Phloem 1.2.5". Commits 40edf019 (47) and 529c4dfd (48). Checked before upload: `apps/ipad` 22/22; `reading-zen-ipad`,
+  created** (manual release, copyright "2026 Houfu Chen"), **build 49 attached** (2026-10-22, after Houfu's "ok"):
+  universal, reader **v240** (b7548124; Listen resumes at the start of the sentence it was reading), commit 1b36385d,
+  VALID, with a What to Test list. Builds 47 (v238) and 48 (v239) stay in TestFlight only. What's New's Listen line now
+  reads "Close Listen and open it again: it picks up at the start of the sentence it was reading." Commits 40edf019 (47) and 529c4dfd (48). Checked before upload: `apps/ipad` 22/22; `reading-zen-ipad`,
   `reading-workspace-bottom-dock`, `reading-phone-browser`, `reading-ipad-touch-dock`, `reading-workspace-move-tool`,
   `reading-night-light`, `reading-voice-exit-resume-browser` pass in Chromium and WebKit; in the simulators the iPad
   app's Zen dock has **Night** under Listen and its Workspace tools are Pen (default), Eraser, Lasso with **no Move**
@@ -530,16 +530,15 @@ Outputs (local, untracked, in the main checkout's `output/`):
   identity", try a phone hotspot, then check the Apple ID's country/region (Settings › your name › Media &
   Purchases › View Account). Steps in `apps/ipad/plans/ICLOUD-SYNC-FIX.md`, "Sixth round".
 
-- **Phloem 1.2.5 is ready to submit (iPad, iPhone, Mac), waiting for Houfu's words.** Before saying "submit Phloem
+- **Phloem 1.2.5 (49) is ready to submit (iPad, iPhone, Mac), waiting for Houfu's words.** Before saying "submit Phloem
   1.2.5": (1) edit the App Review notes in App Store Connect (three in-place edits in
   `output/phloem-iphone-1.2.5-2026-10-21/REVIEW-NOTES-EDITS-1.2.5.md`; Claude did not re-send the notes because they
   still carry the reviewer Anthropic key); (2) **rotate that key** (it has been in the notes since 1.2.1), then paste
   the new one on the key line; (3) glance at What's New and the description's new iPhone sentence; (4) optionally try
-  build 48 on the iPhone from TestFlight. Shipping iPhone support cannot be withdrawn later. (On hold until Houfu's ok:
-  no build is attached; the final reader becomes build 49.)
+  build 49 on the iPhone from TestFlight. Shipping iPhone support cannot be withdrawn later.
 - Keep Listen going with the screen locked? Needs the `audio` background mode in Info.plist (iPhone and iPad alike).
-- **Mac:** the iPad app is already offered on Apple silicon Macs. Optional: install build 48 on this Mac with
-  TestFlight (replaces the old "register this Mac" question: not needed), then App Store Connect › Pricing and
+- **Mac:** the iPad app is already offered on Apple silicon Macs. Optional: install it on this Mac with
+  TestFlight (build 49; replaces the old "register this Mac" question: not needed), then App Store Connect › Pricing and
   Availability › Verify Compatibility to drop "Not verified for macOS". In the Mac app the Workspace has no Move tool
   (v238 keeps it to browsers), so a mouse drag there draws; the PDF paper's mouse drag (v236/v237) works. Keep or
   delete the empty macOS 1.0 draft (harmless either way; Claude left it).
@@ -559,6 +558,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-22 1.2.5 (49):** v240 bundled after Houfu's "ok"; archived and uploaded with the API key, VALID, attached
+  to iOS 1.2.5 (manual release). Not submitted: that needs "submit Phloem 1.2.5". Tests as for 48, plus the iPad and
+  iPhone simulators on v240.
 
 - **2026-10-21 v240:** Listen resumes at the start of the sentence, or the one just heard (see Now).
 

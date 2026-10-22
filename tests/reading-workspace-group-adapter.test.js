@@ -27,6 +27,8 @@ function harness() {
     localStorage: { setItem(key, value) { calls.writes.push(value); if (fail) throw new Error('Storage full'); } },
     queueStateSnapshot(serialized) { calls.recovery.push(serialized); return Promise.resolve(false); },
     scheduleSync() { calls.sync++; }, showError() { calls.warnings++; },
+    // This page is the only tab: it may always save.
+    tabMaySave: () => 'yes', tabQuietSave: false,
     // Deferred handwriting saves run at once here: no Pencil is resting.
     setTimeout: fn => { fn(); return 0; }, clearTimeout() {}, workspacePenDown: 0, workspacePenAt: 0, penOnGlass: () => context.workspacePenDown
   });

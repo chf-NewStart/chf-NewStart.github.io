@@ -2993,3 +2993,12 @@ body.phone-ui.phone-land.zen.voice-on .reader-toast { bottom: calc(150px + env(s
 body.phone-ui.phone-land.zen .find-bar:not(.hidden) { right: calc(var(--phone-rail) + env(safe-area-inset-right) + 10px); }
 body.phone-ui.phone-land.zen :is(.selection-card, .lookup-card) { left: auto !important; right: calc(var(--phone-rail) + env(safe-area-inset-right) + 10px) !important; top: auto !important; bottom: calc(8px + max(env(safe-area-inset-bottom), var(--kb-inset, 0px))); width: min(440px, calc(100vw - var(--phone-rail) - 30px)); max-height: calc(100dvh - 16px - var(--kb-inset, 0px)); }
 body.phone-ui.phone-land .text-document { padding-inline: max(18px, calc((100% - 640px) / 2)); }
+
+/* Another tab of Phloem is the one saving: this tab says so and offers to take over. */
+.other-tab-bar { position: fixed; z-index: 2147483000; top: calc(env(safe-area-inset-top) + 10px); left: 50%; transform: translateX(-50%); display: none; align-items: center; gap: 12px; width: max-content; max-width: calc(100vw - 32px); padding: 6px 6px 6px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--ink); color: var(--surface); box-shadow: var(--shadow); font-size: .8rem; font-weight: 650; line-height: 1.3; }
+body.other-tab-open .other-tab-bar { display: flex; }
+.other-tab-bar button { flex: none; min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
+.other-tab-bar button:disabled { opacity: .7; cursor: default; }
+.other-tab-bar.nudge { animation: other-tab-nudge .5s ease; }
+@keyframes other-tab-nudge { 30% { transform: translateX(calc(-50% - 6px)); } 60% { transform: translateX(calc(-50% + 6px)); } }
+@media (prefers-reduced-motion: reduce) { .other-tab-bar.nudge { animation: none; } }

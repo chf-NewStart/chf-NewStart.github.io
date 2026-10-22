@@ -6,6 +6,23 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-10-21)
 
+- **Two tabs no longer overwrite each other, v241 (web; Houfu: "phloem should also work if i want to put 2 papers
+  side by side idk", then "dont do this task if its gonna mess things up").** Each tab saved its whole in-memory library,
+  so the tab that saved last quietly undid the other's highlights, notes, strokes or newly added papers. Now **one tab
+  saves**: the writer is named by a small mark (`readingRoom.writer.v1`) and tabs talk over a BroadcastChannel
+  (`phloem-tabs`). A tab opened while Phloem is in use elsewhere can still be read, but saves nothing, syncs nothing
+  (its older copy could otherwise win a cloud merge) and cannot remove papers; a bar says "Phloem is open in another
+  tab, so changes here are not saved" with **Use Phloem here** (the other tab saves what is waiting, steps aside, and
+  this one reloads). A single tab, a reload, or a tab opened while the writer is in the background or closed takes over
+  at once, with no delay or bar; a shown writer renews its mark every 5 s. Every save checks the mark first, so a tab
+  waking from sleep never writes over a newer one. Reading-position and sync-merge saves are skipped quietly; edits say
+  "Not saved". **Not in the iPad app** (`PHLOEM_NATIVE`: one window; nothing changes, no new build needed). Test: new
+  `reading-two-tabs` (20; on v240 the first tab's newer highlight is lost). Full reader suite in Chromium and WebKit: only
+  main's known failures (`reading-pdf-ink` 69/72, `reading-split-undo-browser`, `reading-workspace-paper-color`/`-edge`);
+  persistence, sync and iPad suites pass in both; `apps/ipad` 22/22. A per-item merge version was also built and
+  tested, then set aside as the bigger change (local branch `phloem-two-tabs-merge`, not pushed).
+  **Two papers side by side: plan only, not built** (see Open questions).
+
 - **1.2.5 (49) submitted, 2026-10-22 16:11 EDT (Houfu: "submit Phloem 1.2.5").** iPad + iPhone, reader v240, Waiting for
   Review (submission e7e06bc9), **manual release: press Release after approval**. Houfu edited the App Review notes
   himself (now 1.2.5 (build 49), "What's new in 1.2.5", providers line; 3,823 characters); Claude checked them by
@@ -529,6 +546,15 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Open questions for Houfu
 
+- **Two papers side by side in one window: recommended not to build now.** The reader holds one paper at a time
+  (page, zoom, highlights, Listen are all single), so either it is reworked to hold two (a deep change touching
+  everything, iPad included) or a second reader runs in a frame beside the first. The frame keeps each paper's own page,
+  zoom, highlights and Listen, but takes the Workspace's place on the side (Workspace and layout code change), needs
+  the iPad app's native bridge passed into the frame, and, to save highlights there, the per-item merge on every save
+  that was set aside above (otherwise the paper beside is read-only). Mock-ups of the two layouts (A: side holds
+  Workspace or a paper; B: both) were shown on 2026-10-22. Today on a laptop: two browser windows side by side work,
+  one of them read-only. If wanted later, the low-risk start is a read-only paper beside, laptops only.
+
 - **Web iCloud (China):** (1) fill the two empty CloudKit token slots with the "Phloem web" token, or tell
   Claude "put the CloudKit web token in"; (2) on the Mac, open `houfu72.com/reading.html?icloud=1` › Settings ›
   Sync with iCloud › Turn on, and sign in on Apple's page. If Apple again says "Failed to verify your
@@ -563,6 +589,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-22 v241:** one tab saves; other tabs show a bar and save nothing (see Now). Side-by-side papers: plan only.
 
 - **2026-10-22 1.2.5 (49):** submitted for review on Houfu's word, manual release (see Now).
 

@@ -38,6 +38,8 @@ function harness() {
     localStorage: { setItem() { calls.writes++; if (failPersist) throw new Error('Storage full'); } },
     queueStateSnapshot() { calls.recovery++; return Promise.resolve(false); },
     scheduleSync() { calls.sync++; }, showError() {},
+    // This page is the only tab: it may always save.
+    tabMaySave: () => 'yes', tabQuietSave: false,
     context: () => ({ id: 'paper', epoch: 1, open: true, items: ch.readingExcerpts.items, workspace: ch.readingWorkspace }),
     available: () => true, positionsOf: c => c.workspace.positions, itemsOf: c => c.items,
     copy: plain, undoStack: [], redoStack: [], selection: null, gesture: null,

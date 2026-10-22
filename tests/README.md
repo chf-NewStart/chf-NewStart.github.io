@@ -10,6 +10,14 @@ nothing is focused (Safari and the iPad don't focus tapped buttons): it drops a 
 selection and never closes the paper, while Escape after a tap on the paper still goes back
 to the library. Run it with `PHLOEM_BROWSER=webkit` too.
 
+`reading-two-tabs.test.js` opens the reader in several tabs of one browser: only the tab in
+use saves. A second tab shows "Phloem is open in another tab", saves nothing (its highlight
+does not overwrite the first tab's newer one), and its "Use Phloem here" makes the first tab
+save a waiting stroke and step aside. A tab opened while the writer is in the background
+takes over, the background tab shows the bar when it returns, and after the tabs close or
+reload the next one saves as usual. A tab that does not save makes no Drive request either,
+even from Sync now. Run it with `PHLOEM_BROWSER=webkit` too.
+
 `reading-sync-own-copy.test.js` checks that a sync after a stroke skips the copy this
 device just uploaded (iCloud and Drive) and never re-reads stored originals.
 

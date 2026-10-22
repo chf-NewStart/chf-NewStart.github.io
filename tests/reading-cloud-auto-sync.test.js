@@ -31,6 +31,8 @@ function importHarness(kind) {
     putPdf: () => storage.promise,
     find: id => context.state.chapters.find(ch => ch.id === id),
     gdriveOn: () => true, iCloudOn: () => true,
+    // The only tab: it saves and syncs.
+    tabMaySync: () => true,
     gdriveSetPdfState: (id, value) => states.push({ provider: 'drive', id, value }),
     iCloudSetDocumentState: (id, value) => states.push({ provider: 'icloud', id, value }),
     scheduleSync: () => queued.push('source-ready'), persist: () => queued.push('metadata'),
@@ -84,6 +86,8 @@ function cloudHarness(provider) {
     gdrivePdfStates: {}, iCloudDocumentStates: {}, importedSourceWrites: {}, now: () => 1000000, penOnGlass: () => false,
     scheduleSync: () => schedules++, scheduleSyncRetry: () => retries++,
     gdriveOn: () => true, iCloudOn: () => true,
+    // The only tab: it saves and syncs.
+    tabMaySync: () => true,
     nativeGooglePlugin: () => null,
     gdriveTokenFresh: () => !!context.gdriveToken,
     pdfFingerprint: async () => 'old-hash',

@@ -575,6 +575,8 @@
   function persist(schedule,atomic){
     // Any save writes the whole library, so it also covers handwriting waiting to save.
     if(persistSoonTimer){clearTimeout(persistSoonTimer);persistSoonTimer=0;}persistSoonSince=0;
+    // Only the tab that is in use saves (see tabMaySave); a tab still asking saves once it knows.
+    var may=tabMaySave(tabQuietSave||schedule===false);if(may!=='yes'){if(may==='later'&&schedule!==false)tabSavesWaiting='sync';return may==='later';}
     if(stateLoadFailed&&!state.chapters.length)return false;var serialized='',savedLocally=false;state.savedAt=now();
     try{serialized=JSON.stringify(localState());localStorage.setItem(KEY,serialized);savedLocally=true;stateLoadFailed=false;storageWarned=false;stateLocalFull=false;}
     catch(e){if(serialized)stateLocalFull=true;}
@@ -649,6 +651,109 @@
   }
   // Typing saves once the keys pause (persistSoon), not on every keystroke: each save writes the whole library.
   function touchTyping(ch){ ch.updatedAt = now(); persistSoon(); }
+
+  /* One tab saves. Two tabs of Phloem each held their own copy of the library and saved
+     it whole, so whichever saved last quietly undid the other's highlights, notes,
+     strokes, even a paper it had added. Now the tab in use is the writer, named by a
+     small mark in localStorage. A tab opened while Phloem is in use in another one can
+     still be read, saves nothing, and says so in a bar whose "Use Phloem here" asks the
+     other tab to save and step aside, then reloads with everything it saved. A writer
+     in the background has already saved (pagehide, visibilitychange), so a newly opened
+     tab takes over from it. Every save checks the mark first, so a tab waking from
+     sleep never writes over a newer one. The iPad app has one window and skips this. */
+  var WRITER_KEY='readingRoom.writer.v1',WRITER_BEAT=5000,WRITER_STALE=20000,PAGE_ID=uid('p'),TAB_ID=PAGE_ID,tabChannel=null,tabRole='writer',tabReplies=[],tabSavesWaiting=false,tabNoticeAt=0,tabYieldTimer=0,tabQuietSave=false;
+  try{TAB_ID=sessionStorage.getItem('readingRoom.tab.v1')||PAGE_ID;sessionStorage.setItem('readingRoom.tab.v1',TAB_ID);}catch(e){}
+  if(!window.PHLOEM_NATIVE)try{tabChannel=new BroadcastChannel('phloem-tabs');}catch(e){}
+  function writerMark(){try{return JSON.parse(localStorage.getItem(WRITER_KEY)||'null');}catch(e){return null;}}
+  function setWriterMark(idle){try{localStorage.setItem(WRITER_KEY,JSON.stringify({page:PAGE_ID,tab:TAB_ID,at:now(),idle:!!idle}));}catch(e){}}
+  function ownsWriterMark(){var mark=writerMark();return !!mark&&mark.page===PAGE_ID;}
+  /* 'yes' to save now, 'later' while this tab is still asking, 'no' when another tab saves.
+     Quiet saves (where the reader is, on every page turn; merges and repairs that save
+     with persist(false)) are skipped without a word. */
+  function tabMaySave(quiet){
+    if(!tabChannel)return 'yes';
+    if(tabRole==='pending'){tabSavesWaiting=tabSavesWaiting||true;return 'later';}
+    if(tabRole==='writer'){var mark=writerMark();if(!mark||mark.page===PAGE_ID){if(!mark)setWriterMark(document.visibilityState==='hidden');return 'yes';}becomeTabReader();}
+    if(!quiet)noteTabReadOnly();return 'no';
+  }
+  /* A tab that is not saving does not sync either: its copy is older, and a cloud merge
+     keeps the newer-stamped copy of a paper whole, so its upload could undo the writer's
+     newer highlights on every device. */
+  function tabMaySync(){return tabRole==='writer'&&tabMaySave(true)==='yes';}
+  function persistQuietly(schedule){tabQuietSave=true;try{return persist(schedule);}finally{tabQuietSave=false;}}
+  function becomeTabReader(){
+    if(tabRole==='reader')return;tabRole='reader';
+    clearTimeout(persistSoonTimer);persistSoonTimer=0;persistSoonSince=0;clearTimeout(syncTimer);
+    var bar=byId('otherTabBar');
+    if(!bar){
+      bar=document.createElement('div');bar.id='otherTabBar';bar.className='other-tab-bar';bar.setAttribute('role','status');
+      bar.innerHTML='<span>Phloem is open in another tab, so changes here are not saved.</span><button type="button" id="otherTabUse">Use Phloem here</button>';
+      document.body.appendChild(bar);byId('otherTabUse').onclick=useTabHere;
+    }
+    document.body.classList.add('other-tab-open');
+  }
+  // After the edit's own message ("Passage highlighted"), so that is not what stays on screen.
+  function noteTabReadOnly(){
+    if(tabNoticeAt)return;tabNoticeAt=setTimeout(function(){
+      tabNoticeAt=0;showReaderToast('Not saved: Phloem is open in another tab');
+      var bar=byId('otherTabBar');if(bar){bar.classList.remove('nudge');void bar.offsetWidth;bar.classList.add('nudge');}
+    },0);
+  }
+  function claimTab(){
+    var asked=tabRole==='pending';tabRole='writer';setWriterMark(document.visibilityState==='hidden');tabChannel.postMessage({t:'claim',page:PAGE_ID});
+    if(tabSavesWaiting){var sync=tabSavesWaiting==='sync';tabSavesWaiting=false;persist(sync?undefined:false);}
+    // Syncs at startup were skipped while this tab asked.
+    if(asked)scheduleSync();
+  }
+  // Asked by a tab whose reader pressed "Use Phloem here": save everything, then step aside.
+  function yieldTab(){
+    flushPersistSoon(true);flushReadingLifecycle();flushStateSnapshot();
+    if(ownsWriterMark())try{localStorage.removeItem(WRITER_KEY);}catch(e){}
+    becomeTabReader();tabChannel.postMessage({t:'yielded',page:PAGE_ID});
+  }
+  function useTabHere(){
+    var button=byId('otherTabUse');if(button){button.disabled=true;button.textContent='Switching…';}
+    tabChannel.postMessage({t:'yield',page:PAGE_ID});
+    // A tab that is asleep or gone cannot answer; the mark makes it step aside when it wakes.
+    tabYieldTimer=setTimeout(finishUseHere,2500);
+  }
+  function finishUseHere(){clearTimeout(tabYieldTimer);tabYieldTimer=0;setWriterMark(true);location.reload();}
+  if(tabChannel){
+    tabChannel.onmessage=function(e){
+      var m=e.data||{};if(!m.page||m.page===PAGE_ID)return;
+      if(m.t==='hello'&&tabRole==='writer')tabChannel.postMessage({t:'here',page:PAGE_ID,idle:document.visibilityState==='hidden'});
+      else if(m.t==='here'&&tabRole==='pending')tabReplies.push(m);
+      // Two tabs that opened together both claim: the last mark written decides.
+      else if(m.t==='claim'&&tabRole==='writer'){if(ownsWriterMark())tabChannel.postMessage({t:'claim',page:PAGE_ID});else becomeTabReader();}
+      else if(m.t==='yield'&&tabRole==='writer')yieldTab();
+      else if(m.t==='yielded'&&tabYieldTimer)finishUseHere();
+    };
+    /* A tab takes over at once unless another tab's mark says it is in use: shown, and
+       fresh (a shown writer renews its mark every few seconds). A reload of this tab, a
+       writer in the background (it saved on hide) or one that closed leave no such mark.
+       Otherwise this tab asks. A writer that is shown answers at once; one that stays
+       silent may be busy, so this tab waits a little longer, then takes over: a tab that
+       closed without saying so cannot answer, and a busy one finds the new mark before
+       its next save. Saves wait while it asks. */
+    var otherInUse=function(){var mark=writerMark();return !!mark&&mark.page!==PAGE_ID&&mark.tab!==TAB_ID&&!mark.idle&&now()-(+mark.at||0)<WRITER_STALE;};
+    var decideTab=function(patient){
+      if(tabReplies.some(function(r){return !r.idle;}))becomeTabReader();
+      else if(!tabReplies.length&&otherInUse()&&!patient)setTimeout(function(){decideTab(true);},1600);
+      else claimTab();
+    };
+    if(!otherInUse())claimTab();
+    else{tabRole='pending';tabChannel.postMessage({t:'hello',page:PAGE_ID});setTimeout(function(){decideTab(false);},400);}
+    // The writer keeps its mark fresh while shown, marks it idle once hidden (everything is
+    // saved by then), and gives it up when the page closes.
+    setInterval(function(){if(tabRole==='writer'&&document.visibilityState==='visible'&&ownsWriterMark())setWriterMark(false);},WRITER_BEAT);
+    document.addEventListener('visibilitychange',function(){
+      if(tabRole!=='writer')return;
+      if(document.visibilityState==='hidden'){if(ownsWriterMark())setWriterMark(true);return;}
+      var mark=writerMark();if(mark&&mark.page!==PAGE_ID)becomeTabReader();else setWriterMark(false);
+    });
+    addEventListener('pagehide',function(e){if(tabRole!=='writer'||!ownsWriterMark())return;if(e.persisted)setWriterMark(true);else try{localStorage.removeItem(WRITER_KEY);}catch(err){}});
+    addEventListener('pageshow',function(e){if(!e.persisted||tabRole!=='writer')return;var mark=writerMark();if(mark&&mark.page!==PAGE_ID)becomeTabReader();else setWriterMark(false);});
+  }
   // Leaving a notebook text field saves its typing right away. Workspace notes are left out:
   // a Pencil stroke next to one blurs it, and that stroke should not wait on a save.
   document.addEventListener('focusout',function(e){var t=e.target;if(t&&t.matches&&t.matches('#pageNote,#selectionNote,[data-note-area],[data-review-response],textarea.excerpt-note'))flushPersistSoon(true);},true);
@@ -1160,7 +1265,7 @@
      second tab may have saved notes or reading preferences since this tab loaded; writing
      our whole in-memory chapter on pagehide would silently roll those newer fields back. */
   function flushReadingLifecycle(){
-    if(byId('readerPage').classList.contains('hidden'))return;
+    if(byId('readerPage').classList.contains('hidden')||tabMaySave(true)!=='yes')return;
     var ch=find(currentId);if(!ch)return;saveCurrentReadingPosition(false,false);
     var serialized='';
     try{
@@ -6255,11 +6360,11 @@
   }
   function savePdfReadingPosition(schedule,writeState){
     if(restoringPdfPosition)return false;var ch=find(currentId),position=stablePdfPositionForRebuild();if(!ch||ch.kind!=='pdf'||!position)return false;
-    ch.pdfPosition=position;ch.readPage=position.page;ch.readThroughPage=Math.max(+ch.readThroughPage||0,pagedPdfFlow()?pagedPageNos(currentPage).slice(-1)[0]:position.page);if(writeState!==false)persist(schedule);return true;
+    ch.pdfPosition=position;ch.readPage=position.page;ch.readThroughPage=Math.max(+ch.readThroughPage||0,pagedPdfFlow()?pagedPageNos(currentPage).slice(-1)[0]:position.page);if(writeState!==false)persistQuietly(schedule);return true;
   }
   function saveCurrentReadingPosition(schedule,writeState){
     var ch=find(currentId);if(!ch)return false;if(readerMode==='pdf')return savePdfReadingPosition(schedule,writeState);
-    var pane=byId('documentPane'),span=pane.scrollHeight-pane.clientHeight;ch.readerScroll=span>4?pane.scrollTop/span:0;if(writeState!==false)persist(schedule);return true;
+    var pane=byId('documentPane'),span=pane.scrollHeight-pane.clientHeight;ch.readerScroll=span>4?pane.scrollTop/span:0;if(writeState!==false)persistQuietly(schedule);return true;
   }
   function trackCurrentPage(){
     if(readerMode!=='pdf'||!pdfViews.length||pagedPdfFlow())return;
@@ -7994,7 +8099,7 @@
   };
   byId('savePaperDetails').onclick=function(){var ch=find(currentId);if(!ch)return;var title=byId('paperTitleEdit').value.trim()||'Untitled',authors=byId('paperAuthorsEdit').value.trim(),tags=byId('paperTagsEdit').value.split(',').map(function(t){return t.trim();}).filter(Boolean).filter(function(t,i,a){return a.indexOf(t)===i;}),edited=[];if(title!==ch.title){ch.titleEditedByUser=true;edited.push('title');}if(authors!==(ch.authors||''))edited.push('authors');if(tags.join('\n')!==(ch.tags||[]).join('\n'))edited.push('tags');ch.title=title;ch.authors=authors;ch.tags=tags;if(edited.length)stampFields(ch,edited);touch(ch);byId('readerTitle').textContent=ch.title;byId('readerMeta').textContent=ch.authors||ch.sourceName||'';byId('paperTags').value=ch.tags.join(', ');byId('paperDialog').close();if(readerMode==='text')renderText(ch);};
   async function removePaper(ch,leaveReader){
-    if(!ch)return false;var githubCopy=ch.sourcePath?' The PDF in your GitHub papers/ folder will stay there.':'';
+    if(!ch)return false;if(tabRole!=='writer'||tabMaySave()!=='yes'){noteTabReadOnly();return false;}var githubCopy=ch.sourcePath?' The PDF in your GitHub papers/ folder will stay there.':'';
     if(!confirm('Remove “'+(ch.title||'Untitled')+'” from Phloem? Its notes, highlights, reviewer work, and local original file will be removed.'+githubCopy))return false;
     state.deleted=state.deleted||{};state.deleted[ch.id]=now();state.chapters=state.chapters.filter(function(c){return c.id!==ch.id;});await deletePdf(ch.id);deleteFigures(ch.id);gdriveDeleteSource(ch);persist();
     if(currentId===ch.id){currentId=null;pdfDoc=null;}renderShelf();if(leaveReader)showPage('libraryPage');return true;
@@ -11209,7 +11314,7 @@
      skips the upload when nothing changed since. Both are in memory only: a relaunch
      merges in full once. */
   async function iCloudSync(interactive){
-    if(!iCloudOn())return;if(iCloudSyncing||penOnGlass()){scheduleSync();return;}iCloudSyncing=true;iCloudSetStatus('Checking your private iCloud library…','☁ iCloud · syncing');
+    if(!iCloudOn()||!tabMaySync())return;if(iCloudSyncing||penOnGlass()){scheduleSync();return;}iCloudSyncing=true;iCloudSetStatus('Checking your private iCloud library…','☁ iCloud · syncing');
     var plugin=iCloudPlugin(),sent=0,remoteOnly=0,paused=0;
     try{
       var account=await plugin.status();
@@ -11515,7 +11620,7 @@
     return removed;
   }
   async function gdriveSync(interactive,retried){
-    if(!gdriveOn())return;if(!interactive&&gdriveQuietUntil>now())return;if(gdriveSyncing||penOnGlass()){scheduleSync();return;}
+    if(!gdriveOn())return;if(!interactive&&gdriveQuietUntil>now())return;if(!tabMaySync())return;if(gdriveSyncing||penOnGlass()){scheduleSync();return;}
     /* The iPad bridge calls again after its region/account check. Do not fall back
        to browser OAuth while the native plugin is still becoming available. */
     if(window.PHLOEM_NATIVE&&!nativeGooglePlugin())return;
@@ -11704,7 +11809,7 @@
   var syncDecryptBlocked=false;
   async function doSync(force){
     force=force===true;
-    if(!syncCfg||syncing)return;syncing=true;syncUi('☁ syncing…');
+    if(!syncCfg||syncing||!tabMaySync())return;syncing=true;syncUi('☁ syncing…');
     try{
       /* Two devices reading at once constantly race each other's pushes: a stale sha
          makes GitHub answer 409 even though nothing is wrong. Take another lap — read

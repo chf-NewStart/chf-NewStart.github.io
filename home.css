@@ -173,6 +173,9 @@ body.has-bio-bg {
 }
 .hero-meta { margin-top: 28px; }
 .hero-hint { margin-top: 22px; color: var(--faint); font: 0.74rem var(--mono); }
+.hero-hint .hint-narrow { display: none; }
+/* Below this width the 🍅 lives in the menu and there is no Shift key. */
+@media (max-width: 1020px) { .hero-hint .hint-wide { display: none; } .hero-hint .hint-narrow { display: inline; } }
 .hero-hint kbd { font: inherit; padding: 1px 6px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); }
 
 .id-card { padding: 26px; border-radius: 28px; }

@@ -17,7 +17,12 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   (v212). Test: new `reading-workspace-scroll-mid-stroke` (fails on v241 in both engines). The 53 Workspace,
   ink, Zen iPad, Night light and two-tab suites pass in Chromium and WebKit except main's known failures
   (`reading-pdf-ink` 69/72, `reading-split-undo-browser`, `reading-workspace-paper-color`/`-edge`).
-  **iPad app:** 1.2.5 (49) bundles v240, so the app needs a new build for this; none made yet.
+  **iPad app: 1.2.6 (50) in TestFlight, not submitted (Houfu: "if so yea build").** Universal, reader **v242**,
+  commit 5b0095b2, archive `~/Library/Developer/Xcode/Archives/2026-10-23/Phloem 1.2.6 (50).xcarchive`, uploaded
+  with the API key: **VALID**, In Beta Testing for Internal Testers and friends2 (both get every build), with a What
+  to Test list; not sent to the external "friends" group. No 1.2.6 version record was created. 1.2.5 (49, v240)
+  stays Pending Developer Release, so pressing Release ships the version without this fix. App tests 22/22; not
+  checked in a simulator (no Pencil there; the change is web-only).
 
 - **Two tabs no longer overwrite each other, v241 (web; Houfu: "phloem should also work if i want to put 2 papers
   side by side idk", then "dont do this task if its gonna mess things up").** Each tab saved its whole in-memory library,
@@ -605,8 +610,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
-- **2026-10-23 v242:** a scroll of the Workspace paper no longer ends a pen or eraser stroke (see Now). Web only;
-  the iPad app needs a new build.
+- **2026-10-23 v242 + 1.2.6 (50):** a scroll of the Workspace paper no longer ends a pen or eraser stroke; build 50
+  bundles it, in TestFlight (internal groups), not submitted (see Now).
 
 - **2026-10-22 v241:** one tab saves; other tabs show a bar and save nothing (see Now). Side-by-side papers: plan only.
 

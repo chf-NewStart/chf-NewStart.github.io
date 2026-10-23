@@ -23,10 +23,12 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   tested, then set aside as the bigger change (local branch `phloem-two-tabs-merge`, not pushed).
   **Two papers side by side: plan only, not built** (see Open questions).
 
-- **1.2.5 (49) submitted, 2026-10-22 16:11 EDT (Houfu: "submit Phloem 1.2.5").** iPad + iPhone, reader v240, Waiting for
+- **1.2.5 (49) approved, waiting for Release (submitted 2026-10-22 16:11 EDT ; Houfu: "submit Phloem 1.2.5").** iPad + iPhone, reader v240, Waiting for
   Review (submission e7e06bc9), **manual release: press Release after approval**. Houfu edited the App Review notes
   himself (now 1.2.5 (build 49), "What's new in 1.2.5", providers line; 3,823 characters); Claude checked them by
   substring without reading the key back. If the reviewer key was not rotated before saving, rotate it after review.
+  **Approved: Pending Developer Release** (checked 2026-10-23 through the API). Nothing is public until Houfu presses
+  Release in App Store Connect, or tells Claude to release it.
 
 - **Listen resumes at the right sentence, v240 (web; Houfu, testing v239: "it jumps to the next sentence after i exit and
   enter listen mode").** Two causes: a long sentence is spoken in pieces (`MAX_CHUNK` = 240), so leaving inside it

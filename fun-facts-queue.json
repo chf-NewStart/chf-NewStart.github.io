@@ -1,12 +1,6 @@
 [
   {
     "tag": "PHYSICS",
-    "title": "You never actually touch anything",
-    "fact": "When you press your hand on a table, electromagnetic repulsion between electron clouds stops a real 'touch' from ever occurring — you hover at about a nanometre's gap and feel a force field as contact.",
-    "detail": "That nanometre gap is why a gecko can cling to glass: its toe pads exploit the same electromagnetic attraction, van der Waals forces, at millions of contact points."
-  },
-  {
-    "tag": "PHYSICS",
     "title": "Earth is smoother than a billiard ball",
     "fact": "Earth's tallest mountains and deepest trenches are within about 0.3% of its radius — proportionally smoother than a standard billiard ball's allowed tolerance. Everest and the Mariana Trench barely dent the curve.",
     "detail": "If Earth were shrunk to a globe in your hand, you would not feel the Himalayas; you might feel nothing at all. Its imperfections matter only at planetary scale."

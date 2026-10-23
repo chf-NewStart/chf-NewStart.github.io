@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "PHYSICS",
+            title: "You never actually touch anything",
+            fact: "When you press your hand on a table, electromagnetic repulsion between electron clouds stops a real 'touch' from ever occurring — you hover at about a nanometre's gap and feel a force field as contact.",
+            detail: "That nanometre gap is why a gecko can cling to glass: its toe pads exploit the same electromagnetic attraction, van der Waals forces, at millions of contact points."
+        },
+        {
+            tag: "PHYSICS",
             title: "Water is weirdest at 4 °C",
             fact: "Water reaches maximum density at about 4 °C, so lakes freeze from the top down: ice floats, insulating the water below, and fish survive under the ice. Almost any other liquid would freeze solid from the bottom up, killing its ecosystem.",
             detail: "Hydrogen bonds lock ice into a lattice that holds molecules farther apart than the liquid — about 9% less dense. Life in lakes depends on that small number."

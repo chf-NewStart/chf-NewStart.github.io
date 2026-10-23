@@ -1227,7 +1227,11 @@
     ['pointerup', 'pointercancel'].forEach(type => document.addEventListener(type, event => {
       if (!gesture || gesture.kind !== 'pinch') cardTouches.delete(event.pointerId);
     }));
-    scroll.addEventListener('scroll', () => { if (gesture && performance.now() - manualCardScrollAt > 100) cancel(); }, { passive: true }); global.addEventListener('resize', cancel); global.addEventListener('blur', cancel); global.addEventListener('pagehide', cancel);
+    // A scroll ends a drag or lasso, whose geometry was measured at its start. A pen or eraser
+    // stroke keeps going: each sample is placed through the board's live position. On the iPad
+    // the end of a finger flick, or a resting palm, scrolled the paper just after the Pencil
+    // touched down, and the writing stopped until the Pencil was lifted.
+    scroll.addEventListener('scroll', () => { if (gesture && gesture.kind !== 'stroke' && performance.now() - manualCardScrollAt > 100) cancel(); }, { passive: true }); global.addEventListener('resize', cancel); global.addEventListener('blur', cancel); global.addEventListener('pagehide', cancel);
     document.addEventListener('pointerdown', event => { pointerLastInPanel = panel.contains(event.target); }, true);
     const ownsKey = event => panel.contains(event.target)
       || ((event.target === document.body || event.target === document.documentElement) && pointerLastInPanel);

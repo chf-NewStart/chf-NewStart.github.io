@@ -378,6 +378,11 @@ feedback): the stroke being written draws in its own layer above the saved ink, 
 adds one path without re-reading every saved stroke, and the eraser tests only nearby
 strokes yet erases exactly the one it crosses. Run with `PHLOEM_BROWSER=webkit` too.
 
+`reading-workspace-scroll-mid-stroke.test.js` covers writing while the Workspace paper scrolls
+under the Pencil (the end of a flick, a resting palm): the stroke keeps going, the samples after
+the scroll land on the paper under the Pencil, the whole line saves, and an eraser sweep keeps
+erasing across a scroll. Run with `PHLOEM_BROWSER=webkit` too.
+
 `reading-workspace-dark-ink.test.js` covers Workspace ink in the dark theme: the black pen
 writes and shows white on the dark sheet (its swatch reads "White ink") and the same
 handwriting is black again in the light theme. It is still saved as black, so older app

@@ -4,7 +4,20 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-10-21)
+## Now (2026-10-23)
+
+- **Workspace writing no longer stops mid-line, v242 (web; Houfu: "sometimes i write in workplace mode, the writing
+  will stop, then once i lift the pencil and write again, it will be back to normal").** Any scroll of the Workspace
+  paper ended the gesture in progress, pen strokes included: the line vanished and the Pencil drew nothing until it
+  was lifted. On the iPad the end of a finger flick, or a resting palm, scrolls the paper a little just after the
+  Pencil touches down. Pen and eraser strokes now keep going through a scroll; each sample is placed through the
+  board's live position, so it lands on the paper under the Pencil. Drags, lasso and pinch still end on a scroll.
+  **Not reproduced on a device** (the iOS Simulator has no Pencil): the cause is read from the code, as the everyday
+  event that ended a stroke while the Pencil stayed down. A system pointercancel still drops the stroke, deliberately
+  (v212). Test: new `reading-workspace-scroll-mid-stroke` (fails on v241 in both engines). The 53 Workspace,
+  ink, Zen iPad, Night light and two-tab suites pass in Chromium and WebKit except main's known failures
+  (`reading-pdf-ink` 69/72, `reading-split-undo-browser`, `reading-workspace-paper-color`/`-edge`).
+  **iPad app:** 1.2.5 (49) bundles v240, so the app needs a new build for this; none made yet.
 
 - **Two tabs no longer overwrite each other, v241 (web; Houfu: "phloem should also work if i want to put 2 papers
   side by side idk", then "dont do this task if its gonna mess things up").** Each tab saved its whole in-memory library,
@@ -591,6 +604,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-10-23 v242:** a scroll of the Workspace paper no longer ends a pen or eraser stroke (see Now). Web only;
+  the iPad app needs a new build.
 
 - **2026-10-22 v241:** one tab saves; other tabs show a bar and save nothing (see Now). Side-by-side papers: plan only.
 

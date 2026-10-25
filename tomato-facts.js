@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "KITCHEN SCIENCE",
+            title: "Garlic's burn is a chemical trap",
+            fact: "Intact garlic is odorless. Crushing breaks cell walls and mixes an enzyme with a precursor to build allicin — the molecule behind the sting, the breath, and most of the folklore. Cooking deactivates the enzyme, which is why roasted garlic is sweet and mellow.",
+            detail: "Allicin exists to wound: it irritates microbes and herbivores alike. Chopping garlic finer means more allicin, so the recipe's knife work is really a dose dial."
+        },
+        {
             tag: "PHYSICS",
             title: "Earth is smoother than a billiard ball",
             fact: "Earth's tallest mountains and deepest trenches are within about 0.3% of its radius — proportionally smoother than a standard billiard ball's allowed tolerance. Everest and the Mariana Trench barely dent the curve.",

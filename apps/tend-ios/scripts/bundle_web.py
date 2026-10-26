@@ -7,7 +7,7 @@ native = Path(__file__).resolve().parents[1]
 source = native.parents[1] / "focus"
 destination = native / "Web"
 destination.mkdir(parents=True, exist_ok=True)
-files = ["index.html", "core.js", "app.js", "style.css", "theme.css", "icon.svg", "icon-192.png", "icon-512.png", "tomato-button.png", "manifest.webmanifest",
+files = ["index.html", "core.js", "app.js", "style.css", "theme.css", "theme.js", "icon.svg", "icon-192.png", "icon-512.png", "tomato-button.png", "manifest.webmanifest",
          "fonts/dm-sans-var-latin.woff2", "fonts/ibm-plex-mono-400-latin.woff2", "fonts/ibm-plex-mono-500-latin.woff2",
          "fonts/OFL-DM-Sans.txt", "fonts/OFL-IBM-Plex-Mono.txt"]
 for filename in files:

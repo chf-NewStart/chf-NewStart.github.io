@@ -6,24 +6,9 @@
   const native = !!window.TEND_NATIVE;
   const post = (action, payload = {}) => window.webkit?.messageHandlers?.tend?.postMessage({ action, ...payload });
   let state, view = 'focus', quiet = false, reviewId = null, restoredBackup = null;
-  let audio = null, wakeLock = null, wakeRequested = false, toastTimeout, lastTick = '';
+  let audio = null, alarm = null, wakeLock = null, wakeRequested = false, toastTimeout, lastTick = '', discardArmed = 0;
   let notificationPermission = 'notDetermined';
-  const tips = [
-    { title: 'Keep one question in view.', body: 'Make this interval small enough to finish with a clearer understanding. You can choose the next question afterward.', source: 1, credit: 'Adapted from Deep Work · Cal Newport' },
-    { title: 'Choose a stopping point.', body: 'A useful note, one assumption understood, or a clearer question can be enough for this interval.', source: 1, credit: 'Our research prompt, inspired by Deep Work' },
-    { title: 'An interesting idea can wait.', body: 'If you drift, make a short note and return to the task you chose. The note gives the idea somewhere to stay.', source: 4, credit: 'An adaptation of if–then planning · Gollwitzer & Sheeran' },
-    { title: 'Leave room for a break.', body: 'Step away and notice what recovery you need. Short breaks may help with energy and fatigue; demanding work can need longer.', source: 5, credit: 'Paraphrased from the break research · Albulescu et al.' },
-    { title: 'Give one result some room.', body: 'Keep this week’s intended result concrete. Let fewer simultaneous commitments have more of your attention.', source: 2, credit: 'Adapted from Slow Productivity · Cal Newport' },
-    { title: 'Leave yourself a thread.', body: 'Before you stop, write the next small action. You’ll have a place to begin when you return.', source: 3, credit: 'Our reflection prompt, inspired by the Pomodoro method' }
-  ];
-  let tipIndex = Math.floor(Math.random() * tips.length);
-  function showTip(next = false) {
-    if (next) tipIndex = (tipIndex + 1 + Math.floor(Math.random() * (tips.length - 1))) % tips.length;
-    const tip = tips[tipIndex];
-    $('tip-title').textContent = tip.title; $('tip-copy').textContent = tip.body; $('tip-attribution').textContent = tip.credit;
-    $('tip-source-link').href = '#source-' + tip.source;
-    if (!$('tip-dialog').open) $('tip-dialog').showModal();
-  }
+  const CHIME_LEVEL = .13, LATE_CHIME_MS = native ? 2000 : 90000, canNotify = !native && 'Notification' in window;
   try {
     const stored = native ? window.TEND_INITIAL_STATE : localStorage.getItem(KEY);
     state = stored ? C.restore(stored) : C.createState();
@@ -48,18 +33,48 @@
   const uid = () => window.crypto?.randomUUID?.() || Date.now() + '-' + Math.random().toString(36).slice(2);
   function syncField(id, value) { if (document.activeElement !== $(id) && $(id).value !== value) $(id).value = value; }
   function audioReady() {
-    try { const Audio = window.AudioContext || window.webkitAudioContext; if (!audio && Audio) audio = new Audio(); if (audio?.state === 'suspended') audio.resume().catch(() => {}); } catch (_) { /* Sound is optional. */ }
+    try {
+      const Audio = window.AudioContext || window.webkitAudioContext; if (!audio && Audio) audio = new Audio();
+      if (audio?.state === 'running') scheduleAlarm(); else audio?.resume().then(scheduleAlarm, () => {});
+    } catch (_) { /* Sound is optional. */ }
+  }
+  function tones(at, peak) {
+    // Two soft notes, then the pair again a little quieter.
+    return [[0, 523.25, 1], [.28, 660, 1], [1.6, 523.25, .7], [1.88, 660, .7]].map(([delay, frequency, level]) => {
+      const oscillator = audio.createOscillator(), gain = audio.createGain(), start = at + delay;
+      oscillator.type = 'sine'; oscillator.frequency.value = frequency; gain.gain.setValueAtTime(0, start);
+      if (peak) { gain.gain.linearRampToValueAtTime(peak * level, start + .02); gain.gain.exponentialRampToValueAtTime(.001, start + .75); }
+      oscillator.connect(gain); gain.connect(audio.destination); oscillator.start(start); oscillator.stop(start + .8);
+      return oscillator;
+    });
   }
   function chime() {
-    if (!state.settings.sound || !audio || document.hidden) return;
+    if (!state.settings.sound || audio?.state !== 'running') return;
+    try { tones(audio.currentTime, CHIME_LEVEL); } catch (_) { /* A missing chime does not affect the timer. */ }
+  }
+  // The chime is scheduled ahead on the audio clock, which keeps time in a background tab while page timers are
+  // throttled. Its first note also wakes the page (silently when sound is off) to show the reflection on time.
+  function cancelAlarm(stopNodes = true) {
+    if (alarm && stopNodes) alarm.nodes.forEach(node => { try { node.onended = null; node.stop(); node.disconnect(); } catch (_) { /* Already finished. */ } });
+    alarm = null;
+  }
+  function scheduleAlarm() {
+    const timer = state.timer;
+    if (timer.status !== 'running' || audio?.state !== 'running') { cancelAlarm(); return; }
+    const key = [timer.id, timer.phase, timer.endAt, state.settings.sound].join('|'), at = audio.currentTime + C.remaining(timer) / 1000;
+    if (alarm && alarm.key === key && Math.abs(alarm.at - at) < .5) return;
+    cancelAlarm();
     try {
-      [0, .28].forEach((delay, i) => {
-        const oscillator = audio.createOscillator(), gain = audio.createGain(), start = audio.currentTime + delay;
-        oscillator.type = 'sine'; oscillator.frequency.value = i ? 660 : 523.25;
-        gain.gain.setValueAtTime(0, start); gain.gain.linearRampToValueAtTime(.13, start + .02); gain.gain.exponentialRampToValueAtTime(.001, start + .75);
-        oscillator.connect(gain); gain.connect(audio.destination); oscillator.start(start); oscillator.stop(start + .8);
-      });
-    } catch (_) { /* A missing chime does not affect the timer. */ }
+      alarm = { key, timer: timer.id + timer.phase + timer.endAt, at, nodes: tones(at, state.settings.sound ? CHIME_LEVEL : 0) };
+      alarm.nodes[0].onended = () => reconcile();
+    } catch (_) { alarm = null; }
+  }
+  function notice(phase, late) {
+    if (!canNotify || !state.settings.notify || late > 5 * C.MINUTE || Notification.permission !== 'granted' || document.hasFocus()) return;
+    const title = phase === 'break' ? 'A little room to begin again' : 'A moment to gather';
+    const options = { body: phase === 'break' ? 'Your break has finished. Return when you’re ready.' : 'Your focus interval has finished. Leave yourself a thread for next time.', icon: 'icon-192.png', tag: 'tend-session' };
+    try { const note = new Notification(title, options); note.onclick = () => { window.focus(); note.close(); }; }
+    catch (_) { navigator.serviceWorker?.ready.then(registration => registration.showNotification(title, options)).catch(() => {}); }
   }
   async function syncWakeLock() {
     if (native) return;
@@ -74,10 +89,14 @@
   function reconcile() {
     const next = C.advance(state);
     if (next !== state) {
-      const wasBreak = state.timer.phase === 'break'; commit(next); chime(); post('feedback');
-      if (wasBreak) toast('Break finished. Begin again when you’re ready.');
+      const ended = state.timer, late = Date.now() - ended.endAt;
+      const rang = !!alarm && alarm.timer === ended.id + ended.phase + ended.endAt && alarm.at <= audio.currentTime + .05;
+      cancelAlarm(!rang); commit(next); post('feedback');
+      if (!rang && late < LATE_CHIME_MS) chime();
+      notice(ended.phase, late);
+      if (ended.phase === 'break') toast('Break finished. Begin again when you’re ready.');
     }
-    renderTimer();
+    scheduleAlarm(); renderTimer();
   }
   function renderTimer() {
     const timer = state.timer, isBreak = timer.phase === 'break', reviewing = timer.status === 'review';
@@ -87,14 +106,10 @@
     if (signature !== lastTick) {
       $('timer-display').textContent = time;
       $('timer-display').setAttribute('aria-label', Math.floor(totalSeconds / 60) + ' minutes and ' + totalSeconds % 60 + ' seconds remaining');
-      document.title = timer.status === 'running' || timer.status === 'paused' ? time + ' · ' + (isBreak ? 'Breathe' : 'Focus') + ' — Tend' : 'Tend — a little room to focus';
+      document.title = timer.status === 'running' ? time + ' · ' + (isBreak ? 'Breathe' : 'Focus') + ' — Tend' : timer.status === 'paused' ? time + ' · Paused — Tend' : reviewing ? '✓ Time to reflect — Tend' : 'Tend — a little room to focus';
       lastTick = signature;
     }
     $('ring-progress').style.strokeDashoffset = String(100 * (1 - ms / timer.durationMs));
-    const angle = 2 * Math.PI * ms / timer.durationMs - Math.PI / 2;
-    $('progress-dot').setAttribute('cx', String(160 + 137 * Math.cos(angle)));
-    $('progress-dot').setAttribute('cy', String(160 + 137 * Math.sin(angle)));
-    document.body.classList.toggle('timer-running', timer.status === 'running');
     $('timer-kind').textContent = isBreak ? 'A LITTLE BREATHING ROOM' : 'FOCUS SESSION';
     $('timer-state').textContent = reviewing ? 'READY TO REFLECT' : timer.status === 'paused' ? 'PAUSED' : isBreak ? 'TAKE A BREATH' : timer.status === 'running' ? 'STAY WITH THIS' : 'SETTLE IN';
     $('timer-caption').textContent = reviewing ? 'leave yourself a thread' : isBreak ? 'look away, stretch, get some water' : 'one question at a time';
@@ -126,8 +141,9 @@
   }
   function renderSessions() {
     const today = state.sessions.filter(item => C.localDate(item.endedAt) === C.localDate());
-    $('today-sessions').textContent = today.length;
-    $('today-minutes').textContent = Math.round(today.reduce((sum, item) => sum + item.durationMs, 0) / C.MINUTE);
+    const todayMinutes = Math.round(today.reduce((sum, item) => sum + item.durationMs, 0) / C.MINUTE);
+    $('today-sessions').textContent = today.length; $('today-sessions-word').textContent = today.length === 1 ? 'session' : 'sessions';
+    $('today-minutes').textContent = todayMinutes; $('today-minutes-word').textContent = todayMinutes === 1 ? 'minute' : 'minutes';
     const week = C.weekSessions(state.sessions), start = C.weekStart(), chart = $('week-chart');
     const days = Array.from({ length: 7 }, (_, i) => { const date = new Date(start); date.setDate(date.getDate() + i); return date; });
     const minutes = days.map(date => week.filter(item => C.localDate(item.endedAt) === C.localDate(date)).reduce((sum, item) => sum + item.durationMs, 0) / C.MINUTE);
@@ -139,7 +155,7 @@
       day.title = date.toLocaleDateString(undefined, { weekday: 'long' }) + ': ' + Math.round(minutes[i]) + ' minutes'; day.append(bar, label); return day;
     }));
     chart.setAttribute('aria-label', days.map((date, i) => date.toLocaleDateString(undefined, { weekday: 'long' }) + ' ' + Math.round(minutes[i]) + ' minutes').join(', '));
-    $('week-summary').textContent = week.length ? week.length + (week.length === 1 ? ' session · ' : ' sessions · ') + Math.round(minutes.reduce((a, b) => a + b, 0)) + ' minutes recorded. A thread you’re building.' : 'Your first session belongs here.';
+    $('week-summary').textContent = week.length ? C.plural(week.length, 'session') + ' · ' + C.plural(Math.round(minutes.reduce((a, b) => a + b, 0)), 'minute') + ' recorded. A thread you’re building.' : 'Your first session belongs here.';
     const container = $('session-list'); container.replaceChildren();
     if (!state.sessions.length) {
       const empty = document.createElement('div'); empty.className = 'session-empty';
@@ -170,7 +186,7 @@
     if (reviewId !== state.pending.id) {
       $('learned').value = state.pending.learned; $('stuck').value = state.pending.stuck; $('next').value = state.pending.next; reviewId = state.pending.id;
     }
-    $('review-summary').textContent = (state.pending.completed ? 'Interval finished' : 'Session ended early') + ' · ' + Math.round(state.pending.durationMs / C.MINUTE) + ' minutes recorded. ' + state.pending.question;
+    $('review-summary').textContent = (state.pending.completed ? 'Interval finished' : 'Session ended early') + ' · ' + C.plural(Math.round(state.pending.durationMs / C.MINUTE), 'minute') + ' recorded. ' + state.pending.question;
     if (!$('review-dialog').open) $('review-dialog').showModal();
   }
   function render() {
@@ -178,6 +194,7 @@
     const locked = state.timer.phase === 'focus' && state.timer.status !== 'idle';
     syncField('question', locked ? state.timer.task.question : state.task.question); syncField('finish', locked ? state.timer.task.finish : state.task.finish);
     $('question').disabled = locked; $('finish').disabled = locked;
+    document.querySelector('label[for=question]').textContent = locked ? 'Your question for this session' : 'What’s your one question or task?';
     syncField('weekly-plan', state.plan);
     const editable = state.timer.status === 'idle' && state.timer.phase === 'focus';
     document.querySelectorAll('[data-focus]').forEach(button => { button.disabled = !editable; button.setAttribute('aria-pressed', String(Number(button.dataset.focus) === state.settings.focus && Number(button.dataset.break) === state.settings.short)); });
@@ -188,7 +205,8 @@
     [...$('cycle').children].forEach((dot, i) => dot.classList.toggle('filled', i < dots));
     $('cycle').setAttribute('aria-label', dots + ' of 4 full sessions toward a longer break');
     $('sound-toggle').checked = state.settings.sound; $('awake-toggle').checked = state.settings.keepAwake;
-    renderThoughts(); renderSessions(); syncWakeLock();
+    $('notify-toggle').checked = canNotify && state.settings.notify && Notification.permission === 'granted';
+    renderThoughts(); renderSessions(); syncWakeLock(); scheduleAlarm();
     if (state.pending) showReview(); else if ($('review-dialog').open) $('review-dialog').close();
   }
   function changeView(next, updateHash = true) {
@@ -218,8 +236,10 @@
     if (state.pending) { showReview(); return; }
     if (state.timer.status === 'running') commit(C.pause(state));
     else {
-      if (state.timer.phase === 'focus' && !state.task.question.trim()) { $('question').focus(); toast('Choose one question or task to begin.'); return; }
+      if (state.timer.phase === 'focus' && !state.task.question.trim()) { $('start-question').value = ''; $('start-dialog').showModal(); $('start-question').focus(); return; }
       commit(C.start(state, Date.now(), uid()));
+      // iOS asks once, the first time a focus session starts: reminders are how a locked phone hears the end.
+      if (native && state.timer.phase === 'focus' && notificationPermission === 'notDetermined') post('enableNotifications');
     }
   }
   function finishReview(takeBreak) {
@@ -250,9 +270,6 @@
   $('later-more').addEventListener('click', () => { changeView('notebook'); $('later-all').scrollIntoView({ block: 'center' }); });
   document.querySelectorAll('[data-focus]').forEach(button => button.addEventListener('click', () => commit(C.setRhythm(state, Number(button.dataset.focus), Number(button.dataset.break)))));
   $('custom-rhythm').addEventListener('click', openSettings); $('settings-open').addEventListener('click', openSettings);
-  $('tomato-tip').addEventListener('click', () => showTip());
-  $('next-tip').addEventListener('click', () => showTip(true));
-  $('tip-source-link').addEventListener('click', () => $('tip-dialog').close());
   $('rhythm-form').addEventListener('submit', event => {
     event.preventDefault(); if (!$('rhythm-form').reportValidity()) return;
     commit(C.setRhythm(state, Number($('setting-focus').value), Number($('setting-short').value), Number($('setting-long').value)));
@@ -260,8 +277,28 @@
   });
   $('sound-toggle').addEventListener('change', () => { audioReady(); commit({ ...state, settings: { ...state.settings, sound: $('sound-toggle').checked } }); });
   $('awake-toggle').addEventListener('change', () => commit({ ...state, settings: { ...state.settings, keepAwake: $('awake-toggle').checked } }));
+  $('notify-toggle').addEventListener('change', async () => {
+    let on = $('notify-toggle').checked;
+    if (on && Notification.permission !== 'granted') {
+      try { on = await Notification.requestPermission() === 'granted'; } catch (_) { on = false; }
+      if (!on) toast('Notifications are blocked for this site. Allow them in your browser’s site settings.');
+    }
+    commit({ ...state, settings: { ...state.settings, notify: on } });
+  });
   $('review-form').addEventListener('submit', event => { event.preventDefault(); audioReady(); finishReview(true); });
   $('review-save-close').addEventListener('click', () => finishReview(false));
+  $('review-discard').addEventListener('click', () => {
+    if (Date.now() - discardArmed > 4000) {
+      discardArmed = Date.now(); $('review-discard').textContent = 'Press again to discard it';
+      setTimeout(() => { if (Date.now() - discardArmed >= 4000) $('review-discard').textContent = 'Don’t save this session'; }, 4100); return;
+    }
+    discardArmed = 0; $('review-discard').textContent = 'Don’t save this session';
+    commit(C.discardReview(state)); reviewId = null; toast('Session not saved. Your question is still here.');
+  });
+  $('start-form').addEventListener('submit', event => {
+    event.preventDefault(); const question = $('start-question').value.trim(); if (!question) { $('start-question').focus(); return; }
+    $('start-dialog').close(); commit({ ...state, task: { ...state.task, question } }); toggleTimer();
+  });
   $('review-dialog').addEventListener('cancel', event => event.preventDefault());
   $('quiet-open').addEventListener('click', () => setQuiet(true)); $('quiet-close').addEventListener('click', () => setQuiet(false));
   document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));
@@ -311,8 +348,10 @@
   document.addEventListener('visibilitychange', () => { reconcile(); syncWakeLock(); });
   window.addEventListener('tend-resume', () => { reconcile(); if (native) post('notificationStatus'); });
   window.addEventListener('pagehide', persist);
+  // After a reload mid-session, the first touch or key lets the chime play again.
+  ['pointerdown', 'keydown'].forEach(type => document.addEventListener(type, () => { if (state.timer.status === 'running') audioReady(); }, true));
   $('today-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-  $('native-reminders').hidden = !native; $('web-timer-note').hidden = native;
+  $('native-reminders').hidden = !native; $('web-timer-note').hidden = native; $('notify-row').hidden = !canNotify;
   const hash = location.hash.slice(1); changeView(hash.startsWith('source-') ? 'sources' : hash, false);
   render(); if (native) { post('ready'); persist(); }
   if (hash.startsWith('source-')) requestAnimationFrame(() => $(hash)?.scrollIntoView());

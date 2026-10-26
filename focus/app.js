@@ -191,10 +191,10 @@
   }
   function render() {
     renderTimer();
-    const locked = state.timer.phase === 'focus' && state.timer.status !== 'idle';
-    syncField('question', locked ? state.timer.task.question : state.task.question); syncField('finish', locked ? state.timer.task.finish : state.task.finish);
+    const inSession = state.timer.phase === 'focus' && state.timer.status !== 'idle', locked = inSession && state.timer.status === 'review';
+    syncField('question', inSession ? state.timer.task.question : state.task.question); syncField('finish', inSession ? state.timer.task.finish : state.task.finish);
     $('question').disabled = locked; $('finish').disabled = locked;
-    document.querySelector('label[for=question]').textContent = locked ? 'Your question for this session' : 'What’s your one question or task?';
+    document.querySelector('label[for=question]').textContent = inSession ? 'Your question for this session' : 'What’s your one question or task?';
     syncField('weekly-plan', state.plan);
     const editable = state.timer.status === 'idle' && state.timer.phase === 'focus';
     document.querySelectorAll('[data-focus]').forEach(button => { button.disabled = !editable; button.setAttribute('aria-pressed', String(Number(button.dataset.focus) === state.settings.focus && Number(button.dataset.break) === state.settings.short)); });
@@ -257,8 +257,17 @@
     if (state.timer.phase === 'break' && state.timer.status === 'idle') commit({ ...state, timer: C.setRhythm(C.createState(), state.settings.focus, state.settings.short, state.settings.long).timer });
     else commit(C.endEarly(state));
   });
-  $('question').addEventListener('input', () => commit({ ...state, task: { ...state.task, question: $('question').value } }, false));
-  $('finish').addEventListener('input', () => commit({ ...state, task: { ...state.task, finish: $('finish').value } }, false));
+  // Both fields stay editable mid-session (a stopping point often comes once you've started); the edit goes into the
+  // session's own copy too, so the reflection records it. A session's question can be reworded but never emptied.
+  function editTask(field, value) {
+    let next = { ...state, task: { ...state.task, [field]: value } };
+    const live = state.timer.phase === 'focus' && ['running', 'paused'].includes(state.timer.status);
+    if (live && (field === 'finish' || value.trim())) next = { ...next, timer: { ...next.timer, task: { ...next.timer.task, [field]: field === 'question' ? value.trim() : value } } };
+    commit(next, false);
+  }
+  $('question').addEventListener('input', () => editTask('question', $('question').value));
+  $('finish').addEventListener('input', () => editTask('finish', $('finish').value));
+  $('question').addEventListener('blur', () => syncField('question', state.timer.phase === 'focus' && state.timer.status !== 'idle' ? state.timer.task.question : state.task.question));
   $('weekly-plan').addEventListener('input', () => commit({ ...state, plan: $('weekly-plan').value }, false));
   ['learned', 'stuck', 'next'].forEach(id => $(id).addEventListener('input', () => { if (state.pending) commit({ ...state, pending: { ...state.pending, [id]: $(id).value } }, false); }));
   $('later-form').addEventListener('submit', event => {

@@ -59,7 +59,10 @@ SCENES = [
 def run(*args, check=True):
     return subprocess.run(['xcrun', 'simctl', *args], check=check, capture_output=True, text=True)
 if app: run('install', udid, app)
-run('status_bar', udid, 'override', '--time', '9:41', '--batteryState', 'charged', '--batteryLevel', '100', '--wifiBars', '3', '--cellularBars', '4', check=False)
+# --time goes last and alone: simctl shows the wrong weekday when any other override follows or joins it (Xcode 27).
+run('status_bar', udid, 'clear', check=False)
+run('status_bar', udid, 'override', '--batteryState', 'charged', '--batteryLevel', '100', '--wifiBars', '3', '--cellularBars', '4', check=False)
+run('status_bar', udid, 'override', '--time', thursday.isoformat(timespec='milliseconds'), check=False)  # ISO with milliseconds also sets the date
 for name, seed, script in SCENES:
     run('terminate', udid, 'com.houfu72.tend', check=False)
     # Hide the scrollbar flash and the caret so every shot is clean.

@@ -38,6 +38,16 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Log
 
+- 2026-10-26 01:35 — Claude Code, **the pixel look** (Houfu: "cooler like pixelated"), live on the web. A layer over
+  Codex's dark palette, in two new files so `theme.css`/`theme.js` and `app.js` stay as they were: `focus/pixel.css` and
+  `focus/pixel.js`. Plank Pixel (`focus/fonts/plank-pixel.woff`, Houfu's own 5×7 font copied from
+  `lifegame/game/plank-pixel.woff`) for the timer, headings and the Start key; sizes in tens of px keep cells crisp.
+  The smooth ring is replaced by a midpoint-circle ring of 96 blocks that empties clockwise from 12 o'clock (the
+  leading block blinks), the colon blinks while running, and a 16×14 pixel tomato in the dial ripens from green to
+  red as the interval passes (`--ripe`, mixed in OKLCH so it goes through orange, not brown). Notched pixel edges on
+  cards, keys and dialogs, a faint 8 px grid and scanlines, square pips and switches, today's sessions as tiny
+  tomatoes. New pixel icons (favicon, PWA, iOS AppIcon, no alpha). The chime is a soft 8-bit C–E–G–C arpeggio on a
+  triangle wave. Tests: 16/16 unit, 69 browser checks (Chromium + WebKit, 375–1920 px, no sideways scroll).
 - 2026-10-26 — Codex: read Claude’s completed web fixes and new ownership split, preserved all behavior files and layout fixes, and isolated the new design in `theme.css` / `theme.js`. Integrated the web design on `main`; PR #79 holds the requested iOS appearance and offline-asset changes for Claude’s release work.
 
 - 2026-10-26 01:10 — Claude Code, web fixes (tests: `node --test tests/focus-timer.test.cjs` 16/16; a Playwright pass in

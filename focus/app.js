@@ -8,7 +8,7 @@
   let state, view = 'focus', quiet = false, reviewId = null, restoredBackup = null;
   let audio = null, alarm = null, wakeLock = null, wakeRequested = false, toastTimeout, lastTick = '', discardArmed = 0;
   let notificationPermission = 'notDetermined';
-  const CHIME_LEVEL = .13, LATE_CHIME_MS = native ? 2000 : 90000, canNotify = !native && 'Notification' in window;
+  const CHIME_LEVEL = .16, LATE_CHIME_MS = native ? 2000 : 90000, canNotify = !native && 'Notification' in window;
   try {
     const stored = native ? window.TEND_INITIAL_STATE : localStorage.getItem(KEY);
     state = stored ? C.restore(stored) : C.createState();
@@ -39,12 +39,12 @@
     } catch (_) { /* Sound is optional. */ }
   }
   function tones(at, peak) {
-    // Two soft notes, then the pair again a little quieter.
-    return [[0, 523.25, 1], [.28, 660, 1], [1.6, 523.25, .7], [1.88, 660, .7]].map(([delay, frequency, level]) => {
+    // A soft 8-bit arpeggio (C E G C on a triangle wave, like an old console), then once more, quieter.
+    return [0, 1.25].flatMap((pass, round) => [523.25, 659.25, 783.99, 1046.5].map((frequency, i) => [pass + i * .11, frequency, round ? .6 : 1])).map(([delay, frequency, level]) => {
       const oscillator = audio.createOscillator(), gain = audio.createGain(), start = at + delay;
-      oscillator.type = 'sine'; oscillator.frequency.value = frequency; gain.gain.setValueAtTime(0, start);
-      if (peak) { gain.gain.linearRampToValueAtTime(peak * level, start + .02); gain.gain.exponentialRampToValueAtTime(.001, start + .75); }
-      oscillator.connect(gain); gain.connect(audio.destination); oscillator.start(start); oscillator.stop(start + .8);
+      oscillator.type = 'triangle'; oscillator.frequency.value = frequency; gain.gain.setValueAtTime(0, start);
+      if (peak) { gain.gain.linearRampToValueAtTime(peak * level, start + .01); gain.gain.exponentialRampToValueAtTime(.001, start + .3); }
+      oscillator.connect(gain); gain.connect(audio.destination); oscillator.start(start); oscillator.stop(start + .32);
       return oscillator;
     });
   }

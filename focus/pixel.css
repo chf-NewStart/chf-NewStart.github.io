@@ -1,0 +1,89 @@
+/* Tend's pixel look, layered over theme.css. Plank Pixel is Houfu's own 5×7 font from the lifegame arcade
+   (lifegame/scripts/build-plank-font.py). A cell is a tenth of the font size, so sizes in tens of px stay crisp. */
+@font-face{font-family:'Plank Pixel';src:url('fonts/plank-pixel.woff') format('woff');font-display:block}
+:root{--paper:#040706;--white:#0a0f0d;--ink:#f4efdc;--muted:#8f9a92;--line:#1d2924;--edge:#26352e;--tomato:#ff5a43;--tomato-deep:#b8321f;--unripe:#7fd35e;--unripe-deep:#4b913a;--gold:#ffd65c;--px:'Plank Pixel',var(--mono)}
+body{background:var(--paper)}
+body:before{background-size:8px 8px;opacity:.45;mask-image:radial-gradient(ellipse at 50% 25%,#000,transparent 72%)}
+body:after{content:'';position:fixed;inset:0;z-index:50;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(0,0,0,.13) 0 1px,transparent 1px 3px)}
+.quiet:after{opacity:.6}
+
+/* Notched pixel edges: four flat shadows leave the corners open. */
+.timer-card,.intention-card,.later-card,.paper-card,.source-card,.session-card,.session-empty,dialog,.toast,.rhythms,.icon-button,.tabs button[aria-selected=true],.button,.capture-form input,.capture-form button,.intention-card textarea,.weekly-plan textarea,dialog textarea,#start-question,.duration-fields input{border:0;border-radius:0;box-shadow:0 -3px 0 0 var(--edge),0 3px 0 0 var(--edge),-3px 0 0 0 var(--edge),3px 0 0 0 var(--edge)}
+.timer-card:before{display:none}
+.timer-card{background:var(--white)}
+.intention-card{background:#0b1310;--edge:#2d4a3a}
+.later-card{background:#080c0a}
+.intention-card:focus-within,.later-card:focus-within{--edge:#4c8a66;box-shadow:0 -3px 0 0 var(--edge),0 3px 0 0 var(--edge),-3px 0 0 0 var(--edge),3px 0 0 0 var(--edge)}
+.session-empty{border:0}
+dialog{background:#070b09;--edge:#3b5146;box-shadow:0 -4px 0 0 var(--edge),0 4px 0 0 var(--edge),-4px 0 0 0 var(--edge),4px 0 0 0 var(--edge),0 0 0 9px #000}
+.toast{background:#06100c;--edge:#4c8a66}
+
+/* Type: pixel for display, Plex Mono for the controls you type into, DM Sans for reading. */
+h1,.brand>span,.section-label h2,.page-heading h1,.dialog-heading h2,.source-card h2,.notebook-actions h2,.session-card h3,.session-empty h3,.week-summary h2,.settings-data h3{font-family:var(--px);font-weight:400;letter-spacing:0;line-height:1.15;-webkit-font-smoothing:none}
+h1,.page-heading h1{font-size:50px}
+.intro h1 em{background:none;-webkit-text-fill-color:currentColor;color:var(--tomato)}
+.page-heading h1{color:var(--ink)}
+.section-label h2,.notebook-actions h2,.session-card h3,.session-empty h3,.week-summary h2,.settings-data h3{font-size:20px}
+.dialog-heading h2,.source-card h2{font-size:30px}
+.tip-dialog .dialog-heading h2{font-size:20px;line-height:1.4}
+.brand>span{font-size:30px}
+.brand img{image-rendering:pixelated}
+.intention-card textarea,.weekly-plan textarea,dialog textarea,#start-question,.capture-form input,.duration-fields input{font-family:var(--mono);caret-color:var(--green)}
+.tabs button{border-radius:0;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.tabs button[aria-selected=true]{background:#0e1913;color:var(--green);--edge:#2d4a3a}
+.icon-button{background:#0a100d}
+.step-number,.tab-count,.session-meta>span:last-child,.thought-toggle span,.cycle span{border-radius:0}
+
+/* Buttons: flat arcade keys that sink when pressed. */
+.button{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.07em;transition:none}
+.button.secondary{background:#0c1410;--edge:#3b5146}
+.button.secondary:hover{background:#13211a}
+.button.primary,.start-button{font-family:var(--px);font-size:20px;font-weight:400;letter-spacing:0;text-transform:none;color:#1d0703;background:var(--tomato);--edge:#ff8b76;box-shadow:inset 0 -4px 0 var(--tomato-deep),0 -3px 0 0 var(--edge),0 3px 0 0 var(--edge),-3px 0 0 0 var(--edge),3px 0 0 0 var(--edge);-webkit-font-smoothing:none;padding-bottom:16px}
+.button.primary:hover,.start-button:hover{background:#ff7058;transform:none}
+.button.primary:active,.start-button:active{transform:translateY(2px);box-shadow:inset 0 -2px 0 var(--tomato-deep),0 -3px 0 0 var(--edge),0 3px 0 0 var(--edge),-3px 0 0 0 var(--edge),3px 0 0 0 var(--edge)}
+.start-button>span:first-child{font-family:var(--mono);font-size:13px}
+body.is-break .start-button{background:var(--green);color:#03140a;--edge:#b6ffd0;box-shadow:inset 0 -4px 0 #2a9d5a,0 -3px 0 0 var(--edge),0 3px 0 0 var(--edge),-3px 0 0 0 var(--edge),3px 0 0 0 var(--edge)}
+.rhythms{padding:3px;gap:3px}
+.rhythms button{border-radius:0;font-family:var(--mono)}
+.rhythms button[aria-pressed=true]{background:var(--green);color:#03140a}
+.settings-row input[type=checkbox],.settings-row input[type=checkbox]:before{border-radius:0}
+
+/* The dial: a stepped ring of blocks, the tomato and Plank Pixel digits. */
+.dial-ring>:not(.px-ring),.tomato-leaf{display:none}
+.px-ring rect{fill:#17211c}
+.px-ring rect.on{fill:var(--tomato)}
+body.is-break .px-ring rect.on{fill:var(--green)}
+.timer-running .px-ring rect.head,.timer-running .px-colon{animation:px-blink 1s steps(2,jump-none) infinite}
+.px-tomato{width:48px;height:42px;margin:0 0 10px;flex-shrink:0}
+.px-k{fill:#2b0e09}.px-h{fill:#ffd3c7}.px-G{fill:#2f9e57}.px-g{fill:#76f7a5}
+.px-r{fill:var(--tomato)}.px-s{fill:var(--tomato-deep)}
+.px-tomato .px-r{fill:color-mix(in oklch,var(--tomato) calc(var(--ripe,1) * 100%),var(--unripe))}
+.px-tomato .px-s{fill:color-mix(in oklch,var(--tomato-deep) calc(var(--ripe,1) * 100%),var(--unripe-deep))}
+body.is-break .px-tomato .px-r{fill:var(--tomato)}
+body.is-break .px-tomato .px-s{fill:var(--tomato-deep)}
+.timer-display{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.px-time{display:flex;font-family:var(--px);font-size:70px;line-height:.75;color:var(--ink);margin:10px -.1em 4px 0;text-shadow:0 0 22px rgba(255,90,67,.4);-webkit-font-smoothing:none}
+/* Plank Pixel's colon sits in the left of its box: trim the right so each side gets one blank cell. */
+.px-colon{margin-right:-.3em}
+body.is-break .px-time{text-shadow:0 0 22px rgba(118,247,165,.35)}
+.timer-state{font-size:10px;letter-spacing:.24em}
+.timer-caption{font-family:var(--mono);font-size:11px;margin-top:10px}
+.cycle span{width:8px;height:8px;border-color:#3d5247}
+.cycle span.filled{background:var(--tomato);border-color:var(--tomato)}
+.chart-bar{border-radius:0;max-width:24px;background:repeating-linear-gradient(to top,rgba(118,247,165,.55) 0 5px,transparent 5px 7px)}
+.chart-day.today .chart-bar{background:repeating-linear-gradient(to top,var(--tomato) 0 5px,transparent 5px 7px)}
+.px-harvest{display:flex;gap:3px;align-items:center}
+.px-fruit{width:16px;height:14px}
+@keyframes px-blink{from{opacity:1}to{opacity:.12}}
+
+/* Quiet view: just the ring, the tomato and the time. */
+.quiet .intention-card,.quiet .intention-card textarea{box-shadow:none}
+.quiet .intention-card textarea{font-family:var(--mono);font-size:18px}
+.quiet .px-time{font-size:80px}
+.quiet .px-tomato{width:64px;height:56px}
+
+@media(min-width:721px) and (max-height:940px){.intro h1{font-size:40px}}
+@media(min-width:721px) and (max-height:780px){.intro h1{font-size:30px}.px-time{font-size:60px}.px-tomato{width:32px;height:28px;margin-bottom:6px}}
+@media(max-width:720px){h1,.intro h1,.page-heading h1{font-size:30px;letter-spacing:0}.px-time{font-size:60px}.dialog-heading h2,.source-card h2{font-size:20px}.brand>span{font-size:30px}.quiet .px-time{font-size:70px}.px-tomato{width:40px;height:35px;margin-bottom:8px}}
+@media(max-width:400px){.rhythms button{padding-left:11px;padding-right:11px}}
+@media(prefers-reduced-motion:reduce){.timer-running .px-ring rect.head,.timer-running .px-colon{animation:none}}

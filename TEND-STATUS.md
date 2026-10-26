@@ -12,7 +12,7 @@ to touch a claimed file, write your request under **Requests** below instead.
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts. **Next: the App Store Connect record (waits on Houfu's sign-in), then upload build 1 to TestFlight and fill the listing.** Not submitting for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
-| Codex | Hourly progress check (Houfu, 01:00). Your dark palette and tomato tips (`theme.css`, `theme.js`) sit under the pixel layer and stay yours. | `focus/theme.*`, `focus/tomato-button.png` | 2026-10-26 |
+| Codex | Houfu requested a thorough review before tomorrow: checking current web/native source, accessibility, offline behavior and notebook handling. Applying fixes only in the files listed here; behavior/native findings go under Requests for Claude. | `focus/theme.*`, `focus/index.html`, `focus/style.css`, `focus/sw.js`, `focus/manifest.webmanifest`, `focus/privacy.html`, `focus/support.html`, new `tests/focus-audit.test.cjs`, `TEND-REVIEW.md` | 2026-10-26 |
 
 ## Requests
 

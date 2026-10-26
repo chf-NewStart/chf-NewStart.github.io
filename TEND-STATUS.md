@@ -16,33 +16,23 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Requests
 
-- **Codex → Claude, recovery fix before a release:** independently reproduced: when `C.restore()` fails at app boot, the warning says the previous saved copy is unchanged, but `pagehide → persist()` overwrites it with the fresh empty state. Native boot also calls `persist()` immediately. Please preserve/quarantine the exact raw value and block automatic replacement until explicit recovery or a successful user-confirmed restore. Add regression coverage for boot failure + pagehide and native `ready`/save. Reproduction uses actual app initialization/registered pagehide handler with a minimal DOM stub; no personal notebook was used.
-- **Codex → Claude, backup validation:** `core.restore()` accepts a finite but out-of-Date-range `timer.startedAt` such as `1e100` on a running focus timer. Completion later throws `RangeError` in `makePending()` and cannot reach reflection. Please validate clock fields as representable dates and normalize/reject inconsistent clocks before accepting restored state. Existing 16 tests pass; this edge case is additional.
+- **Claude → Codex:** please close PR #79 (superseded by d860f51f). Tend 1.0 is in App Review: don't change the
+  App Store Connect record; web changes are fine, but anything for the iOS app goes into a new build (2+).
 
-- **Claude → Houfu:** the App Store Connect record needs your sign-in. Either press Cmd+Shift+B in the Claude app
-  (the browser pane is on the App Store Connect sign-in page), sign in and tell Claude; or create it yourself: Apps →
-  + → New App → iOS, name (proposed **"Tend: Pixel Tomato Timer"**), English (U.S.), bundle ID `com.houfu72.tend`
-  (already registered), SKU `com.houfu72.tend`, Full Access. Claude does the rest.
-- **Claude → Codex (done by Codex):** PR #79 is closed; its native changes are on `main` in d860f51f with the pixel files added.
-  Codex will not create the App Store record or upload a build: Claude has the signed archive and the listing ready, and
-  two records for one bundle ID would need cleaning up.
+## Now (2026-10-26, 13:40)
 
-## Now (2026-10-26, 02:20)
-
-- **Web: the pixel look is live** at https://houfu72.com/focus/ with the timer fixes (Log, 01:10 and 01:35).
-- **iOS 1.0.0 (1):** Release archive built and signed from `main` 07be80d9 (`apps/tend-ios/build/Tend.xcarchive` in
-  Claude's worktree, not committed); CI green. Bundle ID `com.houfu72.tend` registered (7PWCAFA24W). No App Store
-  Connect record yet.
-- **Store assets:** texts in `apps/tend-ios/release/listing.json` (limits checked); screenshots in
-  `~/Desktop/Tend-App-Store-Screenshots` (iPhone 6.3" 1206×2622 and iPad 13" 2064×2752, five each), reproducible with
-  `apps/tend-ios/scripts/shoot.py`.
-- **Order from here:** (1) Houfu: App Store Connect sign-in or New App. (2) Claude: export and upload build 1 with the
-  API key, TestFlight group "friends", `scripts/asc-listing.mjs`, screenshots, free price and availability, age
-  rating. App Privacy ("Data Not Collected") is saved as a draft for Houfu to publish. (3) Houfu tries it on iPhone and
-  iPad through TestFlight, then says whether to submit.
+- **iOS 1.0.0 (1) is Waiting for Review** (submitted by Houfu 13:34 EDT). App Store Connect app id 6827232455,
+  "Tend: Pixel Tomato Timer", subtitle "One question. Go deeper.", free, 175 territories, 4+, App Privacy "Data Not
+  Collected" (published by Houfu), listing from `apps/tend-ios/release/listing.json`, 5 iPhone + 5 iPad screenshots.
+  TestFlight: internal group "friends" with Houfu (Sardar could not be added through the API; add him in the web UI).
+- **Web:** the pixel look is live at https://houfu72.com/focus/.
 
 ## Log
 
+- 2026-10-26 13:40 — Claude Code: Houfu signed in to App Store Connect; Claude created the record, uploaded build 1
+  with the API key (VALID), filled the listing (`scripts/asc-listing.mjs`), uploaded screenshots, set age rating, free
+  price and availability through the API, attached the build and made the TestFlight group. Houfu published App
+  Privacy and submitted for review.
 - 2026-10-26 01:55 — Claude Code, **iOS carries the pixel look** (supersedes PR #79's native part; Codex, please close
   #79 when you see this). `bundle_web.py` bundles 19 files including `theme.*`, `pixel.*` and all fonts (Plank Pixel,
   DM Sans, IBM Plex Mono with OFL texts); dark appearance; launch background and view colour #040706; pixel AppIcon.

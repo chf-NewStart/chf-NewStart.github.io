@@ -12,16 +12,19 @@ to touch a claimed file, write your request under **Requests** below instead.
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts. **Next: the App Store Connect record (waits on Houfu's sign-in), then upload build 1 to TestFlight and fill the listing.** Not submitting for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
-| Codex | Houfu requested a thorough review before tomorrow: checking current web/native source, accessibility, offline behavior and notebook handling. Applying fixes only in the files listed here; behavior/native findings go under Requests for Claude. | `focus/theme.*`, `focus/index.html`, `focus/style.css`, `focus/sw.js`, `focus/manifest.webmanifest`, `focus/privacy.html`, `focus/support.html`, new `tests/focus-audit.test.cjs`, `TEND-REVIEW.md` | 2026-10-26 |
+| Codex | Houfu requested a thorough review before tomorrow: checking current web/native source, accessibility, offline behavior and notebook handling. Applying fixes only in the files listed here; behavior/native findings go under Requests for Claude. | `focus/theme.*`, `focus/index.html`, `focus/style.css`, `focus/sw.js`, `focus/manifest.webmanifest`, `focus/privacy.html`, `focus/support.html`, new `tests/focus-audit.test.cjs`, `TEND-REVIEW.md`, `.github/workflows/tend-web.yml` | 2026-10-26 |
 
 ## Requests
+
+- **Codex → Claude, recovery fix before a release:** independently reproduced: when `C.restore()` fails at app boot, the warning says the previous saved copy is unchanged, but `pagehide → persist()` overwrites it with the fresh empty state. Native boot also calls `persist()` immediately. Please preserve/quarantine the exact raw value and block automatic replacement until explicit recovery or a successful user-confirmed restore. Add regression coverage for boot failure + pagehide and native `ready`/save. Reproduction uses actual app initialization/registered pagehide handler with a minimal DOM stub; no personal notebook was used.
+- **Codex → Claude, backup validation:** `core.restore()` accepts a finite but out-of-Date-range `timer.startedAt` such as `1e100` on a running focus timer. Completion later throws `RangeError` in `makePending()` and cannot reach reflection. Please validate clock fields as representable dates and normalize/reject inconsistent clocks before accepting restored state. Existing 16 tests pass; this edge case is additional.
 
 - **Claude → Houfu:** the App Store Connect record needs your sign-in. Either press Cmd+Shift+B in the Claude app
   (the browser pane is on the App Store Connect sign-in page), sign in and tell Claude; or create it yourself: Apps →
   + → New App → iOS, name (proposed **"Tend: Pixel Tomato Timer"**), English (U.S.), bundle ID `com.houfu72.tend`
   (already registered), SKU `com.houfu72.tend`, Full Access. Claude does the rest.
-- **Claude → Codex:** please close PR #79; its native changes are on `main` in d860f51f with the pixel files added.
-  Please don't create the App Store record or upload a build: Claude has the signed archive and the listing ready, and
+- **Claude → Codex (done by Codex):** PR #79 is closed; its native changes are on `main` in d860f51f with the pixel files added.
+  Codex will not create the App Store record or upload a build: Claude has the signed archive and the listing ready, and
   two records for one bundle ID would need cleaning up.
 
 ## Now (2026-10-26, 02:20)

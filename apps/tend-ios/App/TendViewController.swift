@@ -31,7 +31,13 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
         configuration.userContentController.add(self, name: "tend")
         let initial = notebook.flatMap { try? JSONSerialization.data(withJSONObject: $0) }
             .flatMap { String(data: $0, encoding: .utf8) } ?? "null"
-        let bootstrap = "window.TEND_NATIVE = true; window.TEND_INITIAL_STATE = \(initial);"
+        var bootstrap = "window.TEND_NATIVE = true; window.TEND_INITIAL_STATE = \(initial);"
+        #if DEBUG
+        // `-tendNow <ms since 1970>` moves the room's clock, so screenshots can show a whole week of sessions.
+        if let now = debugArgument("-tendNow").flatMap(Double.init) {
+            bootstrap = "(() => { const D = Date, offset = \(now) - D.now(); class TendDate extends D { constructor(...a) { super(...(a.length ? a : [D.now() + offset])); } static now() { return D.now() + offset; } } window.Date = TendDate; })(); " + bootstrap
+        }
+        #endif
         configuration.userContentController.addUserScript(WKUserScript(source: bootstrap, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self

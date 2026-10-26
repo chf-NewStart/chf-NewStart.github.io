@@ -29,7 +29,7 @@ h1,.page-heading h1{font-size:50px}
 .brand>span{font-size:30px}
 .brand img{image-rendering:pixelated}
 .intention-card textarea,.weekly-plan textarea,dialog textarea,#start-question,.capture-form input,.duration-fields input{font-family:var(--mono);caret-color:var(--green)}
-.tabs button{border-radius:0;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.tabs button{border-radius:0;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
 .tabs button[aria-selected=true]{background:#0e1913;color:var(--green);--edge:#2d4a3a}
 .icon-button{background:#0a100d}
 .step-number,.tab-count,.session-meta>span:last-child,.thought-toggle span,.cycle span{border-radius:0}
@@ -78,7 +78,7 @@ body.is-break .px-time{text-shadow:0 0 22px rgba(118,247,165,.35)}
 
 /* Quiet view: just the ring, the tomato and the time. */
 .quiet .intention-card,.quiet .intention-card textarea{box-shadow:none}
-.quiet .intention-card textarea{font-family:var(--mono);font-size:18px}
+.quiet .intention-card textarea{font-family:var(--mono);font-size:18px;min-height:calc(4.8em + 26px)}
 .quiet .px-time{font-size:80px}
 .quiet .px-tomato{width:64px;height:56px}
 
@@ -86,4 +86,5 @@ body.is-break .px-time{text-shadow:0 0 22px rgba(118,247,165,.35)}
 @media(min-width:721px) and (max-height:780px){.intro h1{font-size:30px}.px-time{font-size:60px}.px-tomato{width:32px;height:28px;margin-bottom:6px}}
 @media(max-width:720px){h1,.intro h1,.page-heading h1{font-size:30px;letter-spacing:0}.px-time{font-size:60px}.dialog-heading h2,.source-card h2{font-size:20px}.brand>span{font-size:30px}.quiet .px-time{font-size:70px}.px-tomato{width:40px;height:35px;margin-bottom:8px}}
 @media(max-width:400px){.rhythms button{padding-left:11px;padding-right:11px}}
+@media(max-width:720px){.tabs button{padding-left:13px;padding-right:13px;letter-spacing:.04em}.dialog-actions{flex-direction:column}.dialog-actions .button{flex:none;width:100%}.quiet .timer-footnote{display:none}}
 @media(prefers-reduced-motion:reduce){.timer-running .px-ring rect.head,.timer-running .px-colon{animation:none}}

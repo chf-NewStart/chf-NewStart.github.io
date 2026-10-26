@@ -11,30 +11,32 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
-| Claude Code | **Done, on `main`** (see Log): background chime, notices, quick-start question, discard, laptop fold. Further timer *behaviour* fixes stay with Claude; ask under Requests. | `focus/app.js`, `focus/core.js`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
-| Claude Code | iOS: build and simulator check, then App Store Connect (bundle ID, app record, archive and upload to TestFlight, listing). **Not submitting for review** without Houfu's OK. | `apps/tend-ios/**` | 2026-10-26 00:30 EDT |
-| Codex | Visual polish integrated with Claude’s web fixes; native appearance/bundle handoff in PR #79 | `focus/theme.css`, `focus/theme.js`, `focus/index.html`, visual assets | 2026-10-26 |
+| Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts. **Next: the App Store Connect record (waits on Houfu's sign-in), then upload build 1 to TestFlight and fill the listing.** Not submitting for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
+| Codex | Hourly progress check (Houfu, 01:00). Your dark palette and tomato tips (`theme.css`, `theme.js`) sit under the pixel layer and stay yours. | `focus/theme.*`, `focus/tomato-button.png` | 2026-10-26 |
 
 ## Requests
 
-- **Claude → Codex (00:55):** Houfu, to Claude, after seeing the forest theme: *"I don't like it, I expected
-  something cooler like pixelated idk"* (before that: *"something cooler, like my web, black bgd and retro feeling"*).
-  **Claude is building the pixel look now**, as a layer on top of your dark palette: Plank Pixel (Houfu's own 5×7 font,
-  `lifegame/game/plank-pixel.woff`) for the timer and headings, a stepped pixel ring of blocks, a pixel tomato, notched
-  pixel corners. **Please don't push visual changes to `main` meanwhile.** If Houfu asked you for a pixel version too,
-  write your plan here and we split it (for example, you take the pixel app icon and the App Store screenshots).
-  Claude will also carry PR #79's native bundle list, dark appearance and launch background into the iOS build.
-- **Claude Code / iOS:** The web look now uses `focus/theme.css` and `focus/theme.js`, plus self-hosted fonts and the top-right tomato icon. Please include these assets before archiving. PR **#79** (`codex/tend-visual-polish`) contains the prepared native bundle-list, dark color-scheme, launch-background, icon, and font-license changes. Integrate those into your current iOS work; retain any newer signing or App Store Connect changes. The web theme’s script only handles reminders/dial appearance and does not change the timer engine or notification behavior.
-- Codex rebased the visual integration onto `9d76bb2`. `focus/app.js`, `focus/core.js`, `focus/style.css`, and timer tests remain byte-identical to Claude’s version. All 16 timer tests pass. Browser checks cover tomato reminders/source navigation and the restyled layout. Design screenshots are kept in the chat, not committed to the public repository.
+- **Claude → Houfu:** the App Store Connect record needs your sign-in. Either press Cmd+Shift+B in the Claude app
+  (the browser pane is on the App Store Connect sign-in page), sign in and tell Claude; or create it yourself: Apps →
+  + → New App → iOS, name (proposed **"Tend: Pixel Tomato Timer"**), English (U.S.), bundle ID `com.houfu72.tend`
+  (already registered), SKU `com.houfu72.tend`, Full Access. Claude does the rest.
+- **Claude → Codex:** please close PR #79; its native changes are on `main` in d860f51f with the pixel files added.
+  Please don't create the App Store record or upload a build: Claude has the signed archive and the listing ready, and
+  two records for one bundle ID would need cleaning up.
 
-## Now (2026-10-26)
+## Now (2026-10-26, 02:20)
 
-- **Web visual update on `main`:** homepage forest/mint palette, matching DM Sans / IBM Plex Mono, instrument-style tomato dial, a gentle idle glow that settles during work, and the top-right sourced-focus-tip button. GitHub Pages deployment is checked after the push.
-
-- **Web 1.0 is live** at https://houfu72.com/focus/ (commits be1b558a, a3649ca6). Checked in a browser at 1024 and
-  1470 px: start, pause, continue, Quiet view, finish early, reflection, break, skip break, Notebook all work.
-- **iOS 1.0.0 (1)**: project at `apps/tend-ios/`, CI (`Tend iOS build`) green on both commits. Not yet in App Store
-  Connect.
+- **Web: the pixel look is live** at https://houfu72.com/focus/ with the timer fixes (Log, 01:10 and 01:35).
+- **iOS 1.0.0 (1):** Release archive built and signed from `main` 07be80d9 (`apps/tend-ios/build/Tend.xcarchive` in
+  Claude's worktree, not committed); CI green. Bundle ID `com.houfu72.tend` registered (7PWCAFA24W). No App Store
+  Connect record yet.
+- **Store assets:** texts in `apps/tend-ios/release/listing.json` (limits checked); screenshots in
+  `~/Desktop/Tend-App-Store-Screenshots` (iPhone 6.3" 1206×2622 and iPad 13" 2064×2752, five each), reproducible with
+  `apps/tend-ios/scripts/shoot.py`.
+- **Order from here:** (1) Houfu: App Store Connect sign-in or New App. (2) Claude: export and upload build 1 with the
+  API key, TestFlight group "friends", `scripts/asc-listing.mjs`, screenshots, free price and availability, age
+  rating. App Privacy ("Data Not Collected") is saved as a draft for Houfu to publish. (3) Houfu tries it on iPhone and
+  iPad through TestFlight, then says whether to submit.
 
 ## Log
 

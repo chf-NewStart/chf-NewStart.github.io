@@ -1,6 +1,6 @@
 # Tend 1.0 — App Store preparation
 
-These fields are prepared for review. They have not been entered into App Store Connect or submitted. Confirm name and bundle-ID availability in the developer account before registration.
+**Superseded for the store texts by [listing.json](listing.json)** (the pixel version: name "Tend: Pixel Tomato Timer", subtitle "One question. Go deeper."), which `scripts/asc-listing.mjs` fills in through the API. The privacy answers and Apple references below still apply. Nothing has been submitted.
 
 | Field | Prepared value |
 | --- | --- |

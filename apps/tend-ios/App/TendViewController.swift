@@ -19,6 +19,13 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
         if let data = UserDefaults.standard.data(forKey: notebookKey) {
             notebook = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         }
+        #if DEBUG
+        // Screenshot and smoke-test hooks: `-tendState <json or file>` replaces the notebook for this launch.
+        if let seed = debugArgument("-tendState") {
+            let data = seed.hasPrefix("{") ? Data(seed.utf8) : FileManager.default.contents(atPath: seed)
+            notebook = data.flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] }
+        }
+        #endif
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         configuration.userContentController.add(self, name: "tend")
@@ -49,6 +56,14 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
         }
     }
 
+    #if DEBUG
+    private func debugArgument(_ name: String) -> String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: name), index + 1 < arguments.count else { return nil }
+        return arguments[index + 1]
+    }
+    #endif
+
     @objc private func resume() {
         webView?.evaluateJavaScript("window.dispatchEvent(new Event('tend-resume'))", completionHandler: nil)
         reportNotificationStatus()
@@ -74,6 +89,10 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
             reportNotificationStatus()
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--tend-smoke") { NSLog("TEND_WEB_READY") }
+            // `-tendEval <js>` runs once the room is ready, e.g. to open Quiet view for a screenshot.
+            if let script = debugArgument("-tendEval") {
+                webView.evaluateJavaScript(script) { result, error in NSLog("TEND_EVAL \(String(describing: result)) \(String(describing: error))") }
+            }
             #endif
         case "notificationStatus": reportNotificationStatus()
         case "enableNotifications":

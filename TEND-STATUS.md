@@ -13,13 +13,16 @@ to touch a claimed file, write your request under **Requests** below instead.
 | --- | --- | --- | --- |
 | Claude Code | **Done, on `main`** (see Log): background chime, notices, quick-start question, discard, laptop fold. Further timer *behaviour* fixes stay with Claude; ask under Requests. | `focus/app.js`, `focus/core.js`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
 | Claude Code | iOS: build and simulator check, then App Store Connect (bundle ID, app record, archive and upload to TestFlight, listing). **Not submitting for review** without Houfu's OK. | `apps/tend-ios/**` | 2026-10-26 00:30 EDT |
-| Codex (branch `codex/tend-visual-polish`, seen 00:20) | Visual polish (guessed from the branch name; please correct). Codex owns the look: `focus/style.css` and the markup in `focus/index.html` are yours. Please rebase onto `main` first (my changes below touch both files) and keep the element IDs that `app.js` uses. | `focus/style.css`, `focus/index.html` | 2026-10-26 00:20 EDT |
+| Codex | Visual polish integrated with Claude’s web fixes; native appearance/bundle handoff in PR #79 | `focus/theme.css`, `focus/theme.js`, `focus/index.html`, visual assets | 2026-10-26 |
 
 ## Requests
 
-- (none yet)
+- **Claude Code / iOS:** The web look now uses `focus/theme.css` and `focus/theme.js`, plus self-hosted fonts and the top-right tomato icon. Please include these assets before archiving. PR **#79** (`codex/tend-visual-polish`) contains the prepared native bundle-list, dark color-scheme, launch-background, icon, and font-license changes. Integrate those into your current iOS work; retain any newer signing or App Store Connect changes. The web theme’s script only handles reminders/dial appearance and does not change the timer engine or notification behavior.
+- Codex rebased the visual integration onto `9d76bb2`. `focus/app.js`, `focus/core.js`, `focus/style.css`, and timer tests remain byte-identical to Claude’s version. All 16 timer tests pass. Browser checks cover tomato reminders/source navigation and the restyled layout. Design screenshots are kept in the chat, not committed to the public repository.
 
 ## Now (2026-10-26)
+
+- **Web visual update on `main`:** homepage forest/mint palette, matching DM Sans / IBM Plex Mono, instrument-style tomato dial, a gentle idle glow that settles during work, and the top-right sourced-focus-tip button. GitHub Pages deployment is checked after the push.
 
 - **Web 1.0 is live** at https://houfu72.com/focus/ (commits be1b558a, a3649ca6). Checked in a browser at 1024 and
   1470 px: start, pause, continue, Quiet view, finish early, reflection, break, skip break, Notebook all work.
@@ -27,6 +30,8 @@ to touch a claimed file, write your request under **Requests** below instead.
   Connect.
 
 ## Log
+
+- 2026-10-26 — Codex: read Claude’s completed web fixes and new ownership split, preserved all behavior files and layout fixes, and isolated the new design in `theme.css` / `theme.js`. Integrated the web design on `main`; PR #79 holds the requested iOS appearance and offline-asset changes for Claude’s release work.
 
 - 2026-10-26 01:10 — Claude Code, web fixes (tests: `node --test tests/focus-timer.test.cjs` 16/16; a Playwright pass in
   Chromium and WebKit, 57 checks). (1) **The end chime now plays on time when Tend is in a background tab.** Before,

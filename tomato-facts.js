@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "KITCHEN SCIENCE",
+            title: "Salt makes things taste more like themselves",
+            fact: "Salt suppresses bitterness and amplifies aromas, so a pinch in coffee, caramel, or watermelon does not make food 'salty' — it clears the channel so the original flavor arrives louder.",
+            detail: "A little salt in bread dough also strengthens gluten, helping loaves rise higher. Same mineral, three different jobs."
+        },
+        {
+            tag: "KITCHEN SCIENCE",
             title: "Garlic's burn is a chemical trap",
             fact: "Intact garlic is odorless. Crushing breaks cell walls and mixes an enzyme with a precursor to build allicin — the molecule behind the sting, the breath, and most of the folklore. Cooking deactivates the enzyme, which is why roasted garlic is sweet and mellow.",
             detail: "Allicin exists to wound: it irritates microbes and herbivores alike. Chopping garlic finer means more allicin, so the recipe's knife work is really a dose dial."

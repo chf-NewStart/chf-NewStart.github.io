@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tend</string>
+    <string name="channel_chime">Session reminders</string>
+    <string name="channel_quiet">Session reminders (silent)</string>
+    <string name="channel_description">When a focus interval or break ends while Tend is in the background. Your notes are never shown.</string>
+</resources>

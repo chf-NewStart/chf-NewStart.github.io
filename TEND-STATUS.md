@@ -1,6 +1,6 @@
 # Tend status and handoff
 
-The one place to see where Tend (the tomato clock at houfu72.com/focus/ and `apps/tend-ios/`) stands and
+The one place to see where Tend (the tomato clock at houfu72.com/focus/, `apps/tend-ios/` and `apps/tend-android/`) stands and
 what's next. Two agents are working on Tend tonight (Claude Code and Codex). **Read this file first, pull
 before you push, and update it in the same push as your change.** Newest first under **Log**.
 
@@ -12,6 +12,7 @@ to touch a claimed file, write your request under **Requests** below instead.
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts. **Next: the App Store Connect record (waits on Houfu's sign-in), then upload build 1 to TestFlight and fill the listing.** Not submitting for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
+| Claude Code | **Android app** (native Kotlin + Compose, `com.houfu72.tend`): built and tested in the emulator; signed 1.0.0 (1) bundle ready for Play closed testing. Waits on Houfu's Play Console account. Web changes that alter timer rules need the same change in `apps/tend-android/.../core/`. | `apps/tend-android/**` | 2026-10-26 14:00 EDT |
 | Codex | Houfu requested a thorough review before tomorrow: checking current web/native source, accessibility, offline behavior and notebook handling. Applying fixes only in the files listed here; behavior/native findings go under Requests for Claude. | `focus/theme.*`, `focus/index.html`, `focus/style.css`, `focus/sw.js`, `focus/manifest.webmanifest`, `focus/privacy.html`, `focus/support.html`, new `tests/focus-audit.test.cjs`, `TEND-REVIEW.md`, `.github/workflows/tend-web.yml` | 2026-10-26 |
 
 ## Requests
@@ -26,8 +27,24 @@ to touch a claimed file, write your request under **Requests** below instead.
   Collected" (published by Houfu), listing from `apps/tend-ios/release/listing.json`, 5 iPhone + 5 iPad screenshots.
   TestFlight: internal group "friends" with Houfu (Sardar could not be added through the API; add him in the web UI).
 - **Web:** the pixel look is live at https://houfu72.com/focus/.
+- **Android 1.0.0 (1)** (`apps/tend-android/`): signed `app-release.aab` builds with `./gradlew :app:bundleRelease`;
+  upload key in `~/.android-upload-keys/` (not in the repo). Next: Houfu creates the Play Console developer account
+  ($25, ID and device checks), then the app, the closed test with 12+ testers for 14 days, then production.
 
 ## Log
+
+- 2026-10-26 15:15 — Claude Code, **Tend for Android**. A native port, not a web view: `core/TendCore.kt` and
+  `core/Backup.kt` are `focus/core.js` line for line (same `tend-focus-v1` JSON, so backups move between web, iPhone
+  and Android); `TendController.kt` is `focus/app.js`; Compose draws the pixel room from `pixel.css`/`pixel.js` (Plank
+  Pixel digits with the blinking colon, the 96-block midpoint ring, the 16x14 tomato ripening in OKLCH, notched
+  frames, grid and scanlines). Reminders: one exact alarm at the deadline (`USE_EXACT_ALARM`; Tend is a timer), the
+  same text as iOS, never the task or notes, skipped while Tend is on screen; re-set after a restart. Includes
+  abbc81b2 (question and stopping point stay editable mid-session, edits go into the session's copy). Tests: 17/17
+  JUnit (the 16 web cases plus web-backup compatibility). Checked in the Android 16 emulator: focus, pause, finish
+  early, reflection, break (4th session earns 15 min), Quiet view, notebook, export via the share sheet, citations
+  jumping to Sources, settings, notification permission on first start, a background reminder on time, and the
+  release (R8) build surviving a force-stop mid-session. Store text and App content answers in
+  `apps/tend-android/release/play-listing.json`; icon and feature graphic from `release/make_store_art.py`.
 
 - 2026-10-26 13:40 — Claude Code: Houfu signed in to App Store Connect; Claude created the record, uploaded build 1
   with the API key (VALID), filled the listing (`scripts/asc-listing.mjs`), uploaded screenshots, set age rating, free

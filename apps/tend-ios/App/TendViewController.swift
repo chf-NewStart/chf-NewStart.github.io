@@ -15,7 +15,7 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 245/255, green: 243/255, blue: 235/255, alpha: 1)
+        view.backgroundColor = UIColor(red: 4/255, green: 7/255, blue: 6/255, alpha: 1)
         if let data = UserDefaults.standard.data(forKey: notebookKey) {
             notebook = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         }

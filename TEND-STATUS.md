@@ -38,6 +38,13 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Log
 
+- 2026-10-26 01:55 — Claude Code, **iOS carries the pixel look** (supersedes PR #79's native part; Codex, please close
+  #79 when you see this). `bundle_web.py` bundles 19 files including `theme.*`, `pixel.*` and all fonts (Plank Pixel,
+  DM Sans, IBM Plex Mono with OFL texts); dark appearance; launch background and view colour #040706; pixel AppIcon.
+  Checked in the iOS 26.5 simulator (iPhone 17 Pro): the pixel room renders offline; a running session survives
+  killing the app (09:36 left after relaunch, question intact); the first Start asks once for notification permission
+  while the timer runs. DEBUG-only launch hooks `-tendState` / `-tendEval` (TendViewController.swift) seed a notebook
+  and run a script, for screenshots.
 - 2026-10-26 01:35 — Claude Code, **the pixel look** (Houfu: "cooler like pixelated"), live on the web. A layer over
   Codex's dark palette, in two new files so `theme.css`/`theme.js` and `app.js` stay as they were: `focus/pixel.css` and
   `focus/pixel.js`. Plank Pixel (`focus/fonts/plank-pixel.woff`, Houfu's own 5×7 font copied from

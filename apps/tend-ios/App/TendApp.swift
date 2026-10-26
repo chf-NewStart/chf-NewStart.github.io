@@ -6,7 +6,7 @@ struct TendApp: App {
         WindowGroup {
             TendRoom()
                 .ignoresSafeArea()
-                .preferredColorScheme(.light)
+                .preferredColorScheme(.dark)
         }
     }
 }

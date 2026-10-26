@@ -13,6 +13,8 @@ The iOS target adds app-scoped notebook persistence, opt-in local session notifi
 
 The minimum deployment target is iOS/iPadOS 17. Build with a currently App Store-supported Xcode/SDK. No signing credentials are stored here.
 
+The room has a pixel look: Plank Pixel (Houfu's own 5×7 arcade font) for the timer and headings, a ring of blocks that empties as the interval passes, and a tomato that ripens while you focus, over houfu72.com's dark palette with DM Sans and IBM Plex Mono (SIL Open Font License texts bundled). Every font is bundled, so the app works offline. In DEBUG builds, `-tendState <json or file>` seeds the notebook for one launch and `-tendEval <js>` runs once the room is ready (for screenshots and simulator checks).
+
 ## Checks
 
 From the repository root:

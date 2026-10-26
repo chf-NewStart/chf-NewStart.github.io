@@ -1,0 +1,7 @@
+Web/*
+!Web/.gitkeep
+build/
+*.xcuserstate
+xcuserdata/
+*.xcarchive
+*.ipa

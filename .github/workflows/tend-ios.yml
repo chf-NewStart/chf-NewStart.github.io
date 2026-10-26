@@ -1,0 +1,46 @@
+name: Tend iOS build
+on:
+  push:
+    branches: [main]
+    paths: ['focus/**', 'apps/tend-ios/**', 'tests/focus-timer.test.cjs', '.github/workflows/tend-ios.yml']
+  pull_request:
+    paths: ['focus/**', 'apps/tend-ios/**', 'tests/focus-timer.test.cjs', '.github/workflows/tend-ios.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulator:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify shared timer
+        run: node --test tests/focus-timer.test.cjs
+      - name: Bundle offline room
+        run: python3 apps/tend-ios/scripts/bundle_web.py
+      - name: Compile for iPhone and iPad simulator
+        run: |
+          set -o pipefail
+          xcodebuild -version
+          xcodebuild -project apps/tend-ios/Tend.xcodeproj -scheme Tend -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/tend-build" CODE_SIGNING_ALLOWED=NO build | tee "$RUNNER_TEMP/tend-build.log"
+      - name: Smoke launch and capture simulator
+        run: |
+          TEND_SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; ds=[d for v in json.load(sys.stdin)["devices"].values() for d in v if "iPhone" in d["name"]]; print(next((d for d in ds if "Pro Max" in d["name"]), ds[0])["udid"])')
+          xcrun simctl boot "$TEND_SIMULATOR_ID" || true
+          xcrun simctl bootstatus "$TEND_SIMULATOR_ID" -b
+          xcrun simctl install "$TEND_SIMULATOR_ID" "$RUNNER_TEMP/tend-build/Build/Products/Debug-iphonesimulator/Tend.app"
+          xcrun simctl launch "$TEND_SIMULATOR_ID" com.houfu72.tend --tend-smoke
+          sleep 5
+          xcrun simctl spawn "$TEND_SIMULATOR_ID" log show --style compact --last 1m --predicate 'eventMessage CONTAINS "TEND_WEB_READY"' | tee "$RUNNER_TEMP/tend-smoke.log"
+          grep -q TEND_WEB_READY "$RUNNER_TEMP/tend-smoke.log"
+          xcrun simctl io "$TEND_SIMULATOR_ID" screenshot "$RUNNER_TEMP/tend-simulator.png"
+      - name: Preserve unsigned simulator build and screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: tend-ios-simulator
+          path: |
+            ${{ runner.temp }}/tend-build/Build/Products/Debug-iphonesimulator/Tend.app
+            ${{ runner.temp }}/tend-simulator.png
+            ${{ runner.temp }}/tend-build.log
+            ${{ runner.temp }}/tend-smoke.log
+          retention-days: 7

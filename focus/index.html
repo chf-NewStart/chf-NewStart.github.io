@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f3eb">
+  <meta name="description" content="Tend is a quiet research focus timer. Choose one question, park distractions, and leave a note for your next session. Your work stays on your device.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <link rel="canonical" href="https://houfu72.com/focus/">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+  <title>Tend — a little room to focus</title>
+  <script src="core.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to your focus room</a>
+  <div id="storage-warning" class="storage-warning" role="status" hidden></div>
+  <header class="topbar">
+    <a class="brand" href="#focus" aria-label="Tend home"><img src="icon.svg" width="39" height="39" alt=""><span>tend<span class="brand-caption">a little room to focus</span></span></a>
+    <nav class="tabs" aria-label="Your desk" role="tablist">
+      <button type="button" role="tab" id="tab-focus" aria-controls="view-focus" aria-selected="true" data-view="focus">Focus</button>
+      <button type="button" role="tab" id="tab-notebook" aria-controls="view-notebook" aria-selected="false" tabindex="-1" data-view="notebook">Notebook <span id="note-count" class="tab-count" hidden></span></button>
+      <button type="button" role="tab" id="tab-sources" aria-controls="view-sources" aria-selected="false" tabindex="-1" data-view="sources">Sources <span aria-hidden="true">↗</span></button>
+    </nav>
+    <button id="settings-open" class="icon-button" aria-label="Open settings" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--paper)"/><circle cx="16" cy="17" r="3" fill="var(--paper)"/></svg></button>
+  </header>
+  <main id="main" class="workspace">
+    <section id="view-focus" role="tabpanel" aria-labelledby="tab-focus">
+      <div class="intro">
+        <div><p class="eyebrow">GIVE ONE THING YOUR ATTENTION</p><h1>Small steps.<br><em>Deeper roots.</em></h1></div>
+        <div class="intro-note"><span class="date-label" id="today-date"></span><p>You don’t need the whole answer.<br>Just a place to begin.</p><svg viewBox="0 0 115 35" fill="none" aria-hidden="true"><path d="M5 13c31-15 56 18 88 1m-12-9 14 9-12 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      </div>
+      <div class="focus-layout">
+        <section class="timer-card" aria-label="Session timer">
+          <div class="card-top"><span class="tiny-label"><i class="status-dot"></i><span id="timer-kind">FOCUS SESSION</span></span><button class="text-button quiet-toggle" id="quiet-open" aria-pressed="false"><span aria-hidden="true">⛶</span> Quiet view</button></div>
+          <div class="rhythms" role="group" aria-label="Focus and break rhythm">
+            <button data-focus="15" data-break="3" aria-pressed="false">15 / 3</button>
+            <button data-focus="25" data-break="5" aria-pressed="true">25 / 5</button>
+            <button data-focus="50" data-break="10" aria-pressed="false">50 / 10</button>
+            <button id="custom-rhythm" aria-label="Set custom timer duration">Custom</button>
+          </div>
+          <div class="dial">
+            <svg class="dial-ring" viewBox="0 0 320 320" aria-hidden="true"><circle class="ring-track" cx="160" cy="160" r="137"/><circle id="ring-progress" class="ring-progress" cx="160" cy="160" r="137" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/></svg>
+            <svg class="tomato-leaf" viewBox="0 0 75 50" aria-hidden="true"><path d="M37 32C18 39 9 25 5 17c14-1 24 4 30 12C25 15 32 5 37 1c8 9 11 19 4 30 10-15 22-15 30-11-5 14-17 19-30 14l-4 10-3-2z" fill="currentColor"/></svg>
+            <div class="dial-content"><span id="timer-state" class="timer-state">SETTLE IN</span><span id="timer-display" class="timer-display" role="timer" aria-live="off" aria-label="25 minutes remaining">25:00</span><span id="timer-caption" class="timer-caption">one question at a time</span></div>
+          </div>
+          <div class="cycle" id="cycle" aria-label="0 of 4 full sessions toward a longer break"><span></span><span></span><span></span><span></span></div>
+          <button id="timer-start" class="button primary start-button"><span id="start-symbol" aria-hidden="true">▶</span><span id="start-label">Start focusing</span></button>
+          <button id="timer-end" class="text-button end-button" hidden>Finish early &amp; reflect</button>
+          <p class="timer-footnote" id="timer-footnote">25 minutes of focus, then 5 to breathe. <a href="#source-3" class="citation" aria-label="Read source 3: Pomodoro method">[3]</a></p>
+        </section>
+        <div class="work-column">
+          <section class="intention-card">
+            <div class="section-label"><span class="step-number">01</span><h2>A little intention</h2><a href="#source-1" class="citation" aria-label="Read source 1: Deep Work">[1]</a></div>
+            <label for="question">What’s your one question or task?</label>
+            <textarea id="question" rows="2" maxlength="500" placeholder="e.g. How does this paper model transport?"></textarea>
+            <label class="finish-label" for="finish">What would a useful stopping point look like? <span>optional</span></label>
+            <textarea id="finish" rows="2" maxlength="500" placeholder="One assumption understood. A small comparison. A clearer question."></textarea>
+            <p class="gentle-tip"><span aria-hidden="true">↳</span> Make it small enough to stay with.</p>
+          </section>
+          <section class="later-card">
+            <div class="section-label"><span class="step-number">02</span><h2>Leave it here, for later</h2><a href="#source-4" class="citation" aria-label="Read source 4: if-then plans">[4]</a></div>
+            <p class="section-description">A new idea, a worry, another tab to open.<br>Write it down. Your question will still be here.</p>
+            <form id="later-form" class="capture-form"><label for="later-input" class="sr-only">A thought to return to later</label><input id="later-input" maxlength="1000" placeholder="Park a thought…" autocomplete="off"><button aria-label="Save thought for later" type="submit">+</button></form>
+            <ul class="later-list" id="later-preview"></ul>
+            <button class="text-button later-more" id="later-more" hidden>See all in Notebook →</button>
+            <p class="if-then">If I drift, I’ll make a note and return.</p>
+          </section>
+        </div>
+      </div>
+      <div class="desk-bottom"><p><span class="leaf-mark" aria-hidden="true">❧</span> Showing up counts. So does coming back.</p><div class="today-stats"><span><b id="today-sessions">0</b> sessions today</span><span><b id="today-minutes">0</b> minutes tended</span></div></div>
+    </section>
+    <section id="view-notebook" role="tabpanel" aria-labelledby="tab-notebook" hidden>
+      <div class="page-heading"><p class="eyebrow">A THREAD TO COME BACK TO</p><h1>Your notebook.</h1><p>Keep the question, the small discoveries, and the next step.</p></div>
+      <div class="notebook-top"><section class="paper-card weekly-plan"><div class="section-label"><span class="step-number">01</span><h2>One result for this week</h2><a href="#source-2" class="citation" aria-label="Read source 2: Slow Productivity">[2]</a></div><label for="weekly-plan">What would you like to be able to show or explain?</label><textarea id="weekly-plan" rows="3" maxlength="4000" placeholder="e.g. A comparison of transport assumptions in two models."></textarea><p class="small-note">A direction you can revise. An unresolved question can be progress, too.</p></section><section class="paper-card week-summary"><div class="section-label"><h2>This week, gently</h2></div><div id="week-chart" class="week-chart" role="img" aria-label="No sessions recorded this week"></div><p class="small-note" id="week-summary">Your first session belongs here.</p></section></div>
+      <div class="notebook-actions"><div><h2>Session notes</h2><p class="small-note">Timer minutes record elapsed sessions, not attention or research quality.</p></div><button class="button secondary" id="export-week">Export this week ↗</button></div>
+      <div id="session-list" class="session-list"></div>
+      <section class="paper-card parked-section"><div class="section-label"><h2>Parked thoughts</h2><span id="parked-count" class="small-note"></span></div><ul class="later-list" id="later-all"></ul><p class="small-note" id="later-empty">Nothing parked. There’s room when you need it.</p><button class="text-button" id="clear-done" hidden>Clear reviewed thoughts</button></section>
+    </section>
+    <section id="view-sources" role="tabpanel" aria-labelledby="tab-sources" hidden>
+      <div class="page-heading"><p class="eyebrow">THE IDEAS BEHIND THE PRACTICE</p><h1>Rooted in something.</h1><p>Books offer approaches. Studies offer evidence. Here’s what each contributes.</p></div>
+      <div class="source-intro"><span aria-hidden="true">↳</span><p>Tend combines a focus timer with original research prompts. The specific interface, weekly result, and three-question reflection are our adaptations; the sources below have not validated this app.</p></div>
+      <div class="source-grid">
+        <article class="source-card" id="source-1" tabindex="-1"><div class="source-meta"><span>01</span><span class="source-type">BOOK · 2016</span></div><h2>Deep Work</h2><p class="source-author">Cal Newport · Grand Central Publishing</p><p>Make deliberate room for demanding work, with routines that protect your attention.</p><p class="source-application"><b>In Tend</b> One question before the timer, a useful stopping point, and Quiet view. These prompts are our adaptation.</p><a href="https://www.hachettebookgroup.com/titles/cal-newport/deep-work/9781455586677/" target="_blank" rel="noopener noreferrer">Book &amp; publisher’s introduction ↗</a></article>
+        <article class="source-card" id="source-2" tabindex="-1"><div class="source-meta"><span>02</span><span class="source-type">BOOK · 2024</span></div><h2>Slow Productivity</h2><p class="source-author">Cal Newport · Portfolio</p><p>Reduce simultaneous commitments, allow a sustainable pace, and give worthwhile work sustained care.</p><p class="source-application"><b>In Tend</b> One intended weekly result instead of a growing list of competing projects. This is our adaptation of Newport’s approach.</p><a href="https://calnewport.com/my-new-book-slow-productivity/" target="_blank" rel="noopener noreferrer">The author on the book’s principles ↗</a></article>
+        <article class="source-card" id="source-3" tabindex="-1"><div class="source-meta"><span>03</span><span class="source-type">METHOD</span></div><h2>The Pomodoro Technique</h2><p class="source-author">Francesco Cirillo</p><p>Choose one activity, use work intervals and breaks, and observe interruptions and actual effort.</p><p class="source-application"><b>In Tend</b> A 25/5 starting rhythm and a longer break after four full sessions. Custom rhythms are available. The method is broader than a timer; 25/5 is not established here as universally optimal.</p><a href="https://www.pomodorotechnique.com/what-is-the-pomodoro-technique/" target="_blank" rel="noopener noreferrer">The creator’s explanation ↗</a></article>
+        <article class="source-card" id="source-4" tabindex="-1"><div class="source-meta"><span>04</span><span class="source-type">RESEARCH · META-ANALYSIS · 2006</span></div><h2>Make an if–then plan</h2><p class="source-author">Peter M. Gollwitzer &amp; Paschal Sheeran</p><p>The authors’ meta-analysis found that specifying when and how to act can support goal attainment across studied settings.</p><p class="source-application"><b>In Tend</b> An optional plan: if you drift, jot down the thought and return. This particular distraction prompt was not tested in the cited analysis.</p><a href="https://doi.org/10.1016/S0065-2601(06)38002-1" target="_blank" rel="noopener noreferrer">Implementation Intentions and Goal Achievement ↗</a><a class="secondary-source-link" href="https://www.socmot.uni-konstanz.de/sites/default/files/06_Gollwitzer_Sheeran_Implementation_Intentions_And_Goal.pdf" target="_blank" rel="noopener noreferrer">Author-hosted paper (PDF) ↗</a></article>
+        <article class="source-card wide" id="source-5" tabindex="-1"><div class="source-meta"><span>05</span><span class="source-type">RESEARCH · SYSTEMATIC REVIEW &amp; META-ANALYSIS · 2022</span></div><h2>Breaks are part of the work</h2><p class="source-author">Patricia Albulescu, Irina Macsinga, Andrei Rusu, Coralia Sulea, Alexandra Bodnaru &amp; Bogdan Tudor Tulbure · PLOS ONE 17(8), e0272460</p><p>Across 22 study samples, short breaks had small beneficial effects on energy and fatigue. The overall performance effect was not statistically significant; demanding work may require longer recovery.</p><p class="source-application"><b>In Tend</b> A reminder to step away and adjust your break to your needs. This study does not establish the app’s presets as optimal or promise better research performance.</p><a href="https://doi.org/10.1371/journal.pone.0272460" target="_blank" rel="noopener noreferrer">“Give me a break!” — read the open-access paper ↗</a></article>
+      </div>
+      <p class="source-disclaimer">Independent app by Houfu Chen. No affiliation with or endorsement by the authors. Summaries are paraphrases; book text is not reproduced.</p>
+    </section>
+  </main>
+  <footer class="footer"><a href="https://houfu72.com/#tools-section" target="_blank" rel="noopener noreferrer">From Houfu’s desk ↗</a><span class="local-label"><i class="status-dot"></i> Notes stay on this device</span><span><a href="https://houfu72.com/focus/privacy.html" target="_blank" rel="noopener noreferrer">Privacy</a><a href="https://houfu72.com/focus/support.html" target="_blank" rel="noopener noreferrer">Help</a></span></footer>
+  <button id="quiet-close" class="button secondary quiet-close" hidden>Exit quiet view <kbd>Esc</kbd></button>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <dialog id="review-dialog" aria-labelledby="review-title"><form id="review-form"><div class="dialog-heading"><p class="eyebrow">03 / LEAVE YOURSELF A THREAD</p><h2 id="review-title">A moment to gather.</h2><p id="review-summary"></p></div><label for="learned">What did you learn?</label><textarea id="learned" rows="2" maxlength="4000" placeholder="A finding, an assumption, a clearer understanding…"></textarea><label for="stuck">Where are you stuck?</label><textarea id="stuck" rows="2" maxlength="4000" placeholder="An unresolved question is useful to record."></textarea><label for="next">What is the next small action?</label><textarea id="next" rows="2" maxlength="4000" placeholder="Leave a clear starting point for next time."></textarea><p class="small-note">All three are optional. You can save the session as it is.</p><div class="dialog-actions"><button class="button primary" type="submit">Save &amp; start break</button><button class="button secondary" id="review-save-close" type="button">Save &amp; finish</button></div></form></dialog>
+  <dialog id="settings-dialog" aria-labelledby="settings-title"><div class="dialog-heading"><p class="eyebrow">MAKE YOURSELF COMFORTABLE</p><h2 id="settings-title">Your rhythm.</h2><button class="close-dialog icon-button" data-close="settings-dialog" aria-label="Close settings">×</button></div><form id="rhythm-form"><div class="duration-fields"><label>Focus <span>minutes</span><input type="number" id="setting-focus" min="5" max="120" required></label><label>Short break <span>minutes</span><input type="number" id="setting-short" min="1" max="30" required></label><label>Long break <span>minutes</span><input type="number" id="setting-long" min="5" max="60" required></label></div><p class="small-note" id="rhythm-hint">Longer break after every four full sessions. Adjust the rhythm to your work.</p><button class="button secondary" type="submit" id="save-rhythm">Apply rhythm</button></form><div class="settings-row"><div><label for="sound-toggle">A gentle chime</label><p class="small-note">At the end of a session or break.</p></div><input type="checkbox" role="switch" id="sound-toggle"></div><div class="settings-row"><div><label for="awake-toggle">Keep the screen awake</label><p class="small-note">While a timer is running, where supported.</p></div><input type="checkbox" role="switch" id="awake-toggle"></div><div id="native-reminders" hidden><div class="settings-row"><div><b>Session reminders</b><p class="small-note" id="notification-status">Optional reminders when the app is in the background.</p></div><button class="button secondary" id="enable-reminders">Enable</button></div></div><p id="web-timer-note" class="small-note">The timer catches up when you return. Keep this page open for its chime; a browser may suspend sound when locked or in the background.</p><div class="settings-data"><h3>Your notes, your copy.</h3><p class="small-note">Saved locally. Export a backup before changing devices or clearing app or browser data. Device backups may also include app data.</p><div class="backup-actions"><button class="button secondary" id="export-backup">Export backup</button><label for="import-backup" class="button secondary file-label">Restore backup<input type="file" id="import-backup" accept="application/json,.json"></label></div></div><p class="keyboard-note">Keyboard: <kbd>Space</kbd> start / pause · <kbd>Q</kbd> quiet · <kbd>L</kbd> park a thought</p></dialog>
+  <dialog id="restore-dialog" aria-labelledby="restore-title"><div class="dialog-heading"><h2 id="restore-title">Restore this notebook?</h2><p>This will replace the notes and timer currently on this device. Export a backup first if you want to keep them.</p></div><div class="dialog-actions"><button id="restore-confirm" class="button primary">Restore notebook</button><button data-close="restore-dialog" class="button secondary">Cancel</button></div></dialog>
+  <noscript><p class="storage-warning">Tend needs JavaScript for its timer and notebook.</p></noscript>
+</body>
+</html>

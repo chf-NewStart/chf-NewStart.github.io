@@ -19,6 +19,8 @@ gate — check your change locally before you push.
 - `journal.html`, `reading.html` (+ `reading-sw.js`, its offline service worker),
   `moneymanage/`, `msg/`, `personality/`, `pose-loop/`, `game/` —
   standalone tools and games, each self-contained.
+- `focus/` — Tend, a research focus timer and local notebook; `apps/tend-ios/`
+  is its separate iPhone/iPad Xcode project with native reminders and sharing.
 - `sprites/` — pixel art for the tomato rain (goose, raccoon, glider, block, blinker).
 - `vendor/` — vendored libraries for the reading room (pdf.js, Tesseract language data).
 - `resumes/`, `fonts/`, `favicon_io/` — assets. The remaining image folders
@@ -68,6 +70,18 @@ backdrop's, so keep per-frame work here cheap.
 
 Each page is self-contained and keeps its data in the visitor's own browser
 (`localStorage`) unless noted:
+
+- `focus/` — **Tend**, a quiet research focus room. One explicit question,
+  adjustable focus/break intervals, a distraction notebook, optional three-part
+  reflections, and weekly Markdown export. The deadline-based timer survives
+  pauses, refreshes and backgrounding without counting a whole night as work.
+  Sources distinguish book-inspired prompts from research evidence and explain
+  the limitations of the presets. Browser data stays in its own namespaced local
+  storage. `apps/tend-ios/Tend.xcodeproj` bundles the same room for offline iPhone
+  and iPad use, persists the notebook in app-scoped UserDefaults, and adds opt-in
+  local notifications, native share-sheet exports and screen-awake control.
+  See `apps/tend-ios/README.md` for signing and App Store release steps.
+  Run `node --test tests/focus-timer.test.cjs` for timer/state checks.
 
 - `journal.html` — one page per day. Optional sync pushes an **AES-GCM encrypted
   blob** to a private GitHub repo the visitor owns (fine-grained token; the repo
@@ -204,3 +218,4 @@ personal content: photos and images, resume files (`resumes/`), and the
 handwriting font (`fonts/houfu-hand.woff2`). Versions published before this
 change were MIT-licensed and stay that way. Vendored fonts and libraries
 (`fonts/`, `vendor/`) keep their own upstream licenses.
+

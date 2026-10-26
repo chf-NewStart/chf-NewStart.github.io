@@ -73,6 +73,22 @@ test('weekly exports use the local Monday boundary and preserve actual reflectio
   const start = C.weekStart(monday); assert.equal(start.getDay(), 1); assert.equal(start.getHours(), 0);
   let state = C.saveReview(C.advance(C.start(seed(), monday, 'a'), monday + 25 * MIN), { learned: 'One finding', stuck: 'One question', next: 'One action' });
   state.plan = 'One weekly result'; const report = C.weeklyMarkdown(state, monday);
-  assert.match(report, /One weekly result/); assert.match(report, /Learned: One finding/); assert.match(report, /1 sessions · 25 timer minutes/);
+  assert.match(report, /One weekly result/); assert.match(report, /Learned: One finding/); assert.match(report, /1 session · 25 timer minutes/);
   assert.equal(C.weekSessions(state.sessions, new Date(2026, 10, 2, 10)).length, 0);
+});
+test('a discarded session leaves no record and keeps the question ready', () => {
+  let state = C.advance(C.start(seed(), 0, 'a'), 25 * MIN);
+  state = C.discardReview({ ...state, pending: { ...state.pending, learned: 'never mind' } });
+  assert.equal(state.pending, null); assert.equal(state.sessions.length, 0); assert.equal(state.completedCount, 0);
+  assert.equal(state.timer.status, 'idle'); assert.equal(state.timer.phase, 'focus'); assert.equal(state.task.question, seed().task.question);
+  assert.equal(C.discardReview(state), state);
+});
+test('the web notification opt-in survives a reload and defaults to off', () => {
+  assert.equal(C.createState().settings.notify, false);
+  const state = C.createState(); state.settings.notify = true;
+  assert.equal(C.restore(JSON.stringify(state)).settings.notify, true);
+  assert.equal(C.restore({ ...C.createState(), settings: { focus: 25 } }).settings.notify, false);
+});
+test('counts read naturally', () => {
+  assert.equal(C.plural(1, 'session'), '1 session'); assert.equal(C.plural(0, 'session'), '0 sessions'); assert.equal(C.plural(2, 'minute'), '2 minutes');
 });

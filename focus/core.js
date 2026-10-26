@@ -12,7 +12,7 @@
     endAt: null, startedAt: null, id: null, task: null
   });
   function createState() {
-    const settings = { focus: 25, short: 5, long: 15, sound: true, keepAwake: false };
+    const settings = { focus: 25, short: 5, long: 15, sound: true, keepAwake: false, notify: false };
     return { schema: SCHEMA, settings, plan: '', task: { question: '', finish: '' }, later: [],
       sessions: [], completedCount: 0, timer: freshTimer(settings), pending: null };
   }
@@ -66,6 +66,10 @@
       task: { question: text(session.next || session.question, 500), finish: '' },
       timer: takeBreak ? freshTimer(state.settings, 'break', longBreak ? state.settings.long : state.settings.short) : freshTimer(state.settings) };
   }
+  function discardReview(state) {
+    if (!state.pending) return state;
+    return { ...state, pending: null, timer: freshTimer(state.settings) };
+  }
   function setRhythm(state, focus, short, long = state.settings.long) {
     if (state.timer.status !== 'idle' || state.timer.phase !== 'focus') return state;
     const settings = { ...state.settings, focus: Math.round(number(focus, 25, 5, 120)),
@@ -96,7 +100,7 @@
     if (!data || data.schema !== SCHEMA || !Array.isArray(data.sessions) || data.sessions.length > 10000) throw new Error('This is not a Tend backup.');
     const state = createState();
     state.settings = { focus: Math.round(number(data.settings?.focus, 25, 5, 120)), short: Math.round(number(data.settings?.short, 5, 1, 30)),
-      long: Math.round(number(data.settings?.long, 15, 5, 60)), sound: data.settings?.sound !== false, keepAwake: data.settings?.keepAwake === true };
+      long: Math.round(number(data.settings?.long, 15, 5, 60)), sound: data.settings?.sound !== false, keepAwake: data.settings?.keepAwake === true, notify: data.settings?.notify === true };
     state.plan = text(data.plan); state.task = { question: text(data.task?.question, 500), finish: text(data.task?.finish, 500) };
     state.later = (Array.isArray(data.later) ? data.later : []).slice(0, 1000).filter(item => item && typeof item.id === 'string').map(item => ({ id: text(item.id, 160), text: text(item.text, 1000), done: item.done === true }));
     state.sessions = [...new Map(data.sessions.map(item => { const session = normalizeSession(item); return [session.id, session]; })).values()];
@@ -119,10 +123,11 @@
     if (state.timer.status === 'review' && !state.pending) state.timer = freshTimer(state.settings);
     return advance(state, now);
   }
+  const plural = (count, word) => count + ' ' + word + (count === 1 ? '' : 's');
   function weeklyMarkdown(state, now = Date.now()) {
     const sessions = weekSessions(state.sessions, now);
     const lines = ['# Research notes — week of ' + localDate(weekStart(now)), '', '## Intended result', '', state.plan || '(Not set)', '',
-      '## Work recorded', '', sessions.length + ' sessions · ' + Math.round(sessions.reduce((sum, item) => sum + item.durationMs, 0) / MINUTE) + ' timer minutes', '',
+      '## Work recorded', '', plural(sessions.length, 'session') + ' · ' + plural(Math.round(sessions.reduce((sum, item) => sum + item.durationMs, 0) / MINUTE), 'timer minute'), '',
       'Timer minutes record elapsed sessions, not a measure of attention or research quality.', ''];
     sessions.forEach(item => {
       lines.push('### ' + localDate(item.endedAt) + ' — ' + item.question, '', 'Session: ' + (item.completed ? 'full interval' : 'ended early') + ' · ' + Math.round(item.durationMs / MINUTE) + ' min', '');
@@ -133,5 +138,5 @@
     if (parked.length) lines.push('## Parked thoughts', '', ...parked.map(item => '- ' + item.text), '');
     return lines.join('\n');
   }
-  return { SCHEMA, MINUTE, createState, remaining, elapsed, advance, start, pause, endEarly, saveReview, setRhythm, localDate, weekStart, weekSessions, restore, weeklyMarkdown };
+  return { SCHEMA, MINUTE, createState, remaining, elapsed, advance, start, pause, endEarly, saveReview, discardReview, setRhythm, localDate, weekStart, weekSessions, restore, weeklyMarkdown, plural };
 });

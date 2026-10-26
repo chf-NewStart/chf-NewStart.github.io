@@ -13,6 +13,8 @@ The iOS target adds app-scoped notebook persistence, opt-in local session notifi
 
 The minimum deployment target is iOS/iPadOS 17. Build with a currently App Store-supported Xcode/SDK. No signing credentials are stored here.
 
+The room shares houfu72.com’s forest/mint palette and self-hosted DM Sans / IBM Plex Mono fonts. The fonts and their SIL Open Font License texts are bundled offline. The top-right tomato button uses the same icon as the homepage and opens paraphrased focus reminders with links to the in-app sources.
+
 ## Checks
 
 From the repository root:

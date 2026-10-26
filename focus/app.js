@@ -8,6 +8,22 @@
   let state, view = 'focus', quiet = false, reviewId = null, restoredBackup = null;
   let audio = null, wakeLock = null, wakeRequested = false, toastTimeout, lastTick = '';
   let notificationPermission = 'notDetermined';
+  const tips = [
+    { title: 'Keep one question in view.', body: 'Make this interval small enough to finish with a clearer understanding. You can choose the next question afterward.', source: 1, credit: 'Adapted from Deep Work · Cal Newport' },
+    { title: 'Choose a stopping point.', body: 'A useful note, one assumption understood, or a clearer question can be enough for this interval.', source: 1, credit: 'Our research prompt, inspired by Deep Work' },
+    { title: 'An interesting idea can wait.', body: 'If you drift, make a short note and return to the task you chose. The note gives the idea somewhere to stay.', source: 4, credit: 'An adaptation of if–then planning · Gollwitzer & Sheeran' },
+    { title: 'Leave room for a break.', body: 'Step away and notice what recovery you need. Short breaks may help with energy and fatigue; demanding work can need longer.', source: 5, credit: 'Paraphrased from the break research · Albulescu et al.' },
+    { title: 'Give one result some room.', body: 'Keep this week’s intended result concrete. Let fewer simultaneous commitments have more of your attention.', source: 2, credit: 'Adapted from Slow Productivity · Cal Newport' },
+    { title: 'Leave yourself a thread.', body: 'Before you stop, write the next small action. You’ll have a place to begin when you return.', source: 3, credit: 'Our reflection prompt, inspired by the Pomodoro method' }
+  ];
+  let tipIndex = Math.floor(Math.random() * tips.length);
+  function showTip(next = false) {
+    if (next) tipIndex = (tipIndex + 1 + Math.floor(Math.random() * (tips.length - 1))) % tips.length;
+    const tip = tips[tipIndex];
+    $('tip-title').textContent = tip.title; $('tip-copy').textContent = tip.body; $('tip-attribution').textContent = tip.credit;
+    $('tip-source-link').href = '#source-' + tip.source;
+    if (!$('tip-dialog').open) $('tip-dialog').showModal();
+  }
   try {
     const stored = native ? window.TEND_INITIAL_STATE : localStorage.getItem(KEY);
     state = stored ? C.restore(stored) : C.createState();
@@ -75,6 +91,10 @@
       lastTick = signature;
     }
     $('ring-progress').style.strokeDashoffset = String(100 * (1 - ms / timer.durationMs));
+    const angle = 2 * Math.PI * ms / timer.durationMs - Math.PI / 2;
+    $('progress-dot').setAttribute('cx', String(160 + 137 * Math.cos(angle)));
+    $('progress-dot').setAttribute('cy', String(160 + 137 * Math.sin(angle)));
+    document.body.classList.toggle('timer-running', timer.status === 'running');
     $('timer-kind').textContent = isBreak ? 'A LITTLE BREATHING ROOM' : 'FOCUS SESSION';
     $('timer-state').textContent = reviewing ? 'READY TO REFLECT' : timer.status === 'paused' ? 'PAUSED' : isBreak ? 'TAKE A BREATH' : timer.status === 'running' ? 'STAY WITH THIS' : 'SETTLE IN';
     $('timer-caption').textContent = reviewing ? 'leave yourself a thread' : isBreak ? 'look away, stretch, get some water' : 'one question at a time';
@@ -230,6 +250,9 @@
   $('later-more').addEventListener('click', () => { changeView('notebook'); $('later-all').scrollIntoView({ block: 'center' }); });
   document.querySelectorAll('[data-focus]').forEach(button => button.addEventListener('click', () => commit(C.setRhythm(state, Number(button.dataset.focus), Number(button.dataset.break)))));
   $('custom-rhythm').addEventListener('click', openSettings); $('settings-open').addEventListener('click', openSettings);
+  $('tomato-tip').addEventListener('click', () => showTip());
+  $('next-tip').addEventListener('click', () => showTip(true));
+  $('tip-source-link').addEventListener('click', () => $('tip-dialog').close());
   $('rhythm-form').addEventListener('submit', event => {
     event.preventDefault(); if (!$('rhythm-form').reportValidity()) return;
     commit(C.setRhythm(state, Number($('setting-focus').value), Number($('setting-short').value), Number($('setting-long').value)));

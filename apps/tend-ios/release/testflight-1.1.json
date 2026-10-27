@@ -8,5 +8,12 @@
     "3": "New in build 3: quick timers and Do Not Disturb.\n\n1. Say \"Hey Siri, start Tend\", then answer with a length: \"plank 90 seconds\", or \"read this paper for 50 minutes\". Under 5 minutes is a quick timer: it counts down on the Lock Screen and buzzes at the end, without asking where you stopped or going into your notebook. Your research question stays as it was.\n2. Do Not Disturb: in the Shortcuts app, make a new shortcut with Tend's \"Start a focus session\", then \"Set Focus\": Do Not Disturb, Turn On, Until: Time, and pick the time Tend hands over. Name it \"Tend focus\". \"Hey Siri, Tend focus\" then starts a session and keeps the phone quiet until it ends. It fits the Action Button too.\n3. The time's up notice is Time Sensitive now, so it still reaches you in Do Not Disturb.\n\nEverything from build 2 is still here: Siri start, the Lock Screen timer, Pause and Done, and the \"Where did you stop?\" note.",
     "4": "New in build 4: block apps while you focus.\n\n1. Open Tend > Settings (the sliders, top right) > Block apps while you focus > Choose apps. iOS asks once for Screen Time permission (your passcode), then shows Apple's app list. Pick the apps or categories that pull you away (Tend never learns which ones; Apple only hands it anonymous tokens).\n2. Say \"Trigger Tend\" and answer the question as usual. While the session runs, the apps you picked show a dark \"Tend is on\" screen with the pixel tomato.\n3. Pause, Done, or the timer running out unlocks them. Breaks and quick timers (\"plank 90 seconds\") don't block anything.\n4. Try it with the phone locked: start with Siri, open a blocked app, then tap Done on the Lock Screen and open it again.\n\nEverything from builds 2 and 3 is still here."
   },
-  "build_note": "\"build\" is the one asc-submit.mjs submits (Houfu tested build 4's app blocking on his iPhone, 2026-10-27: \"nice it works\"); \"testflight\" holds What to Test for TestFlight builds."
+  "build_note": "\"build\" is the one asc-submit.mjs submits (Houfu tested build 4's app blocking on his iPhone, 2026-10-27: \"nice it works\"); \"testflight\" holds What to Test for TestFlight builds.",
+  "screenshots": [
+    {
+      "displayType": "APP_IPHONE_61",
+      "file": "~/Desktop/Tend-App-Store-Screenshots/iphone-6.3/0-lock-screen.png",
+      "first": true
+    }
+  ]
 }

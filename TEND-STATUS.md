@@ -39,6 +39,15 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Log
 
+- 2026-10-27 16:15 — Claude Code: Houfu OK'd build 4 for 1.1 and asked "how is our app special"; then "do what u
+  think is reasonable". The 1.1 listing now leads with what's distinctive: the question → "where did you stop" →
+  next question thread, starting by voice and staying on the Lock Screen, and locking distracting apps
+  (`apps/tend-ios/release/listing.json`: description, promotional text, keywords; name and subtitle unchanged).
+  A new first iPhone screenshot shows the session on the Lock Screen (`~/Desktop/Tend-App-Store-Screenshots/
+  iphone-6.3/0-lock-screen.png`, 1206×2622 like the others). `asc-submit.mjs` applies the listing text and adds
+  that screenshot first when it creates 1.1 (a failed upload is cleaned up and never holds up the submission).
+  1.0's record is untouched while it's in review.
+
 - 2026-10-27 15:40 — Claude Code, **app blocking during focus sessions**, on branch `claude/tend-block-apps` (pushed,
   not merged: an App Store build carrying `com.apple.developer.family-controls` can't be exported until Apple
   approves Houfu's request QQUXWQ76W5). Room Settings (iPhone only) gets "Block apps while you focus → Choose apps":

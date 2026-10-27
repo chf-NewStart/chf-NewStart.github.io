@@ -233,7 +233,7 @@
     const locked = state.timer.status !== 'idle' || state.timer.phase !== 'focus';
     ['setting-focus', 'setting-short', 'setting-long', 'save-rhythm'].forEach(id => $(id).disabled = locked);
     $('rhythm-hint').textContent = locked ? 'Finish the current session or break before changing durations.' : 'Longer break after every four full sessions. Adjust the rhythm to your work.';
-    $('settings-dialog').showModal(); if (native) post('notificationStatus');
+    $('settings-dialog').showModal(); if (native) { post('notificationStatus'); post('blockingStatus'); }
   }
   function toggleTimer() {
     audioReady(); reconcile();
@@ -350,6 +350,24 @@
   };
   window.TendNativeError = message => { $('storage-warning').hidden = false; $('storage-warning').textContent = String(message); };
   window.TendNativeToast = message => toast(String(message));
+  // iPhone: lock the apps the person picks while a focus session runs (Screen Time); the app shows Apple's picker.
+  if (native) {
+    const row = document.createElement('div'), text = document.createElement('div'), title = document.createElement('b');
+    const note = document.createElement('p'), button = document.createElement('button');
+    row.className = 'settings-row'; note.className = 'small-note'; note.id = 'block-status'; button.className = 'button secondary'; button.id = 'block-apps';
+    title.textContent = 'Block apps while you focus'; button.textContent = 'Choose apps';
+    note.textContent = 'Lock the apps you pick while a focus session runs. Done unlocks them.';
+    text.append(title, note); row.append(text, button); $('native-reminders').append(row);
+    button.addEventListener('click', () => post('blockApps'));
+  }
+  window.TendNativeBlocking = result => {
+    const chosen = [[result.apps, 'app', 'apps'], [result.categories, 'category', 'categories'], [result.sites, 'website', 'websites']]
+      .filter(([count]) => count > 0).map(([count, one, many]) => count + ' ' + (count === 1 ? one : many));
+    $('block-status').textContent = !chosen.length ? 'Lock the apps you pick while a focus session runs. Done unlocks them.'
+      : !result.authorized ? 'Screen Time permission is off for Tend. Choose apps to allow it again.'
+      : chosen.join(', ') + ' locked while you focus. Done unlocks them.';
+    $('block-apps').textContent = chosen.length && result.authorized ? 'Change' : 'Choose apps';
+  };
   // A session started from Siri, paused or finished on the Lock Screen, or a note left there.
   window.TendNativeState = (next, rev) => {
     try { state = C.restore(next); } catch (_) { return; }

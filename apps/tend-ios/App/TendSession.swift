@@ -97,8 +97,8 @@ enum TendSession {
     }
 }
 
-/// Keeps the end-of-session notification and the Live Activity in line with the saved notebook, one pass at a time
-/// and always from the latest notebook.
+/// Keeps the app block, the end-of-session notification and the Live Activity in line with the saved notebook, one
+/// pass at a time and always from the latest notebook.
 @MainActor
 enum TendEffects {
     private static var last: Task<Void, Never>?
@@ -108,6 +108,7 @@ enum TendEffects {
         let pass = Task { @MainActor in
             await previous?.value
             let notebook = TendStore.shared.notebook
+            Blocking.sync(notebook)
             await Reminder.sync(notebook)
             await LiveSession.sync(notebook)
         }

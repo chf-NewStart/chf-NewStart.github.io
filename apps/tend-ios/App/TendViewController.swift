@@ -123,6 +123,12 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
             }
         case "openSettings":
             if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+        case "blockingStatus": callback("TendNativeBlocking", Blocking.status)
+        case "blockApps":
+            Blocking.choose(from: self) { [weak self] in
+                self?.callback("TendNativeBlocking", Blocking.status)
+                Task { await TendEffects.sync() }
+            }
         case "share": share(body)
         case "feedback": UINotificationFeedbackGenerator().notificationOccurred(.success)
         default: break

@@ -39,6 +39,18 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Log
 
+- 2026-10-27 15:40 — Claude Code, **app blocking during focus sessions**, on branch `claude/tend-block-apps` (pushed,
+  not merged: an App Store build carrying `com.apple.developer.family-controls` can't be exported until Apple
+  approves Houfu's request QQUXWQ76W5). Room Settings (iPhone only) gets "Block apps while you focus → Choose apps":
+  Screen Time permission, then Apple's FamilyActivityPicker (Tend only ever holds opaque tokens). `App/Blocking.swift`
+  shields the chosen apps, categories and sites while a *focus* session runs (Siri, Lock Screen or room; not breaks or
+  quick timers) and lifts it on pause, Done or the end. New extensions: `ActivityMonitor/` (lifts the block at the
+  deadline while Tend sleeps; DeviceActivity needs a 15-minute window, so a shorter session's window starts in the
+  past) and `Shield/` ("Tend is on" with the pixel tomato). Simulator: builds, the row shows, Choose apps brings up
+  Apple's Screen Time permission flow (stopped at the OS passcode prompt). **Not yet tested: the block itself, which
+  needs a real iPhone.** After approval: merge, register `com.houfu72.tend.ActivityMonitor` and `.Shield`, enable
+  Family Controls on the three App IDs, build 1.1.0 (4), test on Houfu's phone.
+
 - 2026-10-27 15:20 — Claude Code: Houfu tried build 3 ("tried it, good") and asked for Do Not Disturb done for him.
   A ready-made **Tend focus** shortcut (`apps/tend-ios/scripts/make_focus_shortcut.py`, signed with `shortcuts sign
   --mode anyone`; Start a focus session → Set Focus: Do Not Disturb on until the session's end) is in his iCloud

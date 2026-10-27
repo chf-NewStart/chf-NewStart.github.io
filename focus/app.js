@@ -74,8 +74,8 @@
   }
   function notice(phase, late) {
     if (!canNotify || !state.settings.notify || late > 5 * C.MINUTE || Notification.permission !== 'granted' || document.hasFocus()) return;
-    const title = phase === 'break' ? 'A little room to begin again' : 'A moment to gather';
-    const options = { body: phase === 'break' ? 'Your break has finished. Return when you’re ready.' : 'Your focus interval has finished. Leave yourself a thread for next time.', icon: 'icon-192.png', tag: 'tend-session' };
+    const title = phase === 'break' ? 'A little room to begin again' : phase === 'quick' ? 'Time’s up' : 'A moment to gather';
+    const options = { body: phase === 'break' ? 'Your break has finished. Return when you’re ready.' : phase === 'quick' ? 'Your quick timer has finished. Nice work.' : 'Your focus interval has finished. Leave yourself a thread for next time.', icon: 'icon-192.png', tag: 'tend-session' };
     try { const note = new Notification(title, options); note.onclick = () => { window.focus(); note.close(); }; }
     catch (_) { navigator.serviceWorker?.ready.then(registration => registration.showNotification(title, options)).catch(() => {}); }
   }
@@ -98,28 +98,29 @@
       if (!rang && late < LATE_CHIME_MS) chime();
       notice(ended.phase, late);
       if (ended.phase === 'break') toast('Break finished. Begin again when you’re ready.');
+      if (ended.phase === 'quick') toast((ended.task?.question || 'Quick timer') + ': time’s up. Nice work.');
     }
     scheduleAlarm(); renderTimer();
   }
   function renderTimer() {
-    const timer = state.timer, isBreak = timer.phase === 'break', reviewing = timer.status === 'review';
+    const timer = state.timer, isBreak = timer.phase === 'break', isQuick = timer.phase === 'quick', reviewing = timer.status === 'review';
     const ms = C.remaining(timer), totalSeconds = Math.ceil(ms / 1000);
     const time = String(Math.floor(totalSeconds / 60)).padStart(2, '0') + ':' + String(totalSeconds % 60).padStart(2, '0');
     const signature = time + timer.status + timer.phase;
     if (signature !== lastTick) {
       $('timer-display').textContent = time;
       $('timer-display').setAttribute('aria-label', Math.floor(totalSeconds / 60) + ' minutes and ' + totalSeconds % 60 + ' seconds remaining');
-      document.title = timer.status === 'running' ? time + ' · ' + (isBreak ? 'Breathe' : 'Focus') + ' — Tend' : timer.status === 'paused' ? time + ' · Paused — Tend' : reviewing ? '✓ Time to reflect — Tend' : 'Tend — a little room to focus';
+      document.title = timer.status === 'running' ? time + ' · ' + (isBreak ? 'Breathe' : isQuick ? timer.task?.question || 'Quick timer' : 'Focus') + ' — Tend' : timer.status === 'paused' ? time + ' · Paused — Tend' : reviewing ? '✓ Time to reflect — Tend' : 'Tend — a little room to focus';
       lastTick = signature;
     }
     $('ring-progress').style.strokeDashoffset = String(100 * (1 - ms / timer.durationMs));
-    $('timer-kind').textContent = isBreak ? 'A LITTLE BREATHING ROOM' : 'FOCUS SESSION';
-    $('timer-state').textContent = reviewing ? 'READY TO REFLECT' : timer.status === 'paused' ? 'PAUSED' : isBreak ? 'TAKE A BREATH' : timer.status === 'running' ? 'STAY WITH THIS' : 'SETTLE IN';
-    $('timer-caption').textContent = reviewing ? 'leave yourself a thread' : isBreak ? 'look away, stretch, get some water' : 'one question at a time';
+    $('timer-kind').textContent = isBreak ? 'A LITTLE BREATHING ROOM' : isQuick ? 'QUICK TIMER' : 'FOCUS SESSION';
+    $('timer-state').textContent = reviewing ? 'READY TO REFLECT' : timer.status === 'paused' ? 'PAUSED' : isBreak ? 'TAKE A BREATH' : isQuick ? 'KEEP GOING' : timer.status === 'running' ? 'STAY WITH THIS' : 'SETTLE IN';
+    $('timer-caption').textContent = reviewing ? 'leave yourself a thread' : isBreak ? 'look away, stretch, get some water' : isQuick ? (timer.task?.question || 'quick timer').toLowerCase() : 'one question at a time';
     $('start-label').textContent = reviewing ? 'Reflect on this session' : timer.status === 'running' ? 'Pause' : timer.status === 'paused' ? 'Continue' : isBreak ? 'Start break' : 'Start focusing';
     $('start-symbol').textContent = reviewing ? '↳' : timer.status === 'running' ? 'Ⅱ' : '▶';
     $('timer-end').hidden = !['running', 'paused'].includes(timer.status) && !isBreak;
-    $('timer-end').textContent = isBreak ? 'Skip break · return to focus' : 'Finish early & reflect';
+    $('timer-end').textContent = isBreak ? 'Skip break · return to focus' : isQuick ? 'Stop timer' : 'Finish early & reflect';
     document.body.classList.toggle('is-break', isBreak);
   }
   function makeThought(item) {
@@ -202,8 +203,8 @@
     const editable = state.timer.status === 'idle' && state.timer.phase === 'focus';
     document.querySelectorAll('[data-focus]').forEach(button => { button.disabled = !editable; button.setAttribute('aria-pressed', String(Number(button.dataset.focus) === state.settings.focus && Number(button.dataset.break) === state.settings.short)); });
     $('custom-rhythm').disabled = !editable;
-    $('timer-footnote').replaceChildren(document.createTextNode(state.timer.phase === 'break' ? 'A little distance from the work. ' : state.settings.focus + ' minutes of focus, then ' + state.settings.short + ' to breathe. '));
-    const source = document.createElement('a'); source.href = state.timer.phase === 'break' ? '#source-5' : '#source-3'; source.className = 'citation'; source.textContent = state.timer.phase === 'break' ? '[5]' : '[3]'; source.setAttribute('aria-label', 'Read the source for this practice'); $('timer-footnote').append(source);
+    $('timer-footnote').replaceChildren(document.createTextNode(state.timer.phase === 'break' ? 'A little distance from the work. ' : state.timer.phase === 'quick' ? 'A quick timer from Siri. Your question is still here.' : state.settings.focus + ' minutes of focus, then ' + state.settings.short + ' to breathe. '));
+    const source = document.createElement('a'); source.href = state.timer.phase === 'break' ? '#source-5' : '#source-3'; source.className = 'citation'; source.textContent = state.timer.phase === 'break' ? '[5]' : '[3]'; source.setAttribute('aria-label', 'Read the source for this practice'); if (state.timer.phase !== 'quick') $('timer-footnote').append(source);
     const dots = state.completedCount % 4 || (state.timer.phase === 'break' && state.completedCount > 0 ? 4 : 0);
     [...$('cycle').children].forEach((dot, i) => dot.classList.toggle('filled', i < dots));
     $('cycle').setAttribute('aria-label', dots + ' of 4 full sessions toward a longer break');

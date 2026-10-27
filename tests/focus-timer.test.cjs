@@ -92,3 +92,22 @@ test('the web notification opt-in survives a reload and defaults to off', () => 
 test('counts read naturally', () => {
   assert.equal(C.plural(1, 'session'), '1 session'); assert.equal(C.plural(0, 'session'), '0 sessions'); assert.equal(C.plural(2, 'minute'), '2 minutes');
 });
+test('a quick timer ends without a reflection, is not recorded and leaves the question alone', () => {
+  const state = C.start({ ...seed(), timer: C.quickTimer('Plank', 90000) }, 0, 'q');
+  assert.equal(state.timer.phase, 'quick'); assert.equal(state.timer.task.question, 'Plank'); assert.equal(state.timer.endAt, 90000);
+  assert.equal(state.task.question, seed().task.question);
+  const done = C.advance(state, 91000);
+  assert.equal(done.pending, null); assert.equal(done.sessions.length, 0); assert.equal(done.completedCount, 0);
+  assert.equal(done.timer.phase, 'focus'); assert.equal(done.timer.status, 'idle'); assert.equal(done.task.question, seed().task.question);
+  const stopped = C.endEarly(C.pause(state, 30000), 40000);
+  assert.equal(stopped.pending, null); assert.equal(stopped.timer.phase, 'focus');
+  assert.equal(C.start(C.pause(state, 30000), 50000).timer.task.question, 'Plank');
+});
+test('a 30-second quick timer survives a reload, and nothing shorter than 5 seconds does', () => {
+  const state = C.start({ ...seed(), timer: C.quickTimer('Rest', 30000) }, 0, 'q');
+  const restored = C.restore(JSON.stringify(state), 10000);
+  assert.equal(restored.timer.durationMs, 30000); assert.equal(restored.timer.task.question, 'Rest');
+  assert.equal(C.remaining(restored.timer, 10000), 20000);
+  const tiny = C.restore(JSON.stringify({ ...state, timer: { ...state.timer, durationMs: 1000, remainingMs: 1000, endAt: 1000 } }), 0);
+  assert.equal(tiny.timer.durationMs, 5000);
+});

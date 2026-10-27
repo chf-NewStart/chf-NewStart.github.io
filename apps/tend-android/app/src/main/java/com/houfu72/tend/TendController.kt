@@ -100,6 +100,7 @@ class TendController(context: Context) {
         // Later than this, the notification already rang while Tend was away.
         if (late < 2000 && state.settings.sound) platform?.chime()
         if (ended.phase == Phase.BREAK) showToast("Break finished. Begin again when you’re ready.")
+        if (ended.phase == Phase.QUICK) showToast((ended.task?.question ?: "Quick timer") + ": time’s up. Nice work.")
     }
 
     fun toggleTimer() {

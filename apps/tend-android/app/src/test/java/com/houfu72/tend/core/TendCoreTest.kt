@@ -179,6 +179,46 @@ class TendCoreTest {
     }
 
     // Android only: a notebook saved by the web room (JSON.stringify of its state) opens here unchanged.
+    @Test fun `a quick timer ends without a reflection, is not recorded and leaves the question alone`() {
+        val state = start(seed().copy(timer = quickTimer("Plank", 90_000)), 0, "q")
+        assertEquals(Phase.QUICK, state.timer.phase)
+        assertEquals("Plank", state.timer.task!!.question)
+        assertEquals(90_000L, state.timer.endAt)
+        assertEquals(seed().task, state.task)
+        val done = advance(state, 91_000)
+        assertNull(done.pending)
+        assertEquals(0, done.sessions.size)
+        assertEquals(0, done.completedCount)
+        assertEquals(Phase.FOCUS, done.timer.phase)
+        assertEquals(Status.IDLE, done.timer.status)
+        assertEquals(seed().task.question, done.task.question)
+        val stopped = endEarly(pause(state, 30_000), 40_000)
+        assertNull(stopped.pending)
+        assertEquals(Phase.FOCUS, stopped.timer.phase)
+        assertEquals("Plank", start(pause(state, 30_000), 50_000).timer.task!!.question)
+    }
+
+    @Test fun `a 30-second quick timer survives a reload, and nothing shorter than 5 seconds does`() {
+        val state = start(seed().copy(timer = quickTimer("Rest", 30_000)), 0, "q")
+        val restored = roundTrip(state, 10_000)
+        assertEquals(30_000L, restored.timer.durationMs)
+        assertEquals("Rest", restored.timer.task!!.question)
+        assertEquals(20_000L, remaining(restored.timer, 10_000))
+        val tiny = roundTrip(state.copy(timer = state.timer.copy(durationMs = 1000, remainingMs = 1000, endAt = 1000)), 0)
+        assertEquals(5_000L, tiny.timer.durationMs)
+    }
+
+    @Test fun `an iPhone quick timer in a backup opens here`() {
+        val iphone = """{"schema":"tend-focus-v1","settings":{"focus":25,"short":5,"long":15},"plan":"","task":{"question":"Write the introduction","finish":""},
+            "later":[],"sessions":[],"completedCount":0,"timer":{"phase":"quick","status":"running","durationMs":90000,"remainingMs":90000,
+            "endAt":1793020290000,"startedAt":1793020200000,"id":"q1","task":{"question":"Plank","finish":""}},"pending":null}"""
+        val state = restore(iphone, 1793020200000 + 30_000)
+        assertEquals(Phase.QUICK, state.timer.phase)
+        assertEquals("Plank", state.timer.task!!.question)
+        assertEquals(60_000L, remaining(state.timer, 1793020200000 + 30_000))
+        assertEquals("Write the introduction", state.task.question)
+    }
+
     @Test fun `a web room backup opens with its sessions, thoughts and running timer`() {
         val web = """{"schema":"tend-focus-v1","settings":{"focus":50,"short":10,"long":20,"sound":false,"keepAwake":true,"notify":false},
             "plan":"A comparison","task":{"question":"How is sugar split?","finish":""},

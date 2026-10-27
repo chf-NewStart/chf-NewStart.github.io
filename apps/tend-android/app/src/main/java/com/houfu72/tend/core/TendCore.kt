@@ -17,8 +17,10 @@ import kotlin.math.roundToLong
 
 const val SCHEMA = "tend-focus-v1"
 const val MINUTE = 60_000L
+const val SHORTEST = 5_000L
 
-enum class Phase(val json: String) { FOCUS("focus"), BREAK("break") }
+/** QUICK: a quick timer ("plank 90 seconds", from Siri on the iPhone), as in focus/core.js. */
+enum class Phase(val json: String) { FOCUS("focus"), BREAK("break"), QUICK("quick") }
 enum class Status(val json: String) { IDLE("idle"), RUNNING("running"), PAUSED("paused"), REVIEW("review") }
 
 data class Settings(
@@ -63,6 +65,10 @@ private fun number(value: Double?, fallback: Double, min: Double, max: Double): 
 fun freshTimer(settings: Settings, phase: Phase = Phase.FOCUS, minutes: Int = settings.focus) =
     Timer(phase, Status.IDLE, minutes * MINUTE, minutes * MINUTE)
 
+/** Like a break it ends without a reflection and is not recorded; it carries its own label, so the question stays. */
+fun quickTimer(label: String, durationMs: Long) =
+    Timer(Phase.QUICK, Status.IDLE, durationMs, durationMs, task = Task(text(label, 500), ""))
+
 fun createState() = TendState()
 
 fun remaining(timer: Timer, now: Long = System.currentTimeMillis()): Long =
@@ -79,7 +85,7 @@ private fun makePending(timer: Timer, now: Long, completed: Boolean) = Session(
 fun advance(state: TendState, now: Long = System.currentTimeMillis()): TendState {
     val timer = state.timer
     if (timer.status != Status.RUNNING || remaining(timer, now) > 0) return state
-    if (timer.phase == Phase.BREAK) return state.copy(timer = freshTimer(state.settings))
+    if (timer.phase != Phase.FOCUS) return state.copy(timer = freshTimer(state.settings))
     return state.copy(
         pending = makePending(timer, now, true),
         timer = timer.copy(status = Status.REVIEW, remainingMs = 0, endAt = null)
@@ -95,7 +101,7 @@ fun start(state: TendState, now: Long = System.currentTimeMillis(), id: String =
     return current.copy(
         timer = timer.copy(
             status = Status.RUNNING, endAt = now + timer.remainingMs, startedAt = now, id = id,
-            task = if (timer.phase == Phase.FOCUS) current.task.copy(question = current.task.question.trim()) else null
+            task = if (timer.phase == Phase.FOCUS) current.task.copy(question = current.task.question.trim()) else timer.task
         )
     )
 }
@@ -110,7 +116,7 @@ fun endEarly(state: TendState, now: Long = System.currentTimeMillis()): TendStat
     val current = advance(state, now)
     val timer = current.timer
     if (timer.status != Status.RUNNING && timer.status != Status.PAUSED) return current
-    if (timer.phase == Phase.BREAK || elapsed(timer, now) < 1000) return current.copy(timer = freshTimer(current.settings))
+    if (timer.phase != Phase.FOCUS || elapsed(timer, now) < 1000) return current.copy(timer = freshTimer(current.settings))
     return current.copy(
         pending = makePending(timer, now, false),
         timer = timer.copy(status = Status.REVIEW, remainingMs = remaining(timer, now), endAt = null)

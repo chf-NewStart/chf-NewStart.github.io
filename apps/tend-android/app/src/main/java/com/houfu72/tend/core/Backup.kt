@@ -109,7 +109,7 @@ fun restore(input: JsonElement, now: Long = System.currentTimeMillis()): TendSta
     val phase = Phase.entries.firstOrNull { it.json == timer?.get("phase").str() }
     val status = Status.entries.firstOrNull { it.json == timer?.get("status").str() }
     if (timer != null && phase != null && status != null) {
-        val durationMs = clamp(timer["durationMs"].num(), settings.focus.toDouble() * MINUTE, MINUTE.toDouble(), 120.0 * MINUTE).jsRound()
+        val durationMs = clamp(timer["durationMs"].num(), settings.focus.toDouble() * MINUTE, SHORTEST.toDouble(), 120.0 * MINUTE).jsRound()
         val needsTask = phase == Phase.FOCUS && status != Status.IDLE
         val timerTask = timer["task"].obj()
         val validTask = timerTask?.get("question").str()?.takeIf { it.isNotBlank() } != null

@@ -8,6 +8,8 @@ struct TendActivityAttributes: ActivityAttributes {
         enum Status: String, Codable { case running, paused, review }
         var status: Status
         var isBreak: Bool
+        /// A quick timer ("plank 90 seconds"): `question` is its label, and it ends without asking where you stopped.
+        var isQuick = false
         var question: String
         /// While running, the deadline. The system counts down to it and marks the activity stale when it passes.
         var endAt: Date

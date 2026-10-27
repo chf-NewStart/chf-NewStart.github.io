@@ -4,12 +4,18 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const SCHEMA = 'tend-focus-v1';
-  const MINUTE = 60000;
+  const MINUTE = 60000, SHORTEST = 5000;
   const text = (value, max = 4000) => typeof value === 'string' ? value.slice(0, max) : '';
   const number = (value, fallback, min, max) => Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
   const freshTimer = (settings, phase = 'focus', minutes = settings.focus) => ({
     phase, status: 'idle', durationMs: minutes * MINUTE, remainingMs: minutes * MINUTE,
     endAt: null, startedAt: null, id: null, task: null
+  });
+  // A quick timer ("plank 90 seconds", from Siri on the iPhone): like a break it ends without a reflection and is not
+  // recorded, and it carries its own label, so the room's question stays as it was.
+  const quickTimer = (label, durationMs) => ({
+    phase: 'quick', status: 'idle', durationMs, remainingMs: durationMs,
+    endAt: null, startedAt: null, id: null, task: { question: text(label, 500), finish: '' }
   });
   function createState() {
     const settings = { focus: 25, short: 5, long: 15, sound: true, keepAwake: false, notify: false };
@@ -30,7 +36,7 @@
   function advance(state, now = Date.now()) {
     const timer = state.timer;
     if (timer.status !== 'running' || remaining(timer, now) > 0) return state;
-    if (timer.phase === 'break') return { ...state, timer: freshTimer(state.settings) };
+    if (timer.phase !== 'focus') return { ...state, timer: freshTimer(state.settings) };
     return { ...state, pending: makePending(timer, now, true),
       timer: { ...timer, status: 'review', remainingMs: 0, endAt: null } };
   }
@@ -41,7 +47,7 @@
     if (timer.status === 'paused') return { ...state, timer: { ...timer, status: 'running', endAt: now + timer.remainingMs } };
     if (timer.phase === 'focus' && !state.task.question.trim()) throw new Error('Choose one question or task first.');
     return { ...state, timer: { ...timer, status: 'running', endAt: now + timer.remainingMs,
-      startedAt: now, id, task: timer.phase === 'focus' ? { ...state.task, question: state.task.question.trim() } : null } };
+      startedAt: now, id, task: timer.phase === 'focus' ? { ...state.task, question: state.task.question.trim() } : timer.task } };
   }
   function pause(state, now = Date.now()) {
     state = advance(state, now);
@@ -52,7 +58,7 @@
     state = advance(state, now);
     const timer = state.timer;
     if (!['running', 'paused'].includes(timer.status)) return state;
-    if (timer.phase === 'break' || elapsed(timer, now) < 1000) return { ...state, timer: freshTimer(state.settings) };
+    if (timer.phase !== 'focus' || elapsed(timer, now) < 1000) return { ...state, timer: freshTimer(state.settings) };
     return { ...state, pending: makePending(timer, now, false),
       timer: { ...timer, status: 'review', remainingMs: remaining(timer, now), endAt: null } };
   }
@@ -107,8 +113,8 @@
     state.completedCount = Math.round(number(data.completedCount, state.sessions.filter(item => item.completed).length, 0, 1000000));
     state.timer = freshTimer(state.settings);
     const timer = data.timer;
-    if (timer && ['focus', 'break'].includes(timer.phase) && ['idle', 'running', 'paused', 'review'].includes(timer.status)) {
-      const durationMs = number(timer.durationMs, state.settings.focus * MINUTE, MINUTE, 120 * MINUTE);
+    if (timer && ['focus', 'break', 'quick'].includes(timer.phase) && ['idle', 'running', 'paused', 'review'].includes(timer.status)) {
+      const durationMs = number(timer.durationMs, state.settings.focus * MINUTE, SHORTEST, 120 * MINUTE);
       const needsTask = timer.phase === 'focus' && timer.status !== 'idle';
       const validTask = typeof timer.task?.question === 'string' && timer.task.question.trim();
       const validClock = Number.isFinite(timer.startedAt) && typeof timer.id === 'string' && (timer.status !== 'running' || Number.isFinite(timer.endAt));
@@ -138,5 +144,5 @@
     if (parked.length) lines.push('## Parked thoughts', '', ...parked.map(item => '- ' + item.text), '');
     return lines.join('\n');
   }
-  return { SCHEMA, MINUTE, createState, remaining, elapsed, advance, start, pause, endEarly, saveReview, discardReview, setRhythm, localDate, weekStart, weekSessions, restore, weeklyMarkdown, plural };
+  return { SCHEMA, MINUTE, createState, quickTimer, remaining, elapsed, advance, start, pause, endEarly, saveReview, discardReview, setRhythm, localDate, weekStart, weekSessions, restore, weeklyMarkdown, plural };
 });

@@ -83,6 +83,7 @@ fun TimerCard(c: TendController, modifier: Modifier = Modifier, quiet: Boolean =
     val state = c.state
     val timer = state.timer
     val isBreak = timer.phase == Phase.BREAK
+    val isQuick = timer.phase == Phase.QUICK
     val reviewing = timer.status == Status.REVIEW
     val running = timer.status == Status.RUNNING
     val editable = timer.status == Status.IDLE && timer.phase == Phase.FOCUS
@@ -94,7 +95,7 @@ fun TimerCard(c: TendController, modifier: Modifier = Modifier, quiet: Boolean =
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(6.dp).then(if (running) Modifier.shadow(6.dp, CircleShape, ambientColor = Px.green, spotColor = Px.green) else Modifier).clip(CircleShape).background(Px.green))
                 Spacer(Modifier.width(7.dp))
-                Text(if (isBreak) "A LITTLE BREATHING ROOM" else "FOCUS SESSION", Type.mono.copy(fontSize = 9.sp, letterSpacing = 0.13.em), Modifier.weight(1f), color = Px.ink)
+                Text(if (isBreak) "A LITTLE BREATHING ROOM" else if (isQuick) "QUICK TIMER" else "FOCUS SESSION", Type.mono.copy(fontSize = 9.sp, letterSpacing = 0.13.em), Modifier.weight(1f), color = Px.ink)
                 TextLink("⛶  Quiet view", size = 11) { c.setQuietView(true) }
             }
             Spacer(Modifier.height(12.dp))
@@ -115,13 +116,13 @@ fun TimerCard(c: TendController, modifier: Modifier = Modifier, quiet: Boolean =
         )
         if (running || timer.status == Status.PAUSED || isBreak) {
             Spacer(Modifier.height(4.dp))
-            TextLink(if (isBreak) "Skip break · return to focus" else "Finish early & reflect", onClick = c::endOrSkip)
+            TextLink(if (isBreak) "Skip break · return to focus" else if (isQuick) "Stop timer" else "Finish early & reflect", onClick = c::endOrSkip)
         }
         if (!quiet) {
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                SmallNote(if (isBreak) "A little distance from the work." else "${state.settings.focus} minutes of focus, then ${state.settings.short} to breathe.", color = Px.muted)
-                Citation(if (isBreak) 5 else 3, c::openSource)
+                SmallNote(if (isBreak) "A little distance from the work." else if (isQuick) "A quick timer from Siri. Your question is still here." else "${state.settings.focus} minutes of focus, then ${state.settings.short} to breathe.", color = Px.muted)
+                if (!isQuick) Citation(if (isBreak) 5 else 3, c::openSource)
             }
         }
     }
@@ -167,7 +168,7 @@ private fun Dial(c: TendController, quiet: Boolean) {
             Text(
                 when {
                     timer.status == Status.REVIEW -> "READY TO REFLECT"; timer.status == Status.PAUSED -> "PAUSED"; isBreak -> "TAKE A BREATH"
-                    running -> "STAY WITH THIS"; else -> "SETTLE IN"
+                    timer.phase == Phase.QUICK -> "KEEP GOING"; running -> "STAY WITH THIS"; else -> "SETTLE IN"
                 },
                 Type.mono.copy(fontSize = 10.sp, letterSpacing = 0.24.em), color = if (isBreak) Px.blue else Px.green
             )
@@ -186,7 +187,10 @@ private fun Dial(c: TendController, quiet: Boolean) {
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                when { timer.status == Status.REVIEW -> "leave yourself a thread"; isBreak -> "look away, stretch, get some water"; else -> "one question at a time" },
+                when {
+                    timer.status == Status.REVIEW -> "leave yourself a thread"; isBreak -> "look away, stretch, get some water"
+                    timer.phase == Phase.QUICK -> (timer.task?.question ?: "quick timer").lowercase(); else -> "one question at a time"
+                },
                 Type.mono.copy(fontSize = 10.sp), Modifier.widthIn(max = 220.dp), color = Px.muted, align = TextAlign.Center
             )
         }

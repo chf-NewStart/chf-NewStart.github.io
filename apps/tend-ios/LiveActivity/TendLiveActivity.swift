@@ -77,9 +77,9 @@ struct Session {
     var ripe: Double { state.isBreak ? 1 : 1 - left }
 
     var label: String {
-        if finished { return state.isBreak ? "BREAK'S OVER" : "WHERE DID YOU STOP?" }
+        if finished { return state.isBreak ? "BREAK'S OVER" : state.isQuick ? "TIME'S UP" : "WHERE DID YOU STOP?" }
         if state.status == .paused { return "PAUSED" }
-        return state.isBreak ? "TAKE A BREATH" : "STAY WITH THIS"
+        return state.isBreak ? "TAKE A BREATH" : state.isQuick ? "KEEP GOING" : "STAY WITH THIS"
     }
     var labelColor: Color { finished ? accent : state.status == .paused ? Px.muted : Px.green }
     var clockColor: Color { finished ? accent : state.status == .paused ? Px.ink.opacity(0.6) : Px.ink }

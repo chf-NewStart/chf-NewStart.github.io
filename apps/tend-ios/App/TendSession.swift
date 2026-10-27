@@ -8,14 +8,21 @@ import UserNotifications
 /// The returned line is what Siri says.
 @MainActor
 enum TendSession {
-    static func start(question: String, minutes: Int?) async throws -> String {
+    /// Starts a session (or a quick timer, when Siri heard a length under 5 minutes). Returns what Siri says and when
+    /// it ends, which Shortcuts can hand on, for example to keep Do Not Disturb on until then.
+    static func start(question: String, minutes: Int?) async throws -> (line: String, endAt: Date) {
         var arguments: [String: Any] = ["question": question, "id": UUID().uuidString.lowercased()]
         if let minutes { arguments["minutes"] = minutes }
         let outcome = try TendStore.shared.run("start", arguments)
         await TendEffects.sync()
-        let length = plural(Int(milliseconds(outcome.timer["durationMs"]) / 60_000), "minute")
+        let endAt = Date(timeIntervalSince1970: milliseconds(outcome.timer["endAt"]) / 1000)
+        let length = spoken(milliseconds(outcome.timer["durationMs"]))
         let filed = outcome.info["filed"] is [String: Any] ? "Your last session is saved. " : ""
-        return filed + "\(length), starting now." + (Reminder.canAsk ? " I’ll ask where you stopped." : "")
+        if outcome.info["quick"] as? Bool == true {
+            let label = (outcome.timer["task"] as? [String: Any])?["question"] as? String ?? "Quick timer"
+            return (filed + "\(label), \(length), starting now.", endAt)
+        }
+        return (filed + "\(length), starting now." + (Reminder.canAsk ? " I’ll ask where you stopped." : ""), endAt)
     }
 
     static func pause() async throws -> String {
@@ -35,11 +42,15 @@ enum TendSession {
     /// "Done": ends the session and keeps a note on where it stopped: the one given, Siri's answer to `ask`, or,
     /// from the Lock Screen's button, a "Where did you stop?" notification with a text field.
     static func finish(note: String?, ask: (() async throws -> String)?) async throws -> String {
-        let wasBreak = (TendStore.shared.notebook?["timer"] as? [String: Any])?["phase"] as? String == "break"
+        let before = TendStore.shared.notebook?["timer"] as? [String: Any]
         let outcome = try TendStore.shared.run("finish")
         await TendEffects.sync()
         guard let pending = outcome.state["pending"] as? [String: Any], let id = pending["id"] as? String else {
-            return wasBreak ? "Break’s over. Say “Start Tend” when you’re ready." : "There’s no session to finish. Say “Start Tend” to begin one."
+            switch before?["phase"] as? String {
+            case "break": return "Break’s over. Say “Start Tend” when you’re ready."
+            case "quick" where before?["status"] as? String != "idle": return "Timer stopped."
+            default: return "There’s no session to finish. Say “Start Tend” to begin one."
+            }
         }
         let recorded = plural(Int((milliseconds(pending["durationMs"]) / 60_000).rounded()), "minute")
         // A session whose time ran out already had its notification.
@@ -76,6 +87,14 @@ enum TendSession {
     }
 
     private static func plural(_ count: Int, _ word: String) -> String { "\(count) \(word)\(count == 1 ? "" : "s")" }
+
+    /// "25 minutes", "90 seconds", "2 minutes 30 seconds", as people say a length.
+    private static func spoken(_ ms: Double) -> String {
+        let seconds = Int((ms / 1000).rounded())
+        if seconds % 60 == 0 { return plural(seconds / 60, "minute") }
+        if seconds < 120 { return plural(seconds, "second") }
+        return plural(seconds / 60, "minute") + " " + plural(seconds % 60, "second")
+    }
 }
 
 /// Keeps the end-of-session notification and the Live Activity in line with the saved notebook, one pass at a time
@@ -141,15 +160,27 @@ enum Reminder {
             return
         }
         let settings = notebook?["settings"] as? [String: Any]
-        let sound = settings?["sound"] as? Bool != false, isBreak = timer?["phase"] as? String == "break"
+        let sound = settings?["sound"] as? Bool != false, phase = timer?["phase"] as? String ?? "focus"
         let session = timer?["id"] as? String ?? ""
-        let signature = "\(session)-\(endAt)-\(isBreak)-\(sound)"
+        let signature = "\(session)-\(endAt)-\(phase)-\(sound)"
         guard signature != scheduled else { return }
         center.removePendingNotificationRequests(withIdentifiers: [id])
         let content = UNMutableNotificationContent()
-        content.title = isBreak ? "A little room to begin again" : "A moment to gather"
-        content.body = isBreak ? "Your break has finished. Return when you’re ready." : "Your focus interval has finished. Where did you stop? Press and hold to leave a note."
-        if !isBreak { content.categoryIdentifier = category; content.userInfo = ["session": session] }
+        switch phase {
+        case "break":
+            content.title = "A little room to begin again"
+            content.body = "Your break has finished. Return when you’re ready."
+        case "quick":
+            content.title = "Time’s up"
+            content.body = "Your quick timer has finished. Nice work."
+        default:
+            content.title = "A moment to gather"
+            content.body = "Your focus interval has finished. Where did you stop? Press and hold to leave a note."
+            content.categoryIdentifier = category
+            content.userInfo = ["session": session]
+        }
+        // Through Do Not Disturb and other Focus modes, like a timer, when the person allows it in Settings.
+        content.interruptionLevel = .timeSensitive
         if sound { content.sound = .default }
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, endAt / 1000 - Date().timeIntervalSince1970), repeats: false)
         scheduled = signature
@@ -215,7 +246,7 @@ extension TendActivityAttributes.ContentState {
               let status = Status(rawValue: timer["status"] as? String ?? "") else { return nil }
         let seconds = { (key: String) in ((timer[key] as? NSNumber)?.doubleValue ?? 0) / 1000 }
         let question = (timer["task"] as? [String: Any])?["question"] as? String ?? ""
-        return (id, Self(status: status, isBreak: timer["phase"] as? String == "break", question: question,
+        return (id, Self(status: status, isBreak: timer["phase"] as? String == "break", isQuick: timer["phase"] as? String == "quick", question: question,
                          endAt: status == .running ? Date(timeIntervalSince1970: seconds("endAt")) : .distantPast,
                          duration: seconds("durationMs"), remaining: status == .running ? 0 : seconds("remainingMs")))
     }

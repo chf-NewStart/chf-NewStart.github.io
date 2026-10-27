@@ -1,6 +1,6 @@
 # Tend for iPhone and iPad
 
-A separate app, version **1.0.0 (1)**, bundle ID **com.houfu72.tend**. This does not change Phloem’s app identity, signing, or release. The same hand-written UI is available at https://houfu72.com/focus/ and bundled offline in the iOS app.
+A separate app, version **1.1.0 (2)**, bundle ID **com.houfu72.tend** (Live Activity extension **com.houfu72.tend.LiveActivity**). This does not change Phloem’s app identity, signing, or release. The same hand-written UI is available at https://houfu72.com/focus/ and bundled offline in the iOS app.
 
 The iOS target adds app-scoped notebook persistence, opt-in local session notifications, native share-sheet exports, and screen-awake control. No external service, account, package manager, CocoaPods, or third-party SDK is required. Source links open externally; remote pages cannot use the privileged app bridge.
 
@@ -15,12 +15,25 @@ The minimum deployment target is iOS/iPadOS 17. Build with a currently App Store
 
 The room has a pixel look: Plank Pixel (Houfu's own 5×7 arcade font) for the timer and headings, a ring of blocks that empties as the interval passes, and a tomato that ripens while you focus, over houfu72.com's dark palette with DM Sans and IBM Plex Mono (SIL Open Font License texts bundled). Every font is bundled, so the app works offline. In DEBUG builds, `-tendState <json or file>` seeds the notebook for one launch and `-tendEval <js>` runs once the room is ready (for screenshots and simulator checks).
 
+## Siri and the Lock Screen (1.1)
+
+Say **"Start Tend"** (or "Trigger Tend", "Start a session in Tend", "Focus with Tend"). Siri asks *"What are you working on?"*; the answer becomes the session's question, and the session starts at the notebook's focus length without opening the app. Apple keeps free text out of the phrase itself, so the question is always the follow-up. "Pause Tend", "Resume Tend" and "I'm done in Tend" (Siri then asks "Where did you stop?") work the same way. All four are App Shortcuts, so they also appear in Shortcuts and can go on the Action Button or Back Tap; "Start a focus session" takes an optional length in minutes there.
+
+- **Live Activity** (`LiveActivity/`, a widget extension): the question, the tomato in its ring of blocks and a Plank Pixel countdown, on the Lock Screen and in the Dynamic Island. The countdown, the ring and the ripening tomato are drawn from the system's own timer views (`Text(timerInterval:)` and `ProgressView(timerInterval:)` used as masks), so they keep moving while the app sleeps. At the deadline the activity goes stale and shows "Where did you stop?" with 00:00. Pause/Resume and Done are `LiveActivityIntent`s (`Shared/SessionIntents.swift`) that run in the app's process.
+- **"Where did you stop?"**: the end-of-session notification carries a "Leave a note" text field, so the note can be typed or dictated from the Lock Screen. Done on the Lock Screen posts the same question at once. The answer is saved as the session's *next small action*, which the room offers as the next question.
+- **One notebook**: Siri, the buttons and the note change the same `tend-focus-v1` JSON the room saves, by running `focus/core.js` itself in JavaScriptCore (`App/TendOps.js`, tested in `tests/tend-native-ops.test.cjs`). Each such change bumps a revision (`TendNotebookRevision`); the open room is handed the new notebook (`window.TendNativeState`) and the app refuses a save from a room that hasn't seen it, so neither side writes over the other and sessions are never duplicated. A session started in the room starts the Live Activity too.
+- Starting from Siri while a session is under way files that one first (ended early, with any notes it had), so nothing is lost.
+
+The Live Activity shows the session's question on the Lock Screen; notifications still never include task or note text. Swipe the activity away, or turn off Live Activities for Tend in Settings, to keep the question off the Lock Screen.
+
+For simulator checks, a Debug build has to be signed with the team's development certificate (not "Sign to Run Locally") or Shortcuts can't reach its intents ("Couldn't find AppShortcutsProvider"): `codesign --force --sign "Apple Development" --timestamp=none` the `.appex`, then the `.app`, before `simctl install`. `scripts/plank_clock_font.py` makes the Live Activity's copy of Plank Pixel with the colon trimmed to three cells, as `pixel.css` trims it.
+
 ## Checks
 
 From the repository root:
 
 ```bash
-node --test tests/focus-timer.test.cjs
+node --test tests/focus-timer.test.cjs tests/tend-native-ops.test.cjs
 python3 apps/tend-ios/scripts/bundle_web.py
 xcodebuild -project apps/tend-ios/Tend.xcodeproj -scheme Tend \
   -configuration Debug -sdk iphonesimulator \

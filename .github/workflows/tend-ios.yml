@@ -2,9 +2,9 @@ name: Tend iOS build
 on:
   push:
     branches: [main]
-    paths: ['focus/**', 'apps/tend-ios/**', 'tests/focus-timer.test.cjs', '.github/workflows/tend-ios.yml']
+    paths: ['focus/**', 'apps/tend-ios/**', 'tests/focus-timer.test.cjs', 'tests/tend-native-ops.test.cjs', '.github/workflows/tend-ios.yml']
   pull_request:
-    paths: ['focus/**', 'apps/tend-ios/**', 'tests/focus-timer.test.cjs', '.github/workflows/tend-ios.yml']
+    paths: ['focus/**', 'apps/tend-ios/**', 'tests/focus-timer.test.cjs', 'tests/tend-native-ops.test.cjs', '.github/workflows/tend-ios.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,8 +14,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Verify shared timer
-        run: node --test tests/focus-timer.test.cjs
+      - name: Verify shared timer and the iPhone's Siri / Lock Screen operations
+        run: node --test tests/focus-timer.test.cjs tests/tend-native-ops.test.cjs
       - name: Bundle offline room
         run: python3 apps/tend-ios/scripts/bundle_web.py
       - name: Compile for iPhone and iPad simulator

@@ -8,6 +8,9 @@
   let state, view = 'focus', quiet = false, reviewId = null, restoredBackup = null;
   let audio = null, alarm = null, wakeLock = null, wakeRequested = false, toastTimeout, lastTick = '', discardArmed = 0;
   let notificationPermission = 'notDetermined';
+  // The iPhone app's notebook revision this room has seen. Siri, the Lock Screen and its note notification change
+  // the notebook outside the room; the app refuses a save from an older revision and hands over the newer notebook.
+  let revision = Number(window.TEND_INITIAL_REVISION) || 0;
   const CHIME_LEVEL = .16, LATE_CHIME_MS = native ? 2000 : 90000, canNotify = !native && 'Notification' in window;
   try {
     const stored = native ? window.TEND_INITIAL_STATE : localStorage.getItem(KEY);
@@ -23,7 +26,7 @@
   }
   function persist() {
     try {
-      if (native) post('save', { state }); else localStorage.setItem(KEY, JSON.stringify(state));
+      if (native) post('save', { state, rev: revision }); else localStorage.setItem(KEY, JSON.stringify(state));
     } catch (error) {
       $('storage-warning').hidden = false;
       $('storage-warning').textContent = 'Your latest changes are only in memory because device storage could not be updated. Export a backup in Settings before leaving.';
@@ -346,6 +349,13 @@
   };
   window.TendNativeError = message => { $('storage-warning').hidden = false; $('storage-warning').textContent = String(message); };
   window.TendNativeToast = message => toast(String(message));
+  // A session started from Siri, paused or finished on the Lock Screen, or a note left there.
+  window.TendNativeState = (next, rev) => {
+    try { state = C.restore(next); } catch (_) { return; }
+    revision = rev;
+    if (state.timer.status !== 'idle') $('start-dialog').close();
+    render();
+  };
   document.addEventListener('keydown', event => {
     if (event.target.closest('input,textarea,select,[contenteditable=true]') || document.querySelector('dialog[open]') || event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.code === 'Space' && view === 'focus' && !event.target.closest('button,a')) { event.preventDefault(); toggleTimer(); }

@@ -4,21 +4,20 @@ import UserNotifications
 
 /// Bundled offline UI with native storage, reminders, sharing and screen-awake control.
 /// No remote content is loaded into the privileged web view.
-final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate, UNUserNotificationCenterDelegate {
-    private let notebookKey = "TendNotebookV1"
-    private let reminderID = "tend.current-session"
-    private let center = UNUserNotificationCenter.current()
+final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
+    /// Posted when a reminder arrives while Tend is open: the room catches up by itself.
+    static let catchUp = Notification.Name("TendRoomCatchUp")
+    private let store = TendStore.shared
     private var webView: WKWebView!
     private var notebook: [String: Any]?
-    private var notificationAllowed = false
-    private var scheduledSignature: String?
+    /// The notebook revision the room has seen. Siri and the Lock Screen change the notebook outside the room.
+    private var roomRevision = 0
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 4/255, green: 7/255, blue: 6/255, alpha: 1)
-        if let data = UserDefaults.standard.data(forKey: notebookKey) {
-            notebook = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-        }
+        notebook = store.notebook
+        roomRevision = store.revision
         #if DEBUG
         // Screenshot and smoke-test hooks: `-tendState <json or file>` replaces the notebook for this launch.
         if let seed = debugArgument("-tendState") {
@@ -31,7 +30,7 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
         configuration.userContentController.add(self, name: "tend")
         let initial = notebook.flatMap { try? JSONSerialization.data(withJSONObject: $0) }
             .flatMap { String(data: $0, encoding: .utf8) } ?? "null"
-        var bootstrap = "window.TEND_NATIVE = true; window.TEND_INITIAL_STATE = \(initial);"
+        var bootstrap = "window.TEND_NATIVE = true; window.TEND_INITIAL_STATE = \(initial); window.TEND_INITIAL_REVISION = \(roomRevision);"
         #if DEBUG
         // `-tendNow <ms since 1970>` moves the room's clock, so screenshots can show a whole week of sessions.
         if let now = debugArgument("-tendNow").flatMap(Double.init) {
@@ -52,8 +51,12 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor), webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             webView.topAnchor.constraint(equalTo: view.topAnchor), webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        center.delegate = self
         NotificationCenter.default.addObserver(self, selector: #selector(resume), name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(resume), name: Self.catchUp, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(sendNotebook), name: TendStore.didChange, object: nil)
+        Reminder.failed = { [weak self] in
+            self?.callback("TendNativeToast", "The reminder could not be scheduled. The timer will catch up when you reopen Tend.")
+        }
         if let page = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "Web") {
             webView.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
         } else {
@@ -71,8 +74,23 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
     #endif
 
     @objc private func resume() {
+        if roomRevision != store.revision { sendNotebook() }
         webView?.evaluateJavaScript("window.dispatchEvent(new Event('tend-resume'))", completionHandler: nil)
         reportNotificationStatus()
+    }
+
+    /// Hands the room the saved notebook after a change made outside it, or when it tried to save over one.
+    @objc private func sendNotebook() {
+        guard let data = store.data, let json = String(data: data, encoding: .utf8) else { return }
+        notebook = store.notebook
+        roomRevision = store.revision
+        keepAwake()
+        webView?.evaluateJavaScript("window.TendNativeState && window.TendNativeState(\(json), \(roomRevision))", completionHandler: nil)
+    }
+
+    private func keepAwake() {
+        let timer = notebook?["timer"] as? [String: Any], settings = notebook?["settings"] as? [String: Any]
+        UIApplication.shared.isIdleTimerDisabled = (settings?["keepAwake"] as? Bool == true) && timer?["status"] as? String == "running"
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -85,12 +103,10 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
                 callback("TendNativeError", "The notebook could not be saved. Export a backup before closing the app.")
                 return
             }
-            UserDefaults.standard.set(data, forKey: notebookKey)
+            guard store.save(fromRoom: data, seen: body["rev"] as? Int) else { sendNotebook(); return }
             notebook = state
-            let timer = state["timer"] as? [String: Any]
-            let settings = state["settings"] as? [String: Any]
-            UIApplication.shared.isIdleTimerDisabled = (settings?["keepAwake"] as? Bool == true) && timer?["status"] as? String == "running"
-            syncReminder()
+            keepAwake()
+            Task { await TendEffects.sync() }
         case "ready":
             reportNotificationStatus()
             #if DEBUG
@@ -102,7 +118,7 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
             #endif
         case "notificationStatus": reportNotificationStatus()
         case "enableNotifications":
-            center.requestAuthorization(options: [.alert, .sound]) { [weak self] _, _ in
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] _, _ in
                 DispatchQueue.main.async { self?.reportNotificationStatus() }
             }
         case "openSettings":
@@ -120,50 +136,10 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
     }
 
     private func reportNotificationStatus() {
-        center.getNotificationSettings { [weak self] settings in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                let status: String
-                switch settings.authorizationStatus {
-                case .authorized: status = "authorized"
-                case .provisional, .ephemeral: status = "provisional"
-                case .denied: status = "denied"
-                default: status = "notDetermined"
-                }
-                self.notificationAllowed = status == "authorized" || status == "provisional"
-                self.callback("TendNativeStatus", ["notifications": status])
-                self.syncReminder()
-            }
-        }
-    }
-
-    private func syncReminder() {
-        guard notificationAllowed, let timer = notebook?["timer"] as? [String: Any], timer["status"] as? String == "running",
-              let endAt = timer["endAt"] as? Double, endAt / 1000 > Date().timeIntervalSince1970 else {
-            center.removePendingNotificationRequests(withIdentifiers: [reminderID])
-            scheduledSignature = nil
-            return
-        }
-        let settings = notebook?["settings"] as? [String: Any]
-        let sound = settings?["sound"] as? Bool != false
-        let isBreak = timer["phase"] as? String == "break"
-        let signature = "\(endAt)-\(isBreak)-\(sound)"
-        guard signature != scheduledSignature else { return }
-        center.removePendingNotificationRequests(withIdentifiers: [reminderID])
-        let content = UNMutableNotificationContent()
-        content.title = isBreak ? "A little room to begin again" : "A moment to gather"
-        // Task and note text are intentionally omitted from lock-screen reminders.
-        content.body = isBreak ? "Your break has finished. Return when you’re ready." : "Your focus interval has finished. Leave yourself a thread for next time."
-        if sound { content.sound = .default }
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, endAt / 1000 - Date().timeIntervalSince1970), repeats: false)
-        let request = UNNotificationRequest(identifier: reminderID, content: content, trigger: trigger)
-        scheduledSignature = signature
-        center.add(request) { [weak self] error in
-            guard error != nil else { return }
-            DispatchQueue.main.async {
-                self?.scheduledSignature = nil
-                self?.callback("TendNativeToast", "The reminder could not be scheduled. The timer will catch up when you reopen Tend.")
-            }
+        Task { [weak self] in
+            let status = await Reminder.permission()
+            self?.callback("TendNativeStatus", ["notifications": status])
+            await TendEffects.sync()
         }
     }
 
@@ -201,11 +177,5 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = navigationAction.request.url, ["https", "mailto"].contains(url.scheme?.lowercased() ?? "") { UIApplication.shared.open(url) }
         return nil
-    }
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // Foreground completion is handled by the room's own chime and reflection.
-        completionHandler([])
-        DispatchQueue.main.async { [weak self] in self?.resume() }
     }
 }

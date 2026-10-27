@@ -13,7 +13,7 @@ to touch a claimed file, write your request under **Requests** below instead.
 | --- | --- | --- | --- |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts; 1.0 (1) submitted by Houfu 2026-10-26, in review. Not submitting anything for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
 | Claude Code | **Android app** (native Kotlin + Compose, `com.houfu72.tend`): built and tested in the emulator; signed 1.0.0 (1) bundle ready for Play closed testing. Waits on Houfu's Play Console account. Web changes that alter timer rules need the same change in `apps/tend-android/.../core/`. | `apps/tend-android/**` | 2026-10-26 14:00 EDT |
-| Claude Code | **Now (2026-10-27 14:20): quick timers and Do Not Disturb**, for Houfu ("add gym plank 90s"; "block the notif … when tend is on"). Siri's answer can carry a length ("plank 90 seconds", "read this paper for 50 minutes"); under 5 minutes it is a *quick timer*: a new timer phase `quick` in `focus/core.js` (no reflection, not in the notebook, the room's question untouched), mirrored in `apps/tend-android/.../core/` and the Android room. "Start a focus session" returns its end time so a Shortcut can turn on Do Not Disturb until then; the end notice becomes Time Sensitive. App blocking (Screen Time) waits on Apple's Family Controls approval. | `focus/core.js`, `focus/app.js`, `tests/focus-timer.test.cjs`, `apps/tend-ios/**`, `apps/tend-android/**`, `tests/tend-native-ops.test.cjs` | 2026-10-27 14:20 EDT |
+| Claude Code | **Quick timers and Do Not Disturb**, done on `main` (Log, 2026-10-27 15:00); iOS 1.1.0 (3) on TestFlight. **Next: app blocking during sessions** (Screen Time; Houfu chose "Done unlocks"). Waits on Apple's Family Controls (Distribution) approval, which Houfu requests as account holder (`apps/tend-ios/release/family-controls-request.md`). | `focus/core.js`, `focus/app.js`, `tests/*`, `apps/tend-ios/**`, `apps/tend-android/**` | 2026-10-27 14:20 EDT |
 | Claude Code | **iPhone: Siri + Lock Screen**, done on `main` (see Log, 2026-10-27 13:40). iOS **1.1.0 (2) is on TestFlight** for "friends"; 1.0 (1) stays in review untouched. **Houfu OK'd submitting 1.1 once 1.0 is approved (2026-10-27).** A watcher in Claude's session runs `node apps/tend-ios/scripts/asc-submit.mjs apps/tend-ios/release/testflight-1.1.json` when 1.0 is Ready for Sale (creates 1.1.0, What's New, build 2, review notes, checks screenshots, submits); if that session is gone, run it by hand after approval (`--dry-run` first). If 1.0 is rejected, nothing is submitted. App Privacy stays "Data Not Collected". | `apps/tend-ios/**`, `focus/app.js` (native bridge only), `tests/tend-native-ops.test.cjs` | 2026-10-27 12:25 EDT |
 | Codex | Houfu requested a thorough review before tomorrow: checking current web/native source, accessibility, offline behavior and notebook handling. Applying fixes only in the files listed here; behavior/native findings go under Requests for Claude. | `focus/theme.*`, `focus/index.html`, `focus/style.css`, `focus/sw.js`, `focus/manifest.webmanifest`, `focus/privacy.html`, `focus/support.html`, new `tests/focus-audit.test.cjs`, `TEND-REVIEW.md`, `.github/workflows/tend-web.yml` | 2026-10-26 |
 
@@ -39,6 +39,27 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Log
 
+- 2026-10-27 15:00 — Claude Code, **quick timers and Do Not Disturb** (Houfu: "add gym plank 90s … any length you
+  say"; "block the notif … when tend is on"). **Timer-rule change, mirrored on Android.**
+  - `focus/core.js`: a third timer phase, `quick` (`C.quickTimer(label, ms)`): it ends like a break (no reflection,
+    not recorded, no long-break count) and carries its own label, so the room's question stays. Restore keeps
+    lengths down to 5 seconds (was 1 minute). `apps/tend-android/.../core/TendCore.kt` + `Backup.kt` mirror it;
+    the Android room, toast and reminder text know quick timers (20/20 JUnit, 3 new incl. an iPhone backup).
+  - `App/TendOps.js`: a length at the start or end of Siri's answer sets the session length: "plank 90 seconds",
+    "90 second plank", "read this paper for 50 minutes", "wall sit a minute and a half"; units spelled out, so
+    "90s music" and "take a second look" stay questions. Under 5 minutes it's a quick timer; a bare "50 minutes"
+    continues the room's question. Room (`focus/app.js`), Live Activity ("KEEP GOING" → "TIME'S UP") and the end
+    notice ("Time's up · Your quick timer has finished. Nice work.") show quick timers.
+  - Do Not Disturb: apps can't turn on a Focus, Shortcuts can. "Start a focus session" now returns the session's
+    end time, so a personal shortcut "Start a focus session → Set Focus: Do Not Disturb, On, Until [that time]"
+    does it (README). End notices are Time Sensitive (`App/Tend.entitlements`), so they sound through it.
+  - Fixed: Done on a timer that ran out while the app slept didn't save the finished state (TendOps compared
+    against the already-advanced copy), so the Lock Screen kept showing it. Tested in the simulator: "Plank 90
+    seconds" via Shortcuts → quick timer on the Lock Screen, Time Sensitive "Time's up", Done clears it; the room
+    shows QUICK TIMER / KEEP GOING / "plank" / Stop timer. Tests 34/34 (node) + 20/20 (Android).
+  - Next, app blocking during a session (FamilyControls + ManagedSettings shield, DeviceActivity monitor to lift it at
+    the end, a pixel ShieldConfiguration; "Done unlocks"): needs Apple's Family Controls (Distribution) approval
+    before TestFlight. Request text in `apps/tend-ios/release/family-controls-request.md`; Houfu submits it.
 - 2026-10-27 13:40 — Claude Code, **iPhone: Siri and the Lock Screen** (Houfu: "trigger tend, imma read this paper and
   find out how metabolic pathways help simplify the things … so i dont even need to open my phone"). Apple keeps free
   text out of Siri phrases, so it's two steps: "Start Tend" (also "Trigger Tend", "Start a session in Tend", "Focus

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Every app Houfu Chen has shipped: Phloem, a calm paper reader for iPad; Qi Zi, Go, chess and Mahjong with a coach; Game Life; Tend, a pixel tomato timer; Plank Constant and Manilha.">
+    <meta name="author" content="Houfu Chen">
+    <meta name="theme-color" content="#08100e">
+    <meta name="color-scheme" content="dark">
+    <link rel="canonical" href="https://houfu72.com/apps/">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://houfu72.com/apps/">
+    <meta property="og:site_name" content="Houfu Chen">
+    <meta property="og:title" content="Apps by Houfu Chen">
+    <meta property="og:description" content="Six apps, each started as a problem in my own day: a paper reader, four board games with a coach, Conway's universe, a tomato timer, a plank game and a card game.">
+    <meta property="og:image" content="https://houfu72.com/og-v2.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Apps by Houfu Chen">
+    <meta name="twitter:image" content="https://houfu72.com/og-v2.jpg">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/tomato-apple-touch-icon.png?v=4">
+    <link rel="icon" href="/favicon.ico?v=4" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/tomato-favicon-32x32.png?v=4">
+    <link rel="manifest" href="/site.webmanifest?v=4">
+    <link rel="preload" href="/fonts/dm-sans-var-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/home.css?v=13">
+    <style>
+        .apps-page { padding-top: 120px; }
+        .section-head h1 { margin-top: 14px; font-size: clamp(2rem, 4.2vw, 3.1rem); line-height: 1.07; letter-spacing: -0.03em; font-weight: 650; }
+        .ship-card .app-head h2 { font-size: 1.5rem; letter-spacing: -0.02em; line-height: 1.15; }
+        .ship-card .plat { margin-top: 6px; color: var(--faint, var(--muted)); font: 500 0.72rem/1.4 var(--mono); letter-spacing: 0.04em; }
+        .ship-card > p { margin-top: 16px; color: var(--soft); }
+        .ship-card ul.points { margin: 14px 0 0; padding-left: 1.1em; color: var(--soft); }
+        .ship-card ul.points li + li { margin-top: 6px; }
+        .ship-card .actions { margin-top: auto; padding-top: 22px; }
+        .more { margin-top: 40px; color: var(--soft); }
+        .more a { color: var(--accent); }
+        @media (max-width: 700px) { .apps-page { padding-top: 96px; } }
+    </style>
+    <title data-en="Apps · Houfu Chen" data-zh="应用 · 陈厚孚">Apps · Houfu Chen</title>
+</head>
+<body>
+    <a class="skip-link" href="#main-content" data-en="Skip to main content" data-zh="跳到主要内容">Skip to main content</a>
+    <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
+
+    <nav class="sticky-nav" aria-label="Primary navigation">
+        <div class="wrap nav-row">
+            <a class="logo" href="/" aria-label="Houfu Chen, home">
+                <span class="logo-mark">HC</span>
+                <span class="logo-copy"><strong>Houfu Chen</strong><small data-en="research / apps / play" data-zh="研究 / 应用 / 玩">research / apps / play</small></span>
+            </a>
+            <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">☰</button>
+            <div class="nav-links" id="navLinks">
+                <a href="/#research-section" data-en="Research" data-zh="研究">Research</a>
+                <a href="/apps/" aria-current="page" data-en="Apps" data-zh="应用">Apps</a>
+                <a href="/#projects-section" data-en="Work" data-zh="项目">Work</a>
+                <a href="/#experience-section" data-en="Experience" data-zh="经历">Experience</a>
+                <a href="/#tools-section" data-en="Tools" data-zh="工具">Tools</a>
+                <a href="/#contact-section" data-en="Contact" data-zh="联系">Contact</a>
+                <div class="nav-actions">
+                    <a class="icon-button" href="/msg/" target="_blank" rel="noopener noreferrer" aria-label="Leave Houfu a note" title="Leave me a note"><img src="/favicon_io/mail-32x32.png?v=1" width="20" height="20" alt=""></a>
+                    <a class="icon-button" href="https://lifegameproject.com/" target="_blank" rel="noopener noreferrer" aria-label="Play in the arcade" title="Play in the arcade"><img src="/favicon_io/arcade-32x32.png?v=1" width="20" height="20" alt=""></a>
+                    <button class="language-toggle" id="languageToggle" type="button" aria-label="Switch language">EN / 中文</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main id="main-content">
+        <section class="section apps-page">
+            <div class="wrap">
+                <div class="section-head">
+                    <p class="kicker" data-en="Apps / Shipped" data-zh="应用 / 作品">Apps / Shipped</p>
+                    <h1 data-en="Every app I've shipped." data-zh="我做过的所有应用。">Every app I've shipped.</h1>
+                    <p data-en="Designed by me, built with friends and AI. Each one started as a problem in my own day. All free, no ads, no tracking." data-zh="由我设计，和朋友与 AI 一起做出来。每一个都源于我自己生活里的一个问题。全部免费，无广告，无追踪。">Designed by me, built with friends and AI. Each one started as a problem in my own day. All free, no ads, no tracking.</p>
+                </div>
+                <div class="ship">
+                    <article class="ship-card panel" id="phloem">
+                        <div class="app-head">
+                            <img src="/assets/home/phloem-icon.webp" alt="" width="256" height="256">
+                            <div><h2>Phloem: Paper Reader</h2><p class="sub" data-en="A calm reading desk for research papers" data-zh="一张安静的论文阅读桌">A calm reading desk for research papers</p><p class="plat">iPad · web</p></div>
+                        </div>
+                        <span class="badge live" data-en="On the App Store" data-zh="已上架 App Store">On the App Store</span>
+                        <p data-en="A local-first reader for PDFs and Word files. A reading guide walks you down the page, pages turn like paper, and Apple Pencil notes sit beside the source. AI is optional and privacy-first." data-zh="本地优先的 PDF 与 Word 阅读器。阅读引导条带你一行行往下读，翻页像真的纸，Apple Pencil 笔记留在原文旁边。AI 可选、隐私优先。">A local-first reader for PDFs and Word files. A reading guide walks you down the page, pages turn like paper, and Apple Pencil notes sit beside the source. AI is optional and privacy-first.</p>
+                        <div class="phloem-clip"><video class="demo" src="/assets/home/phloem-guide-loop.mp4" poster="/assets/home/phloem-guide-loop.webp" width="600" height="576" muted loop playsinline preload="none" aria-label="Phloem's reading guide gliding down a page as the paper turns from light to dark"></video></div>
+                        <div class="actions">
+                            <a class="btn primary" href="https://apps.apple.com/app/id6813510395" target="_blank" rel="noopener noreferrer" data-en="Get it on the App Store ↗" data-zh="在 App Store 下载 ↗">Get it on the App Store ↗</a>
+                            <a class="btn ghost" href="/reading.html" data-en="Read in your browser" data-zh="在浏览器里读">Read in your browser</a>
+                        </div>
+                    </article>
+
+                    <article class="ship-card panel" id="qizi">
+                        <div class="app-head">
+                            <img src="/assets/home/qizi-icon.webp" alt="" width="256" height="256">
+                            <div><h2 data-en="Qi Zi: Go, Chess &amp; Mahjong" data-zh="棋子：围棋、五子棋、国际象棋与麻将">Qi Zi: Go, Chess &amp; Mahjong</h2><p class="sub" data-en="Four classic games, with a coach" data-zh="四款经典棋牌游戏，带教练">Four classic games, with a coach</p><p class="plat" data-en="iPhone · iPad · web · Android in the browser" data-zh="iPhone · iPad · 网页 · 安卓可用浏览器">iPhone · iPad · web · Android in the browser</p></div>
+                        </div>
+                        <span class="badge live" data-en="On the App Store · 1.1 out now" data-zh="已上架 App Store · 1.1 现已推出">On the App Store · 1.1 out now</span>
+                        <p data-en="Go, Gomoku, chess and Mahjong, each against the computer with a coach that says why. On the 3D boards every Go group grows into a snake or a dragon, and a big capture slays it with a temple bell." data-zh="围棋、五子棋、国际象棋和麻将，都能和电脑对局，教练会告诉你为什么。3D 棋盘上，围棋的每一块棋都会长成一条蛇或一条龙，提掉大块就是屠龙，还有一声钟响。">Go, Gomoku, chess and Mahjong, each against the computer with a coach that says why. On the 3D boards every Go group grows into a snake or a dragon, and a big capture slays it with a temple bell.</p>
+                        <ul class="points">
+                            <li data-en="Win rates while you play, and a graph that marks the turning points after." data-zh="对局时实时显示胜率，终局后用曲线标出转折。">Win rates while you play, and a graph that marks the turning points after.</li>
+                            <li data-en="Online rooms shared by the app and the browser, up to four at a Mahjong table." data-zh="在线房间在应用和网页之间互通，麻将可以一桌坐满。">Online rooms shared by the app and the browser, up to four at a Mahjong table.</li>
+                        </ul>
+                        <div class="phloem-clip"><video class="demo" src="/assets/home/qizi-loop.mp4" poster="/assets/home/qizi-loop.webp" width="600" height="434" muted loop playsinline preload="none" aria-label="A white dragon and a black snake set out on a Go board like a sculpture, the camera turning round as the board changes from wood to stone to water"></video></div>
+                        <div class="actions">
+                            <a class="btn primary" href="https://apps.apple.com/app/id6821608519" target="_blank" rel="noopener noreferrer" data-en="Get it on the App Store ↗" data-zh="在 App Store 下载 ↗">Get it on the App Store ↗</a>
+                            <a class="btn ghost" href="https://lifegameproject.com/game/qi.html" target="_blank" rel="noopener noreferrer" data-en="Play in your browser ↗" data-zh="在浏览器里玩 ↗">Play in your browser ↗</a>
+                        </div>
+                    </article>
+
+                    <article class="ship-card panel" id="game-life">
+                        <div class="app-head">
+                            <img src="/assets/home/gamelife-icon.webp" alt="" width="256" height="256">
+                            <div><h2>Game Life: Cellular Worlds</h2><p class="sub" data-en="Conway's universe, one you can hear" data-zh="能听见的康威细胞宇宙">Conway's universe, one you can hear</p><p class="plat" data-en="iPhone · iPad · web" data-zh="iPhone · iPad · 网页">iPhone · iPad · web</p></div>
+                        </div>
+                        <span class="badge live" data-en="On the App Store" data-zh="已上架 App Store">On the App Store</span>
+                        <p data-en="A tiny universe that runs on three simple rules. Draw a few cells, press Play and watch them live, die and multiply, with a sound for every birth." data-zh="一个由三条简单规则驱动的微型宇宙。画几个细胞，按下播放，看它们生存、死亡、繁衍，每一次诞生都有声音。">A tiny universe that runs on three simple rules. Draw a few cells, press Play and watch them live, die and multiply, with a sound for every birth.</p>
+                        <div class="actions">
+                            <a class="btn primary" href="https://apps.apple.com/app/id6821541367" target="_blank" rel="noopener noreferrer" data-en="Get it on the App Store ↗" data-zh="在 App Store 下载 ↗">Get it on the App Store ↗</a>
+                            <a class="btn ghost" href="https://lifegameproject.com/life.html" target="_blank" rel="noopener noreferrer" data-en="Play in your browser ↗" data-zh="在浏览器里玩 ↗">Play in your browser ↗</a>
+                        </div>
+                    </article>
+
+                    <article class="ship-card panel" id="tend">
+                        <div class="app-head">
+                            <img src="/assets/home/tend-icon.webp" alt="" width="256" height="256">
+                            <div><h2>Tend: Pixel Tomato Timer</h2><p class="sub" data-en="A focus timer for research, with a question and a notebook" data-zh="带着一个问题开始专注，用笔记留下下一步">A focus timer for research, with a question and a notebook</p><p class="plat" data-en="iPhone · iPad · web · Android soon" data-zh="iPhone · iPad · 网页 · 安卓即将推出">iPhone · iPad · web · Android soon</p></div>
+                        </div>
+                        <span class="badge soon" data-en="In App Store review" data-zh="App Store 审核中">In App Store review</span>
+                        <p data-en="Start each session with the question you're working on, and end it with a note on where you stopped. A pixel tomato grows while you focus. Works offline." data-zh="每次专注先写下要回答的问题，结束时记下停在哪里。你专注的时候，一颗像素番茄慢慢长大。可离线使用。">Start each session with the question you're working on, and end it with a note on where you stopped. A pixel tomato grows while you focus. Works offline.</p>
+                        <div class="actions">
+                            <a class="btn primary" href="/focus/" data-en="Use it in your browser" data-zh="在浏览器里用">Use it in your browser</a>
+                        </div>
+                    </article>
+
+                    <article class="ship-card panel" id="plank-constant">
+                        <div class="app-head">
+                            <img src="/assets/home/plank-icon.webp" alt="" width="256" height="256">
+                            <div><h2>Plank Constant</h2><p class="sub" data-en="Plank timer games, hands-free" data-zh="免手操作的平板支撑计时游戏">Plank timer games, hands-free</p><p class="plat" data-en="iPhone · iPad · web" data-zh="iPhone · iPad · 网页">iPhone · iPad · web</p></div>
+                        </div>
+                        <span class="badge soon" data-en="In App Store review · public beta open" data-zh="App Store 审核中 · 公开测试中">In App Store review · public beta open</span>
+                        <p data-en="Hold a plank and play with your face, so your hands stay planted and the clock stops dragging: a flight through a meteor belt, and a duel on a plank with a new weapon every round." data-zh="撑住平板支撑，用脸来玩：双手稳稳撑地，时间也不再难熬。穿越流星带的飞行，以及独木桥上的决斗，每回合换一种兵器。">Hold a plank and play with your face, so your hands stay planted and the clock stops dragging: a flight through a meteor belt, and a duel on a plank with a new weapon every round.</p>
+                        <div class="actions">
+                            <a class="btn primary" href="https://testflight.apple.com/join/KWySpVN7" target="_blank" rel="noopener noreferrer" data-en="Join the beta ↗" data-zh="加入测试 ↗">Join the beta ↗</a>
+                            <a class="btn ghost" href="https://lifegameproject.com/game/plank.html" target="_blank" rel="noopener noreferrer" data-en="Play in your browser ↗" data-zh="在浏览器里玩 ↗">Play in your browser ↗</a>
+                        </div>
+                    </article>
+
+                    <article class="ship-card panel" id="manilha">
+                        <div class="app-head">
+                            <img src="/assets/home/manilha-icon.webp" alt="" width="256" height="256">
+                            <div><h2>Manilha</h2><p class="sub" data-en="Guess your tricks, mind the trump" data-zh="猜准墩数，小心王牌">Guess your tricks, mind the trump</p><p class="plat" data-en="iPhone · iPad · web" data-zh="iPhone · iPad · 网页">iPhone · iPad · web</p></div>
+                        </div>
+                        <span class="badge soon" data-en="In App Store review · public beta open" data-zh="App Store 审核中 · 公开测试中">In App Store review · public beta open</span>
+                        <p data-en="The Brazilian trick-taking card game also known as Fodinha, or Oh Hell, for friends round one table. Guess how many tricks you'll take, then take exactly that many." data-zh="巴西吃墩纸牌游戏，又名 Fodinha（英文称 Oh Hell），适合朋友围坐一桌。先猜你能赢几墩，再恰好赢下那么多。">The Brazilian trick-taking card game also known as Fodinha, or Oh Hell, for friends round one table. Guess how many tricks you'll take, then take exactly that many.</p>
+                        <div class="actions">
+                            <a class="btn primary" href="https://testflight.apple.com/join/BWHMXEmg" target="_blank" rel="noopener noreferrer" data-en="Join the beta ↗" data-zh="加入测试 ↗">Join the beta ↗</a>
+                            <a class="btn ghost" href="https://lifegameproject.com/game/truco.html" target="_blank" rel="noopener noreferrer" data-en="Play in your browser ↗" data-zh="在浏览器里玩 ↗">Play in your browser ↗</a>
+                        </div>
+                    </article>
+                </div>
+                <p class="more" data-en="All the games also live in the browser arcade at lifegameproject.com." data-zh="所有游戏也都在网页游戏厅 lifegameproject.com 里。">All the games also live in the browser arcade at <a href="https://lifegameproject.com/" target="_blank" rel="noopener noreferrer">lifegameproject.com</a>.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="wrap foot">
+            <span><strong data-en="University of Waterloo" data-zh="滑铁卢大学">University of Waterloo</strong> · <span data-en="Houfu Chen · PhD Researcher · Chemical Engineering" data-zh="陈厚孚 · 博士研究员 · 化学工程系">Houfu Chen · PhD Researcher · Chemical Engineering</span></span>
+            <span><a href="/" data-en="Back to houfu72.com" data-zh="回到 houfu72.com">Back to houfu72.com</a> · &copy; <span id="currentYear">2026</span> Houfu Chen</span>
+        </div>
+    </footer>
+
+    <script src="/site.js" defer></script>
+</body>
+</html>

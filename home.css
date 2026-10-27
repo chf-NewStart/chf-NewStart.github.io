@@ -161,12 +161,13 @@ body.has-bio-bg {
 .apps-icons img:first-child { margin-left: 0; }
 /* Phloem sits in front, then Game Life; Plank Pilot is at the back of the hand */
 .apps-icons img { position: relative; }
-.apps-icons img:nth-child(1) { z-index: 5; } .apps-icons img:nth-child(2) { z-index: 4; } .apps-icons img:nth-child(3) { z-index: 3; } .apps-icons img:nth-child(4) { z-index: 2; } .apps-icons img:nth-child(5) { z-index: 1; }
+.apps-icons img:nth-child(1) { z-index: 6; } .apps-icons img:nth-child(2) { z-index: 5; } .apps-icons img:nth-child(3) { z-index: 4; } .apps-icons img:nth-child(4) { z-index: 3; } .apps-icons img:nth-child(5) { z-index: 2; } .apps-icons img:nth-child(6) { z-index: 1; }
 .btn.apps:hover .apps-icons img:nth-child(1), .btn.apps:focus-visible .apps-icons img:nth-child(1) { transform: translate(-7px, 1px) rotate(-10deg); }
 .btn.apps:hover .apps-icons img:nth-child(2), .btn.apps:focus-visible .apps-icons img:nth-child(2) { transform: translate(-3px, -2px) rotate(-5deg); }
 .btn.apps:hover .apps-icons img:nth-child(3), .btn.apps:focus-visible .apps-icons img:nth-child(3) { transform: translateY(-4px); }
 .btn.apps:hover .apps-icons img:nth-child(4), .btn.apps:focus-visible .apps-icons img:nth-child(4) { transform: translate(3px, -2px) rotate(5deg); }
 .btn.apps:hover .apps-icons img:nth-child(5), .btn.apps:focus-visible .apps-icons img:nth-child(5) { transform: translate(7px, 1px) rotate(10deg); }
+.btn.apps:hover .apps-icons img:nth-child(6), .btn.apps:focus-visible .apps-icons img:nth-child(6) { transform: translate(11px, 3px) rotate(14deg); }
 @media (prefers-reduced-motion: reduce) {
     .btn.apps, .btn.apps::after { animation: none; }
     .apps-icons img { transition: none; }
@@ -277,6 +278,8 @@ body.has-bio-bg {
 /* ── shipped ── */
 .ship { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
 .ship-card { position: relative; overflow: hidden; padding: 32px; display: flex; flex-direction: column; }
+.ship-card.wide { grid-column: 1 / -1; }
+.ship-more { margin-top: 26px; display: flex; justify-content: center; }
 .ship-card .app-head { display: flex; align-items: center; gap: 16px; }
 .ship-card .app-head img { width: 72px; height: 72px; border-radius: 22.5%; box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.06); }
 .ship-card h3 { font-size: 1.5rem; letter-spacing: -0.02em; line-height: 1.15; }

@@ -29,7 +29,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/tomato-favicon-16x16.png?v=4">
     <link rel="manifest" href="/site.webmanifest?v=4">
     <link rel="preload" href="fonts/dm-sans-var-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="home.css?v=12">
+    <link rel="stylesheet" href="home.css?v=13">
     <link rel="stylesheet" href="tomato-facts.css">
     <script src="deepseek-config.js" defer></script>
     <script src="tomato-facts.js" defer></script>
@@ -67,7 +67,7 @@
             <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">☰</button>
             <div class="nav-links" id="navLinks">
                 <a href="#research-section" data-en="Research" data-zh="研究">Research</a>
-                <a href="#apps-section" data-en="Apps" data-zh="应用">Apps</a>
+                <a href="/apps/" data-en="Apps" data-zh="应用">Apps</a>
                 <a href="#projects-section" data-en="Work" data-zh="项目">Work</a>
                 <a href="#experience-section" data-en="Experience" data-zh="经历">Experience</a>
                 <a href="#tools-section" data-en="Tools" data-zh="工具">Tools</a>
@@ -92,7 +92,7 @@
                     <p class="hero-lede" data-en="I make complex systems tangible, testable and understandable: a digital twin of a greenhouse for my PhD, and apps people actually use, from a calm paper reader to a plank timer you steer with your face." data-zh="我让复杂系统变得可触摸、可检验、可理解：博士阶段在做温室的数字孪生，业余做真正有人在用的应用，从安静的论文阅读器，到用脸操控的平板支撑计时游戏。">I make complex systems tangible, testable and understandable: a digital twin of a greenhouse for my PhD, and apps people actually use, from a calm paper reader to a plank timer you steer with your face.</p>
                     <div class="hero-cta">
                         <a class="btn primary" href="#research-section" data-en="See my research" data-zh="看看我的研究">See my research</a>
-                        <a class="btn apps" href="https://lifegameproject.com/" target="_blank" rel="noopener noreferrer"><span class="apps-icons" aria-hidden="true"><img src="/assets/home/phloem-icon.webp" alt="" width="256" height="256"><img src="/assets/home/gamelife-icon.webp" alt="" width="256" height="256"><img src="/assets/home/qi-icon.webp" alt="" width="256" height="256"><img src="/assets/home/manilha-icon.webp" alt="" width="256" height="256"><img src="/assets/home/plank-icon.webp" alt="" width="256" height="256"></span><span data-en="See my apps ↗" data-zh="看看我的应用 ↗">See my apps ↗</span></a>
+                        <a class="btn apps" href="/apps/"><span class="apps-icons" aria-hidden="true"><img src="/assets/home/phloem-icon.webp" alt="" width="256" height="256"><img src="/assets/home/qizi-icon.webp" alt="" width="256" height="256"><img src="/assets/home/gamelife-icon.webp" alt="" width="256" height="256"><img src="/assets/home/tend-icon.webp" alt="" width="256" height="256"><img src="/assets/home/manilha-icon.webp" alt="" width="256" height="256"><img src="/assets/home/plank-icon.webp" alt="" width="256" height="256"></span><span data-en="See my apps →" data-zh="看看我的应用 →">See my apps →</span></a>
                         <a class="btn ghost" href="resumes/Houfu_Chen_Resume_2026.pdf" data-en="Download CV ↓" data-zh="下载简历 ↓">Download CV ↓</a>
                     </div>
                     <p class="hero-hint"><span class="hint-wide" data-en="Tap the 🍅 up top for a plant fun fact. Shift-click it for tomato rain." data-zh="点一下上方的 🍅 看一条植物冷知识；按住 Shift 点它，下一场番茄雨。">Tap the 🍅 up top for a plant fun fact. Shift-click it for tomato rain.</span><span class="hint-narrow" data-en="Open the menu and tap the 🍅 for a plant fun fact." data-zh="打开菜单，点一下 🍅 看一条植物冷知识。">Open the menu and tap the 🍅 for a plant fun fact.</span></p>
@@ -206,16 +206,31 @@
 
                     <article class="ship-card panel">
                         <div class="app-head">
+                            <img src="/assets/home/qizi-icon.webp" alt="" width="256" height="256">
+                            <div><h3 data-en="Qi Zi: Go, Chess &amp; Mahjong" data-zh="棋子：围棋、五子棋、国际象棋与麻将">Qi Zi: Go, Chess &amp; Mahjong</h3><p class="sub" data-en="Four classic games with a coach, on iPhone, iPad and the web" data-zh="四款经典棋牌游戏，带教练，iPhone、iPad 和网页都能玩">Four classic games with a coach, on iPhone, iPad and the web</p></div>
+                        </div>
+                        <span class="badge live" data-en="On the App Store · 1.1 out now" data-zh="已上架 App Store · 1.1 现已推出">On the App Store · 1.1 out now</span>
+                        <p data-en="Go, Gomoku, chess and Mahjong, each against the computer with a coach that says why. On the 3D boards every Go group grows into a snake or a dragon, and a big capture slays it with a temple bell. Replays come with a win-rate graph, and online rooms are shared between the app and the browser." data-zh="围棋、五子棋、国际象棋和麻将，都能和电脑对局，教练会告诉你为什么。3D 棋盘上，围棋的每一块棋都会长成一条蛇或一条龙，提掉大块就是屠龙，还有一声钟响。复盘有胜率曲线，在线房间在应用和网页之间互通。">Go, Gomoku, chess and Mahjong, each against the computer with a coach that says why. On the 3D boards every Go group grows into a snake or a dragon, and a big capture slays it with a temple bell. Replays come with a win-rate graph, and online rooms are shared between the app and the browser.</p>
+                        <div class="phloem-clip"><video class="demo" src="/assets/home/qizi-loop.mp4" poster="/assets/home/qizi-loop.webp" width="600" height="434" muted loop playsinline preload="none" aria-label="A white dragon and a black snake set out on a Go board like a sculpture, the camera turning round as the board changes from wood to stone to water"></video></div>
+                        <p class="why"><b data-en="Why the name" data-zh="名字的由来">Why the name</b><span data-en="My mom's name is Qi, and I'm her zi: her kid. In Chinese, 棋子 is also the word for the pieces you play with." data-zh="我妈妈的名字念 Qi，我是她的「子」；「棋子」正好也是棋盘上的那些子。">My mom's name is Qi, and I'm her zi: her kid. In Chinese, 棋子 is also the word for the pieces you play with.</span></p>
+                        <div class="actions">
+                            <a class="btn primary" href="https://apps.apple.com/app/id6821608519" target="_blank" rel="noopener noreferrer" data-en="Get it on the App Store ↗" data-zh="在 App Store 下载 ↗">Get it on the App Store ↗</a>
+                            <a class="btn ghost" href="https://lifegameproject.com/game/qi.html" target="_blank" rel="noopener noreferrer" data-en="Play in your browser" data-zh="在浏览器里玩">Play in your browser</a>
+                        </div>
+                    </article>
+
+                    <article class="ship-card panel wide">
+                        <div class="app-head">
                             <img src="/assets/home/gamelife-icon.webp" alt="" width="256" height="256">
                             <div><h3>Life Game Project</h3><p class="sub" data-en="Four games for iPhone and iPad, and a browser arcade" data-zh="四款 iPhone 与 iPad 游戏，外加一个网页游戏厅">Four games for iPhone and iPad, and a browser arcade</p></div>
                         </div>
-                        <span class="badge live" data-en="Game Life and Qi on the App Store · two more coming soon" data-zh="Game Life 和棋已上架 · 另外两款即将推出">Game Life and Qi on the App Store · two more coming soon</span>
-                        <p data-en="Conway's universe you can hear, Go that teaches as you play, a plank timer you steer with your face, and a Brazilian card game for friends." data-zh="能听见的康威细胞宇宙、边下边学的围棋、用脸操控的平板支撑计时器，还有一款适合朋友一起玩的巴西纸牌游戏。">Conway's universe you can hear, Go that teaches as you play, a plank timer you steer with your face, and a Brazilian card game for friends.</p>
+                        <span class="badge live" data-en="Game Life and Qi Zi on the App Store · two more in review" data-zh="Game Life 和棋子已上架 · 另外两款审核中">Game Life and Qi Zi on the App Store · two more in review</span>
+                        <p data-en="Conway's universe you can hear, four board games that teach as you play, a plank timer you steer with your face, and a Brazilian card game for friends." data-zh="能听见的康威细胞宇宙、边下边学的四款棋牌游戏、用脸操控的平板支撑计时器，还有一款适合朋友一起玩的巴西纸牌游戏。">Conway's universe you can hear, four board games that teach as you play, a plank timer you steer with your face, and a Brazilian card game for friends.</p>
                         <div class="games-row">
                             <a href="https://apps.apple.com/app/id6821541367" target="_blank" rel="noopener noreferrer" style="--icon: url(/assets/home/gamelife-icon.webp)"><img src="/assets/home/gamelife-icon.webp" alt="" width="256" height="256">Game Life<small data-en="App Store" data-zh="已上架">App Store</small></a>
-                            <a href="https://apps.apple.com/app/id6821608519" target="_blank" rel="noopener noreferrer" style="--icon: url(/assets/home/qi-icon.webp)"><img src="/assets/home/qi-icon.webp" alt="" width="256" height="256"><span data-en="Qi" data-zh="棋">Qi</span><small data-en="App Store" data-zh="已上架">App Store</small></a>
-                            <a href="https://lifegameproject.com/#plank-pilot" target="_blank" rel="noopener noreferrer" style="--icon: url(/assets/home/plank-icon.webp)"><img src="/assets/home/plank-icon.webp" alt="" width="256" height="256">Plank Constant<small data-en="beta" data-zh="测试中">beta</small></a>
-                            <a href="https://lifegameproject.com/#manilha" target="_blank" rel="noopener noreferrer" style="--icon: url(/assets/home/manilha-icon.webp)"><img src="/assets/home/manilha-icon.webp" alt="" width="256" height="256">Manilha<small data-en="coming soon" data-zh="即将推出">coming soon</small></a>
+                            <a href="https://apps.apple.com/app/id6821608519" target="_blank" rel="noopener noreferrer" style="--icon: url(/assets/home/qizi-icon.webp)"><img src="/assets/home/qizi-icon.webp" alt="" width="256" height="256"><span data-en="Qi Zi" data-zh="棋子">Qi Zi</span><small data-en="App Store" data-zh="已上架">App Store</small></a>
+                            <a href="https://lifegameproject.com/#plank-pilot" target="_blank" rel="noopener noreferrer" style="--icon: url(/assets/home/plank-icon.webp)"><img src="/assets/home/plank-icon.webp" alt="" width="256" height="256">Plank Constant<small data-en="in review" data-zh="审核中">in review</small></a>
+                            <a href="https://lifegameproject.com/#manilha" target="_blank" rel="noopener noreferrer" style="--icon: url(/assets/home/manilha-icon.webp)"><img src="/assets/home/manilha-icon.webp" alt="" width="256" height="256">Manilha<small data-en="in review" data-zh="审核中">in review</small></a>
                         </div>
                         <p class="why"><b data-en="Why I made them" data-zh="为什么做它们">Why I made them</b><span data-en="Something to stare at while I plank, and games to play with the girl I liked, who later ghosted me (or the situation became too awkward to talk, idk, idc). The games stayed." data-zh="平板支撑时有东西可盯着看，还有想和喜欢的女生一起玩的游戏；后来她不再回我了（也可能只是气氛尴尬到没法聊了，不知道也懒得知道）。游戏却留了下来。">Something to stare at while I plank, and games to play with the girl I liked, who later ghosted me (or the situation became too awkward to talk, idk, idc). The games stayed.</span></p>
                         <div class="actions">
@@ -224,6 +239,7 @@
                         </div>
                     </article>
                 </div>
+                <p class="ship-more"><a class="btn ghost" href="/apps/" data-en="All six apps, on one page →" data-zh="六款应用都在这一页 →">All six apps, on one page →</a></p>
             </div>
         </section>
 

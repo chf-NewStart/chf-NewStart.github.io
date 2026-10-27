@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "KITCHEN SCIENCE",
+            title: "The hole in a pasta spoon measures one serving",
+            fact: "The classic hole in a spaghetti server was sized to about one dry portion (roughly 100 g) of spaghetti — a built-in portion scale hiding in the utensil drawer.",
+            detail: "Bundle diameter, not strand count, is the trick: a circle of spaghetti the size of the hole is one serving, no scale required."
+        },
+        {
+            tag: "KITCHEN SCIENCE",
             title: "Salt makes things taste more like themselves",
             fact: "Salt suppresses bitterness and amplifies aromas, so a pinch in coffee, caramel, or watermelon does not make food 'salty' — it clears the channel so the original flavor arrives louder.",
             detail: "A little salt in bread dough also strengthens gluten, helping loaves rise higher. Same mineral, three different jobs."

@@ -45,6 +45,9 @@ to touch a claimed file, write your request under **Requests** below instead.
   Drive. Checked in the simulator: it imports, asks "What are you working on?", starts the session and the Lock
   Screen shows the session with Do Not Disturb on. **1.1 now submits build 3** once 1.0 is approved (What's New
   and review notes in `apps/tend-ios/release/testflight-1.1.json` mention lengths, quick timers and Shortcuts).
+  Houfu's verdict on his phone: Siri hears "Tend focus" as "10 focus", and the renamed shortcut's typed question box
+  plus the one-time Allow prompt felt clumsy, so he keeps plain **"Trigger Tend"**. Do Not Disturb from Tend's own
+  command isn't possible on iOS; the one-command way to cut distractions is app blocking (Family Controls request).
 - 2026-10-27 15:00 — Claude Code, **quick timers and Do Not Disturb** (Houfu: "add gym plank 90s … any length you
   say"; "block the notif … when tend is on"). **Timer-rule change, mirrored on Android.**
   - `focus/core.js`: a third timer phase, `quick` (`C.quickTimer(label, ms)`): it ends like a break (no reflection,

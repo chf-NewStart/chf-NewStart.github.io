@@ -11,9 +11,9 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
-| Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts. **Next: the App Store Connect record (waits on Houfu's sign-in), then upload build 1 to TestFlight and fill the listing.** Not submitting for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
+| Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts; 1.0 (1) submitted by Houfu 2026-10-26, in review. Not submitting anything for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
 | Claude Code | **Android app** (native Kotlin + Compose, `com.houfu72.tend`): built and tested in the emulator; signed 1.0.0 (1) bundle ready for Play closed testing. Waits on Houfu's Play Console account. Web changes that alter timer rules need the same change in `apps/tend-android/.../core/`. | `apps/tend-android/**` | 2026-10-26 14:00 EDT |
-| Claude Code | **iPhone: Siri + Lock Screen** (Houfu: "trigger tend, imma read this paper…" and it starts on the Lock Screen). Branch `claude/tend-siri`. An App Intent "Start a focus session" (Siri asks "What are you working on?"), a Live Activity widget extension (question, tomato, countdown, Pause/Resume and Done), a "Where did you stop?" notification with a text field, and a bridge so Siri sessions and notes land in the same `tend-focus-v1` notebook. Ships as iOS 1.1.0 (2) to TestFlight; 1.0 (1) stays in review untouched. No timer-rule changes, so nothing to mirror on Android. | `apps/tend-ios/**`, `focus/app.js` (native bridge only, web behaviour unchanged), new `tests/tend-native-ops.test.cjs` | 2026-10-27 13:00 EDT |
+| Claude Code | **iPhone: Siri + Lock Screen**, done on `main` (see Log, 2026-10-27 13:40). iOS **1.1.0 (2) is on TestFlight** for "friends"; 1.0 (1) stays in review untouched. **Next, only with Houfu's OK:** after 1.0 is out, create version 1.1 in App Store Connect, attach build 2, paste What's New from `apps/tend-ios/release/testflight-1.1.json`, submit. App Privacy stays "Data Not Collected". | `apps/tend-ios/**`, `focus/app.js` (native bridge only), `tests/tend-native-ops.test.cjs` | 2026-10-27 12:25 EDT |
 | Codex | Houfu requested a thorough review before tomorrow: checking current web/native source, accessibility, offline behavior and notebook handling. Applying fixes only in the files listed here; behavior/native findings go under Requests for Claude. | `focus/theme.*`, `focus/index.html`, `focus/style.css`, `focus/sw.js`, `focus/manifest.webmanifest`, `focus/privacy.html`, `focus/support.html`, new `tests/focus-audit.test.cjs`, `TEND-REVIEW.md`, `.github/workflows/tend-web.yml` | 2026-10-26 |
 
 ## Requests
@@ -21,8 +21,12 @@ to touch a claimed file, write your request under **Requests** below instead.
 - **Claude → Codex:** please close PR #79 (superseded by d860f51f). Tend 1.0 is in App Review: don't change the
   App Store Connect record; web changes are fine, but anything for the iOS app goes into a new build (2+).
 
-## Now (2026-10-26, 13:40)
+## Now (2026-10-27, 13:40)
 
+- **iOS 1.1.0 (2) on TestFlight** (internal group "friends", which gets every build): start a session with Siri
+  ("Start Tend" / "Trigger Tend", then Siri asks "What are you working on?"), a Live Activity on the Lock Screen and
+  in the Dynamic Island, and a "Where did you stop?" note from the Lock Screen. What to Test and the App Store What's
+  New are in `apps/tend-ios/release/testflight-1.1.json`. Not submitted for review; 1.0 (1) is still the version in review.
 - **iOS 1.0.0 (1) is Waiting for Review** (submitted by Houfu 13:34 EDT). App Store Connect app id 6827232455,
   "Tend: Pixel Tomato Timer", subtitle "One question. Go deeper.", free, 175 territories, 4+, App Privacy "Data Not
   Collected" (published by Houfu), listing from `apps/tend-ios/release/listing.json`, 5 iPhone + 5 iPad screenshots.
@@ -34,6 +38,35 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Log
 
+- 2026-10-27 13:40 — Claude Code, **iPhone: Siri and the Lock Screen** (Houfu: "trigger tend, imma read this paper and
+  find out how metabolic pathways help simplify the things … so i dont even need to open my phone"). Apple keeps free
+  text out of Siri phrases, so it's two steps: "Start Tend" (also "Trigger Tend", "Start a session in Tend", "Focus
+  with Tend"), Siri asks "What are you working on?", and the answer is the question. Also "Pause Tend", "Resume Tend",
+  "I'm done in Tend" (asks "Where did you stop?"). All are App Shortcuts (Shortcuts app, Action Button, Back Tap);
+  "Start a focus session" takes an optional length, otherwise the notebook's focus length (25 by default).
+  - `App/TendIntents.swift`, `Shared/SessionIntents.swift`: `LiveActivityIntent`s, so they run in the app's process
+    without opening it, and can start a Live Activity from the background.
+  - `LiveActivity/` (new widget extension `com.houfu72.tend.LiveActivity`, bundle ID registered through the API): the
+    question (Plex Mono), the tomato in a ring of blocks and a Plank Pixel countdown (colon trimmed like `pixel.css`)
+    on the Lock Screen and in the Dynamic Island, with pixel Pause/Resume and Done keys. The countdown, the emptying
+    ring and the ripening tomato use the system's timer views as masks, so they move while the app sleeps; at the
+    deadline (staleDate) it shows "Where did you stop?" 00:00. Sessions started in the room drive it too.
+  - The end notification gets a "Leave a note" text field (type or dictate on the Lock Screen); Done on the Lock
+    Screen asks at once. The note becomes the session's *next small action*, so the room offers it as the next question.
+  - One notebook: `App/TendOps.js` runs `focus/core.js` itself in JavaScriptCore on the stored `tend-focus-v1` JSON
+    (`App/TendStore.swift`), so Siri sessions and notes are core.js's own records. Each outside change bumps
+    `TendNotebookRevision`; the open room gets the new notebook through `window.TendNativeState`, and a save from a
+    room that hasn't seen it is refused (`focus/app.js` sends `rev`). Starting from Siri files a running session first.
+    **No timer-rule changes: Android needs nothing.** Web behaviour is unchanged (the bridge is native-only).
+  - Checked in the iOS 26.5 simulator (iPhone 17 Pro): Shortcuts → "What are you working on?" → session on the Lock
+    Screen without opening Tend; Pause, Resume and Done from the Lock Screen; time's up → stale state + notification;
+    the note typed into the Lock Screen notification lands in the Notebook; Siri-style "Done" asks and saves; a room
+    left open with an older session adopts the Siri one with nothing duplicated. Screenshots were sent to Houfu.
+    Tests: `node --test tests/focus-timer.test.cjs tests/tend-native-ops.test.cjs` 28/28 (also in the iOS workflow).
+  - Simulator gotcha: a Debug build signed "to run locally" can't serve its intents to Shortcuts ("Couldn't find
+    AppShortcutsProvider"); sign it with the Apple Development identity first (README).
+  - Privacy: the Live Activity shows the question on the Lock Screen (that's the feature); notifications still carry
+    no task or note text, and nothing leaves the phone, so App Privacy stays "Data Not Collected".
 - 2026-10-26 15:15 — Claude Code, **Tend for Android**. A native port, not a web view: `core/TendCore.kt` and
   `core/Backup.kt` are `focus/core.js` line for line (same `tend-focus-v1` JSON, so backups move between web, iPhone
   and Android); `TendController.kt` is `focus/app.js`; Compose draws the pixel room from `pixel.css`/`pixel.js` (Plank

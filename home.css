@@ -363,7 +363,7 @@ body.has-bio-bg {
 .contact-list li { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
 .contact-list li:first-child { border-top: 1px solid var(--line); }
 .contact-list b { color: var(--faint); font: 500 0.7rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
-.contact-list a { color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.contact-list a { color: var(--ink); text-decoration: none; overflow-wrap: break-word; }
 .contact-list a:hover { color: var(--accent); }
 .copy-button { padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line); background: none; color: var(--muted); font: 0.72rem var(--mono); cursor: pointer; }
 .copy-button:hover { color: var(--accent); border-color: var(--line-strong); }

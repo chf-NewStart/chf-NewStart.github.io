@@ -417,14 +417,6 @@
         });
         // "Show me today's" opens the same fun-fact card as the 🍅 in the menu.
         document.getElementById('factLink')?.addEventListener('click', () => document.getElementById('tomatoToggle')?.click());
-        // Demo clips play only while on screen, and never with reduced motion.
-        (function () {
-            if (matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
-            const io = new IntersectionObserver((entries) => entries.forEach((e) => {
-                if (e.isIntersecting) e.target.play().catch(() => {}); else e.target.pause();
-            }), { threshold: 0.35 });
-            document.querySelectorAll('video.demo').forEach((v) => io.observe(v));
-        })();
     </script>
     <script src="bio-bg.js" defer></script>
     <script src="site.js" defer></script>

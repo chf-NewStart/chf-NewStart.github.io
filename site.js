@@ -968,6 +968,28 @@
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(() => { if (rainOn) { ensureLayer(); } });
     }
+    // Demo clips, on the homepage and /apps/: each starts loading a little before it
+    // scrolls into view, so it is ready to move by the time it is seen, and plays only
+    // while on screen. With reduced motion they stay still until tapped; a tap plays or
+    // pauses any of them.
+    (function demoClips() {
+        const clips = document.querySelectorAll('video.demo');
+        clips.forEach((v) => v.addEventListener('click', () => {
+            if (v.paused) v.play().catch(() => {}); else v.pause();
+        }));
+        if (!clips.length || matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
+        const near = new IntersectionObserver((entries) => entries.forEach((e) => {
+            if (!e.isIntersecting) return;
+            near.unobserve(e.target);
+            const v = e.target;
+            if (v.preload === 'none' && v.paused && v.readyState === 0) { v.preload = 'auto'; v.load(); }
+        }), { rootMargin: '600px 0px' });
+        const seen = new IntersectionObserver((entries) => entries.forEach((e) => {
+            if (e.isIntersecting) e.target.play().catch(() => {}); else e.target.pause();
+        }), { threshold: 0.35 });
+        clips.forEach((v) => { near.observe(v); seen.observe(v); });
+    })();
+
     applyLanguage(currentLanguage);
     refreshScrollRange();
 })();

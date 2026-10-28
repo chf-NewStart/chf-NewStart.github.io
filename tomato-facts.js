@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "KITCHEN SCIENCE",
+            title: "Onions were buried with pharaohs as proof of eternity",
+            fact: "Onions' layered rings and apparent resurrection after months in storage made them an Egyptian symbol of eternal life — Ramses IV was entombed with onions in his eye sockets.",
+            detail: "The same sulfur chemistry that makes onions pungent also makes them keep: sulfur compounds are natural antimicrobials, which is why onions store for months in the dark."
+        },
+        {
+            tag: "KITCHEN SCIENCE",
             title: "The hole in a pasta spoon measures one serving",
             fact: "The classic hole in a spaghetti server was sized to about one dry portion (roughly 100 g) of spaghetti — a built-in portion scale hiding in the utensil drawer.",
             detail: "Bundle diameter, not strand count, is the trick: a circle of spaghetti the size of the hole is one serving, no scale required."

@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "KITCHEN SCIENCE",
+            title: "Bread rises because yeast exhales",
+            fact: "Yeast digests flour sugars and releases CO2; gluten traps the bubbles like balloon walls. The loaf's crumb is a fossil of millions of exhaled bubbles — bread is edible foam with a skeleton.",
+            detail: "The same gas law works in beer and champagne: one microbe's metabolism, three human industries."
+        },
+        {
+            tag: "KITCHEN SCIENCE",
             title: "Onions were buried with pharaohs as proof of eternity",
             fact: "Onions' layered rings and apparent resurrection after months in storage made them an Egyptian symbol of eternal life — Ramses IV was entombed with onions in his eye sockets.",
             detail: "The same sulfur chemistry that makes onions pungent also makes them keep: sulfur compounds are natural antimicrobials, which is why onions store for months in the dark."

@@ -125,7 +125,7 @@ body.has-bio-bg {
 @media (max-width: 700px) { .section { padding: 76px 0; } }
 .kicker { font: 500 0.76rem/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
 .section-head { max-width: 720px; margin-bottom: 46px; }
-.section-head h2 { margin-top: 14px; font-size: clamp(2rem, 4.2vw, 3.1rem); line-height: 1.07; letter-spacing: -0.03em; font-weight: 650; }
+.section-head h2 { margin-top: 14px; font-size: clamp(2rem, 4.2vw, 3.1rem); line-height: 1.07; letter-spacing: -0.03em; font-weight: 650; text-wrap: balance; }
 .section-head p { margin-top: 14px; color: var(--soft); font-size: 1.08rem; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 22px; border-radius: 999px; font-weight: 600; font-size: 0.97rem; text-decoration: none; cursor: pointer; transition: transform .15s, background .15s, border-color .15s; border: 1px solid transparent; }

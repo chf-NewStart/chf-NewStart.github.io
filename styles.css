@@ -2295,7 +2295,7 @@ body.monet-page-body::before {
 }
 
 .monet-page-feature .monet-shot figcaption span {
-    color: rgba(233, 225, 207, 0.5);
+    color: rgba(233, 225, 207, 0.62);
 }
 
 .monet-page-feature .monet-shot figcaption strong {

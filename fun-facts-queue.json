@@ -1,12 +1,6 @@
 [
   {
     "tag": "NATURE",
-    "title": "Octopuses edit their own RNA on the fly",
-    "fact": "Most animals leave their RNA as written; octopuses and cuttlefish recode it extensively in response to temperature, tuning their own neural proteins on demand. A cephalopod can adapt its nervous system's wiring instructions in real time.",
-    "detail": "This editing is so central that octopuses may have traded faster DNA evolution for more RNA editing — a genome that stays written in pencil."
-  },
-  {
-    "tag": "NATURE",
     "title": "Tardigrades survive the vacuum of space",
     "fact": "Dehydrated tardigrades enter a glass-like suspended state and have survived direct exposure to solar UV and the vacuum of low Earth orbit, then revived and reproduced on return.",
     "detail": "Their trick is a sugar-glass (trehalose) and intrinsically disordered proteins that lock cell interiors in place. Biotech is borrowing it to preserve vaccines without refrigeration."

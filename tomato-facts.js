@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "NATURE",
+            title: "Octopuses edit their own RNA on the fly",
+            fact: "Most animals leave their RNA as written; octopuses and cuttlefish recode it extensively in response to temperature, tuning their own neural proteins on demand. A cephalopod can adapt its nervous system's wiring instructions in real time.",
+            detail: "This editing is so central that octopuses may have traded faster DNA evolution for more RNA editing — a genome that stays written in pencil."
+        },
+        {
             tag: "KITCHEN SCIENCE",
             title: "Chili heat is measured on insects, not people",
             fact: "The Scoville scale was built from human taste-dilution panels; the modern HPLC method measures capsaicin directly. Birds, notably, cannot feel capsaicin at all — chilies evolved their burn specifically to deter mammals, whose guts destroy the seeds.",

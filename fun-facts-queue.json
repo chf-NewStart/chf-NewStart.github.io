@@ -1,12 +1,6 @@
 [
   {
     "tag": "NATURE",
-    "title": "Tardigrades survive the vacuum of space",
-    "fact": "Dehydrated tardigrades enter a glass-like suspended state and have survived direct exposure to solar UV and the vacuum of low Earth orbit, then revived and reproduced on return.",
-    "detail": "Their trick is a sugar-glass (trehalose) and intrinsically disordered proteins that lock cell interiors in place. Biotech is borrowing it to preserve vaccines without refrigeration."
-  },
-  {
-    "tag": "NATURE",
     "title": "Woodpeckers are their own crash helmets",
     "fact": "A woodpecker's skull has a hydraulic shock-absorbing mesh and a beak that decouples on impact, managing ~1,000 g decelerations thousands of times a day with no concussion.",
     "detail": "Engineers copied the architecture for black-box flight recorders. The bird has been running the experiment for millions of years."

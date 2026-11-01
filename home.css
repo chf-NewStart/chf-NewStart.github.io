@@ -289,6 +289,7 @@ body.has-bio-bg {
 .badge { display: inline-flex; align-items: center; gap: 7px; margin-top: 18px; align-self: flex-start; padding: 6px 11px; border-radius: 999px; font: 500 0.72rem/1 var(--mono); }
 .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .badge.live { color: #04140b; background: var(--accent); }
+.badge .keep { white-space: nowrap; }
 .badge.soon { color: var(--gold); border: 1px solid rgba(232, 196, 106, 0.45); }
 .store { display: inline-flex; flex-direction: column; justify-content: center; min-height: 48px; padding: 5px 18px; border-radius: 12px; background: #fff; color: #000; text-decoration: none; line-height: 1.15; }
 .store small { font-size: 0.66rem; opacity: 0.8; }

@@ -24,6 +24,11 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Chromium; WebKit fails only `reading-zen-compact-browser`, as on main (its scripted selection comes back empty).
   Not tried on a real iPhone: the iOS Simulator will not start until Xcode 27.2 installs its newer simulator
   component (`xcodebuild -runFirstLaunch`, which needs Houfu's password).
+  **App: 1.2.6 (52) replaces 51 on the 1.2.6 version page, not submitted.** Build 52 bundles reader **v244** (archive
+  `~/Library/Developer/Xcode/Archives/2026-11-01/Phloem 1.2.6 (52).xcarchive`), uploaded with the API key, **VALID**,
+  In Beta Testing for Internal Testers and friends2 with a What to Test note. It is attached to iOS 1.2.6 in place
+  of 51, and What's New now leads with Text size on iPhone. App tests 22/22 (`bundle.test.mjs` pins build 52). The
+  App Review notes still name 1.2.5 (build 49) for Houfu to edit; submitting needs his "submit Phloem 1.2.6".
 
 - **Contents one tap away, and "This paper" renamed "Pages & zoom", v243 (web; Houfu: "this paper button what it's
   doing. User might think it's paper info. Contents hiding too deep").** More's "This paper" (▤) opened page jumps,
@@ -45,7 +50,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   for Sale. Build 51 bundles reader **v243** (archive `~/Library/Developer/Xcode/Archives/2026-11-01/Phloem 1.2.6
   (51).xcarchive`), uploaded with the API key, **VALID**, in TestFlight for Internal Testers and friends2, with a What
   to Test note. **Version record iOS 1.2.6 created** (manual release, copyright "2026 Houfu Chen"), build 51
-  attached, What's New (en-CA) set: Contents one tap away, "Pages & zoom", Workspace strokes through a scroll (v242).
+  attached (replaced by 52 the same night, see above), What's New (en-CA) set: Contents one tap away, "Pages & zoom", Workspace strokes through a scroll (v242).
   App tests 22/22 (`bundle.test.mjs` now pins build 51). Not checked in a simulator. **App Review notes were copied
   from 1.2.5 and still name 1.2.5 (build 49)**; Houfu edits them himself (they hold the reviewer key). Submitting
   needs his "submit Phloem 1.2.6".
@@ -657,7 +662,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 ## Log
 
 - **2026-11-01 v244:** a phone gets More → Text size (type size for text and Reader view; page zoom or Reader view
-  for a PDF), the reading spot stays put when the size changes, and a pinch on text resizes it (see Now).
+  for a PDF), the reading spot stays put when the size changes, and a pinch on text resizes it (see Now). Same
+  night: 1.2.6 (52) with v244 uploaded, VALID, attached to iOS 1.2.6 in place of 51; not submitted.
 
 - **2026-11-01 v243:** Contents is a dock button (first under More on a phone, T on a keyboard) when the paper has
   contents; More's "This paper" is now "Pages & zoom"; the dock folds into columns below 544 px (see Now). Same day:

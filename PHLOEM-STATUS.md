@@ -21,8 +21,15 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   where the button does not exist). Ran 44 related suites (Zen, dock, phone, iPad, Workspace, ink, contents, Night
   light) in Chromium and WebKit: only main's known failures (`reading-pdf-ink` 69/72, `reading-split-undo-browser`,
   `reading-workspace-paper-color`/`-edge`), plus `reading-zen-compact-browser` in WebKit, which fails the same way on
-  main (b2dc0c9: its scripted text selection comes back empty). **iPad/iPhone app:** web-only change; build 50 bundles
-  v242, so the app gets this with the next build (none made).
+  main (b2dc0c9: its scripted text selection comes back empty).
+  **iPad/iPhone app 1.2.6 (51) prepared, not submitted (Houfu: "Pushed? And to AppStore?").** 1.2.5 (49) is Ready
+  for Sale. Build 51 bundles reader **v243** (archive `~/Library/Developer/Xcode/Archives/2026-11-01/Phloem 1.2.6
+  (51).xcarchive`), uploaded with the API key, **VALID**, in TestFlight for Internal Testers and friends2, with a What
+  to Test note. **Version record iOS 1.2.6 created** (manual release, copyright "2026 Houfu Chen"), build 51
+  attached, What's New (en-CA) set: Contents one tap away, "Pages & zoom", Workspace strokes through a scroll (v242).
+  App tests 22/22 (`bundle.test.mjs` now pins build 51). Not checked in a simulator. **App Review notes were copied
+  from 1.2.5 and still name 1.2.5 (build 49)**; Houfu edits them himself (they hold the reviewer key). Submitting
+  needs his "submit Phloem 1.2.6".
 
 ## Earlier (2026-10-23)
 
@@ -631,7 +638,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 ## Log
 
 - **2026-11-01 v243:** Contents is a dock button (first under More on a phone, T on a keyboard) when the paper has
-  contents; More's "This paper" is now "Pages & zoom"; the dock folds into columns below 544 px (see Now).
+  contents; More's "This paper" is now "Pages & zoom"; the dock folds into columns below 544 px (see Now). Same day:
+  1.2.6 (51) with v243 uploaded, VALID, attached to a new iOS 1.2.6 record (manual release); not submitted.
 
 - **2026-10-23 v242 + 1.2.6 (50):** a scroll of the Workspace paper no longer ends a pen or eraser stroke; build 50
   bundles it, in TestFlight (internal groups), not submitted (see Now).

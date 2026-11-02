@@ -32,7 +32,7 @@
 
 .tomato-fact-kicker {
     margin: 0 42px 16px 0;
-    color: #666;
+    color: #8c8c8c;
     font-size: 0.7rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -168,7 +168,7 @@
 
 .tomato-fact-ask-hint {
     margin: 0 0 10px;
-    color: #666;
+    color: #8c8c8c;
     font-size: 0.72rem;
     line-height: 1.55;
 }
@@ -198,7 +198,7 @@
     color: #9adfb5;
 }
 
-.tomato-fact-msg.pending { color: #666; font-style: italic; }
+.tomato-fact-msg.pending { color: #8c8c8c; font-style: italic; }
 
 .tomato-fact-msg.error { border-color: #ff5f56; color: #ff8c86; }
 

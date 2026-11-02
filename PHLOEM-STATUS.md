@@ -24,11 +24,13 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Chromium; WebKit fails only `reading-zen-compact-browser`, as on main (its scripted selection comes back empty).
   Not tried on a real iPhone: the iOS Simulator will not start until Xcode 27.2 installs its newer simulator
   component (`xcodebuild -runFirstLaunch`, which needs Houfu's password).
-  **App: 1.2.6 (52) replaces 51 on the 1.2.6 version page, not submitted.** Build 52 bundles reader **v244** (archive
+  **App: 1.2.6 (52) submitted, Waiting for Review (2026-11-01 23:57 EST, submission f1e2cc5c; Houfu: "ok submit.").
+  Manual release: press Release after approval.** Build 52 bundles reader **v244** (archive
   `~/Library/Developer/Xcode/Archives/2026-11-01/Phloem 1.2.6 (52).xcarchive`), uploaded with the API key, **VALID**,
-  In Beta Testing for Internal Testers and friends2 with a What to Test note. It is attached to iOS 1.2.6 in place
-  of 51, and What's New now leads with Text size on iPhone. App tests 22/22 (`bundle.test.mjs` pins build 52). The
-  App Review notes still name 1.2.5 (build 49) for Houfu to edit; submitting needs his "submit Phloem 1.2.6".
+  In Beta Testing for Internal Testers and friends2 with a What to Test note. It replaced 51 on iOS 1.2.6, and What's
+  New leads with Text size on iPhone. App tests 22/22 (`bundle.test.mjs` pins build 52). The App Review notes went as
+  they were: Houfu said submit without editing them, so they still name 1.2.5 (build 49) and "What's new in 1.2.5"
+  (checked by substring; the reviewer key was not read or re-sent).
 
 - **Contents one tap away, and "This paper" renamed "Pages & zoom", v243 (web; Houfu: "this paper button what it's
   doing. User might think it's paper info. Contents hiding too deep").** More's "This paper" (▤) opened page jumps,
@@ -632,12 +634,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
   identity", try a phone hotspot, then check the Apple ID's country/region (Settings › your name › Media &
   Purchases › View Account). Steps in `apps/ipad/plans/ICLOUD-SYNC-FIX.md`, "Sixth round".
 
-- **Phloem 1.2.5 (49) is ready to submit (iPad, iPhone, Mac), waiting for Houfu's words.** Before saying "submit Phloem
-  1.2.5": (1) edit the App Review notes in App Store Connect (three in-place edits in
-  `output/phloem-iphone-1.2.5-2026-10-21/REVIEW-NOTES-EDITS-1.2.5.md`; Claude did not re-send the notes because they
-  still carry the reviewer Anthropic key); (2) **rotate that key** (it has been in the notes since 1.2.1), then paste
-  the new one on the key line; (3) glance at What's New and the description's new iPhone sentence; (4) optionally try
-  build 49 on the iPhone from TestFlight. Shipping iPhone support cannot be withdrawn later.
+- **Phloem 1.2.6 (52) is Waiting for Review (manual release).** After approval, press Release in App Store Connect,
+  or tell Claude to release it. Its App Review notes still read 1.2.5 (build 49) and "What's new in 1.2.5": give them
+  1.2.6 wording before the next version (Houfu edits them, since they carry the reviewer Anthropic key, which is
+  overdue for rotation; see below).
 - Keep Listen going with the screen locked? Needs the `audio` background mode in Info.plist (iPhone and iPad alike).
 - **Mac:** the iPad app is already offered on Apple silicon Macs. Optional: install it on this Mac with
   TestFlight (build 49; replaces the old "register this Mac" question: not needed), then App Store Connect › Pricing and
@@ -663,7 +663,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 - **2026-11-01 v244:** a phone gets More → Text size (type size for text and Reader view; page zoom or Reader view
   for a PDF), the reading spot stays put when the size changes, and a pinch on text resizes it (see Now). Same
-  night: 1.2.6 (52) with v244 uploaded, VALID, attached to iOS 1.2.6 in place of 51; not submitted.
+  night: 1.2.6 (52) with v244 uploaded, VALID, attached to iOS 1.2.6 in place of 51, and submitted for review on
+  Houfu's "ok submit." (23:57 EST, submission f1e2cc5c, manual release).
 
 - **2026-11-01 v243:** Contents is a dock button (first under More on a phone, T on a keyboard) when the paper has
   contents; More's "This paper" is now "Pages & zoom"; the dock folds into columns below 544 px (see Now). Same day:

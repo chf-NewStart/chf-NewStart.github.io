@@ -1308,6 +1308,18 @@
     .pane-spotlight.locked.guide-left .guide-band::after { left: auto; right: 9px; }
     .pane-spotlight.dragging .guide-grip { transform: scale(1.14); color: var(--ink); }
     @media (hover: hover) and (pointer: fine) { .guide-grip { display: none; } }
+    /* Phone (Houfu: "the white thing is obstructing the text … move it only to margin"): the
+       text runs nearly edge to edge, so the round handle covered the start of a line. The
+       handle becomes a slim tab hanging off the band's right edge, inside the margin, and its
+       touch area stays out of the text too. Pinned shows on the tab itself (the dot beside the
+       old handle sat on the words). */
+    body.phone-ui .pane-spotlight:not([data-guide-orientation="column"]):not([data-guide-orientation="spot"]) .guide-grip {
+      left: auto; right: 0; top: 6px; width: 12px; height: 44px; margin: 0; border-right: 0; border-radius: 8px 0 0 8px;
+      font-size: .6rem; letter-spacing: -.1em; box-shadow: -2px 3px 10px rgba(0,0,0,.12); }
+    body.phone-ui .pane-spotlight:not([data-guide-orientation="column"]):not([data-guide-orientation="spot"]) .guide-grip::before { inset: -12px 0 -12px -2px; border-radius: 0; }
+    body.phone-ui .pane-spotlight.locked:not([data-guide-orientation="spot"]) .guide-band::after { display: none; }
+    body.phone-ui .pane-spotlight.locked .guide-grip { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+    body.phone-ui .pane-spotlight.dragging:not([data-guide-orientation="column"]):not([data-guide-orientation="spot"]) .guide-grip { transform: scaleX(1.25); transform-origin: right center; }
     /* Spotlight shape: a round lens shows the paper under it enlarged (an inert copy, see
        paintSpotLens); everything outside blurs and dims behind one masked veil. The lens
        is the box --guide-x/-y/-w/-h describe, so the grip, pin dot and Ask-AI crop keep

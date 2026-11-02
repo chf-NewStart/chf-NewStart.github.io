@@ -4579,6 +4579,10 @@
        never covers the words the lens is enlarging. */
     guideDragOffset=null;
     if(comfort.guideOrientation==='spot'){var lensBox=byId('guideBand').getBoundingClientRect();if(lensBox.width)guideDragOffset={x:lensBox.left+lensBox.width/2-e.clientX,y:lensBox.top+lensBox.height/2-e.clientY};}
+    /* Phone rows: the handle is a tab at the band's top-right corner, in the margin. Steer by
+       the band's centre, so the band doesn't jump to centre on the finger and the paper (and
+       PDF column) is picked under the words, not under the margin. */
+    else if(comfort.guideOrientation!=='column'&&document.body.classList.contains('phone-ui')){var bandBox=byId('guideBand').getBoundingClientRect();if(bandBox.width)guideDragOffset={x:bandBox.left+bandBox.width/2-e.clientX,y:bandBox.top+bandBox.height/2-e.clientY};}
   });
   byId('guideGrip').addEventListener('pointermove',function(e){
     if(!guideDragging)return;setReadingGuide(e.clientX+(guideDragOffset?guideDragOffset.x:0),e.clientY+(guideDragOffset?guideDragOffset.y:0),null);

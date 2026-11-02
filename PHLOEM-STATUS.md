@@ -6,6 +6,18 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-02)
 
+- **Guide handle in the margin on a phone, v246 (web; Houfu, two iPhone screenshots of a Reader-view page: "the guide
+  side pin the white thing is obstructing the text. Or move it only to margin so it doesn't block anything").** On a
+  phone (`body.phone-ui`) the Rows guide's round 42 px handle sat 8 px in from the left, over the first letters of a
+  line, and the pin dot beside it sat on the words too. It is now a slim tab (12 × 44 px) hanging off the band's
+  right edge at its top, in the 14-18 px margin; its touch area reaches 2 px left of it and 12 px above and below, so
+  it covers no word. Pinned shows as an accent tab instead of the dot. A drag from the tab steers by the band's
+  centre (as the Spotlight lens already did), so the band does not jump and the paper and PDF column are picked under
+  the words, not under the margin. iPad and desktop keep the round handle; Columns and Spotlight are unchanged.
+  Test: `tests/reading-guide-phone-grip.test.js` (Chromium and WebKit). Not tried on his iPhone yet. **Open:** he
+  asked whether Contents should stay in Pages & zoom as well as More (phone) / the dock (iPad); it is there on
+  purpose since v243 (`reading-contents-one-tap` checks it), so it waits on his answer.
+
 - **Daily reading on a phone and an iPad, v245 (web; Houfu: "See what else u could do to better reading experience
   on phone and on iPad. Make urself a daily user, and a designer").** Claude read two real papers (Plant Physiology
   2022 kiab548, two columns; Frontiers 2016) through a day's use on an emulated iPhone and iPad (WebKit) and fixed

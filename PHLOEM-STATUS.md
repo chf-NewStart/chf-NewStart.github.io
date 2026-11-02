@@ -4,7 +4,27 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-10-23)
+## Now (2026-11-01)
+
+- **Contents one tap away, and "This paper" renamed "Pages & zoom", v243 (web; Houfu: "this paper button what it's
+  doing. User might think it's paper info. Contents hiding too deep").** More's "This paper" (▤) opened page jumps,
+  zoom, column view, Reader view and the rename, not information about the paper, and a paper's Contents sat a level
+  below it (More → This paper → Contents → list). (1) **Contents** is now a dock button (list icon, captioned like
+  Listen and Workspace) right after the page layout, shown only when the PDF has contents (bookmarks or a printed
+  contents page read from the pages); **T** opens it on a keyboard. On a phone the bar stays Library · Look up ·
+  Listen · Find · More and Contents is the **first item under More**. One tap opens the list itself. (2) The More item
+  and its dialog are now **Pages & zoom** (stacked-pages icon); Contents stays in that dialog too. (3) The extra
+  button made the dock run off short windows (441–495 px tall; with the Workspace open it needs 544 px, and main
+  already clipped at 441–495 there), so the rail folds into columns at **544 px** instead of 440 px. IDs are
+  unchanged (`zenReadingControls`, `readerControlsDialog`, `tocBtn`); new ones are `zenContents` and
+  `zenPhoneContents`, kept in step by `showContentsButtons`. Test: new `reading-contents-one-tap` (31; fails on v242,
+  where the button does not exist). Ran 44 related suites (Zen, dock, phone, iPad, Workspace, ink, contents, Night
+  light) in Chromium and WebKit: only main's known failures (`reading-pdf-ink` 69/72, `reading-split-undo-browser`,
+  `reading-workspace-paper-color`/`-edge`), plus `reading-zen-compact-browser` in WebKit, which fails the same way on
+  main (b2dc0c9: its scripted text selection comes back empty). **iPad/iPhone app:** web-only change; build 50 bundles
+  v242, so the app gets this with the next build (none made).
+
+## Earlier (2026-10-23)
 
 - **Workspace writing no longer stops mid-line, v242 (web; Houfu: "sometimes i write in workplace mode, the writing
   will stop, then once i lift the pencil and write again, it will be back to normal").** Any scroll of the Workspace
@@ -609,6 +629,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-11-01 v243:** Contents is a dock button (first under More on a phone, T on a keyboard) when the paper has
+  contents; More's "This paper" is now "Pages & zoom"; the dock folds into columns below 544 px (see Now).
 
 - **2026-10-23 v242 + 1.2.6 (50):** a scroll of the Workspace paper no longer ends a pen or eraser stroke; build 50
   bundles it, in TestFlight (internal groups), not submitted (see Now).

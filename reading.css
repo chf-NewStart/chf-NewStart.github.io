@@ -1123,6 +1123,11 @@
     .zen-action-menu .zen-undo > span { display: none; }
     .zen-workspace { flex-direction: column; gap: 0; border-radius: 13px; font-size: 1.16rem; }
     .zen-workspace-caption { font: 700 8px/1 var(--sans); letter-spacing: -.02em; }
+    /* Contents sits beside the page layout, captioned like Listen and Workspace, and shows only
+       when the paper has contents. Pages & zoom (More) keeps page jumps, zoom and the title. */
+    .zen-dock .zen-contents:not(.zen-menu-action) { flex-direction: column; gap: 1px; border-radius: 13px; color: var(--ink); }
+    .zen-contents svg, .zen-pages svg { width: 19px; height: 19px; flex: none; }
+    .zen-contents-caption { font: 700 8px/1 var(--sans); letter-spacing: -.02em; }
     .zen-workspace[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); opacity: .9; }
     body.zen.zen-idle .zen-workspace[aria-pressed="true"] { opacity: .48; }
     .zen-guide-menu { width: min(286px, calc(100vw - 76px)); padding: 6px; display: grid; gap: 4px; }
@@ -1199,7 +1204,9 @@
       body.zen .zen-dock { gap: 5px; }
       body.zen .zen-tool.popout-open { z-index: 3; }
     }
-    @media (max-height: 440px) {
+    /* Fold the rail into columns once its tallest set would not fit: eleven buttons with Contents
+       and the Workspace highlighter, 10 + 11 × 44 + 10 × 5 = 544px (it was 440px, before Contents). */
+    @media (max-height: 544px) {
       body.zen { --zen-find-rail-width: 134px; }
       body.zen .zen-dock { display: grid; grid-template-rows: repeat(4, 44px); grid-auto-flow: column; grid-auto-columns: max-content; gap: 4px; direction: rtl; }
       body.zen .zen-dock > * { direction: ltr; }
@@ -1209,7 +1216,7 @@
       body.zen .zen-dock { grid-template-rows: repeat(3, 44px); }
     }
     /* A narrow, short viewport has room below the folded rail, not beside it. */
-    @media (max-width: 560px) and (max-height: 440px) {
+    @media (max-width: 560px) and (max-height: 544px) {
       body.zen .find-bar:not(.hidden) { top: calc(208px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); }
     }
     @media (max-width: 560px) and (max-height: 325px) {
@@ -2913,7 +2920,7 @@ body.voice-focus #textDocument .para.voice-drop-target { opacity: 1; }
 body.phone-ui { --phone-bar: 58px; }
 body.phone-ui.zen #readerPage { height: calc(100vh - var(--phone-bar) - env(safe-area-inset-bottom)); height: calc(100dvh - var(--phone-bar) - env(safe-area-inset-bottom)); }
 body.phone-ui.zen .zen-dock { top: auto; left: 0; right: 0; bottom: 0; display: flex; height: calc(var(--phone-bar) + env(safe-area-inset-bottom)); padding: 4px max(6px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(6px, env(safe-area-inset-left)); flex-direction: row; align-items: center; justify-content: space-around; gap: 0; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); direction: ltr; }
-body.phone-ui.zen .zen-dock > :is(#zenAnnotateTool, #zenWorkspaceMarker, #zenUndo, #zenWorkspace), body.phone-ui.zen :is(#zenGuide, #zenLayout) { display: none !important; }
+body.phone-ui.zen .zen-dock > :is(#zenAnnotateTool, #zenWorkspaceMarker, #zenUndo, #zenWorkspace, #zenContents), body.phone-ui.zen :is(#zenGuide, #zenLayout) { display: none !important; }
 body.phone-ui.zen .zen-dock > :is(#zenGuideTool, #zenLayoutTool) { position: static; width: 0; height: 0; }
 body.phone-ui.zen .zen-dock > * { order: 9; }
 body.phone-ui.zen #zenExit { order: 1; }

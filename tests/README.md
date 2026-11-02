@@ -57,6 +57,11 @@ every page without Reader view having run first, and a mouse click on a contents
 entry goes to that page while Backspace returns. Its fixture PDF is written by hand,
 so it needs no pdf-lib.
 
+`reading-contents-one-tap.test.js` covers Contents one tap away: a paper with contents shows a
+Contents button in the Zen dock (and T opens it); on a phone it is the first item under More; a
+paper without contents shows neither. More's page controls are named "Pages & zoom", and the
+dock keeps every button on screen, short windows included. Run it with `PHLOEM_BROWSER=webkit` too.
+
 `reading-library-long-press.test.js` covers the wall on a touch screen: one tap
 opens a paper, holding a note only selects it for the card without opening its
 Move menu, and the note's own Move button still opens the menu.

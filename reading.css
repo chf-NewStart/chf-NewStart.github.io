@@ -2947,6 +2947,23 @@ body.phone-ui.zen #zenMoreMenu:not(.hidden) { display: grid; grid-template-colum
 body.phone-ui.zen #zenMoreMenu #zenFind, body.phone-ui.zen .zen-dock > #zenListen { display: none; }
 body.phone-ui.zen #zenMoreMenu .phone-only { display: flex; }
 #zenLayoutTool.hidden ~ #zenMoreTool #zenPhoneLayout { display: none !important; }
+/* Text size: a short sheet, so the words it changes stay in view above it. Small A and big A
+   around the size (tap the size to reset); a PDF adds the switch to Reader view. */
+.text-size-glyph { display: inline-flex; align-items: baseline; font: 700 1.12rem/1 var(--serif); letter-spacing: -.02em; }
+.text-size-glyph span { margin-right: 1px; font-size: .68em; }
+.zen-text-menu { padding: 12px 14px 14px; display: grid; gap: 10px; }
+.zen-text-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.zen-text-title { margin: 0; color: var(--ink); font: 750 .95rem/1.2 var(--sans); }
+.zen-text-close { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--muted); font: 600 1rem/1 var(--sans); }
+.zen-text-steps { display: grid; grid-template-columns: 1fr minmax(88px, auto) 1fr; gap: 8px; }
+.zen-text-step, .zen-text-value { min-height: 54px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); color: var(--ink); }
+.zen-text-step span { font: 600 1rem/1 var(--serif); }
+.zen-text-bigger span { font-size: 1.65rem; }
+.zen-text-value { padding: 0 10px; font: 750 1rem/1 var(--sans); font-variant-numeric: tabular-nums; }
+.zen-text-step:disabled { opacity: .38; }
+.zen-text-note { margin: 0; color: var(--muted); font: 550 .8rem/1.4 var(--sans); }
+.zen-text-mode { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--line)); border-radius: 14px; background: var(--accent-soft); color: var(--ink); font: 750 .9rem/1 var(--sans); }
+.zen-text-menu[data-mode="text"] .zen-text-mode { border-color: var(--line); background: transparent; }
 body.phone-ui.zen .find-bar:not(.hidden) { top: calc(10px + env(safe-area-inset-top)); left: 10px; right: 10px; width: auto; }
 body.phone-ui.zen .voice-bar { bottom: calc(var(--phone-bar) + env(safe-area-inset-bottom) + 8px); width: calc(100vw - 20px); }
 body.phone-ui.zen:not(.workspace-bottom) .reader-toast { bottom: calc(var(--phone-bar) + env(safe-area-inset-bottom) + 10px); }

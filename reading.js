@@ -3182,13 +3182,31 @@
     applyPdfFlowMode();
     applyFocus();
     applyNightLight();
+    syncTextSizeUi();
     try{localStorage.setItem(COMFORT_KEY,JSON.stringify(comfort));}catch(e){}
   }
   function stepComfort(field,delta,min,max,decimals){
     comfort[field]=Math.max(min,Math.min(max,+(comfort[field]+delta).toFixed(decimals)));applyComfort();
   }
-  byId('textSmaller').onclick=function(){stepComfort('size',-10,70,190,0);};
-  byId('textBigger').onclick=function(){stepComfort('size',10,70,190,0);};
+  /* Text size rewraps every paragraph. Keep the one being read (under the fingers of a
+     pinch, else a third of the way down) at the same height, so a bigger size never loses
+     the place. At the very top the title stays in view instead. */
+  function textReadingAnchor(atY){
+    if(readerMode==='pdf')return null;
+    var pane=byId('documentPane'),box=pane.getBoundingClientRect();if(!box.height||pane.scrollTop<4)return null;
+    var y=atY===undefined?box.top+Math.min(box.height*.3,180):Math.max(box.top,Math.min(box.bottom,atY));
+    var paras=byId('textDocument').querySelectorAll('.para');
+    for(var i=0;i<paras.length;i++){var r=paras[i].getBoundingClientRect();if(r.bottom>y)return{node:paras[i],y:y-box.top,frac:r.height?Math.max(0,Math.min(1,(y-r.top)/r.height)):0};}
+    return null;
+  }
+  function setTextSize(size,atY){
+    size=Math.max(70,Math.min(190,Math.round(size/10)*10));if(size===comfort.size)return false;
+    var anchor=textReadingAnchor(atY);comfort.size=size;applyComfort();
+    if(anchor&&anchor.node.isConnected){var pane=byId('documentPane'),r=anchor.node.getBoundingClientRect();pane.scrollTop+=r.top+anchor.frac*r.height-pane.getBoundingClientRect().top-anchor.y;}
+    return true;
+  }
+  byId('textSmaller').onclick=function(){setTextSize(comfort.size-10);};
+  byId('textBigger').onclick=function(){setTextSize(comfort.size+10);};
   byId('widthNarrow').onclick=function(){stepComfort('measure',-60,440,1100,0);};
   byId('widthWide').onclick=function(){stepComfort('measure',60,440,1100,0);};
   byId('leadTight').onclick=function(){stepComfort('leading',-0.1,1.2,2.6,1);};
@@ -3657,7 +3675,7 @@
   }
   function placeZenPopouts(){
     // On a phone the menus are sheets above the bottom bar, placed by CSS alone.
-    if(document.body.classList.contains('phone-ui')){['zenGuideMenu','zenLayoutMenu','zenAnnotateMenu','zenMoreMenu'].forEach(function(id){var menu=byId(id);if(menu){menu.style.right='';menu.style.maxWidth='';menu.style.maxHeight='';menu.style.top='';menu.style.transform='';}});return;}
+    if(document.body.classList.contains('phone-ui')){['zenGuideMenu','zenLayoutMenu','zenAnnotateMenu','zenMoreMenu','zenTextMenu'].forEach(function(id){var menu=byId(id);if(menu){menu.style.right='';menu.style.maxWidth='';menu.style.maxHeight='';menu.style.top='';menu.style.transform='';}});return;}
     ['zenGuideMenu','zenLayoutMenu','zenAnnotateMenu','zenMoreMenu'].forEach(function(id){
       var menu=byId(id);if(!menu||menu.classList.contains('hidden'))return;
       var owner=menu.parentElement.getBoundingClientRect(),height=Math.min(window.innerHeight,window.visualViewport?window.visualViewport.height:window.innerHeight),style=getComputedStyle(menu);
@@ -3675,7 +3693,7 @@
   }
   function closeZenPopouts(returnFocus){
     var openTrigger=null,closed=false;
-    [['zenGuide','zenGuideMenu','zenGuideTool'],['zenAnnotate','zenAnnotateMenu','zenAnnotateTool'],['zenMore','zenMoreMenu','zenMoreTool'],['zenLayout','zenLayoutMenu','zenLayoutTool']].forEach(function(parts){
+    [['zenGuide','zenGuideMenu','zenGuideTool'],['zenAnnotate','zenAnnotateMenu','zenAnnotateTool'],['zenMore','zenMoreMenu','zenMoreTool'],['zenLayout','zenLayoutMenu','zenLayoutTool'],['zenPhoneText','zenTextMenu','zenMoreTool']].forEach(function(parts){
       var trigger=byId(parts[0]),menu=byId(parts[1]),tool=byId(parts[2]);
       if(!menu.classList.contains('hidden')){closed=true;if(!openTrigger)openTrigger=trigger;}
       menu.classList.add('hidden');tool.classList.remove('popout-open');trigger.setAttribute('aria-expanded','false');
@@ -3704,7 +3722,7 @@
      so remember what was open when this press began. */
   var zenPress={};
   function zenAnnotatingNow(){return highlightToolbarOpen()||!!pdfWriteMode||!!highlightEraseMode||!!stickyPlacing;}
-  function zenMoreSurfaceNow(){return !byId('findBar').classList.contains('hidden')?'find':!byId('comfortBar').classList.contains('hidden')?'settings':byId('notebook').classList.contains('sheet-open')?'notebook':'';}
+  function zenMoreSurfaceNow(){return !byId('findBar').classList.contains('hidden')?'find':!byId('comfortBar').classList.contains('hidden')?'settings':byId('notebook').classList.contains('sheet-open')?'notebook':!byId('zenTextMenu').classList.contains('hidden')?'text':'';}
   window.addEventListener('pointerdown',function(e){var t=e.target.closest&&e.target.closest('#zenAnnotate,#zenMore');zenPress=t?{id:t.id,at:Date.now(),annotating:zenAnnotatingNow(),surface:zenMoreSurfaceNow()}:{};},true);
   function zenPressFor(id){var press=zenPress;zenPress={};return press.id===id&&Date.now()-press.at<2000?press:null;}
   byId('zenAnnotate').onclick=function(){
@@ -3721,6 +3739,7 @@
       if(surface==='find'&&!byId('findBar').classList.contains('hidden'))toggleFindBar(false,false);
       if(surface==='settings')setComfortBarOpen(false);
       if(surface==='notebook')toggleSheet(false);
+      if(surface==='text')closeZenPopouts(false);
       zenWake();return;
     }
     var ch=find(currentId);byId('zenExportAnnotated').classList.toggle('hidden',!(ch&&ch.kind==='pdf'&&annotatedExportAvailable()));toggleZenPopout('zenMore','zenMoreMenu','zenMoreTool');};
@@ -4176,6 +4195,7 @@
     document.body.classList.toggle('phone-ui',on);document.body.classList.toggle('phone-land',land);
     byId('zenDock').setAttribute('aria-orientation',on&&!land?'horizontal':'vertical');
     if(!on&&lookupTapping())hideLookup();
+    if(!on&&!byId('zenTextMenu').classList.contains('hidden'))closeZenPopouts(false);
   }
   syncPhoneUi();addEventListener('resize',syncPhoneUi);
   byId('zenPhoneListen').onclick=function(){closeZenPopouts(false);if(!byId('voiceBar').classList.contains('hidden')&&voicePaperId===currentId&&voicePlayer){voicePlayer.toggle();return;}startVoice();};
@@ -4184,6 +4204,58 @@
   byId('zenPhoneGuide').onclick=function(){toggleZenPopout('zenGuide','zenGuideMenu','zenGuideTool');};
   byId('zenPhoneLayout').onclick=function(){toggleZenPopout('zenLayout','zenLayoutMenu','zenLayoutTool');};
   byId('zenPhoneUndo').onclick=function(){byId('zenUndo').click();};
+  /* Text size (Houfu: "make the text size changeable … for the phone"). More → Text size
+     opens a sheet above the bar, so the words stay in view while they change. Text and
+     Reader view change the type itself (shared with Reading settings); a PDF page cannot
+     rewrap, so there A− and A+ zoom the page, and the sheet offers Reader view, which
+     rewraps the paper to the screen. A pinch on the text resizes it too. */
+  function syncTextSizeUi(){
+    var ch=currentId?find(currentId):null,isPdf=!!(ch&&ch.kind==='pdf'),pdf=isPdf&&readerMode==='pdf';
+    var value=byId('zenTextValue'),smaller=byId('zenTextSmaller'),bigger=byId('zenTextBigger'),mode=byId('zenTextMode');
+    byId('zenTextMenu').dataset.mode=pdf?'pdf':'text';
+    if(pdf){
+      var zoom=byId('zoomLabel').textContent||'Fit';
+      value.textContent=zoom;value.setAttribute('aria-label','Page zoom '+zoom+'. Tap to fit the page');
+      // Smaller than the screen helps no one reading on a phone.
+      smaller.setAttribute('aria-label','Zoom the page out');bigger.setAttribute('aria-label','Zoom the page in');smaller.disabled=zoom==='Fit';bigger.disabled=!pdfFit&&pdfZoom>=3.99;
+      byId('zenTextNote').textContent='A PDF page keeps its layout, so zoomed text runs off the sides. Reader view rewraps it to fit your screen.';
+    }else{
+      value.textContent=comfort.size+'%';value.setAttribute('aria-label','Text size '+comfort.size+'%. Tap to reset to 100%');
+      smaller.setAttribute('aria-label','Smaller text');bigger.setAttribute('aria-label','Bigger text');smaller.disabled=comfort.size<=70;bigger.disabled=comfort.size>=190;
+      byId('zenTextNote').textContent='Pinching the text with two fingers works too.';
+    }
+    mode.classList.toggle('hidden',!isPdf);
+    mode.innerHTML=pdf?'<span aria-hidden="true">Aa</span> Reader view':'<span aria-hidden="true">⧉</span> PDF pages';
+    mode.setAttribute('aria-label',pdf?'Reader view: the text rewrapped to fit your screen':'Back to the PDF pages');
+  }
+  byId('zenPhoneText').onclick=function(){toggleZenPopout('zenPhoneText','zenTextMenu','zenMoreTool');syncTextSizeUi();};
+  byId('zenTextSmaller').onclick=function(){if(readerMode==='pdf')byId('zoomOut').click();else setTextSize(comfort.size-10);};
+  byId('zenTextBigger').onclick=function(){if(readerMode==='pdf')byId('zoomIn').click();else setTextSize(comfort.size+10);};
+  byId('zenTextValue').onclick=function(){if(readerMode==='pdf')byId('zoomLabel').click();else setTextSize(100);};
+  byId('zenTextMode').onclick=function(){byId('reflowBtn').click();};
+  byId('zenTextClose').onclick=function(){var keyboard=this.matches(':focus-visible');closeZenPopouts(false);if(keyboard)byId('zenMore').focus({preventScroll:true});};
+  /* Pinching text resized nothing before (the pane only pans; pages have their own
+     pinch-to-zoom). On a phone two fingers on text now step its size by 10%, holding the
+     words between them in place. Not on an iPad: a palm resting beside a finger, or
+     beside the Pencil, must never resize the words. */
+  (function(){
+    var pane=byId('documentPane'),pinch=null;
+    function fingers(e){return Array.from(e.touches).filter(function(t){return t.touchType!=='stylus';});}
+    function spread(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
+    pane.addEventListener('touchstart',function(e){
+      var t=fingers(e);pinch=null;
+      if(!document.body.classList.contains('phone-ui')||readerMode==='pdf'||t.length!==2||e.touches.length!==2||spread(t)<12)return;
+      pinch={spread:spread(t),size:comfort.size};
+    },{passive:true});
+    pane.addEventListener('touchmove',function(e){
+      var t=fingers(e);if(!pinch||readerMode==='pdf'||t.length!==2)return;
+      if(e.cancelable)e.preventDefault();
+      var scale=spread(t)/pinch.spread;if(Math.abs(scale-1)<.08)return;
+      if(setTextSize(pinch.size*scale,(t[0].clientY+t[1].clientY)/2)&&byId('zenTextMenu').classList.contains('hidden'))showReaderToast('Text size '+comfort.size+'%');
+    },{passive:false});
+    ['touchend','touchcancel'].forEach(function(type){pane.addEventListener(type,function(e){if(pinch&&fingers(e).length<2)pinch=null;},{passive:true});});
+    ['gesturestart','gesturechange'].forEach(function(name){pane.addEventListener(name,function(e){if(pinch)e.preventDefault();});});
+  })();
   // The Workspace stays on a phone, one step away: More → Workspace; it closes from its own ✕.
   byId('zenPhoneWorkspace').onclick=function(){closeZenPopouts(false);byId('zenWorkspace').click();};
 
@@ -5807,7 +5879,7 @@
     reflow.innerHTML=pdf?'Aa <span class="wide">Reader view</span>':'⧉ <span class="wide">PDF</span>';
     reflow.setAttribute('aria-label',pdf?'Switch to Reader view':'Back to the PDF view');
     reflow.setAttribute('title',pdf?'Reader view · the paper rebuilt as clean, phone-friendly text':'Back to the original PDF layout');
-    if(!pdf&&ch) renderText(ch);applyPdfFlowMode();applyFocus();loadPageNote();updateProgress();queueFindRefresh();
+    if(!pdf&&ch) renderText(ch);applyPdfFlowMode();applyFocus();loadPageNote();updateProgress();queueFindRefresh();syncTextSizeUi();
   }
   byId('reflowBtn').onclick=async function(){
     var ch=find(currentId);if(!ch||ch.kind!=='pdf')return;clearPendingSelection();if(readerMode==='pdf')savePdfReadingPosition(false);
@@ -6239,6 +6311,7 @@
       button.setAttribute('aria-label',pagedManualZoom?'Fit the complete '+(bookSpread()?'spread':'page'):'Fill the pane with one page width');
       button.title=pagedManualZoom?'Fit the complete '+(bookSpread()?'spread':'page'):'Full page width · vertical scroll';
     }else{button.setAttribute('aria-label','Fit PDF to width');button.title='Fit PDF to width';}
+    syncTextSizeUi();
   }
   function updatePageChrome(){
     if(!pdfDoc)return;

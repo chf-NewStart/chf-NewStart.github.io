@@ -6,6 +6,25 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-01)
 
+- **Text size on a phone, v244 (web; Houfu: "Also try to make the text size changeable is that doable for the
+  phone?").** On a phone a PDF page is fitted to the screen's width, so its body text is tiny. Type size existed only
+  for articles and Reader view, two menus deep (More → Reading settings → Text), in a tall sheet that covered the
+  words being sized, and a pinch on text did nothing (the pane only pans). (1) **More → Text size** (phone only,
+  right after Contents) opens a short sheet above the bar: small A · size · big A; tap the size to reset. On text it
+  changes the type 70–190% in 10% steps, the same `comfort.size` as Reading settings, kept across reloads. (2) **The
+  paragraph being read stays on its line** when the size changes (`setTextSize` anchors the paragraph 180 px down the
+  pane, or the one under a pinch); Reading settings' A−/A+ use it on every device. (3) On a PDF the same buttons
+  **zoom the page** (Pages & zoom's −/Fit/+; small A is off at Fit). The sheet explains that a page cannot rewrap
+  and offers **Reader view**, staying open so the rewrapped text can be sized at once; **PDF pages** goes back.
+  (4) **Two fingers on text** step its size by 10%, the words between them held in place, with a short toast; phone
+  only, because on an iPad a palm beside a finger or the Pencil must never resize the words. PDF pinch-to-zoom is
+  unchanged. New ids `zenPhoneText` and `zenTextMenu` (inside `#zenMoreTool`; closed by ×, More, Escape or the other
+  sheets). Test: new `reading-text-size-phone` (38 in Chromium, 32 in WebKit, which cannot send two touches; fails
+  on v243). The 33 related suites (phone, Zen, iPad dock, zoom, paged, guide, Listen, find, Workspace dock) pass in
+  Chromium; WebKit fails only `reading-zen-compact-browser`, as on main (its scripted selection comes back empty).
+  Not tried on a real iPhone: the iOS Simulator will not start until Xcode 27.2 installs its newer simulator
+  component (`xcodebuild -runFirstLaunch`, which needs Houfu's password).
+
 - **Contents one tap away, and "This paper" renamed "Pages & zoom", v243 (web; Houfu: "this paper button what it's
   doing. User might think it's paper info. Contents hiding too deep").** More's "This paper" (▤) opened page jumps,
   zoom, column view, Reader view and the rename, not information about the paper, and a paper's Contents sat a level
@@ -636,6 +655,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-11-01 v244:** a phone gets More → Text size (type size for text and Reader view; page zoom or Reader view
+  for a PDF), the reading spot stays put when the size changes, and a pinch on text resizes it (see Now).
 
 - **2026-11-01 v243:** Contents is a dock button (first under More on a phone, T on a keyboard) when the paper has
   contents; More's "This paper" is now "Pages & zoom"; the dock folds into columns below 544 px (see Now). Same day:

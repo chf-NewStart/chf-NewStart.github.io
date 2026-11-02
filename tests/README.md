@@ -62,6 +62,14 @@ Contents button in the Zen dock (and T opens it); on a phone it is the first ite
 paper without contents shows neither. More's page controls are named "Pages & zoom", and the
 dock keeps every button on screen, short windows included. Run it with `PHLOEM_BROWSER=webkit` too.
 
+`reading-text-size-phone.test.js` covers text size on a phone: More → Text size opens a sheet above
+the bar (small A, the size, big A; tap the size to reset). On text and in Reader view it changes the
+type from 70% to 190% in 10% steps, shared with Reading settings and kept after a reload, and the
+paragraph being read stays on its line. On a PDF the same buttons zoom the page (small A is off at
+Fit) and the sheet offers Reader view and back. A two-finger pinch on text resizes it (Chromium
+only: Playwright's WebKit cannot send two touches). Reading settings' A+ on a laptop keeps the
+reading spot too. Run it with `PHLOEM_BROWSER=webkit` too.
+
 `reading-library-long-press.test.js` covers the wall on a touch screen: one tap
 opens a paper, holding a note only selects it for the card without opening its
 Move menu, and the note's own Move button still opens the menu.

@@ -36,9 +36,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=243">
-  <link rel="stylesheet" href="/reading-fold.css?v=243">
-  <link rel="stylesheet" href="/reading-workspace.css?v=243">
+  <link rel="stylesheet" href="/reading.css?v=244">
+  <link rel="stylesheet" href="/reading-fold.css?v=244">
+  <link rel="stylesheet" href="/reading-workspace.css?v=244">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -780,6 +780,7 @@
           <button class="zen-exit" id="zenMore" type="button" aria-expanded="false" aria-controls="zenMoreMenu" aria-haspopup="true" aria-label="More reading tools" title="More reading tools" data-phone-label="More"><span aria-hidden="true">⋯</span></button>
           <div class="zen-popout zen-action-menu hidden" id="zenMoreMenu" role="group" aria-label="More reading tools">
             <button class="zen-exit zen-menu-action zen-contents phone-only hidden" id="zenPhoneContents" data-label="Contents" type="button" aria-haspopup="dialog" aria-controls="tocDialog" aria-label="Contents: go to a chapter or section"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 6H20M8.5 12H20M11.5 18H20"/><circle cx="4.5" cy="6" r=".8"/><circle cx="4.5" cy="12" r=".8"/><circle cx="7.5" cy="18" r=".8"/></svg></button>
+            <button class="zen-exit zen-menu-action zen-text-size phone-only" id="zenPhoneText" data-label="Text size" type="button" aria-expanded="false" aria-controls="zenTextMenu" aria-label="Text size: make the words bigger or smaller"><span class="text-size-glyph" aria-hidden="true"><span>A</span>A</span></button>
             <button class="zen-exit zen-menu-action zen-pages" id="zenReadingControls" data-label="Pages &amp; zoom" type="button" aria-haspopup="dialog" aria-controls="readerControlsDialog" aria-label="Pages and zoom: go to a page, zoom, or rename the paper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="11.5" height="15" rx="1.6"/><path d="M5 7v12.4A1.6 1.6 0 0 0 6.6 21H15"/></svg></button>
             <button class="zen-exit zen-menu-action hidden" id="zenExportAnnotated" data-label="Export annotated PDF" type="button" aria-label="Export this PDF with your highlights, handwriting and notes" title="Export annotated PDF"><span aria-hidden="true">⇪</span></button>
             <button class="zen-exit zen-menu-action" id="zenNotebook" data-label="Notebook" type="button" aria-haspopup="dialog" aria-controls="notebook" aria-expanded="false" aria-label="Open notebook: notes, clips and discussions"><span aria-hidden="true">✎</span></button>
@@ -793,6 +794,18 @@
             <button class="zen-exit zen-menu-action phone-only" id="zenPhoneWorkspace" data-label="Workspace" type="button" aria-controls="workspacePanel" aria-label="Open the Workspace"><span aria-hidden="true">▦</span></button>
             <button class="zen-exit zen-menu-action phone-only" id="zenPhoneUndo" data-label="Undo highlight" type="button" aria-label="Undo the last highlight" disabled><span aria-hidden="true">↶</span></button>
             <button class="zen-exit zen-refresh zen-menu-action" id="zenRefresh" data-label="Refresh" type="button" aria-label="Reload Phloem to get the newest version" title="Get the newest version">↻</button>
+          </div>
+          <!-- Text size on a phone: a sheet above the bar, so the words stay in view while they
+               change. Text rewraps; a PDF page can only zoom, or be rewrapped as Reader view. -->
+          <div class="zen-popout zen-text-menu hidden" id="zenTextMenu" role="group" aria-labelledby="zenTextTitle">
+            <div class="zen-text-head"><p class="zen-text-title" id="zenTextTitle">Text size</p><button class="zen-text-close" id="zenTextClose" type="button" aria-label="Close text size">×</button></div>
+            <div class="zen-text-steps">
+              <button class="zen-text-step" id="zenTextSmaller" type="button" aria-label="Smaller text"><span aria-hidden="true">A</span></button>
+              <button class="zen-text-value" id="zenTextValue" type="button" aria-label="Text size 100%. Tap to reset">100%</button>
+              <button class="zen-text-step zen-text-bigger" id="zenTextBigger" type="button" aria-label="Bigger text"><span aria-hidden="true">A</span></button>
+            </div>
+            <p class="zen-text-note" id="zenTextNote"></p>
+            <button class="zen-text-mode hidden" id="zenTextMode" type="button"></button>
           </div>
         </div>
       </div>
@@ -1174,23 +1187,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=243',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=244',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=243" defer></script>
-<script src="/reading-stickies.js?v=243" defer></script>
-<script src="/reading-keeps.js?v=243" defer></script>
-<script src="/reading-excerpts.js?v=243" defer></script>
-<script src="/reading-excerpts-view.js?v=243" defer></script>
-<script src="/reading-lists.js?v=243" defer></script>
-<script src="/reading-lists-view.js?v=243" defer></script>
-<script src="/reading-voice.js?v=243" defer></script>
-<script src="/reading-workspace.js?v=243" defer></script>
-<script src="/reading-workspace-viewport.js?v=243" defer></script>
-<script src="/reading-workspace-view.js?v=243" defer></script>
-<script src="/reading-folds.js?v=243" defer></script>
-<script src="/reading-pdf-projection.js?v=243" defer></script>
-<script src="/reading-fold-view.js?v=243" defer></script>
-<script src="/reading.js?v=243" defer></script>
+<script src="/reading-ink.js?v=244" defer></script>
+<script src="/reading-stickies.js?v=244" defer></script>
+<script src="/reading-keeps.js?v=244" defer></script>
+<script src="/reading-excerpts.js?v=244" defer></script>
+<script src="/reading-excerpts-view.js?v=244" defer></script>
+<script src="/reading-lists.js?v=244" defer></script>
+<script src="/reading-lists-view.js?v=244" defer></script>
+<script src="/reading-voice.js?v=244" defer></script>
+<script src="/reading-workspace.js?v=244" defer></script>
+<script src="/reading-workspace-viewport.js?v=244" defer></script>
+<script src="/reading-workspace-view.js?v=244" defer></script>
+<script src="/reading-folds.js?v=244" defer></script>
+<script src="/reading-pdf-projection.js?v=244" defer></script>
+<script src="/reading-fold-view.js?v=244" defer></script>
+<script src="/reading.js?v=244" defer></script>
 </body>
 </html>

@@ -39,7 +39,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   next): Reader view repeats the title at the top, split in two; Oxford fonts' "þ" for "+" ("NHþ4"); Frontiers' editor
   and reviewer block comes before the abstract; italics (species names) are lost in Reader view; on an iPad in
   portrait Reader view lines run about 82 characters.
-  **App: 1.2.7 (53) in TestFlight, not submitted.** 1.2.6 (52) is still Waiting for Review and was not touched.
+  **App: 1.2.6 (52) released 2026-11-02 (Ready for Sale) after approval; 1.2.7 (53) submitted 13:32 EST, Waiting for
+  Review (submission bb770ef8; Houfu: "review passed, push new"). Manual release: press Release after approval.**
+  Review notes still name 1.2.5 (build 49) (copied forward; Houfu edits them).
   Build 53 bundles reader **v245** (archive `~/Library/Developer/Xcode/Archives/2026-11-02/Phloem 1.2.7 (53).xcarchive`),
   uploaded with the API key, **VALID**, In Beta Testing for Internal Testers and friends2 with a What to Test note. No
   1.2.7 version record yet. App tests 22/22 (`bundle.test.mjs` pins 53 and 1.2.7; `package.json` follows 1.2.7).
@@ -674,9 +676,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
   identity", try a phone hotspot, then check the Apple ID's country/region (Settings › your name › Media &
   Purchases › View Account). Steps in `apps/ipad/plans/ICLOUD-SYNC-FIX.md`, "Sixth round".
 
-- **Phloem 1.2.6 (52) is Waiting for Review (manual release).** After approval, press Release in App Store Connect,
-  or tell Claude to release it. Its App Review notes still read 1.2.5 (build 49) and "What's new in 1.2.5": give them
-  1.2.6 wording before the next version (Houfu edits them, since they carry the reviewer Anthropic key, which is
+- **Phloem 1.2.7 (53) is Waiting for Review (manual release); 1.2.6 is live.** After approval, press Release in App
+  Store Connect, or tell Claude to release it. Its App Review notes still read 1.2.5 (build 49) and "What's new in 1.2.5": give them
+  current wording before the next version (Houfu edits them, since they carry the reviewer Anthropic key, which is
   overdue for rotation; see below).
 - Keep Listen going with the screen locked? Needs the `audio` background mode in Info.plist (iPhone and iPad alike).
 - **Mac:** the iPad app is already offered on Apple silicon Macs. Optional: install it on this Mac with
@@ -704,7 +706,7 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - **2026-11-02 v245:** daily reading on a phone and an iPad (see Now): the small-print Reader view offer on a phone,
   each paper reopening in its last view, one place across Reader view and the PDF (library progress included), the
   figure viewer, and split accents joined in Reader view. Same day: 1.2.7 (53) with v245 uploaded, VALID, in TestFlight (internal
-  groups); no App Store version yet.
+  groups). Same day: 1.2.6 released on Houfu's "review passed, push new", and 1.2.7 (53) submitted (manual release).
 
 - **2026-11-01 v244:** a phone gets More → Text size (type size for text and Reader view; page zoom or Reader view
   for a PDF), the reading spot stays put when the size changes, and a pinch on text resizes it (see Now). Same

@@ -1223,6 +1223,8 @@
      entry bounces straight back, and leaving the reader closes any open dialog. */
   addEventListener('popstate',function(e){
     var st=e.state&&e.state.phloem;
+    // Back closes a figure opened over the paper, nothing more.
+    if(historyEcho<=0&&byId('figureViewer').open&&st!=='figure'){closeFigureViewer(true);return;}
     var sheetOpen=byId('notebook').classList.contains('sheet-open');
     var readerOpen=!byId('readerPage').classList.contains('hidden');
     if(historyEcho>0){
@@ -1281,6 +1283,8 @@
         if(ch.pdfPosition&&(+stored.zoomPreferenceV||0)>=PDF_ZOOM_PREFERENCE_VERSION&&Number.isFinite(+stored.zoom)&&+stored.zoom!==+ch.zoom)ch.pdfPosition.zoom=Math.max(0,Math.min(4,+stored.zoom));
         if(ch.pdfPosition)stored.pdfPosition=ch.pdfPosition;
         stored.readPage=ch.readPage;stored.readThroughPage=Math.max(+stored.readThroughPage||0,+ch.readThroughPage||0);
+        // Reader view's place travels with the page count it now sets.
+        if(ch.readerPlace){stored.readerPlace=ch.readerPlace;stored.readerScroll=ch.readerScroll;}
       }else stored.readerScroll=ch.readerScroll;
       stored.lastOpenedAt=Math.max(+stored.lastOpenedAt||0,+ch.lastOpenedAt||0);
       state.savedAt=latest.savedAt=now();serialized=JSON.stringify(latest);localStorage.setItem(KEY,serialized);
@@ -2609,6 +2613,9 @@
      the rendered page. The whitespace between the caption and the text above it, within
      the caption's column band, is the figure. Tables crop the region below instead. */
   var FIGURE_CAP=120;
+  /* [page, x, y, width, height] of a crop in the page's own units (scale 1, y down), so the
+     figure viewer can draw it again from the PDF at any size. */
+  function figureCropBox(pageIdx,sx,sy,sw,sh,scale){return [pageIdx+1].concat([sx,sy,sw,sh].map(function(v){return Math.round(v/scale*10)/10;}));}
   async function buildFigures(doc,ch,layouts,paragraphs,pageDims,body){
     var figIndex=0;
     for(var pageIdx=0;pageIdx<paragraphs.length&&figIndex<FIGURE_CAP;pageIdx++){
@@ -2634,7 +2641,7 @@
         var eqBlob=await new Promise(function(res){eqCrop.toBlob(res,'image/jpeg',.85);});
         if(!eqBlob)continue;
         var eqBuf=await eqBlob.arrayBuffer();
-        if(await putFigure('fig:'+ch.id+':'+figIndex,eqBuf)){eqs[e].f=figIndex;figIndex++;}
+        if(await putFigure('fig:'+ch.id+':'+figIndex,eqBuf)){eqs[e].f=figIndex;eqs[e].fb=figureCropBox(pageIdx,eqSx,eqSy,eqSw,eqSh,scale);figIndex++;}
       }
       for(var c=0;c<caps.length&&figIndex<FIGURE_CAP;c++){
         var cap=caps[c],capLine=null;
@@ -2686,7 +2693,7 @@
         var blob=await new Promise(function(res){crop.toBlob(res,'image/jpeg',.85);});
         if(!blob)continue;
         var buf=await blob.arrayBuffer();
-        if(await putFigure('fig:'+ch.id+':'+figIndex,buf)){cap.f=figIndex;figIndex++;}
+        if(await putFigure('fig:'+ch.id+':'+figIndex,buf)){cap.f=figIndex;cap.fb=figureCropBox(pageIdx,sx,sy,sw,sh,scale);figIndex++;}
       }
       canvas=null;
     }
@@ -4256,6 +4263,42 @@
     ['touchend','touchcancel'].forEach(function(type){pane.addEventListener(type,function(e){if(pinch&&fingers(e).length<2)pinch=null;},{passive:true});});
     ['gesturestart','gesturechange'].forEach(function(name){pane.addEventListener(name,function(e){if(pinch)e.preventDefault();});});
   })();
+  /* On a phone a two-column page shrinks to print too small to read. The first time such
+     a PDF opens there, a chip above the bar offers Reader view; its tap switches, and the
+     paper then keeps Reader view on this phone. Each paper is offered this once. */
+  var READER_OFFER_KEY='readingRoom.readerOffer.v1',readerOfferTimer=0,readerOfferTop=-1;
+  function readerOfferSeen(id){try{return JSON.parse(localStorage.getItem(READER_OFFER_KEY)||'{}')[id]===1;}catch(e){return false;}}
+  function markReaderOfferSeen(id){try{var v=JSON.parse(localStorage.getItem(READER_OFFER_KEY)||'{}');if(!v||typeof v!=='object'||Array.isArray(v))v={};v[id]=1;localStorage.setItem(READER_OFFER_KEY,JSON.stringify(v));}catch(e){}}
+  // The median height of the words on screen, in CSS pixels; 0 while the text layer is still drawing.
+  function pdfPrintPx(){
+    var pane=byId('documentPane').getBoundingClientRect(),sizes=[];
+    byId('pdfFrame').querySelectorAll('.pdf-page .text-layer span').forEach(function(span){
+      if(sizes.length>=300||span.children.length||span.textContent.trim().length<4)return;
+      var r=span.getBoundingClientRect();if(r.height>0&&r.bottom>pane.top&&r.top<pane.bottom)sizes.push(r.height);
+    });
+    if(sizes.length<12)return 0;sizes.sort(function(a,b){return a-b;});return sizes[sizes.length>>1];
+  }
+  function hideReaderOffer(){clearTimeout(readerOfferTimer);readerOfferTop=-1;byId('readerOffer').classList.add('hidden');}
+  function readerBusy(){return !!document.querySelector('#zenDock .zen-popout:not(.hidden), #selectionCard:not(.hidden), #lookupCard:not(.hidden), #findBar:not(.hidden), #comfortBar:not(.hidden), dialog[open]')||document.body.classList.contains('voice-on')||byId('notebook').classList.contains('sheet-open');}
+  function scheduleReaderOffer(id){
+    hideReaderOffer();var tries=0;
+    (function check(){
+      readerOfferTimer=setTimeout(function(){
+        var ch=find(currentId),px=0;
+        if(!ch||ch.id!==id||ch.kind!=='pdf'||readerMode!=='pdf'||!document.body.classList.contains('phone-ui')||readerOfferSeen(id)||byId('readerPage').classList.contains('hidden'))return;
+        // Never over a sheet, card, Find, Listen or dialog: wait for it to close, then give up.
+        if(readerBusy()||!(px=pdfPrintPx())){if(++tries<12)check();return;}
+        if(px>=9)return;
+        markReaderOfferSeen(id);readerOfferTop=byId('documentPane').scrollTop;byId('readerOffer').classList.remove('hidden');
+      },tries?700:2000);
+    })();
+  }
+  byId('readerOfferGo').onclick=function(){hideReaderOffer();if(readerMode==='pdf')byId('reflowBtn').click();};
+  byId('readerOfferClose').onclick=hideReaderOffer;
+  // Any other control, or reading on through a couple of screens, answers the question too.
+  byId('zenDock').addEventListener('click',hideReaderOffer,true);
+  byId('documentPane').addEventListener('scroll',function(){if(readerOfferTop>=0&&Math.abs(this.scrollTop-readerOfferTop)>this.clientHeight*2)hideReaderOffer();},{passive:true});
+  document.addEventListener('selectionchange',function(){if(readerOfferTop>=0&&String(getSelection()||''))hideReaderOffer();});
   // The Workspace stays on a phone, one step away: More → Workspace; it closes from its own ✕.
   byId('zenPhoneWorkspace').onclick=function(){closeZenPopouts(false);byId('zenWorkspace').click();};
 
@@ -4911,8 +4954,11 @@
     if(!ch||readerMode==='pdf')return;
     var pane=byId('documentPane');
     requestAnimationFrame(function(){
-      var span=pane.scrollHeight-pane.clientHeight;
-      if(ch.readerScroll>0.01&&span>4){
+      var span=pane.scrollHeight-pane.clientHeight,page=newerPdfPage(ch);
+      if(page&&scrollReaderToPage(page)){
+        saveCurrentReadingPosition(false);
+        if(announce)showReaderToast('Picked up on page '+page);
+      }else if(ch.readerScroll>0.01&&span>4){
         pane.scrollTop=ch.readerScroll*span;
         if(announce)showReaderToast('Picked up where you stopped');
       }
@@ -5764,7 +5810,7 @@
     pdfZoom=saved>0?Math.max(.5,Math.min(4,saved)):1;pdfFit=pdfZoom===1;scrollPdfZoom=pdfZoom;scrollPdfFit=pdfFit;
   }
   async function openReader(id,preparedDoc){
-    setPdfWriteMode(false);
+    setPdfWriteMode(false);hideReaderOffer();
     if(voicePaperId&&voicePaperId!==id)stopVoice();
     resetExcerptNavigation();
     if(byId('readingKeepDialog').open)byId('readingKeepDialog').close();
@@ -5784,7 +5830,7 @@
       await hydrateDerived(ch);
       if(openEpoch!==pdfOpenEpoch)return false;
     }
-    currentId=id;reviewFocusId='';reviewFocusPage=0;reviewFocusAnchorIndex=-1;reviewPassageGroupIds=[];reviewLinkTargetId='';reviewLinkUndo=null; currentPage=ch.pdfPosition&&ch.pdfPosition.page||ch.readPage||1; pdfOutline=null; pdfViews=[]; pdfBuildKey='';lastStablePdfPosition=null;lastStablePdfPositionId='';pagedFits=true;pagedMinLeft=0;pagedMaxLeft=0;pagedManualZoom=false;pagedFitToken='';columnBandCache=Object.create(null);columnZoomOperation++;columnZoomState=ch.pdfPosition&&['left','right','text'].indexOf(ch.pdfPosition.zoomMode)>=0?ch.pdfPosition.zoomMode:'full';ch.lastOpenedAt=now();persist(false); try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} restorePdfZoom(ch); setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); closeStickyEditor(); setStickyPlacing(false); highlightHistory=[]; highlightFuture=[];syncTouchDockStates(); lastAskSelection=null; toggleFindBar(false); linkReturnSpot=null; byId('linkReturn').classList.add('hidden');
+    currentId=id;reviewFocusId='';reviewFocusPage=0;reviewFocusAnchorIndex=-1;reviewPassageGroupIds=[];reviewLinkTargetId='';reviewLinkUndo=null; currentPage=newerReaderPage(ch)||ch.pdfPosition&&ch.pdfPosition.page||ch.readPage||1; pdfOutline=null; pdfViews=[]; pdfBuildKey='';lastStablePdfPosition=null;lastStablePdfPositionId='';pagedFits=true;pagedMinLeft=0;pagedMaxLeft=0;pagedManualZoom=false;pagedFitToken='';columnBandCache=Object.create(null);columnZoomOperation++;columnZoomState=ch.pdfPosition&&['left','right','text'].indexOf(ch.pdfPosition.zoomMode)>=0?ch.pdfPosition.zoomMode:'full';ch.lastOpenedAt=now();persist(false); try{localStorage.setItem(LAST_OPEN_KEY,id);}catch(e){} restorePdfZoom(ch); setHighlightMode(false); clearPendingSelection(); hideHighlightCard(); closeStickyEditor(); setStickyPlacing(false); highlightHistory=[]; highlightFuture=[];syncTouchDockStates(); lastAskSelection=null; toggleFindBar(false); linkReturnSpot=null; byId('linkReturn').classList.add('hidden');
     refreshReaderSegmentation(ch);
     pageStartCache={}; focusPara=Number.isInteger(ch.focusPara)?ch.focusPara:null;
     byId('readerTitle').textContent=ch.title||'Untitled'; byId('readerMeta').textContent=ch.authors||ch.sourceName||'';
@@ -5799,7 +5845,7 @@
       if(!(history.state&&history.state.phloem))history.pushState({phloem:'reader'},'');
       else if(history.state.phloem==='sheet')history.replaceState({phloem:'reader'},'');
     }catch(e){}}
-    readerMode=ch.kind==='pdf'?'pdf':'text';byId('pdfFrame').dataset.positionReady=ch.kind==='pdf'?'false':'true'; applyComfort(); updateReaderMode(); showPage('readerPage');
+    readerMode=ch.kind==='pdf'&&!prefersReaderView(ch.id)?'pdf':'text';byId('pdfFrame').dataset.positionReady=ch.kind==='pdf'?'false':'true'; applyComfort(); updateReaderMode(); showPage('readerPage');
     /* showPage establishes the quiet geometry before PDF fitting/position restore. */
     if((ch.reviewComments||[]).length){if(innerWidth>720&&!zenOn)setNotebookCollapsed(false,false);switchTab('reviewsPanel');}else switchTab('notesPanel');
     if(ch.kind==='pdf'){
@@ -5846,9 +5892,10 @@
         if(readerMode==='text'&&(!ch.readerText||ch.readerV!==READER_V)){await ensureReaderData(pdfDoc,ch);if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;updateReaderMode();}
         else if(readerMode==='pdf'){
           await renderPdfPage();if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;
-          var restored=ch.pdfPosition?await placePdfReadingPosition(ch.pdfPosition,true,true):false;
+          var restored=ch.pdfPosition&&!newerReaderPage(ch)?await placePdfReadingPosition(ch.pdfPosition,true,true):false;
           if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;scheduleGuideDiscovery(ch.id);
           if(!restored&&currentPage>1)showReaderToast('Back on page '+currentPage);
+          scheduleReaderOffer(ch.id);
         }
       }catch(e){if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;showPdfProblem(ch,e);}
     } else renderText(ch);
@@ -5866,6 +5913,7 @@
   function updateReaderMode(){
     clearExcerptSourceCue();
     var ch=find(currentId), isPdf=ch&&ch.kind==='pdf', pdf=readerMode==='pdf'&&isPdf;
+    if(isPdf)rememberReaderView(ch.id,!pdf);if(!pdf)hideReaderOffer();
     if(!pdf)setPdfWriteMode(false);syncPdfInkUi();
     byId('pdfFrame').classList.toggle('hidden',!pdf); byId('textDocument').classList.toggle('hidden',pdf);
     byId('prevPage').classList.toggle('hidden',!pdf); byId('nextPage').classList.toggle('hidden',!pdf); byId('pageNumber').classList.toggle('hidden',!pdf);
@@ -5882,9 +5930,9 @@
     if(!pdf&&ch) renderText(ch);applyPdfFlowMode();applyFocus();loadPageNote();updateProgress();queueFindRefresh();syncTextSizeUi();
   }
   byId('reflowBtn').onclick=async function(){
-    var ch=find(currentId);if(!ch||ch.kind!=='pdf')return;clearPendingSelection();if(readerMode==='pdf')savePdfReadingPosition(false);
-    readerMode=readerMode==='pdf'?'text':'pdf';updateReaderMode();
-    if(readerMode==='pdf'&&pdfDoc){await renderPdfPage();if(ch.pdfPosition)await placePdfReadingPosition(ch.pdfPosition,false,true);else scrollToPdfPage(currentPage,'auto');return;}
+    var ch=find(currentId);if(!ch||ch.kind!=='pdf')return;clearPendingSelection();if(readerMode==='pdf')savePdfReadingPosition(false);else saveCurrentReadingPosition(false);
+    readerMode=readerMode==='pdf'?'text':'pdf';var readerPage=readerMode==='pdf'?newerReaderPage(ch):0;if(readerPage)currentPage=readerPage;updateReaderMode();
+    if(readerMode==='pdf'&&pdfDoc){await renderPdfPage();if(readerPage)scrollToPdfPage(Math.min(readerPage,pdfDoc.numPages),'auto');else if(ch.pdfPosition)await placePdfReadingPosition(ch.pdfPosition,false,true);else scrollToPdfPage(currentPage,'auto');return;}
     if(readerMode==='text'&&(!ch.readerText||!ch.pageParagraphs||ch.readerV!==READER_V)&&pdfDoc){
       this.disabled=true;
       try{await ensureReaderData(pdfDoc,ch);pageStartCache={};renderText(ch);showReaderToast('Reader view · rebuilt from the PDF');}
@@ -6443,7 +6491,46 @@
   }
   function saveCurrentReadingPosition(schedule,writeState){
     var ch=find(currentId);if(!ch)return false;if(readerMode==='pdf')return savePdfReadingPosition(schedule,writeState);
-    var pane=byId('documentPane'),span=pane.scrollHeight-pane.clientHeight;ch.readerScroll=span>4?pane.scrollTop/span:0;if(writeState!==false)persistQuietly(schedule);return true;
+    var pane=byId('documentPane'),span=pane.scrollHeight-pane.clientHeight,scroll=span>4?pane.scrollTop/span:0,moved=Math.abs(scroll-(+ch.readerScroll||0))>.002;ch.readerScroll=scroll;
+    /* Reader view reading counts as reading the paper: the library's "Page N of M" and
+       the PDF view both follow the page under the reading line. */
+    if(ch.kind==='pdf'){var page=readerPageAtLine(ch),place=ch.readerPlace;if(page&&(moved||!place||place.page!==page)){ch.readerPlace={page:page,at:now()};ch.readPage=page;ch.readThroughPage=Math.max(+ch.readThroughPage||0,page);}}
+    if(writeState!==false)persistQuietly(schedule);return true;
+  }
+  /* Each paper opens in the view it was last read in on this device (a phone keeps Reader
+     view, an iPad its pages), and the two views share one place: whichever moved last
+     decides the page the other opens on. */
+  var READER_VIEW_KEY='readingRoom.readerView.v1';
+  function readerViewPrefs(){try{var v=JSON.parse(localStorage.getItem(READER_VIEW_KEY)||'{}');return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}catch(e){return {};}}
+  function prefersReaderView(id){return readerViewPrefs()[id]===1;}
+  function rememberReaderView(id,on){var v=readerViewPrefs();if(!id||(v[id]===1)===on)return;if(on)v[id]=1;else delete v[id];try{localStorage.setItem(READER_VIEW_KEY,JSON.stringify(v));}catch(e){}}
+  function readerParaAtLine(){
+    var list=paraSections(),box=byId('documentPane').getBoundingClientRect();if(!list.length||!box.height)return -1;
+    var y=box.top+Math.min(box.height*.3,180),lo=0,hi=list.length-1,at=list.length-1;
+    while(lo<=hi){var mid=(lo+hi)>>1;if(list[mid].getBoundingClientRect().bottom>y){at=mid;hi=mid-1;}else lo=mid+1;}
+    return at;
+  }
+  function readerPageAtLine(ch){
+    var starts=paraPageStarts(ch),at=readerParaAtLine();if(!starts||!starts.length||at<0)return 0;
+    var page=starts[0].page;starts.forEach(function(s){if(s.para<=at)page=s.page;});return page;
+  }
+  function scrollReaderToPage(page){
+    var pick=null;byId('textDocument').querySelectorAll('.page-marker [data-goto-page]').forEach(function(b){if(+b.dataset.gotoPage<=page||!pick)pick=b;});
+    if(!pick)return false;var pane=byId('documentPane');
+    pane.scrollTop+=pick.parentNode.getBoundingClientRect().top-pane.getBoundingClientRect().top-8;return true;
+  }
+  /* The PDF's page when the pages were read more recently than Reader view (here or on
+     another device) and sit on another page; 0 keeps Reader view's own spot. A spot saved
+     before Reader view kept a page (readerScroll only) stays as it was. */
+  function newerPdfPage(ch){
+    var at=ch.pdfPosition&&+ch.pdfPosition.updatedAt||0,page=ch.pdfPosition&&+ch.pdfPosition.page||0,place=ch.readerPlace;
+    if(ch.kind!=='pdf'||!page||!at)return 0;
+    if(place)return at>(+place.at||0)&&page!==place.page?page:0;
+    return ch.readerScroll>0.01||page<2?0:page;
+  }
+  function newerReaderPage(ch){
+    var place=ch.readerPlace,position=ch.pdfPosition;if(!place||!place.page)return 0;
+    return (+place.at||0)>(position&&+position.updatedAt||0)&&(!position||place.page!==+position.page)?place.page:0;
   }
   function trackCurrentPage(){
     if(readerMode!=='pdf'||!pdfViews.length||pagedPdfFlow())return;
@@ -7393,10 +7480,166 @@
       });
     });
   }
+  /* Figures in Reader view are one column wide, so their labels are often too small to
+     read on a phone. A tap opens the figure on its own: pinch, double-tap or scroll to
+     zoom, drag to look around, the caption below and its page one tap away. Reader view
+     built from v245 on keeps each figure's box on its page, so the zoomed figure is drawn
+     again from the PDF, sharp at any size; older papers zoom the saved picture. */
+  var FIGURE_HINT_KEY='readingRoom.figureZoomHint.v1';
+  var figureView={key:'',box:null,page:0,natural:[1,1],scale:1,x:0,y:0,baseW:0,baseH:0,sharpW:0,serial:0,pointers:{},gesture:null,lastTap:null,sharpTimer:0};
+  function figureBox(ch,index){
+    var found=null;(ch&&ch.pageParagraphs||[]).some(function(page){return (page||[]).some(function(p){if(p&&p.f===index&&Array.isArray(p.fb)&&p.fb.length===5){found=p.fb;return true;}return false;});});
+    return found;
+  }
+  function figureTitle(text,isEq){
+    if(isEq)return 'Equation';
+    var m=String(text||'').match(/^\s*((?:Supplementary\s+)?(?:Figure|Fig\.?|Table|Scheme|Box|Plate)\s*[A-Z]?\d+[A-Za-z]?)/i);
+    return m?m[1].replace(/\s+/g,' '):'Figure';
+  }
+  function openFigureViewer(img){
+    var ch=find(currentId),section=img&&img.closest('.para');if(!ch||!section||!(img.currentSrc||img.src))return;
+    var index=+String(img.dataset.fig||'').split(':').pop(),isEq=section.classList.contains('reader-eq');
+    var caption=isEq?'':((section.querySelector('.original')||{}).textContent||'').trim();
+    var at=[].indexOf.call(paraSections(),section),page=0;(paraPageStarts(ch)||[]).forEach(function(s){if(s.para<=at)page=s.page;});
+    var box=figureBox(ch,index),dialog=byId('figureViewer'),view=byId('figureViewerImg'),sharp=byId('figureViewerSharp');
+    figureView.key=img.dataset.fig;figureView.box=box;figureView.page=box?box[0]:page;figureView.natural=[img.naturalWidth||1,img.naturalHeight||1];figureView.sharpW=0;figureView.serial++;
+    byId('figureViewerTitle').textContent=figureTitle(caption,isEq);
+    byId('figureViewerCaption').textContent=caption;byId('figureViewerCaption').classList.toggle('hidden',!caption);
+    byId('figureViewerPage').classList.toggle('hidden',!figureView.page);
+    // A figure tapped before its picture decoded takes its shape from the picture once it has.
+    view.onload=function(){if(!figureView.box&&byId('figureViewer').open){figureView.natural=[view.naturalWidth||1,view.naturalHeight||1];layoutFigure(true);}};
+    view.src=img.currentSrc||img.src;view.alt=caption?caption.slice(0,160):(isEq?'Equation from the paper':'Figure from the paper');
+    sharp.width=sharp.height=0;sharp.classList.add('hidden');
+    // Until the first zoom, say how: fingers on a phone or iPad, the wheel elsewhere.
+    var hint=byId('figureViewerHint'),hinted=false;try{hinted=localStorage.getItem(FIGURE_HINT_KEY)==='1';}catch(e){}
+    hint.textContent=matchMedia('(pointer: coarse)').matches?'Pinch or double-tap to zoom':'Scroll or double-click to zoom';hint.classList.toggle('hidden',hinted);
+    if(!dialog.open){dialog.showModal();try{history.pushState({phloem:'figure'},'');}catch(e){}}
+    requestAnimationFrame(function(){layoutFigure(true);});
+  }
+  function closeFigureViewer(fromHistory){
+    var dialog=byId('figureViewer');if(!dialog.open)return;
+    figureView.serial++;clearTimeout(figureView.sharpTimer);figureView.pointers={};figureView.gesture=null;
+    dialog.close();dialog.style.opacity='';byId('figureViewerStage').style.transform='';
+    var sharp=byId('figureViewerSharp');sharp.width=sharp.height=0;
+    if(!fromHistory&&history.state&&history.state.phloem==='figure'){historyEcho++;history.back();}
+  }
+  function figureStage(){var r=byId('figureViewerStage').getBoundingClientRect();return{w:r.width,h:r.height};}
+  function layoutFigure(reset){
+    var st=figureStage(),nat=figureView.box?[figureView.box[3],figureView.box[4]]:figureView.natural,aspect=nat[0]/Math.max(1e-6,nat[1]),pad=st.w<600?10:28;
+    var w=Math.max(40,st.w-pad*2),h=Math.max(40,st.h-pad*2);if(w/h>aspect)w=h*aspect;else h=w/aspect;
+    var frame=byId('figureViewerFrame');figureView.baseW=w;figureView.baseH=h;frame.style.width=w+'px';frame.style.height=h+'px';
+    if(reset)figureView.scale=1;
+    clampFigure(reset);applyFigureTransform();queueSharpFigure();
+  }
+  function clampFigure(center){
+    var st=figureStage(),w=figureView.baseW*figureView.scale,h=figureView.baseH*figureView.scale;
+    figureView.x=w<=st.w||center?(st.w-w)/2:Math.min(0,Math.max(st.w-w,figureView.x));
+    figureView.y=h<=st.h||center?(st.h-h)/2:Math.min(0,Math.max(st.h-h,figureView.y));
+  }
+  function applyFigureTransform(){
+    byId('figureViewerFrame').style.transform='translate('+figureView.x+'px,'+figureView.y+'px) scale('+figureView.scale+')';
+    var zoomed=figureView.scale>1.01;byId('figureViewer').classList.toggle('zoomed',zoomed);
+    if(zoomed&&!byId('figureViewerHint').classList.contains('hidden')){byId('figureViewerHint').classList.add('hidden');try{localStorage.setItem(FIGURE_HINT_KEY,'1');}catch(e){}}
+  }
+  function zoomFigureAt(scale,x,y){
+    var before=figureView.scale,next=Math.max(1,Math.min(6,scale));if(Math.abs(next-before)<.001)return;
+    figureView.x=x-(x-figureView.x)*next/before;figureView.y=y-(y-figureView.y)*next/before;figureView.scale=next;
+    clampFigure(false);applyFigureTransform();queueSharpFigure();
+  }
+  function queueSharpFigure(){clearTimeout(figureView.sharpTimer);figureView.sharpTimer=setTimeout(drawSharpFigure,160);}
+  async function drawSharpFigure(){
+    var box=figureView.box,dialog=byId('figureViewer'),doc=pdfDoc,serial=figureView.serial;if(!box||!doc||!dialog.open||box[0]>doc.numPages)return;
+    // Within Safari's canvas limits: 4096 px a side and about 12 megapixels.
+    var ratio=box[4]/box[3],cap=Math.min(4096,4096/ratio,Math.sqrt(12e6/ratio)),want=Math.min(cap,figureView.baseW*figureView.scale*Math.min(3,window.devicePixelRatio||1));
+    if(want<=figureView.sharpW*1.1)return;
+    try{
+      var pg=await doc.getPage(box[0]);if(serial!==figureView.serial||doc!==pdfDoc)return;
+      var scale=want/box[3],viewport=pg.getViewport({scale:scale,offsetX:-box[1]*scale,offsetY:-box[2]*scale}),canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(box[3]*scale));canvas.height=Math.max(1,Math.round(box[4]*scale));
+      await pg.render({canvasContext:canvas.getContext('2d'),viewport:viewport}).promise;
+      if(serial!==figureView.serial||!dialog.open){canvas.width=canvas.height=0;return;}
+      var sharp=byId('figureViewerSharp');sharp.width=canvas.width;sharp.height=canvas.height;sharp.getContext('2d').drawImage(canvas,0,0);
+      canvas.width=canvas.height=0;sharp.classList.remove('hidden');figureView.sharpW=sharp.width;
+    }catch(e){}
+  }
+  (function(){
+    var dialog=byId('figureViewer'),stage=byId('figureViewerStage'),g=figureView;
+    // Measured against the stage at rest: while a swipe pulls it down, it moves under the finger.
+    var pulled=0;
+    function local(e){var r=stage.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top+pulled};}
+    function pair(){var ids=Object.keys(g.pointers);if(ids.length<2)return null;var a=g.pointers[ids[0]],b=g.pointers[ids[1]];return{d:Math.hypot(a.x-b.x,a.y-b.y),x:(a.x+b.x)/2,y:(a.y+b.y)/2};}
+    function drag(id,t,moved){var q=g.pointers[id];return{kind:'drag',sx:q.x,sy:q.y,ox:g.x,oy:g.y,t:t,moved:moved||0};}
+    function pull(dy){pulled=dy;stage.style.transform=dy?'translateY('+dy+'px)':'';dialog.style.opacity=dy?String(Math.max(.35,1-dy/420)):'';}
+    stage.addEventListener('pointerdown',function(e){
+      if(e.button>0)return;try{stage.setPointerCapture(e.pointerId);}catch(err){}
+      g.pointers[e.pointerId]=local(e);var p=pair();
+      g.gesture=p?{kind:'pinch',d:p.d,scale:g.scale,x:p.x,y:p.y,ox:g.x,oy:g.y}:drag(e.pointerId,e.timeStamp);
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!g.pointers[e.pointerId])return;g.pointers[e.pointerId]=local(e);var gs=g.gesture;if(!gs)return;
+      if(gs.kind==='pinch'){
+        var p=pair();if(!p||!gs.d)return;var s=Math.max(1,Math.min(6,gs.scale*p.d/gs.d));
+        // The point that was under the fingers stays under them as they move apart.
+        g.x=p.x-(gs.x-gs.ox)*s/gs.scale;g.y=p.y-(gs.y-gs.oy)*s/gs.scale;g.scale=s;clampFigure(false);applyFigureTransform();return;
+      }
+      var q=g.pointers[e.pointerId],dx=q.x-gs.sx,dy=q.y-gs.sy;gs.moved=Math.max(gs.moved,Math.hypot(dx,dy));
+      if(g.scale>1.01){g.x=gs.ox+dx;g.y=gs.oy+dy;clampFigure(false);applyFigureTransform();}
+      else if(e.pointerType!=='mouse')pull(dy>0&&dy>Math.abs(dx)?dy:0);
+    });
+    function end(e){
+      var gs=g.gesture,q=g.pointers[e.pointerId];delete g.pointers[e.pointerId];
+      if(gs&&gs.kind==='drag'&&q){
+        var dy=q.y-gs.sy;pull(0);
+        if(g.scale<=1.01&&e.pointerType!=='mouse'&&dy>90&&dy>Math.abs(q.x-gs.sx)){closeFigureViewer(false);return;}
+        if(e.type==='pointerup'&&gs.moved<10&&e.timeStamp-gs.t<350){
+          var last=g.lastTap;g.lastTap={t:e.timeStamp,x:q.x,y:q.y};
+          if(last&&e.timeStamp-last.t<330&&Math.hypot(q.x-last.x,q.y-last.y)<32){g.lastTap=null;zoomFigureAt(g.scale>1.01?1:2.5,q.x,q.y);}
+        }
+      }
+      var rest=Object.keys(g.pointers);g.gesture=rest.length===1?drag(rest[0],e.timeStamp,99):null;
+      if(gs&&gs.kind==='pinch')queueSharpFigure();
+    }
+    stage.addEventListener('pointerup',end);stage.addEventListener('pointercancel',end);
+    stage.addEventListener('wheel',function(e){e.preventDefault();var p=local(e);zoomFigureAt(g.scale*Math.exp(-e.deltaY*(e.ctrlKey?.012:.003)),p.x,p.y);},{passive:false});
+    ['gesturestart','gesturechange'].forEach(function(name){dialog.addEventListener(name,function(e){e.preventDefault();});});
+    dialog.addEventListener('cancel',function(e){e.preventDefault();closeFigureViewer(false);});
+    dialog.addEventListener('keydown',function(e){
+      var st=figureStage();
+      if(e.key==='+'||e.key==='='){e.preventDefault();zoomFigureAt(g.scale*1.4,st.w/2,st.h/2);}
+      else if(e.key==='-'||e.key==='_'){e.preventDefault();zoomFigureAt(g.scale/1.4,st.w/2,st.h/2);}
+      else if(e.key==='0'){e.preventDefault();layoutFigure(true);}
+    });
+    byId('figureViewerClose').onclick=function(){closeFigureViewer(false);};
+    byId('figureViewerPage').onclick=function(){var page=figureView.page;closeFigureViewer(false);if(page)gotoPdfPage(page);};
+    addEventListener('resize',function(){if(dialog.open)layoutFigure(true);});
+  })();
+  /* Publisher fonts often set an accent as a glyph of its own beside its letter: "Le´o",
+     or TeX's "L´eo". Reader view swaps that glyph for the combining mark after its letter.
+     The swap keeps the length, so highlight, note and Listen offsets stay put. Only the
+     letters an accent belongs on count, so "don´t" and a 3´ end keep theirs; when both
+     neighbours qualify ("Le´o"), the side the paper uses elsewhere wins. */
+  var ACCENT_BASES={'\u00b4':'aeiouy','`':'aeiou','\u00a8':'aeiouy','\u02c6':'aeiou','\u02dc':'aon','\u00b8':'cs','\u02da':'au','\u02c7':'csznrdte','\u02d8':'agu','\u02d9':'ze','\u02dd':'ou'};
+  function accentFits(letter,accent){return !!letter&&ACCENT_BASES[accent].indexOf(letter.toLowerCase())>=0;}
+  function accentSides(text,i){var a=text.charAt(i);return /\d/.test(text.charAt(i-1))?{before:false,after:false}:{before:accentFits(text.charAt(i-1),a),after:accentFits(text.charAt(i+1),a)};}
+  function readerAccentStyle(list){
+    var lead=0,trail=0;
+    list.forEach(function(p){if(!/[´`¨ˆ˜¸˚ˇ˘˙˝]/.test(p))return;for(var i=0;i<p.length;i++){if(!ACCENT_BASES[p.charAt(i)])continue;var side=accentSides(p,i);if(side.before&&!side.after)trail++;else if(side.after&&!side.before)lead++;}});
+    return lead>trail?'lead':'trail';
+  }
+  function readerAccents(text,style){
+    if(!/[´`¨ˆ˜¸˚ˇ˘˙˝]/.test(text))return text;
+    var out=text.split('');
+    for(var i=0;i<out.length;i++){
+      if(!ACCENT_BASES[out[i]])continue;var side=accentSides(text,i),mark=SPACING_ACCENTS[out[i]];
+      if(side.before&&(!side.after||style!=='lead'))out[i]=mark;
+      else if(side.after){out[i]=out[i+1];out[i+1]=mark;i++;}
+    }
+    return out.join('');
+  }
   function renderText(ch){
     clearExcerptSourceCue();
     var isPdfReader=ch.kind==='pdf'&&readerMode==='text',source=isPdfReader?(ch.readerText||readerTextFromPages(ch.pageLines||[],ch.pageParagraphs||[])||ch.fr):ch.fr;
-    var fr=paras(source),en=isPdfReader?[]:paras(ch.en||''),noteMap=isPdfReader?ch.readerNotes:ch.notes,marks=isPdfReader?ch.readerHighlights:ch.textHighlights,scope=isPdfReader?'reader':'text';
+    var fr=paras(source),accentStyle=isPdfReader?readerAccentStyle(fr):'',en=isPdfReader?[]:paras(ch.en||''),noteMap=isPdfReader?ch.readerNotes:ch.notes,marks=isPdfReader?ch.readerHighlights:ch.textHighlights,scope=isPdfReader?'reader':'text';
     var reviewComments=ch.reviewComments||[],docxKinds=!isPdfReader&&ch.sourceType==='docx'?(ch.docxParagraphKinds||[]):[];
     var starts=isPdfReader?paraPageStarts(ch):null,startAt={};(starts||[]).forEach(function(s){startAt[s.para]=s.page;});
     var openReviews=reviewComments.filter(function(comment){return !comment.resolved;}).length,tracked=ch.trackedChanges||{},reviewBanner=reviewComments.length?'<button class="docx-review-banner" id="openReaderReviews" type="button"><span>Revision desk</span><strong>'+openReviews+' open of '+reviewComments.length+' reviewer comment'+(reviewComments.length===1?'':'s')+'</strong>'+(tracked.insertions||tracked.deletions?'<small>'+((tracked.insertions||0)+(tracked.deletions||0))+' tracked changes recorded in the original</small>':'')+'</button>':'';
@@ -7411,10 +7654,10 @@
       var kind=m?m.k:(docxKinds[i]||(p.length<90&&(/^[A-Z][A-Z\s\d:.,&()/-]{4,}$/.test(p)||/^\d+(?:\.\d+)*\s+[A-Z]/.test(p))?'h3':''));
       var cls=kind==='h1'?' reader-heading reader-h1':kind==='h2'?' reader-heading reader-h2':kind==='h3'?' reader-heading reader-h3':kind==='cap'?' reader-cap':kind==='eq'?' reader-eq':'';
       if(startAt[i])out+='<div class="page-marker">Page '+startAt[i]+'<button type="button" data-goto-page="'+startAt[i]+'">view page</button></div>';
-      var fig=m&&m.f!==undefined?'<figure class="reader-fig"><img data-fig="'+esc(ch.id)+':'+m.f+'" alt="'+(kind==='eq'?'Equation from the paper':'Figure from the paper')+'" loading="lazy"></figure>':'';
+      var fig=m&&m.f!==undefined?'<figure class="reader-fig"><button class="reader-fig-open" type="button" aria-label="'+(kind==='eq'?'Open this equation full screen':'Open this figure full screen')+'"><img data-fig="'+esc(ch.id)+':'+m.f+'" alt="'+(kind==='eq'?'Equation from the paper':'Figure from the paper')+'" loading="lazy"></button></figure>':'';
       /* With the typeset crop on screen, the extracted symbol soup would only echo it. */
       if(kind==='eq'&&fig)cls+=' eq-figured';
-      out+='<section class="para'+cls+'">'+fig+'<div class="original" data-para-index="'+i+'">'+styledTextHtml(p,marks,m&&m.r,i,reviewComments)+'</div>'+(en[i]?'<div class="translation">'+esc(en[i])+'</div>':'')+'<button class="para-action" data-note="'+i+'">'+(n?'Edit margin note •':'Add margin note')+'</button><textarea class="inline-note '+(n?'':'hidden')+'" data-note-area="'+i+'" data-note-scope="'+scope+'" placeholder="Note on this paragraph…">'+esc(n)+'</textarea></section>';
+      out+='<section class="para'+cls+'">'+fig+'<div class="original" data-para-index="'+i+'">'+styledTextHtml(isPdfReader?readerAccents(p,accentStyle):p,marks,m&&m.r,i,reviewComments)+'</div>'+(en[i]?'<div class="translation">'+esc(en[i])+'</div>':'')+'<button class="para-action" data-note="'+i+'">'+(n?'Edit margin note •':'Add margin note')+'</button><textarea class="inline-note '+(n?'':'hidden')+'" data-note-area="'+i+'" data-note-scope="'+scope+'" placeholder="Note on this paragraph…">'+esc(n)+'</textarea></section>';
     });
     byId('textDocument').classList.toggle('reader-document',isPdfReader);byId('textDocument').innerHTML=out;
     if(meta)loadFigureImages();
@@ -7422,6 +7665,8 @@
     byId('textDocument').querySelectorAll('[data-note]').forEach(function(b){ b.onclick=function(){ var ta=byId('textDocument').querySelector('[data-note-area="'+b.dataset.note+'"]'); ta.classList.toggle('hidden'); if(!ta.classList.contains('hidden')) ta.focus(); }; });
     byId('textDocument').querySelectorAll('[data-goto-page]').forEach(function(b){b.onclick=function(){gotoPdfPage(+b.dataset.gotoPage);};});
     byId('textDocument').onclick=function(e){
+      var figureButton=e.target.closest('.reader-fig-open');
+      if(figureButton&&!String(getSelection&&getSelection()||'')){openFigureViewer(figureButton.querySelector('img'));return;}
       var reviewEl=e.target.closest('[data-review-comment-id]');
       if(reviewEl&&!String(getSelection&&getSelection()||'')){showReviewerComment(ch,reviewEl.dataset.reviewCommentId);return;}
       var markEl=e.target.closest('mark[data-hl-id]');

@@ -4,7 +4,43 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-11-01)
+## Now (2026-11-02)
+
+- **Daily reading on a phone and an iPad, v245 (web; Houfu: "See what else u could do to better reading experience
+  on phone and on iPad. Make urself a daily user, and a designer").** Claude read two real papers (Plant Physiology
+  2022 kiab548, two columns; Frontiers 2016) through a day's use on an emulated iPhone and iPad (WebKit) and fixed
+  what got in the way most. (1) **Small print offer:** at a phone's width a two-column page sets body type near 6 px,
+  and Reader view was three taps away (More → Text size → Reader view). The first time such a PDF opens on a phone
+  (median word height on screen under 9 px, measured from the text layer), a chip above the bar says "Text too
+  small? **Aa Reader view** ×". Once per paper (`readingRoom.readerOffer.v1`); × or any bar button or two screens of
+  reading put it away; never on an iPad, nor on a phone on its side (type near 12 px there). (2) **The view is
+  remembered:** each paper reopens in the view it was last read in on that device (`readingRoom.readerView.v1`, set
+  in `updateReaderMode`), so the phone keeps Reader view while the iPad keeps pages. (3) **One place across views:**
+  Reader view now saves the page under its reading line (`ch.readerPlace {page, at}`, plus `readPage` and
+  `readThroughPage`, so the library's "Page N of M" counts Reader view reading; it stayed at "Page 1" before).
+  Switching views or reopening lands on the page read last in either view (`newerPdfPage`, `newerReaderPage`; page
+  level, and the same page keeps each view's exact spot). Reader view spots saved before v245 (a fraction only) stay
+  as they were. (4) **Figure viewer:** a Reader view figure or equation is now a button (corner badge on figures); a
+  tap opens it full screen on a dark stage. Pinch, double-tap, the wheel or + − 0 zoom it (1–6×), a drag pans, a
+  swipe down, Escape or Back closes it (its own history layer, `{phloem:'figure'}`), the caption sits below (beside it
+  on a phone on its side), a one-time tip says how to zoom, and **View on page** opens its PDF page. Reader view built
+  from v245 on keeps each crop's box (`fb` on caption and equation paragraphs, `figureCropBox`), so the viewer redraws
+  the figure from the PDF at screen sharpness and again when zoomed (at most 4096 px a side, about 12 MP). Papers
+  whose Reader view is older zoom the saved JPEG (1.6× the page) until it is rebuilt. (5) **Accents:** publisher fonts
+  set an accent as its own glyph ("Le´o", "Universite´", TeX's "L´eo"); Reader view swaps it for the combining mark
+  after its letter (same length, so highlight, note and Listen offsets stay), only on letters that accent belongs on
+  ("don´t" and a "3´ UTR" stay), the side the paper uses elsewhere breaking ties. Display only; stored text unchanged.
+  Test: new `reading-daily-reading` (37 checks in Chromium, 34 in WebKit; fails on v244), including that the chip waits
+  while a card is open (it fails without that guard). 65 related suites (phone, text size, Zen, iPad dock, Workspace, ink,
+  contents, find, Listen, citations, Define, library, persistence, PDF position and zoom, iCloud web) pass in both
+  engines except main's known failures (`reading-pdf-ink` 69/72, `reading-split-undo-browser`,
+  `reading-workspace-paper-color` and `-edge`, and in WebKit `reading-zen-compact-browser`). Not tried on
+  a real iPhone or iPad: the Simulator is still blocked on this Mac. Seen on the way but not changed (ideas for
+  next): Reader view repeats the title at the top, split in two; Oxford fonts' "þ" for "+" ("NHþ4"); Frontiers' editor
+  and reviewer block comes before the abstract; italics (species names) are lost in Reader view; on an iPad in
+  portrait Reader view lines run about 82 characters.
+
+## Earlier (2026-11-01)
 
 - **Text size on a phone, v244 (web; Houfu: "Also try to make the text size changeable is that doable for the
   phone?").** On a phone a PDF page is fitted to the screen's width, so its body text is tiny. Type size existed only
@@ -660,6 +696,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-11-02 v245:** daily reading on a phone and an iPad (see Now): the small-print Reader view offer on a phone,
+  each paper reopening in its last view, one place across Reader view and the PDF (library progress included), the
+  figure viewer, and split accents joined in Reader view.
 
 - **2026-11-01 v244:** a phone gets More → Text size (type size for text and Reader view; page zoom or Reader view
   for a PDF), the reading spot stays put when the size changes, and a pinch on text resizes it (see Now). Same

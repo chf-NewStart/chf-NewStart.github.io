@@ -70,6 +70,16 @@ Fit) and the sheet offers Reader view and back. A two-finger pinch on text resiz
 only: Playwright's WebKit cannot send two touches). Reading settings' A+ on a laptop keeps the
 reading spot too. Run it with `PHLOEM_BROWSER=webkit` too.
 
+`reading-daily-reading.test.js` covers daily reading on a phone and an iPad. A two-column PDF whose
+print is too small on a phone offers Reader view once, above the bar (never on an iPad, never twice
+for one paper). Each paper reopens in the view it was last read in on that device, and Reader view
+and the PDF share one place: the page read last in either is where the other opens, and Reader
+view reading moves the library's "Page N of M". A Reader view figure opens on its own (title,
+caption, a one-time zoom tip, a Back layer), redrawn from the PDF at screen sharpness, double-tap
+zooms and fits, Escape and Back close it, View on page shows its PDF page. Pinch and swipe-down
+in the viewer run in Chromium only. Split accents ("Le´o", TeX's "L´eo") are checked without a
+browser, lifted out of `reading.js`. Run it with `PHLOEM_BROWSER=webkit` too.
+
 `reading-library-long-press.test.js` covers the wall on a touch screen: one tap
 opens a paper, holding a note only selects it for the card without opening its
 Move menu, and the note's own Move button still opens the menu.

@@ -1607,6 +1607,10 @@
     .para.reader-cap .original { font: .82em/1.5 var(--sans); color: var(--muted); }
     .reader-fig { margin: 6px 0 10px; }
     .reader-fig img { display: block; max-width: 100%; border: 1px solid var(--line); border-radius: 10px; background: white; }
+    /* A figure opens full screen: the whole picture is the button, with a small corner badge so a finger knows. */
+    .reader-fig-open { position: relative; display: block; max-width: 100%; padding: 0; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; cursor: zoom-in; -webkit-tap-highlight-color: transparent; }
+    .reader-fig-open:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 3px; }
+    .para:not(.reader-eq) .reader-fig-open::after { content: ""; position: absolute; right: 8px; bottom: 8px; width: 30px; height: 30px; border-radius: 50%; background: rgba(32,36,38,.62) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7'/%3E%3C/svg%3E") center / 15px no-repeat; pointer-events: none; }
     html[data-theme="dark"] .reader-fig img { background: #f4f2ec; }
     /* An equation shows as its typeset crop; the extracted symbol soup underneath
        stays in the DOM for search and notes but never on screen. */
@@ -3026,3 +3030,39 @@ body.other-tab-open .other-tab-bar { display: flex; }
 .other-tab-bar.nudge { animation: other-tab-nudge .5s ease; }
 @keyframes other-tab-nudge { 30% { transform: translateX(calc(-50% - 6px)); } 60% { transform: translateX(calc(-50% + 6px)); } }
 @media (prefers-reduced-motion: reduce) { .other-tab-bar.nudge { animation: none; } }
+
+/* Reader view offer: phone only, once per paper, above the bar (beside the rail on its side). */
+.reader-offer { position: fixed; z-index: 42; left: 50%; bottom: calc(var(--phone-bar, 58px) + env(safe-area-inset-bottom) + 12px); transform: translateX(-50%); display: flex; align-items: center; gap: 4px; width: max-content; max-width: calc(100vw - 24px); padding: 5px 5px 5px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 34px rgba(30,34,35,.18); font: 650 .84rem var(--sans); }
+.reader-offer-copy { white-space: nowrap; margin-right: 6px; }
+.reader-offer-go { min-height: 40px; display: inline-flex; align-items: center; gap: 7px; padding: 0 15px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: 750 .84rem var(--sans); cursor: pointer; }
+.reader-offer-aa { font: 600 1rem var(--serif); }
+.reader-offer-close { width: 40px; height: 40px; flex: none; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+body.phone-ui.phone-land .reader-offer { left: calc(50% - 30px); bottom: calc(12px + env(safe-area-inset-bottom)); }
+body:not(.phone-ui) .reader-offer { display: none; }
+
+/* Figure viewer: the figure alone on a dark stage; the page and caption stay in reach. */
+dialog.figure-viewer { width: 100vw; height: 100vh; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; overflow: hidden; border: 0; border-radius: 0; background: #121314; color: #ecebe6; box-shadow: none; display: none; }
+dialog.figure-viewer[open] { display: flex; flex-direction: column; }
+dialog.figure-viewer::backdrop { background: #121314; backdrop-filter: none; }
+.figure-viewer-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: calc(8px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); }
+.figure-viewer-title { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 .95rem var(--sans); letter-spacing: .01em; }
+.figure-viewer-page { min-height: 40px; padding: 0 14px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; background: transparent; color: inherit; font: 650 .82rem var(--sans); cursor: pointer; }
+.figure-viewer-close { width: 44px; height: 44px; flex: none; border: 0; border-radius: 50%; background: rgba(255,255,255,.1); color: inherit; font-size: 1.5rem; line-height: 1; cursor: pointer; }
+.figure-viewer-page:focus-visible, .figure-viewer-close:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
+.figure-viewer-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; touch-action: none; cursor: zoom-in; outline: none; }
+dialog.figure-viewer.zoomed .figure-viewer-stage { cursor: grab; }
+.figure-viewer-frame { position: absolute; left: 0; top: 0; transform-origin: 0 0; border-radius: 6px; background: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.45); will-change: transform; }
+.figure-viewer-hint { position: absolute; left: 50%; bottom: 14px; margin: 0; padding: 7px 13px; transform: translateX(-50%); border-radius: 999px; background: rgba(0,0,0,.62); color: #f2f1ec; font: 650 .78rem var(--sans); white-space: nowrap; pointer-events: none; animation: figure-hint 2.8s ease forwards; }
+@keyframes figure-hint { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .figure-viewer-hint { animation: none; } }
+.figure-viewer-frame img, .figure-viewer-sharp { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 6px; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.figure-viewer-caption { flex: none; max-height: min(30vh, 220px); margin: 0; overflow-y: auto; padding: 10px max(18px, env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); border-top: 1px solid rgba(255,255,255,.1); color: #c9c8c2; font: .86rem/1.5 var(--sans); }
+@media (min-width: 900px) { .figure-viewer-caption { width: min(760px, 100%); margin: 0 auto; border-top: 0; } }
+/* A phone on its side has height to spare for nothing: the caption moves beside the figure. */
+@media (max-height: 520px) and (orientation: landscape) {
+  dialog.figure-viewer[open] { display: grid; grid-template-columns: minmax(0, 1fr) min(36%, 300px); grid-template-rows: auto minmax(0, 1fr); }
+  .figure-viewer-bar { grid-column: 1 / -1; padding-top: calc(4px + env(safe-area-inset-top)); padding-bottom: 4px; }
+  .figure-viewer-caption { width: auto; max-height: none; margin: 0; padding: 2px max(16px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) 16px; border-top: 0; border-left: 1px solid rgba(255,255,255,.1); }
+  dialog.figure-viewer:has(.figure-viewer-caption.hidden) .figure-viewer-stage { grid-column: 1 / -1; }
+}
+

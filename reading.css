@@ -1308,18 +1308,21 @@
     .pane-spotlight.locked.guide-left .guide-band::after { left: auto; right: 9px; }
     .pane-spotlight.dragging .guide-grip { transform: scale(1.14); color: var(--ink); }
     @media (hover: hover) and (pointer: fine) { .guide-grip { display: none; } }
-    /* Phone (Houfu: "the white thing is obstructing the text … move it only to margin"): the
-       text runs nearly edge to edge, so the round handle covered the start of a line. The
-       handle becomes a slim tab hanging off the band's right edge, inside the margin, and its
-       touch area stays out of the text too. Pinned shows on the tab itself (the dot beside the
-       old handle sat on the words). */
-    body.phone-ui .pane-spotlight:not([data-guide-orientation="column"]):not([data-guide-orientation="spot"]) .guide-grip {
-      left: auto; right: 0; top: 6px; width: 12px; height: 44px; margin: 0; border-right: 0; border-radius: 8px 0 0 8px;
-      font-size: .6rem; letter-spacing: -.1em; box-shadow: -2px 3px 10px rgba(0,0,0,.12); }
-    body.phone-ui .pane-spotlight:not([data-guide-orientation="column"]):not([data-guide-orientation="spot"]) .guide-grip::before { inset: -12px 0 -12px -2px; border-radius: 0; }
+    /* The handle is clear glass (Houfu: "the white thing is obstructing the text", then "the
+       handle for the old one glass"): the words under it stay sharp and readable through the
+       middle; a lit rim, a frosted edge and a soft shadow make it findable. Pinned tints the
+       rim (on a phone the pin dot beside the handle sat on the words). */
+    .guide-grip { border-color: rgba(255,255,255,.75); color: rgba(40,44,46,.42);
+      background: radial-gradient(60% 26% at 50% 9%, rgba(255,255,255,.7), rgba(255,255,255,0) 100%), transparent;
+      box-shadow: 0 0 0 .5px rgba(0,0,0,.22), inset 0 1px 1px rgba(255,255,255,.9), inset 0 -2px 4px rgba(0,0,0,.08), 0 3px 8px rgba(0,0,0,.1); }
+    .guide-grip::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+      -webkit-backdrop-filter: blur(.8px) brightness(1.06) saturate(1.3); backdrop-filter: blur(.8px) brightness(1.06) saturate(1.3);
+      -webkit-mask: radial-gradient(closest-side, transparent 84%, #000 98%); mask: radial-gradient(closest-side, transparent 84%, #000 98%); }
+    html[data-theme="dark"] .guide-grip { border-color: rgba(255,255,255,.32); color: rgba(255,255,255,.5);
+      background: radial-gradient(60% 26% at 50% 9%, rgba(255,255,255,.22), rgba(255,255,255,0) 100%), transparent;
+      box-shadow: 0 0 0 .5px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.35), inset 0 -2px 4px rgba(0,0,0,.25), 0 4px 12px rgba(0,0,0,.4); }
+    .pane-spotlight.locked .guide-grip { border-color: color-mix(in srgb, var(--accent) 70%, transparent); color: var(--accent); }
     body.phone-ui .pane-spotlight.locked:not([data-guide-orientation="spot"]) .guide-band::after { display: none; }
-    body.phone-ui .pane-spotlight.locked .guide-grip { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
-    body.phone-ui .pane-spotlight.dragging:not([data-guide-orientation="column"]):not([data-guide-orientation="spot"]) .guide-grip { transform: scaleX(1.25); transform-origin: right center; }
     /* Spotlight shape: a round lens shows the paper under it enlarged (an inert copy, see
        paintSpotLens); everything outside blurs and dims behind one masked veil. The lens
        is the box --guide-x/-y/-w/-h describe, so the grip, pin dot and Ask-AI crop keep

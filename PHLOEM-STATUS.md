@@ -4,7 +4,18 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-11-02)
+## Now (2026-11-03)
+
+- **Glass guide handle, v247 (web; replaces v246's edge tab).** Houfu disliked the v246 tab (an edge-glued tab looks
+  like a stashed Picture in Picture video), rejected handles off the guide (mocks A–D), then asked for "the handle for
+  the old one glass". The round 42 px handle is back 8 px in from the guide's left on phone and iPad, but clear glass:
+  no fill, a lit rim, a top shine, a faint shadow, and a frosted rim only (`.guide-grip::after`, masked
+  `backdrop-filter`), so words under it read sharp through the middle. Pinned tints the rim; on a phone the pin dot
+  stays hidden. The band-centre drag offset from v246 stays (no jump when grabbed off-centre). Test:
+  `tests/reading-guide-phone-grip.test.js` (Chromium + WebKit). Not yet seen on a real iPhone; if he still finds it
+  in the way, revert to v246 or ask him to draw again. Apps get it in the next build after 1.2.7.
+
+## Earlier (2026-11-02)
 
 - **Guide handle in the margin on a phone, v246 (web; Houfu, two iPhone screenshots of a Reader-view page: "the guide
   side pin the white thing is obstructing the text. Or move it only to margin so it doesn't block anything").** On a

@@ -1,9 +1,8 @@
-/* The guide's handle on a phone (Houfu, 2026-11-02, a screenshot of the round white handle
-   over "disappointed": "the guide side pin the white thing is obstructing the text. Or move it
-   only to margin so it doesn't block anything"). On a phone the handle is a slim tab at the
-   band's right edge, in the margin: it covers no word, its touch area stays out of the text,
-   a drag from it moves the band without a jump, and pinning shows on the tab instead of a dot
-   on the words. An iPad keeps its round handle. PHLOEM_BROWSER=chromium|webkit */
+/* The guide's handle on a phone (Houfu, 2026-11-02: "the white thing is obstructing the text",
+   then "the handle for the old one glass"). The round handle stays where it was, at the left of
+   the guide, but it is clear glass: no fill, so the words under it show through; a drag from it
+   moves the guide without a jump; pinned tints its rim instead of a dot on the words. An iPad
+   has the same glass handle. PHLOEM_BROWSER=chromium|webkit */
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -44,16 +43,6 @@ async function gripEvent(page, type, point) {
   }, { type, point });
 }
 const rect = (page, sel) => page.locator(sel).evaluate(node => node.getBoundingClientRect().toJSON());
-// Every line box of text the band crosses, as client rects.
-const textLines = page => page.evaluate(() => {
-  const band = document.getElementById('guideBand').getBoundingClientRect(), out = [];
-  document.querySelectorAll('#textDocument .para .original').forEach(node => {
-    const range = document.createRange(); range.selectNodeContents(node);
-    for (const r of range.getClientRects()) if (r.width > 1 && r.bottom > band.top - 60 && r.top < band.bottom + 60) out.push(r.toJSON());
-  });
-  return out;
-});
-const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
 (async () => {
   await new Promise(resolve => server.listen(PORT, resolve));
@@ -81,51 +70,33 @@ const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bot
     return { context, page };
   };
 
+  const alpha = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return 1; const v = m[1].split(',').map(parseFloat); return v.length > 3 ? v[3] : 1; };
   {
     const { context, page } = await fresh(PHONE);
     check('the phone layout is on', await page.evaluate(() => document.body.classList.contains('phone-ui')));
     const grip = await rect(page, '#guideGrip'), band = await rect(page, '#guideBand');
-    const lines = await textLines(page);
-    const textRight = Math.max(...lines.map(r => r.right));
-    check('the handle hangs off the band\'s right edge', Math.abs(grip.right - band.right) < 1 && grip.top >= band.top - .5 && grip.bottom <= band.bottom + .5, JSON.stringify({ grip, band: { right: band.right, top: band.top, bottom: band.bottom } }));
-    check('it sits in the margin, right of every line', grip.left >= textRight - .5, Math.round(grip.left) + ' vs text ' + Math.round(textRight));
-    check('it covers no word', !lines.some(r => overlaps(r, grip)), lines.length + ' lines');
-    check('it is still a 44pt-tall target', grip.height >= 44, grip.height);
-    // The touch area (the ::before) reaches 2px to the left of the tab.
-    const hit = await page.evaluate(() => {
-      const g = document.getElementById('guideGrip').getBoundingClientRect();
-      const probe = (x, y) => document.elementFromPoint(x, y) === document.getElementById('guideGrip');
-      return { inTab: probe(g.left + g.width / 2, g.top + g.height / 2), justLeft: probe(g.left - 1, g.top + g.height / 2), farLeft: probe(g.left - 4, g.top + g.height / 2) };
-    });
-    check('its touch area stays out of the text', hit.inTab && hit.justLeft && !hit.farLeft, JSON.stringify(hit));
+    check('the round handle is back at the left of the guide', Math.abs(grip.left - band.left - 8) < 1.5 && Math.abs(grip.width - 42) < 1 && Math.abs(grip.width - grip.height) < 1, JSON.stringify({ left: grip.left - band.left, w: grip.width, h: grip.height }));
+    const look = await page.evaluate(() => { const s = getComputedStyle(document.getElementById('guideGrip')); const a = getComputedStyle(document.getElementById('guideGrip'), '::after'); return { bg: s.backgroundColor, image: s.backgroundImage, mask: a.maskImage || a.webkitMaskImage || '' }; });
+    check('it is clear glass: no fill over the words', alpha(look.bg) < .1 && /radial-gradient/.test(look.image), JSON.stringify(look.bg));
+    check('only its rim is frosted, the middle stays clear', /transparent|rgba\(0, 0, 0, 0\)/.test(look.mask), look.mask.slice(0, 80));
     if (process.env.PHLOEM_SHOTS) await page.screenshot({ path: path.join(process.env.PHLOEM_SHOTS, ENGINE + '-phone-grip.png') });
 
-    // A drag from the tab: the first 2px barely move the band; 120px down moves it 120px.
-    const start = { x: grip.left + grip.width / 2, y: grip.top + grip.height / 2 };
-    const before = await rect(page, '#guideBand');
+    const start = { x: grip.left + grip.width / 2 + 10, y: grip.top + grip.height / 2 + 10 };
     await gripEvent(page, 'pointerdown', start);
     await gripEvent(page, 'pointermove', { x: start.x, y: start.y + 2 });
     await page.waitForTimeout(120);
     const nudged = await rect(page, '#guideBand');
-    check('grabbing the tab does not make the band jump', Math.abs(nudged.top - before.top - 2) < 4, Math.round(nudged.top - before.top));
+    check('grabbing the handle off-centre does not make the guide jump', Math.abs(nudged.top - band.top - 2) < 4, Math.round(nudged.top - band.top));
     await gripEvent(page, 'pointermove', { x: start.x, y: start.y + 120 });
     await page.waitForTimeout(120);
     await gripEvent(page, 'pointerup', { x: start.x, y: start.y + 120 });
     const after = await rect(page, '#guideBand');
-    check('dragging the tab moves the band with the finger', Math.abs(after.top - before.top - 120) < 6, Math.round(after.top - before.top));
-    await page.waitForTimeout(250);
-    const gripAfter = await rect(page, '#guideGrip');
-    check('the tab came along, still at the right edge', Math.abs(gripAfter.right - after.right) < 1 && Math.abs(gripAfter.top - after.top - 6) < 1.5, JSON.stringify({ g: gripAfter, b: after }));
+    check('dragging the handle moves the guide with the finger', Math.abs(after.top - band.top - 120) < 6, Math.round(after.top - band.top));
 
-    // Pinned: no dot on the words; the tab turns accent.
     await page.evaluate(() => { document.getElementById('paneSpotlight').classList.add('locked'); });
-    const pinned = await page.evaluate(() => ({
-      dot: getComputedStyle(document.getElementById('guideBand'), '::after').display,
-      tab: getComputedStyle(document.getElementById('guideGrip')).color,
-      ink: getComputedStyle(document.body).getPropertyValue('--muted')
-    }));
-    check('pinned leaves no dot on the words', pinned.dot === 'none', pinned.dot);
-    check('pinned colours the tab instead', !!pinned.tab && pinned.tab !== 'rgba(0, 0, 0, 0)', pinned.tab);
+    const pinned = await page.evaluate(() => ({ dot: getComputedStyle(document.getElementById('guideBand'), '::after').display, rim: getComputedStyle(document.getElementById('guideGrip')).borderTopColor }));
+    check('pinned puts no dot on the words', pinned.dot === 'none', pinned.dot);
+    check('pinned tints the rim instead', !/255, 255, 255/.test(pinned.rim), pinned.rim);
     await context.close();
   }
 
@@ -133,7 +104,8 @@ const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bot
     const { context, page } = await fresh(TABLET);
     check('an iPad is not the phone layout', !(await page.evaluate(() => document.body.classList.contains('phone-ui'))));
     const grip = await rect(page, '#guideGrip'), band = await rect(page, '#guideBand');
-    check('an iPad keeps its round handle at the left', Math.abs(grip.left - band.left - 8) < 1.5 && Math.abs(grip.width - 42) < 1 && Math.abs(grip.width - grip.height) < 1, JSON.stringify({ left: grip.left - band.left, w: grip.width, h: grip.height }));
+    check('an iPad has the same round handle at the left', Math.abs(grip.left - band.left - 8) < 1.5 && Math.abs(grip.width - 42) < 1, JSON.stringify({ left: grip.left - band.left, w: grip.width }));
+    check('in glass too', alpha(await page.locator('#guideGrip').evaluate(n => getComputedStyle(n).backgroundColor)) < .1);
     await context.close();
   }
 

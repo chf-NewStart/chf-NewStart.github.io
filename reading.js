@@ -1348,14 +1348,18 @@
   byId('lookupClose').onclick=hideLookup;
   byId('lookupAiSetup').onclick=function(){hideLookup();fillSettings();byId('settingsDialog').showModal();};
   byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
+  /* Inside the selection card an open definition or answer closes once the tap has landed.
+     Closing it on pointer-down placed the shorter card again under the pointer, so the press
+     ended elsewhere and the tile (Copy, Clips, Workspace, Park question, a highlight, Add note,
+     the phone row) did nothing. A touch that scrolls the card is no tap and leaves it open. */
+  var lookupCloseAfterTap=false;
   document.addEventListener('pointerdown',function(e){
     // While Look up waits for a tapped word, the paper scrolls and taps without closing it.
     var tappingPaper=lookupTapping()&&!!e.target.closest('#documentPane,#zenPhoneLookup');
+    lookupCloseAfterTap=false;
     // The research profile dialog opens over a selected passage, which waits for it to be saved.
-    /* A tile that answers in this card (Define, What does it mean?, For my research) replaces
-       the answer itself. Hiding it first re-placed the shorter card under the pointer, so the
-       press landed elsewhere and the tap was lost. */
-    if(!e.target.closest('#lookupCard,#researchDialog,#selectionExplain,#selectionMeaning,#selectionResearch,[data-phone-proxy="selectionExplain"]')&&!tappingPaper)hideLookup();
+    // A tile that answers in this card (Define, What does it mean?, For my research) replaces the answer itself.
+    if(!e.target.closest('#lookupCard,#researchDialog,#selectionExplain,#selectionMeaning,#selectionResearch,[data-phone-proxy="selectionExplain"]')&&!tappingPaper){if(e.target.closest('#selectionCard'))lookupCloseAfterTap=true;else hideLookup();}
     if(!e.target.closest('#selectionCard,#lookupCard,#zenPhoneLookup,#touchDock,#markerTools,#zenAnnotateTool,#highlightToolbar,#researchDialog')&&!e.target.closest('.text-layer,.original')&&!tappingPaper)clearPendingSelection();
     /* Color controls stay available while marking the paper, just like the Pen
        toolbar. Other controls, Escape, or switching tools dismiss them. */
@@ -1363,6 +1367,8 @@
     // Its own buttons are not "outside": their tap toggles it, so a second tap closes it.
     if(!markingPaper&&!e.target.closest('#markerTools,#touchMarkerTool,#zenAnnotateTool,#highlightToolbar,[aria-controls="highlightToolbar"]'))setHighlightToolbarOpen(false);
   },true);
+  // After the tile's own click handler has run.
+  document.addEventListener('click',function(){if(lookupCloseAfterTap){lookupCloseAfterTap=false;hideLookup();}});
   window.addEventListener('resize',function(){placeLookupCard();placeSelectionCard();});
 
   /* Interface light and paper appearance are intentionally independent. A dark room

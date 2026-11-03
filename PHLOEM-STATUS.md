@@ -6,6 +6,19 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-03)
 
+- **Selection tiles act on the first tap while an answer is open, v249 (web; Houfu: "Yes, fix it here", after v248
+  found it).** With a definition or an answer open in the selection card, a press on another tile closed the answer
+  on pointer-down; the shorter card was placed again under the pointer, the press ended elsewhere, and the tile did
+  nothing. Copy, Add note, a highlight colour, To workspace and Park question lost the first press on a laptop
+  (Highlight and Save to Clips worked only by luck of where they sat), and the phone row's Copy, Highlight and More
+  on a phone. Inside the card the
+  answer now closes on the `click` that follows the press (`lookupCloseAfterTap`), after the tile's own handler, so
+  the tile acts and the answer still closes as before; a touch that scrolls the card is no tap and leaves the answer
+  open. Presses outside the card close it at once, as before. Test: new `reading-selection-tap-after-answer` (16
+  checks in Chromium and WebKit; 8 fail on v248 in both). 27 selection, Define, Listen, Clips, Workspace, keeps, touch, phone,
+  iPad and Zen suites pass in both engines, `reading-research-relevance` included, except main's known WebKit failure
+  in `reading-zen-compact-browser` (the same assertion on main). Not tried on a real device.
+
 - **For my research, v248 (web; Houfu: he gives a summary of his own research, and a button beside Define, Copy, Save
   to Clips, Workspace and Park question says how a highlighted passage relates to, differs from or helps it).**
   (1) **Research profile** (Settings › For my research, or the button itself while there is none): five short fields
@@ -31,9 +44,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   provider after that yes; `ipad.css` hides the button, the settings section and the dialog wherever cloud AI is off
   (China mainland storefront), and the iPad provider note and `phloem-ipad/privacy.html` (updated 3 Nov) name the
   profile. (4) Pressing Define, What does it mean? or For my research while an answer is open no longer moves the
-  card from under the pointer, which lost the tap. **Seen on the way, not changed:** the other tiles (Copy, Save to
-  Clips, To workspace, Park question, Highlight, Add note) still lose a tap made while a definition is open, as on
-  main. Test: new `reading-research-relevance` (74 checks in Chromium and WebKit: prompts and parsers, laptop, phone,
+  card from under the pointer, which lost the tap (the other tiles: v249, above). Test: new `reading-research-relevance` (74 checks in Chromium and WebKit: prompts and parsers, laptop, phone,
   a PDF, Drive sync, the iPad bundle's region rule; it fails on v247). 57 related suites (selection card, Define, What
   does it mean?, AI providers and the iPad AI bridge, Clips and Workspace drops, iCloud/Drive/GitHub sync,
   persistence, two tabs, reading lists, settings, phone, iPad, Zen) pass in Chromium and WebKit except main's known
@@ -763,6 +774,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-11-03 v249:** selection tiles act on the first tap while a definition or answer is open (see Now).
 
 - **2026-11-03 v248:** For my research: a research profile (Settings; write it, draft it from a library paper, or paste
   it from your own AI; synced) and a seventh selection action that reads a passage against it, or says there is no

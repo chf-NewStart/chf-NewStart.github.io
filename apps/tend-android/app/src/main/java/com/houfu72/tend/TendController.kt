@@ -208,9 +208,10 @@ class TendController(context: Context) {
         room = next
     }
 
-    fun refreshDaily() {
-        dailyStreak = Daily.streakOn(app.getSharedPreferences(Daily.PREFS, Context.MODE_PRIVATE).getString(Daily.KEY, null), LocalDate.now())
-    }
+    private val dailyPrefs get() = app.getSharedPreferences(Daily.PREFS, Context.MODE_PRIVATE)
+    private var restoreDaily: String? = null
+
+    fun refreshDaily() { dailyStreak = Daily.streakOn(dailyPrefs.getString(Daily.KEY, null), LocalDate.now()) }
 
     fun openDaily(rest: Boolean) { platform?.openDaily(rest) }
 
@@ -240,13 +241,16 @@ class TendController(context: Context) {
     var tipOpen by mutableStateOf(false)
 
     fun exportWeek() { platform?.share("tend-week-${localDate(weekStart())}.md", weeklyMarkdown(state), "text/markdown") }
-    fun exportBackup() { platform?.share("tend-backup-${localDate()}.json", encodePretty(state), "application/json") }
+    fun exportBackup() {
+        platform?.share("tend-backup-${localDate()}.json", encodePretty(state, Daily.forBackup(dailyPrefs.getString(Daily.KEY, null))), "application/json")
+    }
 
     fun importBackup(contents: String) {
         try {
             var restored = restore(contents)
             if (restored.timer.status == Status.RUNNING) restored = pause(restored)
             restoreCandidate = restored
+            restoreDaily = Daily.fromBackup(contents)
             settingsOpen = false
         } catch (error: TendException) {
             showToast(error.message ?: "This backup could not be opened.")
@@ -257,6 +261,9 @@ class TendController(context: Context) {
         val restored = restoreCandidate ?: return
         restoreCandidate = null
         commit(restored)
+        // A backup with warm-up scores and good things brings them back too; an older one leaves them as they are.
+        restoreDaily?.let { dailyPrefs.edit().putString(Daily.KEY, it).apply(); refreshDaily() }
+        restoreDaily = null
         showToast("Notebook restored.")
     }
 

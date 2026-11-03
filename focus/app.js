@@ -5,7 +5,7 @@
   const $ = id => document.getElementById(id);
   const native = !!window.TEND_NATIVE;
   const post = (action, payload = {}) => window.webkit?.messageHandlers?.tend?.postMessage({ action, ...payload });
-  let state, view = 'focus', quiet = false, reviewId = null, restoredBackup = null;
+  let state, view = 'focus', quiet = false, reviewId = null, restoredBackup = null, restoredDaily = null;
   let audio = null, alarm = null, wakeLock = null, wakeRequested = false, toastTimeout, lastTick = '', discardArmed = 0;
   let notificationPermission = 'notDetermined';
   // The iPhone app's notebook revision this room has seen. Siri, the Lock Screen and its note notification change
@@ -330,17 +330,25 @@
   });
   document.querySelector('.brand').addEventListener('click', event => { event.preventDefault(); changeView('focus'); });
   $('export-week').addEventListener('click', () => download(C.weeklyMarkdown(state), 'tend-week-' + C.localDate(C.weekStart()) + '.md', 'text/markdown'));
-  $('export-backup').addEventListener('click', () => download(JSON.stringify(state, null, 2), 'tend-backup-' + C.localDate() + '.json', 'application/json'));
+  // The backup carries the warm-up's scores and good things under "daily"; restore() reads only the notebook's own fields.
+  $('export-backup').addEventListener('click', () => download(JSON.stringify({ ...state, ...(window.TendDaily ? { daily: window.TendDaily.snapshot() } : {}) }, null, 2), 'tend-backup-' + C.localDate() + '.json', 'application/json'));
   $('import-backup').addEventListener('change', async event => {
     const file = event.target.files?.[0]; if (!file) return;
     try {
       if (file.size > 20 * 1024 * 1024) throw new Error('This backup is too large to open here.');
-      restoredBackup = C.restore(await file.text()); if (restoredBackup.timer.status === 'running') restoredBackup = C.pause(restoredBackup);
+      const contents = await file.text();
+      restoredBackup = C.restore(contents); if (restoredBackup.timer.status === 'running') restoredBackup = C.pause(restoredBackup);
+      restoredDaily = JSON.parse(contents).daily || null;
       $('settings-dialog').close(); $('restore-dialog').showModal();
     } catch (error) { toast(error.message || 'This backup could not be opened.'); }
     event.target.value = '';
   });
-  $('restore-confirm').addEventListener('click', () => { if (!restoredBackup) return; $('restore-dialog').close(); commit(restoredBackup); restoredBackup = null; toast('Notebook restored.'); });
+  $('restore-confirm').addEventListener('click', () => {
+    if (!restoredBackup) return; $('restore-dialog').close(); commit(restoredBackup); restoredBackup = null;
+    // A backup with warm-up scores and good things brings them back too; an older one leaves them as they are.
+    if (restoredDaily && window.TendDaily) window.TendDaily.replace(restoredDaily); restoredDaily = null;
+    toast('Notebook restored.');
+  });
   $('enable-reminders').addEventListener('click', () => post(notificationPermission === 'denied' ? 'openSettings' : 'enableNotifications'));
   window.TendNativeStatus = result => {
     notificationPermission = result.notifications;

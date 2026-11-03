@@ -73,3 +73,11 @@ test('good things are trimmed, dated, kept in order and removable', () => {
   const dirty = D.normalize({ good: [{ d: 'yesterday', t: 'bad date' }, { d: '2026-11-01', t: 7 }, { d: '2026-11-02', t: 'kept', w: null }] });
   assert.deepEqual(dirty.good, [{ d: '2026-11-02', t: 'kept', w: '' }]);
 });
+
+test('a notebook backup can carry the warm-up under "daily" without upsetting restore', () => {
+  const C = require('../focus/core.js');
+  const daily = D.addGood(D.record(D.emptyState(), 'ink', 80, new Date(2026, 10, 3)).state, 'Sun on the walk', '', new Date(2026, 10, 3));
+  const file = JSON.stringify({ ...C.createState(), daily });
+  assert.equal(C.restore(file).schema, C.createState().schema);
+  assert.deepEqual(D.normalize(JSON.parse(file).daily), daily);
+});

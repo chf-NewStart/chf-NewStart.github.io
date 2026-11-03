@@ -1,6 +1,8 @@
 package com.houfu72.tend.core
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
@@ -29,6 +31,13 @@ object Daily {
 
     /** One task a day in the person's own calendar: daily.js counts days since 1970-01-01 the same way. */
     fun challengeFor(date: LocalDate): Challenge = challenges[Math.floorMod(date.toEpochDay(), challenges.size.toLong()).toInt()]
+
+    /** The warm-up's saved JSON as it goes into a notebook backup, or null if there is none or it can't be read. */
+    fun forBackup(json: String?): JsonElement? = json?.let { runCatching { Json.parseToJsonElement(it) as? JsonObject }.getOrNull() }
+
+    /** The "daily" part of a backup file, to save as the warm-up's JSON (daily.js cleans it on load), or null. */
+    fun fromBackup(contents: String): String? =
+        runCatching { (Json.parseToJsonElement(contents) as? JsonObject)?.get("daily") as? JsonObject }.getOrNull()?.toString()
 
     /** Days in a row today's task was finished. Like daily.js, a streak lasts until the end of the following day. */
     fun streakOn(json: String?, date: LocalDate): Int {

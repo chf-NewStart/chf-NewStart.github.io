@@ -1,5 +1,6 @@
 package com.houfu72.tend.core
 
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.LocalDate
@@ -23,5 +24,14 @@ class DailyTest {
         assertEquals(0, Daily.streakOn(json, LocalDate.of(2026, 11, 5)))
         assertEquals(0, Daily.streakOn(null, LocalDate.of(2026, 11, 3)))
         assertEquals(0, Daily.streakOn("not json", LocalDate.of(2026, 11, 3)))
+    }
+
+    @Test fun backupCarriesTheWarmUpAndOlderReadersIgnoreIt() {
+        val daily = """{"best":{"ink":80},"plays":{},"streak":{"count":2,"last":"2026-11-03"},"good":[{"d":"2026-11-03","t":"Sun","w":""}]}"""
+        val file = encodePretty(TendState(), Daily.forBackup(daily))
+        assertEquals(Json.parseToJsonElement(daily), Json.parseToJsonElement(Daily.fromBackup(file)!!))
+        assertEquals(TendState().settings, restore(file).settings)
+        assertEquals(null, Daily.fromBackup(encodePretty(TendState())))
+        assertEquals(null, Daily.forBackup("not json"))
     }
 }

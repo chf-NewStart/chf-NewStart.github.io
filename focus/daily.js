@@ -552,9 +552,12 @@
     dialog.addEventListener('close', () => { game.stop(); paint(); });
     new MutationObserver(paint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) paint(); });
+    root.addEventListener('tend-daily-change', paint);
     paint();
   }
 
-  root.TendDaily = { ...api, mount };
+  // The room's backup takes a snapshot and hands a restored one back.
+  const replace = raw => { save(normalize(raw)); root.dispatchEvent(new Event('tend-daily-change')); };
+  root.TendDaily = { ...api, mount, snapshot: () => load(), replace };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', room); else room();
 })(typeof self !== 'undefined' ? self : this);

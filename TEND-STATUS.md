@@ -42,6 +42,15 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Log
 
+- 2026-11-03 15:15 — Claude Code: Houfu asked whether people can choose a task and whether a replay on the same day
+  is different. Every play already drew new positions and orders (checked in the browser: three plays of Track put
+  the ripe tomatoes in three different places), except Count the seconds, which was always 10, 15 and 25 s; it now
+  draws 7–12, 13–19 and 20–28 s each play (still shortest first, so "a little longer each time" holds). The home
+  view now shows all six tasks right under today's ("Pick any task", was "Practice any" below Rest), says any can
+  be played as often as you like and that today's task is the one that adds to the streak, and marks it "Today".
+  Breaks still put Rest first. **Not in iOS 1.1.0 (7)**: the next build's review and TestFlight notes should say
+  "Pick any task" instead of "Practice any".
+
 - 2026-11-03 14:00 — Claude Code: Houfu asked whether the task really changes each day and when Tend is opened.
   Checked with the page's clock moved: opening on 4 Nov shows Only the ripe, on 5 Nov Middle arrow (strip and
   dialog). Two gaps fixed on the web (`focus/daily.js`): a room left open across midnight kept yesterday's task in

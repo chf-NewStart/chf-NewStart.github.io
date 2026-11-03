@@ -177,12 +177,16 @@
           <p class="daily-meta"><span data-r="time"></span><span>Streak <b data-r="streak">0</b></span><span data-r="best"></span></p>
           <button class="button primary daily-go" type="button" data-r="go">▶ Start</button>
         </section>
+        <section class="daily-practice">
+          <h3 class="daily-sub">Pick any task</h3>
+          <p class="daily-why">Play any of them, as often as you like; every play is new. Today’s task is the one that adds to your streak.</p>
+          <div class="daily-list" data-r="list"></div>
+        </section>
         <section class="daily-rest-section">
           <h3 class="daily-sub">Rest</h3>
           <p class="daily-why">For breaks, or whenever your eyes feel tired or your head feels heavy.</p>
           <div class="daily-list daily-rest" data-r="rest"></div>
         </section>
-        <section class="daily-practice"><h3 class="daily-sub">Practice any</h3><div class="daily-list" data-r="list"></div></section>
         <p class="small-note daily-fine">These tasks come from attention research. Practice makes you better at each one; how far that carries into everyday focus is still debated, so think of them as a warm-up before a tomato.</p>
       </div>
       <div class="daily-stage" hidden aria-live="polite">
@@ -405,7 +409,8 @@
       },
 
       async time(t) {
-        const targets = [10, 15, 25], errors = [];
+        // New lengths every play (7–12 s, 13–19 s, 20–28 s), so no count can be learned by heart.
+        const targets = [[7, 13], [13, 20], [20, 29]].map(([a, b]) => Math.floor(rand(a, b))), errors = [];
         for (let i = 0; i < targets.length; i++) {
           if (!alive(t)) return;
           const T = targets[i]; count(`Try ${i + 1} of 3`);
@@ -488,7 +493,7 @@
         return b;
       };
       $('rest').replaceChildren(...REST.map(c => item(c, c.id === 'good' && s.good.length ? `${s.good.length} saved` : c.time)));
-      $('list').replaceChildren(...CHALLENGES.map(c => item(c, s.best[c.id] != null ? `Best ${s.best[c.id]}` : c.time)));
+      $('list').replaceChildren(...CHALLENGES.map(c => item(c, (c === today ? 'Today · ' : '') + (s.best[c.id] != null ? `Best ${s.best[c.id]}` : c.time))));
     }
     async function start(c, { skipIntro = false } = {}) {
       // A task counts for the day it was started on, even if it ends after midnight.

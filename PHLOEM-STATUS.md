@@ -6,6 +6,39 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-03)
 
+- **Shelves and Tidy library, v250 (web; Houfu approved the design: categories that organise themselves, a one-time
+  tidy with a preview, done when the tests pass and it is live).** (1) **Shelves by kind of document**: Papers, Books
+  & textbooks, Course notes, My notes & meetings, Personal & admin (`reading-shelves.js`, data only). A new paper
+  lands on one from every import path (PDF and Word imports, the list's Choose PDF, pasted text, Europe PMC full
+  texts, the starter guide) by rules, no AI: a DOI, journal lines on the first pages, arXiv or Europe PMC → Papers;
+  an ISBN (check digit verified), guide/handbook/edition, 150+ pages → Books; a course code with lecture words →
+  Course notes; meeting/supervisor/notes/plan titles, Word drafts, pasted text → My notes; enrolment, immigration,
+  visa, sponsorship, forms → Personal & admin; any other PDF → Papers. The card beside the wall has a shelf menu, so
+  a wrong guess is one tap. A shelf is the plain `category` (stamped like any move), so v247 and the iPad app show
+  shelves as categories and lose nothing; records from older clients stay Unsorted until moved or tidied, as do
+  recovered placeholders. (2) **Group**: By shelf, By reading list (a paper on two lists shows under both; "Not on a
+  list" last) or All together, remembered per device (`readingRoom.libraryGroup.v1`); the wall, List view and search
+  filters follow it. (3) **Tidy library**, offered once per device above the library and always in Settings › Tidy
+  library: a preview that writes nothing (shelf per paper, changeable or "leave"; topic categories such as `main`,
+  `coupling`, `fba`, `proj` → a reading list, kept as a shelf or just shelved; duplicates by DOI, fingerprint or
+  specific title with a Keep choice, Merge for same-kind copies or Remove, all unticked, a warning when the PDFs
+  differ; "Recovered paper" placeholders, unticked). Applying first saves the whole library to IndexedDB
+  (`state:snapshot:tidy-backup`, works with localStorage full) and an undo record (`tidy-undo`); only what is
+  ticked happens. Undo is new changes, so other devices follow: shelves go back unless moved again since, the
+  tidy's lists and entries go, merged or removed copies come back under new ids with their files (tombstones are
+  permanent) and list entries point at them again, and an untouched kept copy returns to its pre-merge self.
+  Removed and merged copies keep their files on this device until Settings › Delete pre-tidy backup. **Not run on
+  Houfu's library**: he runs it from the app. (4) **At Houfu's request mid-task**: the wall's category rail is now
+  compact DM Sans pills that wrap onto rows (one swiping row on a phone), the open shelf filled in and the only one
+  with ✎ ‹ ›, any shelf takes a dropped paper and drags to reorder with a mouse; "Reading wall" in Charter, no
+  highlighter stroke or handwritten pill labels. The reading list's tabs wrap (phones: one swipe row that keeps the
+  open list in view); at 1000px and wider each list is a table (Paper | My question, three lines, tap for the rest
+  | action), cards below that. Tests: new `reading-shelves-state` (9 node tests) and `reading-shelves-browser` (49
+  checks, Chromium and WebKit); `reading-library-stack` and `reading-library-list` checks for the old highlighter
+  rail rewritten for the pills; `reading-docx-review` source check follows the wall's new code;
+  `reading-lists-browser` checks the Europe PMC paper's shelf. Results of the related suites: see the Log entry.
+  The iPad app still bundles v247 until its next build. Not tried on a real device.
+
 - **Selection tiles act on the first tap while an answer is open, v249 (web; Houfu: "Yes, fix it here", after v248
   found it).** With a definition or an answer open in the selection card, a press on another tile closed the answer
   on pointer-down; the shorter card was placed again under the pointer, the press ended elsewhere, and the tile did
@@ -774,6 +807,11 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-11-03 v250:** shelves by kind of document on every import, Group by shelf / reading list / all together,
+  Tidy library with preview, backup and undo, the wall's shelf pills and the reading-list table (see Now). Related
+  suites, 44 in Chromium and 20 in WebKit (library, lists, import, persistence and full storage, sync, two tabs, docx
+  review, iPad bundle), all pass; `reading-shelves-browser` 49/49 in both engines.
 
 - **2026-11-03 v249:** selection tiles act on the first tap while a definition or answer is open (see Now).
 

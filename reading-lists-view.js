@@ -33,12 +33,12 @@
       dialog: byId('listImportDialog'), importText: byId('listImportText'), importFile: byId('listImportFile'),
       importSummary: byId('listImportSummary'), importTarget: byId('listImportTarget'), importGo: byId('listImportGo'),
       importNotes: byId('listImportNotes'), importNotesRow: byId('listImportNotesRow'),
-      locked: byId('listsLocked')
+      locked: byId('listsLocked'), columns: byId('listColumns')
     };
     let activeId = readActive();
     let editingId = '';
     let searchSerial = 0, searchTimer = 0, searchAbort = null, searchSettled = null;
-    const notices = new Map(), fetching = new Set(), peeks = new Map(), abstracts = new Map();
+    const notices = new Map(), fetching = new Set(), peeks = new Map(), abstracts = new Map(), openThoughts = new Set();
     let lastQuery = '', searchResults = { library: [], online: [], state: 'idle', query: '' };
     let importPreview = null;
     let pendingRefresh = false;
@@ -495,26 +495,59 @@
         '<div class="rl-editor-actions"><button class="button" type="submit">Save</button><button class="soft-button" type="button" data-rl-cancel>Cancel</button>' + (paper ? '' : '<button class="soft-button" type="button" data-rl-addpdf>Choose PDF…</button>') + '<button class="text-button danger-text" type="button" data-rl-remove>Remove from list</button></div></form>';
     }
     const GRIP = '<svg viewBox="0 0 12 20" aria-hidden="true"><circle cx="3" cy="4" r="1.5"/><circle cx="9" cy="4" r="1.5"/><circle cx="3" cy="10" r="1.5"/><circle cx="9" cy="10" r="1.5"/><circle cx="3" cy="16" r="1.5"/><circle cx="9" cy="16" r="1.5"/></svg>';
+    /* The question (or, once read, the takeaway) has a column of its own on a wide screen.
+       A long one shows three lines; a tap shows the rest. */
+    function thoughtHtml(item, kind, label) {
+      const open = openThoughts.has(item.id + ':' + kind);
+      return '<button class="rl-' + kind + (open ? ' is-open' : '') + '" type="button" data-rl-thought="' + kind + '" aria-expanded="' + open + '"><span class="rl-thought-text"><span class="rl-thought-label">' + label + '</span>' + esc(item[kind]) + '</span></button>';
+    }
+    function askHtml(item, editing) {
+      if (editing) return '';
+      let html = '';
+      if (item.note && !item.done) html += thoughtHtml(item, 'note', 'My question');
+      if (item.takeaway) html += thoughtHtml(item, 'takeaway', 'Takeaway');
+      if (item.done && !item.takeaway) html += '<button class="rl-add-takeaway" type="button" data-rl-ask>＋ Add a takeaway</button>';
+      else if (!item.done && !item.note) html += '<button class="rl-add-question" type="button" data-rl-ask>＋ Your question</button>';
+      return html;
+    }
     function itemHtml(item, s, upNextId) {
       const paper = paperFor(item), guess = !item.done && suggestion(item), editing = editingId === item.id;
       const classes = ['rl-item', paper ? 'is-in-library' : '', item.done ? 'is-done' : '', item.id === upNextId ? 'is-next' : '', editing ? 'is-editing' : ''].filter(Boolean).join(' ');
       const label = item.title || (item.doi ? 'DOI ' + item.doi : item.url);
+      const extra = peekHtml(item) + noticeHtml(item) +
+        (guess ? '<button class="rl-suggest" type="button" data-rl-link="' + esc(guess.id) + '">In your library as “' + esc(guess.title.slice(0, 56)) + (guess.title.length > 56 ? '…' : '') + '” · Link it</button>' : '') +
+        (editing ? editor(item, s) : '');
       return '<li class="' + classes + '" data-rl-item="' + esc(item.id) + '">' +
         (item.done ? '<span class="rl-grip-space" aria-hidden="true"></span>' : '<button class="rl-grip" type="button" data-rl-grip aria-label="Reorder ' + esc(label) + '. Drag it, or press the up and down arrow keys." title="Drag to reorder">' + GRIP + '</button>') +
         '<label class="rl-check"><input type="checkbox" data-rl-done' + (item.done ? ' checked' : '') + '><span class="sr-only">' + (item.done ? 'Mark not done: ' : 'Mark done: ') + esc(label) + '</span></label>' +
         '<div class="rl-body">' +
         (item.id === upNextId ? '<span class="rl-next-tag">Up next</span>' : '') +
         '<button class="rl-title" type="button" data-rl-read>' + esc(label) + '</button>' +
-        metaHtml(item, paper) + peekHtml(item) + noticeHtml(item) +
-        (item.note && !editing ? '<p class="rl-note"><span>My question</span>' + esc(item.note) + '</p>' : '') +
-        (item.takeaway && !editing ? '<p class="rl-takeaway"><span>Takeaway</span>' + esc(item.takeaway) + '</p>' : '') +
-        (item.done && !item.takeaway && !editing ? '<button class="rl-add-takeaway" type="button" data-rl-edit>＋ Add a takeaway</button>' : '') +
-        (guess ? '<button class="rl-suggest" type="button" data-rl-link="' + esc(guess.id) + '">In your library as “' + esc(guess.title.slice(0, 56)) + (guess.title.length > 56 ? '…' : '') + '” · Link it</button>' : '') +
-        (editing ? editor(item, s) : '') +
+        metaHtml(item, paper) +
         '</div>' +
+        '<div class="rl-ask">' + askHtml(item, editing) + '</div>' +
         '<div class="rl-trail">' + trailHtml(item, paper) + '</div>' +
+        (extra ? '<div class="rl-extra">' + extra + '</div>' : '') +
         '</li>';
     }
+    /* A phone shows the tabs as one row that swipes: the open list's tab is scrolled
+       into view when it changes, and a mouse wheel moves the row sideways. */
+    let revealedTab = '';
+    function tabsScroll() { return el.tabs.scrollWidth > el.tabs.clientWidth + 1; }
+    function revealActiveTab() {
+      const tab = el.tabs.querySelector('.rl-tab[aria-pressed="true"]');
+      if (!tab || !tabsScroll()) return false;
+      const box = el.tabs.getBoundingClientRect(), at = tab.getBoundingClientRect(), pad = 12;
+      if (at.left < box.left + pad) el.tabs.scrollLeft -= box.left + pad - at.left;
+      else if (at.right > box.right - pad) el.tabs.scrollLeft += at.right - box.right + pad;
+      return true;
+    }
+    el.tabs.addEventListener('wheel', event => {
+      if (!tabsScroll() || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      const before = el.tabs.scrollLeft;
+      el.tabs.scrollLeft += event.deltaY;
+      if (el.tabs.scrollLeft !== before) event.preventDefault();
+    }, { passive: false });
     function render() {
       if (!page || page.classList.contains('hidden')) return;
       if (drag) { pendingRefresh = true; return; }
@@ -531,10 +564,12 @@
         const entries = listItems(s, entry.id), count = entries.filter(item => item.done).length;
         return '<button class="rl-tab" type="button" data-rl-list="' + esc(entry.id) + '" aria-pressed="' + (entry.id === list.id) + '"><span>' + esc(entry.name) + '</span><small>' + count + '/' + entries.length + '</small></button>';
       }).join('') + '<button class="rl-tab rl-new" id="listNewBtn" type="button" aria-expanded="' + !el.newForm.classList.contains('hidden') + '">＋ New list</button>';
+      if (revealedTab !== list.id && revealActiveTab()) revealedTab = list.id;
       el.name.textContent = list.name;
       el.progress.textContent = all.length ? done.length + ' of ' + all.length + ' done' : 'Empty so far';
       el.bar.style.setProperty('--rl-progress', (all.length ? Math.round(done.length / all.length * 100) : 0) + '%');
       const upNextId = undone.length ? undone[0].id : '';
+      if (el.columns) el.columns.classList.toggle('hidden', !undone.length);
       el.items.innerHTML = undone.length ? undone.map(item => itemHtml(item, s, upNextId)).join('') :
         '<li class="rl-empty">' + (all.length ? 'Everything on this list is done. Nice reading.' : 'Add a paper above: type its title, authors or DOI. Or bring in a list you already have with <b>Import</b>.') + '</li>';
       el.doneWrap.classList.toggle('hidden', !done.length);
@@ -720,6 +755,12 @@
       if (!item) return;
       if (target.hasAttribute('data-rl-grip')) return;
       if (target.hasAttribute('data-rl-edit')) { editingId = editingId === item.id ? '' : item.id; refresh(); }
+      else if (target.hasAttribute('data-rl-ask')) { editingId = item.id; refresh(); }
+      else if (target.dataset.rlThought) {
+        const key = item.id + ':' + target.dataset.rlThought, open = !openThoughts.has(key);
+        if (open) openThoughts.add(key); else openThoughts.delete(key);
+        target.classList.toggle('is-open', open); target.setAttribute('aria-expanded', String(open));
+      }
       else if (target.hasAttribute('data-rl-cancel')) { editingId = ''; refresh(); }
       else if (target.hasAttribute('data-rl-remove')) removeItem(item);
       else if (target.dataset.rlLink) { apply(s => L.upsertItem(s, { id: item.id, paperId: target.dataset.rlLink }, adapter.now())); status('Linked to your library copy.'); }

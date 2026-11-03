@@ -59,7 +59,7 @@ function check(name, condition, extra) {
   check('sticky keeps the paper title and author', await page.locator('[data-shelf-paper="paper_models"]').textContent().then(text => text.includes('Constraint models') && text.includes('Dev Rao')));
   check('clean professional card type is the default', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('DM Sans') && getComputedStyle(element).fontWeight === '650'));
   check('clean type is selected accessibly', await page.locator('button[data-library-note-style="clean"]').getAttribute('aria-pressed') === 'true' && await page.locator('button[data-library-note-style="handwritten"]').getAttribute('aria-pressed') === 'false');
-  check('category keeps its highlighter with regular type', await page.locator('.paper-category-mark').evaluate(element => getComputedStyle(element).fontFamily.includes('DM Sans') && getComputedStyle(element, '::before').backgroundImage !== 'none'));
+  check('a shelf pill uses plain DM Sans with no highlighter stroke', await page.locator('.paper-category-mark').evaluate(element => getComputedStyle(element).fontFamily.includes('DM Sans') && getComputedStyle(element).textTransform === 'none' && ['none', 'normal'].includes(getComputedStyle(element, '::before').content)));
   await page.locator('button[data-library-note-style="handwritten"]').click();
   check('handwriting remains available as an explicit option', await page.locator('[data-shelf-paper="paper_models"] .book-title').evaluate(element => getComputedStyle(element).fontFamily.includes('Houfu Hand')));
   check('Chinese cards use a Kai face in handwritten mode', await page.locator('[data-shelf-paper="paper_field"] .book-title').evaluate(element => element.classList.contains('is-han') && getComputedStyle(element).fontFamily.includes('Kaiti TC')));
@@ -74,9 +74,9 @@ function check(name, condition, extra) {
     const surface = document.querySelector('.paper-note-surface');
     return rail && surface && rail.parentElement === surface.parentElement && !surface.contains(rail);
   }));
-  check('category highlighters expose horizontal scrolling', await page.locator('.paper-category-rail').evaluate(element => {
+  check('shelf pills wrap onto rows that scroll down when there are many', await page.locator('.paper-category-rail').evaluate(element => {
     const style = getComputedStyle(element);
-    return style.overflowX === 'auto' && style.scrollbarWidth === 'thin';
+    return style.flexWrap === 'wrap' && style.overflowY === 'auto' && style.overflowX === 'hidden';
   }));
   check('large ruled category sheet is gone', await page.locator('.paper-stack-entry').count() === 0 && await page.locator('.paper-note-surface').evaluate(element => !getComputedStyle(element).backgroundImage.includes('repeating-linear-gradient')));
 
@@ -202,7 +202,10 @@ function check(name, condition, extra) {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('.paper-category-tab.is-selected');
-  check('many category highlighters actually overflow into a scrollable row', await page.locator('.paper-category-rail').evaluate(element => element.scrollWidth > element.clientWidth));
+  check('many shelves show at once on several rows, never a sideways scroll', await page.locator('.paper-category-rail').evaluate(element => {
+    const rows = new Set(Array.from(element.querySelectorAll('.paper-category-tab')).map(tab => Math.round(tab.offsetTop)));
+    return rows.size >= 3 && element.scrollWidth <= element.clientWidth + 1;
+  }));
   const crowdedSticky = page.locator('.paper-sticky-wrap').first();
   await crowdedSticky.locator('.paper-category-move').click();
   check('many move destinations actually overflow into a scrollable list', await crowdedSticky.locator('.paper-category-options').evaluate(element => element.scrollHeight > element.clientHeight));
@@ -211,15 +214,16 @@ function check(name, condition, extra) {
   await crowdedSticky.locator('.paper-category-search').press('Escape');
 
   const draggedCategory = page.locator('.paper-category-tab[data-category-name="Metabolic models"]');
-  await draggedCategory.locator('.paper-category-grip').dragTo(page.locator('.paper-category-tab').first(), { targetPosition: { x: 2, y: 20 } });
+  await draggedCategory.dragTo(page.locator('.paper-category-tab').first(), { targetPosition: { x: 2, y: 12 } });
   const orderAfterDrag = await page.locator('.paper-category-mark').evaluateAll(elements => elements.map(element => element.textContent));
   check('dragging a category changes its position', orderAfterDrag[0] === 'Metabolic models', JSON.stringify(orderAfterDrag.slice(0, 5)));
   check('dragged category order is saved with a timestamp', await page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem('readingRoom.v1'));
     return data.categoryOrder[0] === 'Metabolic models' && data.categoryOrderUpdatedAt > 0;
   }));
-  await page.locator('.paper-category-tab').first().locator('.paper-category-step.next').click();
-  check('move arrows provide a touch-friendly reorder fallback', await page.locator('.paper-category-mark').nth(1).textContent() === 'Metabolic models');
+  await page.locator('.paper-category-tab').first().locator('.paper-category-open').click();
+  await page.locator('.paper-category-tab.is-selected .paper-category-step.next').click();
+  check('move arrows on the open shelf provide a touch-friendly reorder fallback', await page.locator('.paper-category-mark').nth(1).textContent() === 'Metabolic models');
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('.paper-category-tab.is-selected');
   check('custom category order survives a reload', await page.locator('.paper-category-mark').nth(1).textContent() === 'Metabolic models');
@@ -237,7 +241,8 @@ function check(name, condition, extra) {
   check('selecting a distant category keeps it visible instead of returning to pinned In review', await page.locator('.paper-category-rail').evaluate(rail => {
     const selected = rail.querySelector('.paper-category-tab.is-selected');
     const railBox = rail.getBoundingClientRect(), selectedBox = selected.getBoundingClientRect();
-    return rail.scrollLeft > 0 && selectedBox.left >= railBox.left - 1 && selectedBox.right <= railBox.right + 1;
+    const visible = selectedBox.top >= railBox.top - 1 && selectedBox.bottom <= railBox.bottom + 1 && selectedBox.left >= railBox.left - 1 && selectedBox.right <= railBox.right + 1;
+    return visible && (rail.scrollHeight <= rail.clientHeight + 1 || rail.scrollTop > 0);
   }));
   check('reading wall has no page errors', errors.length === 0, errors.join('; '));
 

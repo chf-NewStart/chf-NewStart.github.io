@@ -195,6 +195,7 @@ const titles = page => page.locator('#listItems .rl-title').allTextContents();
     const sugarItem = (await saved(page)).items.find(item => item.doi === '10.1093/aob/mcm258');
     const sugarPaper = await page.evaluate(id => JSON.parse(localStorage.getItem('readingRoom.v1')).chapters.find(ch => ch.id === id), sugarItem.paperId);
     assert.equal(sugarPaper.sourceUrl, 'https://europepmc.org/article/PMC/PMC2701831');
+    assert.equal(sugarPaper.category, 'Papers', 'a full text from Europe PMC lands on the Papers shelf');
     await page.locator('#zenExit').click();
     await page.locator('.nav-btn[data-view="listsPage"]').click();
     console.log('  ok  Read fetched the open-access full text and opened it');

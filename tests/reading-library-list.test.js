@@ -172,7 +172,7 @@ function check(name, condition, extra) {
   await page.locator('.library-list-row[data-library-paper="paper_models"] .library-list-select').check();
   await page.locator('.library-list-row[data-library-paper="paper_microbes"] .library-list-select').check();
   page.once('dialog', async dialog => {
-    check('New category asks for a category name', dialog.type() === 'prompt' && /category/i.test(dialog.message()), dialog.message());
+    check('New shelf asks for a shelf name', dialog.type() === 'prompt' && /shelf/i.test(dialog.message()), dialog.message());
     await dialog.accept('Research queue');
   });
   await page.locator('.library-list-bulk-new').click();
@@ -180,7 +180,7 @@ function check(name, condition, extra) {
     const ids = ['paper_models', 'paper_microbes'];
     return ids.every(id => document.querySelector(`.library-list-row[data-library-paper="${id}"] .library-list-category`)?.textContent.trim() === 'Research queue');
   });
-  check('New category moves every selected paper into the prompted category',
+  check('New shelf moves every selected paper onto the prompted shelf',
     await page.locator('.library-list-row[data-library-paper="paper_models"] .library-list-category').textContent() === 'Research queue'
       && await page.locator('.library-list-row[data-library-paper="paper_microbes"] .library-list-category').textContent() === 'Research queue'
       && await page.locator('.library-list-select:checked').count() === 0);
@@ -201,14 +201,14 @@ function check(name, condition, extra) {
 
   await modelRow.locator('.library-list-more').click();
   check('the compact row menu opens without making the row itself ambiguous', await modelRow.locator('.library-list-actions').getAttribute('open') !== null);
-  await modelRow.getByRole('button', { name: 'Move to category…' }).click();
-  check('Move to category stays open while its lazy chooser replaces the action panel',
+  await modelRow.getByRole('button', { name: 'Move to shelf…' }).click();
+  check('Move to shelf stays open while its lazy chooser replaces the action panel',
     await modelRow.locator('.library-list-actions').getAttribute('open') !== null
       && await modelRow.locator('.library-list-action-search').isVisible());
   await modelRow.locator('.library-list-action-back').click();
-  check('returning from the category chooser keeps the row menu open',
+  check('returning from the shelf chooser keeps the row menu open',
     await modelRow.locator('.library-list-actions').getAttribute('open') !== null
-      && await modelRow.getByRole('button', { name: 'Move to category…' }).isVisible());
+      && await modelRow.getByRole('button', { name: 'Move to shelf…' }).isVisible());
   await page.keyboard.press('Escape');
   check('Escape closes the row menu and returns focus to its disclosure',
     await modelRow.locator('.library-list-actions').getAttribute('open') === null

@@ -35,17 +35,36 @@ one, reopening a note — even an edited one — returns to that thread instead 
 starting another, and the reply renders its Markdown and LaTeX as
 formatted prose rather than raw stars and backslashes.
 
-`reading-library-stack.test.js` covers the fixed category-highlighter rail and
-soft reading wall: the two-column clean-by-default sticky grid, optional persisted
-handwritten typography, category
-creation/renaming, searchable and scrollable move picker, overflow scrolling for
-many category highlighters, drag-to-reorder categories, drag-to-file sticky
-notes, persisted category order, selection, search, and mobile fit.
+`reading-library-stack.test.js` covers the wall's shelf pills and soft reading wall:
+the two-column clean-by-default sticky grid, optional persisted handwritten
+typography, plain DM Sans pills that wrap onto rows (scrolling down, never
+sideways), shelf creation/renaming, searchable and scrollable move picker,
+drag-to-reorder shelves, drag-to-file sticky notes, the reorder arrows on the
+open shelf, persisted shelf order, selection, search, and mobile fit.
 
 `reading-library-list.test.js` covers the persisted Wall/List switch, one compact
-global list with category filters, row metadata, existing search and sort
-controls, multi-select moves into existing or newly created categories,
+global list with shelf filters, row metadata, existing search and sort
+controls, multi-select moves onto existing or new shelves,
 one-click opening, and a non-clipping phone layout.
+
+`reading-shelves-state.test.js` (`node --test`) covers the shelf rules in
+`reading-shelves.js`: old categories mapped onto shelves (`academic` → Papers,
+`non-academic` → Personal & admin) and topics told apart, the signals a paper
+carries (DOI, journal lines, ISBN check digit, Europe PMC, a course code with
+lecture words, meeting and admin titles, Word drafts, pasted text, page count),
+duplicate groups by DOI, fingerprint or specific title (never generic titles or
+review work), placeholders, grouping by reading list, the tidy plan and when a
+tidy is offered.
+
+`reading-shelves-browser.test.js` drives shelves end to end: pills that wrap
+with controls only on the open shelf, the one-time tidy offer, a preview that
+writes nothing, a tidy that applies only what is ticked (a changed shelf, a topic
+kept as a shelf, a topic made a reading list, one merge, one placeholder
+removed) with its backup in IndexedDB, the card's shelf picker, an undo made of
+new changes (copies back under new ids, list entries re-pointed), grouping by
+reading list or not at all (persisted, also in List view), a shelf for each new
+PDF, Word draft and pasted note, and a tidy and undo with localStorage full.
+Run it with `PHLOEM_BROWSER=webkit` too.
 
 `reading-define-lookup.test.js` (`node --test`) covers Define: an abbreviation in
 the selection (EC, pH, K) must appear in the article offered, so "Solution EC" can no

@@ -42,6 +42,14 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Log
 
+- 2026-11-03 15:35 — Claude Code: Houfu asked to build, pull the version in review and submit the newest. Build 8
+  (the warm-up's midnight fixes, new timings each play and all six tasks under today's) archived and uploaded; it is
+  VALID and in TestFlight for "friends" with What to Test set. Only then was the 1.1.0 (7) review cancelled through
+  the API (`PATCH /v1/reviewSubmissions/…` with `canceled: true`: CANCELING, then COMPLETE about 20 s later, and the
+  version went to DEVELOPER_REJECTED). `asc-submit.mjs` then attached build 8, set What's New ("you can play any of
+  the six whenever you like") and the review notes ("Pick any task") and submitted: **1.1.0 (8) Waiting for Review**
+  (submission 7201ceeb, 20:34 UTC), released after approval like 1.0.
+
 - 2026-11-03 15:15 — Claude Code: Houfu asked whether people can choose a task and whether a replay on the same day
   is different. Every play already drew new positions and orders (checked in the browser: three plays of Track put
   the ripe tomatoes in three different places), except Count the seconds, which was always 10, 15 and 25 s; it now

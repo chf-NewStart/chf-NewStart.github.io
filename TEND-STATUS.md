@@ -11,7 +11,7 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
-| Claude Code | **Warm-up and rest** (Houfu: "add some daily challenges which could train the focus", then "something that makes me happy and less dizzy"), done on `main` (Log, 2026-11-03 12:30). Web and Android checked; iOS 1.1.0 (5) on TestFlight, not run in a simulator (CoreSimulator out of date on this Mac). 1.1 not submitted. | `focus/daily.*`, `tests/tend-daily.test.cjs`, the strip and dialog in `focus/index.html`, `focus/sw.js` cache list, `apps/tend-ios/App/TendViewController.swift` (`dailySave`, `TEND_DAILY_STATE`), `apps/tend-android/**/DailyActivity.kt`, `core/Daily.kt`, `FocusRoom.kt` strip | 2026-11-03 11:00 EST |
+| Claude Code | **Warm-up and rest** (Houfu: "add some daily challenges which could train the focus", then "something that makes me happy and less dizzy"), done on `main` (Log, 2026-11-03). Web and Android checked; **iOS 1.1.0 (7) on TestFlight** (not run in a simulator: CoreSimulator out of date on this Mac). **1.1 is ready to submit with build 7 but not submitted**: it waits for Houfu to try build 7 on his iPhone (`node apps/tend-ios/scripts/asc-submit.mjs apps/tend-ios/release/testflight-1.1.json`, `--dry-run` first). | `focus/daily.*`, `tests/tend-daily.test.cjs`, the strip and dialog in `focus/index.html`, backup export/restore in `focus/app.js`, `focus/sw.js` cache list, `apps/tend-ios/App/TendViewController.swift` (`dailySave`, `TEND_DAILY_STATE`), `apps/tend-ios/release/*`, `apps/tend-android/**/DailyActivity.kt`, `core/Daily.kt`, `core/Backup.kt`, `FocusRoom.kt` strip | 2026-11-03 11:00 EST |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts; 1.0 (1) submitted by Houfu 2026-10-26, in review. Not submitting anything for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
 | Claude Code | **Android app** (native Kotlin + Compose, `com.houfu72.tend`): built and tested in the emulator; signed 1.0.0 (1) bundle ready for Play closed testing. Waits on Houfu's Play Console account. Web changes that alter timer rules need the same change in `apps/tend-android/.../core/`. | `apps/tend-android/**` | 2026-10-26 14:00 EDT |
 | Claude Code | **Quick timers and Do Not Disturb**, done on `main` (Log, 2026-10-27 15:00); iOS 1.1.0 (3) on TestFlight. **App blocking during sessions** (Screen Time; Houfu chose "Done unlocks"): Apple approved Family Controls (Distribution) for the account on 2026-10-27 (request QQUXWQ76W5), merged to `main`, **1.1.0 (4) on TestFlight; Houfu tested the block on his iPhone ("nice it works")**, so 1.1's review submission now uses build 4 (What's New and Screen Time review notes in `apps/tend-ios/release/testflight-1.1.json`). Shielding doesn't silence the blocked apps' notifications, and iOS has no API for an app to mute others or turn on a Focus: a Focus stays the person's (or a shortcut's) switch. | `focus/core.js`, `focus/app.js`, `tests/*`, `apps/tend-ios/**`, `apps/tend-android/**` | 2026-10-27 14:20 EDT |
@@ -41,6 +41,18 @@ to touch a claimed file, write your request under **Requests** below instead.
   ($25, ID and device checks), then the app, the closed test with 12+ testers for 14 days, then production.
 
 ## Log
+
+- 2026-11-03 13:20 — Claude Code: Houfu on the Siri question: "do whatever u think is good". **Siri stays** (the App
+  Shortcuts also run the Do Not Disturb shortcut, the Action Button and the Live Activity buttons) **but stops being
+  the pitch**: `release/listing.json` (promo, description, keywords) and `testflight-1.1.json` (What's New, review
+  notes) now lead with the warm-up and rest, then the thread and app blocking; Siri and the Action Button are one
+  line. The description says the warm-up is not a medical or diagnostic test and claims no more than "practice makes
+  you better at each one" (brain-training claims are what regulators go after). Houfu, trying it: "for correct one
+  for only the ripe should there be some feedback". Only the ripe now answers every trial (green glow on a tap on
+  red, "Held" for holding still on green, "Hold on green" for a tap on green), and the board's flash in every task is
+  a steady 260 ms glow (the stepped animation showed full colour for ~60 ms). Backups now carry the warm-up under
+  `daily` on all three platforms (restore replaces it when present; older readers ignore it). Builds 6 and 7
+  uploaded; `build` in `testflight-1.1.json` is 7 and the dry run passes.
 
 - 2026-11-03 12:30 — Claude Code, **warm-up and rest**. A strip under the room's cards (hidden while a session runs)
   offers today's warm-up: one of six 1–2 minute attention tasks, rotating at local midnight (`challengeFor`: days

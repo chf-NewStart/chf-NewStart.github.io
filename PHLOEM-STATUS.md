@@ -13,7 +13,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   `backdrop-filter`), so words under it read sharp through the middle. Pinned tints the rim; on a phone the pin dot
   stays hidden. The band-centre drag offset from v246 stays (no jump when grabbed off-centre). Test:
   `tests/reading-guide-phone-grip.test.js` (Chromium + WebKit). Not yet seen on a real iPhone; if he still finds it
-  in the way, revert to v246 or ask him to draw again. Apps get it in the next build after 1.2.7.
+  in the way, revert to v246 or ask him to draw again. **App 1.2.8 (54) bundles v247**: archived (`~/Library/Developer/Xcode/Archives/2026-11-03/Phloem 1.2.8 (54).xcarchive`) and uploaded with the API key 2026-11-03 on his "push to app store" (branch `ipad-release-1.2.8-54`). 1.2.7 is approved, Pending Developer Release; releasing it and submitting 1.2.8 wait on his explicit OK (auto mode blocks both otherwise).
 
 ## Earlier (2026-11-02)
 

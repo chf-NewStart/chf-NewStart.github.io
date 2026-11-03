@@ -852,7 +852,7 @@
 
   /* A selection stays on the paper while this small, source-labelled reference card
      looks up an encyclopedic definition and a freely hosted image. */
-  function hideLookup(){clearTimeout(lookupTimer);lookupSerial++;lookupAnchor=null;byId('lookupCard').classList.add('hidden');byId('selectionCard').classList.remove('lookup-open');endLookupSearch();placeSelectionCard();}
+  function hideLookup(){clearTimeout(lookupTimer);lookupSerial++;lookupAnchor=null;byId('lookupCard').classList.add('hidden');byId('selectionCard').classList.remove('lookup-open');resetResearchCard();endLookupSearch();placeSelectionCard();}
   function placeLookupCard(rect){
     if(rect)lookupAnchor={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
     var card=byId('lookupCard');if(!lookupAnchor||card.classList.contains('hidden'))return;
@@ -870,7 +870,7 @@
   function prepareLookup(term,rect){
     var card=byId('lookupCard');byId('lookupSelection').textContent='“'+term+'”';byId('lookupTitle').textContent='Looking up…';
     var definition=byId('lookupDefinition');definition.textContent='Finding a useful explanation and image.';definition.classList.add('loading');
-    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');byId('lookupSource').classList.add('hidden');byId('lookupAiSetup').classList.add('hidden');byId('lookupRetry').classList.add('hidden');
+    byId('lookupPhotoLink').classList.add('hidden');byId('lookupArticle').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');byId('lookupSource').classList.add('hidden');byId('lookupAiSetup').classList.add('hidden');byId('lookupRetry').classList.add('hidden');resetResearchCard();
     hideHighlightCard();card.classList.remove('hidden');placeLookupCard(rect);
   }
   function showLookupProblem(term,message){
@@ -1073,14 +1073,290 @@
       loadLookup(term,serial,context);
     },delay===undefined?LOOKUP_DELAY:delay);
   }
+  /* "For my research" (Houfu, Nov 2026): a selected passage read against the reader's own
+     research profile (Settings › For my research, about 400 words in five fields). The answer
+     names the profile field each line bears on, or says plainly that there is no clear link,
+     which the prompt prefers to an invented one. The profile is unpublished work: only this
+     action reads it, on-device Gemini runs it where the browser has it, and a cloud provider
+     is named before it first receives the profile. The profile syncs with the library; the
+     route choice stays on this device. Pure helpers first (tests lift them out). */
+  var RESEARCH_ROUTE_KEY='readingRoom.researchRoute.v1',RESEARCH_WORDS=400;
+  function researchFields(){return[
+    {key:'question',label:'Research question'},{key:'system',label:'System / organism'},{key:'methods',label:'Methods'},
+    {key:'novelty',label:'What I claim is new'},{key:'open',label:'Open problems'}
+  ];}
+  function normalizeResearchProfile(value){
+    if(!value||typeof value!=='object'||Array.isArray(value))return null;
+    var out={v:1,updatedAt:Number.isSafeInteger(value.updatedAt)&&value.updatedAt>0?value.updatedAt:0};
+    researchFields().forEach(function(field){var text=value[field.key];out[field.key]=typeof text==='string'?text.replace(/\r\n?/g,'\n').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim().slice(0,3000):'';});
+    return out.updatedAt||researchProfileReady(out)?out:null;
+  }
+  function researchProfileReady(profile){return !!profile&&researchFields().some(function(field){return !!String(profile[field.key]||'').trim();});}
+  function researchWordCount(profile){return researchFields().reduce(function(sum,field){var text=String(profile&&profile[field.key]||'').trim();return sum+(text?text.split(/\s+/).length:0);},0);}
+  // The newer copy wins whole, like the shelf order; an emptied profile is a deletion that syncs too.
+  function newerResearchProfile(local,incoming){var a=normalizeResearchProfile(local),b=normalizeResearchProfile(incoming);return b&&(!a||b.updatedAt>a.updatedAt)?b:null;}
+  function researchProfileText(profile){return researchFields().filter(function(field){return String(profile[field.key]||'').trim();}).map(function(field){return field.label+': '+String(profile[field.key]).trim();}).join('\n');}
+  // A model's or a pasted answer's name for a profile field; 'list' is the reading list's "My question".
+  function researchFieldKey(name){
+    var n=String(name||'').toLowerCase().replace(/[^a-z\/ ]+/g,' ').replace(/\s*\/\s*/g,' / ').replace(/\s+/g,' ').trim();
+    if(/^(?:my|my reading list|reading list) question$/.test(n))return'list';
+    if(/^(?:my |the )?(?:research )?questions?$/.test(n))return'question';
+    if(/^(?:study )?(?:system|organism|system \/ organism|system organism|organism \/ system)$/.test(n))return'system';
+    if(/^(?:methods?|approach|methodology)$/.test(n))return'methods';
+    if(/^(?:what (?:i claim )?is new|novelty|contribution|new)$/.test(n))return'novelty';
+    if(/^(?:open(?: problems?| questions?)?|next steps|limitations)$/.test(n))return'open';
+    return'';
+  }
+  function researchFieldLabel(key){return key==='list'?'Reading-list question':{question:'Research question',system:'System / organism',methods:'Methods',novelty:'What is new',open:'Open problems'}[key]||'';}
+  function researchKind(word){var w=String(word||'').toLowerCase().replace(/[^a-z ]+/g,' ').replace(/\s+/g,' ').trim();return /^supports?$/.test(w)?'supports':/^(?:differs?|contrasts?)$/.test(w)?'differs':/^(?:use|use it for|use for|useful for)$/.test(w)?'use':'';}
+  function researchKindLabel(kind){return{supports:'Supports',differs:'Differs',use:'Use it for'}[kind]||'';}
+  function researchRelevancePrompt(profile,context){
+    var list=String(context.question||'').trim(),fields='Research question, System, Methods, What is new, Open problems'+(list?', My question':'');
+    return{system:'You check whether one passage from a paper bears on a researcher’s own work, described in their profile. Judge only what the selected passage and the excerpt around it actually say; do not fill gaps from outside knowledge of the paper or the field. Most passages have no clear link to any one project, and saying so is a good answer: prefer it to a link that is generic (for example "both use models"), speculative, or needs guessing.\n'+
+      'If there is no clear, specific link, reply with exactly: NONE\n'+
+      'Otherwise reply with one to three lines, at most one of each kind, each exactly in this form:\n'+
+      'SUPPORTS | <field> | how the passage supports that part of the work\n'+
+      'DIFFERS | <field> | how it differs from or contradicts that part\n'+
+      'USE | <field> | one concrete use, for example "cite in related work as a precedent for …"\n'+
+      '<field> is the part of the profile the line bears on, one of: '+fields+'. Keep each line under 30 words and grounded in the passage. No other text, no markdown.',
+      user:'Research profile:\n'+researchProfileText(profile)+(list?'\nMy question for this paper (from my reading list): '+list:'')+
+        '\n\nPaper: '+(context.title||'Untitled')+'\nExcerpt around the passage:\n'+(context.excerpt||'(not available)')+'\n\nSelected passage:\n'+context.passage};
+  }
+  /* At most one line of each kind, and only lines that name a profile field: "NONE", a
+     reply in some other shape, or a link that names no field all read as no clear link. */
+  function parseResearchRelevance(text,hasListQuestion){
+    var rows=String(text||'').replace(/\r/g,'').split('\n').map(function(line){return line.replace(/[*_`]+/g,'').replace(/^\s*(?:[-•>]|\d+[.)])\s*/,'').trim();}).filter(Boolean),lines=[],seen={};
+    if(!rows.length||/^(?:none|no clear link)\b/i.test(rows[0]))return{lines:[]};
+    rows.forEach(function(row){
+      var parts=row.split(/\s*\|\s*/),m;
+      if(parts.length<3&&(m=row.match(/^([a-z ]{3,16}?)\s*\(([^)]{2,40})\)\s*[:\-–—]\s*(.+)$/i)||row.match(/^([a-z ]{3,16}?)\s*[·:\-–—]\s*([a-z\/ ]{2,40}?)\s*:\s*(.+)$/i)))parts=[m[1],m[2],m[3]];
+      if(parts.length<3)return;
+      var kind=researchKind(parts[0]),field=researchFieldKey(parts[1]),body=parts.slice(2).join(' | ').replace(/\s+/g,' ').trim();
+      if(!kind||!field||!body||seen[kind]||field==='list'&&!hasListQuestion)return;
+      seen[kind]=true;lines.push({kind:kind,field:field,text:body.slice(0,280)});
+    });
+    return{lines:lines.slice(0,3)};
+  }
+  function researchDraftPrompt(title,opening){
+    return{system:'You draft a short research profile for the author of the document below (their manuscript, proposal or thesis chapter) from its abstract and introduction. Use only what the text states; leave a field empty rather than guess. Write in the first person, plainly, about 300 words in all and never more than 380. Return only valid JSON with these string fields: question (the research question), system (the system or organism studied), methods, novelty (what the author claims is new), open (open problems or next steps).',
+      user:'Title: '+(title||'Untitled')+'\n\nAbstract and introduction:\n'+opening};
+  }
+  function researchPastePrompt(){
+    return'Please write a short profile of my research for Phloem, the app I read papers in. It will compare passages I read with this profile, so be accurate and concrete. Use only the manuscript, proposal or slides I attach or paste below; leave a heading empty rather than guess. Write in the first person, about 300 words in all and never more than 380. Use exactly these five headings, each on its own line followed by its text:\n\n'+
+      researchFields().map(function(field){return field.label+':';}).join('\n')+'\n\nReply with the five headings and their text only.';
+  }
+  /* A draft from Phloem's AI or the reader's own: JSON, or the five headings with their text
+     (Markdown around a heading is ignored, as is anything before the first heading). */
+  function parseResearchDraft(text){
+    var raw=String(text||'').replace(/\r\n?/g,'\n').trim(),out={},found=false,current='',json=raw.match(/\{[\s\S]*\}/);
+    if(json){try{var data=JSON.parse(json[0]);Object.keys(data&&typeof data==='object'?data:{}).forEach(function(name){var key=researchFieldKey(name.replace(/_/g,' '));if(key&&key!=='list'&&typeof data[name]==='string'){out[key]=data[name].trim();found=true;}});if(found)return out;}catch(e){}}
+    raw.split('\n').forEach(function(line){
+      var clean=line.replace(/[*_`]+/g,'').replace(/^\s*(?:#{1,6}\s*|[-•]\s*|\d+[.)]\s*)/,'').trim(),m=clean.match(/^([a-z][a-z\/ ]{1,30}?)\s*[:：]\s*(.*)$/i)||clean.match(/^([a-z][a-z\/ ]{1,30})$/i),key=m?researchFieldKey(m[1]):'';
+      if(key&&key!=='list'){current=key;out[key]=(out[key]?out[key]+'\n':'')+(m[2]||'');found=true;return;}
+      if(current&&clean)out[current]=(out[current]?out[current]+'\n':'')+clean;
+    });
+    Object.keys(out).forEach(function(key){out[key]=out[key].replace(/\n{3,}/g,'\n\n').trim();});
+    return found?out:null;
+  }
+  // Abstract and introduction: the opening, up to a methods or results heading when one follows.
+  function researchOpening(text){
+    text=String(text||'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+    var cut=text.slice(1500).search(/(?:^|\s)(?:\d+(?:\.\d+)*\.?\s+)?(?:Materials and [Mm]ethods|MATERIALS AND METHODS|Methods|METHODS|Results|RESULTS)(?=\s*(?:$|\n|\d|[A-Z]))/);
+    return(cut>=0?text.slice(0,1500+cut):text).slice(0,8000).trim();
+  }
+  function researchProfile(){return normalizeResearchProfile(state.researchProfile);}
+  function researchRoutePrefs(){var saved=null;try{saved=JSON.parse(localStorage.getItem(RESEARCH_ROUTE_KEY)||'null');}catch(e){}return{prefer:saved&&saved.prefer==='provider'?'provider':'device',ack:saved&&typeof saved.ack==='string'?saved.ack:''};}
+  function saveResearchRoutePrefs(next){try{localStorage.setItem(RESEARCH_ROUTE_KEY,JSON.stringify(Object.assign(researchRoutePrefs(),next)));}catch(e){}}
+  function researchDeviceRoute(){return !nativeAiPlugin()&&browserLanguageModel()?{id:'browser',label:'Gemini Nano (on device)',cfg:{}}:null;}
+  /* On-device Gemini wherever the browser has it, unless the reader picked their provider for
+     this. Reads saved settings without disturbing an AI settings form being edited. */
+  function researchAiRoute(skipDevice){
+    var editing=aiSettings;aiSettings=loadAiSettings();
+    try{var chosen=activeAiRoute(false),device=skipDevice?null:researchDeviceRoute();if(chosen&&chosen.id==='browser')return skipDevice?null:chosen;return device&&(!chosen||researchRoutePrefs().prefer!=='provider')?device:chosen;}
+    finally{aiSettings=editing;}
+  }
+  function researchDestination(route){if(!route||route.id==='browser')return'';if(route.id==='compatible'){try{return new URL(route.cfg.endpoint).host;}catch(e){return'your endpoint';}}return nativeAiDestination(route.id);}
+  function researchRouteKey(route){return route?route.id+(route.id==='compatible'?':'+researchDestination(route):''):'';}
+  function researchWhereText(route){
+    if(!route)return'No AI is set up yet. On-device Gemini (in desktop Chrome) keeps your profile on this device; a cloud provider would receive it with every press. Set one up under AI assistant in Settings.';
+    if(route.id==='browser')return'Your profile stays on this device: on-device Gemini Nano reads it here, beside the passage you select.';
+    return'Each time you press For my research, your profile, the selected passage and the text around it go to '+route.label+' ('+researchDestination(route)+'). Your profile describes unpublished work: send it only if your university allows this provider for that.';
+  }
+  var researchAnswer=null,researchConsent=null,researchDialogSelection=null,researchDraftSerial=0;
+  function resetResearchCard(){
+    var card=byId('lookupCard');card.classList.remove('research-mode');byId('lookupResearchLines').textContent='';byId('lookupDefinition').classList.remove('hidden');
+    ['lookupResearchLines','lookupResearchSend','lookupResearchKeep','lookupResearchProfile'].forEach(function(id){byId(id).classList.add('hidden');});
+    if(!card.classList.contains('search-mode'))card.querySelector('.lookup-eyebrow').textContent='Definition for selection';
+  }
+  async function researchRelevance(selection,rect,confirmed){
+    var text=String(selection&&selection.text||'').replace(/\s+/g,' ').trim(),profile=researchProfile();if(!text)return;
+    if(!researchProfileReady(profile)){openResearchDialog(selection);return;}
+    clearTimeout(lookupTimer);var serial=++lookupSerial,ch=find(currentId),shown=text.length>160?text.slice(0,157)+'…':text,route=researchAiRoute();
+    prepareLookup(shown,rect);byId('lookupCard').classList.add('research-mode');byId('lookupCard').querySelector('.lookup-eyebrow').textContent='Read against your profile';
+    byId('lookupTitle').textContent='For your research';byId('lookupDefinition').textContent='Reading the passage against your profile…';researchAnswer=null;researchConsent=null;
+    if(!route){showLookupProblem('For your research','For my research needs AI. On-device Gemini keeps your profile on this device; a cloud provider receives it with every press.');byId('lookupAiSetup').classList.remove('hidden');return;}
+    // The first press with a cloud provider names it and waits for a yes.
+    if(route.id!=='browser'&&!confirmed&&researchRoutePrefs().ack!==researchRouteKey(route)){
+      researchConsent={selection:selection,rect:rect,key:researchRouteKey(route)};showLookupProblem('For your research',researchWhereText(route));
+      var send=byId('lookupResearchSend');send.textContent='Send to '+route.label;send.classList.remove('hidden');byId('lookupResearchProfile').classList.remove('hidden');placeLookupCard();return;
+    }
+    try{
+      if(ch&&ch.kind==='pdf'&&pdfDoc&&!pdfFindTextsReady(ch,pdfDoc)){try{await ensurePdfFindTexts(ch,pdfDoc);}catch(textError){}}
+      if(serial!==lookupSerial)return;
+      var question=researchListQuestion(currentId),prompt=researchRelevancePrompt(profile,{title:ch&&ch.title,excerpt:lookupPaperContext(selection),passage:text,question:question});
+      var result=await runAi(prompt.system,prompt.user,360,function(message){if(serial===lookupSerial)byId('lookupDefinition').textContent=message;},route);
+      if(serial!==lookupSerial)return;
+      researchAnswer={selection:selection,lines:parseResearchRelevance(result.text,!!question).lines,provider:result.provider||route.label,at:now()};renderResearchAnswer(researchAnswer);
+    }catch(error){
+      if(serial!==lookupSerial)return;showLookupProblem('For your research',error&&error.aiSetup?error.message:'Could not read this passage against your profile right now. Try again in a moment.');
+      // On-device Gemini that cannot run here: the profile dialog can switch this to the provider.
+      if(error&&error.aiSetup){byId('lookupAiSetup').classList.remove('hidden');if(route.id==='browser'&&researchAiRoute(true))byId('lookupResearchProfile').classList.remove('hidden');}
+    }
+  }
+  function renderResearchAnswer(answer){
+    var definition=byId('lookupDefinition'),list=byId('lookupResearchLines'),source=byId('lookupSource');byId('lookupTitle').textContent='For your research';definition.classList.remove('loading');list.textContent='';
+    if(!answer.lines.length){definition.textContent='No clear link to your work.';list.classList.add('hidden');}
+    else{
+      definition.textContent='';definition.classList.add('hidden');
+      answer.lines.forEach(function(line){
+        var item=document.createElement('li'),head=document.createElement('span'),kind=document.createElement('b'),field=document.createElement('span'),body=document.createElement('span');
+        item.dataset.kind=line.kind;head.className='lookup-research-head';kind.textContent=researchKindLabel(line.kind);field.className='lookup-research-field';field.textContent=researchFieldLabel(line.field);
+        body.className='lookup-research-text';body.textContent=line.text;head.append(kind,field);item.append(head,body);list.appendChild(item);
+      });
+      list.classList.remove('hidden');
+    }
+    source.textContent=answer.provider+' · verify';source.classList.add('ai');source.classList.remove('hidden');
+    byId('lookupResearchKeep').classList.remove('hidden');byId('lookupResearchProfile').classList.remove('hidden');placeLookupCard();
+  }
+  function researchAnswerNote(answer){
+    var when=new Date(answer.at).toLocaleDateString([],{day:'numeric',month:'short',year:'numeric'});
+    return'For my research ('+answer.provider+', '+when+')\n'+(answer.lines.length?answer.lines.map(function(line){return researchKindLabel(line.kind)+' · '+researchFieldLabel(line.field)+': '+line.text;}).join('\n'):'No clear link to my work.');
+  }
+  // The reading list's "My question" for this paper: the active list's item first, then one not yet done.
+  function researchListQuestion(paperId){
+    var lists=state.readingLists,items=lists&&Array.isArray(lists.items)?lists.items:[],known={},active='';try{active=localStorage.getItem('readingRoom.activeList.v1')||'';}catch(e){}
+    (lists&&Array.isArray(lists.lists)?lists.lists:[]).forEach(function(list){known[list.id]=true;});
+    var linked=items.filter(function(item){return item&&known[item.listId]&&item.paperId&&String(item.note||'').trim()&&resolvedPaperId(item.paperId)===paperId;});
+    var pick=linked.find(function(item){return item.listId===active;})||linked.find(function(item){return !item.done;})||linked[0];
+    return pick?String(pick.note).trim().slice(0,800):'';
+  }
+  async function researchPaperOpening(ch){
+    var text='';
+    if(ch.kind==='pdf'){
+      var pages=Array.isArray(ch.pageTexts)&&ch.pageTexts.length?ch.pageTexts:null;
+      if(!pages){var saved=await getDerived(ch.id);pages=saved&&Array.isArray(saved.pageTexts)&&saved.pageTexts.length?saved.pageTexts:null;if(!pages&&saved&&saved.readerText)text=saved.readerText;}
+      if(pages)text=pages.slice(0,4).join('\n\n');
+      if(!text){
+        var stored=await getPdf(ch.id);if(!stored)return'';
+        var doc=await (await loadPdfLib()).getDocument({data:await pdfBytes(stored)}).promise,parts=[];
+        try{for(var p=1;p<=Math.min(4,doc.numPages);p++)parts.push(contentLayout(await (await doc.getPage(p)).getTextContent()).map(function(line){return line.text;}).join(' '));}
+        finally{try{doc.destroy();}catch(e){}}
+        text=parts.join('\n\n');
+      }
+    }else text=String(ch.readerText||ch.fr||'');
+    return researchOpening(text);
+  }
+  function researchFieldId(key){return'research'+key.charAt(0).toUpperCase()+key.slice(1);}
+  function researchFieldsValue(){var draft={};researchFields().forEach(function(field){draft[field.key]=byId(researchFieldId(field.key)).value.replace(/\r\n?/g,'\n').trim();});return draft;}
+  function updateResearchCount(){
+    var words=researchWordCount(researchFieldsValue()),over=words>RESEARCH_WORDS,count=byId('researchCount');
+    count.textContent=words+' of '+RESEARCH_WORDS+' words'+(over?': shorten it so the AI reads all of it':'');count.classList.toggle('over',over);byId('researchSave').disabled=over;
+  }
+  // A draft only fills the fields it has text for, so it never blanks what the reader wrote.
+  function applyResearchDraft(draft){researchFields().forEach(function(field){var text=String(draft[field.key]||'').trim();if(text)byId(researchFieldId(field.key)).value=text.slice(0,3000);});updateResearchCount();}
+  function renderResearchWhere(){
+    var route=researchAiRoute(),device=researchDeviceRoute(),cloud=researchAiRoute(true),choice=byId('researchRoute'),where=byId('researchWhere');
+    where.textContent=researchWhereText(route);where.classList.toggle('cloud',!!route&&route.id!=='browser');choice.classList.toggle('hidden',!(device&&cloud));
+    if(device&&cloud){byId('researchRouteProvider').textContent=cloud.label;choice.querySelector('[value="device"]').checked=route.id==='browser';choice.querySelector('[value="provider"]').checked=route.id!=='browser';}
+    byId('researchPaperNote').textContent=!route?'Drafting needs AI: set up on-device Gemini or a provider under AI assistant in Settings.':(route.id==='browser'?'On-device Gemini reads the first pages (abstract and introduction) of the paper you pick, here,':'Phloem sends the first pages (abstract and introduction) of the paper you pick to '+route.label+' ('+researchDestination(route)+'),')+' and fills the fields below as a draft. Nothing is saved until you press Save profile.';
+    byId('researchPaperDraft').disabled=!route||!byId('researchPaper').options.length;
+  }
+  function fillResearchPapers(){
+    var select=byId('researchPaper'),keep=select.value,papers=state.chapters.filter(function(ch){return !state.deleted[ch.id]&&ch.id!==STARTER_GUIDE_ID;}).sort(function(a,b){return(+b.lastOpenedAt||0)-(+a.lastOpenedAt||0)||(+b.updatedAt||0)-(+a.updatedAt||0);});
+    select.textContent='';papers.forEach(function(ch){var option=document.createElement('option');option.value=ch.id;option.textContent=String(ch.title||'Untitled').slice(0,90);select.appendChild(option);});
+    if(keep&&papers.some(function(ch){return ch.id===keep;}))select.value=keep;select.disabled=!papers.length;
+  }
+  function setResearchFill(mode){
+    document.querySelectorAll('[data-research-fill]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.researchFill===mode));});
+    byId('researchPaperPanel').classList.toggle('hidden',mode!=='paper');byId('researchPastePanel').classList.toggle('hidden',mode!=='paste');
+    if(mode==='paper')fillResearchPapers();if(mode==='paste')byId('researchPromptText').value=researchPastePrompt();renderResearchWhere();
+  }
+  function openResearchDialog(selection){
+    var profile=researchProfile(),dialog=byId('researchDialog');researchDialogSelection=selection||null;researchDraftSerial++;
+    researchFields().forEach(function(field){byId(researchFieldId(field.key)).value=profile&&profile[field.key]||'';});
+    byId('researchPaste').value='';byId('researchDelete').classList.toggle('hidden',!researchProfileReady(profile));setTaskProgress('researchPaperProgress',false);
+    byId('researchStatus').textContent=selection&&!researchProfileReady(profile)?'Set up your profile first. Once it is saved, For my research reads the passage you selected.':'';
+    setResearchFill('write');updateResearchCount();if(!dialog.open)dialog.showModal();
+  }
+  function fillResearchSettings(){
+    var status=byId('researchSettingsStatus'),profile=researchProfile(),ready=researchProfileReady(profile),route=researchAiRoute();
+    status.textContent=ready?'Saved · '+researchWordCount(profile)+' words · '+(!route?'set up AI to use it':route.id==='browser'?'read on this device':'sent to '+route.label+' with each press'):'No profile yet.';
+    byId('researchSettingsOpen').textContent=ready?'Edit research profile':'Set up research profile';
+  }
+  function saveResearchProfile(){
+    var draft=researchFieldsValue(),status=byId('researchStatus'),selection=researchDialogSelection,route=researchAiRoute();
+    if(!researchProfileReady(draft)){status.textContent='Write at least one part of your profile first.';return;}
+    if(researchWordCount(draft)>RESEARCH_WORDS){status.textContent='Shorten it to '+RESEARCH_WORDS+' words first.';return;}
+    draft.v=1;draft.updatedAt=Math.max(now(),(+(state.researchProfile&&state.researchProfile.updatedAt)||0)+1);state.researchProfile=draft;
+    // Saving with a cloud provider named above counts as the yes for sending to it.
+    if(route&&route.id!=='browser')saveResearchRoutePrefs({ack:researchRouteKey(route)});
+    if(!persist()){status.textContent='Not saved on this device. Check the storage or open-tab warning, then save again.';return;}
+    researchDialogSelection=null;byId('researchDialog').close();fillResearchSettings();
+    if(selection&&!byId('selectionCard').classList.contains('hidden'))researchRelevance(selection,selectionAnchor);else showReaderToast('Research profile saved');
+  }
+  function deleteResearchProfile(){
+    if(!confirm('Delete your research profile? It is removed from every device that syncs this library.'))return;
+    var empty={v:1,updatedAt:Math.max(now(),(+(state.researchProfile&&state.researchProfile.updatedAt)||0)+1)};researchFields().forEach(function(field){empty[field.key]='';});
+    state.researchProfile=empty;var saved=persist();openResearchDialog(null);fillResearchSettings();byId('researchStatus').textContent=saved?'Profile deleted.':'Deleted here but not saved on this device. Check the storage or open-tab warning.';
+  }
+  async function draftResearchFromPaper(){
+    var ch=find(byId('researchPaper').value),route=researchAiRoute(),status=byId('researchStatus'),button=byId('researchPaperDraft'),serial=++researchDraftSerial;if(!ch||!route)return;
+    var title=String(ch.title||'Untitled').slice(0,80);button.disabled=true;setTaskProgress('researchPaperProgress',null);status.textContent='Reading the opening of “'+title+'”…';
+    try{
+      var opening=await researchPaperOpening(ch);if(serial!==researchDraftSerial)return;
+      if(opening.length<200){status.textContent='Phloem cannot read this paper’s text on this device yet. Open it once and try again, or use Paste from your AI.';return;}
+      var prompt=researchDraftPrompt(ch.title,opening),result=await runAi(prompt.system,prompt.user,900,function(message){if(serial===researchDraftSerial)status.textContent=message;},route);
+      if(serial!==researchDraftSerial)return;var draft=parseResearchDraft(result.text);
+      if(!draft){status.textContent=(result.provider||route.label)+' did not return a profile. Try again, or write it yourself.';return;}
+      applyResearchDraft(draft);setResearchFill('write');status.textContent='Drafted from “'+title+'” by '+(result.provider||route.label)+'. Check and edit it, then Save profile.';
+    }catch(error){if(serial===researchDraftSerial)status.textContent=error&&error.aiSetup?error.message:'Could not draft the profile right now. Try again in a moment.';}
+    finally{if(serial===researchDraftSerial){button.disabled=false;setTaskProgress('researchPaperProgress',false);}}
+  }
+  // One tap keeps the answer with its passage, as the clip's note in Clips.
+  function keepResearchAnswer(){var answer=researchAnswer;if(answer&&answer.selection)addReadingExcerpt(answer.selection,null,researchAnswerNote(answer));}
+  byId('lookupResearchKeep').onclick=keepResearchAnswer;
+  byId('lookupResearchProfile').onclick=function(){hideLookup();openResearchDialog(null);};
+  byId('lookupResearchSend').onclick=function(){var consent=researchConsent;if(!consent)return;saveResearchRoutePrefs({ack:consent.key});researchRelevance(consent.selection,consent.rect,true);};
+  byId('researchSettingsOpen').onclick=function(){openResearchDialog(null);};
+  byId('researchSave').onclick=saveResearchProfile;
+  byId('researchDelete').onclick=deleteResearchProfile;
+  byId('researchPaperDraft').onclick=draftResearchFromPaper;
+  document.querySelectorAll('[data-research-fill]').forEach(function(button){button.onclick=function(){var mode=button.dataset.researchFill;setResearchFill(mode);if(mode==='write'){var empty=researchFields().find(function(field){return !byId(researchFieldId(field.key)).value.trim();});byId(researchFieldId((empty||researchFields()[0]).key)).focus();}};});
+  researchFields().forEach(function(field){byId(researchFieldId(field.key)).addEventListener('input',updateResearchCount);});
+  // Picking the provider here, with the line above naming it, is the yes for sending to it.
+  document.querySelectorAll('#researchRoute input').forEach(function(input){input.onchange=function(){var cloud=researchAiRoute(true);saveResearchRoutePrefs(input.value==='provider'&&cloud?{prefer:'provider',ack:researchRouteKey(cloud)}:{prefer:'device'});renderResearchWhere();fillResearchSettings();};});
+  byId('researchPromptCopy').onclick=function(){
+    var text=researchPastePrompt(),status=byId('researchStatus');
+    function done(ok){status.textContent=ok?'Prompt copied. Paste it into your AI with your manuscript, proposal or slides, then paste its answer below.':'Copy was blocked here. Open “See the prompt” and copy it from there.';}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(function(){done(true);},function(){done(copyPlainText(text));});else done(copyPlainText(text));
+  };
+  byId('researchPasteFill').onclick=function(){
+    var draft=parseResearchDraft(byId('researchPaste').value),status=byId('researchStatus');
+    if(!draft){status.textContent='Phloem could not find the five headings (Research question, System / organism, Methods, What I claim is new, Open problems) in that answer.';return;}
+    applyResearchDraft(draft);setResearchFill('write');status.textContent='Filled in from your AI’s answer. Check and edit it, then Save profile.';
+  };
   byId('lookupClose').onclick=hideLookup;
   byId('lookupAiSetup').onclick=function(){hideLookup();fillSettings();byId('settingsDialog').showModal();};
   byId('lookupPhoto').onerror=function(){byId('lookupPhotoLink').classList.add('hidden');byId('lookupImageSource').classList.add('hidden');};
   document.addEventListener('pointerdown',function(e){
     // While Look up waits for a tapped word, the paper scrolls and taps without closing it.
     var tappingPaper=lookupTapping()&&!!e.target.closest('#documentPane,#zenPhoneLookup');
-    if(!e.target.closest('#lookupCard')&&!tappingPaper)hideLookup();
-    if(!e.target.closest('#selectionCard,#lookupCard,#zenPhoneLookup,#touchDock,#markerTools,#zenAnnotateTool,#highlightToolbar')&&!e.target.closest('.text-layer,.original')&&!tappingPaper)clearPendingSelection();
+    // The research profile dialog opens over a selected passage, which waits for it to be saved.
+    /* A tile that answers in this card (Define, What does it mean?, For my research) replaces
+       the answer itself. Hiding it first re-placed the shorter card under the pointer, so the
+       press landed elsewhere and the tap was lost. */
+    if(!e.target.closest('#lookupCard,#researchDialog,#selectionExplain,#selectionMeaning,#selectionResearch,[data-phone-proxy="selectionExplain"]')&&!tappingPaper)hideLookup();
+    if(!e.target.closest('#selectionCard,#lookupCard,#zenPhoneLookup,#touchDock,#markerTools,#zenAnnotateTool,#highlightToolbar,#researchDialog')&&!e.target.closest('.text-layer,.original')&&!tappingPaper)clearPendingSelection();
     /* Color controls stay available while marking the paper, just like the Pen
        toolbar. Other controls, Escape, or switching tools dismiss them. */
     var markingPaper=!!e.target.closest('.pdf-page,.original');
@@ -4314,7 +4590,7 @@
     card.classList.add('search-mode');byId('lookupSearch').classList.remove('hidden');byId('lookupSearchInput').value='';
     byId('lookupSelection').textContent='';byId('lookupTitle').textContent='Look up a word';
     var definition=byId('lookupDefinition');definition.textContent='Type a word or term, or tap any word in the paper.';definition.classList.remove('loading');
-    ['lookupPhotoLink','lookupArticle','lookupImageSource','lookupSource','lookupAiSetup','lookupRetry'].forEach(function(id){var node=byId(id);if(node)node.classList.add('hidden');});
+    ['lookupPhotoLink','lookupArticle','lookupImageSource','lookupSource','lookupAiSetup','lookupRetry'].forEach(function(id){var node=byId(id);if(node)node.classList.add('hidden');});resetResearchCard();
     card.classList.remove('hidden');document.body.classList.add('lookup-tapping');byId('zenPhoneLookup').setAttribute('aria-expanded','true');
   }
   function endLookupSearch(){
@@ -8626,7 +8902,8 @@
     renderReadingExcerpts();
     if(focusId)requestAnimationFrame(function(){if(excerptView)excerptView.focus(focusId);});
   }
-  function addReadingExcerpt(selection,workspacePoint){
+  // note: text kept with the clip (For my research keeps its answer this way).
+  function addReadingExcerpt(selection,workspacePoint,note){
     var ch=find(currentId);if(readingExcerptsUnavailable(ch))return null;
     var quote=selection&&typeof selection.text==='string'?selection.text:'',anchor=selection?currentKeepAnchor(selection):excerptReadingAnchor();
     if(selection&&!quote.trim())return null;
@@ -8637,13 +8914,16 @@
     // Repeated taps on the same selection open the existing clip, not duplicates.
     var existing=quote&&items.find(function(item){return item.quote===quote&&item.anchor.kind===anchor.kind&&
       (anchor.kind==='pdf'?item.anchor.page===anchor.page&&Math.abs((item.anchor.position||{}).y-(anchor.position||{}).y)<.002:item.anchor.para===anchor.para&&Math.abs(item.anchor.offset-anchor.offset)<.002);});
-    if(existing){clearPendingSelection();if(workspacePoint)showWorkspaceClip(existing.id,workspacePoint);else showExcerptNotebook(existing.id);return existing.id;}
-    var record={id:uid('excerpt-'),quote:quote,note:'',anchor:anchor};if(anchor.kind==='pdf')record.sourceHash=foldSourceHash;
+    if(existing){
+      if(note&&existing.note.indexOf(note)<0){try{saveExcerptState(ch,window.PhloemExcerpts.upsert(ch.readingExcerpts,Object.assign({},existing,{note:existing.note?existing.note+'\n\n'+note:note}),now()));showReaderToast('Added to this passage’s clip in Clips');}catch(error){showReaderToast('Could not save this clip. Your selection has not been changed.');return null;}}
+      clearPendingSelection();if(workspacePoint)showWorkspaceClip(existing.id,workspacePoint);else showExcerptNotebook(existing.id);return existing.id;
+    }
+    var record={id:uid('excerpt-'),quote:quote,note:note||'',anchor:anchor};if(anchor.kind==='pdf')record.sourceHash=foldSourceHash;
     try{
       var saved=saveExcerptState(ch,window.PhloemExcerpts.upsert(ch.readingExcerpts,record,now()));
       clearPendingSelection();if(workspacePoint)showWorkspaceClip(record.id,workspacePoint);else showExcerptNotebook(record.id);
       if(!saved)excerptStatus('Not confirmed saved. Keep this page open; check the storage warning before leaving.');
-      else showReaderToast(workspacePoint?(quote?'Passage placed in Workspace':'Note added to Workspace'):(quote?'Excerpt saved to Clips':'Note added to Clips'));
+      else showReaderToast(workspacePoint?(quote?'Passage placed in Workspace':'Note added to Workspace'):(quote?(note?'Passage and answer kept in Clips':'Excerpt saved to Clips'):'Note added to Clips'));
       return record.id;
     }catch(error){showReaderToast('Could not save this clip. Your selection has not been changed.');return null;}
   }
@@ -10752,6 +11032,7 @@
     queueLookup(selection.text,rect,selection,0);
   };
   if(byId('selectionMeaning'))byId('selectionMeaning').onclick=function(){var selection=pendingSelection||lastAskSelection;if(selection)explainSelection(selection,selectionAnchor);};
+  if(byId('selectionResearch'))byId('selectionResearch').onclick=function(){var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection||lastAskSelection;if(selection)researchRelevance(selection,selectionAnchor);};
   /* Copy the selected words as plain text. WebKit can refuse the async clipboard, so a
      hidden textarea copy is the fallback. */
   function copyPlainText(text){
@@ -11656,7 +11937,7 @@
         /* OCR/extracted PDF text is rebuildable and can make a snapshot enormous. The
            native cloud record follows localState(): durable reading work plus metadata,
            while each original rides separately as a CKAsset. */
-        var snapshot=localState(),payload=JSON.stringify({chapters:snapshot.chapters,deleted:snapshot.deleted||{},merged:snapshot.merged||{},categoryOrder:snapshot.categoryOrder||[],categoryOrderUpdatedAt:snapshot.categoryOrderUpdatedAt||0,readingLists:snapshot.readingLists,savedAt:snapshot.savedAt||now()});
+        var snapshot=localState(),payload=JSON.stringify({chapters:snapshot.chapters,deleted:snapshot.deleted||{},merged:snapshot.merged||{},categoryOrder:snapshot.categoryOrder||[],categoryOrderUpdatedAt:snapshot.categoryOrderUpdatedAt||0,readingLists:snapshot.readingLists,researchProfile:snapshot.researchProfile,savedAt:snapshot.savedAt||now()});
         if(ownCopy&&payload===iCloudOwnPayload)break;
         try{var savedLibrary=await plugin.saveLibrary({payload:payload,changeTag:changeTag});iCloudOwnTag=savedLibrary&&savedLibrary.changeTag||'';iCloudOwnPayload=iCloudOwnTag?payload:'';break;}catch(error){iCloudOwnTag='';iCloudOwnPayload='';if(error&&error.code==='ICLOUD_CONFLICT'&&attempt<2)continue;throw error;}
       }
@@ -11969,7 +12250,7 @@
         if(mergeState(remote)){persist(false);renderShelf();updateReviewBadge();}
       }
       await repairDuplicateStorage();
-      var payload=JSON.stringify({chapters:await chaptersForSync(),deleted:state.deleted||{},merged:state.merged||{},categoryOrder:state.categoryOrder||[],categoryOrderUpdatedAt:state.categoryOrderUpdatedAt||0,readingLists:state.readingLists}),up;
+      var payload=JSON.stringify({chapters:await chaptersForSync(),deleted:state.deleted||{},merged:state.merged||{},categoryOrder:state.categoryOrder||[],categoryOrderUpdatedAt:state.categoryOrderUpdatedAt||0,readingLists:state.readingLists,researchProfile:state.researchProfile}),up;
       if(ownCopy&&payload===gdriveOwnPayload)up={ok:true,json:function(){return Promise.resolve({id:fileId,version:gdriveOwnVersion});}};
       else if(fileId){
         up=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media&fields=id,version',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:payload});
@@ -12023,7 +12304,7 @@
 
   /* encrypted GitHub state sync + PDF picker */
   function aiProviderNote(id){
-    if(nativeAiPlugin()){if(id==='compatible')return 'Custom AI endpoints are not enabled in the iPad app.';return 'Your API key is stored in iOS Keychain and is never placed in Phloem backups. When you deliberately use AI, '+AI_PROVIDERS[id].label+' receives the selected passage, current page, or guide text you chose, your question, and—for reviewer tools—extracted reviewer text plus candidate excerpts. The original PDF file is not uploaded.';}
+    if(nativeAiPlugin()){if(id==='compatible')return 'Custom AI endpoints are not enabled in the iPad app.';return 'Your API key is stored in iOS Keychain and is never placed in Phloem backups. When you deliberately use AI, '+AI_PROVIDERS[id].label+' receives the selected passage, current page, or guide text you chose, your question, and—for reviewer tools—extracted reviewer text plus candidate excerpts. For my research also sends the research profile you wrote, and drafting that profile sends the opening pages of the paper you pick. The original PDF file is not uploaded.';}
     if(id==='auto')return 'Private mode keeps review text on this device and never falls back to a cloud provider. Choose one of the providers below when you want high-accuracy review rechecks.';
     if(id==='compatible')return 'For OpenRouter, a local model gateway, or another service that accepts OpenAI-style chat completions. The endpoint must allow browser requests (CORS).';
     return 'For reviewer files, exact quoted passages are linked locally first; '+AI_PROVIDERS[id].label+' handles classification and the remaining passage matches in parallel. Other AI questions also use '+AI_PROVIDERS[id].label+'. The key is excluded from library sync and backups.';
@@ -12058,7 +12339,7 @@
     var service='';try{service=localStorage.getItem(AI_PASS_SERVICE_KEY)||'';}catch(e){}byId('aiPassService').value=service;byId('aiPassOwnerCode').value='';renderSharedAiPass();if(!loadSharedAiPass())byId('aiPassStatus').textContent=service?'Ready to make a one-review link. Your approval code is never saved here.':'Add the address of your private pass service once it is deployed.';
   }
   function fillSettings(){
-    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);fillAiSettings();fillPassSettings();
+    byId('syncRepo').value=syncCfg?syncCfg.repo||'':'';byId('syncToken').value=syncCfg?syncCfg.token||'':'';byId('syncPass').value=syncCfg?syncCfg.pass||'':'';byId('syncNowBtn').classList.toggle('hidden',!syncCfg);byId('syncOffBtn').classList.toggle('hidden',!syncCfg);fillAiSettings();fillPassSettings();fillResearchSettings();
     byId('gdriveConnectBtn').textContent=gdriveOn()?'Sign in again':'Connect Google Drive';
     byId('gdriveConnectBtn').classList.toggle('button',!gdriveOn());byId('gdriveConnectBtn').classList.toggle('soft-button',gdriveOn());
     byId('gdriveSyncBtn').classList.toggle('hidden',!gdriveOn());byId('gdriveOffBtn').classList.toggle('hidden',!gdriveOn());
@@ -12083,6 +12364,7 @@
   function mergeState(inc){
     var changed=false,foldValidationNow=now();state.deleted=state.deleted||{};state.merged=state.merged||{};
     if(Array.isArray(inc.categoryOrder)&&(+inc.categoryOrderUpdatedAt||0)>(+state.categoryOrderUpdatedAt||0)){state.categoryOrder=inc.categoryOrder.slice();state.categoryOrderUpdatedAt=+inc.categoryOrderUpdatedAt||0;changed=true;}
+    if(typeof newerResearchProfile==='function'){var research=newerResearchProfile(state.researchProfile,inc.researchProfile);if(research){state.researchProfile=research;changed=true;}}
     // Reading lists merge record by record; a copy from a newer Phloem is left alone.
     if(inc.readingLists!==undefined&&window.PhloemLists&&!readingListsLocked){try{var listsBefore=window.PhloemLists.signature(state.readingLists),listsMerged=window.PhloemLists.merge(state.readingLists,inc.readingLists);if(JSON.stringify(listsMerged)!==listsBefore){state.readingLists=listsMerged;changed=true;setTimeout(refreshReadingLists,0);}}catch(e){}}
     Object.keys(inc.merged||{}).forEach(function(dropId){var keepId=inc.merged[dropId];if(!keepId||dropId===keepId)return;if(state.merged[dropId]!==keepId){state.merged[dropId]=keepId;changed=true;}if(find(dropId))queueDuplicateStorage(keepId,dropId);});
@@ -12167,7 +12449,7 @@
           }
         }
         await repairDuplicateStorage();
-        var syncChapters=await chaptersForSync(),payload=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{},merged:state.merged||{},categoryOrder:state.categoryOrder||[],categoryOrderUpdatedAt:state.categoryOrderUpdatedAt||0,readingLists:state.readingLists}),body={message:'Phloem reading notes sync',content:btoa(payload)};if(sha)body.sha=sha;
+        var syncChapters=await chaptersForSync(),payload=await encryptState(syncCfg.pass,{chapters:syncChapters,deleted:state.deleted||{},merged:state.merged||{},categoryOrder:state.categoryOrder||[],categoryOrderUpdatedAt:state.categoryOrderUpdatedAt||0,readingLists:state.readingLists,researchProfile:state.researchProfile}),body={message:'Phloem reading notes sync',content:btoa(payload)};if(sha)body.sha=sha;
         var put=await fetch(ghUrl(SYNC_FILE),{method:'PUT',headers:{'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)});
         if(put.ok)break;
         if((put.status===409||put.status===422)&&attempt<2)continue;
@@ -12342,14 +12624,14 @@
         ++nativeAiSettingsEpoch;saveButton.disabled=true;byId('aiKeyStatus').textContent=hasKey?'Saving AI settings…':'Waiting for the secure iOS API key prompt…';
         try{
           if(!consented){var result=await nativePlugin.configure({provider:id,consentVersion:NATIVE_AI_CONSENT_VERSION,consentGranted:true});if(!result.hasCredential)throw new Error('No API key was saved. Please try again.');nativeAiConsentedProviders[id]=true;}
-          ++nativeAiSettingsEpoch;aiSettings.providers[id]={key:'',keyPresent:true,model:model,endpoint:''};saveAiSettings();
+          ++nativeAiSettingsEpoch;aiSettings.providers[id]={key:'',keyPresent:true,model:model,endpoint:''};saveAiSettings();fillResearchSettings();
           if(byId('aiProvider').value===id){byId('nativeAiConsentCheck').checked=false;renderNativeAiConsent(id);byId('aiKeyStatus').textContent='Ready to use '+AI_PROVIDERS[id].label+'. The key is stored in iOS Keychain.';}
         }catch(error){if(byId('aiProvider').value===id)byId('aiKeyStatus').textContent=error&&error.message||'The API key could not be saved securely.';}
         finally{saveButton.disabled=false;}return;
       }
       aiSettings.providers[id]={key:key,keyPresent:false,model:model,endpoint:id==='compatible'?endpoint:''};
     }
-    saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Asking Chrome to prepare Gemini now…':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');if(id==='auto'&&browserLanguageModel())startLocalAiPreparation();else setTaskProgress('aiKeyProgress',false);
+    saveAiSettings();byId('aiKeyStatus').textContent=id==='auto'?'Automatic AI saved. Asking Chrome to prepare Gemini now…':(aiSettings.providers[id].key?'Saved '+AI_PROVIDERS[id].label+' on this device.':'Key removed; '+AI_PROVIDERS[id].label+' is not active until you add one.');if(id==='auto'&&browserLanguageModel())startLocalAiPreparation();else setTaskProgress('aiKeyProgress',false);fillResearchSettings();
   };
   byId('aiKeyRemove').onclick=async function(){var nativePlugin=nativeAiPlugin(),id=byId('aiProvider').value;if(!nativePlugin||!AI_PROVIDERS[id]||!confirm('Remove the saved '+AI_PROVIDERS[id].label+' API key from this iPad?'))return;++nativeAiSettingsEpoch;this.disabled=true;try{await nativePlugin.removeCredential({provider:id});++nativeAiSettingsEpoch;var cfg=aiSettings.providers[id]||{};cfg.key='';cfg.keyPresent=false;delete nativeAiConsentedProviders[id];aiSettings.providers[id]=cfg;saveAiSettings();if(byId('aiProvider').value===id){byId('aiKey').value='';byId('nativeAiConsentCheck').checked=false;renderNativeAiConsent(id);byId('aiKeyStatus').textContent='The '+AI_PROVIDERS[id].label+' key was removed from iOS Keychain.';}}catch(error){if(byId('aiProvider').value===id)byId('aiKeyStatus').textContent=error&&error.message||'The saved key could not be removed.';}finally{this.disabled=false;}};
   byId('cloudPassRemove').onclick=function(){saveSharedAiPass(null);if(byId('settingsDialog').open)fillPassSettings();};

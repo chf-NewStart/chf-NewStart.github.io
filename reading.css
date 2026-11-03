@@ -1509,13 +1509,16 @@
     .selection-context-copy::before { content: "✦"; margin-right: 6px; color: var(--accent); }
     .selection-card.ai-open .selection-context { margin: 0; padding: 9px 14px; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--accent-soft); }
     /* Six equal tiles: understand (Define, What does it mean?, Copy), then keep (Clips,
-       Workspace, a parked question). */
+       Workspace, a parked question). For my research spans a slim row of its own below
+       them, so a seventh action does not shrink the six. */
     .selection-secondary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 2px 14px 14px; }
     .selection-secondary .selection-explain { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 58px; padding: 8px 4px; border: 1px solid color-mix(in srgb, var(--line) 80%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--surface-2) 35%, transparent); color: var(--ink); font: 650 .68rem/1.2 var(--sans); text-align: center; }
     .selection-secondary .selection-explain svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; opacity: .8; }
     .selection-secondary .selection-explain span { font-size: inherit; line-height: inherit; }
     .selection-secondary .selection-explain:hover, .selection-secondary .selection-explain:focus-visible { border-color: var(--muted); background: var(--surface-2); color: var(--ink); outline: none; }
     .selection-secondary .selection-explain:disabled { opacity: .45; cursor: default; }
+    .selection-secondary .selection-research { grid-column: 1 / -1; flex-direction: row; gap: 8px; min-height: 40px; padding: 7px 12px; border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+    .selection-secondary .selection-research svg { width: 18px; height: 18px; }
     .selection-saved-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 16px 12px; }
     .selection-saved-colors { display: flex; align-items: center; gap: 7px; }
     .selection-remove { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font: 650 .64rem/1.25 var(--sans); white-space: nowrap; }
@@ -1587,6 +1590,15 @@
     .lookup-source.ai { background: var(--accent-soft); color: var(--accent); }
     .lookup-definition { margin: 0; color: var(--ink); font: .88rem/1.55 var(--serif); }
     .lookup-definition.loading { color: var(--muted); }
+    /* For my research: up to three lines, each naming the profile field it bears on. */
+    .lookup-research { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .lookup-research li { display: grid; gap: 4px; padding: 9px 11px 10px; border-left: 3px solid var(--blue); border-radius: 3px 10px 10px 3px; background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+    .lookup-research li[data-kind="differs"] { border-left-color: var(--accent); }
+    .lookup-research li[data-kind="use"] { border-left-color: color-mix(in srgb, var(--yellow) 70%, var(--muted)); }
+    .lookup-research-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+    .lookup-research-head b { color: var(--ink); font: 750 .6rem/1.2 var(--sans); letter-spacing: .09em; text-transform: uppercase; }
+    .lookup-research-field { padding: 2px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font: 650 .6rem/1.3 var(--sans); }
+    .lookup-research-text { color: var(--ink); font: .86rem/1.5 var(--serif); }
     .lookup-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
     .lookup-links a, .lookup-links button { color: var(--blue); font-size: .67rem; font-weight: 650; text-decoration: none; }
     .lookup-links a:hover { text-decoration: underline; }
@@ -2050,6 +2062,32 @@
     .native-ai-enabled p { flex: 1 1 200px; margin: 0; color: var(--ink); font-size: .72rem; line-height: 1.5; }
     #aiPassCreate { width: 100%; }
     .status { min-height: 1.2em; margin-top: 8px; color: var(--muted); font-size: .7rem; }
+    /* The research profile: where it goes first, three ways to fill it, five short fields. */
+    #researchDialog { width: min(620px, calc(100vw - 24px)); }
+    .research-body { display: grid; gap: 12px; }
+    .research-body p { margin: 0; }
+    .research-lede { color: var(--ink) !important; font: .9rem/1.55 var(--serif) !important; }
+    .research-where { padding: 10px 12px; border-left: 3px solid var(--blue); border-radius: 6px; background: var(--surface-2); color: var(--ink) !important; font-size: .74rem !important; }
+    .research-where.cloud { border-left-color: var(--accent); }
+    .research-route { display: grid; gap: 6px; }
+    .research-route label { display: flex; align-items: flex-start; gap: 9px; min-height: 32px; color: var(--ink); font-size: .74rem; line-height: 1.45; }
+    .research-route input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--accent); }
+    .research-fill { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .research-fill button { min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); color: var(--ink); font: 650 .72rem/1.3 var(--sans); }
+    .research-fill button[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: var(--accent-soft); }
+    .research-panel { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+    .research-panel .field-label { margin: 2px 0 0; }
+    .research-prompt summary { color: var(--blue); font-size: .7rem; font-weight: 650; cursor: pointer; }
+    .research-prompt textarea { margin-top: 8px; resize: vertical; font: .74rem/1.45 var(--sans); }
+    .research-fields { display: grid; }
+    .research-fields .field-label { margin: 10px 0 5px; }
+    .research-fields textarea { min-height: 62px; resize: vertical; font: .84rem/1.5 var(--sans); }
+    .research-count { text-align: right; font-size: .68rem !important; }
+    .research-count.over { color: var(--accent-dark) !important; font-weight: 700; }
+    .research-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .research-actions button { min-height: 44px; }
+    @media (max-width: 560px) { .research-fill { grid-template-columns: minmax(0, 1fr); } }
+    @media (hover: none) and (pointer: coarse) { #researchDialog :is(textarea, select) { font-size: 16px; } }
     .github-papers { display: grid; gap: 7px; margin-top: 12px; }
     .github-paper { display: flex; align-items: center; gap: 9px; width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 10px; background: var(--paper); text-align: left; }
     .github-paper span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

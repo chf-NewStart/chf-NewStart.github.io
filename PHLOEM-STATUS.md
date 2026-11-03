@@ -6,6 +6,41 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-03)
 
+- **For my research, v248 (web; Houfu: he gives a summary of his own research, and a button beside Define, Copy, Save
+  to Clips, Workspace and Park question says how a highlighted passage relates to, differs from or helps it).**
+  (1) **Research profile** (Settings › For my research, or the button itself while there is none): five short fields
+  (research question; system / organism; methods; what I claim is new; open problems), 400 words at most (Save waits
+  above that). Three ways in, each ending in an editable draft that only **Save profile** keeps: write it; **Draft from
+  a paper in my library** (AI drafts from the paper's abstract and introduction: the opening pages up to a Methods or
+  Results heading, at most 8,000 characters; a field the draft leaves empty keeps what was typed); **Paste from your
+  AI** (Copy prompt for ChatGPT or Claude with the manuscript attached, then paste the answer back; JSON or the five
+  headings, Markdown ignored). It lives in `state.researchProfile` with an `updatedAt` clock and syncs in all three
+  payloads (GitHub's encrypted `reading-room.enc.json`, Drive, iCloud); the newer copy wins whole, and Delete leaves an
+  emptied, newer profile so the deletion syncs too. (2) **For my research** is a slim full-width seventh row under the
+  six tiles (`#selectionResearch`); on a phone it sits under More below its three tiles, and the four-button phone row
+  is unchanged. The answer card, titled **For your research**, gives up to three lines (Supports / Differs / Use it
+  for), each naming the profile field it bears on, or the single line "No clear link to your work." The prompt
+  (`researchRelevancePrompt`) judges only the passage and its surrounding excerpt (`lookupPaperContext`), asks for NONE
+  when a link would be generic or guessed, and adds the reading list's "My question" when the open paper has one; the
+  parser drops any line that names no field, so a vague or rambling reply also reads as no clear link. **Keep in
+  Clips** saves the passage with the answer as the clip's note (`addReadingExcerpt(selection, null, note)`).
+  (3) **Privacy:** only this action reads the profile (the test checks the other AI prompts). On-device Gemini runs it
+  wherever the browser has it, even with a cloud provider set up; the profile dialog says where the profile goes and
+  offers the switch. The first press with a cloud provider names it and its host and waits for **Send to …** (per
+  device, `readingRoom.researchRoute.v1`). The iPad app has no on-device model, so there it always goes to the chosen
+  provider after that yes; `ipad.css` hides the button, the settings section and the dialog wherever cloud AI is off
+  (China mainland storefront), and the iPad provider note and `phloem-ipad/privacy.html` (updated 3 Nov) name the
+  profile. (4) Pressing Define, What does it mean? or For my research while an answer is open no longer moves the
+  card from under the pointer, which lost the tap. **Seen on the way, not changed:** the other tiles (Copy, Save to
+  Clips, To workspace, Park question, Highlight, Add note) still lose a tap made while a definition is open, as on
+  main. Test: new `reading-research-relevance` (74 checks in Chromium and WebKit: prompts and parsers, laptop, phone,
+  a PDF, Drive sync, the iPad bundle's region rule; it fails on v247). 57 related suites (selection card, Define, What
+  does it mean?, AI providers and the iPad AI bridge, Clips and Workspace drops, iCloud/Drive/GitHub sync,
+  persistence, two tabs, reading lists, settings, phone, iPad, Zen) pass in Chromium and WebKit except main's known
+  failures (`reading-pdf-ink` 69/72, `reading-split-undo-browser`, and in WebKit `reading-zen-compact-browser`), which
+  fail the same way on main; `apps/ipad` 22/22. Not tried on a real iPhone or iPad. The apps get it in the next build
+  after 1.2.7.
+
 - **Glass guide handle, v247 (web; replaces v246's edge tab).** Houfu disliked the v246 tab (an edge-glued tab looks
   like a stashed Picture in Picture video), rejected handles off the guide (mocks A–D), then asked for "the handle for
   the old one glass". The round 42 px handle is back 8 px in from the guide's left on phone and iPad, but clear glass:
@@ -684,6 +719,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Open questions for Houfu
 
+- **For my research (v248) shows on every selection card**, and opens profile setup until a profile is saved, so it
+  can be found. If it should stay out of sight until there is a profile, it is a one-line change.
+
 - **Two papers side by side in one window: recommended not to build now.** The reader holds one paper at a time
   (page, zoom, highlights, Listen are all single), so either it is reworked to hold two (a deep change touching
   everything, iPad included) or a second reader runs in a frame beside the first. The frame keeps each paper's own page,
@@ -725,6 +763,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-11-03 v248:** For my research: a research profile (Settings; write it, draft it from a library paper, or paste
+  it from your own AI; synced) and a seventh selection action that reads a passage against it, or says there is no
+  clear link (see Now).
 
 - **2026-11-02 v245:** daily reading on a phone and an iPad (see Now): the small-print Reader view offer on a phone,
   each paper reopening in its last view, one place across Reader view and the PDF (library progress included), the

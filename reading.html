@@ -36,9 +36,9 @@
   <meta name="apple-mobile-web-app-title" content="Phloem">
   <link rel="preload" href="/fonts/houfu-hand.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#f3f0e8">
-  <link rel="stylesheet" href="/reading.css?v=247">
-  <link rel="stylesheet" href="/reading-fold.css?v=247">
-  <link rel="stylesheet" href="/reading-workspace.css?v=247">
+  <link rel="stylesheet" href="/reading.css?v=248">
+  <link rel="stylesheet" href="/reading-fold.css?v=248">
+  <link rel="stylesheet" href="/reading-workspace.css?v=248">
 </head>
 <body class="library-view">
   <header class="masthead">
@@ -684,6 +684,7 @@
           <button class="selection-explain" id="selectionSaveExcerpt" type="button" aria-label="Save to Clips: keep this passage in the notebook's Clips tab" title="Keep this passage in the notebook's Clips tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v16l-5-3.5L7 20z"/></svg><span>Save to Clips</span></button>
           <button class="selection-explain" id="selectionToWorkspace" type="button" draggable="true" aria-label="Place this passage in the workspace" title="Tap to place, or drag this passage into the workspace"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg><span>To workspace</span></button>
           <button class="selection-explain" id="selectionParkQuestion" type="button" aria-label="Park a question about this passage to come back to" title="Park a question to come back to"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H10l-5 4z"/><path d="M12 8.2v3"/><path d="M12 13.2h.01"/></svg><span>Park question</span></button>
+          <button class="selection-explain selection-research" id="selectionResearch" type="button" aria-label="For my research: how this passage relates to your own work" title="How this passage relates to your research profile (AI)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span>For my research</span></button>
         </div>
         <div class="selection-saved-tools hidden" id="selectionSavedTools">
           <div class="selection-saved-colors" role="group" aria-label="Highlight color">
@@ -721,7 +722,8 @@
             <h3 id="lookupTitle">Looking up…</h3>
             <span class="lookup-source hidden" id="lookupSource"></span>
             <p class="lookup-definition loading" id="lookupDefinition" role="status" aria-live="polite">Finding a useful explanation and image.</p>
-            <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupAiSetup" type="button">Set up AI →</button><button class="text-button hidden" id="lookupRetry" type="button">Not this? Look it up again</button></div>
+            <ul class="lookup-research hidden" id="lookupResearchLines" aria-live="polite"></ul>
+            <div class="lookup-links"><a class="hidden" id="lookupArticle" href="#" target="_blank" rel="noopener noreferrer">Wikipedia article ↗</a><a class="hidden" id="lookupImageSource" href="#" target="_blank" rel="noopener noreferrer">Image source ↗</a><button class="text-button hidden" id="lookupResearchSend" type="button">Send</button><button class="text-button hidden" id="lookupResearchKeep" type="button">Keep in Clips</button><button class="text-button hidden" id="lookupResearchProfile" type="button">Edit profile</button><button class="text-button hidden" id="lookupAiSetup" type="button">Set up AI →</button><button class="text-button hidden" id="lookupRetry" type="button">Not this? Look it up again</button></div>
           </div>
         </aside>
       </aside>
@@ -1066,6 +1068,12 @@
         <div class="status" id="aiKeyStatus"></div>
         <div class="task-progress hidden" id="aiKeyProgress" role="progressbar" aria-label="On-device Gemini preparation progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
       </section>
+      <section id="researchSettingsSection">
+        <h3>For my research</h3>
+        <p>Describe your own research in about 400 words. Then <strong>For my research</strong>, under a selected passage, says how the passage supports, differs from or could help your work, or plainly that there is no clear link. No other AI action reads your profile.</p>
+        <button class="soft-button" id="researchSettingsOpen" type="button">Set up research profile</button>
+        <div class="status" id="researchSettingsStatus" role="status" aria-live="polite">No profile yet.</div>
+      </section>
       <section>
         <h3>Share a cloud review pass</h3>
         <p>Create a one-review link for a friend who needs stronger passage matching. The link carries a temporary grant—not your DeepSeek key—and permits only review classification and location.</p>
@@ -1102,6 +1110,53 @@
         <p>Phloem is a calm, local-first paper reading desk built by Houfu Chen.</p>
         <p>Phloem icon artwork by <a href="https://www.linkedin.com/in/itpromma/" target="_blank" rel="noopener">Promma ↗</a>.</p>
       </section>
+    </div>
+  </dialog>
+
+  <dialog id="researchDialog" class="research-dialog" aria-labelledby="researchDialogTitle">
+    <div class="dialog-head"><div><span class="panel-eyebrow">For my research</span><h2 id="researchDialogTitle">Your research profile</h2></div><button class="icon-btn" type="button" data-close="researchDialog" aria-label="Close research profile">×</button></div>
+    <div class="dialog-body research-body">
+      <p class="research-lede">A short summary of your own work. <strong>For my research</strong> reads it beside a passage you select and says how the two connect, or that they don’t. No other AI action reads it.</p>
+      <p class="research-where" id="researchWhere"></p>
+      <div class="research-route hidden" id="researchRoute" role="radiogroup" aria-label="Where For my research runs">
+        <label><input type="radio" name="researchRoute" value="device"> <span>On this device (Gemini Nano): your profile stays here</span></label>
+        <label><input type="radio" name="researchRoute" value="provider"> <span><b id="researchRouteProvider">Your provider</b>: your profile is sent with every press</span></label>
+      </div>
+      <div class="research-fill" role="group" aria-label="Fill in your profile">
+        <button type="button" data-research-fill="write" aria-pressed="true">Write it</button>
+        <button type="button" data-research-fill="paper" aria-pressed="false" aria-controls="researchPaperPanel">Draft from a paper in my library</button>
+        <button type="button" data-research-fill="paste" aria-pressed="false" aria-controls="researchPastePanel">Paste from your AI</button>
+      </div>
+      <div class="research-panel hidden" id="researchPaperPanel">
+        <label class="field-label" for="researchPaper">Your manuscript, proposal or thesis chapter</label>
+        <select class="field" id="researchPaper"></select>
+        <p id="researchPaperNote"></p>
+        <div><button class="soft-button" id="researchPaperDraft" type="button">Draft the fields</button></div>
+        <div class="task-progress compact hidden" id="researchPaperProgress" role="progressbar" aria-label="Drafting progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+      </div>
+      <div class="research-panel hidden" id="researchPastePanel">
+        <p>1. Copy this prompt into ChatGPT, Claude or another AI you use, with your manuscript, proposal or slides attached or pasted after it.</p>
+        <div><button class="soft-button" id="researchPromptCopy" type="button">Copy prompt</button></div>
+        <details class="research-prompt"><summary>See the prompt</summary><textarea class="field" id="researchPromptText" rows="8" readonly aria-label="Prompt to copy"></textarea></details>
+        <label class="field-label" for="researchPaste">2. Paste its answer here</label>
+        <textarea class="field" id="researchPaste" rows="5" placeholder="Research question: …&#10;System / organism: …"></textarea>
+        <div><button class="soft-button" id="researchPasteFill" type="button">Fill the fields</button></div>
+      </div>
+      <div class="research-fields">
+        <label class="field-label" for="researchQuestion">Research question</label>
+        <textarea class="field" id="researchQuestion" rows="2" maxlength="3000" placeholder="What I want to find out, in a sentence or two"></textarea>
+        <label class="field-label" for="researchSystem">System / organism</label>
+        <textarea class="field" id="researchSystem" rows="2" maxlength="3000" placeholder="What I study: species, tissue, cells, a model system"></textarea>
+        <label class="field-label" for="researchMethods">Methods</label>
+        <textarea class="field" id="researchMethods" rows="2" maxlength="3000" placeholder="How: experiments, models, data, analyses"></textarea>
+        <label class="field-label" for="researchNovelty">What I claim is new</label>
+        <textarea class="field" id="researchNovelty" rows="2" maxlength="3000" placeholder="The contribution I would defend"></textarea>
+        <label class="field-label" for="researchOpen">Open problems</label>
+        <textarea class="field" id="researchOpen" rows="2" maxlength="3000" placeholder="What is unsolved or next, including weak spots"></textarea>
+      </div>
+      <p class="research-count" id="researchCount" aria-live="polite">0 of 400 words</p>
+      <div class="research-actions"><button class="soft-button hidden" id="researchDelete" type="button">Delete profile</button><button class="button" id="researchSave" type="button">Save profile</button></div>
+      <div class="status" id="researchStatus" role="status" aria-live="polite"></div>
     </div>
   </dialog>
 
@@ -1206,23 +1261,23 @@
       if(!hadController||reloading)return;
       refresh();
     });
-    navigator.serviceWorker.register('/reading-sw.js?v=247',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
+    navigator.serviceWorker.register('/reading-sw.js?v=248',{updateViaCache:'none'}).then(function(registration){return registration.update();}).catch(function(){});
   })();
 </script>
-<script src="/reading-ink.js?v=247" defer></script>
-<script src="/reading-stickies.js?v=247" defer></script>
-<script src="/reading-keeps.js?v=247" defer></script>
-<script src="/reading-excerpts.js?v=247" defer></script>
-<script src="/reading-excerpts-view.js?v=247" defer></script>
-<script src="/reading-lists.js?v=247" defer></script>
-<script src="/reading-lists-view.js?v=247" defer></script>
-<script src="/reading-voice.js?v=247" defer></script>
-<script src="/reading-workspace.js?v=247" defer></script>
-<script src="/reading-workspace-viewport.js?v=247" defer></script>
-<script src="/reading-workspace-view.js?v=247" defer></script>
-<script src="/reading-folds.js?v=247" defer></script>
-<script src="/reading-pdf-projection.js?v=247" defer></script>
-<script src="/reading-fold-view.js?v=247" defer></script>
-<script src="/reading.js?v=247" defer></script>
+<script src="/reading-ink.js?v=248" defer></script>
+<script src="/reading-stickies.js?v=248" defer></script>
+<script src="/reading-keeps.js?v=248" defer></script>
+<script src="/reading-excerpts.js?v=248" defer></script>
+<script src="/reading-excerpts-view.js?v=248" defer></script>
+<script src="/reading-lists.js?v=248" defer></script>
+<script src="/reading-lists-view.js?v=248" defer></script>
+<script src="/reading-voice.js?v=248" defer></script>
+<script src="/reading-workspace.js?v=248" defer></script>
+<script src="/reading-workspace-viewport.js?v=248" defer></script>
+<script src="/reading-workspace-view.js?v=248" defer></script>
+<script src="/reading-folds.js?v=248" defer></script>
+<script src="/reading-pdf-projection.js?v=248" defer></script>
+<script src="/reading-fold-view.js?v=248" defer></script>
+<script src="/reading.js?v=248" defer></script>
 </body>
 </html>

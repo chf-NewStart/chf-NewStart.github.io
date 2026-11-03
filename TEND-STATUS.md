@@ -42,6 +42,15 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Log
 
+- 2026-11-03 14:00 — Claude Code: Houfu asked whether the task really changes each day and when Tend is opened.
+  Checked with the page's clock moved: opening on 4 Nov shows Only the ripe, on 5 Nov Middle arrow (strip and
+  dialog). Two gaps fixed on the web (`focus/daily.js`): a room left open across midnight kept yesterday's task in
+  the strip until something repainted it (now a 30 s day check, plus `tend-resume`, refreshes the strip and an open
+  home view), and a task started before midnight and finished after was checked against the new day's task, so it
+  didn't count for the streak (it now counts for the day it was started). **Not in iOS 1.1.0 (7)**, which is in
+  review: it goes in the next build. Android's native strip already follows the clock; its page gets the fix at the
+  next build.
+
 - 2026-11-03 13:30 — Claude Code: Houfu tried build 7 and said "Looks right, submit". `asc-submit.mjs` created 1.1.0
   (release after approval, like 1.0), set What's New and the warm-up-first listing, put the Lock Screen screenshot
   first, attached build 7, carried 1.0's review contact and notes over below the new ones, and submitted: **1.1.0 (7)

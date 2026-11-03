@@ -471,8 +471,10 @@
       }
     };
 
+    let shownDay = null;
     function renderHome(resting) {
       const now = new Date(), today = challengeFor(now), s = load();
+      shownDay = dayKey(now);
       views.home.classList.toggle('resting', !!resting);
       $('date').textContent = resting ? 'FOR YOUR BREAK' : `TODAY’S WARM-UP · ${now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}`;
       $('name').textContent = today.name; $('why').textContent = today.why; $('brain').textContent = today.brain;
@@ -489,6 +491,8 @@
       $('list').replaceChildren(...CHALLENGES.map(c => item(c, s.best[c.id] != null ? `Best ${s.best[c.id]}` : c.time)));
     }
     async function start(c, { skipIntro = false } = {}) {
+      // A task counts for the day it was started on, even if it ends after midnight.
+      const startedOn = new Date();
       cancelChime(); current = c; const t = ++run; show('stage');
       $('stage-name').textContent = c.name; prompt(esc(c.why)); count(''); controls([]);
       $('pad').innerHTML = ''; board().hidden = false; board().innerHTML = '';
@@ -505,7 +509,7 @@
       const result = await PLAY[c.id](t); if (!alive(t) || !result) return;
       run++;
       let newBest = false;
-      if (!result.rest) { const r = record(load(), c.id, result.score, new Date()); save(r.state); newBest = r.newBest; }
+      if (!result.rest) { const r = record(load(), c.id, result.score, startedOn); save(r.state); newBest = r.newBest; }
       $('r-name').textContent = c.name.toUpperCase() + (newBest ? ' · NEW BEST' : '');
       $('r-score').textContent = result.rest ? result.headline : result.score;
       $('r-score').classList.toggle('words', !!result.rest);
@@ -525,6 +529,8 @@
     $('again').addEventListener('click', () => start(current, { skipIntro: true }));
     $('close')?.addEventListener('click', () => options.onClose());
     home();
+    // Left open past midnight, the home view moves on to the new day's task by itself.
+    setInterval(() => { if (!views.home.hidden && shownDay !== dayKey(new Date())) renderHome(resting); }, 30000);
     return { home, stop: () => { run++; cancelChime(); } };
   }
 
@@ -540,8 +546,10 @@
     if (!dialog || !strip) return;
     // During a break the strip offers rest instead of a task.
     const onBreak = () => document.body.classList.contains('is-break');
+    let paintedDay = null;
     const paint = () => {
       const now = new Date(), c = challengeFor(now), n = streakOn(load(), now), rest = onBreak();
+      paintedDay = dayKey(now);
       document.getElementById('daily-strip-eyebrow').textContent = rest ? 'FOR YOUR BREAK' : 'TODAY’S WARM-UP';
       document.getElementById('daily-strip-name').textContent = rest ? 'Rest your eyes and mood' : c.name;
       document.getElementById('daily-strip-meta').textContent = rest ? REST.map(r => r.name).join(' · ') : `${c.time} · ${c.label}${n ? ` · ${n}-day streak` : ''}`;
@@ -553,6 +561,8 @@
     new MutationObserver(paint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) paint(); });
     root.addEventListener('tend-daily-change', paint);
+    root.addEventListener('tend-resume', paint);
+    setInterval(() => { if (paintedDay !== dayKey(new Date())) paint(); }, 30000);
     paint();
   }
 

@@ -163,7 +163,7 @@
   }
 
   function mount(host, options = {}) {
-    let run = 0, current = null, cancelChime = () => {};
+    let run = 0, current = null, cancelChime = () => {}, flashTimer = 0;
     const alive = t => t === run;
     host.classList.add('daily');
     host.innerHTML = `
@@ -208,7 +208,11 @@
     const prompt = h => { $('prompt').innerHTML = h; };
     const count = t => { $('count').textContent = t; };
     const board = () => $('board');
-    function flash(ok) { const b = board(); b.classList.remove('ok', 'bad'); void b.offsetWidth; b.classList.add(ok ? 'ok' : 'bad'); }
+    // A right or wrong answer lights the board's edge for a moment, long enough to see at a glance.
+    function flash(ok) {
+      const b = board(); clearTimeout(flashTimer); b.classList.remove('ok', 'bad'); b.classList.add(ok ? 'ok' : 'bad');
+      flashTimer = setTimeout(() => b.classList.remove('ok', 'bad'), 260);
+    }
     function controls(list) {
       const c = $('controls'); c.innerHTML = '';
       for (const [k, label, big] of list) { const b = el('button', 'button ' + (big === 'primary' ? 'primary' : 'secondary') + (big ? ' big' : ''), esc(label)); b.type = 'button'; b.dataset.k = k; c.appendChild(b); }
@@ -329,11 +333,17 @@
         for (let i = 0; i < N; i++) {
           if (!alive(t)) return;
           count(`${i + 1} / ${N}`); prompt(i < 3 ? 'Tap for <em>red</em>. Don’t tap for green.' : '');
-          const { ctx, W, H } = canvas(); ctx.fillStyle = BOARD; ctx.fillRect(0, 0, W, H); drawTomato(ctx, W / 2, H / 2, W / 4, trials[i] === 'red');
+          const { ctx, W, H } = canvas(), blank = () => { ctx.fillStyle = BOARD; ctx.fillRect(0, 0, W, H); };
+          const say = (text, color) => { blank(); ctx.fillStyle = color; ctx.font = `${Math.round(W / 12)}px 'Plank Pixel', monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, W / 2, H / 2); };
+          blank(); drawTomato(ctx, W / 2, H / 2, W / 4, trials[i] === 'red');
+          let said = false;
           const wait = waitInput({ ' ': 'tap', Enter: 'tap' }, 1100);
-          setTimeout(() => { if (alive(t)) { ctx.fillStyle = BOARD; ctx.fillRect(0, 0, W, H); ctx.fillStyle = GHOST; ctx.fillRect(W / 2 - 12, H / 2 - 3, 24, 6); ctx.fillRect(W / 2 - 3, H / 2 - 12, 6, 24); } }, 300);
+          setTimeout(() => { if (alive(t) && !said) { blank(); ctx.fillStyle = GHOST; ctx.fillRect(W / 2 - 12, H / 2 - 3, 24, 6); ctx.fillRect(W / 2 - 3, H / 2 - 12, 6, 24); } }, 300);
           const { k, rt } = await wait; if (!alive(t)) return;
-          if (trials[i] === 'red') { if (k) { hitRed++; rts.push(rt); } } else if (k) flash(false); else heldGreen++;
+          // Every answer gets feedback: green for a tap on red and for holding still on green, tomato for a tap on green.
+          if (trials[i] === 'red') { if (k) { hitRed++; rts.push(rt); flash(true); } }
+          else if (k) { said = true; flash(false); say('Hold on green', '#ff5a43'); }
+          else { heldGreen++; said = true; flash(true); say('Held', '#76f7a5'); await sleep(450); if (!alive(t)) return; }
           if (k) await sleep(Math.max(0, 1100 - rt));
         }
         return { score: score.ripe({ hitRed, red: N - G, heldGreen, green: G }),

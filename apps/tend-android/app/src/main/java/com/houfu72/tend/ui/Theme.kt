@@ -40,6 +40,7 @@ object Px {
     val unripe = Color(0xFF7FD35E)
     val unripeDeep = Color(0xFF4B913A)
     val green = Color(0xFF76F7A5)
+    val gold = Color(0xFFFFD65C)
     val blue = Color(0xFF6ED6E8)
     val intentionCard = Color(0xFF0B1310)
     val intentionEdge = Color(0xFF2D4A3A)

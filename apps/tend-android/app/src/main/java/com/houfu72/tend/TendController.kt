@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.houfu72.tend.core.Daily
 import com.houfu72.tend.core.MINUTE
 import com.houfu72.tend.core.Phase
 import com.houfu72.tend.core.Status
@@ -27,6 +28,7 @@ import com.houfu72.tend.core.setRhythm
 import com.houfu72.tend.core.start
 import com.houfu72.tend.core.weekStart
 import com.houfu72.tend.core.weeklyMarkdown
+import java.time.LocalDate
 import java.util.UUID
 
 enum class Room { FOCUS, NOTEBOOK, SOURCES }
@@ -41,6 +43,7 @@ interface Platform {
     fun share(filename: String, contents: String, mime: String)
     fun pickBackup()
     fun openUrl(url: String)
+    fun openDaily(rest: Boolean)
 }
 
 /**
@@ -66,6 +69,8 @@ class TendController(context: Context) {
     var tipIndex by mutableIntStateOf(-1)
     var restoreCandidate by mutableStateOf<TendState?>(null); private set
     var notifyStatus by mutableStateOf(NotifyStatus.NOT_DETERMINED)
+    /** Days in a row today's warm-up was finished, read again whenever Tend comes back to the front. */
+    var dailyStreak by mutableIntStateOf(0); private set
     /** A source card or the parked thoughts to scroll to once their room is showing. */
     var scrollTarget by mutableStateOf<String?>(null)
     private var toastCount = 0L
@@ -202,6 +207,12 @@ class TendController(context: Context) {
         if (next != Room.FOCUS && quiet) quiet = false
         room = next
     }
+
+    fun refreshDaily() {
+        dailyStreak = Daily.streakOn(app.getSharedPreferences(Daily.PREFS, Context.MODE_PRIVATE).getString(Daily.KEY, null), LocalDate.now())
+    }
+
+    fun openDaily(rest: Boolean) { platform?.openDaily(rest) }
 
     fun setQuietView(on: Boolean) {
         quiet = on

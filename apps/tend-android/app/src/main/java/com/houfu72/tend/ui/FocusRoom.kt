@@ -44,11 +44,13 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicText
 import com.houfu72.tend.TendController
+import com.houfu72.tend.core.Daily
 import com.houfu72.tend.core.MINUTE
 import com.houfu72.tend.core.Phase
 import com.houfu72.tend.core.Status
 import com.houfu72.tend.core.localDate
 import com.houfu72.tend.core.remaining
+import java.time.LocalDate
 
 private val PRESETS = listOf(15 to 3, 25 to 5, 50 to 10)
 
@@ -73,6 +75,7 @@ fun FocusRoom(c: TendController, wide: Boolean, onLink: (String) -> Unit) {
             Spacer(Modifier.height(28.dp))
             LaterCard(c)
         }
+        WarmUpStrip(c)
         DeskBottom(c)
         Footer(onLink)
     }
@@ -237,6 +240,28 @@ fun IntentionCard(c: TendController, quiet: Boolean = false) {
         PixelField(finish, c::setFinish, enabled = !locked, maxLength = 500, placeholder = "One assumption understood. A small comparison. A clearer question.")
         Spacer(Modifier.height(13.dp))
         SmallNote("↳  Make it small enough to stay with.")
+    }
+}
+
+/** Today's warm-up under the cards (focus/daily.css's strip): hidden while a timer runs, and rest during a break. */
+@Composable
+private fun WarmUpStrip(c: TendController) {
+    val timer = c.state.timer
+    val isBreak = timer.phase == Phase.BREAK
+    if (!isBreak && timer.status == Status.RUNNING) return
+    val today = Daily.challengeFor(LocalDate.parse(localDate(c.now)))
+    val streak = c.dailyStreak
+    PixelCard(Modifier.padding(top = 28.dp), background = Px.laterCard, edge = if (isBreak) Px.intentionEdge else Px.edge) {
+        Text(if (isBreak) "FOR YOUR BREAK" else "TODAY’S WARM-UP", Type.eyebrow, color = if (isBreak) Px.green else Px.gold)
+        Spacer(Modifier.height(6.dp))
+        PixelText(if (isBreak) "Rest your eyes and mood" else today.name, Type.h2)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            if (isBreak) Daily.rest.joinToString(" · ") else "${today.time} · ${today.label}" + if (streak > 0) " · $streak-day streak" else "",
+            Type.mono
+        )
+        Spacer(Modifier.height(14.dp))
+        SecondaryKey(if (isBreak) "Rest a minute" else "Play the warm-up", Modifier.fillMaxWidth()) { c.openDaily(isBreak) }
     }
 }
 

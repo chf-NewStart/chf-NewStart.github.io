@@ -1,8 +1,12 @@
 # Tend for Android
 
 A native Kotlin + Jetpack Compose port of Tend, the pixel tomato clock at <https://houfu72.com/focus/>. Unlike the
-iOS app (a bundled web view), nothing here is web: the timer engine is a line-by-line port of `focus/core.js`, and the
-room is drawn in Compose to match `focus/pixel.css`.
+iOS app (a bundled web view), the room is not web: the timer engine is a line-by-line port of `focus/core.js`, and the
+room is drawn in Compose to match `focus/pixel.css`. The one exception is the **warm-up**: its strip is native
+(`FocusRoom.kt`, names and rotation in `core/Daily.kt`), but its nine short tasks run in the web room's own
+`focus/daily.html`, copied into the app's assets at build time (`copyDaily` in `app/build.gradle.kts`) and shown by
+`DailyActivity`, so the tasks have one implementation. The page saves through `window.TendAndroidDaily` into the
+`tend-daily` SharedPreferences, which the strip reads for the streak.
 
 - **Engine:** `app/src/main/java/com/houfu72/tend/core/` (`TendCore.kt`, `Backup.kt`). Pure functions over immutable
   state, the same rules as the web room. The saved notebook is the web room's `tend-focus-v1` JSON, so a backup moves

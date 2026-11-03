@@ -1,0 +1,103 @@
+/* The warm-up: the strip under the timer, the dialog it opens, and daily.html (Android). Builds on pixel.css's tokens and keys. */
+.daily-strip{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:24px 0 0;padding:18px 22px;background:#080c0a;box-shadow:0 -3px 0 0 var(--edge),0 3px 0 0 var(--edge),-3px 0 0 0 var(--edge),3px 0 0 0 var(--edge)}
+.daily-strip .eyebrow{margin:0 0 6px;color:var(--gold)}
+.daily-strip h2{font-family:var(--px);font-weight:400;font-size:20px;line-height:1.15;-webkit-font-smoothing:none;margin:0}
+.daily-strip .small-note{margin:4px 0 0;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.daily-strip .button{flex-shrink:0}
+.is-break .daily-strip{--edge:#2d4a3a}
+.is-break .daily-strip .eyebrow{color:var(--green)}
+/* Hidden while you focus; a break offers rest instead. */
+.timer-running:not(.is-break) .daily-strip,.quiet .daily-strip{display:none}
+@media(max-width:720px){.daily-strip{margin-top:18px;padding:16px 18px;flex-wrap:wrap}.daily-strip .button{width:100%}}
+
+.daily-dialog{width:min(560px,calc(100% - 24px));overscroll-behavior:contain}
+.daily [hidden]{display:none!important}
+.daily-home,.daily-stage,.daily-result,.daily-today,.daily-rest-section,.daily-practice{display:flex;flex-direction:column;gap:12px}
+.daily-home{gap:22px}
+.daily-home.resting .daily-rest-section{order:1}
+.daily-home.resting .daily-today{order:2}
+.daily-home.resting .daily-practice{order:3}
+.daily-home.resting .daily-fine{order:4}
+.daily-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;min-height:26px;margin-bottom:-10px}
+.daily-head .eyebrow{margin:0;color:var(--gold)}
+.daily-home.resting .daily-head .eyebrow{color:var(--green)}
+.daily-today-sub{display:none}
+.daily-home.resting .daily-today-sub{display:block}
+.daily-head .close-dialog{position:static;flex-shrink:0;margin:-8px -8px 0 0}
+.daily-title{font-family:var(--px);font-weight:400;font-size:30px;line-height:1.1;-webkit-font-smoothing:none;margin:0;text-wrap:balance}
+.daily-stage .daily-title{font-size:20px}
+.daily-why{font-size:13px;line-height:1.65;color:var(--muted);margin:0;max-width:60ch}
+.daily-brain{font-size:13px;line-height:1.6;margin:0;max-width:60ch}
+.daily-brain>span:first-child{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-right:4px}
+.daily-meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:11px;color:var(--muted);margin:0}
+.daily-meta b{color:var(--gold);font-weight:500}
+.daily-go{align-self:flex-start;margin-top:4px}
+.daily-sub{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0}
+.daily-list{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.daily-list.daily-rest{grid-template-columns:repeat(3,minmax(0,1fr))}
+.daily-item{appearance:none;border:0;text-align:left;color:var(--ink);cursor:pointer;background:#0a100d;padding:11px 13px;display:flex;flex-direction:column;gap:3px;min-width:0;--edge:#26352e;box-shadow:0 -3px 0 0 var(--edge),0 3px 0 0 var(--edge),-3px 0 0 0 var(--edge),3px 0 0 0 var(--edge)}
+.daily-item:hover{background:#101a15}
+.daily-item.today{--edge:#4c8a66}
+.daily-item.rest{background:#08110d;--edge:#2d4a3a}
+.daily-item:focus-visible{outline:2px solid var(--green);outline-offset:5px}
+.daily-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tomato)}
+.daily-item.rest .daily-label{color:var(--green)}
+.daily-item-name{font-family:var(--px);font-size:15px;line-height:1.2;-webkit-font-smoothing:none}
+.daily-item-best{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.daily-fine{font-size:11px;color:var(--muted);margin:0;line-height:1.6}
+@media(max-width:520px){.daily-list.daily-rest{grid-template-columns:1fr}}
+@media(max-width:420px){.daily-list{grid-template-columns:1fr}}
+
+.daily-stage-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.daily-count{font-family:var(--mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.daily-prompt{font-family:var(--mono);font-size:12px;line-height:1.6;min-height:3.2em;margin:0}
+.daily-prompt em{font-style:normal;color:var(--gold)}
+.daily-board{width:min(100%,52dvh);aspect-ratio:1;max-width:100%;margin:0 auto;background:#060a08;display:grid;place-items:center;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;box-shadow:0 -3px 0 0 var(--line),0 3px 0 0 var(--line),-3px 0 0 0 var(--line),3px 0 0 0 var(--line)}
+.daily-board canvas{width:100%;height:100%;display:block}
+.daily-board.ok{animation:daily-ok .25s steps(2)}
+.daily-board.bad{animation:daily-bad .25s steps(2)}
+@keyframes daily-ok{50%{box-shadow:0 0 0 3px var(--green)}}
+@keyframes daily-bad{50%{box-shadow:0 0 0 3px var(--tomato)}}
+.daily-big{font-family:var(--px);font-size:clamp(40px,12vw,64px);line-height:1;-webkit-font-smoothing:none;text-align:center;color:var(--ink)}
+.daily-arrows{font-family:var(--px);font-size:clamp(32px,10vw,46px);letter-spacing:.12em;-webkit-font-smoothing:none;color:var(--ink)}
+.daily-arrows b{font-weight:400;color:var(--gold)}
+.daily-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:78%;aspect-ratio:1}
+.daily-grid i{background:#101814}
+.daily-grid i.on{background:var(--gold);box-shadow:0 0 18px rgba(255,214,92,.5)}
+.daily-controls{display:flex;gap:10px;flex-wrap:wrap}
+.daily-controls:empty{display:none}
+.daily-controls .button{flex:1 1 0;min-width:0;padding:14px 6px;font-size:12px;touch-action:manipulation}
+.daily-controls .button.big{padding:20px 8px;font-size:13px}
+.daily-controls .button.primary{font-size:20px;padding:12px 8px 16px}
+.daily-stage>.text-button{align-self:center}
+
+/* One good thing */
+.daily-pad:empty{display:none}
+.daily-pad{display:flex;flex-direction:column;gap:8px}
+.daily-pad label{font-size:12px;font-weight:500;margin:6px 0 0}
+.daily-pad label span{float:right;font-weight:400;font-size:10px;color:var(--muted)}
+.daily-pad textarea{display:block;width:100%;resize:vertical;border:0;border-radius:0;background:#0a100d;color:var(--ink);font-family:var(--mono);font-size:16px;line-height:1.5;padding:11px 12px;caret-color:var(--green);box-shadow:0 -3px 0 0 var(--edge),0 3px 0 0 var(--edge),-3px 0 0 0 var(--edge),3px 0 0 0 var(--edge);margin:3px 0 6px}
+.daily-pad textarea:focus{outline:none;--edge:#4c8a66}
+.daily-good-past{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.daily-good-past:empty{display:none}
+.daily-good{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.daily-good li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line);min-width:0}
+.daily-good li:last-child{border-bottom:0}
+.daily-good-date{grid-column:1;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--green)}
+.daily-good-text{grid-column:1;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.daily-good-why{grid-column:1;font-size:12px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.daily-good-why:before{content:'because ';color:var(--muted)}
+.daily-good .text-button{grid-column:2;grid-row:1/span 3;align-self:center;font-size:11px;min-height:32px}
+[data-r="r-extra"]:not(:empty){margin-top:10px;display:flex;flex-direction:column;gap:10px}
+
+.daily-score{font-family:var(--px);font-size:72px;line-height:.9;color:var(--gold);-webkit-font-smoothing:none;font-variant-numeric:tabular-nums}
+.daily-score.words{font-size:40px;line-height:1.05;color:var(--green)}
+.daily-stats{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.daily-stats b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+.daily-result .eyebrow{margin:0;color:var(--gold)}
+.daily-result .dialog-actions{margin-top:6px}
+
+/* daily.html: the warm-up as its own page (the Android app opens it). */
+.daily-page{min-height:100%}
+.daily-sheet{max-width:560px;margin:0 auto;padding:calc(22px + env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) calc(30px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+@media(prefers-reduced-motion:reduce){.daily-board.ok,.daily-board.bad{animation:none}}

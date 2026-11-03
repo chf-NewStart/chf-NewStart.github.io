@@ -7,6 +7,17 @@ plugins {
 // TEND_UPLOAD_STORE_FILE, TEND_UPLOAD_STORE_PASSWORD, TEND_UPLOAD_KEY_ALIAS, TEND_UPLOAD_KEY_PASSWORD.
 val uploadStore = providers.gradleProperty("TEND_UPLOAD_STORE_FILE").orNull
 
+// The warm-up screen shows the web room's own focus/daily.html, copied in at build time like the iOS app's offline
+// bundle, so its nine tasks have one implementation. Generated files stay out of Git.
+val dailyAssets = layout.buildDirectory.dir("generated/tend-daily").get().asFile
+val copyDaily by tasks.registering(Sync::class) {
+    from(rootProject.file("../../focus")) {
+        include("daily.html", "daily.js", "daily.css", "style.css", "theme.css", "pixel.css", "icon.svg", "fonts/*.woff", "fonts/*.woff2")
+    }
+    into(File(dailyAssets, "daily"))
+}
+tasks.named("preBuild") { dependsOn(copyDaily) }
+
 android {
     namespace = "com.houfu72.tend"
     compileSdk = 37
@@ -46,6 +57,10 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    sourceSets {
+        getByName("main") { assets.srcDir(dailyAssets) }
     }
 }
 

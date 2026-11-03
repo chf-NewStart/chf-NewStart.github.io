@@ -15,6 +15,10 @@ The minimum deployment target is iOS/iPadOS 17. Build with a currently App Store
 
 The room has a pixel look: Plank Pixel (Houfu's own 5×7 arcade font) for the timer and headings, a ring of blocks that empties as the interval passes, and a tomato that ripens while you focus, over houfu72.com's dark palette with DM Sans and IBM Plex Mono (SIL Open Font License texts bundled). Every font is bundled, so the app works offline. In DEBUG builds, `-tendState <json or file>` seeds the notebook for one launch and `-tendEval <js>` runs once the room is ready (for screenshots and simulator checks).
 
+## Warm-up and rest
+
+A strip under the room's cards offers **today's warm-up**: one of six short attention tasks from the research literature, a different one each day at local midnight (Track the ripe ones, Only the ripe, Middle arrow, Ink not word, Two back, Count the seconds), each naming the brain system it works. During a break the strip offers **rest** instead: Sigh it out (cyclic sighing), Look far away (20-20-20, with the room's chime) and One good thing (a short note kept to read back). It opens in a dialog (`focus/daily.js`, `focus/daily.css`), is hidden while a session runs, and keeps a streak for days the day's task was finished. The same page runs on the web and, through `focus/daily.html`, on Android.
+
 ## Siri and the Lock Screen (1.1)
 
 Say **"Start Tend"** (or "Trigger Tend", "Start a session in Tend", "Focus with Tend"). Siri asks *"What are you working on?"*; the answer becomes the session's question, and the session starts at the notebook's focus length without opening the app. Apple keeps free text out of the phrase itself, so the question is always the follow-up. "Pause Tend", "Resume Tend" and "I'm done in Tend" (Siri then asks "Where did you stop?") work the same way. All four are App Shortcuts, so they also appear in Shortcuts and can go on the Action Button or Back Tap; "Start a focus session" takes an optional length in minutes there.
@@ -35,7 +39,7 @@ For simulator checks, a Debug build has to be signed with the team's development
 From the repository root:
 
 ```bash
-node --test tests/focus-timer.test.cjs tests/tend-native-ops.test.cjs
+node --test tests/focus-timer.test.cjs tests/tend-native-ops.test.cjs tests/tend-daily.test.cjs
 python3 apps/tend-ios/scripts/bundle_web.py
 xcodebuild -project apps/tend-ios/Tend.xcodeproj -scheme Tend \
   -configuration Debug -sdk iphonesimulator \
@@ -52,6 +56,6 @@ On your Mac, choose **Any iOS Device (arm64) → Product → Archive → Distrib
 
 ## Local data
 
-The native app stores its JSON notebook under `TendNotebookV1` in its own UserDefaults container. The web version uses `houfu.tend.v1` in localStorage. They do not sync automatically. Device backups may include app data; exports are user-directed. The privacy manifest declares app-scoped UserDefaults access (`CA92.1`) and no collected data or tracking.
+The native app stores its JSON notebook under `TendNotebookV1` in its own UserDefaults container. The web version uses `houfu.tend.v1` in localStorage. The warm-up (`focus/daily.js`: bests, streak and good things) keeps its own small JSON under `TendDailyV1` in standard UserDefaults, handed to the page at launch as `window.TEND_DAILY_STATE` and saved back with the `dailySave` message (with a localStorage copy as a fallback); on the web it is `houfu.tend.daily.v1`. It is not in the notebook backup yet. They do not sync automatically. Device backups may include app data; exports are user-directed. The privacy manifest declares app-scoped UserDefaults access (`CA92.1`) and no collected data or tracking.
 
 Notifications are ordinary local notifications. Permission, Focus modes, and OS delivery rules apply. Task text is not included in notification content. The app catches up from its saved deadline and never automatically starts another work interval while suspended.

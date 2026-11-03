@@ -11,6 +11,7 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
+| Claude Code | **Warm-up and rest** (Houfu: "add some daily challenges which could train the focus", then "something that makes me happy and less dizzy"), done on `main` (Log, 2026-11-03 12:30). Web and Android checked; iOS builds but the simulator wasn't available (CoreSimulator out of date on this Mac). Not on TestFlight yet. | `focus/daily.*`, `tests/tend-daily.test.cjs`, the strip and dialog in `focus/index.html`, `focus/sw.js` cache list, `apps/tend-ios/App/TendViewController.swift` (`dailySave`, `TEND_DAILY_STATE`), `apps/tend-android/**/DailyActivity.kt`, `core/Daily.kt`, `FocusRoom.kt` strip | 2026-11-03 11:00 EST |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts; 1.0 (1) submitted by Houfu 2026-10-26, in review. Not submitting anything for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
 | Claude Code | **Android app** (native Kotlin + Compose, `com.houfu72.tend`): built and tested in the emulator; signed 1.0.0 (1) bundle ready for Play closed testing. Waits on Houfu's Play Console account. Web changes that alter timer rules need the same change in `apps/tend-android/.../core/`. | `apps/tend-android/**` | 2026-10-26 14:00 EDT |
 | Claude Code | **Quick timers and Do Not Disturb**, done on `main` (Log, 2026-10-27 15:00); iOS 1.1.0 (3) on TestFlight. **App blocking during sessions** (Screen Time; Houfu chose "Done unlocks"): Apple approved Family Controls (Distribution) for the account on 2026-10-27 (request QQUXWQ76W5), merged to `main`, **1.1.0 (4) on TestFlight; Houfu tested the block on his iPhone ("nice it works")**, so 1.1's review submission now uses build 4 (What's New and Screen Time review notes in `apps/tend-ios/release/testflight-1.1.json`). Shielding doesn't silence the blocked apps' notifications, and iOS has no API for an app to mute others or turn on a Focus: a Focus stays the person's (or a shortcut's) switch. | `focus/core.js`, `focus/app.js`, `tests/*`, `apps/tend-ios/**`, `apps/tend-android/**` | 2026-10-27 14:20 EDT |
@@ -19,6 +20,8 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 ## Requests
 
+- **Claude → Codex (2026-11-03):** your 2026-10-26 review claim lists `focus/index.html` and `focus/sw.js`; nothing has
+  landed there since 10-27, so the warm-up added a strip, a dialog and cache entries to them. Say so here if that collides.
 - **Claude → Codex:** please close PR #79 (superseded by d860f51f). Tend 1.0 is in App Review: don't change the
   App Store Connect record; web changes are fine, but anything for the iOS app goes into a new build (2+).
 
@@ -38,6 +41,24 @@ to touch a claimed file, write your request under **Requests** below instead.
   ($25, ID and device checks), then the app, the closed test with 12+ testers for 14 days, then production.
 
 ## Log
+
+- 2026-11-03 12:30 — Claude Code, **warm-up and rest**. A strip under the room's cards (hidden while a session runs)
+  offers today's warm-up: one of six 1–2 minute attention tasks, rotating at local midnight (`challengeFor`: days
+  since 1970 mod 6): Track the ripe ones (multiple-object tracking, Houfu's idea), Only the ripe (SART go/no-go),
+  Middle arrow (flanker), Ink not word (Stroop), Two back (spatial 2-back), Count the seconds (time estimation). Each
+  names the brain system it works, scores 0–100 and keeps a best; finishing the day's task grows a streak. During a
+  break the strip offers rest instead: Sigh it out (cyclic sighing, Balban et al. 2023), Look far away (20-20-20, the
+  room's arpeggio scheduled on the audio clock plus a haptic), One good thing (a dated note, kept to read back;
+  Seligman et al. 2005). One implementation in `focus/daily.js`, which exports its pure parts for
+  `tests/tend-daily.test.cjs`. **Storage:** web `houfu.tend.daily.v1`; iOS `TendDailyV1` in UserDefaults (bootstrapped
+  as `TEND_DAILY_STATE`, saved via `dailySave`); Android `tend-daily` SharedPreferences via `TendAndroidDaily`. Not
+  in the notebook backup yet (privacy page says so). **Android:** the strip is native; the tasks run in
+  `focus/daily.html` inside `DailyActivity` (copied into assets by `copyDaily`). Checked in the emulator: strip, break
+  strip, rest page, save to SharedPreferences, Done back to the room. **iOS:** Debug simulator build succeeds; not run,
+  because `simctl` hangs ("CoreSimulator is out of date", Xcode 27.2): `sudo xcodebuild -runFirstLaunch` or opening
+  Xcode once should fix it. **Houfu on Siri (same day):** "the siri thing is just stupid, I could just ask Siri for a
+  timer". Undecided: the App Shortcuts also drive the Do Not Disturb shortcut and the Action Button, so the choice is
+  between dropping Siri from the listing's lead (keep the intents) or removing it in the next version.
 
 - 2026-10-27 16:15 — Claude Code: Houfu OK'd build 4 for 1.1 and asked "how is our app special"; then "do what u
   think is reasonable". The 1.1 listing now leads with what's distinctive: the question → "where did you stop" →

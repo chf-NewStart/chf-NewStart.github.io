@@ -28,6 +28,13 @@
             </intent-filter>
         </activity>
 
+        <!-- The warm-up and rest page (focus/daily.html, bundled), in its own screen over the room. -->
+        <activity
+            android:name=".DailyActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density" />
+
         <receiver android:name=".ReminderReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

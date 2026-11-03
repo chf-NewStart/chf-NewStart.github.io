@@ -7,6 +7,7 @@ import UserNotifications
 final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     /// Posted when a reminder arrives while Tend is open: the room catches up by itself.
     static let catchUp = Notification.Name("TendRoomCatchUp")
+    static let dailyKey = "TendDailyV1"
     private let store = TendStore.shared
     private var webView: WKWebView!
     private var notebook: [String: Any]?
@@ -30,7 +31,12 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
         configuration.userContentController.add(self, name: "tend")
         let initial = notebook.flatMap { try? JSONSerialization.data(withJSONObject: $0) }
             .flatMap { String(data: $0, encoding: .utf8) } ?? "null"
-        var bootstrap = "window.TEND_NATIVE = true; window.TEND_INITIAL_STATE = \(initial); window.TEND_INITIAL_REVISION = \(roomRevision);"
+        // The warm-up (focus/daily.js) keeps its own small JSON beside the notebook: bests, streak and good things.
+        let daily = UserDefaults.standard.data(forKey: Self.dailyKey)
+            .flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] }
+            .flatMap { try? JSONSerialization.data(withJSONObject: $0) }
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "null"
+        var bootstrap = "window.TEND_NATIVE = true; window.TEND_INITIAL_STATE = \(initial); window.TEND_INITIAL_REVISION = \(roomRevision); window.TEND_DAILY_STATE = \(daily);"
         #if DEBUG
         // `-tendNow <ms since 1970>` moves the room's clock, so screenshots can show a whole week of sessions.
         if let now = debugArgument("-tendNow").flatMap(Double.init) {
@@ -131,6 +137,10 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
             }
         case "share": share(body)
         case "feedback": UINotificationFeedbackGenerator().notificationOccurred(.success)
+        case "dailySave":
+            guard let state = body["state"] as? [String: Any], let data = try? JSONSerialization.data(withJSONObject: state),
+                  data.count <= 1024 * 1024 else { return }
+            UserDefaults.standard.set(data, forKey: Self.dailyKey)
         default: break
         }
     }

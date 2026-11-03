@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity(), Platform {
         TendApplication.visible = true
         Reminders.clearNotice(this)
         refreshNotifyStatus()
+        controller.refreshDaily()
         // Catch up before the first frame, so a return never shows the time Tend had when it went away.
         controller.reconcile()
     }
@@ -131,6 +132,10 @@ class MainActivity : ComponentActivity(), Platform {
             }
             if (text == null) controller.showToast("This backup could not be opened.") else controller.importBackup(text)
         }
+    }
+
+    override fun openDaily(rest: Boolean) {
+        startActivity(Intent(this, DailyActivity::class.java).putExtra(DailyActivity.EXTRA_REST, rest))
     }
 
     override fun openUrl(url: String) {

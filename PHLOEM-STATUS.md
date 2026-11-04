@@ -4,7 +4,21 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-11-03)
+## Now (2026-11-04)
+
+- **App 1.2.9 (55) submitted, Waiting for Review (2026-11-04 13:59 EST, submission 77973012; Houfu: "so lets push
+  the newest ver to app store then"). Manual release: press Release after approval.** Build 55 bundles reader
+  **v250** (shelves and Tidy library, with v248's For my research and v249's first-tap tiles). Commit c920125 sets
+  1.2.9 / 55 (`bundle.test.mjs` pins them; `apps/ipad` 22/22). Archive
+  `~/Library/Developer/Xcode/Archives/2026-11-04/Phloem 1.2.9 (55).xcarchive`, uploaded with the API key, **VALID**,
+  In Beta Testing for Internal Testers and friends2 with a What to Test note. Version record iOS 1.2.9: What's New
+  leads "Library shelves, and For my research."; description, keywords, the 9 screenshots and the review contact
+  carried over; review notes still copied from 1.2.5 (Houfu edits them). **1.2.8 (54, v247) is Ready for Sale.** It
+  was built on branch `ipad-release-1.2.8-54` (worktree `~/Developer/phloem-grip`, never pushed), so main goes from
+  1.2.7 (53) straight to 1.2.9 (55). Next build: v251 (the shelf-rule fixes the tidy check found). Not run in a
+  simulator or on a device.
+
+## Earlier (2026-11-03)
 
 - **Shelves and Tidy library, v250 (web; Houfu approved the design: categories that organise themselves, a one-time
   tidy with a preview, done when the tests pass and it is live).** (1) **Shelves by kind of document**: Papers, Books

@@ -216,8 +216,8 @@ test('Xcode Debug and Release agree on the next Apple build identity', async () 
   const project = await readFile(path.join(defaultRepoRoot, 'apps/ipad/ios/App/App.xcodeproj/project.pbxproj'), 'utf8');
   const builds = [...project.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map(match => match[1]);
   const versions = [...project.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map(match => match[1]);
-  assert.deepEqual(builds, ['53', '53']);
-  assert.deepEqual(versions, ['1.2.7', '1.2.7']);
+  assert.deepEqual(builds, ['55', '55']);
+  assert.deepEqual(versions, ['1.2.9', '1.2.9']);
 });
 
 test('one universal app: iPhone joins the iPad without changing what the iPad gets', async () => {

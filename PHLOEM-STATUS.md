@@ -6,6 +6,35 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-04)
 
+- **Shelf rules fixed after a check of Houfu's real library, v251 (web; asked for by the v250 session after a read-only
+  check of his 101-paper library found 13 of 93 shelf guesses wrong).** Each rule-level cause, with the document that
+  hit it: (1) a title ending in "form" was paperwork ("Computational models of plant development and form", New
+  Phytologist 2012): now only a named form (application, consent, registration, request, claim, tax, enrolment,
+  sponsorship… form, so "CGC-Advertising-SponsorshipForms.indd" still is one) or a form number (Form T2202, IMM 5257),
+  and a journal article's DOI or journal lines win; (2) "transcript" was paperwork ("…Metabolite and Transcript
+  Levels…", Carrari 2006): now academic/official/unofficial transcripts and transcripts of records only; (3)
+  "PUB-836A" in `OMAFA_PUB-836A_EN_AODA-1.pdf` was a course code: publication, report, form and standard numbers are
+  not, and a numbered publication counts toward Books & textbooks; (4) "chapter" made "Background reading list
+  (proposal chapter 2)" a book: a proposal/thesis/manuscript chapter now counts toward My notes & meetings (with
+  "reading list"/"reading guide"), and pages cut from a book ("Ch4", "Chapter 10", "book pp 47-65", the three
+  Taiz-Zeiger excerpts) go to Books; (5) the suggested keep for a duplicate pair was the "Recovered paper 1"
+  placeholder (added at time 0) over Wu et al. 2019: placeholders and generic titles are now ranked last; (6) topics
+  whose papers are all on reading lists already (`main`, `coupling`, `fba` there) defaulted to "Make a reading list":
+  they now default to "Just shelve the papers", and the preview says why; (7) no PDF in his Mac Chrome had cached page
+  text, so the DOI, journal-line and ISBN rules never ran in the tidy: the preview now reads the first pages of each
+  PDF stored on the device without cached text with PDF.js (as an import does; the progress line counts every paper;
+  closing the preview stops it; kept in memory only, nothing written), and the file's own page count beats a stale
+  stored one (a book stored as 18 pages has 544). Also, in the same rules: two or more DOIs on the opening pages are
+  citations (the reading guide cites two), so none is taken as the document's own, and a DOI read from the text is
+  stored only on a paper; "cv." (cultivar), "proof of concept", the verbs "permits" and "resume" no longer mean
+  paperwork. A read-only check against 62 of his PDFs on disk (`~/Desktop/PhD/tomato-dfba/papers`, imported into a
+  throwaway headless Phloem, not his Chrome): every document above lands right with and without its text, and no
+  other paper changed shelf. Tests: `reading-shelves-state` 16 (6 fail on v250), `reading-shelves-browser` 55 (6 fail
+  on v250). Houfu may already have applied the tidy by hand; these fixes are for future imports and other devices.
+  Seen, not changed: "guide" as a verb ("…models can guide experimentation", Benes 2020) still counts toward Books
+  when no text is read. The tidy was not run on Houfu's library. Web only: the iPad app gets v251 with its next build
+  (1.2.9 (55) bundles v250); no App Store build was made.
+
 - **App 1.2.9 (55) submitted, Waiting for Review (2026-11-04 13:59 EST, submission 77973012; Houfu: "so lets push
   the newest ver to app store then"). Manual release: press Release after approval.** Build 55 bundles reader
   **v250** (shelves and Tidy library, with v248's For my research and v249's first-tap tiles). Commit c920125 sets
@@ -821,6 +850,13 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-11-04 v251:** shelf rules fixed after the check of Houfu's library (forms, transcripts, publication numbers,
+  proposal chapters and book excerpts, placeholder keeps, topics already on lists), and the tidy preview reads the
+  first pages of PDFs with no cached text (see Now). Related suites, 17 in Chromium and 17 in WebKit (shelves, lists,
+  wall, List view, long press, iPad width, search, Continue reading, docx review, derived persistence, persistence,
+  full storage, two tabs, sync, paper details, cloud auto-sync) plus `reading-shelves-state` 16, `reading-lists-state`
+  19 and `apps/ipad` 22, all pass; `reading-shelves-browser` 55/55 in both engines.
 
 - **2026-11-03 v250:** shelves by kind of document on every import, Group by shelf / reading list / all together,
   Tidy library with preview, backup and undo, the wall's shelf pills and the reading-list table (see Now). Related

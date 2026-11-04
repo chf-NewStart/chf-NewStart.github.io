@@ -44,6 +44,21 @@ function onePagePdf(lines) {
   pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n';
   return Buffer.from(pdf, 'latin1');
 }
+// A PDF of `count` pages; the first carries the given lines, the rest are blank.
+function textPdf(lines, count) {
+  const escape = line => line.replace(/[\\()]/g, '\\$&');
+  const stream = 'BT /F1 13 Tf 17 TL 60 720 Td\n' + lines.map(line => '(' + escape(line) + ') Tj').join(' T*\n') + '\nET', blank = 'BT ET';
+  const kids = Array.from({ length: count }, (_, index) => (6 + index) + ' 0 R').join(' ');
+  const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [' + kids + '] /Count ' + count + ' >>', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    '<< /Length ' + stream.length + ' >>\nstream\n' + stream + '\nendstream', '<< /Length ' + blank.length + ' >>\nstream\n' + blank + '\nendstream']
+    .concat(Array.from({ length: count }, (_, index) => '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ' + (index ? 5 : 4) + ' 0 R >>'));
+  let pdf = '%PDF-1.4\n';
+  const offsets = objects.map((body, index) => { const at = pdf.length; pdf += (index + 1) + ' 0 obj\n' + body + '\nendobj\n'; return at; });
+  const xref = pdf.length;
+  pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n' + offsets.map(at => String(at).padStart(10, '0') + ' 00000 n \n').join('');
+  pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n';
+  return Buffer.from(pdf, 'latin1');
+}
 // A Word draft: a stored (uncompressed) ZIP holding word/document.xml.
 function wordDraft(paragraphs) {
   const u16 = value => [value & 255, (value >>> 8) & 255], u32 = value => [value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255];
@@ -81,7 +96,13 @@ function seed() {
     pdf('p_coupling', 'Coupling precedent', { category: 'coupling' }),
     paper('p_review', 'My manuscript under revision', { category: 'In review', reviewWorkspace: true }),
     pdf('p_rec1', 'Recovered paper 1', { tags: ['recovered'], pageCount: 3 }),
-    pdf('p_rec2', 'Recovered paper 2', { tags: ['recovered'], pageCount: 9 })
+    pdf('p_rec2', 'Recovered paper 2', { tags: ['recovered'], pageCount: 9 }),
+    // Stored on this device with no page text cached, as in a real library; the second's stored page count is stale.
+    pdf('p_nph', 'Computational models of plant development and form', { authors: 'Przemyslaw Prusinkiewicz, Adam Runions', pageCount: 4, sourceName: 'nph-2012.pdf' }),
+    pdf('p_linear', 'Linear Systems', { pageCount: 18, sourceName: 'linear-systems.pdf' }),
+    // The same file twice: a paper and a recovered placeholder of it, added at time 0.
+    pdf('p_wu', 'Quantifying impacts of enhancing photosynthesis on crop yield', { contentHash: 'wu-file', pageCount: 9 }),
+    pdf('p_rec_wu', 'Recovered paper 3', { tags: ['recovered'], contentHash: 'wu-file', pageCount: 9, addedAt: 1, sourceName: 'recovered-p_rec_wu.pdf' })
   ];
   const lists = { version: 1, deleted: {}, lists: [
     { id: 'L1', name: 'Manuscript: coupling precedents', rank: 1, createdAt: stamp - 5000, updatedAt: stamp - 5000 },
@@ -106,6 +127,23 @@ const snapshot = (page, key) => page.evaluate(key => new Promise((resolve, rejec
   open.onerror = () => reject(open.error);
   open.onsuccess = () => { const db = open.result, request = db.transaction('derived').objectStore('derived').get('state:snapshot:' + key); request.onsuccess = () => { resolve(request.result ? JSON.parse(request.result) : null); db.close(); }; request.onerror = () => reject(request.error); };
 }), key);
+// The fields of a paper's derived record on this device (startup keeps one per PDF, often only termLookups).
+const derivedFields = (page, id) => page.evaluate(id => new Promise((resolve, reject) => {
+  const open = indexedDB.open('marginFiles', 2);
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => { const db = open.result, request = db.transaction('derived').objectStore('derived').get(id); request.onsuccess = () => { resolve(request.result && typeof request.result === 'object' ? Object.keys(request.result).sort() : []); db.close(); }; request.onerror = () => reject(request.error); };
+}), id);
+// Puts PDF files on this device the way an import keeps them, with nothing derived from them.
+const storePdfs = (page, files) => page.evaluate(files => new Promise((resolve, reject) => {
+  const open = indexedDB.open('marginFiles', 2);
+  open.onupgradeneeded = () => { ['pdfs', 'derived'].forEach(name => { if (!open.result.objectStoreNames.contains(name)) open.result.createObjectStore(name); }); };
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => {
+    const db = open.result, tx = db.transaction('pdfs', 'readwrite');
+    Object.keys(files).forEach(id => tx.objectStore('pdfs').put(Uint8Array.from(atob(files[id]), c => c.charCodeAt(0)).buffer, id));
+    tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error);
+  };
+}), Object.fromEntries(Object.entries(files).map(([id, bytes]) => [id, bytes.toString('base64')])));
 const paperIn = (state, id) => state.chapters.find(ch => ch.id === id);
 const pills = page => page.locator('.paper-category-tab .paper-category-mark').allTextContents();
 
@@ -141,22 +179,38 @@ const pills = page => page.locator('.paper-category-tab .paper-category-mark').a
   check('older categories still show as they are until the tidy', (await pills(page)).includes('academic') && (await pills(page)).includes('main'), JSON.stringify(await pills(page)));
   check('the one-time tidy offer is shown', await page.locator('#tidyOffer').isVisible());
 
+  // Two PDFs are on this device as files only: no page text was ever cached for them.
+  await storePdfs(page, {
+    p_nph: textPdf(['New Phytologist (2012) 193: 549-569', 'Tansley review', 'Received: 12 September 2011 Accepted: 2 December 2011', 'doi: 10.1111/j.1469-8137.2011.04009.x', 'Summary', 'Key words: plant development, simulation model'], 21),
+    p_linear: textPdf(['Linear Systems', 'State space, stability and feedback'], 160)
+  });
+
   // The preview writes nothing.
   const before = await page.evaluate(() => localStorage.getItem('readingRoom.v1'));
   const keysBefore = await snapshotKeys(page);
+  await page.evaluate(() => { window.tidyLines = []; new MutationObserver(() => { const line = document.getElementById('tidyReading'); if (line) window.tidyLines.push(line.textContent); }).observe(document.getElementById('tidyBody'), { childList: true, subtree: true, characterData: true }); });
   await page.click('#tidyOfferOpen');
   await page.waitForSelector('#tidyBody .tidy-section');
   const target = id => page.locator('[data-tidy-target="' + id + '"]');
+  const reasonOf = id => page.locator('li.tidy-row', { has: target(id) }).locator('small').textContent();
   check('the preview suggests a shelf for each paper', await target('p_enrol').inputValue() === 'Personal & admin' && await target('p_meet').inputValue() === 'My notes & meetings' && await target('p_book').inputValue() === 'Books & textbooks' && await target('p_source').inputValue() === 'Papers' && await target('p_colombie').inputValue() === 'Papers',
     JSON.stringify(await page.locator('[data-tidy-target]').evaluateAll(list => list.map(element => element.dataset.tidyTarget + '=' + element.value))));
+  check('a PDF with no cached page text is read for the preview, so its DOI counts', await target('p_nph').inputValue() === 'Papers' && /it has a DOI/.test(await reasonOf('p_nph')), await reasonOf('p_nph'));
+  check('the file’s own page count wins over a stale stored one', await target('p_linear').inputValue() === 'Books & textbooks' && /160 pages long/.test(await reasonOf('p_linear')), await reasonOf('p_linear'));
+  const lines = await page.evaluate(() => window.tidyLines);
+  check('the preview shows how far its reading has got', lines.some(line => /^Reading your library… \d+ of \d+$/.test(line)), JSON.stringify(lines.slice(-2)));
   check('manuscripts in review and recovered placeholders are not reshelved', await target('p_review').count() === 0 && await target('p_rec1').count() === 0);
-  check('topic categories are offered as reading lists', await page.locator('[data-tidy-topic]').evaluateAll(list => list.map(element => element.dataset.tidyTopic + ':' + element.value).join(',')) === 'main:list,coupling:list');
+  check('topic categories are offered as reading lists, unless their papers are all on lists already', await page.locator('[data-tidy-topic]').evaluateAll(list => list.map(element => element.dataset.tidyTopic + ':' + element.value).join(',')) === 'main:list,coupling:sort'
+    && /already on a reading list/.test(await page.locator('.tidy-topic', { has: page.locator('[data-tidy-topic="coupling"]') }).locator('small').textContent()));
   check('duplicates and placeholders start unticked', await page.locator('[data-tidy-merge]:checked, [data-tidy-remove]:checked').count() === 0 && await page.locator('[data-tidy-merge="p_gerlin_copy"], [data-tidy-merge="p_gerlin"]').count() === 1 && await page.locator('[data-tidy-remove="p_rec1"], [data-tidy-remove="p_rec2"]').count() === 2);
+  check('a recovered placeholder of the same file is never the suggested keep', await page.locator('[data-tidy-keep][value="p_wu"]').isChecked() && !await page.locator('[data-tidy-keep][value="p_rec_wu"]').isChecked() && await page.locator('[data-tidy-merge="p_rec_wu"]').count() === 1);
   // The library's own copy in IndexedDB may land late from the startup save; the preview adds nothing.
   const tidyKeys = keys => keys.filter(key => key !== 'state:snapshot:latest');
   const latestDuringPreview = await snapshot(page, 'latest');
   check('opening the preview changed nothing on this device', await page.evaluate(() => localStorage.getItem('readingRoom.v1')) === before && JSON.stringify(tidyKeys(await snapshotKeys(page))) === JSON.stringify(tidyKeys(keysBefore))
     && (!latestDuringPreview || paperIn(latestDuringPreview, 'p_enrol').category === 'academic'), JSON.stringify(await snapshotKeys(page)));
+  const readFields = (await derivedFields(page, 'p_nph')).concat(await derivedFields(page, 'p_linear'));
+  check('what the preview read from the files was not kept', !readFields.some(field => /^(?:pageTexts|readerText|fr|pageLines|pageParagraphs)$/.test(field)), JSON.stringify(readFields));
 
   // Choose: one shelf changed by hand, one topic kept as a shelf, one renamed list, keep the
   // first Gerlin copy and merge the second into it, remove one placeholder.
@@ -174,6 +228,7 @@ const pills = page => page.locator('.paper-category-tab .paper-category-mark').a
   const shelfOf = id => (paperIn(saved, id) || {}).category;
   check('papers moved to the shelves chosen', shelfOf('p_enrol') === 'Personal & admin' && shelfOf('p_meet') === 'Course notes' && shelfOf('p_book') === 'Books & textbooks' && shelfOf('p_source') === 'Papers' && shelfOf('p_colombie') === 'Papers' && shelfOf('p_gerlin') === 'Papers' && shelfOf('p_coupling') === 'coupling',
     JSON.stringify(saved.chapters.map(ch => ch.id + '=' + ch.category)));
+  check('papers shelved from their files’ text moved too', shelfOf('p_nph') === 'Papers' && shelfOf('p_linear') === 'Books & textbooks', JSON.stringify([shelfOf('p_nph'), shelfOf('p_linear')]));
   check('review work and the unticked placeholder stay where they were', shelfOf('p_review') === 'In review' && !!paperIn(saved, 'p_rec2') && shelfOf('p_rec2') === undefined);
   const kept = paperIn(saved, 'p_gerlin');
   check('the ticked copy merged into the kept one with its notes', !paperIn(saved, 'p_gerlin_copy') && saved.merged.p_gerlin_copy === 'p_gerlin' && saved.deleted.p_gerlin_copy > 0 && kept.notes[0] === 'kept copy note' && kept.notes[1] === 'second copy note');

@@ -2433,20 +2433,43 @@
     if(log.merged.length)parts.push(tidyCount(log.merged.length,'copy','copies')+' merged');if(log.removed.length)parts.push(tidyCount(log.removed.length,'copy','copies')+' removed');
     return (parts.length?parts.join(', '):'nothing changed')+'.';
   }
-  // What the preview reads: the opening pages already extracted on this device, and a
-  // fingerprint for PDFs that lack one. Kept in memory only; the library is not touched.
-  async function tidyHints(papers,progress){
+  /* What the preview reads: the opening pages already extracted on this device or, for a
+     PDF stored here without them, its first pages read now with PDF.js (as an import reads
+     them, so the DOI, journal-line and ISBN rules run), with the file's own page count,
+     since a stored one can be stale; and a fingerprint for PDFs that lack one. Kept in
+     memory only (reopening the preview reads nothing twice); the library is not touched. */
+  var tidyReadCache={},tidyReadRun=0;
+  async function tidyPdfOpening(stored){
+    var lib=await loadPdfLib(),task=lib.getDocument({data:await pdfBytes(stored)}),doc=null,timer=0;
+    try{doc=await Promise.race([task.promise,new Promise(function(resolve,reject){timer=setTimeout(function(){reject(new Error('The PDF took too long to open.'));},20000);})]);return await pdfShelfHints(doc);}
+    finally{clearTimeout(timer);try{if(doc)doc.destroy();else task.destroy();}catch(e){}}
+  }
+  async function tidyHints(papers,progress,wanted){
     var hints={};
     for(var i=0;i<papers.length;i++){
+      if(wanted&&!wanted())return null;
       var ch=papers[i],hint={},opening='';
       if(ch.kind==='pdf'){
         var pages=Array.isArray(ch.pageTexts)&&ch.pageTexts.length?ch.pageTexts:null;
         if(!pages){try{var saved=await getDerived(ch.id);pages=saved&&Array.isArray(saved.pageTexts)&&saved.pageTexts.length?saved.pageTexts:null;if(!pages&&saved&&saved.readerText)opening=String(saved.readerText);}catch(e){}}
         if(pages)opening=pages.slice(0,4).join('\n');
-        if(!ch.contentHash){try{var stored=await getPdf(ch.id);if(stored)hint.hash=await pdfFingerprint(stored);}catch(e){}}
+        if(!opening.trim())opening='';
+        if(!opening||!ch.contentHash){
+          var key=(ch.contentHash||'')+'|'+(+ch.fileSize||0),read=tidyReadCache[ch.id];
+          if(!read||read.key!==key)read=tidyReadCache[ch.id]={key:key};
+          if((!ch.contentHash&&read.hash===undefined)||(!opening&&read.text===undefined)){
+            var stored=null;try{stored=await getLocalPdf(ch.id);if(!stored&&!ch.contentHash)stored=await getPdf(ch.id);}catch(e){}
+            if(stored){
+              if(!ch.contentHash&&read.hash===undefined){try{read.hash=await pdfFingerprint(stored)||'';}catch(e){read.hash='';}}
+              if(!opening&&read.text===undefined){try{var found=await tidyPdfOpening(stored);read.text=found.text||'';read.pages=+found.pages||0;}catch(e){read.text='';}}
+            }else delete tidyReadCache[ch.id];
+          }
+          if(read.hash&&!ch.contentHash)hint.hash=read.hash;
+          if(!opening&&read.text){opening=read.text;if(read.pages)hint.pages=read.pages;}
+        }
       }else opening=String(ch.fr||'');
       if(opening)hint.text=opening.slice(0,12000);hints[ch.id]=hint;
-      if(progress&&i%10===9)progress(i+1,papers.length);
+      if(progress)progress(i+1,papers.length);
     }
     return hints;
   }
@@ -2454,19 +2477,22 @@
     var api=shelvesApi(),dialog=byId('tidyDialog');if(!api||!dialog||tidyBusy)return;
     if(tabRole!=='writer'||tabMaySave()!=='yes'){noteTabReadOnly();return;}
     tidyPreview=null;byId('tidyBody').innerHTML='<p class="hint" id="tidyReading">Reading your library…</p>';byId('tidyApply').disabled=true;byId('tidySummary').textContent='';if(!dialog.open)dialog.showModal();
-    var papers=state.chapters.slice(),hints=await tidyHints(papers,function(done,total){var line=byId('tidyReading');if(line)line.textContent='Reading your library… '+done+' of '+total;});
-    var plan=api.plan({papers:papers,lists:state.readingLists&&state.readingLists.lists||[],order:state.categoryOrder,hints:hints});
-    tidyPreview={plan:plan,targets:{},topics:{},keep:{},merge:{},remove:{}};
+    // Closing the preview, or opening it again, stops this reading.
+    var run=++tidyReadRun,papers=state.chapters.slice(),hints=await tidyHints(papers,function(done,total){var line=byId('tidyReading');if(line)line.textContent='Reading your library… '+done+' of '+total;},function(){return run===tidyReadRun&&dialog.open;});
+    if(!hints||run!==tidyReadRun)return;
+    var lists=state.readingLists||{},plan=api.plan({papers:papers,lists:lists.lists||[],items:lists.items||[],resolve:resolvedPaperId,order:state.categoryOrder,hints:hints});
+    tidyPreview={plan:plan,hints:hints,targets:{},topics:{},keep:{},merge:{},remove:{}};
     var placeholder={};plan.placeholders.forEach(function(item){placeholder[item.id]=true;});
     // Placeholders keep their place unless removed; manuscripts in review stay in review.
     plan.rows=plan.rows.filter(function(row){return !row.review&&!placeholder[row.id];});
     plan.rows.forEach(function(row){tidyPreview.targets[row.id]=row.to;});
-    plan.topics.forEach(function(topic){tidyPreview.topics[topic.key]={mode:'list',name:topic.name};});
+    // A topic whose papers are all on reading lists already is just shelved unless chosen otherwise.
+    plan.topics.forEach(function(topic){tidyPreview.topics[topic.key]={mode:topic.suggest||'list',name:topic.name};});
     plan.duplicates.forEach(function(group,index){tidyPreview.keep[index]=group.keep;});
     if(dialog.open)renderTidyPreview();
   }
   function tidyPaperFacts(ch){
-    var api=shelvesApi(),facts=[ch.kind==='pdf'?'PDF':ch.sourceType==='docx'?'Word':'Text'],marks=api.marks(ch);if(+ch.pageCount)facts.push(tidyCount(+ch.pageCount,'page','pages'));facts.push(marks?tidyCount(marks,'mark','marks'):'no marks');
+    var api=shelvesApi(),facts=[ch.kind==='pdf'?'PDF':ch.sourceType==='docx'?'Word':'Text'],marks=api.marks(ch),read=tidyPreview&&tidyPreview.hints&&tidyPreview.hints[ch.id],pages=+(read&&read.pages)||+ch.pageCount;if(pages)facts.push(tidyCount(pages,'page','pages'));facts.push(marks?tidyCount(marks,'mark','marks'):'no marks');
     if(+ch.fileSize)facts.push((ch.fileSize/1048576).toFixed(ch.fileSize<10485760?1:0)+' MB');
     try{if(+ch.addedAt>946684800000)facts.push('added '+new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',year:'numeric'}).format(new Date(+ch.addedAt)));}catch(e){}
     return facts.join(' · ');
@@ -2493,7 +2519,8 @@
       html+='<section class="tidy-section"><h3>Topic categories</h3><p class="hint">These categories name a topic, not a kind of document. Topics work best as reading lists, and the papers still go on their shelves.</p>';
       plan.topics.forEach(function(topic){
         var choice=preview.topics[topic.key];
-        html+='<div class="tidy-topic"><div class="tidy-paper"><strong>“'+esc(topic.label)+'”</strong><small>'+tidyCount(topic.ids.length,'paper','papers')+'</small></div><select class="field tidy-select" data-tidy-topic="'+esc(topic.key)+'" aria-label="What to do with '+esc(topic.label)+'"><option value="list"'+(choice.mode==='list'?' selected':'')+'>'+(topic.listId?'Add to the reading list “'+esc(topic.name)+'”':'Make a reading list')+'</option><option value="shelf"'+(choice.mode==='shelf'?' selected':'')+'>Keep it as a shelf</option><option value="sort"'+(choice.mode==='sort'?' selected':'')+'>Just shelve the papers</option></select>'+(choice.mode==='list'&&!topic.listId?'<input class="field tidy-list-name" data-tidy-topic-name="'+esc(topic.key)+'" value="'+esc(choice.name)+'" maxlength="120" aria-label="Name of the new reading list">':'')+'</div>';
+        var listedNote=topic.ids.length&&topic.listed===topic.ids.length?(topic.ids.length===1?' · already on a reading list':' · all already on reading lists'):'';
+        html+='<div class="tidy-topic"><div class="tidy-paper"><strong>“'+esc(topic.label)+'”</strong><small>'+tidyCount(topic.ids.length,'paper','papers')+listedNote+'</small></div><select class="field tidy-select" data-tidy-topic="'+esc(topic.key)+'" aria-label="What to do with '+esc(topic.label)+'"><option value="list"'+(choice.mode==='list'?' selected':'')+'>'+(topic.listId?'Add to the reading list “'+esc(topic.name)+'”':'Make a reading list')+'</option><option value="shelf"'+(choice.mode==='shelf'?' selected':'')+'>Keep it as a shelf</option><option value="sort"'+(choice.mode==='sort'?' selected':'')+'>Just shelve the papers</option></select>'+(choice.mode==='list'&&!topic.listId?'<input class="field tidy-list-name" data-tidy-topic-name="'+esc(topic.key)+'" value="'+esc(choice.name)+'" maxlength="120" aria-label="Name of the new reading list">':'')+'</div>';
       });
       html+='</section>';
     }

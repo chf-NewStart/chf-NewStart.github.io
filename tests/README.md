@@ -54,7 +54,13 @@ carries (DOI, journal lines, ISBN check digit, Europe PMC, a course code with
 lecture words, meeting and admin titles, Word drafts, pasted text, page count),
 duplicate groups by DOI, fingerprint or specific title (never generic titles or
 review work), placeholders, grouping by reading list, the tidy plan and when a
-tidy is offered.
+tidy is offered. Since v251 it also holds the documents a check of a real
+library shelved wrongly (a title ending in "form", "Transcript Levels", a
+publication number taken for a course code, a proposal chapter and textbook
+chapter excerpts) and ones that must not change, each with and without its
+opening text; the narrower form, transcript, course-code, chapter, CV and
+permit rules; DOIs a reading list cites; a PDF's own page count; a placeholder
+never suggested as the copy to keep; and topics already on reading lists.
 
 `reading-shelves-browser.test.js` drives shelves end to end: pills that wrap
 with controls only on the open shelf, the one-time tidy offer, a preview that
@@ -64,6 +70,10 @@ removed) with its backup in IndexedDB, the card's shelf picker, an undo made of
 new changes (copies back under new ids, list entries re-pointed), grouping by
 reading list or not at all (persisted, also in List view), a shelf for each new
 PDF, Word draft and pasted note, and a tidy and undo with localStorage full.
+The preview reads PDFs stored with no cached page text (a DOI on the first
+page, a stale stored page count against the file's own), shows its progress and
+keeps none of it; a recovered placeholder of the same file is never the
+suggested keep; a topic whose papers are all on lists defaults to just shelving.
 Run it with `PHLOEM_BROWSER=webkit` too.
 
 `reading-define-lookup.test.js` (`node --test`) covers Define: an abbreviation in

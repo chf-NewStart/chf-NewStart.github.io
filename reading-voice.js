@@ -338,7 +338,67 @@
       cancel: function () { serial++; synth.speaking = false; try { Promise.resolve(plugin.cancel()).catch(function () {}); } catch (e) {} }
     };
     function Utterance(text) { this.text = text; this.rate = 1; this.voice = null; this.lang = ''; this.volume = 1; }
-    return { synth: synth, Utterance: Utterance, native: true };
+    var engine = { synth: synth, Utterance: Utterance, native: true, plugin: plugin, queueSupported: false };
+    engine.ready = typeof plugin.capabilities === 'function' ? Promise.resolve(plugin.capabilities()).then(function (value) {
+      engine.queueSupported = !!(value && value.backgroundQueue);
+    }).catch(function () {}) : Promise.resolve();
+    return engine;
+  }
+
+  /* The native app owns the entire queue, so finishing one sentence never depends on a
+     suspended WebView scheduling the next. Events and foreground status keep Find now
+     attached to the actual native position. Older app builds keep the legacy player. */
+  function createNativePlayer(env) {
+    var plugin = env.plugin, chunks = [], index = 0, state = 'stopped', rate = 1, voice = null;
+    var background = !!env.background, session = '', serial = 0, revision = -1, commands = Promise.resolve(), nativeLoaded = false;
+    function announce() { if (env.onState) env.onState(state, index, chunks.length); }
+    function chunk() { if (env.onChunk && chunks[index]) env.onChunk(chunks[index], index, chunks.length); }
+    function accept(value, force) {
+      if (!value || value.sessionId !== session || +value.revision < revision) return;
+      revision = +value.revision || 0;
+      var before = index; index = Math.max(0, Math.min(+value.index || 0, Math.max(0, chunks.length - 1)));
+      state = /^(playing|paused|finished|stopped)$/.test(value.state) ? value.state : state;
+      announce(); if (force || index !== before || state === 'playing' || state === 'paused') chunk();
+    }
+    var listening = Promise.resolve(plugin.addListener('speechProgress', function (value) { accept(value); }));
+    function command(name, options) {
+      var mine = session;
+      commands = commands.catch(function () {}).then(function () { return listening; }).then(function () {
+        if (mine !== session && name !== 'cancel') return;
+        return plugin[name](options || {});
+      }).then(function (value) { if (mine === session) { if (name === 'playQueue') nativeLoaded = true; accept(value); } }).catch(function (error) {
+        if (mine !== session) return;
+        nativeLoaded = false;
+        state = 'paused'; announce(); if (env.onError) env.onError(error);
+      });
+      return commands;
+    }
+    function launch() {
+      state = 'playing'; announce(); chunk();
+      return command('playQueue', { sessionId: session, texts: chunks.map(function (c) { return c.text; }), index: index,
+        rate: rate, voiceURI: voice && voice.voiceURI || '', continueInBackground: background });
+    }
+    return {
+      load: function (list, start) {
+        command('cancel'); chunks = list || []; index = Math.max(0, Math.min(start || 0, Math.max(0, chunks.length - 1)));
+        session = 'phloem-' + Date.now() + '-' + (++serial); revision = -1; nativeLoaded = false; state = 'stopped'; announce();
+      },
+      play: function () { if (!chunks.length) return; if (state === 'finished') index = 0; if (state === 'paused' && nativeLoaded) { state = 'playing'; announce(); command('resume'); } else launch(); },
+      pause: function () { state = 'paused'; announce(); command('pause'); chunk(); },
+      toggle: function () { if (state === 'playing') this.pause(); else this.play(); },
+      seek: function (to) {
+        index = Math.max(0, Math.min(to, Math.max(0, chunks.length - 1))); chunk();
+        if (nativeLoaded && (state === 'playing' || state === 'paused')) command('seek', { index: index, playing: state === 'playing' });
+      },
+      next: function () { this.seek(Math.min(chunks.length - 1, index + 1)); },
+      back: function () { this.seek(Math.max(0, index - 1)); },
+      stop: function () { session = ''; nativeLoaded = false; state = 'stopped'; command('cancel'); announce(); },
+      setRate: function (value) { rate = value; if (state === 'playing') launch(); else if (state === 'paused') { state = 'stopped'; command('cancel'); announce(); } },
+      setVoice: function (value) { voice = value || null; if (state === 'playing') launch(); else if (state === 'paused') { state = 'stopped'; command('cancel'); announce(); } },
+      setBackground: function (value) { background = !!value; return command('setBackground', { enabled: background }); },
+      sync: function () { var mine = session; return commands.then(function () { return plugin.status(); }).then(function (value) { if (mine === session) accept(value, true); }); },
+      state: function () { return state; }, index: function () { return index; }, length: function () { return chunks.length; }
+    };
   }
 
   /* Where a spoken sentence sits in the text on the page, as character offsets into `text`
@@ -413,6 +473,6 @@
 
   global.PhloemVoice = Object.freeze({
     prepare: prepare, sections: sections, naturalVoice: naturalVoice, voiceHelp: voiceHelp, oddVoice: oddVoice, sentences: sentences, stripCitations: stripCitations,
-    tableLike: tableLike, formulaLike: formulaLike, rankVoices: rankVoices, createPlayer: createPlayer, nativeEngine: nativeEngine, locate: locate
+    tableLike: tableLike, formulaLike: formulaLike, rankVoices: rankVoices, createPlayer: createPlayer, createNativePlayer: createNativePlayer, nativeEngine: nativeEngine, locate: locate
   });
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -173,7 +173,7 @@ body.has-bio-bg {
     .apps-icons img { transition: none; }
 }
 .hero-meta { margin-top: 28px; }
-.hero-hint { margin-top: 22px; color: var(--faint); font: 0.74rem var(--mono); }
+.hero-hint { margin-top: 22px; color: var(--soft); /* sits on the live canvas: --faint dips to 3.2:1 over bright cells */ font: 0.74rem var(--mono); }
 .hero-hint .hint-narrow { display: none; }
 /* Below this width the 🍅 lives in the menu and there is no Shift key. */
 @media (max-width: 1020px) { .hero-hint .hint-wide { display: none; } .hero-hint .hint-narrow { display: inline; } }

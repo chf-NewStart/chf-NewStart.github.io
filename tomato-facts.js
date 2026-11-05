@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "NATURE",
+            title: "Crows hold grudges across generations",
+            fact: "Crows remember human faces for years, scold 'dangerous' people on sight, and teach their chicks which faces to mob. Wild crows have also left gifts for the humans who feed them.",
+            detail: "The grudge is testable: researchers wearing the same mask get mobbed years later, by crows that were never the original victims. Culture, in birds."
+        },
+        {
+            tag: "NATURE",
             title: "Mantis shrimp see colors we cannot name",
             fact: "Mantis shrimp carry up to 16 photoreceptor classes (humans: 3), including ultraviolet and polarized-light channels — yet behavioral tests show they are surprisingly bad at discriminating fine color differences.",
             detail: "The current theory: their eyes are not for rich perception but for instant, hard-wired signaling — a visual reflex machine rather than an artist."

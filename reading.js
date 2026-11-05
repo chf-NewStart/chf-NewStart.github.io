@@ -1770,26 +1770,47 @@
     }finally{if(button){button.disabled=false;button.textContent=original;}}
   }
   window.__phloemBuildAnnotatedPdf=buildAnnotatedPdf;   // for the regression test only
-  async function downloadForOfflineReading(ch,button){
-    if(!ch||ch.kind!=='pdf')return;var original=button&&button.textContent;if(button){button.disabled=true;button.textContent='Downloading…';}
+  async function downloadForOfflineReading(ch,button,options){
+    options=options||{};
+    if(!ch||!binarySourceSpec(ch))return false;var original=button&&button.textContent;if(button){button.disabled=true;button.textContent='Downloading…';}
     try{
       var stored=await getPdf(ch.id),kept=stored?await putPdf(ch.id,stored):false;
       if(!kept&&gdriveOn()){
-        stored=await gdriveFetchSource(ch,true,function(loaded,total){if(button&&total)button.textContent=Math.min(99,Math.round(loaded/total*100))+'%';});
+        stored=await gdriveFetchSource(ch,options.quiet!==true,function(loaded,total){if(button&&total)button.textContent=Math.min(99,Math.round(loaded/total*100))+'%';});
         kept=!!localSourceReady[ch.id];if(stored&&!kept)kept=await putPdf(ch.id,stored);
       }
       async function sourceBytes(){
         var attempts=[];if(ch.sourceUrl)attempts.push({url:ch.sourceUrl,options:{redirect:'follow',cache:'no-store'}});
         if(ch.sourcePath&&syncCfg&&syncCfg.repo&&syncCfg.token)attempts.push({url:ghUrl(ch.sourcePath),options:{headers:{Authorization:'Bearer '+syncCfg.token,Accept:'application/vnd.github.raw+json'},cache:'no-store'}});
         if(ch.sourcePath&&location.protocol!=='file:')attempts.push({url:new URL(String(ch.sourcePath).replace(/^\/+/,''),location.origin+'/').href,options:{cache:'no-store'}});
-        for(var attempt=0;attempt<attempts.length;attempt++)try{var response=await fetch(attempts[attempt].url,attempts[attempt].options);if(!response.ok)continue;var bytes=await response.arrayBuffer();if(bytes&&bytes.byteLength>=100&&looksLikePdf(bytes))return bytes;}catch(e){}
+        for(var attempt=0;attempt<attempts.length;attempt++)try{var response=await fetch(attempts[attempt].url,attempts[attempt].options);if(!response.ok)continue;var bytes=await response.arrayBuffer();if(bytes&&bytes.byteLength>=100){var head=new Uint8Array(bytes,0,4);if(ch.kind==='pdf'?looksLikePdf(bytes):head[0]===80&&head[1]===75)return bytes;}}catch(e){}
         return null;
       }
       if(!kept){stored=await sourceBytes();if(stored)kept=await putPdf(ch.id,stored);}
       if(!kept)throw new Error('Phloem could not keep a durable offline copy. The original may be unavailable, or this browser may need storage space.');
-      if(!ch.contentHash&&stored)rememberPdfFingerprint(ch,stored);renderShelf();showReaderToast('Downloaded for offline reading on this device');
-    }catch(e){showError(e.message||'The paper could not be downloaded for offline reading.','Offline download did not finish');}
+      if(!ch.contentHash&&stored)rememberPdfFingerprint(ch,stored);renderShelf();if(!options.quiet)showReaderToast('Downloaded for offline reading on this device');return true;
+    }catch(e){if(!options.quiet)showError(e.message||'The paper could not be downloaded for offline reading.','Offline download did not finish');return false;}
     finally{if(button&&button.isConnected){button.disabled=false;button.textContent=original;}}
+  }
+  var libraryDownloadJob=null;
+  async function downloadLibraryForOffline(){
+    if(libraryDownloadJob||!localSourceScanDone)return;
+    var ids=state.chapters.map(function(ch){return ch.id;}),job={cancelled:false},ready=0,failed=0;
+    var status=byId('libraryDownloadStatus'),button=byId('libraryDownloadAll'),cancel=byId('libraryDownloadCancel');
+    libraryDownloadJob=job;button.disabled=true;cancel.classList.remove('hidden');
+    try{
+      // One user-initiated sign-in, not a fresh prompt for every missing file.
+      if(gdriveOn()&&ids.some(function(id){var ch=find(id);return ch&&binarySourceSpec(ch)&&!localSourceReady[id];}))await gdriveGetToken(true);
+      for(var i=0;i<ids.length&&!job.cancelled;i++){
+        var ch=find(ids[i]);if(!ch)continue;
+        status.textContent='Saving '+(i+1)+' of '+ids.length+' · '+(ch.title||ch.sourceName||'Untitled');
+        if(!binarySourceSpec(ch)||localSourceReady[ch.id])ready++;
+        else if(await downloadForOfflineReading(ch,null,{quiet:true}))ready++;
+        else failed++;
+      }
+      status.textContent=(job.cancelled?'Download stopped · ':'')+ready+' of '+ids.length+' originals or documents ready offline'+(failed?' · '+failed+' unavailable. Re-add missing originals or check connected storage.':job.cancelled?'. You can download the rest later.':'.');
+    }catch(error){status.textContent='Download paused. '+(error&&error.message||'Check your connection and try again.');}
+    finally{libraryDownloadJob=null;cancel.classList.add('hidden');syncOfflineFilterUi();renderShelf();}
   }
   async function seedStarterGuide(){
     if(!pristineLibrary||state.chapters.length||syncCfg||gdriveOn()||location.protocol==='file:'||/^#(?:(?:phloem|carrel|margin)-setup|phloem-review|phloem-ai-pass)=/.test(location.hash))return false;
@@ -2011,6 +2032,7 @@
   }
   function syncOfflineFilterUi(){
     var button=byId('libraryOfflineFilter');if(!button)return;button.setAttribute('aria-pressed',String(libraryOfflineOnly));button.disabled=!localSourceScanDone;button.classList.toggle('active',libraryOfflineOnly);button.title=localSourceScanDone?(libraryOfflineOnly?'Show every paper':'Show only papers readable without a network connection'):'Checking downloads on this device';
+    var download=byId('libraryDownloadAll');if(download)download.disabled=!localSourceScanDone||!state.chapters.length||!!libraryDownloadJob;
   }
   function openedDate(ch){
     var stamp=+ch.lastOpenedAt||0;if(!stamp)return'Not yet';var days=Math.floor((now()-stamp)/86400000);if(days<=0)return'Today';if(days===1)return'Yesterday';if(days<14)return days+' days ago';try{return new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(new Date(stamp));}catch(e){return'Recently';}
@@ -2383,6 +2405,8 @@
   }
   byId('librarySearch').oninput=function(){libraryListSelected={};clearTimeout(librarySearchTimer);librarySearchTimer=setTimeout(renderShelf,90);};
   byId('libraryOfflineFilter').onclick=function(){if(!localSourceScanDone)return;libraryOfflineOnly=!libraryOfflineOnly;libraryListSelected={};try{localStorage.setItem(LIBRARY_OFFLINE_KEY,libraryOfflineOnly?'1':'0');}catch(e){}renderShelf();};
+  byId('libraryDownloadAll').onclick=downloadLibraryForOffline;
+  byId('libraryDownloadCancel').onclick=function(){if(libraryDownloadJob){libraryDownloadJob.cancelled=true;byId('libraryDownloadStatus').textContent='Stopping after the current file…';}};
   byId('librarySort').onchange=function(){librarySortMode=this.value;try{localStorage.setItem(LIBRARY_SORT_KEY,librarySortMode);}catch(e){}renderShelf();};
   document.querySelectorAll('[data-library-view]').forEach(function(button){
     button.onclick=function(){var next=button.dataset.libraryView;if(next===libraryViewMode)return;libraryListSelected={};libraryViewMode=next;try{localStorage.setItem(LIBRARY_VIEW_KEY,libraryViewMode);}catch(e){}syncLibraryViewControl();renderShelf();};
@@ -4420,10 +4444,10 @@
   /* Listen: the paper read aloud by a voice already on this device (Jamie and other
      Apple voices on iPad and Mac, Google voices on Android), skipping equations, tables,
      captions, citations and the reference list. Nothing leaves the device. */
-  var VOICE_KEY='readingRoom.voice.v1',VOICE_RATE_MIN=.5,VOICE_RATE_MAX=2,voicePlayer=null,voicePaperId='',voiceChunks=[],voicePrefs={voice:'',rate:1};
+  var VOICE_KEY='readingRoom.voice.v1',VOICE_RATE_MIN=.5,VOICE_RATE_MAX=2,voicePlayer=null,voicePaperId='',voiceChunks=[],voicePrefs={voice:'',rate:1,background:false};
   // Opening ••• clears the selection card, so the last selection's place is kept for a minute.
   var voiceSelectionPlace=null;
-  try{var savedVoice=JSON.parse(localStorage.getItem(VOICE_KEY)||'null');if(savedVoice&&typeof savedVoice==='object'){voicePrefs.voice=String(savedVoice.voice||'');if(+savedVoice.rate>=VOICE_RATE_MIN&&+savedVoice.rate<=VOICE_RATE_MAX)voicePrefs.rate=+savedVoice.rate;}}catch(e){}
+  try{var savedVoice=JSON.parse(localStorage.getItem(VOICE_KEY)||'null');if(savedVoice&&typeof savedVoice==='object'){voicePrefs.voice=String(savedVoice.voice||'');voicePrefs.background=savedVoice.background===true;if(+savedVoice.rate>=VOICE_RATE_MIN&&+savedVoice.rate<=VOICE_RATE_MAX)voicePrefs.rate=+savedVoice.rate;}}catch(e){}
   /* The iPad app speaks through iPadOS (PhloemSpeech): WKWebView's Web Speech lists no
      voices there, and Safari's only the ones that ship with the system, never a Premium
      voice downloaded in Settings. Both stay on the device. */
@@ -4597,14 +4621,14 @@
       if(box){box.width=box.right-box.left;box.height=box.bottom-box.top;}return box;
     }};
   }
-  function followVoice(target){
+  function followVoice(target,force){
     var pane=byId('documentPane'),paneRect=pane.getBoundingClientRect(),box=target.rect();
     if(!box||!paneRect.height)return;
     var bar=byId('voiceBar').getBoundingClientRect(),top=paneRect.top+Math.min(80,paneRect.height*.12);
     var bottom=Math.min(paneRect.bottom,bar.height?bar.top:paneRect.bottom)-24;
     var byHand=Date.now()-voiceScrolledByHandAt<6000,paged=readerMode==='pdf'&&pagedPdfFlow();
     // Out of the clear part of the page: bring the sentence to about a third of the way down.
-    if(!byHand&&!paged&&(box.top<top||box.bottom>bottom))pane.scrollBy({top:box.top-(paneRect.top+(bottom-paneRect.top)*.3),behavior:'smooth'});
+    if((force||!byHand)&&(force||!paged)&&(box.top<top||box.bottom>bottom))pane.scrollBy({top:box.top-(paneRect.top+(bottom-paneRect.top)*.3),behavior:'smooth'});
     if(!comfort.focus)return;
     // The guide band rides along while the paper scrolls.
     cancelAnimationFrame(voiceGuideFrame);var until=Date.now()+900;
@@ -4613,12 +4637,21 @@
       if(Date.now()<until)voiceGuideFrame=requestAnimationFrame(step);
     })();
   }
-  function focusVoiceChunk(index){
+  var voiceFindUntil=0;
+  function focusVoiceChunk(index,force){
     var chunk=voiceChunks[index],ch=find(currentId);if(!chunk||!ch||voicePaperId!==ch.id||byId('voiceBar').classList.contains('hidden'))return;
     voiceFocusIndex=index;
     document.body.classList.toggle('voice-focus',!comfort.focus);
     var target=ch.kind==='pdf'&&readerMode==='pdf'?focusVoicePdf(chunk,index):focusVoiceText(chunk,index);
-    if(target)followVoice(target);
+    if(target)followVoice(target,force||Date.now()<voiceFindUntil);
+  }
+  async function findVoiceNow(){
+    if(!voicePlayer||!voiceChunks.length||voicePaperId!==currentId)return;
+    if(voicePlayer.sync)await voicePlayer.sync();
+    var index=voicePlayer.index(),chunk=voiceChunks[index],ch=find(currentId);if(!chunk||!ch)return;
+    voiceScrolledByHandAt=0;voiceFindUntil=Date.now()+2500;
+    if(ch.kind==='pdf'&&readerMode==='pdf'&&chunk.page&&chunk.page!==currentPage)await gotoPdfPage(chunk.page);
+    focusVoiceChunk(voicePlayer.index(),true);
   }
   function fillVoiceSections(){
     var menu=byId('voiceFromMenu');if(!menu)return;
@@ -4694,6 +4727,7 @@
   function syncVoiceUi(state){
     var bar=byId('voiceBar'),playing=state==='playing';bar.classList.toggle('playing',playing);document.body.classList.toggle('voice-on',!bar.classList.contains('hidden'));
     var open=!bar.classList.contains('hidden');byId('voicePlay').setAttribute('aria-label',playing?'Pause':'Play');byId('zenListen').setAttribute('aria-expanded',String(open));byId('zenListen').setAttribute('aria-label',open?'Stop reading aloud':'Listen: read this paper aloud');
+    byId('voiceNow').disabled=!voicePlayer||!voicePlayer.length()||voicePaperId!==currentId;
     var phoneListen=byId('zenPhoneListen');phoneListen.setAttribute('aria-pressed',String(playing));phoneListen.setAttribute('aria-label',playing?'Pause reading aloud':'Listen: read this paper aloud');
     syncVoiceRate();
     if(state==='finished')byId('voiceLine').textContent='Finished. Tap play to start again.';
@@ -4726,10 +4760,12 @@
   function ensureVoicePlayer(){
     if(voicePlayer)return voicePlayer;
     var engine=voiceEngine();
-    voicePlayer=window.PhloemVoice.createPlayer({synth:engine.synth,Utterance:engine.Utterance,
+    var make=engine.native&&engine.queueSupported?window.PhloemVoice.createNativePlayer:window.PhloemVoice.createPlayer;
+    voicePlayer=make({synth:engine.synth,Utterance:engine.Utterance,plugin:engine.plugin,background:voicePrefs.background,
       onChunk:function(chunk,index){
         // When each sentence begins to be spoken (pausing, skipping and seeking also report chunks).
         var head=voiceSentenceStart(index);if(voicePlayer&&voicePlayer.state()==='playing'&&head!==voiceChunkBegan.index)voiceChunkBegan={index:head,at:Date.now()};
+        if(document.hidden)return;
         byId('voiceLine').textContent=chunk.text;var ch=find(currentId);if(!ch||voicePaperId!==ch.id)return;
         if(ch.kind==='pdf'&&readerMode==='pdf'){
           if(chunk.page&&chunk.page!==currentPage&&voicePlayer&&voicePlayer.state()==='playing')Promise.resolve(gotoPdfPage(chunk.page)).then(function(){focusVoiceChunk(index);});
@@ -4737,7 +4773,7 @@
         }
         else focusVoiceChunk(index);
       },
-      onState:function(state){syncVoiceUi(state);}});
+      onState:function(state){syncVoiceUi(state);},onError:function(){byId('voiceLine').textContent='Speech paused. Tap Play to try again.';}});
     voicePlayer.setRate(voicePrefs.rate);voicePlayer.setVoice(chosenVoice());return voicePlayer;
   }
   async function startVoice(){
@@ -4747,6 +4783,8 @@
     if(!voiceEngine().native)try{var warm=new SpeechSynthesisUtterance(' ');warm.volume=0;speechSynthesis.speak(warm);}catch(e){}
     closeZenPopouts(false);fillVoiceSelect();var bar=byId('voiceBar');bar.classList.remove('hidden');byId('voiceLine').textContent='Getting the text ready…';syncVoiceUi('stopped');
     try{if(ch.kind==='pdf'&&pdfDoc)await ensureReaderData(pdfDoc,ch);}catch(e){}
+    var engine=voiceEngine();if(engine.ready)await engine.ready;
+    var backgroundLabel=byId('voiceBackgroundLabel');backgroundLabel.classList.toggle('hidden',!engine.queueSupported);byId('voiceBackground').checked=voicePrefs.background;
     if(currentId!==ch.id)return;
     var prepared=window.PhloemVoice.prepare(voiceBlocks(ch));
     if(!prepared.chunks.length){byId('voiceLine').textContent='No readable text was found in this paper.';return;}
@@ -4760,6 +4798,8 @@
      paper dimmed). Play and pause live on the bar; the phone's Listen stays play/pause. */
   if(byId('zenListen'))byId('zenListen').onclick=function(){closeZenPopouts(false);if(!byId('voiceBar').classList.contains('hidden')&&voicePaperId===currentId){stopVoice();return;}startVoice();};
   if(byId('voiceBar')){
+    byId('voiceBackground').onchange=function(){voicePrefs.background=this.checked;saveVoicePrefs();if(voicePlayer&&voicePlayer.setBackground)voicePlayer.setBackground(this.checked);};
+    byId('voiceNow').onclick=function(){findVoiceNow().catch(function(){showReaderToast('The spoken page is still loading. Try Find now again.');});};
     byId('voicePlay').onclick=function(){voiceScrolledByHandAt=0;if(voicePlayer&&voicePaperId===currentId&&voicePlayer.length())voicePlayer.toggle();else startVoice();};
     byId('voiceBack').onclick=function(){voiceScrolledByHandAt=0;if(voicePlayer)voicePlayer.back();};
     byId('voiceNext').onclick=function(){voiceScrolledByHandAt=0;if(voicePlayer)voicePlayer.next();};
@@ -4822,7 +4862,7 @@
     // New voices are looked for before the menu refresh records them as known.
     document.addEventListener('visibilitychange',function(){
       if(document.hidden||!voiceSupported())return;
-      if(voiceEngine().native){voiceEngine().synth.refresh().catch(function(){});return;}
+      if(voiceEngine().native){voiceEngine().synth.refresh().catch(function(){});if(voicePlayer&&voicePlayer.sync)voicePlayer.sync().catch(function(){});return;}
       refreshVoiceQuality(true);fillVoiceSelect();
     });
     byId('voiceHelpBtn').onclick=function(){

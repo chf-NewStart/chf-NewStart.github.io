@@ -291,6 +291,18 @@ function check(name, condition, extra) {
       && /auto|scroll/.test(mobileCategoryRail.overflowX)
       && mobileCategoryRail.scrollable,
     JSON.stringify(mobileCategoryRail));
+  const labelOverlap = await page.locator('nav.library-list-categories').evaluate(rail => {
+    rail.scrollLeft = (rail.scrollWidth - rail.clientWidth) / 2;
+    const label = rail.querySelector('.library-list-categories-label').getBoundingClientRect();
+    const bounds = rail.getBoundingClientRect();
+    return Array.from(rail.querySelectorAll('.library-list-category-filter')).some(chip => {
+      const r = chip.getBoundingClientRect();
+      return r.right > bounds.left && r.left < bounds.right
+        && Math.max(r.left, label.left, bounds.left) < Math.min(r.right, label.right, bounds.right)
+        && Math.max(r.top, label.top) < Math.min(r.bottom, label.bottom);
+    });
+  });
+  check('the Lists or Shelves label never covers a chip while scrolling', !labelOverlap);
   check('list mode has no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

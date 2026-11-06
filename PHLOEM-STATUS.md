@@ -6,6 +6,23 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-05)
 
+- **App 1.2.10 (56) submitted, Waiting for Review (2026-11-05 22:55 EST, submission efd3af93; Houfu: "check and push
+  the newest to the store pls"). Manual release: press Release after approval.** Build 56 bundles reader **v252**
+  (Contents stays in Reader view) and v251's shelf rules. Commit 267f3ee sets 1.2.10 / 56 (`bundle.test.mjs` pins them;
+  `apps/ipad` 22/22). Archive `~/Library/Developer/Xcode/Archives/2026-11-05/Phloem 1.2.10 (56).xcarchive`, uploaded
+  with the API key, **VALID**, for Internal Testers and friends2 with a What to Test note. Version record iOS 1.2.10:
+  What's New leads "Contents now stays in Reader view."; description, keywords, screenshots and review contact carried
+  over; review notes untouched (Houfu edits them). **1.2.9 (55, v250) is Ready for Sale.**
+  Checked in the app's real web view, in the simulator, on a test copy of the Debug build with a script injected into
+  its bundle (not shipped, not in the repo): iPad Pro 11-inch M5 on iOS 26.5 and iPhone 15 Pro on iOS 18.2. Contents
+  shows in both views (first under More on the iPhone) and a tap there reaches it; the list stays inside the real safe
+  areas (32/20 and 59/34); the heading lands below the status bar; the PDF opens on that page; closing and reopening
+  the paper and a reload both keep the heading. Taps were scripted with hit tests, so a real finger, momentum scrolling
+  and a real device are still unproven.
+  **That check confirmed an older bug, not fixed here: kill and relaunch the app and Reader view is back at the top of
+  the paper** (page 6's place is kept for the PDF; the text scroll is gone). On start `putDerived` replaces each PDF's
+  stored reader data with whatever is in memory, so Reader view rebuilds, and a rebuild deletes `readerScroll` and
+  `focusPara`. See Open questions.
 - **Contents stays in Reader view, v252 (web; Houfu: "where the fk did contents go after changing to reader view").**
   Why it was gone: a rule hid the Contents button outside PDF view, at least since Oct 27; v243 reworked the dock and
   kept it, and the tests split the same way (Contents was only checked in PDF view, Reader view's tests never looked
@@ -25,8 +42,8 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   library's refresh button and "Reload to update" did the same; a place in the first 1% of a long book was lost on every
   flip and reload (the pane kept PDF view's scroll); a search hit's jump right after opening could be undone by the
   end-of-open restore; a long Contents list ran under the notch.
-  Tests: `reading-contents-reader-view` 168 checks in Chromium, 160 in WebKit (its newer checks fail on each earlier version). Full run 169 suites in Chromium and 103 in WebKit: what fails also fails on live (`reading-pdf-ink`'s three dock sizes, `reading-split-undo-browser`, `reading-workspace-browser`, `reading-workspace-paper-color`, and in Chromium `reading-workspace-paper-edge`). Two WebKit flakes on a busy machine: `reading-book-guide` (also on live) and the last hold check in `reading-pdf-links`, a race in that test: it does not wait for the replacement PDF to open (with the import slowed by 1.5 s it fails on live too, in both engines; 8 of 8 on live and on v252 otherwise). Not run on a real device or in WKWebView:
-  Playwright's WebKit stands in, so momentum scrolling, the real notch and iOS 15 are unproven.
+  Tests: `reading-contents-reader-view` 168 checks in Chromium, 160 in WebKit (its newer checks fail on each earlier version). Full run 169 suites in Chromium and 103 in WebKit: what fails also fails on live (`reading-pdf-ink`'s three dock sizes, `reading-split-undo-browser`, `reading-workspace-browser`, `reading-workspace-paper-color`, and in Chromium `reading-workspace-paper-edge`). Two WebKit flakes on a busy machine: `reading-book-guide` (also on live) and the last hold check in `reading-pdf-links`, a race in that test: it does not wait for the replacement PDF to open (with the import slowed by 1.5 s it fails on live too, in both engines; 8 of 8 on live and on v252 otherwise). Not run on a real device (see the
+  simulator check above): momentum scrolling and iOS 15 are unproven.
   Tried and taken out again: skipping saves until a paper has picked up its place. It fixed "leave right after opening
   saves page 1 and fraction 0" (old, live too), but a review found it stopped saves while a PDF downloads from Drive or
   iCloud. The better fix is to restore as soon as the text is on screen, not after the PDF loads; see Open questions.
@@ -37,7 +54,8 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   tab covers More's top row (Pages & zoom still works); rotating in Reader view loses the place; very narrow iPad
   windows overlap the rail; 1 to 1.7 s from tap to landing on a 15,000-paragraph book in WebKit; web-link bookmarks show
   "Could not open that chapter" (same as live); Contents needs the PDF on the device; after 6 s Listen follows its
-  sentence again.
+  sentence again; on an iPhone the "Reader view · headers and footers removed" line at the very top of a paper sits
+  under the status bar.
 
 ## Earlier (2026-11-04)
 
@@ -894,6 +912,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-05 1.2.10 (56):** submitted for review with reader v252, manual release. Contents checked in the app's real
+  web view on an iPad and an iPhone simulator; that check confirmed the older "relaunch loses Reader view's place" bug.
 - **2026-11-05 v252:** Contents stays in Reader view, and an entry moves to its heading there (see Now). Independent
   reviews on real PDFs and in both engines; 802 of 864 real entries land on their heading, none worse than the first
   version.

@@ -6,6 +6,15 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-06)
 
+- **App 1.2.10 (57) submitted, Waiting for Review (2026-11-06 00:43 EST, submission 3a591809; Houfu: "put that as the
+  new App Store build and push"). Manual release: press Release after approval.** Build 57 replaces 56 on the same
+  version record: 56's submission (efd3af93) was cancelled before review. It bundles reader **v253** and the app's
+  `maximum-scale=1` (commit 95da859; `apps/ipad` 22/22). Archive
+  `~/Library/Developer/Xcode/Archives/2026-11-06/Phloem 1.2.10 (57).xcarchive`, uploaded with the API key, **VALID**, in
+  TestFlight for Internal Testers and friends2 with a What to Test note. What's New gains one line for the iPhone fixes;
+  description, keywords, screenshots and review contact carried over; review notes untouched (Houfu edits them).
+  **1.2.9 (55, v250) is still the one on sale.**
+
 - **iPhone: a double tap no longer zooms the library, and the Lists label no longer floats, v253 (web; Houfu's screen
   recording: "the double tap is strange zooming. Also scrolling the category will have list floating").**
   The label: the phone rule made it `position: sticky` with its own background, so it stayed put and the pills slid
@@ -25,7 +34,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   1 on all 10 targets. The app as built: all 10 stay at 1. A real swipe on the list row: v252's label stays at x=40,
   v253's leaves with the pills (x=-255). Same on v252 and v253: PDF pinch zooms the PDF (402 to 501 wide), Reader pinch
   changes the text size (25.92 to 18.14 px), swipes scroll, double-clicks still reach the page, and flipping between
-  PDF and Reader lands on the same spots.
+  PDF and Reader lands on the same spots. A throwaway iPad Pro 11-inch M5 simulator, iOS 27: all 10 double taps stay
+  at 1, and PDF pinch (834 to 1035 wide) and swipes match v252. Reader pinch is phone-only by design. Apple Pencil can't
+  be driven this way; the ink rules are unchanged and `reading-pdf-ink` fails only where it fails on live.
   Tests: `reading-library-list` gains the label check (fails on the old CSS) and the touch rule checks;
   `apps/ipad/tests/bundle.test.mjs` pins the app's viewport and that the website's has no `maximum-scale`. Full run:
   Chromium 161 of 169, WebKit 99 of 103. The failures are the ones that also fail on live (`reading-split-undo-browser`,
@@ -39,7 +50,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 ## Earlier (2026-11-05)
 
 - **App 1.2.10 (56) submitted, Waiting for Review (2026-11-05 22:55 EST, submission efd3af93; Houfu: "check and push
-  the newest to the store pls"). Manual release: press Release after approval.** Build 56 bundles reader **v252**
+  the newest to the store pls"). Replaced by build 57 before review (see Now).** Build 56 bundles reader **v252**
   (Contents stays in Reader view) and v251's shelf rules. Commit 267f3ee sets 1.2.10 / 56 (`bundle.test.mjs` pins them;
   `apps/ipad` 22/22). Archive `~/Library/Developer/Xcode/Archives/2026-11-05/Phloem 1.2.10 (56).xcarchive`, uploaded
   with the API key, **VALID**, for Internal Testers and friends2 with a What to Test note. Version record iOS 1.2.10:
@@ -944,6 +955,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-06 1.2.10 (57):** replaces 56 in review, on the same version record, with reader v253; manual release. Real
+  touches on an iPhone and an iPad simulator, before and after.
 - **2026-11-06 v253:** a double tap no longer zooms the library, the Lists label scrolls with the pills, and the app's
   page can no longer zoom at all (see Now). Checked with real touches in the real web view, before and after. What turns
   double-tap zoom on on Houfu's phone was not found.

@@ -1,12 +1,6 @@
 [
   {
     "tag": "NATURE",
-    "title": "Wombats produce cube-shaped poop",
-    "fact": "Wombat intestines stretch unevenly, shaping the feces into cubes before exit — the only known animal to do so. The sharp edges keep the droppings from rolling off scent-marking rocks.",
-    "detail": "The mechanism (rings of varying stiffness in the gut wall) inspired soft-robotics work on shape-forming materials."
-  },
-  {
-    "tag": "NATURE",
     "title": "Honeybees can be trained to sniff landmines and disease",
     "fact": "Bees learn to associate any odor with nectar rewards in minutes, making them cheap, mobile biosensors: trained hives have flagged TNT traces, tuberculosis, and early cancer markers in breath samples.",
     "detail": "A bee's olfactory sensitivity rivals a sniffer dog's, at one-thousandth the maintenance cost — and they can be retrained on a new scent in minutes."

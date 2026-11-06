@@ -91,6 +91,34 @@ Contents button in the Zen dock (and T opens it); on a phone it is the first ite
 paper without contents shows neither. More's page controls are named "Pages & zoom", and the
 dock keeps every button on screen, short windows included. Run it with `PHLOEM_BROWSER=webkit` too.
 
+`reading-contents-reader-view.test.js` covers Contents in Reader view: the list stays through the
+switch (dock, a phone's More, Pages & zoom, T), and an entry moves within Reader view to its heading,
+from bookmarks and from a printed contents page; a title not in the text goes to its page, and PDF
+view keeps its page jumps. A generated book of hard cases checks a page with no text, a two-part
+number, a heading that ends its page or starts the page after its bookmark, one run into its text,
+one after a sentence opening with the same word, spaced-out letters and a title that only opens the
+heading, and that the PDF then opens on the heading's page. It also taps an entry while Reader view
+is being built (the test's server stretches the build, in memory only), after a rebuild on open,
+with no page marks, with Listen running (fake speech) and in a read-only second tab, and in Chromium
+lands below a faked 59 px notch. A second generated book holds what real books turned up: a running
+head ("Some Words of Advice 143") above "6.4 Some Words of Advice", the next page's running head ("67
+References") standing in for a heading, a next page opening with the heading fused to its subheading,
+"Water, nutrients..." above "3 Water", a heading that opens with the title after one that only
+contains it, C4 after C3, a sentence on the bookmark's page with the heading on the next, and "and"
+for "&". A third holds a section run into its text above a heading that only holds its title, "References
+68" opening the next page, "3 Results" opening it for a bookmark with no number, "+" for "&", a sentence
+opening "I think" for a part "I", a running foot "Conclusions 143", "Civil works" with only "Works" on its page, "ss" for
+the German sharp s, "Appendix 1", a numbered heading below a caption opening with its title, and picking up
+from the PDF on a page of one line. A 170-page book checks that a place
+under 1% of the way through survives a flip to the PDF and back, and a reload. It also checks that the saved
+page stays with a heading that ends its page through a figure loading above, with and without scroll
+anchoring, a text size step and a reload; an open Find bar; leaving within 600 ms of a scroll and refreshing
+from the library; a search hit opening on its page whatever the saved place; a paper whose PDF is not on the
+device still saving its place; Listen's page turn after a nudge in Page view; with no page marks, the saved page following a jump and
+a repeated title showing its page; and in Chromium, Listen after a jump under a 62 px notch and a long
+list clear of a 59 px one. Every PDF is generated in the test; no real paper goes in the repo. Run it
+with `PHLOEM_BROWSER=webkit` too.
+
 `reading-text-size-phone.test.js` covers text size on a phone: More → Text size opens a sheet above
 the bar (small A, the size, big A; tap the size to reset). On text and in Reader view it changes the
 type from 70% to 190% in 10% steps, shared with Reading settings and kept after a reload, and the

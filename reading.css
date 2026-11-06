@@ -2137,6 +2137,8 @@
     .toc-item:hover { background: var(--surface-2); }
     .toc-item[data-depth="1"] { padding-left: 28px; font-size: .82rem; color: var(--muted); }
     .toc-item[data-depth="2"] { padding-left: 46px; font-size: .78rem; color: var(--muted); }
+    /* A long Contents list stays clear of the notch and the home bar. */
+    #tocDialog { max-height: calc(100vh - 24px - 2 * max(env(safe-area-inset-top), env(safe-area-inset-bottom))); max-height: calc(100dvh - 24px - 2 * max(env(safe-area-inset-top), env(safe-area-inset-bottom))); }
 
     /* Laptop-height screens should reveal the selected paper's action without turning
        the library into a cover that must be scrolled before it can be opened. */

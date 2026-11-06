@@ -4,7 +4,42 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-11-04)
+## Now (2026-11-05)
+
+- **Contents stays in Reader view, v252 (web; Houfu: "where the fk did contents go after changing to reader view").**
+  Why it was gone: a rule hid the Contents button outside PDF view, at least since Oct 27; v243 reworked the dock and
+  kept it, and the tests split the same way (Contents was only checked in PDF view, Reader view's tests never looked
+  for it). The new test generates its PDFs in code; no real paper goes in the repo.
+  What it does now: Contents is in the dock on iPad, first under More on iPhone, in Pages & zoom and on the T key, in
+  both views. In Reader view an entry moves to its heading and stays in Reader view (`contentsGoTo`,
+  `readerParaForContents`); a tap during the text build waits for it and lands. The two views keep one place: back on
+  the PDF it opens on that heading's page (`holdReaderPage`), and that page survives a late figure, a text size step and
+  a reload. A jump lands clear of the notch, the "Use Phloem here" bar and an open Find bar. Listen doesn't pull the
+  page back right after a jump.
+  The matcher (`contentsFind`, `contentsParaOnPage`) copes with numbering, spaced or fused letters, running heads in
+  either order ("Title 143", "67 References"), a heading on the page after its bookmark, a heading that runs into its
+  text, and a sentence that opens with the title. On 20 of Houfu's real PDFs, offline: 802 of 864 entries land on their
+  heading (first version 699), none worse, 422 of 540 on the bookmark's own line (first version 377). No PDF body text
+  was pasted anywhere and all runs blocked non-localhost.
+  Older place bugs fixed on the way, all with checks: leaving within 600 ms of a scroll zeroed the saved spot; the
+  library's refresh button and "Reload to update" did the same; a place in the first 1% of a long book was lost on every
+  flip and reload (the pane kept PDF view's scroll); a search hit's jump right after opening could be undone by the
+  end-of-open restore; a long Contents list ran under the notch.
+  Tests: `reading-contents-reader-view` 168 checks in Chromium, 160 in WebKit (its newer checks fail on each earlier version). Full run 169 suites in Chromium and 103 in WebKit: what fails also fails on live (`reading-pdf-ink`'s three dock sizes, `reading-split-undo-browser`, `reading-workspace-browser`, `reading-workspace-paper-color`, and in Chromium `reading-workspace-paper-edge`). Two WebKit flakes on a busy machine: `reading-book-guide` (also on live) and the last hold check in `reading-pdf-links`, a race in that test: it does not wait for the replacement PDF to open (with the import slowed by 1.5 s it fails on live too, in both engines; 8 of 8 on live and on v252 otherwise). Not run on a real device or in WKWebView:
+  Playwright's WebKit stands in, so momentum scrolling, the real notch and iOS 15 are unproven.
+  Tried and taken out again: skipping saves until a paper has picked up its place. It fixed "leave right after opening
+  saves page 1 and fraction 0" (old, live too), but a review found it stopped saves while a PDF downloads from Drive or
+  iCloud. The better fix is to restore as soon as the text is on screen, not after the PDF loads; see Open questions.
+  Seen and left, all rare or old: a chapter and its first section with one title share a landing; a heading Reader view
+  stripped as a running head lands at its page start; a number-first running head on the same page ("144 Some Words of
+  Advice" above "6.4 Some Words of Advice") wins; Listen's bar can cover the last heading when the final section is one
+  sentence; the reading guide band stays where it was on a jump (as in PDF view); landscape phone in a read-only second
+  tab covers More's top row (Pages & zoom still works); rotating in Reader view loses the place; very narrow iPad
+  windows overlap the rail; 1 to 1.7 s from tap to landing on a 15,000-paragraph book in WebKit; web-link bookmarks show
+  "Could not open that chapter" (same as live); Contents needs the PDF on the device; after 6 s Listen follows its
+  sentence again.
+
+## Earlier (2026-11-04)
 
 - **Shelf rules fixed after a check of Houfu's real library, v251 (web; asked for by the v250 session after a read-only
   check of his 101-paper library found 13 of 93 shelf guesses wrong).** Each rule-level cause, with the document that
@@ -806,6 +841,14 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Open questions for Houfu
 
+- **Reader view restores its place only after the PDF has loaded**, so leaving a paper in that window saves page 1
+  and fraction 0, and on a Drive or iCloud download the reader sits at the top meanwhile. Each app start also overwrites
+  a PDF's stored reader data with only `termLookups` (`putDerived` in the startup `Promise.all`), so Reader view
+  rebuilds and loses its place on alternate reloads and cold starts. Both are old and are next in line, as one change.
+
+- **iOS 15.0 to 15.3 has no dialog element**, so Contents, like every dialog in Phloem, can't open there, though the
+  app's deployment target is iOS 15. Raising the target to 15.4 is a one-line change and drops those devices.
+
 - **For my research (v248) shows on every selection card**, and opens profile setup until a profile is saved, so it
   can be found. If it should stay out of sight until there is a profile, it is a one-line change.
 
@@ -850,6 +893,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - Manilha was rejected: read App Review's message and decide on a fix.
 
 ## Log
+
+- **2026-11-05 v252:** Contents stays in Reader view, and an entry moves to its heading there (see Now). Independent
+  reviews on real PDFs and in both engines; 802 of 864 real entries land on their heading, none worse than the first
+  version.
 
 - **2026-11-04 v251:** shelf rules fixed after the check of Houfu's library (forms, transcripts, publication numbers,
   proposal chapters and book excerpts, placeholder keeps, topics already on lists), and the tidy preview reads the

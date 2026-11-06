@@ -1543,7 +1543,7 @@
   /* The standalone app can sit open for days while deploys pass it by; the service
      worker fetches reading.html network-first, so one reload is all "update" takes.
      Flush the save first — reload mid-debounce would drop the newest edit. */
-  async function refreshPhloem(){saveCurrentReadingPosition(false);persist(false);await flushStateSnapshot();location.reload();}
+  async function refreshPhloem(){if(!byId('readerPage').classList.contains('hidden'))saveCurrentReadingPosition(false);persist(false);await flushStateSnapshot();location.reload();}
   byId('refreshBtn').onclick = refreshPhloem;
   /* A lifecycle flush writes only the cursor fields into the newest stored record. A
      second tab may have saved notes or reading preferences since this tab loaded; writing
@@ -3240,7 +3240,7 @@
       });
       var rebuilt=readerTextFromPages(lines,paragraphs)||pages.join('\n\n');
       migrateReaderAnchors(ch,oldText,rebuilt);
-      ch.pageLines=lines;ch.pageParagraphs=paragraphs;ch.pageTexts=pages;ch.readerText=rebuilt;ch.readerV=READER_V;ch.fr=pages.join('\n\n');
+      ch.pageLines=lines;ch.pageParagraphs=paragraphs;ch.pageTexts=pages;ch.readerText=rebuilt;ch.readerV=READER_V;ch.fr=pages.join('\n\n');pageStartCache={};
       try{ch.figCount=await buildFigures(doc,ch,layouts,paragraphs,pageDims,body);}catch(figError){ch.figCount=0;}
       ch.focusPara=null;delete ch.readerScroll;ch.updatedAt=now();saveDerivedSoon(ch);persist();
       return ch.readerText;
@@ -3850,8 +3850,10 @@
   }
   function setTextSize(size,atY){
     size=Math.max(70,Math.min(190,Math.round(size/10)*10));if(size===comfort.size)return false;
-    var anchor=textReadingAnchor(atY);comfort.size=size;applyComfort();
+    var anchor=textReadingAnchor(atY),ch=find(currentId),held=ch&&readerMode!=='pdf'?readerPageHeld(ch):0;comfort.size=size;applyComfort();
     if(anchor&&anchor.node.isConnected){var pane=byId('documentPane'),r=anchor.node.getBoundingClientRect();pane.scrollTop+=r.top+anchor.frac*r.height-pane.getBoundingClientRect().top-anchor.y;}
+    // The same place in other letters: its page has not changed.
+    if(held)holdReaderPage(ch,held,heldReaderPage.section);
     return true;
   }
   byId('textSmaller').onclick=function(){setTextSize(comfort.size-10);};
@@ -4018,12 +4020,15 @@
   }
   byId('comfortBtn').onclick=function(){dismissGuideDiscovery();setComfortBarOpen(byId('comfortBar').classList.contains('hidden'));};
   byId('comfortClose').onclick=function(){setComfortBarOpen(false,true);};
-  function setFocusPara(index,scroll){
+  var readerRestoreSerial=0;
+  function setFocusPara(index,scroll,saveLater){
     var list=paraSections();if(!list.length){focusPara=null;return;}
     focusPara=Math.max(0,Math.min(list.length-1,index||0));
-    list.forEach(function(section,i){section.classList.toggle('current',i===focusPara);});
-    if(scroll!==false&&list[focusPara])list[focusPara].scrollIntoView({block:'center',behavior:'smooth'});
-    var ch=find(currentId);if(ch){ch.focusPara=focusPara;persist(false);}
+    var section=list[focusPara];
+    byId('textDocument').querySelectorAll('.para.current').forEach(function(old){if(old!==section)old.classList.remove('current');});
+    section.classList.add('current');
+    if(scroll!==false){readerRestoreSerial++;section.scrollIntoView({block:'center',behavior:'smooth'});}
+    var ch=find(currentId);if(ch){ch.focusPara=focusPara;if(!saveLater)persist(false);}
     updateProgress();
   }
   function focusSurfaceAt(clientX,clientY,target){
@@ -4517,7 +4522,7 @@
       if(again>=0&&voiceChunkInView(ch,chunks[again]))return again;
     }
     if(ch.kind==='pdf'&&readerMode==='pdf'){var at=chunks.findIndex(function(chunk){return chunk.page>=currentPage;});return at<0?0:at;}
-    var pane=byId('documentPane').getBoundingClientRect(),visible=Array.prototype.findIndex.call(paraSections(),function(section){return section.getBoundingClientRect().bottom>pane.top+40;});
+    var pane=byId('documentPane').getBoundingClientRect(),clear=Math.max(pane.top+40,readerLandingY()),visible=Array.prototype.findIndex.call(paraSections(),function(section){return section.getBoundingClientRect().bottom>clear;});
     if(visible<0)return 0;var start=chunks.findIndex(function(chunk){return chunk.para>=visible;});return start<0?0:start;
   }
   /* The sentence being read stays in view and in focus (Houfu: "the passage being read
@@ -4525,7 +4530,7 @@
      sentence keeps full ink; on PDF pages its words get a highlighter. With the reading
      guide on, the guide follows the voice instead of the pointer and nothing else dims.
      Scrolling by hand pauses the following for a few seconds. */
-  var voiceFocusIndex=-1,voiceSpotCache={},voiceScrolledByHandAt=0,voiceGuideFrame=0,voicePdfRetry={index:-1,n:0};
+  var voiceFocusIndex=-1,voiceSpotCache={},voiceScrolledByHandAt=0,voicePage=0,voiceGuideFrame=0,voicePdfRetry={index:-1,n:0};
   function voiceHighlights(){return !!(window.CSS&&CSS.highlights&&typeof Highlight==='function');}
   function voiceGuideOwns(){return !!comfort.focus&&!!voicePlayer&&voicePlayer.state()==='playing'&&voicePaperId===currentId&&!byId('voiceBar').classList.contains('hidden');}
   function clearVoiceFocus(){
@@ -4597,12 +4602,14 @@
       if(box){box.width=box.right-box.left;box.height=box.bottom-box.top;}return box;
     }};
   }
+  // Moved away from the sentence by hand, or by Contents: Listen leaves the page alone for a moment.
+  function voiceHeldByHand(){return Date.now()-voiceScrolledByHandAt<6000;}
   function followVoice(target){
     var pane=byId('documentPane'),paneRect=pane.getBoundingClientRect(),box=target.rect();
     if(!box||!paneRect.height)return;
     var bar=byId('voiceBar').getBoundingClientRect(),top=paneRect.top+Math.min(80,paneRect.height*.12);
     var bottom=Math.min(paneRect.bottom,bar.height?bar.top:paneRect.bottom)-24;
-    var byHand=Date.now()-voiceScrolledByHandAt<6000,paged=readerMode==='pdf'&&pagedPdfFlow();
+    var byHand=voiceHeldByHand(),paged=readerMode==='pdf'&&pagedPdfFlow();
     // Out of the clear part of the page: bring the sentence to about a third of the way down.
     if(!byHand&&!paged&&(box.top<top||box.bottom>bottom))pane.scrollBy({top:box.top-(paneRect.top+(bottom-paneRect.top)*.3),behavior:'smooth'});
     if(!comfort.focus)return;
@@ -4732,8 +4739,9 @@
         var head=voiceSentenceStart(index);if(voicePlayer&&voicePlayer.state()==='playing'&&head!==voiceChunkBegan.index)voiceChunkBegan={index:head,at:Date.now()};
         byId('voiceLine').textContent=chunk.text;var ch=find(currentId);if(!ch||voicePaperId!==ch.id)return;
         if(ch.kind==='pdf'&&readerMode==='pdf'){
-          if(chunk.page&&chunk.page!==currentPage&&voicePlayer&&voicePlayer.state()==='playing')Promise.resolve(gotoPdfPage(chunk.page)).then(function(){focusVoiceChunk(index);});
-          else focusVoiceChunk(index);
+          // Only a move to another page holds the turn: a nudge that moved nothing does not.
+          if(chunk.page&&chunk.page!==currentPage&&voicePlayer&&voicePlayer.state()==='playing'&&!(voiceHeldByHand()&&currentPage!==voicePage)){voicePage=chunk.page;Promise.resolve(gotoPdfPage(chunk.page)).then(function(){focusVoiceChunk(index);});}
+          else{if(chunk.page===currentPage)voicePage=currentPage;focusVoiceChunk(index);}
         }
         else focusVoiceChunk(index);
       },
@@ -5593,20 +5601,26 @@
     if(!pageTrackTick){pageTrackTick=true;requestAnimationFrame(function(){pageTrackTick=false;trackCurrentPage();updateProgress();if(comfort.focus&&!guideDragging)placeGuide();});}
     clearTimeout(scrollSaveTimer);
     scrollSaveTimer=setTimeout(function(){
-      if(restoringPdfPosition)return;saveCurrentReadingPosition();
+      // Leaving the paper saved it already: a hidden pane has no position left to save.
+      if(restoringPdfPosition||byId('readerPage').classList.contains('hidden'))return;saveCurrentReadingPosition();
     },600);
   });
   function restoreReaderPosition(ch,announce){
     if(!ch||readerMode==='pdf')return;
-    var pane=byId('documentPane');
+    var pane=byId('documentPane'),serial=++readerRestoreSerial;
     requestAnimationFrame(function(){
+      // A jump right after opening, from a search hit or a review comment, has the last word.
+      if(serial!==readerRestoreSerial||readerMode==='pdf'||currentId!==ch.id)return;
       var span=pane.scrollHeight-pane.clientHeight,page=newerPdfPage(ch);
       if(page&&scrollReaderToPage(page)){
+        holdReaderPage(ch,page,paraSections()[readerParaAtLine()]);
         saveCurrentReadingPosition(false);
         if(announce)showReaderToast('Picked up on page '+page);
-      }else if(ch.readerScroll>0.01&&span>4){
-        pane.scrollTop=ch.readerScroll*span;
-        if(announce)showReaderToast('Picked up where you stopped');
+      }else if((ch.readerScroll>0.01||ch.readerPlace)&&span>4){
+        // A saved place counts however near the top: the pane still holds PDF view's scroll.
+        pane.scrollTop=(+ch.readerScroll||0)*span;
+        if(ch.readerPlace)holdReaderPage(ch,ch.readerPlace.page,paraSections()[readerParaAtLine()]);
+        if(announce&&ch.readerScroll>0.01)showReaderToast('Picked up where you stopped');
       }
       updateProgress();
     });
@@ -6388,12 +6402,13 @@
     if(doc!==pdfDoc)return;
     pdfOutline=outline;pdfOutlineInferred=inferred;
     byId('tocBtn').title=pdfOutlineInferred?'Table of contents read from the PDF pages':'Table of contents';
-    showContentsButtons(readerMode==='pdf'&&!!(pdfOutline&&pdfOutline.length));
+    showContentsButtons(!!(pdfOutline&&pdfOutline.length));
   }
-  /* Contents is one tap away whenever the paper has one: a dock button, or the first item under
-     a phone's More (Houfu: "Contents hiding too deep", under More > This paper > Contents). */
+  /* Contents is one tap away whenever the paper has one, in either view: a dock button, or the
+     first item under a phone's More (Houfu: "Contents hiding too deep", under More > This paper >
+     Contents; and it used to vanish in Reader view: "where ... did contents go"). */
   function showContentsButtons(on){['tocBtn','zenContents','zenPhoneContents'].forEach(function(id){byId(id).classList.toggle('hidden',!on);});}
-  function contentsAvailable(){return readerMode==='pdf'&&!!pdfDoc&&!!(pdfOutline&&pdfOutline.length);}
+  function contentsAvailable(){return !!pdfDoc&&!!(pdfOutline&&pdfOutline.length);}
   function openContents(){closeZenPopouts(true);setComfortBarOpen(false);renderToc();byId('tocDialog').showModal();}
   function renderToc(){
     var box=byId('tocList');
@@ -6414,7 +6429,7 @@
   async function tocGo(item){
     var tocDoc=pdfDoc,tocId=currentId,tocEpoch=pdfOpenEpoch;
     try{
-      if(item.phloemPage){byId('tocDialog').close();gotoPdfPage(item.phloemPage);return;}
+      if(item.phloemPage){byId('tocDialog').close();contentsGoTo(item,item.phloemPage);return;}
       var dest=item.dest;
       if(typeof dest==='string')dest=await tocDoc.getDestination(dest);
       if(pdfDoc!==tocDoc||currentId!==tocId||pdfOpenEpoch!==tocEpoch)return;
@@ -6423,8 +6438,133 @@
       var index=first&&typeof first==='object'?await tocDoc.getPageIndex(first):+first;
       if(pdfDoc!==tocDoc||currentId!==tocId||pdfOpenEpoch!==tocEpoch)return;
       byId('tocDialog').close();
-      gotoPdfPage(index+1);
+      contentsGoTo(item,index+1);
     }catch(e){if(pdfDoc===tocDoc&&currentId===tocId&&pdfOpenEpoch===tocEpoch)showReaderToast('Could not open that chapter');}
+  }
+  /* PDF view turns to the entry's page. Reader view stays Reader view: it is one long text, so an
+     entry moves it to its heading, or to the start of its page when the text has no such title.
+     The list closes and paints first, since laying out a long book takes a moment, and an entry
+     tapped while Reader view is still being built lands once the text is there. */
+  var contentsJump=0;
+  function contentsGoTo(item,page){
+    var ch=find(currentId),jump=++contentsJump,epoch=pdfOpenEpoch;
+    // Listen would otherwise pull the page back to its sentence: this counts as moving by hand.
+    if(voicePaperId)voiceScrolledByHandAt=Date.now();
+    if(readerMode==='pdf'||!ch||ch.kind!=='pdf'){gotoPdfPage(page);return;}
+    clearExcerptSourceCue();
+    if(temporaryNotebookMode())toggleSheet(false);
+    var building=readerBuildPromises[ch.id];
+    if(building)showReaderToast('Reader view is still being built · going there when it is ready');
+    Promise.resolve(building).catch(function(){}).then(function(){return new Promise(function(painted){requestAnimationFrame(function(){requestAnimationFrame(painted);});});}).then(function(){
+      if(jump===contentsJump&&epoch===pdfOpenEpoch&&currentId===ch.id&&readerMode!=='pdf')landContentsEntry(ch,item,page);
+    });
+  }
+  function landContentsEntry(ch,item,page){
+    var para=readerParaForContents(ch,item.title,page),section=para>=0?paraSections()[para]:null;
+    if(!section){
+      // Only this once: the paper still opens in Reader view next time.
+      showReaderToast('Reader view could not find that section · showing its page');
+      gotoPdfPage(page);rememberReaderView(ch.id,true);return;
+    }
+    setFocusPara(para,false,true);
+    var marker=section.previousElementSibling,anchor=marker&&marker.classList.contains('page-marker')?marker:section,pane=byId('documentPane'),landed=0;
+    pane.scrollTop+=anchor.getBoundingClientRect().top-readerLandingY();
+    // The landing's own page, even when the reading line below it already sits on the next one.
+    (paraPageStarts(ch)||[]).forEach(function(s){if(s.para<=para)landed=s.page;});
+    holdReaderPage(ch,landed||page,section);
+    saveCurrentReadingPosition(false);updateProgress();
+  }
+  function contentsKey(text){return String(text||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ß/g,'ss').replace(/&/g,' and ').replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
+  /* "1.2 Methods", "III-B2. Methods", "Chapter 1: Methods" and "Methods" are one heading. */
+  function contentsBareKey(key){var last;do{last=key;key=key.replace(/^(?:(?:chapter|section|part|appendix)\s)?(?:\d+[a-z]?(?:\s\d+[a-z]?)*|(?=[ivxlc])c{0,3}(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})|[a-z]\d*)\s(?=\S)/,'');}while(key!==last);return key;}
+  /* "G L O S S A RY" and "spottedspider" come out of some PDFs: spaces cannot be trusted. */
+  function contentsFlat(key){return key.replace(/ /g,'');}
+  /* "Materials + Methods", or "Materials Methods" with the glyph lost, for "Materials & Methods". */
+  function contentsNoAnd(key){return (' '+key+' ').replace(/ and /g,' ').replace(/ /g,'');}
+  /* After this many letters and digits, does the text run on as a sentence? "Results were read
+     from", "Yield, protein and oil" and "Watering the plants" are body text; "Results: a summary"
+     and "Results The plants" are a heading. */
+  function contentsOpensSentence(raw,letters){
+    var text=raw.normalize('NFKD').replace(/[\u0300-\u036f]/g,''),seen=0,i=0;
+    for(;i<text.length&&seen<letters;i++)if(/[\p{L}\p{N}]/u.test(text[i]))seen++;
+    return /^(?:,|\s*[\p{Ll}(])/u.test(text.slice(i));
+  }
+  function contentsRow(at,raw,heading){var key=contentsKey(raw),bare=contentsBareKey(key);return {at:at,raw:raw,heading:heading,key:key,bare:bare,flat:contentsFlat(key),flatBare:contentsFlat(bare)};}
+  /* A lone number at least half the page's own is a printed page number, not a section's: "67
+     References" and "Results 143" are running heads, "3 Results" and "Appendix 1" on page 8 are not. */
+  function contentsPrintedPage(text,page){return /^\d+$/.test(text)&&+text*2>page;}
+  /* The row that reads as this title. A row reading as the whole title comes first, headings
+     before other text. Then ('page') a partial match, strongest first and headings first within
+     each: the title opening a longer heading or run into its text, a heading holding it, then
+     wrapped over two paragraphs or fused with other text. 'heading' takes only a heading reading
+     as the whole title, 'whole' any row reading so, and 'weak' any row that merely opens with the
+     title. The title and a printed page number is a running head: no partial match. */
+  function contentsFind(rows,title,where,page){
+    var want=contentsKey(title),bare=contentsBareKey(want),flat=contentsFlat(want),flatBare=contentsFlat(bare),hit;if(!flat)return -1;
+    var named=/\p{L}/u.test(bare),label=want.slice(0,want.length-bare.length).trim();
+    function first(tests,headingsOnly){for(var t=0;t<tests.length;t++)for(var i=0;i<rows.length;i++)if((!headingsOnly||rows[i].heading)&&tests[t](rows[i]))return rows[i].at;return -1;}
+    function opens(key){return (key+' ').indexOf(bare+' ')===0;}
+    if(where!=='weak'){
+      var whole=[function(r){return r.key===want;},function(r){return r.flat===flat;}];
+      if(named)whole.push(
+        // Only numbering in front of the whole title: "3.2 C4 photosynthesis", not "3.1 C3 photosynthesis".
+        function(r){return r.key.slice(-want.length-1)===' '+want&&contentsBareKey(r.key.slice(0,-want.length)+'x')==='x';},
+        function(r){return r.bare===bare||r.flatBare===flatBare;}
+      );
+      var loose=contentsNoAnd(want),looseBare=contentsNoAnd(bare);
+      if(loose)whole.push(function(r){return contentsNoAnd(r.key)===loose||(named&&looseBare.length>=4&&contentsNoAnd(r.bare)===looseBare);});
+      hit=first(whole,true);
+      if(hit<0&&where!=='heading')hit=first(whole,false);
+      if(hit>=0||where!=='page')return hit;
+    }
+    rows=rows.filter(function(r){return r.flatBare.indexOf(flatBare)!==0||!contentsPrintedPage(r.flatBare.slice(flatBare.length),page);});
+    // "I think that" and "A plant grows" open with a title of one letter by chance.
+    if(where==='weak')return named?first([function(r){return opens(r.bare)||(bare.length>=3&&opens(r.key));}]):-1;
+    var partial=[function(r){return r.key.indexOf(want+' ')===0&&!/^\d+$/.test(r.key.slice(want.length+1))&&(r.heading||!contentsOpensSentence(r.raw,flat.length));}];
+    if(named)partial.push(
+      function(r){return flatBare.length>=4&&r.flatBare.indexOf(flatBare)===0&&(r.heading||!contentsOpensSentence(r.raw,r.flat.length-r.flatBare.length+flatBare.length));},
+      function(r){return r.heading&&r.raw.length<=flatBare.length+70&&(flatBare.length>=6?r.flat.indexOf(flatBare)>=0:(' '+r.key+' ').indexOf(' '+bare+' ')>=0);},
+      function(r){var own=r.key.slice(0,r.key.length-r.bare.length).trim();return r.flatBare.length>=10&&flatBare.indexOf(r.flatBare)===0&&(!own||!label||own===label);},
+      function(r){return flatBare.length>=6&&r.raw.length<=flatBare.length+70&&r.flat.slice(-flatBare.length)===flatBare;},
+      function(r){if(bare.indexOf(' ')<0||flatBare.length<8)return false;var at=r.flat.indexOf(flatBare);return at>=0&&at<=30;}
+    );
+    // Opening with the title, numbered or not, is one kind of match: "4 Results and discussion" beats a row "Results Table 2".
+    var kinds=[partial.slice(0,2)].concat(partial.slice(2).map(function(test){return [test];}));
+    for(var k=0;k<kinds.length;k++){hit=first(kinds[k],true);if(hit<0)hit=first(kinds[k],false);if(hit>=0)return hit;}
+    return -1;
+  }
+  /* A heading can start the page after its bookmark. "67 References" or "References 67" there is
+     that page's running head, though, unless the title carries the number too. */
+  function contentsOnNextPage(rows,title,page){
+    var want=contentsKey(title),label=want.slice(0,want.length-contentsBareKey(want).length).trim().split(' ');
+    function printedPage(text){return label.indexOf(text)<0&&contentsPrintedPage(text,page);}
+    var hit=contentsFind(rows.slice(0,3).filter(function(r){return !printedPage(r.key.slice(0,r.key.length-r.bare.length).trim());}),title,'heading');
+    // Or it opens the page fused with its first subheading.
+    if(hit<0&&rows[0]&&rows[0].heading&&rows[0].key.indexOf(want+' ')===0&&!printedPage(rows[0].key.slice(want.length+1)))hit=rows[0].at;
+    return hit;
+  }
+  /* The paragraph for an entry. A page with no text of its own (a chapter's picture) means the
+     text that comes after it, never the chapter before. A row that merely opens with the title
+     counts only when the next page does not start with the heading. Without a match, the start of
+     the page. With no page marks, repeats cannot be told apart: a title found once, or -1.
+     rowsFor(from,to) gives contentsRow rows for a run of paragraphs. */
+  function contentsParaOnPage(starts,count,rowsFor,title,page){
+    if(!count)return -1;
+    if(!starts||!starts.length){
+      var all=rowsFor(0,count),only=contentsFind(all,title,'whole');
+      return only>=0&&contentsFind(all.filter(function(r){return r.at>only;}),title,'whole')>=0?-1:only;
+    }
+    var at=starts.findIndex(function(s){return s.page>=page;});if(at<0)return starts[starts.length-1].para;
+    var pageRows=function(i){return rowsFor(starts[i].para,starts[i+1]?starts[i+1].para:count);},own=pageRows(at),hit=contentsFind(own,title,'page',page);
+    if(hit<0&&starts[at].page===page&&starts[at+1]&&starts[at+1].page===page+1)hit=contentsOnNextPage(pageRows(at+1),title,page+1);
+    if(hit<0)hit=contentsFind(own,title,'weak',page);
+    return hit>=0?hit:starts[at].para;
+  }
+  function readerParaForContents(ch,title,page){
+    var list=paraSections();
+    return contentsParaOnPage(paraPageStarts(ch),list.length,function(from,to){
+      var rows=[];for(var i=from;i<to&&i<list.length;i++){var node=list[i].querySelector('.original');rows.push(contentsRow(i,node?node.textContent:'',list[i].classList.contains('reader-heading')));}return rows;
+    },title,page);
   }
   byId('tocBtn').onclick=function(){renderToc();byId('tocDialog').showModal();};
   byId('zenContents').onclick=byId('zenPhoneContents').onclick=openContents;
@@ -6564,7 +6704,7 @@
     byId('pdfFrame').classList.toggle('hidden',!pdf); byId('textDocument').classList.toggle('hidden',pdf);
     byId('prevPage').classList.toggle('hidden',!pdf); byId('nextPage').classList.toggle('hidden',!pdf); byId('pageNumber').classList.toggle('hidden',!pdf);
     byId('zoomTools').classList.toggle('hidden',!pdf);
-    showContentsButtons(!!pdf&&!!(pdfOutline&&pdfOutline.length));
+    showContentsButtons(!!isPdf&&!!(pdfOutline&&pdfOutline.length));
     byId('mPrev').classList.toggle('hidden',!pdf); byId('mNext').classList.toggle('hidden',!pdf); byId('mPageLabel').classList.toggle('hidden',!pdf);
     byId('comfortBar').classList.toggle('pdf-mode',pdf);
     byId('zenLayoutTool').classList.toggle('hidden',!pdf);if(!pdf&&byId('zenLayout').getAttribute('aria-expanded')==='true')closeZenPopouts(false);
@@ -7135,12 +7275,25 @@
     if(restoringPdfPosition)return false;var ch=find(currentId),position=stablePdfPositionForRebuild();if(!ch||ch.kind!=='pdf'||!position)return false;
     ch.pdfPosition=position;ch.readPage=position.page;ch.readThroughPage=Math.max(+ch.readThroughPage||0,pagedPdfFlow()?pagedPageNos(currentPage).slice(-1)[0]:position.page);if(writeState!==false)persistQuietly(schedule);return true;
   }
+  /* The saved page follows the reading line, a little below the top of the pane. Right after a
+     jump or a restore that line can sit on the next page while the place itself is on this one,
+     so the page is held until the reader moves. A figure loading above moves the text on screen
+     or, with scroll anchoring, the scroll position: only both moving is the reader's doing. */
+  var heldReaderPage=null;
+  function holdReaderPage(ch,page,section){heldReaderPage={id:ch.id,page:page,top:byId('documentPane').scrollTop,section:section||null,y:section?section.getBoundingClientRect().top:0};}
+  function readerPageHeld(ch){
+    var hold=heldReaderPage;if(!hold)return 0;
+    var stays=hold.id===ch.id&&(Math.abs(byId('documentPane').scrollTop-hold.top)<=4||(hold.section&&hold.section.isConnected&&Math.abs(hold.section.getBoundingClientRect().top-hold.y)<=4));
+    if(!stays)heldReaderPage=null;
+    return stays?hold.page:0;
+  }
   function saveCurrentReadingPosition(schedule,writeState){
     var ch=find(currentId);if(!ch)return false;if(readerMode==='pdf')return savePdfReadingPosition(schedule,writeState);
     var pane=byId('documentPane'),span=pane.scrollHeight-pane.clientHeight,scroll=span>4?pane.scrollTop/span:0,moved=Math.abs(scroll-(+ch.readerScroll||0))>.002;ch.readerScroll=scroll;
     /* Reader view reading counts as reading the paper: the library's "Page N of M" and
        the PDF view both follow the page under the reading line. */
-    if(ch.kind==='pdf'){var page=readerPageAtLine(ch),place=ch.readerPlace;if(page&&(moved||!place||place.page!==page)){ch.readerPlace={page:page,at:now()};ch.readPage=page;ch.readThroughPage=Math.max(+ch.readThroughPage||0,page);}}
+    if(ch.kind==='pdf'){
+      var page=readerPageHeld(ch)||readerPageAtLine(ch),place=ch.readerPlace;if(page&&(moved||!place||place.page!==page)){ch.readerPlace={page:page,at:now()};ch.readPage=page;ch.readThroughPage=Math.max(+ch.readThroughPage||0,page);}}
     if(writeState!==false)persistQuietly(schedule);return true;
   }
   /* Each paper opens in the view it was last read in on this device (a phone keeps Reader
@@ -7160,10 +7313,19 @@
     var starts=paraPageStarts(ch),at=readerParaAtLine();if(!starts||!starts.length||at<0)return 0;
     var page=starts[0].page;starts.forEach(function(s){if(s.para<=at)page=s.page;});return page;
   }
+  /* Where a jump in Reader view puts its target: clear of what covers the top of the pane, which
+     is the status bar or notch in the full-screen reader, the "Use Phloem here" bar and an open
+     Find bar. */
+  function readerLandingY(){
+    var top=Math.max(byId('documentPane').getBoundingClientRect().top,parseFloat(getComputedStyle(byId('zenDock')).getPropertyValue('--zen-safe-top'))||0);
+    if(document.body.classList.contains('other-tab-open'))top=Math.max(top,byId('otherTabBar').getBoundingClientRect().bottom);
+    if(!byId('findBar').classList.contains('hidden'))top=Math.max(top,byId('findBar').getBoundingClientRect().bottom);
+    return top+8;
+  }
   function scrollReaderToPage(page){
     var pick=null;byId('textDocument').querySelectorAll('.page-marker [data-goto-page]').forEach(function(b){if(+b.dataset.gotoPage<=page||!pick)pick=b;});
     if(!pick)return false;var pane=byId('documentPane');
-    pane.scrollTop+=pick.parentNode.getBoundingClientRect().top-pane.getBoundingClientRect().top-8;return true;
+    pane.scrollTop+=pick.parentNode.getBoundingClientRect().top-readerLandingY();return true;
   }
   /* The PDF's page when the pages were read more recently than Reader view (here or on
      another device) and sit on another page; 0 keeps Reader view's own spot. A spot saved

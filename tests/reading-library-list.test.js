@@ -291,6 +291,36 @@ function check(name, condition, extra) {
       && /auto|scroll/.test(mobileCategoryRail.overflowX)
       && mobileCategoryRail.scrollable,
     JSON.stringify(mobileCategoryRail));
+  const railLabel = await page.locator('nav.library-list-categories').evaluate(rail => {
+    const label = rail.querySelector('.library-list-categories-label');
+    const pills = [...rail.querySelectorAll('.library-list-category-filter')];
+    rail.style.maxWidth = '220px'; // Short enough that the rail has to scroll with any names.
+    const seen = { scrolls: rail.scrollWidth > rail.clientWidth + 1, overlaps: 0, gone: false };
+    for (let left = 0; left <= rail.scrollWidth - rail.clientWidth; left += 12) {
+      rail.scrollLeft = left;
+      const box = label.getBoundingClientRect();
+      for (const pill of pills) {
+        const other = pill.getBoundingClientRect();
+        if (other.left < box.right - .5 && other.right > box.left + .5) seen.overlaps++;
+      }
+    }
+    rail.scrollLeft = rail.scrollWidth;
+    seen.gone = label.getBoundingClientRect().right <= rail.getBoundingClientRect().left + 1;
+    rail.scrollLeft = 0;
+    rail.style.maxWidth = '';
+    return seen;
+  });
+  check('the rail label scrolls away with the pills and never sits over one', railLabel.scrolls && railLabel.overlaps === 0 && railLabel.gone, JSON.stringify(railLabel));
+  const touchRules = await page.evaluate(() => {
+    const value = selector => getComputedStyle(document.querySelector(selector)).touchAction;
+    const places = ['html', 'body', '.masthead', '.nav-btn', '#libraryOfflineFilter', '[data-library-view="list"]', '#libraryGroup', '#librarySearch', 'nav.library-list-categories', '.library-list-category-filter', '.library-list-row', '.library-list-row button'];
+    const missed = places.filter(selector => value(selector) !== 'manipulation');
+    /* Inside a scroller iOS looks only at the scroller and what is below it, so check everything in the library. */
+    const everywhere = [...document.querySelectorAll('.library-list *, .masthead *, .section-head *')].filter(element => getComputedStyle(element).touchAction === 'auto').length;
+    return { missed, everywhere, pane: value('#documentPane'), figure: value('#figureViewerStage') };
+  });
+  check('a double tap cannot zoom the library, on any control or inside any scroller', touchRules.missed.length === 0 && touchRules.everywhere === 0, JSON.stringify(touchRules));
+  check('the reader and the figure viewer keep their own touch rules', touchRules.pane === 'pan-x pan-y' && touchRules.figure === 'none', JSON.stringify(touchRules));
   check('list mode has no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

@@ -33,6 +33,8 @@ test('bundles a local reader with all runtime dependencies and preserves website
     JSON.parse(await readFile(path.join(outDir, 'carrel.webmanifest'), 'utf8')),
     await readFile(path.join(outDir, 'vendor/pdfjs/pdf.worker.compat.js'), 'utf8'));
   for (const reference of references) await access(path.join(outDir, reference));
+  assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover/, 'nothing may zoom the app page, it has no pinch to undo it');
+  assert.doesNotMatch(before[0].toString(), /maximum-scale/, 'the website keeps pinch zoom for anyone who needs it');
   assert.match(html, /if\(window\.PHLOEM_NATIVE\|\|!\('serviceWorker' in navigator\)/);
   assert.ok(html.indexOf('/native/environment.js') < html.indexOf('navigator.serviceWorker'));
   assert.ok(html.indexOf('/native/ipad.js') > html.indexOf('<script src="/reading.js'));

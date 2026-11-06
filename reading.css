@@ -25,6 +25,11 @@
     }
     /* Paper appearance is scoped to the document surface. It never changes the room's
        interface palette, so original figures can sit faithfully inside dark chrome. */
+    /* A double tap never zooms the page; panning and pinching stay as they were. iOS starts
+       touch-action afresh at every scroller, so a rule on the root alone misses what is inside
+       one. The universal selector reaches every element and loses to any rule of its own, so
+       the reader's and the ink tools' touch rules still win. */
+    * { touch-action: manipulation; }
     html { background: var(--paper); color: var(--ink); color-scheme: light; }
     body { margin: 0; min-height: 100vh; font-family: var(--sans); background-color: var(--paper); color: var(--ink); }
     html:not([data-theme="dark"]) body.library-view { background-image:
@@ -2365,7 +2370,7 @@
       .library-thinking-open { width: 100%; min-height: 44px; }
       .library-list { padding: 5px 0 10px; }
       .library-list-categories { padding: 6px 11px 10px; }
-      .library-list-categories-label { position: sticky; left: 0; z-index: 2; align-self: stretch; display: inline-flex; align-items: center; padding-right: 7px; background: color-mix(in srgb, var(--surface) 96%, transparent); }
+      .library-list-categories-label { padding-right: 7px; }
       .library-list-category-filter { min-height: 38px; padding-inline: 10px; }
       .library-list-bulkbar { flex-wrap: wrap; padding: 8px 11px; }
       .library-list-bulk-summary, .library-list-bulk-new, .library-list-bulk-clear { min-height: 40px; padding-inline: 9px; }

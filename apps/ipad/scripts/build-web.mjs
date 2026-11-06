@@ -37,6 +37,9 @@ function replaceOnce(source, expression, replacement, label, sourceName = 'readi
 export function nativeHtml(source) {
   let html = replaceOnce(source, /<head>/, '<head>\n  <script src="/native/environment.js"></script>', 'head opening');
   html = replaceOnce(html, /<\/head>/, '  <link rel="stylesheet" href="/native/ipad.css">\n</head>', 'head closing');
+  // The app has no pinch to undo a page zoom (Capacitor turns it off), so nothing may zoom the page:
+  // not a double tap, not a focused field with small type. The reader's own pinch is its own code.
+  html = replaceOnce(html, /(<meta name="viewport" content="width=device-width, initial-scale=1), /, '$1, maximum-scale=1, ', 'viewport tag');
   html = replaceOnce(html,
     /if\(!\('serviceWorker' in navigator\)\|\|location\.protocol==='file:'\)return;/,
     "if(window.PHLOEM_NATIVE||!('serviceWorker' in navigator)||location.protocol==='file:')return;",

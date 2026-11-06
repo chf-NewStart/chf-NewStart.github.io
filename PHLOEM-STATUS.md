@@ -4,7 +4,39 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-11-05)
+## Now (2026-11-06)
+
+- **iPhone: a double tap no longer zooms the library, and the Lists label no longer floats, v253 (web; Houfu's screen
+  recording: "the double tap is strange zooming. Also scrolling the category will have list floating").**
+  The label: the phone rule made it `position: sticky` with its own background, so it stayed put and the pills slid
+  under it. It now scrolls away with them (`reading.css`).
+  The double tap: `* { touch-action: manipulation; }` at the top of `reading.css`. iOS starts touch-action afresh at
+  every scroller, so a rule on the root misses what is inside one. Any rule of an element's own still wins, so the
+  reader's, the ink tools' and the figure viewer's are unchanged. The website keeps pinch zoom. In the app the viewport
+  also gets `maximum-scale=1` (`nativeHtml` in `apps/ipad/scripts/build-web.mjs`): Capacitor turns pinch off
+  (`scrollViewWillBeginZooming` in `WebViewDelegationHandler.swift`), so a zoomed page had no way back, and now nothing
+  can zoom it, a focused field with small type included. The reader's own pinch is its own code and still works.
+  **What switches double-tap zoom on, on Houfu's phone, was not found.** In the app on a simulator a double tap at
+  normal zoom does nothing in every state tried (no page overflow, after a pinch, after Wall then List). The recording
+  shows it right after Wall to List. With the viewport forced to `width=402`, real double taps zoom the page 1.6x, which
+  looks like the recording, and that is how before and after were compared. The fix blocks it however it starts.
+  Checked with real touches through an XCUITest remote on a throwaway iPhone 18 Pro simulator, iOS 27 (test tool only,
+  not in the repo), not on a real iPhone. Zoom forced on: v252 zooms on Wall, Offline and the Library tab, v253 stays at
+  1 on all 10 targets. The app as built: all 10 stay at 1. A real swipe on the list row: v252's label stays at x=40,
+  v253's leaves with the pills (x=-255). Same on v252 and v253: PDF pinch zooms the PDF (402 to 501 wide), Reader pinch
+  changes the text size (25.92 to 18.14 px), swipes scroll, double-clicks still reach the page, and flipping between
+  PDF and Reader lands on the same spots.
+  Tests: `reading-library-list` gains the label check (fails on the old CSS) and the touch rule checks;
+  `apps/ipad/tests/bundle.test.mjs` pins the app's viewport and that the website's has no `maximum-scale`. Full run:
+  Chromium 161 of 169, WebKit 99 of 103. The failures are the ones that also fail on live (`reading-split-undo-browser`,
+  `reading-pdf-ink`, `reading-workspace-browser`, `reading-workspace-paper-color`, and in Chromium
+  `reading-workspace-paper-edge`), and in Chromium three that passed alone on a re-run under less load
+  (`reading-book-guide`, `reading-contents-one-tap`, `reading-library-stack`).
+  Seen and left: on the website at phone width some text fields are under 16 px, so iOS Safari may zoom on focus
+  (notebook editors, page note, list add and others); pinch undoes it there. The simulator's hardware keyboard could
+  not confirm that zoom either way.
+
+## Earlier (2026-11-05)
 
 - **App 1.2.10 (56) submitted, Waiting for Review (2026-11-05 22:55 EST, submission efd3af93; Houfu: "check and push
   the newest to the store pls"). Manual release: press Release after approval.** Build 56 bundles reader **v252**
@@ -912,6 +944,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-06 v253:** a double tap no longer zooms the library, the Lists label scrolls with the pills, and the app's
+  page can no longer zoom at all (see Now). Checked with real touches in the real web view, before and after. What turns
+  double-tap zoom on on Houfu's phone was not found.
 - **2026-11-05 1.2.10 (56):** submitted for review with reader v252, manual release. Contents checked in the app's real
   web view on an iPad and an iPhone simulator; that check confirmed the older "relaunch loses Reader view's place" bug.
 - **2026-11-05 v252:** Contents stays in Reader view, and an entry moves to its heading there (see Now). Independent

@@ -45,7 +45,12 @@ open shelf, persisted shelf order, selection, search, and mobile fit.
 `reading-library-list.test.js` covers the persisted Wall/List switch, one compact
 global list with shelf filters, row metadata, existing search and sort
 controls, multi-select moves onto existing or new shelves,
-one-click opening, and a non-clipping phone layout.
+one-click opening, and a non-clipping phone layout. On a phone it also holds the
+rail label to scrolling away with the pills instead of floating over them, and
+checks that no control in the library can be zoomed by a double tap, including
+inside its scrollers (iOS starts `touch-action` afresh at each one), while the
+reader and the figure viewer keep their own touch rules. Playwright can't send
+iOS's double tap, so this reads the rule rather than the gesture.
 
 `reading-shelves-state.test.js` (`node --test`) covers the shelf rules in
 `reading-shelves.js`: old categories mapped onto shelves (`academic` → Papers,

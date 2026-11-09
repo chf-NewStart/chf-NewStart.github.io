@@ -11,7 +11,7 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
-| Codex | **Look twice + A Little Room to Think**, building the next version (1.3.0 / 10). Existing 1.2 review stays intact. Everyday authored cases, optional private explanations, mixed daily rotation and branding. | `focus/look-twice-content.js`, reasoning UI/core/tests, native offline assets and local release metadata | 2026-11-09 |
+| Codex | **Look twice + A Little Room to Think**, built and uploaded: 1.3.0 (10) VALID / internal TestFlight. Existing 1.2 review stays intact. Everyday authored cases, optional private explanations, mixed daily rotation and branding. | `focus/look-twice-content.js`, reasoning UI/core/tests, native offline assets and local release metadata | 2026-11-09 |
 | Codex | **Daily reasoning challenge**, iOS **1.2.0 (9) Waiting for Review**, submitted with Houfu’s explicit authorization on `codex/tend-reasoning` in `Developer/tend-reasoning`: authored physics, local progress and review, gentle unscored flow. Verified web and iOS build; Android SDK missing. Existing warm-up stays separate. | `focus/reasoning*`, room strip/dialog and backup, native reasoning storage/assets, tests | 2026-11-08 |
 | Claude Code | **Warm-up and rest** (Houfu: "add some daily challenges which could train the focus", then "something that makes me happy and less dizzy"), done on `main` (Log, 2026-11-03). Web and Android checked; **iOS 1.1.0 (7) on TestFlight** (not run in a simulator: CoreSimulator out of date on this Mac). **1.1.0 (7) submitted for review 2026-11-03 13:28 EST with Houfu's OK ("Looks right, submit"): Waiting for Review, releases automatically after approval** (review submission 97edf9f7-6dda-4a4b-92cb-96028e62d3c9). | `focus/daily.*`, `tests/tend-daily.test.cjs`, the strip and dialog in `focus/index.html`, backup export/restore in `focus/app.js`, `focus/sw.js` cache list, `apps/tend-ios/App/TendViewController.swift` (`dailySave`, `TEND_DAILY_STATE`), `apps/tend-ios/release/*`, `apps/tend-android/**/DailyActivity.kt`, `core/Daily.kt`, `core/Backup.kt`, `FocusRoom.kt` strip | 2026-11-03 11:00 EST |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts; 1.0 (1) submitted by Houfu 2026-10-26, in review. Not submitting anything for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
@@ -46,7 +46,9 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 - 2026-11-09 — Codex: Houfu approved building **Look twice** and optional explanations in the user's own words,
   keeping Tend as **Tend: A Little Room to Think**. Local candidate **1.3.0 (10)** on `codex/tend-reasoning`.
+  **1.3.0 (10) is VALID / IN_BETA_TESTING** for the existing internal friends group, verified 2026-11-09 14:02 UTC.
   Version 1.2.0 (9) remains Waiting for Review; this work does not withdraw or replace that submission.
+  1.3 is not submitted for App Review, and the public App Store name has not changed.
   - Fourteen authored fictional Look twice situations and one-condition variations cover observations vs inferences,
     alternative explanations, fair denominators, sampling, confounding, measurement, regression to the mean,
     replication, missing vs zero, and calibrated confidence. Each includes explicit information, three progressive
@@ -71,6 +73,11 @@ to touch a claimed file, write your request under **Requests** below instead.
     feedback and retrieval findings; Tend itself has not been studied for general intelligence or cognitive-health gains.
     Existing retention limits remain: latest 500 attempts/reviews, 500 characters per note, 4,000 daily pins/marks;
     notebook shows the latest 30 attempts. No real-device classroom validation or Android SDK build this turn.
+  - Release source `28a985a`. Signed generic-iOS archive and App Store Connect export/upload succeeded. Verified
+    bundle ID/version/build, all bundled file hashes and all changed feature assets against source. API confirms
+    build `7ef52307-5b88-4b55-a072-d83a168f28d9`, VALID, internal IN_BETA_TESTING, auto-notify enabled; friends group
+    retains access to all builds. Saved and read back TestFlight What to Test. No group/access settings were changed.
+    Artifacts: `/tmp/tend-1.3.0-10.xcarchive`, `-archive.log`, `-upload.log`, `-tests.log`, `-result.json`.
 
 
 - 2026-11-08 23:32 EST — Codex: Houfu approved making the daily questions more substantial and explicitly asked

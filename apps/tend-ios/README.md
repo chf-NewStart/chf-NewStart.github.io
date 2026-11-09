@@ -1,6 +1,6 @@
 # Tend: A Little Room to Think — iPhone and iPad
 
-A separate app, local release candidate **1.3.0 (10)**, bundle ID **com.houfu72.tend** (Live Activity extension **com.houfu72.tend.LiveActivity**). This does not change Phloem’s app identity, signing, or release. The same hand-written UI is available at https://houfu72.com/focus/ and bundled offline in the iOS app.
+A separate app, TestFlight build **1.3.0 (10)**, bundle ID **com.houfu72.tend** (Live Activity extension **com.houfu72.tend.LiveActivity**). This does not change Phloem’s app identity, signing, or release. The same hand-written UI is available at https://houfu72.com/focus/ and bundled offline in the iOS app.
 
 The iOS target adds app-scoped notebook persistence, opt-in local session notifications, native share-sheet exports, and screen-awake control. No external service, account, package manager, CocoaPods, or third-party SDK is required. Source links open externally; remote pages cannot use the privileged app bridge.
 
@@ -19,7 +19,7 @@ The room has a pixel look: Plank Pixel (Houfu's own 5×7 arcade font) for the ti
 
 Tend pairs focused work with short practice in examining assumptions, comparing explanations and putting an idea in your own words. **Look Twice** adds authored everyday reasoning cases beside the conceptual physics questions. Optional **Explain it back** notes give the user a place to reconstruct an explanation; no AI or automatic grading is involved. These are opportunities to practise specific habits, not a measurement of intelligence or a promise of general cognitive improvement.
 
-The prepared title for the next App Store submission is **Tend: A Little Room to Think**, with subtitle **Focus, question, reflect**. The on-device icon name and Siri name remain **Tend**, preserving the existing app identity and shortcuts. Release metadata for the local 1.3 candidate is in `release/testflight-1.3.json`; preparing it does not upload a build or change a review in App Store Connect.
+The prepared title for the next App Store submission is **Tend: A Little Room to Think**, with subtitle **Focus, question, reflect**. The on-device icon name and Siri name remain **Tend**, preserving the existing app identity and shortcuts. Release metadata is in `release/testflight-1.3.json`. Build 10 is VALID and in internal TestFlight testing as of 2026-11-09. The public title has not changed, and 1.2.0 (9) remains Waiting for Review.
 
 ## Warm-up and rest
 

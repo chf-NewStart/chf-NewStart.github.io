@@ -11,7 +11,7 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
-| Codex | **Daily reasoning challenge**, preparing iOS 1.2.0 (9) for authorized upload and submission on `codex/tend-reasoning` in `Developer/tend-reasoning`: authored physics, local progress and review, gentle unscored flow. Verified web and iOS build; Android SDK missing. Existing warm-up stays separate. | `focus/reasoning*`, room strip/dialog and backup, native reasoning storage/assets, tests | 2026-11-08 |
+| Codex | **Daily reasoning challenge**, iOS **1.2.0 (9) Waiting for Review**, submitted with Houfu’s explicit authorization on `codex/tend-reasoning` in `Developer/tend-reasoning`: authored physics, local progress and review, gentle unscored flow. Verified web and iOS build; Android SDK missing. Existing warm-up stays separate. | `focus/reasoning*`, room strip/dialog and backup, native reasoning storage/assets, tests | 2026-11-08 |
 | Claude Code | **Warm-up and rest** (Houfu: "add some daily challenges which could train the focus", then "something that makes me happy and less dizzy"), done on `main` (Log, 2026-11-03). Web and Android checked; **iOS 1.1.0 (7) on TestFlight** (not run in a simulator: CoreSimulator out of date on this Mac). **1.1.0 (7) submitted for review 2026-11-03 13:28 EST with Houfu's OK ("Looks right, submit"): Waiting for Review, releases automatically after approval** (review submission 97edf9f7-6dda-4a4b-92cb-96028e62d3c9). | `focus/daily.*`, `tests/tend-daily.test.cjs`, the strip and dialog in `focus/index.html`, backup export/restore in `focus/app.js`, `focus/sw.js` cache list, `apps/tend-ios/App/TendViewController.swift` (`dailySave`, `TEND_DAILY_STATE`), `apps/tend-ios/release/*`, `apps/tend-android/**/DailyActivity.kt`, `core/Daily.kt`, `core/Backup.kt`, `FocusRoom.kt` strip | 2026-11-03 11:00 EST |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts; 1.0 (1) submitted by Houfu 2026-10-26, in review. Not submitting anything for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
 | Claude Code | **Android app** (native Kotlin + Compose, `com.houfu72.tend`): built and tested in the emulator; signed 1.0.0 (1) bundle ready for Play closed testing. Waits on Houfu's Play Console account. Web changes that alter timer rules need the same change in `apps/tend-android/.../core/`. | `apps/tend-android/**` | 2026-10-26 14:00 EDT |
@@ -42,6 +42,35 @@ to touch a claimed file, write your request under **Requests** below instead.
   ($25, ID and device checks), then the app, the closed test with 12+ testers for 14 days, then production.
 
 ## Log
+
+- 2026-11-08 23:32 EST — Codex: Houfu approved making the daily questions more substantial and explicitly asked
+  “push to App Store Connect and submit”. **Tend 1.2.0 (9) is uploaded, VALID and WAITING_FOR_REVIEW**, verified
+  through the App Store Connect API after submission. Releases automatically after approval, preserving the app’s
+  existing release policy. App 6827232455; version c2511f71-01bd-4b22-a255-4f244d5d1667;
+  build 5e002138-480b-4344-98bd-5dc48d2ca43d; review submission 0638c6f7-1b83-4d0d-8db3-724c84050748,
+  submitted 2026-11-09 04:32:08 UTC. Version 1.1.0 (8) remains the live version while Apple reviews 1.2.
+  - **Difficulty revision:** retained the original 14 authored IDs as introductory practice for compatibility, added
+    14 separately authored daily questions requiring linked reasoning (28 total). Optional book/density introductions
+    are always available; normal new daily selections use only the substantive bank. Existing date pins, attempts,
+    notes and reviews stay readable and stable. New topics connect displacement and a steel bead in melting ice,
+    opposing scale readings, tethered buoyancy, gas particle count and energy, rigid/piston constraints, balloon
+    pressure and stability, drag and rope tension, acceleration, hydraulic work, immersed-load torque, kinetic energy
+    and mass, hydrostatic wall forces, actual vs maximum static friction, and compression/buoyancy. Two independent
+    content reads checked conditions and variations. Six additional SVG setup types were added.
+  - **Release source:** 13f3dcb, based on b281a2b. All 59 Node tests passed; mobile 390×844 preview verified the new
+    daily selection, optional introductions, prediction → assumption check → hint → revision → explanation, with no
+    horizontal overflow. Signed generic-iOS archive succeeded; archive version/build/bundle ID and reasoning file
+    hashes were verified against source before export. App Store Connect export/upload succeeded and Apple processed
+    build 9 as VALID. No new data collection, pricing, access, age-rating, or distribution-region settings were added.
+  - Store description, promotional text, What’s New and reviewer steps were updated from `release/testflight-1.2.json`
+    and `release/listing.json`; TestFlight What to Test was saved. Two screenshot sets (11 existing screenshots)
+    carried over. Submission helper supports replacing old reviewer notes, avoiding Apple’s 4,000 UTF-8-byte limit;
+    final notes are 1,431 bytes. Dry run passed before the one real submission. No duplicate submission was made.
+  - Build artifacts/logs: `/tmp/tend-1.2.0-9.xcarchive`, `/tmp/tend-1.2.0-9-archive.log`,
+    `/tmp/tend-1.2.0-9-upload.log`, `/tmp/tend-1.2.0-9-submission.log`, `/tmp/tend-1.2.0-9-result.json`.
+    No real-device test was performed during this release; native archive, web interaction checks, scientific content
+    review and automated regressions passed. Android is unchanged by this App Store submission.
+
 
 - 2026-11-08 — Codex, **daily reasoning** on `codex/tend-reasoning`, checkout
   `/Users/chf/Developer/tend-reasoning` (based on fetched `origin/main`, 2ecefa8). Added a separate room strip and

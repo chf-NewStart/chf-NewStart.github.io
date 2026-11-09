@@ -1,7 +1,8 @@
-/* Authored physics only. Notes use Tend's device-local storage and native bridges; no network requests. */
+/* Authored thinking practice only. Notes use Tend's device-local storage and native bridges; no network requests. */
 (function (root) {
   'use strict';
-  const C = root.TendReasoningCore, QUESTIONS = root.TendReasoningContent;
+  const C = root.TendReasoningCore;
+  const QUESTIONS = C?.QUESTIONS || root.TendReasoningContent;
   if (!C || !QUESTIONS) return;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let memory = null, warning = '', unsaved = false, readBlocked = false;
@@ -81,51 +82,56 @@
     const header = label => `<div class="rq-head"><p class="eyebrow">${esc(label)}</p><button type="button" class="icon-button" data-action="close" aria-label="Close reasoning">×</button></div>`;
     const storage = () => warning ? `<p class="rq-storage" role="status">${esc(warning)}</p>` : '';
     function focusTitle() { const title = host.querySelector('h2'); if(title) { title.tabIndex=-1; title.focus({preventScroll:true}); } host.closest('dialog')?.scrollTo(0,0); }
+    const kindLabel = q => q.kind === 'look-twice' ? 'Look twice' : 'Physics';
+    const libraryItem = q => `<button class="button secondary" data-action="practice" data-id="${esc(q.id)}">${esc(q.title)}<span>${esc(kindLabel(q))} · ${esc(q.concept)}</span></button>`;
     function home(focus = false) {
       view = 'home'; activeId = null; variationOpen = false;
       const { question: q } = today(), state = load(), day = C.dayKey(new Date()), done = !!state.dailyCompleted[day];
       const due = C.dueReviews(state,new Date()), concepts = C.summary(state);
       const saved = state.attempts.find(a=>a.id===`daily:${day}`);
-      host.innerHTML = `${header('A LITTLE ROOM TO WONDER')}<div class="rq-stack">${storage()}
-        <div><h2>Think a little.<br>Notice what changes.</h2><p class="rq-muted">One physics idea each day. About 3–5 minutes, at your pace. A prediction is a place to begin; changing it is part of thinking.</p></div>
-        <section class="rq-card"><p class="rq-date">${esc(dateLabel(day))} · ${esc(q.concept)}</p><h2>${esc(q.title)}</h2><p class="rq-muted">${done?'You’ve explored today’s explanation. Come back to it whenever you like.':'Make a prediction, check the assumptions, and follow the explanation.'}</p><button class="button primary" data-action="today">${done?'Revisit today’s idea':saved?'Continue exploring':'Explore today’s idea'}</button></section>
+      host.innerHTML = `${header('A LITTLE ROOM TO THINK')}<div class="rq-stack">${storage()}
+        <div><h2>Think a little.<br>Notice what changes.</h2><p class="rq-muted">One short invitation each day: physics or Look twice, a situation to examine. About 3–5 minutes, at your pace. Changing your mind is part of thinking.</p></div>
+        <section class="rq-card"><p class="rq-date">${esc(dateLabel(day))} · ${esc(kindLabel(q))} · ${esc(q.concept)}</p><h2>${esc(q.title)}</h2><p class="rq-muted">${done?'You’ve explored today’s explanation. Come back to it whenever you like.':q.kind==='look-twice'?'Separate what you observe from what you infer. Compare explanations, then look for useful evidence.':'Make a prediction, check the assumptions, and follow the explanation.'}</p><button class="button primary" data-action="today">${done?'Revisit today’s idea':saved?'Continue exploring':'Explore today’s idea'}</button></section>
         ${due.length ? `<section class="rq-card"><h3>Return to an idea · optional</h3><p>${esc(question(due[due.length-1].questionId).title)}</p><p class="rq-muted">A different condition, a few days later. There’s no need to catch up.</p><button class="button secondary" data-action="review" data-id="${esc(due[due.length-1].id)}">Try a related question</button></section>`:''}
-        <details><summary>A gentle introduction · optional</summary><p class="rq-muted">Try a simple example to get comfortable with the flow. You can go straight to today’s idea.</p><div class="rq-library">${QUESTIONS.filter(q=>['quiet-book','half-a-material'].includes(q.id)).map(q=>`<button class="button secondary" data-action="practice" data-id="${esc(q.id)}">${esc(q.title)}<span>${esc(q.concept)}</span></button>`).join('')}</div></details>
+        <details><summary>A gentle introduction · optional</summary><p class="rq-muted">Try a simple example to get comfortable with the flow. You can go straight to today’s idea.</p><div class="rq-library">${QUESTIONS.filter(q=>['quiet-book','half-a-material'].includes(q.id)).map(libraryItem).join('')}</div></details>
+        <details><summary>Explore a format · optional</summary><p class="rq-muted">Physics connects quantities and models. Look twice compares observations, explanations, and evidence. Choose an idea whenever you like; today’s invitation stays the same.</p><div class="rq-format-picks"><button class="button secondary" data-action="format" data-kind="look-twice">Look twice</button><button class="button secondary" data-action="format" data-kind="physics">Physics</button></div><div data-format-list></div></details>
+        <details><summary>Why this practice?</summary><div class="rq-stack"><p class="rq-muted">Tend practises specific habits: checking assumptions, comparing explanations, and recalling an idea in a new situation. It records ideas explored and reviewed. Take what is useful; there is no daily quota.</p><p class="rq-muted">Studies of learned material support retrieval and explanatory feedback. Those studies did not test Tend or establish broad intelligence or cognitive-health benefits.</p><a class="rq-source" href="https://profiles.wustl.edu/en/publications/explanation-feedback-is-better-than-correct-answer-feedback-for-p/" target="_blank" rel="noopener noreferrer">Research on explanatory feedback ↗</a><a class="rq-source" href="https://profiles.wustl.edu/en/publications/test-enhanced-learning-taking-memory-tests-improves-long-term-ret/" target="_blank" rel="noopener noreferrer">Research on recalling learned material ↗</a></div></details>
         <section><h3>Concepts you’ve visited</h3>${concepts.length?`<ul class="rq-concepts">${concepts.map(c=>`<li>${esc(c.concept)}<small>${c.explored?'Explored':''}${c.explored&&c.reviewed?' · ':''}${c.reviewed?'Reviewed':''}</small></li>`).join('')}</ul>`:'<p class="rq-muted">Your explored and reviewed ideas will gather here. No score, no streak to keep.</p>'}</section>
-        ${done?`<details><summary>Practice another idea · optional</summary><div class="rq-library">${QUESTIONS.map(q=>`<button class="button secondary" data-action="practice" data-id="${esc(q.id)}">${esc(q.title)}<span>${esc(q.concept)}</span></button>`).join('')}</div></details>`:''}
-        ${state.attempts.length?`<details><summary>Your reasoning notebook</summary><p class="rq-muted">Private on this device. Included when you export a Tend backup.</p>${state.attempts.slice().reverse().slice(0,30).map(a=>history(a)).join('')}</details>`:''}
+        ${done?`<details><summary>Practice another idea · optional</summary><div class="rq-library">${QUESTIONS.map(libraryItem).join('')}</div></details>`:''}
+        ${state.attempts.length?`<details><summary>Your reasoning notebook</summary><p class="rq-muted">Private on this device. Included when you export a Tend backup.</p>${state.attempts.slice().reverse().slice(0,30).map(a=>history(a,true)).join('')}</details>`:''}
         <p class="rq-muted">Notes and predictions stay on this device. Nothing is sent to an AI service. You can leave at any point and return.</p>
       </div>`;
       if(focus) focusTitle();
     }
-    function history(a) {
+    function history(a,resumable=false) {
       const q=question(a.questionId), task=a.mode==='review'?q.variation:q;
-      return `<article class="rq-history"><h3>${esc(q.title)} · ${esc(a.mode)} · ${esc(dateLabel(a.day))}</h3><p><b>Initial:</b> ${esc(optionText(task,a.initialPrediction))}</p><p><b>Final:</b> ${esc(optionText(task,a.finalPrediction))}</p>${a.reason?`<p><b>Your reason:</b> ${esc(a.reason)}</p>`:''}${a.changedMind?`<p><b>What changed:</b> ${esc(a.changedMind)}</p>`:''}<p>${a.hintsUsed} hint${a.hintsUsed===1?'':'s'} opened · ${a.completedAt?'Explanation explored':a.revealed?'Answer revealed':'Saved for later'}</p></article>`;
+      return `<article class="rq-history"><h3>${esc(q.title)} · ${esc(a.mode)} · ${esc(dateLabel(a.day))}</h3><p><b>Initial:</b> ${esc(optionText(task,a.initialPrediction))}</p><p><b>Final:</b> ${esc(optionText(task,a.finalPrediction))}</p>${a.reason?`<p><b>Your reason:</b> ${esc(a.reason)}</p>`:''}${a.changedMind?`<p><b>What changed:</b> ${esc(a.changedMind)}</p>`:''}${a.teachBack?`<p><b>Your explanation:</b> ${esc(a.teachBack)}</p>`:''}<p>${a.hintsUsed} hint${a.hintsUsed===1?'':'s'} opened · ${a.completedAt?'Explanation explored':a.revealed?'Answer revealed':'Saved for later'}</p>${resumable?`<button class="text-button" data-action="resume" data-id="${esc(a.id)}">${a.stage==='complete'?'Revisit this idea':'Continue this idea'}</button>`:''}</article>`;
     }
     function begin(questionId,mode,reviewId) {
       const r=C.start(load(),{questionId,mode,day:C.dayKey(new Date()),reviewId});save(r.state);activeId=r.attempt.id;view='attempt';variationOpen=false;render(true);signal();
     }
     const choices = (task,value,field,legend,disabled=false) => `<fieldset class="rq-options"><legend>${esc(legend)}</legend>${task.options.map(o=>`<label class="rq-option"><input type="radio" name="${field}" value="${esc(o.id)}" data-field="${field}" ${disabled?'disabled':''} ${o.id===value?'checked':''}><span>${esc(o.text)}</span></label>`).join('')}</fieldset>`;
     function hints(a, task) { const items=task.hints||[];return `<section class="rq-hints" aria-label="Progressive hints">${a.hintsUsed?`<ol>${items.slice(0,a.hintsUsed).map(h=>`<li>${esc(h)}</li>`).join('')}</ol>`:''}${a.hintsUsed<items.length?`<button class="text-button" data-action="hint">${a.hintsUsed?'Another hint':'A small hint'} (${a.hintsUsed+1} of ${items.length})</button>`:'<p class="rq-muted">All hints are open. Take whatever is useful.</p>'}</section>`; }
-    function check(task) { const c=task.check;return `<section class="rq-check"><h3>Assumption check</h3><p class="rq-muted">A pause to think, with nothing to fill in.</p><dl><dt>What stays constant?</dt><dd>${esc(c.constant)}</dd><dt>What forces act?</dt><dd>${esc(c.forces)}</dd><dt>Which quantity reaches equilibrium?</dt><dd>${esc(c.equilibrium)}</dd></dl></section>`; }
+    function check(task, everyday) { const c=task.check;return `<section class="rq-check"><h3>${everyday?'Look twice':'Assumption check'}</h3><p class="rq-muted">A pause to think, with nothing to fill in.</p><dl><dt>${everyday?'What was observed?':'What stays constant?'}</dt><dd>${esc(c.constant)}</dd><dt>${everyday?'What are possible explanations?':'What forces act?'}</dt><dd>${esc(c.forces)}</dd><dt>${everyday?'What evidence would tell them apart?':'Which quantity reaches equilibrium?'}</dt><dd>${esc(c.equilibrium)}</dd></dl></section>`; }
     function render(focus=false) {
       const state=load(), a=state.attempts.find(a=>a.id===activeId); if(!a) return home(focus);
-      const q=question(a.questionId), task=a.mode==='review'?q.variation:q, explaining=['explain','complete'].includes(a.stage);
+      const q=question(a.questionId), task=a.mode==='review'?q.variation:q, everyday=q.kind==='look-twice', explaining=['explain','complete'].includes(a.stage);
       host.innerHTML=`${header(a.mode==='review'?'RETURN TO AN IDEA':a.mode==='practice'?'A LITTLE MORE PRACTICE':`TODAY’S IDEA · ${dateLabel(a.day)}`)}<div class="rq-stack">${storage()}
-        <div><p class="rq-date">${esc(q.concept)}${a.mode==='review'?' · One condition changed':''}</p><h2>${esc(q.title)}</h2></div>
-        <p>${esc(task.prompt)}</p>${a.stage==='predict'?`${a.mode==='review'?'':diagram(q.diagram,q.title)}<section><h3>The conditions</h3>${list(task.conditions||q.conditions)}</section>`:`<details><summary>Problem setup and conditions</summary>${a.mode==='review'?'':diagram(q.diagram,q.title)}${list(task.conditions||q.conditions)}</details>`}
+        <div><p class="rq-date">${esc(kindLabel(q))} · ${esc(q.concept)}${a.mode==='review'?' · One condition changed':''}</p><h2>${esc(q.title)}</h2></div>
+        ${everyday?'<p class="rq-situation">Look twice · A fictional situation for practice</p>':''}<p>${esc(task.prompt)}</p>${a.stage==='predict'?`${a.mode==='review'?'':diagram(q.diagram,q.title)}<section><h3>${everyday?'What we know':'The conditions'}</h3>${list(task.conditions||q.conditions)}</section>`:`<details><summary>${everyday?'Situation and what we know':'Problem setup and conditions'}</summary>${a.mode==='review'?'':diagram(q.diagram,q.title)}${list(task.conditions||q.conditions)}</details>`}
         ${!explaining?`
-          ${a.stage==='check'?`<p class="rq-muted">Your initial prediction: <b>${esc(optionText(task,a.initialPrediction))}</b>. You can keep it or try a different one.</p>${check(task)}`:''}
-          ${choices(task,a.stage==='predict'?a.initialPrediction:a.finalPrediction,a.stage==='predict'?'initialPrediction':'finalPrediction',a.stage==='predict'?'What do you predict?':'Keep or revise your prediction')}
+          ${a.stage==='check'?`<p class="rq-muted">Your initial ${everyday?'reading':'prediction'}: <b>${esc(optionText(task,a.initialPrediction))}</b>. You can keep it or try a different one.</p>${check(task,everyday)}`:''}
+          ${choices(task,a.stage==='predict'?a.initialPrediction:a.finalPrediction,a.stage==='predict'?'initialPrediction':'finalPrediction',a.stage==='predict'?(everyday?'What’s your first reading?':'What do you predict?'):(everyday?'Keep or revise your reading':'Keep or revise your prediction'))}
           ${a.stage==='predict'?`<details><summary>Add a reason · optional</summary><label class="rq-note">What led you here?<textarea rows="2" maxlength="500" data-field="reason">${esc(a.reason)}</textarea></label></details>`:`<details ${a.initialPrediction!==a.finalPrediction?'open':''}><summary>What changed your mind? · optional</summary><label class="rq-note">An assumption, a hint, a new way to see it…<textarea rows="2" maxlength="500" data-field="changedMind">${esc(a.changedMind)}</textarea></label></details>`}
           ${hints(a,task)}
-          ${a.stage==='predict'?`<div class="rq-actions"><button class="button primary" data-action="check" ${!a.initialPrediction?'disabled':''}>Consider the assumptions →</button><button class="text-button" data-action="reveal">Reveal the explanation</button></div>`:`<div class="rq-actions"><button class="button primary" data-action="submit" ${!a.finalPrediction?'disabled':''}>See how it works →</button><button class="text-button" data-action="reveal">Reveal without submitting</button></div>`}
+          ${a.stage==='predict'?`<div class="rq-actions"><button class="button primary" data-action="check" ${!a.initialPrediction?'disabled':''}>${everyday?'Look twice →':'Consider the assumptions →'}</button><button class="text-button" data-action="reveal">Reveal the explanation</button></div>`:`<div class="rq-actions"><button class="button primary" data-action="submit" ${!a.finalPrediction?'disabled':''}>See how it works →</button><button class="text-button" data-action="reveal">Reveal without submitting</button></div>`}
           <p class="rq-muted">Hints and changed predictions count just the same. You can reveal without choosing.</p>
         `:`
-          <section class="rq-stack"><h3>${a.stage==='complete'?'An idea explored':'Let’s follow the reasoning'}</h3>${!a.revealed?`<p class="rq-muted">${a.finalPrediction===task.answer?'Your prediction fits these conditions.':'Here’s how the stated conditions lead to the answer.'}</p>`:''}<p class="rq-answer">${esc(optionText(task,task.answer))}</p><ol class="rq-explanation">${task.explanation.map(t=>`<li>${esc(t)}</li>`).join('')}</ol></section>
-          <section class="rq-stack"><h3>Why the other ideas can feel plausible</h3>${task.options.filter(o=>o.id!==task.answer).map(o=>`<p class="rq-feedback"><strong>${esc(o.text)}</strong><br><span class="rq-muted">${esc(o.feedback)}</span></p>`).join('')}</section>
-          ${a.mode!=='review'?`<section class="rq-check"><h3>When would the answer change?</h3><p class="rq-muted">${esc(q.changes)}</p></section>`:''}
-          <details><summary>Your prediction and notes</summary>${history(a)}</details>
+          <section class="rq-stack"><h3>${a.stage==='complete'?'An idea explored':'Let’s follow the reasoning'}</h3>${!a.revealed?`<p class="rq-muted">${a.finalPrediction===task.answer?'This choice fits the stated information.':'Here’s how the stated information supports the conclusion.'}</p>`:''}<p class="rq-answer">${esc(optionText(task,task.answer))}</p><ol class="rq-explanation">${task.explanation.map(t=>`<li>${esc(t)}</li>`).join('')}</ol></section>
+          <section class="rq-stack"><h3>${everyday?'Why the other readings can feel plausible':'Why the other ideas can feel plausible'}</h3>${task.options.filter(o=>o.id!==task.answer).map(o=>`<p class="rq-feedback"><strong>${esc(o.text)}</strong><br><span class="rq-muted">${esc(o.feedback)}</span></p>`).join('')}</section>
+          ${a.mode!=='review'?`<section class="rq-check"><h3>${everyday?'What would change the conclusion?':'When would the answer change?'}</h3><p class="rq-muted">${esc(q.changes)}</p></section>`:''}
+          <details><summary>Explain it back · optional</summary><label class="rq-note">${esc(task.reflectionPrompt||q.reflectionPrompt||'What is the key idea, and when would it apply?')}<textarea rows="3" maxlength="500" data-field="teachBack" placeholder="A sentence or two for your future self…">${esc(a.teachBack)}</textarea></label><p class="rq-muted">Try recalling the idea before looking back, if you like. This is a private note, with no automatic grading.</p></details>
+          <details><summary>Your reasoning and notes</summary>${history(a)}</details>
           <section class="rq-source"><h3>Grounded in</h3><p class="rq-muted">An authored question; the explanation applies the principles in these sources.</p>${q.sources.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)} ↗</a>`).join('')}</section>
           ${a.stage!=='complete'?`<div class="rq-actions"><button class="button primary" data-action="complete">I’ve explored the explanation</button></div><p class="rq-muted">This saves the idea as explored, whichever prediction you made.</p>`:`<p class="rq-saved" role="status">✓ ${a.mode==='review'?'Concept reviewed.':a.mode==='daily'?'Today’s exploration is kept. A related question will be here in a few days.':'Practice kept.'}</p>${a.mode!=='review'?variation(a,q):''}<div class="rq-actions"><button class="button primary" data-action="home">Back to the reasoning desk</button></div>`}
         `}
@@ -149,6 +155,8 @@
       if(action==='home')return home(true);
       if(action==='today')return begin(today().question.id,'daily');
       if(action==='practice')return begin(b.dataset.id,'practice');
+      if(action==='resume'){const saved=load().attempts.find(item=>item.id===b.dataset.id);if(saved){activeId=saved.id;view='attempt';variationOpen=false;render(true);}return;}
+      if(action==='format'){const container=host.querySelector('[data-format-list]');const everyday=b.dataset.kind==='look-twice';container.innerHTML=`<div class="rq-library">${QUESTIONS.filter(q=>everyday?q.kind==='look-twice':q.daily===true&&q.kind!=='look-twice').map(libraryItem).join('')}</div>`;return;}
       if(action==='review'){const r=C.dueReviews(load(),new Date()).find(r=>r.id===b.dataset.id);if(r)return begin(r.questionId,'review',r.id);return;}
       if(!a)return;
       if(action==='check')mutate(s=>C.update(s,a.id,{stage:'check'}));
@@ -164,12 +172,13 @@
     home();
     return { home, refresh, stop:()=>{} };
   }
+  const kindLabelFor=q=>q.kind==='look-twice'?'Look twice':'Physics';
   function room() {
     const page=document.getElementById('reasoning-page-root');
     if(page){const game=mount(page,{onClose:()=>{if(root.TendAndroidReasoning)return root.TendAndroidReasoning.close();location.href='./';}});let day=C.dayKey(new Date());const refreshDay=()=>{const next=C.dayKey(new Date());if(next!==day){day=next;game.refresh();}};setInterval(refreshDay,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDay();});root.addEventListener('tend-resume',refreshDay);return;}
     const dialog=document.getElementById('reasoning-dialog');if(!dialog)return;
     const game=mount(document.getElementById('reasoning-root'),{onClose:()=>dialog.close()});
-    const paint=()=>{const q=today().question, done=load().dailyCompleted[C.dayKey(new Date())];document.getElementById('reasoning-strip-name').textContent=q.title;document.getElementById('reasoning-strip-meta').textContent=done?'Today’s idea explored · Return whenever you like':`3–5 minutes · ${q.concept} · At your pace`;document.getElementById('reasoning-open').textContent=done?'Revisit an idea':'Explore an idea';};
+    const paint=()=>{const q=today().question, done=load().dailyCompleted[C.dayKey(new Date())];document.getElementById('reasoning-strip-name').textContent=q.title;document.getElementById('reasoning-strip-meta').textContent=done?'Today’s idea explored · Return whenever you like':`3–5 minutes · ${kindLabelFor(q)} · At your pace`;document.getElementById('reasoning-open').textContent=done?'Revisit an idea':'Explore an idea';};
     changes.add(paint);
     document.getElementById('reasoning-open').addEventListener('click',()=>{game.home();dialog.showModal();});
     let day=C.dayKey(new Date());const checkDay=()=>{const next=C.dayKey(new Date());if(next!==day){day=next;paint();game.refresh();}};

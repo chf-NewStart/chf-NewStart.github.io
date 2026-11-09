@@ -405,14 +405,14 @@
     },
     "options": [
       {
-        "id": "falls",
-        "text": "The level falls",
-        "feedback": "Initially the bead makes the floating ice displace water equal to the bead’s weight; finally the bead displaces only its own smaller volume."
-      },
-      {
         "id": "same",
         "text": "The level stays the same",
         "feedback": "Melting pure floating ice alone leaves the level unchanged. Here the steel changes from a carried load to a submerged solid."
+      },
+      {
+        "id": "falls",
+        "text": "The level falls",
+        "feedback": "Initially the bead makes the floating ice displace water equal to the bead’s weight; finally the bead displaces only its own smaller volume."
       },
       {
         "id": "rises",
@@ -460,11 +460,6 @@
       ],
       "options": [
         {
-          "id": "same",
-          "text": "It stays the same",
-          "feedback": "All of the mass is still accounted for by equal-weight displacement or meltwater."
-        },
-        {
           "id": "falls",
           "text": "It falls",
           "feedback": "That relied on a dense passenger sinking and displacing less than its own weight of water."
@@ -473,6 +468,11 @@
           "id": "rises",
           "text": "It rises",
           "feedback": "The capsule’s final displacement replaces the displacement that carried it before melting."
+        },
+        {
+          "id": "same",
+          "text": "It stays the same",
+          "feedback": "All of the mass is still accounted for by equal-weight displacement or meltwater."
         }
       ],
       "answer": "same",
@@ -501,11 +501,6 @@
     },
     "options": [
       {
-        "id": "transfer",
-        "text": "The spring reading falls and the beaker reading rises by the same force",
-        "feedback": "The buoyant force transfers part of the support from the spring to the water and balance."
-      },
-      {
         "id": "bothless",
         "text": "Both readings fall",
         "feedback": "The object is partly supported by water, but that support has a downward reaction on the beaker system."
@@ -514,6 +509,11 @@
         "id": "beakersame",
         "text": "The spring reading falls; the beaker reading stays the same",
         "feedback": "No material enters the beaker, yet an additional downward contact force still acts on its water."
+      },
+      {
+        "id": "transfer",
+        "text": "The spring reading falls and the beaker reading rises by the same force",
+        "feedback": "The buoyant force transfers part of the support from the spring to the water and balance."
       }
     ],
     "answer": "transfer",
@@ -652,14 +652,14 @@
       ],
       "options": [
         {
-          "id": "same",
-          "text": "No; the tension stays the same",
-          "feedback": "Both weight and buoyancy are unchanged in this ideal comparison."
-        },
-        {
           "id": "greater",
           "text": "Yes; deeper water always gives more buoyancy",
           "feedback": "Depth raises pressure everywhere but not the net buoyant force for a fixed volume in uniform water."
+        },
+        {
+          "id": "same",
+          "text": "No; the tension stays the same",
+          "feedback": "Both weight and buoyancy are unchanged in this ideal comparison."
         },
         {
           "id": "zero",
@@ -693,11 +693,6 @@
     },
     "options": [
       {
-        "id": "fewer-same",
-        "text": "The hotter sample has fewer particles, but the same total internal energy",
-        "feedback": "Greater average energy per particle is offset by fewer particles at the same pressure and volume."
-      },
-      {
         "id": "same-more",
         "text": "It has the same number of particles and more total energy",
         "feedback": "Equal volume alone does not fix particle number. Equal pressure imposes an additional constraint."
@@ -706,6 +701,11 @@
         "id": "fewer-more",
         "text": "It has fewer particles and necessarily more total energy",
         "feedback": "Temperature fixes average energy per particle, not the sum when particle numbers differ."
+      },
+      {
+        "id": "fewer-same",
+        "text": "The hotter sample has fewer particles, but the same total internal energy",
+        "feedback": "Greater average energy per particle is offset by fewer particles at the same pressure and volume."
       }
     ],
     "answer": "fewer-same",
@@ -789,14 +789,14 @@
     },
     "options": [
       {
-        "id": "different",
-        "text": "A: pressure doubles, density stays fixed. B: pressure stays fixed, density halves.",
-        "feedback": "The same temperature change has different consequences because the mechanical constraints differ."
-      },
-      {
         "id": "both-density",
         "text": "Both samples halve their density",
         "feedback": "A cannot halve its density without losing mass or expanding, and both are forbidden."
+      },
+      {
+        "id": "different",
+        "text": "A: pressure doubles, density stays fixed. B: pressure stays fixed, density halves.",
+        "feedback": "The same temperature change has different consequences because the mechanical constraints differ."
       },
       {
         "id": "both-pressure",
@@ -840,11 +840,6 @@
       ],
       "options": [
         {
-          "id": "fixed-rises",
-          "text": "Density stays fixed and pressure rises",
-          "feedback": "The gas is now in the rigid fixed-volume regime."
-        },
-        {
           "id": "falls-fixed",
           "text": "Density keeps falling while pressure stays fixed",
           "feedback": "That requires continued expansion, which the stop prevents."
@@ -853,6 +848,11 @@
           "id": "both-rise",
           "text": "Both density and pressure rise",
           "feedback": "Heating adds energy, not mass; fixed mass and volume keep density unchanged."
+        },
+        {
+          "id": "fixed-rises",
+          "text": "Density stays fixed and pressure rises",
+          "feedback": "The gas is now in the rigid fixed-volume regime."
         }
       ],
       "answer": "fixed-rises",
@@ -936,14 +936,14 @@
       ],
       "options": [
         {
-          "id": "direction-only",
-          "text": "Air initially goes smaller → larger; final volumes are still undetermined",
-          "feedback": "The measurements settle the initial direction but not the later elastic evolution."
-        },
-        {
           "id": "equal-final",
           "text": "Air goes smaller → larger until the volumes are equal",
           "feedback": "Flow tends to remove pressure differences, not necessarily volume differences."
+        },
+        {
+          "id": "direction-only",
+          "text": "Air initially goes smaller → larger; final volumes are still undetermined",
+          "feedback": "The measurements settle the initial direction but not the later elastic evolution."
         },
         {
           "id": "history-first",
@@ -977,14 +977,14 @@
     },
     "options": [
       {
-        "id": "tilted-stronger",
-        "text": "The rope is straight and trails backward; tension is greater than the load’s weight",
-        "feedback": "Its upward component balances weight and its forward component balances drag, so its total exceeds the upward component."
-      },
-      {
         "id": "vertical-equal",
         "text": "The rope is vertical and tension equals weight",
         "feedback": "That balances gravity but leaves drag unbalanced, so steady motion would be impossible."
+      },
+      {
+        "id": "tilted-stronger",
+        "text": "The rope is straight and trails backward; tension is greater than the load’s weight",
+        "feedback": "Its upward component balances weight and its forward component balances drag, so its total exceeds the upward component."
       },
       {
         "id": "curved-equal",
@@ -1032,11 +1032,6 @@
       ],
       "options": [
         {
-          "id": "vertical-weight",
-          "text": "The rope becomes vertical and tension equals weight",
-          "feedback": "No horizontal force requires a tilt."
-        },
-        {
           "id": "tilted-weight",
           "text": "It stays tilted but tension becomes equal to weight",
           "feedback": "A tilted tension cannot balance a purely vertical weight without another horizontal force."
@@ -1045,6 +1040,11 @@
           "id": "vertical-more",
           "text": "It becomes vertical but tension stays greater than weight",
           "feedback": "That would give the stationary load an unbalanced upward force."
+        },
+        {
+          "id": "vertical-weight",
+          "text": "The rope becomes vertical and tension equals weight",
+          "feedback": "No horizontal force requires a tilt."
         }
       ],
       "answer": "vertical-weight",
@@ -1124,14 +1124,14 @@
       ],
       "options": [
         {
-          "id": "tilted-more",
-          "text": "A straight rope with the load behind; tension greater than weight",
-          "feedback": "The tilt supplies a horizontal component in addition to the upward support."
-        },
-        {
           "id": "vertical-more",
           "text": "A vertical rope with tension greater than weight",
           "feedback": "A vertical force cannot accelerate the load horizontally and would upset vertical balance."
+        },
+        {
+          "id": "tilted-more",
+          "text": "A straight rope with the load behind; tension greater than weight",
+          "feedback": "The tilt supplies a horizontal component in addition to the upward support."
         },
         {
           "id": "curved-weight",
@@ -1165,11 +1165,6 @@
     },
     "options": [
       {
-        "id": "trade",
-        "text": "Output force is 4×, output travel is ¼, and ideal work is unchanged",
-        "feedback": "Greater area turns the same excess pressure into greater force, while volume conservation trades away travel."
-      },
-      {
         "id": "free-work",
         "text": "Output force and travel are both 4×, giving more work",
         "feedback": "That would violate the fluid-volume constraint and energy conservation."
@@ -1178,6 +1173,11 @@
         "id": "same-travel",
         "text": "Output force is 4× with equal travel and equal work",
         "feedback": "Equal travel at unequal areas displaces unequal fluid volumes; force times travel also would not match."
+      },
+      {
+        "id": "trade",
+        "text": "Output force is 4×, output travel is ¼, and ideal work is unchanged",
+        "feedback": "Greater area turns the same excess pressure into greater force, while volume conservation trades away travel."
       }
     ],
     "answer": "trade",
@@ -1316,14 +1316,14 @@
       ],
       "options": [
         {
-          "id": "balanced",
-          "text": "No; the two downward turning effects balance",
-          "feedback": "The buoyant reductions are equal on both sides."
-        },
-        {
           "id": "left",
           "text": "Yes; the left side has the greater turning effect because it was immersed first",
           "feedback": "The initial force balance depends on the stated present conditions, not that ordering."
+        },
+        {
+          "id": "balanced",
+          "text": "No; the two downward turning effects balance",
+          "feedback": "The buoyant reductions are equal on both sides."
         },
         {
           "id": "both",
@@ -1357,11 +1357,6 @@
     },
     "options": [
       {
-        "id": "same-double",
-        "text": "Speeds are equal; the heavier bead has twice the kinetic energy",
-        "feedback": "The mass factor cancels in the speed relation, but not in total kinetic energy."
-      },
-      {
         "id": "faster-double",
         "text": "The heavier bead is faster and has twice the kinetic energy",
         "feedback": "Greater gravitational energy also comes with proportionally greater inertia; it does not give a greater speed for the same drop."
@@ -1370,6 +1365,11 @@
         "id": "same-same",
         "text": "Speeds and kinetic energies are both equal",
         "feedback": "Equal speed does not imply equal kinetic energy when the masses differ."
+      },
+      {
+        "id": "same-double",
+        "text": "Speeds are equal; the heavier bead has twice the kinetic energy",
+        "feedback": "The mass factor cancels in the speed relation, but not in total kinetic energy."
       }
     ],
     "answer": "same-double",
@@ -1449,14 +1449,14 @@
     },
     "options": [
       {
-        "id": "both-same",
-        "text": "Both bottom pressures and bottom forces are equal",
-        "feedback": "Depth fixes bottom pressure; equal area then gives equal bottom force. Sidewalls account for the different water weights."
-      },
-      {
         "id": "both-more",
         "text": "The wider vessel has greater bottom pressure and force because it holds more weight",
         "feedback": "That assumes the base alone supports all the water; inclined walls can carry a vertical force."
+      },
+      {
+        "id": "both-same",
+        "text": "Both bottom pressures and bottom forces are equal",
+        "feedback": "Depth fixes bottom pressure; equal area then gives equal bottom force. Sidewalls account for the different water weights."
       },
       {
         "id": "pressure-same-force-more",
@@ -1500,11 +1500,6 @@
       ],
       "options": [
         {
-          "id": "same-double",
-          "text": "Pressure stays the same; total base force doubles",
-          "feedback": "Equal pressure over twice the area produces twice the force."
-        },
-        {
           "id": "both-double",
           "text": "Pressure and base force both double",
           "feedback": "Changing base area does not change the specified water depth or surface pressure."
@@ -1513,6 +1508,11 @@
           "id": "half-same",
           "text": "Pressure halves; base force stays the same",
           "feedback": "That would treat a fixed total force as given, but this fluid setup fixes pressure through depth instead."
+        },
+        {
+          "id": "same-double",
+          "text": "Pressure stays the same; total base force doubles",
+          "feedback": "Equal pressure over twice the area produces twice the force."
         }
       ],
       "answer": "same-double",
@@ -1596,14 +1596,14 @@
       ],
       "options": [
         {
-          "id": "follows",
-          "text": "It increases to match the pull, up to the limit",
-          "feedback": "This preserves horizontal balance while the crate remains at rest."
-        },
-        {
           "id": "maximum",
           "text": "It immediately takes its maximum value even for a smaller pull",
           "feedback": "That would give an unbalanced horizontal force when the pull is below the maximum."
+        },
+        {
+          "id": "follows",
+          "text": "It increases to match the pull, up to the limit",
+          "feedback": "This preserves horizontal balance while the crate remains at rest."
         },
         {
           "id": "unchanged",
@@ -1637,14 +1637,14 @@
     },
     "options": [
       {
-        "id": "sinks",
-        "text": "It sinks: density becomes greater than water and buoyancy is too small",
-        "feedback": "Halving volume doubles its average density from ¾ to 1½ of water density, while also halving fully submerged buoyancy."
-      },
-      {
         "id": "rises",
         "text": "It rises because the same material was initially lighter than water",
         "feedback": "Average density includes the body’s exterior volume, which has changed; material identity alone does not settle flotation."
+      },
+      {
+        "id": "sinks",
+        "text": "It sinks: density becomes greater than water and buoyancy is too small",
+        "feedback": "Halving volume doubles its average density from ¾ to 1½ of water density, while also halving fully submerged buoyancy."
       },
       {
         "id": "neutral",

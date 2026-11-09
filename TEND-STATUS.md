@@ -11,6 +11,7 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
+| Codex | **Look twice + A Little Room to Think**, building the next version (1.3.0 / 10). Existing 1.2 review stays intact. Everyday authored cases, optional private explanations, mixed daily rotation and branding. | `focus/look-twice-content.js`, reasoning UI/core/tests, native offline assets and local release metadata | 2026-11-09 |
 | Codex | **Daily reasoning challenge**, iOS **1.2.0 (9) Waiting for Review**, submitted with Houfu’s explicit authorization on `codex/tend-reasoning` in `Developer/tend-reasoning`: authored physics, local progress and review, gentle unscored flow. Verified web and iOS build; Android SDK missing. Existing warm-up stays separate. | `focus/reasoning*`, room strip/dialog and backup, native reasoning storage/assets, tests | 2026-11-08 |
 | Claude Code | **Warm-up and rest** (Houfu: "add some daily challenges which could train the focus", then "something that makes me happy and less dizzy"), done on `main` (Log, 2026-11-03). Web and Android checked; **iOS 1.1.0 (7) on TestFlight** (not run in a simulator: CoreSimulator out of date on this Mac). **1.1.0 (7) submitted for review 2026-11-03 13:28 EST with Houfu's OK ("Looks right, submit"): Waiting for Review, releases automatically after approval** (review submission 97edf9f7-6dda-4a4b-92cb-96028e62d3c9). | `focus/daily.*`, `tests/tend-daily.test.cjs`, the strip and dialog in `focus/index.html`, backup export/restore in `focus/app.js`, `focus/sw.js` cache list, `apps/tend-ios/App/TendViewController.swift` (`dailySave`, `TEND_DAILY_STATE`), `apps/tend-ios/release/*`, `apps/tend-android/**/DailyActivity.kt`, `core/Daily.kt`, `core/Backup.kt`, `FocusRoom.kt` strip | 2026-11-03 11:00 EST |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts; 1.0 (1) submitted by Houfu 2026-10-26, in review. Not submitting anything for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
@@ -42,6 +43,35 @@ to touch a claimed file, write your request under **Requests** below instead.
   ($25, ID and device checks), then the app, the closed test with 12+ testers for 14 days, then production.
 
 ## Log
+
+- 2026-11-09 — Codex: Houfu approved building **Look twice** and optional explanations in the user's own words,
+  keeping Tend as **Tend: A Little Room to Think**. Local candidate **1.3.0 (10)** on `codex/tend-reasoning`.
+  Version 1.2.0 (9) remains Waiting for Review; this work does not withdraw or replace that submission.
+  - Fourteen authored fictional Look twice situations and one-condition variations cover observations vs inferences,
+    alternative explanations, fair denominators, sampling, confounding, measurement, regression to the mean,
+    replication, missing vs zero, and calibrated confidence. Each includes explicit information, three progressive
+    hints, a bounded answer, alternative feedback, a stepwise explanation and primary teaching references.
+    Independent review of all 14 main cases and variations found no grading or logic blockers. No generated content.
+  - New unpinned days alternate 14 physics and 14 Look twice questions (28-day rotation), with all existing daily
+    pins, original 28 physics IDs, notes and review dates preserved. Fourteen physics introductions stay available;
+    42 authored main questions total. Both daily banks and their variations have balanced correct-option positions.
+  - Optional format browsing stays under a disclosure. Look twice uses observation/explanation/evidence checks.
+    Optional “Explain it back” notes are editable before or after completion, private and never automatically graded.
+    Recent notebook entries now resume unfinished practice and revisit completed attempts without creating duplicates.
+    Daily-related reviews remain due three local calendar days after daily completion; practice adds no catch-up work.
+  - Uses the existing device-local storage, native bridges, backup format, components, fonts and pixel palette.
+    All 27 offline assets bundle successfully. Prepared next-store title/subtitle and restrained listing; device icon,
+    bundle ID and Siri remain Tend. Public App Store name is not changed by preparing metadata or uploading TestFlight.
+  - Checks: all 66 Node regressions pass, including mixed daily selection, all legacy pins, hints/reveal, related review,
+    duplicate completion, notes and native storage failures. Chrome phone preview 390×844 verified prediction/reason,
+    assumption check, progressive hint, revision/change note, explanation, optional private explanation, completion,
+    variation, refresh/reopen, revisit and unfinished-practice resume. Title is correct; no horizontal overflow.
+    Screenshots: `tmp/screenshots/06-look-twice.jpg` and `07-explain-back.jpg` (local, ignored).
+  - Evidence copy supports practice of specific tasks and habits only. Research links explain the scope of explanatory
+    feedback and retrieval findings; Tend itself has not been studied for general intelligence or cognitive-health gains.
+    Existing retention limits remain: latest 500 attempts/reviews, 500 characters per note, 4,000 daily pins/marks;
+    notebook shows the latest 30 attempts. No real-device classroom validation or Android SDK build this turn.
+
 
 - 2026-11-08 23:32 EST — Codex: Houfu approved making the daily questions more substantial and explicitly asked
   “push to App Store Connect and submit”. **Tend 1.2.0 (9) is uploaded, VALID and WAITING_FOR_REVIEW**, verified

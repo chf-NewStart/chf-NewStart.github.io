@@ -110,7 +110,7 @@
     if (signature !== lastTick) {
       $('timer-display').textContent = time;
       $('timer-display').setAttribute('aria-label', Math.floor(totalSeconds / 60) + ' minutes and ' + totalSeconds % 60 + ' seconds remaining');
-      document.title = timer.status === 'running' ? time + ' · ' + (isBreak ? 'Breathe' : isQuick ? timer.task?.question || 'Quick timer' : 'Focus') + ' — Tend' : timer.status === 'paused' ? time + ' · Paused — Tend' : reviewing ? '✓ Time to reflect — Tend' : 'Tend — a little room to focus';
+      document.title = timer.status === 'running' ? time + ' · ' + (isBreak ? 'Breathe' : isQuick ? timer.task?.question || 'Quick timer' : 'Focus') + ' — Tend' : timer.status === 'paused' ? time + ' · Paused — Tend' : reviewing ? '✓ Time to reflect — Tend' : 'Tend: A Little Room to Think';
       lastTick = signature;
     }
     $('ring-progress').style.strokeDashoffset = String(100 * (1 - ms / timer.durationMs));

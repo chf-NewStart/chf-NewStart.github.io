@@ -1,13 +1,23 @@
 /* Authored questions only. This module owns calendar selection and private progress, with no network or UI. */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./reasoning-content.js'));
-  else root.TendReasoningCore = factory(root.TendReasoningContent);
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (QUESTIONS) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./reasoning-content.js'), require('./look-twice-content.js'));
+  else root.TendReasoningCore = factory(root.TendReasoningContent, root.TendLookTwiceContent || []);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (physicsContent, lookTwiceContent) {
   'use strict';
   const KEY = 'houfu.tend.reasoning.v1', SCHEMA = 'tend-reasoning-v1';
-  // Keep old authored IDs readable; only the current daily bank is selected for new dates.
-  const eligible = QUESTIONS.filter(q => q.daily === true);
-  const DAILY_QUESTIONS = eligible.length ? eligible : QUESTIONS;
+  // Keep every authored ID readable, including saved introductions and prior physics days.
+  const physics = Array.isArray(physicsContent) ? physicsContent : [];
+  const lookTwice = Array.isArray(lookTwiceContent) ? lookTwiceContent : [];
+  const QUESTIONS = [...physics, ...lookTwice];
+  const eligible = physics.filter(q => q.daily === true);
+  const PHYSICS_QUESTIONS = eligible.length ? eligible : physics;
+  const LOOK_TWICE_QUESTIONS = lookTwice.filter(q => q.kind === 'look-twice' && q.daily === true);
+  // Interleaving authored banks makes adjacent new local dates alternate the kind of reasoning.
+  const DAILY_QUESTIONS = [];
+  for (let i = 0; i < Math.max(PHYSICS_QUESTIONS.length, LOOK_TWICE_QUESTIONS.length); i++) {
+    if (PHYSICS_QUESTIONS[i]) DAILY_QUESTIONS.push(PHYSICS_QUESTIONS[i]);
+    if (LOOK_TWICE_QUESTIONS[i]) DAILY_QUESTIONS.push(LOOK_TWICE_QUESTIONS[i]);
+  }
   const MODES = ['daily', 'practice', 'review'], STAGES = ['predict', 'check', 'explain', 'complete'];
   const MAX_ATTEMPTS = 500, MAX_DAYS = 4000, MAX_NOTES = 500;
   const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
@@ -55,7 +65,7 @@
       s.attempts.push({ id: a.id, questionId: q.id, mode: a.mode, day: a.day,
         reviewId: a.mode === 'review' ? a.reviewId : null, stage,
         initialPrediction: prediction(a.initialPrediction, q, a.mode), finalPrediction: prediction(a.finalPrediction, q, a.mode),
-        reason: text(a.reason), changedMind: text(a.changedMind),
+        reason: text(a.reason), changedMind: text(a.changedMind), teachBack: text(a.teachBack),
         hintsUsed: Number.isFinite(a.hintsUsed) ? Math.min((a.mode === 'review' ? q.variation.hints || q.hints : q.hints).length, Math.max(0, Math.floor(a.hintsUsed))) : 0,
         revealed: a.revealed === true, submittedAt: stamp(a.submittedAt), completedAt: stage === 'complete' ? stamp(a.completedAt) : null,
         variationPrediction: prediction(a.variationPrediction, q, 'review'), variationRevealed: a.variationRevealed === true });
@@ -102,7 +112,7 @@
     const existing = s.attempts.find(a => a.id === id);
     if (existing) return { state: s, attempt: existing };
     const a = { id, questionId, mode, day, reviewId: mode === 'review' ? reviewId : null, stage: 'predict',
-      initialPrediction: null, finalPrediction: null, reason: '', changedMind: '', hintsUsed: 0, revealed: false,
+      initialPrediction: null, finalPrediction: null, reason: '', changedMind: '', teachBack: '', hintsUsed: 0, revealed: false,
       submittedAt: null, completedAt: null, variationPrediction: null, variationRevealed: false };
     s.attempts.push(a);
     return { state: s, attempt: a };
@@ -122,6 +132,7 @@
       if (Number.isFinite(patch.hintsUsed)) a.hintsUsed = Math.min((a.mode === 'review' ? q.variation.hints || q.hints : q.hints).length, Math.max(a.hintsUsed, Math.floor(patch.hintsUsed)));
     }
     if (['explain', 'complete'].includes(a.stage)) {
+      if (own(patch, 'teachBack')) a.teachBack = text(patch.teachBack);
       if (own(patch, 'variationPrediction') && !a.variationRevealed) a.variationPrediction = prediction(patch.variationPrediction, q, 'review');
       if (patch.variationRevealed === true) a.variationRevealed = true;
     }
@@ -163,5 +174,5 @@
       reviewed: s.reviews.filter(r => r.completedAt && question(r.questionId).concept === concept).length
     })).filter(c => c.explored || c.reviewed);
   }
-  return { KEY, SCHEMA, QUESTIONS, DAILY_QUESTIONS, emptyState, normalize, dayKey, addDays, daily, start, update, submit, complete, dueReviews, summary };
+  return { KEY, SCHEMA, QUESTIONS, PHYSICS_QUESTIONS, LOOK_TWICE_QUESTIONS, DAILY_QUESTIONS, emptyState, normalize, dayKey, addDays, daily, start, update, submit, complete, dueReviews, summary };
 });

@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const C = require('../focus/reasoning-core.js');
-const QUESTIONS = require('../focus/reasoning-content.js');
+const QUESTIONS = C.QUESTIONS;
 const source = fs.readFileSync(require.resolve('../focus/reasoning.js'), 'utf8');
 function draft(reason) {
   const r = C.start(C.emptyState(), { mode: 'daily', day: '2026-11-08' });

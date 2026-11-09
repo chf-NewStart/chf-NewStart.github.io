@@ -271,11 +271,11 @@ private fun WarmUpStrip(c: TendController) {
 private fun ReasoningStrip(c: TendController) {
     if (c.state.timer.phase != Phase.BREAK && c.state.timer.status == Status.RUNNING) return
     PixelCard(Modifier.padding(top = 20.dp), background = Px.laterCard) {
-        Text("A LITTLE ROOM TO WONDER", Type.eyebrow, color = Px.green)
+        Text("A LITTLE ROOM TO THINK", Type.eyebrow, color = Px.green)
         Spacer(Modifier.height(6.dp))
-        PixelText("Daily reasoning", Type.h2)
+        PixelText("Daily thinking", Type.h2)
         Spacer(Modifier.height(6.dp))
-        SmallNote("One physics question, about 3–5 minutes. Take your time; hints are welcome.")
+        SmallNote("One short invitation: physics or Look twice. Take your time; hints are welcome.")
         Spacer(Modifier.height(14.dp))
         SecondaryKey("Explore today’s question", Modifier.fillMaxWidth()) { c.openReasoning() }
     }

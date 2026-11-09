@@ -1,6 +1,6 @@
-# Tend for iPhone and iPad
+# Tend: A Little Room to Think — iPhone and iPad
 
-A separate app, version **1.2.0 (9)**, bundle ID **com.houfu72.tend** (Live Activity extension **com.houfu72.tend.LiveActivity**). This does not change Phloem’s app identity, signing, or release. The same hand-written UI is available at https://houfu72.com/focus/ and bundled offline in the iOS app.
+A separate app, local release candidate **1.3.0 (10)**, bundle ID **com.houfu72.tend** (Live Activity extension **com.houfu72.tend.LiveActivity**). This does not change Phloem’s app identity, signing, or release. The same hand-written UI is available at https://houfu72.com/focus/ and bundled offline in the iOS app.
 
 The iOS target adds app-scoped notebook persistence, opt-in local session notifications, native share-sheet exports, and screen-awake control. No external service, account, package manager, CocoaPods, or third-party SDK is required. Source links open externally; remote pages cannot use the privileged app bridge.
 
@@ -14,6 +14,12 @@ The iOS target adds app-scoped notebook persistence, opt-in local session notifi
 The minimum deployment target is iOS/iPadOS 17. Build with a currently App Store-supported Xcode/SDK. No signing credentials are stored here.
 
 The room has a pixel look: Plank Pixel (Houfu's own 5×7 arcade font) for the timer and headings, a ring of blocks that empties as the interval passes, and a tomato that ripens while you focus, over houfu72.com's dark palette with DM Sans and IBM Plex Mono (SIL Open Font License texts bundled). Every font is bundled, so the app works offline. In DEBUG builds, `-tendState <json or file>` seeds the notebook for one launch and `-tendEval <js>` runs once the room is ready (for screenshots and simulator checks).
+
+## A little room to think
+
+Tend pairs focused work with short practice in examining assumptions, comparing explanations and putting an idea in your own words. **Look Twice** adds authored everyday reasoning cases beside the conceptual physics questions. Optional **Explain it back** notes give the user a place to reconstruct an explanation; no AI or automatic grading is involved. These are opportunities to practise specific habits, not a measurement of intelligence or a promise of general cognitive improvement.
+
+The prepared title for the next App Store submission is **Tend: A Little Room to Think**, with subtitle **Focus, question, reflect**. The on-device icon name and Siri name remain **Tend**, preserving the existing app identity and shortcuts. Release metadata for the local 1.3 candidate is in `release/testflight-1.3.json`; preparing it does not upload a build or change a review in App Store Connect.
 
 ## Warm-up and rest
 
@@ -62,4 +68,4 @@ Notifications are ordinary local notifications. Permission, Focus modes, and OS 
 
 ## Daily reasoning
 
-Fourteen daily questions connect several physics ideas; simpler optional introductions preserve an accessible starting point. The shared authored physics activity is bundled from `focus/reasoning*` and available in the room. Initial and revised predictions, optional private notes, hints, completion and review dates are kept separately in `TendReasoningV1` UserDefaults (`window.TEND_REASONING_STATE`, `reasoningSave`). Its JSON travels under `reasoning` in a user-directed notebook backup. No AI service receives the notes.
+The daily rotation alternates fourteen physics questions with fourteen Look twice cases. Fourteen simpler physics introductions remain available as optional practice. The shared activity is bundled from `focus/reasoning*` and `focus/look-twice-content.js` and available in the room. Initial and revised predictions, optional private notes and explanations, hints, completion and review dates are kept separately in `TendReasoningV1` UserDefaults (`window.TEND_REASONING_STATE`, `reasoningSave`). Its JSON travels under `reasoning` in a user-directed notebook backup. No AI service receives the notes.

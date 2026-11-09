@@ -1,6 +1,6 @@
-# Tend for Android
+# Tend: A Little Room to Think — Android
 
-A native Kotlin + Jetpack Compose port of Tend, the pixel tomato clock at <https://houfu72.com/focus/>. Unlike the
+A native Kotlin + Jetpack Compose port of Tend, a pixel room for focus and thinking practice at <https://houfu72.com/focus/>. Unlike the
 iOS app (a bundled web view), the room is not web: the timer engine is a line-by-line port of `focus/core.js`, and the
 room is drawn in Compose to match `focus/pixel.css`. The one exception is the **warm-up**: its strip is native
 (`FocusRoom.kt`, names and rotation in `core/Daily.kt`), but its nine short tasks run in the web room's own
@@ -45,3 +45,7 @@ renders the 512 px icon and the 1024x500 feature graphic into `release/store/`.
 ## Daily reasoning
 
 A native card opens the bundled `focus/reasoning.html` page in `DailyActivity`. Questions, diagrams and reasoning flow share the web implementation. `window.TendAndroidReasoning` saves private predictions and notes in the separate `tend-reasoning` SharedPreferences (`state`), included under `reasoning` in a user-directed notebook backup. No AI service receives the notes.
+
+## Thinking practice
+
+The shared reasoning screen bundles physics questions and **Look Twice** everyday cases, plus optional private **Explain it back** notes. It offers practice in specific habits without promising general cognitive improvement. The on-device app label remains **Tend**. The shared `look-twice-content.js` asset is included by `copyDaily` alongside the reasoning core and physics content.

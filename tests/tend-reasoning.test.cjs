@@ -8,10 +8,13 @@ const attempt = (s, id) => s.attempts.find(a => a.id === id);
 function begin(day = '2026-11-08') { return R.start(R.emptyState(), { mode: 'daily', day }); }
 function finish(state, id, date) { return R.complete(R.submit(state, id, { reveal: true }), id, at(date)); }
 
-test('fourteen authored questions have explicit answers, sources, feedback and related variations', () => {
-  assert.equal(Q.length, 14); assert.equal(new Set(Q.map(q => q.id)).size, 14);
+test('fourteen substantive daily questions and fourteen preserved introductions have authored content', () => {
+  assert.equal(Q.length, 28); assert.equal(new Set(Q.map(q => q.id)).size, 28);
+  assert.equal(R.DAILY_QUESTIONS.length, 14);
+  assert.ok(R.DAILY_QUESTIONS.every(q => q.daily && !q.introductory));
+  assert.equal(Q.filter(q => q.introductory).length, 14);
   for (const q of Q) {
-    assert.ok(q.title && q.prompt && q.concept && q.diagram, q.id);
+    assert.ok(q.title && q.prompt && q.concept && Object.hasOwn(q, 'diagram'), q.id);
     assert.ok(q.conditions.length >= 2 && q.hints.length >= 2 && q.explanation.length >= 2, q.id);
     assert.ok(q.check.constant && q.check.forces && q.check.equilibrium, q.id);
     assert.ok(q.options.some(o => o.id === q.answer), q.id);
@@ -30,11 +33,22 @@ test('daily selection uses the local calendar, visits all fourteen and pins save
   const ids = new Set();
   for (let n = 0; n < 14; n++) ids.add(R.daily(R.emptyState(), R.addDays(day, n)).question.id);
   assert.equal(ids.size, 14);
+  assert.ok([...ids].every(id => Q.find(q => q.id === id).daily));
   const pinned = JSON.parse(JSON.stringify(morning.state));
   Q.reverse();
   try { assert.equal(R.daily(pinned, at(day)).question.id, morning.question.id, 'content order changes cannot change an opened day'); }
   finally { Q.reverse(); }
   assert.equal(R.dayKey(new Date(2026, 0, 5, 23, 59)), '2026-01-05');
+});
+
+test('an existing introductory day remains pinned while new days use the substantive bank', () => {
+  const prior = R.emptyState(); prior.daily['2026-11-08'] = 'half-a-material';
+  const opened = R.start(prior, { mode: 'daily', day: '2026-11-08' });
+  assert.equal(opened.attempt.questionId, 'half-a-material');
+  assert.equal(R.daily(JSON.parse(JSON.stringify(opened.state)), '2026-11-08').question.id, 'half-a-material');
+  assert.equal(R.daily(opened.state, '2026-11-09').question.daily, true);
+  const practice = R.start(opened.state, { mode: 'practice', questionId: 'half-a-material', day: '2026-11-09' });
+  assert.equal(practice.attempt.questionId, 'half-a-material');
 });
 
 test('local midnight and DST are calendar boundaries rather than UTC or fixed elapsed hours', () => {

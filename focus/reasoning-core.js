@@ -5,6 +5,9 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (QUESTIONS) {
   'use strict';
   const KEY = 'houfu.tend.reasoning.v1', SCHEMA = 'tend-reasoning-v1';
+  // Keep old authored IDs readable; only the current daily bank is selected for new dates.
+  const eligible = QUESTIONS.filter(q => q.daily === true);
+  const DAILY_QUESTIONS = eligible.length ? eligible : QUESTIONS;
   const MODES = ['daily', 'practice', 'review'], STAGES = ['predict', 'check', 'explain', 'complete'];
   const MAX_ATTEMPTS = 500, MAX_DAYS = 4000, MAX_NOTES = 500;
   const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
@@ -74,8 +77,8 @@
   function daily(state, date = new Date()) {
     const s = normalize(state), day = dayKey(date);
     if (!own(s.daily, day)) {
-      const index = ((dayNumber(day) % QUESTIONS.length) + QUESTIONS.length) % QUESTIONS.length;
-      s.daily[day] = QUESTIONS[index].id;
+      const index = ((dayNumber(day) % DAILY_QUESTIONS.length) + DAILY_QUESTIONS.length) % DAILY_QUESTIONS.length;
+      s.daily[day] = DAILY_QUESTIONS[index].id;
     }
     return { state: s, question: question(s.daily[day]) };
   }
@@ -160,5 +163,5 @@
       reviewed: s.reviews.filter(r => r.completedAt && question(r.questionId).concept === concept).length
     })).filter(c => c.explored || c.reviewed);
   }
-  return { KEY, SCHEMA, QUESTIONS, emptyState, normalize, dayKey, addDays, daily, start, update, submit, complete, dueReviews, summary };
+  return { KEY, SCHEMA, QUESTIONS, DAILY_QUESTIONS, emptyState, normalize, dayKey, addDays, daily, start, update, submit, complete, dueReviews, summary };
 });

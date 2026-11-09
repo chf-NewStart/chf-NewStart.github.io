@@ -381,5 +381,1341 @@
     }
   ];
 
+  // Preserve the original introductory bank and its IDs for practice and saved attempts.
+  for (const item of QUESTIONS) item.introductory = true;
+
+  // Carefully authored daily challenges combine principles; no runtime question generation.
+  const DAILY_QUESTIONS = [
+  {
+    "id": "reasoning-ice-and-steel",
+    "title": "The ice carries a passenger",
+    "concept": "Buoyancy",
+    "diagram": "ice-bead",
+    "daily": true,
+    "prompt": "A small steel bead is frozen into an ice cube. Together they float in a bowl of water. The ice melts and the bead sinks. Compared with the start, what happens to the water level?",
+    "conditions": [
+      "The whole ice-and-bead assembly initially floats freely; enough ice is present to support the bead.",
+      "The ice and liquid are pure water. The steel is denser than water and ends fully submerged on the bottom.",
+      "Ignore trapped air, evaporation, surface tension, and temperature-driven volume changes. Nothing overflows."
+    ],
+    "check": {
+      "constant": "The masses of water and steel are conserved.",
+      "forces": "Initially buoyancy supports both ice and steel; finally the bottom also supports the steel.",
+      "equilibrium": "Compare the volume excluded from the liquid before and after, rather than just the ice’s size."
+    },
+    "options": [
+      {
+        "id": "falls",
+        "text": "The level falls",
+        "feedback": "Initially the bead makes the floating ice displace water equal to the bead’s weight; finally the bead displaces only its own smaller volume."
+      },
+      {
+        "id": "same",
+        "text": "The level stays the same",
+        "feedback": "Melting pure floating ice alone leaves the level unchanged. Here the steel changes from a carried load to a submerged solid."
+      },
+      {
+        "id": "rises",
+        "text": "The level rises",
+        "feedback": "The bead entering the water does displace water, but less than the extra displacement needed to carry its weight while floating."
+      }
+    ],
+    "answer": "falls",
+    "hints": [
+      "First imagine the same ice without the bead. Its own melting would leave the level unchanged.",
+      "While the bead is carried, its weight requires an extra volume of displaced water.",
+      "Compare a bead’s own volume with the volume of water having the same weight. Steel is denser than water."
+    ],
+    "explanation": [
+      "Initially the floating assembly displaces water whose weight equals the combined weight of ice and steel.",
+      "The ice’s meltwater exactly replaces the displacement associated with the ice’s own mass.",
+      "The bead initially requires displacement equal to its mass divided by water density. After sinking it occupies only its mass divided by steel density.",
+      "That final bead volume is smaller, so the level falls."
+    ],
+    "changes": "A passenger that still floats independently after the ice melts would keep displacing its own weight of water, giving no level change under the same idealizations.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 14.4: Archimedes’ Principle and Buoyancy",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/14-4-archimedes-principle-and-buoyancy"
+      },
+      {
+        "title": "OpenStax University Physics, 14.1: Density and Pressure",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/14-1-fluids-density-and-pressure"
+      }
+    ],
+    "variation": {
+      "prompt": "Change only the passenger: the bead is replaced by a small sealed, rigid plastic capsule that floats freely after the ice melts. What happens to the final water level?",
+      "conditions": [
+        "The original ice-and-capsule assembly floats freely.",
+        "The capsule neither leaks nor changes volume or mass. Keep the other idealizations."
+      ],
+      "check": {
+        "constant": "The combined mass is unchanged.",
+        "forces": "Buoyancy supports all of the mass both before and after melting.",
+        "equilibrium": "Compare total displacement of the initial assembly with the two final floating/liquid parts."
+      },
+      "hints": [
+        "How much water must support a freely floating capsule?",
+        "The final capsule still displaces water equal to its weight."
+      ],
+      "options": [
+        {
+          "id": "same",
+          "text": "It stays the same",
+          "feedback": "All of the mass is still accounted for by equal-weight displacement or meltwater."
+        },
+        {
+          "id": "falls",
+          "text": "It falls",
+          "feedback": "That relied on a dense passenger sinking and displacing less than its own weight of water."
+        },
+        {
+          "id": "rises",
+          "text": "It rises",
+          "feedback": "The capsule’s final displacement replaces the displacement that carried it before melting."
+        }
+      ],
+      "answer": "same",
+      "explanation": [
+        "The ice’s mass becomes an equal volume of meltwater to its former water displacement.",
+        "The floating capsule continues to displace its own weight of water. Their total leaves the level unchanged."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-two-scales",
+    "title": "One object, two readings",
+    "concept": "Forces",
+    "diagram": "scales",
+    "daily": true,
+    "prompt": "A dense object hangs from a spring scale above a water beaker on a separate balance. Lower the object until it is fully underwater and motionless. How do the two force readings change?",
+    "conditions": [
+      "The spring scale is supported independently of the beaker and balance.",
+      "The object is rigid and touches neither the beaker nor its bottom. The water does not overflow.",
+      "Compare settled readings before immersion and after full immersion. Neglect air buoyancy and the string’s mass and volume."
+    ],
+    "check": {
+      "constant": "The object’s weight and the total weight of the two supported systems are unchanged.",
+      "forces": "Water pushes upward on the object; the object pushes downward on the water.",
+      "equilibrium": "Each system is at rest, but the support forces can be redistributed."
+    },
+    "options": [
+      {
+        "id": "transfer",
+        "text": "The spring reading falls and the beaker reading rises by the same force",
+        "feedback": "The buoyant force transfers part of the support from the spring to the water and balance."
+      },
+      {
+        "id": "bothless",
+        "text": "Both readings fall",
+        "feedback": "The object is partly supported by water, but that support has a downward reaction on the beaker system."
+      },
+      {
+        "id": "beakersame",
+        "text": "The spring reading falls; the beaker reading stays the same",
+        "feedback": "No material enters the beaker, yet an additional downward contact force still acts on its water."
+      }
+    ],
+    "answer": "transfer",
+    "hints": [
+      "Draw forces on the hanging object first. What supports it besides the spring?",
+      "The water’s upward push has an equal downward reaction on the water.",
+      "The spring loses exactly the support force that the beaker’s balance gains."
+    ],
+    "explanation": [
+      "On the motionless object, spring tension plus buoyancy equals weight. The spring reading therefore falls by the buoyant force.",
+      "By Newton’s third law, the object pushes downward on the water by that same force.",
+      "The balance below the beaker supplies that extra support, so its reading rises by the same amount.",
+      "The sum of the two force readings is unchanged; the support has moved between them."
+    ],
+    "changes": "If the object rests on the beaker bottom or the suspension is attached to the balance itself, the systems and force paths change. Overflow would also remove weight.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 14.4: Archimedes’ Principle and Buoyancy",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/14-4-archimedes-principle-and-buoyancy"
+      },
+      {
+        "title": "OpenStax University Physics, 5.5: Newton’s Third Law",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/5-5-newtons-third-law"
+      }
+    ],
+    "variation": {
+      "prompt": "Now lower the object gently onto the bottom and let the string go slack, keeping the object fully underwater. Relative to the original reading before immersion, how much extra force does the beaker balance support?",
+      "conditions": [
+        "No water has overflowed. The object is stationary on the bottom.",
+        "The external spring now supports none of the object’s weight."
+      ],
+      "check": {
+        "constant": "The object’s weight is unchanged.",
+        "forces": "Water and bottom contact together support the object.",
+        "equilibrium": "The balance supports the beaker, water, and the object through both contact paths."
+      },
+      "hints": [
+        "Do not count buoyancy as an extra force from outside the combined system.",
+        "All of the object’s weight now reaches the same balance."
+      ],
+      "options": [
+        {
+          "id": "weight",
+          "text": "The object’s full weight",
+          "feedback": "Both the water’s reaction and the object’s bottom-contact force reach the balance."
+        },
+        {
+          "id": "buoyancy",
+          "text": "Only the buoyant force",
+          "feedback": "That described the suspended case; bottom contact now carries the remaining weight."
+        },
+        {
+          "id": "weightplus",
+          "text": "Its weight plus the buoyant force",
+          "feedback": "Buoyancy and bottom contact partition the object’s weight; adding buoyancy again counts support twice."
+        }
+      ],
+      "answer": "weight",
+      "explanation": [
+        "Consider the object, water, and beaker as one stationary system. Once the string is slack, the balance supports the added object’s full weight.",
+        "Forces between the object, water, and bottom are internal to this combined system. They must not be counted again on top of the object’s weight."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-tether-cut",
+    "title": "Before and after the cut",
+    "concept": "Buoyancy",
+    "diagram": "tether",
+    "daily": true,
+    "prompt": "A light rigid block is held fully underwater by a string tied to the tank bottom. Cut the string. Which account of buoyancy is consistent from the instant of cutting to the block’s final floating rest?",
+    "conditions": [
+      "The block’s average density is less than the water’s. It neither absorbs water nor changes volume.",
+      "The water is of uniform density. Compare hydrostatic buoyancy, neglecting the string, surface tension, and transient fluid-inertia forces in the initial force comparison.",
+      "The block eventually settles floating freely at the surface."
+    ],
+    "check": {
+      "constant": "Mass, weight, and total block volume stay fixed.",
+      "forces": "Before cutting, buoyancy balances weight plus downward string tension.",
+      "equilibrium": "Distinguish the immediate force imbalance from the later floating equilibrium."
+    },
+    "options": [
+      {
+        "id": "same-then-less",
+        "text": "Buoyancy is initially unchanged, then becomes smaller as the block emerges",
+        "feedback": "The cut removes tension, not displaced volume. Once part emerges, less water is displaced."
+      },
+      {
+        "id": "less-immediate",
+        "text": "Buoyancy immediately falls to the block’s weight",
+        "feedback": "The removed string does not instantly change the fully submerged volume or establish floating equilibrium."
+      },
+      {
+        "id": "same-forever",
+        "text": "Buoyancy stays unchanged all the way to floating rest",
+        "feedback": "It stays the same while the rigid block is fully immersed, but falls as the block emerges."
+      }
+    ],
+    "answer": "same-then-less",
+    "hints": [
+      "Immediately after the cut, has the block’s submerged volume changed?",
+      "Remove the string force from the original balance. Is there now a net force?",
+      "Only when the block emerges does its displaced-water volume decrease toward the value needed for floating rest."
+    ],
+    "explanation": [
+      "While held, the fully submerged block has buoyancy greater than its weight; the string supplies the extra downward force.",
+      "Immediately after cutting, the displaced volume is unchanged, so buoyancy is unchanged and the block accelerates upward.",
+      "For the ideal rigid block in uniform water, hydrostatic buoyancy does not increase merely because it is deeper.",
+      "As the block emerges, buoyancy decreases. At final floating rest it equals weight, which is smaller than the initial buoyancy."
+    ],
+    "changes": "A compressible object can change volume with depth. Strong flow or drag during motion adds forces beyond the initial hydrostatic comparison.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 14.4: Archimedes’ Principle and Buoyancy",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/14-4-archimedes-principle-and-buoyancy"
+      },
+      {
+        "title": "OpenStax University Physics, 6.1: Applying Newton’s Laws",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/6-1-solving-problems-with-newtons-laws"
+      }
+    ],
+    "variation": {
+      "prompt": "Instead of cutting the string, slowly shorten it while the rigid block stays completely submerged. Does the required holding tension become greater merely because the block is deeper?",
+      "conditions": [
+        "The water remains uniform and the block’s volume stays fixed.",
+        "Move slowly enough that drag and acceleration are negligible."
+      ],
+      "check": {
+        "constant": "Weight and displaced-water volume remain fixed.",
+        "forces": "Upward buoyancy balances weight plus downward tension.",
+        "equilibrium": "The pressure at both top and bottom changes with depth; consider their difference."
+      },
+      "hints": [
+        "The absolute pressures rise together with depth.",
+        "The same displaced-water weight gives the same buoyancy."
+      ],
+      "options": [
+        {
+          "id": "same",
+          "text": "No; the tension stays the same",
+          "feedback": "Both weight and buoyancy are unchanged in this ideal comparison."
+        },
+        {
+          "id": "greater",
+          "text": "Yes; deeper water always gives more buoyancy",
+          "feedback": "Depth raises pressure everywhere but not the net buoyant force for a fixed volume in uniform water."
+        },
+        {
+          "id": "zero",
+          "text": "The tension becomes zero",
+          "feedback": "The block remains less dense than water and still needs a downward holding force."
+        }
+      ],
+      "answer": "same",
+      "explanation": [
+        "Hydrostatic buoyancy equals the weight of displaced water, independent of depth here.",
+        "The required downward tension is buoyancy minus weight, so it is unchanged."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-gas-count-energy",
+    "title": "Hotter, but how much energy?",
+    "concept": "Density",
+    "diagram": "gas-open",
+    "daily": true,
+    "prompt": "Two equal-volume samples of the same monatomic ideal gas have equal pressure. One is hotter. Which comparison of particle number and total internal energy is consistent?",
+    "conditions": [
+      "Compare distinct gas samples, not the heating of one sealed sample.",
+      "Pressures are absolute; temperatures are in kelvin.",
+      "The gas has only translational internal kinetic energy in this model. Ignore gravity and electronic excitation."
+    ],
+    "check": {
+      "constant": "Pressure, volume, and particle species are the same for both samples.",
+      "forces": "Gas pressure comes from particle momentum transfer to the walls.",
+      "equilibrium": "Both samples are internally equilibrated; their temperatures need not equal each other."
+    },
+    "options": [
+      {
+        "id": "fewer-same",
+        "text": "The hotter sample has fewer particles, but the same total internal energy",
+        "feedback": "Greater average energy per particle is offset by fewer particles at the same pressure and volume."
+      },
+      {
+        "id": "same-more",
+        "text": "It has the same number of particles and more total energy",
+        "feedback": "Equal volume alone does not fix particle number. Equal pressure imposes an additional constraint."
+      },
+      {
+        "id": "fewer-more",
+        "text": "It has fewer particles and necessarily more total energy",
+        "feedback": "Temperature fixes average energy per particle, not the sum when particle numbers differ."
+      }
+    ],
+    "answer": "fewer-same",
+    "hints": [
+      "Equal pressure and volume fix the product of particle number and absolute temperature.",
+      "The hotter sample has more kinetic energy per particle, but fewer particles.",
+      "For this monatomic ideal-gas model, total internal energy is three-halves of pressure times volume."
+    ],
+    "explanation": [
+      "The ideal gas law gives pressure × volume = particle number × Boltzmann constant × temperature.",
+      "At the same pressure and volume, higher temperature therefore means fewer particles and lower mass density.",
+      "Each particle has greater average kinetic energy, proportional to absolute temperature.",
+      "The total is three-halves of particle number × Boltzmann constant × temperature, or three-halves of pressure × volume. It is the same for both samples."
+    ],
+    "changes": "If instead the samples have equal particle numbers and equal volumes, the hotter one has greater pressure and total energy. Additional internal degrees of freedom require the appropriate gas-energy model.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 2.1: Ideal Gas Constraints",
+        "url": "https://openstax.org/books/university-physics-volume-2/pages/2-1-molecular-model-of-an-ideal-gas"
+      },
+      {
+        "title": "OpenStax University Physics, 2.2: Pressure and Gas Energy",
+        "url": "https://openstax.org/books/university-physics-volume-2/pages/2-2-pressure-temperature-and-rms-speed"
+      }
+    ],
+    "variation": {
+      "prompt": "Keep the equal volumes and the same monatomic ideal gas, but now specify equal particle numbers instead of equal pressures. One sample has twice the absolute temperature. What doubles?",
+      "conditions": [
+        "The samples contain the same number of identical atoms.",
+        "Their rigid volumes are equal and translational energy is the only internal energy."
+      ],
+      "check": {
+        "constant": "Particle number, mass density, and volume are fixed.",
+        "forces": "More energetic particles transfer more momentum at the walls.",
+        "equilibrium": "Compare the separately equilibrated samples."
+      },
+      "hints": [
+        "Use pressure × volume = particle number × Boltzmann constant × temperature.",
+        "Total translational energy is also proportional to particle number × temperature."
+      ],
+      "options": [
+        {
+          "id": "pressure-energy",
+          "text": "Pressure and total internal energy both double",
+          "feedback": "Both depend on absolute temperature at fixed particle number and volume."
+        },
+        {
+          "id": "density-energy",
+          "text": "Density and total internal energy both double",
+          "feedback": "Density is mass divided by volume; neither has changed."
+        },
+        {
+          "id": "energy-only",
+          "text": "Only total internal energy doubles; pressure is unchanged",
+          "feedback": "Pressure cannot stay fixed when the same particles have twice the temperature in the same volume."
+        }
+      ],
+      "answer": "pressure-energy",
+      "explanation": [
+        "Fixed particle number and volume make pressure proportional to absolute temperature.",
+        "Total monatomic ideal-gas internal energy is also proportional to absolute temperature at fixed particle number. Both double."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-heating-two-constraints",
+    "title": "Two ways to warm the gas",
+    "concept": "Pressure",
+    "diagram": null,
+    "daily": true,
+    "prompt": "Two identical gas samples begin at the same pressure, volume, and temperature. Warm each to twice its absolute temperature. A stays sealed and rigid; B expands under a piston at constant pressure. Which final comparison is consistent?",
+    "conditions": [
+      "Each sample keeps the same fixed mass of the same ideal gas; neither leaks.",
+      "A has fixed volume. B has a frictionless piston with maintained external pressure and no stop limiting expansion.",
+      "Compare final equilibrated states; all pressures are absolute and temperatures are in kelvin."
+    ],
+    "check": {
+      "constant": "Mass stays fixed in both, but volume stays fixed only in A.",
+      "forces": "A’s walls restrain expansion; B’s gas balances the maintained piston load.",
+      "equilibrium": "The final pressure in B equals its maintained external pressure."
+    },
+    "options": [
+      {
+        "id": "different",
+        "text": "A: pressure doubles, density stays fixed. B: pressure stays fixed, density halves.",
+        "feedback": "The same temperature change has different consequences because the mechanical constraints differ."
+      },
+      {
+        "id": "both-density",
+        "text": "Both samples halve their density",
+        "feedback": "A cannot halve its density without losing mass or expanding, and both are forbidden."
+      },
+      {
+        "id": "both-pressure",
+        "text": "Both samples double their pressure",
+        "feedback": "B expands until its pressure balances the unchanged external pressure."
+      }
+    ],
+    "answer": "different",
+    "hints": [
+      "Use density = mass / volume before reasoning from hotter air in everyday life.",
+      "For a fixed gas mass, pressure × volume / absolute temperature is constant.",
+      "A changes pressure; B changes volume. Identify which wall can move."
+    ],
+    "explanation": [
+      "For A, fixed mass and volume keep density unchanged. Doubling absolute temperature doubles pressure.",
+      "For B, the maintained pressure lets the piston move. Doubling absolute temperature doubles volume.",
+      "The unchanged mass now occupies twice the volume in B, so its density halves.",
+      "A statement such as “heating makes gas less dense” needs the pressure or volume constraint attached to it."
+    ],
+    "changes": "A leaking container, a piston that hits a stop, changing external pressure, or nonideal gas behavior would need a different analysis.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 2.1: Ideal Gas Constraints",
+        "url": "https://openstax.org/books/university-physics-volume-2/pages/2-1-molecular-model-of-an-ideal-gas"
+      }
+    ],
+    "variation": {
+      "prompt": "B expands while heating, then its piston hits a rigid stop. The gas is heated further without leaking. After the stop is reached, what happens to density and pressure?",
+      "conditions": [
+        "Consider only the additional heating after the piston is against the stop.",
+        "The gas remains ideal, mass stays fixed, and the final volume cannot change."
+      ],
+      "check": {
+        "constant": "After the stop, mass and volume both stay fixed.",
+        "forces": "The stop now prevents further piston motion.",
+        "equilibrium": "The stop can support a pressure difference; gas pressure no longer has to equal the original load pressure."
+      },
+      "hints": [
+        "Which original constraint has changed?",
+        "The stopped piston behaves as a rigid wall."
+      ],
+      "options": [
+        {
+          "id": "fixed-rises",
+          "text": "Density stays fixed and pressure rises",
+          "feedback": "The gas is now in the rigid fixed-volume regime."
+        },
+        {
+          "id": "falls-fixed",
+          "text": "Density keeps falling while pressure stays fixed",
+          "feedback": "That requires continued expansion, which the stop prevents."
+        },
+        {
+          "id": "both-rise",
+          "text": "Both density and pressure rise",
+          "feedback": "Heating adds energy, not mass; fixed mass and volume keep density unchanged."
+        }
+      ],
+      "answer": "fixed-rises",
+      "explanation": [
+        "Once the piston stops, no additional volume is available.",
+        "With mass and volume fixed, density stays constant while pressure rises with absolute temperature."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-balloon-equilibrium",
+    "title": "Equal pressure, unequal balloons",
+    "concept": "Pressure",
+    "diagram": "balloons",
+    "daily": true,
+    "prompt": "Two different-size real rubber balloons are connected by a valve. Immediately before opening, their measured internal pressures are equal. What can you conclude about initial flow and their response to a small disturbance?",
+    "conditions": [
+      "Both contain the same air at the same temperature and elevation.",
+      "The connecting tube has negligible volume; ignore leaks, pumps, and valve-opening transients.",
+      "The membrane pressure–volume relations and inflation histories are not supplied."
+    ],
+    "check": {
+      "constant": "The measured initial pressure difference is zero.",
+      "forces": "Pressure differences drive flow; membrane elasticity helps set each balloon’s pressure.",
+      "equilibrium": "Pressure equality is an equilibrium condition, but stability concerns the response to a disturbance."
+    },
+    "options": [
+      {
+        "id": "no-flow-unknown",
+        "text": "No initial pressure-driven flow; stability cannot be determined from these facts",
+        "feedback": "Equal pressure removes the initial driving difference, while stability needs the membranes’ responses to changing volume."
+      },
+      {
+        "id": "equal-volumes",
+        "text": "They must exchange air until their volumes become equal",
+        "feedback": "Equal pressure is not generally equivalent to equal volume for elastic containers."
+      },
+      {
+        "id": "small-to-large",
+        "text": "The smaller balloon must immediately feed the larger one",
+        "feedback": "The measured pressures are equal, and real rubber does not obey a universal size-only flow rule."
+      }
+    ],
+    "answer": "no-flow-unknown",
+    "hints": [
+      "Separate “no driving pressure difference now” from “returns after a disturbance.”",
+      "A disturbance changes volume. How each pressure responds depends on its elastic relation.",
+      "Two unequal volumes can have equal pressure. You need more than that equality to decide stability."
+    ],
+    "explanation": [
+      "With equal pressure at the same elevation, there is no initial macroscopic pressure-driven flow in this ideal comparison.",
+      "Equal pressure does not require equal volume. Rubber’s pressure response changes with stretching and inflation state.",
+      "A small transfer could create a restoring pressure difference or one that drives further transfer, depending on those responses.",
+      "Without the membrane relations and history, neither stability nor final volumes after a disturbance can be inferred."
+    ],
+    "changes": "Unequal measured pressures determine an initial flow direction, but final sizes still require elastic and gas-state information. Real rubber can show either size-to-size flow direction in different inflation regimes.",
+    "sources": [
+      {
+        "title": "Levin and da Silveira: To grow or to shrink — two rubber balloons",
+        "url": "https://arxiv.org/abs/cond-mat/0403171"
+      },
+      {
+        "title": "OpenStax University Physics, 2.1: Ideal Gas Constraints",
+        "url": "https://openstax.org/books/university-physics-volume-2/pages/2-1-molecular-model-of-an-ideal-gas"
+      }
+    ],
+    "variation": {
+      "prompt": "Change only one measurement: immediately before opening, the smaller balloon is at 104 kPa and the larger at 102 kPa. What can now be concluded?",
+      "conditions": [
+        "Keep the same temperature, elevation, negligible-tube, and no-leak assumptions.",
+        "The membrane pressure–volume relations remain unknown."
+      ],
+      "check": {
+        "constant": "The initial pressures are now unequal.",
+        "forces": "The initial pressure difference drives gas from higher pressure toward lower pressure.",
+        "equilibrium": "Initial direction and final connected state are separate questions."
+      },
+      "hints": [
+        "Which balloon has the greater measured pressure?",
+        "One pressure snapshot does not specify how pressure changes during transfer."
+      ],
+      "options": [
+        {
+          "id": "direction-only",
+          "text": "Air initially goes smaller → larger; final volumes are still undetermined",
+          "feedback": "The measurements settle the initial direction but not the later elastic evolution."
+        },
+        {
+          "id": "equal-final",
+          "text": "Air goes smaller → larger until the volumes are equal",
+          "feedback": "Flow tends to remove pressure differences, not necessarily volume differences."
+        },
+        {
+          "id": "history-first",
+          "text": "Even the initial direction remains unknown until the elastic law is supplied",
+          "feedback": "The elastic law is needed for later evolution; the supplied initial pressure difference already gives the initial direction."
+        }
+      ],
+      "answer": "direction-only",
+      "explanation": [
+        "The smaller balloon initially has higher pressure, so gas initially flows toward the larger.",
+        "As volumes change, the unknown elastic responses matter. The initial measurements do not determine final sizes."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-steady-drag-load",
+    "title": "Steady flight still needs a tilt",
+    "concept": "Forces",
+    "diagram": "flight",
+    "daily": true,
+    "prompt": "A helicopter and its suspended load fly steadily to the right at constant height. Air drag pulls the load horizontally left. Which statement about the rope and its tension is consistent?",
+    "conditions": [
+      "The load has zero acceleration and a nonzero horizontal drag force.",
+      "The rope is taut and flexible; neglect its mass and drag.",
+      "Neglect load buoyancy and rotor downwash. The only forces on the load are weight, drag, and rope tension."
+    ],
+    "check": {
+      "constant": "The load’s horizontal and vertical velocities are constant.",
+      "forces": "Tension must balance both weight and the backward drag.",
+      "equilibrium": "The vector sum of forces on the load is zero; that need not make each force zero."
+    },
+    "options": [
+      {
+        "id": "tilted-stronger",
+        "text": "The rope is straight and trails backward; tension is greater than the load’s weight",
+        "feedback": "Its upward component balances weight and its forward component balances drag, so its total exceeds the upward component."
+      },
+      {
+        "id": "vertical-equal",
+        "text": "The rope is vertical and tension equals weight",
+        "feedback": "That balances gravity but leaves drag unbalanced, so steady motion would be impossible."
+      },
+      {
+        "id": "curved-equal",
+        "text": "The rope curves backward and tension equals weight",
+        "feedback": "Payload drag tilts the tension. An ideal massless, dragless rope has no distributed force to make it curve."
+      }
+    ],
+    "answer": "tilted-stronger",
+    "hints": [
+      "Zero acceleration requires the horizontal drag to be balanced too.",
+      "Tension points along the rope. It needs a forward component as well as an upward component.",
+      "A tilted force with upward component equal to weight has a magnitude greater than weight."
+    ],
+    "explanation": [
+      "The load’s vertical balance requires the upward tension component to equal its weight.",
+      "Horizontal balance requires a forward tension component equal to the backward payload drag.",
+      "The rope is therefore tilted, with the load behind the helicopter, and the total tension is greater than weight.",
+      "Neglected rope mass and rope drag mean no distributed force bends the taut rope; it is straight in this idealization."
+    ],
+    "changes": "With no payload drag and steady motion the rope is vertical. Rope weight or distributed rope drag can produce curvature; acceleration changes the force balance.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 6.1: Applying Newton’s Laws",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/6-1-solving-problems-with-newtons-laws"
+      },
+      {
+        "title": "OpenStax University Physics, 5.6: Tension and Common Forces",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/5-6-common-forces"
+      }
+    ],
+    "variation": {
+      "prompt": "The helicopter now hovers in still air and the payload’s horizontal drag is zero. Keep the same rope idealizations. What changes?",
+      "conditions": [
+        "Helicopter and load are stationary.",
+        "Continue to neglect rope mass/drag, buoyancy, and downwash."
+      ],
+      "check": {
+        "constant": "The payload weight is unchanged.",
+        "forces": "Only weight and tension act on the load.",
+        "equilibrium": "Both force components balance with no horizontal force to oppose."
+      },
+      "hints": [
+        "Which horizontal tension component is still needed?",
+        "With only two balancing forces, their directions must oppose directly."
+      ],
+      "options": [
+        {
+          "id": "vertical-weight",
+          "text": "The rope becomes vertical and tension equals weight",
+          "feedback": "No horizontal force requires a tilt."
+        },
+        {
+          "id": "tilted-weight",
+          "text": "It stays tilted but tension becomes equal to weight",
+          "feedback": "A tilted tension cannot balance a purely vertical weight without another horizontal force."
+        },
+        {
+          "id": "vertical-more",
+          "text": "It becomes vertical but tension stays greater than weight",
+          "feedback": "That would give the stationary load an unbalanced upward force."
+        }
+      ],
+      "answer": "vertical-weight",
+      "explanation": [
+        "With no horizontal force, the tension is vertical.",
+        "Its magnitude equals weight to maintain zero vertical acceleration."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-accelerating-load",
+    "title": "Motion and acceleration disagree",
+    "concept": "Forces",
+    "diagram": null,
+    "daily": true,
+    "prompt": "A helicopter and its load are moving upward, but slowing down. Their vertical separation stays constant. With no sideways motion, how does the rope tension compare with the load’s weight?",
+    "conditions": [
+      "At this instant their common acceleration is downward, with magnitude less than gravitational acceleration.",
+      "The rope stays taut. Neglect rope mass and drag, payload air forces, buoyancy, and rotor downwash.",
+      "Only vertical tension and gravity act on the load; compare this instant, not a later stop."
+    ],
+    "check": {
+      "constant": "The load’s mass is fixed; upward velocity is not constant.",
+      "forces": "Weight acts downward and rope tension upward.",
+      "equilibrium": "This is not equilibrium: net force points with acceleration, not necessarily with velocity."
+    },
+    "options": [
+      {
+        "id": "less",
+        "text": "Tension is less than weight, even though the load is moving upward",
+        "feedback": "A downward net force slows an upward-moving load."
+      },
+      {
+        "id": "more",
+        "text": "Tension is greater than weight because it is moving upward",
+        "feedback": "That would produce upward acceleration, increasing the upward speed instead of reducing it."
+      },
+      {
+        "id": "equal",
+        "text": "Tension equals weight because the rope stays straight",
+        "feedback": "Straightness gives a force direction; zero net force would require constant velocity, which is not stated."
+      }
+    ],
+    "answer": "less",
+    "hints": [
+      "Draw an upward velocity arrow and a separate acceleration arrow. Which way does each point?",
+      "Slowing while moving up means downward acceleration.",
+      "The downward weight must exceed upward tension to give a downward net force."
+    ],
+    "explanation": [
+      "The load is moving upward, but its decreasing speed means its acceleration is downward.",
+      "Newton’s second law relates net force to acceleration, rather than to the direction of motion.",
+      "With only vertical forces, weight minus tension equals mass times the downward acceleration. Tension is therefore less than weight.",
+      "The acceleration is smaller than gravity, leaving positive tension and a taut vertical rope."
+    ],
+    "changes": "At constant upward speed, tension equals weight. Upward acceleration needs greater tension. Downward acceleration equal to gravity would allow zero tension and need not keep the rope taut.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 6.1: Applying Newton’s Laws",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/6-1-solving-problems-with-newtons-laws"
+      }
+    ],
+    "variation": {
+      "prompt": "Change the motion: at constant height the load accelerates right with the helicopter, while air forces are negligible. What rope and tension are needed?",
+      "conditions": [
+        "There is nonzero rightward acceleration and zero vertical acceleration.",
+        "The rope remains taut, flexible, massless, and dragless; neglect buoyancy and downwash."
+      ],
+      "check": {
+        "constant": "Weight and height stay fixed, but horizontal velocity changes.",
+        "forces": "Tension supplies upward support and rightward acceleration.",
+        "equilibrium": "Vertical forces balance; horizontal forces do not."
+      },
+      "hints": [
+        "The vertical tension component still balances weight.",
+        "A separate rightward component must produce the horizontal acceleration."
+      ],
+      "options": [
+        {
+          "id": "tilted-more",
+          "text": "A straight rope with the load behind; tension greater than weight",
+          "feedback": "The tilt supplies a horizontal component in addition to the upward support."
+        },
+        {
+          "id": "vertical-more",
+          "text": "A vertical rope with tension greater than weight",
+          "feedback": "A vertical force cannot accelerate the load horizontally and would upset vertical balance."
+        },
+        {
+          "id": "curved-weight",
+          "text": "A curved rope with tension equal to weight",
+          "feedback": "No distributed force bends the ideal rope, and tension needs both vertical and horizontal components."
+        }
+      ],
+      "answer": "tilted-more",
+      "explanation": [
+        "The tension’s upward component equals weight and its rightward component equals mass times acceleration.",
+        "The rope tilts with the load behind the helicopter. Its total tension exceeds weight and the ideal rope remains straight."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-hydraulic-trade",
+    "title": "The lift’s missing bargain",
+    "concept": "Pressure",
+    "diagram": "hydraulic",
+    "daily": true,
+    "prompt": "A hydraulic lift has an output piston four times the input piston’s area. A steady push on the small piston lifts a load slowly. Which force, movement, and work comparison can all be true together?",
+    "conditions": [
+      "Use an incompressible fluid, frictionless massless pistons, and no leaks.",
+      "Both piston exteriors are at the same atmospheric pressure; neglect hydrostatic head between pistons.",
+      "Motion is slow and the load is balanced. Compare input and output work, excluding fluid heating and stored kinetic energy."
+    ],
+    "check": {
+      "constant": "The fluid volume displaced from one side equals the volume gained on the other.",
+      "forces": "The applied excess pressure acts over different piston areas.",
+      "equilibrium": "Each piston is in approximate force balance while moving slowly."
+    },
+    "options": [
+      {
+        "id": "trade",
+        "text": "Output force is 4×, output travel is ¼, and ideal work is unchanged",
+        "feedback": "Greater area turns the same excess pressure into greater force, while volume conservation trades away travel."
+      },
+      {
+        "id": "free-work",
+        "text": "Output force and travel are both 4×, giving more work",
+        "feedback": "That would violate the fluid-volume constraint and energy conservation."
+      },
+      {
+        "id": "same-travel",
+        "text": "Output force is 4× with equal travel and equal work",
+        "feedback": "Equal travel at unequal areas displaces unequal fluid volumes; force times travel also would not match."
+      }
+    ],
+    "answer": "trade",
+    "hints": [
+      "Separate pressure, force, and work. Equal excess pressure does not imply equal force.",
+      "Fluid volume is piston area times travel.",
+      "Four times the force acting through a quarter of the travel gives the same force × distance."
+    ],
+    "explanation": [
+      "The applied pressure increase is transmitted through the fluid. Four times the piston area gives four times the output force.",
+      "If the small piston moves down a distance, it expels area × distance of fluid.",
+      "The larger piston takes that same volume, so it rises only a quarter of the input distance.",
+      "The output force multiplied by output distance equals the input work in this ideal slow motion. A force advantage is not an energy gain."
+    ],
+    "changes": "Friction, leaks, piston weight, fluid compression, height differences, and acceleration introduce additional force or energy terms.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 14.3: Pascal’s Principle and Hydraulics",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/14-3-pascals-principle-and-hydraulics"
+      },
+      {
+        "title": "OpenStax University Physics, 8.3: Conservation of Energy",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/8-3-conservation-of-energy"
+      }
+    ],
+    "variation": {
+      "prompt": "Use the same lift backward: push the large piston down slowly so the small piston rises. What happens to the output force and travel now?",
+      "conditions": [
+        "The area ratio remains four to one.",
+        "Keep the same lossless, negligible-head, slow-motion assumptions."
+      ],
+      "check": {
+        "constant": "The displaced fluid volumes must still match.",
+        "forces": "The same excess pressure acts on the smaller output area.",
+        "equilibrium": "Each piston remains approximately balanced."
+      },
+      "hints": [
+        "Now the output area is one quarter of the input area.",
+        "Conservation of fluid volume still links the distances."
+      ],
+      "options": [
+        {
+          "id": "force-quarter",
+          "text": "Output force is ¼ and output travel is 4×",
+          "feedback": "The force advantage reverses into a travel advantage."
+        },
+        {
+          "id": "both-four",
+          "text": "Output force and travel are both 4×",
+          "feedback": "Reversing a lossless machine cannot create extra energy."
+        },
+        {
+          "id": "both-quarter",
+          "text": "Output force and travel are both ¼",
+          "feedback": "The smaller piston must move farther to receive the same volume."
+        }
+      ],
+      "answer": "force-quarter",
+      "explanation": [
+        "The small output piston receives one quarter of the input force at equal excess pressure.",
+        "It travels four times as far. Ideal input and output work still match."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-wet-balance",
+    "title": "A balance loses its balance",
+    "concept": "Equilibrium",
+    "diagram": null,
+    "daily": true,
+    "prompt": "Two identical steel blocks hang at equal distances from a beam’s pivot. They initially balance. Keep the beam horizontal while immersing only the left block in water. Which side now has the greater downward turning effect, requiring an extra holding torque?",
+    "conditions": [
+      "The beam’s own weight is negligible, its pivot frictionless, and the strings massless and vertical. An external restraint keeps the beam horizontal and stationary.",
+      "The left block is fully submerged, motionless initially, and touches neither walls nor bottom.",
+      "The water vessel is supported independently of the beam. No water overflows. Neglect air buoyancy and surface tension."
+    ],
+    "check": {
+      "constant": "The blocks’ masses and the initial lever arms have not changed.",
+      "forces": "The left block is supported by both water and its string; the right block by its string alone.",
+      "equilibrium": "Compare torques on the held-stationary beam, using forces actually transmitted to it."
+    },
+    "options": [
+      {
+        "id": "right",
+        "text": "The right side has the greater downward turning effect",
+        "feedback": "Buoyancy reduces the left string tension, so the right side applies greater torque to the beam."
+      },
+      {
+        "id": "balance",
+        "text": "It stays balanced because the masses are still equal",
+        "feedback": "Mass equality is not enough when an independent support carries part of one block’s weight."
+      },
+      {
+        "id": "left",
+        "text": "The left side has the greater downward turning effect because water adds pressure",
+        "feedback": "Pressure produces an upward buoyant force on the block; it reduces rather than increases the string’s load."
+      }
+    ],
+    "answer": "right",
+    "hints": [
+      "Consider the left block before considering the beam. What supports its weight?",
+      "Its string tension is weight minus buoyancy.",
+      "The beam responds to string tensions multiplied by lever arms, not to the blocks’ masses alone."
+    ],
+    "explanation": [
+      "The submerged left block has an upward buoyant force in addition to string tension.",
+      "While everything is held stationary, its string therefore transmits weight minus buoyancy to the beam.",
+      "The right string still transmits full weight. With equal lever arms, its downward turning effect is greater.",
+      "An additional holding torque is needed to oppose the right side’s greater turning effect. Some load support has been transferred to the independently supported water vessel."
+    ],
+    "changes": "If the water vessel sits on the same beam, its reaction force must also be included. Different lever arms, partial immersion, or contact could change the torque comparison.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 14.4: Archimedes’ Principle and Buoyancy",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/14-4-archimedes-principle-and-buoyancy"
+      },
+      {
+        "title": "OpenStax University Physics, 12.1: Static Equilibrium and Torque",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/12-1-conditions-for-static-equilibrium"
+      }
+    ],
+    "variation": {
+      "prompt": "Instead immerse both identical blocks fully in separate vessels of the same water, each supported independently. Keep the beam stationary with equal lever arms. Is an extra holding torque needed?",
+      "conditions": [
+        "The equal-volume steel blocks touch no vessel surfaces.",
+        "Both blocks and the beam remain stationary; the blocks are fully immersed in the same-density water."
+      ],
+      "check": {
+        "constant": "Both weights, submerged volumes, and lever arms match.",
+        "forces": "Both strings transmit weight minus an equal buoyant force.",
+        "equilibrium": "Compare the equal and opposite initial torques."
+      },
+      "hints": [
+        "Do the two blocks displace equal volumes of water?",
+        "Equal reductions in tension leave equal turning effects."
+      ],
+      "options": [
+        {
+          "id": "balanced",
+          "text": "No; the two downward turning effects balance",
+          "feedback": "The buoyant reductions are equal on both sides."
+        },
+        {
+          "id": "left",
+          "text": "Yes; the left side has the greater turning effect because it was immersed first",
+          "feedback": "The initial force balance depends on the stated present conditions, not that ordering."
+        },
+        {
+          "id": "both",
+          "text": "Yes; reducing both string tensions requires an extra holding torque",
+          "feedback": "Both loads are reduced equally, so their opposite torques still balance. A smaller total load at the pivot is not a turning imbalance."
+        }
+      ],
+      "answer": "balanced",
+      "explanation": [
+        "Identical fully submerged blocks have equal buoyant forces.",
+        "Equal apparent weights act at equal arms, so the initial torques balance."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-mass-and-tracks",
+    "title": "Same speed, different energy",
+    "concept": "Energy",
+    "diagram": "ramp",
+    "daily": true,
+    "prompt": "Two small beads, one with twice the other’s mass, slide from rest down different smooth tracks through the same vertical drop. Which comparison of endpoint speed and kinetic energy is consistent?",
+    "conditions": [
+      "Tracks are fixed and frictionless. Ignore air resistance and bead rotation.",
+      "Both beads remain on their tracks and reach the compared endpoints.",
+      "The vertical drops are equal; track lengths and shapes may differ. Ask about endpoint states, not arrival times."
+    ],
+    "check": {
+      "constant": "The vertical drop is the same, but mass is not.",
+      "forces": "Gravity does work; the stationary track’s normal force changes direction of motion without doing work.",
+      "equilibrium": "This is an energy comparison, not a claim of force equilibrium."
+    },
+    "options": [
+      {
+        "id": "same-double",
+        "text": "Speeds are equal; the heavier bead has twice the kinetic energy",
+        "feedback": "The mass factor cancels in the speed relation, but not in total kinetic energy."
+      },
+      {
+        "id": "faster-double",
+        "text": "The heavier bead is faster and has twice the kinetic energy",
+        "feedback": "Greater gravitational energy also comes with proportionally greater inertia; it does not give a greater speed for the same drop."
+      },
+      {
+        "id": "same-same",
+        "text": "Speeds and kinetic energies are both equal",
+        "feedback": "Equal speed does not imply equal kinetic energy when the masses differ."
+      }
+    ],
+    "answer": "same-double",
+    "hints": [
+      "The lost gravitational energy is mass × gravity × vertical drop.",
+      "Set that equal to one-half × mass × speed squared.",
+      "Mass cancels when finding speed, but remains when comparing total energies."
+    ],
+    "explanation": [
+      "Each bead’s gravitational potential energy loss becomes translational kinetic energy.",
+      "Equating mass × gravity × drop to one-half × mass × speed squared gives the same endpoint speed for the same drop.",
+      "The heavier bead loses twice as much potential energy and therefore gains twice as much kinetic energy.",
+      "Track shape can change the travel time without changing these endpoint conclusions under the stated conditions."
+    ],
+    "changes": "Friction, air resistance, rotation, a moving track, or unequal drops can change the result. Equal travel time is not established by this energy argument.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 8.3: Conservation of Energy",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/8-3-conservation-of-energy"
+      }
+    ],
+    "variation": {
+      "prompt": "Now give the two beads the same kinetic energy on a horizontal frictionless track. One still has twice the mass. Must they have the same speed?",
+      "conditions": [
+        "Only translational kinetic energy is considered.",
+        "Compare speeds at the instant both have equal kinetic energy."
+      ],
+      "check": {
+        "constant": "Energy is equal, rather than vertical drop or speed.",
+        "forces": "No horizontal force is needed for the subsequent constant-speed motion.",
+        "equilibrium": "Use the energy relation with the different masses."
+      },
+      "hints": [
+        "Kinetic energy contains both mass and speed squared.",
+        "With more mass, a smaller speed can give the same energy."
+      ],
+      "options": [
+        {
+          "id": "heavy-slower",
+          "text": "No; the heavier bead is slower",
+          "feedback": "For equal kinetic energy, speed decreases as the inverse square root of mass."
+        },
+        {
+          "id": "same",
+          "text": "Yes; equal kinetic energy always means equal speed",
+          "feedback": "That inference would require equal masses as well."
+        },
+        {
+          "id": "heavy-faster",
+          "text": "No; the heavier bead is faster",
+          "feedback": "A greater mass needs a smaller speed, not a larger one, to keep kinetic energy fixed."
+        }
+      ],
+      "answer": "heavy-slower",
+      "explanation": [
+        "From kinetic energy = one-half × mass × speed squared, equal energy requires mass × speed squared to match.",
+        "The bead with twice the mass has speed equal to the lighter bead’s speed divided by the square root of two."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-hydrostatic-paradox",
+    "title": "More water, same bottom force?",
+    "concept": "Pressure",
+    "diagram": "vessel-shapes",
+    "daily": true,
+    "prompt": "Two open vessels have equal horizontal base areas and water surfaces at the same height above their bases. One widens upward and holds more water. How do water pressure and the downward water force on the bases compare?",
+    "conditions": [
+      "Both contain stationary water of the same uniform density and meet the same atmospheric pressure.",
+      "The bases are at the same elevation; compare pressure and water force over their equal base areas.",
+      "Ignore surface tension. Sidewalls are rigid; do not assume their forces on water are horizontal."
+    ],
+    "check": {
+      "constant": "Surface pressure, water depth, fluid density, and base area are the same.",
+      "forces": "Base, sidewalls, atmosphere, and gravity all exert forces on the water.",
+      "equilibrium": "A larger total water weight need not all be supported by the base."
+    },
+    "options": [
+      {
+        "id": "both-same",
+        "text": "Both bottom pressures and bottom forces are equal",
+        "feedback": "Depth fixes bottom pressure; equal area then gives equal bottom force. Sidewalls account for the different water weights."
+      },
+      {
+        "id": "both-more",
+        "text": "The wider vessel has greater bottom pressure and force because it holds more weight",
+        "feedback": "That assumes the base alone supports all the water; inclined walls can carry a vertical force."
+      },
+      {
+        "id": "pressure-same-force-more",
+        "text": "Pressure is equal, but the wider vessel has greater bottom force",
+        "feedback": "At equal uniform pressure and equal base area, the pressure force on the base must also be equal."
+      }
+    ],
+    "answer": "both-same",
+    "hints": [
+      "Hydrostatic pressure at a given depth depends on depth and fluid density, not total volume.",
+      "Pressure force on a horizontal base is pressure times area.",
+      "If the water weights differ, include vertical components of the sidewalls’ forces in the full force balance."
+    ],
+    "explanation": [
+      "Both surfaces have the same atmospheric pressure, and both bases are the same depth below those surfaces.",
+      "Hydrostatic bottom pressure is therefore equal in the vessels.",
+      "Equal bottom pressure acting over equal base area gives equal downward water force on the bases.",
+      "The vessel that widens upward can have sidewalls exerting an upward force on its water. This helps support its extra water weight; it does not demand greater bottom pressure."
+    ],
+    "changes": "A different water depth, surface pressure, fluid density, or base area changes the comparison. A balance under the whole vessel also supports the vessel walls, so it is not measuring base pressure alone.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 14.1: Density and Pressure",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/14-1-fluids-density-and-pressure"
+      }
+    ],
+    "variation": {
+      "prompt": "Keep the same water depth and open-surface pressure, but double one vessel’s base area. What happens to its bottom pressure and the total water force on that base?",
+      "conditions": [
+        "The water is stationary and its density is unchanged.",
+        "The new base is horizontal and all of it lies at the same depth."
+      ],
+      "check": {
+        "constant": "Water depth and surface pressure stay fixed.",
+        "forces": "Pressure acts over a different area.",
+        "equilibrium": "Distinguish force per area from total force."
+      },
+      "hints": [
+        "Depth still determines the pressure.",
+        "The same pressure acts over twice the area."
+      ],
+      "options": [
+        {
+          "id": "same-double",
+          "text": "Pressure stays the same; total base force doubles",
+          "feedback": "Equal pressure over twice the area produces twice the force."
+        },
+        {
+          "id": "both-double",
+          "text": "Pressure and base force both double",
+          "feedback": "Changing base area does not change the specified water depth or surface pressure."
+        },
+        {
+          "id": "half-same",
+          "text": "Pressure halves; base force stays the same",
+          "feedback": "That would treat a fixed total force as given, but this fluid setup fixes pressure through depth instead."
+        }
+      ],
+      "answer": "same-double",
+      "explanation": [
+        "Bottom pressure is unchanged because depth, density, and surface pressure are unchanged.",
+        "The pressure force equals pressure times area, so doubling area doubles that force."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-friction-capacity",
+    "title": "More grip, same friction?",
+    "concept": "Forces",
+    "diagram": "friction",
+    "daily": true,
+    "prompt": "A crate stays at rest while a rope pulls horizontally. Place an extra weight on top without changing the rope’s pull. The crate still rests. What happens to the actual floor friction and its maximum available value?",
+    "conditions": [
+      "The floor is horizontal, the rope horizontal, and there are no other horizontal forces.",
+      "Use the usual static-friction model with unchanged coefficient of static friction.",
+      "The added weight does not touch the floor separately. Both before and after, the pull is below the sliding threshold."
+    ],
+    "check": {
+      "constant": "The applied horizontal pull is unchanged, but total vertical load increases.",
+      "forces": "Floor friction balances the pull; the normal force supports the greater weight.",
+      "equilibrium": "Rest requires a particular actual friction, while the friction limit is only a capacity."
+    },
+    "options": [
+      {
+        "id": "same-higher",
+        "text": "Actual friction is unchanged; its maximum available value increases",
+        "feedback": "The same pull needs the same balancing friction, although the larger normal force raises the threshold."
+      },
+      {
+        "id": "both-higher",
+        "text": "Actual friction and its maximum both increase",
+        "feedback": "Only the limit necessarily rises. Larger actual friction would leave an unbalanced horizontal force here."
+      },
+      {
+        "id": "both-same",
+        "text": "Both remain unchanged",
+        "feedback": "The actual friction is fixed by the pull, but the maximum depends on normal force."
+      }
+    ],
+    "answer": "same-higher",
+    "hints": [
+      "First find the friction needed for horizontal balance with the unchanged pull.",
+      "Then consider the normal force after the extra weight is added.",
+      "Static friction is at most coefficient × normal force; it does not always equal that maximum."
+    ],
+    "explanation": [
+      "Because the crate stays at rest, actual horizontal friction equals the unchanged rope pull in magnitude.",
+      "The added weight increases the upward normal force required from the floor.",
+      "In the stated model, the maximum possible static friction equals the coefficient times normal force, so that maximum increases.",
+      "Greater grip changes how much friction is available before sliding. It does not force the actual friction to take that maximum value."
+    ],
+    "changes": "If the rope has a vertical component, the coefficient changes, or the crate starts sliding, the force balance and friction model require reconsideration.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 6.2: Static and Kinetic Friction",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/6-2-friction"
+      },
+      {
+        "title": "OpenStax University Physics, 6.1: Applying Newton’s Laws",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/6-1-solving-problems-with-newtons-laws"
+      }
+    ],
+    "variation": {
+      "prompt": "After adding the weight, gradually increase the horizontal pull but keep it below the new sliding threshold. How does actual static friction respond?",
+      "conditions": [
+        "The crate remains at rest and the coefficient and normal force now stay fixed.",
+        "There are still no other horizontal forces."
+      ],
+      "check": {
+        "constant": "The maximum available static friction is now fixed.",
+        "forces": "Pull and actual static friction remain opposite horizontal forces.",
+        "equilibrium": "While rest continues, they must balance at each stage."
+      },
+      "hints": [
+        "The limit is not necessarily the present force.",
+        "Each larger pull requires a matching larger friction until the limit is reached."
+      ],
+      "options": [
+        {
+          "id": "follows",
+          "text": "It increases to match the pull, up to the limit",
+          "feedback": "This preserves horizontal balance while the crate remains at rest."
+        },
+        {
+          "id": "maximum",
+          "text": "It immediately takes its maximum value even for a smaller pull",
+          "feedback": "That would give an unbalanced horizontal force when the pull is below the maximum."
+        },
+        {
+          "id": "unchanged",
+          "text": "It stays at its previous value until the instant of slipping",
+          "feedback": "Then an increased pull would already be unbalanced, contradicting continued rest."
+        }
+      ],
+      "answer": "follows",
+      "explanation": [
+        "Static friction adjusts to balance the applied pull while the crate is at rest.",
+        "Only at the threshold does actual friction reach the maximum; beyond it the crate can slide."
+      ]
+    }
+  },
+  {
+    "id": "reasoning-compress-and-release",
+    "title": "Same mass, different fate",
+    "concept": "Density",
+    "diagram": null,
+    "daily": true,
+    "prompt": "A sealed body has an average density three-quarters that of water. An external press compresses it to half its original volume, without losing mass, and its new shape is held rigid. Released fully underwater, does it rise or sink?",
+    "conditions": [
+      "The press is removed before release; the body’s locked shape keeps the smaller volume.",
+      "The surrounding water has uniform density. Neglect attached hardware mass changes, trapped external air, surface tension, and initial water motion.",
+      "At release the body is motionless, completely submerged, and not touching any solid surface."
+    ],
+    "check": {
+      "constant": "The body’s mass and weight are unchanged, but its exterior volume is halved.",
+      "forces": "Gravity opposes buoyancy from the displaced water.",
+      "equilibrium": "Compare forces at release; neither floating nor neutral equilibrium is assumed."
+    },
+    "options": [
+      {
+        "id": "sinks",
+        "text": "It sinks: density becomes greater than water and buoyancy is too small",
+        "feedback": "Halving volume doubles its average density from ¾ to 1½ of water density, while also halving fully submerged buoyancy."
+      },
+      {
+        "id": "rises",
+        "text": "It rises because the same material was initially lighter than water",
+        "feedback": "Average density includes the body’s exterior volume, which has changed; material identity alone does not settle flotation."
+      },
+      {
+        "id": "neutral",
+        "text": "It stays suspended because the mass is unchanged",
+        "feedback": "Buoyancy depends on displaced volume as well as water density, so unchanged mass does not preserve force balance."
+      }
+    ],
+    "answer": "sinks",
+    "hints": [
+      "Density is mass divided by volume. What happens to the ratio when only volume halves?",
+      "Three-quarters doubled is greater than one.",
+      "For a fully submerged body, buoyancy is proportional to exterior volume; weight is unchanged."
+    ],
+    "explanation": [
+      "With fixed mass and half the volume, the body’s average density doubles.",
+      "It changes from three-quarters of water density to one-and-a-half times water density.",
+      "The smaller body displaces half as much water when fully submerged, so buoyancy is halved while weight remains the same.",
+      "Its weight is now greater than buoyancy, giving a downward acceleration at release."
+    ],
+    "changes": "The answer depends on how much volume is lost. If the body can re-expand after release, or water enters, its mass-to-volume ratio may change again.",
+    "sources": [
+      {
+        "title": "OpenStax University Physics, 14.1: Density and Pressure",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/14-1-fluids-density-and-pressure"
+      },
+      {
+        "title": "OpenStax University Physics, 14.4: Archimedes’ Principle and Buoyancy",
+        "url": "https://openstax.org/books/university-physics-volume-1/pages/14-4-archimedes-principle-and-buoyancy"
+      }
+    ],
+    "variation": {
+      "prompt": "Instead compress the original body only to three-quarters of its original volume, keeping mass fixed and locking that new volume. In the same ideal uniform water, what happens when it is released motionless and fully submerged?",
+      "conditions": [
+        "Keep the original average density of three-quarters of water density.",
+        "The new volume and mass stay fixed; there are no other forces."
+      ],
+      "check": {
+        "constant": "Mass stays fixed; final volume is three-quarters of the original.",
+        "forces": "Compare weight with the weight of displaced water.",
+        "equilibrium": "Neutral buoyancy requires equal average body and water densities."
+      },
+      "hints": [
+        "Divide the original density by the remaining volume fraction.",
+        "The two factors of three-quarters cancel."
+      ],
+      "options": [
+        {
+          "id": "neutral",
+          "text": "It is neutrally buoyant in this model",
+          "feedback": "Its average density becomes equal to water density."
+        },
+        {
+          "id": "sinks",
+          "text": "It sinks because any compression makes it denser than water",
+          "feedback": "Density increases, but this amount brings it exactly to water density rather than beyond."
+        },
+        {
+          "id": "rises",
+          "text": "It rises because its mass did not change",
+          "feedback": "The displaced volume has changed; at this volume the buoyant force just equals weight."
+        }
+      ],
+      "answer": "neutral",
+      "explanation": [
+        "Final density is original density divided by three-quarters, exactly water density.",
+        "Buoyancy equals weight. Released motionless under these ideal conditions, it has no initial acceleration and can remain suspended."
+      ]
+    }
+  }
+];
+  QUESTIONS.push(...DAILY_QUESTIONS);
+
   return QUESTIONS;
 });

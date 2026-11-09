@@ -1,6 +1,6 @@
 # Tend for iPhone and iPad
 
-A separate app, version **1.1.0 (2)**, bundle ID **com.houfu72.tend** (Live Activity extension **com.houfu72.tend.LiveActivity**). This does not change Phloem’s app identity, signing, or release. The same hand-written UI is available at https://houfu72.com/focus/ and bundled offline in the iOS app.
+A separate app, version **1.2.0 (9)**, bundle ID **com.houfu72.tend** (Live Activity extension **com.houfu72.tend.LiveActivity**). This does not change Phloem’s app identity, signing, or release. The same hand-written UI is available at https://houfu72.com/focus/ and bundled offline in the iOS app.
 
 The iOS target adds app-scoped notebook persistence, opt-in local session notifications, native share-sheet exports, and screen-awake control. No external service, account, package manager, CocoaPods, or third-party SDK is required. Source links open externally; remote pages cannot use the privileged app bridge.
 
@@ -62,4 +62,4 @@ Notifications are ordinary local notifications. Permission, Focus modes, and OS 
 
 ## Daily reasoning
 
-The shared authored physics activity is bundled from `focus/reasoning*` and available in the room. Initial and revised predictions, optional private notes, hints, completion and review dates are kept separately in `TendReasoningV1` UserDefaults (`window.TEND_REASONING_STATE`, `reasoningSave`). Its JSON travels under `reasoning` in a user-directed notebook backup. No AI service receives the notes.
+Fourteen daily questions connect several physics ideas; simpler optional introductions preserve an accessible starting point. The shared authored physics activity is bundled from `focus/reasoning*` and available in the room. Initial and revised predictions, optional private notes, hints, completion and review dates are kept separately in `TendReasoningV1` UserDefaults (`window.TEND_REASONING_STATE`, `reasoningSave`). Its JSON travels under `reasoning` in a user-directed notebook backup. No AI service receives the notes.

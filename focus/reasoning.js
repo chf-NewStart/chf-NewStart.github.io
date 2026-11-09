@@ -38,6 +38,7 @@
   const optionText = (q, id) => q.options.find(o => o.id === id)?.text || 'No prediction recorded';
   const list = items => `<ul class="rq-conditions">${items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
   function diagram(kind, title) {
+    if (!kind) return '';
     const rect = (x,y,w,h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#14291c" stroke="currentColor" stroke-width="1.5"/>`;
     const line = d => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="2"/>`;
     const text = (x,y,t) => `<text x="${x}" y="${y}" text-anchor="middle">${t}</text>`;
@@ -53,11 +54,12 @@
     }
     if (kind === 'gas-open' || kind === 'gas-rigid') {
       art = '<rect x="52" y="35" width="94" height="75" fill="#11221c" stroke="currentColor"/><rect x="214" y="35" width="94" height="75" fill="#281d11" stroke="#ffd65c"/>';
-      for (const x of [70,95,123,232,257,285]) art += `<circle cx="${x}" cy="${x%2?84:58}" r="3" fill="currentColor"/>`;
+      if (kind === 'gas-rigid') for (const x of [70,95,123,232,257,285]) art += `<circle cx="${x}" cy="${x%2?84:58}" r="3" fill="currentColor"/>`;
+      else art += text(99,78,'sample A') + text(261,78,'sample B');
       art += text(99,132,'cooler')+text(261,132,'warmer')+text(180,19,kind==='gas-open'?'same pressure':'same sealed rigid vessel');
-      caption = kind==='gas-open'?'Comparing two samples · dot counts are symbolic':'Before and after heating · fixed mass and volume';
+      caption = kind==='gas-open'?'Comparing two samples · pressure is held equal':'Before and after heating · fixed mass and volume';
     }
-    if (kind === 'balloons') art = '<ellipse cx="100" cy="65" rx="34" ry="40" fill="#162d20" stroke="currentColor" stroke-width="2"/><ellipse cx="254" cy="58" rx="49" ry="52" fill="#2a2411" stroke="#ffd65c" stroke-width="2"/>' + line('M100 105v18h154v-13M172 116v14M183 116v14') + text(100,65,'small')+text(254,59,'large')+text(180,149,'valve · pressures unknown');
+    if (kind === 'balloons') art = '<ellipse cx="100" cy="65" rx="34" ry="40" fill="#162d20" stroke="currentColor" stroke-width="2"/><ellipse cx="254" cy="58" rx="49" ry="52" fill="#2a2411" stroke="#ffd65c" stroke-width="2"/>' + line('M100 105v18h154v-13M172 116v14M183 116v14') + text(100,65,'small')+text(254,59,'large')+text(180,149,'connecting valve');
     if (kind === 'hover' || kind === 'flight') {
       art = line('M172 20H292M230 20v14M203 38l-26 19h94l-19-19ZM197 65H264')+rect(120,110,55,28)+'<path d="M232 66Q176 75 148 106" stroke="#ffd65c" stroke-width="2" stroke-dasharray="3 6" fill="none"/>'+text(187,95,'?');
       art += text(75,35,kind==='hover'?'hovering':'steady →');
@@ -65,6 +67,12 @@
     }
     if (kind === 'ramp') art = line('M50 35L135 125H170M220 35Q222 95 305 125H330M30 35H335M30 125H335')+'<circle cx="50" cy="30" r="6" fill="#ffd65c"/><circle cx="220" cy="30" r="6" fill="#ffd65c"/>'+text(180,151,'same vertical drop');
     if (kind === 'balance') art = line('M45 65H310M180 65l-18 55h36ZM65 65v28M238 65v28')+rect(48,93,34,30)+rect(216,93,44,37)+text(65,148,'1 kg · 2 m')+text(256,148,'2 kg · 1 m');
+    if (kind === 'ice-bead') art = '<path d="M40 28v110h280V28" fill="none" stroke="currentColor" stroke-width="2"/><path d="M42 64h276v72H42Z" fill="#173d36"/>' + '<rect x="135" y="60" width="90" height="52" fill="#284b48" stroke="#8cddd0" stroke-width="2"/><circle cx="180" cy="85" r="4" fill="#999f9b" stroke="#e3e9e2"/>' + text(180,34,'ice with steel bead') + line('M42 64H133M227 64H318');
+    if (kind === 'scales') art = line('M38 20H180M65 20V135M165 20V42')+'<rect x="155" y="42" width="20" height="25" fill="none" stroke="#ffd65c"/>'+line('M165 67V95')+rect(148,95,34,23)+'<path d="M115 68v65h160V68M117 84h156" fill="none" stroke="currentColor" stroke-width="2"/><rect x="109" y="136" width="174" height="19" fill="#17291e" stroke="currentColor"/>'+text(250,30,'spring scale')+text(195,150,'balance');
+    if (kind === 'tether') art = '<path d="M50 23v114h260V23" fill="none" stroke="currentColor" stroke-width="2"/><path d="M52 43h256v92H52Z" fill="#173d36"/>'+rect(156,65,48,33)+line('M180 98V135M52 43H308')+text(180,25,'submerged block')+text(246,119,'thread');
+    if (kind === 'hydraulic') art = '<path d="M55 35v100h250V35M90 35v70h130V35" fill="none" stroke="currentColor" stroke-width="2"/><path d="M57 66h31v41h134V66h81v67H57Z" fill="#173d36"/>'+line('M52 64H93M217 64H308M73 37V60M263 37V60')+text(74,25,'small')+text(266,25,'large')+text(180,154,'connected liquid · pistons at same height');
+    if (kind === 'friction') art = rect(118,55,100,50)+line('M40 107H320M219 80H285M274 73l11 7-11 7')+text(267,53,'push')+text(173,137,'rough horizontal table');
+    if (kind === 'vessel-shapes') art = '<path d="M40 30l15 100h75l15-100M225 30l-12 100h75L275 30" fill="none" stroke="currentColor" stroke-width="2"/><path d="M47 65h91l-10 63H57ZM221 65h59l7 63h-72Z" fill="#173d36"/>'+line('M47 65H138M212 65H304')+text(180,153,'same water depth and base area');
     return `<figure class="rq-diagram"><svg viewBox="0 0 360 166" role="img" aria-label="${esc(title)}: ${esc(caption)}">${art}</svg><figcaption>${esc(caption)}</figcaption></figure>`;
   }
   function mount(host, options = {}) {
@@ -82,6 +90,7 @@
         <div><h2>Think a little.<br>Notice what changes.</h2><p class="rq-muted">One physics idea each day. About 3–5 minutes, at your pace. A prediction is a place to begin; changing it is part of thinking.</p></div>
         <section class="rq-card"><p class="rq-date">${esc(dateLabel(day))} · ${esc(q.concept)}</p><h2>${esc(q.title)}</h2><p class="rq-muted">${done?'You’ve explored today’s explanation. Come back to it whenever you like.':'Make a prediction, check the assumptions, and follow the explanation.'}</p><button class="button primary" data-action="today">${done?'Revisit today’s idea':saved?'Continue exploring':'Explore today’s idea'}</button></section>
         ${due.length ? `<section class="rq-card"><h3>Return to an idea · optional</h3><p>${esc(question(due[due.length-1].questionId).title)}</p><p class="rq-muted">A different condition, a few days later. There’s no need to catch up.</p><button class="button secondary" data-action="review" data-id="${esc(due[due.length-1].id)}">Try a related question</button></section>`:''}
+        <details><summary>A gentle introduction · optional</summary><p class="rq-muted">Try a simple example to get comfortable with the flow. You can go straight to today’s idea.</p><div class="rq-library">${QUESTIONS.filter(q=>['quiet-book','half-a-material'].includes(q.id)).map(q=>`<button class="button secondary" data-action="practice" data-id="${esc(q.id)}">${esc(q.title)}<span>${esc(q.concept)}</span></button>`).join('')}</div></details>
         <section><h3>Concepts you’ve visited</h3>${concepts.length?`<ul class="rq-concepts">${concepts.map(c=>`<li>${esc(c.concept)}<small>${c.explored?'Explored':''}${c.explored&&c.reviewed?' · ':''}${c.reviewed?'Reviewed':''}</small></li>`).join('')}</ul>`:'<p class="rq-muted">Your explored and reviewed ideas will gather here. No score, no streak to keep.</p>'}</section>
         ${done?`<details><summary>Practice another idea · optional</summary><div class="rq-library">${QUESTIONS.map(q=>`<button class="button secondary" data-action="practice" data-id="${esc(q.id)}">${esc(q.title)}<span>${esc(q.concept)}</span></button>`).join('')}</div></details>`:''}
         ${state.attempts.length?`<details><summary>Your reasoning notebook</summary><p class="rq-muted">Private on this device. Included when you export a Tend backup.</p>${state.attempts.slice().reverse().slice(0,30).map(a=>history(a)).join('')}</details>`:''}

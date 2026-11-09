@@ -127,7 +127,8 @@ if (!dryRun || !version.id.startsWith('(')) {
 
 // Review notes: carry the previous version's contact and notes over, with what's new for the reviewer first.
 const previous = live && (await api('GET', `/v1/appStoreVersions/${live.id}/appStoreReviewDetail`)).data;
-const notes = [release.reviewNotes, previous?.attributes.notes].filter(Boolean).join('\n\n');
+const notes = release.replaceReviewNotes ? release.reviewNotes : [release.reviewNotes, previous?.attributes.notes].filter(Boolean).join('\n\n');
+if (Buffer.byteLength(notes || '', 'utf8') > 4000) throw new Error('Review notes exceed Apple’s 4,000-byte limit.');
 if (!dryRun || !version.id.startsWith('(')) {
   const current = await api('GET', `/v1/appStoreVersions/${version.id}/appStoreReviewDetail`).catch(() => null);
   const contact = Object.fromEntries(Object.entries(previous?.attributes || {}).filter(([field]) => field.startsWith('contact') || field === 'demoAccountRequired'));

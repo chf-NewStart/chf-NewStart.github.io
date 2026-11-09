@@ -1,11 +1,5 @@
 [
   {
-    "tag": "NATURE",
-    "title": "The immortal jellyfish ages backward",
-    "fact": "Turritopsis dohrnii, under stress, reabsorbs its adult body and restarts life as a juvenile polyp — potentially repeating the cycle indefinitely. Biologically it is a hydra in a jellyfish costume that can reset the clock.",
-    "detail": "The trick is transdifferentiation: one mature cell type converting directly into another. Studying it may inform regenerative medicine — if the jellyfish shares."
-  },
-  {
     "tag": "SYSTEMS",
     "title": "The first computer bug was a real moth",
     "fact": "In 1947, engineers on the Harvard Mark II found a moth jammed in relay #70 and taped it into the logbook: 'First actual case of bug being found.' Grace Hopper's team made the joke canonical.",

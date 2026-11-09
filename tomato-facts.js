@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "NATURE",
+            title: "The immortal jellyfish ages backward",
+            fact: "Turritopsis dohrnii, under stress, reabsorbs its adult body and restarts life as a juvenile polyp — potentially repeating the cycle indefinitely. Biologically it is a hydra in a jellyfish costume that can reset the clock.",
+            detail: "The trick is transdifferentiation: one mature cell type converting directly into another. Studying it may inform regenerative medicine — if the jellyfish shares."
+        },
+        {
+            tag: "NATURE",
             title: "Green sea slugs steal the ability to photosynthesize",
             fact: "The sea slug Elysia chlorotica eats algae and keeps the chloroplasts alive inside its own gut cells, then runs on sunlight for months — an animal with solar panels. It even holds genes for maintaining them, possibly via gene transfer from the algae.",
             detail: "Young Elysia must eat once to load its batteries; after that, light alone can sustain it. An animal leading a plant's lifestyle, one stolen organelle at a time."

@@ -41,3 +41,7 @@ reset through Play support, but it takes days.
 
 `release/play-listing.json` has the store text, App content answers and review notes. `release/make_store_art.py`
 renders the 512 px icon and the 1024x500 feature graphic into `release/store/`.
+
+## Daily reasoning
+
+A native card opens the bundled `focus/reasoning.html` page in `DailyActivity`. Questions, diagrams and reasoning flow share the web implementation. `window.TendAndroidReasoning` saves private predictions and notes in the separate `tend-reasoning` SharedPreferences (`state`), included under `reasoning` in a user-directed notebook backup. No AI service receives the notes.

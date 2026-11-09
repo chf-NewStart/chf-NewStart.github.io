@@ -11,6 +11,7 @@ to touch a claimed file, write your request under **Requests** below instead.
 
 | Agent | Working on | Files | Since |
 | --- | --- | --- | --- |
+| Codex | **Daily reasoning challenge**, complete locally on `codex/tend-reasoning` in `Developer/tend-reasoning`: authored physics, local progress and review, gentle unscored flow. Verified web and iOS build; Android SDK missing. Existing warm-up stays separate. | `focus/reasoning*`, room strip/dialog and backup, native reasoning storage/assets, tests | 2026-11-08 |
 | Claude Code | **Warm-up and rest** (Houfu: "add some daily challenges which could train the focus", then "something that makes me happy and less dizzy"), done on `main` (Log, 2026-11-03). Web and Android checked; **iOS 1.1.0 (7) on TestFlight** (not run in a simulator: CoreSimulator out of date on this Mac). **1.1.0 (7) submitted for review 2026-11-03 13:28 EST with Houfu's OK ("Looks right, submit"): Waiting for Review, releases automatically after approval** (review submission 97edf9f7-6dda-4a4b-92cb-96028e62d3c9). | `focus/daily.*`, `tests/tend-daily.test.cjs`, the strip and dialog in `focus/index.html`, backup export/restore in `focus/app.js`, `focus/sw.js` cache list, `apps/tend-ios/App/TendViewController.swift` (`dailySave`, `TEND_DAILY_STATE`), `apps/tend-ios/release/*`, `apps/tend-android/**/DailyActivity.kt`, `core/Daily.kt`, `core/Backup.kt`, `FocusRoom.kt` strip | 2026-11-03 11:00 EST |
 | Claude Code | Done on `main`: timer fixes, the pixel look, iOS packaging, store listing and screenshot scripts; 1.0 (1) submitted by Houfu 2026-10-26, in review. Not submitting anything for review without Houfu's OK. | `focus/app.js`, `focus/core.js`, `focus/pixel.*`, `apps/tend-ios/**`, `tests/focus-timer.test.cjs` | 2026-10-26 00:30 EDT |
 | Claude Code | **Android app** (native Kotlin + Compose, `com.houfu72.tend`): built and tested in the emulator; signed 1.0.0 (1) bundle ready for Play closed testing. Waits on Houfu's Play Console account. Web changes that alter timer rules need the same change in `apps/tend-android/.../core/`. | `apps/tend-android/**` | 2026-10-26 14:00 EDT |
@@ -41,6 +42,54 @@ to touch a claimed file, write your request under **Requests** below instead.
   ($25, ID and device checks), then the app, the closed test with 12+ testers for 14 days, then production.
 
 ## Log
+
+- 2026-11-08 — Codex, **daily reasoning** on `codex/tend-reasoning`, checkout
+  `/Users/chf/Developer/tend-reasoning` (based on fetched `origin/main`, 2ecefa8). Added a separate room strip and
+  dialog plus `focus/reasoning.html` for the Android activity. Reuses Tend’s fonts, pixel keys, palette, native
+  bridges, offline asset bundling, and backup format. No store upload, review submission, or production deployment.
+  - **Experience:** one authored daily conceptual physics idea, about 3–5 minutes without a timer. Initial
+    prediction and optional reason → brief assumption check → keep or revise and optional changed-mind note →
+    progressive hints → submit or explicitly reveal → stepwise explanation and alternative-specific feedback.
+    Completing the explanation keeps one dated exploration mark, independent of correctness, hints, or reveal.
+    No currency economy exists in Tend, so no new reward currency was introduced. Optional authored variation and
+    practice; concepts explored/reviewed replace scores or streaks for this activity. Existing attention tasks are
+    a separate feature and retain their existing behavior.
+  - **Content:** 14 authored questions covering forces, pressure, density, buoyancy, gases, energy and equilibrium,
+    with explicit conditions, SVG setup diagrams, three hints, explanations, misconception feedback, source links,
+    change-of-answer notes and authored variations with their own checks/hints. OpenStax university texts, Harvard’s
+    buoyancy demonstration, and Levin & da Silveira’s rubber-balloon paper support the derivations. Balloon sizes
+    alone are graded as insufficient information (including possible equal-pressure/no-flow states); equal pressure
+    does not imply equal volumes. Equal-pressure gas density is separate from fixed-mass sealed rigid heating.
+    Helicopter hover, steady payload drag, and acceleration are distinguished; rope mass/drag and downwash conditions
+    are stated. No runtime AI or runtime question generation.
+  - **Storage:** web `houfu.tend.reasoning.v1`; iOS `TendReasoningV1` UserDefaults through `reasoningSave` and
+    `TEND_REASONING_STATE`; Android `tend-reasoning` SharedPreferences through `TendAndroidReasoning`. Backups include
+    `reasoning` beside `daily`. Saves predictions, notes, hints, submissions/reveals, variation and completion.
+    Dates use the user’s calendar; saved daily IDs survive content reordering and refresh. An activity spanning
+    midnight counts for its starting day. Related authored review becomes available three calendar days after
+    completion, with newer due reviews offered first and no catch-up obligation. Daily marks and review scheduling
+    use stable IDs, so repeating completion cannot duplicate them. Failed writes retain memory state; unreadable
+    JSON is left untouched until deliberate backup restoration. Notes stay private, with no network/AI call path.
+  - **Checks:** 58/58 Node tests passed (`node --test tests/tend-reasoning*.test.cjs tests/tend-daily.test.cjs
+    tests/focus-timer.test.cjs tests/tend-native-ops.test.cjs`). Includes timezone/DST and midnight behavior, stable
+    selection, refresh/revision, correct and incorrect attempts, hint/reveal, delayed reviews, duplicate completion,
+    corrupt storage, failed browser/Android saves, native callbacks and preservation of local notes. All 26 offline
+    shell paths exist. iOS offline bundling passed and full unsigned simulator build succeeded; log
+    `/tmp/tend-reasoning-ios-build.log`. Android Gradle configured but compilation/unit tests could not run because
+    this Mac has no Android SDK. Added Android backup tests for when the SDK is available.
+  - **Browser QA:** Chrome at desktop and 390×844. Verified main-room entry, prediction/reason, assumption check,
+    revision/change note, one-at-a-time hint, refresh/reopen persistence, explicit reveal without a prediction,
+    explanation completion, optional variation and practice. A test-only fixture exercised a review due after three
+    days and verified the concept becomes Reviewed and the due card disappears. Mobile dialog scrollWidth equals
+    clientWidth (354 px), with readable SVG and wrapping controls. Browser backup download was inspected and retains
+    all reasoning fields. Automated file-chooser restore was unavailable because the extension lacks file-URL
+    access; state/adapter round-trip tests pass. No extension permission was changed.
+  - **Limits:** authored set repeats every 14 local days; reviews reuse the authored one-condition variation.
+    Latest 500 attempts and reviews are retained, notes capped at 500 characters, daily pins/marks at 4,000 dates;
+    notebook UI shows the latest 30 attempts. Export backups for long-term copies. No human classroom validation
+    or real Android/iPhone device run was performed. Start preview from this checkout with
+    `python3 -m http.server 8765 --bind 127.0.0.1`, then open `http://127.0.0.1:8765/focus/`.
+
 
 - 2026-11-03 15:35 — Claude Code: Houfu asked to build, pull the version in review and submit the newest. Build 8
   (the warm-up's midnight fixes, new timings each play and all six tasks under today's) archived and uploaded; it is

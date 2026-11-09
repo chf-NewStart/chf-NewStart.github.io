@@ -12,7 +12,7 @@ val uploadStore = providers.gradleProperty("TEND_UPLOAD_STORE_FILE").orNull
 val dailyAssets = layout.buildDirectory.dir("generated/tend-daily").get().asFile
 val copyDaily by tasks.registering(Sync::class) {
     from(rootProject.file("../../focus")) {
-        include("daily.html", "daily.js", "daily.css", "style.css", "theme.css", "pixel.css", "icon.svg", "fonts/*.woff", "fonts/*.woff2")
+        include("daily.html", "daily.js", "daily.css", "reasoning.html", "reasoning.js", "reasoning-core.js", "reasoning-content.js", "reasoning.css", "style.css", "theme.css", "pixel.css", "icon.svg", "fonts/*.woff", "fonts/*.woff2")
     }
     into(File(dailyAssets, "daily"))
 }

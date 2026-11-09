@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.houfu72.tend.core.Daily
+import com.houfu72.tend.core.Reasoning
 import com.houfu72.tend.core.MINUTE
 import com.houfu72.tend.core.Phase
 import com.houfu72.tend.core.Status
@@ -43,7 +44,7 @@ interface Platform {
     fun share(filename: String, contents: String, mime: String)
     fun pickBackup()
     fun openUrl(url: String)
-    fun openDaily(rest: Boolean)
+    fun openDaily(rest: Boolean, reasoning: Boolean = false)
 }
 
 /**
@@ -210,10 +211,13 @@ class TendController(context: Context) {
 
     private val dailyPrefs get() = app.getSharedPreferences(Daily.PREFS, Context.MODE_PRIVATE)
     private var restoreDaily: String? = null
+    private val reasoningPrefs get() = app.getSharedPreferences(Reasoning.PREFS, Context.MODE_PRIVATE)
+    private var restoreReasoning: String? = null
 
     fun refreshDaily() { dailyStreak = Daily.streakOn(dailyPrefs.getString(Daily.KEY, null), LocalDate.now()) }
 
     fun openDaily(rest: Boolean) { platform?.openDaily(rest) }
+    fun openReasoning() { platform?.openDaily(false, reasoning = true) }
 
     fun setQuietView(on: Boolean) {
         quiet = on
@@ -242,7 +246,7 @@ class TendController(context: Context) {
 
     fun exportWeek() { platform?.share("tend-week-${localDate(weekStart())}.md", weeklyMarkdown(state), "text/markdown") }
     fun exportBackup() {
-        platform?.share("tend-backup-${localDate()}.json", encodePretty(state, Daily.forBackup(dailyPrefs.getString(Daily.KEY, null))), "application/json")
+        platform?.share("tend-backup-${localDate()}.json", encodePretty(state, Daily.forBackup(dailyPrefs.getString(Daily.KEY, null)), Reasoning.forBackup(reasoningPrefs.getString(Reasoning.KEY, null))), "application/json")
     }
 
     fun importBackup(contents: String) {
@@ -251,6 +255,7 @@ class TendController(context: Context) {
             if (restored.timer.status == Status.RUNNING) restored = pause(restored)
             restoreCandidate = restored
             restoreDaily = Daily.fromBackup(contents)
+            restoreReasoning = Reasoning.fromBackup(contents)
             settingsOpen = false
         } catch (error: TendException) {
             showToast(error.message ?: "This backup could not be opened.")
@@ -264,10 +269,12 @@ class TendController(context: Context) {
         // A backup with warm-up scores and good things brings them back too; an older one leaves them as they are.
         restoreDaily?.let { dailyPrefs.edit().putString(Daily.KEY, it).apply(); refreshDaily() }
         restoreDaily = null
+        restoreReasoning?.let { reasoningPrefs.edit().putString(Reasoning.KEY, it).apply() }
+        restoreReasoning = null
         showToast("Notebook restored.")
     }
 
-    fun cancelRestore() { restoreCandidate = null }
+    fun cancelRestore() { restoreCandidate = null; restoreDaily = null; restoreReasoning = null }
 
     val todayMinutes: Long get() = state.sessions.filter { localDate(it.endedAt) == localDate(now) }.sumOf { it.durationMs }.let { Math.round(it.toDouble() / MINUTE) }
 }

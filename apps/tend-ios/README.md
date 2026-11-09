@@ -59,3 +59,7 @@ On your Mac, choose **Any iOS Device (arm64) → Product → Archive → Distrib
 The native app stores its JSON notebook under `TendNotebookV1` in its own UserDefaults container. The web version uses `houfu.tend.v1` in localStorage. The warm-up (`focus/daily.js`: bests, streak and good things) keeps its own small JSON under `TendDailyV1` in standard UserDefaults, handed to the page at launch as `window.TEND_DAILY_STATE` and saved back with the `dailySave` message (with a localStorage copy as a fallback); on the web it is `houfu.tend.daily.v1`. Backups carry it under `daily` (older versions ignore it), and restoring a backup that has it replaces it. They do not sync automatically. Device backups may include app data; exports are user-directed. The privacy manifest declares app-scoped UserDefaults access (`CA92.1`) and no collected data or tracking.
 
 Notifications are ordinary local notifications. Permission, Focus modes, and OS delivery rules apply. Task text is not included in notification content. The app catches up from its saved deadline and never automatically starts another work interval while suspended.
+
+## Daily reasoning
+
+The shared authored physics activity is bundled from `focus/reasoning*` and available in the room. Initial and revised predictions, optional private notes, hints, completion and review dates are kept separately in `TendReasoningV1` UserDefaults (`window.TEND_REASONING_STATE`, `reasoningSave`). Its JSON travels under `reasoning` in a user-directed notebook backup. No AI service receives the notes.

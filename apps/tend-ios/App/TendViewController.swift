@@ -8,6 +8,7 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
     /// Posted when a reminder arrives while Tend is open: the room catches up by itself.
     static let catchUp = Notification.Name("TendRoomCatchUp")
     static let dailyKey = "TendDailyV1"
+    static let reasoningKey = "TendReasoningV1"
     private let store = TendStore.shared
     private var webView: WKWebView!
     private var notebook: [String: Any]?
@@ -36,7 +37,12 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
             .flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] }
             .flatMap { try? JSONSerialization.data(withJSONObject: $0) }
             .flatMap { String(data: $0, encoding: .utf8) } ?? "null"
-        var bootstrap = "window.TEND_NATIVE = true; window.TEND_INITIAL_STATE = \(initial); window.TEND_INITIAL_REVISION = \(roomRevision); window.TEND_DAILY_STATE = \(daily);"
+        // Reasoning predictions and notes stay in the app's own local storage as a separate activity.
+        let reasoning = UserDefaults.standard.data(forKey: Self.reasoningKey)
+            .flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] }
+            .flatMap { try? JSONSerialization.data(withJSONObject: $0) }
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "null"
+        var bootstrap = "window.TEND_NATIVE = true; window.TEND_INITIAL_STATE = \(initial); window.TEND_INITIAL_REVISION = \(roomRevision); window.TEND_DAILY_STATE = \(daily); window.TEND_REASONING_STATE = \(reasoning);"
         #if DEBUG
         // `-tendNow <ms since 1970>` moves the room's clock, so screenshots can show a whole week of sessions.
         if let now = debugArgument("-tendNow").flatMap(Double.init) {
@@ -141,6 +147,13 @@ final class TendViewController: UIViewController, WKScriptMessageHandler, WKNavi
             guard let state = body["state"] as? [String: Any], let data = try? JSONSerialization.data(withJSONObject: state),
                   data.count <= 1024 * 1024 else { return }
             UserDefaults.standard.set(data, forKey: Self.dailyKey)
+        case "reasoningSave":
+            guard let state = body["state"] as? [String: Any], let data = try? JSONSerialization.data(withJSONObject: state),
+                  data.count <= 4 * 1024 * 1024 else {
+                callback("TendReasoningStorageError", "Reasoning progress could not be saved. Export a backup before closing Tend.")
+                return
+            }
+            UserDefaults.standard.set(data, forKey: Self.reasoningKey)
         default: break
         }
     }

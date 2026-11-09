@@ -76,6 +76,7 @@ fun FocusRoom(c: TendController, wide: Boolean, onLink: (String) -> Unit) {
             LaterCard(c)
         }
         WarmUpStrip(c)
+        ReasoningStrip(c)
         DeskBottom(c)
         Footer(onLink)
     }
@@ -262,6 +263,21 @@ private fun WarmUpStrip(c: TendController) {
         )
         Spacer(Modifier.height(14.dp))
         SecondaryKey(if (isBreak) "Rest a minute" else "Play the warm-up", Modifier.fillMaxWidth()) { c.openDaily(isBreak) }
+    }
+}
+
+/** The authored reasoning page shares its questions and local progress with web and iPhone. */
+@Composable
+private fun ReasoningStrip(c: TendController) {
+    if (c.state.timer.phase != Phase.BREAK && c.state.timer.status == Status.RUNNING) return
+    PixelCard(Modifier.padding(top = 20.dp), background = Px.laterCard) {
+        Text("A LITTLE ROOM TO WONDER", Type.eyebrow, color = Px.green)
+        Spacer(Modifier.height(6.dp))
+        PixelText("Daily reasoning", Type.h2)
+        Spacer(Modifier.height(6.dp))
+        SmallNote("One physics question, about 3–5 minutes. Take your time; hints are welcome.")
+        Spacer(Modifier.height(14.dp))
+        SecondaryKey("Explore today’s question", Modifier.fillMaxWidth()) { c.openReasoning() }
     }
 }
 

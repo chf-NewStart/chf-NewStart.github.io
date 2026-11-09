@@ -18,15 +18,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.houfu72.tend.core.Daily
+import com.houfu72.tend.core.Reasoning
 
 /**
- * The warm-up and rest page: focus/daily.html, copied into the app's assets at build time (app/build.gradle.kts).
- * Its nine short tasks run from one shared page on the web, the iPhone and here, so their rules can't drift apart;
- * the rest of Tend for Android stays native. Only that bundled page is ever loaded, so only it sees the bridge.
+ * The shared warm-up, rest and reasoning pages, copied into the app's assets at build time.
+ * Their rules and authored content share the web and iPhone implementation; the Android room stays native.
+ * Only local bundled pages are allowed to navigate within this privileged web view.
  */
 class DailyActivity : ComponentActivity() {
     private lateinit var web: WebView
     private val prefs by lazy { getSharedPreferences(Daily.PREFS, MODE_PRIVATE) }
+    private val reasoningPrefs by lazy { getSharedPreferences(Reasoning.PREFS, MODE_PRIVATE) }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,6 +42,7 @@ class DailyActivity : ComponentActivity() {
             settings.allowFileAccess = false
             settings.allowContentAccess = false
             addJavascriptInterface(Bridge(), "TendAndroidDaily")
+            addJavascriptInterface(ReasoningBridge(), "TendAndroidReasoning")
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     val url = request.url
@@ -57,7 +60,8 @@ class DailyActivity : ComponentActivity() {
             WindowInsetsCompat.CONSUMED
         }
         setContentView(frame)
-        web.loadUrl("file://${ASSETS}daily.html" + if (intent.getBooleanExtra(EXTRA_REST, false)) "#rest" else "")
+        val page = if (intent.getBooleanExtra(EXTRA_REASONING, false)) "reasoning.html" else "daily.html"
+        web.loadUrl("file://$ASSETS$page" + if (page == "daily.html" && intent.getBooleanExtra(EXTRA_REST, false)) "#rest" else "")
     }
 
     override fun onDestroy() {
@@ -75,8 +79,19 @@ class DailyActivity : ComponentActivity() {
         }
     }
 
+    /** Independent local predictions and notes; the page performs content validation before using them. */
+    private inner class ReasoningBridge {
+        @JavascriptInterface fun load(): String = reasoningPrefs.getString(Reasoning.KEY, null) ?: "null"
+        @JavascriptInterface fun save(json: String): Boolean {
+            if (json.toByteArray(Charsets.UTF_8).size > 4 * 1024 * 1024 || Reasoning.forBackup(json) == null) return false
+            return reasoningPrefs.edit().putString(Reasoning.KEY, json).commit()
+        }
+        @JavascriptInterface fun close() = runOnUiThread { finish() }
+    }
+
     companion object {
         const val EXTRA_REST = "rest"
+        const val EXTRA_REASONING = "reasoning"
         private const val ASSETS = "/android_asset/daily/"
         private const val PAPER = 0xFF040706.toInt()
     }

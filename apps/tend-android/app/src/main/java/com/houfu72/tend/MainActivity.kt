@@ -134,8 +134,8 @@ class MainActivity : ComponentActivity(), Platform {
         }
     }
 
-    override fun openDaily(rest: Boolean) {
-        startActivity(Intent(this, DailyActivity::class.java).putExtra(DailyActivity.EXTRA_REST, rest))
+    override fun openDaily(rest: Boolean, reasoning: Boolean) {
+        startActivity(Intent(this, DailyActivity::class.java).putExtra(DailyActivity.EXTRA_REST, rest).putExtra(DailyActivity.EXTRA_REASONING, reasoning))
     }
 
     override fun openUrl(url: String) {

@@ -5,7 +5,7 @@
   const $ = id => document.getElementById(id);
   const native = !!window.TEND_NATIVE;
   const post = (action, payload = {}) => window.webkit?.messageHandlers?.tend?.postMessage({ action, ...payload });
-  let state, view = 'focus', quiet = false, reviewId = null, restoredBackup = null, restoredDaily = null;
+  let state, view = 'focus', quiet = false, reviewId = null, restoredBackup = null, restoredDaily = null, restoredReasoning = null;
   let audio = null, alarm = null, wakeLock = null, wakeRequested = false, toastTimeout, lastTick = '', discardArmed = 0;
   let notificationPermission = 'notDetermined';
   // The iPhone app's notebook revision this room has seen. Siri, the Lock Screen and its note notification change
@@ -330,8 +330,8 @@
   });
   document.querySelector('.brand').addEventListener('click', event => { event.preventDefault(); changeView('focus'); });
   $('export-week').addEventListener('click', () => download(C.weeklyMarkdown(state), 'tend-week-' + C.localDate(C.weekStart()) + '.md', 'text/markdown'));
-  // The backup carries the warm-up's scores and good things under "daily"; restore() reads only the notebook's own fields.
-  $('export-backup').addEventListener('click', () => download(JSON.stringify({ ...state, ...(window.TendDaily ? { daily: window.TendDaily.snapshot() } : {}) }, null, 2), 'tend-backup-' + C.localDate() + '.json', 'application/json'));
+  // Backups carry local activities beside the notebook; core restore reads only its own fields.
+  $('export-backup').addEventListener('click', () => download(JSON.stringify({ ...state, ...(window.TendDaily ? { daily: window.TendDaily.snapshot() } : {}), ...(window.TendReasoning ? { reasoning: window.TendReasoning.snapshot() } : {}) }, null, 2), 'tend-backup-' + C.localDate() + '.json', 'application/json'));
   $('import-backup').addEventListener('change', async event => {
     const file = event.target.files?.[0]; if (!file) return;
     try {
@@ -339,14 +339,16 @@
       const contents = await file.text();
       restoredBackup = C.restore(contents); if (restoredBackup.timer.status === 'running') restoredBackup = C.pause(restoredBackup);
       restoredDaily = JSON.parse(contents).daily || null;
+      restoredReasoning = JSON.parse(contents).reasoning || null;
       $('settings-dialog').close(); $('restore-dialog').showModal();
     } catch (error) { toast(error.message || 'This backup could not be opened.'); }
     event.target.value = '';
   });
   $('restore-confirm').addEventListener('click', () => {
     if (!restoredBackup) return; $('restore-dialog').close(); commit(restoredBackup); restoredBackup = null;
-    // A backup with warm-up scores and good things brings them back too; an older one leaves them as they are.
+    // Activity data is replaced when present; older backups leave existing local activities alone.
     if (restoredDaily && window.TendDaily) window.TendDaily.replace(restoredDaily); restoredDaily = null;
+    if (restoredReasoning && window.TendReasoning) window.TendReasoning.replace(restoredReasoning); restoredReasoning = null;
     toast('Notebook restored.');
   });
   $('enable-reminders').addEventListener('click', () => post(notificationPermission === 'denied' ? 'openSettings' : 'enableNotifications'));

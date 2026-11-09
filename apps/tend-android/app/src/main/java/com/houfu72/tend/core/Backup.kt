@@ -49,9 +49,14 @@ private fun session(item: Session) = buildJsonObject {
 }
 
 fun encode(state: TendState): String = toJson(state).toString()
-/** A backup file: the notebook, plus the warm-up's JSON under "daily" when there is one (older versions ignore it). */
-fun encodePretty(state: TendState, daily: JsonElement? = null): String =
-    pretty.encodeToString(JsonObject.serializer(), if (daily == null) toJson(state) else JsonObject(toJson(state) + ("daily" to daily)))
+/** A backup file: notebook plus optional local activities; older readers ignore the extra fields. */
+fun encodePretty(state: TendState, daily: JsonElement? = null, reasoning: JsonElement? = null): String {
+    val extras = buildMap<String, JsonElement> {
+        if (daily != null) put("daily", daily)
+        if (reasoning != null) put("reasoning", reasoning)
+    }
+    return pretty.encodeToString(JsonObject.serializer(), JsonObject(toJson(state) + extras))
+}
 
 // JavaScript-style reads: a number only when it is a finite JSON number, a string only when it is a string.
 private fun JsonElement?.obj(): JsonObject? = this as? JsonObject

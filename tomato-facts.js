@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "SYSTEMS",
+            title: "The first computer bug was a real moth",
+            fact: "In 1947, engineers on the Harvard Mark II found a moth jammed in relay #70 and taped it into the logbook: 'First actual case of bug being found.' Grace Hopper's team made the joke canonical.",
+            detail: "The logbook page survives at the Smithsonian. The moth taped beside it is arguably the most-cited insect in computing history."
+        },
+        {
             tag: "NATURE",
             title: "The immortal jellyfish ages backward",
             fact: "Turritopsis dohrnii, under stress, reabsorbs its adult body and restarts life as a juvenile polyp — potentially repeating the cycle indefinitely. Biologically it is a hydra in a jellyfish costume that can reset the clock.",

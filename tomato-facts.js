@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "SYSTEMS",
+            title: "There are more possible chess games than atoms in the observable universe",
+            fact: "The Shannon number estimates 10^120 legal chess games; the observable universe holds only ~10^80 atoms. Even Go's 10^170 states make brute force meaningless — intelligence, not search, had to close the gap.",
+            detail: "That gap is why Deep Blue (1997) was a triumph of engineering, not just speed: it made the impossible countable, one pruning rule at a time."
+        },
+        {
+            tag: "SYSTEMS",
             title: "The first computer bug was a real moth",
             fact: "In 1947, engineers on the Harvard Mark II found a moth jammed in relay #70 and taped it into the logbook: 'First actual case of bug being found.' Grace Hopper's team made the joke canonical.",
             detail: "The logbook page survives at the Smithsonian. The moth taped beside it is arguably the most-cited insect in computing history."

@@ -1,12 +1,6 @@
 [
   {
     "tag": "SYSTEMS",
-    "title": "Wi-Fi was partly invented by a movie star",
-    "fact": "Hedy Lamarr, film actress and self-taught inventor, co-patented frequency-hopping radio in 1942 to guide torpedoes past jamming. The Navy shelved it; decades later the idea underpinned spread-spectrum, the family of techniques behind Wi-Fi and Bluetooth.",
-    "detail": "She was told she could help the war effort better by selling kisses for war bonds. The patent went unappreciated in her lifetime — a reminder that credit is not the same as contribution."
-  },
-  {
-    "tag": "SYSTEMS",
     "title": "The first recorded 'data error' is 4,000 years old",
     "fact": "Babylonian clay tablets record scribal corrections to mathematical tables, including flagged mistakes — early humans managing data quality with the same suspicion we bring to spreadsheets today.",
     "detail": "One tablet contains a student's error and the teacher's correction beside it: the oldest surviving code review."

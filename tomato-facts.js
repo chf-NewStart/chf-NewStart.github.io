@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "SYSTEMS",
+            title: "Wi-Fi was partly invented by a movie star",
+            fact: "Hedy Lamarr, film actress and self-taught inventor, co-patented frequency-hopping radio in 1942 to guide torpedoes past jamming. The Navy shelved it; decades later the idea underpinned spread-spectrum, the family of techniques behind Wi-Fi and Bluetooth.",
+            detail: "She was told she could help the war effort better by selling kisses for war bonds. The patent went unappreciated in her lifetime — a reminder that credit is not the same as contribution."
+        },
+        {
+            tag: "SYSTEMS",
             title: "There are more possible chess games than atoms in the observable universe",
             fact: "The Shannon number estimates 10^120 legal chess games; the observable universe holds only ~10^80 atoms. Even Go's 10^170 states make brute force meaningless — intelligence, not search, had to close the gap.",
             detail: "That gap is why Deep Blue (1997) was a triumph of engineering, not just speed: it made the impossible countable, one pruning rule at a time."

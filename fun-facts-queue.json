@@ -1,12 +1,6 @@
 [
   {
     "tag": "SYSTEMS",
-    "title": "The first recorded 'data error' is 4,000 years old",
-    "fact": "Babylonian clay tablets record scribal corrections to mathematical tables, including flagged mistakes — early humans managing data quality with the same suspicion we bring to spreadsheets today.",
-    "detail": "One tablet contains a student's error and the teacher's correction beside it: the oldest surviving code review."
-  },
-  {
-    "tag": "SYSTEMS",
     "title": "Your phone has more compute than every Apollo mission combined",
     "fact": "The Apollo guidance computer ran at ~0.04 MHz with 4 KB of RAM; a modern phone is hundreds of thousands of times faster with millions of times more memory — and it is mostly idle while you read this.",
     "detail": "Margaret Hamilton's team wrote the guidance software so defensively that during the Moon landing overload an executive interrupt shed low-priority tasks and the landing continued. Software that survives its worst day."

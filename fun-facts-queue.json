@@ -1,12 +1,6 @@
 [
   {
     "tag": "SYSTEMS",
-    "title": "Your phone has more compute than every Apollo mission combined",
-    "fact": "The Apollo guidance computer ran at ~0.04 MHz with 4 KB of RAM; a modern phone is hundreds of thousands of times faster with millions of times more memory — and it is mostly idle while you read this.",
-    "detail": "Margaret Hamilton's team wrote the guidance software so defensively that during the Moon landing overload an executive interrupt shed low-priority tasks and the landing continued. Software that survives its worst day."
-  },
-  {
-    "tag": "SYSTEMS",
     "title": "Sliced bread needed a machine, not an idea",
     "fact": "Sliced bread is Otto Rohwedder's 1928 machine, not a cleverer knife: the hard part was keeping slices together, solved with a wrapping step that pressed the loaf whole. 'The best thing since…' refers to a packaging breakthrough.",
     "detail": "It became so canonical that in 1943, wartime bans on sliced bread were rescinded within three months after public outcry — demand had outlasted even rationing."

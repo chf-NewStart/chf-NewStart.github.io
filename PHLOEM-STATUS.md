@@ -22,7 +22,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   saved data is unchanged); `reading-workspace-state` pins the new API name. All `*workspace*` suites,
   `reading-app-update` and `reading-lists-browser` in both engines: the only failures are `reading-workspace-browser`
   `reading-workspace-paper-color` and `reading-workspace-paper-edge`, in both engines, which fail the same way on live.
-  **App 1.2.11 (58) with v254: see the Log** (1.2.10 (57) is Ready for Sale).
+  **App 1.2.11 (58) with v254 uploaded 2026-11-17 with the API key, VALID, on TestFlight with a What to Test note. Not
+  submitted for review** (needs Houfu's own words; review notes untouched). 1.2.10 (57) is Ready for Sale. No version
+  record for 1.2.11 was created. Archive and derived data were deleted after upload.
 
 ## Earlier (2026-11-06)
 
@@ -975,6 +977,7 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-17 1.2.11 (58):** v254 on TestFlight, not submitted.
 - **2026-11-17 v254:** Workspace › More › Export Markdown (quotes with paper and page, notes, board order; handwriting left out).
 - **2026-11-06 1.2.10 (57):** replaces 56 in review, on the same version record, with reader v253; manual release. Real
   touches on an iPhone and an iPad simulator, before and after.

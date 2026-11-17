@@ -490,7 +490,83 @@
     return restoreGroup(state, target, stamp);
   }
 
-  global.PhloemWorkspaceState = Object.freeze({ VERSION: VERSION,
+  /* Markdown export of one paper's Workspace: every quote card and note on the board, in
+     board order (rows top to bottom, left to right within a row). Reads only; handwriting
+     is counted, not drawn. */
+  var ROW_TOLERANCE = 40;
+  function text(value) { return typeof value === 'string' ? value.replace(/\r\n?/g, '\n') : ''; }
+  function oneLine(value) { return text(value).replace(/\s+/g, ' ').trim(); }
+  function placeLabel(anchorValue) {
+    if (!object(anchorValue)) return '';
+    if (Number.isSafeInteger(anchorValue.page) && anchorValue.page > 0) return 'p. ' + anchorValue.page;
+    if (Number.isSafeInteger(anchorValue.para) && anchorValue.para >= 0) return 'paragraph ' + (anchorValue.para + 1);
+    return '';
+  }
+  function paperLink(paper) {
+    var doi = oneLine(paper.doi).replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '');
+    if (doi) return 'https://doi.org/' + doi;
+    var url = oneLine(paper.url);
+    return /^https?:\/\//i.test(url) ? url : '';
+  }
+  function citation(paper) {
+    var title = oneLine(paper.title) || 'Untitled', authors = oneLine(paper.authors),
+      year = oneLine(paper.year == null ? '' : String(paper.year)), venue = oneLine(paper.venue);
+    var out = '*' + title.replace(/\*/g, '\\*') + '*';
+    if (authors) out += ', ' + authors;
+    if (year) out += ' (' + year + ')';
+    if (venue) out += ', ' + venue;
+    return out;
+  }
+  function boardOrder(cards) {
+    cards.sort(function (a, b) { return a.y - b.y || a.x - b.x || compare(a.id, b.id); });
+    var rows = [], row = null;
+    cards.forEach(function (card) {
+      if (!row || card.y - row.top > ROW_TOLERANCE) { row = { top: card.y, cards: [] }; rows.push(row); }
+      row.cards.push(card);
+    });
+    return rows.reduce(function (all, entry) {
+      return all.concat(entry.cards.sort(function (a, b) { return a.x - b.x || a.y - b.y || compare(a.id, b.id); }));
+    }, []);
+  }
+  function exportMarkdown(options) {
+    options = object(options) ? options : {};
+    var paper = object(options.paper) ? options.paper : {}, state = normalize(options.workspace);
+    var items = Array.isArray(options.items) ? options.items : [], seen = Object.create(null), cards = [];
+    items.forEach(function (item) {
+      if (!object(item) || !id(item.id) || seen[item.id] || !owns(state.positions, item.id)) return;
+      seen[item.id] = true;
+      var at = state.positions[item.id];
+      cards.push({ id: item.id, x: at.x, y: at.y, quote: text(item.quote), note: text(item.note), anchor: item.anchor });
+    });
+    var ordered = boardOrder(cards), link = paperLink(paper), cite = citation(paper);
+    var quotes = ordered.filter(function (card) { return card.quote.trim(); }).length;
+    var notes = ordered.length - quotes, strokes = state.strokes.length;
+    var when = Number.isFinite(options.exportedAt) ? new Date(options.exportedAt) : new Date();
+    var day = isNaN(when.getTime()) ? '' : when.toISOString().slice(0, 10);
+    var lines = ['# Workspace: ' + (oneLine(paper.title) || 'Untitled'), ''];
+    lines.push('**Paper:** ' + cite + (link ? '. ' + link : ''), '');
+    lines.push('Exported from Phloem' + (day ? ' on ' + day : '') + '. ' +
+      quotes + (quotes === 1 ? ' quote' : ' quotes') + ' and ' + notes + (notes === 1 ? ' note' : ' notes') +
+      ', in board order (top to bottom, left to right).');
+    if (strokes) lines.push('', '_Handwriting is not included: ' + strokes + (strokes === 1 ? ' stroke' : ' strokes') +
+      ' on this board stay in Phloem only._');
+    if (!ordered.length) lines.push('', '_Nothing is on this Workspace yet._');
+    ordered.forEach(function (card, index) {
+      var where = placeLabel(card.anchor), note = card.note.trim();
+      lines.push('', '---', '');
+      if (card.quote.trim()) {
+        lines.push('## ' + (index + 1) + '. Quote' + (where ? ' · ' + where : ''), '');
+        card.quote.trim().split('\n').forEach(function (line) { lines.push(line.trim() ? '> ' + line : '>'); });
+        lines.push('', '— ' + cite + (where ? ', ' + where : '') + '.' + (link ? ' ' + link : ''));
+        if (note) lines.push('', '**Note:**', '', note);
+      } else {
+        lines.push('## ' + (index + 1) + '. Note', '', note || '_(empty note)_');
+      }
+    });
+    return { text: lines.join('\n') + '\n', quotes: quotes, notes: notes, strokes: strokes };
+  }
+
+  global.PhloemWorkspaceState = Object.freeze({ VERSION: VERSION, exportMarkdown: exportMarkdown,
     BOARD_WIDTH: BOARD_WIDTH, MAX_WIDTH: MAX_WIDTH, MAX_HEIGHT: MAX_HEIGHT, normalize: normalize, merge: merge, place: place,
     addStroke: addStroke, restoreGroup: restoreGroup, removeStrokes: removeStrokes, setWidth: setWidth, setHeight: setHeight,
     displayStroke: displayStroke, selectGroup: selectGroup, moveGroup: moveGroup });

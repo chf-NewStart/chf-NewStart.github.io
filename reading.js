@@ -10198,6 +10198,38 @@
     if(!penOpen&&!moreOpen)return;event.preventDefault();event.stopPropagation();closeWorkspacePanels();
     (penOpen?byId('workspacePenToggle'):byId('workspaceMore').querySelector('summary')).focus({preventScroll:true});
   });
+  /* Workspace › More › Export Markdown: this paper's quote cards and notes in board order.
+     The paper's year, DOI and link come from the paper, else from a reading-list entry for it. */
+  function workspaceExportPaper(ch){
+    var paper={title:String(ch.title||'Untitled'),authors:String(ch.authors||''),year:ch.year||'',venue:String(ch.journal||ch.venue||''),doi:String(ch.doi||''),url:''};
+    var entries=((state.readingLists&&state.readingLists.items)||[]).filter(function(item){return item&&item.paperId&&resolvedPaperId(item.paperId)===ch.id;});
+    entries.forEach(function(item){
+      if(!paper.year&&item.year)paper.year=String(item.year);
+      if(!paper.doi&&item.doi)paper.doi=String(item.doi);
+      if(!paper.url&&/^https?:\/\//i.test(String(item.url||'')))paper.url=String(item.url);
+      if(!paper.authors&&item.authors)paper.authors=String(item.authors);
+      if(!paper.venue&&item.venue)paper.venue=String(item.venue);
+    });
+    if(!paper.url&&ch.sourceUrl){try{var source=new URL(ch.sourceUrl,location.href);if(/^https?:$/.test(source.protocol)&&source.origin!==location.origin)paper.url=source.href;}catch(e){}}
+    return paper;
+  }
+  function exportWorkspaceMarkdown(){
+    var ch=find(currentId);
+    if(!ch||!window.PhloemWorkspaceState||readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)){workspaceStatus('Open a paper’s Workspace to export it.');return null;}
+    var result;
+    try{result=window.PhloemWorkspaceState.exportMarkdown({paper:workspaceExportPaper(ch),items:ch.readingExcerpts.items,workspace:ch.readingWorkspace,exportedAt:Date.now()});}
+    catch(error){workspaceStatus('Could not export this Workspace. Your notes are safe.');return null;}
+    var name='Workspace - '+(String(ch.title||'').replace(/[\\/:*?"<>|\u0000-\u001f]+/g,'-').replace(/\s+/g,' ').trim().slice(0,80)||'Untitled')+'.md';
+    var file=typeof File==='function'?new File([result.text],name,{type:'text/markdown'}):null;
+    var said='Exported '+result.quotes+(result.quotes===1?' quote':' quotes')+' and '+result.notes+(result.notes===1?' note':' notes')+(result.strokes?' · handwriting left out':'')+'.';
+    if(window.PHLOEM_NATIVE&&file&&navigator.share){navigator.share({files:[file],title:name}).then(function(){workspaceStatus(said);},function(){});return result;}
+    var url=URL.createObjectURL(new Blob([result.text],{type:'text/markdown'})),link=document.createElement('a');
+    link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},60000);
+    workspaceStatus(said);
+    return result;
+  }
+  byId('workspaceExport').onclick=function(){exportWorkspaceMarkdown();};
   byId('workspaceReturn').onclick=async function(){if(!workspaceBesidePaper())setWorkspaceOpen(false,false);await returnFromExcerpt();refreshWorkspace();};
   byId('selectionToWorkspace').onclick=function(){var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection;if(selection)addWorkspaceExcerpt(selection);};
 

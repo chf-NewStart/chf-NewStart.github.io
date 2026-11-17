@@ -4,7 +4,27 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-11-06)
+## Now (2026-11-17)
+
+- **Workspace › More › Export Markdown, v254 (web; Houfu's overnight list: "Phloem Workspace export").** Until now only
+  reading lists (Markdown/BibTeX) and a paper's annotated PDF could be exported; the Workspace had nothing. The new menu
+  item (desktop, iPad and phone, in the Workspace's own ⋯ menu) downloads `Workspace - <paper title>.md` (the iPad app
+  opens the share sheet instead): every quote card and note on the board in board order (rows top to bottom, left to
+  right within a row, 40-unit row tolerance), each quote with its paper (title, authors, year, venue, DOI link, else a
+  web link) and its page ("p. 4", or "paragraph 5" for a Reader view clip), then its note; note cards as notes.
+  **Handwriting is left out** and the file says so with a count (drawing it as an image was not cheap enough to be
+  worth it in Markdown). Clips that are only in Clips, not on the board, are left out. Year and DOI come from the paper
+  if it has them, else from a reading-list entry linked to it (the reading list stores DOIs lowercased; DOIs are
+  case-insensitive). Reads only: no stored data shape changed (`PhloemWorkspaceState.exportMarkdown` in
+  `reading-workspace.js`, `exportWorkspaceMarkdown` in `reading.js`).
+  Tests: new `reading-workspace-export` (pure checks plus desktop, iPad and phone windows, Chromium and WebKit, all
+  pass; checks order, citation, page, notes, the handwriting line, the status line, the menu staying on screen and that
+  saved data is unchanged); `reading-workspace-state` pins the new API name. All `*workspace*` suites,
+  `reading-app-update` and `reading-lists-browser` in both engines: the only failures are `reading-workspace-browser`
+  `reading-workspace-paper-color` and `reading-workspace-paper-edge`, in both engines, which fail the same way on live.
+  **App 1.2.11 (58) with v254: see the Log** (1.2.10 (57) is Ready for Sale).
+
+## Earlier (2026-11-06)
 
 - **App 1.2.10 (57) submitted, Waiting for Review (2026-11-06 00:43 EST, submission 3a591809; Houfu: "put that as the
   new App Store build and push"). Manual release: press Release after approval.** Build 57 replaces 56 on the same
@@ -955,6 +975,7 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-17 v254:** Workspace › More › Export Markdown (quotes with paper and page, notes, board order; handwriting left out).
 - **2026-11-06 1.2.10 (57):** replaces 56 in review, on the same version record, with reader v253; manual release. Real
   touches on an iPhone and an iPad simulator, before and after.
 - **2026-11-06 v253:** a double tap no longer zooms the library, the Lists label scrolls with the pills, and the app's

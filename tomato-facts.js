@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "BODY",
+            title: "Your stomach lining replaces itself every few days",
+            fact: "Stomach acid is strong enough to dissolve metal razor blades in lab tests; the stomach survives because its surface layer is replaced roughly every 4–5 days. It is a self-renovating reactor.",
+            detail: "The mucus layer plus rapid cell turnover is the whole trick. When that renewal slows — as with some painkillers or stress — ulcers follow."
+        },
+        {
             tag: "SYSTEMS",
             title: "Barcodes began as Morse code drawn in sand",
             fact: "The first barcode concept (1952) was literally Morse code extended downward into thick and thin bars. Norman Woodland drew it in the sand on a Florida beach, extending the dots and dashes he knew from Boy Scouts.",

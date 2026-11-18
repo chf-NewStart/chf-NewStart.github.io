@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "BODY",
+            title: "You are more microbe than you are you",
+            fact: "Human cells number ~30 trillion; the bacteria, fungi, and archaea that live with you number about the same again, carrying hundreds of times more genes than your genome. Digestion, mood, and immunity all negotiate with this committee.",
+            detail: "Roughly 2 kg of your body weight is microbial. Fecal transplants (a real, approved medical procedure for some infections) are literally reprogramming that committee."
+        },
+        {
+            tag: "BODY",
             title: "Your stomach lining replaces itself every few days",
             fact: "Stomach acid is strong enough to dissolve metal razor blades in lab tests; the stomach survives because its surface layer is replaced roughly every 4–5 days. It is a self-renovating reactor.",
             detail: "The mucus layer plus rapid cell turnover is the whole trick. When that renewal slows — as with some painkillers or stress — ulcers follow."

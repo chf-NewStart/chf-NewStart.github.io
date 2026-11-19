@@ -1,12 +1,6 @@
 [
   {
     "tag": "BODY",
-    "title": "Bones are stronger than concrete, lighter than aluminum",
-    "fact": "By weight, bone carries loads like steel-reinforced concrete but can heal itself and rebuild to match the stresses it meets — no engineered material does all three. Wolff's law: bone adapts to load.",
-    "detail": "Astronauts lose ~1% of bone density per month in microgravity because the skeleton only builds what loading demands. Use it or lose it is literal."
-  },
-  {
-    "tag": "BODY",
     "title": "The brain runs on about 20 watts",
     "fact": "Your entire brain — 86 billion neurons doing all thinking, seeing, and movement planning — draws roughly the power of a dim bulb. Any laptop doing comparable perception work needs orders of magnitude more.",
     "detail": "That efficiency gap is the core challenge for AI hardware: brains win by sending sparse, event-driven signals instead of clocking every circuit billions of times a second."

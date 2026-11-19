@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "BODY",
+            title: "Bones are stronger than concrete, lighter than aluminum",
+            fact: "By weight, bone carries loads like steel-reinforced concrete but can heal itself and rebuild to match the stresses it meets — no engineered material does all three. Wolff's law: bone adapts to load.",
+            detail: "Astronauts lose ~1% of bone density per month in microgravity because the skeleton only builds what loading demands. Use it or lose it is literal."
+        },
+        {
+            tag: "BODY",
             title: "You are more microbe than you are you",
             fact: "Human cells number ~30 trillion; the bacteria, fungi, and archaea that live with you number about the same again, carrying hundreds of times more genes than your genome. Digestion, mood, and immunity all negotiate with this committee.",
             detail: "Roughly 2 kg of your body weight is microbial. Fecal transplants (a real, approved medical procedure for some infections) are literally reprogramming that committee."

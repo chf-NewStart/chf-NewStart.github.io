@@ -1,12 +1,6 @@
 [
   {
     "tag": "BODY",
-    "title": "The brain runs on about 20 watts",
-    "fact": "Your entire brain — 86 billion neurons doing all thinking, seeing, and movement planning — draws roughly the power of a dim bulb. Any laptop doing comparable perception work needs orders of magnitude more.",
-    "detail": "That efficiency gap is the core challenge for AI hardware: brains win by sending sparse, event-driven signals instead of clocking every circuit billions of times a second."
-  },
-  {
-    "tag": "BODY",
     "title": "You forget on purpose",
     "fact": "Forgetting is an active process: the brain prunes synapses to keep useful patterns sharp. Sleep — especially deep sleep — is when much of the sorting happens, deciding what gets kept and what gets cleared.",
     "detail": "Sleep deprivation degrades memory not because recording fails, but because the filing never happens. Sleep is part of learning, not a break from it."

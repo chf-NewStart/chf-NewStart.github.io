@@ -16,6 +16,12 @@
     // new, verified, non-duplicate fact at the top of this array.
     const facts = [
         {
+            tag: "HISTORY",
+            title: "Ancient Romans had working central heating",
+            fact: "Roman hypocausts circulated hot air from wood fires under raised floors and inside walls — comfortable villas and bathhouses two millennia before the thermostat. Some systems ran continuously for decades.",
+            detail: "The same principle (move heat by moving air) returned to European buildings only in the 19th century. The bath at Bath, England, still uses water plumbed by the Romans."
+        },
+        {
             tag: "BODY",
             title: "A sneeze leaves your body at highway speed",
             fact: "Sneeze ejecta can exit at roughly 150–160 km/h, and the droplets travel far farther in a warm room than intuition suggests — ventilation dynamics, not just distance, decide who is exposed.",

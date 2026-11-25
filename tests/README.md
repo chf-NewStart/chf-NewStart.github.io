@@ -374,6 +374,19 @@ erasing and Undo still update the correct outlines and stacking order.
 IndexedDB without rewriting the main library, while repaired review anchors
 still save immediately and survive reopening.
 
+`reading-reader-place-reload.test.js` covers Reader view keeping its place over reloads and cold
+starts. Two generated 24-page papers are read in Reader view to 60% and 40%; the first has figures
+on its first four pages. Four reloads in a row bring the open paper back at 60% with its toast, the
+saved place stays exactly as it was and every reload lands where the first did (a place set before
+the figures have their pictures creeps a few lines per reload in Chromium), and neither paper's
+stored Reader text (`readerText`, `pageLines`, `pageParagraphs`, `readerV` in IndexedDB) is lost;
+the paper not opened since startup opens from the library at 40%. With the pdf.js request held back
+(a big file, Drive, iCloud) the cached text is already at 60% before the PDF loads, and leaving
+meanwhile keeps the place, the page and the library's page. Stored text marked as an older build is
+rebuilt and lands on the saved page, not the top. `putDerived`, taken from `reading.js` by name, is
+run against a real IndexedDB store: a save that holds only some fields keeps the rest, and term
+lookups merge and stay capped at 120. Run with `PHLOEM_BROWSER=webkit` too.
+
 `reading-workspace-restore-group-state.test.js` checks bulk lasso move/restore
 compatibility, timestamps, exact optional metadata, validation and input
 immutability. Its 1,000-stroke fixtures bound point-copy work rather than relying

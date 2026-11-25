@@ -1801,9 +1801,18 @@
     }catch(e){return false;}
   }
   function derivedData(ch){var record={},has=false;DERIVED_FIELDS.forEach(function(field){if(Object.prototype.hasOwnProperty.call(ch,field)){record[field]=ch[field];has=true;}});return has?record:null;}
+  /* A paper's in-memory copy may hold only some of its derived fields (startup holds only
+     the empty termLookups normalize gives every paper): a save must not drop the rest. */
+  function hasDerivedContent(ch){return DERIVED_FIELDS.some(function(field){var value=ch&&ch[field];if(value===undefined||value===null)return false;return field!=='termLookups'||(typeof value==='object'&&Object.keys(value).length>0);});}
+  function mergeStoredDerived(saved,record){
+    if(!saved||typeof saved!=='object'||Array.isArray(saved)||saved instanceof ArrayBuffer)return record;
+    var out=Object.assign({},saved);Object.keys(record).forEach(function(field){if(record[field]!==undefined&&record[field]!==null)out[field]=record[field];});
+    if(saved.termLookups&&typeof saved.termLookups==='object'){var lookups=Object.assign({},saved.termLookups,record.termLookups||{}),keys=Object.keys(lookups);if(keys.length>120)keys.sort(function(a,b){return(lookups[b]&&lookups[b].cachedAt||0)-(lookups[a]&&lookups[a].cachedAt||0);}).slice(120).forEach(function(key){delete lookups[key];});out.termLookups=lookups;}
+    return out;
+  }
   async function putDerived(ch){
-    if(!ch||ch.kind!=='pdf')return false;var record=derivedData(ch);if(!record)return false;memoryDerived[ch.id]=record;
-    try{var d=await db();await new Promise(function(res,rej){var r=d.transaction('derived','readwrite').objectStore('derived').put(record,ch.id);r.onsuccess=res;r.onerror=function(){rej(r.error);};});delete memoryDerived[ch.id];return true;}catch(e){return false;}
+    if(!ch||ch.kind!=='pdf')return false;var record=derivedData(ch);if(!record)return false;memoryDerived[ch.id]=mergeStoredDerived(memoryDerived[ch.id],record);
+    try{var d=await db();await new Promise(function(res,rej){var store=d.transaction('derived','readwrite').objectStore('derived'),read=store.get(ch.id);read.onerror=function(){rej(read.error);};read.onsuccess=function(){try{var r=store.put(mergeStoredDerived(read.result,record),ch.id);r.onsuccess=res;r.onerror=function(){rej(r.error);};}catch(e){rej(e);}};});delete memoryDerived[ch.id];return true;}catch(e){return false;}
   }
   async function putFigure(key,buf){
     try{var d=await db();await new Promise(function(res,rej){var r=d.transaction('derived','readwrite').objectStore('derived').put(buf,key);r.onsuccess=res;r.onerror=function(){rej(r.error);};});return true;}catch(e){return false;}
@@ -5618,7 +5627,10 @@
         if(announce)showReaderToast('Picked up on page '+page);
       }else if((ch.readerScroll>0.01||ch.readerPlace)&&span>4){
         // A saved place counts however near the top: the pane still holds PDF view's scroll.
-        pane.scrollTop=(+ch.readerScroll||0)*span;
+        /* A rebuild of Reader view drops readerScroll (the text changed length) but keeps the
+           page: land on that page, not at the top. */
+        var placePage=typeof ch.readerScroll!=='number'&&ch.readerPlace?+ch.readerPlace.page||0:0;
+        if(!(placePage>1&&scrollReaderToPage(placePage)))pane.scrollTop=(+ch.readerScroll||0)*span;
         if(ch.readerPlace)holdReaderPage(ch,ch.readerPlace.page,paraSections()[readerParaAtLine()]);
         if(announce&&ch.readerScroll>0.01)showReaderToast('Picked up where you stopped');
       }
@@ -6634,6 +6646,13 @@
     readerMode=ch.kind==='pdf'&&!prefersReaderView(ch.id)?'pdf':'text';byId('pdfFrame').dataset.positionReady=ch.kind==='pdf'?'false':'true'; applyComfort(); updateReaderMode(); showPage('readerPage');
     /* showPage establishes the quiet geometry before PDF fitting/position restore. */
     if((ch.reviewComments||[]).length){if(innerWidth>720&&!zenOn)setNotebookCollapsed(false,false);switchTab('reviewsPanel');}else switchTab('notesPanel');
+    /* Cached Reader text is on screen now: pick up the place before the PDF has loaded (a big
+       file, Drive or iCloud), so leaving meanwhile keeps it, and later scrolling is not undone.
+       The figures are given their pictures first: that changes the length of the text, and a
+       place set before it would be saved again a little off, reload after reload. */
+    var placed=false,placeEarly=ch.kind==='pdf'&&readerMode==='text'&&!!(ch.readerText&&ch.pageLines&&ch.pageParagraphs&&ch.readerV===READER_V);
+    function placeReader(){if(placed)return;placed=true;restoreReaderPosition(ch,true);}
+    if(placeEarly)figureImagesAssigned.then(function(){if(placeEarly&&openEpoch===pdfOpenEpoch&&currentId===id)placeReader();});
     if(ch.kind==='pdf'){
       try{
         var openedDoc=preparedDoc||null;
@@ -6646,7 +6665,7 @@
              token quietly — no need to visit settings first on a fresh device. */
           if(!stored&&gdriveOn())stored=await gdriveFetchPdf(ch.id,true,showPdfDownloading(ch));
           if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;
-          if(!stored){showMissingPdf(ch);restoreReaderPosition(ch,true);loadPageNote();updateProgress();return;}
+          if(!stored){showMissingPdf(ch);placeReader();loadPageNote();updateProgress();return;}
           var storedBytes=await pdfBytes(stored);
           if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;
           var verifiedFoldHash=await pdfFingerprint(storedBytes).catch(function(){return '';});
@@ -6675,7 +6694,7 @@
             showReaderToast(titleChanged&&authorsChanged?'Title and authors read from the paper':(authorsChanged?'Authors read from the paper':'Title read from the paper'));
           });
         }
-        if(readerMode==='text'&&(!ch.readerText||ch.readerV!==READER_V)){await ensureReaderData(pdfDoc,ch);if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;updateReaderMode();}
+        if(readerMode==='text'&&(!ch.readerText||ch.readerV!==READER_V)){placeEarly=false;await ensureReaderData(pdfDoc,ch);placed=false;if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;updateReaderMode();}
         else if(readerMode==='pdf'){
           await renderPdfPage();if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;
           var restored=ch.pdfPosition&&!newerReaderPage(ch)?await placePdfReadingPosition(ch.pdfPosition,true,true):false;
@@ -6686,7 +6705,7 @@
       }catch(e){if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;showPdfProblem(ch,e);}
     } else renderText(ch);
     if(openEpoch!==pdfOpenEpoch||currentId!==id)return false;
-    restoreReaderPosition(ch,true); loadPageNote(); updateProgress();byId('pdfFrame').dataset.positionReady='true';
+    placeReader(); loadPageNote(); updateProgress();byId('pdfFrame').dataset.positionReady='true';
     return true;
   }
   function showPdfProblem(ch,error){
@@ -8276,17 +8295,21 @@
     if(expected&&paras(pages.filter(Boolean).join('\n\n')).length!==paras(expected).length)starts=null;
     pageStartCache={id:ch.id,starts:starts};return starts;
   }
-  var readerMetaCache={id:null,v:null,meta:[]},figureUrls={};
+  /* figureImagesAssigned settles when the figures of the Reader text drawn last have been given
+     their pictures (or are hidden for want of one): the text has its first steady length then. */
+  var readerMetaCache={id:null,v:null,meta:[]},figureUrls={},figureImagesAssigned=Promise.resolve();
   function loadFigureImages(){
+    var waits=[];
     byId('textDocument').querySelectorAll('img[data-fig]').forEach(function(img){
       var key='fig:'+img.dataset.fig;
       if(figureUrls[key]){img.src=figureUrls[key];return;}
-      getFigure(key).then(function(buf){
+      waits.push(getFigure(key).then(function(buf){
         if(!buf)return void (img.closest('figure')&&img.closest('figure').classList.add('hidden'));
         var url=URL.createObjectURL(new Blob([buf],{type:'image/jpeg'}));
         figureUrls[key]=url;img.src=url;
-      });
+      }));
     });
+    figureImagesAssigned=Promise.all(waits).then(function(){},function(){});
   }
   /* Figures in Reader view are one column wide, so their labels are often too small to
      read on a phone. A tap opens the figure on its own: pinch, double-tap or scroll to
@@ -13389,6 +13412,6 @@
   renderSharedAiPass();syncUi();renderShelf();updateReviewBadge();if(gdriveOn()){if(!window.PHLOEM_NATIVE)loadGis().catch(function(){});startupLibraryWork.push(startupDuplicateRepair.then(function(){return gdriveSync();}));}if(webCloudReturnToken)startupLibraryWork.push(startupDuplicateRepair.then(function(){return webCloudFinishSignIn();}));else if(iCloudOn())startupLibraryWork.push(startupDuplicateRepair.then(function(){return iCloudSync(false); }));
   Promise.allSettled(startupLibraryWork).then(function(){libraryHydrating=false;renderShelf();updateReviewBadge();});
   /* A refresh drops you back into the paper you were reading, not the library. */
-  startupStateRecovery.then(function(){try{var lastOpen=resolvedPaperId(localStorage.getItem(LAST_OPEN_KEY));if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}});startupStateRecovery.then(function(){return Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&derivedData(ch);}).map(putDerived));}).then(function(){return startupDuplicateRepair;}).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
+  startupStateRecovery.then(function(){try{var lastOpen=resolvedPaperId(localStorage.getItem(LAST_OPEN_KEY));if(lastOpen&&find(lastOpen))openReader(lastOpen);}catch(e){}});startupStateRecovery.then(function(){return Promise.all(state.chapters.filter(function(ch){return ch.kind==='pdf'&&hasDerivedContent(ch);}).map(putDerived));}).then(function(){return startupDuplicateRepair;}).then(function(){persist(false);if(syncCfg)doSync();},function(){persist(false);if(syncCfg)doSync();});
   if(location.protocol==='file:') byId('launchDialog').showModal();
 })();

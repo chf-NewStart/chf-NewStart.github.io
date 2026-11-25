@@ -333,8 +333,12 @@ async function stickyAppearance(page, card) {
     const tape = getComputedStyle(node, '::after');
     const quote = getComputedStyle(node.querySelector('.workspace-quote'));
     const library = document.querySelector('.book-spine.paper-sticky-note');
+    // The library card of the open paper wears the selection ring (its own border and shadow):
+    // compare with the card as it looks unselected.
+    const wasSelected = !!library && library.classList.contains('is-selected');
+    if (wasSelected) library.classList.remove('is-selected');
     const libraryStyle = library ? getComputedStyle(library) : null;
-    return {
+    const appearance = {
       paper: style.getPropertyValue('--note-paper').trim(),
       ink: style.getPropertyValue('--note-ink').trim(),
       tapeTilt: style.getPropertyValue('--tape-tilt').trim(),
@@ -349,6 +353,8 @@ async function stickyAppearance(page, card) {
       library: libraryStyle ? { backgroundImage: libraryStyle.backgroundImage,
         borderRadius: libraryStyle.borderRadius, boxShadow: libraryStyle.boxShadow } : null
     };
+    if (wasSelected) library.classList.add('is-selected');
+    return appearance;
   });
 }
 async function sourceCueVisual(page, cue) {

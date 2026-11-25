@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "HISTORY",
+            title: "Bananas are all clones — one disease away from disaster",
+            fact: "Nearly every banana in a supermarket is the same Cavendish cultivar, propagated by cuttings. A single fungal race (Panama disease TR4) is sweeping plantations because the whole crop shares one immune system.",
+            detail: "The previous commercial banana, the Gros Michel, was wiped out commercially by the same disease in the 1950s. History is repeating; breeders are hedging with new cultivars."
+        },
+        {
+            tag: "HISTORY",
             title: "The Library of Alexandria had a food court",
             fact: "The Mouseion at Alexandria was less a 'library with shelves' than a funded research campus: scholars dined together, studied anatomy, mapped stars, and edited texts — an ancient research institute with stipends.",
             detail: "It declined over centuries of budget cuts and shifting politics, not one dramatic fire. Research funding, it turns out, is older than we think — and its politics too."

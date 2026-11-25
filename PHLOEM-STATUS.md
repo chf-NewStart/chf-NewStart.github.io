@@ -4,7 +4,32 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-11-17)
+## Now (2026-11-25)
+
+- **Reader view keeps its place over reloads and cold starts, v256 (web). On branch `claude/phloem-reader-place`, NOT
+  deployed: `main`, the live site and every app build are still v254.** It was the first open question below; a
+  portfolio review raised it again. One change in `reading.js`, three causes:
+  (1) Every start saved each PDF's derived data over its whole IndexedDB record while memory held only an empty
+  `termLookups`. That wiped the stored Reader text of every paper, so the open paper rebuilt on alternate starts and
+  dropped its saved place. `putDerived` now reads the stored record and merges into it in one transaction (duplicate
+  and sync merges go through it too), and startup skips papers with nothing to save.
+  (2) The place was restored only after the PDF had loaded. Cached Reader text is now put at its place as soon as it is
+  on screen and its figures have been given their pictures, so a slow Drive or iCloud download no longer sits at the
+  top, and leaving meanwhile keeps the place, the page and the library's page.
+  (3) After a rebuild, which drops the saved fraction, Reader view lands on the saved page, not the top. Papers already
+  wiped on a device rebuild once on their next open and land that way.
+  Tests: new `reading-reader-place-reload` (34 checks, 20 fail on v254) passes in Chromium and WebKit. Around it, 32
+  suites in Chromium and 12 in WebKit pass, `apps/ipad` 22/22. Not checked on a real iPad or in the app's web view.
+  Known limit, old: the place is a fraction of the text's length, and figures get their height only when their
+  pictures load, which happens near the screen. A paper with figures above the place can come back some lines off: with
+  four figures on the first four pages, saved at 60% after reading down from the top, 464 px in Chromium and 424 px in
+  WebKit (v254's working reloads: exact in Chromium, 318 px in WebKit). It lands on the same line reload after reload.
+  Giving each figure its box before its picture loads would fix it.
+  **To ship:** merge to `main`, which deploys. Codex's uncommitted v255 (`phloem-workspace-export`) stamps the same
+  files: `reading.js` merges cleanly; in `reading.html`, `reading-sw.js` and this file keep the higher number and v255's
+  `reading-workspace-pdf.js` lines.
+
+## Earlier (2026-11-17)
 
 - **Workspace › More › Export Markdown, v254 (web; Houfu's overnight list: "Phloem Workspace export").** Until now only
   reading lists (Markdown/BibTeX) and a paper's annotated PDF could be exported; the Workspace had nothing. The new menu
@@ -924,7 +949,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Open questions for Houfu
 
-- **Reader view restores its place only after the PDF has loaded**, so leaving a paper in that window saves page 1
+- **Fixed in v256 on branch `claude/phloem-reader-place` (2026-11-25), not deployed yet; see Now.** Was:
+  **Reader view restores its place only after the PDF has loaded**, so leaving a paper in that window saves page 1
   and fraction 0, and on a Drive or iCloud download the reader sits at the top meanwhile. Each app start also overwrites
   a PDF's stored reader data with only `termLookups` (`putDerived` in the startup `Promise.all`), so Reader view
   rebuilds and loses its place on alternate reloads and cold starts. Both are old and are next in line, as one change.
@@ -977,6 +1003,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-25 v256 (branch `claude/phloem-reader-place`, not deployed):** Reader view keeps its place over reloads,
+  cold starts and slow PDF loads; a start no longer wipes the stored Reader text (see Now).
 - **2026-11-17 1.2.11 (58):** v254 on TestFlight, not submitted.
 - **2026-11-17 v254:** Workspace › More › Export Markdown (quotes with paper and page, notes, board order; handwriting left out).
 - **2026-11-06 1.2.10 (57):** replaces 56 in review, on the same version record, with reader v253; manual release. Real

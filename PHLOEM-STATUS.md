@@ -29,6 +29,19 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   files: `reading.js` merges cleanly; in `reading.html`, `reading-sw.js` and this file keep the higher number and v255's
   `reading-workspace-pdf.js` lines.
 
+- **Four stale browser suites repaired, tests only (same branch).** `reading-workspace-paper-color`,
+  `reading-split-undo-browser` and `reading-pdf-ink` still listed the Zen dock without Listen and Night, which have been
+  in it since about v221 and v236. `reading-workspace-browser` compared a Workspace card with the library card of the
+  open paper, which wears the selection ring; it now compares with that card unselected. All four pass in Chromium and
+  WebKit (`reading-pdf-ink` 72/72).
+  **`reading-workspace-paper-edge` still fails in both engines, and is left that way: it catches a real layout bug.**
+  It stops at 1024×420 at the minimum split. Beside Workspace in a short window the Zen rail folds into more columns
+  (`reading.css`, at max-height 544 and 325) and with today's 10 or 11 buttons is about 140 px wide, but
+  `reading-workspace.css` reserves a 114 px gutter for it (max-height 440; 162 px at 325), so the dock covers the ends
+  of lines. Widening the gutter alone makes page mode worse: its fit takes the gutter off both sides and the page
+  shrinks to almost nothing. Needs Houfu's layout decision (page mode centred beside the rail, or a shorter dock
+  beside Workspace). Widths are from the 2026-11-25 read-only check, not measured again here.
+
 ## Earlier (2026-11-17)
 
 - **Workspace › More › Export Markdown, v254 (web; Houfu's overnight list: "Phloem Workspace export").** Until now only
@@ -1003,6 +1016,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-25 tests (branch `claude/phloem-reader-place`):** four stale suites repaired (Zen dock lists, the selected
+  library card); `reading-workspace-paper-edge` left failing, a real short-window layout bug (see Now).
 - **2026-11-25 v256 (branch `claude/phloem-reader-place`, not deployed):** Reader view keeps its place over reloads,
   cold starts and slow PDF loads; a start no longer wipes the stored Reader text (see Now).
 - **2026-11-17 1.2.11 (58):** v254 on TestFlight, not submitted.

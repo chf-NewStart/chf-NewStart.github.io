@@ -14,7 +14,10 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   `apps/ipad/tests/bundle.test.mjs`). It exports the arranged whiteboard (quote cards, sticky notes, Unicode text,
   pressure-sensitive handwriting beyond the visible viewport): in the iPad app as vector WebKit PDF pages through the
   share sheet, each file named with its local date/time and an 8-character export ID; in a browser through a print
-  window with Save as PDF. **iPad 1.2.11 (61) bundles v258**; TestFlight's last upload is still 58 (v254).
+  window with Save as PDF. **iPad 1.2.11 (61) with v258 uploaded 2026-11-26 with the API key, VALID, on TestFlight
+  for Internal Testers and friends2 with a What to Test note. Not submitted for review** (needs Houfu's own words;
+  review notes untouched). 1.2.10 (57) is Ready for Sale; no version record for 1.2.11 exists. Archive and derived
+  data were deleted after upload.
   Applying v255 onto v257 conflicted only in the stamps of `reading.html` and `reading-sw.js` (v255's lines kept, the
   number raised) and in this file (both sections kept); `reading.js` and the rest applied cleanly.
   Tests on branch `claude/phloem-v258`: `reading-workspace-pdf`, `reading-pdf-find-place`, `reading-find-close`,
@@ -82,8 +85,8 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   fails in WebKit on 156aa71 too, at its text-layer selection), `apps/ipad` 22/22.
   Not checked on a real iPad or in the app's web view.
   **Shipped:** pushed to `main` on 2026-11-26 together with v256, replayed unchanged onto that day's fun-fact commit
-  (the reviewed branch heads are `156aa71` and `05e3cb9`). The iPad app gets it in its next build (`npm run ios:sync`
-  in `apps/ipad`, then archive). Codex's v255 (Workspace › Export PDF) landed next as v258 (see above), with the
+  (the reviewed branch heads are `156aa71` and `05e3cb9`). The iPad app has it from 1.2.11 (61), on TestFlight
+  (see above). Codex's v255 (Workspace › Export PDF) landed next as v258 (see above), with the
   same stamp conflicts as v256's: the higher number kept, with v255's `reading-workspace-pdf.js` lines.
 
 ## Earlier (2026-11-25)
@@ -1133,6 +1136,7 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-26 1.2.11 (61):** v258 on TestFlight, not submitted.
 - **2026-11-26 v258 Find keys:** Cmd/Ctrl+F opens Phloem's Find (a second press in its field is the browser's), and
   Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step through it, from the Workspace beside the paper too; Ctrl+F on a Mac is not
   taken. Escape in the Workspace closes Find (see Now).

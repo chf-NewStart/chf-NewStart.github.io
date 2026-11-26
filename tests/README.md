@@ -379,21 +379,33 @@ starts. Two generated 24-page papers are read in Reader view to 60% and 40%; the
 on its first four pages. Four reloads in a row bring the open paper back at 60% with its toast, the
 saved place stays exactly as it was, and neither paper's stored Reader text (`readerText`,
 `pageLines`, `pageParagraphs`, `readerV` in IndexedDB) is lost; the paper not opened since startup
-opens from the library at 40%. Where each reload lands is checked only as far as it holds: the
-place is a fraction of the text's length, and the pictures at the top of the paper may or may not
-have loaded when the place is set, so two landings may differ by that fraction of those pictures'
-heights (measured from the stored pictures) and no more. A third paper has a figure on every page,
-so pictures load right at the place after it is restored and the text grows while the reader has
-not moved. Over four reloads its saved place must stay exactly as it was: measured again after the
-text has grown, it slipped back with every start. Two more places in that paper (44.8% and 53.2%)
-are read to and reloaded once each: there, in Chromium, a figure on screen above the reading line
-and figures above the screen load together, so the scroll position and the paragraph at the reading
-line both move without the reader, and the saved place must still not change. With the pdf.js request held back
-(a big file, Drive, iCloud) the cached text is already at 60% before the PDF loads, and leaving
-meanwhile keeps the place, the page and the library's page. Stored text marked as an older build is
-rebuilt and lands on the saved page, not the top. `putDerived`, taken from `reading.js` by name, is
-run against a real IndexedDB store: a save that holds only some fields keeps the rest, and term
-lookups merge and stay capped at 120. Run with `PHLOEM_BROWSER=webkit` too.
+opens from the library at 40%. Where each reload lands is checked only as far as the app can hold
+it: the place is a fraction of the text's length, and a figure's picture may or may not have loaded
+when the place is set. The test watches each start at the moment the place is set (the toast goes
+up in that frame) and notes which figures had their pictures loaded then and later. Its allowance
+between two landings is the larger of the saved fraction and the rest of it, times the heights
+(measured from the stored pictures) of the figures that had their picture, or had been given one,
+at one start and not at the other, plus 4 px: that is the test's allowance, not a promise about the
+app, which can land a few paragraphs off on papers with figures throughout (PHLOEM-STATUS.md, known
+limit). A third paper has a figure on every page, so pictures load right at the place after it is
+restored and the text grows while the reader has not moved. Over four reloads its saved place must
+stay exactly as it was: measured again after the text has grown, it slipped back with every start.
+Two more places in that paper (44.8% and 53.2%) are read to and reloaded once each, and the saved
+place must not change. They were picked as places where, in Chromium, a figure on screen above the
+reading line and figures above the screen load together, but whether they do depends on load
+timing, so they catch a careless hold only some of the time. The hold itself (`readerHoldMarks`,
+`holdReaderPage`, `readerPageHeld`, taken from `reading.js` by name) is checked on a page the test
+builds: a figure above the screen and one on screen get their height in the same frame, with the
+scroll position following the first (as Chromium's scroll anchoring makes it) and without; the hold
+must stay, and it must let go once the reader scrolls a few lines. With the pdf.js request held
+back (a big file, Drive, iCloud) the cached text is already at 60% before the PDF loads, and
+leaving meanwhile keeps the place, the page and the library's page. On that start the figures'
+pictures are slow to come out of IndexedDB as well (the test holds back each read's success event
+for 400 ms): the place must be set only once every figure has been given its picture, where the
+first reload set it, not in the shorter text of the first frame. Stored text marked as an older
+build is rebuilt and lands on the saved page, not the top. `putDerived`, taken from `reading.js` by
+name, is run against a real IndexedDB store: a save that holds only some fields keeps the rest, and
+term lookups merge and stay capped at 120. Run with `PHLOEM_BROWSER=webkit` too.
 
 `reading-workspace-restore-group-state.test.js` checks bulk lasso move/restore
 compatibility, timestamps, exact optional metadata, validation and input

@@ -156,6 +156,51 @@ async function settledRecord(page, name) {
   }
   return last;
 }
+/* Each start that picks up the place is watched at the moment it does: the toast saying so goes up
+   in the same frame as the pane is put at the place, and a mutation observer runs before anything
+   else can load. It notes which figures had their pictures loaded and which had been given one.
+   Only watched: nothing of the page is changed. */
+function watchLandings() {
+  window.__readerLandings = [];
+  document.addEventListener('DOMContentLoaded', () => {
+    const toast = document.getElementById('readerToast');
+    if (!toast) return;
+    new MutationObserver(() => {
+      if (toast.textContent !== 'Picked up where you stopped') return;
+      const pane = document.getElementById('documentPane'), figures = [...document.querySelectorAll('#textDocument img[data-fig]')];
+      window.__readerLandings.push({ top: Math.round(pane.scrollTop), loaded: figures.map(img => img.complete && img.naturalHeight > 0),
+        given: figures.map(img => !!img.getAttribute('src') || !!img.closest('figure.hidden')) });
+    }).observe(toast, { childList: true, characterData: true, subtree: true });
+  });
+}
+/* While the tab's sessionStorage says so, each figure's picture takes that long to come out of
+   IndexedDB, as on a slow device: the success event of a read of a figure is held back and sent
+   again later. Nothing else of the page is changed. */
+function slowFigureReads() {
+  const delay = +(sessionStorage.getItem('test.slowFigureReads') || 0);
+  if (!delay) return;
+  const get = IDBObjectStore.prototype.get;
+  IDBObjectStore.prototype.get = function (key) {
+    const request = get.apply(this, arguments);
+    if (typeof key === 'string' && key.startsWith('fig:')) request.addEventListener('success', event => {
+      if (event.late) return;
+      event.stopImmediatePropagation();
+      setTimeout(() => { const late = new Event('success'); late.late = true; request.dispatchEvent(late); }, delay);
+    });
+    return request;
+  };
+}
+const landingRecord = page => page.evaluate(() => (window.__readerLandings || [])[0] || null);
+const loadedNow = page => page.evaluate(() => [...document.querySelectorAll('#textDocument img[data-fig]')].map(img => img.complete && img.naturalHeight > 0));
+/* Two starts at the same saved fraction land apart only by the figures that had their picture (or
+   had been given one) at one and not at the other, when the place was set or afterwards. A figure's
+   picture adds its height to the text: to the part above the place by the saved fraction of it, or,
+   where Chromium keeps the screen still for a picture loading above it, by all of it less that. So
+   the allowance is the larger share of the heights of those figures, and 4 px. */
+function landingAllowance(fraction, heights, first, now) {
+  const differs = heights.filter((_, i) => first.given[i] !== now.given[i] || first.atPlace[i] !== now.atPlace[i] || first.after[i] !== now.after[i]);
+  return Math.ceil(Math.max(fraction, 1 - fraction) * differs.reduce((sum, height) => sum + height, 0)) + 4;
+}
 const near = (value, target) => typeof value === 'number' && Math.abs(value - target) <= 0.02;
 const readerTextShown = () => !document.getElementById('textDocument').classList.contains('hidden') && document.querySelectorAll('#textDocument .para').length > 20;
 const waitText = page => page.waitForFunction(readerTextShown, null, { timeout: 60000 });
@@ -234,6 +279,53 @@ async function checkMergingSave(page) {
   check('empty term lookups alone are not Reader data worth a startup save', JSON.stringify(out.content) === JSON.stringify([false, false, true, true, true, false]), out.content);
 }
 
+/* readerHoldMarks, holdReaderPage and readerPageHeld, taken from reading.js by name, against a page
+   built here, so the case does not depend on when real pictures load: paragraphs in a scrolling
+   pane, a figure above the screen and one on screen above the reading line. Both get their height
+   in the same frame, as pictures loading together do. In the first case the scroll position follows
+   the figure above the screen, as Chromium's scroll anchoring makes it; in the second it stays, as
+   in WebKit. Either way the reader has not moved and the hold must stay. Then the reader scrolls a
+   few lines and the hold must let go. */
+async function checkHoldMarks(page) {
+  const parts = ['readerHoldMarks', 'holdReaderPage', 'readerPageHeld'].map(extractFunction);
+  if (parts.some(part => !part)) { check('reading.js has readerHoldMarks, holdReaderPage and readerPageHeld', false); return; }
+  const result = await page.evaluate(parts => {
+    const api = new Function('var heldReaderPage=null;function byId(id){return document.getElementById(id);}' + parts.join('\n')
+      + '\nreturn {hold:holdReaderPage,held:readerPageHeld};')();
+    const ch = { id: 'paper' };
+    const run = followAbove => {
+      document.body.innerHTML = '';
+      const pane = document.createElement('div');
+      pane.id = 'documentPane';
+      pane.style.cssText = 'position:fixed;left:0;top:0;width:600px;height:500px;overflow:auto;overflow-anchor:none';
+      const figures = [];
+      for (let i = 0; i < 60; i++) {
+        const para = document.createElement('section'), text = document.createElement('div');
+        para.className = 'para';
+        if (i === 10 || i === 22) { const figure = document.createElement('figure'); figure.style.cssText = 'margin:0;height:0'; para.appendChild(figure); figures.push(figure); }
+        text.className = 'original'; text.style.height = '60px'; text.textContent = 'Paragraph ' + i;
+        para.appendChild(text); pane.appendChild(para);
+      }
+      document.body.appendChild(pane);
+      // Paragraph 20 is at the top of the pane, 22 (with a figure) on screen, 25 at the reading line.
+      pane.scrollTop = 20 * 60;
+      api.hold(ch, 7, pane.children[25], 0.5);
+      figures[0].style.height = '300px'; figures[1].style.height = '250px';
+      if (followAbove) pane.scrollTop += 300;
+      const whileLoading = api.held(ch);
+      pane.scrollTop += 30;
+      return { whileLoading, afterScrolling: api.held(ch), againAfter: api.held(ch) };
+    };
+    const out = { chromium: run(true), webkit: run(false) };
+    document.body.innerHTML = '';
+    return out;
+  }, parts);
+  check('the page hold stays while a figure above the screen and one on screen get their pictures together',
+    result.chromium.whileLoading === 7 && result.webkit.whileLoading === 7, result);
+  check('the page hold lets go once the reader scrolls a few lines',
+    result.chromium.afterScrolling === 0 && result.chromium.againAfter === 0 && result.webkit.afterScrolling === 0 && result.webkit.againAfter === 0, result);
+}
+
 (async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = 'http://127.0.0.1:' + server.address().port;
@@ -244,6 +336,8 @@ async function checkMergingSave(page) {
   try {
     browser = await playwright[ENGINE].launch(launch);
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+    await context.addInitScript(watchLandings);
+    await context.addInitScript(slowFigureReads);
     const page = await context.newPage();
     page.setDefaultTimeout(30000);
     const errors = [];
@@ -264,9 +358,9 @@ async function checkMergingSave(page) {
     const readerV = (await derivedRecord(page, a.id) || {}).readerV;
     /* The place is a fraction of the text's length, and the pictures at the top of the paper,
        on screen when it opens, may or may not have loaded when the place is set: each one that
-       has makes the text above the place longer. So two landings can differ by that fraction of
-       the pictures' heights, and by no more. */
-    const heightsA = await figureHeights(page), slackA = Math.ceil(a.readerScroll * heightsA.reduce((sum, height) => sum + height, 0)) + 4;
+       has makes the text above the place longer. So two landings are compared allowing only for
+       the pictures loaded at one and not at the other (landingAllowance). */
+    const heightsA = await figureHeights(page);
     check('setup: the figures of the open paper can be measured', heightsA.length === 4 && heightsA.every(height => height > 40), heightsA);
 
     // (i) Reload after reload, the open paper comes back at its place and no paper's Reader text is lost.
@@ -276,14 +370,20 @@ async function checkMergingSave(page) {
       await waitOpened(page);
       await page.waitForTimeout(1500); // startup's storage work and any late restore have had their turn
       const pane = await paneState(page), saved = await paperRecord(page, 'a-paper.pdf');
+      const landing = await landingRecord(page), figuresNow = { given: landing ? landing.given : [], atPlace: landing ? landing.loaded : [], after: await loadedNow(page) };
       const derivedA = await derivedRecord(page, a.id), derivedB = await derivedRecord(page, b.id);
       check('reload ' + round + ': Reader view is back at 60% and says so', pane.readerView && near(pane.fraction, 0.6) && pane.toast === PICKED_UP, pane);
       // Exactly unchanged: a place set before the figures have their pictures is saved again a
       // little off, and the paper creeps a few lines with every reload.
       check('reload ' + round + ': the saved place is unchanged', Math.abs(saved.readerScroll - a.readerScroll) <= 0.0004 && saved.readerPlace && saved.readerPlace.page === a.readerPlace.page
         && saved.readerPlace.at === a.readerPlace.at, { readerScroll: saved.readerScroll, was: a.readerScroll, readerPlace: saved.readerPlace });
-      if (!firstLanding) firstLanding = pane;
-      else check('reload ' + round + ': Reader view lands where the first reload did, give or take the pictures at the top', Math.abs(pane.top - firstLanding.top) <= slackA, { top: pane.top, first: firstLanding.top, slack: slackA });
+      if (!firstLanding) firstLanding = { top: pane.top, placedAt: landing && landing.top, figures: figuresNow };
+      else {
+        const allowance = landingAllowance(a.readerScroll, heightsA, firstLanding.figures, figuresNow);
+        check('reload ' + round + ': Reader view lands where the first reload did, give or take the pictures loaded at one and not the other', !!landing && Math.abs(pane.top - firstLanding.top) <= allowance,
+          { top: pane.top, first: firstLanding.top, allowance, figures: figuresNow, firstFigures: firstLanding.figures });
+        console.log('     landed ' + pane.top + ', first ' + firstLanding.top + ', allowance ' + allowance);
+      }
       check('reload ' + round + ': both papers keep their stored Reader text', hasReaderText(derivedA) && hasReaderText(derivedB), { a: derivedA && derivedA.fields, b: derivedB && derivedB.fields });
     }
 
@@ -291,12 +391,20 @@ async function checkMergingSave(page) {
     let releasePdfEngine, held = 0;
     const gate = new Promise(resolve => { releasePdfEngine = resolve; });
     await page.route('**/vendor/pdfjs/pdf.min.js', async route => { held++; await gate; await route.continue().catch(() => {}); });
+    // The figures' pictures are slow to come out of storage as well, so they arrive well after the
+    // cached text is drawn: the place must wait for them, or it is set in a shorter text.
+    await page.evaluate(() => sessionStorage.setItem('test.slowFigureReads', '400'));
     await page.reload({ waitUntil: 'load' });
     await waitText(page);
     const placedEarly = await reachesFraction(page, 0.6, 8000);
-    const waiting = await paneState(page);
+    const waiting = await paneState(page), early = await landingRecord(page);
+    await page.evaluate(() => sessionStorage.removeItem('test.slowFigureReads'));
     check('slow PDF: the test really held the PDF engine back', held > 0 && waiting.positionReady === 'false', { held, positionReady: waiting.positionReady });
     check('slow PDF: Reader view is at 60% before the PDF has loaded', placedEarly && waiting.toast === PICKED_UP, waiting);
+    check('slow PDF and slow pictures: the place is set only once the figures have been given their pictures, where the first reload set it',
+      !!early && early.given.length === 4 && early.given.every(Boolean) && Math.abs(early.top - firstLanding.placedAt) <= landingAllowance(a.readerScroll, heightsA,
+        { given: firstLanding.figures.given, atPlace: firstLanding.figures.atPlace, after: [] }, { given: early.given, atPlace: early.loaded, after: [] }),
+      { early, firstPlacedAt: firstLanding.placedAt, firstFigures: firstLanding.figures });
     await toLibrary(page);
     await page.waitForTimeout(400);
     const left = await paperRecord(page, 'a-paper.pdf');
@@ -348,7 +456,7 @@ async function checkMergingSave(page) {
     await toLibrary(page);
     await addPaper(page, 'c-paper.pdf', 'Charlie', 0.6, 24);
     await figuresNearPlaceLoaded(page);
-    const heightsC = await figureHeights(page), c = await settledRecord(page, 'c-paper.pdf'), slackC = Math.ceil(c.readerScroll * heightsC.slice(0, 4).reduce((sum, height) => sum + height, 0)) + 4;
+    const heightsC = await figureHeights(page), c = await settledRecord(page, 'c-paper.pdf');
     check('figures at the place: the paper has a figure on every page and a saved place', heightsC.length === 24 && heightsC.every(height => height > 40) && near(c.readerScroll, 0.6) && !!c.readerPlace, { figures: heightsC.length, readerScroll: c.readerScroll, readerPlace: c.readerPlace });
     let firstLandingC = null;
     for (let round = 1; round <= 4; round++) {
@@ -357,18 +465,25 @@ async function checkMergingSave(page) {
       await figuresNearPlaceLoaded(page);
       await page.waitForTimeout(1500); // the save that follows the text growing has had its turn
       const pane = await paneState(page), loaded = await loadedFigures(page), saved = await paperRecord(page, 'c-paper.pdf');
+      const landing = await landingRecord(page), figuresNow = { given: landing ? landing.given : [], atPlace: landing ? landing.loaded : [], after: await loadedNow(page) };
       check('figures at the place, reload ' + round + ': pictures loaded near the place after it was restored', loaded.nearPlace > 0 && pane.toast === PICKED_UP, { loaded, toast: pane.toast });
       check('figures at the place, reload ' + round + ': the saved place is unchanged', saved.readerScroll === c.readerScroll && !!saved.readerPlace && saved.readerPlace.page === c.readerPlace.page
         && saved.readerPlace.at === c.readerPlace.at && saved.readPage === c.readPage, { readerScroll: saved.readerScroll, was: c.readerScroll, readerPlace: saved.readerPlace, wasPlace: c.readerPlace });
-      if (!firstLandingC) firstLandingC = pane;
-      else check('figures at the place, reload ' + round + ': Reader view lands where the first reload did, give or take the pictures at the top', Math.abs(pane.top - firstLandingC.top) <= slackC, { top: pane.top, first: firstLandingC.top, slack: slackC });
+      if (!firstLandingC) firstLandingC = { top: pane.top, figures: figuresNow };
+      else {
+        const allowance = landingAllowance(c.readerScroll, heightsC, firstLandingC.figures, figuresNow);
+        check('figures at the place, reload ' + round + ': Reader view lands where the first reload did, give or take the pictures loaded at one and not the other', !!landing && Math.abs(pane.top - firstLandingC.top) <= allowance,
+          { top: pane.top, first: firstLandingC.top, allowance, figures: figuresNow, firstFigures: firstLandingC.figures });
+        console.log('     landed ' + pane.top + ', first ' + firstLandingC.top + ', allowance ' + allowance);
+      }
     }
     // Two more places in the same paper. Restored at these in Chromium, one figure is on screen above
     // the reading line and others are above the screen, and all get their pictures then: the scroll
     // position and the paragraph at the reading line both move. A hold that watched only those two
-    // took that for the reader moving and measured the place again (at 53.2% in every run here).
-    // Found by trying 21 places from 40% to 64%; in WebKit, which does not adjust the scroll
-    // position, they pass either way.
+    // took that for the reader moving and measured the place again. Found by trying 21 places from
+    // 40% to 64%; in WebKit, which does not adjust the scroll position, they pass either way. Whether
+    // the figures load together there depends on load timing, so checkHoldMarks below checks the
+    // hold on a page it builds as well.
     for (const fraction of [0.448, 0.532]) {
       await page.evaluate(fraction => { const pane = document.getElementById('documentPane'); pane.scrollTop = (pane.scrollHeight - pane.clientHeight) * fraction; }, fraction);
       await page.waitForTimeout(900);
@@ -383,6 +498,10 @@ async function checkMergingSave(page) {
     }
 
     await checkMergingSave(page);
+    const scratch = await context.newPage();
+    await scratch.goto(base + '/fixture');
+    await checkHoldMarks(scratch);
+    await scratch.close();
     check('no page errors', errors.length === 0, errors);
     await context.close();
   } finally {

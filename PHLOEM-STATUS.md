@@ -6,8 +6,8 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-26)
 
-- **Find's highlights stay on the words, and Find closes, v257 (web). On branch `claude/phloem-find-fixes`, made from
-  `claude/phloem-reader-place` (v256), NOT deployed: `main`, the live site and every app build are still v254.**
+- **Find's highlights stay on the words, and Find closes, v257 (web). Live on houfu72.com since 2026-11-26,
+  together with v256. App builds still have v254 until the next one.**
   Houfu on the iPad, two-column paper, Find "degradat": right in the abstract, but in the introduction every
   highlight sat about 237 px up and 40 px left of its words; and "no way to close the search box easily not by esc
   not by clicking x". (1) Find brought a match into view with `scrollIntoView`, which scrolls every scrollable
@@ -26,15 +26,15 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   pass in Chromium and 20 of 21 in WebKit (`reading-find-highlight` runs only in Chromium; `reading-zen-compact-browser`
   fails in WebKit on 156aa71 too, at its text-layer selection), `apps/ipad` 22/22.
   Not checked on a real iPad or in the app's web view.
-  **To ship:** merge `claude/phloem-reader-place` (v256, still in review), then this branch, to `main`, which deploys.
-  The iPad app gets it only in a new build made after that (`npm run ios:sync` in `apps/ipad`, then archive).
-  Against Codex's uncommitted v255 the same stamp conflicts as v256's: keep the higher number and v255's
-  `reading-workspace-pdf.js` lines.
+  **Shipped:** pushed to `main` on 2026-11-26 together with v256, replayed unchanged onto that day's fun-fact commit
+  (the reviewed branch heads are `156aa71` and `05e3cb9`). The iPad app gets it in its next build (`npm run ios:sync`
+  in `apps/ipad`, then archive). Codex's uncommitted v255 (Workspace › Export PDF) is to land next as v258, with the
+  same stamp conflicts as v256's: keep the higher number and v255's `reading-workspace-pdf.js` lines.
 
 ## Earlier (2026-11-25)
 
-- **Reader view keeps its place over reloads and cold starts, v256 (web). On branch `claude/phloem-reader-place`, NOT
-  deployed: `main`, the live site and every app build are still v254.** It was the first open question below; a
+- **Reader view keeps its place over reloads and cold starts, v256 (web). Live on houfu72.com since
+  2026-11-26, together with v257. App builds still have v254 until the next one.** It was the first open question below; a
   portfolio review raised it again. One change in `reading.js`, three causes:
   (1) Every start saved each PDF's derived data over its whole IndexedDB record while memory held only an empty
   `termLookups`. That wiped the stored Reader text of every paper, so the open paper rebuilt on alternate starts and
@@ -78,9 +78,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Real papers were not measured. Giving each figure its box before its picture loads would fix all of it. Not done
   here: the stored figure box (`fb`) gives a figure's shape, but its width on screen also needs the scale it was
   cropped at, which is not stored, and papers built before v245 have no box.
-  **To ship:** merge to `main`, which deploys. Codex's uncommitted v255 (`phloem-workspace-export`) stamps the same
-  files: `reading.js` merges cleanly; in `reading.html`, `reading-sw.js` and this file keep the higher number and v255's
-  `reading-workspace-pdf.js` lines.
+  **Shipped** to `main` on 2026-11-26 with v257 (see Now). Codex's uncommitted v255 (`phloem-workspace-export`) stamps
+  the same files: `reading.js` merges cleanly; in `reading.html`, `reading-sw.js` and this file keep the higher number
+  and v255's `reading-workspace-pdf.js` lines.
 
 - **Four stale browser suites repaired, tests only (same branch).** `reading-workspace-paper-color`,
   `reading-split-undo-browser` and `reading-pdf-ink` still listed the Zen dock without Listen and Night, which have been
@@ -1015,7 +1015,7 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Open questions for Houfu
 
-- **Fixed in v256 on branch `claude/phloem-reader-place` (2026-11-25), not deployed yet; see Now.** Was:
+- **Fixed in v256 (2026-11-25), live on houfu72.com since 2026-11-26; see Earlier (2026-11-25).** Was:
   **Reader view restores its place only after the PDF has loaded**, so leaving a paper in that window saves page 1
   and fraction 0, and on a Drive or iCloud download the reader sits at the top meanwhile. Each app start also overwrites
   a PDF's stored reader data with only `termLookups` (`putDerived` in the startup `Promise.all`), so Reader view
@@ -1069,7 +1069,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
-- **2026-11-26 v257 (branch `claude/phloem-find-fixes`, not deployed):** Find scrolls only the reader pane, so its
+- **2026-11-26 v256 and v257 live:** pushed to `main` together, replayed unchanged onto the day's fun-fact commit
+  (reviewed heads `156aa71` and `05e3cb9`). App builds still have v254.
+- **2026-11-26 v257:** Find scrolls only the reader pane, so its
   highlights stay on the words lower on a page; the Find bar has a ✕, and Escape closes it wherever focus is (see Now).
 - **2026-11-26 tests (branch `claude/phloem-reader-place`):** `reading-reader-place-reload` compares two landings
   allowing only for the figures whose pictures differed between them (it was as loose as its 60% check), checks the
@@ -1084,7 +1086,7 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - **2026-11-25 v256, review fix (same branch):** with figures near the place the saved place slipped back on every
   start; a restored place now keeps its fraction until the reader moves, and figures loading no longer pass for the
   reader moving. The landing is still exact only without figures (see Now).
-- **2026-11-25 v256 (branch `claude/phloem-reader-place`, not deployed):** Reader view keeps its place over reloads,
+- **2026-11-25 v256:** Reader view keeps its place over reloads,
   cold starts and slow PDF loads; a start no longer wipes the stored Reader text (see Now).
 - **2026-11-17 1.2.11 (58):** v254 on TestFlight, not submitted.
 - **2026-11-17 v254:** Workspace › More › Export Markdown (quotes with paper and page, notes, board order; handwriting left out).

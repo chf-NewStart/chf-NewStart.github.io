@@ -420,6 +420,23 @@ build is rebuilt and lands on the saved page, not the top. `putDerived`, taken f
 name, is run against a real IndexedDB store: a save that holds only some fields keeps the rest, and
 term lookups merge and stay capped at 120. Run with `PHLOEM_BROWSER=webkit` too.
 
+`reading-pdf-find-place.test.js` checks that Find's ink sits on the words it found. A generated
+three-page paper has a two-column page 2 set as two text blocks with line breaks, as typeset papers
+are, so in Chromium its text layer's `<br>`s run past the layer's bottom; most of its matches are in
+the lower half. Find steps down through every match, back up, and zoomed in, and each time every
+`.text-layer` and `.highlight-layer` has `scrollTop` and `scrollLeft` 0 and the current highlight lies
+over the glyphs where the canvas drew them (the fixture's PDF coordinates mapped onto the canvas
+box). Zoomed in, the match is centred across. With `overflow: hidden` forced, as on iOS 15, Find still
+scrolls only the pane and a layer scrolled by anything else goes back to 0. Playwright's WebKit lays
+the breaks out without overflow, so the bug shows only in Chromium. Run with `PHLOEM_BROWSER=webkit` too.
+
+`reading-find-close.test.js` covers closing Find. The bar ends with a 44 pt ✕ labelled "Close Find"
+and the search field's own clear X is hidden. The ✕ closes the bar, clears the find highlights and
+returns focus outside it; Escape closes it with focus on the page (what a tapped ↑ or ↓ leaves on the
+iPad), on ↑, on ↓ and in the field, and never closes the paper. With a dialog or the reference card
+open, Escape closes that first and the next one closes Find. Find then opens and finds again. Run with
+`PHLOEM_BROWSER=webkit` too.
+
 `reading-workspace-restore-group-state.test.js` checks bulk lasso move/restore
 compatibility, timestamps, exact optional metadata, validation and input
 immutability. Its 1,000-stroke fixtures bound point-copy work rather than relying

@@ -385,8 +385,16 @@ when the place is set. The test watches each start at the moment the place is se
 in that frame) and notes where the pane is, how far it can scroll, and which figures had their
 pictures loaded then and later. At that moment the pane must be at the saved fraction of how far it
 can scroll then, within 4 px, on every start of the open paper and of the third paper below: nothing
-can load between the two, so a start that lands the same distance off every time fails here (the
-4 px allows for rounding). Two landings, measured later, may differ by the larger of the saved
+can load between the two, so a start that lands the same distance from the saved place every time
+fails here (the 4 px allows for rounding). The saved place itself is checked against where the reader
+really is: after each of the three papers is read to its place, and after the reads to 44.8% and
+53.2% below, once the saves have stopped and the pane's position and length have not changed for a
+second, the saved fraction of how far the pane can scroll must be where the pane is, within 4 px.
+Together the two checks mean that a start of those papers that puts the reader the same distance
+from where they stopped every time fails, whether the offset is in the save or in the restore (the
+save is checked at those five moments only; after a reload, the saved place must stay as it
+was). What they leave open is a different length of text above the place at the two moments, which
+comes from figures. Two landings, measured later, may differ by the larger of the saved
 fraction and the rest of it times the height (measured from the stored pictures) of each figure that
 had its picture, or had been given one, at one start and not at the other, except that a figure
 loaded after the place was set at one start and not loaded at all at the other counts with its full

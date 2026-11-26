@@ -219,6 +219,27 @@ function checkPlacedAt(name, landing, fraction) {
     landing ? { off: +off.toFixed(2), exact: landing.exact, span: landing.span, fraction } : 'no landing seen');
   if (off !== null) console.log('     placed ' + off.toFixed(2) + ' px from the saved fraction');
 }
+/* The saved place against where the reader really is. Once the saves that follow scrolling have
+   stopped, and the text has not grown or the pane moved for a while (pictures loading change both),
+   the saved fraction of the length the pane can scroll must be where the pane is, within 4 px:
+   otherwise every start would put the reader the same distance from where they stopped, and the
+   landing checks, which start from the saved place, could not see it. Returns the settled record. */
+async function checkSavedWhereRead(page, name, label) {
+  const paneNow = () => page.evaluate(() => { const pane = document.getElementById('documentPane'); return { exact: pane.scrollTop, span: pane.scrollHeight - pane.clientHeight }; });
+  let record = null, pane = null, steady = false;
+  for (let tries = 0; tries < 8 && !steady; tries++) {
+    record = await settledRecord(page, name);
+    pane = await paneNow();
+    await page.waitForTimeout(1000);
+    const paneLater = await paneNow(), recordLater = await paperRecord(page, name);
+    steady = paneLater.exact === pane.exact && paneLater.span === pane.span && recordLater.readerScroll === record.readerScroll;
+  }
+  const off = record && pane ? record.readerScroll * pane.span - pane.exact : null;
+  check(label + ': the saved place is where the reader is', steady && off !== null && Math.abs(off) <= 4,
+    { steady, off: off === null ? null : +off.toFixed(2), readerScroll: record && record.readerScroll, exact: pane && pane.exact, span: pane && pane.span });
+  if (off !== null) console.log('     saved ' + off.toFixed(2) + ' px from where the reader is');
+  return record;
+}
 const near = (value, target) => typeof value === 'number' && Math.abs(value - target) <= 0.02;
 const readerTextShown = () => !document.getElementById('textDocument').classList.contains('hidden') && document.querySelectorAll('#textDocument .para').length > 20;
 const waitText = page => page.waitForFunction(readerTextShown, null, { timeout: 60000 });
@@ -253,6 +274,7 @@ async function addPaper(page, name, tag, fraction, figurePages) {
   const paper = await paperRecord(page, name);
   // The Reader text is saved half a second after it is built.
   for (let tries = 0; tries < 40 && !hasReaderText(await derivedRecord(page, paper.id)); tries++) await page.waitForTimeout(250);
+  await checkSavedWhereRead(page, name, 'read to ' + (fraction * 100).toFixed(0) + '% (' + name + ')');
   return paper;
 }
 
@@ -508,7 +530,7 @@ async function checkHoldMarks(page) {
     for (const fraction of [0.448, 0.532]) {
       await page.evaluate(fraction => { const pane = document.getElementById('documentPane'); pane.scrollTop = (pane.scrollHeight - pane.clientHeight) * fraction; }, fraction);
       await page.waitForTimeout(900);
-      const before = await settledRecord(page, 'c-paper.pdf');
+      const before = await checkSavedWhereRead(page, 'c-paper.pdf', 'figures at the place, read to ' + (fraction * 100).toFixed(1) + '%');
       await page.reload({ waitUntil: 'load' });
       await waitOpened(page);
       await figuresNearPlaceLoaded(page);

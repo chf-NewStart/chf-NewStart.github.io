@@ -29,9 +29,10 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   line sits and lets go only when the scroll position and all of them have moved. Same paper: 8 reloads at 60% in both
   engines, and 21 places from 40% to 64% with 3 reloads each in Chromium: the saved fraction never changes (holding
   the fraction alone, 2 of those 21 places still took one step).
-  Tests: new `reading-reader-place-reload` (63 checks; 42 fail on v254 in both engines, where the `putDerived` and hold
+  Tests: new `reading-reader-place-reload` (68 checks; 42 fail on v254 in both engines, where the `putDerived` and hold
   checks are one each, and on db47601, the commit before the review fix, 12 in Chromium and 13 in WebKit) passes in
-  Chromium and WebKit. Each start is put at the saved fraction of the text as it is at that moment within 1 px. Around
+  Chromium and WebKit. Each start is put at the saved fraction of the text as it is at that moment within 1 px, and
+  once the reader has stopped, the saved fraction is where the pane is (0.0 px at the 5 places checked, 10 runs). Around
   it, 32 suites in Chromium and 14 in WebKit pass, `apps/ipad` 22/22. `reading-pdf-ink` in WebKit is flaky on a
   loaded Mac: 72/72 in 2 of 4 runs here and in 3 of 4 on the commit before, one stroke-timing check in PDF view each
   time. Not checked on a real iPad or in the app's web view.
@@ -1045,7 +1046,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
   allowing only for the figures whose pictures differed between them (it was as loose as its 60% check), checks the
   page hold on a page it builds, and checks that the place waits for the figures' pictures; the known limit now says
   what was measured (see Now). Later the same day: each start must also be put at the saved fraction of the text as it
-  is at that moment, within 4 px, so a start that is the same distance off every time fails too (it passed before).
+  is at that moment, within 4 px, so a start that is the same distance off the saved place every time fails too (it
+  passed before). Then: once the reader has stopped and the text no longer grows, the saved place must be where the
+  pane is, within 4 px, so an offset in the save fails as well (100 or 200 px passed before in WebKit); together
+  the two catch a start of the checked papers that is the same distance from where the reader stopped every time.
 - **2026-11-25 tests (branch `claude/phloem-reader-place`):** four stale suites repaired (Zen dock lists, the selected
   library card); `reading-workspace-paper-edge` left failing, a real short-window layout bug (see Now).
 - **2026-11-25 v256, review fix (same branch):** with figures near the place the saved place slipped back on every

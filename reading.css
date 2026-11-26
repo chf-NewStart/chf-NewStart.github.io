@@ -734,6 +734,12 @@
     .find-bar .count { flex: 0 0 auto; min-width: 90px; color: var(--muted); font-size: .72rem; }
     .find-bar .step-btn { min-width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
     .find-bar .step-btn:hover { border-color: var(--accent); }
+    /* The bar's one way out, as the reader's other popouts close: a round ✕ at its end. */
+    .find-bar .find-close { flex: 0 0 44px; width: 44px; min-width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--muted); font: 600 1rem/1 var(--sans); }
+    .find-bar .find-close:hover { border-color: var(--accent); color: var(--ink); }
+    /* The search field's own clear X only emptied the text and left the bar open; the ✕
+       above is the bar's only X. Opening Find selects the old text, so typing replaces it. */
+    .find-bar input::-webkit-search-cancel-button, .find-bar input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
     .para.find-flash { background: color-mix(in srgb, var(--yellow) 34%, transparent); }
     .para.eq-figured.find-flash .reader-fig { border-radius: 5px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 70%, var(--accent)); }
     span.find-target { padding: 0; border-radius: 3px; background: color-mix(in srgb, var(--yellow) 44%, transparent); color: inherit; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
@@ -1096,7 +1102,7 @@
     body.zen .find-bar:not(.hidden) { position: fixed; z-index: 47; top: calc(62px + env(safe-area-inset-top)); right: calc(100% - var(--zen-find-paper-width) + var(--zen-find-rail-width) + 24px + env(safe-area-inset-right)); width: min(560px, calc(var(--zen-find-paper-width) - var(--zen-find-rail-width) - 34px - env(safe-area-inset-left) - env(safe-area-inset-right))); padding: 8px 10px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 14px 42px rgba(20,24,25,.2); backdrop-filter: blur(18px); }
     body.zen .find-bar input { max-width: none; min-height: 44px; font-size: 16px; }
     body.zen .find-bar .step-btn { width: 44px; min-width: 44px; height: 44px; }
-    body.workspace-side.zen .find-bar:not(.hidden) { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 7px; }
+    body.workspace-side.zen .find-bar:not(.hidden) { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px 44px; gap: 7px; }
     body.workspace-side.zen .find-bar input { grid-column: 1 / -1; width: 100%; }
     body.workspace-side.zen .find-bar .count { min-width: 0; align-self: center; }
     .zen-tool { position: relative; display: flex; justify-content: flex-end; }
@@ -1195,7 +1201,7 @@
     body.zen.zen-idle .zen-marker:is(.active,.ready) { opacity: .46; }
     #zenBtn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
     @media (max-width: 560px) {
-      body.zen .find-bar:not(.hidden) { left: max(10px, env(safe-area-inset-left)); width: auto; display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 7px; }
+      body.zen .find-bar:not(.hidden) { left: max(10px, env(safe-area-inset-left)); width: auto; display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px 44px; gap: 7px; }
       body.zen .find-bar input { grid-column: 1 / -1; width: 100%; min-height: 44px; font-size: 16px; }
       body.zen .find-bar .count { min-width: 0; align-self: center; }
       body.zen .find-bar .step-btn { width: 44px; min-width: 44px; height: 44px; }

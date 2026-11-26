@@ -5953,6 +5953,15 @@
   };
   byId('findPrev').onclick=function(){gotoFindMatch(findIndex-1);};
   byId('findNext').onclick=function(){gotoFindMatch(findIndex+1);};
+  byId('findClose').onclick=function(){toggleFindBar(false,true);};
+  function findBarOpen(){return !byId('findBar').classList.contains('hidden');}
+  /* Escape closes an open Find bar wherever focus is in the reader (Safari and the iPad
+     don't focus a tapped ↑ or ↓, so focus is often on the page). Focus goes back to
+     Find's button only when it was in the bar or on the page, never out of a note. */
+  function closeFindFromEscape(e){
+    var t=e.target,quiet=!t||t===document.body||t===document.documentElement||byId('findBar').contains(t)||byId('documentPane').contains(t);
+    e.preventDefault();toggleFindBar(false,quiet);
+  }
 
   var pdfLinkPointerType='',pdfLinkPressAt=0,linkReturnSpot=null,pdfLinkNavigationToken=0,pdfReferencePreviewToken=0,pdfReferencePreviewAnchor=null,pdfDestinationFlashTimer=null;
   var pdfReferenceHold=null,pdfReferenceTouches=new Set();
@@ -8241,11 +8250,13 @@
     }
     // Notes/settings own their native button, form and arrow keys. Typing or
     // pressing Space there must not turn the PDF underneath the overlay.
-    if(byId('notebook').contains(e.target)||byId('comfortBar').contains(e.target))return;
+    if(byId('notebook').contains(e.target)||byId('comfortBar').contains(e.target)){if(e.key==='Escape'&&findBarOpen())closeFindFromEscape(e);return;}
     if(e.key==='Escape'&&cancelActiveBookCurl(false)){e.preventDefault();return;}
     if(e.key==='Escape'&&recallActive){e.preventDefault();setRecall(false);return;}
     if(e.key==='Escape'&&!byId('lookupCard').classList.contains('hidden')){e.preventDefault();hideLookup();return;}
     if(e.key==='Escape'&&!byId('selectionCard').classList.contains('hidden')){e.preventDefault();clearPendingSelection();return;}
+    // An open Find bar closes before any reader mode ends, and never the paper instead.
+    if(e.key==='Escape'&&findBarOpen()){closeFindFromEscape(e);return;}
     if(e.key==='Escape'&&stickyPlacing){e.preventDefault();setStickyPlacing(false);showReaderToast('Sticky note off');return;}
     if(e.key==='Escape'&&highlightEraseMode){e.preventDefault();setHighlightEraseMode(false);showReaderToast('Eraser off');return;}
     if(e.key==='Escape'&&pdfWriteMode){e.preventDefault();setPdfWriteMode(false);if(zenOn)byId('zenAnnotate').focus();showReaderToast('Write mode off');return;}

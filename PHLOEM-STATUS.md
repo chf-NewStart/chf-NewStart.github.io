@@ -29,8 +29,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   line sits and lets go only when the scroll position and all of them have moved. Same paper: 8 reloads at 60% in both
   engines, and 21 places from 40% to 64% with 3 reloads each in Chromium: the saved fraction never changes (holding
   the fraction alone, 2 of those 21 places still took one step).
-  Tests: new `reading-reader-place-reload` (52 checks; 34 fail on v254, where the `putDerived` and hold checks are one
-  each, and 10 on db47601, the commit before the review fix, in both engines) passes in Chromium and WebKit. Around
+  Tests: new `reading-reader-place-reload` (63 checks; 42 fail on v254 in both engines, where the `putDerived` and hold
+  checks are one each, and on db47601, the commit before the review fix, 12 in Chromium and 13 in WebKit) passes in
+  Chromium and WebKit. Each start is put at the saved fraction of the text as it is at that moment within 1 px. Around
   it, 32 suites in Chromium and 14 in WebKit pass, `apps/ipad` 22/22. `reading-pdf-ink` in WebKit is flaky on a
   loaded Mac: 72/72 in 2 of 4 runs here and in 3 of 4 on the commit before, one stroke-timing check in PDF view each
   time. Not checked on a real iPad or in the app's web view.
@@ -42,7 +43,8 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   and 424 px in WebKit (v254's working reloads: exact in Chromium, 318 px in WebKit). A figure on every page (5 starts
   at each of 8 to 14 places from 35% to 70%): a start can land up to 3 to 4 paragraphs from where the reader stopped,
   and two starts at the same place can land up to about 700 px apart in Chromium and about 400 px apart in WebKit,
-  depending on which pictures had loaded when the place was set (the same spot at most places; 386 to 737 px at a few).
+  depending on which pictures had loaded when the place was set (the same spot at most places, about 130 to 200 px apart
+  at some, and 386 to 737 px at a few).
   The saved place itself no longer moves: while the reader does not scroll, none of this adds up from start to start,
   and a scroll saves the place afresh from where the reader is.
   Real papers were not measured. Giving each figure its box before its picture loads would fix all of it. Not done
@@ -1042,7 +1044,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 - **2026-11-26 tests (branch `claude/phloem-reader-place`):** `reading-reader-place-reload` compares two landings
   allowing only for the figures whose pictures differed between them (it was as loose as its 60% check), checks the
   page hold on a page it builds, and checks that the place waits for the figures' pictures; the known limit now says
-  what was measured (see Now).
+  what was measured (see Now). Later the same day: each start must also be put at the saved fraction of the text as it
+  is at that moment, within 4 px, so a start that is the same distance off every time fails too (it passed before).
 - **2026-11-25 tests (branch `claude/phloem-reader-place`):** four stale suites repaired (Zen dock lists, the selected
   library card); `reading-workspace-paper-edge` left failing, a real short-window layout bug (see Now).
 - **2026-11-25 v256, review fix (same branch):** with figures near the place the saved place slipped back on every

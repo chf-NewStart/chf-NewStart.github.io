@@ -17,6 +17,12 @@
     const facts = [
         {
             tag: "HISTORY",
+            title: "The Eiffel Tower grows ~15 cm taller in summer",
+            fact: "Thermal expansion lengthens the iron lattice on hot days — measurable, and even visible in old photographs. The tower also leans slightly away from the sun, the sunlit side expanding more.",
+            detail: "Engineers accounted for this in 1889: the bolts and joints are designed with the movement budget built in from day one."
+        },
+        {
+            tag: "HISTORY",
             title: "Bananas are all clones — one disease away from disaster",
             fact: "Nearly every banana in a supermarket is the same Cavendish cultivar, propagated by cuttings. A single fungal race (Panama disease TR4) is sweeping plantations because the whole crop shares one immune system.",
             detail: "The previous commercial banana, the Gros Michel, was wiped out commercially by the same disease in the 1950s. History is repeating; breeders are hedging with new cultivars."

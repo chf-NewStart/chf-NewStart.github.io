@@ -106,6 +106,17 @@ function check(name, condition, extra) {
     await page.locator('#findInput').waitFor({ state: 'visible' });
     if (await page.inputValue('#findInput') !== QUERY) await page.fill('#findInput', QUERY);
     await page.waitForFunction(() => / · 1 \/ 3/.test(document.getElementById('findCount').textContent) && document.querySelector('.text-layer .find-current'));
+    /* Find scrolls smoothly to the match, and a pane scroll closes the reference card:
+       wait for the pane to stop before anything opens over it. */
+    await page.evaluate(() => new Promise(resolve => {
+      const pane = document.getElementById('documentPane');
+      let last = -1, still = 0, frames = 0;
+      (function tick() {
+        const now = pane.scrollTop + pane.scrollLeft * 1e6;
+        still = now === last ? still + 1 : 0; last = now; frames++;
+        if (still >= 12 || frames > 600) resolve(); else requestAnimationFrame(tick);
+      })();
+    }));
   }
 
   await openFind();

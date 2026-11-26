@@ -5947,14 +5947,26 @@
     var query=this.value.trim();byId('findCount').textContent=query.length>=2?'Searching…':query?'Type a bit more':'';
     if(query.length>=2)findTimer=setTimeout(function(){findTimer=null;runFind();},260);
   };
+  // Enter and Shift+Enter in the field, or Cmd/Ctrl+G and Shift+Cmd/Ctrl+G anywhere in the reader.
+  function stepFind(back){if(findTimer){clearTimeout(findTimer);findTimer=null;runFind();return;}findMatches.length?gotoFindMatch(findIndex+(back?-1:1)):runFind();}
   byId('findInput').onkeydown=function(e){
-    if(e.key==='Enter'){e.preventDefault();if(findTimer){clearTimeout(findTimer);findTimer=null;runFind();return;}findMatches.length?gotoFindMatch(findIndex+(e.shiftKey?-1:1)):runFind();}
+    if(e.key==='Enter'){e.preventDefault();stepFind(e.shiftKey);}
     else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();toggleFindBar(false,true);}
   };
   byId('findPrev').onclick=function(){gotoFindMatch(findIndex-1);};
   byId('findNext').onclick=function(){gotoFindMatch(findIndex+1);};
   byId('findClose').onclick=function(){toggleFindBar(false,true);};
   function findBarOpen(){return !byId('findBar').classList.contains('hidden');}
+  /* Find's keys are Cmd+F and Cmd+G on Apple devices (the iPad app's hardware keyboard
+     included) and Ctrl+F and Ctrl+G elsewhere. Ctrl+F on a Mac is a text-editing key, not Find. */
+  var appleFindKeys=!!window.PHLOEM_NATIVE||/Macintosh|Mac OS X|iPhone|iPad|iPod/.test(navigator.userAgent||'');
+  function findShortcut(e,key){return !e.altKey&&!e.isComposing&&(appleFindKeys?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey)&&String(e.key||'').toLowerCase()===key;}
+  (function(){
+    var mod=appleFindKeys?'⌘':'Ctrl+',aria=appleFindKeys?'Meta':'Control';
+    ['findBtn','zenFind'].forEach(function(id){var button=byId(id);button.setAttribute('aria-keyshortcuts',aria+'+F /');button.title='Find in this paper ('+mod+'F or /)';});
+    byId('findNext').setAttribute('aria-keyshortcuts','Enter '+aria+'+G');byId('findNext').title='Next match ('+mod+'G)';
+    byId('findPrev').setAttribute('aria-keyshortcuts','Shift+Enter Shift+'+aria+'+G');byId('findPrev').title='Previous match ('+(appleFindKeys?'⇧⌘':'Shift+Ctrl+')+'G)';
+  })();
   /* Escape closes an open Find bar wherever focus is in the reader (Safari and the iPad
      don't focus a tapped ↑ or ↓, so focus is often on the page). Focus goes back to
      Find's button only when it was in the bar or on the page, never out of a note. */
@@ -8233,6 +8245,17 @@
     if(e.key==='Escape'&&(pdfReferenceHold||!byId('pdfReferencePreview').classList.contains('hidden'))){e.preventDefault();dismissPdfReferencePreview();return;}
     // The reference card owns its native button/link keys, not the reader shortcuts.
     if(byId('pdfReferencePreview').contains(e.target))return;
+    /* Cmd/Ctrl+F opens Phloem's Find from anywhere in the reader, a note or a sticky
+       included. Pressed again in Find's own field it is left alone, so the browser's find
+       stays one press away; with the Workspace over the whole paper it is the browser's. */
+    if(findShortcut(e,'f')&&!e.shiftKey){
+      if(e.target===byId('findInput')||!currentId||document.body.classList.contains('workspace-full'))return;
+      e.preventDefault();
+      if(findBarOpen()){byId('findInput').focus({preventScroll:true});byId('findInput').select();}else toggleFindBar(true);
+      return;
+    }
+    // Cmd/Ctrl+G steps through the matches while Find is open; with Find closed it is the browser's.
+    if(findShortcut(e,'g')&&findBarOpen()){e.preventDefault();stepFind(e.shiftKey);return;}
     /* Escape belongs to the focused Find surface before it affects any persistent
        reader mode, such as Marker, that happens to be active underneath it. */
     if(e.key==='Escape'&&!byId('findBar').classList.contains('hidden')&&byId('findBar').contains(e.target)){e.preventDefault();toggleFindBar(false,true);return;}

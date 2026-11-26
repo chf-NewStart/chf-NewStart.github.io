@@ -437,6 +437,14 @@ iPad), on ↑, on ↓ and in the field, and never closes the paper. With a dialo
 open, Escape closes that first and the next one closes Find. Find then opens and finds again. Run with
 `PHLOEM_BROWSER=webkit` too.
 
+`reading-find-shortcut.test.js` covers Find's keys, with a Mac, a Windows and an iPad user agent. Cmd+F (Ctrl+F on
+Windows) on the paper, from the page or from a note, opens Phloem's Find with its field focused and its text
+selected, and its keydown is `defaultPrevented`; a second press in the field is not, so the browser's find is one
+press away. Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step through the matches and update the counter while Find is open, and
+are left alone while it is closed. Ctrl+F with a Mac user agent (a text-editing key there), Alt with it, the library,
+an open dialog and the reader after it is left are never taken. `/`, plain `f` (reader full screen), Enter, ↓ and
+Escape still do what they did. Run with `PHLOEM_BROWSER=webkit` too.
+
 `reading-workspace-restore-group-state.test.js` checks bulk lasso move/restore
 compatibility, timestamps, exact optional metadata, validation and input
 immutability. Its 1,000-stroke fixtures bound point-copy work rather than relying

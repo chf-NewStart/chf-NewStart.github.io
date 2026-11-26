@@ -25,6 +25,23 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   `apps/ipad` 23/23; `www/bundle-manifest.json` lists `reading-workspace-pdf.js`; `npm run ios:sync` changed no
   tracked file; a Debug simulator build succeeds as 1.2.11 (61). Not checked on a real iPad from this branch (Codex
   checked builds 59 and 60 on one).
+- **Cmd/Ctrl+F opens Phloem's Find, v258 (same push, no new stamp).** With a paper open, Cmd+F (Apple: Mac, iPad,
+  iPhone, the iPad app's hardware keyboard) or Ctrl+F (elsewhere), without Shift or Alt, opens Find with its field
+  focused and its text selected, as `/` does, and keeps the browser's find from opening; from a note or a sticky
+  too, never with a dialog open, from inside the Workspace panel, or with the Workspace over the whole paper. Pressed
+  again in Find's field it is left to the browser, so the browser's find is one press away. While Find is open,
+  Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step to the next and previous match (what Enter and Shift+Enter do); closed, G is
+  the browser's. Ctrl+F on a Mac is a text-editing key and is never taken. The library and settings keep the
+  browser's find. `/`, plain `f` (reader full screen) and Escape are unchanged. The Find buttons' tooltips and
+  `aria-keyshortcuts` name the platform's key. Apps that host a browser may take Cmd+F before the page (Codex's
+  browser does); `/` still works there. The iPad app has no native key commands (no `UIKeyCommand`, `pressesBegan`
+  or `findInteraction` in the app or Capacitor 8.5.2), so the page gets Cmd+F. In `reading.js` only; new test
+  `reading-find-shortcut` (Mac, Windows and iPad user agents) fails on `20738da` and passes after, in Chromium and
+  WebKit. Also passing in both engines: `reading-pdf-find-place`, `reading-find-close`, `reading-find-highlight`,
+  `reading-pdf-find-contents`, `reading-zen-find-clearance` and the suites that press reader keys (`pdf-ink-hold`,
+  `pdf-links`, `sync-quiet`, `workspace-view`, `highlights`, `pencil-highlight`, `split-undo-browser`,
+  `workspace-ink-view`, `zen-default-browser`, `zen-ipad`, and in Chromium the three Chromium-only Workspace ones);
+  `reading-workspace-paper-edge` stops at its known 1024×420 spot. `apps/ipad` 23/23.
 
 - **Find's highlights stay on the words, and Find closes, v257 (web). Live on houfu72.com since 2026-11-26,
   together with v256. App builds still have v254 until the next one.**
@@ -1098,6 +1115,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-26 v258 Find keys:** Cmd/Ctrl+F opens Phloem's Find (a second press in its field is the browser's), and
+  Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step through it; Ctrl+F on a Mac is not taken (see Now).
 - **2026-11-26 v258:** Workspace › More › Export PDF, Codex's v255 (local app builds 59 and 60), live on the website
   with this push; unchanged but for the version numbers. iPad 1.2.11 (61) bundles v258 (see Now).
 - **2026-11-26 v256 and v257 live:** pushed to `main` together, replayed unchanged onto the day's fun-fact commit

@@ -5892,8 +5892,41 @@
     var list=paraSections(),section=list[m.para];if(!section)return;
     var original=section.querySelector('.original'),result=paintFindTarget(original,byId('findInput').value.trim(),false,m.occurrence),hiddenEquation=section.classList.contains('eq-figured');
     if(!result.active.length||hiddenEquation)section.classList.add('find-flash');
-    (hiddenEquation?(section.querySelector('.reader-fig')||section):(result.active[0]||section)).scrollIntoView({block:'center',behavior:'smooth'});
+    revealInPane(hiddenEquation?(section.querySelector('.reader-fig')||section):(result.active[0]||section),{block:'center',behavior:'smooth'});
   }
+  /* Bring a passage into view by scrolling the reader pane, and nothing else.
+     scrollIntoView scrolls every scrollable ancestor, and a PDF page's text and highlight
+     layers clip their overflow, which makes each a scroll box: on a dense page, such as a
+     two-column introduction whose line breaks run past the layer's bottom, it scrolled the
+     text layer inside its own box too, and Find's ink and the selectable words then sat
+     hundreds of pixels away from the printed ones (v257). block and inline take 'center'
+     or 'nearest', as scrollIntoView's do. */
+  function revealInPane(target,options){
+    var pane=byId('documentPane');options=options||{};
+    if(!target||!pane||!pane.contains(target)||!target.getClientRects().length)return false;
+    resetPdfLayerScroll(target.closest&&target.closest('.pdf-page'));
+    var r=target.getBoundingClientRect(),p=pane.getBoundingClientRect(),viewTop=p.top+pane.clientTop,viewLeft=p.left+pane.clientLeft,viewH=pane.clientHeight,viewW=pane.clientWidth;
+    function shift(start,size,view,length,mode){
+      if(mode==='center')return start+size/2-(view+length/2);
+      if(start<view||size>length)return start-view;
+      return start+size>view+length?start+size-(view+length):0;
+    }
+    var top=pane.scrollTop+shift(r.top,r.height,viewTop,viewH,options.block||'center'),left=pane.scrollLeft+shift(r.left,r.width,viewLeft,viewW,options.inline||'nearest');
+    top=Math.max(0,Math.min(pane.scrollHeight-viewH,top));left=Math.max(0,Math.min(pane.scrollWidth-viewW,left));
+    if(Math.abs(top-pane.scrollTop)<1&&Math.abs(left-pane.scrollLeft)<1)return true;
+    pane.scrollTo({top:top,left:left,behavior:options.behavior||'auto'});
+    return true;
+  }
+  /* Where overflow: clip is missing (iOS 15) the layers stay scroll boxes, so anything
+     else that scrolls one (a focused link, a selection drag, the browser's own reveal)
+     is put straight back: the layers must always sit exactly over the canvas. */
+  function resetPdfLayerScroll(scope){
+    (scope||byId('pdfFrame')).querySelectorAll('.text-layer,.highlight-layer').forEach(function(layer){if(layer.scrollTop)layer.scrollTop=0;if(layer.scrollLeft)layer.scrollLeft=0;});
+  }
+  document.addEventListener('scroll',function(e){
+    var layer=e.target;if(layer===byId('documentPane')||!layer.classList||!(layer.classList.contains('text-layer')||layer.classList.contains('highlight-layer')))return;
+    if(layer.scrollTop)layer.scrollTop=0;if(layer.scrollLeft)layer.scrollLeft=0;
+  },true);
   /* PDF.js often breaks one phrase into several positioned spans. Build a continuous
      text map for the page, then ink every piece of the chosen occurrence. */
   function flashPdfFind(page,q,occurrence,token){
@@ -5905,7 +5938,7 @@
       if(!view||!view.rendered){if(tries++<24){setTimeout(attempt,180);return;}resolve(false);return;}
       var result=paintFindTarget(view.text,q,true,occurrence);
       if(!result.active.length){pdfReviewSpanMatch(view,q,occurrence).forEach(function(span){span.classList.add('find-span','find-current-span');});}
-      if(result.active[0]&&!pagedPdfFlow())result.active[0].scrollIntoView({block:'center',inline:'center',behavior:'smooth'});
+      if(result.active[0]&&!pagedPdfFlow())revealInPane(result.active[0],{block:'center',inline:'center',behavior:'smooth'});
       resolve(!!result.active.length);
     })();});
   }
@@ -8676,7 +8709,7 @@
     }
     var textAnchors=Array.isArray(comment.anchors)&&comment.anchors.length?comment.anchors:[comment],textIndex=Number.isInteger(anchorOverride)&&anchorOverride>=0?Math.min(anchorOverride,textAnchors.length-1):0,textAnchor=textAnchors[textIndex]||comment;reviewFocusPage=0;reviewFocusAnchorIndex=textIndex;
     renderText(ch);
-    jumpToParagraph(+textAnchor.para);requestAnimationFrame(function(){var anchors=byId('textDocument').querySelectorAll('[data-review-comment-id="'+CSS.escape(id)+'"]'),anchor=anchors[textIndex]||anchors[0];if(anchor)anchor.scrollIntoView({block:'center',behavior:'smooth'});});if(temporaryNotebookMode())toggleSheet(false);
+    jumpToParagraph(+textAnchor.para);requestAnimationFrame(function(){var anchors=byId('textDocument').querySelectorAll('[data-review-comment-id="'+CSS.escape(id)+'"]'),anchor=anchors[textIndex]||anchors[0];if(anchor)revealInPane(anchor,{block:'center',behavior:'smooth'});});if(temporaryNotebookMode())toggleSheet(false);
   }
   function showReviewerComment(ch,id,pageOverride,keepPassageGroup){
     var comment=reviewerById(ch,id);if(!comment)return;if(!keepPassageGroup)reviewPassageGroupIds=[];if(reviewFilter!=='all'&&reviewFilter!==normalizeReviewLevel(comment.level,comment))reviewFilter='all';reviewFocusId=id;reviewFocusPage=+pageOverride||reviewCommentPage(ch,comment)||0;reviewFocusAnchorIndex=reviewPdfAnchors(ch,comment).findIndex(function(anchor){return anchor.page===reviewFocusPage;});renderReviewerPanel(ch);switchTab('reviewsPanel');if(temporaryNotebookMode())toggleSheet(true);else setNotebookCollapsed(false,true);

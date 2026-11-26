@@ -1226,7 +1226,10 @@
     }
     /* Find follows the paper: hidden only while the Workspace covers it. */
     body.workspace-full.zen .find-bar { visibility: hidden; }
-    .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; transform-origin: 0 0; }
+    /* clip, not a scroll box: a scroll inside a layer moved its words and Find's ink off the
+       canvas (v257). hidden stays first for iOS 15, which lacks clip; reading.js resets any
+       scroll there. */
+    .highlight-layer, .text-layer { position: absolute; inset: 0; overflow: hidden; overflow: clip; transform-origin: 0 0; }
     /* The layer is its own stacking context (z-index), which cut its highlights off from the
        page: their multiply blend mixed with nothing and the colour sat over the words like
        tinted glass. Blending the whole layer with the page keeps text black under a highlight,

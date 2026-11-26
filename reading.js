@@ -5631,7 +5631,7 @@
            page: land on that page, not at the top. */
         var placePage=typeof ch.readerScroll!=='number'&&ch.readerPlace?+ch.readerPlace.page||0:0;
         if(!(placePage>1&&scrollReaderToPage(placePage)))pane.scrollTop=(+ch.readerScroll||0)*span;
-        if(ch.readerPlace)holdReaderPage(ch,ch.readerPlace.page,paraSections()[readerParaAtLine()]);
+        if(ch.readerPlace)holdReaderPage(ch,ch.readerPlace.page,paraSections()[readerParaAtLine()],ch.readerScroll);
         if(announce&&ch.readerScroll>0.01)showReaderToast('Picked up where you stopped');
       }
       updateProgress();
@@ -7297,22 +7297,40 @@
   /* The saved page follows the reading line, a little below the top of the pane. Right after a
      jump or a restore that line can sit on the next page while the place itself is on this one,
      so the page is held until the reader moves. A figure loading above moves the text on screen
-     or, with scroll anchoring, the scroll position: only both moving is the reader's doing. */
+     or, with scroll anchoring, the scroll position; with one figure above the screen and another
+     on it, both. So the hold remembers where each paragraph from the top of the pane down to the
+     reading line sits: the reader has moved only when the scroll position and all of them have.
+     A place restored from its saved fraction holds that fraction too. The figures near it get
+     their pictures after the restore and the text grows; measured again then, the same place
+     would be saved as a smaller fraction, and the paper would slip back with every start. */
   var heldReaderPage=null;
-  function holdReaderPage(ch,page,section){heldReaderPage={id:ch.id,page:page,top:byId('documentPane').scrollTop,section:section||null,y:section?section.getBoundingClientRect().top:0};}
+  function readerHoldMarks(section){
+    var marks=[],paneTop=byId('documentPane').getBoundingClientRect().top;
+    function mark(el){marks.push({el:el,y:el.getBoundingClientRect().top});}
+    for(var el=section;el&&marks.length<40;el=el.previousElementSibling){
+      if(el!==section&&el.getBoundingClientRect().bottom<=paneTop)break;
+      if(!el.classList.contains('para'))continue;
+      /* A figure sits above its paragraph's text, so the text is marked as well as the paragraph. */
+      mark(el);var text=el.querySelector('.original');if(text)mark(text);
+    }
+    return marks;
+  }
+  function holdReaderPage(ch,page,section,scroll){heldReaderPage={id:ch.id,page:page,top:byId('documentPane').scrollTop,section:section||null,marks:readerHoldMarks(section||null),scroll:typeof scroll==='number'?scroll:null};}
   function readerPageHeld(ch){
     var hold=heldReaderPage;if(!hold)return 0;
-    var stays=hold.id===ch.id&&(Math.abs(byId('documentPane').scrollTop-hold.top)<=4||(hold.section&&hold.section.isConnected&&Math.abs(hold.section.getBoundingClientRect().top-hold.y)<=4));
+    var stays=hold.id===ch.id&&(Math.abs(byId('documentPane').scrollTop-hold.top)<=4||hold.marks.some(function(m){return m.el.isConnected&&Math.abs(m.el.getBoundingClientRect().top-m.y)<=4;}));
     if(!stays)heldReaderPage=null;
     return stays?hold.page:0;
   }
   function saveCurrentReadingPosition(schedule,writeState){
     var ch=find(currentId);if(!ch)return false;if(readerMode==='pdf')return savePdfReadingPosition(schedule,writeState);
-    var pane=byId('documentPane'),span=pane.scrollHeight-pane.clientHeight,scroll=span>4?pane.scrollTop/span:0,moved=Math.abs(scroll-(+ch.readerScroll||0))>.002;ch.readerScroll=scroll;
+    var pane=byId('documentPane'),span=pane.scrollHeight-pane.clientHeight,scroll=span>4?pane.scrollTop/span:0,held=ch.kind==='pdf'?readerPageHeld(ch):0;
+    if(held&&typeof heldReaderPage.scroll==='number')scroll=heldReaderPage.scroll;
+    var moved=Math.abs(scroll-(+ch.readerScroll||0))>.002;ch.readerScroll=scroll;
     /* Reader view reading counts as reading the paper: the library's "Page N of M" and
        the PDF view both follow the page under the reading line. */
     if(ch.kind==='pdf'){
-      var page=readerPageHeld(ch)||readerPageAtLine(ch),place=ch.readerPlace;if(page&&(moved||!place||place.page!==page)){ch.readerPlace={page:page,at:now()};ch.readPage=page;ch.readThroughPage=Math.max(+ch.readThroughPage||0,page);}}
+      var page=held||readerPageAtLine(ch),place=ch.readerPlace;if(page&&(moved||!place||place.page!==page)){ch.readerPlace={page:page,at:now()};ch.readPage=page;ch.readThroughPage=Math.max(+ch.readThroughPage||0,page);}}
     if(writeState!==false)persistQuietly(schedule);return true;
   }
   /* Each paper opens in the view it was last read in on this device (a phone keeps Reader

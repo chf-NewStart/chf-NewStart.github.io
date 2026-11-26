@@ -377,10 +377,18 @@ still save immediately and survive reopening.
 `reading-reader-place-reload.test.js` covers Reader view keeping its place over reloads and cold
 starts. Two generated 24-page papers are read in Reader view to 60% and 40%; the first has figures
 on its first four pages. Four reloads in a row bring the open paper back at 60% with its toast, the
-saved place stays exactly as it was and every reload lands where the first did (a place set before
-the figures have their pictures creeps a few lines per reload in Chromium), and neither paper's
-stored Reader text (`readerText`, `pageLines`, `pageParagraphs`, `readerV` in IndexedDB) is lost;
-the paper not opened since startup opens from the library at 40%. With the pdf.js request held back
+saved place stays exactly as it was, and neither paper's stored Reader text (`readerText`,
+`pageLines`, `pageParagraphs`, `readerV` in IndexedDB) is lost; the paper not opened since startup
+opens from the library at 40%. Where each reload lands is checked only as far as it holds: the
+place is a fraction of the text's length, and the pictures at the top of the paper may or may not
+have loaded when the place is set, so two landings may differ by that fraction of those pictures'
+heights (measured from the stored pictures) and no more. A third paper has a figure on every page,
+so pictures load right at the place after it is restored and the text grows while the reader has
+not moved. Over four reloads its saved place must stay exactly as it was: measured again after the
+text has grown, it slipped back with every start. Two more places in that paper (44.8% and 53.2%)
+are read to and reloaded once each: there, in Chromium, a figure on screen above the reading line
+and figures above the screen load together, so the scroll position and the paragraph at the reading
+line both move without the reader, and the saved place must still not change. With the pdf.js request held back
 (a big file, Drive, iCloud) the cached text is already at 60% before the PDF loads, and leaving
 meanwhile keeps the place, the page and the library's page. Stored text marked as an older build is
 rebuilt and lands on the saved page, not the top. `putDerived`, taken from `reading.js` by name, is

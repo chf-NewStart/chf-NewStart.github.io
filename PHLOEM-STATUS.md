@@ -65,7 +65,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   `reading-workspace-paper-edge` stops at its known 1024×420 spot. `apps/ipad` 23/23.
 
 - **Find's highlights stay on the words, and Find closes, v257 (web). Live on houfu72.com since 2026-11-26,
-  together with v256. App builds still have v254 until the next one.**
+  together with v256. In the iPad app from 1.2.11 (61), on TestFlight; earlier builds have v254.**
   Houfu on the iPad, two-column paper, Find "degradat": right in the abstract, but in the introduction every
   highlight sat about 237 px up and 40 px left of its words; and "no way to close the search box easily not by esc
   not by clicking x". (1) Find brought a match into view with `scrollIntoView`, which scrolls every scrollable

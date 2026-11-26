@@ -18,13 +18,33 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   top, and leaving meanwhile keeps the place, the page and the library's page.
   (3) After a rebuild, which drops the saved fraction, Reader view lands on the saved page, not the top. Papers already
   wiped on a device rebuild once on their next open and land that way.
-  Tests: new `reading-reader-place-reload` (34 checks, 20 fail on v254) passes in Chromium and WebKit. Around it, 32
-  suites in Chromium and 12 in WebKit pass, `apps/ipad` 22/22. Not checked on a real iPad or in the app's web view.
-  Known limit, old: the place is a fraction of the text's length, and figures get their height only when their
-  pictures load, which happens near the screen. A paper with figures above the place can come back some lines off: with
-  four figures on the first four pages, saved at 60% after reading down from the top, 464 px in Chromium and 424 px in
-  WebKit (v254's working reloads: exact in Chromium, 318 px in WebKit). It lands on the same line reload after reload.
-  Giving each figure its box before its picture loads would fix it.
+  (4) Found in review of the branch: with figures near the place, the saved place slipped back with every start. The
+  place is restored, the figures around it then get their pictures, the text grows, and the scroll listener saved the
+  place again as a smaller fraction though the reader had not moved (24-page paper with a figure on every page, 8
+  reloads: about 2,500 px back in Chromium, about 560 px in WebKit). v254 took the same first step and then lost the
+  place altogether. A restored place now keeps its saved fraction until the reader moves (`holdReaderPage`,
+  `saveCurrentReadingPosition`). Telling that the reader moved is stricter too (`readerHoldMarks`): in Chromium a
+  figure loading above the screen moves the scroll position and one loading on screen moves the text, and the two
+  together passed for the reader. The hold now remembers where every paragraph from the top of the pane to the reading
+  line sits and lets go only when the scroll position and all of them have moved. Same paper: 8 reloads at 60% in both
+  engines, and 21 places from 40% to 64% with 3 reloads each in Chromium: the saved fraction never changes (holding
+  the fraction alone, 2 of those 21 places still took one step).
+  Tests: new `reading-reader-place-reload` (49 checks, 32 fail on v254) passes in Chromium and WebKit. Around it, 32
+  suites in Chromium and 14 in WebKit pass, `apps/ipad` 22/22. `reading-pdf-ink` in WebKit is flaky on a loaded Mac:
+  72/72 in 2 of 4 runs here and in 3 of 4 on the commit before, one stroke-timing check in PDF view each time. Not
+  checked on a real iPad or in the app's web view.
+  **Known limit, old and still there: where a start lands is exact only for papers without figures.** The place is a
+  fraction of the text's length, and a figure gets its height only when its picture loads, which happens near the
+  screen. So the same fraction is a different line when different pictures are loaded: the landing is off by what the
+  pictures loaded when the place was saved, and not yet when it is restored, add to the text above and below it.
+  Measured at 60%, generated papers, 1280×800: four figures on the first four pages, 464 px off in Chromium and 424 px
+  in WebKit (v254's working reloads: exact in Chromium, 318 px in WebKit); a figure on every page, one to two
+  paragraphs off in both engines. In Chromium two starts can also land one figure's share apart (about 180 px in both
+  papers), depending on whether a picture at the top had loaded when the place was set. While the reader does not
+  scroll, none of this adds up from start to start any more; a scroll saves the place afresh from where the reader is.
+  Real papers were not measured. Giving each figure its box before its picture loads would fix all of it. Not done
+  here: the stored figure box (`fb`) gives a figure's shape, but its width on screen also needs the scale it was
+  cropped at, which is not stored, and papers built before v245 have no box.
   **To ship:** merge to `main`, which deploys. Codex's uncommitted v255 (`phloem-workspace-export`) stamps the same
   files: `reading.js` merges cleanly; in `reading.html`, `reading-sw.js` and this file keep the higher number and v255's
   `reading-workspace-pdf.js` lines.
@@ -1018,6 +1038,9 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 - **2026-11-25 tests (branch `claude/phloem-reader-place`):** four stale suites repaired (Zen dock lists, the selected
   library card); `reading-workspace-paper-edge` left failing, a real short-window layout bug (see Now).
+- **2026-11-25 v256, review fix (same branch):** with figures near the place the saved place slipped back on every
+  start; a restored place now keeps its fraction until the reader moves, and figures loading no longer pass for the
+  reader moving. The landing is still exact only without figures (see Now).
 - **2026-11-25 v256 (branch `claude/phloem-reader-place`, not deployed):** Reader view keeps its place over reloads,
   cold starts and slow PDF loads; a start no longer wipes the stored Reader text (see Now).
 - **2026-11-17 1.2.11 (58):** v254 on TestFlight, not submitted.

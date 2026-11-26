@@ -14,10 +14,14 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   `apps/ipad/tests/bundle.test.mjs`). It exports the arranged whiteboard (quote cards, sticky notes, Unicode text,
   pressure-sensitive handwriting beyond the visible viewport): in the iPad app as vector WebKit PDF pages through the
   share sheet, each file named with its local date/time and an 8-character export ID; in a browser through a print
-  window with Save as PDF. **iPad 1.2.11 (61) with v258 uploaded 2026-11-26 with the API key, VALID, on TestFlight
-  for Internal Testers and friends2 with a What to Test note. Not submitted for review** (needs Houfu's own words;
-  review notes untouched). 1.2.10 (57) is Ready for Sale; no version record for 1.2.11 exists. Archive and derived
-  data were deleted after upload.
+  window with Save as PDF. **App 1.2.11 (61) with v258 submitted, Waiting for Review (2026-11-26 17:47 EST,
+  submission 3d90d8d1; Houfu, after trying build 61 from TestFlight: "Works, submit it"). Manual release: press
+  Release after approval.** Uploaded 2026-11-26 with the API key, VALID, in TestFlight for Internal Testers and
+  friends2 with a What to Test note. Version record iOS 1.2.11 created (manual release, copyright "2026 Houfu Chen"),
+  build 61 attached. What's New (en-CA) leads "You can now export a paper's Workspace as a PDF or as Markdown." and
+  leaves out Cmd+F and Cmd+G, which nobody has pressed in the app yet. Description, keywords, screenshots, the preview
+  and the review contact carried over; review notes untouched (they still name 1.2.5 (build 49); Houfu edits them).
+  Archive and derived data were deleted after upload. **1.2.10 (57, v253) is still the one on sale.**
   Applying v255 onto v257 conflicted only in the stamps of `reading.html` and `reading-sw.js` (v255's lines kept, the
   number raised) and in this file (both sections kept); `reading.js` and the rest applied cleanly.
   Tests on branch `claude/phloem-v258`: `reading-workspace-pdf`, `reading-pdf-find-place`, `reading-find-close`,
@@ -65,7 +69,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   `reading-workspace-paper-edge` stops at its known 1024×420 spot. `apps/ipad` 23/23.
 
 - **Find's highlights stay on the words, and Find closes, v257 (web). Live on houfu72.com since 2026-11-26,
-  together with v256. In the iPad app from 1.2.11 (61), on TestFlight; earlier builds have v254.**
+  together with v256. In the iPad app from 1.2.11 (61), in review; earlier builds have v254.**
   Houfu on the iPad, two-column paper, Find "degradat": right in the abstract, but in the introduction every
   highlight sat about 237 px up and 40 px left of its words; and "no way to close the search box easily not by esc
   not by clicking x". (1) Find brought a match into view with `scrollIntoView`, which scrolls every scrollable
@@ -85,7 +89,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   fails in WebKit on 156aa71 too, at its text-layer selection), `apps/ipad` 22/22.
   Not checked on a real iPad or in the app's web view.
   **Shipped:** pushed to `main` on 2026-11-26 together with v256, replayed unchanged onto that day's fun-fact commit
-  (the reviewed branch heads are `156aa71` and `05e3cb9`). The iPad app has it from 1.2.11 (61), on TestFlight
+  (the reviewed branch heads are `156aa71` and `05e3cb9`). The iPad app has it from 1.2.11 (61), in review
   (see above). Codex's v255 (Workspace › Export PDF) landed next as v258 (see above), with the
   same stamp conflicts as v256's: the higher number kept, with v255's `reading-workspace-pdf.js` lines.
 
@@ -1109,10 +1113,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
   identity", try a phone hotspot, then check the Apple ID's country/region (Settings › your name › Media &
   Purchases › View Account). Steps in `apps/ipad/plans/ICLOUD-SYNC-FIX.md`, "Sixth round".
 
-- **Phloem 1.2.7 (53) is Waiting for Review (manual release); 1.2.6 is live.** After approval, press Release in App
+- **Phloem 1.2.11 (61) is Waiting for Review (manual release); 1.2.10 is live.** After approval, press Release in App
   Store Connect, or tell Claude to release it. Its App Review notes still read 1.2.5 (build 49) and "What's new in 1.2.5": give them
   current wording before the next version (Houfu edits them, since they carry the reviewer Anthropic key, which is
-  overdue for rotation; see below).
+  overdue for rotation; see below). Rotate it once 1.2.11's review is over, or the reviewer's copy stops working mid-review.
 - Keep Listen going with the screen locked? Needs the `audio` background mode in Info.plist (iPhone and iPad alike).
 - **Mac:** the iPad app is already offered on Apple silicon Macs. Optional: install it on this Mac with
   TestFlight (build 49; replaces the old "register this Mac" question: not needed), then App Store Connect › Pricing and
@@ -1136,6 +1140,7 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-26 1.2.11 (61) submitted:** Waiting for Review with reader v258, manual release (Houfu: "Works, submit it").
 - **2026-11-26 1.2.11 (61):** v258 on TestFlight, not submitted.
 - **2026-11-26 v258 Find keys:** Cmd/Ctrl+F opens Phloem's Find (a second press in its field is the browser's), and
   Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step through it, from the Workspace beside the paper too; Ctrl+F on a Mac is not

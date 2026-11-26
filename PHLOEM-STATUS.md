@@ -4,7 +4,34 @@ The one place to see where Phloem stands and what's next. Every session that cha
 Phloem (by hand or by a scheduled task) updates this file in the same push. Newest first
 under **Log**. Keep it short; link to commits and files instead of copying them.
 
-## Now (2026-11-25)
+## Now (2026-11-26)
+
+- **Find's highlights stay on the words, and Find closes, v257 (web). On branch `claude/phloem-find-fixes`, made from
+  `claude/phloem-reader-place` (v256), NOT deployed: `main`, the live site and every app build are still v254.**
+  Houfu on the iPad, two-column paper, Find "degradat": right in the abstract, but in the introduction every
+  highlight sat about 237 px up and 40 px left of its words; and "no way to close the search box easily not by esc
+  not by clicking x". (1) Find brought a match into view with `scrollIntoView`, which scrolls every scrollable
+  ancestor; the page's text and highlight layers clip their overflow, so they are scroll boxes, and on a dense page
+  (PDF.js ends each line with a `<br>`, and in Chromium those pile down the layer past its bottom) a match in the
+  lower half scrolled the text layer inside its own box. A new `revealInPane` scrolls only `#documentPane` (Find in
+  PDF and Reader view, and the reviewer comment anchor); the layers are `overflow: clip` where supported, `hidden`
+  still first for iOS 15, and any layer that scrolls is put back to 0. (2) The bar had no close button, the field's
+  built-in X only emptied the text, and Escape closed Find only with focus in the bar, which a tapped ↑ or ↓ on the
+  iPad doesn't give; in Zen that Escape closed the paper. The bar now ends with a 44 pt ✕ ("Close Find"), the field's
+  own X is hidden, and Escape closes an open Find bar wherever focus is in the reader, after a dialog, the reference
+  card, a sticky note being edited, the Zen popouts and the cards, and before reader modes and the paper.
+  Tests: new `reading-pdf-find-place` (29 checks; 12 fail on 156aa71 in Chromium; Playwright's WebKit lays the line
+  breaks out without overflow, so there only the clip check fails on 156aa71) and `reading-find-close` (17 checks;
+  the ✕ checks and Escape from the page fail on 156aa71, which closed the paper). Around them, 22 suites
+  pass in Chromium and 20 of 21 in WebKit (`reading-find-highlight` runs only in Chromium; `reading-zen-compact-browser`
+  fails in WebKit on 156aa71 too, at its text-layer selection), `apps/ipad` 22/22.
+  Not checked on a real iPad or in the app's web view.
+  **To ship:** merge `claude/phloem-reader-place` (v256, still in review), then this branch, to `main`, which deploys.
+  The iPad app gets it only in a new build made after that (`npm run ios:sync` in `apps/ipad`, then archive).
+  Against Codex's uncommitted v255 the same stamp conflicts as v256's: keep the higher number and v255's
+  `reading-workspace-pdf.js` lines.
+
+## Earlier (2026-11-25)
 
 - **Reader view keeps its place over reloads and cold starts, v256 (web). On branch `claude/phloem-reader-place`, NOT
   deployed: `main`, the live site and every app build are still v254.** It was the first open question below; a
@@ -1042,6 +1069,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-26 v257 (branch `claude/phloem-find-fixes`, not deployed):** Find scrolls only the reader pane, so its
+  highlights stay on the words lower on a page; the Find bar has a ✕, and Escape closes it wherever focus is (see Now).
 - **2026-11-26 tests (branch `claude/phloem-reader-place`):** `reading-reader-place-reload` compares two landings
   allowing only for the figures whose pictures differed between them (it was as loose as its 60% check), checks the
   page hold on a page it builds, and checks that the place waits for the figures' pictures; the known limit now says

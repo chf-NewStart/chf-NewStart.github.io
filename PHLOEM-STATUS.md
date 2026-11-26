@@ -6,6 +6,26 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 
 ## Now (2026-11-26)
 
+- **Workspace › More › Export PDF, v258 (web and iPad 1.2.11 (61)). Goes live on houfu72.com with this push
+  (2026-11-26).** Codex wrote it on 2026-11-24 as v255 in `phloem-workspace-export`, for local app builds 59 and 60
+  (what it does, how, and Codex's checks: Earlier (2026-11-24) below). It is committed here unchanged except for the
+  version numbers: every `?v=` in `reading.html` (21, with v255's new `reading-workspace-pdf.js` tag) is 258,
+  `reading-sw.js` is `phloem-shell-v258`, and the iPad build is 61 (`CURRENT_PROJECT_VERSION` in both configurations,
+  `apps/ipad/tests/bundle.test.mjs`). It exports the arranged whiteboard (quote cards, sticky notes, Unicode text,
+  pressure-sensitive handwriting beyond the visible viewport): in the iPad app as vector WebKit PDF pages through the
+  share sheet, each file named with its local date/time and an 8-character export ID; in a browser through a print
+  window with Save as PDF. **iPad 1.2.11 (61) bundles v258**; TestFlight's last upload is still 58 (v254).
+  Applying v255 onto v257 conflicted only in the stamps of `reading.html` and `reading-sw.js` (v255's lines kept, the
+  number raised) and in this file (both sections kept); `reading.js` and the rest applied cleanly.
+  Tests on branch `claude/phloem-v258`: `reading-workspace-pdf`, `reading-pdf-find-place`, `reading-find-close`,
+  `reading-reader-place-reload`, every `reading-workspace-*` suite (Markdown export `reading-workspace-export` among
+  them) and the offline and update suites (`offline-shell-slow-network`, `reading-app-update`, `reading-install-dialog`)
+  pass in Chromium and WebKit: 85 of 86 runs (8 WebKit runs skip, Chromium-only touch and storage checks);
+  `reading-workspace-paper-edge` still stops at 1024×420 in Chromium, the known layout bug (Earlier (2026-11-25)).
+  `apps/ipad` 23/23; `www/bundle-manifest.json` lists `reading-workspace-pdf.js`; `npm run ios:sync` changed no
+  tracked file; a Debug simulator build succeeds as 1.2.11 (61). Not checked on a real iPad from this branch (Codex
+  checked builds 59 and 60 on one).
+
 - **Find's highlights stay on the words, and Find closes, v257 (web). Live on houfu72.com since 2026-11-26,
   together with v256. App builds still have v254 until the next one.**
   Houfu on the iPad, two-column paper, Find "degradat": right in the abstract, but in the introduction every
@@ -28,8 +48,8 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Not checked on a real iPad or in the app's web view.
   **Shipped:** pushed to `main` on 2026-11-26 together with v256, replayed unchanged onto that day's fun-fact commit
   (the reviewed branch heads are `156aa71` and `05e3cb9`). The iPad app gets it in its next build (`npm run ios:sync`
-  in `apps/ipad`, then archive). Codex's uncommitted v255 (Workspace › Export PDF) is to land next as v258, with the
-  same stamp conflicts as v256's: keep the higher number and v255's `reading-workspace-pdf.js` lines.
+  in `apps/ipad`, then archive). Codex's v255 (Workspace › Export PDF) landed next as v258 (see above), with the
+  same stamp conflicts as v256's: the higher number kept, with v255's `reading-workspace-pdf.js` lines.
 
 ## Earlier (2026-11-25)
 
@@ -78,9 +98,9 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   Real papers were not measured. Giving each figure its box before its picture loads would fix all of it. Not done
   here: the stored figure box (`fb`) gives a figure's shape, but its width on screen also needs the scale it was
   cropped at, which is not stored, and papers built before v245 have no box.
-  **Shipped** to `main` on 2026-11-26 with v257 (see Now). Codex's uncommitted v255 (`phloem-workspace-export`) stamps
-  the same files: `reading.js` merges cleanly; in `reading.html`, `reading-sw.js` and this file keep the higher number
-  and v255's `reading-workspace-pdf.js` lines.
+  **Shipped** to `main` on 2026-11-26 with v257 (see Now). Codex's v255 (`phloem-workspace-export`, now v258) stamped
+  the same files: `reading.js` merged cleanly; in `reading.html`, `reading-sw.js` and this file the higher number
+  and v255's `reading-workspace-pdf.js` lines were kept.
 
 - **Four stale browser suites repaired, tests only (same branch).** `reading-workspace-paper-color`,
   `reading-split-undo-browser` and `reading-pdf-ink` still listed the Zen dock without Listen and Night, which have been
@@ -94,6 +114,15 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   of lines. Widening the gutter alone makes page mode worse: its fit takes the gutter off both sides and the page
   shrinks to almost nothing. Needs Houfu's layout decision (page mode centred beside the rail, or a shorter dock
   beside Workspace). Widths are from the 2026-11-25 read-only check, not measured again here.
+
+## Earlier (2026-11-24)
+
+- **Dated PDF exports, local app build 60.** Each native whiteboard PDF now has a local date/time and eight-character export ID in its filename, while retaining a separate temporary export directory. Continuing to draw changes the editable board; it does not modify an earlier exported PDF. Build 60 was installed and verified on Cloud without uninstalling, retaining Production CloudKit. No App Store/TestFlight upload or public deployment was performed then; it went to the website as v258 on 2026-11-26 (see Now).
+
+- **Workspace > More > Export PDF, local app build 59 / reader v255.** The new action exports the arranged whiteboard, including quotes, sticky notes, Unicode text and pressure-sensitive handwriting beyond the visible viewport. The iPad app captures vector WebKit PDF pages, keeps ordinary notes and drawings together where they fit, skips empty gaps, and opens the system share sheet for Save to Files or sharing. Existing Markdown export remains available. The browser action opens a print window with Save as PDF. The live board, note text, zoom and stored ink are preserved; portrait keeps its existing bottom dock and landscape keeps its side dock.
+  Implementation: `reading-workspace-pdf.js` is the temporary DOM capture surface; `PhloemWorkspacePDF.swift` and `PhloemWorkspaceExportPlugin.swift` provide native PDF assembly and sharing. The native reader allowlist includes the new local module. Dark-theme black ink is rendered dark on the PDF's white paper. No network service is involved.
+  Validation: 23/23 native bundle/security tests; `reading-workspace-pdf` passes in Chromium and WebKit (offscreen content, Chinese notes, ink, portrait bottom dock, native menu routing and unchanged saved state); existing Markdown export passes desktop/iPad/phone in WebKit; offline cache checks pass v255. The shared native PDF service passes its three simulator export checks, with PDFKit and Poppler visual inspection.
+  **Local installation status:** Phloem 1.2.11 (59) installed successfully on Cloud and the installed bundle/version was verified. The existing app was updated without uninstalling it. No App Store/TestFlight upload or public website deployment was requested or performed then; the website gets it as v258 on 2026-11-26, and iPad 1.2.11 (61) bundles v258 (see Now). The connected iPad is Cloud; the development provisioning profile covers it. A temporary build entitlement explicitly retains the Production CloudKit environment used by the existing TestFlight app; source entitlements are unchanged.
 
 ## Earlier (2026-11-17)
 
@@ -1069,6 +1098,8 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-26 v258:** Workspace › More › Export PDF, Codex's v255 (local app builds 59 and 60), live on the website
+  with this push; unchanged but for the version numbers. iPad 1.2.11 (61) bundles v258 (see Now).
 - **2026-11-26 v256 and v257 live:** pushed to `main` together, replayed unchanged onto the day's fun-fact commit
   (reviewed heads `156aa71` and `05e3cb9`). App builds still have v254.
 - **2026-11-26 v257:** Find scrolls only the reader pane, so its

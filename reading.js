@@ -10315,6 +10315,42 @@
     return result;
   }
   byId('workspaceExport').onclick=function(){exportWorkspaceMarkdown();};
+  // The PDF snapshot reads this paper's arranged board; it does not alter the saved library.
+  window.getNotebookWhiteboardState=function(){
+    var ch=find(currentId);
+    if(!ch||!workspaceOpen||readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch))throw new Error('Open a Workspace before exporting it.');
+    return{notebookID:ch.id,workspace:ch.readingWorkspace,items:ch.readingExcerpts.items};
+  };
+  function printWorkspacePdf(ch){
+    var popup=window.open('','_blank');
+    if(!popup){workspaceStatus('Allow a print window to save this Workspace as PDF.');return false;}
+    var sheet=byId('workspaceBoard'),copy=sheet.cloneNode(true),doc=popup.document;
+    doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>Phloem Workspace</title></head><body></body></html>');doc.close();
+    doc.title='Workspace - '+String(ch.title||'Untitled');
+    doc.documentElement.className=document.documentElement.className;
+    doc.body.className=document.body.className;
+    document.querySelectorAll('link[rel="stylesheet"]').forEach(function(link){var style=doc.createElement('link');style.rel='stylesheet';style.href=link.href;doc.head.appendChild(style);});
+    var style=doc.createElement('style');style.textContent='@page{size:A4 landscape;margin:12mm}html,body{height:auto!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;display:block!important;background:#fff!important}.workspace-card-head,.workspace-card-actions,.workspace-card-status,.workspace-note,.workspace-selection-box,.workspace-lasso-layer,.workspace-live-ink,.workspace-empty-hint{display:none!important}.workspace-note-preview{display:block!important}.workspace-ink path[data-ink-color="black"]:not([fill="none"]){fill:#20313b!important;stroke:none!important}.workspace-ink path[data-ink-color="black"][fill="none"]{stroke:#20313b!important}.workspace-board{position:relative!important;transform:none!important;margin:0!important;overflow:visible!important;max-width:none!important}';doc.head.appendChild(style);
+    copy.querySelectorAll('script,iframe,object,embed,textarea,.workspace-card-head,.workspace-card-actions,.workspace-card-status,.workspace-selection-box,.workspace-lasso-layer,.workspace-live-ink,.workspace-empty-hint').forEach(function(node){node.remove();});
+    copy.style.width=sheet.clientWidth+'px';copy.style.height=sheet.clientHeight+'px';copy.style.transform='none';
+    doc.body.style.zoom=String(Math.min(1,960/Math.max(1,sheet.clientWidth)));doc.body.appendChild(copy);
+    Promise.all(Array.from(doc.querySelectorAll('link[rel="stylesheet"]')).map(function(link){return new Promise(function(resolve){link.onload=link.onerror=resolve;setTimeout(resolve,2000);});})).then(function(){return doc.fonts&&doc.fonts.ready;}).then(function(){popup.focus();popup.print();});
+    workspaceStatus('Choose Save as PDF in the print window. Handwriting and notes are included.');
+    return true;
+  }
+  async function exportWorkspacePdf(button){
+    var ch=find(currentId);
+    if(!ch||!workspaceOpen||readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch)){workspaceStatus('Open a paper’s Workspace to export it.');return;}
+    if(workspaceView)workspaceView.cancel();
+    if(!window.PHLOEM_NATIVE){printWorkspacePdf(ch);return;}
+    var plugin=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PhloemWorkspaceExport;
+    if(!plugin||typeof plugin.exportPDF!=='function'){workspaceStatus('Update Phloem to export this Workspace as PDF. Your notes are safe.');return;}
+    var label=button.textContent;button.disabled=true;button.textContent='Preparing PDF…';
+    try{var result=await plugin.exportPDF({title:'Workspace - '+String(ch.title||'Untitled')});workspaceStatus(result&&result.shared?'Workspace PDF shared. Handwriting and notes are included.':'Workspace PDF ready.');}
+    catch(error){workspaceStatus(error&&error.message||'This Workspace could not be exported. Your notes are safe.');}
+    finally{button.disabled=false;button.textContent=label;}
+  }
+  byId('workspaceExportPDF').onclick=function(){exportWorkspacePdf(this);};
   byId('workspaceReturn').onclick=async function(){if(!workspaceBesidePaper())setWorkspaceOpen(false,false);await returnFromExcerpt();refreshWorkspace();};
   byId('selectionToWorkspace').onclick=function(){var selection=pendingSelection||selectionNoteTarget&&selectionNoteTarget.selection;if(selection)addWorkspaceExcerpt(selection);};
 

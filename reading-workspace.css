@@ -225,3 +225,17 @@ body.workspace-full #documentPane { visibility:hidden; }
    instead of showing through; while one of its own menus is open it stays on top. Alone on
    the paper's edge, nothing covers it and it keeps its place. (Android tester, Oct 2026) */
 body.zen.workspace-open:not(.workspace-full) .zen-dock:not(.popout-open) { z-index:43; }
+
+/* The export surface is temporary. Keep the live split geometry untouched. */
+body.notebook-whiteboard-exporting #workspacePanel { visibility:hidden!important; }
+#whiteboardExportRoot { position:fixed; left:0; top:0; z-index:2147483647; overflow:hidden; background:#fff; pointer-events:none; color-scheme:light; }
+#whiteboardExportCanvas { position:absolute; left:0; top:0; transform-origin:0 0; background:#fff; }
+#whiteboardExportBoard { background:#fff; background-image:none; overflow:visible; }
+#whiteboardExportRoot .workspace-card { box-shadow:none; }
+#whiteboardExportRoot .workspace-card :is(button,details,.workspace-card-status) { visibility:hidden; }
+#whiteboardExportRoot .workspace-card :is(textarea,input) { caret-color:transparent; }
+#whiteboardExportRoot .workspace-card ::-webkit-scrollbar { display:none; }
+#whiteboardExportRoot .workspace-card .workspace-card-head { visibility:hidden; }
+#whiteboardExportRoot .workspace-ink { filter:none; }
+#whiteboardExportRoot .workspace-ink path[data-ink-color="black"]:not([fill="none"]) { fill:#20313b!important; stroke:none!important; }
+#whiteboardExportRoot .workspace-ink path[data-ink-color="black"][fill="none"] { stroke:#20313b!important; }

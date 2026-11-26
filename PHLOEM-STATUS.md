@@ -29,19 +29,22 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   line sits and lets go only when the scroll position and all of them have moved. Same paper: 8 reloads at 60% in both
   engines, and 21 places from 40% to 64% with 3 reloads each in Chromium: the saved fraction never changes (holding
   the fraction alone, 2 of those 21 places still took one step).
-  Tests: new `reading-reader-place-reload` (49 checks, 32 fail on v254) passes in Chromium and WebKit. Around it, 32
-  suites in Chromium and 14 in WebKit pass, `apps/ipad` 22/22. `reading-pdf-ink` in WebKit is flaky on a loaded Mac:
-  72/72 in 2 of 4 runs here and in 3 of 4 on the commit before, one stroke-timing check in PDF view each time. Not
-  checked on a real iPad or in the app's web view.
+  Tests: new `reading-reader-place-reload` (52 checks; 34 fail on v254, where the `putDerived` and hold checks are one
+  each, and 10 on db47601, the commit before the review fix, in both engines) passes in Chromium and WebKit. Around
+  it, 32 suites in Chromium and 14 in WebKit pass, `apps/ipad` 22/22. `reading-pdf-ink` in WebKit is flaky on a
+  loaded Mac: 72/72 in 2 of 4 runs here and in 3 of 4 on the commit before, one stroke-timing check in PDF view each
+  time. Not checked on a real iPad or in the app's web view.
   **Known limit, old and still there: where a start lands is exact only for papers without figures.** The place is a
   fraction of the text's length, and a figure gets its height only when its picture loads, which happens near the
   screen. So the same fraction is a different line when different pictures are loaded: the landing is off by what the
   pictures loaded when the place was saved, and not yet when it is restored, add to the text above and below it.
-  Measured at 60%, generated papers, 1280×800: four figures on the first four pages, 464 px off in Chromium and 424 px
-  in WebKit (v254's working reloads: exact in Chromium, 318 px in WebKit); a figure on every page, one to two
-  paragraphs off in both engines. In Chromium two starts can also land one figure's share apart (about 180 px in both
-  papers), depending on whether a picture at the top had loaded when the place was set. While the reader does not
-  scroll, none of this adds up from start to start any more; a scroll saves the place afresh from where the reader is.
+  Measured on generated papers, 1280×800. Four figures on the first four pages, read to 60%: 464 px off in Chromium
+  and 424 px in WebKit (v254's working reloads: exact in Chromium, 318 px in WebKit). A figure on every page (5 starts
+  at each of 8 to 14 places from 35% to 70%): a start can land up to 3 to 4 paragraphs from where the reader stopped,
+  and two starts at the same place can land up to about 700 px apart in Chromium and about 400 px apart in WebKit,
+  depending on which pictures had loaded when the place was set (the same spot at most places; 386 to 737 px at a few).
+  The saved place itself no longer moves: while the reader does not scroll, none of this adds up from start to start,
+  and a scroll saves the place afresh from where the reader is.
   Real papers were not measured. Giving each figure its box before its picture loads would fix all of it. Not done
   here: the stored figure box (`fb`) gives a figure's shape, but its width on screen also needs the scale it was
   cropped at, which is not stored, and papers built before v245 have no box.
@@ -1036,6 +1039,10 @@ Outputs (local, untracked, in the main checkout's `output/`):
 
 ## Log
 
+- **2026-11-26 tests (branch `claude/phloem-reader-place`):** `reading-reader-place-reload` compares two landings
+  allowing only for the figures whose pictures differed between them (it was as loose as its 60% check), checks the
+  page hold on a page it builds, and checks that the place waits for the figures' pictures; the known limit now says
+  what was measured (see Now).
 - **2026-11-25 tests (branch `claude/phloem-reader-place`):** four stale suites repaired (Zen dock lists, the selected
   library card); `reading-workspace-paper-edge` left failing, a real short-window layout bug (see Now).
 - **2026-11-25 v256, review fix (same branch):** with figures near the place the saved place slipped back on every

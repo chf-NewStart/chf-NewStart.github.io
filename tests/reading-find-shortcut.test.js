@@ -11,8 +11,10 @@ const path = require('path');
    second press in Find's field is left to the browser, so its find stays one press away.
    Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step through the matches while Find is open, and are
    the browser's while it is closed. Ctrl+F on a Mac is a text-editing key and is never
-   taken. The library, an open dialog and the full-screen Workspace keep the browser's
-   find. '/', 'f' (reader full screen) and Escape still do what they did. Each check reads
+   taken. A note (with the notes opened by a click) and a Workspace beside the paper open
+   Phloem's Find too. The library, an open dialog and the full-screen Workspace keep the
+   browser's find, and the full-screen Workspace keeps the browser's G with Find open. '/', 'f' (reader full screen) and Escape still do what they did, and
+   Escape from the Workspace closes Find. Each check reads
    defaultPrevented on the keydown the key press dispatched. */
 
 const ROOT = path.resolve(__dirname, '..');
@@ -231,6 +233,95 @@ async function run(browser, agent) {
   await page.keyboard.press('Escape');
   s = await state();
   check(tag + 'Escape with focus on the page still closes Find, not the paper', !s.open && s.reader, JSON.stringify(s));
+
+  /* Notes opened by real clicks, so the More button that opened them has focus to give back.
+     Find going to its first match closes the sheet; focus stays in Find's field, and typing
+     goes there, not to the reader's one-letter shortcuts. */
+  await blur();
+  await page.click('#zenMore');
+  await page.click('#zenNotebook');
+  await page.locator('#pageNote').waitFor({ state: 'visible' });
+  await page.click('#pageNote');
+  let fullscreenAt = await page.evaluate(() => window.__fullscreen);
+  prevented = await press(mod + '+f');
+  await counted(1);
+  await page.waitForTimeout(300);
+  await page.keyboard.type('xyzf');
+  s = await state();
+  check(tag + sym + '+F from notes opened by a click keeps focus in Find, and typing goes there', prevented === true && s.open && s.focus === 'findInput' && s.value === 'xyzf' && await page.evaluate(() => window.__fullscreen) === fullscreenAt, JSON.stringify({ prevented, s }));
+  await page.fill('#findInput', QUERY);
+  await page.keyboard.press('Escape');
+
+  /* The Workspace beside the paper keeps its own keys, but Cmd/Ctrl+F from it opens
+     Phloem's Find, Cmd/Ctrl+G steps it, and Escape closes it. */
+  await blur();
+  await page.click('#zenWorkspace');
+  await page.locator('#workspaceBoard').waitFor({ state: 'visible' });
+  const besidePaper = await page.evaluate(() => /workspace-(side|bottom)/.test(document.body.className));
+  check(tag + 'the Workspace opens beside the paper', besidePaper);
+  const focusBoard = () => page.evaluate(() => document.getElementById('workspaceBoard').focus());
+  await focusBoard();
+  prevented = await press(mod + '+f');
+  s = await state();
+  check(tag + sym + '+F from the Workspace opens Phloem\'s Find with its field focused', prevented === true && s.open && s.focus === 'findInput' && s.selected, JSON.stringify({ prevented, s }));
+  await counted(1);
+  await focusBoard();
+  prevented = await press(mod + '+g');
+  check(tag + sym + '+G from the Workspace steps on', prevented === true && await counted(2), JSON.stringify({ prevented, count: (await state()).count }));
+  await focusBoard();
+  await page.keyboard.press('Escape');
+  s = await state();
+  let workspaceStill = await page.evaluate(() => !document.getElementById('workspacePanel').classList.contains('hidden'));
+  check(tag + 'Escape with focus in the Workspace closes Find, and keeps the Workspace and the paper', !s.open && s.reader && workspaceStill, JSON.stringify({ s, workspaceStill }));
+  await focusBoard();
+  await press(mod + '+f');
+  // Safari does not focus a tapped control: the keys then arrive on <body> after a tap in the Workspace.
+  await page.evaluate(() => {
+    const tools = document.getElementById('workspaceTools');
+    tools.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    tools.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    document.activeElement.blur();
+  });
+  await page.keyboard.press('Escape');
+  s = await state();
+  workspaceStill = await page.evaluate(() => !document.getElementById('workspacePanel').classList.contains('hidden'));
+  check(tag + 'Escape on the page after a tap in the Workspace closes Find, and keeps the Workspace and the paper', !s.open && s.reader && workspaceStill, JSON.stringify({ s, workspaceStill }));
+  await page.click('#zenWorkspace');
+  await page.locator('#workspacePanel').waitFor({ state: 'hidden' });
+
+  /* In a short window the Workspace covers the whole paper and hides an open Find bar:
+     Cmd/Ctrl+F and Cmd/Ctrl+G from the board are then the browser's, and the hidden Find
+     does not step. */
+  await blur();
+  await press(mod + '+f');
+  await counted(1);
+  await blur();
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => document.getElementById('zenWorkspace').click());
+  await page.locator('#workspaceBoard').waitFor({ state: 'visible' });
+  const full = await page.evaluate(() => ({ full: document.body.classList.contains('workspace-full'), hidden: getComputedStyle(document.getElementById('findBar')).visibility === 'hidden' }));
+  check(tag + 'in an 844x390 window the Workspace covers the paper and hides the open Find bar', full.full && full.hidden && (await state()).open, JSON.stringify(full));
+  await focusBoard();
+  prevented = await press(mod + '+f');
+  check(tag + sym + '+F from the full-screen Workspace is left to the browser', prevented === false, JSON.stringify({ prevented }));
+  await focusBoard();
+  prevented = await press(mod + '+g');
+  await page.waitForTimeout(400);
+  s = await state();
+  check(tag + sym + '+G from the full-screen Workspace is left to the browser, and the hidden Find stays on its match', prevented === false && / · 1 \/ 3/.test(s.count), JSON.stringify({ prevented, count: s.count }));
+  await focusBoard();
+  prevented = await press('Shift+' + mod + '+g');
+  await page.waitForTimeout(400);
+  s = await state();
+  check(tag + 'Shift+' + sym + '+G from the full-screen Workspace is left to the browser too', prevented === false && / · 1 \/ 3/.test(s.count), JSON.stringify({ prevented, count: s.count }));
+  await page.evaluate(() => document.getElementById('zenWorkspace').click());
+  await page.locator('#workspacePanel').waitFor({ state: 'hidden' });
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await page.waitForTimeout(300);
+  await page.evaluate(() => document.getElementById('findInput').focus());
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => document.getElementById('findBar').classList.contains('hidden'));
 
   // A native dialog owns its keys.
   await page.evaluate(() => document.getElementById('readerControlsDialog').showModal());

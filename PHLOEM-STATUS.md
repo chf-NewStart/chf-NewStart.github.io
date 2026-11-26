@@ -9,7 +9,7 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
 - **Workspace › More › Export PDF, v258 (web and iPad 1.2.11 (61)). Goes live on houfu72.com with this push
   (2026-11-26).** Codex wrote it on 2026-11-24 as v255 in `phloem-workspace-export`, for local app builds 59 and 60
   (what it does, how, and Codex's checks: Earlier (2026-11-24) below). It is committed here unchanged except for the
-  version numbers: every `?v=` in `reading.html` (21, with v255's new `reading-workspace-pdf.js` tag) is 258,
+  version numbers and one review fix to the browser path (below): every `?v=` in `reading.html` (21, with v255's new `reading-workspace-pdf.js` tag) is 258,
   `reading-sw.js` is `phloem-shell-v258`, and the iPad build is 61 (`CURRENT_PROJECT_VERSION` in both configurations,
   `apps/ipad/tests/bundle.test.mjs`). It exports the arranged whiteboard (quote cards, sticky notes, Unicode text,
   pressure-sensitive handwriting beyond the visible viewport): in the iPad app as vector WebKit PDF pages through the
@@ -25,16 +25,34 @@ under **Log**. Keep it short; link to commits and files instead of copying them.
   `apps/ipad` 23/23; `www/bundle-manifest.json` lists `reading-workspace-pdf.js`; `npm run ios:sync` changed no
   tracked file; a Debug simulator build succeeds as 1.2.11 (61). Not checked on a real iPad from this branch (Codex
   checked builds 59 and 60 on one).
+  Review fix: in a browser, Save as PDF from the print window kept only the first page of the board. The window copied
+  the reader's body classes, and `body.reading` is fixed to the window, so cards, notes and ink lower on the board were
+  left out. It now copies only the page's own (`html`) classes, keeps its body static, and prints the occupied part of
+  the board (cards and ink plus a 24 px margin) over as many pages as it needs. `reading-workspace-pdf` now covers the
+  print window: in Chromium the printed PDF has the near and the far note (2 pages), and in both engines every card and
+  stroke is inside the printed area. Safari's own print was not tried (Playwright's WebKit cannot print to PDF). The
+  iPad app's native export is unchanged.
+
 - **Cmd/Ctrl+F opens Phloem's Find, v258 (same push, no new stamp).** With a paper open, Cmd+F (Apple: Mac, iPad,
   iPhone, the iPad app's hardware keyboard) or Ctrl+F (elsewhere), without Shift or Alt, opens Find with its field
   focused and its text selected, as `/` does, and keeps the browser's find from opening; from a note or a sticky
-  too, never with a dialog open, from inside the Workspace panel, or with the Workspace over the whole paper. Pressed
+  too, and from a Workspace beside the paper (its card fields and board, or the page after a tap in it); never with a
+  dialog open or with the Workspace over the whole paper. Pressed
   again in Find's field it is left to the browser, so the browser's find is one press away. While Find is open,
   Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step to the next and previous match (what Enter and Shift+Enter do); closed, G is
-  the browser's. Ctrl+F on a Mac is a text-editing key and is never taken. The library and settings keep the
+  the browser's. Both work from a Workspace beside the paper too; with the Workspace over the whole paper (which
+  hides the Find bar) F and G are both the browser's. Ctrl+F on a Mac is a text-editing key and is never taken. The library and settings keep the
   browser's find. `/`, plain `f` (reader full screen) and Escape are unchanged. The Find buttons' tooltips and
   `aria-keyshortcuts` name the platform's key. Apps that host a browser may take Cmd+F before the page (Codex's
-  browser does); `/` still works there. The iPad app has no native key commands (no `UIKeyCommand`, `pressesBegan`
+  built-in browser, for one, as the user was told; not tried); `/` still works there.
+  Review fixes in the same push: (1) from a note or the Ask field, with the notes opened by a click, Find's first match
+  closed the sheet and gave focus back to the More button, so typing went to the reader's one-letter keys (`f` asked
+  for full screen); the sheet now leaves focus in Find's field. (2) Escape with focus in the Workspace (on the board,
+  in a card, or on the page after a tap in it) closes an open Find once the Workspace's own menu, selection or gesture
+  has had it; on `main` it did nothing there. (3) Closing Find now forgets a search still waiting from typing, so the
+  first Enter or Cmd/Ctrl+G after reopening steps on instead of starting again at match 1. (4) With the Workspace
+  over the whole paper (a short window), Cmd/Ctrl+G from the board stepped the Find hidden under it and scrolled the
+  hidden paper; G there is now the browser's, as F was, and `reading-find-shortcut` checks it at 844×390. The iPad app has no native key commands (no `UIKeyCommand`, `pressesBegan`
   or `findInteraction` in the app or Capacitor 8.5.2), so the page gets Cmd+F. In `reading.js` only; new test
   `reading-find-shortcut` (Mac, Windows and iPad user agents) fails on `20738da` and passes after, in Chromium and
   WebKit. Also passing in both engines: `reading-pdf-find-place`, `reading-find-close`, `reading-find-highlight`,
@@ -1116,9 +1134,11 @@ Outputs (local, untracked, in the main checkout's `output/`):
 ## Log
 
 - **2026-11-26 v258 Find keys:** Cmd/Ctrl+F opens Phloem's Find (a second press in its field is the browser's), and
-  Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step through it; Ctrl+F on a Mac is not taken (see Now).
+  Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step through it, from the Workspace beside the paper too; Ctrl+F on a Mac is not
+  taken. Escape in the Workspace closes Find (see Now).
 - **2026-11-26 v258:** Workspace › More › Export PDF, Codex's v255 (local app builds 59 and 60), live on the website
-  with this push; unchanged but for the version numbers. iPad 1.2.11 (61) bundles v258 (see Now).
+  with this push; unchanged but for the version numbers and a fix to the browser print window, which printed only the
+  board's first page. iPad 1.2.11 (61) bundles v258 (see Now).
 - **2026-11-26 v256 and v257 live:** pushed to `main` together, replayed unchanged onto the day's fun-fact commit
   (reviewed heads `156aa71` and `05e3cb9`). App builds still have v254.
 - **2026-11-26 v257:** Find scrolls only the reader pane, so its

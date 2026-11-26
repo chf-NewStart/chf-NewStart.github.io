@@ -5509,7 +5509,8 @@
     byId('notebook').setAttribute('aria-hidden',String(hideSheet));
     if(hideSheet&&byId('notebook').contains(document.activeElement)){try{document.activeElement.blur();}catch(e){}}
     if(willOpen&&temporaryNotebookMode())requestAnimationFrame(function(){var selected=notebook.querySelector('.tab[aria-selected="true"]')||notebook;try{selected.focus();}catch(e){}});
-    else if(!willOpen&&wasOpen&&sheetReturnFocus&&sheetReturnFocus.isConnected){var returnTarget=sheetReturnFocus;sheetReturnFocus=null;try{returnTarget.focus({preventScroll:true});}catch(e){try{returnTarget.focus();}catch(err){}}}
+    // Find going to a match closes the sheet; the typing stays in Find's field.
+    else if(!willOpen&&wasOpen&&sheetReturnFocus&&sheetReturnFocus.isConnected&&!byId('findBar').contains(document.activeElement)){var returnTarget=sheetReturnFocus;sheetReturnFocus=null;try{returnTarget.focus({preventScroll:true});}catch(e){try{returnTarget.focus();}catch(err){}}}
     var sheetRestore=Promise.resolve();
     if(!willOpen&&wasOpen&&sheetReadingPosition){var returnPosition=sheetReadingPosition;sheetReadingPosition=null;sheetRestore=placePdfReadingPosition(returnPosition,false,true);}
     /* The system back gesture peels the sheet before it may leave the reader: opening
@@ -5839,7 +5840,7 @@
     byId('findBtn').classList.toggle('active',willOpen);byId('findBtn').setAttribute('aria-expanded',String(willOpen));
     byId('zenFind').classList.toggle('active',willOpen);byId('zenFind').setAttribute('aria-expanded',String(willOpen));byId('zenDock').classList.toggle('find-open',willOpen&&zenOn);
     if(willOpen){byId('findInput').focus({preventScroll:true});byId('findInput').select();if(byId('findInput').value.trim().length>=2)runFind();}
-    else{findPaintToken++;clearTimeout(findTimer);clearFindTargets();findMatches=[];findIndex=-1;byId('findCount').textContent='';var target=visibleFindReturnTarget(findReturnFocus);findReturnFocus=null;if(returnFocus&&target)try{target.focus({preventScroll:true});}catch(e){try{target.focus();}catch(err){}}}
+    else{findPaintToken++;clearTimeout(findTimer);findTimer=null;clearFindTargets();findMatches=[];findIndex=-1;byId('findCount').textContent='';var target=visibleFindReturnTarget(findReturnFocus);findReturnFocus=null;if(returnFocus&&target)try{target.focus({preventScroll:true});}catch(e){try{target.focus();}catch(err){}}}
   }
   byId('findBtn').onclick=function(){toggleFindBar(undefined,false,byId('findBtn'));};
   /* Find searches the page texts that Reader view builds. A paper only ever read as
@@ -8237,6 +8238,19 @@
     if(byId('readerPage').classList.contains('hidden'))return;
     // Native dialogs own Escape, focus and form shortcuts; none may exit the reader.
     if(document.querySelector('dialog[open]'))return;
+    /* Cmd/Ctrl+F opens Phloem's Find from anywhere in the reader, a note, a sticky or a
+       Workspace beside the paper included. Pressed again in Find's own field it is left
+       alone, so the browser's find stays one press away; with the Workspace over the whole
+       paper it is the browser's. */
+    if(findShortcut(e,'f')&&!e.shiftKey){
+      if(e.target===byId('findInput')||!currentId||document.body.classList.contains('workspace-full'))return;
+      e.preventDefault();
+      if(findBarOpen()){byId('findInput').focus({preventScroll:true});byId('findInput').select();}else toggleFindBar(true);
+      return;
+    }
+    /* Cmd/Ctrl+G steps through the matches while Find is open; with Find closed, or hidden
+       under a Workspace over the whole paper, it is the browser's. */
+    if(findShortcut(e,'g')&&findBarOpen()&&!document.body.classList.contains('workspace-full')){e.preventDefault();stepFind(e.shiftKey);return;}
     // A card handle, canvas, or workspace button owns its keyboard interaction.
     // Arrow keys and Undo here must not turn pages or erase PDF annotations.
     // Safari doesn't focus a tapped button, so keys can arrive on <body> right after a tap in
@@ -8245,17 +8259,6 @@
     if(e.key==='Escape'&&(pdfReferenceHold||!byId('pdfReferencePreview').classList.contains('hidden'))){e.preventDefault();dismissPdfReferencePreview();return;}
     // The reference card owns its native button/link keys, not the reader shortcuts.
     if(byId('pdfReferencePreview').contains(e.target))return;
-    /* Cmd/Ctrl+F opens Phloem's Find from anywhere in the reader, a note or a sticky
-       included. Pressed again in Find's own field it is left alone, so the browser's find
-       stays one press away; with the Workspace over the whole paper it is the browser's. */
-    if(findShortcut(e,'f')&&!e.shiftKey){
-      if(e.target===byId('findInput')||!currentId||document.body.classList.contains('workspace-full'))return;
-      e.preventDefault();
-      if(findBarOpen()){byId('findInput').focus({preventScroll:true});byId('findInput').select();}else toggleFindBar(true);
-      return;
-    }
-    // Cmd/Ctrl+G steps through the matches while Find is open; with Find closed it is the browser's.
-    if(findShortcut(e,'g')&&findBarOpen()){e.preventDefault();stepFind(e.shiftKey);return;}
     /* Escape belongs to the focused Find surface before it affects any persistent
        reader mode, such as Marker, that happens to be active underneath it. */
     if(e.key==='Escape'&&!byId('findBar').classList.contains('hidden')&&byId('findBar').contains(e.target)){e.preventDefault();toggleFindBar(false,true);return;}
@@ -8333,6 +8336,14 @@
       if(maxLeft>2&&(forward?pane.scrollLeft<maxLeft-2:pane.scrollLeft>2)){pane.scrollBy({left:(forward?1:-1)*Math.max(80,pane.clientWidth*.15)});return;}
       byId(forward?'nextPage':'prevPage').click();
     }
+  });
+  /* The Workspace keeps its own keys, so its Escape (a gesture, a selection, a menu) is
+     handled on the way down and stopped there. An Escape it leaves alone reaches here,
+     after it, and closes an open Find, which never closes the paper. */
+  addEventListener('keydown',function(e){
+    if(e.key!=='Escape'||e.defaultPrevented||!workspaceOpen||!findBarOpen()||byId('readerPage').classList.contains('hidden')||document.querySelector('dialog[open]'))return;
+    if(!(byId('workspacePanel').contains(e.target)||((e.target===document.body||e.target===document.documentElement)&&workspacePointerLast)))return;
+    e.preventDefault();toggleFindBar(false,false);
   });
   var refitTimer=null;
   addEventListener('resize',function(){

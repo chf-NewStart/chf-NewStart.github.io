@@ -68,6 +68,45 @@ const server = http.createServer((request, response) => {
     assert.equal(await page.locator('#workspaceBoard').evaluate(node => node.clientWidth), before.width, 'export does not resize or grow the live board');
     assert.equal(await page.evaluate(() => localStorage.getItem('readingRoom.v1')), before.saved, 'export does not change stored notes or ink');
 
+    /* The website's path: a print window with Save as PDF. It prints the occupied part of
+       the board on as many pages as it needs, not only the first page of the reader's
+       fixed body. print() is stubbed; Chromium prints the window to a PDF for the text. */
+    await page.evaluate(() => {
+      window.__printed = 0; const open = window.open;
+      window.open = function () { const popup = open.apply(this, arguments); window.__printWindow = popup; if (popup) popup.print = () => { window.__printed++; }; return popup; };
+    });
+    const popupPromise = context.waitForEvent('page');
+    await page.locator('#workspaceMore > summary').click();
+    await page.locator('#workspaceExportPDF').click();
+    const popup = await popupPromise;
+    await page.waitForFunction(() => window.__printed > 0);
+    assert.match(await page.locator('#workspaceStatus').textContent(), /Save as PDF/);
+    const printed = await popup.evaluate(() => {
+      const area = document.querySelector('.workspace-print-area').getBoundingClientRect();
+      const inside = Array.from(document.querySelectorAll('.workspace-card, .workspace-ink path')).map(node => node.getBoundingClientRect())
+        .every(rect => rect.left >= area.left - 1 && rect.top >= area.top - 1 && rect.right <= area.right + 1 && rect.bottom <= area.bottom + 1);
+      return { body: getComputedStyle(document.body).position, bodyClass: document.body.className, inside, cards: document.querySelectorAll('.workspace-card').length,
+        ink: document.querySelectorAll('.workspace-ink path').length, area: [area.width, area.height], board: [document.querySelector('.workspace-board').offsetWidth, document.querySelector('.workspace-board').offsetHeight] };
+    });
+    assert.equal(printed.body, 'static', 'the print window body is not fixed to the window');
+    assert.equal(printed.bodyClass, '', 'the reader body classes stay in the reader');
+    assert.equal(printed.cards, 2); assert.equal(printed.ink, 1);
+    assert(printed.inside, 'every card and stroke is inside the printed area: ' + JSON.stringify(printed));
+    assert(printed.area[0] < printed.board[0] && printed.area[1] < printed.board[1], 'the print is cropped to the occupied board: ' + JSON.stringify(printed));
+    if (engine === 'chromium') {
+      const bytes = await popup.pdf({ format: 'A4', landscape: true });
+      const pages = await page.evaluate(async base64 => {
+        const lib = await import('/vendor/pdfjs/pdf.min.js'); lib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.compat.js';
+        const data = Uint8Array.from(atob(base64), c => c.charCodeAt(0)), pdf = await lib.getDocument({ data }).promise, text = [];
+        for (let n = 1; n <= pdf.numPages; n++) text.push((await (await pdf.getPage(n)).getTextContent()).items.map(item => item.str).join(' '));
+        return text;
+      }, bytes.toString('base64'));
+      const all = pages.join(' ').replace(/\s+/g, '');
+      assert(/Retainedmineraldemand/.test(all) && /番茄的矿物质需求/.test(all), 'the printed PDF holds the near and the far note: ' + JSON.stringify(pages).slice(0, 400));
+    }
+    await popup.close();
+    assert.equal(await page.evaluate(() => localStorage.getItem('readingRoom.v1')), before.saved, 'printing does not change stored notes or ink');
+
     // Exercise the real menu handler with the native plugin boundary mocked.
     await page.evaluate(() => {
       window.PHLOEM_NATIVE = true;
@@ -84,7 +123,7 @@ const server = http.createServer((request, response) => {
     assert(boardBox.y >= paperBox.y + paperBox.height - 2, 'portrait keeps the whiteboard docked below the visible paper');
     assert(paperBox.height > 100 && boardBox.height > 100, 'both reading and whiteboard remain visible');
     assert.deepEqual(errors, []);
-    console.log(`PASS ${engine}: full board, Unicode notes, ink, dark theme, native export action, saved-state preservation, portrait bottom dock`);
+    console.log(`PASS ${engine}: full board, Unicode notes, ink, dark theme, browser print window, native export action, saved-state preservation, portrait bottom dock`);
     await context.close();
   } finally {
     await browser.close();

@@ -10344,19 +10344,34 @@
     if(!ch||!workspaceOpen||readingWorkspaceUnavailable(ch)||readingExcerptsUnavailable(ch))throw new Error('Open a Workspace before exporting it.');
     return{notebookID:ch.id,workspace:ch.readingWorkspace,items:ch.readingExcerpts.items};
   };
+  /* The occupied part of the board, in board pixels: its cards and ink, with a margin.
+     The print shows that area, not the whole board, which can be mostly empty. */
+  function workspacePrintBounds(sheet){
+    var box=sheet.getBoundingClientRect(),scale=box.width/Math.max(1,sheet.offsetWidth)||1,rects=[];
+    sheet.querySelectorAll('#workspaceCards .workspace-card,#workspaceInk path').forEach(function(node){var r=node.getBoundingClientRect();if(r.width||r.height)rects.push(r);});
+    if(!rects.length)return null;
+    var pad=24,left=Math.min.apply(null,rects.map(function(r){return r.left;})),top=Math.min.apply(null,rects.map(function(r){return r.top;}));
+    var right=Math.max.apply(null,rects.map(function(r){return r.right;})),bottom=Math.max.apply(null,rects.map(function(r){return r.bottom;}));
+    var x=Math.max(0,(left-box.left)/scale-pad),y=Math.max(0,(top-box.top)/scale-pad);
+    return{x:x,y:y,width:Math.min(sheet.clientWidth,(right-box.left)/scale+pad)-x,height:Math.min(sheet.clientHeight,(bottom-box.top)/scale+pad)-y};
+  }
   function printWorkspacePdf(ch){
     var popup=window.open('','_blank');
     if(!popup){workspaceStatus('Allow a print window to save this Workspace as PDF.');return false;}
-    var sheet=byId('workspaceBoard'),copy=sheet.cloneNode(true),doc=popup.document;
+    var sheet=byId('workspaceBoard'),copy=sheet.cloneNode(true),doc=popup.document,bounds=workspacePrintBounds(sheet);
     doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>Phloem Workspace</title></head><body></body></html>');doc.close();
     doc.title='Workspace - '+String(ch.title||'Untitled');
+    /* Only the page's own classes come along. The reader's body classes (body.reading is
+       fixed to the window) would print the first page of the board and drop the rest. */
     doc.documentElement.className=document.documentElement.className;
-    doc.body.className=document.body.className;
     document.querySelectorAll('link[rel="stylesheet"]').forEach(function(link){var style=doc.createElement('link');style.rel='stylesheet';style.href=link.href;doc.head.appendChild(style);});
-    var style=doc.createElement('style');style.textContent='@page{size:A4 landscape;margin:12mm}html,body{height:auto!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;display:block!important;background:#fff!important}.workspace-card-head,.workspace-card-actions,.workspace-card-status,.workspace-note,.workspace-selection-box,.workspace-lasso-layer,.workspace-live-ink,.workspace-empty-hint{display:none!important}.workspace-note-preview{display:block!important}.workspace-ink path[data-ink-color="black"]:not([fill="none"]){fill:#20313b!important;stroke:none!important}.workspace-ink path[data-ink-color="black"][fill="none"]{stroke:#20313b!important}.workspace-board{position:relative!important;transform:none!important;margin:0!important;overflow:visible!important;max-width:none!important}';doc.head.appendChild(style);
+    var style=doc.createElement('style');style.textContent='@page{size:A4 landscape;margin:12mm}html,body{position:static!important;inset:auto!important;height:auto!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;display:block!important;background:#fff!important}.workspace-print-area{position:relative;overflow:hidden}.workspace-card-head,.workspace-card-actions,.workspace-card-status,.workspace-note,.workspace-selection-box,.workspace-lasso-layer,.workspace-live-ink,.workspace-empty-hint{display:none!important}.workspace-note-preview{display:block!important}.workspace-ink path[data-ink-color="black"]:not([fill="none"]){fill:#20313b!important;stroke:none!important}.workspace-ink path[data-ink-color="black"][fill="none"]{stroke:#20313b!important}.workspace-board{position:relative!important;transform:none!important;margin:0!important;overflow:visible!important;max-width:none!important}';doc.head.appendChild(style);
     copy.querySelectorAll('script,iframe,object,embed,textarea,.workspace-card-head,.workspace-card-actions,.workspace-card-status,.workspace-selection-box,.workspace-lasso-layer,.workspace-live-ink,.workspace-empty-hint').forEach(function(node){node.remove();});
     copy.style.width=sheet.clientWidth+'px';copy.style.height=sheet.clientHeight+'px';copy.style.transform='none';
-    doc.body.style.zoom=String(Math.min(1,960/Math.max(1,sheet.clientWidth)));doc.body.appendChild(copy);
+    var area=doc.createElement('div');area.className='workspace-print-area';
+    if(bounds){area.style.width=bounds.width+'px';area.style.height=bounds.height+'px';copy.style.left=-bounds.x+'px';copy.style.top=-bounds.y+'px';}
+    area.appendChild(copy);
+    doc.body.style.zoom=String(Math.min(1,960/Math.max(1,bounds?bounds.width:sheet.clientWidth)));doc.body.appendChild(area);
     Promise.all(Array.from(doc.querySelectorAll('link[rel="stylesheet"]')).map(function(link){return new Promise(function(resolve){link.onload=link.onerror=resolve;setTimeout(resolve,2000);});})).then(function(){return doc.fonts&&doc.fonts.ready;}).then(function(){popup.focus();popup.print();});
     workspaceStatus('Choose Save as PDF in the print window. Handwriting and notes are included.');
     return true;

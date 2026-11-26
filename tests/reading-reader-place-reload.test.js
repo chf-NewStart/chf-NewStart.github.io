@@ -1,7 +1,8 @@
 /* Reader view keeps its place across reloads and cold starts. Two generated papers are read in
    Reader view, the real page is reloaded, and the test looks at where the pane sits, what was
    saved, and what is left of each paper's stored Reader text in IndexedDB. No app code is
-   replaced: the slow-PDF case holds back the real pdf.js request. */
+   replaced: the slow-PDF case holds back the real pdf.js request and the success events of the
+   figures' IndexedDB reads. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -158,8 +159,9 @@ async function settledRecord(page, name) {
 }
 /* Each start that picks up the place is watched at the moment it does: the toast saying so goes up
    in the same frame as the pane is put at the place, and a mutation observer runs before anything
-   else can load. It notes which figures had their pictures loaded and which had been given one.
-   Only watched: nothing of the page is changed. */
+   else can load. It notes where the pane is (exactly, and the length it can scroll), which figures
+   had their pictures loaded and which had been given one. Only watched: nothing of the page is
+   changed. */
 function watchLandings() {
   window.__readerLandings = [];
   document.addEventListener('DOMContentLoaded', () => {
@@ -168,7 +170,7 @@ function watchLandings() {
     new MutationObserver(() => {
       if (toast.textContent !== 'Picked up where you stopped') return;
       const pane = document.getElementById('documentPane'), figures = [...document.querySelectorAll('#textDocument img[data-fig]')];
-      window.__readerLandings.push({ top: Math.round(pane.scrollTop), loaded: figures.map(img => img.complete && img.naturalHeight > 0),
+      window.__readerLandings.push({ top: Math.round(pane.scrollTop), exact: pane.scrollTop, span: pane.scrollHeight - pane.clientHeight, loaded: figures.map(img => img.complete && img.naturalHeight > 0),
         given: figures.map(img => !!img.getAttribute('src') || !!img.closest('figure.hidden')) });
     }).observe(toast, { childList: true, characterData: true, subtree: true });
   });
@@ -194,12 +196,28 @@ const landingRecord = page => page.evaluate(() => (window.__readerLandings || []
 const loadedNow = page => page.evaluate(() => [...document.querySelectorAll('#textDocument img[data-fig]')].map(img => img.complete && img.naturalHeight > 0));
 /* Two starts at the same saved fraction land apart only by the figures that had their picture (or
    had been given one) at one and not at the other, when the place was set or afterwards. A figure's
-   picture adds its height to the text: to the part above the place by the saved fraction of it, or,
-   where Chromium keeps the screen still for a picture loading above it, by all of it less that. So
-   the allowance is the larger share of the heights of those figures, and 4 px. */
+   picture adds its height h to the text. Loaded when the place was set, it moves the landing by the
+   saved fraction f of h against a start where it was not: the place is that fraction of a longer
+   text. Loaded after the place was set, above where Chromium keeps the screen still, it moves the
+   landing by all of h: so by (1 - f) h against a start where it had loaded when the place was set,
+   and by h against one where it had not loaded at all by measuring time. So a figure counts with all
+   of h for that last pair, with max(f, 1 - f) h for any other difference, and 4 px is added. */
 function landingAllowance(fraction, heights, first, now) {
-  const differs = heights.filter((_, i) => first.given[i] !== now.given[i] || first.atPlace[i] !== now.atPlace[i] || first.after[i] !== now.after[i]);
-  return Math.ceil(Math.max(fraction, 1 - fraction) * differs.reduce((sum, height) => sum + height, 0)) + 4;
+  const late = (start, i) => !start.atPlace[i] && !!start.after[i], never = (start, i) => !start.after[i];
+  return Math.ceil(heights.reduce((sum, height, i) => {
+    if ((late(first, i) && never(now, i)) || (late(now, i) && never(first, i))) return sum + height;
+    const differs = first.given[i] !== now.given[i] || first.atPlace[i] !== now.atPlace[i] || first.after[i] !== now.after[i];
+    return sum + (differs ? Math.max(fraction, 1 - fraction) * height : 0);
+  }, 0)) + 4;
+}
+/* Where the pane was put, against the saved fraction of the length it could scroll at that moment:
+   nothing runs between the two, so no picture can have loaded in between. */
+const placedOff = (landing, fraction) => landing ? landing.exact - fraction * landing.span : null;
+function checkPlacedAt(name, landing, fraction) {
+  const off = placedOff(landing, fraction);
+  check(name + ': the pane is put at the saved fraction of the text as it is then', off !== null && Math.abs(off) <= 4,
+    landing ? { off: +off.toFixed(2), exact: landing.exact, span: landing.span, fraction } : 'no landing seen');
+  if (off !== null) console.log('     placed ' + off.toFixed(2) + ' px from the saved fraction');
 }
 const near = (value, target) => typeof value === 'number' && Math.abs(value - target) <= 0.02;
 const readerTextShown = () => !document.getElementById('textDocument').classList.contains('hidden') && document.querySelectorAll('#textDocument .para').length > 20;
@@ -373,6 +391,7 @@ async function checkHoldMarks(page) {
       const landing = await landingRecord(page), figuresNow = { given: landing ? landing.given : [], atPlace: landing ? landing.loaded : [], after: await loadedNow(page) };
       const derivedA = await derivedRecord(page, a.id), derivedB = await derivedRecord(page, b.id);
       check('reload ' + round + ': Reader view is back at 60% and says so', pane.readerView && near(pane.fraction, 0.6) && pane.toast === PICKED_UP, pane);
+      checkPlacedAt('reload ' + round, landing, a.readerScroll);
       // Exactly unchanged: a place set before the figures have their pictures is saved again a
       // little off, and the paper creeps a few lines with every reload.
       check('reload ' + round + ': the saved place is unchanged', Math.abs(saved.readerScroll - a.readerScroll) <= 0.0004 && saved.readerPlace && saved.readerPlace.page === a.readerPlace.page
@@ -405,6 +424,7 @@ async function checkHoldMarks(page) {
       !!early && early.given.length === 4 && early.given.every(Boolean) && Math.abs(early.top - firstLanding.placedAt) <= landingAllowance(a.readerScroll, heightsA,
         { given: firstLanding.figures.given, atPlace: firstLanding.figures.atPlace, after: [] }, { given: early.given, atPlace: early.loaded, after: [] }),
       { early, firstPlacedAt: firstLanding.placedAt, firstFigures: firstLanding.figures });
+    checkPlacedAt('slow PDF and slow pictures', early, a.readerScroll);
     await toLibrary(page);
     await page.waitForTimeout(400);
     const left = await paperRecord(page, 'a-paper.pdf');
@@ -467,6 +487,7 @@ async function checkHoldMarks(page) {
       const pane = await paneState(page), loaded = await loadedFigures(page), saved = await paperRecord(page, 'c-paper.pdf');
       const landing = await landingRecord(page), figuresNow = { given: landing ? landing.given : [], atPlace: landing ? landing.loaded : [], after: await loadedNow(page) };
       check('figures at the place, reload ' + round + ': pictures loaded near the place after it was restored', loaded.nearPlace > 0 && pane.toast === PICKED_UP, { loaded, toast: pane.toast });
+      checkPlacedAt('figures at the place, reload ' + round, landing, c.readerScroll);
       check('figures at the place, reload ' + round + ': the saved place is unchanged', saved.readerScroll === c.readerScroll && !!saved.readerPlace && saved.readerPlace.page === c.readerPlace.page
         && saved.readerPlace.at === c.readerPlace.at && saved.readPage === c.readPage, { readerScroll: saved.readerScroll, was: c.readerScroll, readerPlace: saved.readerPlace, wasPlace: c.readerPlace });
       if (!firstLandingC) firstLandingC = { top: pane.top, figures: figuresNow };
@@ -493,6 +514,7 @@ async function checkHoldMarks(page) {
       await figuresNearPlaceLoaded(page);
       await page.waitForTimeout(1500);
       const after = await paperRecord(page, 'c-paper.pdf');
+      checkPlacedAt('figures at the place, read to ' + (fraction * 100).toFixed(1) + '%', await landingRecord(page), before.readerScroll);
       check('figures at the place, read to ' + (fraction * 100).toFixed(1) + '%: a reload leaves the saved place unchanged', near(before.readerScroll, fraction) && after.readerScroll === before.readerScroll
         && !!after.readerPlace && !!before.readerPlace && after.readerPlace.page === before.readerPlace.page && after.readerPlace.at === before.readerPlace.at, { readerScroll: after.readerScroll, was: before.readerScroll, readerPlace: after.readerPlace, wasPlace: before.readerPlace });
     }

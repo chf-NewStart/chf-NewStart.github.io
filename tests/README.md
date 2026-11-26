@@ -381,15 +381,20 @@ saved place stays exactly as it was, and neither paper's stored Reader text (`re
 `pageLines`, `pageParagraphs`, `readerV` in IndexedDB) is lost; the paper not opened since startup
 opens from the library at 40%. Where each reload lands is checked only as far as the app can hold
 it: the place is a fraction of the text's length, and a figure's picture may or may not have loaded
-when the place is set. The test watches each start at the moment the place is set (the toast goes
-up in that frame) and notes which figures had their pictures loaded then and later. Its allowance
-between two landings is the larger of the saved fraction and the rest of it, times the heights
-(measured from the stored pictures) of the figures that had their picture, or had been given one,
-at one start and not at the other, plus 4 px: that is the test's allowance, not a promise about the
-app, which can land a few paragraphs off on papers with figures throughout (PHLOEM-STATUS.md, known
-limit). A third paper has a figure on every page, so pictures load right at the place after it is
-restored and the text grows while the reader has not moved. Over four reloads its saved place must
-stay exactly as it was: measured again after the text has grown, it slipped back with every start.
+when the place is set. The test watches each start at the moment the place is set (the toast goes up
+in that frame) and notes where the pane is, how far it can scroll, and which figures had their
+pictures loaded then and later. At that moment the pane must be at the saved fraction of how far it
+can scroll then, within 4 px, on every start of the open paper and of the third paper below: nothing
+can load between the two, so a start that lands the same distance off every time fails here (the
+4 px allows for rounding). Two landings, measured later, may differ by the larger of the saved
+fraction and the rest of it times the height (measured from the stored pictures) of each figure that
+had its picture, or had been given one, at one start and not at the other, except that a figure
+loaded after the place was set at one start and not loaded at all at the other counts with its full
+height; plus 4 px. That is the test's allowance, not a promise about the app, which can land a few
+paragraphs off on papers with figures throughout (PHLOEM-STATUS.md, known limit). A third paper has
+a figure on every page, so pictures load right at the place after it is restored and the text grows
+while the reader has not moved. Over four reloads its saved place must stay exactly as it was:
+measured again after the text has grown, it slipped back with every start.
 Two more places in that paper (44.8% and 53.2%) are read to and reloaded once each, and the saved
 place must not change. They were picked as places where, in Chromium, a figure on screen above the
 reading line and figures above the screen load together, but whether they do depends on load
